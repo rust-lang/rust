@@ -177,7 +177,7 @@ fn test_to_str() {
 fn test_encode_utf8() {
     fn check(input: char, expect: &[u8]) {
         let mut buf = [0u8, ..4];
-        let n = input.encode_utf8(buf /* as mut slice! */);
+        let n = input.encode_utf8(buf); // as mut slice!
         assert_eq!(buf.slice_to(n), expect);
     }
 
@@ -191,7 +191,7 @@ fn test_encode_utf8() {
 fn test_encode_utf16() {
     fn check(input: char, expect: &[u16]) {
         let mut buf = [0u16, ..2];
-        let n = input.encode_utf16(buf /* as mut slice! */);
+        let n = input.encode_utf16(buf); // as mut slice!
         assert_eq!(buf.slice_to(n), expect);
     }
 

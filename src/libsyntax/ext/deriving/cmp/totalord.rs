@@ -70,23 +70,21 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
     let test_id = cx.ident_of("__test");
     let equals_path = ordering_const(cx, span, Equal);
 
-    /*
-    Builds:
-
-    let __test = self_field1.cmp(&other_field2);
-    if other == ::std::cmp::Equal {
-        let __test = self_field2.cmp(&other_field2);
-        if __test == ::std::cmp::Equal {
-            ...
-        } else {
-            __test
-        }
-    } else {
-        __test
-    }
-
-    FIXME #6449: These `if`s could/should be `match`es.
-    */
+    // Builds:
+    //
+    // let __test = self_field1.cmp(&other_field2);
+    // if other == ::std::cmp::Equal {
+    //     let __test = self_field2.cmp(&other_field2);
+    //     if __test == ::std::cmp::Equal {
+    //         ...
+    //     } else {
+    //         __test
+    //     }
+    // } else {
+    //     __test
+    // }
+    //
+    // FIXME #6449: These `if`s could/should be `match`es.
     cs_same_method_fold(
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.

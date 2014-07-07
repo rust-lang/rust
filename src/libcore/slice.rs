@@ -55,26 +55,20 @@ use raw::{Repr, Slice};
 
 /// Extension methods for vectors
 pub trait ImmutableVector<'a, T> {
-    /**
-     * Returns a slice of self spanning the interval [`start`, `end`).
-     *
-     * Fails when the slice (or part of it) is outside the bounds of self,
-     * or when `start` > `end`.
-     */
+    /// Returns a slice of self spanning the interval [`start`, `end`).
+    ///
+    /// Fails when the slice (or part of it) is outside the bounds of self,
+    /// or when `start` > `end`.
     fn slice(&self, start: uint, end: uint) -> &'a [T];
 
-    /**
-     * Returns a slice of self from `start` to the end of the vec.
-     *
-     * Fails when `start` points outside the bounds of self.
-     */
+    /// Returns a slice of self from `start` to the end of the vec.
+    ///
+    /// Fails when `start` points outside the bounds of self.
     fn slice_from(&self, start: uint) -> &'a [T];
 
-    /**
-     * Returns a slice of self from the start of the vec to `end`.
-     *
-     * Fails when `end` points outside the bounds of self.
-     */
+    /// Returns a slice of self from the start of the vec to `end`.
+    ///
+    /// Fails when `end` points outside the bounds of self.
     fn slice_to(&self, end: uint) -> &'a [T];
     /// Returns an iterator over the vector
     fn iter(self) -> Items<'a, T>;
@@ -94,53 +88,47 @@ pub trait ImmutableVector<'a, T> {
     /// subslices.
     fn rsplitn(self,  n: uint, pred: |&T|: 'a -> bool) -> SplitsN<'a, T>;
 
-    /**
-     * Returns an iterator over all contiguous windows of length
-     * `size`. The windows overlap. If the vector is shorter than
-     * `size`, the iterator returns no values.
-     *
-     * # Failure
-     *
-     * Fails if `size` is 0.
-     *
-     * # Example
-     *
-     * Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`,
-     * `[3,4]`):
-     *
-     * ```rust
-     * let v = &[1i, 2, 3, 4];
-     * for win in v.windows(2) {
-     *     println!("{}", win);
-     * }
-     * ```
-     *
-     */
+    /// Returns an iterator over all contiguous windows of length
+    /// `size`. The windows overlap. If the vector is shorter than
+    /// `size`, the iterator returns no values.
+    ///
+    /// # Failure
+    ///
+    /// Fails if `size` is 0.
+    ///
+    /// # Example
+    ///
+    /// Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`,
+    /// `[3,4]`):
+    ///
+    /// ```rust
+    /// let v = &[1i, 2, 3, 4];
+    /// for win in v.windows(2) {
+    ///     println!("{}", win);
+    /// }
+    /// ```
     fn windows(self, size: uint) -> Windows<'a, T>;
-    /**
-     *
-     * Returns an iterator over `size` elements of the vector at a
-     * time. The chunks do not overlap. If `size` does not divide the
-     * length of the vector, then the last chunk will not have length
-     * `size`.
-     *
-     * # Failure
-     *
-     * Fails if `size` is 0.
-     *
-     * # Example
-     *
-     * Print the vector two elements at a time (i.e. `[1,2]`,
-     * `[3,4]`, `[5]`):
-     *
-     * ```rust
-     * let v = &[1i, 2, 3, 4, 5];
-     * for win in v.chunks(2) {
-     *     println!("{}", win);
-     * }
-     * ```
-     *
-     */
+    /// Returns an iterator over `size` elements of the vector at a
+    /// time. The chunks do not overlap. If `size` does not divide the
+    /// length of the vector, then the last chunk will not have length
+    /// `size`.
+    ///
+    /// # Failure
+    ///
+    /// Fails if `size` is 0.
+    ///
+    /// # Example
+    ///
+    /// Print the vector two elements at a time (i.e. `[1,2]`,
+    /// `[3,4]`, `[5]`):
+    ///
+    /// ```rust
+    /// let v = &[1i, 2, 3, 4, 5];
+    /// for win in v.chunks(2) {
+    ///     println!("{}", win);
+    /// }
+    /// ```
+    ///
     fn chunks(self, size: uint) -> Chunks<'a, T>;
 
     /// Returns the element of a vector at the given index, or `None` if the
@@ -163,64 +151,56 @@ pub trait ImmutableVector<'a, T> {
     /// bounds checking.
     unsafe fn unsafe_ref(self, index: uint) -> &'a T;
 
-    /**
-     * Returns an unsafe pointer to the vector's buffer
-     *
-     * The caller must ensure that the vector outlives the pointer this
-     * function returns, or else it will end up pointing to garbage.
-     *
-     * Modifying the vector may cause its buffer to be reallocated, which
-     * would also make any pointers to it invalid.
-     */
+    /// Returns an unsafe pointer to the vector's buffer
+    ///
+    /// The caller must ensure that the vector outlives the pointer this
+    /// function returns, or else it will end up pointing to garbage.
+    ///
+    /// Modifying the vector may cause its buffer to be reallocated, which
+    /// would also make any pointers to it invalid.
     fn as_ptr(&self) -> *const T;
 
-    /**
-     * Binary search a sorted vector with a comparator function.
-     *
-     * The comparator function should implement an order consistent
-     * with the sort order of the underlying vector, returning an
-     * order code that indicates whether its argument is `Less`,
-     * `Equal` or `Greater` the desired target.
-     *
-     * Returns the index where the comparator returned `Equal`, or `None` if
-     * not found.
-     */
+    /// Binary search a sorted vector with a comparator function.
+    ///
+    /// The comparator function should implement an order consistent
+    /// with the sort order of the underlying vector, returning an
+    /// order code that indicates whether its argument is `Less`,
+    /// `Equal` or `Greater` the desired target.
+    ///
+    /// Returns the index where the comparator returned `Equal`, or `None` if
+    /// not found.
     fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint>;
 
-    /**
-     * Returns an immutable reference to the first element in this slice
-     * and adjusts the slice in place so that it no longer contains
-     * that element. O(1).
-     *
-     * Equivalent to:
-     *
-     * ```ignore
-     *     if self.len() == 0 { return None }
-     *     let head = &self[0];
-     *     *self = self.slice_from(1);
-     *     Some(head)
-     * ```
-     *
-     * Returns `None` if vector is empty
-     */
+    /// Returns an immutable reference to the first element in this slice
+    /// and adjusts the slice in place so that it no longer contains
+    /// that element. O(1).
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    ///     if self.len() == 0 { return None }
+    ///     let head = &self[0];
+    ///     *self = self.slice_from(1);
+    ///     Some(head)
+    /// ```
+    ///
+    /// Returns `None` if vector is empty
     fn shift_ref(&mut self) -> Option<&'a T>;
 
-    /**
-     * Returns an immutable reference to the last element in this slice
-     * and adjusts the slice in place so that it no longer contains
-     * that element. O(1).
-     *
-     * Equivalent to:
-     *
-     * ```ignore
-     *     if self.len() == 0 { return None; }
-     *     let tail = &self[self.len() - 1];
-     *     *self = self.slice_to(self.len() - 1);
-     *     Some(tail)
-     * ```
-     *
-     * Returns `None` if slice is empty.
-     */
+    /// Returns an immutable reference to the last element in this slice
+    /// and adjusts the slice in place so that it no longer contains
+    /// that element. O(1).
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    ///     if self.len() == 0 { return None; }
+    ///     let tail = &self[self.len() - 1];
+    ///     *self = self.slice_to(self.len() - 1);
+    ///     Some(tail)
+    /// ```
+    ///
+    /// Returns `None` if slice is empty.
     fn pop_ref(&mut self) -> Option<&'a T>;
 }
 
@@ -397,18 +377,14 @@ pub trait MutableVector<'a, T> {
     /// Return a slice that points into another slice.
     fn mut_slice(self, start: uint, end: uint) -> &'a mut [T];
 
-    /**
-     * Returns a slice of self from `start` to the end of the vec.
-     *
-     * Fails when `start` points outside the bounds of self.
-     */
+    /// Returns a slice of self from `start` to the end of the vec.
+    ///
+    /// Fails when `start` points outside the bounds of self.
     fn mut_slice_from(self, start: uint) -> &'a mut [T];
 
-    /**
-     * Returns a slice of self from the start of the vec to `end`.
-     *
-     * Fails when `end` points outside the bounds of self.
-     */
+    /// Returns a slice of self from the start of the vec to `end`.
+    ///
+    /// Fails when `end` points outside the bounds of self.
     fn mut_slice_to(self, end: uint) -> &'a mut [T];
 
     /// Returns an iterator that allows modifying each value
@@ -422,52 +398,46 @@ pub trait MutableVector<'a, T> {
     /// matched element is not contained in the subslices.
     fn mut_split(self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T>;
 
-    /**
-     * Returns an iterator over `size` elements of the vector at a time.
-     * The chunks are mutable and do not overlap. If `size` does not divide the
-     * length of the vector, then the last chunk will not have length
-     * `size`.
-     *
-     * # Failure
-     *
-     * Fails if `size` is 0.
-     */
+    /// Returns an iterator over `size` elements of the vector at a time.
+    /// The chunks are mutable and do not overlap. If `size` does not divide the
+    /// length of the vector, then the last chunk will not have length
+    /// `size`.
+    ///
+    /// # Failure
+    ///
+    /// Fails if `size` is 0.
     fn mut_chunks(self, chunk_size: uint) -> MutChunks<'a, T>;
 
-    /**
-     * Returns a mutable reference to the first element in this slice
-     * and adjusts the slice in place so that it no longer contains
-     * that element. O(1).
-     *
-     * Equivalent to:
-     *
-     * ```ignore
-     *     if self.len() == 0 { return None; }
-     *     let head = &mut self[0];
-     *     *self = self.mut_slice_from(1);
-     *     Some(head)
-     * ```
-     *
-     * Returns `None` if slice is empty
-     */
+    /// Returns a mutable reference to the first element in this slice
+    /// and adjusts the slice in place so that it no longer contains
+    /// that element. O(1).
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    ///     if self.len() == 0 { return None; }
+    ///     let head = &mut self[0];
+    ///     *self = self.mut_slice_from(1);
+    ///     Some(head)
+    /// ```
+    ///
+    /// Returns `None` if slice is empty
     fn mut_shift_ref(&mut self) -> Option<&'a mut T>;
 
-    /**
-     * Returns a mutable reference to the last element in this slice
-     * and adjusts the slice in place so that it no longer contains
-     * that element. O(1).
-     *
-     * Equivalent to:
-     *
-     * ```ignore
-     *     if self.len() == 0 { return None; }
-     *     let tail = &mut self[self.len() - 1];
-     *     *self = self.mut_slice_to(self.len() - 1);
-     *     Some(tail)
-     * ```
-     *
-     * Returns `None` if slice is empty.
-     */
+    /// Returns a mutable reference to the last element in this slice
+    /// and adjusts the slice in place so that it no longer contains
+    /// that element. O(1).
+    ///
+    /// Equivalent to:
+    ///
+    /// ```ignore
+    ///     if self.len() == 0 { return None; }
+    ///     let tail = &mut self[self.len() - 1];
+    ///     *self = self.mut_slice_to(self.len() - 1);
+    ///     Some(tail)
+    /// ```
+    ///
+    /// Returns `None` if slice is empty.
     fn mut_pop_ref(&mut self) -> Option<&'a mut T>;
 
     /// Swaps two elements in a vector.
@@ -788,11 +758,9 @@ impl<'a,T:PartialEq> ImmutableEqVector<T> for &'a [T] {
 
 /// Extension methods for vectors containing `Ord` elements.
 pub trait ImmutableOrdVector<T: Ord> {
-    /**
-     * Binary search a sorted vector for a given element.
-     *
-     * Returns the index of the element or None if not found.
-     */
+    /// Binary search a sorted vector for a given element.
+    ///
+    /// Returns the index of the element or None if not found.
     fn bsearch_elem(&self, x: &T) -> Option<uint>;
 }
 
@@ -1293,18 +1261,14 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunks<'a, T> {
 // Free functions
 //
 
-/**
- * Converts a pointer to A into a slice of length 1 (without copying).
- */
+/// Converts a pointer to A into a slice of length 1 (without copying).
 pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     unsafe {
         transmute(Slice { data: s, len: 1 })
     }
 }
 
-/**
- * Converts a pointer to A into a slice of length 1 (without copying).
- */
+/// Converts a pointer to A into a slice of length 1 (without copying).
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
         let ptr: *const A = transmute(s);
@@ -1326,10 +1290,8 @@ pub mod raw {
     use raw::Slice;
     use option::{None, Option, Some};
 
-    /**
-     * Form a slice from a pointer and length (as a number of units,
-     * not bytes).
-     */
+    /// Form a slice from a pointer and length (as a number of units,
+    /// not bytes).
     #[inline]
     pub unsafe fn buf_as_slice<T,U>(p: *const T, len: uint, f: |v: &[T]| -> U)
                                -> U {
@@ -1339,10 +1301,8 @@ pub mod raw {
         }))
     }
 
-    /**
-     * Form a slice from a pointer and length (as a number of units,
-     * not bytes).
-     */
+    /// Form a slice from a pointer and length (as a number of units,
+    /// not bytes).
     #[inline]
     pub unsafe fn mut_buf_as_slice<T,
                                    U>(
@@ -1356,12 +1316,10 @@ pub mod raw {
         }))
     }
 
-    /**
-     * Returns a pointer to first element in slice and adjusts
-     * slice so it no longer contains that element. Returns None
-     * if the slice is empty. O(1).
-     */
-     #[inline]
+    /// Returns a pointer to first element in slice and adjusts
+    /// slice so it no longer contains that element. Returns None
+    /// if the slice is empty. O(1).
+    #[inline]
     pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
         if slice.len == 0 { return None; }
         let head: *const T = slice.data;
@@ -1370,12 +1328,10 @@ pub mod raw {
         Some(head)
     }
 
-    /**
-     * Returns a pointer to last element in slice and adjusts
-     * slice so it no longer contains that element. Returns None
-     * if the slice is empty. O(1).
-     */
-     #[inline]
+    /// Returns a pointer to last element in slice and adjusts
+    /// slice so it no longer contains that element. Returns None
+    /// if the slice is empty. O(1).
+    #[inline]
     pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
         if slice.len == 0 { return None; }
         let tail: *const T = slice.data.offset((slice.len - 1) as int);

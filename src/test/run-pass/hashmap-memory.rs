@@ -14,12 +14,9 @@
 extern crate collections;
 extern crate debug;
 
-/**
-   A somewhat reduced test case to expose some Valgrind issues.
-
-   This originally came from the word-count benchmark.
-*/
-
+/// A somewhat reduced test case to expose some Valgrind issues.
+///
+/// This originally came from the word-count benchmark.
 pub fn map(filename: String, emit: map_reduce::putter) {
     emit(filename, "1".to_string());
 }

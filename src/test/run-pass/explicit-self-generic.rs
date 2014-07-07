@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/**
- * A function that returns a hash of a value
- *
- * The hash should concentrate entropy in the lower bits.
- */
+/// A function that returns a hash of a value
+///
+/// The hash should concentrate entropy in the lower bits.
 type HashFn<K> = proc(K) -> uint;
 type EqFn<K> = proc(K, K) -> bool;
 

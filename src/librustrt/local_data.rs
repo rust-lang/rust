@@ -8,32 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Task local data management
-
-Allows storing arbitrary types inside task-local-storage (TLS), to be accessed
-anywhere within a task, keyed by a global pointer parameterized over the type of
-the TLS slot.  Useful for dynamic variables, singletons, and interfacing with
-foreign code with bad callback interfaces.
-
-To declare a new key for storing local data of a particular type, use the
-`local_data_key!` macro. This macro will expand to a `static` item appropriately
-named and annotated. This name is then passed to the functions in this module to
-modify/read the slot specified by the key.
-
-```rust
-local_data_key!(key_int: int)
-local_data_key!(key_vector: Vec<int>)
-
-key_int.replace(Some(3));
-assert_eq!(*key_int.get().unwrap(), 3);
-
-key_vector.replace(Some(vec![4]));
-assert_eq!(*key_vector.get().unwrap(), vec![4]);
-```
-
-*/
+//! Task local data management
+//!
+//! Allows storing arbitrary types inside task-local-storage (TLS), to be
+//! accessed anywhere within a task, keyed by a global pointer parameterized
+//! over the type of the TLS slot.  Useful for dynamic variables, singletons,
+//! and interfacing with foreign code with bad callback interfaces.
+//!
+//! To declare a new key for storing local data of a particular type, use the
+//! `local_data_key!` macro. This macro will expand to a `static` item
+//! appropriately named and annotated. This name is then passed to the functions
+//! in this module to modify/read the slot specified by the key.
+//!
+//! ```rust
+//! local_data_key!(key_int: int)
+//! local_data_key!(key_vector: Vec<int>)
+//!
+//! key_int.replace(Some(3));
+//! assert_eq!(*key_int.get().unwrap(), 3);
+//!
+//! key_vector.replace(Some(vec![4]));
+//! assert_eq!(*key_vector.get().unwrap(), vec![4]);
+//! ```
 
 // Casting 'Arcane Sight' reveals an overwhelming aura of Transmutation
 // magic.
@@ -49,17 +45,15 @@ use core::raw;
 use local::Local;
 use task::{Task, LocalStorage};
 
-/**
- * Indexes a task-local data slot. This pointer is used for comparison to
- * differentiate keys from one another. The actual type `T` is not used anywhere
- * as a member of this type, except that it is parameterized with it to define
- * the type of each key's value.
- *
- * The value of each Key is of the singleton enum KeyValue. These also have the
- * same name as `Key` and their purpose is to take up space in the programs data
- * sections to ensure that each value of the `Key` type points to a unique
- * location.
- */
+/// Indexes a task-local data slot. This pointer is used for comparison to
+/// differentiate keys from one another. The actual type `T` is not used anywhere
+/// as a member of this type, except that it is parameterized with it to define
+/// the type of each key's value.
+///
+/// The value of each Key is of the singleton enum KeyValue. These also have the
+/// same name as `Key` and their purpose is to take up space in the programs data
+/// sections to ensure that each value of the `Key` type points to a unique
+/// location.
 pub type Key<T> = &'static KeyValue<T>;
 
 #[allow(missing_doc)]

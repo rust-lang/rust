@@ -1518,14 +1518,12 @@ impl<T> Drop for MoveItems<T> {
     }
 }
 
-/**
- * Convert an iterator of pairs into a pair of vectors.
- *
- * Returns a tuple containing two vectors where the i-th element of the first
- * vector contains the first element of the i-th tuple of the input iterator,
- * and the i-th element of the second vector contains the second element
- * of the i-th tuple of the input iterator.
- */
+/// Convert an iterator of pairs into a pair of vectors.
+///
+/// Returns a tuple containing two vectors where the i-th element of the first
+/// vector contains the first element of the i-th tuple of the input iterator,
+/// and the i-th element of the second vector contains the second element
+/// of the i-th tuple of the input iterator.
 pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (Vec<T>, Vec<U>) {
     let (lo, _) = iter.size_hint();
     let mut ts = Vec::with_capacity(lo);

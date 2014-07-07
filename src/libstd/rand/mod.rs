@@ -8,70 +8,71 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Utilities for random number generation
-
-The key functions are `random()` and `Rng::gen()`. These are polymorphic
-and so can be used to generate any type that implements `Rand`. Type inference
-means that often a simple call to `rand::random()` or `rng.gen()` will
-suffice, but sometimes an annotation is required, e.g. `rand::random::<f64>()`.
-
-See the `distributions` submodule for sampling random numbers from
-distributions like normal and exponential.
-
-# Task-local RNG
-
-There is built-in support for a RNG associated with each task stored
-in task-local storage. This RNG can be accessed via `task_rng`, or
-used implicitly via `random`. This RNG is normally randomly seeded
-from an operating-system source of randomness, e.g. `/dev/urandom` on
-Unix systems, and will automatically reseed itself from this source
-after generating 32 KiB of random data.
-
-# Cryptographic security
-
-An application that requires an entropy source for cryptographic purposes
-must use `OsRng`, which reads randomness from the source that the operating
-system provides (e.g. `/dev/urandom` on Unixes or `CryptGenRandom()` on Windows).
-The other random number generators provided by this module are not suitable
-for such purposes.
-
-*Note*: many Unix systems provide `/dev/random` as well as `/dev/urandom`.
-This module uses `/dev/urandom` for the following reasons:
-
--   On Linux, `/dev/random` may block if entropy pool is empty; `/dev/urandom` will not block.
-    This does not mean that `/dev/random` provides better output than
-    `/dev/urandom`; the kernel internally runs a cryptographically secure pseudorandom
-    number generator (CSPRNG) based on entropy pool for random number generation,
-    so the "quality" of `/dev/random` is not better than `/dev/urandom` in most cases.
-    However, this means that `/dev/urandom` can yield somewhat predictable randomness
-    if the entropy pool is very small, such as immediately after first booting.
-    If an application likely to be run soon after first booting, or on a system with very
-    few entropy sources, one should consider using `/dev/random` via `ReaderRng`.
--   On some systems (e.g. FreeBSD, OpenBSD and Mac OS X) there is no difference
-    between the two sources. (Also note that, on some systems e.g. FreeBSD, both `/dev/random`
-    and `/dev/urandom` may block once if the CSPRNG has not seeded yet.)
-
-# Examples
-
-```rust
-use std::rand;
-use std::rand::Rng;
-
-let mut rng = rand::task_rng();
-if rng.gen() { // random bool
-    println!("int: {}, uint: {}", rng.gen::<int>(), rng.gen::<uint>())
-}
-```
-
-```rust
-use std::rand;
-
-let tuple = rand::random::<(f64, char)>();
-println!("{}", tuple)
-```
-*/
+//! Utilities for random number generation
+//!
+//! The key functions are `random()` and `Rng::gen()`. These are polymorphic
+//! and so can be used to generate any type that implements `Rand`. Type
+//! inference means that often a simple call to `rand::random()` or `rng.gen()`
+//! will suffice, but sometimes an annotation is required, e.g.
+//! `rand::random::<f64>()`.
+//!
+//! See the `distributions` submodule for sampling random numbers from
+//! distributions like normal and exponential.
+//!
+//! # Task-local RNG
+//!
+//! There is built-in support for a RNG associated with each task stored
+//! in task-local storage. This RNG can be accessed via `task_rng`, or
+//! used implicitly via `random`. This RNG is normally randomly seeded
+//! from an operating-system source of randomness, e.g. `/dev/urandom` on
+//! Unix systems, and will automatically reseed itself from this source
+//! after generating 32 KiB of random data.
+//!
+//! # Cryptographic security
+//!
+//! An application that requires an entropy source for cryptographic purposes
+//! must use `OsRng`, which reads randomness from the source that the operating
+//! system provides (e.g. `/dev/urandom` on Unixes or `CryptGenRandom()` on
+//! Windows). The other random number generators provided by this module are not
+//! suitable for such purposes.
+//!
+//! *Note*: many Unix systems provide `/dev/random` as well as `/dev/urandom`.
+//! This module uses `/dev/urandom` for the following reasons:
+//!
+//! -   On Linux, `/dev/random` may block if entropy pool is empty;
+//!     `/dev/urandom` will not block. This does not mean that `/dev/random`
+//!     provides better output than `/dev/urandom`; the kernel internally runs a
+//!     cryptographically secure pseudorandom number generator (CSPRNG) based on
+//!     entropy pool for random number generation, so the "quality" of
+//!     `/dev/random` is not better than `/dev/urandom` in most cases. However,
+//!     this means that `/dev/urandom` can yield somewhat predictable randomness
+//!     if the entropy pool is very small, such as immediately after first
+//!     booting. If an application likely to be run soon after first booting, or
+//!     on a system with very few entropy sources, one should consider using
+//!     `/dev/random` via `ReaderRng`.
+//! -   On some systems (e.g. FreeBSD, OpenBSD and Mac OS X) there is no
+//!     difference between the two sources. (Also note that, on some systems
+//!     e.g. FreeBSD, both `/dev/random` and `/dev/urandom` may block once if
+//!     the CSPRNG has not seeded yet.)
+//!
+//! # Examples
+//!
+//! ```rust
+//! use std::rand;
+//! use std::rand::Rng;
+//!
+//! let mut rng = rand::task_rng();
+//! if rng.gen() { // random bool
+//!     println!("int: {}, uint: {}", rng.gen::<int>(), rng.gen::<uint>())
+//! }
+//! ```
+//!
+//! ```rust
+//! use std::rand;
+//!
+//! let tuple = rand::random::<(f64, char)>();
+//! println!("{}", tuple)
+//! ```
 
 #![experimental]
 

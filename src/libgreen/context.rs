@@ -78,12 +78,11 @@ impl Context {
         }
     }
 
-    /* Switch contexts
-
-    Suspend the current execution context and resume another by
-    saving the registers values of the executing thread to a Context
-    then loading the registers from a previously saved Context.
-    */
+    // Switch contexts
+    //
+    // Suspend the current execution context and resume another by
+    // saving the registers values of the executing thread to a Context
+    // then loading the registers from a previously saved Context.
     pub fn swap(out_context: &mut Context, in_context: &Context) {
         rtdebug!("swapping contexts");
         let out_regs: &mut Registers = match out_context {

@@ -8,20 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Support for matching file paths against Unix shell style patterns.
- *
- * The `glob` and `glob_with` functions, in concert with the `Paths`
- * type, allow querying the filesystem for all files that match a particular
- * pattern - just like the libc `glob` function (for an example see the `glob`
- * documentation). The methods on the `Pattern` type provide functionality
- * for checking if individual paths match a particular pattern - in a similar
- * manner to the libc `fnmatch` function
- *
- * For consistency across platforms, and for Windows support, this module
- * is implemented entirely in Rust rather than deferring to the libc
- * `glob`/`fnmatch` functions.
- */
+//! Support for matching file paths against Unix shell style patterns.
+//!
+//! The `glob` and `glob_with` functions, in concert with the `Paths`
+//! type, allow querying the filesystem for all files that match a particular
+//! pattern - just like the libc `glob` function (for an example see the `glob`
+//! documentation). The methods on the `Pattern` type provide functionality
+//! for checking if individual paths match a particular pattern - in a similar
+//! manner to the libc `fnmatch` function
+//!
+//! For consistency across platforms, and for Windows support, this module
+//! is implemented entirely in Rust rather than deferring to the libc
+//! `glob`/`fnmatch` functions.
 
 #![crate_id = "glob#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "glob"]
@@ -41,10 +39,8 @@ use std::io::fs;
 use std::path::is_sep;
 use std::string::String;
 
-/**
- * An iterator that yields Paths from the filesystem that match a particular
- * pattern - see the `glob` function for more details.
- */
+/// An iterator that yields Paths from the filesystem that match a particular
+/// pattern - see the `glob` function for more details.
 pub struct Paths {
     dir_patterns: Vec<Pattern>,
     require_dir: bool,
@@ -84,17 +80,15 @@ pub fn glob(pattern: &str) -> Paths {
     glob_with(pattern, MatchOptions::new())
 }
 
-/**
- * Return an iterator that produces all the Paths that match the given pattern,
- * which may be absolute or relative to the current working directory.
- *
- * This function accepts Unix shell style patterns as described by `Pattern::new(..)`.
- * The options given are passed through unchanged to `Pattern::matches_with(..)` with
- * the exception that `require_literal_separator` is always set to `true` regardless of the
- * value passed to this function.
- *
- * Paths are yielded in alphabetical order, as absolute paths.
- */
+/// Return an iterator that produces all the Paths that match the given pattern,
+/// which may be absolute or relative to the current working directory.
+///
+/// This function accepts Unix shell style patterns as described by `Pattern::new(..)`.
+/// The options given are passed through unchanged to `Pattern::matches_with(..)` with
+/// the exception that `require_literal_separator` is always set to `true` regardless of the
+/// value passed to this function.
+///
+/// Paths are yielded in alphabetical order, as absolute paths.
 pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
     #[cfg(windows)]
     fn check_windows_verbatim(p: &Path) -> bool { path::windows::is_verbatim(p) }
@@ -194,9 +188,7 @@ fn list_dir_sorted(path: &Path) -> Option<Vec<Path>> {
     }
 }
 
-/**
- * A compiled Unix shell style pattern.
- */
+/// A compiled Unix shell style pattern.
 #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Pattern {
     tokens: Vec<PatternToken>,
@@ -226,25 +218,23 @@ enum MatchResult {
 
 impl Pattern {
 
-    /**
-     * This function compiles Unix shell style patterns: `?` matches any single
-     * character, `*` matches any (possibly empty) sequence of characters and
-     * `[...]` matches any character inside the brackets, unless the first
-     * character is `!` in which case it matches any character except those
-     * between the `!` and the `]`. Character sequences can also specify ranges
-     * of characters, as ordered by Unicode, so e.g. `[0-9]` specifies any
-     * character between 0 and 9 inclusive.
-     *
-     * The metacharacters `?`, `*`, `[`, `]` can be matched by using brackets
-     * (e.g. `[?]`).  When a `]` occurs immediately following `[` or `[!` then
-     * it is interpreted as being part of, rather then ending, the character
-     * set, so `]` and NOT `]` can be matched by `[]]` and `[!]]` respectively.
-     * The `-` character can be specified inside a character sequence pattern by
-     * placing it at the start or the end, e.g. `[abc-]`.
-     *
-     * When a `[` does not have a closing `]` before the end of the string then
-     * the `[` will be treated literally.
-     */
+    /// This function compiles Unix shell style patterns: `?` matches any single
+    /// character, `*` matches any (possibly empty) sequence of characters and
+    /// `[...]` matches any character inside the brackets, unless the first
+    /// character is `!` in which case it matches any character except those
+    /// between the `!` and the `]`. Character sequences can also specify ranges
+    /// of characters, as ordered by Unicode, so e.g. `[0-9]` specifies any
+    /// character between 0 and 9 inclusive.
+    ///
+    /// The metacharacters `?`, `*`, `[`, `]` can be matched by using brackets
+    /// (e.g. `[?]`).  When a `]` occurs immediately following `[` or `[!` then
+    /// it is interpreted as being part of, rather then ending, the character
+    /// set, so `]` and NOT `]` can be matched by `[]]` and `[!]]` respectively.
+    /// The `-` character can be specified inside a character sequence pattern by
+    /// placing it at the start or the end, e.g. `[abc-]`.
+    ///
+    /// When a `[` does not have a closing `]` before the end of the string then
+    /// the `[` will be treated literally.
     pub fn new(pattern: &str) -> Pattern {
 
         let chars = pattern.chars().collect::<Vec<_>>();
@@ -304,11 +294,9 @@ impl Pattern {
         Pattern { tokens: tokens }
     }
 
-    /**
-     * Escape metacharacters within the given string by surrounding them in
-     * brackets. The resulting string will, when compiled into a `Pattern`,
-     * match the input string and nothing else.
-     */
+    /// Escape metacharacters within the given string by surrounding them in
+    /// brackets. The resulting string will, when compiled into a `Pattern`,
+    /// match the input string and nothing else.
     pub fn escape(s: &str) -> String {
         let mut escaped = String::new();
         for c in s.chars() {
@@ -327,28 +315,24 @@ impl Pattern {
         escaped
     }
 
-    /**
-     * Return if the given `str` matches this `Pattern` using the default
-     * match options (i.e. `MatchOptions::new()`).
-     *
-     * # Example
-     *
-     * ```rust
-     * use glob::Pattern;
-     *
-     * assert!(Pattern::new("c?t").matches("cat"));
-     * assert!(Pattern::new("k[!e]tteh").matches("kitteh"));
-     * assert!(Pattern::new("d*g").matches("doog"));
-     * ```
-     */
+    /// Return if the given `str` matches this `Pattern` using the default
+    /// match options (i.e. `MatchOptions::new()`).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use glob::Pattern;
+    ///
+    /// assert!(Pattern::new("c?t").matches("cat"));
+    /// assert!(Pattern::new("k[!e]tteh").matches("kitteh"));
+    /// assert!(Pattern::new("d*g").matches("doog"));
+    /// ```
     pub fn matches(&self, str: &str) -> bool {
         self.matches_with(str, MatchOptions::new())
     }
 
-    /**
-     * Return if the given `Path`, when converted to a `str`, matches this `Pattern`
-     * using the default match options (i.e. `MatchOptions::new()`).
-     */
+    /// Return if the given `Path`, when converted to a `str`, matches this `Pattern`
+    /// using the default match options (i.e. `MatchOptions::new()`).
     pub fn matches_path(&self, path: &Path) -> bool {
         // FIXME (#9639): This needs to handle non-utf8 paths
         path.as_str().map_or(false, |s| {
@@ -356,17 +340,13 @@ impl Pattern {
         })
     }
 
-    /**
-     * Return if the given `str` matches this `Pattern` using the specified match options.
-     */
+    /// Return if the given `str` matches this `Pattern` using the specified match options.
     pub fn matches_with(&self, str: &str, options: MatchOptions) -> bool {
         self.matches_from(None, str, 0, options) == Match
     }
 
-    /**
-     * Return if the given `Path`, when converted to a `str`, matches this `Pattern`
-     * using the specified match options.
-     */
+    /// Return if the given `Path`, when converted to a `str`, matches this `Pattern`
+    /// using the specified match options.
     pub fn matches_path_with(&self, path: &Path, options: MatchOptions) -> bool {
         // FIXME (#9639): This needs to handle non-utf8 paths
         path.as_str().map_or(false, |s| {
@@ -592,50 +572,40 @@ fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
     }
 }
 
-/**
- * Configuration options to modify the behaviour of `Pattern::matches_with(..)`
- */
+/// Configuration options to modify the behaviour of `Pattern::matches_with(..)`
 #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct MatchOptions {
 
-    /**
-     * Whether or not patterns should be matched in a case-sensitive manner. This
-     * currently only considers upper/lower case relationships between ASCII characters,
-     * but in future this might be extended to work with Unicode.
-     */
+    /// Whether or not patterns should be matched in a case-sensitive manner. This
+    /// currently only considers upper/lower case relationships between ASCII characters,
+    /// but in future this might be extended to work with Unicode.
     case_sensitive: bool,
 
-    /**
-     * If this is true then path-component separator characters (e.g. `/` on Posix)
-     * must be matched by a literal `/`, rather than by `*` or `?` or `[...]`
-     */
+    /// If this is true then path-component separator characters (e.g. `/` on Posix)
+    /// must be matched by a literal `/`, rather than by `*` or `?` or `[...]`
     require_literal_separator: bool,
 
-    /**
-     * If this is true then paths that contain components that start with a `.` will
-     * not match unless the `.` appears literally in the pattern: `*`, `?` or `[...]`
-     * will not match. This is useful because such files are conventionally considered
-     * hidden on Unix systems and it might be desirable to skip them when listing files.
-     */
+    /// If this is true then paths that contain components that start with a `.` will
+    /// not match unless the `.` appears literally in the pattern: `*`, `?` or `[...]`
+    /// will not match. This is useful because such files are conventionally considered
+    /// hidden on Unix systems and it might be desirable to skip them when listing files.
     require_literal_leading_dot: bool
 }
 
 impl MatchOptions {
 
-    /**
-     * Constructs a new `MatchOptions` with default field values. This is used
-     * when calling functions that do not take an explicit `MatchOptions` parameter.
-     *
-     * This function always returns this value:
-     *
-     * ```rust,ignore
-     * MatchOptions {
-     *     case_sensitive: true,
-     *     require_literal_separator: false.
-     *     require_literal_leading_dot: false
-     * }
-     * ```
-     */
+    /// Constructs a new `MatchOptions` with default field values. This is used
+    /// when calling functions that do not take an explicit `MatchOptions` parameter.
+    ///
+    /// This function always returns this value:
+    ///
+    /// ```rust,ignore
+    /// MatchOptions {
+    ///     case_sensitive: true,
+    ///     require_literal_separator: false.
+    ///     require_literal_leading_dot: false
+    /// }
+    /// ```
     pub fn new() -> MatchOptions {
         MatchOptions {
             case_sensitive: true,

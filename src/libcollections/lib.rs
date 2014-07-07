@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Collection types.
- */
+//! Collection types.
 
 #![crate_id = "collections#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "collections"]

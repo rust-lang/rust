@@ -309,6 +309,15 @@ fn fill_fn_pair(bcx: &Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef)
     Store(bcx, llenvptr, GEPi(bcx, pair, [0u, abi::fn_field_box]));
 }
 
+/// Translates the body of a closure expression.
+///
+/// - `store`
+/// - `decl`
+/// - `body`
+/// - `id`: The id of the closure expression.
+/// - `cap_clause`: information about captured variables, if any.
+/// - `dest`: where to write the closure value, which must be a
+///   (fn ptr, env) pair
 pub fn trans_expr_fn<'a>(
                      bcx: &'a Block<'a>,
                      store: ty::TraitStore,
@@ -317,19 +326,6 @@ pub fn trans_expr_fn<'a>(
                      id: ast::NodeId,
                      dest: expr::Dest)
                      -> &'a Block<'a> {
-    /*!
-     *
-     * Translates the body of a closure expression.
-     *
-     * - `store`
-     * - `decl`
-     * - `body`
-     * - `id`: The id of the closure expression.
-     * - `cap_clause`: information about captured variables, if any.
-     * - `dest`: where to write the closure value, which must be a
-         (fn ptr, env) pair
-     */
-
     let _icx = push_ctxt("closure::trans_expr_fn");
 
     let dest_addr = match dest {

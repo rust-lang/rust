@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-Sampling from random distributions.
-
-This is a generalization of `Rand` to allow parameters to control the
-exact properties of the generated values, e.g. the mean and standard
-deviation of a normal distribution. The `Sample` trait is the most
-general, and allows for generating values that change some state
-internally. The `IndependentSample` trait is for generating values
-that do not need to record state.
-
-*/
+//! Sampling from random distributions.
+//!
+//! This is a generalization of `Rand` to allow parameters to control the
+//! exact properties of the generated values, e.g. the mean and standard
+//! deviation of a normal distribution. The `Sample` trait is the most
+//! general, and allows for generating values that change some state
+//! internally. The `IndependentSample` trait is for generating values
+//! that do not need to record state.
 
 #![experimental]
 

@@ -185,7 +185,7 @@
 //!
 //! // Pin a task to the spawned scheduler
 //! TaskBuilder::new().green_pinned(&mut pool, &mut handle).spawn(proc() {
-//!     /* ... */
+//!     // ...
 //! });
 //!
 //! // Handles keep schedulers alive, so be sure to drop all handles before

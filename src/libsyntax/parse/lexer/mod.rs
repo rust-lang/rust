@@ -53,7 +53,7 @@ pub struct StringReader<'a> {
     // The last character to be read
     pub curr: Option<char>,
     pub filemap: Rc<codemap::FileMap>,
-    /* cached: */
+    // cached:
     pub peek_tok: token::Token,
     pub peek_span: Span,
 }
@@ -118,7 +118,7 @@ impl<'a> StringReader<'a> {
             col: CharPos(0),
             curr: Some('\n'),
             filemap: filemap,
-            /* dummy values; not read */
+            // dummy values; not read
             peek_tok: token::EOF,
             peek_span: codemap::DUMMY_SP,
         };
@@ -636,9 +636,9 @@ impl<'a> StringReader<'a> {
                 self.check_float_base(start_bpos, last_bpos, base);
                 return token::LIT_FLOAT(str_to_ident(num_str.as_slice()),
                                         ast::TyF64);
-                /* FIXME (#2252): if this is out of range for either a
-                32-bit or 64-bit float, it won't be noticed till the
-                back-end.  */
+                // FIXME (#2252): if this is out of range for either a
+                // 32-bit or 64-bit float, it won't be noticed till the
+                // back-end.
             }
             let last_bpos = self.last_pos;
             self.err_span_(start_bpos, last_bpos, "expected `f32` or `f64` suffix");

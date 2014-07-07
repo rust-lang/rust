@@ -10,9 +10,7 @@
 
 //! Support code for encoding and decoding types.
 
-/*
-Core encoding and decoding interfaces.
-*/
+// Core encoding and decoding interfaces.
 
 #![crate_id = "serialize#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "serialize"]

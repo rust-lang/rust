@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
- * The compiler code necessary to support the env! extension.  Eventually this
- * should all get sucked into either the compiler syntax extension plugin
- * interface.
- */
+//! The compiler code necessary to support the env! extension. Eventually this
+//! should all get sucked into either the compiler syntax extension plugin
+//! interface.
 
 use ast;
 use codemap::Span;

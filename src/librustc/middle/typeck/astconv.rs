@@ -8,46 +8,44 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Conversion from AST representation of types to the ty.rs
- * representation.  The main routine here is `ast_ty_to_ty()`: each use
- * is parameterized by an instance of `AstConv` and a `RegionScope`.
- *
- * The parameterization of `ast_ty_to_ty()` is because it behaves
- * somewhat differently during the collect and check phases,
- * particularly with respect to looking up the types of top-level
- * items.  In the collect phase, the crate context is used as the
- * `AstConv` instance; in this phase, the `get_item_ty()` function
- * triggers a recursive call to `ty_of_item()`  (note that
- * `ast_ty_to_ty()` will detect recursive types and report an error).
- * In the check phase, when the FnCtxt is used as the `AstConv`,
- * `get_item_ty()` just looks up the item type in `tcx.tcache`.
- *
- * The `RegionScope` trait controls what happens when the user does
- * not specify a region in some location where a region is required
- * (e.g., if the user writes `&Foo` as a type rather than `&'a Foo`).
- * See the `rscope` module for more details.
- *
- * Unlike the `AstConv` trait, the region scope can change as we descend
- * the type.  This is to accommodate the fact that (a) fn types are binding
- * scopes and (b) the default region may change.  To understand case (a),
- * consider something like:
- *
- *   type foo = { x: &a.int, y: |&a.int| }
- *
- * The type of `x` is an error because there is no region `a` in scope.
- * In the type of `y`, however, region `a` is considered a bound region
- * as it does not already appear in scope.
- *
- * Case (b) says that if you have a type:
- *   type foo<'a> = ...;
- *   type bar = fn(&foo, &a.foo)
- * The fully expanded version of type bar is:
- *   type bar = fn(&'foo &, &a.foo<'a>)
- * Note that the self region for the `foo` defaulted to `&` in the first
- * case but `&a` in the second.  Basically, defaults that appear inside
- * an rptr (`&r.T`) use the region `r` that appears in the rptr.
- */
+//! Conversion from AST representation of types to the ty.rs
+//! representation.  The main routine here is `ast_ty_to_ty()`: each use
+//! is parameterized by an instance of `AstConv` and a `RegionScope`.
+//!
+//! The parameterization of `ast_ty_to_ty()` is because it behaves
+//! somewhat differently during the collect and check phases,
+//! particularly with respect to looking up the types of top-level
+//! items.  In the collect phase, the crate context is used as the
+//! `AstConv` instance; in this phase, the `get_item_ty()` function
+//! triggers a recursive call to `ty_of_item()`  (note that
+//! `ast_ty_to_ty()` will detect recursive types and report an error).
+//! In the check phase, when the FnCtxt is used as the `AstConv`,
+//! `get_item_ty()` just looks up the item type in `tcx.tcache`.
+//!
+//! The `RegionScope` trait controls what happens when the user does
+//! not specify a region in some location where a region is required
+//! (e.g., if the user writes `&Foo` as a type rather than `&'a Foo`).
+//! See the `rscope` module for more details.
+//!
+//! Unlike the `AstConv` trait, the region scope can change as we descend
+//! the type.  This is to accommodate the fact that (a) fn types are binding
+//! scopes and (b) the default region may change.  To understand case (a),
+//! consider something like:
+//!
+//!   type foo = { x: &a.int, y: |&a.int| }
+//!
+//! The type of `x` is an error because there is no region `a` in scope.
+//! In the type of `y`, however, region `a` is considered a bound region
+//! as it does not already appear in scope.
+//!
+//! Case (b) says that if you have a type:
+//!   type foo<'a> = ...;
+//!   type bar = fn(&foo, &a.foo)
+//! The fully expanded version of type bar is:
+//!   type bar = fn(&'foo &, &a.foo<'a>)
+//! Note that the self region for the `foo` defaulted to `&` in the first
+//! case but `&a` in the second.  Basically, defaults that appear inside
+//! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 
 use middle::const_eval;
 use middle::def;
@@ -148,19 +146,15 @@ pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
     r
 }
 
+/// Given a path `path` that refers to an item `I` with the
+/// declared generics `decl_generics`, returns an appropriate
+/// set of substitutions for this particular reference to `I`.
 fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     decl_generics: &ty::Generics,
     self_ty: Option<ty::t>,
-    path: &ast::Path) -> Substs
-{
-    /*!
-     * Given a path `path` that refers to an item `I` with the
-     * declared generics `decl_generics`, returns an appropriate
-     * set of substitutions for this particular reference to `I`.
-     */
-
+    path: &ast::Path) -> Substs {
     let tcx = this.tcx();
 
     // ast_path_substs() is only called to convert paths that are

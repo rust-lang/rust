@@ -8,28 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
-
-# Collect phase
-
-The collect phase of type check has the job of visiting all items,
-determining their type, and writing that type into the `tcx.tcache`
-table.  Despite its name, this table does not really operate as a
-*cache*, at least not for the types of items defined within the
-current crate: we assume that after the collect phase, the types of
-all local items will be present in the table.
-
-Unlike most of the types that are present in Rust, the types computed
-for each item are in fact polytypes.  In "layman's terms", this means
-that they are generic types that may have type parameters (more
-mathematically phrased, they are universally quantified over a set of
-type parameters).  Polytypes are represented by an instance of
-`ty::Polytype`.  This combines the core type along with a list of the
-bounds for each parameter.  Type parameters themselves are represented
-as `ty_param()` instances.
-
-*/
-
+//! # Collect phase
+//!
+//! The collect phase of type check has the job of visiting all items,
+//! determining their type, and writing that type into the `tcx.tcache`
+//! table.  Despite its name, this table does not really operate as a
+//! *cache*, at least not for the types of items defined within the
+//! current crate: we assume that after the collect phase, the types of
+//! all local items will be present in the table.
+//!
+//! Unlike most of the types that are present in Rust, the types computed
+//! for each item are in fact polytypes.  In "layman's terms", this means
+//! that they are generic types that may have type parameters (more
+//! mathematically phrased, they are universally quantified over a set of
+//! type parameters).  Polytypes are represented by an instance of
+//! `ty::Polytype`.  This combines the core type along with a list of the
+//! bounds for each parameter.  Type parameters themselves are represented
+//! as `ty_param()` instances.
 
 use metadata::csearch;
 use middle::def;
@@ -293,7 +288,7 @@ pub fn convert_field(ccx: &CrateCtxt,
                      origin: ast::DefId) -> ty::field_ty {
     let tt = ccx.to_ty(&ExplicitRscope, &*v.node.ty);
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
-    /* add the field to the tcache */
+    // add the field to the tcache
     ccx.tcx.tcache.borrow_mut().insert(local_def(v.node.id),
                                        ty::Polytype {
                                            generics: struct_generics.clone(),
@@ -639,15 +634,12 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: &ast::ForeignItem) {
     ccx.tcx.tcache.borrow_mut().insert(local_def(i.id), pty);
 }
 
+/// Instantiates the path for the given trait reference, assuming that
+/// it's bound to a valid trait type. Returns the def_id for the defining
+/// trait. Fails if the type is a type other than a trait type.
 pub fn instantiate_trait_ref(ccx: &CrateCtxt,
                              ast_trait_ref: &ast::TraitRef,
                              self_ty: ty::t) -> Rc<ty::TraitRef> {
-    /*!
-     * Instantiates the path for the given trait reference, assuming that
-     * it's bound to a valid trait type. Returns the def_id for the defining
-     * trait. Fails if the type is a type other than a trait type.
-     */
-
     // FIXME(#5121) -- distinguish early vs late lifetime params
     let rscope = ExplicitRscope;
 
@@ -1052,20 +1044,17 @@ fn ty_generics(ccx: &CrateCtxt,
         def
     }
 
+    /// Translate the AST's notion of ty param bounds (which are an
+    /// enum consisting of a newtyped Ty or a region) to ty's
+    /// notion of ty param bounds, which can either be user-defined
+    /// traits, or the built-in trait (formerly known as kind): Send.
     fn compute_bounds(
         ccx: &CrateCtxt,
         param_ty: ty::ParamTy,
         ast_bounds: &OwnedSlice<ast::TyParamBound>,
         sized: ast::Sized,
         ident: ast::Ident,
-        span: Span) -> ty::ParamBounds
-    {
-        /*!
-         * Translate the AST's notion of ty param bounds (which are an
-         * enum consisting of a newtyped Ty or a region) to ty's
-         * notion of ty param bounds, which can either be user-defined
-         * traits, or the built-in trait (formerly known as kind): Send.
-         */
+        span: Span) -> ty::ParamBounds {
 
         let mut param_bounds = ty::ParamBounds {
             builtin_bounds: ty::empty_builtin_bounds(),

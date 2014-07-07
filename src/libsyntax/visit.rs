@@ -74,9 +74,8 @@ pub fn generics_of_fn(fk: &FnKind) -> Generics {
 /// new default implementation gets introduced.)
 pub trait Visitor<E: Clone> {
 
-    fn visit_ident(&mut self, _sp: Span, _ident: Ident, _e: E) {
-        /*! Visit the idents */
-    }
+    /// Visit the idents
+    fn visit_ident(&mut self, _sp: Span, _ident: Ident, _e: E) { }
     fn visit_mod(&mut self, m: &Mod, _s: Span, _n: NodeId, e: E) { walk_mod(self, m, e) }
     fn visit_view_item(&mut self, i: &ViewItem, e: E) { walk_view_item(self, i, e) }
     fn visit_foreign_item(&mut self, i: &ForeignItem, e: E) { walk_foreign_item(self, i, e) }
@@ -101,26 +100,22 @@ pub trait Visitor<E: Clone> {
     }
     fn visit_struct_field(&mut self, s: &StructField, e: E) { walk_struct_field(self, s, e) }
     fn visit_variant(&mut self, v: &Variant, g: &Generics, e: E) { walk_variant(self, v, g, e) }
+    /// Visits an optional reference to a lifetime. The `span` is
+    /// the span of some surrounding reference should opt_lifetime
+    /// be None.
     fn visit_opt_lifetime_ref(&mut self,
                               _span: Span,
                               opt_lifetime: &Option<Lifetime>,
                               env: E) {
-        /*!
-         * Visits an optional reference to a lifetime. The `span` is
-         * the span of some surrounding reference should opt_lifetime
-         * be None.
-         */
         match *opt_lifetime {
             Some(ref l) => self.visit_lifetime_ref(l, env),
             None => ()
         }
     }
-    fn visit_lifetime_ref(&mut self, _lifetime: &Lifetime, _e: E) {
-        /*! Visits a reference to a lifetime */
-    }
-    fn visit_lifetime_decl(&mut self, _lifetime: &Lifetime, _e: E) {
-        /*! Visits a declaration of a lifetime */
-    }
+    /// Visits a reference to a lifetime
+    fn visit_lifetime_ref(&mut self, _lifetime: &Lifetime, _e: E) { }
+    /// Visits a declaration of a lifetime
+    fn visit_lifetime_decl(&mut self, _lifetime: &Lifetime, _e: E) { }
     fn visit_explicit_self(&mut self, es: &ExplicitSelf, e: E) {
         walk_explicit_self(self, es, e)
     }

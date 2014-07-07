@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/**
-The compiler code necessary to support the cfg! extension, which
-expands to a literal `true` or `false` based on whether the given cfgs
-match the current compilation environment.
-*/
+//! The compiler code necessary to support the cfg! extension, which
+//! expands to a literal `true` or `false` based on whether the given cfgs
+//! match the current compilation environment.
 
 use ast;
 use codemap::Span;

@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-The CodeMap tracks all the source code used within a single crate, mapping
-from integer byte positions to the original source code location. Each bit of
-source parsed during crate parsing (typically files, in-memory strings, or
-various bits of macro expansion) cover a continuous range of bytes in the
-CodeMap and are represented by FileMaps. Byte positions are stored in `spans`
-and used pervasively in the compiler. They are absolute positions within the
-CodeMap, which upon request can be converted to line and column information,
-source code snippets, etc.
-
-*/
+//! The CodeMap tracks all the source code used within a single crate, mapping
+//! from integer byte positions to the original source code location. Each bit
+//! of source parsed during crate parsing (typically files, in-memory strings,
+//! or various bits of macro expansion) cover a continuous range of bytes in the
+//! CodeMap and are represented by FileMaps. Byte positions are stored in `spans`
+//! and used pervasively in the compiler. They are absolute positions within the
+//! CodeMap, which upon request can be converted to line and column information,
+//! source code snippets, etc.
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::cell::RefCell;
@@ -79,12 +75,10 @@ impl Sub<CharPos,CharPos> for CharPos {
     }
 }
 
-/**
-Spans represent a region of code, used for error reporting. Positions in spans
-are *absolute* positions from the beginning of the codemap, not positions
-relative to FileMaps. Methods on the CodeMap can be used to relate spans back
-to the original source.
-*/
+/// Spans represent a region of code, used for error reporting. Positions in
+/// spans are *absolute* positions from the beginning of the codemap, not
+/// positions relative to FileMaps. Methods on the CodeMap can be used to
+/// relate spans back to the original source.
 #[deriving(Clone, Show, Hash)]
 pub struct Span {
     pub lo: BytePos,
@@ -112,7 +106,7 @@ impl PartialEq for Span {
 impl Eq for Span {}
 
 impl<S:Encoder<E>, E> Encodable<S, E> for Span {
-    /* Note #1972 -- spans are encoded but not decoded */
+    // Note #1972 -- spans are encoded but not decoded
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_nil()
     }
@@ -136,7 +130,7 @@ pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
     respan(DUMMY_SP, t)
 }
 
-/* assuming that we're not in macro expansion */
+// assuming that we're not in macro expansion
 pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
     Span {lo: lo, hi: hi, expn_info: None}
 }

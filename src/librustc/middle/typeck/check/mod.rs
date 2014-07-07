@@ -8,74 +8,69 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
-
-# check.rs
-
-Within the check phase of type check, we check each item one at a time
-(bodies of function expressions are checked as part of the containing
-function).  Inference is used to supply types wherever they are
-unknown.
-
-By far the most complex case is checking the body of a function. This
-can be broken down into several distinct phases:
-
-- gather: creates type variables to represent the type of each local
-  variable and pattern binding.
-
-- main: the main pass does the lion's share of the work: it
-  determines the types of all expressions, resolves
-  methods, checks for most invalid conditions, and so forth.  In
-  some cases, where a type is unknown, it may create a type or region
-  variable and use that as the type of an expression.
-
-  In the process of checking, various constraints will be placed on
-  these type variables through the subtyping relationships requested
-  through the `demand` module.  The `typeck::infer` module is in charge
-  of resolving those constraints.
-
-- regionck: after main is complete, the regionck pass goes over all
-  types looking for regions and making sure that they did not escape
-  into places they are not in scope.  This may also influence the
-  final assignments of the various region variables if there is some
-  flexibility.
-
-- vtable: find and records the impls to use for each trait bound that
-  appears on a type parameter.
-
-- writeback: writes the final types within a function body, replacing
-  type variables with their final inferred types.  These final types
-  are written into the `tcx.node_types` table, which should *never* contain
-  any reference to a type variable.
-
-## Intermediate types
-
-While type checking a function, the intermediate types for the
-expressions, blocks, and so forth contained within the function are
-stored in `fcx.node_types` and `fcx.item_substs`.  These types
-may contain unresolved type variables.  After type checking is
-complete, the functions in the writeback module are used to take the
-types from this table, resolve them, and then write them into their
-permanent home in the type context `ccx.tcx`.
-
-This means that during inferencing you should use `fcx.write_ty()`
-and `fcx.expr_ty()` / `fcx.node_ty()` to write/obtain the types of
-nodes within the function.
-
-The types of top-level items, which never contain unbound type
-variables, are stored directly into the `tcx` tables.
-
-n.b.: A type variable is not the same thing as a type parameter.  A
-type variable is rather an "instance" of a type parameter: that is,
-given a generic function `fn foo<T>(t: T)`: while checking the
-function `foo`, the type `ty_param(0)` refers to the type `T`, which
-is treated in abstract.  When `foo()` is called, however, `T` will be
-substituted for a fresh type variable `N`.  This variable will
-eventually be resolved to some concrete type (which might itself be
-type parameter).
-
-*/
-
+//! # check.rs
+//!
+//! Within the check phase of type check, we check each item one at a time
+//! (bodies of function expressions are checked as part of the containing
+//! function).  Inference is used to supply types wherever they are
+//! unknown.
+//!
+//! By far the most complex case is checking the body of a function. This
+//! can be broken down into several distinct phases:
+//!
+//! - gather: creates type variables to represent the type of each local
+//!   variable and pattern binding.
+//!
+//! - main: the main pass does the lion's share of the work: it
+//!   determines the types of all expressions, resolves
+//!   methods, checks for most invalid conditions, and so forth.  In
+//!   some cases, where a type is unknown, it may create a type or region
+//!   variable and use that as the type of an expression.
+//!
+//!   In the process of checking, various constraints will be placed on
+//!   these type variables through the subtyping relationships requested
+//!   through the `demand` module.  The `typeck::infer` module is in charge
+//!   of resolving those constraints.
+//!
+//! - regionck: after main is complete, the regionck pass goes over all
+//!   types looking for regions and making sure that they did not escape
+//!   into places they are not in scope.  This may also influence the
+//!   final assignments of the various region variables if there is some
+//!   flexibility.
+//!
+//! - vtable: find and records the impls to use for each trait bound that
+//!   appears on a type parameter.
+//!
+//! - writeback: writes the final types within a function body, replacing
+//!   type variables with their final inferred types.  These final types
+//!   are written into the `tcx.node_types` table, which should *never* contain
+//!   any reference to a type variable.
+//!
+//! ## Intermediate types
+//!
+//! While type checking a function, the intermediate types for the
+//! expressions, blocks, and so forth contained within the function are
+//! stored in `fcx.node_types` and `fcx.item_substs`.  These types
+//! may contain unresolved type variables.  After type checking is
+//! complete, the functions in the writeback module are used to take the
+//! types from this table, resolve them, and then write them into their
+//! permanent home in the type context `ccx.tcx`.
+//!
+//! This means that during inferencing you should use `fcx.write_ty()`
+//! and `fcx.expr_ty()` / `fcx.node_ty()` to write/obtain the types of
+//! nodes within the function.
+//!
+//! The types of top-level items, which never contain unbound type
+//! variables, are stored directly into the `tcx` tables.
+//!
+//! n.b.: A type variable is not the same thing as a type parameter.  A
+//! type variable is rather an "instance" of a type parameter: that is,
+//! given a generic function `fn foo<T>(t: T)`: while checking the
+//! function `foo`, the type `ty_param(0)` refers to the type `T`, which
+//! is treated in abstract.  When `foo()` is called, however, `T` will be
+//! substituted for a fresh type variable `N`.  This variable will
+//! eventually be resolved to some concrete type (which might itself be
+//! type parameter).
 
 use middle::const_eval;
 use middle::def;
@@ -434,24 +429,20 @@ impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
 
 }
 
+/// Helper used by check_bare_fn and check_expr_fn.  Does the
+/// grungy work of checking a function body and returns the
+/// function context used for that purpose, since in the case of a
+/// fn item there is still a bit more to do.
+///
+/// - ...
+/// - inherited: other fields inherited from the enclosing fn (if any)
 fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
                 fn_style: ast::FnStyle,
                 fn_sig: &ty::FnSig,
                 decl: &ast::FnDecl,
                 id: ast::NodeId,
                 body: &ast::Block,
-                inherited: &'a Inherited<'a>) -> FnCtxt<'a>
-{
-    /*!
-     * Helper used by check_bare_fn and check_expr_fn.  Does the
-     * grungy work of checking a function body and returns the
-     * function context used for that purpose, since in the case of a
-     * fn item there is still a bit more to do.
-     *
-     * - ...
-     * - inherited: other fields inherited from the enclosing fn (if any)
-     */
-
+                inherited: &'a Inherited<'a>) -> FnCtxt<'a> {
     let tcx = ccx.tcx;
     let err_count_on_creation = tcx.sess.err_count();
 
@@ -738,19 +729,16 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
     }
 }
 
+/// Type checks a method body.
+///
+/// # Parameters
+/// - `item_generics`: generics defined on the impl/trait that contains
+///   the method
+/// - `self_bound`: bound for the `Self` type parameter, if any
+/// - `method`: the method definition
 fn check_method_body(ccx: &CrateCtxt,
                      item_generics: &ty::Generics,
                      method: &ast::Method) {
-    /*!
-     * Type checks a method body.
-     *
-     * # Parameters
-     * - `item_generics`: generics defined on the impl/trait that contains
-     *   the method
-     * - `self_bound`: bound for the `Self` type parameter, if any
-     * - `method`: the method definition
-     */
-
     debug!("check_method_body(item_generics={}, method.id={})",
             item_generics.repr(ccx.tcx),
             method.id);
@@ -833,19 +821,17 @@ fn check_impl_methods_against_trait(ccx: &CrateCtxt,
     }
 }
 
-/**
- * Checks that a method from an impl/class conforms to the signature of
- * the same method as declared in the trait.
- *
- * # Parameters
- *
- * - impl_generics: the generics declared on the impl itself (not the method!)
- * - impl_m: type of the method we are checking
- * - impl_m_span: span to use for reporting errors
- * - impl_m_body_id: id of the method body
- * - trait_m: the method in the trait
- * - trait_to_impl_substs: the substitutions used on the type of the trait
- */
+/// Checks that a method from an impl/class conforms to the signature of
+/// the same method as declared in the trait.
+///
+/// # Parameters
+///
+/// - impl_generics: the generics declared on the impl itself (not the method!)
+/// - impl_m: type of the method we are checking
+/// - impl_m_span: span to use for reporting errors
+/// - impl_m_body_id: id of the method body
+/// - trait_m: the method in the trait
+/// - trait_to_impl_substs: the substitutions used on the type of the trait
 fn compare_impl_method(tcx: &ty::ctxt,
                        impl_m: &ty::Method,
                        impl_m_span: Span,
@@ -1196,24 +1182,22 @@ fn check_cast(fcx: &FnCtxt,
         // need to special-case obtaining an unsafe pointer
         // from a region pointer to a vector.
 
-        /* this cast is only allowed from &[T] to *T or
-        &T to *T. */
+        // this cast is only allowed from &[T] to *T or
+        // &T to *T.
         match (&ty::get(t_e).sty, &ty::get(t_1).sty) {
             (&ty::ty_rptr(_, ty::mt { ty: mt1, mutbl: ast::MutImmutable }),
              &ty::ty_ptr(ty::mt { ty: mt2, mutbl: ast::MutImmutable }))
             if types_compatible(fcx, e.span, mt1, mt2) => {
-                /* this case is allowed */
+                // this case is allowed
             }
             _ => {
                 demand::coerce(fcx, e.span, t_1, &*e);
             }
         }
     } else if !(ty::type_is_scalar(t_e) && t_1_is_trivial) {
-        /*
-        If more type combinations should be supported than are
-        supported here, then file an enhancement issue and
-        record the issue number in this comment.
-        */
+        // If more type combinations should be supported than are
+        // supported here, then file an enhancement issue and
+        // record the issue number in this comment.
         fcx.type_error_message(span, |actual| {
             format!("non-scalar cast: `{}` as `{}`",
                     actual,
@@ -1482,21 +1466,18 @@ pub enum LvaluePreference {
     NoPreference
 }
 
+/// Executes an autoderef loop for the type `t`. At each step, invokes
+/// `should_stop` to decide whether to terminate the loop. Returns
+/// the final type and number of derefs that it performed.
+///
+/// Note: this method does not modify the adjustments table. The caller is
+/// responsible for inserting an AutoAdjustment record into the `fcx`
+/// using one of the suitable methods.
 pub fn autoderef<T>(fcx: &FnCtxt, sp: Span, base_ty: ty::t,
                     expr_id: Option<ast::NodeId>,
                     mut lvalue_pref: LvaluePreference,
                     should_stop: |ty::t, uint| -> Option<T>)
                     -> (ty::t, uint, Option<T>) {
-    /*!
-     * Executes an autoderef loop for the type `t`. At each step, invokes
-     * `should_stop` to decide whether to terminate the loop. Returns
-     * the final type and number of derefs that it performed.
-     *
-     * Note: this method does not modify the adjustments table. The caller is
-     * responsible for inserting an AutoAdjustment record into the `fcx`
-     * using one of the suitable methods.
-     */
-
     let mut t = base_ty;
     for autoderefs in range(0, fcx.tcx().sess.recursion_limit.get()) {
         let resolved_t = structurally_resolved_type(fcx, sp, t);
@@ -1676,6 +1657,8 @@ fn check_method_argument_types(fcx: &FnCtxt,
     }
 }
 
+/// Generic function that factors out common logic from
+/// function calls, method calls and overloaded operators.
 fn check_argument_types(fcx: &FnCtxt,
                         sp: Span,
                         fn_inputs: &[ty::t],
@@ -1684,12 +1667,6 @@ fn check_argument_types(fcx: &FnCtxt,
                         deref_args: DerefArgs,
                         variadic: bool,
                         tuple_arguments: TupleArgumentsFlag) {
-    /*!
-     *
-     * Generic function that factors out common logic from
-     * function calls, method calls and overloaded operators.
-     */
-
     let tcx = fcx.ccx.tcx;
 
     // Grab the argument types, supplying fresh type variables
@@ -4155,31 +4132,27 @@ pub fn instantiate_path(fcx: &FnCtxt,
         }
     }
 
+    /// Finds the parameters that the user provided and adds them
+    /// to `substs`. If too many parameters are provided, then
+    /// reports an error and clears the output vector.
+    ///
+    /// We clear the output vector because that will cause the
+    /// `adjust_XXX_parameters()` later to use inference
+    /// variables. This seems less likely to lead to derived
+    /// errors.
+    ///
+    /// Note that we *do not* check for *too few* parameters here.
+    /// Due to the presence of defaults etc that is more
+    /// complicated. I wanted however to do the reporting of *too
+    /// many* parameters here because we can easily use the precise
+    /// span of the N+1'th parameter.
     fn push_explicit_parameters_from_segment_to_substs(
         fcx: &FnCtxt,
         space: subst::ParamSpace,
         type_defs: &VecPerParamSpace<ty::TypeParameterDef>,
         region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
         segment: &ast::PathSegment,
-        substs: &mut Substs)
-    {
-        /*!
-         * Finds the parameters that the user provided and adds them
-         * to `substs`. If too many parameters are provided, then
-         * reports an error and clears the output vector.
-         *
-         * We clear the output vector because that will cause the
-         * `adjust_XXX_parameters()` later to use inference
-         * variables. This seems less likely to lead to derived
-         * errors.
-         *
-         * Note that we *do not* check for *too few* parameters here.
-         * Due to the presence of defaults etc that is more
-         * complicated. I wanted however to do the reporting of *too
-         * many* parameters here because we can easily use the precise
-         * span of the N+1'th parameter.
-         */
-
+        substs: &mut Substs) {
         {
             let type_count = type_defs.len(space);
             assert_eq!(substs.types.len(space), 0);

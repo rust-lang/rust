@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Task-local garbage-collected boxes
-
-The `Gc` type provides shared ownership of an immutable value. Destruction is not deterministic, and
-will occur some time between every `Gc` handle being gone and the end of the task. The garbage
-collector is task-local so `Gc<T>` is not sendable.
-
-*/
+//! Task-local garbage-collected boxes
+//!
+//! The `Gc` type provides shared ownership of an immutable value. Destruction
+//! is not deterministic, and will occur some time between every `Gc` handle
+//! being gone and the end of the task. The garbage collector is task-local so
+//! `Gc<T>` is not sendable.
 
 #![experimental]
 #![allow(experimental)]

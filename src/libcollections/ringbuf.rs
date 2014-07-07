@@ -339,19 +339,17 @@ fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut Vec<Option<T>>) {
     let newlen = nelts * 2;
     elts.reserve(newlen);
 
-    /* fill with None */
+    // fill with None
     for _ in range(elts.len(), elts.capacity()) {
         elts.push(None);
     }
 
-    /*
-      Move the shortest half into the newly reserved area.
-      lo ---->|
-      nelts ----------->|
-        [o o o|o o o o o]
-      A [. . .|o o o o o o o o|. . . . .]
-      B [o o o|. . . . . . . .|o o o o o]
-     */
+    // Move the shortest half into the newly reserved area.
+    // lo ---->|
+    // nelts ----------->|
+    //   [o o o|o o o o o]
+    // A [. . .|o o o o o o o o|. . . . .]
+    // B [o o o|. . . . . . . .|o o o o o]
 
     assert!(newlen - nelts/2 >= nelts);
     if lo <= (nelts - lo) { // A

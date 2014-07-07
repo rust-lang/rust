@@ -8,21 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Implementation of SipHash 2-4
- *
- * See: http://131002.net/siphash/
- *
- * Consider this as a main "general-purpose" hash for all hashtables: it
- * runs at good speed (competitive with spooky and city) and permits
- * strong _keyed_ hashing. Key your hashtables from a strong RNG,
- * such as `rand::Rng`.
- *
- * Although the SipHash algorithm is considered to be cryptographically
- * strong, this implementation has not been reviewed for such purposes.
- * As such, all cryptographic uses of this implementation are strongly
- * discouraged.
- */
+//! Implementation of SipHash 2-4
+//!
+//! See: http://131002.net/siphash/
+//!
+//! Consider this as a main "general-purpose" hash for all hashtables: it
+//! runs at good speed (competitive with spooky and city) and permits
+//! strong _keyed_ hashing. Key your hashtables from a strong RNG,
+//! such as `rand::Rng`.
+//!
+//! Although the SipHash algorithm is considered to be cryptographically
+//! strong, this implementation has not been reviewed for such purposes.
+//! As such, all cryptographic uses of this implementation are strongly
+//! discouraged.
 
 use core::prelude::*;
 

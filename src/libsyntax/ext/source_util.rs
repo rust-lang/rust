@@ -28,7 +28,7 @@ use std::str;
 // the column/row/filename of the expression, or they include
 // a given file into the current one.
 
-/* line!(): expands to the current line number */
+// line!(): expands to the current line number
 pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "line!");
@@ -39,7 +39,7 @@ pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     base::MacExpr::new(cx.expr_uint(topmost.call_site, loc.line))
 }
 
-/* col!(): expands to the current column number */
+// col!(): expands to the current column number
 pub fn expand_col(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                   -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "col!");
@@ -49,9 +49,9 @@ pub fn expand_col(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     base::MacExpr::new(cx.expr_uint(topmost.call_site, loc.col.to_uint()))
 }
 
-/* file!(): expands to the current filename */
-/* The filemap (`loc.file`) contains a bunch more information we could spit
- * out if we wanted. */
+// file!(): expands to the current filename
+// The filemap (`loc.file`) contains a bunch more information we could spit
+// out if we wanted.
 pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "file!");

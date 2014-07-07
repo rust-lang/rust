@@ -8,94 +8,93 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Utilities for vector manipulation
-
-The `vec` module contains useful code to help work with vector values.
-Vectors are Rust's list type. Vectors contain zero or more values of
-homogeneous types:
-
-```rust
-let int_vector = [1i, 2i, 3i];
-let str_vector = ["one", "two", "three"];
-```
-
-This is a big module, but for a high-level overview:
-
-## Structs
-
-Several structs that are useful for vectors, such as `Items`, which
-represents iteration over a vector.
-
-## Traits
-
-A number of traits add methods that allow you to accomplish tasks with vectors.
-
-Traits defined for the `&[T]` type (a vector slice), have methods that can be
-called on either owned vectors, denoted `~[T]`, or on vector slices themselves.
-These traits include `ImmutableVector`, and `MutableVector` for the `&mut [T]`
-case.
-
-An example is the method `.slice(a, b)` that returns an immutable "view" into
-a vector or a vector slice from the index interval `[a, b)`:
-
-```rust
-let numbers = [0i, 1i, 2i];
-let last_numbers = numbers.slice(1, 3);
-// last_numbers is now &[1i, 2i]
-```
-
-Traits defined for the `~[T]` type, like `OwnedVector`, can only be called
-on such vectors. These methods deal with adding elements or otherwise changing
-the allocation of the vector.
-
-An example is the method `.push(element)` that will add an element at the end
-of the vector:
-
-```rust
-let mut numbers = vec![0i, 1i, 2i];
-numbers.push(7);
-// numbers is now vec![0i, 1i, 2i, 7i];
-```
-
-## Implementations of other traits
-
-Vectors are a very useful type, and so there's several implementations of
-traits from other modules. Some notable examples:
-
-* `Clone`
-* `Eq`, `Ord`, `Eq`, `Ord` -- vectors can be compared,
-  if the element type defines the corresponding trait.
-
-## Iteration
-
-The method `iter()` returns an iteration value for a vector or a vector slice.
-The iterator yields references to the vector's elements, so if the element
-type of the vector is `int`, the element type of the iterator is `&int`.
-
-```rust
-let numbers = [0i, 1i, 2i];
-for &x in numbers.iter() {
-    println!("{} is a number!", x);
-}
-```
-
-* `.mut_iter()` returns an iterator that allows modifying each value.
-* `.move_iter()` converts an owned vector into an iterator that
-  moves out a value from the vector each iteration.
-* Further iterators exist that split, chunk or permute the vector.
-
-## Function definitions
-
-There are a number of free functions that create or take vectors, for example:
-
-* Creating a vector, like `from_elem` and `from_fn`
-* Creating a vector with a given size: `with_capacity`
-* Modifying a vector and returning it, like `append`
-* Operations on paired elements, like `unzip`.
-
-*/
+//! Utilities for vector manipulation
+//!
+//! The `vec` module contains useful code to help work with vector values.
+//! Vectors are Rust's list type. Vectors contain zero or more values of
+//! homogeneous types:
+//!
+//! ```rust
+//! let int_vector = [1i, 2i, 3i];
+//! let str_vector = ["one", "two", "three"];
+//! ```
+//!
+//! This is a big module, but for a high-level overview:
+//!
+//! ## Structs
+//!
+//! Several structs that are useful for vectors, such as `Items`, which
+//! represents iteration over a vector.
+//!
+//! ## Traits
+//!
+//! A number of traits add methods that allow you to accomplish tasks with
+//! vectors.
+//!
+//! Traits defined for the `&[T]` type (a vector slice), have methods that can
+//! be called on either owned vectors, denoted `~[T]`, or on vector slices
+//! themselves. These traits include `ImmutableVector`, and `MutableVector` for
+//! the `&mut [T]` case.
+//!
+//! An example is the method `.slice(a, b)` that returns an immutable "view"
+//! into a vector or a vector slice from the index interval `[a, b)`:
+//!
+//! ```rust
+//! let numbers = [0i, 1i, 2i];
+//! let last_numbers = numbers.slice(1, 3);
+//! // last_numbers is now &[1i, 2i]
+//! ```
+//!
+//! Traits defined for the `~[T]` type, like `OwnedVector`, can only be called
+//! on such vectors. These methods deal with adding elements or otherwise
+//! changing the allocation of the vector.
+//!
+//! An example is the method `.push(element)` that will add an element at the
+//! end of the vector:
+//!
+//! ```rust
+//! let mut numbers = vec![0i, 1i, 2i];
+//! numbers.push(7);
+//! // numbers is now vec![0i, 1i, 2i, 7i];
+//! ```
+//!
+//! ## Implementations of other traits
+//!
+//! Vectors are a very useful type, and so there's several implementations of
+//! traits from other modules. Some notable examples:
+//!
+//! * `Clone`
+//! * `Eq`, `Ord`, `Eq`, `Ord` -- vectors can be compared,
+//!   if the element type defines the corresponding trait.
+//!
+//! ## Iteration
+//!
+//! The method `iter()` returns an iteration value for a vector or a vector
+//! slice. The iterator yields references to the vector's elements, so if the
+//! element type of the vector is `int`, the element type of the iterator is
+//! `&int`.
+//!
+//! ```rust
+//! let numbers = [0i, 1i, 2i];
+//! for &x in numbers.iter() {
+//!     println!("{} is a number!", x);
+//! }
+//! ```
+//!
+//! * `.mut_iter()` returns an iterator that allows modifying each value.
+//! * `.move_iter()` converts an owned vector into an iterator that
+//!   moves out a value from the vector each iteration.
+//! * Further iterators exist that split, chunk or permute the vector.
+//!
+//! ## Function definitions
+//!
+//! There are a number of free functions that create or take vectors, for
+//! example:
+//!
+//! * Creating a vector, like `from_elem` and `from_fn`
+//! * Creating a vector with a given size: `with_capacity`
+//! * Modifying a vector and returning it, like `append`
+//! * Operations on paired elements, like `unzip`.
 
 #![doc(primitive = "slice")]
 
@@ -556,19 +555,17 @@ pub trait MutableVectorAllocating<'a, T> {
     /// ```
     fn sort_by(self, compare: |&T, &T| -> Ordering);
 
-    /**
-     * Consumes `src` and moves as many elements as it can into `self`
-     * from the range [start,end).
-     *
-     * Returns the number of elements copied (the shorter of self.len()
-     * and end - start).
-     *
-     * # Arguments
-     *
-     * * src - A mutable vector of `T`
-     * * start - The index into `src` to start copying from
-     * * end - The index into `str` to stop copying from
-     */
+    /// Consumes `src` and moves as many elements as it can into `self`
+    /// from the range [start,end).
+    ///
+    /// Returns the number of elements copied (the shorter of self.len()
+    /// and end - start).
+    ///
+    /// # Arguments
+    ///
+    /// * src - A mutable vector of `T`
+    /// * start - The index into `src` to start copying from
+    /// * end - The index into `str` to stop copying from
     fn move_from(self, src: Vec<T>, start: uint, end: uint) -> uint;
 }
 
@@ -1080,10 +1077,8 @@ mod tests {
         v1.dedup();
         let mut v2 = vec![box 1i, box 2, box 3, box 3];
         v2.dedup();
-        /*
-         * If the boxed pointers were leaked or otherwise misused, valgrind
-         * and/or rustrt should raise errors.
-         */
+        // If the boxed pointers were leaked or otherwise misused, valgrind
+        // and/or rustrt should raise errors.
     }
 
     #[test]
@@ -1094,10 +1089,8 @@ mod tests {
         v1.dedup();
         let mut v2 = vec![box 1i, box 2, box 3, box 3];
         v2.dedup();
-        /*
-         * If the pointers were leaked or otherwise misused, valgrind and/or
-         * rustrt should raise errors.
-         */
+        // If the pointers were leaked or otherwise misused, valgrind and/or
+        // rustrt should raise errors.
     }
 
     #[test]

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! See doc.rs for a thorough explanation of the borrow checker */
+//! See doc.rs for a thorough explanation of the borrow checker
 
 #![allow(non_camel_case_types)]
 

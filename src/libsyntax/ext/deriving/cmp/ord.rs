@@ -101,23 +101,21 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
     let test_id = cx.ident_of("__test");
     let equals_expr = some_ordering_const(cx, span, Equal);
 
-    /*
-    Builds:
-
-    let __test = self_field1.partial_cmp(&other_field2);
-    if __test == ::std::option::Some(::std::cmp::Equal) {
-        let __test = self_field2.partial_cmp(&other_field2);
-        if __test == ::std::option::Some(::std::cmp::Equal) {
-            ...
-        } else {
-            __test
-        }
-    } else {
-        __test
-    }
-
-    FIXME #6449: These `if`s could/should be `match`es.
-    */
+    // Builds:
+    //
+    // let __test = self_field1.partial_cmp(&other_field2);
+    // if __test == ::std::option::Some(::std::cmp::Equal) {
+    //    let __test = self_field2.partial_cmp(&other_field2);
+    //    if __test == ::std::option::Some(::std::cmp::Equal) {
+    //        ...
+    //    } else {
+    //        __test
+    //    }
+    // } else {
+    //    __test
+    // }
+    //
+    // FIXME #6449: These `if`s could/should be `match`es.
     cs_same_method_fold(
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
@@ -160,23 +158,21 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span,
     cs_fold(
         false, // need foldr,
         |cx, span, subexpr, self_f, other_fs| {
-            /*
-            build up a series of chain ||'s and &&'s from the inside
-            out (hence foldr) to get lexical ordering, i.e. for op ==
-            `ast::lt`
-
-            ```
-            self.f1 < other.f1 || (!(other.f1 < self.f1) &&
-                (self.f2 < other.f2 || (!(other.f2 < self.f2) &&
-                    (false)
-                ))
-            )
-            ```
-
-            The optimiser should remove the redundancy. We explicitly
-            get use the binops to avoid auto-deref dereferencing too many
-            layers of pointers, if the type includes pointers.
-            */
+            // build up a series of chain ||'s and &&'s from the inside
+            // out (hence foldr) to get lexical ordering, i.e. for op ==
+            // `ast::lt`
+            //
+            // ```
+            // self.f1 < other.f1 || (!(other.f1 < self.f1) &&
+            //     (self.f2 < other.f2 || (!(other.f2 < self.f2) &&
+            //         (false)
+            //     ))
+            // )
+            // ```
+            //
+            // The optimiser should remove the redundancy. We explicitly
+            // get use the binops to avoid auto-deref dereferencing too many
+            // layers of pointers, if the type includes pointers.
             let other_f = match other_fs {
                 [o_f] => o_f,
                 _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")

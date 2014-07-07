@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! See doc.rs for documentation */
+//! See doc.rs for documentation
 
 #![allow(non_camel_case_types)]
 
@@ -275,18 +275,14 @@ pub fn new_infer_ctxt<'a>(tcx: &'a ty::ctxt) -> InferCtxt<'a> {
     }
 }
 
+/// Computes the least upper-bound of `a` and `b`. If this is
+/// not possible, reports an error and returns ty::err.
 pub fn common_supertype(cx: &InferCtxt,
                         origin: TypeOrigin,
                         a_is_expected: bool,
                         a: ty::t,
                         b: ty::t)
-                        -> ty::t
-{
-    /*!
-     * Computes the least upper-bound of `a` and `b`. If this is
-     * not possible, reports an error and returns ty::err.
-     */
-
+                        -> ty::t {
     debug!("common_supertype({}, {})",
            a.repr(cx.tcx), b.repr(cx.tcx));
 
@@ -631,16 +627,13 @@ impl<'a> InferCtxt<'a> {
             .collect()
     }
 
+    /// Given a set of generics defined on a type or impl, returns
+    /// a substitution mapping each type/region parameter to a
+    /// fresh inference variable.
     pub fn fresh_substs_for_type(&self,
                                  span: Span,
                                  generics: &ty::Generics)
-                                 -> subst::Substs
-    {
-        /*!
-         * Given a set of generics defined on a type or impl, returns
-         * a substitution mapping each type/region parameter to a
-         * fresh inference variable.
-         */
+                                 -> subst::Substs {
         assert!(generics.types.len(subst::SelfSpace) == 0);
         assert!(generics.types.len(subst::FnSpace) == 0);
         assert!(generics.regions.len(subst::SelfSpace) == 0);

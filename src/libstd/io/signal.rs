@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Signal handling
-
-This modules provides bindings to receive signals safely, built on top of the
-local I/O factory. There are a number of defined signals which can be caught,
-but not all signals will work across all platforms (windows doesn't have
-definitions for a number of signals.
-
-*/
+//! Signal handling
+//!
+//! This modules provides bindings to receive signals safely, built on top of
+//! the local I/O factory. There are a number of defined signals which can be
+//! caught, but not all signals will work across all platforms (windows doesn't
+//! have definitions for a number of signals.
 
 use clone::Clone;
 use comm::{Sender, Receiver, channel};

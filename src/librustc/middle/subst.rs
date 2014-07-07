@@ -77,22 +77,19 @@ impl<T> HomogeneousTuple3<T> for (T, T, T) {
 
 ///////////////////////////////////////////////////////////////////////////
 
-/**
- * A substitution mapping type/region parameters to new values. We
- * identify each in-scope parameter by an *index* and a *parameter
- * space* (which indices where the parameter is defined; see
- * `ParamSpace`).
- */
+/// A substitution mapping type/region parameters to new values. We
+/// identify each in-scope parameter by an *index* and a *parameter
+/// space* (which indices where the parameter is defined; see
+/// `ParamSpace`).
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct Substs {
     pub types: VecPerParamSpace<ty::t>,
     pub regions: RegionSubsts,
 }
 
-/**
- * Represents the values to use when substituting lifetime parameters.
- * If the value is `ErasedRegions`, then this subst is occurring during
- * trans, and all region parameters will be replaced with `ty::ReStatic`. */
+/// Represents the values to use when substituting lifetime parameters.
+/// If the value is `ErasedRegions`, then this subst is occurring during
+/// trans, and all region parameters will be replaced with `ty::ReStatic`.
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum RegionSubsts {
     ErasedRegions,
@@ -163,26 +160,20 @@ impl Substs {
         s
     }
 
+    /// Since ErasedRegions are only to be used in trans, most of
+    /// the compiler can use this method to easily access the set
+    /// of region substitutions.
     pub fn regions<'a>(&'a self) -> &'a VecPerParamSpace<ty::Region> {
-        /*!
-         * Since ErasedRegions are only to be used in trans, most of
-         * the compiler can use this method to easily access the set
-         * of region substitutions.
-         */
-
         match self.regions {
             ErasedRegions => fail!("Erased regions only expected in trans"),
             NonerasedRegions(ref r) => r
         }
     }
 
+    /// Since ErasedRegions are only to be used in trans, most of
+    /// the compiler can use this method to easily access the set
+    /// of region substitutions.
     pub fn mut_regions<'a>(&'a mut self) -> &'a mut VecPerParamSpace<ty::Region> {
-        /*!
-         * Since ErasedRegions are only to be used in trans, most of
-         * the compiler can use this method to easily access the set
-         * of region substitutions.
-         */
-
         match self.regions {
             ErasedRegions => fail!("Erased regions only expected in trans"),
             NonerasedRegions(ref mut r) => r
@@ -253,11 +244,9 @@ impl ParamSpace {
     }
 }
 
-/**
- * Vector of things sorted by param space. Used to keep
- * the set of things declared on the type, self, or method
- * distinct.
- */
+/// Vector of things sorted by param space. Used to keep
+/// the set of things declared on the type, self, or method
+/// distinct.
 #[deriving(PartialEq, Eq, Clone, Hash, Encodable, Decodable)]
 pub struct VecPerParamSpace<T> {
     // This was originally represented as a tuple with one Vec<T> for
@@ -442,16 +431,13 @@ impl<T> VecPerParamSpace<T> {
             self.get_slice(FnSpace).iter().map(|p| pred(p)).collect())
     }
 
+    /// Executes the map but in reverse order. For hacky reasons, we rely
+    /// on this in table.
+    ///
+    /// FIXME(#5527) -- order of eval becomes irrelevant with newer
+    /// trait reform, which features an idempotent algorithm that
+    /// can be run to a fixed point
     pub fn map_rev<U>(&self, pred: |&T| -> U) -> VecPerParamSpace<U> {
-        /*!
-         * Executes the map but in reverse order. For hacky reasons, we rely
-         * on this in table.
-         *
-         * FIXME(#5527) -- order of eval becomes irrelevant with newer
-         * trait reform, which features an idempotent algorithm that
-         * can be run to a fixed point
-         */
-
         let mut fns: Vec<U> = self.get_slice(FnSpace).iter().rev().map(|p| pred(p)).collect();
 
         // NB: Calling foo.rev().map().rev() causes the calls to map

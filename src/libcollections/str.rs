@@ -8,62 +8,58 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Unicode string manipulation (`str` type)
-
-# Basic Usage
-
-Rust's string type is one of the core primitive types of the language. While
-represented by the name `str`, the name `str` is not actually a valid type in
-Rust. Each string must also be decorated with a pointer. `String` is used
-for an owned string, so there is only one commonly-used `str` type in Rust:
-`&str`.
-
-`&str` is the borrowed string type. This type of string can only be created
-from other strings, unless it is a static string (see below). As the word
-"borrowed" implies, this type of string is owned elsewhere, and this string
-cannot be moved out of.
-
-As an example, here's some code that uses a string.
-
-```rust
-fn main() {
-    let borrowed_string = "This string is borrowed with the 'static lifetime";
-}
-```
-
-From the example above, you can see that Rust's string literals have the
-`'static` lifetime. This is akin to C's concept of a static string.
-
-String literals are allocated statically in the rodata of the
-executable/library. The string then has the type `&'static str` meaning that
-the string is valid for the `'static` lifetime, otherwise known as the
-lifetime of the entire program. As can be inferred from the type, these static
-strings are not mutable.
-
-# Mutability
-
-Many languages have immutable strings by default, and Rust has a particular
-flavor on this idea. As with the rest of Rust types, strings are immutable by
-default. If a string is declared as `mut`, however, it may be mutated. This
-works the same way as the rest of Rust's type system in the sense that if
-there's a mutable reference to a string, there may only be one mutable reference
-to that string. With these guarantees, strings can easily transition between
-being mutable/immutable with the same benefits of having mutable strings in
-other languages.
-
-# Representation
-
-Rust's string type, `str`, is a sequence of unicode codepoints encoded as a
-stream of UTF-8 bytes. All safely-created strings are guaranteed to be validly
-encoded UTF-8 sequences. Additionally, strings are not null-terminated
-and can contain null codepoints.
-
-The actual representation of strings have direct mappings to vectors: `&str`
-is the same as `&[u8]`.
-
-*/
+//! Unicode string manipulation (`str` type)
+//!
+//! # Basic Usage
+//!
+//! Rust's string type is one of the core primitive types of the language. While
+//! represented by the name `str`, the name `str` is not actually a valid type
+//! in Rust. Each string must also be decorated with a pointer. `String` is used
+//! for an owned string, so there is only one commonly-used `str` type in Rust:
+//! `&str`.
+//!
+//! `&str` is the borrowed string type. This type of string can only be created
+//! from other strings, unless it is a static string (see below). As the word
+//! "borrowed" implies, this type of string is owned elsewhere, and this string
+//! cannot be moved out of.
+//!
+//! As an example, here's some code that uses a string.
+//!
+//! ```rust
+//! fn main() {
+//!     let borrowed_string = "This string is borrowed with the 'static lifetime";
+//! }
+//! ```
+//!
+//! From the example above, you can see that Rust's string literals have the
+//! `'static` lifetime. This is akin to C's concept of a static string.
+//!
+//! String literals are allocated statically in the rodata of the
+//! executable/library. The string then has the type `&'static str` meaning that
+//! the string is valid for the `'static` lifetime, otherwise known as the
+//! lifetime of the entire program. As can be inferred from the type, these
+//! static strings are not mutable.
+//!
+//! # Mutability
+//!
+//! Many languages have immutable strings by default, and Rust has a particular
+//! flavor on this idea. As with the rest of Rust types, strings are immutable
+//! by default. If a string is declared as `mut`, however, it may be mutated.
+//! This works the same way as the rest of Rust's type system in the sense that
+//! if there's a mutable reference to a string, there may only be one mutable
+//! reference to that string. With these guarantees, strings can easily
+//! transition between being mutable/immutable with the same benefits of having
+//! mutable strings in other languages.
+//!
+//! # Representation
+//!
+//! Rust's string type, `str`, is a sequence of unicode codepoints encoded as a
+//! stream of UTF-8 bytes. All safely-created strings are guaranteed to be
+//! validly encoded UTF-8 sequences. Additionally, strings are not
+//! null-terminated and can contain null codepoints.
+//!
+//! The actual representation of strings have direct mappings to vectors: `&str`
+//! is the same as `&[u8]`.
 
 #![doc(primitive = "str")]
 
@@ -89,9 +85,7 @@ pub use core::str::{Utf16Item, ScalarValue, LoneSurrogate, utf16_items};
 pub use core::str::{truncate_utf16_at_nul, utf8_char_width, CharRange};
 pub use core::str::{Str, StrSlice};
 
-/*
-Section: Creating a string
-*/
+// Section: Creating a string
 
 /// Consumes a vector of bytes to create a new utf-8 string.
 ///
@@ -243,9 +237,7 @@ impl<'a, S: Str> StrVector for Vec<S> {
     }
 }
 
-/*
-Section: Iterators
-*/
+// Section: Iterators
 
 // Helper functions used for Unicode normalization
 fn canonical_sort(comb: &mut [(char, u8)]) {
@@ -363,9 +355,7 @@ pub fn replace(s: &str, from: &str, to: &str) -> String {
     result
 }
 
-/*
-Section: Misc
-*/
+// Section: Misc
 
 /// Decode a UTF-16 encoded vector `v` into a string, returning `None`
 /// if `v` contains any invalid data.
@@ -553,9 +543,7 @@ pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
     Owned(res.into_string())
 }
 
-/*
-Section: MaybeOwned
-*/
+// Section: MaybeOwned
 
 /// A `MaybeOwned` is a string that can hold either a `String` or a `&str`.
 /// This can be useful as an optimization when an allocation is sometimes
@@ -767,9 +755,7 @@ pub mod raw {
     }
 }
 
-/*
-Section: Trait implementations
-*/
+// Section: Trait implementations
 
 /// Any string that can be represented as a slice
 pub trait StrAllocating: Str {
@@ -1302,16 +1288,16 @@ mod tests {
         assert_eq!("中", ss.slice(0u, 3u));
         assert_eq!("华V", ss.slice(3u, 7u));
         assert_eq!("", ss.slice(3u, 3u));
-        /*0: 中
-          3: 华
-          6: V
-          7: i
-          8: ệ
-         11: t
-         12:
-         13: N
-         14: a
-         15: m */
+        //  0: 中
+        //  3: 华
+        //  6: V
+        //  7: i
+        //  8: ệ
+        // 11: t
+        // 12:
+        // 13: N
+        // 14: a
+        // 15: m
     }
 
     #[test]

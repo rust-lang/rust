@@ -8,31 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Bindings to libuv, along with the default implementation of `std::rt::rtio`.
-
-UV types consist of the event loop (Loop), Watchers, Requests and
-Callbacks.
-
-Watchers and Requests encapsulate pointers to uv *handles*, which have
-subtyping relationships with each other.  This subtyping is reflected
-in the bindings with explicit or implicit coercions. For example, an
-upcast from TcpWatcher to StreamWatcher is done with
-`tcp_watcher.as_stream()`. In other cases a callback on a specific
-type of watcher will be passed a watcher of a supertype.
-
-Currently all use of Request types (connect/write requests) are
-encapsulated in the bindings and don't need to be dealt with by the
-caller.
-
-# Safety note
-
-Due to the complex lifecycle of uv handles, as well as compiler bugs,
-this module is not memory safe and requires explicit memory management,
-via `close` and `delete` methods.
-
-*/
+//! Bindings to libuv, along with the default implementation of `std::rt::rtio`.
+//!
+//! UV types consist of the event loop (Loop), Watchers, Requests and
+//! Callbacks.
+//!
+//! Watchers and Requests encapsulate pointers to uv *handles*, which have
+//! subtyping relationships with each other.  This subtyping is reflected
+//! in the bindings with explicit or implicit coercions. For example, an
+//! upcast from TcpWatcher to StreamWatcher is done with
+//! `tcp_watcher.as_stream()`. In other cases a callback on a specific
+//! type of watcher will be passed a watcher of a supertype.
+//!
+//! Currently all use of Request types (connect/write requests) are
+//! encapsulated in the bindings and don't need to be dealt with by the
+//! caller.
+//!
+//! # Safety note
+//!
+//! Due to the complex lifecycle of uv handles, as well as compiler bugs,
+//! this module is not memory safe and requires explicit memory management,
+//! via `close` and `delete` methods.
 
 #![crate_id = "rustuv#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "rustuv"]

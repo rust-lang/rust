@@ -189,7 +189,7 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /* Arithmetic */
+    // Arithmetic
     pub fn add(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("add");
         unsafe {
@@ -407,7 +407,7 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /* Memory */
+    // Memory
     pub fn malloc(&self, ty: Type) -> ValueRef {
         self.count_insn("malloc");
         unsafe {
@@ -586,7 +586,7 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /* Casts */
+    // Casts
     pub fn trunc(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
         self.count_insn("trunc");
         unsafe {
@@ -721,7 +721,7 @@ impl<'a> Builder<'a> {
     }
 
 
-    /* Comparisons */
+    // Comparisons
     pub fn icmp(&self, op: IntPredicate, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("icmp");
         unsafe {
@@ -736,7 +736,7 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /* Miscellaneous instructions */
+    // Miscellaneous instructions
     pub fn empty_phi(&self, ty: Type) -> ValueRef {
         self.count_insn("emptyphi");
         unsafe {

@@ -10,24 +10,26 @@
 
 //! Simple getopt alternative.
 //!
-//! Construct a vector of options, either by using `reqopt`, `optopt`, and `optflag`
-//! or by building them from components yourself, and pass them to `getopts`,
-//! along with a vector of actual arguments (not including `argv[0]`). You'll
-//! either get a failure code back, or a match. You'll have to verify whether
-//! the amount of 'free' arguments in the match is what you expect. Use `opt_*`
-//! accessors to get argument values out of the matches object.
+//! Construct a vector of options, either by using `reqopt`, `optopt`, and
+//! `optflag` or by building them from components yourself, and pass them to
+//! `getopts`, along with a vector of actual arguments (not including
+//! `argv[0]`). You'll either get a failure code back, or a match. You'll
+//! have to verify whether the amount of 'free' arguments in the match is
+//! what you expect. Use `opt_*` accessors to get argument values out of the
+//! matches object.
 //!
-//! Single-character options are expected to appear on the command line with a
-//! single preceding dash; multiple-character options are expected to be
+//! Single-character options are expected to appear on the command line with
+//! a single preceding dash; multiple-character options are expected to be
 //! proceeded by two dashes. Options that expect an argument accept their
 //! argument following either a space or an equals sign. Single-character
 //! options don't require the space.
 //!
 //! # Example
 //!
-//! The following example shows simple command line parsing for an application
-//! that requires an input file to be specified, accepts an optional output
-//! file name following `-o`, and accepts both `-h` and `--help` as optional flags.
+//! The following example shows simple command line parsing for an
+//! application that requires an input file to be specified, accepts an
+//! optional output file name following `-o`, and accepts both `-h` and
+//! `--help` as optional flags.
 //!
 //! ~~~{.rust}
 //! extern crate getopts;
@@ -573,12 +575,11 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                     let range = cur.as_slice().char_range_at(j);
                     let opt = Short(range.ch);
 
-                    /* In a series of potential options (eg. -aheJ), if we
-                       see one which takes an argument, we assume all
-                       subsequent characters make up the argument. This
-                       allows options such as -L/usr/local/lib/foo to be
-                       interpreted correctly
-                    */
+                    // In a series of potential options (eg. -aheJ), if we
+                    // see one which takes an argument, we assume all
+                    // subsequent characters make up the argument. This
+                    // allows options such as -L/usr/local/lib/foo to be
+                    // interpreted correctly
 
                     match find_opt(opts.as_slice(), opt.clone()) {
                       Some(id) => last_valid_opt_id = Some(id),

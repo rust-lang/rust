@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Computes the restrictions that result from a borrow.
- */
+//! Computes the restrictions that result from a borrow.
 
 use middle::borrowck::*;
 use euv = middle::expr_use_visitor;

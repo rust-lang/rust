@@ -198,7 +198,7 @@ pub mod write {
                             lib::llvm::CodeModelDefault,
                             reloc_model,
                             opt_level,
-                            true /* EnableSegstk */,
+                            true, // EnableSegstk
                             use_softfp,
                             no_fp_elim,
                             ffunction_sections,
@@ -493,57 +493,55 @@ pub mod write {
 }
 
 
-/*
- * Name mangling and its relationship to metadata. This is complex. Read
- * carefully.
- *
- * The semantic model of Rust linkage is, broadly, that "there's no global
- * namespace" between crates. Our aim is to preserve the illusion of this
- * model despite the fact that it's not *quite* possible to implement on
- * modern linkers. We initially didn't use system linkers at all, but have
- * been convinced of their utility.
- *
- * There are a few issues to handle:
- *
- *  - Linkers operate on a flat namespace, so we have to flatten names.
- *    We do this using the C++ namespace-mangling technique. Foo::bar
- *    symbols and such.
- *
- *  - Symbols with the same name but different types need to get different
- *    linkage-names. We do this by hashing a string-encoding of the type into
- *    a fixed-size (currently 16-byte hex) cryptographic hash function (CHF:
- *    we use SHA256) to "prevent collisions". This is not airtight but 16 hex
- *    digits on uniform probability means you're going to need 2**32 same-name
- *    symbols in the same process before you're even hitting birthday-paradox
- *    collision probability.
- *
- *  - Symbols in different crates but with same names "within" the crate need
- *    to get different linkage-names.
- *
- *  - The hash shown in the filename needs to be predictable and stable for
- *    build tooling integration. It also needs to be using a hash function
- *    which is easy to use from Python, make, etc.
- *
- * So here is what we do:
- *
- *  - Consider the package id; every crate has one (specified with crate_id
- *    attribute).  If a package id isn't provided explicitly, we infer a
- *    versionless one from the output name. The version will end up being 0.0
- *    in this case. CNAME and CVERS are taken from this package id. For
- *    example, github.com/mozilla/CNAME#CVERS.
- *
- *  - Define CMH as SHA256(crateid).
- *
- *  - Define CMH8 as the first 8 characters of CMH.
- *
- *  - Compile our crate to lib CNAME-CMH8-CVERS.so
- *
- *  - Define STH(sym) as SHA256(CMH, type_str(sym))
- *
- *  - Suffix a mangled sym with ::STH@CVERS, so that it is unique in the
- *    name, non-name metadata, and type sense, and versioned in the way
- *    system linkers understand.
- */
+// Name mangling and its relationship to metadata. This is complex. Read
+// carefully.
+//
+// The semantic model of Rust linkage is, broadly, that "there's no global
+// namespace" between crates. Our aim is to preserve the illusion of this
+// model despite the fact that it's not *quite* possible to implement on
+// modern linkers. We initially didn't use system linkers at all, but have
+// been convinced of their utility.
+//
+// There are a few issues to handle:
+//
+//  - Linkers operate on a flat namespace, so we have to flatten names.
+//    We do this using the C++ namespace-mangling technique. Foo::bar
+//    symbols and such.
+//
+//  - Symbols with the same name but different types need to get different
+//    linkage-names. We do this by hashing a string-encoding of the type into
+//    a fixed-size (currently 16-byte hex) cryptographic hash function (CHF:
+//    we use SHA256) to "prevent collisions". This is not airtight but 16 hex
+//    digits on uniform probability means you're going to need 2**32 same-name
+//    symbols in the same process before you're even hitting birthday-paradox
+//    collision probability.
+//
+//  - Symbols in different crates but with same names "within" the crate need
+//    to get different linkage-names.
+//
+//  - The hash shown in the filename needs to be predictable and stable for
+//    build tooling integration. It also needs to be using a hash function
+//    which is easy to use from Python, make, etc.
+//
+// So here is what we do:
+//
+//  - Consider the package id; every crate has one (specified with crate_id
+//    attribute).  If a package id isn't provided explicitly, we infer a
+//    versionless one from the output name. The version will end up being 0.0
+//    in this case. CNAME and CVERS are taken from this package id. For
+//    example, github.com/mozilla/CNAME#CVERS.
+//
+//  - Define CMH as SHA256(crateid).
+//
+//  - Define CMH8 as the first 8 characters of CMH.
+//
+//  - Compile our crate to lib CNAME-CMH8-CVERS.so
+//
+//  - Define STH(sym) as SHA256(CMH, type_str(sym))
+//
+//  - Suffix a mangled sym with ::STH@CVERS, so that it is unique in the
+//    name, non-name metadata, and type sense, and versioned in the way
+//    system linkers understand.
 
 pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],

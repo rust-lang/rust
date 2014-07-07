@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use middle::def;
 use middle::subst;
 use middle::subst::{VecPerParamSpace,Subst};
@@ -339,10 +338,10 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> String {
     }
 
     // if there is an id, print that instead of the structural type:
-    /*for def_id in ty::type_def_id(typ).iter() {
-        // note that this typedef cannot have type parameters
-        return ty::item_path_str(cx, *def_id);
-    }*/
+    // for def_id in ty::type_def_id(typ).iter() {
+    //     // note that this typedef cannot have type parameters
+    //     return ty::item_path_str(cx, *def_id);
+    // }
 
     // pretty print the structural type representation:
     return match ty::get(typ).sty {

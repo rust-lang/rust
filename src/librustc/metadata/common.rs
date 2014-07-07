@@ -94,14 +94,12 @@ pub static tag_item_field: uint = 0x28;
 pub static tag_item_field_origin: uint = 0x29;
 
 pub static tag_item_variances: uint = 0x2a;
-/*
-  trait items contain tag_item_trait_method elements,
-  impl items contain tag_item_impl_method elements, and classes
-  have both. That's because some code treats classes like traits,
-  and other code treats them like impls. Because classes can contain
-  both, tag_item_trait_method and tag_item_impl_method have to be two
-  different tags.
- */
+// trait items contain tag_item_trait_method elements,
+// impl items contain tag_item_impl_method elements, and classes
+// have both. That's because some code treats classes like traits,
+// and other code treats them like impls. Because classes can contain
+// both, tag_item_trait_method and tag_item_impl_method have to be two
+// different tags.
 pub static tag_item_impl_method: uint = 0x30;
 pub static tag_item_trait_method_explicit_self: uint = 0x31;
 

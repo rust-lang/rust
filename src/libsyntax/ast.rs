@@ -297,8 +297,8 @@ pub enum Pat_ {
     // records this pattern's NodeId in an auxiliary
     // set (of "PatIdents that refer to nullary enums")
     PatIdent(BindingMode, SpannedIdent, Option<Gc<Pat>>),
-    PatEnum(Path, Option<Vec<Gc<Pat>>>), /* "none" means a * pattern where
-                                     * we don't bind the fields to names */
+    PatEnum(Path, Option<Vec<Gc<Pat>>>), // "none" means a * pattern where
+                                         // we don't bind the fields to names
     PatStruct(Path, Vec<FieldPat>, bool),
     PatTup(Vec<Gc<Pat>>),
     PatBox(Gc<Pat>),
@@ -776,7 +776,7 @@ pub struct UnboxedFnTy {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum Ty_ {
     TyNil,
-    TyBot, /* bottom type */
+    TyBot, // bottom type
     TyBox(P<Ty>),
     TyUniq(P<Ty>),
     TyVec(P<Ty>),
@@ -1013,13 +1013,11 @@ pub struct Attribute_ {
     pub is_sugared_doc: bool,
 }
 
-/*
-  TraitRef's appear in impls.
-  resolve maps each TraitRef's ref_id to its defining trait; that's all
-  that the ref_id is for. The impl_id maps to the "self type" of this impl.
-  If this impl is an ItemImpl, the impl_id is redundant (it could be the
-  same as the impl's node id).
- */
+// TraitRef's appear in impls.
+// resolve maps each TraitRef's ref_id to its defining trait; that's all
+// that the ref_id is for. The impl_id maps to the "self type" of this impl.
+// If this impl is an ItemImpl, the impl_id is redundant (it could be the
+// same as the impl's node id).
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct TraitRef {
     pub path: Path,
@@ -1083,18 +1081,16 @@ impl StructFieldKind {
 
 #[deriving(PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct StructDef {
-    pub fields: Vec<StructField>, /* fields, not including ctor */
-    /* ID of the constructor. This is only used for tuple- or enum-like
-     * structs. */
+    pub fields: Vec<StructField>, // fields, not including ctor
+    // ID of the constructor. This is only used for tuple- or enum-like
+    // structs.
     pub ctor_id: Option<NodeId>,
     pub super_struct: Option<P<Ty>>, // Super struct, if specified.
     pub is_virtual: bool,            // True iff the struct may be inherited from.
 }
 
-/*
-  FIXME (#3300): Should allow items to be anonymous. Right now
-  we just use dummy names for anon items.
- */
+// FIXME (#3300): Should allow items to be anonymous. Right now
+// we just use dummy names for anon items.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Item {
     pub ident: Ident,

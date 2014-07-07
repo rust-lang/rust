@@ -625,7 +625,7 @@ pub fn check_cast_for_escaping_regions(
     // possibly escape the enclosing fn item (note that all type parameters
     // must have been declared on the enclosing fn item).
     if target_regions.iter().any(|r| is_ReScope(*r)) {
-        return; /* case (1) */
+        return; // case (1)
     }
 
     // Assuming the trait instance can escape, then ensure that each parameter
@@ -658,9 +658,9 @@ pub fn check_cast_for_escaping_regions(
                         // except for historical accident. Bottom
                         // line, we need proper region bounding.
                     } else if target_params.iter().any(|x| x == &source_param) {
-                        /* case (2) */
+                        // case (2)
                     } else {
-                        check_static(cx.tcx, ty, source_span); /* case (3) */
+                        check_static(cx.tcx, ty, source_span); // case (3)
                     }
                 }
                 _ => {}

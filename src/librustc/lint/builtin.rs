@@ -373,7 +373,7 @@ impl LintPass for CTypes {
                 }
             }
           }
-          _ => {/* nothing to do */ }
+          _ => { /* nothing to do */ }
         }
     }
 }

@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * A different sort of visitor for walking fn bodies.  Unlike the
- * normal visitor, which just walks the entire body in one shot, the
- * `ExprUseVisitor` determines how expressions are being used.
- */
+//! A different sort of visitor for walking fn bodies.  Unlike the
+//! normal visitor, which just walks the entire body in one shot, the
+//! `ExprUseVisitor` determines how expressions are being used.
 
 use mc = middle::mem_categorization;
 use middle::def;
@@ -566,12 +564,9 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
         }
     }
 
+    /// Indicates that the value of `blk` will be consumed,
+    /// meaning either copied or moved depending on its type.
     fn walk_block(&mut self, blk: &ast::Block) {
-        /*!
-         * Indicates that the value of `blk` will be consumed,
-         * meaning either copied or moved depending on its type.
-         */
-
         debug!("walk_block(blk.id={:?})", blk.id);
 
         for stmt in blk.stmts.iter() {
@@ -668,16 +663,14 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
         }
     }
 
+    /// Autoderefs for overloaded Deref calls in fact reference
+    /// their receiver. That is, if we have `(*x)` where `x` is of
+    /// type `Rc<T>`, then this in fact is equivalent to
+    /// `x.deref()`. Since `deref()` is declared with `&self`, this
+    /// is an autoref of `x`.
     fn walk_autoderefs(&mut self,
                        expr: &ast::Expr,
                        autoderefs: uint) {
-        /*!
-         * Autoderefs for overloaded Deref calls in fact reference
-         * their receiver. That is, if we have `(*x)` where `x` is of
-         * type `Rc<T>`, then this in fact is equivalent to
-         * `x.deref()`. Since `deref()` is declared with `&self`, this
-         * is an autoref of `x`.
-         */
         debug!("walk_autoderefs expr={} autoderefs={}", expr.repr(self.tcx()), autoderefs);
 
         for i in range(0, autoderefs) {

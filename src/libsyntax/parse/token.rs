@@ -41,7 +41,7 @@ pub enum BinOp {
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum Token {
-    /* Expression-operator symbols. */
+    // Expression-operator symbols.
     EQ,
     LT,
     LE,
@@ -56,7 +56,7 @@ pub enum Token {
     BINOP(BinOp),
     BINOPEQ(BinOp),
 
-    /* Structural symbols */
+    // Structural symbols
     AT,
     DOT,
     DOTDOT,
@@ -77,7 +77,7 @@ pub enum Token {
     POUND,
     DOLLAR,
 
-    /* Literals */
+    // Literals
     LIT_BYTE(u8),
     LIT_CHAR(char),
     LIT_INT(i64, ast::IntTy),
@@ -86,11 +86,11 @@ pub enum Token {
     LIT_FLOAT(ast::Ident, ast::FloatTy),
     LIT_FLOAT_UNSUFFIXED(ast::Ident),
     LIT_STR(ast::Ident),
-    LIT_STR_RAW(ast::Ident, uint), /* raw str delimited by n hash symbols */
+    LIT_STR_RAW(ast::Ident, uint), // raw str delimited by n hash symbols
     LIT_BINARY(Rc<Vec<u8>>),
-    LIT_BINARY_RAW(Rc<Vec<u8>>, uint), /* raw binary str delimited by n hash symbols */
+    LIT_BINARY_RAW(Rc<Vec<u8>>, uint), // raw binary str delimited by n hash symbols
 
-    /* Name components */
+    // Name components
     // an identifier contains an "is_mod_name" boolean,
     // indicating whether :: follows this token with no
     // whitespace in between.
@@ -98,7 +98,7 @@ pub enum Token {
     UNDERSCORE,
     LIFETIME(ast::Ident),
 
-    /* For interpolation */
+    // For interpolation
     INTERPOLATED(Nonterminal),
 
     DOC_COMMENT(ast::Ident),
@@ -175,7 +175,7 @@ pub fn to_str(t: &Token) -> String {
           s
       }
 
-      /* Structural symbols */
+      // Structural symbols
       AT => "@".to_string(),
       DOT => ".".to_string(),
       DOTDOT => "..".to_string(),
@@ -196,7 +196,7 @@ pub fn to_str(t: &Token) -> String {
       POUND => "#".to_string(),
       DOLLAR => "$".to_string(),
 
-      /* Literals */
+      // Literals
       LIT_BYTE(b) => {
           let mut res = String::from_str("b'");
           (b as char).escape_default(|c| {
@@ -248,14 +248,14 @@ pub fn to_str(t: &Token) -> String {
                  delim="#".repeat(n), string=s.as_slice().to_ascii().as_str_ascii())
       }
 
-      /* Name components */
+      // Name components
       IDENT(s, _) => get_ident(s).get().to_string(),
       LIFETIME(s) => {
           format!("{}", get_ident(s))
       }
       UNDERSCORE => "_".to_string(),
 
-      /* Other */
+      // Other
       DOC_COMMENT(s) => get_ident(s).get().to_string(),
       EOF => "<eof>".to_string(),
       INTERPOLATED(ref nt) => {
@@ -407,13 +407,11 @@ macro_rules! declare_special_idents_and_keywords {(
         $( pub static $si_static: Ident = Ident { name: $si_name, ctxt: 0 }; )*
     }
 
-    /**
-     * All the valid words that have meaning in the Rust language.
-     *
-     * Rust keywords are either 'strict' or 'reserved'.  Strict keywords may not
-     * appear as identifiers at all. Reserved keywords are not used anywhere in
-     * the language and may not appear as identifiers.
-     */
+    /// All the valid words that have meaning in the Rust language.
+    ///
+    /// Rust keywords are either 'strict' or 'reserved'.  Strict keywords may not
+    /// appear as identifiers at all. Reserved keywords are not used anywhere in
+    /// the language and may not appear as identifiers.
     pub mod keywords {
         use ast::Ident;
 
@@ -527,10 +525,8 @@ declare_special_idents_and_keywords! {
     }
 }
 
-/**
- * Maps a token to a record specifying the corresponding binary
- * operator
- */
+/// Maps a token to a record specifying the corresponding binary
+/// operator
 pub fn token_to_binop(tok: &Token) -> Option<ast::BinOp> {
   match *tok {
       BINOP(STAR)    => Some(ast::BiMul),
@@ -699,8 +695,8 @@ pub fn fresh_name(src: &ast::Ident) -> Name {
     // following: debug version. Could work in final except that it's incompatible with
     // good error messages and uses of struct names in ambiguous could-be-binding
     // locations. Also definitely destroys the guarantee given above about ptr_eq.
-    /*let num = rand::task_rng().gen_uint_range(0,0xffff);
-    gensym(format!("{}_{}",ident_to_str(src),num))*/
+    // let num = rand::task_rng().gen_uint_range(0,0xffff);
+    // gensym(format!("{}_{}",ident_to_str(src),num))
 }
 
 // create a fresh mark.

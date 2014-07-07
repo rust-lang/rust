@@ -10,9 +10,7 @@
 
 //! Support code for encoding and decoding types.
 
-/*
-Core encoding and decoding interfaces.
-*/
+// Core encoding and decoding interfaces.
 
 use std::path;
 use std::rc::Rc;

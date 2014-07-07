@@ -8,33 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-Syntax extension to create floating point literals from hexadecimal strings
-
-Once loaded, hexfloat!() is called with a string containing the hexadecimal
-floating-point literal, and an optional type (f32 or f64).
-If the type is omitted, the literal is treated the same as a normal unsuffixed
-literal.
-
-# Examples
-
-To load the extension and use it:
-
-```rust,ignore
-#[phase(plugin)]
-extern crate hexfloat;
-
-fn main() {
-    let val = hexfloat!("0x1.ffffb4", f32);
-}
-```
-
-# References
-
-* [ExploringBinary: hexadecimal floating point constants]
-  (http://www.exploringbinary.com/hexadecimal-floating-point-constants/)
-
-*/
+//! Syntax extension to create floating point literals from hexadecimal strings
+//!
+//! Once loaded, hexfloat!() is called with a string containing the hexadecimal
+//! floating-point literal, and an optional type (f32 or f64).
+//! If the type is omitted, the literal is treated the same as a normal unsuffixed
+//! literal.
+//!
+//! # Examples
+//!
+//! To load the extension and use it:
+//!
+//! ```rust,ignore
+//! #[phase(plugin)]
+//! extern crate hexfloat;
+//!
+//! fn main() {
+//!     let val = hexfloat!("0x1.ffffb4", f32);
+//! }
+//! ```
+//!
+//! # References
+//!
+//! * [ExploringBinary: hexadecimal floating point constants]
+//!   (http://www.exploringbinary.com/hexadecimal-floating-point-constants/)
 
 #![crate_id = "hexfloat#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "hexfloat"]

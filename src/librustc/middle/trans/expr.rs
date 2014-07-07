@@ -8,28 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * # Translation of Expressions
- *
- * Public entry points:
- *
- * - `trans_into(bcx, expr, dest) -> bcx`: evaluates an expression,
- *   storing the result into `dest`. This is the preferred form, if you
- *   can manage it.
- *
- * - `trans(bcx, expr) -> DatumBlock`: evaluates an expression, yielding
- *   `Datum` with the result. You can then store the datum, inspect
- *   the value, etc. This may introduce temporaries if the datum is a
- *   structural type.
- *
- * - `trans_to_lvalue(bcx, expr, "...") -> DatumBlock`: evaluates an
- *   expression and ensures that the result has a cleanup associated with it,
- *   creating a temporary stack slot if necessary.
- *
- * - `trans_local_var -> Datum`: looks up a local variable or upvar.
- *
- * See doc.rs for more comments.
- */
+//! # Translation of Expressions
+//!
+//! Public entry points:
+//!
+//! - `trans_into(bcx, expr, dest) -> bcx`: evaluates an expression,
+//!   storing the result into `dest`. This is the preferred form, if you
+//!   can manage it.
+//!
+//! - `trans(bcx, expr) -> DatumBlock`: evaluates an expression, yielding
+//!   `Datum` with the result. You can then store the datum, inspect
+//!   the value, etc. This may introduce temporaries if the datum is a
+//!   structural type.
+//!
+//! - `trans_to_lvalue(bcx, expr, "...") -> DatumBlock`: evaluates an
+//!   expression and ensures that the result has a cleanup associated with it,
+//!   creating a temporary stack slot if necessary.
+//!
+//! - `trans_local_var -> Datum`: looks up a local variable or upvar.
+//!
+//! See doc.rs for more comments.
 
 #![allow(non_camel_case_types)]
 
@@ -99,15 +97,12 @@ impl Dest {
     }
 }
 
+/// This function is equivalent to `trans(bcx, expr).store_to_dest(dest)`
+/// but it may generate better optimized LLVM code.
 pub fn trans_into<'a>(bcx: &'a Block<'a>,
                       expr: &ast::Expr,
                       dest: Dest)
                       -> &'a Block<'a> {
-    /*!
-     * This function is equivalent to `trans(bcx, expr).store_to_dest(dest)`
-     * but it may generate better optimized LLVM code.
-     */
-
     let mut bcx = bcx;
 
     if bcx.tcx().adjustments.borrow().contains_key(&expr.id) {
@@ -138,16 +133,13 @@ pub fn trans_into<'a>(bcx: &'a Block<'a>,
     bcx.fcx.pop_and_trans_ast_cleanup_scope(bcx, expr.id)
 }
 
+/// Translates an expression, returning a datum (and new block)
+/// encapsulating the result. When possible, it is preferred to
+/// use `trans_into`, as that may avoid creating a temporary on
+/// the stack.
 pub fn trans<'a>(bcx: &'a Block<'a>,
                  expr: &ast::Expr)
                  -> DatumBlock<'a, Expr> {
-    /*!
-     * Translates an expression, returning a datum (and new block)
-     * encapsulating the result. When possible, it is preferred to
-     * use `trans_into`, as that may avoid creating a temporary on
-     * the stack.
-     */
-
     debug!("trans(expr={})", bcx.expr_to_str(expr));
 
     let mut bcx = bcx;
@@ -160,15 +152,12 @@ pub fn trans<'a>(bcx: &'a Block<'a>,
     return DatumBlock::new(bcx, datum);
 }
 
+/// Helper for trans that apply adjustments from `expr` to `datum`,
+/// which should be the unadjusted translation of `expr`.
 fn apply_adjustments<'a>(bcx: &'a Block<'a>,
                          expr: &ast::Expr,
                          datum: Datum<Expr>)
                          -> DatumBlock<'a, Expr> {
-    /*!
-     * Helper for trans that apply adjustments from `expr` to `datum`,
-     * which should be the unadjusted translation of `expr`.
-     */
-
     let mut bcx = bcx;
     let mut datum = datum;
     let adjustment = match bcx.tcx().adjustments.borrow().find_copy(&expr.id) {
@@ -295,34 +284,28 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
     }
 }
 
+/// Translates an expression in "lvalue" mode -- meaning that it
+/// returns a reference to the memory that the expr represents.
+///
+/// If this expression is an rvalue, this implies introducing a
+/// temporary.  In other words, something like `x().f` is
+/// translated into roughly the equivalent of
+///
+///   { tmp = x(); tmp.f }
 pub fn trans_to_lvalue<'a>(bcx: &'a Block<'a>,
                            expr: &ast::Expr,
                            name: &str)
                            -> DatumBlock<'a, Lvalue> {
-    /*!
-     * Translates an expression in "lvalue" mode -- meaning that it
-     * returns a reference to the memory that the expr represents.
-     *
-     * If this expression is an rvalue, this implies introducing a
-     * temporary.  In other words, something like `x().f` is
-     * translated into roughly the equivalent of
-     *
-     *   { tmp = x(); tmp.f }
-     */
-
     let mut bcx = bcx;
     let datum = unpack_datum!(bcx, trans(bcx, expr));
     return datum.to_lvalue_datum(bcx, name, expr.id);
 }
 
+/// A version of `trans` that ignores adjustments. You almost
+/// certainly do not want to call this directly.
 fn trans_unadjusted<'a>(bcx: &'a Block<'a>,
                         expr: &ast::Expr)
                         -> DatumBlock<'a, Expr> {
-    /*!
-     * A version of `trans` that ignores adjustments. You almost
-     * certainly do not want to call this directly.
-     */
-
     let mut bcx = bcx;
 
     debug!("trans_unadjusted(expr={})", bcx.expr_to_str(expr));
@@ -870,14 +853,11 @@ fn trans_def_fn_unadjusted<'a>(bcx: &'a Block<'a>,
     DatumBlock::new(bcx, Datum::new(llfn, fn_ty, RvalueExpr(Rvalue::new(ByValue))))
 }
 
+/// Translates a reference to a local variable or argument.
+/// This always results in an lvalue datum.
 pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
                            def: def::Def)
                            -> Datum<Lvalue> {
-    /*!
-     * Translates a reference to a local variable or argument.
-     * This always results in an lvalue datum.
-     */
-
     let _icx = push_ctxt("trans_local_var");
 
     return match def {
@@ -924,18 +904,15 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
     }
 }
 
+/// Helper for enumerating the field types of structs, enums, or records.
+/// The optional node ID here is the node ID of the path identifying the enum
+/// variant in use. If none, this cannot possibly an enum variant (so, if it
+/// is and `node_id_opt` is none, this function fails).
 pub fn with_field_tys<R>(tcx: &ty::ctxt,
                          ty: ty::t,
                          node_id_opt: Option<ast::NodeId>,
                          op: |ty::Disr, (&[ty::field])| -> R)
                          -> R {
-    /*!
-     * Helper for enumerating the field types of structs, enums, or records.
-     * The optional node ID here is the node ID of the path identifying the enum
-     * variant in use. If none, this cannot possibly an enum variant (so, if it
-     * is and `node_id_opt` is none, this function fails).
-     */
-
     match ty::get(ty).sty {
         ty::ty_struct(did, ref substs) => {
             op(0, struct_fields(tcx, did, substs).as_slice())
@@ -1033,30 +1010,26 @@ fn trans_rec_or_struct<'a>(
     })
 }
 
-/**
- * Information that `trans_adt` needs in order to fill in the fields
- * of a struct copied from a base struct (e.g., from an expression
- * like `Foo { a: b, ..base }`.
- *
- * Note that `fields` may be empty; the base expression must always be
- * evaluated for side-effects.
- */
+/// Information that `trans_adt` needs in order to fill in the fields
+/// of a struct copied from a base struct (e.g., from an expression
+/// like `Foo { a: b, ..base }`.
+///
+/// Note that `fields` may be empty; the base expression must always be
+/// evaluated for side-effects.
 struct StructBaseInfo {
     /// The base expression; will be evaluated after all explicit fields.
     expr: Gc<ast::Expr>,
     /// The indices of fields to copy paired with their types.
     fields: Vec<(uint, ty::t)> }
 
-/**
- * Constructs an ADT instance:
- *
- * - `fields` should be a list of field indices paired with the
- * expression to store into that field.  The initializers will be
- * evaluated in the order specified by `fields`.
- *
- * - `optbase` contains information on the base struct (if any) from
- * which remaining fields are copied; see comments on `StructBaseInfo`.
- */
+/// Constructs an ADT instance:
+///
+/// - `fields` should be a list of field indices paired with the
+/// expression to store into that field.  The initializers will be
+/// evaluated in the order specified by `fields`.
+///
+/// - `optbase` contains information on the base struct (if any) from
+/// which remaining fields are copied; see comments on `StructBaseInfo`.
 fn trans_adt<'a>(
              bcx: &'a Block<'a>,
              repr: &adt::Repr,
@@ -1826,24 +1799,21 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
 
     return r;
 
+    /// We microoptimize derefs of owned pointers a bit here.
+    /// Basically, the idea is to make the deref of an rvalue
+    /// result in an rvalue. This helps to avoid intermediate stack
+    /// slots in the resulting LLVM. The idea here is that, if the
+    /// `Box<T>` pointer is an rvalue, then we can schedule a *shallow*
+    /// free of the `Box<T>` pointer, and then return a ByRef rvalue
+    /// into the pointer. Because the free is shallow, it is legit
+    /// to return an rvalue, because we know that the contents are
+    /// not yet scheduled to be freed. The language rules ensure that the
+    /// contents will be used (or moved) before the free occurs.
     fn deref_owned_pointer<'a>(bcx: &'a Block<'a>,
                                expr: &ast::Expr,
                                datum: Datum<Expr>,
                                content_ty: ty::t)
                                -> DatumBlock<'a, Expr> {
-        /*!
-         * We microoptimize derefs of owned pointers a bit here.
-         * Basically, the idea is to make the deref of an rvalue
-         * result in an rvalue. This helps to avoid intermediate stack
-         * slots in the resulting LLVM. The idea here is that, if the
-         * `Box<T>` pointer is an rvalue, then we can schedule a *shallow*
-         * free of the `Box<T>` pointer, and then return a ByRef rvalue
-         * into the pointer. Because the free is shallow, it is legit
-         * to return an rvalue, because we know that the contents are
-         * not yet scheduled to be freed. The language rules ensure that the
-         * contents will be used (or moved) before the free occurs.
-         */
-
         match datum.kind {
             RvalueExpr(Rvalue { mode: ByRef }) => {
                 let scope = cleanup::temporary_scope(bcx.tcx(), expr.id);

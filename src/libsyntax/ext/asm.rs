@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
- * Inline assembly support.
- */
+//! Inline assembly support.
 
 use ast;
 use codemap::Span;

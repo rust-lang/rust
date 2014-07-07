@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Higher level communication abstractions.
-
-*/
+//! Higher level communication abstractions.
 
 #![allow(missing_doc)]
 #![deprecated = "This type is replaced by having a pair of channels. This type \

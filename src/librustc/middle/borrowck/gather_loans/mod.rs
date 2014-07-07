@@ -162,7 +162,7 @@ fn check_aliasability(bccx: &BorrowckCtxt,
 
     match (cmt.freely_aliasable(bccx.tcx), req_kind) {
         (None, _) => {
-            /* Uniquely accessible path -- OK for `&` and `&mut` */
+            // Uniquely accessible path -- OK for `&` and `&mut`
             Ok(())
         }
         (Some(mc::AliasableStatic(safety)), ty::ImmBorrow) => {
@@ -207,6 +207,11 @@ fn check_aliasability(bccx: &BorrowckCtxt,
 impl<'a> GatherLoanCtxt<'a> {
     pub fn tcx(&self) -> &'a ty::ctxt { self.bccx.tcx }
 
+    /// Guarantees that `addr_of(cmt)` will be valid for the duration of
+    /// `static_scope_r`, or reports an error.  This may entail taking
+    /// out loans, which will be added to the `req_loan_map`.  This can
+    /// also entail "rooting" GC'd pointers, which means ensuring
+    /// dynamically that they are not freed.
     fn guarantee_valid(&mut self,
                        borrow_id: ast::NodeId,
                        borrow_span: Span,
@@ -214,14 +219,6 @@ impl<'a> GatherLoanCtxt<'a> {
                        req_kind: ty::BorrowKind,
                        loan_region: ty::Region,
                        cause: euv::LoanCause) {
-        /*!
-         * Guarantees that `addr_of(cmt)` will be valid for the duration of
-         * `static_scope_r`, or reports an error.  This may entail taking
-         * out loans, which will be added to the `req_loan_map`.  This can
-         * also entail "rooting" GC'd pointers, which means ensuring
-         * dynamically that they are not freed.
-         */
-
         debug!("guarantee_valid(borrow_id={:?}, cmt={}, \
                 req_mutbl={:?}, loan_region={:?})",
                borrow_id,

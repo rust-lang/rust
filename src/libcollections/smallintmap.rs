@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * A simple map based on a vector for small integer keys. Space requirements
- * are O(highest integer key).
- */
+//! A simple map based on a vector for small integer keys. Space requirements
+//! are O(highest integer key).
 
 #![allow(missing_doc)]
 

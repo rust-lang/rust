@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-# Standalone Tests for the Inference Module
-
-*/
+//! # Standalone Tests for the Inference Module
 
 // This is only used by tests, hence allow dead code.
 #![allow(dead_code)]

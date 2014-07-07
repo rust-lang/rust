@@ -8,31 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-A graph module for use in dataflow, region resolution, and elsewhere.
-
-# Interface details
-
-You customize the graph by specifying a "node data" type `N` and an
-"edge data" type `E`. You can then later gain access (mutable or
-immutable) to these "user-data" bits. Currently, you can only add
-nodes or edges to the graph. You cannot remove or modify them once
-added. This could be changed if we have a need.
-
-# Implementation details
-
-The main tricky thing about this code is the way that edges are
-stored. The edges are stored in a central array, but they are also
-threaded onto two linked lists for each node, one for incoming edges
-and one for outgoing edges. Note that every edge is a member of some
-incoming list and some outgoing list.  Basically you can load the
-first index of the linked list from the node data structures (the
-field `first_edge`) and then, for each edge, load the next index from
-the field `next_edge`). Each of those fields is an array that should
-be indexed by the direction (see the type `Direction`).
-
-*/
+//! A graph module for use in dataflow, region resolution, and elsewhere.
+//!
+//! # Interface details
+//!
+//! You customize the graph by specifying a "node data" type `N` and an
+//! "edge data" type `E`. You can then later gain access (mutable or
+//! immutable) to these "user-data" bits. Currently, you can only add
+//! nodes or edges to the graph. You cannot remove or modify them once
+//! added. This could be changed if we have a need.
+//!
+//! # Implementation details
+//!
+//! The main tricky thing about this code is the way that edges are
+//! stored. The edges are stored in a central array, but they are also
+//! threaded onto two linked lists for each node, one for incoming edges
+//! and one for outgoing edges. Note that every edge is a member of some
+//! incoming list and some outgoing list.  Basically you can load the
+//! first index of the linked list from the node data structures (the
+//! field `first_edge`) and then, for each edge, load the next index from
+//! the field `next_edge`). Each of those fields is an array that should
+//! be indexed by the direction (see the type `Direction`).
 
 #![allow(dead_code)] // still WIP
 

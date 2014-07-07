@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/* The compiler code necessary to support the bytes! extension. */
+// The compiler code necessary to support the bytes! extension.
 
 use ast;
 use codemap::Span;

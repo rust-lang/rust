@@ -18,17 +18,12 @@ use parse::token;
 
 use std::gc::Gc;
 
-/**
-*
-* Quasiquoting works via token trees.
-*
-* This is registered as a set of expression syntax extension called quote!
-* that lifts its argument token-tree to an AST representing the
-* construction of the same token tree, with ast::TTNonterminal nodes
-* interpreted as antiquotes (splices).
-*
-*/
-
+/// Quasiquoting works via token trees.
+///
+/// This is registered as a set of expression syntax extension called quote!
+/// that lifts its argument token-tree to an AST representing the
+/// construction of the same token tree, with ast::TTNonterminal nodes
+/// interpreted as antiquotes (splices).
 pub mod rt {
     use ast;
     use codemap::Spanned;
@@ -67,19 +62,17 @@ pub mod rt {
         }
     }
 
-    /* Should be (when bugs in default methods are fixed):
-
-    trait ToSource : ToTokens {
-        // Takes a thing and generates a string containing rust code for it.
-        pub fn to_source() -> String;
-
-        // If you can make source, you can definitely make tokens.
-        pub fn to_tokens(cx: &ExtCtxt) -> ~[TokenTree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    */
+    // Should be (when bugs in default methods are fixed):
+    //
+    // trait ToSource : ToTokens {
+    //     // Takes a thing and generates a string containing rust code for it.
+    //     pub fn to_source() -> String;
+    //
+    //     // If you can make source, you can definitely make tokens.
+    //     pub fn to_tokens(cx: &ExtCtxt) -> ~[TokenTree] {
+    //         cx.parse_tts(self.to_source())
+    //     }
+    // }
 
     // FIXME: Move this trait to pprust and get rid of *_to_str?
     pub trait ToSource {

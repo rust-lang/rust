@@ -345,7 +345,7 @@ pub trait Folder {
         noop_fold_lifetime(l, self)
     }
 
-    //used in noop_fold_item and noop_fold_crate
+    // used in noop_fold_item and noop_fold_crate
     fn fold_attribute(&mut self, at: Attribute) -> Attribute {
         Spanned {
             span: self.new_span(at.span),
@@ -361,9 +361,9 @@ pub trait Folder {
 
 }
 
-/* some little folds that probably aren't useful to have in Folder itself*/
+// some little folds that probably aren't useful to have in Folder itself
 
-//used in noop_fold_item and noop_fold_crate and noop_fold_crate_directive
+// used in noop_fold_item and noop_fold_crate and noop_fold_crate_directive
 fn fold_meta_item_<T: Folder>(mi: Gc<MetaItem>, fld: &mut T) -> Gc<MetaItem> {
     box(GC) Spanned {
         node:
@@ -379,7 +379,7 @@ fn fold_meta_item_<T: Folder>(mi: Gc<MetaItem>, fld: &mut T) -> Gc<MetaItem> {
         span: fld.new_span(mi.span) }
 }
 
-//used in noop_fold_foreign_item and noop_fold_fn_decl
+// used in noop_fold_foreign_item and noop_fold_fn_decl
 fn fold_arg_<T: Folder>(a: &Arg, fld: &mut T) -> Arg {
     let id = fld.new_id(a.id); // Needs to be first, for ast_map.
     Arg {

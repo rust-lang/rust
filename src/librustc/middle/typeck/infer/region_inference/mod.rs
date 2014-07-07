@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! See doc.rs */
-
+//! See doc.rs
 
 use middle::ty;
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
@@ -469,14 +468,12 @@ impl<'a> RegionVarBindings<'a> {
             .collect()
     }
 
+    /// Computes all regions that have been related to `r0` in any
+    /// way since the mark `mark` was made---`r0` itself will be
+    /// the first entry. This is used when checking whether
+    /// skolemized regions are being improperly related to other
+    /// regions.
     pub fn tainted(&self, mark: RegionMark, r0: Region) -> Vec<Region> {
-        /*!
-         * Computes all regions that have been related to `r0` in any
-         * way since the mark `mark` was made---`r0` itself will be
-         * the first entry. This is used when checking whether
-         * skolemized regions are being improperly related to other
-         * regions.
-         */
 
         debug!("tainted(mark={}, r0={})", mark, r0.repr(self.tcx));
         let _indenter = indenter();
@@ -546,13 +543,11 @@ impl<'a> RegionVarBindings<'a> {
         }
     }
 
-    /**
-    This function performs the actual region resolution.  It must be
-    called after all constraints have been added.  It performs a
-    fixed-point iteration to find region values which satisfy all
-    constraints, assuming such values can be found; if they cannot,
-    errors are reported.
-    */
+    /// This function performs the actual region resolution.  It must be
+    /// called after all constraints have been added.  It performs a
+    /// fixed-point iteration to find region values which satisfy all
+    /// constraints, assuming such values can be found; if they cannot,
+    /// errors are reported.
     pub fn resolve_regions(&self) -> Vec<RegionResolutionError> {
         debug!("RegionVarBindings: resolve_regions()");
         let mut errors = vec!();
@@ -636,16 +631,12 @@ impl<'a> RegionVarBindings<'a> {
         }
     }
 
+    /// Computes a region that encloses both free region arguments.
+    /// Guarantee that if the same two regions are given as argument,
+    /// in any order, a consistent result is returned.
     fn lub_free_regions(&self,
                         a: &FreeRegion,
-                        b: &FreeRegion) -> ty::Region
-    {
-        /*!
-         * Computes a region that encloses both free region arguments.
-         * Guarantee that if the same two regions are given as argument,
-         * in any order, a consistent result is returned.
-         */
-
+                        b: &FreeRegion) -> ty::Region {
         return match a.cmp(b) {
             Less => helper(self, a, b),
             Greater => helper(self, b, a),
@@ -736,16 +727,12 @@ impl<'a> RegionVarBindings<'a> {
         }
     }
 
+    /// Computes a region that is enclosed by both free region arguments,
+    /// if any. Guarantees that if the same two regions are given as argument,
+    /// in any order, a consistent result is returned.
     fn glb_free_regions(&self,
                         a: &FreeRegion,
-                        b: &FreeRegion) -> cres<ty::Region>
-    {
-        /*!
-         * Computes a region that is enclosed by both free region arguments,
-         * if any. Guarantees that if the same two regions are given as argument,
-         * in any order, a consistent result is returned.
-         */
-
+                        b: &FreeRegion) -> cres<ty::Region> {
         return match a.cmp(b) {
             Less => helper(self, a, b),
             Greater => helper(self, b, a),
@@ -1047,37 +1034,37 @@ impl<'a> RegionVarBindings<'a> {
         for idx in range(0u, self.num_vars()) {
             match var_data[idx].value {
                 Value(_) => {
-                    /* Inference successful */
+                    // Inference successful
                 }
                 NoValue => {
-                    /* Unconstrained inference: do not report an error
-                       until the value of this variable is requested.
-                       After all, sometimes we make region variables but never
-                       really use their values. */
+                    // Unconstrained inference: do not report an error
+                    // until the value of this variable is requested.
+                    // After all, sometimes we make region variables but never
+                    // really use their values.
                 }
                 ErrorValue => {
-                    /* Inference impossible, this value contains
-                       inconsistent constraints.
-
-                       I think that in this case we should report an
-                       error now---unlike the case above, we can't
-                       wait to see whether the user needs the result
-                       of this variable.  The reason is that the mere
-                       existence of this variable implies that the
-                       region graph is inconsistent, whether or not it
-                       is used.
-
-                       For example, we may have created a region
-                       variable that is the GLB of two other regions
-                       which do not have a GLB.  Even if that variable
-                       is not used, it implies that those two regions
-                       *should* have a GLB.
-
-                       At least I think this is true. It may be that
-                       the mere existence of a conflict in a region variable
-                       that is not used is not a problem, so if this rule
-                       starts to create problems we'll have to revisit
-                       this portion of the code and think hard about it. =) */
+                    // Inference impossible, this value contains
+                    // inconsistent constraints.
+                    //
+                    // I think that in this case we should report an
+                    // error now---unlike the case above, we can't
+                    // wait to see whether the user needs the result
+                    // of this variable.  The reason is that the mere
+                    // existence of this variable implies that the
+                    // region graph is inconsistent, whether or not it
+                    // is used.
+                    //
+                    // For example, we may have created a region
+                    // variable that is the GLB of two other regions
+                    // which do not have a GLB.  Even if that variable
+                    // is not used, it implies that those two regions
+                    // *should* have a GLB.
+                    //
+                    // At least I think this is true. It may be that
+                    // the mere existence of a conflict in a region variable
+                    // that is not used is not a problem, so if this rule
+                    // starts to create problems we'll have to revisit
+                    // this portion of the code and think hard about it. =)
 
                     if opt_graph.is_none() {
                         opt_graph = Some(self.construct_graph());

@@ -143,7 +143,7 @@ pub fn _Undef(val: ValueRef) -> ValueRef {
     }
 }
 
-/* Arithmetic */
+// Arithmetic
 pub fn Add(cx: &Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
     if cx.unreachable.get() { return _Undef(lhs); }
     B(cx).add(lhs, rhs)
@@ -299,7 +299,7 @@ pub fn Not(cx: &Block, v: ValueRef) -> ValueRef {
     B(cx).not(v)
 }
 
-/* Memory */
+// Memory
 pub fn Malloc(cx: &Block, ty: Type) -> ValueRef {
     unsafe {
         if cx.unreachable.get() {
@@ -471,7 +471,7 @@ pub fn GlobalStringPtr(cx: &Block, _str: *const c_char) -> ValueRef {
     }
 }
 
-/* Casts */
+// Casts
 pub fn Trunc(cx: &Block, val: ValueRef, dest_ty: Type) -> ValueRef {
     unsafe {
         if cx.unreachable.get() { return llvm::LLVMGetUndef(dest_ty.to_ref()); }
@@ -608,7 +608,7 @@ pub fn FPCast(cx: &Block, val: ValueRef, dest_ty: Type) -> ValueRef {
 }
 
 
-/* Comparisons */
+// Comparisons
 pub fn ICmp(cx: &Block, op: IntPredicate, lhs: ValueRef, rhs: ValueRef)
      -> ValueRef {
     unsafe {
@@ -629,7 +629,7 @@ pub fn FCmp(cx: &Block, op: RealPredicate, lhs: ValueRef, rhs: ValueRef)
     }
 }
 
-/* Miscellaneous instructions */
+// Miscellaneous instructions
 pub fn EmptyPhi(cx: &Block, ty: Type) -> ValueRef {
     unsafe {
         if cx.unreachable.get() { return llvm::LLVMGetUndef(ty.to_ref()); }
