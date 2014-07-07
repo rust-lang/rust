@@ -19,13 +19,13 @@ trait iterable<A> {
 
 impl<'a,A> iterable<A> for &'a [A] {
     fn iterate(&self, f: |x: &A| -> bool) -> bool {
-        self.iter().advance(f)
+        self.iter().all(f)
     }
 }
 
 impl<A> iterable<A> for Vec<A> {
     fn iterate(&self, f: |x: &A| -> bool) -> bool {
-        self.iter().advance(f)
+        self.iter().all(f)
     }
 }
 

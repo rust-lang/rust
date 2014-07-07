@@ -12,7 +12,7 @@ use std::vec::Vec;
 
 fn main() {
     let a: Vec<int> = Vec::new();
-    a.iter().advance(|_| -> bool {
+    a.iter().all(|_| -> bool {
         //~^ ERROR mismatched types
     });
 }
