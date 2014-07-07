@@ -10,15 +10,10 @@
 
 //! A helper class for dealing with static archives
 
-use llvm::{ArchiveRef, llvm};
-
-use libc;
 use std::io::process::{Command, ProcessOutput};
 use std::io::{fs, TempDir};
 use std::io;
-use std::mem;
 use std::os;
-use std::raw;
 use std::str;
 use syntax::abi;
 use ErrorHandler = syntax::diagnostic::Handler;
@@ -39,10 +34,6 @@ pub struct Archive<'a> {
     lib_search_paths: Vec<Path>,
     os: abi::Os,
     maybe_ar_prog: Option<String>
-}
-
-pub struct ArchiveRO {
-    ptr: ArchiveRef,
 }
 
 fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
@@ -238,49 +229,3 @@ impl<'a> Archive<'a> {
     }
 }
 
-impl ArchiveRO {
-    /// Opens a static archive for read-only purposes. This is more optimized
-    /// than the `open` method because it uses LLVM's internal `Archive` class
-    /// rather than shelling out to `ar` for everything.
-    ///
-    /// If this archive is used with a mutable method, then an error will be
-    /// raised.
-    pub fn open(dst: &Path) -> Option<ArchiveRO> {
-        unsafe {
-            let ar = dst.with_c_str(|dst| {
-                llvm::LLVMRustOpenArchive(dst)
-            });
-            if ar.is_null() {
-                None
-            } else {
-                Some(ArchiveRO { ptr: ar })
-            }
-        }
-    }
-
-    /// Reads a file in the archive
-    pub fn read<'a>(&'a self, file: &str) -> Option<&'a [u8]> {
-        unsafe {
-            let mut size = 0 as libc::size_t;
-            let ptr = file.with_c_str(|file| {
-                llvm::LLVMRustArchiveReadSection(self.ptr, file, &mut size)
-            });
-            if ptr.is_null() {
-                None
-            } else {
-                Some(mem::transmute(raw::Slice {
-                    data: ptr,
-                    len: size as uint,
-                }))
-            }
-        }
-    }
-}
-
-impl Drop for ArchiveRO {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustDestroyArchive(self.ptr);
-        }
-    }
-}

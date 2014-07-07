@@ -32,6 +32,8 @@ extern crate libc;
 use std::c_str::ToCStr;
 use libc::{c_uint, c_ushort, uint64_t, c_int, size_t};
 
+pub mod archive_ro;
+
 pub type Opcode = u32;
 pub type Bool = c_uint;
 
