@@ -45,6 +45,7 @@ extern crate flate;
 pub mod abi;
 pub mod archive;
 pub mod arm;
+pub mod fs;
 pub mod mips;
 pub mod mipsel;
 pub mod rpath;
