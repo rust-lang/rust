@@ -31,10 +31,10 @@ impl<K,V> AssociationList<K,V> {
 }
 
 impl<K:PartialEq,V:Clone> Index<K,V> for AssociationList<K,V> {
-    fn index(&self, index: &K) -> V {
+    fn index<'a>(&'a self, index: &K) -> &'a V {
         for pair in self.pairs.iter() {
             if pair.key == *index {
-                return pair.value.clone();
+                return &pair.value
             }
         }
         fail!("No value found for key: {:?}", index);

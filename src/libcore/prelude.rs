@@ -33,7 +33,9 @@ pub use kinds::{Copy, Send, Sized, Share};
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Drop, Deref, DerefMut};
-pub use ops::{Shl, Shr, Index};
+pub use ops::{Shl, Shr};
+#[cfg(not(stage0))]
+pub use ops::{Index, IndexMut};
 pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
