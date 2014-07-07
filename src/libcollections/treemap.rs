@@ -516,7 +516,7 @@ define_iterator! {
 fn deref<'a, K, V>(node: &'a Option<Box<TreeNode<K, V>>>) -> *const TreeNode<K, V> {
     match *node {
         Some(ref n) => {
-            let n: &TreeNode<K, V> = *n;
+            let n: &TreeNode<K, V> = &**n;
             n as *const TreeNode<K, V>
         }
         None => ptr::null()

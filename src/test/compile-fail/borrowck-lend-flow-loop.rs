@@ -31,7 +31,7 @@ fn loop_overarching_alias_mut() {
     let mut x = &mut v;
     **x += 1;
     loop {
-        borrow(v); //~ ERROR cannot borrow
+        borrow(&*v); //~ ERROR cannot borrow
     }
 }
 
@@ -41,7 +41,7 @@ fn block_overarching_alias_mut() {
     let mut v = box 3;
     let mut x = &mut v;
     for _ in range(0i, 3) {
-        borrow(v); //~ ERROR cannot borrow
+        borrow(&*v); //~ ERROR cannot borrow
     }
     *x = box 5;
 }
@@ -105,7 +105,7 @@ fn while_aliased_mut_cond(cond: bool, cond2: bool) {
     let mut x = &mut w;
     while cond {
         **x += 1;
-        borrow(v); //~ ERROR cannot borrow
+        borrow(&*v); //~ ERROR cannot borrow
         if cond2 {
             x = &mut v; //~ ERROR cannot borrow
         }

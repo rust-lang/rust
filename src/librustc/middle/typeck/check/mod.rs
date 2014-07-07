@@ -764,7 +764,12 @@ fn check_method_body(ccx: &CrateCtxt,
 
     let fty = ty::node_id_to_type(ccx.tcx, method.id);
 
-    check_bare_fn(ccx, method.pe_fn_decl(), method.pe_body(), method.id, fty, param_env);
+    check_bare_fn(ccx,
+                  &*method.pe_fn_decl(),
+                  &*method.pe_body(),
+                  method.id,
+                  fty,
+                  param_env);
 }
 
 fn check_impl_methods_against_trait(ccx: &CrateCtxt,
@@ -2370,7 +2375,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op) {
             // Shift is a special case: rhs must be uint, no matter what lhs is
-            check_expr_has_type(fcx, rhs, ty::mk_uint());
+            check_expr_has_type(fcx, &*rhs, ty::mk_uint());
             fcx.write_ty(expr.id, lhs_t);
             return;
         }
@@ -2957,7 +2962,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       }
 
       ast::ExprLit(lit) => {
-        let typ = check_lit(fcx, lit, expected);
+        let typ = check_lit(fcx, &*lit, expected);
         fcx.write_ty(id, typ);
       }
       ast::ExprBinary(op, ref lhs, ref rhs) => {
@@ -3164,8 +3169,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         fcx.write_bot(id);
       }
       ast::ExprParen(a) => {
-        check_expr_with_expectation_and_lvalue_pref(fcx, a, expected, lvalue_pref);
-        fcx.write_ty(id, fcx.expr_ty(a));
+        check_expr_with_expectation_and_lvalue_pref(fcx,
+                                                    &*a,
+                                                    expected,
+                                                    lvalue_pref);
+        fcx.write_ty(id, fcx.expr_ty(&*a));
       }
       ast::ExprAssign(ref lhs, ref rhs) => {
         check_expr_with_lvalue_pref(fcx, &**lhs, PreferMutLvalue);
@@ -3326,8 +3334,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 Some(ref fs) if i < fs.len() => ExpectHasType(*fs.get(i)),
                 _ => NoExpectation
             };
-            check_expr_with_expectation(fcx, *e, opt_hint);
-            let t = fcx.expr_ty(*e);
+            check_expr_with_expectation(fcx, &**e, opt_hint);
+            let t = fcx.expr_ty(&**e);
             err_field = err_field || ty::type_is_error(t);
             bot_field = bot_field || ty::type_is_bot(t);
             t
@@ -3674,8 +3682,8 @@ fn check_block_with_expected(fcx: &FnCtxt,
                              e.span,
                              "unreachable expression".to_string());
             }
-            check_expr_with_expectation(fcx, e, expected);
-              let ety = fcx.expr_ty(e);
+            check_expr_with_expectation(fcx, &*e, expected);
+              let ety = fcx.expr_ty(&*e);
               fcx.write_ty(blk.id, ety);
               if any_err {
                   fcx.write_error(blk.id);

@@ -76,7 +76,6 @@ use util::common::indenter;
 use util::ppaux::Repr;
 
 use syntax::abi;
-use syntax::ast::MutImmutable;
 use syntax::ast;
 
 // Note: Coerce is not actually a combiner, in that it does not
@@ -248,12 +247,7 @@ impl<'f> Coerce<'f> {
         let r_borrow = self.get_ref().infcx.next_region_var(coercion);
 
         let inner_ty = match *sty_a {
-            ty::ty_box(typ) | ty::ty_uniq(typ) => {
-                if mt_b.mutbl == ast::MutMutable {
-                    return Err(ty::terr_mutability)
-                }
-                typ
-            }
+            ty::ty_box(_) | ty::ty_uniq(_) => return Err(ty::terr_mismatch),
             ty::ty_rptr(_, mt_a) => mt_a.ty,
             _ => {
                 return self.subtype(a, b);
@@ -280,23 +274,9 @@ impl<'f> Coerce<'f> {
                b.repr(self.get_ref().infcx.tcx));
 
         match *sty_a {
-            ty::ty_uniq(t) => match ty::get(t).sty {
-                ty::ty_str => {}
-                _ => return self.subtype(a, b),
-            },
-            _ => {
-                return self.subtype(a, b);
-            }
-        };
-
-        let coercion = Coercion(self.get_ref().trace.clone());
-        let r_a = self.get_ref().infcx.next_region_var(coercion);
-        let a_borrowed = ty::mk_str_slice(self.get_ref().infcx.tcx, r_a, ast::MutImmutable);
-        if_ok!(self.subtype(a_borrowed, b));
-        Ok(Some(AutoDerefRef(AutoDerefRef {
-            autoderefs: 0,
-            autoref: Some(AutoBorrowVec(r_a, MutImmutable))
-        })))
+            ty::ty_uniq(_) => return Err(ty::terr_mismatch),
+            _ => return self.subtype(a, b),
+        }
     }
 
     pub fn coerce_borrowed_vector(&self,
@@ -313,7 +293,8 @@ impl<'f> Coerce<'f> {
         let coercion = Coercion(self.get_ref().trace.clone());
         let r_borrow = self.get_ref().infcx.next_region_var(coercion);
         let ty_inner = match *sty_a {
-            ty::ty_uniq(t) | ty::ty_ptr(ty::mt{ty: t, ..}) |
+            ty::ty_uniq(_) => return Err(ty::terr_mismatch),
+            ty::ty_ptr(ty::mt{ty: t, ..}) |
             ty::ty_rptr(_, ty::mt{ty: t, ..}) => match ty::get(t).sty {
                 ty::ty_vec(mt, None) => mt.ty,
                 _ => {

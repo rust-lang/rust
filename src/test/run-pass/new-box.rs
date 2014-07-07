@@ -10,7 +10,7 @@
 
 
 fn f(x: Box<int>) {
-    let y: &int = x;
+    let y: &int = &*x;
     println!("{}", *x);
     println!("{}", *y);
 }

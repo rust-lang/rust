@@ -18,7 +18,7 @@ fn foo(x: &uint) -> uint {
 
 pub fn main() {
     let p = box(GC) 22u;
-    let r = foo(p);
+    let r = foo(&*p);
     println!("r={}", r);
     assert_eq!(r, 22u);
 }

@@ -15,7 +15,7 @@ fn borrow<'r, T>(x: &'r T) -> &'r T {x}
 pub fn main() {
     let x = box(GC) 3i;
     loop {
-        let y = borrow(x);
+        let y = borrow(&*x);
         assert_eq!(*x, *y);
         break;
     }

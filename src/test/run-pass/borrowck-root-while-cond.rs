@@ -18,5 +18,5 @@ struct Rec { f: Gc<int> }
 
 pub fn main() {
     let rec = box(GC) Rec {f: box(GC) 22};
-    while *borrow(rec.f) == 23 {}
+    while *borrow(&*rec.f) == 23 {}
 }

@@ -215,9 +215,15 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
                             &ast::Provided(ref m) => {
                                 ty_method_of_trait_method(
-                                    ccx, trait_id, &trait_def.generics,
-                                    &m.id, &m.pe_ident(), m.pe_explicit_self(),
-                                    m.pe_generics(), &m.pe_fn_style(), m.pe_fn_decl())
+                                    ccx,
+                                    trait_id,
+                                    &trait_def.generics,
+                                    &m.id,
+                                    &m.pe_ident(),
+                                    m.pe_explicit_self(),
+                                    m.pe_generics(),
+                                    &m.pe_fn_style(),
+                                    &*m.pe_fn_decl())
                             }
                         });
 
@@ -383,7 +389,7 @@ fn convert_methods(ccx: &CrateCtxt,
                                   m.pe_fn_style(),
                                   untransformed_rcvr_ty,
                                   *m.pe_explicit_self(),
-                                  m.pe_fn_decl());
+                                  &*m.pe_fn_decl());
 
         // if the method specifies a visibility, use that, otherwise
         // inherit the visibility from the impl (so `foo` in `pub impl
@@ -1295,7 +1301,7 @@ fn check_method_self_type<RS:RegionScope>(
                           explicit_self: &ast::ExplicitSelf) {
     match explicit_self.node {
         ast::SelfExplicit(ref ast_type, _) => {
-            let typ = crate_context.to_ty(rs, *ast_type);
+            let typ = crate_context.to_ty(rs, &**ast_type);
             let base_type = match ty::get(typ).sty {
                 ty::ty_rptr(_, tm) => tm.ty,
                 ty::ty_uniq(typ) => typ,

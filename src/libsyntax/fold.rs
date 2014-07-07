@@ -472,7 +472,7 @@ fn fold_interpolated<T: Folder>(nt : &token::Nonterminal, fld: &mut T) -> token:
                           .expect_one("expected fold to produce exactly one item")),
         token::NtBlock(block) => token::NtBlock(fld.fold_block(block)),
         token::NtStmt(stmt) =>
-            token::NtStmt(fld.fold_stmt(stmt)
+            token::NtStmt(fld.fold_stmt(&*stmt)
                           // this is probably okay, because the only folds likely
                           // to peek inside interpolated nodes will be renamings/markings,
                           // which map single items to single items
@@ -483,8 +483,8 @@ fn fold_interpolated<T: Folder>(nt : &token::Nonterminal, fld: &mut T) -> token:
         token::NtIdent(ref id, is_mod_name) =>
             token::NtIdent(box fld.fold_ident(**id),is_mod_name),
         token::NtMeta(meta_item) => token::NtMeta(fold_meta_item_(meta_item,fld)),
-        token::NtPath(ref path) => token::NtPath(box fld.fold_path(*path)),
-        token::NtTT(tt) => token::NtTT(box (GC) fold_tt(tt,fld)),
+        token::NtPath(ref path) => token::NtPath(box fld.fold_path(&**path)),
+        token::NtTT(tt) => token::NtTT(box (GC) fold_tt(&*tt,fld)),
         // it looks to me like we can leave out the matchers: token::NtMatchers(matchers)
         _ => (*nt).clone()
     }

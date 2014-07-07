@@ -174,7 +174,7 @@ impl<'a> Env<'a> {
             assert!(idx < names.len());
             for item in m.items.iter() {
                 if item.ident.user_string(this.tcx) == names[idx] {
-                    return search(this, *item, idx+1, names);
+                    return search(this, &**item, idx+1, names);
                 }
             }
             return None;

@@ -25,7 +25,7 @@ struct F { f: Box<int> }
 
 pub fn main() {
     let mut x = box(GC) F {f: box 3};
-    borrow(x.f, |b_x| {
+    borrow(&*x.f, |b_x| {
     //~^ ERROR cannot borrow `x` as mutable because `*x.f` is also borrowed as immutable
         assert_eq!(*b_x, 3);
         assert_eq!(&(*x.f) as *const int, &(*b_x) as *const int);

@@ -30,7 +30,7 @@ fn implicit() {
     //    evaluated, but it gets moved when evaluating the second
     //    argument!
     add(
-        a,
+        &*a,
         a); //~ ERROR cannot move
 }
 

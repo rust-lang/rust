@@ -30,7 +30,7 @@ fn implicit() {
     //    evaluated, but it gets freed when evaluating the second
     //    argument!
     add(
-        a,
+        &*a,
         rewrite(&mut a)); //~ ERROR cannot borrow
 }
 

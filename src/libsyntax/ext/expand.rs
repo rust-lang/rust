@@ -166,14 +166,14 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
 
         ast::ExprFnBlock(fn_decl, block) => {
             let (rewritten_fn_decl, rewritten_block)
-                = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
+                = expand_and_rename_fn_decl_and_block(&*fn_decl, block, fld);
             let new_node = ast::ExprFnBlock(rewritten_fn_decl, rewritten_block);
             box(GC) ast::Expr{id:e.id, node: new_node, span: fld.new_span(e.span)}
         }
 
         ast::ExprProc(fn_decl, block) => {
             let (rewritten_fn_decl, rewritten_block)
-                = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
+                = expand_and_rename_fn_decl_and_block(&*fn_decl, block, fld);
             let new_node = ast::ExprProc(rewritten_fn_decl, rewritten_block);
             box(GC) ast::Expr{id:e.id, node: new_node, span: fld.new_span(e.span)}
         }
@@ -422,7 +422,7 @@ fn expand_item_underscore(item: &ast::Item_, fld: &mut MacroExpander) -> ast::It
     match *item {
         ast::ItemFn(decl, fn_style, abi, ref generics, body) => {
             let (rewritten_fn_decl, rewritten_body)
-                = expand_and_rename_fn_decl_and_block(decl,body,fld);
+                = expand_and_rename_fn_decl_and_block(&*decl, body, fld);
             let expanded_generics = fold::fold_generics(generics,fld);
             ast::ItemFn(rewritten_fn_decl, fn_style, abi, expanded_generics, rewritten_body)
         }
@@ -572,7 +572,9 @@ fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<Gc<Stmt>> {
     };
     let expanded_stmt = match expand_mac_invoc(mac,&s.span,
                                                 |r|{r.make_stmt()},
-                                                |sts,mrk|{mark_stmt(sts,mrk)},
+                                                |sts,mrk| {
+                                                    mark_stmt(&*sts,mrk)
+                                                },
                                                 fld) {
         Some(stmt) => stmt,
         None => {
@@ -628,7 +630,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                     // names, as well... but that should be okay, as long as
                     // the new names are gensyms for the old ones.
                     // generate fresh names, push them to a new pending list
-                    let idents = pattern_bindings(expanded_pat);
+                    let idents = pattern_bindings(&*expanded_pat);
                     let mut new_pending_renames =
                         idents.iter().map(|ident| (*ident, fresh_name(ident))).collect();
                     // rewrite the pattern using the new names (the old
@@ -677,7 +679,7 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
     // all of the pats must have the same set of bindings, so use the
     // first one to extract them and generate new names:
     let first_pat = expanded_pats.get(0);
-    let idents = pattern_bindings(*first_pat);
+    let idents = pattern_bindings(&**first_pat);
     let new_renames =
         idents.iter().map(|id| (*id,fresh_name(id))).collect();
     // apply the renaming, but only to the PatIdents:
@@ -732,7 +734,7 @@ fn pattern_bindings(pat : &ast::Pat) -> Vec<ast::Ident> {
 fn fn_decl_arg_bindings(fn_decl: &ast::FnDecl) -> Vec<ast::Ident> {
     let mut pat_idents = PatIdentFinder{ident_accumulator:Vec::new()};
     for arg in fn_decl.inputs.iter() {
-        pat_idents.visit_pat(arg.pat,());
+        pat_idents.visit_pat(&*arg.pat, ());
     }
     pat_idents.ident_accumulator
 }
@@ -910,7 +912,7 @@ fn expand_method(m: &ast::Method, fld: &mut MacroExpander) -> SmallVector<Gc<ast
     match m.node {
         ast::MethDecl(ident, ref generics, ref explicit_self, fn_style, decl, body, vis) => {
             let (rewritten_fn_decl, rewritten_body)
-                = expand_and_rename_fn_decl_and_block(decl,body,fld);
+                = expand_and_rename_fn_decl_and_block(&*decl,body,fld);
             SmallVector::one(box(GC) ast::Method {
                     attrs: m.attrs.iter().map(|a| fld.fold_attribute(*a)).collect(),
                     id: id,
@@ -951,12 +953,12 @@ fn expand_and_rename_fn_decl_and_block(fn_decl: &ast::FnDecl, block: Gc<ast::Blo
                                        fld: &mut MacroExpander)
     -> (Gc<ast::FnDecl>, Gc<ast::Block>) {
     let expanded_decl = fld.fold_fn_decl(fn_decl);
-    let idents = fn_decl_arg_bindings(expanded_decl);
+    let idents = fn_decl_arg_bindings(&*expanded_decl);
     let renames =
         idents.iter().map(|id : &ast::Ident| (*id,fresh_name(id))).collect();
     // first, a renamer for the PatIdents, for the fn_decl:
     let mut rename_pat_fld = PatIdentRenamer{renames: &renames};
-    let rewritten_fn_decl = rename_pat_fld.fold_fn_decl(expanded_decl);
+    let rewritten_fn_decl = rename_pat_fld.fold_fn_decl(&*expanded_decl);
     // now, a renamer for *all* idents, for the body:
     let mut rename_fld = IdentRenamer{renames: &renames};
     let rewritten_body = fld.fold_block(rename_fld.fold_block(block));
@@ -999,7 +1001,7 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     }
 
     fn fold_method(&mut self, method: Gc<ast::Method>) -> SmallVector<Gc<ast::Method>> {
-        expand_method(method, self)
+        expand_method(&*method, self)
     }
 
     fn new_span(&mut self, span: Span) -> Span {
@@ -1660,7 +1662,7 @@ foo_module!()
     fn pat_idents(){
         let pat = string_to_pat(
             "(a,Foo{x:c @ (b,9),y:Bar(4,d)})".to_string());
-        let idents = pattern_bindings(pat);
+        let idents = pattern_bindings(&*pat);
         assert_eq!(idents, strs_to_idents(vec!("a","c","b","d")));
     }
 

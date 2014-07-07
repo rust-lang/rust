@@ -3707,7 +3707,7 @@ impl<'a> Resolver<'a> {
 
                                 match ty_m.explicit_self.node {
                                     SelfExplicit(ref typ, _) => {
-                                        this.resolve_type(*typ)
+                                        this.resolve_type(&**typ)
                                     }
                                     _ => {}
                                 }
@@ -4044,7 +4044,7 @@ impl<'a> Resolver<'a> {
                                                 rib_kind);
 
         match method.pe_explicit_self().node {
-            SelfExplicit(ref typ, _) => self.resolve_type(*typ),
+            SelfExplicit(ref typ, _) => self.resolve_type(&**typ),
             _ => {}
         }
 

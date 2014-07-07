@@ -316,14 +316,14 @@ impl<'a> ReachableContext<'a> {
                         // Keep going, nothing to get exported
                     }
                     ast::Provided(ref method) => {
-                        visit::walk_block(self, method.pe_body(), ())
+                        visit::walk_block(self, &*method.pe_body(), ())
                     }
                 }
             }
             ast_map::NodeMethod(method) => {
                 let did = self.tcx.map.get_parent_did(search_item);
                 if method_might_be_inlined(self.tcx, &*method, did) {
-                    visit::walk_block(self, method.pe_body(), ())
+                    visit::walk_block(self, &*method.pe_body(), ())
                 }
             }
             // Nothing to recurse on for these

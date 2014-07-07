@@ -12,15 +12,15 @@
 fn borrow(_v: &int) {}
 
 fn borrow_from_arg_imm_ref(v: Box<int>) {
-    borrow(v);
+    borrow(&*v);
 }
 
 fn borrow_from_arg_mut_ref(v: &mut Box<int>) {
-    borrow(*v);
+    borrow(&**v);
 }
 
 fn borrow_from_arg_copy(v: Box<int>) {
-    borrow(v);
+    borrow(&*v);
 }
 
 pub fn main() {
