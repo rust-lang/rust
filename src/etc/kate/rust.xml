@@ -248,6 +248,7 @@
 		<context attribute="Comment" lineEndContext="#pop" name="Commentar 1"/>
 		<context attribute="Comment" lineEndContext="#stay" name="Commentar 2">
 			<DetectSpaces/>
+                        <Detect2Chars char="/" char1="*" attribute="Comment" context="Commentar 2"/><!--recursive comments-->
 			<Detect2Chars char="*" char1="/" attribute="Comment" context="#pop" endRegion="Comment"/>
 		</context>
 	</contexts>
