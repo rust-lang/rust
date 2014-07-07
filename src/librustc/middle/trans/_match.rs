@@ -803,12 +803,19 @@ fn any_irrefutable_adt_pat(bcx: &Block, m: &[Match], col: uint) -> bool {
         let pat = *br.pats.get(col);
         match pat.node {
             ast::PatTup(_) => true,
-            ast::PatEnum(..) | ast::PatIdent(_, _, None) | ast::PatStruct(..) =>
+            ast::PatStruct(..) => {
+                match bcx.tcx().def_map.borrow().find(&pat.id) {
+                    Some(&def::DefVariant(..)) => false,
+                    _ => true,
+                }
+            }
+            ast::PatEnum(..) | ast::PatIdent(_, _, None) => {
                 match bcx.tcx().def_map.borrow().find(&pat.id) {
                     Some(&def::DefFn(..)) |
                     Some(&def::DefStruct(..)) => true,
                     _ => false
-                },
+                }
+            }
             _ => false
         }
     })

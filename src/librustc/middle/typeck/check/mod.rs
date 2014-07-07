@@ -3296,17 +3296,34 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Resolve the path.
         let def = tcx.def_map.borrow().find(&id).map(|i| *i);
         match def {
-            Some(def::DefStruct(type_def_id)) => {
-                check_struct_constructor(fcx, id, expr.span, type_def_id,
-                                         fields.as_slice(), base_expr);
-            }
             Some(def::DefVariant(enum_id, variant_id, _)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
                                           variant_id, fields.as_slice());
             }
+            Some(def) => {
+                // Verify that this was actually a struct.
+                let typ = ty::lookup_item_type(fcx.ccx.tcx, def.def_id());
+                match ty::get(typ.ty).sty {
+                    ty::ty_struct(struct_did, _) => {
+                        check_struct_constructor(fcx,
+                                                 id,
+                                                 expr.span,
+                                                 struct_did,
+                                                 fields.as_slice(),
+                                                 base_expr);
+                    }
+                    _ => {
+                        tcx.sess
+                           .span_err(path.span,
+                                     format!("`{}` does not name a structure",
+                                             pprust::path_to_str(
+                                                 path)).as_slice())
+                    }
+                }
+            }
             _ => {
                 tcx.sess.span_bug(path.span,
-                                  "structure constructor does not name a structure type");
+                                  "structure constructor wasn't resolved")
             }
         }
       }
