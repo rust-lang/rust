@@ -30,6 +30,7 @@ extern crate libc;
 extern crate flate;
 
 pub mod abi;
+pub mod archive;
 pub mod arm;
 pub mod mips;
 pub mod mipsel;

@@ -52,6 +52,7 @@ mod diagnostics;
 
 pub mod back {
     pub use rustc_back::abi;
+    pub use rustc_back::archive;
     pub use rustc_back::arm;
     pub use rustc_back::mips;
     pub use rustc_back::mipsel;
@@ -61,7 +62,6 @@ pub mod back {
     pub use rustc_back::x86;
     pub use rustc_back::x86_64;
 
-    pub mod archive;
     pub mod link;
     pub mod lto;
 
