@@ -4470,17 +4470,7 @@ impl<'a> Resolver<'a> {
 
                 PatStruct(ref path, _, _) => {
                     match self.resolve_path(pat_id, path, TypeNS, false) {
-                        Some((DefTy(class_id), lp))
-                                if self.structs.contains_key(&class_id) => {
-                            let class_def = DefStruct(class_id);
-                            self.record_def(pattern.id, (class_def, lp));
-                        }
-                        Some(definition @ (DefStruct(class_id), _)) => {
-                            assert!(self.structs.contains_key(&class_id));
-                            self.record_def(pattern.id, definition);
-                        }
-                        Some(definition @ (DefVariant(_, variant_id, _), _))
-                                if self.structs.contains_key(&variant_id) => {
+                        Some(definition) => {
                             self.record_def(pattern.id, definition);
                         }
                         result => {
@@ -5200,17 +5190,11 @@ impl<'a> Resolver<'a> {
             }
 
             ExprStruct(ref path, _, _) => {
-                // Resolve the path to the structure it goes to.
+                // Resolve the path to the structure it goes to. We don't
+                // check to ensure that the path is actually a structure; that
+                // is checked later during typeck.
                 match self.resolve_path(expr.id, path, TypeNS, false) {
-                    Some((DefTy(class_id), lp)) | Some((DefStruct(class_id), lp))
-                            if self.structs.contains_key(&class_id) => {
-                        let class_def = DefStruct(class_id);
-                        self.record_def(expr.id, (class_def, lp));
-                    }
-                    Some(definition @ (DefVariant(_, class_id, _), _))
-                            if self.structs.contains_key(&class_id) => {
-                        self.record_def(expr.id, definition);
-                    }
+                    Some(definition) => self.record_def(expr.id, definition),
                     result => {
                         debug!("(resolving expression) didn't find struct \
                                 def: {:?}", result);

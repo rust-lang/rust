@@ -671,8 +671,17 @@ pub fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
                 } else {
                     None
                 },
-                DefStruct(struct_id) => Some(struct_id),
-                _ => None
+                _ => {
+                    // Assume this is a struct.
+                    match ty::ty_to_def_id(node_id_to_type(cx.tcx, pat_id)) {
+                        None => {
+                            cx.tcx.sess.span_bug(pat_span,
+                                                 "struct pattern wasn't of a \
+                                                  type with a def ID?!")
+                        }
+                        Some(def_id) => Some(def_id),
+                    }
+                }
             };
             class_id.map(|variant_id| {
                 let struct_fields = ty::lookup_struct_fields(cx.tcx, variant_id);
