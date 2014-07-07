@@ -1745,13 +1745,14 @@ impl<'a> State<'a> {
             }
             ast::PatStruct(ref path, ref fields, etc) => {
                 try!(self.print_path(path, true));
-                try!(word(&mut self.s, "{"));
+                try!(self.nbsp());
+                try!(self.word_space("{"));
                 try!(self.commasep_cmnt(
                     Consistent, fields.as_slice(),
                     |s, f| {
                         try!(s.cbox(indent_unit));
                         try!(s.print_ident(f.ident));
-                        try!(s.word_space(":"));
+                        try!(s.word_nbsp(":"));
                         try!(s.print_pat(&*f.pat));
                         s.end()
                     },
@@ -1760,6 +1761,7 @@ impl<'a> State<'a> {
                     if fields.len() != 0u { try!(self.word_space(",")); }
                     try!(word(&mut self.s, ".."));
                 }
+                try!(space(&mut self.s));
                 try!(word(&mut self.s, "}"));
             }
             ast::PatTup(ref elts) => {
