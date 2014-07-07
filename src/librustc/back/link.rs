@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::archive::{Archive, METADATA_FILENAME};
+use super::archive::{Archive, ArchiveConfig, METADATA_FILENAME};
 use super::rpath;
 use super::rpath::RPathConfig;
 use super::svh::Svh;
@@ -29,6 +29,7 @@ use util::sha2::{Digest, Sha256};
 
 use std::c_str::{ToCStr, CString};
 use std::char;
+use std::collections::HashSet;
 use std::io::{fs, TempDir, Command};
 use std::io;
 use std::ptr;
@@ -962,6 +963,17 @@ fn link_binary_output(sess: &Session,
     out_filename
 }
 
+fn archive_search_paths(sess: &Session) -> Vec<Path> {
+    let mut rustpath = filesearch::rust_path();
+    rustpath.push(sess.target_filesearch().get_lib_path());
+    // FIXME: Addl lib search paths are an unordered HashSet?
+    // Shouldn't this search be done in some order?
+    let addl_lib_paths: HashSet<Path> = sess.opts.addl_lib_search_paths.borrow().clone();
+    let mut search: Vec<Path> = addl_lib_paths.move_iter().collect();
+    search.push_all(rustpath.as_slice());
+    return search;
+}
+
 // Create an 'rlib'
 //
 // An rlib in its current incarnation is essentially a renamed .a file. The
@@ -972,7 +984,15 @@ fn link_rlib<'a>(sess: &'a Session,
                  trans: Option<&CrateTranslation>, // None == no metadata/bytecode
                  obj_filename: &Path,
                  out_filename: &Path) -> Archive<'a> {
-    let mut a = Archive::create(sess, out_filename, obj_filename);
+    let handler = &sess.diagnostic().handler;
+    let config = ArchiveConfig {
+        handler: handler,
+        dst: out_filename.clone(),
+        lib_search_paths: archive_search_paths(sess),
+        os: sess.targ_cfg.os,
+        maybe_ar_prog: sess.opts.cg.ar.clone()
+    };
+    let mut a = Archive::create(config, obj_filename);
 
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
@@ -1561,7 +1581,15 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                         sess.abort_if_errors();
                     }
                 }
-                let mut archive = Archive::open(sess, dst.clone());
+                let handler = &sess.diagnostic().handler;
+                let config = ArchiveConfig {
+                    handler: handler,
+                    dst: dst.clone(),
+                    lib_search_paths: archive_search_paths(sess),
+                    os: sess.targ_cfg.os,
+                    maybe_ar_prog: sess.opts.cg.ar.clone()
+                };
+                let mut archive = Archive::open(config);
                 archive.remove_file(format!("{}.o", name).as_slice());
                 let files = archive.files();
                 if files.iter().any(|s| s.as_slice().ends_with(".o")) {
