@@ -613,7 +613,7 @@ shr_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
 /**
  *
  * The `Index` trait is used to specify the functionality of indexing operations
- * like `arr[idx]`.
+ * like `arr[idx]` when used in an immutable context.
  *
  * # Example
  *
@@ -624,9 +624,9 @@ shr_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
  * struct Foo;
  *
  * impl Index<Foo, Foo> for Foo {
- *     fn index(&self, _rhs: &Foo) -> Foo {
+ *     fn index<'a>(&'a self, _rhs: &Foo) -> &'a Foo {
  *         println!("Indexing!");
- *         *self
+ *         self
  *     }
  * }
  *
@@ -636,9 +636,42 @@ shr_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
  * ```
  */
 #[lang="index"]
+#[cfg(not(stage0))]
 pub trait Index<Index,Result> {
     /// The method for the indexing (`Foo[Bar]`) operation
-    fn index(&self, index: &Index) -> Result;
+    fn index<'a>(&'a self, index: &Index) -> &'a Result;
+}
+
+/**
+ *
+ * The `IndexMut` trait is used to specify the functionality of indexing
+ * operations like `arr[idx]`, when used in a mutable context.
+ *
+ * # Example
+ *
+ * A trivial implementation of `IndexMut`. When `Foo[Foo]` happens, it ends up
+ * calling `index`, and therefore, `main` prints `Indexing!`.
+ *
+ * ```
+ * struct Foo;
+ *
+ * impl IndexMut<Foo, Foo> for Foo {
+ *     fn index_mut<'a>(&'a mut self, _rhs: &Foo) -> &'a mut Foo {
+ *         println!("Indexing!");
+ *         self
+ *     }
+ * }
+ *
+ * fn main() {
+ *     &mut Foo[Foo];
+ * }
+ * ```
+ */
+#[lang="index_mut"]
+#[cfg(not(stage0))]
+pub trait IndexMut<Index,Result> {
+    /// The method for the indexing (`Foo[Bar]`) operation
+    fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Result;
 }
 
 /**
