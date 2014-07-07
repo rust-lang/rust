@@ -74,12 +74,12 @@
 //!
 //! // Spawn a task in the green pool
 //! let mut fut_green = TaskBuilder::new().green(&mut pool).try_future(proc() {
-//!     /* ... */
+//!     // ...
 //! });
 //!
 //! // Spawn a native task
 //! let mut fut_native = TaskBuilder::new().native().try_future(proc() {
-//!     /* ... */
+//!     // ...
 //! });
 //!
 //! // Wait for both tasks to finish, recording their outcome
@@ -313,7 +313,7 @@ impl<S: Spawner> TaskBuilder<S> {
     }
 }
 
-/* Convenience functions */
+// Convenience functions
 
 /// Creates and executes a new child task
 ///
@@ -342,7 +342,7 @@ pub fn try_future<T:Send>(f: proc():Send -> T) -> Future<Result<T, Box<Any + Sen
 }
 
 
-/* Lifecycle functions */
+// Lifecycle functions
 
 /// Read the name of the current task.
 pub fn with_task_name<U>(blk: |Option<&str>| -> U) -> U {

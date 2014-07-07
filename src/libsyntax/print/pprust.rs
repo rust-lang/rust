@@ -1009,7 +1009,7 @@ impl<'a> State<'a> {
                     try!(self.print_attribute(attr));
                     count += 1;
                 }
-                _ => {/* fallthrough */ }
+                _ => { /* fallthrough */ }
             }
         }
         if count > 0 {
@@ -1027,7 +1027,7 @@ impl<'a> State<'a> {
                     try!(self.print_attribute(attr));
                     count += 1;
                 }
-                _ => {/* fallthrough */ }
+                _ => { /* fallthrough */ }
             }
         }
         if count > 0 {
@@ -1704,8 +1704,8 @@ impl<'a> State<'a> {
     pub fn print_pat(&mut self, pat: &ast::Pat) -> IoResult<()> {
         try!(self.maybe_print_comment(pat.span.lo));
         try!(self.ann.pre(self, NodePat(pat)));
-        /* Pat isn't normalized, but the beauty of it
-         is that it doesn't matter */
+        // Pat isn't normalized, but the beauty of it
+        // is that it doesn't matter
         match pat.node {
             ast::PatWild => try!(word(&mut self.s, "_")),
             ast::PatWildMulti => try!(word(&mut self.s, "..")),

@@ -314,8 +314,8 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
 
             let te2 = base::cast_shift_const_rhs(b, te1, te2);
 
-            /* Neither type is bottom, and we expect them to be unified
-             * already, so the following is safe. */
+            // Neither type is bottom, and we expect them to be unified
+            // already, so the following is safe.
             let ty = ty::expr_ty(cx.tcx(), &**e1);
             let is_float = ty::type_is_fp(ty);
             let signed = ty::type_is_signed(ty);

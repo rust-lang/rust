@@ -112,18 +112,15 @@ pub fn trans_fixed_vstore<'a>(
     };
 }
 
+/// &[...] allocates memory on the stack and writes the values into it,
+/// returning a slice (pair of ptr, len).  &"..." is similar except that
+/// the memory can be statically allocated.
 pub fn trans_slice_vstore<'a>(
                           bcx: &'a Block<'a>,
                           vstore_expr: &ast::Expr,
                           content_expr: &ast::Expr,
                           dest: expr::Dest)
                           -> &'a Block<'a> {
-    /*!
-     * &[...] allocates memory on the stack and writes the values into it,
-     * returning a slice (pair of ptr, len).  &"..." is similar except that
-     * the memory can be statically allocated.
-     */
-
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
     let mut bcx = bcx;
@@ -188,18 +185,15 @@ pub fn trans_slice_vstore<'a>(
     return bcx;
 }
 
+/// Literal strings translate to slices into static memory.  This is
+/// different from trans_slice_vstore() above because it does need to copy
+/// the content anywhere.
 pub fn trans_lit_str<'a>(
                      bcx: &'a Block<'a>,
                      lit_expr: &ast::Expr,
                      str_lit: InternedString,
                      dest: Dest)
                      -> &'a Block<'a> {
-    /*!
-     * Literal strings translate to slices into static memory.  This is
-     * different from trans_slice_vstore() above because it does need to copy
-     * the content anywhere.
-     */
-
     debug!("trans_lit_str(lit_expr={}, dest={})",
            bcx.expr_to_str(lit_expr),
            dest.to_str(bcx.ccx()));
@@ -223,15 +217,12 @@ pub fn trans_lit_str<'a>(
 }
 
 
+/// ~[...] and "...".to_string() allocate boxes in the exchange heap and write
+/// the array elements into them.
 pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
                              vstore_expr: &ast::Expr,
                              content_expr: &ast::Expr)
                              -> DatumBlock<'a, Expr> {
-    /*!
-     * ~[...] and "...".to_string() allocate boxes in the exchange heap and write
-     * the array elements into them.
-     */
-
     debug!("trans_uniq_vstore(vstore_expr={})", bcx.expr_to_str(vstore_expr));
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
@@ -450,16 +441,13 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
     }
 }
 
+/// Converts a fixed-length vector into the slice pair.
+/// The vector should be stored in `llval` which should be by ref.
 pub fn get_fixed_base_and_byte_len(bcx: &Block,
                                    llval: ValueRef,
                                    unit_ty: ty::t,
                                    vec_length: uint)
                                    -> (ValueRef, ValueRef) {
-    /*!
-     * Converts a fixed-length vector into the slice pair.
-     * The vector should be stored in `llval` which should be by ref.
-     */
-
     let ccx = bcx.ccx();
     let vt = vec_types(bcx, unit_ty);
 
@@ -468,18 +456,15 @@ pub fn get_fixed_base_and_byte_len(bcx: &Block,
     (base, len)
 }
 
+/// Converts a vector into the slice pair.  The vector should be
+/// stored in `llval` which should be by-reference.  If you have a
+/// datum, you would probably prefer to call
+/// `Datum::get_base_and_len()` which will handle any conversions
+/// for you.
 pub fn get_base_and_len(bcx: &Block,
                         llval: ValueRef,
                         vec_ty: ty::t)
                         -> (ValueRef, ValueRef) {
-    /*!
-     * Converts a vector into the slice pair.  The vector should be
-     * stored in `llval` which should be by-reference.  If you have a
-     * datum, you would probably prefer to call
-     * `Datum::get_base_and_len()` which will handle any conversions
-     * for you.
-     */
-
     let ccx = bcx.ccx();
 
     match ty::get(vec_ty).sty {

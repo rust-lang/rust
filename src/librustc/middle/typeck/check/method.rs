@@ -8,77 +8,72 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-# Method lookup
-
-Method lookup can be rather complex due to the interaction of a number
-of factors, such as self types, autoderef, trait lookup, etc.  The
-algorithm is divided into two parts: candidate collection and
-candidate selection.
-
-## Candidate collection
-
-A `Candidate` is a method item that might plausibly be the method
-being invoked.  Candidates are grouped into two kinds, inherent and
-extension.  Inherent candidates are those that are derived from the
-type of the receiver itself.  So, if you have a receiver of some
-nominal type `Foo` (e.g., a struct), any methods defined within an
-impl like `impl Foo` are inherent methods.  Nothing needs to be
-imported to use an inherent method, they are associated with the type
-itself (note that inherent impls can only be defined in the same
-module as the type itself).
-
-Inherent candidates are not always derived from impls.  If you have a
-trait instance, such as a value of type `Box<ToStr>`, then the trait
-methods (`to_str()`, in this case) are inherently associated with it.
-Another case is type parameters, in which case the methods of their
-bounds are inherent.
-
-Extension candidates are derived from imported traits.  If I have the
-trait `ToStr` imported, and I call `to_str()` on a value of type `T`,
-then we will go off to find out whether there is an impl of `ToStr`
-for `T`.  These kinds of method calls are called "extension methods".
-They can be defined in any module, not only the one that defined `T`.
-Furthermore, you must import the trait to call such a method.
-
-For better or worse, we currently give weight to inherent methods over
-extension methods during candidate selection (below).
-
-## Candidate selection
-
-Once we know the set of candidates, we can go off and try to select
-which one is actually being called.  We do this by taking the type of
-the receiver, let's call it R, and checking whether it matches against
-the expected receiver type for each of the collected candidates.  We
-first check for inherent candidates and see whether we get exactly one
-match (zero means keep searching, more than one is an error).  If so,
-we return that as the candidate.  Otherwise we search the extension
-candidates in the same way.
-
-If find no matching candidate at all, we proceed to auto-deref the
-receiver type and search again.  We keep doing that until we cannot
-auto-deref any longer.  At each step, we also check for candidates
-based on "autoptr", which if the current type is `T`, checks for `&mut
-T`, `&const T`, and `&T` receivers.  Finally, at the very end, we will
-also try autoslice, which converts `~[]` to `&[]` (there is no point
-at trying autoslice earlier, because no autoderefable type is also
-sliceable).
-
-## Why two phases?
-
-You might wonder why we first collect the candidates and then select.
-Both the inherent candidate collection and the candidate selection
-proceed by progressively deref'ing the receiver type, after all.  The
-answer is that two phases are needed to elegantly deal with explicit
-self.  After all, if there is an impl for the type `Foo`, it can
-define a method with the type `Box<self>`, which means that it expects a
-receiver of type `Box<Foo>`.  If we have a receiver of type `Box<Foo>`, but we
-waited to search for that impl until we have deref'd the `Box` away and
-obtained the type `Foo`, we would never match this method.
-
-*/
-
+//! # Method lookup
+//!
+//! Method lookup can be rather complex due to the interaction of a number
+//! of factors, such as self types, autoderef, trait lookup, etc.  The
+//! algorithm is divided into two parts: candidate collection and
+//! candidate selection.
+//!
+//! ## Candidate collection
+//!
+//! A `Candidate` is a method item that might plausibly be the method
+//! being invoked.  Candidates are grouped into two kinds, inherent and
+//! extension.  Inherent candidates are those that are derived from the
+//! type of the receiver itself.  So, if you have a receiver of some
+//! nominal type `Foo` (e.g., a struct), any methods defined within an
+//! impl like `impl Foo` are inherent methods.  Nothing needs to be
+//! imported to use an inherent method, they are associated with the type
+//! itself (note that inherent impls can only be defined in the same
+//! module as the type itself).
+//!
+//! Inherent candidates are not always derived from impls.  If you have a
+//! trait instance, such as a value of type `Box<ToStr>`, then the trait
+//! methods (`to_str()`, in this case) are inherently associated with it.
+//! Another case is type parameters, in which case the methods of their
+//! bounds are inherent.
+//!
+//! Extension candidates are derived from imported traits.  If I have the
+//! trait `ToStr` imported, and I call `to_str()` on a value of type `T`,
+//! then we will go off to find out whether there is an impl of `ToStr`
+//! for `T`.  These kinds of method calls are called "extension methods".
+//! They can be defined in any module, not only the one that defined `T`.
+//! Furthermore, you must import the trait to call such a method.
+//!
+//! For better or worse, we currently give weight to inherent methods over
+//! extension methods during candidate selection (below).
+//!
+//! ## Candidate selection
+//!
+//! Once we know the set of candidates, we can go off and try to select
+//! which one is actually being called.  We do this by taking the type of
+//! the receiver, let's call it R, and checking whether it matches against
+//! the expected receiver type for each of the collected candidates.  We
+//! first check for inherent candidates and see whether we get exactly one
+//! match (zero means keep searching, more than one is an error).  If so,
+//! we return that as the candidate.  Otherwise we search the extension
+//! candidates in the same way.
+//!
+//! If find no matching candidate at all, we proceed to auto-deref the
+//! receiver type and search again.  We keep doing that until we cannot
+//! auto-deref any longer.  At each step, we also check for candidates
+//! based on "autoptr", which if the current type is `T`, checks for `&mut
+//! T`, `&const T`, and `&T` receivers.  Finally, at the very end, we will
+//! also try autoslice, which converts `~[]` to `&[]` (there is no point
+//! at trying autoslice earlier, because no autoderefable type is also
+//! sliceable).
+//!
+//! ## Why two phases?
+//!
+//! You might wonder why we first collect the candidates and then select.
+//! Both the inherent candidate collection and the candidate selection
+//! proceed by progressively deref'ing the receiver type, after all.  The
+//! answer is that two phases are needed to elegantly deal with explicit
+//! self.  After all, if there is an impl for the type `Foo`, it can
+//! define a method with the type `Box<self>`, which means that it expects a
+//! receiver of type `Box<Foo>`.  If we have a receiver of type `Box<Foo>`, but
+//! we waited to search for that impl until we have deref'd the `Box` away and
+//! obtained the type `Foo`, we would never match this method.
 
 use middle::subst;
 use middle::subst::Subst;
@@ -230,35 +225,31 @@ fn get_method_index(tcx: &ty::ctxt,
     method_count + n_method
 }
 
+/// This is a bit tricky. We have a match against a trait method
+/// being invoked on an object, and we want to generate the
+/// self-type. As an example, consider a trait
+///
+///     trait Foo {
+///         fn r_method<'a>(&'a self);
+///         fn u_method(Box<self>);
+///     }
+///
+/// Now, assuming that `r_method` is being called, we want the
+/// result to be `&'a Foo`. Assuming that `u_method` is being
+/// called, we want the result to be `Box<Foo>`. Of course,
+/// this transformation has already been done as part of
+/// `method_ty.fty.sig.inputs[0]`, but there the type
+/// is expressed in terms of `Self` (i.e., `&'a Self`, `Box<Self>`).
+/// Because objects are not standalone types, we can't just substitute
+/// `s/Self/Foo/`, so we must instead perform this kind of hokey
+/// match below.
 fn construct_transformed_self_ty_for_object(
     tcx: &ty::ctxt,
     span: Span,
     trait_def_id: ast::DefId,
     rcvr_substs: &subst::Substs,
     method_ty: &ty::Method)
-    -> ty::t
-{
-    /*!
-     * This is a bit tricky. We have a match against a trait method
-     * being invoked on an object, and we want to generate the
-     * self-type. As an example, consider a trait
-     *
-     *     trait Foo {
-     *         fn r_method<'a>(&'a self);
-     *         fn u_method(Box<self>);
-     *     }
-     *
-     * Now, assuming that `r_method` is being called, we want the
-     * result to be `&'a Foo`. Assuming that `u_method` is being
-     * called, we want the result to be `Box<Foo>`. Of course,
-     * this transformation has already been done as part of
-     * `method_ty.fty.sig.inputs[0]`, but there the type
-     * is expressed in terms of `Self` (i.e., `&'a Self`, `Box<Self>`).
-     * Because objects are not standalone types, we can't just substitute
-     * `s/Self/Foo/`, so we must instead perform this kind of hokey
-     * match below.
-     */
-
+    -> ty::t {
     let mut obj_substs = rcvr_substs.clone();
 
     // The subst we get in has Err as the "Self" type. For an object
@@ -320,10 +311,8 @@ struct LookupContext<'a> {
     report_statics: StaticMethodsFlag,
 }
 
-/**
- * A potential method that might be called, assuming the receiver
- * is of a suitable type.
- */
+/// A potential method that might be called, assuming the receiver
+/// is of a suitable type.
 #[deriving(Clone)]
 struct Candidate {
     rcvr_match_condition: RcvrMatchCondition,
@@ -423,16 +412,13 @@ impl<'a> LookupContext<'a> {
         self.extension_candidates = Vec::new();
     }
 
+    /// Collect all inherent candidates into
+    /// `self.inherent_candidates`.  See comment at the start of
+    /// the file.  To find the inherent candidates, we repeatedly
+    /// deref the self-ty to find the "base-type".  So, for
+    /// example, if the receiver is Box<Box<C>> where `C` is a struct type,
+    /// we'll want to find the inherent impls for `C`.
     fn push_inherent_candidates(&mut self, self_ty: ty::t) {
-        /*!
-         * Collect all inherent candidates into
-         * `self.inherent_candidates`.  See comment at the start of
-         * the file.  To find the inherent candidates, we repeatedly
-         * deref the self-ty to find the "base-type".  So, for
-         * example, if the receiver is Box<Box<C>> where `C` is a struct type,
-         * we'll want to find the inherent impls for `C`.
-         */
-
         let span = self.self_expr.map_or(self.span, |e| e.span);
         check::autoderef(self.fcx, span, self_ty, None, PreferMutLvalue, |self_ty, _| {
             match get(self_ty).sty {
@@ -745,27 +731,24 @@ impl<'a> LookupContext<'a> {
         }
     }
 
+    /// In the event that we are invoking a method with a receiver
+    /// of a borrowed type like `&T`, `&mut T`, or `&mut [T]`,
+    /// we will "reborrow" the receiver implicitly.  For example, if
+    /// you have a call `r.inc()` and where `r` has type `&mut T`,
+    /// then we treat that like `(&mut *r).inc()`.  This avoids
+    /// consuming the original pointer.
+    ///
+    /// You might think that this would be a natural byproduct of
+    /// the auto-deref/auto-ref process.  This is true for `Box<T>`
+    /// but not for an `&mut T` receiver.  With `Box<T>`, we would
+    /// begin by testing for methods with a self type `Box<T>`,
+    /// then autoderef to `T`, then autoref to `&mut T`.  But with
+    /// an `&mut T` receiver the process begins with `&mut T`, only
+    /// without any autoadjustments.
     fn consider_reborrow(&self,
                          self_ty: ty::t,
                          autoderefs: uint)
                          -> (ty::t, ty::AutoDerefRef) {
-        /*!
-         * In the event that we are invoking a method with a receiver
-         * of a borrowed type like `&T`, `&mut T`, or `&mut [T]`,
-         * we will "reborrow" the receiver implicitly.  For example, if
-         * you have a call `r.inc()` and where `r` has type `&mut T`,
-         * then we treat that like `(&mut *r).inc()`.  This avoids
-         * consuming the original pointer.
-         *
-         * You might think that this would be a natural byproduct of
-         * the auto-deref/auto-ref process.  This is true for `Box<T>`
-         * but not for an `&mut T` receiver.  With `Box<T>`, we would
-         * begin by testing for methods with a self type `Box<T>`,
-         * then autoderef to `T`, then autoref to `&mut T`.  But with
-         * an `&mut T` receiver the process begins with `&mut T`, only
-         * without any autoadjustments.
-         */
-
         let tcx = self.tcx();
         return match ty::get(self_ty).sty {
             ty::ty_rptr(_, self_mt) if default_method_hack(self_mt) => {
@@ -877,15 +860,12 @@ impl<'a> LookupContext<'a> {
         }
     }
 
+    /// Searches for a candidate by converting things like
+    /// `~[]` to `&[]`.
     fn search_for_autosliced_method(&self,
                                     self_ty: ty::t,
                                     autoderefs: uint)
                                     -> Option<MethodCallee> {
-        /*!
-         * Searches for a candidate by converting things like
-         * `~[]` to `&[]`.
-         */
-
         debug!("search_for_autosliced_method {}", ppaux::ty_to_str(self.tcx(), self_ty));
 
         let sty = ty::get(self_ty).sty.clone();
@@ -913,14 +893,10 @@ impl<'a> LookupContext<'a> {
         }
     }
 
+    /// Converts any type `T` to `&M T` where `M` is an
+    /// appropriate mutability.
     fn search_for_autoptrd_method(&self, self_ty: ty::t, autoderefs: uint)
                                   -> Option<MethodCallee> {
-        /*!
-         *
-         * Converts any type `T` to `&M T` where `M` is an
-         * appropriate mutability.
-         */
-
         let tcx = self.tcx();
         match ty::get(self_ty).sty {
             ty_bare_fn(..) | ty_box(..) | ty_uniq(..) | ty_rptr(..) |
@@ -1203,15 +1179,12 @@ impl<'a> LookupContext<'a> {
         }
     }
 
+    /// There are some limitations to calling functions through an
+    /// object, because (a) the self type is not known
+    /// (that's the whole point of a trait instance, after all, to
+    /// obscure the self type) and (b) the call must go through a
+    /// vtable and hence cannot be monomorphized.
     fn enforce_object_limitations(&self, candidate: &Candidate) {
-        /*!
-         * There are some limitations to calling functions through an
-         * object, because (a) the self type is not known
-         * (that's the whole point of a trait instance, after all, to
-         * obscure the self type) and (b) the call must go through a
-         * vtable and hence cannot be monomorphized.
-         */
-
         match candidate.origin {
             MethodStatic(..) | MethodParam(..) => {
                 return; // not a call to a trait instance

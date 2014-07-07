@@ -32,9 +32,7 @@ use slice::ImmutableVector;
 use slice;
 use uint;
 
-/*
-Section: Creating a string
-*/
+// Section: Creating a string
 
 /// Converts a vector to a string slice without performing any allocations.
 ///
@@ -93,9 +91,7 @@ impl<'a> CharEq for &'a [char] {
     }
 }
 
-/*
-Section: Iterators
-*/
+// Section: Iterators
 
 /// External iterator for a string's characters.
 /// Use with the `std::iter` module.
@@ -577,7 +573,7 @@ impl<'a> Iterator<u16> for Utf16CodeUnits<'a> {
 
         let mut buf = [0u16, ..2];
         self.chars.next().map(|ch| {
-            let n = ch.encode_utf16(buf /* as mut slice! */);
+            let n = ch.encode_utf16(buf); // as mut slice!
             if n == 2 { self.extra = buf[1]; }
             buf[0]
         })
@@ -593,9 +589,7 @@ impl<'a> Iterator<u16> for Utf16CodeUnits<'a> {
     }
 }
 
-/*
-Section: Comparing strings
-*/
+// Section: Comparing strings
 
 // share the implementation of the lang-item vs. non-lang-item
 // eq_slice.
@@ -621,9 +615,7 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
     eq_slice_(a, b)
 }
 
-/*
-Section: Misc
-*/
+// Section: Misc
 
 /// Walk through `iter` checking that it's a valid UTF-8 sequence,
 /// returning `true` in that case, or, if it is invalid, `false` with
@@ -958,9 +950,7 @@ pub mod raw {
     }
 }
 
-/*
-Section: Trait implementations
-*/
+// Section: Trait implementations
 
 #[allow(missing_doc)]
 pub mod traits {

@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-A Big integer (signed version: `BigInt`, unsigned version: `BigUint`).
-
-A `BigUint` is represented as an array of `BigDigit`s.
-A `BigInt` is a combination of `BigUint` and `Sign`.
-*/
+//! A Big integer (signed version: `BigInt`, unsigned version: `BigUint`).
+//!
+//! A `BigUint` is represented as an array of `BigDigit`s.
+//! A `BigInt` is a combination of `BigUint` and `Sign`.
 
 use Integer;
 use rand::Rng;
@@ -28,15 +25,11 @@ use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use std::string::String;
 use std::{uint, i64, u64};
 
-/**
-A `BigDigit` is a `BigUint`'s composing element.
-*/
+/// A `BigDigit` is a `BigUint`'s composing element.
 pub type BigDigit = u32;
 
-/**
-A `DoubleBigDigit` is the internal type used to do the computations.  Its
-size is the double of the size of `BigDigit`.
-*/
+/// A `DoubleBigDigit` is the internal type used to do the computations.
+/// Its size is the double of the size of `BigDigit`.
 pub type DoubleBigDigit = u64;
 
 pub static ZERO_BIG_DIGIT: BigDigit = 0;
@@ -70,12 +63,10 @@ pub mod BigDigit {
     }
 }
 
-/**
-A big unsigned integer type.
-
-A `BigUint`-typed value `BigUint { data: vec!(a, b, c) }` represents a number
-`(a + b * BigDigit::base + c * BigDigit::base^2)`.
-*/
+/// A big unsigned integer type.
+///
+/// A `BigUint`-typed value `BigUint { data: vec!(a, b, c) }` represents
+/// a number/ `(a + b * BigDigit::base + c * BigDigit::base^2)`.
 #[deriving(Clone)]
 pub struct BigUint {
     data: Vec<BigDigit>
@@ -223,10 +214,8 @@ impl Sub<BigUint, BigUint> for BigUint {
                     - (*bi as DoubleBigDigit)
                     - (borrow as DoubleBigDigit)
             );
-            /*
-            hi * (base) + lo == 1*(base) + ai - bi - borrow
-            => ai - bi - borrow < 0 <=> hi == 0
-            */
+            // hi * (base) + lo == 1*(base) + ai - bi - borrow
+            // => ai - bi - borrow < 0 <=> hi == 0
             borrow = if hi == 0 { 1 } else { 0 };
             lo
         }).collect();
@@ -460,11 +449,9 @@ impl Integer for BigUint {
         }
     }
 
-    /**
-     * Calculates the Greatest Common Divisor (GCD) of the number and `other`
-     *
-     * The result is always positive
-     */
+    /// Calculates the Greatest Common Divisor (GCD) of the number and `other`
+    ///
+    /// The result is always positive
     #[inline]
     fn gcd(&self, other: &BigUint) -> BigUint {
         // Use Euclid's algorithm
@@ -478,9 +465,7 @@ impl Integer for BigUint {
         return n;
     }
 
-    /**
-     * Calculates the Lowest Common Multiple (LCM) of the number and `other`
-     */
+    /// Calculates the Lowest Common Multiple (LCM) of the number and `other`
     #[inline]
     fn lcm(&self, other: &BigUint) -> BigUint { ((*self * *other) / self.gcd(other)) }
 
@@ -1068,19 +1053,15 @@ impl Integer for BigInt {
         }
     }
 
-    /**
-     * Calculates the Greatest Common Divisor (GCD) of the number and `other`
-     *
-     * The result is always positive
-     */
+    /// Calculates the Greatest Common Divisor (GCD) of the number and `other`
+    ///
+    /// The result is always positive
     #[inline]
     fn gcd(&self, other: &BigInt) -> BigInt {
         BigInt::from_biguint(Plus, self.data.gcd(&other.data))
     }
 
-    /**
-     * Calculates the Lowest Common Multiple (LCM) of the number and `other`
-     */
+    /// Calculates the Lowest Common Multiple (LCM) of the number and `other`
     #[inline]
     fn lcm(&self, other: &BigInt) -> BigInt {
         BigInt::from_biguint(Plus, self.data.lcm(&other.data))

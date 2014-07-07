@@ -8,29 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- *
- * # Lattice Variables
- *
- * This file contains generic code for operating on inference variables
- * that are characterized by an upper- and lower-bound.  The logic and
- * reasoning is explained in detail in the large comment in `infer.rs`.
- *
- * The code in here is defined quite generically so that it can be
- * applied both to type variables, which represent types being inferred,
- * and fn variables, which represent function types being inferred.
- * It may eventually be applied to their types as well, who knows.
- * In some cases, the functions are also generic with respect to the
- * operation on the lattice (GLB vs LUB).
- *
- * Although all the functions are generic, we generally write the
- * comments in a way that is specific to type variables and the LUB
- * operation.  It's just easier that way.
- *
- * In general all of the functions are defined parametrically
- * over a `LatticeValue`, which is a value defined with respect to
- * a lattice.
- */
+//! # Lattice Variables
+//!
+//! This file contains generic code for operating on inference variables
+//! that are characterized by an upper- and lower-bound.  The logic and
+//! reasoning is explained in detail in the large comment in `infer.rs`.
+//!
+//! The code in here is defined quite generically so that it can be
+//! applied both to type variables, which represent types being inferred,
+//! and fn variables, which represent function types being inferred.
+//! It may eventually be applied to their types as well, who knows.
+//! In some cases, the functions are also generic with respect to the
+//! operation on the lattice (GLB vs LUB).
+//!
+//! Although all the functions are generic, we generally write the
+//! comments in a way that is specific to type variables and the LUB
+//! operation.  It's just easier that way.
+//!
+//! In general all of the functions are defined parametrically
+//! over a `LatticeValue`, which is a value defined with respect to
+//! a lattice.
 
 use middle::ty::{RegionVid, TyVar};
 use middle::ty;
@@ -108,17 +105,13 @@ pub trait CombineFieldsLatticeMethods2<T:LatticeValue> {
 impl<'f,T:LatticeValue, K:UnifyKey<Bounds<T>>>
     CombineFieldsLatticeMethods<T,K> for CombineFields<'f>
 {
+    /// Make one variable a subtype of another variable.  This is a
+    /// subtle and tricky process, as described in detail at the
+    /// top of infer.rs.
     fn var_sub_var(&self,
                    a_id: K,
                    b_id: K)
-                   -> ures
-    {
-        /*!
-         * Make one variable a subtype of another variable.  This is a
-         * subtle and tricky process, as described in detail at the
-         * top of infer.rs.
-         */
-
+                   -> ures {
         let tcx = self.infcx.tcx;
         let table = UnifyKey::unification_table(self.infcx);
 
@@ -146,10 +139,10 @@ impl<'f,T:LatticeValue, K:UnifyKey<Bounds<T>>>
                     Ok(()) => {
                         return Ok(());
                     }
-                    Err(_) => { /*fallthrough */ }
+                    Err(_) => { /* fallthrough */ }
                 }
             }
-            _ => { /*fallthrough*/ }
+            _ => { /* fallthrough */ }
         }
 
         // Otherwise, we need to merge A and B so as to guarantee that
@@ -163,16 +156,11 @@ impl<'f,T:LatticeValue, K:UnifyKey<Bounds<T>>>
                                       new_rank)
     }
 
-    /// make variable a subtype of T
+    /// Make a variable (`a_id`) a subtype of the concrete type `b`.
     fn var_sub_t(&self,
                  a_id: K,
                  b: T)
-                 -> ures
-    {
-        /*!
-         * Make a variable (`a_id`) a subtype of the concrete type `b`.
-         */
-
+                 -> ures {
         let tcx = self.infcx.tcx;
         let table = UnifyKey::unification_table(self.infcx);
         let node_a = table.borrow_mut().get(tcx, a_id);
@@ -189,15 +177,11 @@ impl<'f,T:LatticeValue, K:UnifyKey<Bounds<T>>>
             a_id, a_bounds, b_bounds, node_a.rank)
     }
 
+    /// Make a concrete type (`a`) a subtype of the variable `b_id`
     fn t_sub_var(&self,
                  a: T,
                  b_id: K)
-                 -> ures
-    {
-        /*!
-         * Make a concrete type (`a`) a subtype of the variable `b_id`
-         */
-
+                 -> ures {
         let tcx = self.infcx.tcx;
         let table = UnifyKey::unification_table(self.infcx);
         let a_bounds = &Bounds { lb: Some(a.clone()), ub: None };
@@ -214,24 +198,20 @@ impl<'f,T:LatticeValue, K:UnifyKey<Bounds<T>>>
             b_id, a_bounds, b_bounds, node_b.rank)
     }
 
+    /// Updates the bounds for the variable `v_id` to be the intersection
+    /// of `a` and `b`.  That is, the new bounds for `v_id` will be
+    /// a bounds c such that:
+    ///    c.ub <: a.ub
+    ///    c.ub <: b.ub
+    ///    a.lb <: c.lb
+    ///    b.lb <: c.lb
+    /// If this cannot be achieved, the result is failure.
     fn set_var_to_merged_bounds(&self,
                                 v_id: K,
                                 a: &Bounds<T>,
                                 b: &Bounds<T>,
                                 rank: uint)
-                                -> ures
-    {
-        /*!
-         * Updates the bounds for the variable `v_id` to be the intersection
-         * of `a` and `b`.  That is, the new bounds for `v_id` will be
-         * a bounds c such that:
-         *    c.ub <: a.ub
-         *    c.ub <: b.ub
-         *    a.lb <: c.lb
-         *    b.lb <: c.lb
-         * If this cannot be achieved, the result is failure.
-         */
-
+                                -> ures {
         // Think of the two diamonds, we want to find the
         // intersection.  There are basically four possibilities (you
         // can swap A/B in these pictures):
@@ -281,16 +261,12 @@ impl<'f,T:LatticeValue, K:UnifyKey<Bounds<T>>>
 impl<'f,T:LatticeValue>
     CombineFieldsLatticeMethods2<T> for CombineFields<'f>
 {
+    /// Combines two bounds into a more general bound.
     fn merge_bnd(&self,
                  a: &Bound<T>,
                  b: &Bound<T>,
                  lattice_op: LatticeOp<T>)
-                 -> cres<Bound<T>>
-    {
-        /*!
-         * Combines two bounds into a more general bound.
-         */
-
+                 -> cres<Bound<T>> {
         debug!("merge_bnd({},{})",
                a.repr(self.infcx.tcx),
                b.repr(self.infcx.tcx));
@@ -422,22 +398,20 @@ pub enum LatticeVarResult<K,T> {
     ValueResult(T)
 }
 
-/**
- * Computes the LUB or GLB of two bounded variables.  These could be any
- * sort of variables, but in the comments on this function I'll assume
- * we are doing an LUB on two type variables.
- *
- * This computation can be done in one of two ways:
- *
- * - If both variables have an upper bound, we may just compute the
- *   LUB of those bounds and return that, in which case we are
- *   returning a type.  This is indicated with a `ValueResult` return.
- *
- * - If the variables do not both have an upper bound, we will unify
- *   the variables and return the unified variable, in which case the
- *   result is a variable.  This is indicated with a `VarResult`
- *   return.
- */
+/// Computes the LUB or GLB of two bounded variables.  These could be any
+/// sort of variables, but in the comments on this function I'll assume
+/// we are doing an LUB on two type variables.
+///
+/// This computation can be done in one of two ways:
+///
+/// - If both variables have an upper bound, we may just compute the
+///   LUB of those bounds and return that, in which case we are
+///   returning a type.  This is indicated with a `ValueResult` return.
+///
+/// - If the variables do not both have an upper bound, we will unify
+///   the variables and return the unified variable, in which case the
+///   result is a variable.  This is indicated with a `VarResult`
+///   return.
 pub fn lattice_vars<L:LatticeDir+Combine,
                     T:LatticeValue,
                     K:UnifyKey<Bounds<T>>>(
@@ -474,10 +448,10 @@ pub fn lattice_vars<L:LatticeDir+Combine,
         (Some(ref a_ty), Some(ref b_ty)) => {
             match this.infcx().try(|| lattice_dir_op(a_ty, b_ty) ) {
                 Ok(t) => return Ok(ValueResult(t)),
-                Err(_) => { /*fallthrough */ }
+                Err(_) => { /* fallthrough */ }
             }
         }
-        _ => {/*fallthrough*/}
+        _ => { /* fallthrough */ }
     }
 
     // Otherwise, we need to merge A and B into one variable.  We can

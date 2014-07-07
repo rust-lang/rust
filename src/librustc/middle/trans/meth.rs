@@ -40,12 +40,11 @@ use syntax::abi::Rust;
 use syntax::parse::token;
 use syntax::{ast, ast_map, visit};
 
-/**
-The main "translation" pass for methods.  Generates code
-for non-monomorphized methods only.  Other methods will
-be generated once they are invoked with specific type parameters,
-see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
-*/
+
+/// The main "translation" pass for methods.  Generates code
+/// for non-monomorphized methods only.  Other methods will
+/// be generated once they are invoked with specific type parameters,
+/// see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 pub fn trans_impl(ccx: &CrateContext,
                   name: ast::Ident,
                   methods: &[Gc<ast::Method>],
@@ -259,29 +258,25 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
     }
 }
 
+/// Creates a concatenated set of substitutions which includes
+/// those from the impl and those from the method.  This are
+/// some subtle complications here.  Statically, we have a list
+/// of type parameters like `[T0, T1, T2, M1, M2, M3]` where
+/// `Tn` are type parameters that appear on the receiver.  For
+/// example, if the receiver is a method parameter `A` with a
+/// bound like `trait<B,C,D>` then `Tn` would be `[B,C,D]`.
+///
+/// The weird part is that the type `A` might now be bound to
+/// any other type, such as `foo<X>`.  In that case, the vector
+/// we want is: `[X, M1, M2, M3]`.  Therefore, what we do now is
+/// to slice off the method type parameters and append them to
+/// the type parameters from the type that the receiver is
+/// mapped to.
 fn combine_impl_and_methods_tps(bcx: &Block,
                                 node: ExprOrMethodCall,
                                 rcvr_substs: subst::Substs,
                                 rcvr_origins: typeck::vtable_res)
-                                -> (subst::Substs, typeck::vtable_res)
-{
-    /*!
-     * Creates a concatenated set of substitutions which includes
-     * those from the impl and those from the method.  This are
-     * some subtle complications here.  Statically, we have a list
-     * of type parameters like `[T0, T1, T2, M1, M2, M3]` where
-     * `Tn` are type parameters that appear on the receiver.  For
-     * example, if the receiver is a method parameter `A` with a
-     * bound like `trait<B,C,D>` then `Tn` would be `[B,C,D]`.
-     *
-     * The weird part is that the type `A` might now be bound to
-     * any other type, such as `foo<X>`.  In that case, the vector
-     * we want is: `[X, M1, M2, M3]`.  Therefore, what we do now is
-     * to slice off the method type parameters and append them to
-     * the type parameters from the type that the receiver is
-     * mapped to.
-     */
-
+                                -> (subst::Substs, typeck::vtable_res) {
     let ccx = bcx.ccx();
 
     let vtable_key = match node {
@@ -313,21 +308,18 @@ fn combine_impl_and_methods_tps(bcx: &Block,
     (ty_substs, vtables)
 }
 
+/// Create a method callee where the method is coming from a trait
+/// object (e.g., Box<Trait> type).  In this case, we must pull the fn
+/// pointer out of the vtable that is packaged up with the object.
+/// Objects are represented as a pair, so we first evaluate the self
+/// expression and then extract the self data and vtable out of the
+/// pair.
 fn trans_trait_callee<'a>(bcx: &'a Block<'a>,
                           method_ty: ty::t,
                           n_method: uint,
                           self_expr: &ast::Expr,
                           arg_cleanup_scope: cleanup::ScopeId)
                           -> Callee<'a> {
-    /*!
-     * Create a method callee where the method is coming from a trait
-     * object (e.g., Box<Trait> type).  In this case, we must pull the fn
-     * pointer out of the vtable that is packaged up with the object.
-     * Objects are represented as a pair, so we first evaluate the self
-     * expression and then extract the self data and vtable out of the
-     * pair.
-     */
-
     let _icx = push_ctxt("meth::trans_trait_callee");
     let mut bcx = bcx;
 
@@ -357,16 +349,13 @@ fn trans_trait_callee<'a>(bcx: &'a Block<'a>,
     trans_trait_callee_from_llval(bcx, method_ty, n_method, llval)
 }
 
+/// Same as `trans_trait_callee()` above, except that it is given
+/// a by-ref pointer to the object pair.
 pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
                                          callee_ty: ty::t,
                                          n_method: uint,
                                          llpair: ValueRef)
                                          -> Callee<'a> {
-    /*!
-     * Same as `trans_trait_callee()` above, except that it is given
-     * a by-ref pointer to the object pair.
-     */
-
     let _icx = push_ctxt("meth::trans_trait_callee");
     let ccx = bcx.ccx();
 
@@ -514,18 +503,15 @@ fn emit_vtable_methods(bcx: &Block,
     }).collect()
 }
 
+/// Generates the code to convert from a pointer (`Box<T>`, `&T`, etc)
+/// into an object (`Box<Trait>`, `&Trait`, etc). This means creating a
+/// pair where the first word is the vtable and the second word is
+/// the pointer.
 pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
                             datum: Datum<Expr>,
                             id: ast::NodeId,
                             dest: expr::Dest)
                             -> &'a Block<'a> {
-    /*!
-     * Generates the code to convert from a pointer (`Box<T>`, `&T`, etc)
-     * into an object (`Box<Trait>`, `&Trait`, etc). This means creating a
-     * pair where the first word is the vtable and the second word is
-     * the pointer.
-     */
-
     let mut bcx = bcx;
     let _icx = push_ctxt("meth::trans_cast");
 

@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Name resolution for lifetimes.
- *
- * Name resolution for lifetimes follows MUCH simpler rules than the
- * full resolve. For example, lifetime names are never exported or
- * used between functions, and they operate in a purely top-down
- * way. Therefore we break lifetime name resolution into a separate pass.
- */
+//! Name resolution for lifetimes.
+//!
+//! Name resolution for lifetimes follows MUCH simpler rules than the
+//! full resolve. For example, lifetime names are never exported or
+//! used between functions, and they operate in a purely top-down
+//! way. Therefore we break lifetime name resolution into a separate pass.
 
 use driver::session::Session;
 use middle::subst;
@@ -175,35 +173,33 @@ impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
 
 impl<'a> LifetimeContext<'a> {
     /// Visits self by adding a scope and handling recursive walk over the contents with `walk`.
+    ///
+    /// Handles visiting fns and methods. These are a bit
+    /// complicated because we must distinguish early- vs late-bound
+    /// lifetime parameters. We do this by checking which lifetimes
+    /// appear within type bounds; those are early bound lifetimes,
+    /// and the rest are late bound.
+    ///
+    /// For example:
+    ///
+    ///    fn foo<'a,'b,'c,T:Trait<'b>>(...)
+    ///
+    /// Here `'a` and `'c` are late bound but `'b` is early
+    /// bound. Note that early- and late-bound lifetimes may be
+    /// interspersed together.
+    ///
+    /// If early bound lifetimes are present, we separate them into
+    /// their own list (and likewise for late bound). They will be
+    /// numbered sequentially, starting from the lowest index that
+    /// is already in scope (for a fn item, that will be 0, but for
+    /// a method it might not be). Late bound lifetimes are
+    /// resolved by name and associated with a binder id (`n`), so
+    /// the ordering is not important there.
     fn visit_fn_decl(&mut self,
                      n: ast::NodeId,
                      generics: &ast::Generics,
                      scope: Scope,
                      walk: |&mut LifetimeContext, Scope|) {
-        /*!
-         * Handles visiting fns and methods. These are a bit
-         * complicated because we must distinguish early- vs late-bound
-         * lifetime parameters. We do this by checking which lifetimes
-         * appear within type bounds; those are early bound lifetimes,
-         * and the rest are late bound.
-         *
-         * For example:
-         *
-         *    fn foo<'a,'b,'c,T:Trait<'b>>(...)
-         *
-         * Here `'a` and `'c` are late bound but `'b` is early
-         * bound. Note that early- and late-bound lifetimes may be
-         * interspersed together.
-         *
-         * If early bound lifetimes are present, we separate them into
-         * their own list (and likewise for late bound). They will be
-         * numbered sequentially, starting from the lowest index that
-         * is already in scope (for a fn item, that will be 0, but for
-         * a method it might not be). Late bound lifetimes are
-         * resolved by name and associated with a binder id (`n`), so
-         * the ordering is not important there.
-         */
-
         self.check_lifetime_names(&generics.lifetimes);
 
         let referenced_idents = free_lifetimes(&generics.ty_params);
@@ -404,14 +400,11 @@ pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::Lifeti
         .collect()
 }
 
+/// Gathers up and returns the names of any lifetimes that appear
+/// free in `ty_params`. Of course, right now, all lifetimes appear
+/// free, since we don't currently have any binders in type parameter
+/// declarations; just being forwards compatible with future extensions.
 pub fn free_lifetimes(ty_params: &OwnedSlice<ast::TyParam>) -> Vec<ast::Name> {
-    /*!
-     * Gathers up and returns the names of any lifetimes that appear
-     * free in `ty_params`. Of course, right now, all lifetimes appear
-     * free, since we don't currently have any binders in type parameter
-     * declarations; just being forwards compatible with future extensions.
-     */
-
     let mut collector = FreeLifetimeCollector { names: vec!() };
     for ty_param in ty_params.iter() {
         visit::walk_ty_param_bounds(&mut collector, &ty_param.bounds, ());

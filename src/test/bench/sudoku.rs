@@ -66,7 +66,7 @@ impl Sudoku {
     }
 
     pub fn read(mut reader: BufferedReader<StdReader>) -> Sudoku {
-        /* assert first line is exactly "9,9" */
+        // assert first line is exactly "9,9"
         assert!(reader.read_line().unwrap() == "9,9".to_string());
 
         let mut g = Vec::from_fn(10u, { |_i| vec!(0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8) });
@@ -104,7 +104,7 @@ impl Sudoku {
 
     // solve sudoku grid
     pub fn solve(&mut self) {
-        let mut work: Vec<(u8, u8)> = Vec::new(); /* queue of uncolored fields */
+        let mut work: Vec<(u8, u8)> = Vec::new(); // queue of uncolored fields
         for row in range(0u8, 9u8) {
             for col in range(0u8, 9u8) {
                 let color = *self.grid.get(row as uint).get(col as uint);
@@ -154,10 +154,10 @@ impl Sudoku {
         for idx in range(0u8, 9u8) {
             avail.remove(*self.grid
                               .get(idx as uint)
-                              .get(col as uint)); /* check same column fields */
+                              .get(col as uint)); // check same column fields
             avail.remove(*self.grid
                               .get(row as uint)
-                              .get(idx as uint)); /* check same row fields */
+                              .get(idx as uint)); // check same row fields
         }
 
         // check same block fields
@@ -176,7 +176,7 @@ impl Sudoku {
 // Stores available colors as simple bitfield, bit 0 is always unset
 struct Colors(u16);
 
-static HEADS: u16 = (1u16 << 10) - 1; /* bits 9..0 */
+static HEADS: u16 = (1u16 << 10) - 1; // bits 9..0
 
 impl Colors {
     fn new(start_color: u8) -> Colors {

@@ -8,51 +8,49 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-Generate and parse UUIDs
-
-Provides support for Universally Unique Identifiers (UUIDs). A UUID is a
-unique 128-bit number, stored as 16 octets.  UUIDs are used to  assign unique
-identifiers to entities without requiring a central allocating authority.
-
-They are particularly useful in distributed systems, though can be used in
-disparate areas, such as databases and network protocols.  Typically a UUID is
-displayed in a readable string form as a sequence of hexadecimal digits,
-separated into groups by hyphens.
-
-The uniqueness property is not strictly guaranteed, however for all practical
-purposes, it can be assumed that an unintentional collision would be extremely
-unlikely.
-
-# Examples
-
-To create a new random (V4) UUID and print it out in hexadecimal form:
-
-```rust
-use uuid::Uuid;
-
-fn main() {
-    let uuid1 = Uuid::new_v4();
-    println!("{}", uuid1.to_str());
-}
-```
-
-# Strings
-
-Examples of string representations:
-
-* simple: `936DA01F9ABD4d9d80C702AF85C822A8`
-* hyphenated: `550e8400-e29b-41d4-a716-446655440000`
-* urn: `urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4`
-
-# References
-
-* [Wikipedia: Universally Unique Identifier](
-    http://en.wikipedia.org/wiki/Universally_unique_identifier)
-* [RFC4122: A Universally Unique IDentifier (UUID) URN Namespace](
-    http://tools.ietf.org/html/rfc4122)
-
-*/
+//! Generate and parse UUIDs
+//!
+//! Provides support for Universally Unique Identifiers (UUIDs). A UUID is a
+//! unique 128-bit number, stored as 16 octets.  UUIDs are used to  assign
+//! unique identifiers to entities without requiring a central allocating
+//! authority.
+//!
+//! They are particularly useful in distributed systems, though can be used in
+//! disparate areas, such as databases and network protocols.  Typically a UUID
+//! is displayed in a readable string form as a sequence of hexadecimal digits,
+//! separated into groups by hyphens.
+//!
+//! The uniqueness property is not strictly guaranteed, however for all
+//! practical purposes, it can be assumed that an unintentional collision would
+//! be extremely unlikely.
+//!
+//! # Examples
+//!
+//! To create a new random (V4) UUID and print it out in hexadecimal form:
+//!
+//! ```rust
+//! use uuid::Uuid;
+//!
+//! fn main() {
+//!     let uuid1 = Uuid::new_v4();
+//!     println!("{}", uuid1.to_str());
+//! }
+//! ```
+//!
+//! # Strings
+//!
+//! Examples of string representations:
+//!
+//! * simple: `936DA01F9ABD4d9d80C702AF85C822A8`
+//! * hyphenated: `550e8400-e29b-41d4-a716-446655440000`
+//! * urn: `urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4`
+//!
+//! # References
+//!
+//! * [Wikipedia: Universally Unique Identifier](
+//!     http://en.wikipedia.org/wiki/Universally_unique_identifier)
+//! * [RFC4122: A Universally Unique IDentifier (UUID) URN Namespace](
+//!     http://tools.ietf.org/html/rfc4122)
 
 #![crate_id = "uuid#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "uuid"]

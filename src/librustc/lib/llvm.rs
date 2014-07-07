@@ -350,7 +350,7 @@ pub mod llvm {
     // set of the libraries we need to link to LLVM for.
     #[link(name = "rustllvm", kind = "static")]
     extern {
-        /* Create and destroy contexts. */
+        // Create and destroy contexts.
         pub fn LLVMContextCreate() -> ContextRef;
         pub fn LLVMContextDispose(C: ContextRef);
         pub fn LLVMGetMDKindIDInContext(C: ContextRef,
@@ -358,34 +358,34 @@ pub mod llvm {
                                         SLen: c_uint)
                                         -> c_uint;
 
-        /* Create and destroy modules. */
+        // Create and destroy modules.
         pub fn LLVMModuleCreateWithNameInContext(ModuleID: *const c_char,
                                                  C: ContextRef)
                                                  -> ModuleRef;
         pub fn LLVMGetModuleContext(M: ModuleRef) -> ContextRef;
         pub fn LLVMDisposeModule(M: ModuleRef);
 
-        /** Data layout. See Module::getDataLayout. */
+        /// Data layout. See Module::getDataLayout.
         pub fn LLVMGetDataLayout(M: ModuleRef) -> *const c_char;
         pub fn LLVMSetDataLayout(M: ModuleRef, Triple: *const c_char);
 
-        /** Target triple. See Module::getTargetTriple. */
+        /// Target triple. See Module::getTargetTriple.
         pub fn LLVMGetTarget(M: ModuleRef) -> *const c_char;
         pub fn LLVMSetTarget(M: ModuleRef, Triple: *const c_char);
 
-        /** See Module::dump. */
+        /// See Module::dump.
         pub fn LLVMDumpModule(M: ModuleRef);
 
-        /** See Module::setModuleInlineAsm. */
+        /// See Module::setModuleInlineAsm.
         pub fn LLVMSetModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
 
-        /** See llvm::LLVMTypeKind::getTypeID. */
+        /// See llvm::LLVMTypeKind::getTypeID.
         pub fn LLVMGetTypeKind(Ty: TypeRef) -> TypeKind;
 
-        /** See llvm::LLVMType::getContext. */
+        /// See llvm::LLVMType::getContext.
         pub fn LLVMGetTypeContext(Ty: TypeRef) -> ContextRef;
 
-        /* Operations on integer types */
+        // Operations on integer types
         pub fn LLVMInt1TypeInContext(C: ContextRef) -> TypeRef;
         pub fn LLVMInt8TypeInContext(C: ContextRef) -> TypeRef;
         pub fn LLVMInt16TypeInContext(C: ContextRef) -> TypeRef;
@@ -396,14 +396,14 @@ pub mod llvm {
 
         pub fn LLVMGetIntTypeWidth(IntegerTy: TypeRef) -> c_uint;
 
-        /* Operations on real types */
+        // Operations on real types
         pub fn LLVMFloatTypeInContext(C: ContextRef) -> TypeRef;
         pub fn LLVMDoubleTypeInContext(C: ContextRef) -> TypeRef;
         pub fn LLVMX86FP80TypeInContext(C: ContextRef) -> TypeRef;
         pub fn LLVMFP128TypeInContext(C: ContextRef) -> TypeRef;
         pub fn LLVMPPCFP128TypeInContext(C: ContextRef) -> TypeRef;
 
-        /* Operations on function types */
+        // Operations on function types
         pub fn LLVMFunctionType(ReturnType: TypeRef,
                                 ParamTypes: *const TypeRef,
                                 ParamCount: c_uint,
@@ -414,7 +414,7 @@ pub mod llvm {
         pub fn LLVMCountParamTypes(FunctionTy: TypeRef) -> c_uint;
         pub fn LLVMGetParamTypes(FunctionTy: TypeRef, Dest: *const TypeRef);
 
-        /* Operations on struct types */
+        // Operations on struct types
         pub fn LLVMStructTypeInContext(C: ContextRef,
                                        ElementTypes: *const TypeRef,
                                        ElementCount: c_uint,
@@ -425,7 +425,7 @@ pub mod llvm {
                                          Dest: *mut TypeRef);
         pub fn LLVMIsPackedStruct(StructTy: TypeRef) -> Bool;
 
-        /* Operations on array, pointer, and vector types (sequence types) */
+        // Operations on array, pointer, and vector types (sequence types)
         pub fn LLVMRustArrayType(ElementType: TypeRef, ElementCount: u64) -> TypeRef;
         pub fn LLVMPointerType(ElementType: TypeRef, AddressSpace: c_uint)
                                -> TypeRef;
@@ -439,12 +439,12 @@ pub mod llvm {
                                       -> *const ();
         pub fn LLVMGetVectorSize(VectorTy: TypeRef) -> c_uint;
 
-        /* Operations on other types */
+        // Operations on other types
         pub fn LLVMVoidTypeInContext(C: ContextRef) -> TypeRef;
         pub fn LLVMLabelTypeInContext(C: ContextRef) -> TypeRef;
         pub fn LLVMMetadataTypeInContext(C: ContextRef) -> TypeRef;
 
-        /* Operations on all values */
+        // Operations on all values
         pub fn LLVMTypeOf(Val: ValueRef) -> TypeRef;
         pub fn LLVMGetValueName(Val: ValueRef) -> *const c_char;
         pub fn LLVMSetValueName(Val: ValueRef, Name: *const c_char);
@@ -454,33 +454,33 @@ pub mod llvm {
         pub fn LLVMGetMetadata(Val: ValueRef, KindID: c_uint) -> ValueRef;
         pub fn LLVMSetMetadata(Val: ValueRef, KindID: c_uint, Node: ValueRef);
 
-        /* Operations on Uses */
+        // Operations on Uses
         pub fn LLVMGetFirstUse(Val: ValueRef) -> UseRef;
         pub fn LLVMGetNextUse(U: UseRef) -> UseRef;
         pub fn LLVMGetUser(U: UseRef) -> ValueRef;
         pub fn LLVMGetUsedValue(U: UseRef) -> ValueRef;
 
-        /* Operations on Users */
+        // Operations on Users
         pub fn LLVMGetNumOperands(Val: ValueRef) -> c_int;
         pub fn LLVMGetOperand(Val: ValueRef, Index: c_uint) -> ValueRef;
         pub fn LLVMSetOperand(Val: ValueRef, Index: c_uint, Op: ValueRef);
 
-        /* Operations on constants of any type */
+        // Operations on constants of any type
         pub fn LLVMConstNull(Ty: TypeRef) -> ValueRef;
-        /* all zeroes */
+        // all zeroes
         pub fn LLVMConstAllOnes(Ty: TypeRef) -> ValueRef;
         pub fn LLVMConstICmp(Pred: c_ushort, V1: ValueRef, V2: ValueRef)
                              -> ValueRef;
         pub fn LLVMConstFCmp(Pred: c_ushort, V1: ValueRef, V2: ValueRef)
                              -> ValueRef;
-        /* only for int/vector */
+        // only for int/vector
         pub fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
         pub fn LLVMIsConstant(Val: ValueRef) -> Bool;
         pub fn LLVMIsNull(Val: ValueRef) -> Bool;
         pub fn LLVMIsUndef(Val: ValueRef) -> Bool;
         pub fn LLVMConstPointerNull(Ty: TypeRef) -> ValueRef;
 
-        /* Operations on metadata */
+        // Operations on metadata
         pub fn LLVMMDStringInContext(C: ContextRef,
                                      Str: *const c_char,
                                      SLen: c_uint)
@@ -493,7 +493,7 @@ pub mod llvm {
                                            Str: *const c_char,
                                            Val: ValueRef);
 
-        /* Operations on scalar constants */
+        // Operations on scalar constants
         pub fn LLVMConstInt(IntTy: TypeRef, N: c_ulonglong, SignExtend: Bool)
                             -> ValueRef;
         pub fn LLVMConstIntOfString(IntTy: TypeRef, Text: *const c_char, Radix: u8)
@@ -514,7 +514,7 @@ pub mod llvm {
         pub fn LLVMConstIntGetSExtValue(ConstantVal: ValueRef) -> c_longlong;
 
 
-        /* Operations on composite constants */
+        // Operations on composite constants
         pub fn LLVMConstStringInContext(C: ContextRef,
                                         Str: *const c_char,
                                         Length: c_uint,
@@ -533,7 +533,7 @@ pub mod llvm {
         pub fn LLVMConstVector(ScalarConstantVals: *const ValueRef, Size: c_uint)
                                -> ValueRef;
 
-        /* Constant expressions */
+        // Constant expressions
         pub fn LLVMAlignOf(Ty: TypeRef) -> ValueRef;
         pub fn LLVMSizeOf(Ty: TypeRef) -> ValueRef;
         pub fn LLVMConstNeg(ConstantVal: ValueRef) -> ValueRef;
@@ -672,7 +672,7 @@ pub mod llvm {
 
 
 
-        /* Operations on global variables, functions, and aliases (globals) */
+        // Operations on global variables, functions, and aliases (globals)
         pub fn LLVMGetGlobalParent(Global: ValueRef) -> ModuleRef;
         pub fn LLVMIsDeclaration(Global: ValueRef) -> Bool;
         pub fn LLVMGetLinkage(Global: ValueRef) -> c_uint;
@@ -685,7 +685,7 @@ pub mod llvm {
         pub fn LLVMSetAlignment(Global: ValueRef, Bytes: c_uint);
 
 
-        /* Operations on global variables */
+        // Operations on global variables
         pub fn LLVMAddGlobal(M: ModuleRef, Ty: TypeRef, Name: *const c_char)
                              -> ValueRef;
         pub fn LLVMAddGlobalInAddressSpace(M: ModuleRef,
@@ -707,14 +707,14 @@ pub mod llvm {
         pub fn LLVMIsGlobalConstant(GlobalVar: ValueRef) -> Bool;
         pub fn LLVMSetGlobalConstant(GlobalVar: ValueRef, IsConstant: Bool);
 
-        /* Operations on aliases */
+        // Operations on aliases
         pub fn LLVMAddAlias(M: ModuleRef,
                             Ty: TypeRef,
                             Aliasee: ValueRef,
                             Name: *const c_char)
                             -> ValueRef;
 
-        /* Operations on functions */
+        // Operations on functions
         pub fn LLVMAddFunction(M: ModuleRef,
                                Name: *const c_char,
                                FunctionTy: TypeRef)
@@ -739,7 +739,7 @@ pub mod llvm {
         pub fn LLVMRemoveFunctionAttrString(Fn: ValueRef, index: c_uint, Name: *const c_char);
         pub fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_ulonglong;
 
-        /* Operations on parameters */
+        // Operations on parameters
         pub fn LLVMCountParams(Fn: ValueRef) -> c_uint;
         pub fn LLVMGetParams(Fn: ValueRef, Params: *const ValueRef);
         pub fn LLVMGetParam(Fn: ValueRef, Index: c_uint) -> ValueRef;
@@ -753,7 +753,7 @@ pub mod llvm {
         pub fn LLVMGetAttribute(Arg: ValueRef) -> c_uint;
         pub fn LLVMSetParamAlignment(Arg: ValueRef, align: c_uint);
 
-        /* Operations on basic blocks */
+        // Operations on basic blocks
         pub fn LLVMBasicBlockAsValue(BB: BasicBlockRef) -> ValueRef;
         pub fn LLVMValueIsBasicBlock(Val: ValueRef) -> Bool;
         pub fn LLVMValueAsBasicBlock(Val: ValueRef) -> BasicBlockRef;
@@ -782,7 +782,7 @@ pub mod llvm {
         pub fn LLVMMoveBasicBlockBefore(BB: BasicBlockRef,
                                         MoveBefore: BasicBlockRef);
 
-        /* Operations on instructions */
+        // Operations on instructions
         pub fn LLVMGetInstructionParent(Inst: ValueRef) -> BasicBlockRef;
         pub fn LLVMGetFirstInstruction(BB: BasicBlockRef) -> ValueRef;
         pub fn LLVMGetLastInstruction(BB: BasicBlockRef) -> ValueRef;
@@ -790,7 +790,7 @@ pub mod llvm {
         pub fn LLVMGetPreviousInstruction(Inst: ValueRef) -> ValueRef;
         pub fn LLVMInstructionEraseFromParent(Inst: ValueRef);
 
-        /* Operations on call sites */
+        // Operations on call sites
         pub fn LLVMSetInstructionCallConv(Instr: ValueRef, CC: c_uint);
         pub fn LLVMGetInstructionCallConv(Instr: ValueRef) -> c_uint;
         pub fn LLVMAddInstrAttribute(Instr: ValueRef,
@@ -806,15 +806,15 @@ pub mod llvm {
                                         index: c_uint,
                                         Val: uint64_t);
 
-        /* Operations on call instructions (only) */
+        // Operations on call instructions (only)
         pub fn LLVMIsTailCall(CallInst: ValueRef) -> Bool;
         pub fn LLVMSetTailCall(CallInst: ValueRef, IsTailCall: Bool);
 
-        /* Operations on load/store instructions (only) */
+        // Operations on load/store instructions (only)
         pub fn LLVMGetVolatile(MemoryAccessInst: ValueRef) -> Bool;
         pub fn LLVMSetVolatile(MemoryAccessInst: ValueRef, volatile: Bool);
 
-        /* Operations on phi nodes */
+        // Operations on phi nodes
         pub fn LLVMAddIncoming(PhiNode: ValueRef,
                                IncomingValues: *const ValueRef,
                                IncomingBlocks: *const BasicBlockRef,
@@ -825,7 +825,7 @@ pub mod llvm {
         pub fn LLVMGetIncomingBlock(PhiNode: ValueRef, Index: c_uint)
                                     -> BasicBlockRef;
 
-        /* Instruction builders */
+        // Instruction builders
         pub fn LLVMCreateBuilderInContext(C: ContextRef) -> BuilderRef;
         pub fn LLVMPositionBuilder(Builder: BuilderRef,
                                    Block: BasicBlockRef,
@@ -843,12 +843,12 @@ pub mod llvm {
         pub fn LLVMDisposeBuilder(Builder: BuilderRef);
         pub fn LLVMDisposeExecutionEngine(EE: ExecutionEngineRef);
 
-        /* Metadata */
+        // Metadata
         pub fn LLVMSetCurrentDebugLocation(Builder: BuilderRef, L: ValueRef);
         pub fn LLVMGetCurrentDebugLocation(Builder: BuilderRef) -> ValueRef;
         pub fn LLVMSetInstDebugLocation(Builder: BuilderRef, Inst: ValueRef);
 
-        /* Terminators */
+        // Terminators
         pub fn LLVMBuildRetVoid(B: BuilderRef) -> ValueRef;
         pub fn LLVMBuildRet(B: BuilderRef, V: ValueRef) -> ValueRef;
         pub fn LLVMBuildAggregateRet(B: BuilderRef,
@@ -887,21 +887,21 @@ pub mod llvm {
         pub fn LLVMBuildResume(B: BuilderRef, Exn: ValueRef) -> ValueRef;
         pub fn LLVMBuildUnreachable(B: BuilderRef) -> ValueRef;
 
-        /* Add a case to the switch instruction */
+        // Add a case to the switch instruction
         pub fn LLVMAddCase(Switch: ValueRef,
                            OnVal: ValueRef,
                            Dest: BasicBlockRef);
 
-        /* Add a destination to the indirectbr instruction */
+        // Add a destination to the indirectbr instruction
         pub fn LLVMAddDestination(IndirectBr: ValueRef, Dest: BasicBlockRef);
 
-        /* Add a clause to the landing pad instruction */
+        // Add a clause to the landing pad instruction
         pub fn LLVMAddClause(LandingPad: ValueRef, ClauseVal: ValueRef);
 
-        /* Set the cleanup on a landing pad instruction */
+        // Set the cleanup on a landing pad instruction
         pub fn LLVMSetCleanup(LandingPad: ValueRef, Val: Bool);
 
-        /* Arithmetic */
+        // Arithmetic
         pub fn LLVMBuildAdd(B: BuilderRef,
                             LHS: ValueRef,
                             RHS: ValueRef,
@@ -1044,7 +1044,7 @@ pub mod llvm {
         pub fn LLVMBuildNot(B: BuilderRef, V: ValueRef, Name: *const c_char)
                             -> ValueRef;
 
-        /* Memory */
+        // Memory
         pub fn LLVMBuildMalloc(B: BuilderRef, Ty: TypeRef, Name: *const c_char)
                                -> ValueRef;
         pub fn LLVMBuildArrayMalloc(B: BuilderRef,
@@ -1094,7 +1094,7 @@ pub mod llvm {
                                         Name: *const c_char)
                                         -> ValueRef;
 
-        /* Casts */
+        // Casts
         pub fn LLVMBuildTrunc(B: BuilderRef,
                               Val: ValueRef,
                               DestTy: TypeRef,
@@ -1191,7 +1191,7 @@ pub mod llvm {
                                Name: *const c_char)
                                -> ValueRef;
 
-        /* Comparisons */
+        // Comparisons
         pub fn LLVMBuildICmp(B: BuilderRef,
                              Op: c_uint,
                              LHS: ValueRef,
@@ -1205,7 +1205,7 @@ pub mod llvm {
                              Name: *const c_char)
                              -> ValueRef;
 
-        /* Miscellaneous instructions */
+        // Miscellaneous instructions
         pub fn LLVMBuildPhi(B: BuilderRef, Ty: TypeRef, Name: *const c_char)
                             -> ValueRef;
         pub fn LLVMBuildCall(B: BuilderRef,
@@ -1264,7 +1264,7 @@ pub mod llvm {
                                 Name: *const c_char)
                                 -> ValueRef;
 
-        /* Atomic Operations */
+        // Atomic Operations
         pub fn LLVMBuildAtomicLoad(B: BuilderRef,
                                    PointerVal: ValueRef,
                                    Name: *const c_char,
@@ -1297,34 +1297,34 @@ pub mod llvm {
         pub fn LLVMBuildAtomicFence(B: BuilderRef, Order: AtomicOrdering);
 
 
-        /* Selected entries from the downcasts. */
+        // Selected entries from the downcasts.
         pub fn LLVMIsATerminatorInst(Inst: ValueRef) -> ValueRef;
         pub fn LLVMIsAStoreInst(Inst: ValueRef) -> ValueRef;
 
-        /** Writes a module to the specified path. Returns 0 on success. */
+        /// Writes a module to the specified path. Returns 0 on success.
         pub fn LLVMWriteBitcodeToFile(M: ModuleRef, Path: *const c_char) -> c_int;
 
-        /** Creates target data from a target layout string. */
+        /// Creates target data from a target layout string.
         pub fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
         /// Adds the target data to the given pass manager. The pass manager
         /// references the target data only weakly.
         pub fn LLVMAddTargetData(TD: TargetDataRef, PM: PassManagerRef);
-        /** Number of bytes clobbered when doing a Store to *T. */
+        /// Number of bytes clobbered when doing a Store to *T.
         pub fn LLVMStoreSizeOfType(TD: TargetDataRef, Ty: TypeRef)
                                    -> c_ulonglong;
 
-        /** Number of bytes clobbered when doing a Store to *T. */
+        /// Number of bytes clobbered when doing a Store to *T.
         pub fn LLVMSizeOfTypeInBits(TD: TargetDataRef, Ty: TypeRef)
                                     -> c_ulonglong;
 
-        /** Distance between successive elements in an array of T.
-        Includes ABI padding. */
+        /// Distance between successive elements in an array of T.
+        /// Includes ABI padding.
         pub fn LLVMABISizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
 
-        /** Returns the preferred alignment of a type. */
+        /// Returns the preferred alignment of a type.
         pub fn LLVMPreferredAlignmentOfType(TD: TargetDataRef, Ty: TypeRef)
                                             -> c_uint;
-        /** Returns the minimum alignment of a type. */
+        /// Returns the minimum alignment of a type.
         pub fn LLVMABIAlignmentOfType(TD: TargetDataRef, Ty: TypeRef)
                                       -> c_uint;
 
@@ -1335,41 +1335,39 @@ pub mod llvm {
                                    Element: c_uint)
                                    -> c_ulonglong;
 
-        /**
-         * Returns the minimum alignment of a type when part of a call frame.
-         */
+        /// Returns the minimum alignment of a type when part of a call frame.
         pub fn LLVMCallFrameAlignmentOfType(TD: TargetDataRef, Ty: TypeRef)
                                             -> c_uint;
 
-        /** Disposes target data. */
+        /// Disposes target data.
         pub fn LLVMDisposeTargetData(TD: TargetDataRef);
 
-        /** Creates a pass manager. */
+        /// Creates a pass manager.
         pub fn LLVMCreatePassManager() -> PassManagerRef;
 
-        /** Creates a function-by-function pass manager */
+        /// Creates a function-by-function pass manager
         pub fn LLVMCreateFunctionPassManagerForModule(M: ModuleRef)
                                                       -> PassManagerRef;
 
-        /** Disposes a pass manager. */
+        /// Disposes a pass manager.
         pub fn LLVMDisposePassManager(PM: PassManagerRef);
 
-        /** Runs a pass manager on a module. */
+        /// Runs a pass manager on a module.
         pub fn LLVMRunPassManager(PM: PassManagerRef, M: ModuleRef) -> Bool;
 
-        /** Runs the function passes on the provided function. */
+        /// Runs the function passes on the provided function.
         pub fn LLVMRunFunctionPassManager(FPM: PassManagerRef, F: ValueRef)
                                           -> Bool;
 
-        /** Initializes all the function passes scheduled in the manager */
+        /// Initializes all the function passes scheduled in the manager
         pub fn LLVMInitializeFunctionPassManager(FPM: PassManagerRef) -> Bool;
 
-        /** Finalizes all the function passes scheduled in the manager */
+        /// Finalizes all the function passes scheduled in the manager
         pub fn LLVMFinalizeFunctionPassManager(FPM: PassManagerRef) -> Bool;
 
         pub fn LLVMInitializePasses();
 
-        /** Adds a verification pass. */
+        /// Adds a verification pass.
         pub fn LLVMAddVerifierPass(PM: PassManagerRef);
 
         pub fn LLVMAddGlobalOptimizerPass(PM: PassManagerRef);
@@ -1439,38 +1437,38 @@ pub mod llvm {
             Internalize: Bool,
             RunInliner: Bool);
 
-        /** Destroys a memory buffer. */
+        /// Destroys a memory buffer.
         pub fn LLVMDisposeMemoryBuffer(MemBuf: MemoryBufferRef);
 
 
-        /* Stuff that's in rustllvm/ because it's not upstream yet. */
+        // Stuff that's in rustllvm/ because it's not upstream yet.
 
-        /** Opens an object file. */
+        /// Opens an object file.
         pub fn LLVMCreateObjectFile(MemBuf: MemoryBufferRef) -> ObjectFileRef;
-        /** Closes an object file. */
+        /// Closes an object file.
         pub fn LLVMDisposeObjectFile(ObjFile: ObjectFileRef);
 
-        /** Enumerates the sections in an object file. */
+        /// Enumerates the sections in an object file.
         pub fn LLVMGetSections(ObjFile: ObjectFileRef) -> SectionIteratorRef;
-        /** Destroys a section iterator. */
+        /// Destroys a section iterator.
         pub fn LLVMDisposeSectionIterator(SI: SectionIteratorRef);
-        /** Returns true if the section iterator is at the end of the section
-            list: */
+        /// Returns true if the section iterator is at the end of the section
+        /// list:
         pub fn LLVMIsSectionIteratorAtEnd(ObjFile: ObjectFileRef,
                                           SI: SectionIteratorRef)
                                           -> Bool;
-        /** Moves the section iterator to point to the next section. */
+        /// Moves the section iterator to point to the next section.
         pub fn LLVMMoveToNextSection(SI: SectionIteratorRef);
-        /** Returns the current section size. */
+        /// Returns the current section size.
         pub fn LLVMGetSectionSize(SI: SectionIteratorRef) -> c_ulonglong;
-        /** Returns the current section contents as a string buffer. */
+        /// Returns the current section contents as a string buffer.
         pub fn LLVMGetSectionContents(SI: SectionIteratorRef) -> *const c_char;
 
-        /** Reads the given file and returns it as a memory buffer. Use
-            LLVMDisposeMemoryBuffer() to get rid of it. */
+        /// Reads the given file and returns it as a memory buffer. Use
+        /// LLVMDisposeMemoryBuffer() to get rid of it.
         pub fn LLVMRustCreateMemoryBufferWithContentsOfFile(Path: *const c_char)
             -> MemoryBufferRef;
-        /** Borrows the contents of the memory buffer (doesn't copy it) */
+        /// Borrows the contents of the memory buffer (doesn't copy it)
         pub fn LLVMCreateMemoryBufferWithMemoryRange(InputData: *const c_char,
                                                      InputDataLength: size_t,
                                                      BufferName: *const c_char,
@@ -1484,8 +1482,8 @@ pub mod llvm {
         pub fn LLVMIsMultithreaded() -> Bool;
         pub fn LLVMStartMultithreaded() -> Bool;
 
-        /** Returns a string describing the last error caused by an LLVMRust*
-            call. */
+        /// Returns a string describing the last error caused by an LLVMRust*
+        /// call.
         pub fn LLVMRustGetLastError() -> *const c_char;
 
         /// Print the pass timings since static dtors aren't picking them up.
@@ -1503,10 +1501,10 @@ pub mod llvm {
                                     Count: c_uint)
                                     -> ValueRef;
 
-        /** Enables LLVM debug output. */
+        /// Enables LLVM debug output.
         pub fn LLVMSetDebug(Enabled: c_int);
 
-        /** Prepares inline assembly. */
+        /// Prepares inline assembly.
         pub fn LLVMInlineAsm(Ty: TypeRef,
                              AsmString: *const c_char,
                              Constraints: *const c_char,
@@ -1861,7 +1859,7 @@ pub fn SetFunctionAttribute(fn_: ValueRef, attr: Attribute) {
         llvm::LLVMAddFunctionAttribute(fn_, FunctionIndex as c_uint, attr as uint64_t)
     }
 }
-/* Memory-managed object interface to type handles. */
+// Memory-managed object interface to type handles.
 
 pub struct TypeNames {
     named_types: RefCell<HashMap<String, TypeRef>>,
@@ -1907,7 +1905,7 @@ impl TypeNames {
     }
 }
 
-/* Memory-managed interface to target data. */
+// Memory-managed interface to target data.
 
 pub struct TargetData {
     pub lltd: TargetDataRef
@@ -1929,7 +1927,7 @@ pub fn mk_target_data(string_rep: &str) -> TargetData {
     }
 }
 
-/* Memory-managed interface to object files. */
+// Memory-managed interface to object files.
 
 pub struct ObjectFile {
     pub llof: ObjectFileRef,
@@ -1960,7 +1958,7 @@ impl Drop for ObjectFile {
     }
 }
 
-/* Memory-managed interface to section iterators. */
+// Memory-managed interface to section iterators.
 
 pub struct SectionIter {
     pub llsi: SectionIteratorRef

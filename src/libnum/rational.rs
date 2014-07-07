@@ -171,7 +171,7 @@ impl Ratio<BigInt> {
     }
 }
 
-/* Comparisons */
+// Comparisons
 
 // comparing a/b and c/d is the same as comparing a*d and b*c, so we
 // abstract that pattern. The following macro takes a trait and either
@@ -199,7 +199,7 @@ cmp_impl!(impl PartialOrd, lt -> bool, gt -> bool, le -> bool, ge -> bool,
 cmp_impl!(impl Eq, )
 cmp_impl!(impl Ord, cmp -> cmp::Ordering)
 
-/* Arithmetic */
+// Arithmetic
 // a/b * c/d = (a*c)/(b*d)
 impl<T: Clone + Integer + PartialOrd>
     Mul<Ratio<T>,Ratio<T>> for Ratio<T> {
@@ -249,7 +249,7 @@ impl<T: Clone + Integer + PartialOrd>
     }
 }
 
-/* Constants */
+// Constants
 impl<T: Clone + Integer + PartialOrd>
     Zero for Ratio<T> {
     #[inline]
@@ -304,7 +304,7 @@ impl<T: Clone + Integer + PartialOrd>
     fn is_negative(&self) -> bool { *self < Zero::zero() }
 }
 
-/* String conversions */
+// String conversions
 impl<T: fmt::Show + Eq + One> fmt::Show for Ratio<T> {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

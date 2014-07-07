@@ -610,7 +610,7 @@ fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<Gc<Stmt>> {
                     node: StmtSemi(e, stmt_id)
                 }
             }
-            _ => s /* might already have a semi */
+            _ => s // might already have a semi
         }
     }).collect()
 }
@@ -974,7 +974,7 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 }
 
 fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
-    /* this discards information in the case of macro-defining macros */
+    // this discards information in the case of macro-defining macros
     Span {
         lo: sp.lo,
         hi: sp.hi,

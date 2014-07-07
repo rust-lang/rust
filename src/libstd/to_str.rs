@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-The `ToStr` trait for converting to strings
-
-*/
+//! The `ToStr` trait for converting to strings
 
 #![experimental]
 

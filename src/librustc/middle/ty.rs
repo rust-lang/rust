@@ -184,8 +184,8 @@ impl<W:Writer> Hash<W> for intern_key {
 }
 
 pub enum ast_ty_to_ty_cache_entry {
-    atttce_unresolved,  /* not resolved yet */
-    atttce_resolved(t)  /* resolved to a type, irrespective of region */
+    atttce_unresolved,  // not resolved yet
+    atttce_resolved(t)  // resolved to a type, irrespective of region
 }
 
 #[deriving(Clone, PartialEq, Decodable, Encodable)]
@@ -208,8 +208,8 @@ pub enum AutoAdjustment {
     AutoDerefRef(AutoDerefRef),
     AutoObject(ty::TraitStore,
                ty::BuiltinBounds,
-               ast::DefId, /* Trait ID */
-               subst::Substs /* Trait substitutions */)
+               ast::DefId, // Trait ID
+               subst::Substs) // Trait substitutions
 }
 
 #[deriving(Clone, Decodable, Encodable)]
@@ -452,18 +452,16 @@ pub struct ClosureTy {
     pub sig: FnSig,
 }
 
-/**
- * Signature of a function type, which I have arbitrarily
- * decided to use to refer to the input/output types.
- *
- * - `binder_id` is the node id where this fn type appeared;
- *   it is used to identify all the bound regions appearing
- *   in the input/output types that are bound by this fn type
- *   (vs some enclosing or enclosed fn type)
- * - `inputs` is the list of arguments and their modes.
- * - `output` is the return type.
- * - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
- */
+/// Signature of a function type, which I have arbitrarily
+/// decided to use to refer to the input/output types.
+///
+/// - `binder_id` is the node id where this fn type appeared;
+///   it is used to identify all the bound regions appearing
+///   in the input/output types that are bound by this fn type
+///   (vs some enclosing or enclosed fn type)
+/// - `inputs` is the list of arguments and their modes.
+/// - `output` is the return type.
+/// - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct FnSig {
     pub binder_id: ast::NodeId,
@@ -519,11 +517,9 @@ pub enum Region {
     ReEmpty,
 }
 
-/**
- * Upvars do not get their own node-id. Instead, we use the pair of
- * the original var id (that is, the root variable that is referenced
- * by the upvar) and the id of the closure expression.
- */
+/// Upvars do not get their own node-id. Instead, we use the pair of
+/// the original var id (that is, the root variable that is referenced
+/// by the upvar) and the id of the closure expression.
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct UpvarId {
     pub var_id: ast::NodeId,
@@ -576,55 +572,53 @@ pub enum BorrowKind {
     MutBorrow
 }
 
-/**
- * Information describing the borrowing of an upvar. This is computed
- * during `typeck`, specifically by `regionck`. The general idea is
- * that the compiler analyses treat closures like:
- *
- *     let closure: &'e fn() = || {
- *        x = 1;   // upvar x is assigned to
- *        use(y);  // upvar y is read
- *        foo(&z); // upvar z is borrowed immutably
- *     };
- *
- * as if they were "desugared" to something loosely like:
- *
- *     struct Vars<'x,'y,'z> { x: &'x mut int,
- *                             y: &'y const int,
- *                             z: &'z int }
- *     let closure: &'e fn() = {
- *         fn f(env: &Vars) {
- *             *env.x = 1;
- *             use(*env.y);
- *             foo(env.z);
- *         }
- *         let env: &'e mut Vars<'x,'y,'z> = &mut Vars { x: &'x mut x,
- *                                                       y: &'y const y,
- *                                                       z: &'z z };
- *         (env, f)
- *     };
- *
- * This is basically what happens at runtime. The closure is basically
- * an existentially quantified version of the `(env, f)` pair.
- *
- * This data structure indicates the region and mutability of a single
- * one of the `x...z` borrows.
- *
- * It may not be obvious why each borrowed variable gets its own
- * lifetime (in the desugared version of the example, these are indicated
- * by the lifetime parameters `'x`, `'y`, and `'z` in the `Vars` definition).
- * Each such lifetime must encompass the lifetime `'e` of the closure itself,
- * but need not be identical to it. The reason that this makes sense:
- *
- * - Callers are only permitted to invoke the closure, and hence to
- *   use the pointers, within the lifetime `'e`, so clearly `'e` must
- *   be a sublifetime of `'x...'z`.
- * - The closure creator knows which upvars were borrowed by the closure
- *   and thus `x...z` will be reserved for `'x...'z` respectively.
- * - Through mutation, the borrowed upvars can actually escape
- *   the closure, so sometimes it is necessary for them to be larger
- *   than the closure lifetime itself.
- */
+/// Information describing the borrowing of an upvar. This is computed
+/// during `typeck`, specifically by `regionck`. The general idea is
+/// that the compiler analyses treat closures like:
+///
+///     let closure: &'e fn() = || {
+///        x = 1;   // upvar x is assigned to
+///        use(y);  // upvar y is read
+///        foo(&z); // upvar z is borrowed immutably
+///     };
+///
+/// as if they were "desugared" to something loosely like:
+///
+///     struct Vars<'x,'y,'z> { x: &'x mut int,
+///                             y: &'y const int,
+///                             z: &'z int }
+///     let closure: &'e fn() = {
+///         fn f(env: &Vars) {
+///             *env.x = 1;
+///             use(*env.y);
+///             foo(env.z);
+///         }
+///         let env: &'e mut Vars<'x,'y,'z> = &mut Vars { x: &'x mut x,
+///                                                       y: &'y const y,
+///                                                       z: &'z z };
+///         (env, f)
+///     };
+///
+/// This is basically what happens at runtime. The closure is basically
+/// an existentially quantified version of the `(env, f)` pair.
+///
+/// This data structure indicates the region and mutability of a single
+/// one of the `x...z` borrows.
+///
+/// It may not be obvious why each borrowed variable gets its own
+/// lifetime (in the desugared version of the example, these are indicated
+/// by the lifetime parameters `'x`, `'y`, and `'z` in the `Vars` definition).
+/// Each such lifetime must encompass the lifetime `'e` of the closure itself,
+/// but need not be identical to it. The reason that this makes sense:
+///
+/// - Callers are only permitted to invoke the closure, and hence to
+///   use the pointers, within the lifetime `'e`, so clearly `'e` must
+///   be a sublifetime of `'x...'z`.
+/// - The closure creator knows which upvars were borrowed by the closure
+///   and thus `x...z` will be reserved for `'x...'z` respectively.
+/// - Through mutation, the borrowed upvars can actually escape
+///   the closure, so sometimes it is necessary for them to be larger
+///   than the closure lifetime itself.
 #[deriving(PartialEq, Clone)]
 pub struct UpvarBorrow {
     pub kind: BorrowKind,
@@ -1639,11 +1633,9 @@ pub fn type_is_unique(ty: t) -> bool {
     }
 }
 
-/*
- A scalar type is one that denotes an atomic datum, with no sub-components.
- (A ty_ptr is scalar because it represents a non-managed pointer, so its
- contents are abstract to rustc.)
-*/
+// A scalar type is one that denotes an atomic datum, with no sub-components.
+// (A ty_ptr is scalar because it represents a non-managed pointer, so its
+// contents are abstract to rustc.)
 pub fn type_is_scalar(ty: t) -> bool {
     match get(ty).sty {
       ty_nil | ty_bool | ty_char | ty_int(_) | ty_float(_) | ty_uint(_) |
@@ -1738,18 +1730,16 @@ fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
     return needs_unwind_cleanup;
 }
 
-/**
- * Type contents is how the type checker reasons about kinds.
- * They track what kinds of things are found within a type.  You can
- * think of them as kind of an "anti-kind".  They track the kinds of values
- * and thinks that are contained in types.  Having a larger contents for
- * a type tends to rule that type *out* from various kinds.  For example,
- * a type that contains a reference is not sendable.
- *
- * The reason we compute type contents and not kinds is that it is
- * easier for me (nmatsakis) to think about what is contained within
- * a type than to think about what is *not* contained within a type.
- */
+/// Type contents is how the type checker reasons about kinds.
+/// They track what kinds of things are found within a type.  You can
+/// think of them as kind of an "anti-kind".  They track the kinds of values
+/// and thinks that are contained in types.  Having a larger contents for
+/// a type tends to rule that type *out* from various kinds.  For example,
+/// a type that contains a reference is not sendable.
+///
+/// The reason we compute type contents and not kinds is that it is
+/// easier for me (nmatsakis) to think about what is contained within
+/// a type than to think about what is *not* contained within a type.
 pub struct TypeContents {
     pub bits: u64
 }
@@ -1891,38 +1881,30 @@ impl TypeContents {
         self.intersects(TC::NeedsDrop)
     }
 
+    /// Includes only those bits that still apply
+    /// when indirected through a `Box` pointer
     pub fn owned_pointer(&self) -> TypeContents {
-        /*!
-         * Includes only those bits that still apply
-         * when indirected through a `Box` pointer
-         */
         TC::OwnsOwned | (
             *self & (TC::OwnsAll | TC::ReachesAll))
     }
 
+    /// Includes only those bits that still apply
+    /// when indirected through a reference (`&`)
     pub fn reference(&self, bits: TypeContents) -> TypeContents {
-        /*!
-         * Includes only those bits that still apply
-         * when indirected through a reference (`&`)
-         */
         bits | (
             *self & TC::ReachesAll)
     }
 
+    /// Includes only those bits that still apply
+    /// when indirected through a managed pointer (`@`)
     pub fn managed_pointer(&self) -> TypeContents {
-        /*!
-         * Includes only those bits that still apply
-         * when indirected through a managed pointer (`@`)
-         */
         TC::Managed | (
             *self & TC::ReachesAll)
     }
 
+    /// Includes only those bits that still apply
+    /// when indirected through an unsafe pointer (`*`)
     pub fn unsafe_pointer(&self) -> TypeContents {
-        /*!
-         * Includes only those bits that still apply
-         * when indirected through an unsafe pointer (`*`)
-         */
         *self & TC::ReachesAll
     }
 
@@ -2150,14 +2132,11 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         }
     }
 
+    /// Type contents due to containing a reference
+    /// with the region `region` and borrow kind `bk`
     fn borrowed_contents(region: ty::Region,
                          mutbl: ast::Mutability)
                          -> TypeContents {
-        /*!
-         * Type contents due to containing a reference
-         * with the region `region` and borrow kind `bk`
-         */
-
         let b = match mutbl {
             ast::MutMutable => TC::ReachesMutable | TC::OwnsAffine,
             ast::MutImmutable => TC::None,
@@ -2731,20 +2710,16 @@ pub fn expr_ty_opt(cx: &ctxt, expr: &ast::Expr) -> Option<t> {
     return node_id_to_type_opt(cx, expr.id);
 }
 
+/// Returns the type of `expr`, considering any `AutoAdjustment`
+/// entry recorded for that expression.
+///
+/// It would almost certainly be better to store the adjusted ty in with
+/// the `AutoAdjustment`, but I opted not to do this because it would
+/// require serializing and deserializing the type and, although that's not
+/// hard to do, I just hate that code so much I didn't want to touch it
+/// unless it was to fix it properly, which seemed a distraction from the
+/// task at hand! -nmatsakis
 pub fn expr_ty_adjusted(cx: &ctxt, expr: &ast::Expr) -> t {
-    /*!
-     *
-     * Returns the type of `expr`, considering any `AutoAdjustment`
-     * entry recorded for that expression.
-     *
-     * It would almost certainly be better to store the adjusted ty in with
-     * the `AutoAdjustment`, but I opted not to do this because it would
-     * require serializing and deserializing the type and, although that's not
-     * hard to do, I just hate that code so much I didn't want to touch it
-     * unless it was to fix it properly, which seemed a distraction from the
-     * task at hand! -nmatsakis
-     */
-
     adjust_ty(cx, expr.span, expr.id, expr_ty(cx, expr),
               cx.adjustments.borrow().find(&expr.id),
               |method_call| cx.method_map.borrow().find(&method_call).map(|method| method.ty))
@@ -2790,6 +2765,7 @@ pub fn local_var_name_str(cx: &ctxt, id: NodeId) -> InternedString {
     }
 }
 
+/// See `expr_ty_adjusted`
 pub fn adjust_ty(cx: &ctxt,
                  span: Span,
                  expr_id: ast::NodeId,
@@ -2797,8 +2773,6 @@ pub fn adjust_ty(cx: &ctxt,
                  adjustment: Option<&AutoAdjustment>,
                  method_type: |typeck::MethodCall| -> Option<ty::t>)
                  -> ty::t {
-    /*! See `expr_ty_adjusted` */
-
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
@@ -3253,16 +3227,13 @@ pub fn ty_sort_str(cx: &ctxt, t: t) -> String {
     }
 }
 
+/// Explains the source of a type err in a short,
+/// human readable way.  This is meant to be placed in
+/// parentheses after some larger message.  You should
+/// also invoke `note_and_explain_type_err()` afterwards
+/// to present additional details, particularly when
+/// it comes to lifetime-related errors.
 pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
-    /*!
-     *
-     * Explains the source of a type err in a short,
-     * human readable way.  This is meant to be placed in
-     * parentheses after some larger message.  You should
-     * also invoke `note_and_explain_type_err()` afterwards
-     * to present additional details, particularly when
-     * it comes to lifetime-related errors. */
-
     fn tstore_to_closure(s: &TraitStore) -> String {
         match s {
             &UniqTraitStore => "proc".to_string(),
@@ -3483,21 +3454,18 @@ pub fn trait_ref_supertraits(cx: &ctxt, trait_ref: &ty::TraitRef) -> Vec<Rc<Trai
         |supertrait_ref| supertrait_ref.subst(cx, &trait_ref.substs)).collect()
 }
 
+/// Helper for looking things up in the various maps
+/// that are populated during typeck::collect (e.g.,
+/// `cx.methods`, `cx.tcache`, etc).  All of these share
+/// the pattern that if the id is local, it should have
+/// been loaded into the map by the `typeck::collect` phase.
+/// If the def-id is external, then we have to go consult
+/// the crate loading code (and cache the result for the future).
 fn lookup_locally_or_in_crate_store<V:Clone>(
                                     descr: &str,
                                     def_id: ast::DefId,
                                     map: &mut DefIdMap<V>,
                                     load_external: || -> V) -> V {
-    /*!
-     * Helper for looking things up in the various maps
-     * that are populated during typeck::collect (e.g.,
-     * `cx.methods`, `cx.tcache`, etc).  All of these share
-     * the pattern that if the id is local, it should have
-     * been loaded into the map by the `typeck::collect` phase.
-     * If the def-id is external, then we have to go consult
-     * the crate loading code (and cache the result for the future).
-     */
-
     match map.find_copy(&def_id) {
         Some(v) => { return v; }
         None => { }
@@ -3726,8 +3694,8 @@ impl DtorKind {
     }
 }
 
-/* If struct_id names a struct with a dtor, return Some(the dtor's id).
-   Otherwise return none. */
+// If struct_id names a struct with a dtor, return Some(the dtor's id).
+// Otherwise return none.
 pub fn ty_dtor(cx: &ctxt, struct_id: DefId) -> DtorKind {
     match cx.destructor_for_type.borrow().find(&struct_id) {
         Some(&method_def_id) => {
@@ -3771,11 +3739,9 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
     let result = if ast::LOCAL_CRATE != id.krate {
         Rc::new(csearch::get_enum_variants(cx, id))
     } else {
-        /*
-          Although both this code and check_enum_variants in typeck/check
-          call eval_const_expr, it should never get called twice for the same
-          expr, since check_enum_variants also updates the enum_var_cache
-         */
+        // Although both this code and check_enum_variants in typeck/check
+        // call eval_const_expr, it should never get called twice for the same
+        // expr, since check_enum_variants also updates the enum_var_cache
         match cx.map.get(id.node) {
             ast_map::NodeItem(item) => {
                 match item.node {
@@ -4628,14 +4594,12 @@ impl Variance {
     }
 }
 
+/// See `ParameterEnvironment` struct def'n for details
 pub fn construct_parameter_environment(
     tcx: &ctxt,
     generics: &ty::Generics,
     free_id: ast::NodeId)
-    -> ParameterEnvironment
-{
-    /*! See `ParameterEnvironment` struct def'n for details */
-
+    -> ParameterEnvironment {
     //
     // Construct the free substs.
     //

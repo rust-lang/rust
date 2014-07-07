@@ -98,15 +98,11 @@ fn get_base_type(inference_context: &InferCtxt,
     }
 }
 
+/// For coherence, when we have `impl Trait for Type`, we need to
+/// guarantee that `Type` is "local" to the
+/// crate.  For our purposes, this means that it must contain
+/// some nominal type defined in this crate.
 fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
-    /*!
-     *
-     * For coherence, when we have `impl Trait for Type`, we need to
-     * guarantee that `Type` is "local" to the
-     * crate.  For our purposes, this means that it must contain
-     * some nominal type defined in this crate.
-     */
-
     let mut found_nominal = false;
     ty::walk_ty(original_type, |t| {
         match get(t).sty {
@@ -723,17 +719,13 @@ impl<'a> CoherenceChecker<'a> {
     }
 }
 
+/// Substitutes the values for the receiver's type parameters
+/// that are found in method, leaving the method's type parameters
+/// intact.
 pub fn make_substs_for_receiver_types(tcx: &ty::ctxt,
                                       trait_ref: &ty::TraitRef,
                                       method: &ty::Method)
-                                      -> subst::Substs
-{
-    /*!
-     * Substitutes the values for the receiver's type parameters
-     * that are found in method, leaving the method's type parameters
-     * intact.
-     */
-
+                                      -> subst::Substs {
     let meth_tps: Vec<ty::t> =
         method.generics.types.get_slice(subst::FnSpace)
               .iter()

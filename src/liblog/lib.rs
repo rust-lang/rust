@@ -8,102 +8,101 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Utilities for program-wide and customizable logging
-
-## Example
-
-```
-#![feature(phase)]
-#[phase(plugin, link)] extern crate log;
-
-fn main() {
-    debug!("this is a debug {}", "message");
-    error!("this is printed by default");
-
-    if log_enabled!(log::INFO) {
-        let x = 3i * 4i; // expensive computation
-        info!("the answer was: {}", x);
-    }
-}
-```
-
-## Logging Macros
-
-There are five macros that the logging subsystem uses:
-
-* `log!(level, ...)` - the generic logging macro, takes a level as a u32 and any
-                       related `format!` arguments
-* `debug!(...)` - a macro hard-wired to the log level of `DEBUG`
-* `info!(...)` - a macro hard-wired to the log level of `INFO`
-* `warn!(...)` - a macro hard-wired to the log level of `WARN`
-* `error!(...)` - a macro hard-wired to the log level of `ERROR`
-
-All of these macros use the same style of syntax as the `format!` syntax
-extension. Details about the syntax can be found in the documentation of
-`std::fmt` along with the Rust tutorial/manual.
-
-If you want to check at runtime if a given logging level is enabled (e.g. if the
-information you would want to log is expensive to produce), you can use the
-following macro:
-
-* `log_enabled!(level)` - returns true if logging of the given level is enabled
-
-## Enabling logging
-
-Log levels are controlled on a per-module basis, and by default all logging is
-disabled except for `error!` (a log level of 1). Logging is controlled via the
-`RUST_LOG` environment variable. The value of this environment variable is a
-comma-separated list of logging directives. A logging directive is of the form:
-
-```text
-path::to::module=log_level
-```
-
-The path to the module is rooted in the name of the crate it was compiled for,
-so if your program is contained in a file `hello.rs`, for example, to turn on
-logging for this file you would use a value of `RUST_LOG=hello`.
-Furthermore, this path is a prefix-search, so all modules nested in the
-specified module will also have logging enabled.
-
-The actual `log_level` is optional to specify. If omitted, all logging will be
-enabled. If specified, the it must be either a numeric in the range of 1-255, or
-it must be one of the strings `debug`, `error`, `info`, or `warn`. If a numeric
-is specified, then all logging less than or equal to that numeral is enabled.
-For example, if logging level 3 is active, error, warn, and info logs will be
-printed, but debug will be omitted.
-
-As the log level for a module is optional, the module to enable logging for is
-also optional. If only a `log_level` is provided, then the global log level for
-all modules is set to this value.
-
-Some examples of valid values of `RUST_LOG` are:
-
-```text
-hello                // turns on all logging for the 'hello' module
-info                 // turns on all info logging
-hello=debug          // turns on debug logging for 'hello'
-hello=3              // turns on info logging for 'hello'
-hello,std::option    // turns on hello, and std's option logging
-error,hello=warn     // turn on global error logging and also warn for hello
-```
-
-## Performance and Side Effects
-
-Each of these macros will expand to code similar to:
-
-```rust,ignore
-if log_level <= my_module_log_level() {
-    ::log::log(log_level, format!(...));
-}
-```
-
-What this means is that each of these macros are very cheap at runtime if
-they're turned off (just a load and an integer comparison). This also means that
-if logging is disabled, none of the components of the log will be executed.
-
-*/
+//! Utilities for program-wide and customizable logging
+//!
+//! ## Example
+//!
+//! ```
+//! #![feature(phase)]
+//! #[phase(plugin, link)] extern crate log;
+//!
+//! fn main() {
+//!     debug!("this is a debug {}", "message");
+//!     error!("this is printed by default");
+//!
+//!     if log_enabled!(log::INFO) {
+//!         let x = 3i * 4i; // expensive computation
+//!         info!("the answer was: {}", x);
+//!     }
+//! }
+//! ```
+//!
+//! ## Logging Macros
+//!
+//! There are five macros that the logging subsystem uses:
+//!
+//! * `log!(level, ...)` - the generic logging macro, takes a level as a u32
+//!                        and any related `format!` arguments
+//! * `debug!(...)` - a macro hard-wired to the log level of `DEBUG`
+//! * `info!(...)` - a macro hard-wired to the log level of `INFO`
+//! * `warn!(...)` - a macro hard-wired to the log level of `WARN`
+//! * `error!(...)` - a macro hard-wired to the log level of `ERROR`
+//!
+//! All of these macros use the same style of syntax as the `format!` syntax
+//! extension. Details about the syntax can be found in the documentation of
+//! `std::fmt` along with the Rust tutorial/manual.
+//!
+//! If you want to check at runtime if a given logging level is enabled (e.g.
+//! if the information you would want to log is expensive to produce), you
+//! can use the following macro:
+//!
+//! * `log_enabled!(level)` - returns true if logging of the given level
+//!                           is enabled
+//!
+//! ## Enabling logging
+//!
+//! Log levels are controlled on a per-module basis, and by default all
+//! logging is disabled except for `error!` (a log level of 1). Logging is
+//! controlled via the `RUST_LOG` environment variable. The value of this
+//! environment variable is a comma-separated list of logging directives.
+//! A logging directive is of the form:
+//!
+//! ```text
+//! path::to::module=log_level
+//! ```
+//!
+//! The path to the module is rooted in the name of the crate it was compiled
+//! for, so if your program is contained in a file `hello.rs`, for example, to
+//! turn on logging for this file you would use a value of `RUST_LOG=hello`.
+//! Furthermore, this path is a prefix-search, so all modules nested in the
+//! specified module will also have logging enabled.
+//!
+//! The actual `log_level` is optional to specify. If omitted, all logging
+//! will be enabled. If specified, the it must be either a numeric in the range
+//! of 1-255, or it must be one of the strings `debug`, `error`, `info`, or
+//! `warn`. If a numeric is specified, then all logging less than or equal to
+//! that numeral is enabled. For example, if logging level 3 is active, error,
+//! warn, and info logs will be printed, but debug will be omitted.
+//!
+//! As the log level for a module is optional, the module to enable logging for
+//! is also optional. If only a `log_level` is provided, then the global log
+//! level for all modules is set to this value.
+//!
+//! Some examples of valid values of `RUST_LOG` are:
+//!
+//! ```text
+//! hello                // turns on all logging for the 'hello' module
+//! info                 // turns on all info logging
+//! hello=debug          // turns on debug logging for 'hello'
+//! hello=3              // turns on info logging for 'hello'
+//! hello,std::option    // turns on hello, and std's option logging
+//! error,hello=warn     // turn on global error logging and also warn for hello
+//! ```
+//!
+//! ## Performance and Side Effects
+//!
+//! Each of these macros will expand to code similar to:
+//!
+//! ```rust,ignore
+//! if log_level <= my_module_log_level() {
+//!     ::log::log(log_level, format!(...));
+//! }
+//! ```
+//!
+//! What this means is that each of these macros are very cheap at runtime if
+//! they're turned off (just a load and an integer comparison). This also
+//! means that if logging is disabled, none of the components of the log will
+//! be executed.
 
 #![crate_id = "log#0.11.0"] // NOTE: Remove after stage0
 #![crate_name = "log"]

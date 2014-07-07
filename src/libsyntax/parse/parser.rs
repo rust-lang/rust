@@ -130,9 +130,9 @@ enum ItemOrViewItem {
 // Possibly accept an `INTERPOLATED` expression (a pre-parsed expression
 // dropped into the token stream, which happens while parsing the
 // result of macro expansion)
-/* Placement of these is not as complex as I feared it would be.
-The important thing is to make sure that lookahead doesn't balk
-at INTERPOLATED tokens */
+// Placement of these is not as complex as I feared it would be.
+// The important thing is to make sure that lookahead doesn't balk
+// at INTERPOLATED tokens
 macro_rules! maybe_whole_expr (
     ($p:expr) => (
         {
@@ -284,7 +284,7 @@ struct ParsedItemsAndViewItems {
     foreign_items: Vec<Gc<ForeignItem>>
 }
 
-/* ident is handled by common.rs */
+// ident is handled by common.rs
 
 pub struct Parser<'a> {
     pub sess: &'a ParseSess,
@@ -985,17 +985,14 @@ impl<'a> Parser<'a> {
 
     // parse a TyBareFn type:
     pub fn parse_ty_bare_fn(&mut self) -> Ty_ {
-        /*
-
-        [unsafe] [extern "ABI"] fn <'lt> (S) -> T
-         ^~~~^           ^~~~^     ^~~~^ ^~^    ^
-           |               |         |    |     |
-           |               |         |    |   Return type
-           |               |         |  Argument types
-           |               |     Lifetimes
-           |              ABI
-        Function Style
-        */
+        // [unsafe] [extern "ABI"] fn <'lt> (S) -> T
+        //  ^~~~^           ^~~~^     ^~~~^ ^~^    ^
+        //    |               |         |    |     |
+        //    |               |         |    |   Return type
+        //    |               |         |  Argument types
+        //    |               |     Lifetimes
+        //    |              ABI
+        // Function Style
 
         let fn_style = self.parse_unsafety();
         let abi = if self.eat_keyword(keywords::Extern) {
@@ -1017,18 +1014,14 @@ impl<'a> Parser<'a> {
     // Parses a procedure type (`proc`). The initial `proc` keyword must
     // already have been parsed.
     pub fn parse_proc_type(&mut self) -> Ty_ {
-        /*
-
-        proc <'lt> (S) [:Bounds] -> T
-        ^~~^ ^~~~^  ^  ^~~~~~~~^    ^
-         |     |    |      |        |
-         |     |    |      |      Return type
-         |     |    |    Bounds
-         |     |  Argument types
-         |   Lifetimes
-        the `proc` keyword
-
-        */
+        // proc <'lt> (S) [:Bounds] -> T
+        // ^~~^ ^~~~^  ^  ^~~~~~~~^    ^
+        //  |     |    |      |        |
+        //  |     |    |      |      Return type
+        //  |     |    |    Bounds
+        //  |     |  Argument types
+        //  |   Lifetimes
+        // the `proc` keyword
 
         let lifetimes = if self.eat(&token::LT) {
             let lifetimes = self.parse_lifetimes();
@@ -1065,19 +1058,15 @@ impl<'a> Parser<'a> {
 
     // parse a TyClosure type
     pub fn parse_ty_closure(&mut self) -> Ty_ {
-        /*
-
-        [unsafe] [once] <'lt> |S| [:Bounds] -> T
-        ^~~~~~~^ ^~~~~^ ^~~~^  ^  ^~~~~~~~^    ^
-          |        |      |    |      |        |
-          |        |      |    |      |      Return type
-          |        |      |    |  Closure bounds
-          |        |      |  Argument types
-          |        |    Lifetimes
-          |     Once-ness (a.k.a., affine)
-        Function Style
-
-        */
+        // [unsafe] [once] <'lt> |S| [:Bounds] -> T
+        // ^~~~~~~^ ^~~~~^ ^~~~^  ^  ^~~~~~~~^    ^
+        //   |        |      |    |      |        |
+        //   |        |      |    |      |      Return type
+        //   |        |      |    |  Closure bounds
+        //   |        |      |  Argument types
+        //   |        |    Lifetimes
+        //   |     Once-ness (a.k.a., affine)
+        // Function Style
 
         let fn_style = self.parse_unsafety();
         let onceness = if self.eat_keyword(keywords::Once) {Once} else {Many};
@@ -1157,16 +1146,13 @@ impl<'a> Parser<'a> {
     // parse a function type (following the 'fn')
     pub fn parse_ty_fn_decl(&mut self, allow_variadic: bool)
                             -> (P<FnDecl>, Vec<ast::Lifetime>) {
-        /*
+        // (fn) <'lt> (S) -> T
+        //      ^~~~^ ^~^    ^
+        //        |    |     |
+        //        |    |   Return type
+        //        |  Argument types
+        //    Lifetimes
 
-        (fn) <'lt> (S) -> T
-             ^~~~^ ^~^    ^
-               |    |     |
-               |    |   Return type
-               |  Argument types
-           Lifetimes
-
-        */
         let lifetimes = if self.eat(&token::LT) {
             let lifetimes = self.parse_lifetimes();
             self.expect_gt();
@@ -1737,17 +1723,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // matches lifetimes = ( lifetime ) | ( lifetime , lifetimes )
-    // actually, it matches the empty one too, but putting that in there
-    // messes up the grammar....
+    /// Parses zero or more comma separated lifetimes.
+    /// Expects each lifetime to be followed by either
+    /// a comma or `>`.  Used when parsing type parameter
+    /// lists, where we expect something like `<'a, 'b, T>`.
     pub fn parse_lifetimes(&mut self) -> Vec<ast::Lifetime> {
-        /*!
-         *
-         * Parses zero or more comma separated lifetimes.
-         * Expects each lifetime to be followed by either
-         * a comma or `>`.  Used when parsing type parameter
-         * lists, where we expect something like `<'a, 'b, T>`.
-         */
+        // matches lifetimes = ( lifetime ) | ( lifetime , lifetimes )
+        // actually, it matches the empty one too, but putting that in there
+        // messes up the grammar....
 
         let mut res = Vec::new();
         loop {
@@ -2235,7 +2218,7 @@ impl<'a> Parser<'a> {
                   p.fatal(format!("incorrect close delimiter: `{}`",
                                   token_str).as_slice())
               },
-              /* we ought to allow different depths of unquotation */
+              // we ought to allow different depths of unquotation
               token::DOLLAR if p.quote_depth > 0u => {
                 p.bump();
                 let sp = p.span;
@@ -3276,9 +3259,9 @@ impl<'a> Parser<'a> {
                 return box(GC) spanned(lo, hi, StmtDecl(
                     box(GC) spanned(lo, hi, DeclItem(
                         self.mk_item(
-                            lo, hi, id /*id is good here*/,
+                            lo, hi, id, // id is good here
                             ItemMac(spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT))),
-                            Inherited, Vec::new(/*no attrs*/)))),
+                            Inherited, Vec::new(/* no attrs */)))),
                     ast::DUMMY_NODE_ID));
             }
 

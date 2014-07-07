@@ -58,21 +58,19 @@ pub trait ToBase64 {
 }
 
 impl<'a> ToBase64 for &'a [u8] {
-    /**
-     * Turn a vector of `u8` bytes into a base64 string.
-     *
-     * # Example
-     *
-     * ```rust
-     * extern crate serialize;
-     * use serialize::base64::{ToBase64, STANDARD};
-     *
-     * fn main () {
-     *     let str = [52,32].to_base64(STANDARD);
-     *     println!("base 64 output: {}", str);
-     * }
-     * ```
-     */
+    /// Turn a vector of `u8` bytes into a base64 string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// extern crate serialize;
+    /// use serialize::base64::{ToBase64, STANDARD};
+    ///
+    /// fn main () {
+    ///     let str = [52,32].to_base64(STANDARD);
+    ///     println!("base 64 output: {}", str);
+    /// }
+    /// ```
     fn to_base64(&self, config: Config) -> String {
         let bytes = match config.char_set {
             Standard => STANDARD_CHARS,
@@ -177,34 +175,32 @@ impl fmt::Show for FromBase64Error {
 }
 
 impl<'a> FromBase64 for &'a str {
-    /**
-     * Convert any base64 encoded string (literal, `@`, `&`, or `~`)
-     * to the byte values it encodes.
-     *
-     * You can use the `String::from_utf8` function in `std::string` to turn a
-     * `Vec<u8>` into a string with characters corresponding to those values.
-     *
-     * # Example
-     *
-     * This converts a string literal to base64 and back.
-     *
-     * ```rust
-     * extern crate serialize;
-     * use serialize::base64::{ToBase64, FromBase64, STANDARD};
-     *
-     * fn main () {
-     *     let hello_str = b"Hello, World".to_base64(STANDARD);
-     *     println!("base64 output: {}", hello_str);
-     *     let res = hello_str.as_slice().from_base64();
-     *     if res.is_ok() {
-     *       let opt_bytes = String::from_utf8(res.unwrap());
-     *       if opt_bytes.is_ok() {
-     *         println!("decoded from base64: {}", opt_bytes.unwrap());
-     *       }
-     *     }
-     * }
-     * ```
-     */
+    /// Convert any base64 encoded string (literal, `@`, `&`, or `~`)
+    /// to the byte values it encodes.
+    ///
+    /// You can use the `String::from_utf8` function in `std::string` to turn a
+    /// `Vec<u8>` into a string with characters corresponding to those values.
+    ///
+    /// # Example
+    ///
+    /// This converts a string literal to base64 and back.
+    ///
+    /// ```rust
+    /// extern crate serialize;
+    /// use serialize::base64::{ToBase64, FromBase64, STANDARD};
+    ///
+    /// fn main () {
+    ///     let hello_str = b"Hello, World".to_base64(STANDARD);
+    ///     println!("base64 output: {}", hello_str);
+    ///     let res = hello_str.as_slice().from_base64();
+    ///     if res.is_ok() {
+    ///       let opt_bytes = String::from_utf8(res.unwrap());
+    ///       if opt_bytes.is_ok() {
+    ///         println!("decoded from base64: {}", opt_bytes.unwrap());
+    ///       }
+    ///     }
+    /// }
+    /// ```
     fn from_base64(&self) -> Result<Vec<u8>, FromBase64Error> {
         let mut r = Vec::new();
         let mut buf: u32 = 0;

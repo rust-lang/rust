@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Synchronous Timers
-
-This module exposes the functionality to create timers, block the current task,
-and create receivers which will receive notifications after a period of time.
-
-*/
+//! Synchronous Timers
+//!
+//! This module exposes the functionality to create timers, block the current
+//! task, and create receivers which will receive notifications after a period
+//! of time.
 
 use comm::{Receiver, Sender, channel};
 use io::{IoResult, IoError};

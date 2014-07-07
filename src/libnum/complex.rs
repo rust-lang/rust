@@ -36,10 +36,8 @@ impl<T: Clone + Num> Complex<T> {
         Complex { re: re, im: im }
     }
 
-    /**
-    Returns the square of the norm (since `T` doesn't necessarily
-    have a sqrt function), i.e. `re^2 + im^2`.
-    */
+    /// Returns the square of the norm (since `T` doesn't necessarily
+    /// have a sqrt function), i.e. `re^2 + im^2`.
     #[inline]
     pub fn norm_sqr(&self) -> T {
         self.re * self.re + self.im * self.im
@@ -101,7 +99,7 @@ impl<T: Clone + FloatMath> Complex<T> {
     }
 }
 
-/* arithmetic */
+// arithmetic
 // (a + i b) + (c + i d) == (a + c) + i (b + d)
 impl<T: Clone + Num> Add<Complex<T>, Complex<T>> for Complex<T> {
     #[inline]
@@ -143,7 +141,7 @@ impl<T: Clone + Num> Neg<Complex<T>> for Complex<T> {
     }
 }
 
-/* constants */
+// constants
 impl<T: Clone + Num> Zero for Complex<T> {
     #[inline]
     fn zero() -> Complex<T> {
@@ -163,7 +161,7 @@ impl<T: Clone + Num> One for Complex<T> {
     }
 }
 
-/* string conversions */
+// string conversions
 impl<T: fmt::Show + Num + PartialOrd> fmt::Show for Complex<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.im < Zero::zero() {

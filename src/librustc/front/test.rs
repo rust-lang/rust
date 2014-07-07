@@ -270,23 +270,19 @@ fn add_test_module(cx: &TestCtxt, m: &ast::Mod) -> ast::Mod {
     }
 }
 
-/*
-
-We're going to be building a module that looks more or less like:
-
-mod __test {
-  #![!resolve_unexported]
-  extern crate test (name = "test", vers = "...");
-  fn main() {
-    test::test_main_static(::os::args().as_slice(), tests)
-  }
-
-  static tests : &'static [test::TestDescAndFn] = &[
-    ... the list of tests in the crate ...
-  ];
-}
-
-*/
+// We're going to be building a module that looks more or less like:
+//
+// mod __test {
+//   #![!resolve_unexported]
+//   extern crate test (name = "test", vers = "...");
+//   fn main() {
+//     test::test_main_static(::os::args().as_slice(), tests)
+//   }
+//
+//   static tests : &'static [test::TestDescAndFn] = &[
+//     ... the list of tests in the crate ...
+//   ];
+// }
 
 fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     let id_test = token::str_to_ident("test");

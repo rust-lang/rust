@@ -78,14 +78,12 @@ mod imp {
 /// A record specifying a time value in seconds and nanoseconds.
 #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Show)]
 pub struct Timespec { pub sec: i64, pub nsec: i32 }
-/*
- * Timespec assumes that pre-epoch Timespecs have negative sec and positive
- * nsec fields. Darwin's and Linux's struct timespec functions handle pre-
- * epoch timestamps using a "two steps back, one step forward" representation,
- * though the man pages do not actually document this. For example, the time
- * -1.2 seconds before the epoch is represented by `Timespec { sec: -2_i64,
- * nsec: 800_000_000_i32 }`.
- */
+// Timespec assumes that pre-epoch Timespecs have negative sec and positive
+// nsec fields. Darwin's and Linux's struct timespec functions handle pre-
+// epoch timestamps using a "two steps back, one step forward" representation,
+// though the man pages do not actually document this. For example, the time
+// -1.2 seconds before the epoch is represented by `Timespec { sec: -2_i64,
+// nsec: 800_000_000_i32 }`.
 impl Timespec {
     pub fn new(sec: i64, nsec: i32) -> Timespec {
         assert!(nsec >= 0 && nsec < NSEC_PER_SEC);
@@ -93,10 +91,8 @@ impl Timespec {
     }
 }
 
-/**
- * Returns the current time as a `timespec` containing the seconds and
- * nanoseconds since 1970-01-01T00:00:00Z.
- */
+/// Returns the current time as a `timespec` containing the seconds and
+/// nanoseconds since 1970-01-01T00:00:00Z.
 pub fn get_time() -> Timespec {
     unsafe {
         let (sec, nsec) = os_get_time();
@@ -142,10 +138,8 @@ pub fn get_time() -> Timespec {
 }
 
 
-/**
- * Returns the current value of a high-resolution performance counter
- * in nanoseconds since an unspecified epoch.
- */
+/// Returns the current value of a high-resolution performance counter
+/// in nanoseconds since an unspecified epoch.
 pub fn precise_time_ns() -> u64 {
     return os_precise_time_ns();
 
@@ -190,10 +184,8 @@ pub fn precise_time_ns() -> u64 {
 }
 
 
-/**
- * Returns the current value of a high-resolution performance counter
- * in seconds since an unspecified epoch.
- */
+/// Returns the current value of a high-resolution performance counter
+/// in seconds since an unspecified epoch.
 pub fn precise_time_s() -> f64 {
     return (precise_time_ns() as f64) / 1000000000.;
 }
@@ -317,22 +309,18 @@ impl Tm {
         at_utc(self.to_timespec())
     }
 
-    /**
-     * Returns a time string formatted according to the `asctime` format in ISO
-     * C, in the local timezone.
-     *
-     * Example: "Thu Jan  1 00:00:00 1970"
-     */
+    /// Returns a time string formatted according to the `asctime` format in ISO
+    /// C, in the local timezone.
+    ///
+    /// Example: "Thu Jan  1 00:00:00 1970"
     pub fn ctime(&self) -> String {
         self.to_local().asctime()
     }
 
-    /**
-     * Returns a time string formatted according to the `asctime` format in ISO
-     * C.
-     *
-     * Example: "Thu Jan  1 00:00:00 1970"
-     */
+    /// Returns a time string formatted according to the `asctime` format in ISO
+    /// C.
+    ///
+    /// Example: "Thu Jan  1 00:00:00 1970"
     pub fn asctime(&self) -> String {
         self.strftime("%c")
     }
@@ -342,12 +330,10 @@ impl Tm {
         strftime(format, self)
     }
 
-    /**
-     * Returns a time string formatted according to RFC 822.
-     *
-     * local: "Thu, 22 Mar 2012 07:53:18 PST"
-     * utc:   "Thu, 22 Mar 2012 14:53:18 GMT"
-     */
+    /// Returns a time string formatted according to RFC 822.
+    ///
+    /// local: "Thu, 22 Mar 2012 07:53:18 PST"
+    /// utc:   "Thu, 22 Mar 2012 14:53:18 GMT"
     pub fn rfc822(&self) -> String {
         if self.tm_gmtoff == 0_i32 {
             self.strftime("%a, %d %b %Y %T GMT")
@@ -356,23 +342,19 @@ impl Tm {
         }
     }
 
-    /**
-     * Returns a time string formatted according to RFC 822 with Zulu time.
-     *
-     * local: "Thu, 22 Mar 2012 07:53:18 -0700"
-     * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
-     */
+    /// Returns a time string formatted according to RFC 822 with Zulu time.
+    ///
+    /// local: "Thu, 22 Mar 2012 07:53:18 -0700"
+    /// utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
     pub fn rfc822z(&self) -> String {
         self.strftime("%a, %d %b %Y %T %z")
     }
 
-    /**
-     * Returns a time string formatted according to RFC 3999. RFC 3999 is
-     * compatible with ISO 8601.
-     *
-     * local: "2012-02-22T07:53:18-07:00"
-     * utc:   "2012-02-22T14:53:18Z"
-     */
+    /// Returns a time string formatted according to RFC 3999. RFC 3999 is
+    /// compatible with ISO 8601.
+    ///
+    /// local: "2012-02-22T07:53:18-07:00"
+    /// utc:   "2012-02-22T14:53:18Z"
     pub fn rfc3339(&self) -> String {
         if self.tm_gmtoff == 0_i32 {
             self.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -863,25 +845,24 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
 pub fn strftime(format: &str, tm: &Tm) -> String {
     fn days_in_year(year: int) -> i32 {
         if (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)) {
-            366    /* Days in a leap year */
+            366    // Days in a leap year
         } else {
-            365    /* Days in a non-leap year */
+            365    // Days in a non-leap year
         }
     }
 
     fn iso_week_days(yday: i32, wday: i32) -> int {
-        /* The number of days from the first day of the first ISO week of this
-        * year to the year day YDAY with week day WDAY.
-        * ISO weeks start on Monday. The first ISO week has the year's first
-        * Thursday.
-        * YDAY may be as small as yday_minimum.
-        */
+        // The number of days from the first day of the first ISO week of this
+        // year to the year day YDAY with week day WDAY.
+        // ISO weeks start on Monday. The first ISO week has the year's first
+        // Thursday.
+        // YDAY may be as small as yday_minimum.
         let yday: int = yday as int;
         let wday: int = wday as int;
-        let iso_week_start_wday: int = 1;                     /* Monday */
-        let iso_week1_wday: int = 4;                          /* Thursday */
+        let iso_week_start_wday: int = 1;                     // Monday
+        let iso_week1_wday: int = 4;                          // Thursday
         let yday_minimum: int = 366;
-        /* Add enough to the first operand of % to make it nonnegative. */
+        // Add enough to the first operand of % to make it nonnegative.
         let big_enough_multiple_of_7: int = (yday_minimum / 7 + 2) * 7;
 
         yday - (yday - wday + iso_week1_wday + big_enough_multiple_of_7) % 7
@@ -893,14 +874,14 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
         let mut days: int = iso_week_days (tm.tm_yday, tm.tm_wday);
 
         if days < 0 {
-            /* This ISO week belongs to the previous year. */
+            // This ISO week belongs to the previous year.
             year -= 1;
             days = iso_week_days (tm.tm_yday + (days_in_year(year)), tm.tm_wday);
         } else {
             let d: int = iso_week_days (tm.tm_yday - (days_in_year(year)),
                                         tm.tm_wday);
             if 0 <= d {
-                /* This ISO week belongs to the next year. */
+                // This ISO week belongs to the next year.
                 year += 1;
                 days = d;
             }

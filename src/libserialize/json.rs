@@ -14,130 +14,132 @@
 #![forbid(non_camel_case_types)]
 #![allow(missing_doc)]
 
-/*!
-JSON parsing and serialization
-
-# What is JSON?
-
-JSON (JavaScript Object Notation) is a way to write data in Javascript.
-Like XML, it allows to encode structured data in a text format that can be easily read by humans.
-Its simple syntax and native compatibility with JavaScript have made it a widely used format.
-
-Data types that can be encoded are JavaScript types (see the `Json` enum for more details):
-
-* `Boolean`: equivalent to rust's `bool`
-* `Number`: equivalent to rust's `f64`
-* `String`: equivalent to rust's `String`
-* `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the same
-array
-* `Object`: equivalent to rust's `Treemap<String, json::Json>`
-* `Null`
-
-An object is a series of string keys mapping to values, in `"key": value` format.
-Arrays are enclosed in square brackets ([ ... ]) and objects in curly brackets ({ ... }).
-A simple JSON document encoding a person, his/her age, address and phone numbers could look like:
-
-```ignore
-{
-    "FirstName": "John",
-    "LastName": "Doe",
-    "Age": 43,
-    "Address": {
-        "Street": "Downing Street 10",
-        "City": "London",
-        "Country": "Great Britain"
-    },
-    "PhoneNumbers": [
-        "+44 1234567",
-        "+44 2345678"
-    ]
-}
-```
-
-# Rust Type-based Encoding and Decoding
-
-Rust provides a mechanism for low boilerplate encoding & decoding of values to and from JSON via
-the serialization API.
-To be able to encode a piece of data, it must implement the `serialize::Encodable` trait.
-To be able to decode a piece of data, it must implement the `serialize::Decodable` trait.
-The Rust compiler provides an annotation to automatically generate the code for these traits:
-`#[deriving(Decodable, Encodable)]`
-
-The JSON API provides an enum `json::Json` and a trait `ToJson` to encode objects.
-The `ToJson` trait provides a `to_json` method to convert an object into a `json::Json` value.
-A `json::Json` value can be encoded as a string or buffer using the functions described above.
-You can also use the `json::Encoder` object, which implements the `Encoder` trait.
-
-When using `ToJson` the `Encodable` trait implementation is not mandatory.
-
-# Examples of use
-
-## Using Autoserialization
-
-Create a struct called TestStruct1 and serialize and deserialize it to and from JSON
-using the serialization API, using the derived serialization code.
-
-```rust
-extern crate serialize;
-use serialize::json;
-
-#[deriving(Decodable, Encodable)] //generate Decodable, Encodable impl.
-pub struct TestStruct1  {
-    data_int: u8,
-    data_str: String,
-    data_vector: Vec<u8>,
-}
-
-fn main() {
-    let object = TestStruct1
-         {data_int: 1, data_str:"toto".to_string(), data_vector:vec![2,3,4,5]};
-
-    // Serialize using `json::encode`
-    let encoded = json::encode(&object);
-
-    // Deserialize using `json::decode`
-    let decoded: TestStruct1 = json::decode(encoded.as_slice()).unwrap();
-}
-```
-
-## Using `ToJson`
-
-This example uses the `ToJson` trait to generate the JSON string.
-
-```rust
-use std::collections::TreeMap;
-use serialize::json::ToJson;
-use serialize::json;
-
-#[deriving(Decodable)]
-pub struct TestStruct1  {
-    data_int: u8,
-    data_str: String,
-    data_vector: Vec<u8>,
-}
-
-impl ToJson for TestStruct1 {
-    fn to_json( &self ) -> json::Json {
-        let mut d = TreeMap::new();
-        d.insert("data_int".to_string(), self.data_int.to_json());
-        d.insert("data_str".to_string(), self.data_str.to_json());
-        d.insert("data_vector".to_string(), self.data_vector.to_json());
-        json::Object(d)
-    }
-}
-
-fn main() {
-    // Serialize using `ToJson`
-    let test2 = TestStruct1 {data_int: 1, data_str:"toto".to_string(), data_vector:vec![2,3,4,5]};
-    let tjson: json::Json = test2.to_json();
-    let json_str: String = tjson.to_str();
-
-    // Deserialize like before
-    let decoded: TestStruct1 = json::decode(json_str.as_slice()).unwrap();
-}
-```
-
-*/
+//! JSON parsing and serialization
+//!
+//! # What is JSON?
+//!
+//! JSON (JavaScript Object Notation) is a way to write data in Javascript. Like
+//! XML, it allows to encode structured data in a text format that can be easily
+//! read by humans. Its simple syntax and native compatibility with JavaScript
+//! have made it a widely used format.
+//!
+//! Data types that can be encoded are JavaScript types (see the `Json` enum for
+//! more details):
+//!
+//! * `Boolean`: equivalent to rust's `bool`
+//! * `Number`: equivalent to rust's `f64`
+//! * `String`: equivalent to rust's `String`
+//! * `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of
+//!            different types in the same array
+//! * `Object`: equivalent to rust's `Treemap<String, json::Json>`
+//! * `Null`
+//!
+//! An object is a series of string keys mapping to values, in `"key": value`
+//! format. Arrays are enclosed in square brackets ([ ... ]) and objects in
+//! curly brackets ({ ... }). A simple JSON document encoding a person, his/her
+//! age, address and phone numbers could look like:
+//!
+//! ```ignore
+//! {
+//!     "FirstName": "John",
+//!     "LastName": "Doe",
+//!     "Age": 43,
+//!     "Address": {
+//!         "Street": "Downing Street 10",
+//!         "City": "London",
+//!         "Country": "Great Britain"
+//!     },
+//!     "PhoneNumbers": [
+//!         "+44 1234567",
+//!         "+44 2345678"
+//!     ]
+//! }
+//! ```
+//!
+//! # Rust Type-based Encoding and Decoding
+//!
+//! Rust provides a mechanism for low boilerplate encoding & decoding of values
+//! to and from JSON via the serialization API. To be able to encode a piece of
+//! data, it must implement the `serialize::Encodable` trait. To be able to
+//! decode a piece of data, it must implement the `serialize::Decodable` trait.
+//! The Rust compiler provides an annotation to automatically generate the code
+//! for these traits: `#[deriving(Decodable, Encodable)]`
+//!
+//! The JSON API provides an enum `json::Json` and a trait `ToJson` to encode
+//! objects. The `ToJson` trait provides a `to_json` method to convert an object
+//! into a `json::Json` value. A `json::Json` value can be encoded as a string
+//! or buffer using the functions described above. You can also use the
+//! `json::Encoder` object, which implements the `Encoder` trait.
+//!
+//! When using `ToJson` the `Encodable` trait implementation is not mandatory.
+//!
+//! # Examples of use
+//!
+//! ## Using Autoserialization
+//!
+//! Create a struct called TestStruct1 and serialize and deserialize it to and
+//! from JSON using the serialization API, using the derived serialization code.
+//!
+//! ```rust
+//! extern crate serialize;
+//! use serialize::json;
+//!
+//! #[deriving(Decodable, Encodable)] //generate Decodable, Encodable impl.
+//! pub struct TestStruct1  {
+//!     data_int: u8,
+//!     data_str: String,
+//!     data_vector: Vec<u8>,
+//! }
+//!
+//! fn main() {
+//!     let object = TestStruct1
+//!          {data_int: 1, data_str:"toto".to_string(), data_vector:vec![2,3,4,5]};
+//!
+//!     // Serialize using `json::encode`
+//!     let encoded = json::encode(&object);
+//!
+//!     // Deserialize using `json::decode`
+//!     let decoded: TestStruct1 = json::decode(encoded.as_slice()).unwrap();
+//! }
+//! ```
+//!
+//! ## Using `ToJson`
+//!
+//! This example uses the `ToJson` trait to generate the JSON string.
+//!
+//! ```rust
+//! use std::collections::TreeMap;
+//! use serialize::json::ToJson;
+//! use serialize::json;
+//!
+//! #[deriving(Decodable)]
+//! pub struct TestStruct1  {
+//!     data_int: u8,
+//!     data_str: String,
+//!     data_vector: Vec<u8>,
+//! }
+//!
+//! impl ToJson for TestStruct1 {
+//!     fn to_json( &self ) -> json::Json {
+//!         let mut d = TreeMap::new();
+//!         d.insert("data_int".to_string(), self.data_int.to_json());
+//!         d.insert("data_str".to_string(), self.data_str.to_json());
+//!         d.insert("data_vector".to_string(), self.data_vector.to_json());
+//!         json::Object(d)
+//!     }
+//! }
+//!
+//! fn main() {
+//!     // Serialize using `ToJson`
+//!     let test2 =
+//!         TestStruct1 {data_int: 1, data_str:"toto".to_string(), data_vector:vec![2,3,4,5]};
+//!     let tjson: json::Json = test2.to_json();
+//!     let json_str: String = tjson.to_str();
+//!
+//!     // Deserialize like before
+//!     let decoded: TestStruct1 = json::decode(json_str.as_slice()).unwrap();
+//! }
+//! ```
 
 use std;
 use std::collections::{HashMap, TreeMap};

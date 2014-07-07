@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Runtime type reflection
-
-*/
+//! Runtime type reflection
 
 #![allow(missing_doc)]
 
@@ -20,13 +16,11 @@ use std::intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
 use std::mem;
 use std::gc::Gc;
 
-/**
- * Trait for visitor that wishes to reflect on data.
- *
- * To use this, create a struct that encapsulates the set of pointers you wish
- * to walk through a data structure, and implement both `MovePtr` for it as well
- * as `TyVisitor`; then build a MovePtrAdaptor wrapped around your struct.
- */
+/// Trait for visitor that wishes to reflect on data.
+///
+/// To use this, create a struct that encapsulates the set of pointers you wish
+/// to walk through a data structure, and implement both `MovePtr` for it as well
+/// as `TyVisitor`; then build a MovePtrAdaptor wrapped around your struct.
 pub trait MovePtr {
     fn move_ptr(&mut self, adjustment: |*const u8| -> *const u8);
     fn push_ptr(&mut self);

@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-The Rust parser and macro expander.
-
-# Note
-
-This API is completely unstable and subject to change.
-
-*/
+//! The Rust parser and macro expander.
+//!
+//! # Note
+//!
+//! This API is completely unstable and subject to change.
 
 #![crate_id = "syntax#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "syntax"]

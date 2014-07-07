@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Earley-like parser for macros.
+//! Earley-like parser for macros.
 
 use ast;
 use ast::{Matcher, MatchTok, MatchSeq, MatchNonterminal, Ident};
 use codemap::{BytePos, mk_sp};
 use codemap;
-use parse::lexer::*; //resolve bug?
+use parse::lexer::*; // resolve bug?
 use parse::ParseSess;
 use parse::attr::ParserAttr;
 use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
@@ -25,77 +25,74 @@ use std::rc::Rc;
 use std::gc::GC;
 use std::collections::HashMap;
 
-/* This is an Earley-like parser, without support for in-grammar nonterminals,
-only by calling out to the main rust parser for named nonterminals (which it
-commits to fully when it hits one in a grammar). This means that there are no
-completer or predictor rules, and therefore no need to store one column per
-token: instead, there's a set of current Earley items and a set of next
-ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
-pathological cases, is worse than traditional Earley parsing, but it's an
-easier fit for Macro-by-Example-style rules, and I think the overhead is
-lower. (In order to prevent the pathological case, we'd need to lazily
-construct the resulting `NamedMatch`es at the very end. It'd be a pain,
-and require more memory to keep around old items, but it would also save
-overhead)*/
+// This is an Earley-like parser, without support for in-grammar nonterminals,
+// only by calling out to the main rust parser for named nonterminals (which it
+// commits to fully when it hits one in a grammar). This means that there are no
+// completer or predictor rules, and therefore no need to store one column per
+// token: instead, there's a set of current Earley items and a set of next
+// ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
+// pathological cases, is worse than traditional Earley parsing, but it's an
+// easier fit for Macro-by-Example-style rules, and I think the overhead is
+// lower. (In order to prevent the pathological case, we'd need to lazily
+// construct the resulting `NamedMatch`es at the very end. It'd be a pain,
+// and require more memory to keep around old items, but it would also save
+// overhead)
 
-/* Quick intro to how the parser works:
+// Quick intro to how the parser works:
+//
+// A 'position' is a dot in the middle of a matcher, usually represented as a
+// dot. For example `· a $( a )* a b` is a position, as is `a $( · a )* a b`.
+//
+// The parser walks through the input a character at a time, maintaining a list
+// of items consistent with the current position in the input string: `cur_eis`.
+//
+// As it processes them, it fills up `eof_eis` with items that would be valid if
+// the macro invocation is now over, `bb_eis` with items that are waiting on
+// a Rust nonterminal like `$e:expr`, and `next_eis` with items that are waiting
+// on the a particular token. Most of the logic concerns moving the · through
+// the repetitions indicated by Kleene stars. It only advances or calls out to
+// the real Rust parser when no `cur_eis` items remain
+//
+// Example: Start parsing `a a a a b` against [· a $( a )* a b].
+//
+// Remaining input: `a a a a b`
+// next_eis: [· a $( a )* a b]
+//
+// - - - Advance over an `a`. - - -
+//
+// Remaining input: `a a a b`
+// cur: [a · $( a )* a b]
+// Descend/Skip (first item).
+// next: [a $( · a )* a b]  [a $( a )* · a b].
+//
+// - - - Advance over an `a`. - - -
+//
+// Remaining input: `a a b`
+// cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+// Finish/Repeat (first item)
+// next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
+//
+// - - - Advance over an `a`. - - - (this looks exactly like the last step)
+//
+// Remaining input: `a b`
+// cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+// Finish/Repeat (first item)
+// next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
+//
+// - - - Advance over an `a`. - - - (this looks exactly like the last step)
+//
+// Remaining input: `b`
+// cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+// Finish/Repeat (first item)
+// next: [a $( a )* · a b]  [a $( · a )* a b]
+//
+// - - - Advance over a `b`. - - -
+//
+// Remaining input: ``
+// eof: [a $( a )* a b ·]
 
-A 'position' is a dot in the middle of a matcher, usually represented as a
-dot. For example `· a $( a )* a b` is a position, as is `a $( · a )* a b`.
-
-The parser walks through the input a character at a time, maintaining a list
-of items consistent with the current position in the input string: `cur_eis`.
-
-As it processes them, it fills up `eof_eis` with items that would be valid if
-the macro invocation is now over, `bb_eis` with items that are waiting on
-a Rust nonterminal like `$e:expr`, and `next_eis` with items that are waiting
-on the a particular token. Most of the logic concerns moving the · through the
-repetitions indicated by Kleene stars. It only advances or calls out to the
-real Rust parser when no `cur_eis` items remain
-
-Example: Start parsing `a a a a b` against [· a $( a )* a b].
-
-Remaining input: `a a a a b`
-next_eis: [· a $( a )* a b]
-
-- - - Advance over an `a`. - - -
-
-Remaining input: `a a a b`
-cur: [a · $( a )* a b]
-Descend/Skip (first item).
-next: [a $( · a )* a b]  [a $( a )* · a b].
-
-- - - Advance over an `a`. - - -
-
-Remaining input: `a a b`
-cur: [a $( a · )* a b]  next: [a $( a )* a · b]
-Finish/Repeat (first item)
-next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
-
-- - - Advance over an `a`. - - - (this looks exactly like the last step)
-
-Remaining input: `a b`
-cur: [a $( a · )* a b]  next: [a $( a )* a · b]
-Finish/Repeat (first item)
-next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
-
-- - - Advance over an `a`. - - - (this looks exactly like the last step)
-
-Remaining input: `b`
-cur: [a $( a · )* a b]  next: [a $( a )* a · b]
-Finish/Repeat (first item)
-next: [a $( a )* · a b]  [a $( · a )* a b]
-
-- - - Advance over a `b`. - - -
-
-Remaining input: ``
-eof: [a $( a )* a b ·]
-
- */
-
-
-/* to avoid costly uniqueness checks, we require that `MatchSeq` always has a
-nonempty body. */
+// to avoid costly uniqueness checks, we require that `MatchSeq` always has a
+// nonempty body.
 
 
 #[deriving(Clone)]
@@ -253,17 +250,17 @@ pub fn parse(sess: &ParseSess,
 
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
 
-        /* we append new items to this while we go */
+        // we append new items to this while we go
         loop {
             let ei = match cur_eis.pop() {
-                None => break, /* for each Earley Item */
+                None => break, // for each Earley Item
                 Some(ei) => ei,
             };
 
             let idx = ei.idx;
             let len = ei.elts.len();
 
-            /* at end of sequence */
+            // at end of sequence
             if idx >= len {
                 // can't move out of `match`es, so:
                 if ei.up.is_some() {
@@ -323,7 +320,7 @@ pub fn parse(sess: &ParseSess,
                 }
             } else {
                 match ei.elts.get(idx).node.clone() {
-                  /* need to descend into sequence */
+                  // need to descend into sequence
                   MatchSeq(ref matchers, ref sep, zero_ok,
                            match_idx_lo, match_idx_hi) => {
                     if zero_ok {
@@ -364,7 +361,7 @@ pub fn parse(sess: &ParseSess,
             }
         }
 
-        /* error messages here could be improved with links to orig. rules */
+        // error messages here could be improved with links to orig. rules
         if token_name_eq(&tok, &EOF) {
             if eof_eis.len() == 1u {
                 let mut v = Vec::new();
@@ -397,7 +394,7 @@ pub fn parse(sess: &ParseSess,
                 return Failure(sp, format!("no rules expected the token `{}`",
                             token::to_str(&tok)).to_string());
             } else if next_eis.len() > 0u {
-                /* Now process the next token */
+                // Now process the next token
                 while next_eis.len() > 0u {
                     cur_eis.push(next_eis.pop().unwrap());
                 }

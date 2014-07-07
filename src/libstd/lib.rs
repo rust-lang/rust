@@ -192,19 +192,19 @@ fn start(argc: int, argv: *const *const u8) -> int {
     green::start(argc, argv, rustuv::event_loop, __test::main)
 }
 
-/* Exported macros */
+// Exported macros
 
 pub mod macros;
 pub mod bitflags;
 
 mod rtdeps;
 
-/* The Prelude. */
+// The Prelude.
 
 pub mod prelude;
 
 
-/* Primitive types */
+// Primitive types
 
 #[path = "num/float_macros.rs"] mod float_macros;
 #[path = "num/int_macros.rs"]   mod int_macros;
@@ -232,23 +232,23 @@ pub mod ascii;
 #[cfg(not(test))]
 pub mod gc;
 
-/* Common traits */
+// Common traits
 
 pub mod from_str;
 pub mod num;
 pub mod to_str;
 
-/* Common data structures */
+// Common data structures
 
 pub mod collections;
 pub mod hash;
 
-/* Tasks and communication */
+// Tasks and communication
 
 pub mod task;
 pub mod sync;
 
-/* Runtime and platform support */
+// Runtime and platform support
 
 pub mod c_vec;
 pub mod dynamic_lib;

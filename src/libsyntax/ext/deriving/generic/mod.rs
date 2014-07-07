@@ -8,174 +8,170 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Some code that abstracts away much of the boilerplate of writing
-`deriving` instances for traits. Among other things it manages getting
-access to the fields of the 4 different sorts of structs and enum
-variants, as well as creating the method and impl ast instances.
-
-Supported features (fairly exhaustive):
-
-- Methods taking any number of parameters of any type, and returning
-  any type, other than vectors, bottom and closures.
-- Generating `impl`s for types with type parameters and lifetimes
-  (e.g. `Option<T>`), the parameters are automatically given the
-  current trait as a bound. (This includes separate type parameters
-  and lifetimes for methods.)
-- Additional bounds on the type parameters, e.g. the `Ord` instance
-  requires an explicit `PartialEq` bound at the
-  moment. (`TraitDef.additional_bounds`)
-
-Unsupported: FIXME #6257: calling methods on reference fields,
-e.g. deriving Eq/Ord/Clone don't work on `struct A(&int)`,
-because of how the auto-dereferencing happens.
-
-The most important thing for implementers is the `Substructure` and
-`SubstructureFields` objects. The latter groups 5 possibilities of the
-arguments:
-
-- `Struct`, when `Self` is a struct (including tuple structs, e.g
-  `struct T(int, char)`).
-- `EnumMatching`, when `Self` is an enum and all the arguments are the
-  same variant of the enum (e.g. `Some(1)`, `Some(3)` and `Some(4)`)
-- `EnumNonMatching` when `Self` is an enum and the arguments are not
-  the same variant (e.g. `None`, `Some(1)` and `None`). If
-  `const_nonmatching` is true, this will contain an empty list.
-- `StaticEnum` and `StaticStruct` for static methods, where the type
-  being derived upon is either an enum or struct respectively. (Any
-  argument with type Self is just grouped among the non-self
-  arguments.)
-
-In the first two cases, the values from the corresponding fields in
-all the arguments are grouped together. In the `EnumNonMatching` case
-this isn't possible (different variants have different fields), so the
-fields are grouped by which argument they come from. There are no
-fields with values in the static cases, so these are treated entirely
-differently.
-
-The non-static cases have `Option<ident>` in several places associated
-with field `expr`s. This represents the name of the field it is
-associated with. It is only not `None` when the associated field has
-an identifier in the source code. For example, the `x`s in the
-following snippet
-
-```rust
-struct A { x : int }
-
-struct B(int);
-
-enum C {
-    C0(int),
-    C1 { x: int }
-}
-```
-
-The `int`s in `B` and `C0` don't have an identifier, so the
-`Option<ident>`s would be `None` for them.
-
-In the static cases, the structure is summarised, either into the just
-spans of the fields or a list of spans and the field idents (for tuple
-structs and record structs, respectively), or a list of these, for
-enums (one for each variant). For empty struct and empty enum
-variants, it is represented as a count of 0.
-
-# Examples
-
-The following simplified `PartialEq` is used for in-code examples:
-
-```rust
-trait PartialEq {
-    fn eq(&self, other: &Self);
-}
-impl PartialEq for int {
-    fn eq(&self, other: &int) -> bool {
-        *self == *other
-    }
-}
-```
-
-Some examples of the values of `SubstructureFields` follow, using the
-above `PartialEq`, `A`, `B` and `C`.
-
-## Structs
-
-When generating the `expr` for the `A` impl, the `SubstructureFields` is
-
-~~~text
-Struct(~[FieldInfo {
-           span: <span of x>
-           name: Some(<ident of x>),
-           self_: <expr for &self.x>,
-           other: ~[<expr for &other.x]
-         }])
-~~~
-
-For the `B` impl, called with `B(a)` and `B(b)`,
-
-~~~text
-Struct(~[FieldInfo {
-          span: <span of `int`>,
-          name: None,
-          <expr for &a>
-          ~[<expr for &b>]
-         }])
-~~~
-
-## Enums
-
-When generating the `expr` for a call with `self == C0(a)` and `other
-== C0(b)`, the SubstructureFields is
-
-~~~text
-EnumMatching(0, <ast::Variant for C0>,
-             ~[FieldInfo {
-                span: <span of int>
-                name: None,
-                self_: <expr for &a>,
-                other: ~[<expr for &b>]
-              }])
-~~~
-
-For `C1 {x}` and `C1 {x}`,
-
-~~~text
-EnumMatching(1, <ast::Variant for C1>,
-             ~[FieldInfo {
-                span: <span of x>
-                name: Some(<ident of x>),
-                self_: <expr for &self.x>,
-                other: ~[<expr for &other.x>]
-               }])
-~~~
-
-For `C0(a)` and `C1 {x}` ,
-
-~~~text
-EnumNonMatching(~[(0, <ast::Variant for B0>,
-                   ~[(<span of int>, None, <expr for &a>)]),
-                  (1, <ast::Variant for B1>,
-                   ~[(<span of x>, Some(<ident of x>),
-                      <expr for &other.x>)])])
-~~~
-
-(and vice versa, but with the order of the outermost list flipped.)
-
-## Static
-
-A static method on the above would result in,
-
-~~~text
-StaticStruct(<ast::StructDef of A>, Named(~[(<ident of x>, <span of x>)]))
-
-StaticStruct(<ast::StructDef of B>, Unnamed(~[<span of x>]))
-
-StaticEnum(<ast::EnumDef of C>, ~[(<ident of C0>, <span of C0>, Unnamed(~[<span of int>])),
-                                  (<ident of C1>, <span of C1>,
-                                   Named(~[(<ident of x>, <span of x>)]))])
-~~~
-
-*/
+//! Some code that abstracts away much of the boilerplate of writing
+//! `deriving` instances for traits. Among other things it manages getting
+//! access to the fields of the 4 different sorts of structs and enum
+//! variants, as well as creating the method and impl ast instances.
+//!
+//! Supported features (fairly exhaustive):
+//!
+//! - Methods taking any number of parameters of any type, and returning
+//!   any type, other than vectors, bottom and closures.
+//! - Generating `impl`s for types with type parameters and lifetimes
+//!   (e.g. `Option<T>`), the parameters are automatically given the
+//!   current trait as a bound. (This includes separate type parameters
+//!   and lifetimes for methods.)
+//! - Additional bounds on the type parameters, e.g. the `Ord` instance
+//!   requires an explicit `PartialEq` bound at the
+//!   moment. (`TraitDef.additional_bounds`)
+//!
+//! Unsupported: FIXME #6257: calling methods on reference fields,
+//! e.g. deriving Eq/Ord/Clone don't work on `struct A(&int)`,
+//! because of how the auto-dereferencing happens.
+//!
+//! The most important thing for implementers is the `Substructure` and
+//! `SubstructureFields` objects. The latter groups 5 possibilities of the
+//! arguments:
+//!
+//! - `Struct`, when `Self` is a struct (including tuple structs, e.g
+//!   `struct T(int, char)`).
+//! - `EnumMatching`, when `Self` is an enum and all the arguments are the
+//!   same variant of the enum (e.g. `Some(1)`, `Some(3)` and `Some(4)`)
+//! - `EnumNonMatching` when `Self` is an enum and the arguments are not
+//!   the same variant (e.g. `None`, `Some(1)` and `None`). If
+//!   `const_nonmatching` is true, this will contain an empty list.
+//! - `StaticEnum` and `StaticStruct` for static methods, where the type
+//!   being derived upon is either an enum or struct respectively. (Any
+//!   argument with type Self is just grouped among the non-self
+//!   arguments.)
+//!
+//! In the first two cases, the values from the corresponding fields in
+//! all the arguments are grouped together. In the `EnumNonMatching` case
+//! this isn't possible (different variants have different fields), so the
+//! fields are grouped by which argument they come from. There are no
+//! fields with values in the static cases, so these are treated entirely
+//! differently.
+//!
+//! The non-static cases have `Option<ident>` in several places associated
+//! with field `expr`s. This represents the name of the field it is
+//! associated with. It is only not `None` when the associated field has
+//! an identifier in the source code. For example, the `x`s in the
+//! following snippet
+//!
+//! ```rust
+//! struct A { x : int }
+//!
+//! struct B(int);
+//!
+//! enum C {
+//!     C0(int),
+//!     C1 { x: int }
+//! }
+//! ```
+//!
+//! The `int`s in `B` and `C0` don't have an identifier, so the
+//! `Option<ident>`s would be `None` for them.
+//!
+//! In the static cases, the structure is summarised, either into the just
+//! spans of the fields or a list of spans and the field idents (for tuple
+//! structs and record structs, respectively), or a list of these, for
+//! enums (one for each variant). For empty struct and empty enum
+//! variants, it is represented as a count of 0.
+//!
+//! # Examples
+//!
+//! The following simplified `PartialEq` is used for in-code examples:
+//!
+//! ```rust
+//! trait PartialEq {
+//!     fn eq(&self, other: &Self);
+//! }
+//! impl PartialEq for int {
+//!     fn eq(&self, other: &int) -> bool {
+//!         *self == *other
+//!     }
+//! }
+//! ```
+//!
+//! Some examples of the values of `SubstructureFields` follow, using the
+//! above `PartialEq`, `A`, `B` and `C`.
+//!
+//! ## Structs
+//!
+//! When generating the `expr` for the `A` impl, the `SubstructureFields` is
+//!
+//! ~~~text
+//! Struct(~[FieldInfo {
+//!            span: <span of x>
+//!            name: Some(<ident of x>),
+//!            self_: <expr for &self.x>,
+//!            other: ~[<expr for &other.x]
+//!          }])
+//! ~~~
+//!
+//! For the `B` impl, called with `B(a)` and `B(b)`,
+//!
+//! ~~~text
+//! Struct(~[FieldInfo {
+//!           span: <span of `int`>,
+//!           name: None,
+//!           <expr for &a>
+//!           ~[<expr for &b>]
+//!          }])
+//! ~~~
+//!
+//! ## Enums
+//!
+//! When generating the `expr` for a call with `self == C0(a)` and `other
+//! == C0(b)`, the SubstructureFields is
+//!
+//! ~~~text
+//! EnumMatching(0, <ast::Variant for C0>,
+//!              ~[FieldInfo {
+//!                 span: <span of int>
+//!                 name: None,
+//!                 self_: <expr for &a>,
+//!                 other: ~[<expr for &b>]
+//!               }])
+//! ~~~
+//!
+//! For `C1 {x}` and `C1 {x}`,
+//!
+//! ~~~text
+//! EnumMatching(1, <ast::Variant for C1>,
+//!              ~[FieldInfo {
+//!                 span: <span of x>
+//!                 name: Some(<ident of x>),
+//!                 self_: <expr for &self.x>,
+//!                 other: ~[<expr for &other.x>]
+//!                }])
+//! ~~~
+//!
+//! For `C0(a)` and `C1 {x}` ,
+//!
+//! ~~~text
+//! EnumNonMatching(~[(0, <ast::Variant for B0>,
+//!                    ~[(<span of int>, None, <expr for &a>)]),
+//!                   (1, <ast::Variant for B1>,
+//!                    ~[(<span of x>, Some(<ident of x>),
+//!                       <expr for &other.x>)])])
+//! ~~~
+//!
+//! (and vice versa, but with the order of the outermost list flipped.)
+//!
+//! ## Static
+//!
+//! A static method on the above would result in,
+//!
+//! ~~~text
+//! StaticStruct(<ast::StructDef of A>, Named(~[(<ident of x>, <span of x>)]))
+//!
+//! StaticStruct(<ast::StructDef of B>, Unnamed(~[<span of x>]))
+//!
+//! StaticEnum(<ast::EnumDef of C>, ~[(<ident of C0>, <span of C0>, Unnamed(~[<span of int>])),
+//!                                   (<ident of C1>, <span of C1>,
+//!                                    Named(~[(<ident of x>, <span of x>)]))])
+//! ~~~
 
 use std::cell::RefCell;
 use std::gc::{Gc, GC};
@@ -281,18 +277,14 @@ pub enum StaticFields {
 /// and examples
 pub enum SubstructureFields<'a> {
     Struct(Vec<FieldInfo>),
-    /**
-    Matching variants of the enum: variant index, ast::Variant,
-    fields: the field name is only non-`None` in the case of a struct
-    variant.
-    */
+    /// Matching variants of the enum: variant index, ast::Variant,
+    /// fields: the field name is only non-`None` in the case of a struct
+    /// variant.
     EnumMatching(uint, &'a ast::Variant, Vec<FieldInfo>),
 
-    /**
-    non-matching variants of the enum, [(variant index, ast::Variant,
-    [field span, field ident, fields])] \(i.e. all fields for self are in the
-    first tuple, for other1 are in the second tuple, etc.)
-    */
+    /// non-matching variants of the enum, [(variant index, ast::Variant,
+    /// [field span, field ident, fields])] \(i.e. all fields for self are in
+    /// the first tuple, for other1 are in the second tuple, etc.)
     EnumNonMatching(&'a [(uint, P<ast::Variant>,
                           Vec<(Span, Option<Ident>, Gc<Expr>)>)]),
 
@@ -304,18 +296,14 @@ pub enum SubstructureFields<'a> {
 
 
 
-/**
-Combine the values of all the fields together. The last argument is
-all the fields of all the structures, see above for details.
-*/
+/// Combine the values of all the fields together. The last argument is
+/// all the fields of all the structures, see above for details.
 pub type CombineSubstructureFunc<'a> =
     |&mut ExtCtxt, Span, &Substructure|: 'a -> Gc<Expr>;
 
-/**
-Deal with non-matching enum variants, the arguments are a list
-representing each variant: (variant index, ast::Variant instance,
-[variant fields]), and a list of the nonself args of the type
-*/
+/// Deal with non-matching enum variants, the arguments are a list
+/// representing each variant: (variant index, ast::Variant instance,
+/// [variant fields]), and a list of the nonself args of the type
 pub type EnumNonMatchFunc<'a> =
     |&mut ExtCtxt,
            Span,
@@ -365,18 +353,16 @@ impl<'a> TraitDef<'a> {
         })
     }
 
-    /**
-     *
-     * Given that we are deriving a trait `Tr` for a type `T<'a, ...,
-     * 'z, A, ..., Z>`, creates an impl like:
-     *
-     * ```ignore
-     *      impl<'a, ..., 'z, A:Tr B1 B2, ..., Z: Tr B1 B2> Tr for T<A, ..., Z> { ... }
-     * ```
-     *
-     * where B1, B2, ... are the bounds given by `bounds_paths`.'
-     *
-     */
+    ///
+    /// Given that we are deriving a trait `Tr` for a type `T<'a, ...,
+    /// 'z, A, ..., Z>`, creates an impl like:
+    ///
+    /// ```ignore
+    ///      impl<'a, ..., 'z, A:Tr B1 B2, ..., Z: Tr B1 B2> Tr for T<A, ..., Z> { ... }
+    /// ```
+    ///
+    /// where B1, B2, ... are the bounds given by `bounds_paths`.'
+    ///
     fn create_derived_impl(&self,
                            cx: &mut ExtCtxt,
                            type_ident: Ident,
@@ -647,27 +633,25 @@ impl<'a> MethodDef<'a> {
         }
     }
 
-    /**
-   ~~~
-    #[deriving(PartialEq)]
-    struct A { x: int, y: int }
-
-    // equivalent to:
-    impl PartialEq for A {
-        fn eq(&self, __arg_1: &A) -> bool {
-            match *self {
-                A {x: ref __self_0_0, y: ref __self_0_1} => {
-                    match *__arg_1 {
-                        A {x: ref __self_1_0, y: ref __self_1_1} => {
-                            __self_0_0.eq(__self_1_0) && __self_0_1.eq(__self_1_1)
-                        }
-                    }
-                }
-            }
-        }
-    }
-   ~~~
-    */
+    /// ```
+    /// #[deriving(PartialEq)]
+    /// struct A { x: int, y: int }
+    ///
+    /// // equivalent to:
+    /// impl PartialEq for A {
+    ///     fn eq(&self, __arg_1: &A) -> bool {
+    ///         match *self {
+    ///             A {x: ref __self_0_0, y: ref __self_0_1} => {
+    ///                 match *__arg_1 {
+    ///                     A {x: ref __self_1_0, y: ref __self_1_1} => {
+    ///                         __self_0_0.eq(__self_1_0) && __self_0_1.eq(__self_1_1)
+    ///                     }
+    ///                 }
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
     fn expand_struct_method_body(&self,
                                  cx: &mut ExtCtxt,
                                  trait_: &TraitDef,
@@ -752,32 +736,30 @@ impl<'a> MethodDef<'a> {
                                       &StaticStruct(struct_def, summary))
     }
 
-    /**
-   ~~~
-    #[deriving(PartialEq)]
-    enum A {
-        A1
-        A2(int)
-    }
-
-    // is equivalent to (with const_nonmatching == false)
-
-    impl PartialEq for A {
-        fn eq(&self, __arg_1: &A) {
-            match *self {
-                A1 => match *__arg_1 {
-                    A1 => true
-                    A2(ref __arg_1_1) => false
-                },
-                A2(self_1) => match *__arg_1 {
-                    A1 => false,
-                    A2(ref __arg_1_1) => self_1.eq(__arg_1_1)
-                }
-            }
-        }
-    }
-   ~~~
-    */
+    /// ```
+    /// #[deriving(PartialEq)]
+    /// enum A {
+    ///     A1
+    ///     A2(int)
+    /// }
+    ///
+    /// // is equivalent to (with const_nonmatching == false)
+    ///
+    /// impl PartialEq for A {
+    ///     fn eq(&self, __arg_1: &A) {
+    ///         match *self {
+    ///             A1 => match *__arg_1 {
+    ///                 A1 => true
+    ///                 A2(ref __arg_1_1) => false
+    ///             },
+    ///             A2(self_1) => match *__arg_1 {
+    ///                 A1 => false,
+    ///                 A2(ref __arg_1_1) => self_1.eq(__arg_1_1)
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
     fn expand_enum_method_body(&self,
                                cx: &mut ExtCtxt,
                                trait_: &TraitDef,
@@ -792,28 +774,25 @@ impl<'a> MethodDef<'a> {
                               None, &mut matches, 0)
     }
 
-
-    /**
-    Creates the nested matches for an enum definition recursively, i.e.
-
-   ~~~text
-    match self {
-       Variant1 => match other { Variant1 => matching, Variant2 => nonmatching, ... },
-       Variant2 => match other { Variant1 => nonmatching, Variant2 => matching, ... },
-       ...
-    }
-   ~~~
-
-    It acts in the most naive way, so every branch (and subbranch,
-    subsubbranch, etc) exists, not just the ones where all the variants in
-    the tree are the same. Hopefully the optimisers get rid of any
-    repetition, otherwise derived methods with many Self arguments will be
-    exponentially large.
-
-    `matching` is Some(n) if all branches in the tree above the
-    current position are variant `n`, `None` otherwise (including on
-    the first call).
-    */
+    /// Creates the nested matches for an enum definition recursively, i.e.
+    ///
+    /// ```text
+    /// match self {
+    ///    Variant1 => match other { Variant1 => matching, Variant2 => nonmatching, ... },
+    ///    Variant2 => match other { Variant1 => nonmatching, Variant2 => matching, ... },
+    ///    ...
+    /// }
+    /// ```
+    ///
+    /// It acts in the most naive way, so every branch (and subbranch,
+    /// subsubbranch, etc) exists, not just the ones where all the variants in
+    /// the tree are the same. Hopefully the optimisers get rid of any
+    /// repetition, otherwise derived methods with many Self arguments will be
+    /// exponentially large.
+    ///
+    /// `matching` is Some(n) if all branches in the tree above the
+    /// current position are variant `n`, `None` otherwise (including on
+    /// the first call).
     fn build_enum_match(&self,
                         cx: &mut ExtCtxt,
                         trait_: &TraitDef,
@@ -1161,12 +1140,10 @@ impl<'a> TraitDef<'a> {
     }
 }
 
-/* helpful premade recipes */
+// helpful premade recipes
 
-/**
-Fold the fields. `use_foldl` controls whether this is done
-left-to-right (`true`) or right-to-left (`false`).
-*/
+/// Fold the fields. `use_foldl` controls whether this is done
+/// left-to-right (`true`) or right-to-left (`false`).
 pub fn cs_fold(use_foldl: bool,
                f: |&mut ExtCtxt, Span, Gc<Expr>, Gc<Expr>, &[Gc<Expr>]| -> Gc<Expr>,
                base: Gc<Expr>,
@@ -1205,15 +1182,13 @@ pub fn cs_fold(use_foldl: bool,
 }
 
 
-/**
-Call the method that is being derived on all the fields, and then
-process the collected results. i.e.
-
-~~~
-f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
-              self_2.method(__arg_1_2, __arg_2_2)])
-~~~
-*/
+/// Call the method that is being derived on all the fields, and then
+/// process the collected results. i.e.
+///
+/// ```
+/// f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
+///               self_2.method(__arg_1_2, __arg_2_2)])
+/// ```
 #[inline]
 pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<Gc<Expr>>| -> Gc<Expr>,
                       enum_nonmatch_f: EnumNonMatchFunc,
@@ -1244,11 +1219,9 @@ pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<Gc<Expr>>| -> Gc<Expr>,
     }
 }
 
-/**
-Fold together the results of calling the derived method on all the
-fields. `use_foldl` controls whether this is done left-to-right
-(`true`) or right-to-left (`false`).
-*/
+/// Fold together the results of calling the derived method on all the
+/// fields. `use_foldl` controls whether this is done left-to-right
+/// (`true`) or right-to-left (`false`).
 #[inline]
 pub fn cs_same_method_fold(use_foldl: bool,
                            f: |&mut ExtCtxt, Span, Gc<Expr>, Gc<Expr>| -> Gc<Expr>,
@@ -1274,10 +1247,8 @@ pub fn cs_same_method_fold(use_foldl: bool,
         cx, trait_span, substructure)
 }
 
-/**
-Use a given binop to combine the result of calling the derived method
-on all the fields.
-*/
+/// Use a given binop to combine the result of calling the derived method
+/// on all the fields.
 #[inline]
 pub fn cs_binop(binop: ast::BinOp, base: Gc<Expr>,
                 enum_nonmatch_f: EnumNonMatchFunc,

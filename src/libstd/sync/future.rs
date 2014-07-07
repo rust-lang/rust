@@ -8,21 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * A type representing values that may be computed concurrently and
- * operations for working with them.
- *
- * # Example
- *
- * ```rust
- * use std::sync::Future;
- * # fn fib(n: uint) -> uint {42};
- * # fn make_a_sandwich() {};
- * let mut delayed_fib = Future::spawn(proc() { fib(5000) });
- * make_a_sandwich();
- * println!("fib(5000) = {}", delayed_fib.get())
- * ```
- */
+//! A type representing values that may be computed concurrently and
+//! operations for working with them.
+//!
+//! # Example
+//!
+//! ```rust
+//! use std::sync::Future;
+//! # fn fib(n: uint) -> uint {42};
+//! # fn make_a_sandwich() {};
+//! let mut delayed_fib = Future::spawn(proc() { fib(5000) });
+//! make_a_sandwich();
+//! println!("fib(5000) = {}", delayed_fib.get())
+//! ```
 
 #![allow(missing_doc)]
 
@@ -62,12 +60,10 @@ impl<A> Future<A> {
         }
     }
 
+    /// Executes the future's closure and then returns a reference
+    /// to the result.  The reference lasts as long as
+    /// the future.
     pub fn get_ref<'a>(&'a mut self) -> &'a A {
-        /*!
-        * Executes the future's closure and then returns a reference
-        * to the result.  The reference lasts as long as
-        * the future.
-        */
         match self.state {
             Forced(ref v) => return v,
             Evaluating => fail!("Recursive forcing of future!"),
@@ -83,52 +79,40 @@ impl<A> Future<A> {
         }
     }
 
+    /// Create a future from a value.
+    ///
+    /// The value is immediately available and calling `get` later will
+    /// not block.
     pub fn from_value(val: A) -> Future<A> {
-        /*!
-         * Create a future from a value.
-         *
-         * The value is immediately available and calling `get` later will
-         * not block.
-         */
-
         Future {state: Forced(val)}
     }
 
+    /// Create a future from a function.
+    ///
+    /// The first time that the value is requested it will be retrieved by
+    /// calling the function.  Note that this function is a local
+    /// function. It is not spawned into another task.
     pub fn from_fn(f: proc():Send -> A) -> Future<A> {
-        /*!
-         * Create a future from a function.
-         *
-         * The first time that the value is requested it will be retrieved by
-         * calling the function.  Note that this function is a local
-         * function. It is not spawned into another task.
-         */
-
         Future {state: Pending(f)}
     }
 }
 
 impl<A:Send> Future<A> {
+    /// Create a future from a port
+    ///
+    /// The first time that the value is requested the task will block
+    /// waiting for the result to be received on the port.
     pub fn from_receiver(rx: Receiver<A>) -> Future<A> {
-        /*!
-         * Create a future from a port
-         *
-         * The first time that the value is requested the task will block
-         * waiting for the result to be received on the port.
-         */
-
         Future::from_fn(proc() {
             rx.recv()
         })
     }
 
+    /// Create a future from a unique closure.
+    ///
+    /// The closure will be run in a new task and its result used as the
+    /// value of the future.
     pub fn spawn(blk: proc():Send -> A) -> Future<A> {
-        /*!
-         * Create a future from a unique closure.
-         *
-         * The closure will be run in a new task and its result used as the
-         * value of the future.
-         */
-
         let (tx, rx) = channel();
 
         spawn(proc() {

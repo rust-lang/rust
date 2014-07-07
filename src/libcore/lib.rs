@@ -86,17 +86,17 @@ mod macros;
 
 pub mod num;
 
-/* The libcore prelude, not as all-encompassing as the libstd prelude */
+// The libcore prelude, not as all-encompassing as the libstd prelude
 
 pub mod prelude;
 
-/* Core modules for ownership management */
+// Core modules for ownership management
 
 pub mod intrinsics;
 pub mod mem;
 pub mod ptr;
 
-/* Core language traits */
+// Core language traits
 
 pub mod kinds;
 pub mod ops;
@@ -106,7 +106,7 @@ pub mod clone;
 pub mod default;
 pub mod collections;
 
-/* Core types and methods on primitives */
+// Core types and methods on primitives
 
 mod unicode;
 pub mod any;

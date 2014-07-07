@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-More runtime type reflection
-
-*/
+//! More runtime type reflection
 
 use std::char;
 use std::intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};

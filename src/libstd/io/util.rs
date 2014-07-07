@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Utility implementations of Reader and Writer */
+//! Utility implementations of Reader and Writer
 
 use prelude::*;
 use cmp;

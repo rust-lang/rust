@@ -34,18 +34,18 @@ pub struct TtReader<'a> {
     pub sp_diag: &'a SpanHandler,
     // the unzipped tree:
     stack: Vec<TtFrame>,
-    /* for MBE-style macro transcription */
+    // for MBE-style macro transcription
     interpolations: HashMap<Ident, Rc<NamedMatch>>,
     repeat_idx: Vec<uint>,
     repeat_len: Vec<uint>,
-    /* cached: */
+    // cached:
     pub cur_tok: Token,
     pub cur_span: Span,
 }
 
-/** This can do Macro-By-Example transcription. On the other hand, if
- *  `src` contains no `TTSeq`s and `TTNonterminal`s, `interp` can (and
- *  should) be none. */
+/// This can do Macro-By-Example transcription. On the other hand, if
+/// `src` contains no `TTSeq`s and `TTNonterminal`s, `interp` can (and
+/// should) be none.
 pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
                          interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
                          src: Vec<ast::TokenTree> )
@@ -58,17 +58,17 @@ pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
             dotdotdoted: false,
             sep: None,
         }),
-        interpolations: match interp { /* just a convenience */
+        interpolations: match interp { // just a convenience
             None => HashMap::new(),
             Some(x) => x,
         },
         repeat_idx: Vec::new(),
         repeat_len: Vec::new(),
-        /* dummy values, never read: */
+        // dummy values, never read:
         cur_tok: EOF,
         cur_span: DUMMY_SP,
     };
-    tt_next_token(&mut r); /* get cur_tok and cur_span set up */
+    tt_next_token(&mut r); // get cur_tok and cur_span set up
     r
 }
 
@@ -161,7 +161,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             }
         };
 
-        /* done with this set; pop or repeat? */
+        // done with this set; pop or repeat?
         if should_pop {
             let prev = r.stack.pop().unwrap();
             match r.stack.mut_last() {
@@ -177,20 +177,20 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 r.repeat_idx.pop();
                 r.repeat_len.pop();
             }
-        } else { /* repeat */
+        } else { // repeat
             *r.repeat_idx.mut_last().unwrap() += 1u;
             r.stack.mut_last().unwrap().idx = 0;
             match r.stack.last().unwrap().sep.clone() {
                 Some(tk) => {
-                    r.cur_tok = tk; /* repeat same span, I guess */
+                    r.cur_tok = tk; // repeat same span, I guess
                     return ret_val;
                 }
                 None => {}
             }
         }
     }
-    loop { /* because it's easiest, this handles `TTDelim` not starting
-              with a `TTTok`, even though it won't happen */
+    loop { // because it's easiest, this handles `TTDelim` not starting
+           // with a `TTTok`, even though it won't happen
         let t = {
             let frame = r.stack.last().unwrap();
             // FIXME(pcwalton): Bad copy.
@@ -217,7 +217,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 match lockstep_iter_size(&TTSeq(sp, tts.clone(), sep.clone(), zerok), r) {
                     LisUnconstrained => {
                         r.sp_diag.span_fatal(
-                            sp.clone(), /* blame macro writer */
+                            sp.clone(), // blame macro writer
                             "attempted to repeat an expression \
                              containing no syntax \
                              variables matched as repeating at this depth");
@@ -252,9 +252,9 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             TTNonterminal(sp, ident) => {
                 r.stack.mut_last().unwrap().idx += 1;
                 match *lookup_cur_matched(r, ident) {
-                    /* sidestep the interpolation tricks for ident because
-                       (a) idents can be in lots of places, so it'd be a pain
-                       (b) we actually can, since it's a token. */
+                    // sidestep the interpolation tricks for ident because
+                    // (a) idents can be in lots of places, so it'd be a pain
+                    // (b) we actually can, since it's a token.
                     MatchedNonterminal(NtIdent(box sn, b)) => {
                         r.cur_span = sp;
                         r.cur_tok = IDENT(sn,b);
@@ -268,7 +268,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                     }
                     MatchedSeq(..) => {
                         r.sp_diag.span_fatal(
-                            r.cur_span, /* blame the macro writer */
+                            r.cur_span, // blame the macro writer
                             format!("variable '{}' is still repeating at this depth",
                                     token::get_ident(ident)).as_slice());
                     }

@@ -572,18 +572,14 @@ pub fn compute_id_range_for_inlined_item(item: &InlinedItem) -> IdRange {
     visitor.result.get()
 }
 
+/// Computes the id range for a single fn body,
+/// ignoring nested items.
 pub fn compute_id_range_for_fn_body(fk: &visit::FnKind,
                                     decl: &FnDecl,
                                     body: &Block,
                                     sp: Span,
                                     id: NodeId)
-                                    -> IdRange
-{
-    /*!
-     * Computes the id range for a single fn body,
-     * ignoring nested items.
-     */
-
+                                    -> IdRange {
     let visitor = IdRangeComputingVisitor {
         result: Cell::new(IdRange::max())
     };

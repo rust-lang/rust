@@ -143,31 +143,29 @@ static NEG_INF_BUF: [u8, ..4] = ['-' as u8, 'i' as u8, 'n' as u8,
                                       'f' as u8];
 static NAN_BUF:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
 
-/**
- * Converts an integral number to its string representation as a byte vector.
- * This is meant to be a common base implementation for all integral string
- * conversion functions like `to_str()` or `to_str_radix()`.
- *
- * # Arguments
- * - `num`           - The number to convert. Accepts any number that
- *                     implements the numeric traits.
- * - `radix`         - Base to use. Accepts only the values 2-36.
- * - `sign`          - How to emit the sign. Options are:
- *     - `SignNone`: No sign at all. Basically emits `abs(num)`.
- *     - `SignNeg`:  Only `-` on negative values.
- *     - `SignAll`:  Both `+` on positive, and `-` on negative numbers.
- * - `f`             - a callback which will be invoked for each ascii character
- *                     which composes the string representation of this integer
- *
- * # Return value
- * A tuple containing the byte vector, and a boolean flag indicating
- * whether it represents a special value like `inf`, `-inf`, `NaN` or not.
- * It returns a tuple because there can be ambiguity between a special value
- * and a number representation at higher bases.
- *
- * # Failure
- * - Fails if `radix` < 2 or `radix` > 36.
- */
+/// Converts an integral number to its string representation as a byte vector.
+/// This is meant to be a common base implementation for all integral string
+/// conversion functions like `to_str()` or `to_str_radix()`.
+///
+/// # Arguments
+/// - `num`           - The number to convert. Accepts any number that
+///                     implements the numeric traits.
+/// - `radix`         - Base to use. Accepts only the values 2-36.
+/// - `sign`          - How to emit the sign. Options are:
+///     - `SignNone`: No sign at all. Basically emits `abs(num)`.
+///     - `SignNeg`:  Only `-` on negative values.
+///     - `SignAll`:  Both `+` on positive, and `-` on negative numbers.
+/// - `f`             - a callback which will be invoked for each ascii character
+///                     which composes the string representation of this integer
+///
+/// # Return value
+/// A tuple containing the byte vector, and a boolean flag indicating
+/// whether it represents a special value like `inf`, `-inf`, `NaN` or not.
+/// It returns a tuple because there can be ambiguity between a special value
+/// and a number representation at higher bases.
+///
+/// # Failure
+/// - Fails if `radix` < 2 or `radix` > 36.
 #[deprecated = "format!() and friends should be favored instead"]
 pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
     assert!(2 <= radix && radix <= 36);
@@ -223,40 +221,38 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
     }
 }
 
-/**
- * Converts a number to its string representation as a byte vector.
- * This is meant to be a common base implementation for all numeric string
- * conversion functions like `to_str()` or `to_str_radix()`.
- *
- * # Arguments
- * - `num`           - The number to convert. Accepts any number that
- *                     implements the numeric traits.
- * - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
- *                     is used, then this base is only used for the significand. The exponent
- *                     itself always printed using a base of 10.
- * - `negative_zero` - Whether to treat the special value `-0` as
- *                     `-0` or as `+0`.
- * - `sign`          - How to emit the sign. See `SignFormat`.
- * - `digits`        - The amount of digits to use for emitting the fractional
- *                     part, if any. See `SignificantDigits`.
- * - `exp_format`   - Whether or not to use the exponential (scientific) notation.
- *                    See `ExponentFormat`.
- * - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
- *                     exponential notation is desired.
- *
- * # Return value
- * A tuple containing the byte vector, and a boolean flag indicating
- * whether it represents a special value like `inf`, `-inf`, `NaN` or not.
- * It returns a tuple because there can be ambiguity between a special value
- * and a number representation at higher bases.
- *
- * # Failure
- * - Fails if `radix` < 2 or `radix` > 36.
- * - Fails if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
- *   between digit and exponent sign `'e'`.
- * - Fails if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
- *   between digit and exponent sign `'p'`.
- */
+/// Converts a number to its string representation as a byte vector.
+/// This is meant to be a common base implementation for all numeric string
+/// conversion functions like `to_str()` or `to_str_radix()`.
+///
+/// # Arguments
+/// - `num`           - The number to convert. Accepts any number that
+///                     implements the numeric traits.
+/// - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
+///                     is used, then this base is only used for the significand. The exponent
+///                     itself always printed using a base of 10.
+/// - `negative_zero` - Whether to treat the special value `-0` as
+///                     `-0` or as `+0`.
+/// - `sign`          - How to emit the sign. See `SignFormat`.
+/// - `digits`        - The amount of digits to use for emitting the fractional
+///                     part, if any. See `SignificantDigits`.
+/// - `exp_format`   - Whether or not to use the exponential (scientific) notation.
+///                    See `ExponentFormat`.
+/// - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
+///                     exponential notation is desired.
+///
+/// # Return value
+/// A tuple containing the byte vector, and a boolean flag indicating
+/// whether it represents a special value like `inf`, `-inf`, `NaN` or not.
+/// It returns a tuple because there can be ambiguity between a special value
+/// and a number representation at higher bases.
+///
+/// # Failure
+/// - Fails if `radix` < 2 or `radix` > 36.
+/// - Fails if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
+///   between digit and exponent sign `'e'`.
+/// - Fails if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
+///   between digit and exponent sign `'p'`.
 #[allow(deprecated)]
 pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
                                   Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
@@ -486,10 +482,8 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
     (buf, false)
 }
 
-/**
- * Converts a number to its string representation. This is a wrapper for
- * `to_str_bytes_common()`, for details see there.
- */
+/// Converts a number to its string representation. This is a wrapper for
+/// `to_str_bytes_common()`, for details see there.
 #[inline]
 pub fn float_to_str_common<T:NumCast+Zero+One+PartialEq+PartialOrd+NumStrConv+Float+
                              Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
@@ -507,45 +501,43 @@ static DIGIT_P_RADIX: uint = ('p' as uint) - ('a' as uint) + 11u;
 static DIGIT_I_RADIX: uint = ('i' as uint) - ('a' as uint) + 11u;
 static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
 
-/**
- * Parses a byte slice as a number. This is meant to
- * be a common base implementation for all numeric string conversion
- * functions like `from_str()` or `from_str_radix()`.
- *
- * # Arguments
- * - `buf`        - The byte slice to parse.
- * - `radix`      - Which base to parse the number as. Accepts 2-36.
- * - `negative`   - Whether to accept negative numbers.
- * - `fractional` - Whether to accept numbers with fractional parts.
- * - `special`    - Whether to accept special values like `inf`
- *                  and `NaN`. Can conflict with `radix`, see Failure.
- * - `exponent`   - Which exponent format to accept. Options are:
- *     - `ExpNone`: No Exponent, accepts just plain numbers like `42` or
- *                  `-8.2`.
- *     - `ExpDec`:  Accepts numbers with a decimal exponent like `42e5` or
- *                  `8.2E-2`. The exponent string itself is always base 10.
- *                  Can conflict with `radix`, see Failure.
- *     - `ExpBin`:  Accepts numbers with a binary exponent like `42P-8` or
- *                  `FFp128`. The exponent string itself is always base 10.
- *                  Can conflict with `radix`, see Failure.
- * - `empty_zero` - Whether to accept an empty `buf` as a 0 or not.
- * - `ignore_underscores` - Whether all underscores within the string should
- *                          be ignored.
- *
- * # Return value
- * Returns `Some(n)` if `buf` parses to a number n without overflowing, and
- * `None` otherwise, depending on the constraints set by the remaining
- * arguments.
- *
- * # Failure
- * - Fails if `radix` < 2 or `radix` > 36.
- * - Fails if `radix` > 14 and `exponent` is `ExpDec` due to conflict
- *   between digit and exponent sign `'e'`.
- * - Fails if `radix` > 25 and `exponent` is `ExpBin` due to conflict
- *   between digit and exponent sign `'p'`.
- * - Fails if `radix` > 18 and `special == true` due to conflict
- *   between digit and lowest first character in `inf` and `NaN`, the `'i'`.
- */
+/// Parses a byte slice as a number. This is meant to
+/// be a common base implementation for all numeric string conversion
+/// functions like `from_str()` or `from_str_radix()`.
+///
+/// # Arguments
+/// - `buf`        - The byte slice to parse.
+/// - `radix`      - Which base to parse the number as. Accepts 2-36.
+/// - `negative`   - Whether to accept negative numbers.
+/// - `fractional` - Whether to accept numbers with fractional parts.
+/// - `special`    - Whether to accept special values like `inf`
+///                  and `NaN`. Can conflict with `radix`, see Failure.
+/// - `exponent`   - Which exponent format to accept. Options are:
+///     - `ExpNone`: No Exponent, accepts just plain numbers like `42` or
+///                  `-8.2`.
+///     - `ExpDec`:  Accepts numbers with a decimal exponent like `42e5` or
+///                  `8.2E-2`. The exponent string itself is always base 10.
+///                  Can conflict with `radix`, see Failure.
+///     - `ExpBin`:  Accepts numbers with a binary exponent like `42P-8` or
+///                  `FFp128`. The exponent string itself is always base 10.
+///                  Can conflict with `radix`, see Failure.
+/// - `empty_zero` - Whether to accept an empty `buf` as a 0 or not.
+/// - `ignore_underscores` - Whether all underscores within the string should
+///                          be ignored.
+///
+/// # Return value
+/// Returns `Some(n)` if `buf` parses to a number n without overflowing, and
+/// `None` otherwise, depending on the constraints set by the remaining
+/// arguments.
+///
+/// # Failure
+/// - Fails if `radix` < 2 or `radix` > 36.
+/// - Fails if `radix` > 14 and `exponent` is `ExpDec` due to conflict
+///   between digit and exponent sign `'e'`.
+/// - Fails if `radix` > 25 and `exponent` is `ExpBin` due to conflict
+///   between digit and exponent sign `'p'`.
+/// - Fails if `radix` > 18 and `special == true` due to conflict
+///   between digit and lowest first character in `inf` and `NaN`, the `'i'`.
 pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
                                     Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+
                                     NumStrConv+Clone>(
@@ -748,10 +740,8 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
     Some(accum * multiplier)
 }
 
-/**
- * Parses a string as a number. This is a wrapper for
- * `from_str_bytes_common()`, for details see there.
- */
+/// Parses a string as a number. This is a wrapper for
+/// `from_str_bytes_common()`, for details see there.
 #[inline]
 pub fn from_str_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+Mul<T,T>+
                               Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv+Clone>(

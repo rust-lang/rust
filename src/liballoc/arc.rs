@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Concurrency-enabled mechanisms for sharing mutable and/or immutable state
- * between tasks.
- */
+//! Concurrency-enabled mechanisms for sharing mutable and/or immutable state
+//! between tasks.
 
 use core::atomics;
 use core::clone::Clone;

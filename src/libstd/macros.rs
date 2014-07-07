@@ -411,7 +411,7 @@ pub mod builtin {
     /// ```
     #[macro_export]
     macro_rules! format_args( ($closure:expr, $fmt:expr $($args:tt)*) => ({
-        /* compiler built-in */
+        // compiler built-in
     }) )
 
     /// Inspect an environment variable at compile time.

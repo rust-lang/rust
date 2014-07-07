@@ -46,38 +46,36 @@ static MAX_TWO_B: u32   =    0x800u32;
 static MAX_THREE_B: u32 =  0x10000u32;
 static MAX_FOUR_B:  u32 = 0x200000u32;
 
-/*
-    Lu  Uppercase_Letter        an uppercase letter
-    Ll  Lowercase_Letter        a lowercase letter
-    Lt  Titlecase_Letter        a digraphic character, with first part uppercase
-    Lm  Modifier_Letter         a modifier letter
-    Lo  Other_Letter            other letters, including syllables and ideographs
-    Mn  Nonspacing_Mark         a nonspacing combining mark (zero advance width)
-    Mc  Spacing_Mark            a spacing combining mark (positive advance width)
-    Me  Enclosing_Mark          an enclosing combining mark
-    Nd  Decimal_Number          a decimal digit
-    Nl  Letter_Number           a letterlike numeric character
-    No  Other_Number            a numeric character of other type
-    Pc  Connector_Punctuation   a connecting punctuation mark, like a tie
-    Pd  Dash_Punctuation        a dash or hyphen punctuation mark
-    Ps  Open_Punctuation        an opening punctuation mark (of a pair)
-    Pe  Close_Punctuation       a closing punctuation mark (of a pair)
-    Pi  Initial_Punctuation     an initial quotation mark
-    Pf  Final_Punctuation       a final quotation mark
-    Po  Other_Punctuation       a punctuation mark of other type
-    Sm  Math_Symbol             a symbol of primarily mathematical use
-    Sc  Currency_Symbol         a currency sign
-    Sk  Modifier_Symbol         a non-letterlike modifier symbol
-    So  Other_Symbol            a symbol of other type
-    Zs  Space_Separator         a space character (of various non-zero widths)
-    Zl  Line_Separator          U+2028 LINE SEPARATOR only
-    Zp  Paragraph_Separator     U+2029 PARAGRAPH SEPARATOR only
-    Cc  Control                 a C0 or C1 control code
-    Cf  Format                  a format control character
-    Cs  Surrogate               a surrogate code point
-    Co  Private_Use             a private-use character
-    Cn  Unassigned              a reserved unassigned code point or a noncharacter
-*/
+// Lu  Uppercase_Letter        an uppercase letter
+// Ll  Lowercase_Letter        a lowercase letter
+// Lt  Titlecase_Letter        a digraphic character, with first part uppercase
+// Lm  Modifier_Letter         a modifier letter
+// Lo  Other_Letter            other letters, including syllables and ideographs
+// Mn  Nonspacing_Mark         a nonspacing combining mark (zero advance width)
+// Mc  Spacing_Mark            a spacing combining mark (positive advance width)
+// Me  Enclosing_Mark          an enclosing combining mark
+// Nd  Decimal_Number          a decimal digit
+// Nl  Letter_Number           a letterlike numeric character
+// No  Other_Number            a numeric character of other type
+// Pc  Connector_Punctuation   a connecting punctuation mark, like a tie
+// Pd  Dash_Punctuation        a dash or hyphen punctuation mark
+// Ps  Open_Punctuation        an opening punctuation mark (of a pair)
+// Pe  Close_Punctuation       a closing punctuation mark (of a pair)
+// Pi  Initial_Punctuation     an initial quotation mark
+// Pf  Final_Punctuation       a final quotation mark
+// Po  Other_Punctuation       a punctuation mark of other type
+// Sm  Math_Symbol             a symbol of primarily mathematical use
+// Sc  Currency_Symbol         a currency sign
+// Sk  Modifier_Symbol         a non-letterlike modifier symbol
+// So  Other_Symbol            a symbol of other type
+// Zs  Space_Separator         a space character (of various non-zero widths)
+// Zl  Line_Separator          U+2028 LINE SEPARATOR only
+// Zp  Paragraph_Separator     U+2029 PARAGRAPH SEPARATOR only
+// Cc  Control                 a C0 or C1 control code
+// Cf  Format                  a format control character
+// Cs  Surrogate               a surrogate code point
+// Co  Private_Use             a private-use character
+// Cn  Unassigned              a reserved unassigned code point or a noncharacter
 
 /// The highest valid code point
 pub static MAX: char = '\U0010ffff';

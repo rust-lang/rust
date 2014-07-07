@@ -8,56 +8,52 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
-
-typeck.rs, an introduction
-
-The type checker is responsible for:
-
-1. Determining the type of each expression
-2. Resolving methods and traits
-3. Guaranteeing that most type rules are met ("most?", you say, "why most?"
-   Well, dear reader, read on)
-
-The main entry point is `check_crate()`.  Type checking operates in
-several major phases:
-
-1. The collect phase first passes over all items and determines their
-   type, without examining their "innards".
-
-2. Variance inference then runs to compute the variance of each parameter
-
-3. Coherence checks for overlapping or orphaned impls
-
-4. Finally, the check phase then checks function bodies and so forth.
-   Within the check phase, we check each function body one at a time
-   (bodies of function expressions are checked as part of the
-   containing function).  Inference is used to supply types wherever
-   they are unknown. The actual checking of a function itself has
-   several phases (check, regionck, writeback), as discussed in the
-   documentation for the `check` module.
-
-The type checker is defined into various submodules which are documented
-independently:
-
-- astconv: converts the AST representation of types
-  into the `ty` representation
-
-- collect: computes the types of each top-level item and enters them into
-  the `cx.tcache` table for later use
-
-- coherence: enforces coherence rules, builds some tables
-
-- variance: variance inference
-
-- check: walks over function bodies and type checks them, inferring types for
-  local variables, type parameters, etc as necessary.
-
-- infer: finds the types to use for each type variable such that
-  all subtyping and assignment constraints are met.  In essence, the check
-  module specifies the constraints, and the infer module solves them.
-
-*/
+//! typeck.rs, an introduction
+//!
+//! The type checker is responsible for:
+//!
+//! 1. Determining the type of each expression
+//! 2. Resolving methods and traits
+//! 3. Guaranteeing that most type rules are met ("most?", you say, "why most?"
+//!    Well, dear reader, read on)
+//!
+//! The main entry point is `check_crate()`.  Type checking operates in
+//! several major phases:
+//!
+//! 1. The collect phase first passes over all items and determines their
+//!    type, without examining their "innards".
+//!
+//! 2. Variance inference then runs to compute the variance of each parameter
+//!
+//! 3. Coherence checks for overlapping or orphaned impls
+//!
+//! 4. Finally, the check phase then checks function bodies and so forth.
+//!    Within the check phase, we check each function body one at a time
+//!    (bodies of function expressions are checked as part of the
+//!    containing function).  Inference is used to supply types wherever
+//!    they are unknown. The actual checking of a function itself has
+//!    several phases (check, regionck, writeback), as discussed in the
+//!    documentation for the `check` module.
+//!
+//! The type checker is defined into various submodules which are documented
+//! independently:
+//!
+//! - astconv: converts the AST representation of types
+//!   into the `ty` representation
+//!
+//! - collect: computes the types of each top-level item and enters them into
+//!   the `cx.tcache` table for later use
+//!
+//! - coherence: enforces coherence rules, builds some tables
+//!
+//! - variance: variance inference
+//!
+//! - check: walks over function bodies and type checks them, inferring types
+//!   for local variables, type parameters, etc as necessary.
+//!
+//! - infer: finds the types to use for each type variable such that
+//!   all subtyping and assignment constraints are met.  In essence, the check
+//!   module specifies the constraints, and the infer module solves them.
 
 #![allow(non_camel_case_types)]
 
@@ -149,20 +145,18 @@ pub struct MethodCallee {
     pub substs: subst::Substs
 }
 
-/**
- * With method calls, we store some extra information in
- * side tables (i.e method_map, vtable_map). We use
- * MethodCall as a key to index into these tables instead of
- * just directly using the expression's NodeId. The reason
- * for this being that we may apply adjustments (coercions)
- * with the resulting expression also needing to use the
- * side tables. The problem with this is that we don't
- * assign a separate NodeId to this new expression
- * and so it would clash with the base expression if both
- * needed to add to the side tables. Thus to disambiguate
- * we also keep track of whether there's an adjustment in
- * our key.
- */
+/// With method calls, we store some extra information in
+/// side tables (i.e method_map, vtable_map). We use
+/// MethodCall as a key to index into these tables instead of
+/// just directly using the expression's NodeId. The reason
+/// for this being that we may apply adjustments (coercions)
+/// with the resulting expression also needing to use the
+/// side tables. The problem with this is that we don't
+/// assign a separate NodeId to this new expression
+/// and so it would clash with the base expression if both
+/// needed to add to the side tables. Thus to disambiguate
+/// we also keep track of whether there's an adjustment in
+/// our key.
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct MethodCall {
     pub expr_id: ast::NodeId,
@@ -215,29 +209,23 @@ pub type vtable_res = VecPerParamSpace<vtable_param_res>;
 
 #[deriving(Clone)]
 pub enum vtable_origin {
-    /*
-      Statically known vtable. def_id gives the impl item
-      from whence comes the vtable, and tys are the type substs.
-      vtable_res is the vtable itself.
-     */
+    // Statically known vtable. def_id gives the impl item
+    // from whence comes the vtable, and tys are the type substs.
+    // vtable_res is the vtable itself.
     vtable_static(ast::DefId, subst::Substs, vtable_res),
 
-    /*
-      Dynamic vtable, comes from a parameter that has a bound on it:
-      fn foo<T:quux,baz,bar>(a: T) -- a's vtable would have a
-      vtable_param origin
-
-      The first argument is the param index (identifying T in the example),
-      and the second is the bound number (identifying baz)
-     */
+    // Dynamic vtable, comes from a parameter that has a bound on it:
+    // fn foo<T:quux,baz,bar>(a: T) -- a's vtable would have a
+    // vtable_param origin
+    //
+    // The first argument is the param index (identifying T in the example),
+    // and the second is the bound number (identifying baz)
     vtable_param(param_index, uint),
 
-    /*
-      Asked to determine the vtable for ty_err. This is the value used
-      for the vtables of `Self` in a virtual call like `foo.bar()`
-      where `foo` is of object type. The same value is also used when
-      type errors occur.
-     */
+    // Asked to determine the vtable for ty_err. This is the value used
+    // for the vtables of `Self` in a virtual call like `foo.bar()`
+    // where `foo` is of object type. The same value is also used when
+    // type errors occur.
     vtable_error,
 }
 

@@ -8,24 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Low-level bindings to the libuv library.
- *
- * This module contains a set of direct, 'bare-metal' wrappers around
- * the libuv C-API.
- *
- * We're not bothering yet to redefine uv's structs as Rust structs
- * because they are quite large and change often between versions.
- * The maintenance burden is just too high. Instead we use the uv's
- * `uv_handle_size` and `uv_req_size` to find the correct size of the
- * structs and allocate them on the heap. This can be revisited later.
- *
- * There are also a collection of helper functions to ease interacting
- * with the low-level API.
- *
- * As new functionality, existent in uv.h, is added to the rust stdlib,
- * the mappings should be added in this module.
- */
+//! Low-level bindings to the libuv library.
+//!
+//! This module contains a set of direct, 'bare-metal' wrappers around
+//! the libuv C-API.
+//!
+//! We're not bothering yet to redefine uv's structs as Rust structs
+//! because they are quite large and change often between versions.
+//! The maintenance burden is just too high. Instead we use the uv's
+//! `uv_handle_size` and `uv_req_size` to find the correct size of the
+//! structs and allocate them on the heap. This can be revisited later.
+//!
+//! There are also a collection of helper functions to ease interacting
+//! with the low-level API.
+//!
+//! As new functionality, existent in uv.h, is added to the rust stdlib,
+//! the mappings should be added in this module.
 
 #![allow(non_camel_case_types)] // C types
 

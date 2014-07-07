@@ -141,23 +141,19 @@ impl Bitv {
         }
     }
 
-    /**
-     * Calculates the union of two bitvectors
-     *
-     * Sets `self` to the union of `self` and `v1`. Both bitvectors must be
-     * the same length. Returns `true` if `self` changed.
-    */
+    /// Calculates the union of two bitvectors
+    ///
+    /// Sets `self` to the union of `self` and `v1`. Both bitvectors must be
+    /// the same length. Returns `true` if `self` changed.
     #[inline]
     pub fn union(&mut self, other: &Bitv) -> bool {
         self.process(other, |w1, w2| w1 | w2)
     }
 
-    /**
-     * Calculates the intersection of two bitvectors
-     *
-     * Sets `self` to the intersection of `self` and `v1`. Both bitvectors
-     * must be the same length. Returns `true` if `self` changed.
-    */
+    /// Calculates the intersection of two bitvectors
+    ///
+    /// Sets `self` to the intersection of `self` and `v1`. Both bitvectors
+    /// must be the same length. Returns `true` if `self` changed.
     #[inline]
     pub fn intersect(&mut self, other: &Bitv) -> bool {
         self.process(other, |w1, w2| w1 & w2)
@@ -173,11 +169,9 @@ impl Bitv {
         x != 0
     }
 
-    /**
-     * Set the value of a bit at a given index
-     *
-     * `i` must be less than the length of the bitvector.
-     */
+    /// Set the value of a bit at a given index
+    ///
+    /// `i` must be less than the length of the bitvector.
     #[inline]
     pub fn set(&mut self, i: uint, x: bool) {
         assert!(i < self.nbits);
@@ -200,15 +194,13 @@ impl Bitv {
         for w in self.storage.mut_iter() { *w = !*w; }
     }
 
-    /**
-     * Calculate the difference between two bitvectors
-     *
-     * Sets each element of `v0` to the value of that element minus the
-     * element of `v1` at the same index. Both bitvectors must be the same
-     * length.
-     *
-     * Returns `true` if `v0` was changed.
-     */
+    /// Calculate the difference between two bitvectors
+    ///
+    /// Sets each element of `v0` to the value of that element minus the
+    /// element of `v1` at the same index. Both bitvectors must be the same
+    /// length.
+    ///
+    /// Returns `true` if `v0` was changed.
     #[inline]
     pub fn difference(&mut self, other: &Bitv) -> bool {
         self.process(other, |w1, w2| w1 & !w2)
@@ -256,12 +248,10 @@ impl Bitv {
         !self.none()
     }
 
-    /**
-     * Organise the bits into bytes, such that the first bit in the
-     * `Bitv` becomes the high-order bit of the first byte. If the
-     * size of the `Bitv` is not a multiple of 8 then trailing bits
-     * will be filled-in with false/0
-     */
+    /// Organise the bits into bytes, such that the first bit in the
+    /// `Bitv` becomes the high-order bit of the first byte. If the
+    /// size of the `Bitv` is not a multiple of 8 then trailing bits
+    /// will be filled-in with false/0
     pub fn to_bytes(&self) -> Vec<u8> {
         fn bit (bitv: &Bitv, byte: uint, bit: uint) -> u8 {
             let offset = byte * 8 + bit;
@@ -286,11 +276,9 @@ impl Bitv {
         )
     }
 
-    /**
-     * Compare a bitvector to a vector of `bool`.
-     *
-     * Both the bitvector and vector must have the same length.
-     */
+    /// Compare a bitvector to a vector of `bool`.
+    ///
+    /// Both the bitvector and vector must have the same length.
     pub fn eq_vec(&self, v: &[bool]) -> bool {
         assert_eq!(self.nbits, v.len());
         let mut i = 0;
@@ -428,11 +416,9 @@ impl Bitv {
     }
 }
 
-/**
- * Transform a byte-vector into a `Bitv`. Each byte becomes 8 bits,
- * with the most significant bits of each byte coming first. Each
- * bit becomes `true` if equal to 1 or `false` if equal to 0.
- */
+/// Transform a byte-vector into a `Bitv`. Each byte becomes 8 bits,
+/// with the most significant bits of each byte coming first. Each
+/// bit becomes `true` if equal to 1 or `false` if equal to 0.
 pub fn from_bytes(bytes: &[u8]) -> Bitv {
     from_fn(bytes.len() * 8, |i| {
         let b = bytes[i / 8] as uint;
@@ -441,10 +427,8 @@ pub fn from_bytes(bytes: &[u8]) -> Bitv {
     })
 }
 
-/**
- * Create a `Bitv` of the specified length where the value at each
- * index is `f(index)`.
- */
+/// Create a `Bitv` of the specified length where the value at each
+/// index is `f(index)`.
 pub fn from_fn(len: uint, f: |index: uint| -> bool) -> Bitv {
     let mut bitv = Bitv::with_capacity(len, false);
     for i in range(0u, len) {

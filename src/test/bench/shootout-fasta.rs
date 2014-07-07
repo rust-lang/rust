@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/* -*- mode: rust; indent-tabs-mode: nil -*-
- * Implementation of 'fasta' benchmark from
- * Computer Language Benchmarks Game
- * http://shootout.alioth.debian.org/
- */
+// -*- mode: rust; indent-tabs-mode: nil -*-
+// Implementation of 'fasta' benchmark from
+// Computer Language Benchmarks Game
+// http://shootout.alioth.debian.org/
 
 use std::io;
 use std::io::{BufferedWriter, File};

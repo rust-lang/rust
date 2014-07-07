@@ -172,17 +172,13 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
     param_result
 }
 
+/// Checks that an implementation of `act_trait_ref` is suitable
+/// for use where `exp_trait_ref` is required and reports an
+/// error otherwise.
 fn relate_trait_refs(vcx: &VtableContext,
                      span: Span,
                      act_trait_ref: Rc<ty::TraitRef>,
                      exp_trait_ref: Rc<ty::TraitRef>) {
-    /*!
-     *
-     * Checks that an implementation of `act_trait_ref` is suitable
-     * for use where `exp_trait_ref` is required and reports an
-     * error otherwise.
-     */
-
     match infer::mk_sub_trait_refs(vcx.infcx,
                                    false,
                                    infer::RelateTraitRefs(span),
@@ -758,34 +754,31 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
     }
 }
 
+/// The situation is as follows. We have some trait like:
+///
+///    trait Foo<A:Clone> : Bar {
+///        fn method() { ... }
+///    }
+///
+/// and an impl like:
+///
+///    impl<B:Clone> Foo<B> for int { ... }
+///
+/// We want to validate that the various requirements of the trait
+/// are met:
+///
+///    A:Clone, Self:Bar
+///
+/// But of course after substituting the types from the impl:
+///
+///    B:Clone, int:Bar
+///
+/// We store these results away as the "impl_res" for use by the
+/// default methods.
 pub fn resolve_impl(tcx: &ty::ctxt,
                     impl_item: &ast::Item,
                     impl_generics: &ty::Generics,
                     impl_trait_ref: &ty::TraitRef) {
-    /*!
-     * The situation is as follows. We have some trait like:
-     *
-     *    trait Foo<A:Clone> : Bar {
-     *        fn method() { ... }
-     *    }
-     *
-     * and an impl like:
-     *
-     *    impl<B:Clone> Foo<B> for int { ... }
-     *
-     * We want to validate that the various requirements of the trait
-     * are met:
-     *
-     *    A:Clone, Self:Bar
-     *
-     * But of course after substituting the types from the impl:
-     *
-     *    B:Clone, int:Bar
-     *
-     * We store these results away as the "impl_res" for use by the
-     * default methods.
-     */
-
     debug!("resolve_impl(impl_item.id={})",
            impl_item.id);
 

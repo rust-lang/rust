@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Various utility functions useful for writing I/O tests */
+//! Various utility functions useful for writing I/O tests
 
 #![macro_escape]
 
@@ -88,13 +88,11 @@ pub fn next_test_ip6() -> SocketAddr {
     SocketAddr { ip: Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1), port: next_test_port() }
 }
 
-/*
-XXX: Welcome to MegaHack City.
-
-The bots run multiple builds at the same time, and these builds
-all want to use ports. This function figures out which workspace
-it is running in and assigns a port range based on it.
-*/
+// FIXME: Welcome to MegaHack City.
+//
+// The bots run multiple builds at the same time, and these builds
+// all want to use ports. This function figures out which workspace
+// it is running in and assigns a port range based on it.
 fn base_port() -> u16 {
 
     let base = 9600u16;
@@ -132,16 +130,15 @@ pub fn raise_fd_limit() {
     unsafe { darwin_fd_limit::raise_fd_limit() }
 }
 
+/// darwin_fd_limit exists to work around an issue where launchctl on Mac OS X
+/// defaults the rlimit maxfiles to 256/unlimited. The default soft limit of 256
+/// ends up being far too low for our multithreaded scheduler testing, depending
+/// on the number of cores available.
+///
+/// This fixes issue #7772.
 #[cfg(target_os="macos")]
 #[allow(non_camel_case_types)]
 mod darwin_fd_limit {
-    /*!
-     * darwin_fd_limit exists to work around an issue where launchctl on Mac OS X defaults the
-     * rlimit maxfiles to 256/unlimited. The default soft limit of 256 ends up being far too low
-     * for our multithreaded scheduler testing, depending on the number of cores available.
-     *
-     * This fixes issue #7772.
-     */
 
     use libc;
     type rlim_t = libc::uint64_t;

@@ -44,36 +44,33 @@ pub fn replace_late_bound_regions_in_fn_sig(
     (map, fn_sig)
 }
 
+/// This rather specialized function walks each region `r` that appear
+/// in `ty` and invokes `relate_op(r_encl, r)` for each one.  `r_encl`
+/// here is the region of any enclosing `&'r T` pointer.  If there is
+/// no enclosing pointer, and `opt_region` is Some, then `opt_region.get()`
+/// is used instead.  Otherwise, no callback occurs at all).
+///
+/// Here are some examples to give you an intution:
+///
+/// - `relate_nested_regions(Some('r1), &'r2 uint)` invokes
+///   - `relate_op('r1, 'r2)`
+/// - `relate_nested_regions(Some('r1), &'r2 &'r3 uint)` invokes
+///   - `relate_op('r1, 'r2)`
+///   - `relate_op('r2, 'r3)`
+/// - `relate_nested_regions(None, &'r2 &'r3 uint)` invokes
+///   - `relate_op('r2, 'r3)`
+/// - `relate_nested_regions(None, &'r2 &'r3 &'r4 uint)` invokes
+///   - `relate_op('r2, 'r3)`
+///   - `relate_op('r2, 'r4)`
+///   - `relate_op('r3, 'r4)`
+///
+/// This function is used in various pieces of code because we enforce the
+/// constraint that a region pointer cannot outlive the things it points at.
+/// Hence, in the second example above, `'r2` must be a subregion of `'r3`.
 pub fn relate_nested_regions(tcx: &ty::ctxt,
                              opt_region: Option<ty::Region>,
                              ty: ty::t,
                              relate_op: |ty::Region, ty::Region|) {
-    /*!
-     * This rather specialized function walks each region `r` that appear
-     * in `ty` and invokes `relate_op(r_encl, r)` for each one.  `r_encl`
-     * here is the region of any enclosing `&'r T` pointer.  If there is
-     * no enclosing pointer, and `opt_region` is Some, then `opt_region.get()`
-     * is used instead.  Otherwise, no callback occurs at all).
-     *
-     * Here are some examples to give you an intution:
-     *
-     * - `relate_nested_regions(Some('r1), &'r2 uint)` invokes
-     *   - `relate_op('r1, 'r2)`
-     * - `relate_nested_regions(Some('r1), &'r2 &'r3 uint)` invokes
-     *   - `relate_op('r1, 'r2)`
-     *   - `relate_op('r2, 'r3)`
-     * - `relate_nested_regions(None, &'r2 &'r3 uint)` invokes
-     *   - `relate_op('r2, 'r3)`
-     * - `relate_nested_regions(None, &'r2 &'r3 &'r4 uint)` invokes
-     *   - `relate_op('r2, 'r3)`
-     *   - `relate_op('r2, 'r4)`
-     *   - `relate_op('r3, 'r4)`
-     *
-     * This function is used in various pieces of code because we enforce the
-     * constraint that a region pointer cannot outlive the things it points at.
-     * Hence, in the second example above, `'r2` must be a subregion of `'r3`.
-     */
-
     let mut rr = RegionRelator { tcx: tcx,
                                  stack: Vec::new(),
                                  relate_op: relate_op };
@@ -132,19 +129,16 @@ pub fn relate_nested_regions(tcx: &ty::ctxt,
     }
 }
 
+/// This function populates the region map's `free_region_map`.
+/// It walks over the transformed self type and argument types
+/// for each function just before we check the body of that
+/// function, looking for types where you have a borrowed
+/// pointer to other borrowed data (e.g., `&'a &'b [uint]`.
+/// We do not allow references to outlive the things they
+/// point at, so we can assume that `'a <= 'b`.
+///
+/// Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
 pub fn relate_free_regions(tcx: &ty::ctxt, fn_sig: &ty::FnSig) {
-    /*!
-     * This function populates the region map's `free_region_map`.
-     * It walks over the transformed self type and argument types
-     * for each function just before we check the body of that
-     * function, looking for types where you have a borrowed
-     * pointer to other borrowed data (e.g., `&'a &'b [uint]`.
-     * We do not allow references to outlive the things they
-     * point at, so we can assume that `'a <= 'b`.
-     *
-     * Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
-     */
-
     debug!("relate_free_regions >>");
 
     let mut all_tys = Vec::new();

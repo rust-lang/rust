@@ -665,18 +665,18 @@ fn encode_provided_source(ebml_w: &mut Encoder,
     }
 }
 
-/* Returns an index of items in this class */
+// Returns an index of items in this class
 fn encode_info_for_struct(ecx: &EncodeContext,
                           ebml_w: &mut Encoder,
                           fields: &[ty::field_ty],
                           global_index: &mut Vec<entry<i64>>)
                           -> Vec<entry<i64>> {
-    /* Each class has its own index, since different classes
-       may have fields with the same name */
+    // Each class has its own index, since different classes
+    // may have fields with the same name
     let mut index = Vec::new();
     let tcx = ecx.tcx;
-     /* We encode both private and public fields -- need to include
-        private fields to get the offsets right */
+    // We encode both private and public fields -- need to include
+    // private fields to get the offsets right
     for field in fields.iter() {
         let nm = field.name;
         let id = field.id.node;
@@ -1039,19 +1039,19 @@ fn encode_info_for_item(ecx: &EncodeContext,
       ItemStruct(struct_def, _) => {
         let fields = ty::lookup_struct_fields(tcx, def_id);
 
-        /* First, encode the fields
-           These come first because we need to write them to make
-           the index, and the index needs to be in the item for the
-           class itself */
+        // First, encode the fields
+        // These come first because we need to write them to make
+        // the index, and the index needs to be in the item for the
+        // class itself
         let idx = encode_info_for_struct(ecx,
                                          ebml_w,
                                          fields.as_slice(),
                                          index);
 
-        /* Index the class*/
+        // Index the class
         add_to_index(item, ebml_w, index);
 
-        /* Now, make an item for the class itself */
+        // Now, make an item for the class itself
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 'S');
@@ -1064,9 +1064,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_stability(ebml_w, stab);
         encode_visibility(ebml_w, vis);
 
-        /* Encode def_ids for each field and method
-         for methods, write all the stuff get_trait_method
-        needs to know*/
+        // Encode def_ids for each field and method
+        // for methods, write all the stuff get_trait_method
+        // needs to know
         encode_struct_fields(ebml_w, fields.as_slice(), def_id);
 
         encode_inlined_item(ecx, ebml_w, IIItemRef(item));
@@ -1074,7 +1074,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, ebml_w, def_id);
 
-        /* Each class has its own index -- encode it */
+        // Each class has its own index -- encode it
         encode_index(ebml_w, idx, write_i64);
         ebml_w.end_tag();
 

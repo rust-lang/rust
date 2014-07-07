@@ -28,7 +28,7 @@ fn rename_directory() {
         fs::mkdir_recursive(&old_path, io::UserRWX);
         let test_file = &old_path.join("temp.txt");
 
-        /* Write the temp input file */
+        // Write the temp input file
         let ostream = test_file.with_c_str(|fromp| {
             "w+b".with_c_str(|modebuf| {
                 libc::fopen(fromp, modebuf)

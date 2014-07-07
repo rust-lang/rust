@@ -46,10 +46,8 @@ pub trait AttrMetaMethods {
     /// #[foo="bar"] and #[foo(bar)]
     fn name(&self) -> InternedString;
 
-    /**
-     * Gets the string value if self is a MetaNameValue variant
-     * containing a string, otherwise None.
-     */
+    /// Gets the string value if self is a MetaNameValue variant
+    /// containing a string, otherwise None.
     fn value_str(&self) -> Option<InternedString>;
     /// Gets a list of inner meta items from a list MetaItem type.
     fn meta_item_list<'a>(&'a self) -> Option<&'a [Gc<MetaItem>]>;
@@ -143,7 +141,7 @@ impl AttributeMethods for Attribute {
     }
 }
 
-/* Constructors */
+// Constructors
 
 pub fn mk_name_value_item_str(name: InternedString, value: InternedString)
                               -> Gc<MetaItem> {
@@ -208,7 +206,7 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos,
     spanned(lo, hi, attr)
 }
 
-/* Searching */
+// Searching
 /// Check if `needle` occurs in `haystack` by a structural
 /// comparison. This is slightly subtle, and relies on ignoring the
 /// span included in the `==` comparison a plain MetaItem.
@@ -244,7 +242,7 @@ pub fn last_meta_item_value_str_by_name(items: &[Gc<MetaItem>], name: &str)
          .and_then(|i| i.value_str())
 }
 
-/* Higher-level applications */
+// Higher-level applications
 
 pub fn sort_meta_items(items: &[Gc<MetaItem>]) -> Vec<Gc<MetaItem>> {
     // This is sort of stupid here, but we need to sort by
@@ -262,7 +260,7 @@ pub fn sort_meta_items(items: &[Gc<MetaItem>]) -> Vec<Gc<MetaItem>> {
                 box(GC) Spanned {
                     node: MetaList((*n).clone(),
                                    sort_meta_items(mis.as_slice())),
-                    .. /*bad*/ (*m).clone()
+                    .. /* bad */ (*m).clone()
                 }
             }
             _ => m
@@ -420,18 +418,16 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[Gc<MetaItem>]) {
 }
 
 
-/**
- * Fold this over attributes to parse #[repr(...)] forms.
- *
- * Valid repr contents: any of the primitive integral type names (see
- * `int_type_of_word`, below) to specify the discriminant type; and `C`, to use
- * the same discriminant size that the corresponding C enum would.  These are
- * not allowed on univariant or zero-variant enums, which have no discriminant.
- *
- * If a discriminant type is so specified, then the discriminant will be
- * present (before fields, if any) with that type; reprensentation
- * optimizations which would remove it will not be done.
- */
+/// Fold this over attributes to parse #[repr(...)] forms.
+///
+/// Valid repr contents: any of the primitive integral type names (see
+/// `int_type_of_word`, below) to specify the discriminant type; and `C`, to use
+/// the same discriminant size that the corresponding C enum would.  These are
+/// not allowed on univariant or zero-variant enums, which have no discriminant.
+///
+/// If a discriminant type is so specified, then the discriminant will be
+/// present (before fields, if any) with that type; reprensentation
+/// optimizations which would remove it will not be done.
 pub fn find_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
     -> ReprAttr {
     let mut acc = acc;
