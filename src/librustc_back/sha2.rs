@@ -12,6 +12,8 @@
 //! use. This implementation is not intended for external use or for any use where security is
 //! important.
 
+#![allow(deprecated)] // to_be32
+
 use std::iter::range_step;
 use std::num::Zero;
 use std::slice::bytes::{MutableByteVector, copy_memory};

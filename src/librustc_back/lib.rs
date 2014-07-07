@@ -32,8 +32,7 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/")]
 
-#![feature(globs)]
-#![feature(phase)]
+#![feature(globs, phase, macro_rules)]
 #![allow(unused_attribute)] // NOTE: remove after stage0
 
 #[phase(plugin, link)]
@@ -41,6 +40,7 @@ extern crate log;
 extern crate syntax;
 extern crate libc;
 extern crate flate;
+extern crate serialize;
 
 pub mod abi;
 pub mod archive;
@@ -49,6 +49,7 @@ pub mod fs;
 pub mod mips;
 pub mod mipsel;
 pub mod rpath;
+pub mod sha2;
 pub mod svh;
 pub mod target_strs;
 pub mod x86;
