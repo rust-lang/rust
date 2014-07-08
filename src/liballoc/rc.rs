@@ -48,7 +48,7 @@ struct Gadget {
 fn main() {
     // Create a reference counted Owner.
     let gadget_owner : Rc<Owner> = Rc::new(
-            Owner { name: String::from_str("Gadget Man") }
+            Owner { name: "Gadget Man".to_string() }
     );
 
     // Create Gadgets belonging to gadget_owner.  To increment the reference
