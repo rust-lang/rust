@@ -283,13 +283,15 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
             };
             if is_structure {
                 let fields = ty::lookup_struct_fields(cx.tcx, vid);
-                let field_pats = fields.move_iter()
+                let field_pats: Vec<FieldPat> = fields.move_iter()
                     .zip(pats.iter())
+                    .filter(|&(_, pat)| pat.node != PatWild)
                     .map(|(field, pat)| FieldPat {
                         ident: Ident::new(field.name),
                         pat: pat.clone()
                     }).collect();
-                PatStruct(def_to_path(cx.tcx, vid), field_pats, false)
+                let has_more_fields = field_pats.len() < pats.len();
+                PatStruct(def_to_path(cx.tcx, vid), field_pats, has_more_fields)
             } else {
                 PatEnum(def_to_path(cx.tcx, vid), Some(pats))
             }

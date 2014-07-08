@@ -23,7 +23,7 @@ enum Color {
 
 fn struct_with_a_nested_enum_and_vector() {
     match (Foo { first: true, second: None }) {
-    //~^ ERROR non-exhaustive patterns: `Foo{first: false, second: Some([_, _, _, _])}` not covered
+//~^ ERROR non-exhaustive patterns: `Foo { first: false, second: Some([_, _, _, _]) }` not covered
         Foo { first: true, second: None } => (),
         Foo { first: true, second: Some(_) } => (),
         Foo { first: false, second: None } => (),
@@ -40,7 +40,7 @@ fn enum_with_multiple_missing_variants() {
 
 fn enum_struct_variant() {
     match Red {
-    //~^ ERROR non-exhaustive patterns: `CustomRGBA{a: true, r: _, g: _, b: _}` not covered
+    //~^ ERROR non-exhaustive patterns: `CustomRGBA { a: true, .. }` not covered
         Red => (),
         Green => (),
         CustomRGBA { a: false, r: _, g: _, b: 0 } => (),
