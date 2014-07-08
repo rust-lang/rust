@@ -184,8 +184,8 @@ pub enum TyParamBound {
 pub struct TyParam {
     pub ident: Ident,
     pub id: NodeId,
-    pub sized: Sized,
     pub bounds: OwnedSlice<TyParamBound>,
+    pub unbound: Option<TyParamBound>,
     pub default: Option<P<Ty>>,
     pub span: Span
 }
@@ -1042,12 +1042,6 @@ impl Visibility {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
-pub enum Sized {
-    DynSize,
-    StaticSize,
-}
-
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct StructField_ {
     pub kind: StructFieldKind,
     pub id: NodeId,
@@ -1115,7 +1109,11 @@ pub enum Item_ {
     ItemEnum(EnumDef, Generics),
     ItemStruct(Gc<StructDef>, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(Generics, Sized, Vec<TraitRef> , Vec<TraitMethod> ),
+    ItemTrait(Generics,
+              Option<TyParamBound>, // (optional) default bound not required for Self.
+                                    // Currently, only Sized makes sense here.
+              Vec<TraitRef> ,
+              Vec<TraitMethod>),
     ItemImpl(Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self

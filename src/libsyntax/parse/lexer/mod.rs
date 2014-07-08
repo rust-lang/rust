@@ -849,6 +849,7 @@ impl<'a> StringReader<'a> {
           '@' => { self.bump(); return token::AT; }
           '#' => { self.bump(); return token::POUND; }
           '~' => { self.bump(); return token::TILDE; }
+          '?' => { self.bump(); return token::QUESTION; }
           ':' => {
             self.bump();
             if self.curr_is(':') {
