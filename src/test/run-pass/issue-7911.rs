@@ -27,19 +27,19 @@ trait Test {
     fn get_mut<'r>(&'r mut self) -> &'r mut FooBar;
 }
 
-macro_rules! generate_test(($type_:path, $field:expr) => (
+macro_rules! generate_test(($type_:path, $slf:ident, $field:expr) => (
     impl Test for $type_ {
-        fn get_immut<'r>(&'r self) -> &'r FooBar {
+        fn get_immut<'r>(&'r $slf) -> &'r FooBar {
             &$field as &FooBar
         }
 
-        fn get_mut<'r>(&'r mut self) -> &'r mut FooBar {
+        fn get_mut<'r>(&'r mut $slf) -> &'r mut FooBar {
             &mut $field as &mut FooBar
         }
     }
 ))
 
-generate_test!(Foo, self.bar)
+generate_test!(Foo, self, self.bar)
 
 pub fn main() {
     let mut foo: Foo = Foo { bar: Bar(42) };
