@@ -1621,7 +1621,7 @@ let more_numbers: Vec<int> = numbers.move_iter().map(|i| i+1).collect();
 
 // The original `numbers` value can no longer be used, due to move semantics.
 
-let mut string = String::from_str("fo");
+let mut string = "fo".to_string();
 string.push_char('o');
 ~~~
 

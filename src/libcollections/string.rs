@@ -387,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_push_bytes() {
-        let mut s = String::from_str("ABC");
+        let mut s = "ABC".to_string();
         unsafe {
             s.push_bytes([ 'D' as u8 ]);
         }
@@ -407,7 +407,7 @@ mod tests {
 
     #[test]
     fn test_push_char() {
-        let mut data = String::from_str("ประเทศไทย中");
+        let mut data = "ประเทศไทย中".to_string();
         data.push_char('华');
         data.push_char('b'); // 1 byte
         data.push_char('¢'); // 2 byte
@@ -418,7 +418,7 @@ mod tests {
 
     #[test]
     fn test_pop_char() {
-        let mut data = String::from_str("ประเทศไทย中华b¢€𤭢");
+        let mut data = "ประเทศไทย中华b¢€𤭢".to_string();
         assert_eq!(data.pop_char().unwrap(), '𤭢'); // 4 bytes
         assert_eq!(data.pop_char().unwrap(), '€'); // 3 bytes
         assert_eq!(data.pop_char().unwrap(), '¢'); // 2 bytes
@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn test_shift_char() {
-        let mut data = String::from_str("𤭢€¢b华ประเทศไทย中");
+        let mut data = "𤭢€¢b华ประเทศไทย中".to_string();
         assert_eq!(data.shift_char().unwrap(), '𤭢'); // 4 bytes
         assert_eq!(data.shift_char().unwrap(), '€'); // 3 bytes
         assert_eq!(data.shift_char().unwrap(), '¢'); // 2 bytes
@@ -440,7 +440,7 @@ mod tests {
 
     #[test]
     fn test_str_truncate() {
-        let mut s = String::from_str("12345");
+        let mut s = "12345".to_string();
         s.truncate(5);
         assert_eq!(s.as_slice(), "12345");
         s.truncate(3);
@@ -448,7 +448,7 @@ mod tests {
         s.truncate(0);
         assert_eq!(s.as_slice(), "");
 
-        let mut s = String::from_str("12345");
+        let mut s = "12345".to_string();
         let p = s.as_slice().as_ptr();
         s.truncate(3);
         s.push_str("6");
@@ -459,20 +459,20 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_str_truncate_invalid_len() {
-        let mut s = String::from_str("12345");
+        let mut s = "12345".to_string();
         s.truncate(6);
     }
 
     #[test]
     #[should_fail]
     fn test_str_truncate_split_codepoint() {
-        let mut s = String::from_str("\u00FC"); // ü
+        let mut s = "\u00FC".to_string(); // ü
         s.truncate(1);
     }
 
     #[test]
     fn test_str_clear() {
-        let mut s = String::from_str("12345");
+        let mut s = "12345".to_string();
         s.clear();
         assert_eq!(s.len(), 0);
         assert_eq!(s.as_slice(), "");
@@ -480,9 +480,9 @@ mod tests {
 
     #[test]
     fn test_str_add() {
-        let a = String::from_str("12345");
+        let a = "12345".to_string();
         let b = a + "2";
-        let b = b + String::from_str("2");
+        let b = b + "2".to_string();
         assert_eq!(b.len(), 7);
         assert_eq!(b.as_slice(), "1234522");
     }
