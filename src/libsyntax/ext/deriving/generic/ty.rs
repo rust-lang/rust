@@ -25,8 +25,6 @@ use std::gc::Gc;
 
 /// The types of pointers
 pub enum PtrTy<'a> {
-    /// ~
-    Send,
     /// &'lifetime mut
     Borrowed(Option<&'a str>, ast::Mutability),
 }
@@ -138,9 +136,6 @@ impl<'a> Ty<'a> {
             Ptr(ref ty, ref ptr) => {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
                 match *ptr {
-                    Send => {
-                        cx.ty_uniq(span, raw_ty)
-                    }
                     Borrowed(ref lt, mutbl) => {
                         let lt = mk_lifetime(cx, span, lt);
                         cx.ty_rptr(span, raw_ty, lt, mutbl)
@@ -260,7 +255,6 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
             let self_ty = respan(
                 span,
                 match *ptr {
-                    Send => ast::SelfUniq(special_idents::self_),
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s).name));
                         ast::SelfRegion(lt, mutbl, special_idents::self_)
