@@ -10,7 +10,7 @@
 
 
 trait Foo {
-    fn foo(~self) { bar(self as Box<Foo>); }
+    fn foo(self: Box<Self>) { bar(self as Box<Foo>); }
 }
 
 fn bar(_b: Box<Foo>) { }
