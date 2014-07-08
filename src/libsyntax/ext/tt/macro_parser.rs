@@ -354,8 +354,7 @@ pub fn parse(sess: &ParseSess,
                   MatchNonterminal(_,_,_) => { bb_eis.push(ei) }
                   MatchTok(ref t) => {
                     let mut ei_t = ei.clone();
-                    //if (token_name_eq(t,&tok)) {
-                    if token::mtwt_token_eq(t,&tok) {
+                    if token_name_eq(t,&tok) {
                         ei_t.idx += 1;
                         next_eis.push(ei_t);
                     }
