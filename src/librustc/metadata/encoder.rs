@@ -881,16 +881,6 @@ fn encode_extension_implementations(ecx: &EncodeContext,
     }
 }
 
-fn encode_sized(ebml_w: &mut Encoder, sized: Sized) {
-    ebml_w.start_tag(tag_items_data_item_sized);
-    let ch = match sized {
-        DynSize => 'd',
-        StaticSize => 's',
-    };
-    ebml_w.wr_str(str::from_char(ch).as_slice());
-    ebml_w.end_tag();
-}
-
 fn encode_stability(ebml_w: &mut Encoder, stab_opt: Option<attr::Stability>) {
     stab_opt.map(|stab| {
         ebml_w.start_tag(tag_items_data_item_stability);
@@ -1149,7 +1139,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                    ast_method)
         }
       }
-      ItemTrait(_, sized, ref super_traits, ref ms) => {
+      ItemTrait(_, _, ref super_traits, ref ms) => {
         add_to_index(item, ebml_w, index);
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
@@ -1163,9 +1153,6 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_trait_ref(ebml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
         encode_name(ebml_w, item.ident.name);
         encode_attributes(ebml_w, item.attrs.as_slice());
-        // When we fix the rest of the supertrait nastiness (FIXME(#8559)), we
-        // should no longer need this ugly little hack either.
-        encode_sized(ebml_w, sized);
         encode_visibility(ebml_w, vis);
         encode_stability(ebml_w, stab);
         for &method_def_id in ty::trait_method_def_ids(tcx, def_id).iter() {

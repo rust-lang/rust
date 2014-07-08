@@ -12,45 +12,45 @@
 
 
 // Unbounded.
-fn f1<type X>(x: &X) {
+fn f1<Sized? X>(x: &X) {
     f2::<X>(x); //~ ERROR instantiating a type parameter with an incompatible type `X`, which does n
 }
 fn f2<X>(x: &X) {
 }
 
 // Bounded.
-trait T for type {}
-fn f3<type X: T>(x: &X) {
+trait T for Sized? {}
+fn f3<Sized? X: T>(x: &X) {
     f4::<X>(x); //~ ERROR instantiating a type parameter with an incompatible type `X`, which does n
 }
 fn f4<X: T>(x: &X) {
 }
 
 // Test with unsized enum.
-enum E<type X> {
+enum E<Sized? X> {
     V(X),
 }
 
 fn f5<Y>(x: &Y) {}
-fn f6<type X>(x: &X) {}
-fn f7<type X>(x1: &E<X>, x2: &E<X>) {
+fn f6<Sized? X>(x: &X) {}
+fn f7<Sized? X>(x1: &E<X>, x2: &E<X>) {
     f5(x1); //~ERROR instantiating a type parameter with an incompatible type `E<X>`, which does not
     f6(x2); // ok
 }
 
 
 // Test with unsized struct.
-struct S<type X> {
+struct S<Sized? X> {
     x: X,
 }
 
-fn f8<type X>(x1: &S<X>, x2: &S<X>) {
+fn f8<Sized? X>(x1: &S<X>, x2: &S<X>) {
     f5(x1); //~ERROR instantiating a type parameter with an incompatible type `S<X>`, which does not
     f6(x2); // ok
 }
 
 // Test some tuples.
-fn f9<type X>(x1: Box<S<X>>, x2: Box<E<X>>) {
+fn f9<Sized? X>(x1: Box<S<X>>, x2: Box<E<X>>) {
     f5(&(*x1, 34i)); //~ERROR instantiating a type parameter with an incompatible type `(S<X>,int)`,
     f5(&(32i, *x2)); //~ERROR instantiating a type parameter with an incompatible type `(int,E<X>)`,
 }
@@ -60,20 +60,20 @@ fn f9<type X>(x1: Box<S<X>>, x2: Box<E<X>>) {
 // impl - bounded
 trait T1<Z: T> {
 }
-struct S3<type Y>;
-impl<type X: T> T1<X> for S3<X> { //ERROR instantiating a type parameter with an incompatible type
+struct S3<Sized? Y>;
+impl<Sized? X: T> T1<X> for S3<X> { //ERROR instantiating a type parameter with an incompatible type
 }
 
 // impl - unbounded
 trait T2<Z> {
 }
-impl<type X> T2<X> for S3<X> { //ERROR instantiating a type parameter with an incompatible type `X`
+impl<Sized? X> T2<X> for S3<X> { //ERROR instantiating a type parameter with an incompatible type `X
 
 // impl - struct
-trait T3<type Z> {
+trait T3<Sized? Z> {
 }
 struct S4<Y>;
-impl<type X> T3<X> for S4<X> { //ERROR instantiating a type parameter with an incompatible type `X`
+impl<Sized? X> T3<X> for S4<X> { //ERROR instantiating a type parameter with an incompatible type `X
 }
 */
 

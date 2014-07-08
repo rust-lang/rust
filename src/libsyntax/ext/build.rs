@@ -66,8 +66,8 @@ pub trait AstBuilder {
     fn typaram(&self,
                span: Span,
                id: ast::Ident,
-               sized: ast::Sized,
                bounds: OwnedSlice<ast::TyParamBound>,
+               unbound: Option<ast::TyParamBound>,
                default: Option<P<ast::Ty>>) -> ast::TyParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
@@ -396,14 +396,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn typaram(&self,
                span: Span,
                id: ast::Ident,
-               sized: ast::Sized,
                bounds: OwnedSlice<ast::TyParamBound>,
+               unbound: Option<ast::TyParamBound>,
                default: Option<P<ast::Ty>>) -> ast::TyParam {
         ast::TyParam {
             ident: id,
             id: ast::DUMMY_NODE_ID,
-            sized: sized,
             bounds: bounds,
+            unbound: unbound,
             default: default,
             span: span
         }
@@ -423,7 +423,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn strip_bounds(&self, generics: &Generics) -> Generics {
         let new_params = generics.ty_params.map(|ty_param| {
-            ast::TyParam { bounds: OwnedSlice::empty(), ..*ty_param }
+            ast::TyParam { bounds: OwnedSlice::empty(), unbound: None, ..*ty_param }
         });
         Generics {
             ty_params: new_params,
