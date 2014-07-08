@@ -122,8 +122,8 @@ endif
 ifdef TRACE
   CFG_RUSTC_FLAGS += -Z trace
 endif
-ifdef CFG_DISABLE_RPATH
-CFG_RUSTC_FLAGS += -C no-rpath
+ifdef CFG_ENABLE_RPATH
+CFG_RUSTC_FLAGS += -C rpath
 endif
 
 # The executables crated during this compilation process have no need to include
