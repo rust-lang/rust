@@ -161,8 +161,8 @@ if cond1 {
   equivalent to `if cond2 {} else {}` ("interior").
 - `--cfg bar`: could be either `if cond1 {}` or `if cond1 {} else {}`
 - `--cfg baz`: equivalent to `if cond1 {} else if cond2 {}` (no subtlety).
-- `--cfg foo --cfg bar`: could be removing the whole chain or just
-  the `else` branch (i.e. both `if` branches removed).
+- `--cfg foo --cfg bar`: could be removing the whole chain or the two
+  `if` branches (leaving only the `else` branch).
 
 This can be addressed by having `#[attr] if cond { ...` be an exterior
 attribute (applying to the whole `if`/`else` chain) and
