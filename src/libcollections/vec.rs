@@ -27,6 +27,10 @@ use {Collection, Mutable};
 use slice::{MutableOrdVector, MutableVectorAllocating, CloneableVector};
 use slice::{Items, MutItems};
 
+
+#[doc(hidden)]
+pub static PTR_MARKER: u8 = 0;
+
 /// An owned, growable vector.
 ///
 /// # Examples
@@ -71,7 +75,11 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn new() -> Vec<T> {
-        Vec { len: 0, cap: 0, ptr: 0 as *mut T }
+        // We want ptr to never be NULL so instead we set it to some arbitrary
+        // non-null value which is fine since we never call deallocate on the ptr
+        // if cap is 0. The reason for this is because the pointer of a slice
+        // being NULL would break the null pointer optimization for enums.
+        Vec { len: 0, cap: 0, ptr: &PTR_MARKER as *const _ as *mut T }
     }
 
     /// Constructs a new, empty `Vec` with the specified capacity.
@@ -88,7 +96,7 @@ impl<T> Vec<T> {
     #[inline]
     pub fn with_capacity(capacity: uint) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
-            Vec { len: 0, cap: uint::MAX, ptr: 0 as *mut T }
+            Vec { len: 0, cap: uint::MAX, ptr: &PTR_MARKER as *const _ as *mut T }
         } else if capacity == 0 {
             Vec::new()
         } else {
@@ -1206,15 +1214,7 @@ impl<T> Vec<T> {
     /// would also make any pointers to it invalid.
     #[inline]
     pub fn as_ptr(&self) -> *const T {
-        // If we have a 0-sized vector, then the base pointer should not be NULL
-        // because an iterator over the slice will attempt to yield the base
-        // pointer as the first element in the vector, but this will end up
-        // being Some(NULL) which is optimized to None.
-        if mem::size_of::<T>() == 0 {
-            1 as *const T
-        } else {
-            self.ptr as *const T
-        }
+        self.ptr as *const T
     }
 
     /// Returns a mutable unsafe pointer to the vector's buffer.
@@ -1226,12 +1226,7 @@ impl<T> Vec<T> {
     /// would also make any pointers to it invalid.
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
-        // see above for the 0-size check
-        if mem::size_of::<T>() == 0 {
-            1 as *mut T
-        } else {
-            self.ptr
-        }
+        self.ptr
     }
 
     /// Retains only the elements specified by the predicate.
