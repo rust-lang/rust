@@ -10,5 +10,5 @@
 
 // error-pattern: instantiating a type parameter with an incompatible type
 fn bar<T: Sized>() { }
-fn foo<type T>() { bar::<T>() }
+fn foo<Sized? T>() { bar::<T>() }
 fn main() { }

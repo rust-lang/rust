@@ -42,7 +42,6 @@ use ast::{PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatBox, PatWild, PatWildMulti};
 use ast::{BiRem, Required};
 use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
-use ast::{Sized, DynSize, StaticSize};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
@@ -3564,11 +3563,40 @@ impl<'a> Parser<'a> {
         return (ret_lifetime, OwnedSlice::from_vec(result));
     }
 
-    // matches typaram = type? IDENT optbounds ( EQ ty )?
+    fn trait_ref_from_ident(ident: Ident, span: Span) -> ast::TraitRef {
+        let segment = ast::PathSegment {
+            identifier: ident,
+            lifetimes: Vec::new(),
+            types: OwnedSlice::empty(),
+        };
+        let path = ast::Path {
+            span: span,
+            global: false,
+            segments: vec![segment],
+        };
+        ast::TraitRef {
+            path: path,
+            ref_id: ast::DUMMY_NODE_ID,
+        }
+    }
+
+    // matches typaram = (unbound`?`)? IDENT optbounds ( EQ ty )?
     fn parse_ty_param(&mut self) -> TyParam {
-        let sized = self.parse_sized();
-        let span = self.span;
-        let ident = self.parse_ident();
+        // This is a bit hacky. Currently we are only interested in a single
+        // unbound, and it may only be `Sized`. To avoid backtracking and other
+        // complications, we parse an ident, then check for `?`. If we find it,
+        // we use the ident as the unbound, otherwise, we use it as the name of
+        // type param.
+        let mut span = self.span;
+        let mut ident = self.parse_ident();
+        let mut unbound = None;
+        if self.eat(&token::QUESTION) {
+            let tref = Parser::trait_ref_from_ident(ident, span);
+            unbound = Some(TraitTyParamBound(tref));
+            span = self.span;
+            ident = self.parse_ident();
+        }
+
         let opt_bounds = {
             if self.eat(&token::COLON) {
                 let (_, bounds) = self.parse_ty_param_bounds(false);
@@ -3589,8 +3617,8 @@ impl<'a> Parser<'a> {
         TyParam {
             ident: ident,
             id: ast::DUMMY_NODE_ID,
-            sized: sized,
             bounds: bounds,
+            unbound: unbound,
             default: default,
             span: span,
         }
@@ -4209,21 +4237,19 @@ impl<'a> Parser<'a> {
         else { Inherited }
     }
 
-    fn parse_sized(&mut self) -> Sized {
-        if self.eat_keyword(keywords::Type) { DynSize }
-        else { StaticSize }
-    }
-
-    fn parse_for_sized(&mut self) -> Sized {
+    fn parse_for_sized(&mut self) -> Option<ast::TyParamBound> {
         if self.eat_keyword(keywords::For) {
-            if !self.eat_keyword(keywords::Type) {
-                let last_span = self.last_span;
-                self.span_err(last_span,
-                    "expected 'type' after for in trait item");
+            let span = self.span;
+            let ident = self.parse_ident();
+            if !self.eat(&token::QUESTION) {
+                self.span_err(span,
+                    "expected 'Sized?' after `for` in trait item");
+                return None;
             }
-            DynSize
+            let tref = Parser::trait_ref_from_ident(ident, span);
+            Some(TraitTyParamBound(tref))
         } else {
-            StaticSize
+            None
         }
     }
 

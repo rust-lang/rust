@@ -406,8 +406,8 @@ impl<'a> TraitDef<'a> {
 
             cx.typaram(self.span,
                        ty_param.ident,
-                       ty_param.sized,
                        OwnedSlice::from_vec(bounds),
+                       ty_param.unbound.clone(),
                        None)
         }));
         let trait_generics = Generics {

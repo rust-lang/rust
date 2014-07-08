@@ -110,7 +110,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
             // miscellaneous, no highlighting
             t::DOT | t::DOTDOT | t::DOTDOTDOT | t::COMMA | t::SEMI |
                 t::COLON | t::MOD_SEP | t::LARROW | t::LPAREN |
-                t::RPAREN | t::LBRACKET | t::LBRACE | t::RBRACE => "",
+                t::RPAREN | t::LBRACKET | t::LBRACE | t::RBRACE | t::QUESTION => "",
             t::DOLLAR => {
                 if t::is_ident(&lexer.peek().tok) {
                     is_macro_nonterminal = true;
