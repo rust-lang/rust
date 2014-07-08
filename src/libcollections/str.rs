@@ -972,6 +972,8 @@ mod tests {
     use string::String;
     use vec::Vec;
 
+    use unicode::UnicodeChar;
+
     #[test]
     fn test_eq_slice() {
         assert!((eq_slice("foobar".slice(0, 3), "foo")));

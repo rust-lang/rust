@@ -195,8 +195,8 @@ mat!(uni_case_lower, r"\p{Ll}+", "ΛΘΓΔα", Some((8, 10)))
 
 // Test the Unicode friendliness of Perl character classes.
 mat!(uni_perl_w, r"\w+", "dδd", Some((0, 4)))
-mat!(uni_perl_w_not, r"\w+", "Ⅱ", None)
-mat!(uni_perl_w_neg, r"\W+", "Ⅱ", Some((0, 3)))
+mat!(uni_perl_w_not, r"\w+", "⥡", None)
+mat!(uni_perl_w_neg, r"\W+", "⥡", Some((0, 3)))
 mat!(uni_perl_d, r"\d+", "1२३9", Some((0, 8)))
 mat!(uni_perl_d_not, r"\d+", "Ⅱ", None)
 mat!(uni_perl_d_neg, r"\D+", "Ⅱ", Some((0, 3)))
