@@ -484,8 +484,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                 if ty::type_is_signed(ety) { llvm::LLVMConstFPToSI(v, llty.to_ref()) }
                 else { llvm::LLVMConstFPToUI(v, llty.to_ref()) }
               }
-              (expr::cast_enum, expr::cast_integral) |
-              (expr::cast_enum, expr::cast_float)  => {
+              (expr::cast_enum, expr::cast_integral) => {
                 let repr = adt::represent_type(cx, basety);
                 let discr = adt::const_get_discrim(cx, &*repr, v);
                 let iv = C_integral(cx.int_type, discr, false);
