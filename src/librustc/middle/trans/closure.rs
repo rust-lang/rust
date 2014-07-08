@@ -27,7 +27,7 @@ use middle::trans::type_of::*;
 use middle::trans::type_::Type;
 use middle::ty;
 use util::ppaux::Repr;
-use util::ppaux::ty_to_str;
+use util::ppaux::ty_to_string;
 
 use arena::TypedArena;
 use syntax::ast;
@@ -104,8 +104,8 @@ pub struct EnvValue {
 }
 
 impl EnvValue {
-    pub fn to_str(&self, ccx: &CrateContext) -> String {
-        format!("{}({})", self.action, self.datum.to_str(ccx))
+    pub fn to_string(&self, ccx: &CrateContext) -> String {
+        format!("{}({})", self.action, self.datum.to_string(ccx))
     }
 }
 
@@ -124,7 +124,7 @@ pub fn mk_closure_tys(tcx: &ty::ctxt,
         }
     }).collect();
     let cdata_ty = ty::mk_tup(tcx, bound_tys);
-    debug!("cdata_ty={}", ty_to_str(tcx, cdata_ty));
+    debug!("cdata_ty={}", ty_to_string(tcx, cdata_ty));
     return cdata_ty;
 }
 
@@ -196,16 +196,16 @@ pub fn store_environment<'a>(
     let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, store, cdata_ty);
 
     let llbox = PointerCast(bcx, llbox, llboxptr_ty);
-    debug!("tuplify_box_ty = {}", ty_to_str(tcx, cbox_ty));
+    debug!("tuplify_box_ty = {}", ty_to_string(tcx, cbox_ty));
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
     for (i, bv) in bound_values.move_iter().enumerate() {
-        debug!("Copy {} into closure", bv.to_str(ccx));
+        debug!("Copy {} into closure", bv.to_string(ccx));
 
         if ccx.sess().asm_comments() {
             add_comment(bcx, format!("Copy {} into closure",
-                                     bv.to_str(ccx)).as_slice());
+                                     bv.to_string(ccx)).as_slice());
         }
 
         let bound_data = GEPi(bcx, llbox, [0u, abi::box_field_body, i]);

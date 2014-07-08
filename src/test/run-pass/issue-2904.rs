@@ -79,8 +79,8 @@ fn read_board_grid<rdr:'static + io::Reader>(mut input: rdr)
 
 mod test {
     #[test]
-    pub fn trivial_to_str() {
-        assert!(lambda.to_str() == "\\")
+    pub fn trivial_to_string() {
+        assert!(lambda.to_string() == "\\")
     }
 }
 

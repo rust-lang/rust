@@ -270,7 +270,7 @@ pub fn parse(s: &str) -> Option<Version> {
     let v = parse_iter(&mut s.chars());
     match v {
         Some(v) => {
-            if v.to_str().equiv(&s) {
+            if v.to_string().equiv(&s) {
                 Some(v)
             } else {
                 None
@@ -391,11 +391,11 @@ fn test_show() {
 }
 
 #[test]
-fn test_to_str() {
-    assert_eq!(parse("1.2.3").unwrap().to_str(), "1.2.3".to_string());
-    assert_eq!(parse("1.2.3-alpha1").unwrap().to_str(), "1.2.3-alpha1".to_string());
-    assert_eq!(parse("1.2.3+build.42").unwrap().to_str(), "1.2.3+build.42".to_string());
-    assert_eq!(parse("1.2.3-alpha1+42").unwrap().to_str(), "1.2.3-alpha1+42".to_string());
+fn test_to_string() {
+    assert_eq!(parse("1.2.3").unwrap().to_string(), "1.2.3".to_string());
+    assert_eq!(parse("1.2.3-alpha1").unwrap().to_string(), "1.2.3-alpha1".to_string());
+    assert_eq!(parse("1.2.3+build.42").unwrap().to_string(), "1.2.3+build.42".to_string());
+    assert_eq!(parse("1.2.3-alpha1+42").unwrap().to_string(), "1.2.3-alpha1+42".to_string());
 }
 
 #[test]

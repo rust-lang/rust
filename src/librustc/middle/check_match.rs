@@ -22,10 +22,10 @@ use syntax::ast::*;
 use syntax::ast_util::{is_unguarded, walk_pat};
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use syntax::owned_slice::OwnedSlice;
-use syntax::print::pprust::pat_to_str;
+use syntax::print::pprust::pat_to_string;
 use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
-use util::ppaux::ty_to_str;
+use util::ppaux::ty_to_string;
 
 struct Matrix(Vec<Vec<Gc<Pat>>>);
 
@@ -47,7 +47,7 @@ impl fmt::Show for Matrix {
 
         let &Matrix(ref m) = self;
         let pretty_printed_matrix: Vec<Vec<String>> = m.iter().map(|row| {
-            row.iter().map(|&pat| pat_to_str(pat)).collect::<Vec<String>>()
+            row.iter().map(|&pat| pat_to_string(pat)).collect::<Vec<String>>()
         }).collect();
 
         let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0u);
@@ -147,7 +147,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                    // We know the type is inhabited, so this must be wrong
                    cx.tcx.sess.span_err(ex.span, format!("non-exhaustive patterns: \
                                 type {} is non-empty",
-                                ty_to_str(cx.tcx, pat_ty)).as_slice());
+                                ty_to_string(cx.tcx, pat_ty)).as_slice());
                }
                // If the type *is* empty, it's vacuously exhaustive
                return;
@@ -222,7 +222,8 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &Matrix) {
                 [] => wild(),
                 _ => unreachable!()
             };
-            let msg = format!("non-exhaustive patterns: `{0}` not covered", pat_to_str(&*witness));
+            let msg = format!("non-exhaustive patterns: `{0}` not covered",
+                              pat_to_string(&*witness));
             cx.tcx.sess.span_err(sp, msg.as_slice());
         }
         NotUseful => {
@@ -780,7 +781,7 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
         Some(pat) => {
             let msg = format!(
                 "refutable pattern in {} binding: `{}` not covered",
-                name, pat_to_str(&*pat)
+                name, pat_to_string(&*pat)
             );
             cx.tcx.sess.span_err(loc.pat.span, msg.as_slice());
         },
@@ -802,7 +803,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             Some(pat) => {
                 let msg = format!(
                     "refutable pattern in function argument: `{}` not covered",
-                    pat_to_str(&*pat)
+                    pat_to_string(&*pat)
                 );
                 cx.tcx.sess.span_err(input.pat.span, msg.as_slice());
             },

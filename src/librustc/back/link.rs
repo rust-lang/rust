@@ -773,7 +773,7 @@ pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
 pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
                                             t: ty::t,
                                             name: &str) -> String {
-    let s = ppaux::ty_to_str(ccx.tcx(), t);
+    let s = ppaux::ty_to_string(ccx.tcx(), t);
     let path = [PathName(token::intern(s.as_slice())),
                 gensym_name(name)];
     let hash = get_symbol_hash(ccx, t);

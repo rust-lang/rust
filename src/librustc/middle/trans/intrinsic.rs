@@ -29,7 +29,7 @@ use middle::ty;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::parse::token;
-use util::ppaux::ty_to_str;
+use util::ppaux::ty_to_string;
 
 pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
     let name = match token::get_ident(item.ident).get() {
@@ -398,10 +398,10 @@ pub fn trans_intrinsic(ccx: &CrateContext,
                     format!("transmute called on types with different sizes: \
                              {} ({} bit{}) to \
                              {} ({} bit{})",
-                            ty_to_str(ccx.tcx(), in_type),
+                            ty_to_string(ccx.tcx(), in_type),
                             in_type_size,
                             if in_type_size == 1 {""} else {"s"},
-                            ty_to_str(ccx.tcx(), out_type),
+                            ty_to_string(ccx.tcx(), out_type),
                             out_type_size,
                             if out_type_size == 1 {""} else {"s"}).as_slice());
             }
@@ -587,14 +587,14 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                .span_err(transmute_restriction.span,
                 format!("transmute called on types with different sizes: \
                          {} ({} bit{}) to {} ({} bit{})",
-                        ty_to_str(ccx.tcx(), transmute_restriction.from),
+                        ty_to_string(ccx.tcx(), transmute_restriction.from),
                         from_type_size as uint,
                         if from_type_size == 1 {
                             ""
                         } else {
                             "s"
                         },
-                        ty_to_str(ccx.tcx(), transmute_restriction.to),
+                        ty_to_string(ccx.tcx(), transmute_restriction.to),
                         to_type_size as uint,
                         if to_type_size == 1 {
                             ""

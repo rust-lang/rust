@@ -168,12 +168,6 @@ fn test_escape_unicode() {
 }
 
 #[test]
-fn test_to_str() {
-    let s = 't'.to_str();
-    assert_eq!(s.as_slice(), "t");
-}
-
-#[test]
 fn test_encode_utf8() {
     fn check(input: char, expect: &[u8]) {
         let mut buf = [0u8, ..4];

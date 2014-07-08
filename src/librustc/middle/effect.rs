@@ -68,7 +68,7 @@ impl<'a> EffectCheckVisitor<'a> {
             _ => return
         };
         debug!("effect: checking index with base type {}",
-                ppaux::ty_to_str(self.tcx, base_type));
+                ppaux::ty_to_string(self.tcx, base_type));
         match ty::get(base_type).sty {
             ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
                 ty::ty_str => {
@@ -147,7 +147,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
                 let method_call = MethodCall::expr(expr.id);
                 let base_type = self.tcx.method_map.borrow().get(&method_call).ty;
                 debug!("effect: method call case, base type is {}",
-                       ppaux::ty_to_str(self.tcx, base_type));
+                       ppaux::ty_to_string(self.tcx, base_type));
                 if type_is_unsafe_function(base_type) {
                     self.require_unsafe(expr.span,
                                         "invocation of unsafe method")
@@ -156,7 +156,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
             ast::ExprCall(base, _) => {
                 let base_type = ty::node_id_to_type(self.tcx, base.id);
                 debug!("effect: call case, base type is {}",
-                       ppaux::ty_to_str(self.tcx, base_type));
+                       ppaux::ty_to_string(self.tcx, base_type));
                 if type_is_unsafe_function(base_type) {
                     self.require_unsafe(expr.span, "call to unsafe function")
                 }
@@ -164,7 +164,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
             ast::ExprUnary(ast::UnDeref, base) => {
                 let base_type = ty::node_id_to_type(self.tcx, base.id);
                 debug!("effect: unary case, base type is {}",
-                        ppaux::ty_to_str(self.tcx, base_type));
+                        ppaux::ty_to_string(self.tcx, base_type));
                 match ty::get(base_type).sty {
                     ty::ty_ptr(_) => {
                         self.require_unsafe(expr.span,

@@ -1039,7 +1039,7 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
           'U' => format!("{:02d}", (tm.tm_yday - tm.tm_wday + 7) / 7),
           'u' => {
             let i = tm.tm_wday as int;
-            (if i == 0 { 7 } else { i }).to_str()
+            (if i == 0 { 7 } else { i }).to_string()
           }
           'V' => iso_week('V', tm),
           'v' => {
@@ -1052,8 +1052,8 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
               format!("{:02d}",
                              (tm.tm_yday - (tm.tm_wday - 1 + 7) % 7 + 7) / 7)
           }
-          'w' => (tm.tm_wday as int).to_str(),
-          'Y' => (tm.tm_year as int + 1900).to_str(),
+          'w' => (tm.tm_wday as int).to_string(),
+          'Y' => (tm.tm_year as int + 1900).to_string(),
           'y' => format!("{:02d}", (tm.tm_year as int + 1900) % 100),
           'Z' => "".to_string(),    // FIXME(pcwalton): Implement this.
           'z' => {

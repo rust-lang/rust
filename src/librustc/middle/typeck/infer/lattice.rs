@@ -39,7 +39,7 @@ use middle::typeck::infer::*;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
-use middle::typeck::infer::unify::{Root, UnifyKey};
+use middle::typeck::infer::unify::*;
 use middle::typeck::infer::sub::Sub;
 use util::ppaux::Repr;
 
@@ -436,8 +436,7 @@ pub enum LatticeVarResult<K,T> {
  * - If the variables do not both have an upper bound, we will unify
  *   the variables and return the unified variable, in which case the
  *   result is a variable.  This is indicated with a `VarResult`
- *   return.
- */
+ *   return. */
 pub fn lattice_vars<L:LatticeDir+Combine,
                     T:LatticeValue,
                     K:UnifyKey<Bounds<T>>>(

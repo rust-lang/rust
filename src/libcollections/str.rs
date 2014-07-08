@@ -657,7 +657,7 @@ impl<'a> StrAllocating for MaybeOwned<'a> {
     #[inline]
     fn into_string(self) -> String {
         match self {
-            Slice(s) => s.to_string(),
+            Slice(s) => String::from_str(s),
             Owned(s) => s
         }
     }
@@ -673,7 +673,7 @@ impl<'a> Clone for MaybeOwned<'a> {
     fn clone(&self) -> MaybeOwned<'a> {
         match *self {
             Slice(s) => Slice(s),
-            Owned(ref s) => Owned(s.to_string())
+            Owned(ref s) => Owned(String::from_str(s.as_slice()))
         }
     }
 }
@@ -762,7 +762,7 @@ pub mod raw {
             let a = vec![65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
             let b = a.as_ptr();
             let c = from_buf_len(b, 3u);
-            assert_eq!(c, "AAA".to_string());
+            assert_eq!(c, String::from_str("AAA"));
         }
     }
 }
@@ -775,12 +775,6 @@ Section: Trait implementations
 pub trait StrAllocating: Str {
     /// Convert `self` into a `String`, not making a copy if possible.
     fn into_string(self) -> String;
-
-    /// Convert `self` into a `String`.
-    #[inline]
-    fn to_string(&self) -> String {
-        String::from_str(self.as_slice())
-    }
 
     #[allow(missing_doc)]
     #[deprecated = "replaced by .into_string()"]
@@ -933,7 +927,7 @@ pub trait StrAllocating: Str {
 impl<'a> StrAllocating for &'a str {
     #[inline]
     fn into_string(self) -> String {
-        self.to_string()
+        String::from_str(self)
     }
 }
 
@@ -963,11 +957,19 @@ impl OwnedStr for String {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
     use std::iter::AdditiveIterator;
     use std::default::Default;
+    use std::char::Char;
+    use std::clone::Clone;
+    use std::cmp::{Equal, Greater, Less, Ord, Eq, PartialOrd, PartialEq, Equiv};
+    use std::result::{Ok, Err};
+    use std::option::{Some, None};
+    use std::ptr::RawPtr;
+    use std::iter::{Iterator, DoubleEndedIterator};
+    use Collection;
 
-    use str::*;
+    use super::*;
+    use std::slice::{Vector, ImmutableVector};
     use string::String;
     use vec::Vec;
 
@@ -1028,17 +1030,17 @@ mod tests {
 
     #[test]
     fn test_collect() {
-        let empty = "".to_string();
+        let empty = String::from_str("");
         let s: String = empty.as_slice().chars().collect();
         assert_eq!(empty, s);
-        let data = "ประเทศไทย中".to_string();
+        let data = String::from_str("ประเทศไทย中");
         let s: String = data.as_slice().chars().collect();
         assert_eq!(data, s);
     }
 
     #[test]
     fn test_into_bytes() {
-        let data = "asdf".to_string();
+        let data = String::from_str("asdf");
         let buf = data.into_bytes();
         assert_eq!(b"asdf", buf.as_slice());
     }
@@ -1055,7 +1057,7 @@ mod tests {
         assert!(data.slice(2u, 4u).find_str("ab").is_none());
 
         let string = "ประเทศไทย中华Việt Nam";
-        let mut data = string.to_string();
+        let mut data = String::from_str(string);
         data.push_str(string);
         assert!(data.as_slice().find_str("ไท华").is_none());
         assert_eq!(data.as_slice().slice(0u, 43u).find_str(""), Some(0u));
@@ -1092,11 +1094,13 @@ mod tests {
         fn t(v: &[String], s: &str) {
             assert_eq!(v.concat().as_slice(), s);
         }
-        t(["you".to_string(), "know".to_string(), "I'm".to_string(),
-          "no".to_string(), "good".to_string()], "youknowI'mnogood");
+        t([String::from_str("you"), String::from_str("know"),
+           String::from_str("I'm"),
+           String::from_str("no"), String::from_str("good")],
+          "youknowI'mnogood");
         let v: &[String] = [];
         t(v, "");
-        t(["hi".to_string()], "hi");
+        t([String::from_str("hi")], "hi");
     }
 
     #[test]
@@ -1104,12 +1108,13 @@ mod tests {
         fn t(v: &[String], sep: &str, s: &str) {
             assert_eq!(v.connect(sep).as_slice(), s);
         }
-        t(["you".to_string(), "know".to_string(), "I'm".to_string(),
-           "no".to_string(), "good".to_string()],
+        t([String::from_str("you"), String::from_str("know"),
+           String::from_str("I'm"),
+           String::from_str("no"), String::from_str("good")],
           " ", "you know I'm no good");
         let v: &[String] = [];
         t(v, " ", "");
-        t(["hi".to_string()], " ", "hi");
+        t([String::from_str("hi")], " ", "hi");
     }
 
     #[test]
@@ -1136,11 +1141,11 @@ mod tests {
 
     #[test]
     fn test_repeat() {
-        assert_eq!("x".repeat(4), "xxxx".to_string());
-        assert_eq!("hi".repeat(4), "hihihihi".to_string());
-        assert_eq!("ไท华".repeat(3), "ไท华ไท华ไท华".to_string());
-        assert_eq!("".repeat(4), "".to_string());
-        assert_eq!("hi".repeat(0), "".to_string());
+        assert_eq!("x".repeat(4), String::from_str("xxxx"));
+        assert_eq!("hi".repeat(4), String::from_str("hihihihi"));
+        assert_eq!("ไท华".repeat(3), String::from_str("ไท华ไท华ไท华"));
+        assert_eq!("".repeat(4), String::from_str(""));
+        assert_eq!("hi".repeat(0), String::from_str(""));
     }
 
     #[test]
@@ -1168,9 +1173,9 @@ mod tests {
         }
         let letters = a_million_letter_a();
         assert!(half_a_million_letter_a() ==
-            unsafe {raw::slice_bytes(letters.as_slice(),
+            unsafe {String::from_str(raw::slice_bytes(letters.as_slice(),
                                      0u,
-                                     500000)}.to_string());
+                                     500000))});
     }
 
     #[test]
@@ -1204,13 +1209,13 @@ mod tests {
     #[test]
     fn test_replace() {
         let a = "a";
-        assert_eq!("".replace(a, "b"), "".to_string());
-        assert_eq!("a".replace(a, "b"), "b".to_string());
-        assert_eq!("ab".replace(a, "b"), "bb".to_string());
+        assert_eq!("".replace(a, "b"), String::from_str(""));
+        assert_eq!("a".replace(a, "b"), String::from_str("b"));
+        assert_eq!("ab".replace(a, "b"), String::from_str("bb"));
         let test = "test";
         assert!(" test test ".replace(test, "toast") ==
-            " toast toast ".to_string());
-        assert_eq!(" test test ".replace(test, ""), "   ".to_string());
+            String::from_str(" toast toast "));
+        assert_eq!(" test test ".replace(test, ""), String::from_str("   "));
     }
 
     #[test]
@@ -1285,7 +1290,7 @@ mod tests {
         }
         let letters = a_million_letter_x();
         assert!(half_a_million_letter_x() ==
-            letters.as_slice().slice(0u, 3u * 500000u).to_string());
+            String::from_str(letters.as_slice().slice(0u, 3u * 500000u)));
     }
 
     #[test]
@@ -1513,7 +1518,7 @@ mod tests {
             let a = vec![65, 65, 65, 65, 65, 65, 65, 0];
             let b = a.as_ptr();
             let c = raw::from_c_str(b);
-            assert_eq!(c, "AAAAAAA".to_string());
+            assert_eq!(c, String::from_str("AAAAAAA"));
         }
     }
 
@@ -1535,7 +1540,7 @@ mod tests {
     fn test_as_bytes_fail() {
         // Don't double free. (I'm not sure if this exercises the
         // original problem code path anymore.)
-        let s = "".to_string();
+        let s = String::from_str("");
         let _bytes = s.as_bytes();
         fail!();
     }
@@ -1578,10 +1583,10 @@ mod tests {
 
     #[test]
     fn vec_str_conversions() {
-        let s1: String = "All mimsy were the borogoves".to_string();
+        let s1: String = String::from_str("All mimsy were the borogoves");
 
         let v: Vec<u8> = Vec::from_slice(s1.as_bytes());
-        let s2: String = from_utf8(v.as_slice()).unwrap().to_string();
+        let s2: String = String::from_str(from_utf8(v.as_slice()).unwrap());
         let mut i: uint = 0u;
         let n1: uint = s1.len();
         let n2: uint = v.len();
@@ -1624,13 +1629,13 @@ mod tests {
     #[test]
     fn test_utf16() {
         let pairs =
-            [("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n".to_string(),
+            [(String::from_str("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n"),
               vec![0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
                 0xd800_u16, 0xdf3b_u16, 0xd800_u16, 0xdf46_u16,
                 0xd800_u16, 0xdf39_u16, 0xd800_u16, 0xdf3b_u16,
                 0xd800_u16, 0xdf30_u16, 0x000a_u16]),
 
-             ("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n".to_string(),
+             (String::from_str("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n"),
               vec![0xd801_u16, 0xdc12_u16, 0xd801_u16,
                 0xdc49_u16, 0xd801_u16, 0xdc2e_u16, 0xd801_u16,
                 0xdc40_u16, 0xd801_u16, 0xdc32_u16, 0xd801_u16,
@@ -1638,7 +1643,7 @@ mod tests {
                 0xd801_u16, 0xdc32_u16, 0xd801_u16, 0xdc4d_u16,
                 0x000a_u16]),
 
-             ("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n".to_string(),
+             (String::from_str("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n"),
               vec![0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
                 0xd800_u16, 0xdf0b_u16, 0xd800_u16, 0xdf04_u16,
                 0xd800_u16, 0xdf11_u16, 0xd800_u16, 0xdf09_u16,
@@ -1647,7 +1652,7 @@ mod tests {
                 0xdf04_u16, 0xd800_u16, 0xdf0b_u16, 0xd800_u16,
                 0xdf09_u16, 0xd800_u16, 0xdf11_u16, 0x000a_u16 ]),
 
-             ("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n".to_string(),
+             (String::from_str("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n"),
               vec![0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
                 0xd801_u16, 0xdc88_u16, 0xd801_u16, 0xdc91_u16,
                 0xd801_u16, 0xdc9b_u16, 0xd801_u16, 0xdc92_u16,
@@ -1660,7 +1665,7 @@ mod tests {
                 0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
                 0x000a_u16 ]),
              // Issue #12318, even-numbered non-BMP planes
-             ("\U00020000".to_string(),
+             (String::from_str("\U00020000"),
               vec![0xD840, 0xDC00])];
 
         for p in pairs.iter() {
@@ -1698,16 +1703,16 @@ mod tests {
     fn test_utf16_lossy() {
         // completely positive cases tested above.
         // lead + eof
-        assert_eq!(from_utf16_lossy([0xD800]), "\uFFFD".to_string());
+        assert_eq!(from_utf16_lossy([0xD800]), String::from_str("\uFFFD"));
         // lead + lead
-        assert_eq!(from_utf16_lossy([0xD800, 0xD800]), "\uFFFD\uFFFD".to_string());
+        assert_eq!(from_utf16_lossy([0xD800, 0xD800]), String::from_str("\uFFFD\uFFFD"));
 
         // isolated trail
-        assert_eq!(from_utf16_lossy([0x0061, 0xDC00]), "a\uFFFD".to_string());
+        assert_eq!(from_utf16_lossy([0x0061, 0xDC00]), String::from_str("a\uFFFD"));
 
         // general
         assert_eq!(from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]),
-                   "\uFFFD𐒋\uFFFD".to_string());
+                   String::from_str("\uFFFD𐒋\uFFFD"));
     }
 
     #[test]
@@ -1752,27 +1757,29 @@ mod tests {
 
     #[test]
     fn test_escape_unicode() {
-        assert_eq!("abc".escape_unicode(), "\\x61\\x62\\x63".to_string());
-        assert_eq!("a c".escape_unicode(), "\\x61\\x20\\x63".to_string());
-        assert_eq!("\r\n\t".escape_unicode(), "\\x0d\\x0a\\x09".to_string());
-        assert_eq!("'\"\\".escape_unicode(), "\\x27\\x22\\x5c".to_string());
-        assert_eq!("\x00\x01\xfe\xff".escape_unicode(), "\\x00\\x01\\xfe\\xff".to_string());
-        assert_eq!("\u0100\uffff".escape_unicode(), "\\u0100\\uffff".to_string());
-        assert_eq!("\U00010000\U0010ffff".escape_unicode(), "\\U00010000\\U0010ffff".to_string());
-        assert_eq!("ab\ufb00".escape_unicode(), "\\x61\\x62\\ufb00".to_string());
-        assert_eq!("\U0001d4ea\r".escape_unicode(), "\\U0001d4ea\\x0d".to_string());
+        assert_eq!("abc".escape_unicode(), String::from_str("\\x61\\x62\\x63"));
+        assert_eq!("a c".escape_unicode(), String::from_str("\\x61\\x20\\x63"));
+        assert_eq!("\r\n\t".escape_unicode(), String::from_str("\\x0d\\x0a\\x09"));
+        assert_eq!("'\"\\".escape_unicode(), String::from_str("\\x27\\x22\\x5c"));
+        assert_eq!("\x00\x01\xfe\xff".escape_unicode(), String::from_str("\\x00\\x01\\xfe\\xff"));
+        assert_eq!("\u0100\uffff".escape_unicode(), String::from_str("\\u0100\\uffff"));
+        assert_eq!("\U00010000\U0010ffff".escape_unicode(),
+                   String::from_str("\\U00010000\\U0010ffff"));
+        assert_eq!("ab\ufb00".escape_unicode(), String::from_str("\\x61\\x62\\ufb00"));
+        assert_eq!("\U0001d4ea\r".escape_unicode(), String::from_str("\\U0001d4ea\\x0d"));
     }
 
     #[test]
     fn test_escape_default() {
-        assert_eq!("abc".escape_default(), "abc".to_string());
-        assert_eq!("a c".escape_default(), "a c".to_string());
-        assert_eq!("\r\n\t".escape_default(), "\\r\\n\\t".to_string());
-        assert_eq!("'\"\\".escape_default(), "\\'\\\"\\\\".to_string());
-        assert_eq!("\u0100\uffff".escape_default(), "\\u0100\\uffff".to_string());
-        assert_eq!("\U00010000\U0010ffff".escape_default(), "\\U00010000\\U0010ffff".to_string());
-        assert_eq!("ab\ufb00".escape_default(), "ab\\ufb00".to_string());
-        assert_eq!("\U0001d4ea\r".escape_default(), "\\U0001d4ea\\r".to_string());
+        assert_eq!("abc".escape_default(), String::from_str("abc"));
+        assert_eq!("a c".escape_default(), String::from_str("a c"));
+        assert_eq!("\r\n\t".escape_default(), String::from_str("\\r\\n\\t"));
+        assert_eq!("'\"\\".escape_default(), String::from_str("\\'\\\"\\\\"));
+        assert_eq!("\u0100\uffff".escape_default(), String::from_str("\\u0100\\uffff"));
+        assert_eq!("\U00010000\U0010ffff".escape_default(),
+                   String::from_str("\\U00010000\\U0010ffff"));
+        assert_eq!("ab\ufb00".escape_default(), String::from_str("ab\\ufb00"));
+        assert_eq!("\U0001d4ea\r".escape_default(), String::from_str("\\U0001d4ea\\r"));
     }
 
     #[test]
@@ -2013,30 +2020,39 @@ mod tests {
 
     #[test]
     fn test_nfd_chars() {
-        assert_eq!("abc".nfd_chars().collect::<String>(), "abc".to_string());
-        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<String>(), "d\u0307\u01c4".to_string());
-        assert_eq!("\u2026".nfd_chars().collect::<String>(), "\u2026".to_string());
-        assert_eq!("\u2126".nfd_chars().collect::<String>(), "\u03a9".to_string());
-        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<String>(), "d\u0323\u0307".to_string());
-        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<String>(), "d\u0323\u0307".to_string());
-        assert_eq!("a\u0301".nfd_chars().collect::<String>(), "a\u0301".to_string());
-        assert_eq!("\u0301a".nfd_chars().collect::<String>(), "\u0301a".to_string());
-        assert_eq!("\ud4db".nfd_chars().collect::<String>(), "\u1111\u1171\u11b6".to_string());
-        assert_eq!("\uac1c".nfd_chars().collect::<String>(), "\u1100\u1162".to_string());
+        assert_eq!("abc".nfd_chars().collect::<String>(), String::from_str("abc"));
+        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<String>(),
+                   String::from_str("d\u0307\u01c4"));
+        assert_eq!("\u2026".nfd_chars().collect::<String>(), String::from_str("\u2026"));
+        assert_eq!("\u2126".nfd_chars().collect::<String>(), String::from_str("\u03a9"));
+        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<String>(),
+                   String::from_str("d\u0323\u0307"));
+        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<String>(),
+                   String::from_str("d\u0323\u0307"));
+        assert_eq!("a\u0301".nfd_chars().collect::<String>(), String::from_str("a\u0301"));
+        assert_eq!("\u0301a".nfd_chars().collect::<String>(), String::from_str("\u0301a"));
+        assert_eq!("\ud4db".nfd_chars().collect::<String>(),
+                   String::from_str("\u1111\u1171\u11b6"));
+        assert_eq!("\uac1c".nfd_chars().collect::<String>(), String::from_str("\u1100\u1162"));
     }
 
     #[test]
     fn test_nfkd_chars() {
-        assert_eq!("abc".nfkd_chars().collect::<String>(), "abc".to_string());
-        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<String>(), "d\u0307DZ\u030c".to_string());
-        assert_eq!("\u2026".nfkd_chars().collect::<String>(), "...".to_string());
-        assert_eq!("\u2126".nfkd_chars().collect::<String>(), "\u03a9".to_string());
-        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<String>(), "d\u0323\u0307".to_string());
-        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<String>(), "d\u0323\u0307".to_string());
-        assert_eq!("a\u0301".nfkd_chars().collect::<String>(), "a\u0301".to_string());
-        assert_eq!("\u0301a".nfkd_chars().collect::<String>(), "\u0301a".to_string());
-        assert_eq!("\ud4db".nfkd_chars().collect::<String>(), "\u1111\u1171\u11b6".to_string());
-        assert_eq!("\uac1c".nfkd_chars().collect::<String>(), "\u1100\u1162".to_string());
+        assert_eq!("abc".nfkd_chars().collect::<String>(), String::from_str("abc"));
+        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<String>(),
+                   String::from_str("d\u0307DZ\u030c"));
+        assert_eq!("\u2026".nfkd_chars().collect::<String>(), String::from_str("..."));
+        assert_eq!("\u2126".nfkd_chars().collect::<String>(), String::from_str("\u03a9"));
+        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<String>(),
+                   String::from_str("d\u0323\u0307"));
+        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<String>(),
+                   String::from_str("d\u0323\u0307"));
+        assert_eq!("a\u0301".nfkd_chars().collect::<String>(), String::from_str("a\u0301"));
+        assert_eq!("\u0301a".nfkd_chars().collect::<String>(),
+                   String::from_str("\u0301a"));
+        assert_eq!("\ud4db".nfkd_chars().collect::<String>(),
+String::from_str("\u1111\u1171\u11b6"));
+        assert_eq!("\uac1c".nfkd_chars().collect::<String>(), String::from_str("\u1100\u1162"));
     }
 
     #[test]
@@ -2090,10 +2106,10 @@ mod tests {
             v.iter().map(|x| x.len()).sum()
         }
 
-        let s = "01234".to_string();
+        let s = String::from_str("01234");
         assert_eq!(5, sum_len(["012", "", "34"]));
-        assert_eq!(5, sum_len(["01".to_string(), "2".to_string(),
-                               "34".to_string(), "".to_string()]));
+        assert_eq!(5, sum_len([String::from_str("01"), String::from_str("2"),
+                               String::from_str("34"), String::from_str("")]));
         assert_eq!(5, sum_len([s.as_slice()]));
     }
 
@@ -2112,10 +2128,10 @@ mod tests {
     #[test]
     fn test_str_from_utf8_owned() {
         let xs = Vec::from_slice(b"hello");
-        assert_eq!(from_utf8_owned(xs), Ok("hello".to_string()));
+        assert_eq!(from_utf8_owned(xs), Ok(String::from_str("hello")));
 
         let xs = Vec::from_slice("ศไทย中华Việt Nam".as_bytes());
-        assert_eq!(from_utf8_owned(xs), Ok("ศไทย中华Việt Nam".to_string()));
+        assert_eq!(from_utf8_owned(xs), Ok(String::from_str("ศไทย中华Việt Nam")));
 
         let xs = Vec::from_slice(b"hello\xFF");
         assert_eq!(from_utf8_owned(xs),
@@ -2131,34 +2147,30 @@ mod tests {
         assert_eq!(from_utf8_lossy(xs), Slice("ศไทย中华Việt Nam"));
 
         let xs = b"Hello\xC2 There\xFF Goodbye";
-        assert_eq!(from_utf8_lossy(xs), Owned("Hello\uFFFD There\uFFFD Goodbye".to_string()));
+        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("Hello\uFFFD There\uFFFD Goodbye")));
 
         let xs = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
-        assert_eq!(from_utf8_lossy(xs), Owned("Hello\uFFFD\uFFFD There\uFFFD Goodbye".to_string()));
+        assert_eq!(from_utf8_lossy(xs),
+                   Owned(String::from_str("Hello\uFFFD\uFFFD There\uFFFD Goodbye")));
 
         let xs = b"\xF5foo\xF5\x80bar";
-        assert_eq!(from_utf8_lossy(xs), Owned("\uFFFDfoo\uFFFD\uFFFDbar".to_string()));
+        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFDfoo\uFFFD\uFFFDbar")));
 
         let xs = b"\xF1foo\xF1\x80bar\xF1\x80\x80baz";
-        assert_eq!(from_utf8_lossy(xs), Owned("\uFFFDfoo\uFFFDbar\uFFFDbaz".to_string()));
+        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFDfoo\uFFFDbar\uFFFDbaz")));
 
         let xs = b"\xF4foo\xF4\x80bar\xF4\xBFbaz";
-        assert_eq!(from_utf8_lossy(xs), Owned("\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz".to_string()));
+        assert_eq!(from_utf8_lossy(xs),
+                   Owned(String::from_str("\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz")));
 
         let xs = b"\xF0\x80\x80\x80foo\xF0\x90\x80\x80bar";
-        assert_eq!(from_utf8_lossy(xs), Owned("\uFFFD\uFFFD\uFFFD\uFFFD\
-                                               foo\U00010000bar".to_string()));
+        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFD\uFFFD\uFFFD\uFFFD\
+                                               foo\U00010000bar")));
 
         // surrogates
         let xs = b"\xED\xA0\x80foo\xED\xBF\xBFbar";
-        assert_eq!(from_utf8_lossy(xs), Owned("\uFFFD\uFFFD\uFFFDfoo\
-                                               \uFFFD\uFFFD\uFFFDbar".to_string()));
-    }
-
-    #[test]
-    fn test_from_str() {
-      let owned: Option<::std::string::String> = from_str("string");
-      assert_eq!(owned.as_ref().map(|s| s.as_slice()), Some("string"));
+        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFD\uFFFD\uFFFDfoo\
+                                               \uFFFD\uFFFD\uFFFDbar")));
     }
 
     #[test]
@@ -2166,18 +2178,18 @@ mod tests {
         let s = Slice("abcde");
         assert_eq!(s.len(), 5);
         assert_eq!(s.as_slice(), "abcde");
-        assert_eq!(s.to_str().as_slice(), "abcde");
+        assert_eq!(String::from_str(s.as_slice()).as_slice(), "abcde");
         assert_eq!(format!("{}", s).as_slice(), "abcde");
-        assert!(s.lt(&Owned("bcdef".to_string())));
+        assert!(s.lt(&Owned(String::from_str("bcdef"))));
         assert_eq!(Slice(""), Default::default());
 
-        let o = Owned("abcde".to_string());
+        let o = Owned(String::from_str("abcde"));
         assert_eq!(o.len(), 5);
         assert_eq!(o.as_slice(), "abcde");
-        assert_eq!(o.to_str().as_slice(), "abcde");
+        assert_eq!(String::from_str(o.as_slice()).as_slice(), "abcde");
         assert_eq!(format!("{}", o).as_slice(), "abcde");
         assert!(o.lt(&Slice("bcdef")));
-        assert_eq!(Owned("".to_string()), Default::default());
+        assert_eq!(Owned(String::from_str("")), Default::default());
 
         assert!(s.cmp(&o) == Equal);
         assert!(s.equiv(&o));
@@ -2192,31 +2204,33 @@ mod tests {
         assert!(s.is_slice());
         assert!(!s.is_owned());
 
-        let o = Owned("abcde".to_string());
+        let o = Owned(String::from_str("abcde"));
         assert!(!o.is_slice());
         assert!(o.is_owned());
     }
 
     #[test]
     fn test_maybe_owned_clone() {
-        assert_eq!(Owned("abcde".to_string()), Slice("abcde").clone());
-        assert_eq!(Owned("abcde".to_string()), Owned("abcde".to_string()).clone());
+        assert_eq!(Owned(String::from_str("abcde")), Slice("abcde").clone());
+        assert_eq!(Owned(String::from_str("abcde")), Owned(String::from_str("abcde")).clone());
         assert_eq!(Slice("abcde"), Slice("abcde").clone());
-        assert_eq!(Slice("abcde"), Owned("abcde".to_string()).clone());
+        assert_eq!(Slice("abcde"), Owned(String::from_str("abcde")).clone());
     }
 
     #[test]
     fn test_maybe_owned_into_string() {
-        assert_eq!(Slice("abcde").into_string(), "abcde".to_string());
-        assert_eq!(Owned("abcde".to_string()).into_string(), "abcde".to_string());
+        assert_eq!(Slice("abcde").into_string(), String::from_str("abcde"));
+        assert_eq!(Owned(String::from_str("abcde")).into_string(),
+                   String::from_str("abcde"));
     }
 
     #[test]
     fn test_into_maybe_owned() {
         assert_eq!("abcde".into_maybe_owned(), Slice("abcde"));
-        assert_eq!(("abcde".to_string()).into_maybe_owned(), Slice("abcde"));
-        assert_eq!("abcde".into_maybe_owned(), Owned("abcde".to_string()));
-        assert_eq!(("abcde".to_string()).into_maybe_owned(), Owned("abcde".to_string()));
+        assert_eq!((String::from_str("abcde")).into_maybe_owned(), Slice("abcde"));
+        assert_eq!("abcde".into_maybe_owned(), Owned(String::from_str("abcde")));
+        assert_eq!((String::from_str("abcde")).into_maybe_owned(),
+                   Owned(String::from_str("abcde")));
     }
 }
 
@@ -2224,7 +2238,10 @@ mod tests {
 mod bench {
     use test::Bencher;
     use super::*;
-    use std::prelude::*;
+    use vec::Vec;
+    use std::iter::{Iterator, DoubleEndedIterator};
+    use std::collections::Collection;
+    use std::slice::Vector;
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {

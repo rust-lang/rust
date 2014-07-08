@@ -85,7 +85,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         debug!("push_ast_cleanup_scope({})",
-               self.ccx.tcx.map.node_to_str(id));
+               self.ccx.tcx.map.node_to_string(id));
 
         // FIXME(#2202) -- currently closure bodies have a parent
         // region, which messes up the assertion below, since there
@@ -109,7 +109,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
                                id: ast::NodeId,
                                exits: [&'a Block<'a>, ..EXIT_MAX]) {
         debug!("push_loop_cleanup_scope({})",
-               self.ccx.tcx.map.node_to_str(id));
+               self.ccx.tcx.map.node_to_string(id));
         assert_eq!(Some(id), self.top_ast_scope());
 
         self.push_scope(CleanupScope::new(LoopScopeKind(id, exits)));
@@ -133,7 +133,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         debug!("pop_and_trans_ast_cleanup_scope({})",
-               self.ccx.tcx.map.node_to_str(cleanup_scope));
+               self.ccx.tcx.map.node_to_string(cleanup_scope));
 
         assert!(self.top_scope(|s| s.kind.is_ast_with_id(cleanup_scope)));
 
@@ -152,7 +152,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         debug!("pop_loop_cleanup_scope({})",
-               self.ccx.tcx.map.node_to_str(cleanup_scope));
+               self.ccx.tcx.map.node_to_string(cleanup_scope));
 
         assert!(self.top_scope(|s| s.kind.is_loop_with_id(cleanup_scope)));
 
@@ -246,7 +246,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
 
         debug!("schedule_drop_mem({:?}, val={}, ty={})",
                cleanup_scope,
-               self.ccx.tn.val_to_str(val),
+               self.ccx.tn.val_to_string(val),
                ty.repr(self.ccx.tcx()));
 
         self.schedule_clean(cleanup_scope, drop as Box<Cleanup>);
@@ -272,7 +272,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
 
         debug!("schedule_drop_and_zero_mem({:?}, val={}, ty={}, zero={})",
                cleanup_scope,
-               self.ccx.tn.val_to_str(val),
+               self.ccx.tn.val_to_string(val),
                ty.repr(self.ccx.tcx()),
                true);
 
@@ -298,7 +298,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
 
         debug!("schedule_drop_immediate({:?}, val={}, ty={})",
                cleanup_scope,
-               self.ccx.tn.val_to_str(val),
+               self.ccx.tn.val_to_string(val),
                ty.repr(self.ccx.tcx()));
 
         self.schedule_clean(cleanup_scope, drop as Box<Cleanup>);
@@ -318,7 +318,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
 
         debug!("schedule_free_value({:?}, val={}, heap={:?})",
                cleanup_scope,
-               self.ccx.tn.val_to_str(val),
+               self.ccx.tn.val_to_string(val),
                heap);
 
         self.schedule_clean(cleanup_scope, drop as Box<Cleanup>);
@@ -358,7 +358,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
 
         self.ccx.sess().bug(
             format!("no cleanup scope {} found",
-                    self.ccx.tcx.map.node_to_str(cleanup_scope)).as_slice());
+                    self.ccx.tcx.map.node_to_string(cleanup_scope)).as_slice());
     }
 
     fn schedule_clean_in_custom_scope(&self,

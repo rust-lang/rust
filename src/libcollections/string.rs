@@ -354,7 +354,7 @@ impl<'a, S: Str> Equiv<S> for String {
 
 impl<S: Str> Add<S, String> for String {
     fn add(&self, other: &S) -> String {
-        let mut s = self.to_string();
+        let mut s = String::from_str(self.as_slice());
         s.push_str(other.as_slice());
         return s;
     }
@@ -368,6 +368,12 @@ mod tests {
     use Mutable;
     use str::{Str, StrSlice};
     use super::String;
+
+    #[test]
+    fn test_from_str() {
+      let owned: Option<::std::string::String> = from_str("string");
+      assert_eq!(owned.as_ref().map(|s| s.as_slice()), Some("string"));
+    }
 
     #[bench]
     fn bench_with_capacity(b: &mut Bencher) {

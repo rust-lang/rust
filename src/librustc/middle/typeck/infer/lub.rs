@@ -25,7 +25,7 @@ use syntax::ast::{Many, Once, NodeId};
 use syntax::ast::{NormalFn, UnsafeFn};
 use syntax::ast::{Onceness, FnStyle};
 use syntax::ast::{MutMutable, MutImmutable};
-use util::ppaux::mt_to_str;
+use util::ppaux::mt_to_string;
 use util::ppaux::Repr;
 
 pub struct Lub<'f>(pub CombineFields<'f>);  // least-upper-bound: common supertype
@@ -49,8 +49,8 @@ impl<'f> Combine for Lub<'f> {
 
         debug!("{}.mts({}, {})",
                self.tag(),
-               mt_to_str(tcx, a),
-               mt_to_str(tcx, b));
+               mt_to_string(tcx, a),
+               mt_to_string(tcx, b));
 
         if a.mutbl != b.mutbl {
             return Err(ty::terr_mutability)

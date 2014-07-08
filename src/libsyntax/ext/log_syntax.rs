@@ -21,7 +21,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                          -> Box<base::MacResult> {
 
     cx.print_backtrace();
-    println!("{}", print::pprust::tt_to_str(&ast::TTDelim(
+    println!("{}", print::pprust::tt_to_string(&ast::TTDelim(
                 Rc::new(tt.iter().map(|x| (*x).clone()).collect()))));
 
     // any so that `log_syntax` can be invoked as an expression and item.

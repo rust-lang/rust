@@ -63,7 +63,7 @@ use syntax::codemap;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
-use syntax::print::pprust::{path_to_str};
+use syntax::print::pprust::{path_to_string};
 use syntax::visit;
 
 struct CollectItemTypesVisitor<'a> {
@@ -665,7 +665,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
             ccx.tcx.sess.span_fatal(
                 ast_trait_ref.path.span,
                 format!("`{}` is not a trait",
-                        path_to_str(&ast_trait_ref.path)).as_slice());
+                        path_to_string(&ast_trait_ref.path)).as_slice());
         }
     }
 }
@@ -836,7 +836,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
             debug!("type of {} (id {}) is {}",
                     token::get_ident(it.ident),
                     it.id,
-                    ppaux::ty_to_str(tcx, pty.ty));
+                    ppaux::ty_to_string(tcx, pty.ty));
 
             ccx.tcx.tcache.borrow_mut().insert(local_def(it.id), pty.clone());
             return pty;
@@ -1169,7 +1169,7 @@ fn ty_generics(ccx: &CrateCtxt,
                         format!("incompatible bounds on type parameter {}, \
                                  bound {} does not allow unsized type",
                         token::get_ident(ident),
-                        ppaux::trait_ref_to_str(tcx,
+                        ppaux::trait_ref_to_string(tcx,
                                                 &*trait_ref)).as_slice());
                 }
                 true

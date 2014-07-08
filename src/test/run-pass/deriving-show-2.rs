@@ -41,15 +41,15 @@ impl fmt::Show for Custom {
 }
 
 pub fn main() {
-    assert_eq!(B1.to_str(), "B1".to_string());
-    assert_eq!(B2.to_str(), "B2".to_string());
-    assert_eq!(C1(3).to_str(), "C1(3)".to_string());
-    assert_eq!(C2(B2).to_str(), "C2(B2)".to_string());
-    assert_eq!(D1{ a: 2 }.to_str(), "D1 { a: 2 }".to_string());
-    assert_eq!(E.to_str(), "E".to_string());
-    assert_eq!(F(3).to_str(), "F(3)".to_string());
-    assert_eq!(G(3, 4).to_str(), "G(3, 4)".to_string());
-    assert_eq!(G(3, 4).to_str(), "G(3, 4)".to_string());
-    assert_eq!(I{ a: 2, b: 4 }.to_str(), "I { a: 2, b: 4 }".to_string());
-    assert_eq!(J(Custom).to_str(), "J(yay)".to_string());
+    assert_eq!(B1.to_string(), "B1".to_string());
+    assert_eq!(B2.to_string(), "B2".to_string());
+    assert_eq!(C1(3).to_string(), "C1(3)".to_string());
+    assert_eq!(C2(B2).to_string(), "C2(B2)".to_string());
+    assert_eq!(D1{ a: 2 }.to_string(), "D1 { a: 2 }".to_string());
+    assert_eq!(E.to_string(), "E".to_string());
+    assert_eq!(F(3).to_string(), "F(3)".to_string());
+    assert_eq!(G(3, 4).to_string(), "G(3, 4)".to_string());
+    assert_eq!(G(3, 4).to_string(), "G(3, 4)".to_string());
+    assert_eq!(I{ a: 2, b: 4 }.to_string(), "I { a: 2, b: 4 }".to_string());
+    assert_eq!(J(Custom).to_string(), "J(yay)".to_string());
 }

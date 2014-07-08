@@ -26,7 +26,7 @@ use syntax::ast::{NormalFn, UnsafeFn, NodeId};
 use syntax::ast::{Onceness, FnStyle};
 use std::collections::HashMap;
 use util::common::{indenter};
-use util::ppaux::mt_to_str;
+use util::ppaux::mt_to_string;
 use util::ppaux::Repr;
 
 pub struct Glb<'f>(pub CombineFields<'f>);  // "greatest lower bound" (common subtype)
@@ -50,8 +50,8 @@ impl<'f> Combine for Glb<'f> {
 
         debug!("{}.mts({}, {})",
                self.tag(),
-               mt_to_str(tcx, a),
-               mt_to_str(tcx, b));
+               mt_to_string(tcx, a),
+               mt_to_string(tcx, b));
 
         match (a.mutbl, b.mutbl) {
           // If one side or both is mut, then the GLB must use

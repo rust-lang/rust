@@ -252,7 +252,7 @@ impl<'a> FmtStrs<'a> {
         // the local case they can be overridden in one block and there is no nice way
         // to refer to such a scope in english, so we just hack it by appending the
         // variable def's node id
-        let qualname = String::from_str(name).append("$").append(id.to_str().as_slice());
+        let qualname = String::from_str(name).append("$").append(id.to_string().as_slice());
         self.check_and_record(Variable,
                               span,
                               sub_span,

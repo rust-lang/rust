@@ -199,7 +199,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
                 t,
                 t_norm.repr(cx.tcx()),
                 t_norm,
-                cx.tn.type_to_str(llty));
+                cx.tn.type_to_string(llty));
         cx.lltypes.borrow_mut().insert(t, llty);
         return llty;
     }
@@ -291,7 +291,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     debug!("--> mapped t={} {:?} to llty={}",
             t.repr(cx.tcx()),
             t,
-            cx.tn.type_to_str(llty));
+            cx.tn.type_to_string(llty));
 
     cx.lltypes.borrow_mut().insert(t, llty);
 

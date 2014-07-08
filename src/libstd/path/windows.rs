@@ -1314,9 +1314,9 @@ mod tests {
     #[test]
     fn test_display_str() {
         let path = Path::new("foo");
-        assert_eq!(path.display().to_str(), "foo".to_string());
+        assert_eq!(path.display().to_string(), "foo".to_string());
         let path = Path::new(b"\\");
-        assert_eq!(path.filename_display().to_str(), "".to_string());
+        assert_eq!(path.filename_display().to_string(), "".to_string());
 
         let path = Path::new("foo");
         let mo = path.display().as_maybe_owned();
