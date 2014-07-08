@@ -12,7 +12,6 @@
 
 use libc;
 use ArchiveRef;
-use llvm;
 
 use std::raw;
 use std::mem;
@@ -31,7 +30,7 @@ impl ArchiveRO {
     pub fn open(dst: &Path) -> Option<ArchiveRO> {
         unsafe {
             let ar = dst.with_c_str(|dst| {
-                llvm::LLVMRustOpenArchive(dst)
+                ::LLVMRustOpenArchive(dst)
             });
             if ar.is_null() {
                 None
@@ -46,7 +45,7 @@ impl ArchiveRO {
         unsafe {
             let mut size = 0 as libc::size_t;
             let ptr = file.with_c_str(|file| {
-                llvm::LLVMRustArchiveReadSection(self.ptr, file, &mut size)
+                ::LLVMRustArchiveReadSection(self.ptr, file, &mut size)
             });
             if ptr.is_null() {
                 None
@@ -63,7 +62,7 @@ impl ArchiveRO {
 impl Drop for ArchiveRO {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMRustDestroyArchive(self.ptr);
+            ::LLVMRustDestroyArchive(self.ptr);
         }
     }
 }

@@ -13,9 +13,10 @@
 
 #![allow(non_uppercase_pattern_statics)]
 
-use lib::llvm::{llvm, Integer, Pointer, Float, Double};
-use lib::llvm::{Struct, Array, Attribute};
-use lib::llvm::{StructRetAttribute, ByValAttribute, ZExtAttribute};
+use llvm;
+use llvm::{Integer, Pointer, Float, Double};
+use llvm::{Struct, Array, Attribute};
+use llvm::{StructRetAttribute, ByValAttribute, ZExtAttribute};
 use middle::trans::cabi::*;
 use middle::trans::context::CrateContext;
 use middle::trans::type_::Type;

@@ -10,9 +10,8 @@
 
 
 use back::{link};
-use lib::llvm::llvm;
-use lib::llvm::{ValueRef, CallConv, Linkage};
-use lib;
+use llvm;
+use llvm::{ValueRef, CallConv, Linkage};
 use middle::weak_lang_items;
 use middle::trans::base::push_ctxt;
 use middle::trans::base;
@@ -88,14 +87,14 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
             // It's the ABI's job to select this, not us.
             System => ccx.sess().bug("system abi should be selected elsewhere"),
 
-            Stdcall => lib::llvm::X86StdcallCallConv,
-            Fastcall => lib::llvm::X86FastcallCallConv,
-            C => lib::llvm::CCallConv,
-            Win64 => lib::llvm::X86_64_Win64,
+            Stdcall => llvm::X86StdcallCallConv,
+            Fastcall => llvm::X86FastcallCallConv,
+            C => llvm::CCallConv,
+            Win64 => llvm::X86_64_Win64,
 
             // These API constants ought to be more specific...
-            Cdecl => lib::llvm::CCallConv,
-            Aapcs => lib::llvm::CCallConv,
+            Cdecl => llvm::CCallConv,
+            Aapcs => llvm::CCallConv,
         }
     })
 }
@@ -110,17 +109,17 @@ pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
     // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
     // and don't have to be, LLVM treats them as no-ops.
     match name {
-        "appending" => Some(lib::llvm::AppendingLinkage),
-        "available_externally" => Some(lib::llvm::AvailableExternallyLinkage),
-        "common" => Some(lib::llvm::CommonLinkage),
-        "extern_weak" => Some(lib::llvm::ExternalWeakLinkage),
-        "external" => Some(lib::llvm::ExternalLinkage),
-        "internal" => Some(lib::llvm::InternalLinkage),
-        "linkonce" => Some(lib::llvm::LinkOnceAnyLinkage),
-        "linkonce_odr" => Some(lib::llvm::LinkOnceODRLinkage),
-        "private" => Some(lib::llvm::PrivateLinkage),
-        "weak" => Some(lib::llvm::WeakAnyLinkage),
-        "weak_odr" => Some(lib::llvm::WeakODRLinkage),
+        "appending" => Some(llvm::AppendingLinkage),
+        "available_externally" => Some(llvm::AvailableExternallyLinkage),
+        "common" => Some(llvm::CommonLinkage),
+        "extern_weak" => Some(llvm::ExternalWeakLinkage),
+        "external" => Some(llvm::ExternalLinkage),
+        "internal" => Some(llvm::InternalLinkage),
+        "linkonce" => Some(llvm::LinkOnceAnyLinkage),
+        "linkonce_odr" => Some(llvm::LinkOnceODRLinkage),
+        "private" => Some(llvm::PrivateLinkage),
+        "weak" => Some(llvm::WeakAnyLinkage),
+        "weak_odr" => Some(llvm::WeakODRLinkage),
         _ => None,
     }
 }
@@ -157,14 +156,14 @@ pub fn register_static(ccx: &CrateContext,
                 let g1 = ident.get().with_c_str(|buf| {
                     llvm::LLVMAddGlobal(ccx.llmod, llty2.to_ref(), buf)
                 });
-                lib::llvm::SetLinkage(g1, linkage);
+                llvm::SetLinkage(g1, linkage);
 
                 let mut real_name = "_rust_extern_with_linkage_".to_string();
                 real_name.push_str(ident.get());
                 let g2 = real_name.with_c_str(|buf| {
                     llvm::LLVMAddGlobal(ccx.llmod, llty.to_ref(), buf)
                 });
-                lib::llvm::SetLinkage(g2, lib::llvm::InternalLinkage);
+                llvm::SetLinkage(g2, llvm::InternalLinkage);
                 llvm::LLVMSetInitializer(g2, g1);
                 g2
             }
@@ -217,7 +216,7 @@ pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: ty::t,
     // Make sure the calling convention is right for variadic functions
     // (should've been caught if not in typeck)
     if tys.fn_sig.variadic {
-        assert!(cc == lib::llvm::CCallConv);
+        assert!(cc == llvm::CCallConv);
     }
 
     // Create the LLVM value for the C extern fn
@@ -347,7 +346,7 @@ pub fn trans_native_call<'a>(
             llarg_rust
         } else {
             if ty::type_is_bool(*passed_arg_tys.get(i)) {
-                let val = LoadRangeAssert(bcx, llarg_rust, 0, 2, lib::llvm::False);
+                let val = LoadRangeAssert(bcx, llarg_rust, 0, 2, llvm::False);
                 Trunc(bcx, val, Type::i1(bcx.ccx()))
             } else {
                 Load(bcx, llarg_rust)
@@ -384,9 +383,9 @@ pub fn trans_native_call<'a>(
     if fn_type.ret_ty.is_indirect() {
         // The outptr can be noalias and nocapture because it's entirely
         // invisible to the program. We can also mark it as nonnull
-        attrs.push((1, lib::llvm::NoAliasAttribute as u64));
-        attrs.push((1, lib::llvm::NoCaptureAttribute as u64));
-        attrs.push((1, lib::llvm::NonNullAttribute as u64));
+        attrs.push((1, llvm::NoAliasAttribute as u64));
+        attrs.push((1, llvm::NoCaptureAttribute as u64));
+        attrs.push((1, llvm::NonNullAttribute as u64));
     };
 
     // Add attributes that depend on the concrete foreign ABI
@@ -531,7 +530,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
     let cconv = match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
             let c = llvm_calling_convention(ccx, fn_ty.abi);
-            c.unwrap_or(lib::llvm::CCallConv)
+            c.unwrap_or(llvm::CCallConv)
         }
         _ => fail!("expected bare fn in register_rust_fn_with_foreign_abi")
     };
@@ -743,7 +742,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                 llforeign_arg
             } else {
                 if ty::type_is_bool(rust_ty) {
-                    let tmp = builder.load_range_assert(llforeign_arg, 0, 2, lib::llvm::False);
+                    let tmp = builder.load_range_assert(llforeign_arg, 0, 2, llvm::False);
                     builder.trunc(tmp, Type::i1(ccx))
                 } else {
                     builder.load(llforeign_arg)

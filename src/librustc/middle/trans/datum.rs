@@ -13,7 +13,7 @@
  * Datums are and how they are intended to be used.
  */
 
-use lib::llvm::ValueRef;
+use llvm::ValueRef;
 use middle::trans::base::*;
 use middle::trans::common::*;
 use middle::trans::cleanup;

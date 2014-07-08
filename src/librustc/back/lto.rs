@@ -11,8 +11,9 @@
 use super::link;
 use driver::session;
 use driver::config;
+use llvm;
 use llvm::archive_ro::ArchiveRO;
-use llvm::{ModuleRef, TargetMachineRef, llvm, True, False};
+use llvm::{ModuleRef, TargetMachineRef, True, False};
 use metadata::cstore;
 use util::common::time;
 

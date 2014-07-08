@@ -13,7 +13,7 @@
  * drop glue. See discussion in `doc.rs` for a high-level summary.
  */
 
-use lib::llvm::{BasicBlockRef, ValueRef};
+use llvm::{BasicBlockRef, ValueRef};
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::callee;

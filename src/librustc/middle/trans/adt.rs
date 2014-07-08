@@ -48,7 +48,7 @@
 use libc::c_ulonglong;
 use std::rc::Rc;
 
-use lib::llvm::{ValueRef, True, IntEQ, IntNE};
+use llvm::{ValueRef, True, IntEQ, IntNE};
 use middle::subst;
 use middle::subst::Subst;
 use middle::trans::_match;

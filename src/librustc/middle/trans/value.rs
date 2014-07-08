@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use lib::llvm::{llvm, UseRef, ValueRef};
+use llvm;
+use llvm::{UseRef, ValueRef};
 use middle::trans::basic_block::BasicBlock;
 use middle::trans::common::Block;
 use libc::c_uint;
