@@ -399,11 +399,11 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
                                     variant_id, substitutions, etc);
         }
         Some(&def::DefStruct(..)) | Some(&def::DefVariant(..)) => {
-            let name = pprust::path_to_str(path);
+            let name = pprust::path_to_string(path);
             tcx.sess.span_err(span,
                               format!("mismatched types: expected `{}` but \
                                        found `{}`",
-                                      fcx.infcx().ty_to_str(expected),
+                                      fcx.infcx().ty_to_string(expected),
                                       name).as_slice());
         }
         _ => {
@@ -525,9 +525,9 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                        .span_err(path.span,
                                  format!("`{}` does not name the \
                                           structure `{}`",
-                                         pprust::path_to_str(path),
+                                         pprust::path_to_string(path),
                                          fcx.infcx()
-                                            .ty_to_str(expected)).as_slice())
+                                            .ty_to_string(expected)).as_slice())
                 }
 
                 check_struct_pat(pcx, pat.id, pat.span, expected, path,
@@ -747,7 +747,7 @@ fn check_pointer_pat(pcx: &pat_ctxt,
                 tcx.sess.span_err(
                     span,
                     format!("type `{}` cannot be dereferenced",
-                            fcx.infcx().ty_to_str(expected)).as_slice());
+                            fcx.infcx().ty_to_string(expected)).as_slice());
                 fcx.write_error(pat_id);
             }
             _ => {

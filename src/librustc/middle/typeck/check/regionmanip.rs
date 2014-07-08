@@ -30,7 +30,7 @@ pub fn replace_late_bound_regions_in_fn_sig(
     let mut map = HashMap::new();
     let fn_sig = {
         let mut f = ty_fold::RegionFolder::regions(tcx, |r| {
-            debug!("region r={}", r.to_str());
+            debug!("region r={}", r.to_string());
             match r {
                 ty::ReLateBound(s, br) if s == fn_sig.binder_id => {
                     *map.find_or_insert_with(br, |_| mapf(br))
@@ -153,7 +153,7 @@ pub fn relate_free_regions(tcx: &ty::ctxt, fn_sig: &ty::FnSig) {
     }
 
     for &t in all_tys.iter() {
-        debug!("relate_free_regions(t={})", ppaux::ty_to_str(tcx, t));
+        debug!("relate_free_regions(t={})", ppaux::ty_to_string(tcx, t));
         relate_nested_regions(tcx, None, t, |a, b| {
             match (&a, &b) {
                 (&ty::ReFree(free_a), &ty::ReFree(free_b)) => {

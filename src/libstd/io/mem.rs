@@ -532,7 +532,7 @@ mod test {
         writer.write_line("testing").unwrap();
         writer.write_str("testing").unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        assert_eq!(r.read_to_str().unwrap(), "testingtesting\ntesting".to_string());
+        assert_eq!(r.read_to_string().unwrap(), "testingtesting\ntesting".to_string());
     }
 
     #[test]
@@ -542,14 +542,14 @@ mod test {
         writer.write_char('\n').unwrap();
         writer.write_char('ệ').unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        assert_eq!(r.read_to_str().unwrap(), "a\nệ".to_string());
+        assert_eq!(r.read_to_string().unwrap(), "a\nệ".to_string());
     }
 
     #[test]
     fn test_read_whole_string_bad() {
         let buf = [0xff];
         let mut r = BufReader::new(buf);
-        match r.read_to_str() {
+        match r.read_to_string() {
             Ok(..) => fail!(),
             Err(..) => {}
         }

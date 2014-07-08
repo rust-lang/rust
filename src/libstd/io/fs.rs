@@ -915,7 +915,7 @@ mod test {
     macro_rules! error( ($e:expr, $s:expr) => (
         match $e {
             Ok(val) => fail!("Should have been an error, was {:?}", val),
-            Err(ref err) => assert!(err.to_str().as_slice().contains($s.as_slice()),
+            Err(ref err) => assert!(err.to_string().as_slice().contains($s.as_slice()),
                                     format!("`{}` did not contain `{}`", err, $s))
         }
     ) )
@@ -1167,7 +1167,7 @@ mod test {
         for n in range(0i,3) {
             let f = dir.join(format!("{}.txt", n));
             let mut w = check!(File::create(&f));
-            let msg_str = format!("{}{}", prefix, n.to_str());
+            let msg_str = format!("{}{}", prefix, n.to_string());
             let msg = msg_str.as_slice().as_bytes();
             check!(w.write(msg));
         }

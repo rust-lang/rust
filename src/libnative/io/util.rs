@@ -30,7 +30,7 @@ pub fn timeout(desc: &'static str) -> IoError {
     IoError {
         code: ERROR as uint,
         extra: 0,
-        detail: Some(desc.to_str()),
+        detail: Some(desc.to_string()),
     }
 }
 
@@ -40,7 +40,7 @@ pub fn short_write(n: uint, desc: &'static str) -> IoError {
     IoError {
         code: ERROR as uint,
         extra: n,
-        detail: Some(desc.to_str()),
+        detail: Some(desc.to_string()),
     }
 }
 

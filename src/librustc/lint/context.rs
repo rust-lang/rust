@@ -666,7 +666,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         for &(lint, span, ref msg) in v.iter() {
             tcx.sess.span_bug(span,
                               format!("unprocessed lint {} at {}: {}",
-                                      lint.as_str(), tcx.map.node_to_str(*id), *msg).as_slice())
+                                      lint.as_str(), tcx.map.node_to_string(*id), *msg).as_slice())
         }
     }
 

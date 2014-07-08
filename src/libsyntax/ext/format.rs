@@ -126,7 +126,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
                 _ => {
                     ecx.span_err(p.span,
                                  format!("expected ident for named argument, but found `{}`",
-                                         p.this_token_to_str()).as_slice());
+                                         p.this_token_to_string()).as_slice());
                     return (invocation, None);
                 }
             };
@@ -690,7 +690,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         fmtsp: sp,
     };
     cx.fmtsp = efmt.span;
-    let fmt = match expr_to_str(cx.ecx,
+    let fmt = match expr_to_string(cx.ecx,
                                 efmt,
                                 "format argument must be a string literal.") {
         Some((fmt, _)) => fmt,

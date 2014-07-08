@@ -20,7 +20,7 @@ impl StringBuffer {
     }
 }
 
-fn to_str(sb: StringBuffer) -> String {
+fn to_string(sb: StringBuffer) -> String {
     sb.s
 }
 
@@ -30,6 +30,6 @@ pub fn main() {
     };
     sb.append("Hello, ");
     sb.append("World!");
-    let str = to_str(sb);
+    let str = to_string(sb);
     assert_eq!(str.as_slice(), "Hello, World!");
 }

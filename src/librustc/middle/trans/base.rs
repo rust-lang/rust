@@ -71,7 +71,7 @@ use middle::trans::value::Value;
 use middle::ty;
 use middle::typeck;
 use util::common::indenter;
-use util::ppaux::{Repr, ty_to_str};
+use util::ppaux::{Repr, ty_to_string};
 use util::sha2::Sha256;
 use util::nodemap::NodeMap;
 
@@ -301,7 +301,7 @@ fn require_alloc_fn(bcx: &Block, info_ty: ty::t, it: LangItem) -> ast::DefId {
         Ok(id) => id,
         Err(s) => {
             bcx.sess().fatal(format!("allocation of `{}` {}",
-                                     bcx.ty_to_str(info_ty),
+                                     bcx.ty_to_string(info_ty),
                                      s).as_slice());
         }
     }
@@ -706,7 +706,7 @@ pub fn iter_structural_ty<'r,
                       let variant_cx =
                           fcx.new_temp_block(
                               format!("enum-iter-variant-{}",
-                                      variant.disr_val.to_str().as_slice())
+                                      variant.disr_val.to_string().as_slice())
                                      .as_slice());
                       match adt::trans_case(cx, &*repr, variant.disr_val) {
                           _match::single_result(r) => {
@@ -809,7 +809,7 @@ pub fn fail_if_zero_or_overflows<'a>(
         }
         _ => {
             cx.sess().bug(format!("fail-if-zero on unexpected type: {}",
-                                  ty_to_str(cx.tcx(), rhs_t)).as_slice());
+                                  ty_to_string(cx.tcx(), rhs_t)).as_slice());
         }
     };
     let bcx = with_cond(cx, is_zero, |bcx| {
@@ -903,7 +903,7 @@ pub fn invoke<'a>(
             debug!("invoke at ???");
         }
         Some(id) => {
-            debug!("invoke at {}", bcx.tcx().map.node_to_str(id));
+            debug!("invoke at {}", bcx.tcx().map.node_to_string(id));
         }
     }
 
@@ -1173,7 +1173,7 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
            if id == -1 {
                "".to_string()
            } else {
-               ccx.tcx.map.path_to_str(id).to_string()
+               ccx.tcx.map.path_to_string(id).to_string()
            },
            id, param_substs.repr(ccx.tcx()));
 
@@ -1474,7 +1474,7 @@ pub fn trans_fn(ccx: &CrateContext,
                 param_substs: &param_substs,
                 id: ast::NodeId,
                 attrs: &[ast::Attribute]) {
-    let _s = StatRecorder::new(ccx, ccx.tcx.map.path_to_str(id).to_string());
+    let _s = StatRecorder::new(ccx, ccx.tcx.map.path_to_string(id).to_string());
     debug!("trans_fn(param_substs={})", param_substs.repr(ccx.tcx()));
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx(), id));
@@ -1527,7 +1527,7 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
         _ => ccx.sess().bug(
             format!("trans_enum_variant_or_tuple_like_struct: \
                      unexpected ctor return type {}",
-                    ty_to_str(ccx.tcx(), ctor_ty)).as_slice())
+                    ty_to_string(ccx.tcx(), ctor_ty)).as_slice())
     };
 
     let arena = TypedArena::new();
@@ -2010,7 +2010,7 @@ fn exported_name(ccx: &CrateContext, id: ast::NodeId,
         _ => ccx.tcx.map.with_path(id, |mut path| {
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
-                path.last().unwrap().to_str()
+                path.last().unwrap().to_string()
             } else {
                 match weak_lang_items::link_name(attrs) {
                     Some(name) => name.get().to_string(),

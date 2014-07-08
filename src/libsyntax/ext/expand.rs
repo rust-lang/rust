@@ -1183,7 +1183,7 @@ mod test {
         // should fail:
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             deriving_hash_type_parameter: false,
-            crate_name: "test".to_str(),
+            crate_name: "test".to_string(),
         };
         expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
     }
@@ -1200,7 +1200,7 @@ mod test {
             Vec::new(), &sess);
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             deriving_hash_type_parameter: false,
-            crate_name: "test".to_str(),
+            crate_name: "test".to_string(),
         };
         expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
     }
@@ -1216,7 +1216,7 @@ mod test {
             Vec::new(), &sess);
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             deriving_hash_type_parameter: false,
-            crate_name: "test".to_str(),
+            crate_name: "test".to_string(),
         };
         expand_crate(&sess, cfg, vec!(), vec!(), crate_ast);
     }
@@ -1253,7 +1253,7 @@ mod test {
         // the cfg argument actually does matter, here...
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             deriving_hash_type_parameter: false,
-            crate_name: "test".to_str(),
+            crate_name: "test".to_string(),
         };
         expand_crate(&ps,cfg,vec!(),vec!(),crate_ast)
     }
@@ -1272,7 +1272,7 @@ mod test {
     //}
     //fn expand_and_resolve_and_pretty_print (crate_str: @str) -> String {
         //let resolved_ast = expand_and_resolve(crate_str);
-        //pprust::to_str(&resolved_ast,fake_print_crate,get_ident_interner())
+        //pprust::to_string(&resolved_ast,fake_print_crate,get_ident_interner())
     //}
 
     #[test] fn macro_tokens_should_match(){
@@ -1504,7 +1504,7 @@ mod test {
     }
 
     #[test] fn fmt_in_macro_used_inside_module_macro() {
-        let crate_str = "macro_rules! fmt_wrap(($b:expr)=>($b.to_str()))
+        let crate_str = "macro_rules! fmt_wrap(($b:expr)=>($b.to_string()))
 macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}))
 foo_module!()
 ".to_string();

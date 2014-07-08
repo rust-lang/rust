@@ -64,7 +64,7 @@ impl<'a> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a> {
         } else if n.data.id == ast::DUMMY_NODE_ID {
             dot::LabelStr("(dummy_node)".into_maybe_owned())
         } else {
-            let s = self.ast_map.node_to_str(n.data.id);
+            let s = self.ast_map.node_to_string(n.data.id);
             // left-aligns the lines
             let s = replace_newline_with_backslash_l(s);
             dot::EscStr(s.into_maybe_owned())
@@ -80,7 +80,7 @@ impl<'a> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a> {
             } else {
                 put_one = true;
             }
-            let s = self.ast_map.node_to_str(node_id);
+            let s = self.ast_map.node_to_string(node_id);
             // left-aligns the lines
             let s = replace_newline_with_backslash_l(s);
             label = label.append(format!("exiting scope_{} {}",

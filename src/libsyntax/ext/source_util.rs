@@ -64,7 +64,7 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
 pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         -> Box<base::MacResult> {
-    let s = pprust::tts_to_str(tts);
+    let s = pprust::tts_to_string(tts);
     base::MacExpr::new(cx.expr_str(sp,
                                    token::intern_and_get_ident(s.as_slice())))
 }
@@ -126,7 +126,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Some(src) => {
             // Add this input file to the code map to make it available as
             // dependency information
-            let filename = file.display().to_str();
+            let filename = file.display().to_string();
             let interned = token::intern_and_get_ident(src);
             cx.codemap().new_filemap(filename, src.to_string());
 

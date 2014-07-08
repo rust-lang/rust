@@ -367,7 +367,7 @@ impl CodeMap {
         }
     }
 
-    pub fn span_to_str(&self, sp: Span) -> String {
+    pub fn span_to_string(&self, sp: Span) -> String {
         if self.files.borrow().len() == 0 && sp == DUMMY_SP {
             return "no-location".to_string();
         }
@@ -687,7 +687,7 @@ mod test {
         // Test span_to_str for a span ending at the end of filemap
         let cm = init_code_map();
         let span = Span {lo: BytePos(12), hi: BytePos(23), expn_info: None};
-        let sstr =  cm.span_to_str(span);
+        let sstr =  cm.span_to_string(span);
 
         assert_eq!(sstr, "blork.rs:2:1: 2:12".to_string());
     }

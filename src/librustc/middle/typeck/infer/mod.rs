@@ -44,7 +44,7 @@ use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
 use util::common::indent;
-use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str, Repr};
+use util::ppaux::{bound_region_to_string, ty_to_string, trait_ref_to_string, Repr};
 
 pub mod doc;
 pub mod macros;
@@ -245,7 +245,7 @@ pub enum fixup_err {
     region_var_bound_by_region_var(RegionVid, RegionVid)
 }
 
-pub fn fixup_err_to_str(f: fixup_err) -> String {
+pub fn fixup_err_to_string(f: fixup_err) -> String {
     match f {
       unresolved_int_ty(_) => {
           "cannot determine the type of this integer; add a suffix to \
@@ -662,19 +662,19 @@ impl<'a> InferCtxt<'a> {
         self.report_region_errors(&errors); // see error_reporting.rs
     }
 
-    pub fn ty_to_str(&self, t: ty::t) -> String {
-        ty_to_str(self.tcx,
+    pub fn ty_to_string(&self, t: ty::t) -> String {
+        ty_to_string(self.tcx,
                   self.resolve_type_vars_if_possible(t))
     }
 
-    pub fn tys_to_str(&self, ts: &[ty::t]) -> String {
-        let tstrs: Vec<String> = ts.iter().map(|t| self.ty_to_str(*t)).collect();
+    pub fn tys_to_string(&self, ts: &[ty::t]) -> String {
+        let tstrs: Vec<String> = ts.iter().map(|t| self.ty_to_string(*t)).collect();
         format!("({})", tstrs.connect(", "))
     }
 
-    pub fn trait_ref_to_str(&self, t: &ty::TraitRef) -> String {
+    pub fn trait_ref_to_string(&self, t: &ty::TraitRef) -> String {
         let t = self.resolve_type_vars_in_trait_ref_if_possible(t);
-        trait_ref_to_str(self.tcx, &t)
+        trait_ref_to_string(self.tcx, &t)
     }
 
     pub fn resolve_type_vars_if_possible(&self, typ: ty::t) -> ty::t {
@@ -707,8 +707,8 @@ impl<'a> InferCtxt<'a> {
                 self.tcx.sess.bug(
                     format!("resolve_type_vars_if_possible() yielded {} \
                              when supplied with {}",
-                            self.ty_to_str(dummy0),
-                            self.ty_to_str(dummy1)).as_slice());
+                            self.ty_to_string(dummy0),
+                            self.ty_to_string(dummy1)).as_slice());
             }
         }
     }
@@ -761,7 +761,7 @@ impl<'a> InferCtxt<'a> {
                 Some(e) => {
                     self.tcx.sess.span_err(sp,
                         format!("{}{}",
-                                mk_msg(Some(self.ty_to_str(e)), actual_ty),
+                                mk_msg(Some(self.ty_to_string(e)), actual_ty),
                                 error_str).as_slice());
                 }
             }
@@ -783,7 +783,7 @@ impl<'a> InferCtxt<'a> {
             return;
         }
 
-        self.type_error_message_str(sp, |_e, a| { mk_msg(a) }, self.ty_to_str(actual_ty), err);
+        self.type_error_message_str(sp, |_e, a| { mk_msg(a) }, self.ty_to_string(actual_ty), err);
     }
 
     pub fn report_mismatched_types(&self,
@@ -800,7 +800,7 @@ impl<'a> InferCtxt<'a> {
                 // if I leave out : String, it infers &str and complains
                 |actual: String| {
                     format!("mismatched types: expected `{}` but found `{}`",
-                            self.ty_to_str(resolved_expected),
+                            self.ty_to_string(resolved_expected),
                             actual)
                 }
             }
@@ -819,7 +819,7 @@ impl<'a> InferCtxt<'a> {
                 let rvar = self.next_region_var(
                     BoundRegionInFnType(trace.origin.span(), br));
                 debug!("Bound region {} maps to {:?}",
-                       bound_region_to_str(self.tcx, "", false, br),
+                       bound_region_to_string(self.tcx, "", false, br),
                        rvar);
                 rvar
             });

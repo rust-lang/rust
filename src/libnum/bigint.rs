@@ -2737,7 +2737,7 @@ mod bigint_tests {
         // attempt to allocate a vector of size (-1u) == huge.
         let x: BigInt =
             from_str(format!("1{}", "0".repeat(36)).as_slice()).unwrap();
-        let _y = x.to_str();
+        let _y = x.to_string();
     }
 
     #[test]
@@ -2842,14 +2842,14 @@ mod bench {
     }
 
     #[bench]
-    fn to_str(b: &mut Bencher) {
+    fn to_string(b: &mut Bencher) {
         let fac = factorial(100);
         let fib = fib(100);
         b.iter(|| {
-            fac.to_str();
+            fac.to_string();
         });
         b.iter(|| {
-            fib.to_str();
+            fib.to_string();
         });
     }
 

@@ -148,12 +148,12 @@ fn extract_crate_info(e: &Env, i: &ast::ViewItem) -> Option<CrateInfo> {
                    ident, path_opt);
             let name = match *path_opt {
                 Some((ref path_str, _)) => {
-                    let name = path_str.get().to_str();
+                    let name = path_str.get().to_string();
                     validate_crate_name(Some(e.sess), name.as_slice(),
                                         Some(i.span));
                     name
                 }
-                None => ident.get().to_str(),
+                None => ident.get().to_string(),
             };
             Some(CrateInfo {
                 ident: ident.get().to_string(),

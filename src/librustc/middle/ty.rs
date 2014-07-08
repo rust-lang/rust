@@ -32,8 +32,8 @@ use middle::typeck::MethodCall;
 use middle::ty_fold;
 use middle::ty_fold::{TypeFoldable,TypeFolder};
 use middle;
-use util::ppaux::{note_and_explain_region, bound_region_ptr_to_str};
-use util::ppaux::{trait_store_to_str, ty_to_str};
+use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
+use util::ppaux::{trait_store_to_string, ty_to_string};
 use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet, FnvHashMap};
@@ -2243,8 +2243,8 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
     fn type_requires(cx: &ctxt, seen: &mut Vec<DefId>,
                      r_ty: t, ty: t) -> bool {
         debug!("type_requires({}, {})?",
-               ::util::ppaux::ty_to_str(cx, r_ty),
-               ::util::ppaux::ty_to_str(cx, ty));
+               ::util::ppaux::ty_to_string(cx, r_ty),
+               ::util::ppaux::ty_to_string(cx, ty));
 
         let r = {
             get(r_ty).sty == get(ty).sty ||
@@ -2252,8 +2252,8 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
         };
 
         debug!("type_requires({}, {})? {}",
-               ::util::ppaux::ty_to_str(cx, r_ty),
-               ::util::ppaux::ty_to_str(cx, ty),
+               ::util::ppaux::ty_to_string(cx, r_ty),
+               ::util::ppaux::ty_to_string(cx, ty),
                r);
         return r;
     }
@@ -2261,8 +2261,8 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
     fn subtypes_require(cx: &ctxt, seen: &mut Vec<DefId>,
                         r_ty: t, ty: t) -> bool {
         debug!("subtypes_require({}, {})?",
-               ::util::ppaux::ty_to_str(cx, r_ty),
-               ::util::ppaux::ty_to_str(cx, ty));
+               ::util::ppaux::ty_to_string(cx, r_ty),
+               ::util::ppaux::ty_to_string(cx, ty));
 
         let r = match get(ty).sty {
             // fixed length vectors need special treatment compared to
@@ -2337,8 +2337,8 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
         };
 
         debug!("subtypes_require({}, {})? {}",
-               ::util::ppaux::ty_to_str(cx, r_ty),
-               ::util::ppaux::ty_to_str(cx, ty),
+               ::util::ppaux::ty_to_string(cx, r_ty),
+               ::util::ppaux::ty_to_string(cx, ty),
                r);
 
         return r;
@@ -2381,7 +2381,7 @@ pub fn is_type_representable(cx: &ctxt, sp: Span, ty: t) -> Representability {
     fn type_structurally_recursive(cx: &ctxt, sp: Span, seen: &mut Vec<DefId>,
                                    ty: t) -> Representability {
         debug!("type_structurally_recursive: {}",
-               ::util::ppaux::ty_to_str(cx, ty));
+               ::util::ppaux::ty_to_string(cx, ty));
 
         // Compare current type to previously seen types
         match get(ty).sty {
@@ -2441,7 +2441,7 @@ pub fn is_type_representable(cx: &ctxt, sp: Span, ty: t) -> Representability {
     }
 
     debug!("is_type_representable: {}",
-           ::util::ppaux::ty_to_str(cx, ty));
+           ::util::ppaux::ty_to_string(cx, ty));
 
     // To avoid a stack overflow when checking an enum variant or struct that
     // contains a different, structurally recursive type, maintain a stack
@@ -2595,7 +2595,7 @@ pub fn node_id_to_trait_ref(cx: &ctxt, id: ast::NodeId) -> Rc<ty::TraitRef> {
         Some(t) => t.clone(),
         None => cx.sess.bug(
             format!("node_id_to_trait_ref: no trait ref for node `{}`",
-                    cx.map.node_to_str(id)).as_slice())
+                    cx.map.node_to_string(id)).as_slice())
     }
 }
 
@@ -2608,7 +2608,7 @@ pub fn node_id_to_type(cx: &ctxt, id: ast::NodeId) -> t {
        Some(t) => t,
        None => cx.sess.bug(
            format!("node_id_to_type: no type for node `{}`",
-                   cx.map.node_to_str(id)).as_slice())
+                   cx.map.node_to_string(id)).as_slice())
     }
 }
 
@@ -2842,7 +2842,7 @@ pub fn adjust_ty(cx: &ctxt,
                                         format!("the {}th autoderef failed: \
                                                 {}",
                                                 i,
-                                                ty_to_str(cx, adjusted_ty))
+                                                ty_to_string(cx, adjusted_ty))
                                                           .as_slice());
                                 }
                             }
@@ -3220,11 +3220,11 @@ pub fn param_tys_in_type(ty: t) -> Vec<ParamTy> {
     rslt
 }
 
-pub fn ty_sort_str(cx: &ctxt, t: t) -> String {
+pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
     match get(t).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |
         ty_uint(_) | ty_float(_) | ty_str => {
-            ::util::ppaux::ty_to_str(cx, t)
+            ::util::ppaux::ty_to_string(cx, t)
         }
 
         ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
@@ -3277,18 +3277,18 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
         terr_mismatch => "types differ".to_string(),
         terr_fn_style_mismatch(values) => {
             format!("expected {} fn but found {} fn",
-                    values.expected.to_str(),
-                    values.found.to_str())
+                    values.expected.to_string(),
+                    values.found.to_string())
         }
         terr_abi_mismatch(values) => {
             format!("expected {} fn but found {} fn",
-                    values.expected.to_str(),
-                    values.found.to_str())
+                    values.expected.to_string(),
+                    values.found.to_string())
         }
         terr_onceness_mismatch(values) => {
             format!("expected {} fn but found {} fn",
-                    values.expected.to_str(),
-                    values.found.to_str())
+                    values.expected.to_string(),
+                    values.found.to_string())
         }
         terr_sigil_mismatch(values) => {
             format!("expected {}, found {}",
@@ -3344,22 +3344,22 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
         terr_regions_insufficiently_polymorphic(br, _) => {
             format!("expected bound lifetime parameter {}, \
                      but found concrete lifetime",
-                    bound_region_ptr_to_str(cx, br))
+                    bound_region_ptr_to_string(cx, br))
         }
         terr_regions_overly_polymorphic(br, _) => {
             format!("expected concrete lifetime, \
                      but found bound lifetime parameter {}",
-                    bound_region_ptr_to_str(cx, br))
+                    bound_region_ptr_to_string(cx, br))
         }
         terr_trait_stores_differ(_, ref values) => {
             format!("trait storage differs: expected `{}` but found `{}`",
-                    trait_store_to_str(cx, (*values).expected),
-                    trait_store_to_str(cx, (*values).found))
+                    trait_store_to_string(cx, (*values).expected),
+                    trait_store_to_string(cx, (*values).found))
         }
         terr_sorts(values) => {
             format!("expected {} but found {}",
-                    ty_sort_str(cx, values.expected),
-                    ty_sort_str(cx, values.found))
+                    ty_sort_string(cx, values.expected),
+                    ty_sort_string(cx, values.found))
         }
         terr_traits(values) => {
             format!("expected trait `{}` but found trait `{}`",
@@ -3384,13 +3384,13 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
         }
         terr_int_mismatch(ref values) => {
             format!("expected `{}` but found `{}`",
-                    values.expected.to_str(),
-                    values.found.to_str())
+                    values.expected.to_string(),
+                    values.found.to_string())
         }
         terr_float_mismatch(ref values) => {
             format!("expected `{}` but found `{}`",
-                    values.expected.to_str(),
-                    values.found.to_str())
+                    values.expected.to_string(),
+                    values.found.to_string())
         }
         terr_variadic_mismatch(ref values) => {
             format!("expected {} fn but found {} function",
@@ -3701,7 +3701,7 @@ pub fn substd_enum_variants(cx: &ctxt,
 }
 
 pub fn item_path_str(cx: &ctxt, id: ast::DefId) -> String {
-    with_path(cx, id, |path| ast_map::path_to_str(path)).to_string()
+    with_path(cx, id, |path| ast_map::path_to_string(path)).to_string()
 }
 
 pub enum DtorKind {
@@ -3973,7 +3973,7 @@ fn each_super_struct(cx: &ctxt, mut did: ast::DefId, f: |ast::DefId|) {
             None => {
                 cx.sess.bug(
                     format!("ID not mapped to super-struct: {}",
-                            cx.map.node_to_str(did.node)).as_slice());
+                            cx.map.node_to_string(did.node)).as_slice());
             }
         }
     }
@@ -3995,7 +3995,7 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
                 _ => {
                     cx.sess.bug(
                         format!("ID not mapped to struct fields: {}",
-                                cx.map.node_to_str(did.node)).as_slice());
+                                cx.map.node_to_string(did.node)).as_slice());
                 }
             }
         });
@@ -4621,7 +4621,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
 }
 
 impl Variance {
-    pub fn to_str(self) -> &'static str {
+    pub fn to_string(self) -> &'static str {
         match self {
             Covariant => "+",
             Contravariant => "-",

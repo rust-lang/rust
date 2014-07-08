@@ -24,6 +24,6 @@ pub fn main() {
     let mut table = HashMap::new();
     table.insert("one".to_string(), 1i);
     table.insert("two".to_string(), 2i);
-    assert!(check_strs(table.to_str().as_slice(), "{one: 1, two: 2}") ||
-            check_strs(table.to_str().as_slice(), "{two: 2, one: 1}"));
+    assert!(check_strs(table.to_string().as_slice(), "{one: 1, two: 2}") ||
+            check_strs(table.to_string().as_slice(), "{two: 2, one: 1}"));
 }

@@ -345,10 +345,10 @@ impl<'a> AsciiStr for &'a [Ascii] {
 
 impl IntoStr for Vec<Ascii> {
     #[inline]
-    fn into_str(self) -> String {
+    fn into_string(self) -> String {
         unsafe {
             let s: &str = mem::transmute(self.as_slice());
-            s.to_string()
+            String::from_str(s)
         }
     }
 }
@@ -438,12 +438,12 @@ unsafe fn str_map_bytes(string: String, map: &'static [u8]) -> String {
         *b = map[*b as uint];
     }
 
-    str::from_utf8(bytes.as_slice()).unwrap().to_string()
+    String::from_str(str::from_utf8(bytes.as_slice()).unwrap())
 }
 
 #[inline]
 unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> String {
-    let mut s = string.to_string();
+    let mut s = String::from_str(string);
     for b in s.as_mut_bytes().mut_iter() {
         *b = map[*b as uint];
     }
@@ -578,12 +578,12 @@ mod tests {
         assert_eq!(v.as_slice().to_ascii(), v2ascii!([40, 32, 59]));
         assert_eq!("( ;".to_string().as_slice().to_ascii(), v2ascii!([40, 32, 59]));
 
-        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_string());
-        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), "ABCDEF&?#".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_lower().into_string(), "abcdef&?#".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_upper().into_string(), "ABCDEF&?#".to_string());
 
-        assert_eq!("".to_ascii().to_lower().into_str(), "".to_string());
-        assert_eq!("YMCA".to_ascii().to_lower().into_str(), "ymca".to_string());
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), "ABCDEFXYZ:.;".to_string());
+        assert_eq!("".to_ascii().to_lower().into_string(), "".to_string());
+        assert_eq!("YMCA".to_ascii().to_lower().into_string(), "ymca".to_string());
+        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_string(), "ABCDEFXYZ:.;".to_string());
 
         assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
 
@@ -595,11 +595,11 @@ mod tests {
 
     #[test]
     fn test_ascii_vec_ng() {
-        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_string());
-        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), "ABCDEF&?#".to_string());
-        assert_eq!("".to_ascii().to_lower().into_str(), "".to_string());
-        assert_eq!("YMCA".to_ascii().to_lower().into_str(), "ymca".to_string());
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), "ABCDEFXYZ:.;".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_lower().into_string(), "abcdef&?#".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_upper().into_string(), "ABCDEF&?#".to_string());
+        assert_eq!("".to_ascii().to_lower().into_string(), "".to_string());
+        assert_eq!("YMCA".to_ascii().to_lower().into_string(), "ymca".to_string());
+        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_string(), "ABCDEFXYZ:.;".to_string());
     }
 
     #[test]
@@ -615,9 +615,9 @@ mod tests {
     }
 
     #[test]
-    fn test_ascii_into_str() {
-        assert_eq!(vec2ascii![40, 32, 59].into_str(), "( ;".to_string());
-        assert_eq!(vec2ascii!(40, 32, 59).into_str(), "( ;".to_string());
+    fn test_ascii_into_string() {
+        assert_eq!(vec2ascii![40, 32, 59].into_string(), "( ;".to_string());
+        assert_eq!(vec2ascii!(40, 32, 59).into_string(), "( ;".to_string());
     }
 
     #[test]
@@ -757,8 +757,8 @@ mod tests {
     }
 
     #[test]
-    fn test_to_str() {
-        let s = Ascii{ chr: 't' as u8 }.to_str();
+    fn test_to_string() {
+        let s = Ascii{ chr: 't' as u8 }.to_string();
         assert_eq!(s, "t".to_string());
     }
 

@@ -804,7 +804,7 @@ mod bench {
         Mary had a little lamb, Little lamb
         Mary had a little lamb, Little lamb";
 
-    fn bench_to_str(b: &mut Bencher, s: &str) {
+    fn bench_to_string(b: &mut Bencher, s: &str) {
         b.iter(|| {
             let c_str = s.to_c_str();
             check(s, c_str.as_ptr());
@@ -813,17 +813,17 @@ mod bench {
 
     #[bench]
     fn bench_to_c_str_short(b: &mut Bencher) {
-        bench_to_str(b, s_short)
+        bench_to_string(b, s_short)
     }
 
     #[bench]
     fn bench_to_c_str_medium(b: &mut Bencher) {
-        bench_to_str(b, s_medium)
+        bench_to_string(b, s_medium)
     }
 
     #[bench]
     fn bench_to_c_str_long(b: &mut Bencher) {
-        bench_to_str(b, s_long)
+        bench_to_string(b, s_long)
     }
 
     fn bench_to_c_str_unchecked(b: &mut Bencher, s: &str) {

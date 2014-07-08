@@ -615,7 +615,7 @@ mod tests {
     })
 
     pub fn read_all(input: &mut Reader) -> String {
-        input.read_to_str().unwrap()
+        input.read_to_string().unwrap()
     }
 
     pub fn run_output(cmd: Command) -> String {

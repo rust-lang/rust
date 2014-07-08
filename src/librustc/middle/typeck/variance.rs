@@ -547,7 +547,7 @@ impl<'a> ConstraintContext<'a> {
             None => {
                 self.tcx().sess.bug(format!(
                         "no inferred index entry for {}",
-                        self.tcx().map.node_to_str(param_id)).as_slice());
+                        self.tcx().map.node_to_string(param_id)).as_slice());
             }
         }
     }
@@ -588,8 +588,8 @@ impl<'a> ConstraintContext<'a> {
             let is_inferred;
             macro_rules! cannot_happen { () => { {
                 fail!("invalid parent: {:s} for {:s}",
-                      tcx.map.node_to_str(parent_id),
-                      tcx.map.node_to_str(param_id));
+                      tcx.map.node_to_string(parent_id),
+                      tcx.map.node_to_string(param_id));
             } } }
 
             match parent {
@@ -658,7 +658,7 @@ impl<'a> ConstraintContext<'a> {
                       InferredIndex(index): InferredIndex,
                       variance: VarianceTermPtr<'a>) {
         debug!("add_constraint(index={}, variance={})",
-                index, variance.to_str());
+                index, variance.to_string());
         self.constraints.push(Constraint { inferred: InferredIndex(index),
                                            variance: variance });
     }
@@ -975,7 +975,7 @@ impl<'a> SolveContext<'a> {
                                 .param_id,
                             old_value,
                             new_value,
-                            term.to_str());
+                            term.to_string());
 
                     *self.solutions.get_mut(inferred) = new_value;
                     changed = true;

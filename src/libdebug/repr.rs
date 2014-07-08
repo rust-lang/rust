@@ -73,7 +73,7 @@ int_repr!(u64, "u64")
 
 macro_rules! num_repr(($ty:ident, $suffix:expr) => (impl Repr for $ty {
     fn write_repr(&self, writer: &mut io::Writer) -> io::IoResult<()> {
-        let s = self.to_str();
+        let s = self.to_string();
         writer.write(s.as_bytes()).and_then(|()| {
             writer.write($suffix)
         })
@@ -564,7 +564,7 @@ pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {
     }
 }
 
-pub fn repr_to_str<T>(t: &T) -> String {
+pub fn repr_to_string<T>(t: &T) -> String {
     let mut result = io::MemWriter::new();
     write_repr(&mut result as &mut io::Writer, t).unwrap();
     String::from_utf8(result.unwrap()).unwrap()

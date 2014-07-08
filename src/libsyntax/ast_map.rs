@@ -79,7 +79,7 @@ impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
 /// The type of the iterator used by with_path.
 pub type PathElems<'a, 'b> = iter::Chain<Values<'a, PathElem>, LinkedPath<'b>>;
 
-pub fn path_to_str<PI: Iterator<PathElem>>(mut path: PI) -> String {
+pub fn path_to_string<PI: Iterator<PathElem>>(mut path: PI) -> String {
     let itr = token::get_ident_interner();
 
     path.fold(String::new(), |mut s, e| {
@@ -250,7 +250,7 @@ impl Map {
         match abi {
             Some(abi) => abi,
             None => fail!("expected foreign mod or inlined parent, found {}",
-                          self.node_to_str(parent))
+                          self.node_to_string(parent))
         }
     }
 
@@ -265,7 +265,7 @@ impl Map {
     pub fn expect_item(&self, id: NodeId) -> Gc<Item> {
         match self.find(id) {
             Some(NodeItem(item)) => item,
-            _ => fail!("expected item, found {}", self.node_to_str(id))
+            _ => fail!("expected item, found {}", self.node_to_string(id))
         }
     }
 
@@ -283,21 +283,21 @@ impl Map {
                     _ => fail!("struct ID bound to enum variant that isn't struct-like"),
                 }
             }
-            _ => fail!(format!("expected struct, found {}", self.node_to_str(id))),
+            _ => fail!(format!("expected struct, found {}", self.node_to_string(id))),
         }
     }
 
     pub fn expect_variant(&self, id: NodeId) -> P<Variant> {
         match self.find(id) {
             Some(NodeVariant(variant)) => variant,
-            _ => fail!(format!("expected variant, found {}", self.node_to_str(id))),
+            _ => fail!(format!("expected variant, found {}", self.node_to_string(id))),
         }
     }
 
     pub fn expect_foreign_item(&self, id: NodeId) -> Gc<ForeignItem> {
         match self.find(id) {
             Some(NodeForeignItem(item)) => item,
-            _ => fail!("expected foreign item, found {}", self.node_to_str(id))
+            _ => fail!("expected foreign item, found {}", self.node_to_string(id))
         }
     }
 
@@ -326,13 +326,13 @@ impl Map {
         self.with_path_next(id, None, f)
     }
 
-    pub fn path_to_str(&self, id: NodeId) -> String {
-        self.with_path(id, |path| path_to_str(path))
+    pub fn path_to_string(&self, id: NodeId) -> String {
+        self.with_path(id, |path| path_to_string(path))
     }
 
     fn path_to_str_with_ident(&self, id: NodeId, i: Ident) -> String {
         self.with_path(id, |path| {
-            path_to_str(path.chain(Some(PathName(i.name)).move_iter()))
+            path_to_string(path.chain(Some(PathName(i.name)).move_iter()))
         })
     }
 
@@ -416,8 +416,8 @@ impl Map {
             .unwrap_or_else(|| fail!("AstMap.span: could not find span for id {}", id))
     }
 
-    pub fn node_to_str(&self, id: NodeId) -> String {
-        node_id_to_str(self, id)
+    pub fn node_to_string(&self, id: NodeId) -> String {
+        node_id_to_string(self, id)
     }
 }
 
@@ -664,7 +664,7 @@ pub fn map_decoded_item<F: FoldOps>(map: &Map,
     ii
 }
 
-fn node_id_to_str(map: &Map, id: NodeId) -> String {
+fn node_id_to_string(map: &Map, id: NodeId) -> String {
     match map.find(id) {
         Some(NodeItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);
@@ -689,43 +689,43 @@ fn node_id_to_str(map: &Map, id: NodeId) -> String {
         Some(NodeMethod(m)) => {
             format!("method {} in {} (id={})",
                     token::get_ident(m.ident),
-                    map.path_to_str(id), id)
+                    map.path_to_string(id), id)
         }
         Some(NodeTraitMethod(ref tm)) => {
             let m = ast_util::trait_method_to_ty_method(&**tm);
             format!("method {} in {} (id={})",
                     token::get_ident(m.ident),
-                    map.path_to_str(id), id)
+                    map.path_to_string(id), id)
         }
         Some(NodeVariant(ref variant)) => {
             format!("variant {} in {} (id={})",
                     token::get_ident(variant.node.name),
-                    map.path_to_str(id), id)
+                    map.path_to_string(id), id)
         }
         Some(NodeExpr(ref expr)) => {
-            format!("expr {} (id={})", pprust::expr_to_str(&**expr), id)
+            format!("expr {} (id={})", pprust::expr_to_string(&**expr), id)
         }
         Some(NodeStmt(ref stmt)) => {
-            format!("stmt {} (id={})", pprust::stmt_to_str(&**stmt), id)
+            format!("stmt {} (id={})", pprust::stmt_to_string(&**stmt), id)
         }
         Some(NodeArg(ref pat)) => {
-            format!("arg {} (id={})", pprust::pat_to_str(&**pat), id)
+            format!("arg {} (id={})", pprust::pat_to_string(&**pat), id)
         }
         Some(NodeLocal(ref pat)) => {
-            format!("local {} (id={})", pprust::pat_to_str(&**pat), id)
+            format!("local {} (id={})", pprust::pat_to_string(&**pat), id)
         }
         Some(NodePat(ref pat)) => {
-            format!("pat {} (id={})", pprust::pat_to_str(&**pat), id)
+            format!("pat {} (id={})", pprust::pat_to_string(&**pat), id)
         }
         Some(NodeBlock(ref block)) => {
-            format!("block {} (id={})", pprust::block_to_str(&**block), id)
+            format!("block {} (id={})", pprust::block_to_string(&**block), id)
         }
         Some(NodeStructCtor(_)) => {
-            format!("struct_ctor {} (id={})", map.path_to_str(id), id)
+            format!("struct_ctor {} (id={})", map.path_to_string(id), id)
         }
         Some(NodeLifetime(ref l)) => {
             format!("lifetime {} (id={})",
-                    pprust::lifetime_to_str(&**l), id)
+                    pprust::lifetime_to_string(&**l), id)
         }
         None => {
             format!("unknown node (id={})", id)

@@ -703,11 +703,11 @@ mod test {
         for &p in pats.iter() {
             let pat = Pattern::new(p);
             for c in "abcdefghijklmnopqrstuvwxyz".chars() {
-                assert!(pat.matches(c.to_str().as_slice()));
+                assert!(pat.matches(c.to_string().as_slice()));
             }
             for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ".chars() {
                 let options = MatchOptions {case_sensitive: false, .. MatchOptions::new()};
-                assert!(pat.matches_with(c.to_str().as_slice(), options));
+                assert!(pat.matches_with(c.to_string().as_slice(), options));
             }
             assert!(pat.matches("1"));
             assert!(pat.matches("2"));
