@@ -134,7 +134,7 @@ impl<T1> Struct<T1> {
         arg1
     }
 
-    fn self_owned<T2>(~self, arg1: int, arg2: T2) -> int {
+    fn self_owned<T2>(self: Box<Struct<T1>>, arg1: int, arg2: T2) -> int {
         zzz(); // #break
         arg1
     }

@@ -9,11 +9,11 @@
 // except according to those terms.
 
 trait double {
-    fn double(~self) -> uint;
+    fn double(self: Box<Self>) -> uint;
 }
 
 impl double for uint {
-    fn double(~self) -> uint { *self * 2u }
+    fn double(self: Box<uint>) -> uint { *self * 2u }
 }
 
 pub fn main() {

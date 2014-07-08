@@ -1003,7 +1003,7 @@ impl Clean<Item> for ty::Method {
                 };
                 let s = match s {
                     ty::ByReferenceExplicitSelfCategory(..) => {
-                        match ty::get(*self.fty.sig.inputs[0]).sty {
+                        match ty::get(self.fty.sig.inputs[0]).sty {
                             ty::ty_rptr(r, mt) => {
                                 SelfBorrowed(r.clean(), mt.mutbl.clean())
                             }

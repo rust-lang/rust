@@ -57,7 +57,7 @@ fn thing(x: A) -> thing {
 }
 
 impl thing {
-    pub fn bar(~self) -> int { self.x.a }
+    pub fn bar(self: Box<thing>) -> int { self.x.a }
     pub fn quux(&self) -> int { self.x.a }
     pub fn baz<'a>(&'a self) -> &'a A { &self.x }
     pub fn spam(self) -> int { self.x.a }

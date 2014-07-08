@@ -133,7 +133,7 @@ trait Trait {
         arg1 + arg2
     }
 
-    fn self_owned(~self, arg1: int, arg2: int) -> int {
+    fn self_owned(self: Box<Self>, arg1: int, arg2: int) -> int {
         zzz(); // #break
         arg1 + arg2
     }

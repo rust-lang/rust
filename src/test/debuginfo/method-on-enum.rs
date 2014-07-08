@@ -136,7 +136,7 @@ impl Enum {
         arg1 + arg2
     }
 
-    fn self_owned(~self, arg1: int, arg2: int) -> int {
+    fn self_owned(self: Box<Enum>, arg1: int, arg2: int) -> int {
         zzz(); // #break
         arg1 + arg2
     }
