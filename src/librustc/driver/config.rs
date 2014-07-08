@@ -33,10 +33,10 @@ use syntax::parse::token::InternedString;
 use std::collections::{HashSet, HashMap};
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
-use lib::llvm::llvm;
 use std::cell::{RefCell};
 use std::fmt;
 
+use llvm;
 
 pub struct Config {
     pub os: abi::Os,

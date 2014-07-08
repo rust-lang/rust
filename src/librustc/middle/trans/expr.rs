@@ -34,8 +34,8 @@
 #![allow(non_camel_case_types)]
 
 use back::abi;
-use lib::llvm::{ValueRef, llvm};
-use lib;
+use llvm;
+use llvm::{ValueRef};
 use metadata::csearch;
 use middle::def;
 use middle::lang_items::MallocFnLangItem;
@@ -548,7 +548,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
             debug!("trans_index: base {}", bcx.val_to_string(base));
             debug!("trans_index: len {}", bcx.val_to_string(len));
 
-            let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
+            let bounds_check = ICmp(bcx, llvm::IntUGE, ix_val, len);
             let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
             let expected = Call(bcx,
                                 expect,

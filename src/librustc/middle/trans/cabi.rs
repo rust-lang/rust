@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use lib::llvm::Attribute;
+use llvm::Attribute;
 use std::option;
 use middle::trans::context::CrateContext;
 use middle::trans::cabi_x86;

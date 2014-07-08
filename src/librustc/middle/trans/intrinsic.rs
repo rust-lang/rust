@@ -10,8 +10,8 @@
 
 #![allow(non_uppercase_pattern_statics)]
 
-use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg, ValueRef};
-use lib;
+use llvm;
+use llvm::{SequentiallyConsistent, Acquire, Release, Xchg, ValueRef};
 use middle::subst;
 use middle::subst::FnSpace;
 use middle::trans::base::*;

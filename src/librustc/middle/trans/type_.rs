@@ -10,8 +10,9 @@
 
 #![allow(non_uppercase_pattern_statics)]
 
-use lib::llvm::{llvm, TypeRef, Bool, False, True, TypeKind, ValueRef};
-use lib::llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
+use llvm;
+use llvm::{TypeRef, Bool, False, True, TypeKind, ValueRef};
+use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use middle::trans::context::CrateContext;
 

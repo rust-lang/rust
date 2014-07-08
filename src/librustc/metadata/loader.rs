@@ -215,8 +215,9 @@
 use back::archive::{METADATA_FILENAME};
 use back::svh::Svh;
 use driver::session::Session;
-use lib::llvm::{False, llvm, ObjectFile, mk_section_iter};
-use lib::llvm::archive_ro::ArchiveRO;
+use llvm;
+use llvm::{False, ObjectFile, mk_section_iter};
+use llvm::archive_ro::ArchiveRO;
 use metadata::cstore::{MetadataBlob, MetadataVec, MetadataArchive};
 use metadata::decoder;
 use metadata::encoder;

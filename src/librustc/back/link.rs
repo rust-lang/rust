@@ -56,7 +56,7 @@ pub enum OutputType {
 
 pub fn llvm_err(sess: &Session, msg: String) -> ! {
     unsafe {
-        let cstr = llvm::llvm::LLVMRustGetLastError();
+        let cstr = llvm::LLVMRustGetLastError();
         if cstr == ptr::null() {
             sess.fatal(msg.as_slice());
         } else {
@@ -78,7 +78,7 @@ pub fn write_output_file(
         file_type: llvm::FileType) {
     unsafe {
         output.with_c_str(|output| {
-            let result = llvm::llvm::LLVMRustWriteOutputFile(
+            let result = llvm::LLVMRustWriteOutputFile(
                     target, pm, m, output, file_type);
             if !result {
                 llvm_err(sess, "could not write output".to_string());
@@ -147,7 +147,7 @@ pub mod write {
 
             if sess.opts.cg.save_temps {
                 output.with_extension("no-opt.bc").with_c_str(|buf| {
-                    llvm::llvm::LLVMWriteBitcodeToFile(llmod, buf);
+                    llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 })
             }
 
@@ -193,7 +193,7 @@ pub mod write {
                          .with_c_str(|t| {
                 sess.opts.cg.target_cpu.as_slice().with_c_str(|cpu| {
                     target_feature(sess).with_c_str(|features| {
-                        llvm::llvm::LLVMRustCreateTargetMachine(
+                        llvm::LLVMRustCreateTargetMachine(
                             t, cpu, features,
                             llvm::CodeModelDefault,
                             reloc_model,
@@ -212,26 +212,26 @@ pub mod write {
             // does, and are by populated by LLVM's default PassManagerBuilder.
             // Each manager has a different set of passes, but they also share
             // some common passes.
-            let fpm = llvm::llvm::LLVMCreateFunctionPassManagerForModule(llmod);
-            let mpm = llvm::llvm::LLVMCreatePassManager();
+            let fpm = llvm::LLVMCreateFunctionPassManagerForModule(llmod);
+            let mpm = llvm::LLVMCreatePassManager();
 
             // If we're verifying or linting, add them to the function pass
             // manager.
             let addpass = |pass: &str| {
-                pass.as_slice().with_c_str(|s| llvm::llvm::LLVMRustAddPass(fpm, s))
+                pass.as_slice().with_c_str(|s| llvm::LLVMRustAddPass(fpm, s))
             };
             if !sess.no_verify() { assert!(addpass("verify")); }
 
             if !sess.opts.cg.no_prepopulate_passes {
-                llvm::llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
-                llvm::llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
+                llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
+                llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
                 populate_llvm_passes(fpm, mpm, llmod, opt_level,
                                      trans.no_builtins);
             }
 
             for pass in sess.opts.cg.passes.iter() {
                 pass.as_slice().with_c_str(|s| {
-                    if !llvm::llvm::LLVMRustAddPass(mpm, s) {
+                    if !llvm::LLVMRustAddPass(mpm, s) {
                         sess.warn(format!("unknown pass {}, ignoring",
                                           *pass).as_slice());
                     }
@@ -240,13 +240,13 @@ pub mod write {
 
             // Finally, run the actual optimization passes
             time(sess.time_passes(), "llvm function passes", (), |()|
-                 llvm::llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
+                 llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
             time(sess.time_passes(), "llvm module passes", (), |()|
-                 llvm::llvm::LLVMRunPassManager(mpm, llmod));
+                 llvm::LLVMRunPassManager(mpm, llmod));
 
             // Deallocate managers that we're now done with
-            llvm::llvm::LLVMDisposePassManager(fpm);
-            llvm::llvm::LLVMDisposePassManager(mpm);
+            llvm::LLVMDisposePassManager(fpm);
+            llvm::LLVMDisposePassManager(mpm);
 
             // Emit the bytecode if we're either saving our temporaries or
             // emitting an rlib. Whenever an rlib is created, the bytecode is
@@ -255,7 +255,7 @@ pub mod write {
                (sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
                 sess.opts.output_types.contains(&OutputTypeExe)) {
                 output.temp_path(OutputTypeBitcode).with_c_str(|buf| {
-                    llvm::llvm::LLVMWriteBitcodeToFile(llmod, buf);
+                    llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 })
             }
 
@@ -265,7 +265,7 @@ pub mod write {
 
                 if sess.opts.cg.save_temps {
                     output.with_extension("lto.bc").with_c_str(|buf| {
-                        llvm::llvm::LLVMWriteBitcodeToFile(llmod, buf);
+                        llvm::LLVMWriteBitcodeToFile(llmod, buf);
                     })
                 }
             }
@@ -281,11 +281,11 @@ pub mod write {
             fn with_codegen(tm: TargetMachineRef, llmod: ModuleRef,
                             no_builtins: bool, f: |PassManagerRef|) {
                 unsafe {
-                    let cpm = llvm::llvm::LLVMCreatePassManager();
-                    llvm::llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
-                    llvm::llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
+                    let cpm = llvm::LLVMCreatePassManager();
+                    llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
+                    llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
                     f(cpm);
-                    llvm::llvm::LLVMDisposePassManager(cpm);
+                    llvm::LLVMDisposePassManager(cpm);
                 }
             }
 
@@ -296,13 +296,13 @@ pub mod write {
                 match *output_type {
                     OutputTypeBitcode => {
                         path.with_c_str(|buf| {
-                            llvm::llvm::LLVMWriteBitcodeToFile(llmod, buf);
+                            llvm::LLVMWriteBitcodeToFile(llmod, buf);
                         })
                     }
                     OutputTypeLlvmAssembly => {
                         path.with_c_str(|output| {
                             with_codegen(tm, llmod, trans.no_builtins, |cpm| {
-                                llvm::llvm::LLVMRustPrintModule(cpm, llmod, output);
+                                llvm::LLVMRustPrintModule(cpm, llmod, output);
                             })
                         })
                     }
@@ -355,11 +355,11 @@ pub mod write {
                 }
             });
 
-            llvm::llvm::LLVMRustDisposeTargetMachine(tm);
-            llvm::llvm::LLVMDisposeModule(trans.metadata_module);
-            llvm::llvm::LLVMDisposeModule(llmod);
-            llvm::llvm::LLVMContextDispose(llcx);
-            if sess.time_llvm_passes() { llvm::llvm::LLVMRustPrintPassTimings(); }
+            llvm::LLVMRustDisposeTargetMachine(tm);
+            llvm::LLVMDisposeModule(trans.metadata_module);
+            llvm::LLVMDisposeModule(llmod);
+            llvm::LLVMContextDispose(llcx);
+            if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
         }
     }
 
@@ -426,31 +426,31 @@ pub mod write {
         }
 
         INIT.doit(|| {
-            llvm::llvm::LLVMInitializePasses();
+            llvm::LLVMInitializePasses();
 
             // Only initialize the platforms supported by Rust here, because
             // using --llvm-root will have multiple platforms that rustllvm
             // doesn't actually link to and it's pointless to put target info
             // into the registry that Rust cannot generate machine code for.
-            llvm::llvm::LLVMInitializeX86TargetInfo();
-            llvm::llvm::LLVMInitializeX86Target();
-            llvm::llvm::LLVMInitializeX86TargetMC();
-            llvm::llvm::LLVMInitializeX86AsmPrinter();
-            llvm::llvm::LLVMInitializeX86AsmParser();
+            llvm::LLVMInitializeX86TargetInfo();
+            llvm::LLVMInitializeX86Target();
+            llvm::LLVMInitializeX86TargetMC();
+            llvm::LLVMInitializeX86AsmPrinter();
+            llvm::LLVMInitializeX86AsmParser();
 
-            llvm::llvm::LLVMInitializeARMTargetInfo();
-            llvm::llvm::LLVMInitializeARMTarget();
-            llvm::llvm::LLVMInitializeARMTargetMC();
-            llvm::llvm::LLVMInitializeARMAsmPrinter();
-            llvm::llvm::LLVMInitializeARMAsmParser();
+            llvm::LLVMInitializeARMTargetInfo();
+            llvm::LLVMInitializeARMTarget();
+            llvm::LLVMInitializeARMTargetMC();
+            llvm::LLVMInitializeARMAsmPrinter();
+            llvm::LLVMInitializeARMAsmParser();
 
-            llvm::llvm::LLVMInitializeMipsTargetInfo();
-            llvm::llvm::LLVMInitializeMipsTarget();
-            llvm::llvm::LLVMInitializeMipsTargetMC();
-            llvm::llvm::LLVMInitializeMipsAsmPrinter();
-            llvm::llvm::LLVMInitializeMipsAsmParser();
+            llvm::LLVMInitializeMipsTargetInfo();
+            llvm::LLVMInitializeMipsTarget();
+            llvm::LLVMInitializeMipsTargetMC();
+            llvm::LLVMInitializeMipsAsmPrinter();
+            llvm::LLVMInitializeMipsAsmParser();
 
-            llvm::llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
+            llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
                                          llvm_args.as_ptr());
         });
     }
@@ -463,32 +463,32 @@ pub mod write {
         // Create the PassManagerBuilder for LLVM. We configure it with
         // reasonable defaults and prepare it to actually populate the pass
         // manager.
-        let builder = llvm::llvm::LLVMPassManagerBuilderCreate();
+        let builder = llvm::LLVMPassManagerBuilderCreate();
         match opt {
             llvm::CodeGenLevelNone => {
                 // Don't add lifetime intrinsics at O0
-                llvm::llvm::LLVMRustAddAlwaysInlinePass(builder, false);
+                llvm::LLVMRustAddAlwaysInlinePass(builder, false);
             }
             llvm::CodeGenLevelLess => {
-                llvm::llvm::LLVMRustAddAlwaysInlinePass(builder, true);
+                llvm::LLVMRustAddAlwaysInlinePass(builder, true);
             }
             // numeric values copied from clang
             llvm::CodeGenLevelDefault => {
-                llvm::llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
+                llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
                                                                     225);
             }
             llvm::CodeGenLevelAggressive => {
-                llvm::llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
+                llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
                                                                     275);
             }
         }
-        llvm::llvm::LLVMPassManagerBuilderSetOptLevel(builder, opt as c_uint);
-        llvm::llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod, no_builtins);
+        llvm::LLVMPassManagerBuilderSetOptLevel(builder, opt as c_uint);
+        llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod, no_builtins);
 
         // Use the builder to populate the function/module pass managers.
-        llvm::llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(builder, fpm);
-        llvm::llvm::LLVMPassManagerBuilderPopulateModulePassManager(builder, mpm);
-        llvm::llvm::LLVMPassManagerBuilderDispose(builder);
+        llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(builder, fpm);
+        llvm::LLVMPassManagerBuilderPopulateModulePassManager(builder, mpm);
+        llvm::LLVMPassManagerBuilderDispose(builder);
     }
 }
 

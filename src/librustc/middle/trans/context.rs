@@ -10,9 +10,10 @@
 
 use driver::config::NoDebugInfo;
 use driver::session::Session;
-use lib::llvm::{ContextRef, ModuleRef, ValueRef};
-use lib::llvm::{llvm, TargetData};
-use lib::llvm::mk_target_data;
+use llvm;
+use llvm::{ContextRef, ModuleRef, ValueRef};
+use llvm::{TargetData};
+use llvm::mk_target_data;
 use metadata::common::LinkMeta;
 use middle::resolve;
 use middle::trans::adt;

@@ -292,7 +292,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     }
 
     if cg_flags.contains(&"passes=list".to_string()) {
-        unsafe { ::lib::llvm::llvm::LLVMRustPrintPasses(); }
+        unsafe { ::llvm::LLVMRustPrintPasses(); }
         return None;
     }
 

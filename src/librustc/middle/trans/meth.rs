@@ -10,9 +10,8 @@
 
 
 use back::abi;
-use lib::llvm::llvm;
-use lib::llvm::ValueRef;
-use lib;
+use llvm;
+use llvm::ValueRef;
 use metadata::csearch;
 use middle::subst;
 use middle::trans::base::*;
@@ -460,8 +459,8 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl).to_ref(), buf)
         });
         llvm::LLVMSetInitializer(vt_gvar, tbl);
-        llvm::LLVMSetGlobalConstant(vt_gvar, lib::llvm::True);
-        lib::llvm::SetLinkage(vt_gvar, lib::llvm::InternalLinkage);
+        llvm::LLVMSetGlobalConstant(vt_gvar, llvm::True);
+        llvm::SetLinkage(vt_gvar, llvm::InternalLinkage);
         vt_gvar
     }
 }

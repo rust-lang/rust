@@ -31,9 +31,9 @@ use driver::config;
 use driver::config::{NoDebugInfo, FullDebugInfo};
 use driver::session::Session;
 use driver::driver::{CrateAnalysis, CrateTranslation};
-use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
-use lib::llvm::{llvm, Vector};
-use lib;
+use llvm;
+use llvm::{ModuleRef, ValueRef, BasicBlockRef};
+use llvm::{Vector};
 use metadata::{csearch, encoder, loader};
 use lint;
 use middle::astencode;
@@ -172,7 +172,7 @@ impl<'a> Drop for StatRecorder<'a> {
 }
 
 // only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
-fn decl_fn(ccx: &CrateContext, name: &str, cc: lib::llvm::CallConv,
+fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
            ty: Type, output: ty::t) -> ValueRef {
 
     let llfn: ValueRef = name.with_c_str(|buf| {
@@ -186,16 +186,16 @@ fn decl_fn(ccx: &CrateContext, name: &str, cc: lib::llvm::CallConv,
         ty::ty_bot => {
             unsafe {
                 llvm::LLVMAddFunctionAttribute(llfn,
-                                               lib::llvm::FunctionIndex as c_uint,
-                                               lib::llvm::NoReturnAttribute as uint64_t)
+                                               llvm::FunctionIndex as c_uint,
+                                               llvm::NoReturnAttribute as uint64_t)
             }
         }
         _ => {}
     }
 
-    lib::llvm::SetFunctionCallConv(llfn, cc);
+    llvm::SetFunctionCallConv(llfn, cc);
     // Function addresses in Rust are never significant, allowing functions to be merged.
-    lib::llvm::SetUnnamedAddr(llfn, true);
+    llvm::SetUnnamedAddr(llfn, true);
 
     if ccx.is_split_stack_supported() {
         set_split_stack(llfn);
@@ -209,14 +209,14 @@ pub fn decl_cdecl_fn(ccx: &CrateContext,
                      name: &str,
                      ty: Type,
                      output: ty::t) -> ValueRef {
-    decl_fn(ccx, name, lib::llvm::CCallConv, ty, output)
+    decl_fn(ccx, name, llvm::CCallConv, ty, output)
 }
 
 // only use this for foreign function ABIs and glue, use `get_extern_rust_fn` for Rust functions
 pub fn get_extern_fn(ccx: &CrateContext,
                      externs: &mut ExternMap,
                      name: &str,
-                     cc: lib::llvm::CallConv,
+                     cc: llvm::CallConv,
                      ty: Type,
                      output: ty::t)
                      -> ValueRef {
@@ -253,7 +253,7 @@ pub fn decl_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str) -> ValueRef {
     };
 
     let llfty = type_of_rust_fn(ccx, has_env, inputs.as_slice(), output);
-    let llfn = decl_fn(ccx, name, lib::llvm::CCallConv, llfty, output);
+    let llfn = decl_fn(ccx, name, llvm::CCallConv, llfty, output);
     let attrs = get_fn_llvm_attributes(ccx, fn_ty);
     for &(idx, attr) in attrs.iter() {
         unsafe {
@@ -266,7 +266,7 @@ pub fn decl_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str) -> ValueRef {
 
 pub fn decl_internal_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str) -> ValueRef {
     let llfn = decl_rust_fn(ccx, fn_ty, name);
-    lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
+    llvm::SetLinkage(llfn, llvm::InternalLinkage);
     llfn
 }
 
@@ -375,26 +375,26 @@ pub fn get_tydesc(ccx: &CrateContext, t: ty::t) -> Rc<tydesc_info> {
 
 #[allow(dead_code)] // useful
 pub fn set_optimize_for_size(f: ValueRef) {
-    lib::llvm::SetFunctionAttribute(f, lib::llvm::OptimizeForSizeAttribute)
+    llvm::SetFunctionAttribute(f, llvm::OptimizeForSizeAttribute)
 }
 
 pub fn set_no_inline(f: ValueRef) {
-    lib::llvm::SetFunctionAttribute(f, lib::llvm::NoInlineAttribute)
+    llvm::SetFunctionAttribute(f, llvm::NoInlineAttribute)
 }
 
 #[allow(dead_code)] // useful
 pub fn set_no_unwind(f: ValueRef) {
-    lib::llvm::SetFunctionAttribute(f, lib::llvm::NoUnwindAttribute)
+    llvm::SetFunctionAttribute(f, llvm::NoUnwindAttribute)
 }
 
 // Tell LLVM to emit the information necessary to unwind the stack for the
 // function f.
 pub fn set_uwtable(f: ValueRef) {
-    lib::llvm::SetFunctionAttribute(f, lib::llvm::UWTableAttribute)
+    llvm::SetFunctionAttribute(f, llvm::UWTableAttribute)
 }
 
 pub fn set_inline_hint(f: ValueRef) {
-    lib::llvm::SetFunctionAttribute(f, lib::llvm::InlineHintAttribute)
+    llvm::SetFunctionAttribute(f, llvm::InlineHintAttribute)
 }
 
 pub fn set_llvm_fn_attrs(attrs: &[ast::Attribute], llfn: ValueRef) {
@@ -415,25 +415,25 @@ pub fn set_llvm_fn_attrs(attrs: &[ast::Attribute], llfn: ValueRef) {
     if contains_name(attrs, "cold") {
         unsafe {
             llvm::LLVMAddFunctionAttribute(llfn,
-                                           lib::llvm::FunctionIndex as c_uint,
-                                           lib::llvm::ColdAttribute as uint64_t)
+                                           llvm::FunctionIndex as c_uint,
+                                           llvm::ColdAttribute as uint64_t)
         }
     }
 }
 
 pub fn set_always_inline(f: ValueRef) {
-    lib::llvm::SetFunctionAttribute(f, lib::llvm::AlwaysInlineAttribute)
+    llvm::SetFunctionAttribute(f, llvm::AlwaysInlineAttribute)
 }
 
 pub fn set_split_stack(f: ValueRef) {
     "split-stack".with_c_str(|buf| {
-        unsafe { llvm::LLVMAddFunctionAttrString(f, lib::llvm::FunctionIndex as c_uint, buf); }
+        unsafe { llvm::LLVMAddFunctionAttrString(f, llvm::FunctionIndex as c_uint, buf); }
     })
 }
 
 pub fn unset_split_stack(f: ValueRef) {
     "split-stack".with_c_str(|buf| {
-        unsafe { llvm::LLVMRemoveFunctionAttrString(f, lib::llvm::FunctionIndex as c_uint, buf); }
+        unsafe { llvm::LLVMRemoveFunctionAttrString(f, llvm::FunctionIndex as c_uint, buf); }
     })
 }
 
@@ -479,7 +479,7 @@ pub fn get_res_dtor(ccx: &CrateContext,
         get_extern_fn(ccx,
                       &mut *ccx.externs.borrow_mut(),
                       name.as_slice(),
-                      lib::llvm::CCallConv,
+                      llvm::CCallConv,
                       llty,
                       dtor_ty)
     }
@@ -546,36 +546,36 @@ pub fn compare_scalar_values<'a>(
       }
       floating_point => {
         let cmp = match op {
-          ast::BiEq => lib::llvm::RealOEQ,
-          ast::BiNe => lib::llvm::RealUNE,
-          ast::BiLt => lib::llvm::RealOLT,
-          ast::BiLe => lib::llvm::RealOLE,
-          ast::BiGt => lib::llvm::RealOGT,
-          ast::BiGe => lib::llvm::RealOGE,
+          ast::BiEq => llvm::RealOEQ,
+          ast::BiNe => llvm::RealUNE,
+          ast::BiLt => llvm::RealOLT,
+          ast::BiLe => llvm::RealOLE,
+          ast::BiGt => llvm::RealOGT,
+          ast::BiGe => llvm::RealOGE,
           _ => die(cx)
         };
         return FCmp(cx, cmp, lhs, rhs);
       }
       signed_int => {
         let cmp = match op {
-          ast::BiEq => lib::llvm::IntEQ,
-          ast::BiNe => lib::llvm::IntNE,
-          ast::BiLt => lib::llvm::IntSLT,
-          ast::BiLe => lib::llvm::IntSLE,
-          ast::BiGt => lib::llvm::IntSGT,
-          ast::BiGe => lib::llvm::IntSGE,
+          ast::BiEq => llvm::IntEQ,
+          ast::BiNe => llvm::IntNE,
+          ast::BiLt => llvm::IntSLT,
+          ast::BiLe => llvm::IntSLE,
+          ast::BiGt => llvm::IntSGT,
+          ast::BiGe => llvm::IntSGE,
           _ => die(cx)
         };
         return ICmp(cx, cmp, lhs, rhs);
       }
       unsigned_int => {
         let cmp = match op {
-          ast::BiEq => lib::llvm::IntEQ,
-          ast::BiNe => lib::llvm::IntNE,
-          ast::BiLt => lib::llvm::IntULT,
-          ast::BiLe => lib::llvm::IntULE,
-          ast::BiGt => lib::llvm::IntUGT,
-          ast::BiGe => lib::llvm::IntUGE,
+          ast::BiEq => llvm::IntEQ,
+          ast::BiNe => llvm::IntNE,
+          ast::BiLt => llvm::IntULT,
+          ast::BiLe => llvm::IntULE,
+          ast::BiGt => llvm::IntUGT,
+          ast::BiGe => llvm::IntUGE,
           _ => die(cx)
         };
         return ICmp(cx, cmp, lhs, rhs);
@@ -602,12 +602,12 @@ pub fn compare_simd_types(
         },
         ty::ty_uint(_) | ty::ty_int(_) => {
             let cmp = match op {
-                ast::BiEq => lib::llvm::IntEQ,
-                ast::BiNe => lib::llvm::IntNE,
-                ast::BiLt => lib::llvm::IntSLT,
-                ast::BiLe => lib::llvm::IntSLE,
-                ast::BiGt => lib::llvm::IntSGT,
-                ast::BiGe => lib::llvm::IntSGE,
+                ast::BiEq => llvm::IntEQ,
+                ast::BiNe => llvm::IntNE,
+                ast::BiLt => llvm::IntSLT,
+                ast::BiLe => llvm::IntSLE,
+                ast::BiGt => llvm::IntSGT,
+                ast::BiGe => llvm::IntSGE,
                 _ => cx.sess().bug("compare_simd_types: must be a comparison operator"),
             };
             let return_ty = Type::vector(&type_of(cx.ccx(), t), size as u64);
@@ -801,11 +801,11 @@ pub fn fail_if_zero_or_overflows<'a>(
     let (is_zero, is_signed) = match ty::get(rhs_t).sty {
         ty::ty_int(t) => {
             let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0u64, false);
-            (ICmp(cx, lib::llvm::IntEQ, rhs, zero), true)
+            (ICmp(cx, llvm::IntEQ, rhs, zero), true)
         }
         ty::ty_uint(t) => {
             let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0u64, false);
-            (ICmp(cx, lib::llvm::IntEQ, rhs, zero), false)
+            (ICmp(cx, llvm::IntEQ, rhs, zero), false)
         }
         _ => {
             cx.sess().bug(format!("fail-if-zero on unexpected type: {}",
@@ -841,10 +841,10 @@ pub fn fail_if_zero_or_overflows<'a>(
             }
             _ => unreachable!(),
         };
-        let minus_one = ICmp(bcx, lib::llvm::IntEQ, rhs,
+        let minus_one = ICmp(bcx, llvm::IntEQ, rhs,
                              C_integral(llty, -1, false));
         with_cond(bcx, minus_one, |bcx| {
-            let is_min = ICmp(bcx, lib::llvm::IntEQ, lhs,
+            let is_min = ICmp(bcx, llvm::IntEQ, lhs,
                               C_integral(llty, min, true));
             with_cond(bcx, is_min, |bcx| {
                 controlflow::trans_fail(bcx, span,
@@ -975,11 +975,11 @@ pub fn load_ty(cx: &Block, ptr: ValueRef, t: ty::t) -> ValueRef {
     if type_is_zero_size(cx.ccx(), t) {
         C_undef(type_of::type_of(cx.ccx(), t))
     } else if ty::type_is_bool(t) {
-        Trunc(cx, LoadRangeAssert(cx, ptr, 0, 2, lib::llvm::False), Type::i1(cx.ccx()))
+        Trunc(cx, LoadRangeAssert(cx, ptr, 0, 2, llvm::False), Type::i1(cx.ccx()))
     } else if ty::type_is_char(t) {
         // a char is a unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
-        LoadRangeAssert(cx, ptr, 0, 0x10FFFF + 1, lib::llvm::False)
+        LoadRangeAssert(cx, ptr, 0, 0x10FFFF + 1, llvm::False)
     } else {
         Load(cx, ptr)
     }
@@ -1755,7 +1755,7 @@ fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: String, node_id: ast::N
     ccx.item_symbols.borrow_mut().insert(node_id, sym);
 
     if !ccx.reachable.contains(&node_id) {
-        lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
+        llvm::SetLinkage(llfn, llvm::InternalLinkage);
     }
 
     // The stack exhaustion lang item shouldn't have a split stack because
@@ -1764,10 +1764,10 @@ fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: String, node_id: ast::N
     let def = ast_util::local_def(node_id);
     if ccx.tcx.lang_items.stack_exhausted() == Some(def) {
         unset_split_stack(llfn);
-        lib::llvm::SetLinkage(llfn, lib::llvm::ExternalLinkage);
+        llvm::SetLinkage(llfn, llvm::ExternalLinkage);
     }
     if ccx.tcx.lang_items.eh_personality() == Some(def) {
-        lib::llvm::SetLinkage(llfn, lib::llvm::ExternalLinkage);
+        llvm::SetLinkage(llfn, llvm::ExternalLinkage);
     }
 
 
@@ -1814,13 +1814,13 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
     // implications directly to the call instruction. Right now,
     // the only attribute we need to worry about is `sret`.
     if type_of::return_uses_outptr(ccx, ret_ty) {
-        attrs.push((1, lib::llvm::StructRetAttribute as u64));
+        attrs.push((1, llvm::StructRetAttribute as u64));
 
         // The outptr can be noalias and nocapture because it's entirely
         // invisible to the program. We can also mark it as nonnull
-        attrs.push((1, lib::llvm::NoAliasAttribute as u64));
-        attrs.push((1, lib::llvm::NoCaptureAttribute as u64));
-        attrs.push((1, lib::llvm::NonNullAttribute as u64));
+        attrs.push((1, llvm::NoAliasAttribute as u64));
+        attrs.push((1, llvm::NoCaptureAttribute as u64));
+        attrs.push((1, llvm::NonNullAttribute as u64));
 
         // Add one more since there's an outptr
         first_arg_offset += 1;
@@ -1834,7 +1834,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
                 ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
             } => {}
             ty::ty_uniq(_) => {
-                attrs.push((lib::llvm::ReturnIndex as uint, lib::llvm::NoAliasAttribute as u64));
+                attrs.push((llvm::ReturnIndex as uint, llvm::NoAliasAttribute as u64));
             }
             _ => {}
         }
@@ -1847,14 +1847,14 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
                 ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
             } => {}
             ty::ty_uniq(_) | ty::ty_rptr(_, _) => {
-                attrs.push((lib::llvm::ReturnIndex as uint, lib::llvm::NonNullAttribute as u64));
+                attrs.push((llvm::ReturnIndex as uint, llvm::NonNullAttribute as u64));
             }
             _ => {}
         }
 
         match ty::get(ret_ty).sty {
             ty::ty_bool => {
-                attrs.push((lib::llvm::ReturnIndex as uint, lib::llvm::ZExtAttribute as u64));
+                attrs.push((llvm::ReturnIndex as uint, llvm::ZExtAttribute as u64));
             }
             _ => {}
         }
@@ -1867,25 +1867,25 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
                 // For non-immediate arguments the callee gets its own copy of
                 // the value on the stack, so there are no aliases. It's also
                 // program-invisible so can't possibly capture
-                attrs.push((idx, lib::llvm::NoAliasAttribute as u64));
-                attrs.push((idx, lib::llvm::NoCaptureAttribute as u64));
-                attrs.push((idx, lib::llvm::NonNullAttribute as u64));
+                attrs.push((idx, llvm::NoAliasAttribute as u64));
+                attrs.push((idx, llvm::NoCaptureAttribute as u64));
+                attrs.push((idx, llvm::NonNullAttribute as u64));
             }
             ty::ty_bool => {
-                attrs.push((idx, lib::llvm::ZExtAttribute as u64));
+                attrs.push((idx, llvm::ZExtAttribute as u64));
             }
             // `~` pointer parameters never alias because ownership is transferred
             ty::ty_uniq(_) => {
-                attrs.push((idx, lib::llvm::NoAliasAttribute as u64));
-                attrs.push((idx, lib::llvm::NonNullAttribute as u64));
+                attrs.push((idx, llvm::NoAliasAttribute as u64));
+                attrs.push((idx, llvm::NonNullAttribute as u64));
             }
             // `&mut` pointer parameters never alias other parameters, or mutable global data
             ty::ty_rptr(b, mt) if mt.mutbl == ast::MutMutable => {
-                attrs.push((idx, lib::llvm::NoAliasAttribute as u64));
-                attrs.push((idx, lib::llvm::NonNullAttribute as u64));
+                attrs.push((idx, llvm::NoAliasAttribute as u64));
+                attrs.push((idx, llvm::NonNullAttribute as u64));
                 match b {
                     ReLateBound(_, BrAnon(_)) => {
-                        attrs.push((idx, lib::llvm::NoCaptureAttribute as u64));
+                        attrs.push((idx, llvm::NoCaptureAttribute as u64));
                     }
                     _ => {}
                 }
@@ -1893,12 +1893,12 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
             // When a reference in an argument has no named lifetime, it's impossible for that
             // reference to escape this function (returned or stored beyond the call by a closure).
             ty::ty_rptr(ReLateBound(_, BrAnon(_)), _) => {
-                attrs.push((idx, lib::llvm::NoCaptureAttribute as u64));
-                attrs.push((idx, lib::llvm::NonNullAttribute as u64));
+                attrs.push((idx, llvm::NoCaptureAttribute as u64));
+                attrs.push((idx, llvm::NonNullAttribute as u64));
             }
             // & pointer parameters are never null
             ty::ty_rptr(_, _) => {
-                attrs.push((idx, lib::llvm::NonNullAttribute as u64));
+                attrs.push((idx, llvm::NonNullAttribute as u64));
             }
             _ => ()
         }
@@ -1912,7 +1912,7 @@ pub fn register_fn_llvmty(ccx: &CrateContext,
                           sp: Span,
                           sym: String,
                           node_id: ast::NodeId,
-                          cc: lib::llvm::CallConv,
+                          cc: llvm::CallConv,
                           llfty: Type) -> ValueRef {
     debug!("register_fn_llvmty id={} sym={}", node_id, sym);
 
@@ -2073,7 +2073,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                         });
 
                         if !ccx.reachable.contains(&id) {
-                            lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
+                            llvm::SetLinkage(g, llvm::InternalLinkage);
                         }
 
                         // Apply the `unnamed_addr` attribute if
@@ -2081,7 +2081,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                         if !ast_util::static_has_significant_address(
                                 mutbl,
                                 i.attrs.as_slice()) {
-                            lib::llvm::SetUnnamedAddr(g, true);
+                            llvm::SetUnnamedAddr(g, true);
 
                             // This is a curious case where we must make
                             // all of these statics inlineable. If a
@@ -2103,7 +2103,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                         if attr::contains_name(i.attrs.as_slice(),
                                                "thread_local") {
-                            lib::llvm::set_thread_local(g, true);
+                            llvm::set_thread_local(g, true);
                         }
 
                         if !inlineable {
@@ -2241,7 +2241,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     // linkage b/c that doesn't quite make sense. Otherwise items can
     // have internal linkage if they're not reachable.
     if !foreign && !ccx.reachable.contains(&id) {
-        lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
+        llvm::SetLinkage(val, llvm::InternalLinkage);
     }
 
     ccx.item_vals.borrow_mut().insert(id, val);

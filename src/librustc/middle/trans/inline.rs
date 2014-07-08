@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use lib::llvm::{AvailableExternallyLinkage, SetLinkage};
+use llvm::{AvailableExternallyLinkage, SetLinkage};
 use metadata::csearch;
 use middle::astencode;
 use middle::trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};

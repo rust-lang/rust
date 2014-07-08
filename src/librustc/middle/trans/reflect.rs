@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use back::link::mangle_internal_name_by_path_and_seq;
-use lib::llvm::{ValueRef, llvm};
+use llvm;
+use llvm::{ValueRef};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;

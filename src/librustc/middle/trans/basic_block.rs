@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use lib::llvm::{llvm, BasicBlockRef};
+use llvm;
+use llvm::{BasicBlockRef};
 use middle::trans::value::{Users, Value};
 use std::iter::{Filter, Map};
 
