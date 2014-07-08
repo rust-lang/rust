@@ -11,8 +11,7 @@
 // Test struct inheritance.
 #![feature(struct_inherit)]
 
-struct s9 { i: int }
-struct s10 : s9 { j: int } //~ ERROR struct inheritance is only allowed from virtual structs
+virtual struct RecordLikeVirtual { i: int }
+struct UnitLike : RecordLikeVirtual; //~ ERROR expected `{` after super-struct path but found `;`
 
-pub fn main() {
-}
+fn main() {}

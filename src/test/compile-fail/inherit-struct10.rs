@@ -11,8 +11,7 @@
 // Test struct inheritance.
 #![feature(struct_inherit)]
 
-struct s9 { i: int }
-struct s10 : s9 { j: int } //~ ERROR struct inheritance is only allowed from virtual structs
+virtual struct UnitLikeVirtual;         //~ ERROR unit-like and tuple structs cannot be virtual
+virtual struct TupleStructVirtual(int); //~ ERROR unit-like and tuple structs cannot be virtual
 
-pub fn main() {
-}
+fn main() {}

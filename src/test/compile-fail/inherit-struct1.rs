@@ -12,7 +12,7 @@
 #![feature(struct_inherit)]
 
 
-struct S6 : int; //~ ERROR super-struct could not be resolved
+struct S6 : int { x: () } //~ ERROR super-struct could not be resolved
 
 pub fn main() {
 }
