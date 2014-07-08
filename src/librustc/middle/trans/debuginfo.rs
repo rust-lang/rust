@@ -2152,8 +2152,12 @@ impl EnumMemberDescriptionFactory {
                 let null_variant_index = (1 - nndiscr) as uint;
                 let null_variant_ident = self.variants.get(null_variant_index).name;
                 let null_variant_name = token::get_ident(null_variant_ident);
+                let discrfield = match ptrfield {
+                    adt::ThinPointer(field) => format!("{}", field),
+                    adt::FatPointer(field, pair) => format!("{}${}", field, pair)
+                };
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
-                                                ptrfield,
+                                                discrfield,
                                                 null_variant_name);
 
                 // Create the (singleton) list of descriptions of union members.
@@ -2196,7 +2200,7 @@ impl VariantMemberDescriptionFactory {
 
 enum EnumDiscriminantInfo {
     RegularDiscriminant(DIType),
-    OptimizedDiscriminant(uint),
+    OptimizedDiscriminant(adt::PointerField),
     NoDiscriminant
 }
 
