@@ -34,12 +34,6 @@ g:rustc_makeprg_no_percent~
 	    let g:rustc_makeprg_no_percent = 1
 <
 
-                                                          *g:rust_colorcolumn*
-g:rust_colorcolumn~
-	Set this option to use 'colorcolumn' to highlight the text width
-	indicate the 100 column recommended hard limit on line lengths: >
-	    let g:rust_colorcolumn = 1
-<
                                                               *g:rust_conceal*
 g:rust_conceal~
 	Set this option to turn on the basic |conceal| support: >
