@@ -10,6 +10,6 @@
 
 pub mod a {}
 
-pub mod a {} //~ ERROR duplicate definition of module `a`
+pub mod a {} //~ ERROR duplicate definition of type or module `a`
 
 fn main() {}
