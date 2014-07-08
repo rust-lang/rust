@@ -170,7 +170,7 @@ impl rtio::RtioProcess for Process {
             Some(..) => return Err(IoError {
                 code: ERROR as uint,
                 extra: 0,
-                detail: Some("can't kill an exited process".to_str()),
+                detail: Some("can't kill an exited process".to_string()),
             }),
             None => {}
         }
@@ -301,7 +301,7 @@ fn spawn_process_os(cfg: ProcessConfig,
         return Err(IoError {
             code: libc::ERROR_CALL_NOT_IMPLEMENTED as uint,
             extra: 0,
-            detail: Some("unsupported gid/uid requested on windows".to_str()),
+            detail: Some("unsupported gid/uid requested on windows".to_string()),
         })
     }
 

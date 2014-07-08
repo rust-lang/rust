@@ -128,13 +128,13 @@ pub mod rt {
         }
     }
 
-    impl_to_source!(ast::Ty, ty_to_str)
-    impl_to_source!(ast::Block, block_to_str)
-    impl_to_source!(ast::Arg, arg_to_str)
-    impl_to_source!(Generics, generics_to_str)
-    impl_to_source!(Gc<ast::Item>, item_to_str)
-    impl_to_source!(Gc<ast::Expr>, expr_to_str)
-    impl_to_source!(Gc<ast::Pat>, pat_to_str)
+    impl_to_source!(ast::Ty, ty_to_string)
+    impl_to_source!(ast::Block, block_to_string)
+    impl_to_source!(ast::Arg, arg_to_string)
+    impl_to_source!(Generics, generics_to_string)
+    impl_to_source!(Gc<ast::Item>, item_to_string)
+    impl_to_source!(Gc<ast::Expr>, expr_to_string)
+    impl_to_source!(Gc<ast::Pat>, pat_to_string)
     impl_to_source_slice!(ast::Ty, ", ")
     impl_to_source_slice!(Gc<ast::Item>, "\n\n")
 
@@ -142,7 +142,7 @@ pub mod rt {
         fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitStr(
                     token::intern_and_get_ident(*self), ast::CookedStr));
-            pprust::lit_to_str(&lit)
+            pprust::lit_to_string(&lit)
         }
     }
 
@@ -155,14 +155,14 @@ pub mod rt {
     impl ToSource for bool {
         fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitBool(*self));
-            pprust::lit_to_str(&lit)
+            pprust::lit_to_string(&lit)
         }
     }
 
     impl ToSource for char {
         fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitChar(*self));
-            pprust::lit_to_str(&lit)
+            pprust::lit_to_string(&lit)
         }
     }
 
@@ -171,7 +171,7 @@ pub mod rt {
             impl ToSource for $t {
                 fn to_source(&self) -> String {
                     let lit = dummy_spanned(ast::LitInt(*self as i64, ast::$tag));
-                    pprust::lit_to_str(&lit)
+                    pprust::lit_to_string(&lit)
                 }
             }
         );
@@ -179,7 +179,7 @@ pub mod rt {
             impl ToSource for $t {
                 fn to_source(&self) -> String {
                     let lit = dummy_spanned(ast::LitUint(*self as u64, ast::$tag));
-                    pprust::lit_to_str(&lit)
+                    pprust::lit_to_string(&lit)
                 }
             }
         );

@@ -70,7 +70,7 @@ pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Some(exprs) => exprs
     };
 
-    let var = match expr_to_str(cx,
+    let var = match expr_to_string(cx,
                                 *exprs.get(0),
                                 "expected string literal") {
         None => return DummyResult::expr(sp),
@@ -83,7 +83,7 @@ pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                                 var).as_slice())
         }
         2 => {
-            match expr_to_str(cx, *exprs.get(1), "expected string literal") {
+            match expr_to_string(cx, *exprs.get(1), "expected string literal") {
                 None => return DummyResult::expr(sp),
                 Some((s, _style)) => s
             }

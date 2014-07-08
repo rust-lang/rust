@@ -787,7 +787,6 @@ mod test_btree {
     fn insert_test_one() {
         let b = BTree::new(1i, "abc".to_string(), 2);
         let is_insert = b.insert(2i, "xyz".to_string());
-        //println!("{}", is_insert.clone().to_str());
         assert!(is_insert.root.is_leaf());
     }
 
@@ -798,7 +797,7 @@ mod test_btree {
         let leaf_elt_3 = LeafElt::new(3i, "ccc".to_string());
         let n = Node::new_leaf(vec!(leaf_elt_1, leaf_elt_2, leaf_elt_3));
         let b = BTree::new_with_node_len(n, 3, 2);
-        //println!("{}", b.clone().insert(4, "ddd".to_string()).to_str());
+        //println!("{}", b.clone().insert(4, "ddd".to_string()).to_string());
         assert!(b.insert(4, "ddd".to_string()).root.is_leaf());
     }
 
@@ -810,7 +809,7 @@ mod test_btree {
         let leaf_elt_4 = LeafElt::new(4i, "ddd".to_string());
         let n = Node::new_leaf(vec!(leaf_elt_1, leaf_elt_2, leaf_elt_3, leaf_elt_4));
         let b = BTree::new_with_node_len(n, 3, 2);
-        //println!("{}", b.clone().insert(5, "eee".to_string()).to_str());
+        //println!("{}", b.clone().insert(5, "eee".to_string()).to_string());
         assert!(!b.insert(5, "eee".to_string()).root.is_leaf());
     }
 
@@ -827,7 +826,7 @@ mod test_btree {
         b = b.clone().insert(7, "ggg".to_string());
         b = b.clone().insert(8, "hhh".to_string());
         b = b.clone().insert(0, "omg".to_string());
-        //println!("{}", b.clone().to_str());
+        //println!("{}", b.clone().to_string());
         assert!(!b.root.is_leaf());
     }
 
@@ -905,11 +904,11 @@ mod test_btree {
         assert!(&b2.cmp(&b) == &Greater)
     }
 
-    //Tests the BTree's to_str() method.
+    //Tests the BTree's to_string() method.
     #[test]
     fn btree_tostr_test() {
         let b = BTree::new(1i, "abc".to_string(), 2);
-        assert_eq!(b.to_str(), "Key: 1, value: abc;".to_string())
+        assert_eq!(b.to_string(), "Key: 1, value: abc;".to_string())
     }
 
 }

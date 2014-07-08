@@ -4410,9 +4410,9 @@ msgstr ""
 
 #. type: Plain text
 #: src/doc/tutorial.md:2528
-msgid "#[deriving(Rand, ToStr)] enum ABC { A, B, C } ~~~"
+msgid "#[deriving(Rand, ToString)] enum ABC { A, B, C } ~~~"
 msgstr ""
-"#[deriving(Rand, ToStr)]\n"
+"#[deriving(Rand, ToString)]\n"
 "enum ABC { A, B, C }\n"
 "~~~"
 
@@ -4422,15 +4422,15 @@ msgstr ""
 #| msgid ""
 #| "The full list of derivable traits is `Eq`, `TotalEq`, `Ord`, `TotalOrd`, "
 #| "`Encodable` `Decodable`, `Clone`, `DeepClone`, `Hash`, `Rand`, "
-#| "`Zero`, and `ToStr`."
+#| "`Zero`, and `ToString`."
 msgid ""
 "The full list of derivable traits is `Eq`, `TotalEq`, `Ord`, `TotalOrd`, "
 "`Encodable` `Decodable`, `Clone`, `DeepClone`, `Hash`, `Rand`, "
-"`Default`, `Zero`, and `ToStr`."
+"`Default`, `Zero`, and `ToString`."
 msgstr ""
 "実装を自動的に導出可能なトレイトは、 `Eq`, `TotalEq`, `Ord`, `TotalOrd`, "
 "`Encodable` `Decodable`, `Clone`, `DeepClone`, `Hash`, `Rand`, `Zero`, "
-"および `ToStr` です。."
+"および `ToString` です。."
 
 #. type: Plain text
 #: src/doc/tutorial.md:2534

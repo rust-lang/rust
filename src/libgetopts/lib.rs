@@ -59,7 +59,7 @@
 //!     ];
 //!     let matches = match getopts(args.tail(), opts) {
 //!         Ok(m) => { m }
-//!         Err(f) => { fail!(f.to_str()) }
+//!         Err(f) => { fail!(f.to_string()) }
 //!     };
 //!     if matches.opt_present("h") {
 //!         print_usage(program.as_slice(), opts);
@@ -222,9 +222,9 @@ impl Name {
         }
     }
 
-    fn to_str(&self) -> String {
+    fn to_string(&self) -> String {
         match *self {
-            Short(ch) => ch.to_str(),
+            Short(ch) => ch.to_string(),
             Long(ref s) => s.to_string()
         }
     }
@@ -501,7 +501,7 @@ impl Fail_ {
     /// Convert a `Fail_` enum into an error string.
     #[deprecated="use `Show` (`{}` format specifier)"]
     pub fn to_err_msg(self) -> String {
-        self.to_str()
+        self.to_string()
     }
 }
 
@@ -609,12 +609,12 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                 name_pos += 1;
                 let optid = match find_opt(opts.as_slice(), (*nm).clone()) {
                   Some(id) => id,
-                  None => return Err(UnrecognizedOption(nm.to_str()))
+                  None => return Err(UnrecognizedOption(nm.to_string()))
                 };
                 match opts.get(optid).hasarg {
                   No => {
                     if !i_arg.is_none() {
-                        return Err(UnexpectedArgument(nm.to_str()));
+                        return Err(UnexpectedArgument(nm.to_string()));
                     }
                     vals.get_mut(optid).push(Given);
                   }
@@ -635,7 +635,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                     if !i_arg.is_none() {
                         vals.get_mut(optid).push(Val(i_arg.clone().unwrap()));
                     } else if i + 1 == l {
-                        return Err(ArgumentMissing(nm.to_str()));
+                        return Err(ArgumentMissing(nm.to_string()));
                     } else {
                         i += 1;
                         vals.get_mut(optid).push(Val(args[i].clone()));
@@ -652,12 +652,12 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
         let occ = opts.get(i).occur;
         if occ == Req {
             if n == 0 {
-                return Err(OptionMissing(opts.get(i).name.to_str()));
+                return Err(OptionMissing(opts.get(i).name.to_string()));
             }
         }
         if occ != Multi {
             if n > 1 {
-                return Err(OptionDuplicated(opts.get(i).name.to_str()));
+                return Err(OptionDuplicated(opts.get(i).name.to_string()));
             }
         }
         i += 1;

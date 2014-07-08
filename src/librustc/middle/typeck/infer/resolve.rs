@@ -56,7 +56,7 @@ use middle::typeck::infer::{unresolved_float_ty, unresolved_int_ty};
 use middle::typeck::infer::{unresolved_ty};
 use syntax::codemap::Span;
 use util::common::indent;
-use util::ppaux::{Repr, ty_to_str};
+use util::ppaux::{Repr, ty_to_string};
 
 pub static resolve_nested_tvar: uint = 0b0000000001;
 pub static resolve_rvar: uint        = 0b0000000010;
@@ -121,7 +121,7 @@ impl<'a> ResolveState<'a> {
         self.err = None;
 
         debug!("Resolving {} (modes={:x})",
-               ty_to_str(self.infcx.tcx, typ),
+               ty_to_string(self.infcx.tcx, typ),
                self.modes);
 
         // n.b. This is a hokey mess because the current fold doesn't
@@ -133,8 +133,8 @@ impl<'a> ResolveState<'a> {
         match self.err {
           None => {
             debug!("Resolved to {} + {} (modes={:x})",
-                   ty_to_str(self.infcx.tcx, rty),
-                   ty_to_str(self.infcx.tcx, rty),
+                   ty_to_string(self.infcx.tcx, rty),
+                   ty_to_string(self.infcx.tcx, rty),
                    self.modes);
             return Ok(rty);
           }

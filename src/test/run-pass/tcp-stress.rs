@@ -61,7 +61,7 @@ fn main() {
     for _ in range(0u, 1000) {
         let tx = tx.clone();
         TaskBuilder::new().stack_size(64 * 1024).spawn(proc() {
-            let host = addr.ip.to_str();
+            let host = addr.ip.to_string();
             let port = addr.port;
             match TcpStream::connect(host.as_slice(), port) {
                 Ok(stream) => {

@@ -141,7 +141,7 @@ impl fmt::Show for Nonterminal {
     }
 }
 
-pub fn binop_to_str(o: BinOp) -> &'static str {
+pub fn binop_to_string(o: BinOp) -> &'static str {
     match o {
       PLUS => "+",
       MINUS => "-",
@@ -156,7 +156,7 @@ pub fn binop_to_str(o: BinOp) -> &'static str {
     }
 }
 
-pub fn to_str(t: &Token) -> String {
+pub fn to_string(t: &Token) -> String {
     match *t {
       EQ => "=".to_string(),
       LT => "<".to_string(),
@@ -169,9 +169,9 @@ pub fn to_str(t: &Token) -> String {
       TILDE => "~".to_string(),
       OROR => "||".to_string(),
       ANDAND => "&&".to_string(),
-      BINOP(op) => binop_to_str(op).to_string(),
+      BINOP(op) => binop_to_string(op).to_string(),
       BINOPEQ(op) => {
-          let mut s = binop_to_str(op).to_string();
+          let mut s = binop_to_string(op).to_string();
           s.push_str("=");
           s
       }
@@ -215,15 +215,15 @@ pub fn to_str(t: &Token) -> String {
           res.push_char('\'');
           res
       }
-      LIT_INT(i, t) => ast_util::int_ty_to_str(t, Some(i)),
-      LIT_UINT(u, t) => ast_util::uint_ty_to_str(t, Some(u)),
-      LIT_INT_UNSUFFIXED(i) => { (i as u64).to_str() }
+      LIT_INT(i, t) => ast_util::int_ty_to_string(t, Some(i)),
+      LIT_UINT(u, t) => ast_util::uint_ty_to_string(t, Some(u)),
+      LIT_INT_UNSUFFIXED(i) => { (i as u64).to_string() }
       LIT_FLOAT(s, t) => {
         let mut body = String::from_str(get_ident(s).get());
         if body.as_slice().ends_with(".") {
             body.push_char('0');  // `10.f` is not a float literal
         }
-        body.push_str(ast_util::float_ty_to_str(t).as_slice());
+        body.push_str(ast_util::float_ty_to_string(t).as_slice());
         body
       }
       LIT_FLOAT_UNSUFFIXED(s) => {
@@ -262,8 +262,8 @@ pub fn to_str(t: &Token) -> String {
       EOF => "<eof>".to_string(),
       INTERPOLATED(ref nt) => {
         match nt {
-            &NtExpr(ref e) => ::print::pprust::expr_to_str(&**e),
-            &NtMeta(ref e) => ::print::pprust::meta_item_to_str(&**e),
+            &NtExpr(ref e) => ::print::pprust::expr_to_string(&**e),
+            &NtMeta(ref e) => ::print::pprust::meta_item_to_string(&**e),
             _ => {
                 let mut s = "an interpolated ".to_string();
                 match *nt {
@@ -693,7 +693,7 @@ pub fn gensym_ident(s: &str) -> ast::Ident {
 }
 
 // create a fresh name that maps to the same string as the old one.
-// note that this guarantees that str_ptr_eq(ident_to_str(src),interner_get(fresh_name(src)));
+// note that this guarantees that str_ptr_eq(ident_to_string(src),interner_get(fresh_name(src)));
 // that is, that the new name and the old one are connected to ptr_eq strings.
 pub fn fresh_name(src: &ast::Ident) -> Name {
     let interner = get_ident_interner();
@@ -702,7 +702,7 @@ pub fn fresh_name(src: &ast::Ident) -> Name {
     // good error messages and uses of struct names in ambiguous could-be-binding
     // locations. Also definitely destroys the guarantee given above about ptr_eq.
     /*let num = rand::task_rng().gen_uint_range(0,0xffff);
-    gensym(format!("{}_{}",ident_to_str(src),num))*/
+    gensym(format!("{}_{}",ident_to_string(src),num))*/
 }
 
 // create a fresh mark.

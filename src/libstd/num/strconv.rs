@@ -146,7 +146,7 @@ static NAN_BUF:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
 /**
  * Converts an integral number to its string representation as a byte vector.
  * This is meant to be a common base implementation for all integral string
- * conversion functions like `to_str()` or `to_str_radix()`.
+ * conversion functions like `to_string()` or `to_str_radix()`.
  *
  * # Arguments
  * - `num`           - The number to convert. Accepts any number that
@@ -226,7 +226,7 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
 /**
  * Converts a number to its string representation as a byte vector.
  * This is meant to be a common base implementation for all numeric string
- * conversion functions like `to_str()` or `to_str_radix()`.
+ * conversion functions like `to_string()` or `to_str_radix()`.
  *
  * # Arguments
  * - `num`           - The number to convert. Accepts any number that
@@ -894,9 +894,9 @@ mod bench {
         use f64;
 
         #[bench]
-        fn float_to_str(b: &mut Bencher) {
+        fn float_to_string(b: &mut Bencher) {
             let mut rng = weak_rng();
-            b.iter(|| { f64::to_str(rng.gen()); })
+            b.iter(|| { f64::to_string(rng.gen()); })
         }
     }
 }

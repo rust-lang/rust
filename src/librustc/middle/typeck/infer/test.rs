@@ -37,7 +37,7 @@ use syntax::codemap;
 use syntax::codemap::{Span, CodeMap, DUMMY_SP};
 use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note};
 use syntax::ast;
-use util::ppaux::{ty_to_str, UserString};
+use util::ppaux::{ty_to_string, UserString};
 
 struct Env<'a> {
     krate: ast::Crate,
@@ -225,16 +225,16 @@ impl<'a> Env<'a> {
     pub fn assert_subtype(&self, a: ty::t, b: ty::t) {
         if !self.is_subtype(a, b) {
             fail!("{} is not a subtype of {}, but it should be",
-                  self.ty_to_str(a),
-                  self.ty_to_str(b));
+                  self.ty_to_string(a),
+                  self.ty_to_string(b));
         }
     }
 
     pub fn assert_not_subtype(&self, a: ty::t, b: ty::t) {
         if self.is_subtype(a, b) {
             fail!("{} is a subtype of {}, but it shouldn't be",
-                  self.ty_to_str(a),
-                  self.ty_to_str(b));
+                  self.ty_to_string(a),
+                  self.ty_to_string(b));
         }
     }
 
@@ -243,8 +243,8 @@ impl<'a> Env<'a> {
         self.assert_subtype(b, a);
     }
 
-    pub fn ty_to_str(&self, a: ty::t) -> String {
-        ty_to_str(self.tcx, a)
+    pub fn ty_to_string(&self, a: ty::t) -> String {
+        ty_to_string(self.tcx, a)
     }
 
     pub fn t_fn(&self,
@@ -328,9 +328,9 @@ impl<'a> Env<'a> {
     /// Checks that `GLB(t1,t2) == t_glb`
     pub fn check_glb(&self, t1: ty::t, t2: ty::t, t_glb: ty::t) {
         debug!("check_glb(t1={}, t2={}, t_glb={})",
-               self.ty_to_str(t1),
-               self.ty_to_str(t2),
-               self.ty_to_str(t_glb));
+               self.ty_to_string(t1),
+               self.ty_to_string(t2),
+               self.ty_to_string(t_glb));
         match self.glb().tys(t1, t2) {
             Err(e) => {
                 fail!("unexpected error computing LUB: {:?}", e)
@@ -350,7 +350,7 @@ impl<'a> Env<'a> {
         match self.lub().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {
-                fail!("unexpected success computing LUB: {}", self.ty_to_str(t))
+                fail!("unexpected success computing LUB: {}", self.ty_to_string(t))
             }
         }
     }
@@ -360,7 +360,7 @@ impl<'a> Env<'a> {
         match self.glb().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {
-                fail!("unexpected success computing GLB: {}", self.ty_to_str(t))
+                fail!("unexpected success computing GLB: {}", self.ty_to_string(t))
             }
         }
     }

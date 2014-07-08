@@ -638,7 +638,7 @@ mod test {
             });
         assert!(r.is_ok());
 
-        let output = reader.read_to_str().unwrap();
+        let output = reader.read_to_string().unwrap();
         assert_eq!(output, "Hello, world!".to_string());
     }
 

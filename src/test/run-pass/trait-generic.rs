@@ -11,16 +11,16 @@
 
 
 trait to_str {
-    fn to_string(&self) -> String;
+    fn to_string_(&self) -> String;
 }
 impl to_str for int {
-    fn to_string(&self) -> String { self.to_str() }
+    fn to_string_(&self) -> String { self.to_string() }
 }
 impl to_str for String {
-    fn to_string(&self) -> String { self.clone() }
+    fn to_string_(&self) -> String { self.clone() }
 }
 impl to_str for () {
-    fn to_string(&self) -> String { "()".to_string() }
+    fn to_string_(&self) -> String { "()".to_string() }
 }
 
 trait map<T> {
@@ -40,7 +40,7 @@ fn foo<U, T: map<U>>(x: T) -> Vec<String> {
     x.map(|_e| "hi".to_string() )
 }
 fn bar<U:to_str,T:map<U>>(x: T) -> Vec<String> {
-    x.map(|_e| _e.to_string() )
+    x.map(|_e| _e.to_string_() )
 }
 
 pub fn main() {

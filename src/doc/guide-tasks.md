@@ -465,7 +465,7 @@ fn stringifier(channel: &DuplexStream<String, uint>) {
     let mut value: uint;
     loop {
         value = channel.recv();
-        channel.send(value.to_str());
+        channel.send(value.to_string());
         if value == 0 { break; }
     }
 }
@@ -478,7 +478,7 @@ send strings (the first type parameter) and receive `uint` messages
 (the second type parameter). The body itself simply loops, reading
 from the channel and then sending its response back.  The actual
 response itself is simply the stringified version of the received value,
-`uint::to_str(value)`.
+`uint::to_string(value)`.
 
 Here is the code for the parent task:
 
@@ -492,7 +492,7 @@ use std::comm::duplex;
 #     let mut value: uint;
 #     loop {
 #         value = channel.recv();
-#         channel.send(value.to_str());
+#         channel.send(value.to_string());
 #         if value == 0u { break; }
 #     }
 # }

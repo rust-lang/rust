@@ -209,13 +209,11 @@ mod test {
 #[cfg(target_os = "ios")]
 #[cfg(target_os = "freebsd")]
 pub mod dl {
-    use prelude::*;
 
     use c_str::{CString, ToCStr};
     use libc;
     use ptr;
     use result::*;
-    use str::StrAllocating;
     use string::String;
 
     pub unsafe fn open_external<T: ToCStr>(filename: T) -> *mut u8 {
@@ -243,9 +241,8 @@ pub mod dl {
             let ret = if ptr::null() == last_error {
                 Ok(result)
             } else {
-                Err(CString::new(last_error, false).as_str()
-                                                   .unwrap()
-                                                   .to_string())
+                Err(String::from_str(CString::new(last_error, false).as_str()
+                    .unwrap()))
             };
 
             ret

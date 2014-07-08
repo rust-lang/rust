@@ -121,7 +121,7 @@ use syntax::ast::*;
 use syntax::codemap::{BytePos, original_sp, Span};
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
-use syntax::print::pprust::{expr_to_str, block_to_str};
+use syntax::print::pprust::{expr_to_string, block_to_string};
 use syntax::{visit, ast_util};
 use syntax::visit::{Visitor, FnKind};
 
@@ -152,17 +152,17 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_str(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
+fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
     let cm = cx.sess.codemap();
     match lnk {
         FreeVarNode(s) => {
-            format!("Free var node [{}]", cm.span_to_str(s))
+            format!("Free var node [{}]", cm.span_to_string(s))
         }
         ExprNode(s) => {
-            format!("Expr node [{}]", cm.span_to_str(s))
+            format!("Expr node [{}]", cm.span_to_string(s))
         }
         VarDefNode(s) => {
-            format!("Var def node [{}]", cm.span_to_str(s))
+            format!("Var def node [{}]", cm.span_to_string(s))
         }
         ExitNode => "Exit node".to_string(),
     }
@@ -272,8 +272,8 @@ impl<'a> IrMaps<'a> {
         self.lnks.push(lnk);
         self.num_live_nodes += 1;
 
-        debug!("{} is of kind {}", ln.to_str(),
-               live_node_kind_to_str(lnk, self.tcx));
+        debug!("{} is of kind {}", ln.to_string(),
+               live_node_kind_to_string(lnk, self.tcx));
 
         ln
     }
@@ -282,7 +282,7 @@ impl<'a> IrMaps<'a> {
         let ln = self.add_live_node(lnk);
         self.live_node_map.insert(node_id, ln);
 
-        debug!("{} is node {}", ln.to_str(), node_id);
+        debug!("{} is node {}", ln.to_string(), node_id);
     }
 
     fn add_variable(&mut self, vk: VarKind) -> Variable {
@@ -297,7 +297,7 @@ impl<'a> IrMaps<'a> {
             ImplicitRet => {}
         }
 
-        debug!("{} is {:?}", v.to_str(), vk);
+        debug!("{} is {:?}", v.to_string(), vk);
 
         v
     }
@@ -317,7 +317,7 @@ impl<'a> IrMaps<'a> {
     fn variable_name(&self, var: Variable) -> String {
         match self.var_kinds.get(var.get()) {
             &Local(LocalInfo { ident: nm, .. }) | &Arg(_, nm) => {
-                token::get_ident(nm).get().to_str()
+                token::get_ident(nm).get().to_string()
             },
             &ImplicitRet => "<implicit-ret>".to_string()
         }
@@ -675,7 +675,7 @@ impl<'a> Liveness<'a> {
         for var_idx in range(0u, self.ir.num_vars) {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
-                try!(write!(wr, " {}", Variable(var_idx).to_str()));
+                try!(write!(wr, " {}", Variable(var_idx).to_string()));
             }
         }
         Ok(())
@@ -717,7 +717,7 @@ impl<'a> Liveness<'a> {
             self.write_vars(wr, ln, |idx| self.users.get(idx).reader);
             write!(wr, "  writes");
             self.write_vars(wr, ln, |idx| self.users.get(idx).writer);
-            write!(wr, "  precedes {}]", self.successors.get(ln.get()).to_str());
+            write!(wr, "  precedes {}]", self.successors.get(ln.get()).to_string());
         }
         str::from_utf8(wr.unwrap().as_slice()).unwrap().to_string()
     }
@@ -766,7 +766,7 @@ impl<'a> Liveness<'a> {
         });
 
         debug!("merge_from_succ(ln={}, succ={}, first_merge={}, changed={})",
-               ln.to_str(), self.ln_str(succ_ln), first_merge, changed);
+               ln.to_string(), self.ln_str(succ_ln), first_merge, changed);
         return changed;
 
         fn copy_if_invalid(src: LiveNode, dst: &mut LiveNode) -> bool {
@@ -787,14 +787,14 @@ impl<'a> Liveness<'a> {
         self.users.get_mut(idx).reader = invalid_node();
         self.users.get_mut(idx).writer = invalid_node();
 
-        debug!("{} defines {} (idx={}): {}", writer.to_str(), var.to_str(),
+        debug!("{} defines {} (idx={}): {}", writer.to_string(), var.to_string(),
                idx, self.ln_str(writer));
     }
 
     // Either read, write, or both depending on the acc bitset
     fn acc(&mut self, ln: LiveNode, var: Variable, acc: uint) {
         debug!("{} accesses[{:x}] {}: {}",
-               ln.to_str(), acc, var.to_str(), self.ln_str(ln));
+               ln.to_string(), acc, var.to_string(), self.ln_str(ln));
 
         let idx = self.idx(ln, var);
         let user = self.users.get_mut(idx);
@@ -822,7 +822,7 @@ impl<'a> Liveness<'a> {
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
 
-        debug!("compute: using id for block, {}", block_to_str(body));
+        debug!("compute: using id for block, {}", block_to_string(body));
 
         let exit_ln = self.s.exit_ln;
         let entry_ln: LiveNode =
@@ -837,7 +837,7 @@ impl<'a> Liveness<'a> {
                    }
                    body.id
                },
-               entry_ln.to_str());
+               entry_ln.to_string());
 
         entry_ln
     }
@@ -928,7 +928,7 @@ impl<'a> Liveness<'a> {
 
     fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode)
                               -> LiveNode {
-        debug!("propagate_through_expr: {}", expr_to_str(expr));
+        debug!("propagate_through_expr: {}", expr_to_string(expr));
 
         match expr.node {
           // Interesting cases with control flow or which gen/kill
@@ -942,7 +942,7 @@ impl<'a> Liveness<'a> {
           }
 
           ExprFnBlock(_, ref blk) | ExprProc(_, ref blk) => {
-              debug!("{} is an ExprFnBlock or ExprProc", expr_to_str(expr));
+              debug!("{} is an ExprFnBlock or ExprProc", expr_to_string(expr));
 
               /*
               The next-node for a break is the successor of the entire
@@ -1314,7 +1314,7 @@ impl<'a> Liveness<'a> {
             first_merge = false;
         }
         debug!("propagate_through_loop: using id for loop body {} {}",
-               expr.id, block_to_str(body));
+               expr.id, block_to_string(body));
 
         let cond_ln = self.propagate_through_opt_expr(cond, ln);
         let body_ln = self.with_loop_nodes(expr.id, succ, ln, |this| {

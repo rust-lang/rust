@@ -28,7 +28,7 @@ use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::typeck::{MethodCall, MethodCallee, MethodOrigin};
 use middle::{ty, typeck};
-use util::ppaux::ty_to_str;
+use util::ppaux::ty_to_string;
 
 use syntax::{ast, ast_map, ast_util, codemap, fold};
 use syntax::codemap::Span;
@@ -86,7 +86,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
         e::IIMethodRef(_, _, m) => m.id,
     };
     debug!("> Encoding inlined item: {} ({})",
-           ecx.tcx.map.path_to_str(id),
+           ecx.tcx.map.path_to_string(id),
            ebml_w.writer.tell());
 
     let ii = simplify_ast(ii);
@@ -99,7 +99,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
     ebml_w.end_tag();
 
     debug!("< Encoded inlined fn: {} ({})",
-           ecx.tcx.map.path_to_str(id),
+           ecx.tcx.map.path_to_string(id),
            ebml_w.writer.tell());
 }
 
@@ -119,7 +119,7 @@ pub fn decode_inlined_item(cdata: &cstore::crate_metadata,
         debug!("> Decoding inlined fn: {}::?",
         {
             // Do an Option dance to use the path after it is moved below.
-            let s = ast_map::path_to_str(ast_map::Values(path.iter()));
+            let s = ast_map::path_to_string(ast_map::Values(path.iter()));
             path_as_str = Some(s);
             path_as_str.as_ref().map(|x| x.as_slice())
         });
@@ -147,7 +147,7 @@ pub fn decode_inlined_item(cdata: &cstore::crate_metadata,
         match ii {
           ast::IIItem(i) => {
             debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
-                   syntax::print::pprust::item_to_str(&*i));
+                   syntax::print::pprust::item_to_string(&*i));
           }
           _ => { }
         }
@@ -826,7 +826,7 @@ impl<'a> get_ty_str_ctxt for e::EncodeContext<'a> {
     fn ty_str_ctxt<'a>(&'a self) -> tyencode::ctxt<'a> {
         tyencode::ctxt {
             diag: self.tcx.sess.diagnostic(),
-            ds: e::def_to_str,
+            ds: e::def_to_string,
             tcx: self.tcx,
             abbrevs: &self.type_abbrevs
         }
@@ -1391,7 +1391,7 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                     c::tag_table_node_type => {
                         let ty = val_dsr.read_ty(xcx);
                         debug!("inserting ty for node {:?}: {}",
-                               id, ty_to_str(dcx.tcx, ty));
+                               id, ty_to_string(dcx.tcx, ty));
                         dcx.tcx.node_types.borrow_mut().insert(id as uint, ty);
                     }
                     c::tag_table_item_subst => {
@@ -1561,7 +1561,7 @@ fn test_simplification() {
     ).unwrap());
     match (item_out, item_exp) {
       (ast::IIItem(item_out), ast::IIItem(item_exp)) => {
-        assert!(pprust::item_to_str(item_out) == pprust::item_to_str(item_exp));
+        assert!(pprust::item_to_string(item_out) == pprust::item_to_string(item_exp));
       }
       _ => fail!()
     }

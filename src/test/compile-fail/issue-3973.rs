@@ -13,17 +13,17 @@ struct Point {
     y: f64,
 }
 
-trait NewTrait {
-    fn a(&self) -> String;
+trait ToString_ {
+    fn to_string(&self) -> String;
 }
 
-impl NewTrait for Point {
+impl ToString_ for Point {
     fn new(x: f64, y: f64) -> Point {
-    //~^ ERROR method `new` is not a member of trait `NewTrait`
+    //~^ ERROR method `new` is not a member of trait `ToString_`
         Point { x: x, y: y }
     }
 
-    fn a(&self) -> String {
+    fn to_string(&self) -> String {
         format!("({}, {})", self.x, self.y)
     }
 }
@@ -32,5 +32,5 @@ fn main() {
     let p = Point::new(0.0, 0.0);
     //~^ ERROR unresolved name `Point::new`
     //~^^ ERROR failed to resolve. Use of undeclared module `Point`
-    println!("{}", p.a());
+    println!("{}", p.to_string());
 }

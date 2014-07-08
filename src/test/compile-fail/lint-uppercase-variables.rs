@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 #![allow(dead_code)]
 #![deny(uppercase_variables)]
 
@@ -30,7 +32,7 @@ fn main() {
     let mut buff = [0u8, ..16];
     match f.read(buff) {
         Ok(cnt) => println!("read this many bytes: {}", cnt),
-        Err(IoError{ kind: EndOfFile, .. }) => println!("Got end of file: {}", EndOfFile.to_str()),
+        Err(IoError{ kind: EndOfFile, .. }) => println!("Got end of file: {}", EndOfFile.to_string()),
                         //~^ ERROR variable names should start with a lowercase character
     }
 

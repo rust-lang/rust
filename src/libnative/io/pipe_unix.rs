@@ -43,7 +43,7 @@ fn addr_to_sockaddr_un(addr: &CString) -> IoResult<(libc::sockaddr_storage, uint
         return Err(IoError {
             code: ERROR as uint,
             extra: 0,
-            detail: Some("path must be smaller than SUN_LEN".to_str()),
+            detail: Some("path must be smaller than SUN_LEN".to_string()),
         })
     }
     s.sun_family = libc::AF_UNIX as libc::sa_family_t;

@@ -276,7 +276,7 @@ pub struct CrateCtxt<'a> {
 
 // Functions that write types into the node type table
 pub fn write_ty_to_tcx(tcx: &ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
-    debug!("write_ty_to_tcx({}, {})", node_id, ppaux::ty_to_str(tcx, ty));
+    debug!("write_ty_to_tcx({}, {})", node_id, ppaux::ty_to_string(tcx, ty));
     assert!(!ty::type_needs_infer(ty));
     tcx.node_types.borrow_mut().insert(node_id as uint, ty);
 }
@@ -383,14 +383,14 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             require_same_types(tcx, None, false, main_span, main_t, se_ty,
                 || {
                     format!("main function expects type: `{}`",
-                            ppaux::ty_to_str(ccx.tcx, se_ty))
+                            ppaux::ty_to_string(ccx.tcx, se_ty))
                 });
         }
         _ => {
             tcx.sess.span_bug(main_span,
                               format!("main has a non-function type: found \
                                        `{}`",
-                                      ppaux::ty_to_str(tcx,
+                                      ppaux::ty_to_string(tcx,
                                                        main_t)).as_slice());
         }
     }
@@ -436,7 +436,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             require_same_types(tcx, None, false, start_span, start_t, se_ty,
                 || {
                     format!("start function expects type: `{}`",
-                            ppaux::ty_to_str(ccx.tcx, se_ty))
+                            ppaux::ty_to_string(ccx.tcx, se_ty))
                 });
 
         }
@@ -444,7 +444,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             tcx.sess.span_bug(start_span,
                               format!("start has a non-function type: found \
                                        `{}`",
-                                      ppaux::ty_to_str(tcx,
+                                      ppaux::ty_to_string(tcx,
                                                        start_t)).as_slice());
         }
     }

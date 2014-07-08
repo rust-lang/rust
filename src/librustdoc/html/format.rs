@@ -351,7 +351,7 @@ impl fmt::Show for clean::Type {
                 tybounds(f, typarams)
             }
             clean::Self(..) => f.write("Self".as_bytes()),
-            clean::Primitive(prim) => primitive_link(f, prim, prim.to_str()),
+            clean::Primitive(prim) => primitive_link(f, prim, prim.to_string()),
             clean::Closure(ref decl, ref region) => {
                 write!(f, "{style}{lifetimes}|{args}|{bounds}{arrow}",
                        style = FnStyleSpace(decl.fn_style),
@@ -405,7 +405,7 @@ impl fmt::Show for clean::Type {
                        } else {
                            let mut m = decl.bounds
                                            .iter()
-                                           .map(|s| s.to_str());
+                                           .map(|s| s.to_string());
                            format!(
                                ": {}",
                                m.collect::<Vec<String>>().connect(" + "))
@@ -607,7 +607,7 @@ impl<'a> fmt::Show for Stability<'a> {
         match *stab {
             Some(ref stability) => {
                 write!(f, "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
-                       lvl = stability.level.to_str(),
+                       lvl = stability.level.to_string(),
                        reason = stability.text)
             }
             None => Ok(())
@@ -621,7 +621,7 @@ impl<'a> fmt::Show for ConciseStability<'a> {
         match *stab {
             Some(ref stability) => {
                 write!(f, "<a class='stability {lvl}' title='{lvl}{colon}{reason}'></a>",
-                       lvl = stability.level.to_str(),
+                       lvl = stability.level.to_string(),
                        colon = if stability.text.len() > 0 { ": " } else { "" },
                        reason = stability.text)
             }

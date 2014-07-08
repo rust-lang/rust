@@ -3671,15 +3671,15 @@ An example of an object type:
 
 ~~~~
 trait Printable {
-  fn to_string(&self) -> String;
+  fn stringify(&self) -> String;
 }
 
 impl Printable for int {
-  fn to_string(&self) -> String { self.to_str() }
+  fn stringify(&self) -> String { self.to_string() }
 }
 
 fn print(a: Box<Printable>) {
-   println!("{}", a.to_string());
+   println!("{}", a.stringify());
 }
 
 fn main() {

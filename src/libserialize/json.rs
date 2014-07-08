@@ -130,7 +130,7 @@ fn main() {
     // Serialize using `ToJson`
     let test2 = TestStruct1 {data_int: 1, data_str:"toto".to_string(), data_vector:vec![2,3,4,5]};
     let tjson: json::Json = test2.to_json();
-    let json_str: String = tjson.to_str();
+    let json_str: String = tjson.to_string();
 
     // Deserialize like before
     let decoded: TestStruct1 = json::decode(json_str.as_slice()).unwrap();
@@ -2202,59 +2202,59 @@ mod tests {
 
     #[test]
     fn test_write_null() {
-        assert_eq!(Null.to_str().into_string(), "null".to_string());
+        assert_eq!(Null.to_string().into_string(), "null".to_string());
         assert_eq!(Null.to_pretty_str().into_string(), "null".to_string());
     }
 
 
     #[test]
     fn test_write_number() {
-        assert_eq!(Number(3.0).to_str().into_string(), "3".to_string());
+        assert_eq!(Number(3.0).to_string().into_string(), "3".to_string());
         assert_eq!(Number(3.0).to_pretty_str().into_string(), "3".to_string());
 
-        assert_eq!(Number(3.1).to_str().into_string(), "3.1".to_string());
+        assert_eq!(Number(3.1).to_string().into_string(), "3.1".to_string());
         assert_eq!(Number(3.1).to_pretty_str().into_string(), "3.1".to_string());
 
-        assert_eq!(Number(-1.5).to_str().into_string(), "-1.5".to_string());
+        assert_eq!(Number(-1.5).to_string().into_string(), "-1.5".to_string());
         assert_eq!(Number(-1.5).to_pretty_str().into_string(), "-1.5".to_string());
 
-        assert_eq!(Number(0.5).to_str().into_string(), "0.5".to_string());
+        assert_eq!(Number(0.5).to_string().into_string(), "0.5".to_string());
         assert_eq!(Number(0.5).to_pretty_str().into_string(), "0.5".to_string());
 
-        assert_eq!(Number(f64::NAN).to_str().into_string(), "null".to_string());
+        assert_eq!(Number(f64::NAN).to_string().into_string(), "null".to_string());
         assert_eq!(Number(f64::NAN).to_pretty_str().into_string(), "null".to_string());
 
-        assert_eq!(Number(f64::INFINITY).to_str().into_string(), "null".to_string());
+        assert_eq!(Number(f64::INFINITY).to_string().into_string(), "null".to_string());
         assert_eq!(Number(f64::INFINITY).to_pretty_str().into_string(), "null".to_string());
 
-        assert_eq!(Number(f64::NEG_INFINITY).to_str().into_string(), "null".to_string());
+        assert_eq!(Number(f64::NEG_INFINITY).to_string().into_string(), "null".to_string());
         assert_eq!(Number(f64::NEG_INFINITY).to_pretty_str().into_string(), "null".to_string());
     }
 
     #[test]
     fn test_write_str() {
-        assert_eq!(String("".to_string()).to_str().into_string(), "\"\"".to_string());
+        assert_eq!(String("".to_string()).to_string().into_string(), "\"\"".to_string());
         assert_eq!(String("".to_string()).to_pretty_str().into_string(), "\"\"".to_string());
 
-        assert_eq!(String("foo".to_string()).to_str().into_string(), "\"foo\"".to_string());
+        assert_eq!(String("foo".to_string()).to_string().into_string(), "\"foo\"".to_string());
         assert_eq!(String("foo".to_string()).to_pretty_str().into_string(), "\"foo\"".to_string());
     }
 
     #[test]
     fn test_write_bool() {
-        assert_eq!(Boolean(true).to_str().into_string(), "true".to_string());
+        assert_eq!(Boolean(true).to_string().into_string(), "true".to_string());
         assert_eq!(Boolean(true).to_pretty_str().into_string(), "true".to_string());
 
-        assert_eq!(Boolean(false).to_str().into_string(), "false".to_string());
+        assert_eq!(Boolean(false).to_string().into_string(), "false".to_string());
         assert_eq!(Boolean(false).to_pretty_str().into_string(), "false".to_string());
     }
 
     #[test]
     fn test_write_list() {
-        assert_eq!(List(vec![]).to_str().into_string(), "[]".to_string());
+        assert_eq!(List(vec![]).to_string().into_string(), "[]".to_string());
         assert_eq!(List(vec![]).to_pretty_str().into_string(), "[]".to_string());
 
-        assert_eq!(List(vec![Boolean(true)]).to_str().into_string(), "[true]".to_string());
+        assert_eq!(List(vec![Boolean(true)]).to_string().into_string(), "[true]".to_string());
         assert_eq!(
             List(vec![Boolean(true)]).to_pretty_str().into_string(),
             "\
@@ -2268,7 +2268,7 @@ mod tests {
             Null,
             List(vec![String("foo\nbar".to_string()), Number(3.5)])]);
 
-        assert_eq!(long_test_list.to_str().into_string(),
+        assert_eq!(long_test_list.to_string().into_string(),
             "[false,null,[\"foo\\nbar\",3.5]]".to_string());
         assert_eq!(
             long_test_list.to_pretty_str().into_string(),
@@ -2286,13 +2286,13 @@ mod tests {
 
     #[test]
     fn test_write_object() {
-        assert_eq!(mk_object([]).to_str().into_string(), "{}".to_string());
+        assert_eq!(mk_object([]).to_string().into_string(), "{}".to_string());
         assert_eq!(mk_object([]).to_pretty_str().into_string(), "{}".to_string());
 
         assert_eq!(
             mk_object([
                 ("a".to_string(), Boolean(true))
-            ]).to_str().into_string(),
+            ]).to_string().into_string(),
             "{\"a\":true}".to_string()
         );
         assert_eq!(
@@ -2311,7 +2311,7 @@ mod tests {
             ]);
 
         assert_eq!(
-            complex_obj.to_str().into_string(),
+            complex_obj.to_string().into_string(),
             "{\
                 \"b\":[\
                     {\"c\":\"\\f\\r\"},\
@@ -2344,7 +2344,7 @@ mod tests {
 
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
-        assert_eq!(a.clone(), from_str(a.to_str().as_slice()).unwrap());
+        assert_eq!(a.clone(), from_str(a.to_string().as_slice()).unwrap());
         assert_eq!(a.clone(),
                    from_str(a.to_pretty_str().as_slice()).unwrap());
     }

@@ -64,7 +64,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     'statement: loop {
         match state {
             Asm => {
-                let (s, style) = match expr_to_str(cx, p.parse_expr(),
+                let (s, style) = match expr_to_string(cx, p.parse_expr(),
                                                    "inline assembly must be a string literal.") {
                     Some((s, st)) => (s, st),
                     // let compilation continue
@@ -205,7 +205,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     // Append an input operand, with the form of ("0", expr)
     // that links to an output operand.
     for &(i, out) in read_write_operands.iter() {
-        inputs.push((token::intern_and_get_ident(i.to_str().as_slice()),
+        inputs.push((token::intern_and_get_ident(i.to_string().as_slice()),
                                                  out));
     }
 

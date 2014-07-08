@@ -39,7 +39,7 @@ impl<T:to_str> to_str for Option<T> {
 
 impl to_str for int {
     fn to_str_(&self) -> String {
-        self.to_str()
+        self.to_string()
     }
 }
 
