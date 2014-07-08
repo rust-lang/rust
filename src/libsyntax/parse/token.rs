@@ -76,6 +76,7 @@ pub enum Token {
     RBRACE,
     POUND,
     DOLLAR,
+    QUESTION,
 
     /* Literals */
     LIT_BYTE(u8),
@@ -195,6 +196,7 @@ pub fn to_str(t: &Token) -> String {
       RBRACE => "}".to_string(),
       POUND => "#".to_string(),
       DOLLAR => "$".to_string(),
+      QUESTION => "?".to_string(),
 
       /* Literals */
       LIT_BYTE(b) => {

@@ -895,9 +895,9 @@ impl<'a> Rebuilder<'a> {
                 ident: ty_param.ident,
                 id: ty_param.id,
                 bounds: bounds,
+                unbound: ty_param.unbound.clone(),
                 default: ty_param.default,
                 span: ty_param.span,
-                sized: ty_param.sized,
             }
         })
     }

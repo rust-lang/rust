@@ -740,14 +740,19 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose(item.span));
             }
-            ast::ItemTrait(ref generics, ref sized, ref traits, ref methods) => {
+            ast::ItemTrait(ref generics, ref unbound, ref traits, ref methods) => {
                 try!(self.head(visibility_qualified(item.vis,
                                                     "trait").as_slice()));
                 try!(self.print_ident(item.ident));
                 try!(self.print_generics(generics));
-                if *sized == ast::DynSize {
-                    try!(space(&mut self.s));
-                    try!(word(&mut self.s, "for type"));
+                match unbound {
+                    &Some(TraitTyParamBound(ref tref)) => {
+                        try!(space(&mut self.s));
+                        try!(self.word_space("for"));
+                        try!(self.print_trait_ref(tref));
+                        try!(word(&mut self.s, "?"));
+                    }
+                    _ => {}
                 }
                 if traits.len() != 0u {
                     try!(word(&mut self.s, ":"));
@@ -2029,8 +2034,12 @@ impl<'a> State<'a> {
                     } else {
                         let idx = idx - generics.lifetimes.len();
                         let param = generics.ty_params.get(idx);
-                        if param.sized == ast::DynSize {
-                            try!(s.word_space("type"));
+                        match param.unbound {
+                            Some(TraitTyParamBound(ref tref)) => {
+                                try!(s.print_trait_ref(tref));
+                                try!(s.word_space("?"));
+                            }
+                            _ => {}
                         }
                         try!(s.print_ident(param.ident));
                         try!(s.print_bounds(&None,

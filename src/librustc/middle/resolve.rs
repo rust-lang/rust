@@ -3598,6 +3598,7 @@ impl<'a> Resolver<'a> {
                                                                item.id,
                                                                ItemRibKind),
                                              |this| {
+                    this.resolve_type_parameters(&generics.ty_params);
                     visit::walk_item(this, item, ());
                 });
             }
@@ -3623,7 +3624,7 @@ impl<'a> Resolver<'a> {
                                             methods.as_slice());
             }
 
-            ItemTrait(ref generics, _, ref traits, ref methods) => {
+            ItemTrait(ref generics, ref unbound, ref traits, ref methods) => {
                 // Create a new rib for the self type.
                 let self_type_rib = Rib::new(ItemRibKind);
 
@@ -3644,6 +3645,12 @@ impl<'a> Resolver<'a> {
                     // Resolve derived traits.
                     for trt in traits.iter() {
                         this.resolve_trait_reference(item.id, trt, TraitDerivation);
+                    }
+                    match unbound {
+                        &Some(ast::TraitTyParamBound(ref tpb)) => {
+                            this.resolve_trait_reference(item.id, tpb, TraitDerivation);
+                        }
+                        _ => {}
                     }
 
                     for method in (*methods).iter() {
@@ -3856,10 +3863,14 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_type_parameters(&mut self,
-                                   type_parameters: &OwnedSlice<TyParam>) {
+                               type_parameters: &OwnedSlice<TyParam>) {
         for type_parameter in type_parameters.iter() {
             for bound in type_parameter.bounds.iter() {
                 self.resolve_type_parameter_bound(type_parameter.id, bound);
+            }
+            match &type_parameter.unbound {
+                &Some(ref unbound) => self.resolve_type_parameter_bound(type_parameter.id, unbound),
+                &None => {}
             }
             match type_parameter.default {
                 Some(ref ty) => self.resolve_type(&**ty),
@@ -3887,9 +3898,9 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_trait_reference(&mut self,
-                                   id: NodeId,
-                                   trait_reference: &TraitRef,
-                                   reference_type: TraitReferenceType) {
+                               id: NodeId,
+                               trait_reference: &TraitRef,
+                               reference_type: TraitReferenceType) {
         match self.resolve_path(id, &trait_reference.path, TypeNS, true) {
             None => {
                 let path_str = self.path_idents_to_str(&trait_reference.path);

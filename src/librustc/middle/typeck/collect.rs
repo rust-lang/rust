@@ -692,9 +692,9 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
         _ => {}
     }
 
-    let (generics, sized, supertraits) = match it.node {
-        ast::ItemTrait(ref generics, sized, ref supertraits, _) => {
-            (generics, sized, supertraits)
+    let (generics, unbound, supertraits) = match it.node {
+        ast::ItemTrait(ref generics, ref unbound, ref supertraits, _) => {
+            (generics, unbound, supertraits)
         }
         ref s => {
             tcx.sess.span_bug(
@@ -711,7 +711,7 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
                                             generics);
 
     let builtin_bounds =
-        ensure_supertraits(ccx, it.id, it.span, supertraits, sized);
+        ensure_supertraits(ccx, it.id, it.span, supertraits, unbound);
 
     let substs = mk_item_substs(ccx, &ty_generics);
     let trait_def = Rc::new(ty::TraitDef {
@@ -759,7 +759,7 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
                           id: ast::NodeId,
                           sp: codemap::Span,
                           ast_trait_refs: &Vec<ast::TraitRef>,
-                          sized: ast::Sized)
+                          unbound: &Option<ast::TyParamBound>)
                           -> ty::BuiltinBounds
     {
         let tcx = ccx.tcx;
@@ -798,15 +798,7 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
             }
         }
 
-        if sized == ast::StaticSize {
-            match tcx.lang_items.require(SizedTraitLangItem) {
-                Ok(def_id) => {
-                    ty::try_add_builtin_trait(tcx, def_id, &mut bounds);
-                }
-                Err(s) => tcx.sess.err(s.as_slice()),
-            };
-        }
-
+        add_unsized_bound(ccx, unbound, &mut bounds, "trait", sp);
         tcx.supertraits.borrow_mut().insert(local_def(id),
                                             Rc::new(ty_trait_refs));
         bounds
@@ -974,6 +966,43 @@ fn ty_generics_for_fn_or_method(ccx: &CrateCtxt,
                 &generics.ty_params, base_generics)
 }
 
+// Add the Sized bound, unless the type parameter is marked as `Sized?`.
+fn add_unsized_bound(ccx: &CrateCtxt,
+                     unbound: &Option<ast::TyParamBound>,
+                     bounds: &mut ty::BuiltinBounds,
+                     desc: &str,
+                     span: Span) {
+    let kind_id = ccx.tcx.lang_items.require(SizedTraitLangItem);
+    match unbound {
+        &Some(TraitTyParamBound(ref tpb)) => {
+            // #FIXME(8559) currently requires the unbound to be built-in.
+            let trait_def_id = ty::trait_ref_to_def_id(ccx.tcx, tpb);
+            match kind_id {
+                Ok(kind_id) if trait_def_id != kind_id => {
+                    ccx.tcx.sess.span_warn(span,
+                                           format!("default bound relaxed \
+                                                    for a {}, but this does \
+                                                    nothing because the given \
+                                                    bound is not a default. \
+                                                    Only `Sized?` is supported.",
+                                                   desc).as_slice());
+                    ty::try_add_builtin_trait(ccx.tcx,
+                                              kind_id,
+                                              bounds);
+                }
+                _ => {}
+            }
+        }
+        _ if kind_id.is_ok() => {
+            ty::try_add_builtin_trait(ccx.tcx,
+                                      kind_id.unwrap(),
+                                      bounds);
+        }
+        // No lang item for Sized, so we can't add it as a bound.
+        _ => {}
+    }
+}
+
 fn ty_generics(ccx: &CrateCtxt,
                space: subst::ParamSpace,
                lifetimes: &Vec<ast::Lifetime>,
@@ -1016,7 +1045,7 @@ fn ty_generics(ccx: &CrateCtxt,
         let bounds = Rc::new(compute_bounds(ccx,
                                             param_ty,
                                             &param.bounds,
-                                            param.sized,
+                                            &param.unbound,
                                             param.ident,
                                             param.span));
         let default = param.default.map(|path| {
@@ -1056,7 +1085,7 @@ fn ty_generics(ccx: &CrateCtxt,
         ccx: &CrateCtxt,
         param_ty: ty::ParamTy,
         ast_bounds: &OwnedSlice<ast::TyParamBound>,
-        sized: ast::Sized,
+        unbound: &Option<ast::TyParamBound>,
         ident: ast::Ident,
         span: Span) -> ty::ParamBounds
     {
@@ -1113,15 +1142,11 @@ fn ty_generics(ccx: &CrateCtxt,
             }
         }
 
-        if sized == ast::StaticSize {
-            match ccx.tcx.lang_items.require(SizedTraitLangItem) {
-                Ok(def_id) => { ty::try_add_builtin_trait(ccx.tcx,
-                                                          def_id,
-                                                          &mut param_bounds.builtin_bounds); },
-                // Fixme(13367) after `type` makes it into the snapshot, we can check this properly
-                Err(_s) => {}, //ccx.tcx.sess.err(s),
-            }
-        }
+        add_unsized_bound(ccx,
+                          unbound,
+                          &mut param_bounds.builtin_bounds,
+                          "type parameter",
+                          span);
 
         check_bounds_compatible(ccx.tcx, &param_bounds, ident, span);
 
