@@ -575,12 +575,12 @@ impl LintPass for UnusedAttribute {
         ];
 
         static CRATE_ATTRS: &'static [&'static str] = &[
+            "crate_name",
             "crate_type",
             "feature",
             "no_start",
             "no_main",
             "no_std",
-            "crate_id",
             "desc",
             "comment",
             "license",
