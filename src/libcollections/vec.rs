@@ -645,7 +645,7 @@ impl<T> Vec<T> {
 
     /// Takes ownership of the vector `other`, moving all elements into
     /// the current vector. Afterwards, the current vector is returned for use
-    /// again. This does not copy any elements, and it is illegal to use the 
+    /// again. This does not copy any elements, and it is illegal to use the
     ///`other` vector after calling this method (because it is moved here).
     ///
     /// # Example
