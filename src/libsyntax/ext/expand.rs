@@ -1325,6 +1325,14 @@ mod test {
             "macro_rules! m((a)=>(13)) fn main(){m!(a);}".to_string());
     }
 
+    // should be able to use a bound identifier as a literal in a macro definition:
+    #[test] fn self_macro_parsing(){
+        expand_crate_str(
+            "macro_rules! foo ((zz) => (287u;))
+            fn f(zz : int) {foo!(zz);}".to_string()
+            );
+    }
+
     // renaming tests expand a crate and then check that the bindings match
     // the right varrefs. The specification of the test case includes the
     // text of the crate, and also an array of arrays.  Each element in the
