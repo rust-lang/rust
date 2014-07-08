@@ -903,10 +903,21 @@ pub fn build_output_filenames(input: &Input,
             };
 
             // If a crate name is present, we use it as the link name
-           let stem = match attr::find_crate_name(attrs) {
-                None => input.filestem(),
-                Some(name) => name.get().to_string(),
-            };
+            let stem = sess.opts.crate_name.clone().or_else(|| {
+                attr::find_crate_name(attrs).map(|n| n.get().to_string())
+            }).or_else(|| {
+                // NB: this clause can be removed once #[crate_id] is no longer
+                // deprecated.
+                //
+                // Also note that this will be warned about later so we don't
+                // warn about it here.
+                use syntax::crateid::CrateId;
+                attrs.iter().find(|at| at.check_name("crate_id"))
+                     .and_then(|at| at.value_str())
+                     .and_then(|s| from_str::<CrateId>(s.get()))
+                     .map(|id| id.name)
+            }).unwrap_or(input.filestem());
+
             OutputFilenames {
                 out_directory: dirpath,
                 out_filestem: stem,
