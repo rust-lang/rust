@@ -42,8 +42,6 @@ r##"<!DOCTYPE html>
 
     <title>{title}</title>
 
-    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro:400,600'
-          rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="{root_path}main.css">
 
     {favicon}

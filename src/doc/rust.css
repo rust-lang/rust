@@ -40,6 +40,12 @@
     font-weight: 700;
     src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
 }
+@font-face {
+    font-family: 'Source Code Pro';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Source Code Pro'), url("SourceCodePro-Regular.woff") format('woff');
+}
 
 *:not(body) {
   -webkit-box-sizing: border-box;
