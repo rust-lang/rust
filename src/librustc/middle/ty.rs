@@ -3887,13 +3887,13 @@ pub fn lookup_trait_def(cx: &ctxt, did: ast::DefId) -> Rc<ty::TraitDef> {
 pub fn each_attr(tcx: &ctxt, did: DefId, f: |&ast::Attribute| -> bool) -> bool {
     if is_local(did) {
         let item = tcx.map.expect_item(did.node);
-        item.attrs.iter().advance(|attr| f(attr))
+        item.attrs.iter().all(|attr| f(attr))
     } else {
         info!("getting foreign attrs");
         let mut cont = true;
         csearch::get_item_attrs(&tcx.sess.cstore, did, |attrs| {
             if cont {
-                cont = attrs.iter().advance(|attr| f(attr));
+                cont = attrs.iter().all(|attr| f(attr));
             }
         });
         info!("done");

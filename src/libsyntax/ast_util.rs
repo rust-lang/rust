@@ -611,18 +611,18 @@ pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
     match pat.node {
         PatIdent(_, _, Some(ref p)) => walk_pat(&**p, it),
         PatStruct(_, ref fields, _) => {
-            fields.iter().advance(|f| walk_pat(&*f.pat, |p| it(p)))
+            fields.iter().all(|field| walk_pat(&*field.pat, |p| it(p)))
         }
         PatEnum(_, Some(ref s)) | PatTup(ref s) => {
-            s.iter().advance(|p| walk_pat(&**p, |p| it(p)))
+            s.iter().all(|p| walk_pat(&**p, |p| it(p)))
         }
         PatBox(ref s) | PatRegion(ref s) => {
             walk_pat(&**s, it)
         }
         PatVec(ref before, ref slice, ref after) => {
-            before.iter().advance(|p| walk_pat(&**p, |p| it(p))) &&
-                slice.iter().advance(|p| walk_pat(&**p, |p| it(p))) &&
-                after.iter().advance(|p| walk_pat(&**p, |p| it(p)))
+            before.iter().all(|p| walk_pat(&**p, |p| it(p))) &&
+            slice.iter().all(|p| walk_pat(&**p, |p| it(p))) &&
+            after.iter().all(|p| walk_pat(&**p, |p| it(p)))
         }
         PatMac(_) => fail!("attempted to analyze unexpanded pattern"),
         PatWild | PatWildMulti | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
