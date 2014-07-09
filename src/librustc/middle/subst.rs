@@ -570,10 +570,22 @@ impl<'a> TypeFolder for SubstFolder<'a> {
         // the specialized routine
         // `middle::typeck::check::regionmanip::replace_late_regions_in_fn_sig()`.
         match r {
-            ty::ReEarlyBound(_, space, i, _) => {
+            ty::ReEarlyBound(_, space, i, region_name) => {
                 match self.substs.regions {
                     ErasedRegions => ty::ReStatic,
-                    NonerasedRegions(ref regions) => *regions.get(space, i),
+                    NonerasedRegions(ref regions) =>
+                        match regions.opt_get(space, i) {
+                            Some(t) => *t,
+                            None => {
+                                let span = self.span.unwrap_or(DUMMY_SP);
+                                self.tcx().sess.span_bug(
+                                    span,
+                                    format!("Type parameter out of range \
+                                     when substituting in region {} (root type={})",
+                                    region_name.as_str(),
+                                    self.root_ty.repr(self.tcx())).as_slice());
+                            }
+                        }
                 }
             }
             _ => r
