@@ -207,12 +207,12 @@ impl<N,E> Graph<N,E> {
 
     pub fn each_node<'a>(&'a self, f: |NodeIndex, &'a Node<N>| -> bool) -> bool {
         //! Iterates over all edges defined in the graph.
-        self.nodes.iter().enumerate().advance(|(i, node)| f(NodeIndex(i), node))
+        self.nodes.iter().enumerate().all(|(i, node)| f(NodeIndex(i), node))
     }
 
     pub fn each_edge<'a>(&'a self, f: |EdgeIndex, &'a Edge<E>| -> bool) -> bool {
         //! Iterates over all edges defined in the graph
-        self.edges.iter().enumerate().advance(|(i, edge)| f(EdgeIndex(i), edge))
+        self.edges.iter().enumerate().all(|(i, edge)| f(EdgeIndex(i), edge))
     }
 
     pub fn each_outgoing_edge<'a>(&'a self,
