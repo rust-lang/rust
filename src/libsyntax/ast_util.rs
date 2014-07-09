@@ -754,14 +754,14 @@ mod test {
 
     #[test] fn idents_name_eq_test() {
         assert!(segments_name_eq(
-            [Ident{name:3,ctxt:4}, Ident{name:78,ctxt:82}]
+            [Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
                 .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice(),
-            [Ident{name:3,ctxt:104}, Ident{name:78,ctxt:182}]
+            [Ident{name:Name(3),ctxt:104}, Ident{name:Name(78),ctxt:182}]
                 .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice()));
         assert!(!segments_name_eq(
-            [Ident{name:3,ctxt:4}, Ident{name:78,ctxt:82}]
+            [Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
                 .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice(),
-            [Ident{name:3,ctxt:104}, Ident{name:77,ctxt:182}]
+            [Ident{name:Name(3),ctxt:104}, Ident{name:Name(77),ctxt:182}]
                 .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice()));
     }
 }

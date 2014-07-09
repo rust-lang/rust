@@ -301,8 +301,8 @@ mod tests {
         assert_eq!(s.clone(), vec!(14));
     }
 
-    fn id(n: Name, s: SyntaxContext) -> Ident {
-        Ident {name: n, ctxt: s}
+    fn id(n: u32, s: SyntaxContext) -> Ident {
+        Ident {name: Name(n), ctxt: s}
     }
 
     // because of the SCTable, I now need a tidy way of
@@ -349,12 +349,12 @@ mod tests {
     fn test_unfold_refold(){
         let mut t = new_sctable_internal();
 
-        let test_sc = vec!(M(3),R(id(101,0),14),M(9));
+        let test_sc = vec!(M(3),R(id(101,0),Name(14)),M(9));
         assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
         {
             let table = t.table.borrow();
             assert!(*table.get(2) == Mark(9,0));
-            assert!(*table.get(3) == Rename(id(101,0),14,2));
+            assert!(*table.get(3) == Rename(id(101,0),Name(14),2));
             assert!(*table.get(4) == Mark(3,3));
         }
         assert_eq!(refold_test_sc(4,&t),test_sc);
@@ -381,8 +381,8 @@ mod tests {
 
     #[test]
     fn test_marksof () {
-        let stopname = 242;
-        let name1 = 243;
+        let stopname = Name(242);
+        let name1 = Name(243);
         let mut t = new_sctable_internal();
         assert_eq!(marksof_internal (EMPTY_CTXT,stopname,&t),Vec::new());
         // FIXME #5074: ANF'd to dodge nested calls
@@ -396,16 +396,16 @@ mod tests {
          assert_eq! (marksof_internal (ans, stopname,&t), vec!(16));}
         // rename where stop doesn't match:
         { let chain = vec!(M(9),
-                        R(id(name1,
+                        R(id(name1.uint() as u32,
                              apply_mark_internal (4, EMPTY_CTXT,&mut t)),
-                          100101102),
+                          Name(100101102)),
                         M(14));
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
          assert_eq! (marksof_internal (ans, stopname, &t), vec!(9,14));}
         // rename where stop does match
         { let name1sc = apply_mark_internal(4, EMPTY_CTXT, &mut t);
          let chain = vec!(M(9),
-                       R(id(name1, name1sc),
+                       R(id(name1.uint() as u32, name1sc),
                          stopname),
                        M(14));
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
@@ -419,55 +419,55 @@ mod tests {
         let mut t = new_sctable_internal();
         let mut rt = HashMap::new();
         // - ctxt is MT
-        assert_eq!(resolve_internal(id(a,EMPTY_CTXT),&mut t, &mut rt),a);
+        assert_eq!(resolve_internal(id(a,EMPTY_CTXT),&mut t, &mut rt),Name(a));
         // - simple ignored marks
         { let sc = unfold_marks(vec!(1,2,3),EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),Name(a));}
         // - orthogonal rename where names don't match
-        { let sc = unfold_test_sc(vec!(R(id(50,EMPTY_CTXT),51),M(12)),EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
+        { let sc = unfold_test_sc(vec!(R(id(50,EMPTY_CTXT),Name(51)),M(12)),EMPTY_CTXT,&mut t);
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),Name(a));}
         // - rename where names do match, but marks don't
         { let sc1 = apply_mark_internal(1,EMPTY_CTXT,&mut t);
-         let sc = unfold_test_sc(vec!(R(id(a,sc1),50),
+         let sc = unfold_test_sc(vec!(R(id(a,sc1),Name(50)),
                                    M(1),
                                    M(2)),
                                  EMPTY_CTXT,&mut t);
-        assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), a);}
+        assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), Name(a));}
         // - rename where names and marks match
         { let sc1 = unfold_test_sc(vec!(M(1),M(2)),EMPTY_CTXT,&mut t);
-         let sc = unfold_test_sc(vec!(R(id(a,sc1),50),M(1),M(2)),EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
+         let sc = unfold_test_sc(vec!(R(id(a,sc1),Name(50)),M(1),M(2)),EMPTY_CTXT,&mut t);
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), Name(50)); }
         // - rename where names and marks match by literal sharing
         { let sc1 = unfold_test_sc(vec!(M(1),M(2)),EMPTY_CTXT,&mut t);
-         let sc = unfold_test_sc(vec!(R(id(a,sc1),50)),sc1,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
+         let sc = unfold_test_sc(vec!(R(id(a,sc1),Name(50))),sc1,&mut t);
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), Name(50)); }
         // - two renames of the same var.. can only happen if you use
         // local-expand to prevent the inner binding from being renamed
         // during the rename-pass caused by the first:
         println!("about to run bad test");
-        { let sc = unfold_test_sc(vec!(R(id(a,EMPTY_CTXT),50),
-                                    R(id(a,EMPTY_CTXT),51)),
+        { let sc = unfold_test_sc(vec!(R(id(a,EMPTY_CTXT),Name(50)),
+                                    R(id(a,EMPTY_CTXT),Name(51))),
                                   EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 51); }
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), Name(51)); }
         // the simplest double-rename:
-        { let a_to_a50 = apply_rename_internal(id(a,EMPTY_CTXT),50,EMPTY_CTXT,&mut t);
-         let a50_to_a51 = apply_rename_internal(id(a,a_to_a50),51,a_to_a50,&mut t);
-         assert_eq!(resolve_internal(id(a,a50_to_a51),&mut t, &mut rt),51);
+        { let a_to_a50 = apply_rename_internal(id(a,EMPTY_CTXT),Name(50),EMPTY_CTXT,&mut t);
+         let a50_to_a51 = apply_rename_internal(id(a,a_to_a50),Name(51),a_to_a50,&mut t);
+         assert_eq!(resolve_internal(id(a,a50_to_a51),&mut t, &mut rt),Name(51));
          // mark on the outside doesn't stop rename:
          let sc = apply_mark_internal(9,a50_to_a51,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),51);
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),Name(51));
          // but mark on the inside does:
-         let a50_to_a51_b = unfold_test_sc(vec!(R(id(a,a_to_a50),51),
+         let a50_to_a51_b = unfold_test_sc(vec!(R(id(a,a_to_a50),Name(51)),
                                               M(9)),
                                            a_to_a50,
                                            &mut t);
-         assert_eq!(resolve_internal(id(a,a50_to_a51_b),&mut t, &mut rt),50);}
+         assert_eq!(resolve_internal(id(a,a50_to_a51_b),&mut t, &mut rt),Name(50));}
     }
 
     #[test]
     fn mtwt_resolve_test(){
         let a = 40;
-        assert_eq!(resolve(id(a,EMPTY_CTXT)),a);
+        assert_eq!(resolve(id(a,EMPTY_CTXT)),Name(a));
     }
 
 
@@ -496,10 +496,10 @@ mod tests {
 
     #[test]
     fn new_resolves_test() {
-        let renames = vec!((Ident{name:23,ctxt:EMPTY_CTXT},24),
-                           (Ident{name:29,ctxt:EMPTY_CTXT},29));
+        let renames = vec!((Ident{name:Name(23),ctxt:EMPTY_CTXT},Name(24)),
+                           (Ident{name:Name(29),ctxt:EMPTY_CTXT},Name(29)));
         let new_ctxt1 = apply_renames(&renames,EMPTY_CTXT);
-        assert_eq!(resolve(Ident{name:23,ctxt:new_ctxt1}),24);
-        assert_eq!(resolve(Ident{name:29,ctxt:new_ctxt1}),29);
+        assert_eq!(resolve(Ident{name:Name(23),ctxt:new_ctxt1}),Name(24));
+        assert_eq!(resolve(Ident{name:Name(29),ctxt:new_ctxt1}),Name(29));
     }
 }

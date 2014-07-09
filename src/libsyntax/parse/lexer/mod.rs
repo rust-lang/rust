@@ -1326,11 +1326,14 @@ mod test {
             "/* my source file */ \
              fn main() { println!(\"zebra\"); }\n".to_string());
         let id = str_to_ident("fn");
+        assert_eq!(string_reader.next_token().tok, token::COMMENT);
+        assert_eq!(string_reader.next_token().tok, token::WS);
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan{
             tok:token::IDENT(id, false),
             sp:Span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
         assert_eq!(tok1,tok2);
+        assert_eq!(string_reader.next_token().tok, token::WS);
         // the 'main' id is already read:
         assert_eq!(string_reader.last_pos.clone(), BytePos(28));
         // read another token:
@@ -1359,6 +1362,7 @@ mod test {
     #[test] fn doublecolonparsing () {
         check_tokenization(setup(&mk_sh(), "a b".to_string()),
                            vec!(mk_ident("a",false),
+                            token::WS,
                              mk_ident("b",false)));
     }
 
@@ -1372,6 +1376,7 @@ mod test {
     #[test] fn dcparsing_3 () {
         check_tokenization(setup(&mk_sh(), "a ::b".to_string()),
                            vec!(mk_ident("a",false),
+                             token::WS,
                              token::MOD_SEP,
                              mk_ident("b",false)));
     }
@@ -1380,22 +1385,23 @@ mod test {
         check_tokenization(setup(&mk_sh(), "a:: b".to_string()),
                            vec!(mk_ident("a",true),
                              token::MOD_SEP,
+                             token::WS,
                              mk_ident("b",false)));
     }
 
     #[test] fn character_a() {
         assert_eq!(setup(&mk_sh(), "'a'".to_string()).next_token().tok,
-                   token::LIT_CHAR('a'));
+                   token::LIT_CHAR(token::intern("a")));
     }
 
     #[test] fn character_space() {
         assert_eq!(setup(&mk_sh(), "' '".to_string()).next_token().tok,
-                   token::LIT_CHAR(' '));
+                   token::LIT_CHAR(token::intern(" ")));
     }
 
     #[test] fn character_escaped() {
         assert_eq!(setup(&mk_sh(), "'\\n'".to_string()).next_token().tok,
-                   token::LIT_CHAR('\n'));
+                   token::LIT_CHAR(token::intern("\\n")));
     }
 
     #[test] fn lifetime_name() {
@@ -1407,7 +1413,7 @@ mod test {
         assert_eq!(setup(&mk_sh(),
                          "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token()
                                                                  .tok,
-                   token::LIT_STR_RAW(token::str_to_ident("\"#a\\b\x00c\""), 3));
+                   token::LIT_STR_RAW(token::intern("\"#a\\b\x00c\""), 3));
     }
 
     #[test] fn line_doc_comments() {
@@ -1417,9 +1423,13 @@ mod test {
     }
 
     #[test] fn nested_block_comments() {
-        assert_eq!(setup(&mk_sh(),
-                         "/* /* */ */'a'".to_string()).next_token().tok,
-                   token::LIT_CHAR('a'));
+        let sh = mk_sh();
+        let mut lexer = setup(&sh, "/* /* */ */'a'".to_string());
+        match lexer.next_token().tok {
+            token::COMMENT => { },
+            _ => fail!("expected a comment!")
+        }
+        assert_eq!(lexer.next_token().tok, token::LIT_CHAR(token::intern("a")));
     }
 
 }

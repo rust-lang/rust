@@ -1150,7 +1150,7 @@ mod test {
     use super::{pattern_bindings, expand_crate, contains_macro_escape};
     use super::{PatIdentFinder, IdentRenamer, PatIdentRenamer};
     use ast;
-    use ast::{Attribute_, AttrOuter, MetaWord};
+    use ast::{Attribute_, AttrOuter, MetaWord, Name};
     use attr;
     use codemap;
     use codemap::Spanned;
@@ -1665,12 +1665,12 @@ foo_module!()
         let f_ident = token::str_to_ident("f");
         let x_ident = token::str_to_ident("x");
         let int_ident = token::str_to_ident("int");
-        let renames = vec!((x_ident,16));
+        let renames = vec!((x_ident,Name(16)));
         let mut renamer = IdentRenamer{renames: &renames};
         let renamed_crate = renamer.fold_crate(the_crate);
         let idents = crate_idents(&renamed_crate);
         let resolved : Vec<ast::Name> = idents.iter().map(|id| mtwt::resolve(*id)).collect();
-        assert_eq!(resolved,vec!(f_ident.name,16,int_ident.name,16,16,16));
+        assert_eq!(resolved,vec!(f_ident.name,Name(16),int_ident.name,Name(16),Name(16),Name(16)));
     }
 
     // test the PatIdentRenamer; only PatIdents get renamed
@@ -1680,13 +1680,13 @@ foo_module!()
         let f_ident = token::str_to_ident("f");
         let x_ident = token::str_to_ident("x");
         let int_ident = token::str_to_ident("int");
-        let renames = vec!((x_ident,16));
+        let renames = vec!((x_ident,Name(16)));
         let mut renamer = PatIdentRenamer{renames: &renames};
         let renamed_crate = renamer.fold_crate(the_crate);
         let idents = crate_idents(&renamed_crate);
         let resolved : Vec<ast::Name> = idents.iter().map(|id| mtwt::resolve(*id)).collect();
         let x_name = x_ident.name;
-        assert_eq!(resolved,vec!(f_ident.name,16,int_ident.name,16,x_name,x_name));
+        assert_eq!(resolved,vec!(f_ident.name,Name(16),int_ident.name,Name(16),x_name,x_name));
     }
 
 
