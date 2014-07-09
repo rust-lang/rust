@@ -222,36 +222,38 @@ impl StrInterner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ast::Name;
+
     #[test]
     #[should_fail]
     fn i1 () {
         let i : Interner<RcStr> = Interner::new();
-        i.get(13);
+        i.get(Name(13));
     }
 
     #[test]
     fn interner_tests () {
         let i : Interner<RcStr> = Interner::new();
         // first one is zero:
-        assert_eq!(i.intern(RcStr::new("dog")), 0);
+        assert_eq!(i.intern(RcStr::new("dog")), Name(0));
         // re-use gets the same entry:
-        assert_eq!(i.intern(RcStr::new("dog")), 0);
+        assert_eq!(i.intern(RcStr::new("dog")), Name(0));
         // different string gets a different #:
-        assert_eq!(i.intern(RcStr::new("cat")), 1);
-        assert_eq!(i.intern(RcStr::new("cat")), 1);
+        assert_eq!(i.intern(RcStr::new("cat")), Name(1));
+        assert_eq!(i.intern(RcStr::new("cat")), Name(1));
         // dog is still at zero
-        assert_eq!(i.intern(RcStr::new("dog")), 0);
+        assert_eq!(i.intern(RcStr::new("dog")), Name(0));
         // gensym gets 3
-        assert_eq!(i.gensym(RcStr::new("zebra") ), 2);
+        assert_eq!(i.gensym(RcStr::new("zebra") ), Name(2));
         // gensym of same string gets new number :
-        assert_eq!(i.gensym (RcStr::new("zebra") ), 3);
+        assert_eq!(i.gensym (RcStr::new("zebra") ), Name(3));
         // gensym of *existing* string gets new number:
-        assert_eq!(i.gensym(RcStr::new("dog")), 4);
-        assert_eq!(i.get(0), RcStr::new("dog"));
-        assert_eq!(i.get(1), RcStr::new("cat"));
-        assert_eq!(i.get(2), RcStr::new("zebra"));
-        assert_eq!(i.get(3), RcStr::new("zebra"));
-        assert_eq!(i.get(4), RcStr::new("dog"));
+        assert_eq!(i.gensym(RcStr::new("dog")), Name(4));
+        assert_eq!(i.get(Name(0)), RcStr::new("dog"));
+        assert_eq!(i.get(Name(1)), RcStr::new("cat"));
+        assert_eq!(i.get(Name(2)), RcStr::new("zebra"));
+        assert_eq!(i.get(Name(3)), RcStr::new("zebra"));
+        assert_eq!(i.get(Name(4)), RcStr::new("dog"));
     }
 
     #[test]
@@ -261,39 +263,39 @@ mod tests {
             RcStr::new("Bob"),
             RcStr::new("Carol")
         ]);
-        assert_eq!(i.get(0), RcStr::new("Alan"));
-        assert_eq!(i.get(1), RcStr::new("Bob"));
-        assert_eq!(i.get(2), RcStr::new("Carol"));
-        assert_eq!(i.intern(RcStr::new("Bob")), 1);
+        assert_eq!(i.get(Name(0)), RcStr::new("Alan"));
+        assert_eq!(i.get(Name(1)), RcStr::new("Bob"));
+        assert_eq!(i.get(Name(2)), RcStr::new("Carol"));
+        assert_eq!(i.intern(RcStr::new("Bob")), Name(1));
     }
 
     #[test]
     fn string_interner_tests() {
         let i : StrInterner = StrInterner::new();
         // first one is zero:
-        assert_eq!(i.intern("dog"), 0);
+        assert_eq!(i.intern("dog"), Name(0));
         // re-use gets the same entry:
-        assert_eq!(i.intern ("dog"), 0);
+        assert_eq!(i.intern ("dog"), Name(0));
         // different string gets a different #:
-        assert_eq!(i.intern("cat"), 1);
-        assert_eq!(i.intern("cat"), 1);
+        assert_eq!(i.intern("cat"), Name(1));
+        assert_eq!(i.intern("cat"), Name(1));
         // dog is still at zero
-        assert_eq!(i.intern("dog"), 0);
+        assert_eq!(i.intern("dog"), Name(0));
         // gensym gets 3
-        assert_eq!(i.gensym("zebra"), 2);
+        assert_eq!(i.gensym("zebra"), Name(2));
         // gensym of same string gets new number :
-        assert_eq!(i.gensym("zebra"), 3);
+        assert_eq!(i.gensym("zebra"), Name(3));
         // gensym of *existing* string gets new number:
-        assert_eq!(i.gensym("dog"), 4);
+        assert_eq!(i.gensym("dog"), Name(4));
         // gensym tests again with gensym_copy:
-        assert_eq!(i.gensym_copy(2), 5);
-        assert_eq!(i.get(5), RcStr::new("zebra"));
-        assert_eq!(i.gensym_copy(2), 6);
-        assert_eq!(i.get(6), RcStr::new("zebra"));
-        assert_eq!(i.get(0), RcStr::new("dog"));
-        assert_eq!(i.get(1), RcStr::new("cat"));
-        assert_eq!(i.get(2), RcStr::new("zebra"));
-        assert_eq!(i.get(3), RcStr::new("zebra"));
-        assert_eq!(i.get(4), RcStr::new("dog"));
+        assert_eq!(i.gensym_copy(Name(2)), Name(5));
+        assert_eq!(i.get(Name(5)), RcStr::new("zebra"));
+        assert_eq!(i.gensym_copy(Name(2)), Name(6));
+        assert_eq!(i.get(Name(6)), RcStr::new("zebra"));
+        assert_eq!(i.get(Name(0)), RcStr::new("dog"));
+        assert_eq!(i.get(Name(1)), RcStr::new("cat"));
+        assert_eq!(i.get(Name(2)), RcStr::new("zebra"));
+        assert_eq!(i.get(Name(3)), RcStr::new("zebra"));
+        assert_eq!(i.get(Name(4)), RcStr::new("dog"));
     }
 }
