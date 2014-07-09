@@ -34,6 +34,7 @@ changes to the Rust distribution. What constitutes a "substantial"
 change is evolving based on community norms, but may include the following.
 
    - Any semantic or syntactic change to the language that is not a bugfix.
+   - Removing language features, including those that are feature-gated.
    - Changes to the interface between the compiler and libraries,
 including lang items and intrinsics.
    - Additions to `std`
