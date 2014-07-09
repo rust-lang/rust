@@ -42,7 +42,7 @@ use compile::{
     Save, Jump, Split,
 };
 use parse::{FLAG_NOCASE, FLAG_MULTI, FLAG_DOTNL, FLAG_NEGATED};
-use parse::unicode::PERLW;
+use unicode::regex::PERLW;
 
 pub type CaptureLocs = Vec<Option<uint>>;
 
