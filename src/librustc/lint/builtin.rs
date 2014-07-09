@@ -37,14 +37,7 @@ use lint::{Context, LintPass, LintArray};
 
 use std::cmp;
 use std::collections::HashMap;
-use std::i16;
-use std::i32;
-use std::i64;
-use std::i8;
-use std::u16;
-use std::u32;
-use std::u64;
-use std::u8;
+use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use std::gc::Gc;
 use syntax::abi;
 use syntax::ast_map;
@@ -214,7 +207,21 @@ impl LintPass for TypeLimits {
                                          "literal out of range for its type");
                         }
                     },
-
+                    ty::ty_float(t) => {
+                        let (min, max) = float_ty_range(t);
+                        let lit_val: f64 = match lit.node {
+                            ast::LitFloat(ref v, _) |
+                            ast::LitFloatUnsuffixed(ref v) => match from_str(v.get()) {
+                                Some(f) => f,
+                                None => return
+                            },
+                            _ => fail!()
+                        };
+                        if lit_val < min || lit_val > max {
+                            cx.span_lint(TYPE_OVERFLOW, e.span,
+                                         "literal out of range for its type");
+                        }
+                    },
                     _ => ()
                 };
             },
@@ -262,6 +269,13 @@ impl LintPass for TypeLimits {
                 ast::TyU16 => (u16::MIN  as u64, u16::MAX  as u64),
                 ast::TyU32 => (u32::MIN  as u64, u32::MAX  as u64),
                 ast::TyU64 => (u64::MIN,         u64::MAX)
+            }
+        }
+
+        fn float_ty_range(float_ty: ast::FloatTy) -> (f64, f64) {
+            match float_ty {
+                ast::TyF32  => (f32::MIN_VALUE as f64, f32::MAX_VALUE as f64),
+                ast::TyF64  => (f64::MIN_VALUE,        f64::MAX_VALUE)
             }
         }
 
