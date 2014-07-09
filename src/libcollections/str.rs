@@ -231,7 +231,7 @@ impl<'a, S: Str> StrVector for &'a [S] {
     }
 }
 
-impl<'a, S: Str> StrVector for Vec<S> {
+impl<S: Str> StrVector for Vec<S> {
     #[inline]
     fn concat(&self) -> String {
         self.as_slice().concat()

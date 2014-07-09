@@ -1057,9 +1057,9 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 }
 
-struct Duplicator<'a>;
+struct Duplicator;
 
-impl<'a> Folder for Duplicator<'a> {
+impl Folder for Duplicator {
     fn new_id(&mut self, _: NodeId) -> NodeId {
         ast::DUMMY_NODE_ID
     }

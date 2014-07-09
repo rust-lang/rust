@@ -1477,7 +1477,7 @@ fn trans_binary<'a>(bcx: &'a Block<'a>,
     }
 }
 
-fn trans_overloaded_op<'a, 'b>(
+fn trans_overloaded_op<'a>(
                        bcx: &'a Block<'a>,
                        expr: &ast::Expr,
                        method_call: MethodCall,

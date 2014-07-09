@@ -528,7 +528,7 @@ impl Bool for bool {
     }
 }
 
-impl<'a, T: str::Str> String for T {
+impl<T: str::Str> String for T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad(self.as_slice())
     }
@@ -635,6 +635,7 @@ floating!(f64)
 // Implementation of Show for various core types
 
 macro_rules! delegate(($ty:ty to $other:ident) => {
+    #[allow(unused_lifetimes)]
     impl<'a> Show for $ty {
         fn fmt(&self, f: &mut Formatter) -> Result {
             (concat_idents!(secret_, $other)(self, f))

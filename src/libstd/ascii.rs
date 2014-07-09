@@ -170,7 +170,7 @@ impl Ascii {
     }
 }
 
-impl<'a> fmt::Show for Ascii {
+impl fmt::Show for Ascii {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (self.chr as char).fmt(f)
     }

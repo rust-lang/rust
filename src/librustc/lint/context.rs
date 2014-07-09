@@ -155,6 +155,7 @@ impl LintStore {
                      UnsafeBlock,
                      UnusedMut,
                      UnnecessaryAllocation,
+                     UnusedLifetimes,
                      Stability,
         )
 

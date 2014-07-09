@@ -18,11 +18,11 @@
 #[doc(hidden)]
 pub enum Piece<'a> {
     String(&'a str),
-    Argument(Argument<'a>),
+    Argument(Argument),
 }
 
 #[doc(hidden)]
-pub struct Argument<'a> {
+pub struct Argument {
     pub position: Position,
     pub format: FormatSpec,
 }

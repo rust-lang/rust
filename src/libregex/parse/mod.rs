@@ -171,7 +171,7 @@ pub static FLAG_DOTNL:      u8 = 1 << 2; // s
 pub static FLAG_SWAP_GREED: u8 = 1 << 3; // U
 pub static FLAG_NEGATED:    u8 = 1 << 4; // char class or not word boundary
 
-struct Parser<'a> {
+struct Parser {
     // The input, parsed only as a sequence of UTF8 code points.
     chars: Vec<char>,
     // The index of the current character in the input.
@@ -199,7 +199,7 @@ pub fn parse(s: &str) -> Result<Ast, Error> {
     }.parse()
 }
 
-impl<'a> Parser<'a> {
+impl Parser {
     fn parse(&mut self) -> Result<Ast, Error> {
         if self.chars.len() == 0 {
             return Ok(Nothing);
