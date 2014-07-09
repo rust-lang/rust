@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 // gdb-command:finish
@@ -48,6 +51,43 @@
 // gdb-check:$14 = 8
 // gdb-command:continue
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print variable
+// lldb-check:[...]$0 = 1
+// lldb-command:print constant
+// lldb-check:[...]$1 = 2
+// lldb-command:print a_struct
+// lldb-check:[...]$2 = Struct { a: -3, b: 4.5, c: 5 }
+// lldb-command:print *struct_ref
+// lldb-check:[...]$3 = Struct { a: -3, b: 4.5, c: 5 }
+// lldb-command:print *owned
+// lldb-check:[...]$4 = 6
+// lldb-command:print managed->val
+// lldb-check:[...]$5 = 7
+// lldb-command:print closure_local
+// lldb-check:[...]$6 = 8
+// lldb-command:continue
+
+// lldb-command:print variable
+// lldb-check:[...]$7 = 1
+// lldb-command:print constant
+// lldb-check:[...]$8 = 2
+// lldb-command:print a_struct
+// lldb-check:[...]$9 = Struct { a: -3, b: 4.5, c: 5 }
+// lldb-command:print *struct_ref
+// lldb-check:[...]$10 = Struct { a: -3, b: 4.5, c: 5 }
+// lldb-command:print *owned
+// lldb-check:[...]$11 = 6
+// lldb-command:print managed->val
+// lldb-check:[...]$12 = 7
+// lldb-command:print closure_local
+// lldb-check:[...]$13 = 8
+// lldb-command:continue
+
 #![feature(managed_boxes)]
 #![allow(unused_variable)]
 
@@ -77,11 +117,11 @@ fn main() {
         let closure_local = 8;
 
         let nested_closure = || {
-            zzz();
+            zzz(); // #break
             variable = constant + a_struct.a + struct_ref.a + *owned + *managed + closure_local;
         };
 
-        zzz();
+        zzz(); // #break
 
         nested_closure();
     };

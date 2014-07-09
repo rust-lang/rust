@@ -1,1 +1,1 @@
-some text to include in another file as string 3
+some text to include in another file as string 3..

@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 // gdb-command:finish
@@ -23,6 +26,20 @@
 
 // gdb-command:print *univariant
 // gdb-check:$3 = {{123234}}
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print *the_a
+// lldb-check:[...]$0 = TheA { x: 0, y: 8970181431921507452 }
+
+// lldb-command:print *the_b
+// lldb-check:[...]$1 = TheB(0, 286331153, 286331153)
+
+// lldb-command:print *univariant
+// lldb-check:[...]$2 = TheOnlyCase(123234)
 
 #![allow(unused_variable)]
 #![feature(struct_variant)]
@@ -60,7 +77,7 @@ fn main() {
 
     let univariant = box TheOnlyCase(123234);
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

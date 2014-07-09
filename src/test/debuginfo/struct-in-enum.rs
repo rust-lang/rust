@@ -12,6 +12,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:set print union on
 // gdb-command:rbreak zzz
 // gdb-command:run
@@ -25,6 +28,19 @@
 
 // gdb-command:print univariant
 // gdb-check:$3 = {{{x = 123, y = 456, z = 789}}}
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print case1
+// lldb-check:[...]$0 = Case1(0, Struct { x: 2088533116, y: 2088533116, z: 31868 })
+// lldb-command:print case2
+// lldb-check:[...]$1 = Case2(0, 1229782938247303441, 4369)
+
+// lldb-command:print univariant
+// lldb-check:[...]$2 = TheOnlyCase(Struct { x: 123, y: 456, z: 789 })
 
 #![allow(unused_variable)]
 
@@ -66,7 +82,7 @@ fn main() {
 
     let univariant = TheOnlyCase(Struct { x: 123, y: 456, z: 789 });
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

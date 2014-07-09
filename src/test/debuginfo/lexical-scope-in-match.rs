@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 
@@ -74,6 +77,64 @@
 // gdb-check:$18 = 232
 // gdb-command:continue
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print shadowed
+// lldb-check:[...]$0 = 231
+// lldb-command:print not_shadowed
+// lldb-check:[...]$1 = 232
+// lldb-command:continue
+
+// lldb-command:print shadowed
+// lldb-check:[...]$2 = 233
+// lldb-command:print not_shadowed
+// lldb-check:[...]$3 = 232
+// lldb-command:print local_to_arm
+// lldb-check:[...]$4 = 234
+// lldb-command:continue
+
+// lldb-command:print shadowed
+// lldb-check:[...]$5 = 236
+// lldb-command:print not_shadowed
+// lldb-check:[...]$6 = 232
+// lldb-command:continue
+
+// lldb-command:print shadowed
+// lldb-check:[...]$7 = 237
+// lldb-command:print not_shadowed
+// lldb-check:[...]$8 = 232
+// lldb-command:print local_to_arm
+// lldb-check:[...]$9 = 238
+// lldb-command:continue
+
+// lldb-command:print shadowed
+// lldb-check:[...]$10 = 239
+// lldb-command:print not_shadowed
+// lldb-check:[...]$11 = 232
+// lldb-command:continue
+
+// lldb-command:print shadowed
+// lldb-check:[...]$12 = 241
+// lldb-command:print not_shadowed
+// lldb-check:[...]$13 = 232
+// lldb-command:continue
+
+// lldb-command:print shadowed
+// lldb-check:[...]$14 = 243
+// lldb-command:print *local_to_arm
+// lldb-check:[...]$15 = 244
+// lldb-command:continue
+
+// lldb-command:print shadowed
+// lldb-check:[...]$16 = 231
+// lldb-command:print not_shadowed
+// lldb-check:[...]$17 = 232
+// lldb-command:continue
+
+
 struct Struct {
     x: int,
     y: int
@@ -84,13 +145,13 @@ fn main() {
     let shadowed = 231i;
     let not_shadowed = 232i;
 
-    zzz();
+    zzz(); // #break
     sentinel();
 
     match (233i, 234i) {
         (shadowed, local_to_arm) => {
 
-            zzz();
+            zzz(); // #break
             sentinel();
         }
     }
@@ -99,7 +160,7 @@ fn main() {
         // with literal
         (235, shadowed) => {
 
-            zzz();
+            zzz(); // #break
             sentinel();
         }
         _ => {}
@@ -108,7 +169,7 @@ fn main() {
     match (Struct { x: 237, y: 238 }) {
         Struct { x: shadowed, y: local_to_arm } => {
 
-            zzz();
+            zzz(); // #break
             sentinel();
         }
     }
@@ -117,7 +178,7 @@ fn main() {
         // ignored field
         Struct { x: shadowed, .. } => {
 
-            zzz();
+            zzz(); // #break
             sentinel();
         }
     }
@@ -126,7 +187,7 @@ fn main() {
         // with literal
         Struct { x: shadowed, y: 242 } => {
 
-            zzz();
+            zzz(); // #break
             sentinel();
         }
         _ => {}
@@ -135,12 +196,12 @@ fn main() {
     match (243i, 244i) {
         (shadowed, ref local_to_arm) => {
 
-            zzz();
+            zzz(); // #break
             sentinel();
         }
     }
 
-    zzz();
+    zzz(); // #break
     sentinel();
 }
 

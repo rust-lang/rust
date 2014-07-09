@@ -10,6 +10,8 @@
 
 // ignore-android: FIXME(#10381)
 
+// ignore-lldb
+
 // compile-flags:--debuginfo=1
 
 // Make sure functions have proper names

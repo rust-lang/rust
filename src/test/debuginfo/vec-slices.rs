@@ -12,6 +12,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:set print pretty off
 // gdb-command:rbreak zzz
 // gdb-command:run
@@ -53,6 +56,29 @@
 // gdb-command:print *((int64_t[2]*)('vec-slices::MUT_VECT_SLICE'.data_ptr))
 // gdb-check:$15 = {64, 65}
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print empty
+// lldb-check:[...]$0 = &[]
+
+// lldb-command:print singleton
+// lldb-check:[...]$1 = &[1]
+
+// lldb-command:print multiple
+// lldb-check:[...]$2 = &[2, 3, 4, 5]
+
+// lldb-command:print slice_of_slice
+// lldb-check:[...]$3 = &[3, 4]
+
+// lldb-command:print padded_tuple
+// lldb-check:[...]$4 = &[(6, 7), (8, 9)]
+
+// lldb-command:print padded_struct
+// lldb-check:[...]$5 = &[AStruct { x: 10, y: 11, z: 12 }, AStruct { x: 13, y: 14, z: 15 }]
+
 #![allow(unused_variable)]
 
 struct AStruct {
@@ -81,7 +107,7 @@ fn main() {
         MUT_VECT_SLICE = VECT_SLICE;
     }
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}
