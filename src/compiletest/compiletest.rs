@@ -30,7 +30,7 @@ use std::io::fs;
 use std::from_str::FromStr;
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
-use common::{Pretty, DebugInfoGdb, Codegen};
+use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
 use util::logv;
 use regex::Regex;
 
@@ -239,6 +239,16 @@ pub fn run_tests(config: &Config) {
         //so, we test 1 task at once.
         // also trying to isolate problems with adb_run_wrapper.sh ilooping
         os::setenv("RUST_TEST_TASKS","1");
+    }
+
+    match config.mode {
+        DebugInfoLldb => {
+            // Some older versions of LLDB seem to have problems with multiple
+            // instances running in parallel, so only run one test task at a
+            // time.
+            os::setenv("RUST_TEST_TASKS", "1");
+        }
+        _ => { /* proceed */ }
     }
 
     let opts = test_opts(config);
