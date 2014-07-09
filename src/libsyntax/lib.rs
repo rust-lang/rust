@@ -14,7 +14,6 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![crate_id = "syntax#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "syntax"]
 #![experimental]
 #![license = "MIT/ASL2"]
@@ -27,7 +26,6 @@
 #![feature(macro_rules, globs, managed_boxes, default_type_params, phase)]
 #![feature(quote, unsafe_destructor)]
 #![allow(deprecated)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 extern crate serialize;
 extern crate term;

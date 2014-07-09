@@ -16,7 +16,6 @@
 //! Additionally, it is not guaranteed that functionality such as reflection
 //! will persist into the future.
 
-#![crate_id = "debug#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "debug"]
 #![experimental]
 #![license = "MIT/ASL2"]
@@ -28,7 +27,6 @@
 #![experimental]
 #![feature(managed_boxes, macro_rules)]
 #![allow(experimental)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 pub mod fmt;
 pub mod reflect;

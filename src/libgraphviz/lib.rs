@@ -266,7 +266,6 @@ pub fn main() {
 
 */
 
-#![crate_id = "graphviz#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "graphviz"]
 #![experimental]
 #![crate_type = "rlib"]
@@ -275,7 +274,6 @@ pub fn main() {
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/0.11.0/")]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 use std::io;
 use std::str;
