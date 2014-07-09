@@ -802,17 +802,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     fn bucket_distance(&self, index_of_elem: &table::FullIndex) -> uint {
         // where the hash of the element that happens to reside at
         // `index_of_elem` tried to place itself first.
-        let first_probe_index = self.probe(&index_of_elem.hash(), 0);
-
         let raw_index = index_of_elem.raw_index();
 
-        if first_probe_index <= raw_index {
-             // probe just went forward
-            raw_index - first_probe_index
-        } else {
-            // probe wrapped around the hashtable
-            raw_index + (self.table.capacity() - first_probe_index)
-        }
+        (raw_index - index_of_elem.hash() as uint) & (self.table.capacity() - 1)
     }
 
     /// Search for a pre-hashed key.
