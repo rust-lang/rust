@@ -14,7 +14,7 @@ use codemap::{Span, Spanned, DUMMY_SP};
 use abi::Abi;
 use ast_util;
 use owned_slice::OwnedSlice;
-use parse::token::{InternedString, special_idents, str_to_ident};
+use parse::token::{InternedString, str_to_ident};
 use parse::token;
 
 use std::fmt;
@@ -824,8 +824,8 @@ pub struct Arg {
 }
 
 impl Arg {
-    pub fn new_self(span: Span, mutability: Mutability) -> Arg {
-        let path = Spanned{span:span,node:special_idents::self_};
+    pub fn new_self(span: Span, mutability: Mutability, self_ident: Ident) -> Arg {
+        let path = Spanned{span:span,node:self_ident};
         Arg {
             // HACK(eddyb) fake type for the self argument.
             ty: P(Ty {
@@ -874,16 +874,18 @@ pub enum RetStyle {
     Return, // everything else
 }
 
+/// Represents the kind of 'self' associated with a method
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum ExplicitSelf_ {
-    SelfStatic,                                // no self
-    SelfValue,                                 // `self`
-    SelfRegion(Option<Lifetime>, Mutability),  // `&'lt self`, `&'lt mut self`
-    SelfUniq                                   // `~self`
+    SelfStatic,                                       // no self
+    SelfValue(Ident),                                 // `self`
+    SelfRegion(Option<Lifetime>, Mutability, Ident),  // `&'lt self`, `&'lt mut self`
+    SelfUniq(Ident),                                  // `~self`
 }
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 
+// Represents a method declaration
 #[deriving(PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Method {
     pub ident: Ident,

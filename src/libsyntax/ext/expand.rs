@@ -484,6 +484,24 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
             let marked_tts = mark_tts(tts.as_slice(), fm);
             expander.expand(fld.cx, it.span, it.ident, marked_tts)
         }
+        Some(&LetSyntaxTT(ref expander, span)) => {
+            if it.ident.name == parse::token::special_idents::invalid.name {
+                fld.cx.span_err(pth.span,
+                                format!("macro {}! expects an ident argument",
+                                        extnamestr.get()).as_slice());
+                return SmallVector::zero();
+            }
+            fld.cx.bt_push(ExpnInfo {
+                call_site: it.span,
+                callee: NameAndSpan {
+                    name: extnamestr.get().to_string(),
+                    format: MacroBang,
+                    span: span
+                }
+            });
+            // DON'T mark before expansion:
+            expander.expand(fld.cx, it.span, it.ident, tts)
+        }
         _ => {
             fld.cx.span_err(it.span,
                             format!("{}! is not legal in item position",
@@ -494,8 +512,10 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
 
     let items = match expanded.make_def() {
         Some(MacroDef { name, ext }) => {
-            // yikes... no idea how to apply the mark to this. I'm afraid
-            // we're going to have to wait-and-see on this one.
+            // hidden invariant: this should only be possible as the
+            // result of expanding a LetSyntaxTT, and thus doesn't
+            // need to be marked. Not that it could be marked anyway.
+            // create issue to recommend refactoring here?
             fld.extsbox.insert(intern(name.as_slice()), ext);
             if attr::contains_name(it.attrs.as_slice(), "macro_export") {
                 SmallVector::one(it)
@@ -914,6 +934,27 @@ impl<'a> Folder for PatIdentRenamer<'a> {
     }
 }
 
+// expand a method
+fn expand_method(m: &ast::Method, fld: &mut MacroExpander) -> Gc<ast::Method> {
+    let id = fld.new_id(m.id);
+    let (rewritten_fn_decl, rewritten_body)
+        = expand_and_rename_fn_decl_and_block(m.decl,m.body,fld);
+
+    // all of the other standard stuff:
+    box(GC) ast::Method {
+        id: id,
+        ident: fld.fold_ident(m.ident),
+        attrs: m.attrs.iter().map(|a| fld.fold_attribute(*a)).collect(),
+        generics: fold_generics(&m.generics, fld),
+        explicit_self: fld.fold_explicit_self(&m.explicit_self),
+        fn_style: m.fn_style,
+        decl: rewritten_fn_decl,
+        body: rewritten_body,
+        span: fld.new_span(m.span),
+        vis: m.vis
+    }
+}
+
 /// Given a fn_decl and a block and a MacroExpander, expand the fn_decl, then use the
 /// PatIdents in its arguments to perform renaming in the FnDecl and
 /// the block, returning both the new FnDecl and the new Block.
@@ -966,6 +1007,10 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_arm(&mut self, arm: &ast::Arm) -> ast::Arm {
         expand_arm(arm, self)
+    }
+
+    fn fold_method(&mut self, method: Gc<ast::Method>) -> Gc<ast::Method> {
+        expand_method(method, self)
     }
 
     fn new_span(&mut self, span: Span) -> Span {
@@ -1280,6 +1325,14 @@ mod test {
             "macro_rules! m((a)=>(13)) fn main(){m!(a);}".to_string());
     }
 
+    // should be able to use a bound identifier as a literal in a macro definition:
+    #[test] fn self_macro_parsing(){
+        expand_crate_str(
+            "macro_rules! foo ((zz) => (287u;))
+            fn f(zz : int) {foo!(zz);}".to_string()
+            );
+    }
+
     // renaming tests expand a crate and then check that the bindings match
     // the right varrefs. The specification of the test case includes the
     // text of the crate, and also an array of arrays.  Each element in the
@@ -1390,6 +1443,32 @@ mod test {
     // but *shouldn't* bind because it was inserted by a different macro....
     // can't write this test case until we have macro-generating macros.
 
+    // method arg hygiene
+    // method expands to fn get_x(&self_0, x_1:int) {self_0 + self_2 + x_3 + x_1}
+    #[test] fn method_arg_hygiene(){
+        run_renaming_test(
+            &("macro_rules! inject_x (()=>(x))
+              macro_rules! inject_self (()=>(self))
+              struct A;
+              impl A{fn get_x(&self, x: int) {self + inject_self!() + inject_x!() + x;} }",
+              vec!(vec!(0),vec!(3)),
+              true),
+            0)
+    }
+
+    // ooh, got another bite?
+    // expands to struct A; impl A {fn thingy(&self_1) {self_1;}}
+    #[test] fn method_arg_hygiene_2(){
+        run_renaming_test(
+            &("struct A;
+              macro_rules! add_method (($T:ty) =>
+              (impl $T {  fn thingy(&self) {self;} }))
+              add_method!(A)",
+              vec!(vec!(0)),
+              true),
+            0)
+    }
+
     // item fn hygiene
     // expands to fn q(x_1:int){fn g(x_2:int){x_2 + x_1};}
     #[test] fn issue_9383(){
@@ -1422,6 +1501,28 @@ mod test {
             0)
     }
 
+    // macro_rules in method position. Sadly, unimplemented.
+    #[ignore] #[test] fn macro_in_method_posn(){
+        expand_crate_str(
+            "macro_rules! my_method (() => fn thirteen(&self) -> int {13})
+            struct A;
+            impl A{ my_method!()}
+            fn f(){A.thirteen;}".to_string());
+    }
+
+    // another nested macro
+    // expands to impl Entries {fn size_hint(&self_1) {self_1;}
+    #[test] fn item_macro_workaround(){
+        run_renaming_test(
+            &("macro_rules! item { ($i:item) => {$i}}
+              struct Entries;
+              macro_rules! iterator_impl {
+              () => { item!( impl Entries { fn size_hint(&self) { self;}})}}
+              iterator_impl! { }",
+              vec!(vec!(0)), true),
+            0)
+    }
+
     // run one of the renaming tests
     fn run_renaming_test(t: &RenamingTest, test_idx: uint) {
         let invalid_name = token::special_idents::invalid.name;
@@ -1441,27 +1542,36 @@ mod test {
             assert!((shouldmatch.len() == 0) ||
                     (varrefs.len() > *shouldmatch.iter().max().unwrap()));
             for (idx,varref) in varrefs.iter().enumerate() {
+                let print_hygiene_debug_info = || {
+                    // good lord, you can't make a path with 0 segments, can you?
+                    let final_varref_ident = match varref.segments.last() {
+                        Some(pathsegment) => pathsegment.identifier,
+                        None => fail!("varref with 0 path segments?")
+                    };
+                    let varref_name = mtwt::resolve(final_varref_ident);
+                    let varref_idents : Vec<ast::Ident>
+                        = varref.segments.iter().map(|s| s.identifier)
+                        .collect();
+                    println!("varref #{}: {}, resolves to {}",idx, varref_idents, varref_name);
+                    let string = token::get_ident(final_varref_ident);
+                    println!("varref's first segment's string: \"{}\"", string.get());
+                    println!("binding #{}: {}, resolves to {}",
+                             binding_idx, *bindings.get(binding_idx), binding_name);
+                    mtwt::with_sctable(|x| mtwt::display_sctable(x));
+                };
                 if shouldmatch.contains(&idx) {
                     // it should be a path of length 1, and it should
                     // be free-identifier=? or bound-identifier=? to the given binding
                     assert_eq!(varref.segments.len(),1);
-                    let varref_name = mtwt::resolve(varref.segments
-                                                          .get(0)
-                                                          .identifier);
+                    let varref_name = mtwt::resolve(varref.segments.get(0).identifier);
                     let varref_marks = mtwt::marksof(varref.segments
                                                            .get(0)
                                                            .identifier
                                                            .ctxt,
                                                      invalid_name);
                     if !(varref_name==binding_name) {
-                        let varref_idents : Vec<ast::Ident>
-                            = varref.segments.iter().map(|s|
-                                                         s.identifier)
-                            .collect();
                         println!("uh oh, should match but doesn't:");
-                        println!("varref #{}: {}",idx, varref_idents);
-                        println!("binding #{}: {}", binding_idx, *bindings.get(binding_idx));
-                        mtwt::with_sctable(|x| mtwt::display_sctable(x));
+                        print_hygiene_debug_info();
                     }
                     assert_eq!(varref_name,binding_name);
                     if bound_ident_check {
@@ -1475,27 +1585,11 @@ mod test {
                         && (varref_name == binding_name);
                     // temp debugging:
                     if fail {
-                        let varref_idents : Vec<ast::Ident>
-                            = varref.segments.iter().map(|s|
-                                                         s.identifier)
-                            .collect();
                         println!("failure on test {}",test_idx);
                         println!("text of test case: \"{}\"", teststr);
                         println!("");
                         println!("uh oh, matches but shouldn't:");
-                        println!("varref #{}: {}, resolves to {}",idx, varref_idents,
-                                 varref_name);
-                        // good lord, you can't make a path with 0 segments, can you?
-                        let string = token::get_ident(varref.segments
-                                                            .get(0)
-                                                            .identifier);
-                        println!("varref's first segment's uint: {}, and string: \"{}\"",
-                                 varref.segments.get(0).identifier.name,
-                                 string.get());
-                        println!("binding #{}: {}, resolves to {}",
-                                 binding_idx, *bindings.get(binding_idx),
-                                 binding_name);
-                        mtwt::with_sctable(|x| mtwt::display_sctable(x));
+                        print_hygiene_debug_info();
                     }
                     assert!(!fail);
                 }

@@ -365,10 +365,6 @@ pub fn is_plain_ident(t: &Token) -> bool {
     match *t { IDENT(_, false) => true, _ => false }
 }
 
-pub fn is_bar(t: &Token) -> bool {
-    match *t { BINOP(OR) | OROR => true, _ => false }
-}
-
 // Get the first "argument"
 macro_rules! first {
     ( $first:expr, $( $remainder:expr, )* ) => ( $first )
@@ -409,6 +405,11 @@ macro_rules! declare_special_idents_and_keywords {(
         $( pub static $si_static: Ident = Ident { name: $si_name, ctxt: 0 }; )*
     }
 
+    pub mod special_names {
+        use ast::Name;
+        $( pub static $si_static: Name =  $si_name; )*
+    }
+
     /**
      * All the valid words that have meaning in the Rust language.
      *
@@ -417,7 +418,7 @@ macro_rules! declare_special_idents_and_keywords {(
      * the language and may not appear as identifiers.
      */
     pub mod keywords {
-        use ast::Ident;
+        use ast::Name;
 
         pub enum Keyword {
             $( $sk_variant, )*
@@ -425,10 +426,10 @@ macro_rules! declare_special_idents_and_keywords {(
         }
 
         impl Keyword {
-            pub fn to_ident(&self) -> Ident {
+            pub fn to_name(&self) -> Name {
                 match *self {
-                    $( $sk_variant => Ident { name: $sk_name, ctxt: 0 }, )*
-                    $( $rk_variant => Ident { name: $rk_name, ctxt: 0 }, )*
+                    $( $sk_variant => $sk_name, )*
+                    $( $rk_variant => $rk_name, )*
                 }
             }
         }
@@ -436,7 +437,7 @@ macro_rules! declare_special_idents_and_keywords {(
 
     fn mk_fresh_ident_interner() -> IdentInterner {
         // The indices here must correspond to the numbers in
-        // special_idents, in Keyword to_ident(), and in static
+        // special_idents, in Keyword to_name(), and in static
         // constants below.
         let mut init_vec = Vec::new();
         $(init_vec.push($si_str);)*
@@ -447,7 +448,7 @@ macro_rules! declare_special_idents_and_keywords {(
 }}
 
 // If the special idents get renumbered, remember to modify these two as appropriate
-static SELF_KEYWORD_NAME: Name = 1;
+pub static SELF_KEYWORD_NAME: Name = 1;
 static STATIC_KEYWORD_NAME: Name = 2;
 
 // NB: leaving holes in the ident table is bad! a different ident will get
@@ -714,7 +715,7 @@ pub fn fresh_mark() -> Mrk {
 
 pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
     match *tok {
-        token::IDENT(sid, false) => { kw.to_ident().name == sid.name }
+        token::IDENT(sid, false) => { kw.to_name() == sid.name }
         _ => { false }
     }
 }
