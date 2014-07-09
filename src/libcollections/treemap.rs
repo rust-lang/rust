@@ -185,7 +185,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 
 macro_rules! bound_setup {
     // initialiser of the iterator to manipulate
-    ($iter:expr,
+    ($iter:expr, $k:expr,
      // whether we are looking for the lower or upper bound.
      $is_lower_bound:expr) => {
         {
@@ -193,7 +193,7 @@ macro_rules! bound_setup {
             loop {
                 if !iter.node.is_null() {
                     let node_k = unsafe {&(*iter.node).key};
-                    match k.cmp(node_k) {
+                    match $k.cmp(node_k) {
                         Less => iter.traverse_left(),
                         Greater => iter.traverse_right(),
                         Equal => {
@@ -230,13 +230,13 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Return a lazy iterator to the first key-value pair whose key is not less than `k`
     /// If all keys in map are less than `k` an empty iterator is returned.
     pub fn lower_bound<'a>(&'a self, k: &K) -> Entries<'a, K, V> {
-        bound_setup!(self.iter_for_traversal(), true)
+        bound_setup!(self.iter_for_traversal(), k, true)
     }
 
     /// Return a lazy iterator to the first key-value pair whose key is greater than `k`
     /// If all keys in map are not greater than `k` an empty iterator is returned.
     pub fn upper_bound<'a>(&'a self, k: &K) -> Entries<'a, K, V> {
-        bound_setup!(self.iter_for_traversal(), false)
+        bound_setup!(self.iter_for_traversal(), k, false)
     }
 
     /// Get a lazy iterator that should be initialized using
@@ -256,7 +256,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// If all keys in map are less than `k` an empty iterator is
     /// returned.
     pub fn mut_lower_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
-        bound_setup!(self.mut_iter_for_traversal(), true)
+        bound_setup!(self.mut_iter_for_traversal(), k, true)
     }
 
     /// Return a lazy iterator to the first key-value pair (with the
@@ -265,7 +265,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// If all keys in map are not greater than `k` an empty iterator
     /// is returned.
     pub fn mut_upper_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
-        bound_setup!(self.mut_iter_for_traversal(), false)
+        bound_setup!(self.mut_iter_for_traversal(), k, false)
     }
 }
 

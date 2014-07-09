@@ -270,12 +270,12 @@ fn construct_transformed_self_ty_for_object(
         ast::SelfStatic => {
             tcx.sess.span_bug(span, "static method for object type receiver");
         }
-        ast::SelfValue => {
+        ast::SelfValue(_) => {
             let tr = ty::mk_trait(tcx, trait_def_id, obj_substs,
                                   ty::empty_builtin_bounds());
             ty::mk_uniq(tcx, tr)
         }
-        ast::SelfRegion(..) | ast::SelfUniq => {
+        ast::SelfRegion(..) | ast::SelfUniq(..) => {
             let transformed_self_ty = *method_ty.fty.sig.inputs.get(0);
             match ty::get(transformed_self_ty).sty {
                 ty::ty_rptr(r, mt) => { // must be SelfRegion
@@ -1227,7 +1227,7 @@ impl<'a> LookupContext<'a> {
                      through an object");
             }
 
-            ast::SelfValue | ast::SelfRegion(..) | ast::SelfUniq => {}
+            ast::SelfValue(_) | ast::SelfRegion(..) | ast::SelfUniq(_) => {}
         }
 
         // reason (a) above
@@ -1296,7 +1296,7 @@ impl<'a> LookupContext<'a> {
                 self.report_statics == ReportStaticMethods
             }
 
-            SelfValue => {
+            SelfValue(_) => {
                 debug!("(is relevant?) explicit self is by-value");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(typ) => {
@@ -1319,7 +1319,7 @@ impl<'a> LookupContext<'a> {
                 }
             }
 
-            SelfRegion(_, m) => {
+            SelfRegion(_, m, _) => {
                 debug!("(is relevant?) explicit self is a region");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_rptr(_, mt) => {
@@ -1339,7 +1339,7 @@ impl<'a> LookupContext<'a> {
                 }
             }
 
-            SelfUniq => {
+            SelfUniq(_) => {
                 debug!("(is relevant?) explicit self is a unique pointer");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(typ) => {
