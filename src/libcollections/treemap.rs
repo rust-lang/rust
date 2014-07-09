@@ -89,7 +89,7 @@ impl<K: Ord, V> Mutable for TreeMap<K, V> {
 
 impl<K: Ord, V> Map<K, V> for TreeMap<K, V> {
     fn find<'a>(&'a self, key: &K) -> Option<&'a V> {
-        let mut current: &'a Option<Box<TreeNode<K, V>>> = &self.root;
+        let mut current = &self.root;
         loop {
             match *current {
               Some(ref r) => {
@@ -108,7 +108,20 @@ impl<K: Ord, V> Map<K, V> for TreeMap<K, V> {
 impl<K: Ord, V> MutableMap<K, V> for TreeMap<K, V> {
     #[inline]
     fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V> {
-        find_mut(&mut self.root, key)
+        let mut current = &mut self.root;
+        loop {
+            let temp = current; // hack to appease borrowck
+            match *temp {
+              Some(ref mut r) => {
+                match key.cmp(&r.key) {
+                  Less => current = &mut r.left,
+                  Greater => current = &mut r.right,
+                  Equal => return Some(&mut r.value)
+                }
+              }
+              None => return None
+            }
+        }
     }
 
     fn swap(&mut self, key: K, value: V) -> Option<V> {
@@ -837,21 +850,6 @@ fn split<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
         save.level += 1;
         swap(node, &mut save);
         node.left = Some(save);
-    }
-}
-
-fn find_mut<'r, K: Ord, V>(node: &'r mut Option<Box<TreeNode<K, V>>>,
-                                key: &K)
-                             -> Option<&'r mut V> {
-    match *node {
-      Some(ref mut x) => {
-        match key.cmp(&x.key) {
-          Less => find_mut(&mut x.left, key),
-          Greater => find_mut(&mut x.right, key),
-          Equal => Some(&mut x.value),
-        }
-      }
-      None => None
     }
 }
 
