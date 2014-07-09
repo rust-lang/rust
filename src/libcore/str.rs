@@ -22,7 +22,7 @@ use cmp;
 use cmp::{PartialEq, Eq};
 use collections::Collection;
 use default::Default;
-use iter::{Filter, Map, Iterator};
+use iter::{Map, Iterator};
 use iter::{DoubleEndedIterator, ExactSize};
 use iter::range;
 use num::{CheckedMul, Saturating};
@@ -203,10 +203,6 @@ pub struct CharSplitsN<'a, Sep> {
     count: uint,
     invert: bool,
 }
-
-/// An iterator over the words of a string, separated by a sequence of whitespace
-pub type Words<'a> =
-    Filter<'a, &'a str, CharSplits<'a, extern "Rust" fn(char) -> bool>>;
 
 /// An iterator over the lines of a string, separated by either `\n` or (`\r\n`).
 pub type AnyLines<'a> =
@@ -1209,48 +1205,6 @@ pub trait StrSlice<'a> {
     /// ```
     fn lines_any(&self) -> AnyLines<'a>;
 
-    /// An iterator over the words of a string (subsequences separated
-    /// by any sequence of whitespace). Sequences of whitespace are
-    /// collapsed, so empty "words" are not included.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let some_words = " Mary   had\ta little  \n\t lamb";
-    /// let v: Vec<&str> = some_words.words().collect();
-    /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
-    /// ```
-    fn words(&self) -> Words<'a>;
-
-    /// Returns true if the string contains only whitespace.
-    ///
-    /// Whitespace characters are determined by `char::is_whitespace`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert!(" \t\n".is_whitespace());
-    /// assert!("".is_whitespace());
-    ///
-    /// assert!( !"abc".is_whitespace());
-    /// ```
-    fn is_whitespace(&self) -> bool;
-
-    /// Returns true if the string contains only alphanumeric code
-    /// points.
-    ///
-    /// Alphanumeric characters are determined by `char::is_alphanumeric`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert!("Löwe老虎Léopard123".is_alphanumeric());
-    /// assert!("".is_alphanumeric());
-    ///
-    /// assert!( !" &*~".is_alphanumeric());
-    /// ```
-    fn is_alphanumeric(&self) -> bool;
-
     /// Returns the number of Unicode code points (`char`) that a
     /// string holds.
     ///
@@ -1367,15 +1321,6 @@ pub trait StrSlice<'a> {
 
     /// Returns true if `needle` is a suffix of the string.
     fn ends_with(&self, needle: &str) -> bool;
-
-    /// Returns a string with leading and trailing whitespace removed.
-    fn trim(&self) -> &'a str;
-
-    /// Returns a string with leading whitespace removed.
-    fn trim_left(&self) -> &'a str;
-
-    /// Returns a string with trailing whitespace removed.
-    fn trim_right(&self) -> &'a str;
 
     /// Returns a string with characters that match `to_trim` removed.
     ///
@@ -1749,17 +1694,6 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn words(&self) -> Words<'a> {
-        self.split(char::is_whitespace).filter(|s| !s.is_empty())
-    }
-
-    #[inline]
-    fn is_whitespace(&self) -> bool { self.chars().all(char::is_whitespace) }
-
-    #[inline]
-    fn is_alphanumeric(&self) -> bool { self.chars().all(char::is_alphanumeric) }
-
-    #[inline]
     fn char_len(&self) -> uint { self.chars().count() }
 
     #[inline]
@@ -1815,21 +1749,6 @@ impl<'a> StrSlice<'a> for &'a str {
     fn ends_with(&self, needle: &str) -> bool {
         let (m, n) = (self.len(), needle.len());
         m >= n && needle.as_bytes() == self.as_bytes().slice_from(m - n)
-    }
-
-    #[inline]
-    fn trim(&self) -> &'a str {
-        self.trim_left().trim_right()
-    }
-
-    #[inline]
-    fn trim_left(&self) -> &'a str {
-        self.trim_left_chars(char::is_whitespace)
-    }
-
-    #[inline]
-    fn trim_right(&self) -> &'a str {
-        self.trim_right_chars(char::is_whitespace)
     }
 
     #[inline]

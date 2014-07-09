@@ -69,7 +69,6 @@ is the same as `&[u8]`.
 
 use core::prelude::*;
 
-use core::char;
 use core::default::Default;
 use core::fmt;
 use core::cmp;
@@ -79,15 +78,17 @@ use core::mem;
 use Collection;
 use hash;
 use string::String;
+use unicode;
 use vec::Vec;
 
 pub use core::str::{from_utf8, CharEq, Chars, CharOffsets};
 pub use core::str::{Bytes, CharSplits};
-pub use core::str::{CharSplitsN, Words, AnyLines, MatchIndices, StrSplits};
+pub use core::str::{CharSplitsN, AnyLines, MatchIndices, StrSplits};
 pub use core::str::{eq_slice, is_utf8, is_utf16, Utf16Items};
 pub use core::str::{Utf16Item, ScalarValue, LoneSurrogate, utf16_items};
 pub use core::str::{truncate_utf16_at_nul, utf8_char_width, CharRange};
 pub use core::str::{Str, StrSlice};
+pub use unicode::{Words, UnicodeStrSlice};
 
 /*
 Section: Creating a string
@@ -283,7 +284,7 @@ pub struct Decompositions<'a> {
 impl<'a> Iterator<char> for Decompositions<'a> {
     #[inline]
     fn next(&mut self) -> Option<char> {
-        use unicode::normalization::canonical_combining_class;
+        use unicode::canonical_combining_class;
 
         match self.buffer.as_slice().head() {
             Some(&(c, 0)) => {
@@ -299,8 +300,8 @@ impl<'a> Iterator<char> for Decompositions<'a> {
         }
 
         let decomposer = match self.kind {
-            Canonical => char::decompose_canonical,
-            Compatible => char::decompose_compatible
+            Canonical => unicode::char::decompose_canonical,
+            Compatible => unicode::char::decompose_compatible
         };
 
         if !self.sorted {
@@ -972,6 +973,8 @@ mod tests {
     use std::slice::{Vector, ImmutableVector};
     use string::String;
     use vec::Vec;
+
+    use unicode::UnicodeChar;
 
     #[test]
     fn test_eq_slice() {

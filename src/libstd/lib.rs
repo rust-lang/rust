@@ -126,6 +126,7 @@
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 extern crate alloc;
+extern crate unicode;
 extern crate core;
 extern crate core_collections = "collections";
 extern crate core_rand = "rand";
@@ -148,7 +149,6 @@ extern crate rustrt;
 pub use core::any;
 pub use core::bool;
 pub use core::cell;
-pub use core::char;
 pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
 pub use core::default;
@@ -179,6 +179,8 @@ pub use core_collections::vec;
 
 pub use rustrt::c_str;
 pub use rustrt::local_data;
+
+pub use unicode::char;
 
 pub use core_sync::comm;
 

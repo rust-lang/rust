@@ -89,6 +89,7 @@
 #[doc(no_inline)] pub use slice::{Vector, VectorVector};
 #[doc(no_inline)] pub use slice::MutableVectorAllocating;
 #[doc(no_inline)] pub use string::String;
+#[doc(no_inline)] pub use unicode::{UnicodeChar, UnicodeStrSlice};
 #[doc(no_inline)] pub use vec::Vec;
 
 // Reexported runtime types
