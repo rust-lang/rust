@@ -285,6 +285,19 @@ then
     CFG_LIBDIR_RELATIVE=bin
 fi
 
+if [ "$CFG_OSTYPE" = "pc-mingw32" ] || [ "$CFG_OSTYPE" = "w64-mingw32" ]
+then
+    CFG_LD_PATH_VAR=PATH
+    CFG_OLD_LD_PATH_VAR=$PATH
+elif [ "$CFG_OSTYPE" = "Darwin" ]
+then
+    CFG_LD_PATH_VAR=DYLD_LIBRARY_PATH
+    CFG_OLD_LD_PATH_VAR=$DYLD_LIBRARY_PATH
+else
+    CFG_LD_PATH_VAR=LD_LIBRARY_PATH
+    CFG_OLD_LD_PATH_VAR=$LD_LIBRARY_PATH
+fi
+
 flag uninstall "only uninstall from the installation prefix"
 opt verify 1 "verify that the installed binaries run correctly"
 valopt prefix "/usr/local" "set installation prefix"
@@ -312,11 +325,13 @@ then
     if [ -z "${CFG_UNINSTALL}" ]
     then
         msg "verifying platform can run binaries"
+        export $CFG_LD_PATH_VAR="${CFG_SRC_DIR}/lib":$CFG_OLD_LD_PATH_VAR
         "${CFG_SRC_DIR}/bin/rustc" --version > /dev/null
         if [ $? -ne 0 ]
         then
             err "can't execute rustc binary on this platform"
         fi
+        export $CFG_LD_PATH_VAR=$CFG_OLD_LD_PATH_VAR
     fi
 fi
 
@@ -452,17 +467,31 @@ while read p; do
 done < "${CFG_SRC_DIR}/${CFG_LIBDIR_RELATIVE}/rustlib/manifest.in"
 
 # Sanity check: can we run the installed binaries?
+#
+# As with the verification above, make sure the right LD_LIBRARY_PATH-equivalent
+# is in place. Try first without this variable, and if that fails try again with
+# the variable. If the second time tries, print a hopefully helpful message to
+# add something to the appropriate environment variable.
 if [ -z "${CFG_DISABLE_VERIFY}" ]
 then
     msg "verifying installed binaries are executable"
-    "${CFG_PREFIX}/bin/rustc" --version > /dev/null
+    "${CFG_PREFIX}/bin/rustc" --version 2> /dev/null 1> /dev/null
     if [ $? -ne 0 ]
     then
-        ERR="can't execute installed rustc binary. "
-        ERR="${ERR}installation may be broken. "
-        ERR="${ERR}if this is expected then rerun install.sh with \`--disable-verify\` "
-        ERR="${ERR}or \`make install\` with \`--disable-verify-install\`"
-        err "${ERR}"
+        export $CFG_LD_PATH_VAR="${CFG_PREFIX}/lib":$CFG_OLD_LD_PATH_VAR
+        "${CFG_PREFIX}/bin/rustc" --version > /dev/null
+        if [ $? -ne 0 ]
+        then
+            ERR="can't execute installed rustc binary. "
+            ERR="${ERR}installation may be broken. "
+            ERR="${ERR}if this is expected then rerun install.sh with \`--disable-verify\` "
+            ERR="${ERR}or \`make install\` with \`--disable-verify-install\`"
+            err "${ERR}"
+        else
+            echo
+            echo "    please ensure '${CFG_PREFIX}/lib' is added to ${CFG_LD_PATH_VAR}"
+            echo
+        fi
     fi
 fi
 
