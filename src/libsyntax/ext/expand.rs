@@ -1151,6 +1151,25 @@ fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
     return einfo;
 }
 
+/// Check that there are no macro invocations left in the AST:
+pub fn check_for_macros(sess: &parse::ParseSess, krate: &ast::Crate) {
+    visit::walk_crate(&mut MacroExterminator{sess:sess}, krate, ());
+}
+
+/// A visitor that ensures that no macro invocations remain in an AST.
+struct MacroExterminator<'a>{
+    sess: &'a parse::ParseSess
+}
+
+impl<'a> visit::Visitor<()> for MacroExterminator<'a> {
+    fn visit_mac(&mut self, macro: &ast::Mac, _:()) {
+        self.sess.span_diagnostic.span_bug(macro.span,
+                                           "macro exterminator: expected AST \
+                                           with no macro invocations");
+    }
+}
+
+
 #[cfg(test)]
 mod test {
     use super::{pattern_bindings, expand_crate, contains_macro_escape};
