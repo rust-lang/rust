@@ -607,15 +607,59 @@ mod test {
         assert_eq!(buf.as_slice(), &[7, 8, 6]);
     }
 
-    #[bench]
-    fn bench_mem_writer(b: &mut Bencher) {
+    fn do_bench_mem_writer(b: &mut Bencher, times: uint, len: uint) {
+        let src: Vec<u8> = Vec::from_elem(len, 5);
+
         b.iter(|| {
             let mut wr = MemWriter::new();
-            for _i in range(0u, 10) {
-                wr.write([5, .. 10]).unwrap();
+            for _ in range(0, times) {
+                wr.write(src.as_slice()).unwrap();
             }
-            assert_eq!(wr.unwrap().as_slice(), [5, .. 100].as_slice());
+
+            let v = wr.unwrap();
+            assert_eq!(v.len(), times * len);
+            assert!(v.iter().all(|x| *x == 5));
         });
+    }
+
+    #[bench]
+    fn bench_mem_writer_001_0000(b: &mut Bencher) {
+        do_bench_mem_writer(b, 1, 0)
+    }
+
+    #[bench]
+    fn bench_mem_writer_001_0010(b: &mut Bencher) {
+        do_bench_mem_writer(b, 1, 10)
+    }
+
+    #[bench]
+    fn bench_mem_writer_001_0100(b: &mut Bencher) {
+        do_bench_mem_writer(b, 1, 100)
+    }
+
+    #[bench]
+    fn bench_mem_writer_001_1000(b: &mut Bencher) {
+        do_bench_mem_writer(b, 1, 1000)
+    }
+
+    #[bench]
+    fn bench_mem_writer_100_0000(b: &mut Bencher) {
+        do_bench_mem_writer(b, 100, 0)
+    }
+
+    #[bench]
+    fn bench_mem_writer_100_0010(b: &mut Bencher) {
+        do_bench_mem_writer(b, 100, 10)
+    }
+
+    #[bench]
+    fn bench_mem_writer_100_0100(b: &mut Bencher) {
+        do_bench_mem_writer(b, 100, 100)
+    }
+
+    #[bench]
+    fn bench_mem_writer_100_1000(b: &mut Bencher) {
+        do_bench_mem_writer(b, 100, 1000)
     }
 
     #[bench]
