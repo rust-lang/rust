@@ -10,7 +10,6 @@
 
 //! The main parser interface
 
-
 use ast;
 use codemap::{Span, CodeMap, FileMap};
 use diagnostic::{SpanHandler, mk_span_handler, default_handler, Auto};
@@ -32,7 +31,7 @@ pub mod common;
 pub mod classify;
 pub mod obsolete;
 
-// info about a parsing session.
+/// Info about a parsing session.
 pub struct ParseSess {
     pub span_diagnostic: SpanHandler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
@@ -241,14 +240,14 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     unreachable!()
 }
 
-// given a session and a string, add the string to
-// the session's codemap and return the new filemap
+/// Given a session and a string, add the string to
+/// the session's codemap and return the new filemap
 pub fn string_to_filemap(sess: &ParseSess, source: String, path: String)
                          -> Rc<FileMap> {
     sess.span_diagnostic.cm.new_filemap(path, source)
 }
 
-// given a filemap, produce a sequence of token-trees
+/// Given a filemap, produce a sequence of token-trees
 pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     -> Vec<ast::TokenTree> {
     // it appears to me that the cfg doesn't matter here... indeed,
@@ -259,7 +258,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     p1.parse_all_token_trees()
 }
 
-// given tts and cfg, produce a parser
+/// Given tts and cfg, produce a parser
 pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          tts: Vec<ast::TokenTree>,
                          cfg: ast::CrateConfig) -> Parser<'a> {
@@ -267,13 +266,354 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
     Parser::new(sess, cfg, box trdr)
 }
 
-// abort if necessary
+/// Abort if necessary
 pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
     p.abort_if_errors();
     result
 }
 
+/// Parse a string representing a character literal into its final form.
+/// Rather than just accepting/rejecting a given literal, unescapes it as
+/// well. Can take any slice prefixed by a character escape. Returns the
+/// character and the number of characters consumed.
+pub fn char_lit(lit: &str) -> (char, int) {
+    use std::{num, char};
 
+    let mut chars = lit.chars();
+    let c = match (chars.next(), chars.next()) {
+        (Some(c), None) if c != '\\' => return (c, 1),
+        (Some('\\'), Some(c)) => match c {
+            '"' => Some('"'),
+            'n' => Some('\n'),
+            'r' => Some('\r'),
+            't' => Some('\t'),
+            '\\' => Some('\\'),
+            '\'' => Some('\''),
+            '0' => Some('\0'),
+            _ => { None }
+        },
+        _ => fail!("lexer accepted invalid char escape `{}`", lit)
+    };
+
+    match c {
+        Some(x) => return (x, 2),
+        None => { }
+    }
+
+    let msg = format!("lexer should have rejected a bad character escape {}", lit);
+    let msg2 = msg.as_slice();
+
+    let esc: |uint| -> Option<(char, int)> = |len|
+        num::from_str_radix(lit.slice(2, len), 16)
+        .and_then(char::from_u32)
+        .map(|x| (x, len as int));
+
+    // Unicode escapes
+    return match lit.as_bytes()[1] as char {
+        'x' | 'X' => esc(4),
+        'u' => esc(6),
+        'U' => esc(10),
+        _ => None,
+    }.expect(msg2);
+}
+
+/// Parse a string representing a string literal into its final form. Does
+/// unescaping.
+pub fn str_lit(lit: &str) -> String {
+    debug!("parse_str_lit: given {}", lit.escape_default());
+    let mut res = String::with_capacity(lit.len());
+
+    // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
+    let error = |i| format!("lexer should have rejected {} at {}", lit, i);
+
+    /// Eat everything up to a non-whitespace
+    fn eat<'a>(it: &mut ::std::iter::Peekable<(uint, char), ::std::str::CharOffsets<'a>>) {
+        loop {
+            match it.peek().map(|x| x.val1()) {
+                Some(' ') | Some('\n') | Some('\r') | Some('\t') => {
+                    it.next();
+                },
+                _ => { break; }
+            }
+        }
+    }
+
+    let mut chars = lit.char_indices().peekable();
+    loop {
+        match chars.next() {
+            Some((i, c)) => {
+                let em = error(i);
+                match c {
+                    '\\' => {
+                        if chars.peek().expect(em.as_slice()).val1() == '\n' {
+                            eat(&mut chars);
+                        } else if chars.peek().expect(em.as_slice()).val1() == '\r' {
+                            chars.next();
+                            if chars.peek().expect(em.as_slice()).val1() != '\n' {
+                                fail!("lexer accepted bare CR");
+                            }
+                            eat(&mut chars);
+                        } else {
+                            // otherwise, a normal escape
+                            let (c, n) = char_lit(lit.slice_from(i));
+                            for _ in range(0, n - 1) { // we don't need to move past the first \
+                                chars.next();
+                            }
+                            res.push_char(c);
+                        }
+                    },
+                    '\r' => {
+                        if chars.peek().expect(em.as_slice()).val1() != '\n' {
+                            fail!("lexer accepted bare CR");
+                        }
+                        chars.next();
+                        res.push_char('\n');
+                    }
+                    c => res.push_char(c),
+                }
+            },
+            None => break
+        }
+    }
+
+    res.shrink_to_fit(); // probably not going to do anything, unless there was an escape.
+    debug!("parse_str_lit: returning {}", res);
+    res
+}
+
+/// Parse a string representing a raw string literal into its final form. The
+/// only operation this does is convert embedded CRLF into a single LF.
+pub fn raw_str_lit(lit: &str) -> String {
+    debug!("raw_str_lit: given {}", lit.escape_default());
+    let mut res = String::with_capacity(lit.len());
+
+    // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
+    let mut chars = lit.chars().peekable();
+    loop {
+        match chars.next() {
+            Some(c) => {
+                if c == '\r' {
+                    if *chars.peek().unwrap() != '\n' {
+                        fail!("lexer accepted bare CR");
+                    }
+                    chars.next();
+                    res.push_char('\n');
+                } else {
+                    res.push_char(c);
+                }
+            },
+            None => break
+        }
+    }
+
+    res.shrink_to_fit();
+    res
+}
+
+pub fn float_lit(s: &str) -> ast::Lit_ {
+    debug!("float_lit: {}", s);
+    // FIXME #2252: bounds checking float literals is defered until trans
+    let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
+    let s = s2.as_slice();
+
+    let mut ty = None;
+
+    if s.ends_with("f32") {
+        ty = Some(ast::TyF32);
+    } else if s.ends_with("f64") {
+        ty = Some(ast::TyF64);
+    }
+
+
+    match ty {
+        Some(t) => {
+            ast::LitFloat(token::intern_and_get_ident(s.slice_to(s.len() - t.suffix_len())), t)
+        },
+        None => ast::LitFloatUnsuffixed(token::intern_and_get_ident(s))
+    }
+}
+
+/// Parse a string representing a byte literal into its final form. Similar to `char_lit`
+pub fn byte_lit(lit: &str) -> (u8, uint) {
+    let err = |i| format!("lexer accepted invalid byte literal {} step {}", lit, i);
+
+    if lit.len() == 1 {
+        (lit.as_bytes()[0], 1)
+    } else {
+        assert!(lit.as_bytes()[0] == b'\\', err(0i));
+        let b = match lit.as_bytes()[1] {
+            b'"' => b'"',
+            b'n' => b'\n',
+            b'r' => b'\r',
+            b't' => b'\t',
+            b'\\' => b'\\',
+            b'\'' => b'\'',
+            b'0' => b'\0',
+            _ => {
+                match ::std::num::from_str_radix::<u64>(lit.slice(2, 4), 16) {
+                    Some(c) =>
+                        if c > 0xFF {
+                            fail!(err(2))
+                        } else {
+                            return (c as u8, 4)
+                        },
+                    None => fail!(err(3))
+                }
+            }
+        };
+        return (b, 2);
+    }
+}
+
+pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
+    let mut res = Vec::with_capacity(lit.len());
+
+    // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
+    let error = |i| format!("lexer should have rejected {} at {}", lit, i);
+
+    // binary literals *must* be ASCII, but the escapes don't have to be
+    let mut chars = lit.as_bytes().iter().enumerate().peekable();
+    loop {
+        match chars.next() {
+            Some((i, &c)) => {
+                if c == b'\\' {
+                    if *chars.peek().expect(error(i).as_slice()).val1() == b'\n' {
+                        loop {
+                            // eat everything up to a non-whitespace
+                            match chars.peek().map(|x| *x.val1()) {
+                                Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') => {
+                                    chars.next();
+                                },
+                                _ => { break; }
+                            }
+                        }
+                    } else {
+                        // otherwise, a normal escape
+                        let (c, n) = byte_lit(lit.slice_from(i));
+                        for _ in range(0, n - 1) { // we don't need to move past the first \
+                            chars.next();
+                        }
+                        res.push(c);
+                    }
+                } else {
+                    res.push(c);
+                }
+            },
+            None => { break; }
+        }
+    }
+
+    Rc::new(res)
+}
+
+pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
+    // s can only be ascii, byte indexing is fine
+
+    let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
+    let mut s = s2.as_slice();
+
+    debug!("parse_integer_lit: {}", s);
+
+    if s.len() == 1 {
+        return ast::LitIntUnsuffixed((s.char_at(0)).to_digit(10).unwrap() as i64);
+    }
+
+    let mut base = 10;
+    let orig = s;
+
+    #[deriving(Show)]
+    enum Result {
+        Nothing,
+        Signed(ast::IntTy),
+        Unsigned(ast::UintTy)
+    }
+
+    impl Result {
+        fn suffix_len(&self) -> uint {
+            match *self {
+                Nothing => 0,
+                Signed(s) => s.suffix_len(),
+                Unsigned(u) => u.suffix_len()
+            }
+        }
+    }
+
+    let mut ty = Nothing;
+
+
+    if s.char_at(0) == '0' {
+        match s.char_at(1) {
+            'x' => base = 16,
+            'o' => base = 8,
+            'b' => base = 2,
+            _ => { }
+        }
+    }
+
+    if base != 10 {
+        s = s.slice_from(2);
+    }
+
+    let last = s.len() - 1;
+    match s.char_at(last) {
+        'i' => ty = Signed(ast::TyI),
+        'u' => ty = Unsigned(ast::TyU),
+        '8' => {
+            if s.len() > 2 {
+                match s.char_at(last - 1) {
+                    'i' => ty = Signed(ast::TyI8),
+                    'u' => ty = Unsigned(ast::TyU8),
+                    _ => { }
+                }
+            }
+        },
+        '6' => {
+            if s.len() > 3 && s.char_at(last - 1) == '1' {
+                match s.char_at(last - 2) {
+                    'i' => ty = Signed(ast::TyI16),
+                    'u' => ty = Unsigned(ast::TyU16),
+                    _ => { }
+                }
+            }
+        },
+        '2' => {
+            if s.len() > 3 && s.char_at(last - 1) == '3' {
+                match s.char_at(last - 2) {
+                    'i' => ty = Signed(ast::TyI32),
+                    'u' => ty = Unsigned(ast::TyU32),
+                    _ => { }
+                }
+            }
+        },
+        '4' => {
+            if s.len() > 3 && s.char_at(last - 1) == '6' {
+                match s.char_at(last - 2) {
+                    'i' => ty = Signed(ast::TyI64),
+                    'u' => ty = Unsigned(ast::TyU64),
+                    _ => { }
+                }
+            }
+        },
+        _ => { }
+    }
+
+
+    s = s.slice_to(s.len() - ty.suffix_len());
+
+    debug!("The suffix is {}, base {}, the new string is {}, the original \
+           string was {}", ty, base, s, orig);
+
+    let res: u64 = match ::std::num::from_str_radix(s, base) {
+        Some(r) => r,
+        None => { sd.span_err(sp, "int literal is too large"); 0 }
+    };
+
+    match ty {
+        Nothing => ast::LitIntUnsuffixed(res as i64),
+        Signed(t) => ast::LitInt(res as i64, t),
+        Unsigned(t) => ast::LitUint(res, t)
+    }
+}
 
 #[cfg(test)]
 mod test {

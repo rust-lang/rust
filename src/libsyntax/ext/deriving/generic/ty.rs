@@ -25,8 +25,10 @@ use std::gc::Gc;
 
 /// The types of pointers
 pub enum PtrTy<'a> {
-    Send, // ~
-    Borrowed(Option<&'a str>, ast::Mutability), // &['lifetime] [mut]
+    /// ~
+    Send,
+    /// &'lifetime mut
+    Borrowed(Option<&'a str>, ast::Mutability),
 }
 
 /// A path, e.g. `::std::option::Option::<int>` (global). Has support
@@ -83,12 +85,12 @@ impl<'a> Path<'a> {
 /// A type. Supports pointers (except for *), Self, and literals
 pub enum Ty<'a> {
     Self,
-    // &/Box/ Ty
+    /// &/Box/ Ty
     Ptr(Box<Ty<'a>>, PtrTy<'a>),
-    // mod::mod::Type<[lifetime], [Params...]>, including a plain type
-    // parameter, and things like `int`
+    /// mod::mod::Type<[lifetime], [Params...]>, including a plain type
+    /// parameter, and things like `int`
     Literal(Path<'a>),
-    // includes nil
+    /// includes unit
     Tuple(Vec<Ty<'a>> )
 }
 

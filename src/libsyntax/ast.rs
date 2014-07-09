@@ -24,7 +24,8 @@ use std::rc::Rc;
 use std::gc::{Gc, GC};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
-/// A pointer abstraction. FIXME(eddyb) #10676 use Rc<T> in the future.
+/// A pointer abstraction.
+// FIXME(eddyb) #10676 use Rc<T> in the future.
 pub type P<T> = Gc<T>;
 
 #[allow(non_snake_case_functions)]
@@ -36,11 +37,11 @@ pub fn P<T: 'static>(value: T) -> P<T> {
 // FIXME #6993: in librustc, uses of "ident" should be replaced
 // by just "Name".
 
-// an identifier contains a Name (index into the interner
-// table) and a SyntaxContext to track renaming and
-// macro expansion per Flatt et al., "Macros
-// That Work Together"
-#[deriving(Clone, Hash, PartialOrd, Eq, Ord, Show)]
+/// An identifier contains a Name (index into the interner
+/// table) and a SyntaxContext to track renaming and
+/// macro expansion per Flatt et al., "Macros
+/// That Work Together"
+#[deriving(Clone, Hash, PartialOrd, Eq, Ord)]
 pub struct Ident {
     pub name: Name,
     pub ctxt: SyntaxContext
@@ -49,6 +50,16 @@ pub struct Ident {
 impl Ident {
     /// Construct an identifier with the given name and an empty context:
     pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
+
+    pub fn as_str<'a>(&'a self) -> &'a str {
+        self.name.as_str()
+    }
+}
+
+impl Show for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "\"{}\"#{}", token::get_ident(*self).get(), self.ctxt)
+    }
 }
 
 impl PartialEq for Ident {
@@ -95,7 +106,26 @@ pub static ILLEGAL_CTXT : SyntaxContext = 1;
 
 /// A name is a part of an identifier, representing a string or gensym. It's
 /// the result of interning.
-pub type Name = u32;
+#[deriving(Eq, Ord, PartialEq, PartialOrd, Hash, Encodable, Decodable, Clone, Show)]
+pub struct Name(pub u32);
+
+impl Name {
+    pub fn as_str<'a>(&'a self) -> &'a str {
+        unsafe {
+            // FIXME #12938: can't use copy_lifetime since &str isn't a &T
+            ::std::mem::transmute(token::get_name(*self).get())
+        }
+    }
+
+    pub fn uint(&self) -> uint {
+        let Name(nm) = *self;
+        nm as uint
+    }
+
+    pub fn ident(&self) -> Ident {
+        Ident { name: *self, ctxt: 0 }
+    }
+}
 
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = u32;
@@ -122,10 +152,9 @@ pub struct Lifetime {
     pub name: Name
 }
 
-// a "Path" is essentially Rust's notion of a name;
-// for instance: std::cmp::PartialEq  .  It's represented
-// as a sequence of identifiers, along with a bunch
-// of supporting information.
+/// A "Path" is essentially Rust's notion of a name; for instance:
+/// std::cmp::PartialEq  .  It's represented as a sequence of identifiers,
+/// along with a bunch of supporting information.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Path {
     pub span: Span,
@@ -163,15 +192,15 @@ pub struct DefId {
 pub static LOCAL_CRATE: CrateNum = 0;
 pub static CRATE_NODE_ID: NodeId = 0;
 
-// When parsing and doing expansions, we initially give all AST nodes this AST
-// node value. Then later, in the renumber pass, we renumber them to have
-// small, positive ids.
+/// When parsing and doing expansions, we initially give all AST nodes this AST
+/// node value. Then later, in the renumber pass, we renumber them to have
+/// small, positive ids.
 pub static DUMMY_NODE_ID: NodeId = -1;
 
-// The AST represents all type param bounds as types.
-// typeck::collect::compute_bounds matches these against
-// the "special" built-in traits (see middle::lang_items) and
-// detects Copy, Send and Share.
+/// The AST represents all type param bounds as types.
+/// typeck::collect::compute_bounds matches these against
+/// the "special" built-in traits (see middle::lang_items) and
+/// detects Copy, Send and Share.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum TyParamBound {
     TraitTyParamBound(TraitRef),
@@ -210,9 +239,9 @@ impl Generics {
     }
 }
 
-// The set of MetaItems that define the compilation environment of the crate,
-// used to drive conditional compilation
-pub type CrateConfig = Vec<Gc<MetaItem>>;
+/// The set of MetaItems that define the compilation environment of the crate,
+/// used to drive conditional compilation
+pub type CrateConfig = Vec<Gc<MetaItem>> ;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Crate {
@@ -289,13 +318,13 @@ pub enum BindingMode {
 pub enum Pat_ {
     PatWild,
     PatWildMulti,
-    // A PatIdent may either be a new bound variable,
-    // or a nullary enum (in which case the third field
-    // is None).
-    // In the nullary enum case, the parser can't determine
-    // which it is. The resolver determines this, and
-    // records this pattern's NodeId in an auxiliary
-    // set (of "PatIdents that refer to nullary enums")
+    /// A PatIdent may either be a new bound variable,
+    /// or a nullary enum (in which case the third field
+    /// is None).
+    /// In the nullary enum case, the parser can't determine
+    /// which it is. The resolver determines this, and
+    /// records this pattern's NodeId in an auxiliary
+    /// set (of "PatIdents that refer to nullary enums")
     PatIdent(BindingMode, SpannedIdent, Option<Gc<Pat>>),
     PatEnum(Path, Option<Vec<Gc<Pat>>>), /* "none" means a * pattern where
                                      * we don't bind the fields to names */
@@ -305,8 +334,8 @@ pub enum Pat_ {
     PatRegion(Gc<Pat>), // reference pattern
     PatLit(Gc<Expr>),
     PatRange(Gc<Expr>, Gc<Expr>),
-    // [a, b, ..i, y, z] is represented as
-    // PatVec(~[a, b], Some(i), ~[y, z])
+    /// [a, b, ..i, y, z] is represented as:
+    ///     PatVec(~[a, b], Some(i), ~[y, z])
     PatVec(Vec<Gc<Pat>>, Option<Gc<Pat>>, Vec<Gc<Pat>>),
     PatMac(Mac),
 }
@@ -319,9 +348,12 @@ pub enum Mutability {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum ExprVstore {
-    ExprVstoreUniq,                 // ~[1,2,3,4]
-    ExprVstoreSlice,                // &[1,2,3,4]
-    ExprVstoreMutSlice,             // &mut [1,2,3,4]
+    /// ~[1, 2, 3, 4]
+    ExprVstoreUniq,
+    /// &[1, 2, 3, 4]
+    ExprVstoreSlice,
+    /// &mut [1, 2, 3, 4]
+    ExprVstoreMutSlice,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
@@ -359,16 +391,16 @@ pub type Stmt = Spanned<Stmt_>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum Stmt_ {
-    // could be an item or a local (let) binding:
+    /// Could be an item or a local (let) binding:
     StmtDecl(Gc<Decl>, NodeId),
 
-    // expr without trailing semi-colon (must have unit type):
+    /// Expr without trailing semi-colon (must have unit type):
     StmtExpr(Gc<Expr>, NodeId),
 
-    // expr with trailing semi-colon (may have any type):
+    /// Expr with trailing semi-colon (may have any type):
     StmtSemi(Gc<Expr>, NodeId),
 
-    // bool: is there a trailing sem-colon?
+    /// bool: is there a trailing sem-colon?
     StmtMac(Mac, bool),
 }
 
@@ -397,9 +429,9 @@ pub type Decl = Spanned<Decl_>;
 
 #[deriving(PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum Decl_ {
-    // a local (let) binding:
+    /// A local (let) binding:
     DeclLocal(Gc<Local>),
-    // an item binding:
+    /// An item binding:
     DeclItem(Gc<Item>),
 }
 
@@ -443,7 +475,7 @@ pub struct Expr {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum Expr_ {
     ExprVstore(Gc<Expr>, ExprVstore),
-    // First expr is the place; second expr is the value.
+    /// First expr is the place; second expr is the value.
     ExprBox(Gc<Expr>, Gc<Expr>),
     ExprVec(Vec<Gc<Expr>>),
     ExprCall(Gc<Expr>, Vec<Gc<Expr>>),
@@ -483,130 +515,127 @@ pub enum Expr_ {
 
     ExprMac(Mac),
 
-    // A struct literal expression.
+    /// A struct literal expression.
     ExprStruct(Path, Vec<Field> , Option<Gc<Expr>> /* base */),
 
-    // A vector literal constructed from one repeated element.
+    /// A vector literal constructed from one repeated element.
     ExprRepeat(Gc<Expr> /* element */, Gc<Expr> /* count */),
 
-    // No-op: used solely so we can pretty-print faithfully
+    /// No-op: used solely so we can pretty-print faithfully
     ExprParen(Gc<Expr>)
 }
 
-// When the main rust parser encounters a syntax-extension invocation, it
-// parses the arguments to the invocation as a token-tree. This is a very
-// loose structure, such that all sorts of different AST-fragments can
-// be passed to syntax extensions using a uniform type.
-//
-// If the syntax extension is an MBE macro, it will attempt to match its
-// LHS "matchers" against the provided token tree, and if it finds a
-// match, will transcribe the RHS token tree, splicing in any captured
-// macro_parser::matched_nonterminals into the TTNonterminals it finds.
-//
-// The RHS of an MBE macro is the only place a TTNonterminal or TTSeq
-// makes any real sense. You could write them elsewhere but nothing
-// else knows what to do with them, so you'll probably get a syntax
-// error.
-//
+/// When the main rust parser encounters a syntax-extension invocation, it
+/// parses the arguments to the invocation as a token-tree. This is a very
+/// loose structure, such that all sorts of different AST-fragments can
+/// be passed to syntax extensions using a uniform type.
+///
+/// If the syntax extension is an MBE macro, it will attempt to match its
+/// LHS "matchers" against the provided token tree, and if it finds a
+/// match, will transcribe the RHS token tree, splicing in any captured
+/// macro_parser::matched_nonterminals into the TTNonterminals it finds.
+///
+/// The RHS of an MBE macro is the only place a TTNonterminal or TTSeq
+/// makes any real sense. You could write them elsewhere but nothing
+/// else knows what to do with them, so you'll probably get a syntax
+/// error.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 #[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum TokenTree {
-    // a single token
+    /// A single token
     TTTok(Span, ::parse::token::Token),
-    // a delimited sequence (the delimiters appear as the first
-    // and last elements of the vector)
+    /// A delimited sequence (the delimiters appear as the first
+    /// and last elements of the vector)
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
     TTDelim(Rc<Vec<TokenTree>>),
 
     // These only make sense for right-hand-sides of MBE macros:
 
-    // a kleene-style repetition sequence with a span, a TTForest,
-    // an optional separator, and a boolean where true indicates
-    // zero or more (..), and false indicates one or more (+).
+    /// A kleene-style repetition sequence with a span, a TTForest,
+    /// an optional separator, and a boolean where true indicates
+    /// zero or more (..), and false indicates one or more (+).
     // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
     TTSeq(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, bool),
 
-    // a syntactic variable that will be filled in by macro expansion.
+    /// A syntactic variable that will be filled in by macro expansion.
     TTNonterminal(Span, Ident)
 }
 
-//
-// Matchers are nodes defined-by and recognized-by the main rust parser and
-// language, but they're only ever found inside syntax-extension invocations;
-// indeed, the only thing that ever _activates_ the rules in the rust parser
-// for parsing a matcher is a matcher looking for the 'matchers' nonterminal
-// itself. Matchers represent a small sub-language for pattern-matching
-// token-trees, and are thus primarily used by the macro-defining extension
-// itself.
-//
-// MatchTok
-// --------
-//
-//     A matcher that matches a single token, denoted by the token itself. So
-//     long as there's no $ involved.
-//
-//
-// MatchSeq
-// --------
-//
-//     A matcher that matches a sequence of sub-matchers, denoted various
-//     possible ways:
-//
-//             $(M)*       zero or more Ms
-//             $(M)+       one or more Ms
-//             $(M),+      one or more comma-separated Ms
-//             $(A B C);*  zero or more semi-separated 'A B C' seqs
-//
-//
-// MatchNonterminal
-// -----------------
-//
-//     A matcher that matches one of a few interesting named rust
-//     nonterminals, such as types, expressions, items, or raw token-trees. A
-//     black-box matcher on expr, for example, binds an expr to a given ident,
-//     and that ident can re-occur as an interpolation in the RHS of a
-//     macro-by-example rule. For example:
-//
-//        $foo:expr   =>     1 + $foo    // interpolate an expr
-//        $foo:tt     =>     $foo        // interpolate a token-tree
-//        $foo:tt     =>     bar! $foo   // only other valid interpolation
-//                                       // is in arg position for another
-//                                       // macro
-//
-// As a final, horrifying aside, note that macro-by-example's input is
-// also matched by one of these matchers. Holy self-referential! It is matched
-// by a MatchSeq, specifically this one:
-//
-//                   $( $lhs:matchers => $rhs:tt );+
-//
-// If you understand that, you have closed to loop and understand the whole
-// macro system. Congratulations.
-//
+/// Matchers are nodes defined-by and recognized-by the main rust parser and
+/// language, but they're only ever found inside syntax-extension invocations;
+/// indeed, the only thing that ever _activates_ the rules in the rust parser
+/// for parsing a matcher is a matcher looking for the 'matchers' nonterminal
+/// itself. Matchers represent a small sub-language for pattern-matching
+/// token-trees, and are thus primarily used by the macro-defining extension
+/// itself.
+///
+/// MatchTok
+/// --------
+///
+///     A matcher that matches a single token, denoted by the token itself. So
+///     long as there's no $ involved.
+///
+///
+/// MatchSeq
+/// --------
+///
+///     A matcher that matches a sequence of sub-matchers, denoted various
+///     possible ways:
+///
+///             $(M)*       zero or more Ms
+///             $(M)+       one or more Ms
+///             $(M),+      one or more comma-separated Ms
+///             $(A B C);*  zero or more semi-separated 'A B C' seqs
+///
+///
+/// MatchNonterminal
+/// -----------------
+///
+///     A matcher that matches one of a few interesting named rust
+///     nonterminals, such as types, expressions, items, or raw token-trees. A
+///     black-box matcher on expr, for example, binds an expr to a given ident,
+///     and that ident can re-occur as an interpolation in the RHS of a
+///     macro-by-example rule. For example:
+///
+///        $foo:expr   =>     1 + $foo    // interpolate an expr
+///        $foo:tt     =>     $foo        // interpolate a token-tree
+///        $foo:tt     =>     bar! $foo   // only other valid interpolation
+///                                       // is in arg position for another
+///                                       // macro
+///
+/// As a final, horrifying aside, note that macro-by-example's input is
+/// also matched by one of these matchers. Holy self-referential! It is matched
+/// by a MatchSeq, specifically this one:
+///
+///                   $( $lhs:matchers => $rhs:tt );+
+///
+/// If you understand that, you have closed the loop and understand the whole
+/// macro system. Congratulations.
 pub type Matcher = Spanned<Matcher_>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum Matcher_ {
-    // match one token
+    /// Match one token
     MatchTok(::parse::token::Token),
-    // match repetitions of a sequence: body, separator, zero ok?,
-    // lo, hi position-in-match-array used:
+    /// Match repetitions of a sequence: body, separator, zero ok?,
+    /// lo, hi position-in-match-array used:
     MatchSeq(Vec<Matcher> , Option<::parse::token::Token>, bool, uint, uint),
-    // parse a Rust NT: name to bind, name of NT, position in match array:
+    /// Parse a Rust NT: name to bind, name of NT, position in match array:
     MatchNonterminal(Ident, Ident, uint)
 }
 
 pub type Mac = Spanned<Mac_>;
 
-// represents a macro invocation. The Path indicates which macro
-// is being invoked, and the vector of token-trees contains the source
-// of the macro invocation.
-// There's only one flavor, now, so this could presumably be simplified.
+/// Represents a macro invocation. The Path indicates which macro
+/// is being invoked, and the vector of token-trees contains the source
+/// of the macro invocation.
+/// There's only one flavor, now, so this could presumably be simplified.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum Mac_ {
     MacInvocTT(Path, Vec<TokenTree> , SyntaxContext),   // new macro-invocation
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum StrStyle {
     CookedStr,
     RawStr(uint)
@@ -614,7 +643,7 @@ pub enum StrStyle {
 
 pub type Lit = Spanned<Lit_>;
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Lit_ {
     LitStr(InternedString, StrStyle),
     LitBinary(Rc<Vec<u8> >),
@@ -659,11 +688,10 @@ pub struct TypeMethod {
     pub vis: Visibility,
 }
 
-/// Represents a method declaration in a trait declaration, possibly
-/// including a default implementation
-// A trait method is either required (meaning it doesn't have an
-// implementation, just a signature) or provided (meaning it has a default
-// implementation).
+/// Represents a method declaration in a trait declaration, possibly including
+/// a default implementation A trait method is either required (meaning it
+/// doesn't have an implementation, just a signature) or provided (meaning it
+/// has a default implementation).
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum TraitMethod {
     Required(TypeMethod),
@@ -685,6 +713,16 @@ impl fmt::Show for IntTy {
     }
 }
 
+impl IntTy {
+    pub fn suffix_len(&self) -> uint {
+        match *self {
+            TyI => 1,
+            TyI8 => 2,
+            TyI16 | TyI32 | TyI64  => 3,
+        }
+    }
+}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum UintTy {
     TyU,
@@ -692,6 +730,16 @@ pub enum UintTy {
     TyU16,
     TyU32,
     TyU64,
+}
+
+impl UintTy {
+    pub fn suffix_len(&self) -> uint {
+        match *self {
+            TyU => 1,
+            TyU8 => 2,
+            TyU16 | TyU32 | TyU64  => 3,
+        }
+    }
 }
 
 impl fmt::Show for UintTy {
@@ -712,6 +760,14 @@ impl fmt::Show for FloatTy {
     }
 }
 
+impl FloatTy {
+    pub fn suffix_len(&self) -> uint {
+        match *self {
+            TyF32 | TyF64 => 3, // add F128 handling here
+        }
+    }
+}
+
 // NB PartialEq method appears below.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Ty {
@@ -720,7 +776,7 @@ pub struct Ty {
     pub span: Span,
 }
 
-// Not represented directly in the AST, referred to by name through a ty_path.
+/// Not represented directly in the AST, referred to by name through a ty_path.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum PrimTy {
     TyInt(IntTy),
@@ -753,10 +809,10 @@ pub struct ClosureTy {
     pub fn_style: FnStyle,
     pub onceness: Onceness,
     pub decl: P<FnDecl>,
-    // Optional optvec distinguishes between "fn()" and "fn:()" so we can
-    // implement issue #7264. None means "fn()", which means infer a default
-    // bound based on pointer sigil during typeck. Some(Empty) means "fn:()",
-    // which means use no bounds (e.g., not even Owned on a ~fn()).
+    /// Optional optvec distinguishes between "fn()" and "fn:()" so we can
+    /// implement issue #7264. None means "fn()", which means infer a default
+    /// bound based on pointer sigil during typeck. Some(Empty) means "fn:()",
+    /// which means use no bounds (e.g., not even Owned on a ~fn()).
     pub bounds: Option<OwnedSlice<TyParamBound>>,
 }
 
@@ -789,11 +845,11 @@ pub enum Ty_ {
     TyUnboxedFn(Gc<UnboxedFnTy>),
     TyTup(Vec<P<Ty>> ),
     TyPath(Path, Option<OwnedSlice<TyParamBound>>, NodeId), // for #7264; see above
-    // No-op; kept solely so that we can pretty-print faithfully
+    /// No-op; kept solely so that we can pretty-print faithfully
     TyParen(P<Ty>),
     TyTypeof(Gc<Expr>),
-    // TyInfer means the type should be inferred instead of it having been
-    // specified. This can appear anywhere in a type.
+    /// TyInfer means the type should be inferred instead of it having been
+    /// specified. This can appear anywhere in a type.
     TyInfer,
 }
 
@@ -854,8 +910,10 @@ pub struct FnDecl {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum FnStyle {
-    UnsafeFn, // declared with "unsafe fn"
-    NormalFn, // declared with "fn"
+    /// Declared with "unsafe fn"
+    UnsafeFn,
+    /// Declared with "fn"
+    NormalFn,
 }
 
 impl fmt::Show for FnStyle {
@@ -869,18 +927,24 @@ impl fmt::Show for FnStyle {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum RetStyle {
-    NoReturn, // functions with return type _|_ that always
-              // raise an error or exit (i.e. never return to the caller)
-    Return, // everything else
+    /// Functions with return type ! that always
+    /// raise an error or exit (i.e. never return to the caller)
+    NoReturn,
+    /// Everything else
+    Return,
 }
 
 /// Represents the kind of 'self' associated with a method
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum ExplicitSelf_ {
-    SelfStatic,                                       // no self
-    SelfValue(Ident),                                 // `self`
-    SelfRegion(Option<Lifetime>, Mutability, Ident),  // `&'lt self`, `&'lt mut self`
-    SelfUniq(Ident),                                  // `~self`
+    /// No self
+    SelfStatic,
+    /// `self
+    SelfValue(Ident),
+    /// `&'lt self`, `&'lt mut self`
+    SelfRegion(Option<Lifetime>, Mutability, Ident),
+    /// `~self`
+    SelfUniq(Ident)
 }
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
@@ -959,17 +1023,17 @@ pub type ViewPath = Spanned<ViewPath_>;
 #[deriving(PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum ViewPath_ {
 
-    // quux = foo::bar::baz
-    //
-    // or just
-    //
-    // foo::bar::baz  (with 'baz =' implicitly on the left)
+    /// `quux = foo::bar::baz`
+    ///
+    /// or just
+    ///
+    /// `foo::bar::baz ` (with 'baz =' implicitly on the left)
     ViewPathSimple(Ident, Path, NodeId),
 
-    // foo::bar::*
+    /// `foo::bar::*`
     ViewPathGlob(Path, NodeId),
 
-    // foo::bar::{a,b,c}
+    /// `foo::bar::{a,b,c}`
     ViewPathList(Path, Vec<PathListIdent> , NodeId)
 }
 
@@ -983,20 +1047,20 @@ pub struct ViewItem {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum ViewItem_ {
-    // ident: name used to refer to this crate in the code
-    // optional (InternedString,StrStyle): if present, this is a location
-    // (containing arbitrary characters) from which to fetch the crate sources
-    // For example, extern crate whatever = "github.com/rust-lang/rust"
+    /// Ident: name used to refer to this crate in the code
+    /// optional (InternedString,StrStyle): if present, this is a location
+    /// (containing arbitrary characters) from which to fetch the crate sources
+    /// For example, extern crate whatever = "github.com/rust-lang/rust"
     ViewItemExternCrate(Ident, Option<(InternedString,StrStyle)>, NodeId),
     ViewItemUse(Gc<ViewPath>),
 }
 
-// Meta-data associated with an item
+/// Meta-data associated with an item
 pub type Attribute = Spanned<Attribute_>;
 
-// Distinguishes between Attributes that decorate items and Attributes that
-// are contained as statements within items. These two cases need to be
-// distinguished for pretty-printing.
+/// Distinguishes between Attributes that decorate items and Attributes that
+/// are contained as statements within items. These two cases need to be
+/// distinguished for pretty-printing.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum AttrStyle {
     AttrOuter,
@@ -1006,7 +1070,7 @@ pub enum AttrStyle {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct AttrId(pub uint);
 
-// doc-comments are promoted to attributes that have is_sugared_doc = true
+/// Doc-comments are promoted to attributes that have is_sugared_doc = true
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Attribute_ {
     pub id: AttrId,
@@ -1015,13 +1079,12 @@ pub struct Attribute_ {
     pub is_sugared_doc: bool,
 }
 
-/*
-  TraitRef's appear in impls.
-  resolve maps each TraitRef's ref_id to its defining trait; that's all
-  that the ref_id is for. The impl_id maps to the "self type" of this impl.
-  If this impl is an ItemImpl, the impl_id is redundant (it could be the
-  same as the impl's node id).
- */
+
+/// TraitRef's appear in impls.
+/// resolve maps each TraitRef's ref_id to its defining trait; that's all
+/// that the ref_id is for. The impl_id maps to the "self type" of this impl.
+/// If this impl is an ItemImpl, the impl_id is redundant (it could be the
+/// same as the impl's node id).
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct TraitRef {
     pub path: Path,
@@ -1065,7 +1128,8 @@ pub type StructField = Spanned<StructField_>;
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum StructFieldKind {
     NamedField(Ident, Visibility),
-    UnnamedField(Visibility), // element of a tuple-like struct
+    /// Element of a tuple-like struct
+    UnnamedField(Visibility),
 }
 
 impl StructFieldKind {
@@ -1079,12 +1143,15 @@ impl StructFieldKind {
 
 #[deriving(PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct StructDef {
-    pub fields: Vec<StructField>, /* fields, not including ctor */
-    /* ID of the constructor. This is only used for tuple- or enum-like
-     * structs. */
+    /// Fields, not including ctor
+    pub fields: Vec<StructField>,
+    /// ID of the constructor. This is only used for tuple- or enum-like
+    /// structs.
     pub ctor_id: Option<NodeId>,
-    pub super_struct: Option<P<Ty>>, // Super struct, if specified.
-    pub is_virtual: bool,            // True iff the struct may be inherited from.
+    /// Super struct, if specified.
+    pub super_struct: Option<P<Ty>>,
+    /// True iff the struct may be inherited from.
+    pub is_virtual: bool,
 }
 
 /*
@@ -1120,7 +1187,7 @@ pub enum Item_ {
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
              Vec<Gc<Method>>),
-    // a macro invocation (which includes macro definition)
+    /// A macro invocation (which includes macro definition)
     ItemMac(Mac),
 }
 
@@ -1140,9 +1207,9 @@ pub enum ForeignItem_ {
     ForeignItemStatic(P<Ty>, /* is_mutbl */ bool),
 }
 
-// The data we save and restore about an inlined item or method.  This is not
-// part of the AST that we parse from a file, but it becomes part of the tree
-// that we trans.
+/// The data we save and restore about an inlined item or method.  This is not
+/// part of the AST that we parse from a file, but it becomes part of the tree
+/// that we trans.
 #[deriving(PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum InlinedItem {
     IIItem(Gc<Item>),

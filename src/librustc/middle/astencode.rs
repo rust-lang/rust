@@ -1523,7 +1523,7 @@ fn test_basic() {
         fn foo() {}
     ));
 }
-
+/* NOTE: When there's a snapshot, update this (yay quasiquoter!)
 #[test]
 fn test_smalltalk() {
     let cx = mk_ctxt();
@@ -1531,6 +1531,7 @@ fn test_smalltalk() {
         fn foo() -> int { 3 + 4 } // first smalltalk program ever executed.
     ));
 }
+*/
 
 #[test]
 fn test_more() {

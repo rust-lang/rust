@@ -88,9 +88,9 @@ pub static indent_unit: uint = 4u;
 
 pub static default_columns: uint = 78u;
 
-// Requires you to pass an input filename and reader so that
-// it can scan the input text for comments and literals to
-// copy forward.
+/// Requires you to pass an input filename and reader so that
+/// it can scan the input text for comments and literals to
+/// copy forward.
 pub fn print_crate<'a>(cm: &'a CodeMap,
                        span_diagnostic: &diagnostic::SpanHandler,
                        krate: &ast::Crate,

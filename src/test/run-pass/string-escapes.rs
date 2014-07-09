@@ -9,5 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let h = 0x8.0e+9; //~ ERROR: hexadecimal float literal is not supported
+    let x = "\\\\\
+    ";
+    assert!(x == r"\\"); // extraneous whitespace stripped
 }

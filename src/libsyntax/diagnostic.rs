@@ -21,7 +21,7 @@ use std::string::String;
 use term::WriterWrapper;
 use term;
 
-// maximum number of lines we will print for each error; arbitrary.
+/// maximum number of lines we will print for each error; arbitrary.
 static MAX_LINES: uint = 6u;
 
 #[deriving(Clone)]
@@ -73,9 +73,9 @@ pub struct FatalError;
 /// or `.span_bug` rather than a failed assertion, etc.
 pub struct ExplicitBug;
 
-// a span-handler is like a handler but also
-// accepts span information for source-location
-// reporting.
+/// A span-handler is like a handler but also
+/// accepts span information for source-location
+/// reporting.
 pub struct SpanHandler {
     pub handler: Handler,
     pub cm: codemap::CodeMap,
@@ -114,9 +114,9 @@ impl SpanHandler {
     }
 }
 
-// a handler deals with errors; certain errors
-// (fatal, bug, unimpl) may cause immediate exit,
-// others log errors for later reporting.
+/// A handler deals with errors; certain errors
+/// (fatal, bug, unimpl) may cause immediate exit,
+/// others log errors for later reporting.
 pub struct Handler {
     err_count: Cell<uint>,
     emit: RefCell<Box<Emitter + Send>>,
@@ -442,12 +442,12 @@ fn highlight_lines(err: &mut EmitterWriter,
     Ok(())
 }
 
-// Here are the differences between this and the normal `highlight_lines`:
-// `custom_highlight_lines` will always put arrow on the last byte of the
-// span (instead of the first byte). Also, when the span is too long (more
-// than 6 lines), `custom_highlight_lines` will print the first line, then
-// dot dot dot, then last line, whereas `highlight_lines` prints the first
-// six lines.
+/// Here are the differences between this and the normal `highlight_lines`:
+/// `custom_highlight_lines` will always put arrow on the last byte of the
+/// span (instead of the first byte). Also, when the span is too long (more
+/// than 6 lines), `custom_highlight_lines` will print the first line, then
+/// dot dot dot, then last line, whereas `highlight_lines` prints the first
+/// six lines.
 fn custom_highlight_lines(w: &mut EmitterWriter,
                           cm: &codemap::CodeMap,
                           sp: Span,

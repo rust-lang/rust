@@ -18,7 +18,6 @@ use std::io;
 
 use syntax::parse;
 use syntax::parse::lexer;
-use syntax::codemap::{BytePos, Span};
 
 use html::escape::Escape;
 
@@ -59,38 +58,30 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
         None => {}
     }
     try!(write!(out, "class='rust {}'>\n", class.unwrap_or("")));
-    let mut last = BytePos(0);
     let mut is_attribute = false;
     let mut is_macro = false;
     let mut is_macro_nonterminal = false;
     loop {
         let next = lexer.next_token();
-        let test = if next.tok == t::EOF {lexer.pos} else {next.sp.lo};
 
-        // The lexer consumes all whitespace and non-doc-comments when iterating
-        // between tokens. If this token isn't directly adjacent to our last
-        // token, then we need to emit the whitespace/comment.
-        //
-        // If the gap has any '/' characters then we consider the whole thing a
-        // comment. This will classify some whitespace as a comment, but that
-        // doesn't matter too much for syntax highlighting purposes.
-        if test > last {
-            let snip = sess.span_diagnostic.cm.span_to_snippet(Span {
-                lo: last,
-                hi: test,
-                expn_info: None,
-            }).unwrap();
-            if snip.as_slice().contains("/") {
-                try!(write!(out, "<span class='comment'>{}</span>",
-                              Escape(snip.as_slice())));
-            } else {
-                try!(write!(out, "{}", Escape(snip.as_slice())));
-            }
-        }
-        last = next.sp.hi;
+        let snip = |sp| sess.span_diagnostic.cm.span_to_snippet(sp).unwrap();
+
         if next.tok == t::EOF { break }
 
         let klass = match next.tok {
+            t::WS => {
+                try!(write!(out, "{}", Escape(snip(next.sp).as_slice())));
+                continue
+            },
+            t::COMMENT => {
+                try!(write!(out, "<span class='comment'>{}</span>",
+                            Escape(snip(next.sp).as_slice())));
+                continue
+            },
+            t::SHEBANG(s) => {
+                try!(write!(out, "{}", Escape(s.as_str())));
+                continue
+            },
             // If this '&' token is directly adjacent to another token, assume
             // that it's the address-of operator instead of the and-operator.
             // This allows us to give all pointers their own class (`Box` and
@@ -144,8 +135,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                 t::LIT_CHAR(..) | t::LIT_STR(..) | t::LIT_STR_RAW(..) => "string",
 
             // number literals
-            t::LIT_INT(..) | t::LIT_UINT(..) | t::LIT_INT_UNSUFFIXED(..) |
-                t::LIT_FLOAT(..) | t::LIT_FLOAT_UNSUFFIXED(..) => "number",
+            t::LIT_INTEGER(..) | t::LIT_FLOAT(..) => "number",
 
             // keywords are also included in the identifier set
             t::IDENT(ident, _is_mod_sep) => {

@@ -119,7 +119,7 @@ impl MacResult for MacroRulesDefiner {
     }
 }
 
-// Given `lhses` and `rhses`, this is the new macro we create
+/// Given `lhses` and `rhses`, this is the new macro we create
 fn generic_extension(cx: &ExtCtxt,
                      sp: Span,
                      name: Ident,
@@ -193,9 +193,9 @@ fn generic_extension(cx: &ExtCtxt,
     cx.span_fatal(best_fail_spot, best_fail_msg.as_slice());
 }
 
-// this procedure performs the expansion of the
-// macro_rules! macro. It parses the RHS and adds
-// an extension to the current context.
+/// This procedure performs the expansion of the
+/// macro_rules! macro. It parses the RHS and adds
+/// an extension to the current context.
 pub fn add_new_extension(cx: &mut ExtCtxt,
                          sp: Span,
                          name: Ident,
