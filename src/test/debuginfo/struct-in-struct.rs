@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:set print pretty off
 // gdb-command:rbreak zzz
 // gdb-command:run
@@ -24,6 +28,35 @@
 
 // gdb-command:print padding_at_end_parent
 // gdb-check:$3 = {x = {x = 10, y = 11}, y = {x = 12, y = 13}, z = {x = 14, y = 15}}
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print three_simple_structs
+// lldb-check:[...]$0 = ThreeSimpleStructs { x: Simple { x: 1 }, y: Simple { x: 2 }, z: Simple { x: 3 } }
+
+// lldb-command:print internal_padding_parent
+// lldb-check:[...]$1 = InternalPaddingParent { x: InternalPadding { x: 4, y: 5 }, y: InternalPadding { x: 6, y: 7 }, z: InternalPadding { x: 8, y: 9 } }
+
+// lldb-command:print padding_at_end_parent
+// lldb-check:[...]$2 = PaddingAtEndParent { x: PaddingAtEnd { x: 10, y: 11 }, y: PaddingAtEnd { x: 12, y: 13 }, z: PaddingAtEnd { x: 14, y: 15 } }
+
+// lldb-command:print mixed
+// lldb-check:[...]$3 = Mixed { x: PaddingAtEnd { x: 16, y: 17 }, y: InternalPadding { x: 18, y: 19 }, z: Simple { x: 20 }, w: 21 }
+
+// lldb-command:print bag
+// lldb-check:[...]$4 = Bag { x: Simple { x: 22 } }
+
+// lldb-command:print bag_in_bag
+// lldb-check:[...]$5 = BagInBag { x: Bag { x: Simple { x: 23 } } }
+
+// lldb-command:print tjo
+// lldb-check:[...]$6 = ThatsJustOverkill { x: BagInBag { x: Bag { x: Simple { x: 24 } } } }
+
+// lldb-command:print tree
+// lldb-check:[...]$7 = Tree { x: Simple { x: 25 }, y: InternalPaddingParent { x: InternalPadding { x: 26, y: 27 }, y: InternalPadding { x: 28, y: 29 }, z: InternalPadding { x: 30, y: 31 } }, z: BagInBag { x: Bag { x: Simple { x: 32 } } } }
 
 #![allow(unused_variable)]
 
@@ -140,7 +173,7 @@ fn main() {
         }
     };
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

@@ -12,6 +12,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:set print pretty off
 // gdb-command:rbreak zzz
 // gdb-command:run
@@ -34,6 +37,29 @@
 
 // gdb-command:print sizeof(packedInPacked)
 // gdb-check:$6 = 40
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print packed
+// lldb-check:[...]$0 = Packed { x: 123, y: 234, z: 345 }
+
+// lldb-command:print packedInPacked
+// lldb-check:[...]$1 = PackedInPacked { a: 1111, b: Packed { x: 2222, y: 3333, z: 4444 }, c: 5555, d: Packed { x: 6666, y: 7777, z: 8888 } }
+
+// lldb-command:print packedInUnpacked
+// lldb-check:[...]$2 = PackedInUnpacked { a: -1111, b: Packed { x: -2222, y: -3333, z: -4444 }, c: -5555, d: Packed { x: -6666, y: -7777, z: -8888 } }
+
+// lldb-command:print unpackedInPacked
+// lldb-check:[...]$3 = UnpackedInPacked { a: 987, b: Unpacked { x: 876, y: 765, z: 654, w: 543 }, c: Unpacked { x: 432, y: 321, z: 210, w: 109 }, d: -98 }
+
+// lldb-command:print sizeof(packed)
+// lldb-check:[...]$4 = 14
+
+// lldb-command:print sizeof(packedInPacked)
+// lldb-check:[...]$5 = 40
 
 #![allow(unused_variable)]
 
@@ -101,7 +127,7 @@ fn main() {
         d: -98
     };
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

@@ -13,6 +13,9 @@
 #![feature(managed_boxes)]
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:set print pretty off
 // gdb-command:rbreak zzz
 // gdb-command:run
@@ -26,6 +29,19 @@
 
 // gdb-command:print managed_within_unique->y->val
 // gdb-check:$3 = -4
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print *ordinary_unique
+// lldb-check:[...]$0 = (-1, -2)
+
+// lldb-command:print managed_within_unique->x
+// lldb-check:[...]$1 = -3
+
+// lldb-command:print managed_within_unique->y->val
+// lldb-check:[...]$2 = -4
 
 #![allow(unused_variable)]
 
@@ -41,7 +57,7 @@ fn main() {
 
     let managed_within_unique = box ContainsManaged { x: -3, y: box(GC) -4i };
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

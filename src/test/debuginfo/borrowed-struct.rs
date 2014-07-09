@@ -9,8 +9,10 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10381)
-
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 // gdb-command:finish
@@ -45,6 +47,41 @@
 // gdb-command:print *unique_val_interior_ref_2
 // gdb-check:$10 = 26.5
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print *stack_val_ref
+// lldb-check:[...]$0 = SomeStruct { x: 10, y: 23.5 }
+
+// lldb-command:print *stack_val_interior_ref_1
+// lldb-check:[...]$1 = 10
+
+// lldb-command:print *stack_val_interior_ref_2
+// lldb-check:[...]$2 = 23.5
+
+// lldb-command:print *ref_to_unnamed
+// lldb-check:[...]$3 = SomeStruct { x: 11, y: 24.5 }
+
+// lldb-command:print *managed_val_ref
+// lldb-check:[...]$4 = SomeStruct { x: 12, y: 25.5 }
+
+// lldb-command:print *managed_val_interior_ref_1
+// lldb-check:[...]$5 = 12
+
+// lldb-command:print *managed_val_interior_ref_2
+// lldb-check:[...]$6 = 25.5
+
+// lldb-command:print *unique_val_ref
+// lldb-check:[...]$7 = SomeStruct { x: 13, y: 26.5 }
+
+// lldb-command:print *unique_val_interior_ref_1
+// lldb-check:[...]$8 = 13
+
+// lldb-command:print *unique_val_interior_ref_2
+// lldb-check:[...]$9 = 26.5
+
 #![feature(managed_boxes)]
 #![allow(unused_variable)]
 
@@ -72,7 +109,7 @@ fn main() {
     let unique_val_interior_ref_1: &int = &unique_val.x;
     let unique_val_interior_ref_2: &f64 = &unique_val.y;
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

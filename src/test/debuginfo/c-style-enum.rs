@@ -12,6 +12,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 
 // gdb-command:print 'c-style-enum::SINGLE_VARIANT'
@@ -71,6 +74,32 @@
 // gdb-command:print 'c-style-enum::MANUAL_THREE'
 // gdb-check:$18 = OneMillion
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print auto_one
+// lldb-check:[...]$0 = One
+
+// lldb-command:print auto_two
+// lldb-check:[...]$1 = Two
+
+// lldb-command:print auto_three
+// lldb-check:[...]$2 = Three
+
+// lldb-command:print manual_one_hundred
+// lldb-check:[...]$3 = OneHundred
+
+// lldb-command:print manual_one_thousand
+// lldb-check:[...]$4 = OneThousand
+
+// lldb-command:print manual_one_million
+// lldb-check:[...]$5 = OneMillion
+
+// lldb-command:print single_variant
+// lldb-check:[...]$6 = TheOnlyVariant
+
 #![allow(unused_variable)]
 #![allow(dead_code)]
 
@@ -120,11 +149,11 @@ fn main() {
         MANUAL_THREE = OneMillion;
     };
 
-    zzz();
+    zzz(); // #break
 
     let a = SINGLE_VARIANT;
     let a = unsafe { AUTO_ONE };
     let a = unsafe { MANUAL_ONE };
 }
 
-fn zzz() {()}
+fn zzz() { () }

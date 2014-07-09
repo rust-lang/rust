@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 
@@ -53,6 +56,43 @@
 // gdb-check:$7 = 1000000
 // gdb-command:continue
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// FIRST ITERATION
+// lldb-command:print x
+// lldb-check:[...]$0 = 1
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$1 = -1
+// lldb-command:continue
+
+// SECOND ITERATION
+// lldb-command:print x
+// lldb-check:[...]$2 = 2
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$3 = -2
+// lldb-command:continue
+
+// THIRD ITERATION
+// lldb-command:print x
+// lldb-check:[...]$4 = 3
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$5 = -3
+// lldb-command:continue
+
+// AFTER LOOP
+// lldb-command:print x
+// lldb-check:[...]$6 = 1000000
+// lldb-command:continue
+
 fn main() {
 
     let range = [1i, 2, 3];
@@ -60,16 +100,16 @@ fn main() {
     let x = 1000000i; // wan meeeljen doollaars!
 
     for &x in range.iter() {
-        zzz();
+        zzz(); // #break
         sentinel();
 
         let x = -1i * x;
 
-        zzz();
+        zzz(); // #break
         sentinel();
     }
 
-    zzz();
+    zzz(); // #break
     sentinel();
 }
 

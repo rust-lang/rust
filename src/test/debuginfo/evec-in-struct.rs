@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:set print pretty off
 // gdb-command:rbreak zzz
 // gdb-command:run
@@ -29,6 +32,25 @@
 
 // gdb-command:print struct_padded_at_end
 // gdb-check:$5 = {x = {22, 23}, y = {24, 25}}
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print no_padding1
+// lldb-check:[...]$0 = NoPadding1 { x: [0, 1, 2], y: -3, z: [4.5, 5.5] }
+// lldb-command:print no_padding2
+// lldb-check:[...]$1 = NoPadding2 { x: [6, 7, 8], y: [[9, 10], [11, 12]] }
+
+// lldb-command:print struct_internal_padding
+// lldb-check:[...]$2 = StructInternalPadding { x: [13, 14], y: [15, 16] }
+
+// lldb-command:print single_vec
+// lldb-check:[...]$3 = SingleVec { x: [17, 18, 19, 20, 21] }
+
+// lldb-command:print struct_padded_at_end
+// lldb-check:[...]$4 = StructPaddedAtEnd { x: [22, 23], y: [24, 25] }
 
 #![allow(unused_variable)]
 
@@ -84,7 +106,7 @@ fn main() {
         y: [24, 25]
     };
 
-    zzz();
+    zzz(); // #break
 }
 
-fn zzz() {()}
+fn zzz() { () }

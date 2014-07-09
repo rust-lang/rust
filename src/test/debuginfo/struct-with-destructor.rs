@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 // gdb-command:finish
@@ -25,6 +28,22 @@
 
 // gdb-command:print nested
 // gdb-check:$4 = {a = {a = {x = 7890, y = 9870}}}
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+// lldb-command:print simple
+// lldb-check:[...]$0 = WithDestructor { x: 10, y: 20 }
+
+// lldb-command:print noDestructor
+// lldb-check:[...]$1 = NoDestructorGuarded { a: NoDestructor { x: 10, y: 20 }, guard: -1 }
+
+// lldb-command:print withDestructor
+// lldb-check:[...]$2 = WithDestructorGuarded { a: WithDestructor { x: 10, y: 20 }, guard: -1 }
+
+// lldb-command:print nested
+// lldb-check:[...]$3 = NestedOuter { a: NestedInner { a: WithDestructor { x: 7890, y: 9870 } } }
 
 #![allow(unused_variable)]
 
@@ -121,7 +140,7 @@ fn main() {
     //                            <-------NestedOuter-------->
     let nested = NestedOuter { a: NestedInner { a: WithDestructor { x: 7890, y: 9870 } } };
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

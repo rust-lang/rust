@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 // gdb-command:finish
@@ -23,6 +26,20 @@
 
 // gdb-command:print *the_c_ref
 // gdb-check:$3 = TheC
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print *the_a_ref
+// lldb-check:[...]$0 = TheA
+
+// lldb-command:print *the_b_ref
+// lldb-check:[...]$1 = TheB
+
+// lldb-command:print *the_c_ref
+// lldb-check:[...]$2 = TheC
 
 #![allow(unused_variable)]
 
@@ -38,7 +55,7 @@ fn main() {
     let the_c = TheC;
     let the_c_ref: &ABC = &the_c;
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}
