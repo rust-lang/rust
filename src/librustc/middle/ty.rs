@@ -790,6 +790,13 @@ pub enum sty {
     ty_int(ast::IntTy),
     ty_uint(ast::UintTy),
     ty_float(ast::FloatTy),
+    /// Substs here, possibly against intuition, *may* contain `ty_param`s.
+    /// That is, even after substitution it is possible that there are type
+    /// variables. This happens when the `ty_enum` corresponds to an enum
+    /// definition and not a concerete use of it. To get the correct `ty_enum`
+    /// from the tcx, use the `NodeId` from the `ast::Ty` and look it up in
+    /// the `ast_ty_to_ty_cache`. This is probably true for `ty_struct` as
+    /// well.`
     ty_enum(DefId, Substs),
     ty_box(t),
     ty_uniq(t),
