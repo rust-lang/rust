@@ -1219,6 +1219,13 @@ fn check_cast(fcx: &FnCtxt,
                     actual,
                     fcx.infcx().ty_to_string(t_1))
         }, t_e, None);
+    } else if ty::type_is_unsafe_ptr(t_e) && t_1_is_float {
+        fcx.type_error_message(span, |actual| {
+            format!("cannot cast from pointer to float directly: `{}` as `{}`; cast through an \
+                     integer first",
+                    actual,
+                    fcx.infcx().ty_to_string(t_1))
+        }, t_e, None);
     }
 
     fcx.write_ty(id, t_1);
