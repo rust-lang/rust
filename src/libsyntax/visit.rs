@@ -8,6 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Context-passing AST walker. Each overridden visit method has full control
+//! over what happens with its node, it can do its own traversal of the node's
+//! children (potentially passing in different contexts to each), call
+//! `visit::visit_*` to apply the default traversal algorithm (again, it can
+//! override the context), or prevent deeper traversal by doing nothing.
+//!
+//! Note: it is an important invariant that the default visitor walks the body
+//! of a function in "execution order" (more concretely, reverse post-order
+//! with respect to the CFG implied by the AST), meaning that if AST node A may
+//! execute before AST node B, then A is visited first.  The borrow checker in
+//! particular relies on this property.
+//!
 use abi::Abi;
 use ast::*;
 use ast;
@@ -17,27 +29,15 @@ use owned_slice::OwnedSlice;
 
 use std::gc::Gc;
 
-// Context-passing AST walker. Each overridden visit method has full control
-// over what happens with its node, it can do its own traversal of the node's
-// children (potentially passing in different contexts to each), call
-// visit::visit_* to apply the default traversal algorithm (again, it can
-// override the context), or prevent deeper traversal by doing nothing.
-//
-// Note: it is an important invariant that the default visitor walks the body
-// of a function in "execution order" (more concretely, reverse post-order
-// with respect to the CFG implied by the AST), meaning that if AST node A may
-// execute before AST node B, then A is visited first.  The borrow checker in
-// particular relies on this property.
-
 pub enum FnKind<'a> {
-    // fn foo() or extern "Abi" fn foo()
+    /// fn foo() or extern "Abi" fn foo()
     FkItemFn(Ident, &'a Generics, FnStyle, Abi),
 
-    // fn foo(&self)
+    /// fn foo(&self)
     FkMethod(Ident, &'a Generics, &'a Method),
 
-    // |x, y| ...
-    // proc(x, y) ...
+    /// |x, y| ...
+    /// proc(x, y) ...
     FkFnBlock,
 }
 

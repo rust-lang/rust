@@ -112,13 +112,13 @@ pub enum Node {
     NodeLifetime(Gc<Lifetime>),
 }
 
-// The odd layout is to bring down the total size.
+/// The odd layout is to bring down the total size.
 #[deriving(Clone)]
 enum MapEntry {
-    // Placeholder for holes in the map.
+    /// Placeholder for holes in the map.
     NotPresent,
 
-    // All the node types, with a parent ID.
+    /// All the node types, with a parent ID.
     EntryItem(NodeId, Gc<Item>),
     EntryForeignItem(NodeId, Gc<ForeignItem>),
     EntryTraitMethod(NodeId, Gc<TraitMethod>),
@@ -133,14 +133,14 @@ enum MapEntry {
     EntryStructCtor(NodeId, Gc<StructDef>),
     EntryLifetime(NodeId, Gc<Lifetime>),
 
-    // Roots for node trees.
+    /// Roots for node trees.
     RootCrate,
     RootInlinedParent(P<InlinedParent>)
 }
 
 struct InlinedParent {
     path: Vec<PathElem> ,
-    // Required by NodeTraitMethod and NodeMethod.
+    /// Required by NodeTraitMethod and NodeMethod.
     def_id: DefId
 }
 
@@ -243,7 +243,7 @@ impl Map {
                 ItemForeignMod(ref nm) => Some(nm.abi),
                 _ => None
             },
-            // Wrong but OK, because the only inlined foreign items are intrinsics.
+            /// Wrong but OK, because the only inlined foreign items are intrinsics.
             Some(RootInlinedParent(_)) => Some(abi::RustIntrinsic),
             _ => None
         };
@@ -432,8 +432,8 @@ pub trait FoldOps {
 
 pub struct Ctx<'a, F> {
     map: &'a Map,
-    // The node in which we are currently mapping (an item or a method).
-    // When equal to DUMMY_NODE_ID, the next mapped node becomes the parent.
+    /// The node in which we are currently mapping (an item or a method).
+    /// When equal to DUMMY_NODE_ID, the next mapped node becomes the parent.
     parent: NodeId,
     fold_ops: F
 }
@@ -618,9 +618,9 @@ pub fn map_crate<F: FoldOps>(krate: Crate, fold_ops: F) -> (Crate, Map) {
     (krate, map)
 }
 
-// Used for items loaded from external crate that are being inlined into this
-// crate.  The `path` should be the path to the item but should not include
-// the item itself.
+/// Used for items loaded from external crate that are being inlined into this
+/// crate.  The `path` should be the path to the item but should not include
+/// the item itself.
 pub fn map_decoded_item<F: FoldOps>(map: &Map,
                                     path: Vec<PathElem> ,
                                     fold_ops: F,

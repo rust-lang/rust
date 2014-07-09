@@ -38,8 +38,8 @@ pub enum ObsoleteSyntax {
 pub trait ParserObsoleteMethods {
     /// Reports an obsolete syntax non-fatal error.
     fn obsolete(&mut self, sp: Span, kind: ObsoleteSyntax);
-    // Reports an obsolete syntax non-fatal error, and returns
-    // a placeholder expression
+    /// Reports an obsolete syntax non-fatal error, and returns
+    /// a placeholder expression
     fn obsolete_expr(&mut self, sp: Span, kind: ObsoleteSyntax) -> Gc<Expr>;
     fn report(&mut self,
               sp: Span,
@@ -83,8 +83,8 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
         self.report(sp, kind, kind_str, desc);
     }
 
-    // Reports an obsolete syntax non-fatal error, and returns
-    // a placeholder expression
+    /// Reports an obsolete syntax non-fatal error, and returns
+    /// a placeholder expression
     fn obsolete_expr(&mut self, sp: Span, kind: ObsoleteSyntax) -> Gc<Expr> {
         self.obsolete(sp, kind);
         self.mk_expr(sp.lo, sp.hi, ExprLit(box(GC) respan(sp, LitNil)))
