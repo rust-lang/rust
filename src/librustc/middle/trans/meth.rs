@@ -502,12 +502,15 @@ fn emit_vtable_methods(bcx: &Block,
                                                        ExprId(0),
                                                        substs.clone(),
                                                        vtables.clone());
-            if m.explicit_self == ast::SelfValue {
-                fn_ref = trans_unboxing_shim(bcx,
-                                             fn_ref,
-                                             &*m,
-                                             m_id,
-                                             substs.clone());
+            match m.explicit_self {
+                ast::SelfValue(_) => {
+                    fn_ref = trans_unboxing_shim(bcx,
+                                                 fn_ref,
+                                                 &*m,
+                                                 m_id,
+                                                 substs.clone());
+                },
+                _ => {}
             }
             fn_ref
         }

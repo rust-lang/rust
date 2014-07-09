@@ -1967,13 +1967,13 @@ impl<'a> State<'a> {
         try!(self.print_mutability(mutbl));
         match explicit_self {
             ast::SelfStatic => { return Ok(false); }
-            ast::SelfValue => {
+            ast::SelfValue(_) => {
                 try!(word(&mut self.s, "self"));
             }
-            ast::SelfUniq => {
+            ast::SelfUniq(_) => {
                 try!(word(&mut self.s, "~self"));
             }
-            ast::SelfRegion(ref lt, m) => {
+            ast::SelfRegion(ref lt, m, _) => {
                 try!(word(&mut self.s, "&"));
                 try!(self.print_opt_lifetime(lt));
                 try!(self.print_mutability(m));

@@ -541,12 +541,13 @@ impl<'a> Parser<'a> {
     // if the next token is the given keyword, eat it and return
     // true. Otherwise, return false.
     pub fn eat_keyword(&mut self, kw: keywords::Keyword) -> bool {
-        let is_kw = match self.token {
-            token::IDENT(sid, false) => kw.to_ident().name == sid.name,
+        match self.token {
+            token::IDENT(sid, false) if kw.to_name() == sid.name => {
+                self.bump();
+                true
+            }
             _ => false
-        };
-        if is_kw { self.bump() }
-        is_kw
+        }
     }
 
     // if the given word is not a keyword, signal an error.
@@ -554,7 +555,7 @@ impl<'a> Parser<'a> {
     // otherwise, eat it.
     pub fn expect_keyword(&mut self, kw: keywords::Keyword) {
         if !self.eat_keyword(kw) {
-            let id_interned_str = token::get_ident(kw.to_ident());
+            let id_interned_str = token::get_name(kw.to_name());
             let token_str = self.this_token_to_string();
             self.fatal(format!("expected `{}`, found `{}`",
                                id_interned_str, token_str).as_slice())
@@ -1877,211 +1878,230 @@ impl<'a> Parser<'a> {
 
         let ex: Expr_;
 
-        if self.token == token::LPAREN {
-            self.bump();
-            // (e) is parenthesized e
-            // (e,) is a tuple with only one field, e
-            let mut trailing_comma = false;
-            if self.token == token::RPAREN {
+        match self.token {
+            token::LPAREN => {
+                self.bump();
+                // (e) is parenthesized e
+                // (e,) is a tuple with only one field, e
+                let mut trailing_comma = false;
+                if self.token == token::RPAREN {
+                    hi = self.span.hi;
+                    self.bump();
+                    let lit = box(GC) spanned(lo, hi, LitNil);
+                    return self.mk_expr(lo, hi, ExprLit(lit));
+                }
+                let mut es = vec!(self.parse_expr());
+                self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
+                while self.token == token::COMMA {
+                    self.bump();
+                    if self.token != token::RPAREN {
+                        es.push(self.parse_expr());
+                        self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
+                    }
+                        else {
+                        trailing_comma = true;
+                    }
+                }
                 hi = self.span.hi;
-                self.bump();
-                let lit = box(GC) spanned(lo, hi, LitNil);
-                return self.mk_expr(lo, hi, ExprLit(lit));
-            }
-            let mut es = vec!(self.parse_expr());
-            self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
-            while self.token == token::COMMA {
-                self.bump();
-                if self.token != token::RPAREN {
-                    es.push(self.parse_expr());
-                    self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
-                }
-                else {
-                    trailing_comma = true;
-                }
-            }
-            hi = self.span.hi;
-            self.commit_expr_expecting(*es.last().unwrap(), token::RPAREN);
+                self.commit_expr_expecting(*es.last().unwrap(), token::RPAREN);
 
-            return if es.len() == 1 && !trailing_comma {
-                self.mk_expr(lo, hi, ExprParen(*es.get(0)))
+                return if es.len() == 1 && !trailing_comma {
+                    self.mk_expr(lo, hi, ExprParen(*es.get(0)))
+                }
+                    else {
+                    self.mk_expr(lo, hi, ExprTup(es))
+                }
+            },
+            token::LBRACE => {
+                self.bump();
+                let blk = self.parse_block_tail(lo, DefaultBlock);
+                return self.mk_expr(blk.span.lo, blk.span.hi,
+                                    ExprBlock(blk));
+            },
+            token::BINOP(token::OR) |  token::OROR => {
+                return self.parse_lambda_expr();
+            },
+            _ if self.eat_keyword(keywords::Proc) => {
+                let decl = self.parse_proc_decl();
+                let body = self.parse_expr();
+                let fakeblock = P(ast::Block {
+                        view_items: Vec::new(),
+                        stmts: Vec::new(),
+                        expr: Some(body),
+                        id: ast::DUMMY_NODE_ID,
+                        rules: DefaultBlock,
+                        span: body.span,
+                    });
+                return self.mk_expr(lo, body.span.hi, ExprProc(decl, fakeblock));
+            },
+            token::IDENT(id @ ast::Ident{name:token::SELF_KEYWORD_NAME,ctxt:_},false) => {
+                self.bump();
+                let path = ast_util::ident_to_path(mk_sp(lo, hi), id);
+                ex = ExprPath(path);
+                hi = self.last_span.hi;
             }
-            else {
-                self.mk_expr(lo, hi, ExprTup(es))
-            }
-        } else if self.token == token::LBRACE {
-            self.bump();
-            let blk = self.parse_block_tail(lo, DefaultBlock);
-            return self.mk_expr(blk.span.lo, blk.span.hi,
-                                 ExprBlock(blk));
-        } else if token::is_bar(&self.token) {
-            return self.parse_lambda_expr();
-        } else if self.eat_keyword(keywords::Proc) {
-            let decl = self.parse_proc_decl();
-            let body = self.parse_expr();
-            let fakeblock = P(ast::Block {
-                view_items: Vec::new(),
-                stmts: Vec::new(),
-                expr: Some(body),
-                id: ast::DUMMY_NODE_ID,
-                rules: DefaultBlock,
-                span: body.span,
-            });
-
-            return self.mk_expr(lo, body.span.hi, ExprProc(decl, fakeblock));
-        } else if self.eat_keyword(keywords::Self) {
-            let path = ast_util::ident_to_path(mk_sp(lo, hi), special_idents::self_);
-            ex = ExprPath(path);
-            hi = self.last_span.hi;
-        } else if self.eat_keyword(keywords::If) {
-            return self.parse_if_expr();
-        } else if self.eat_keyword(keywords::For) {
-            return self.parse_for_expr(None);
-        } else if self.eat_keyword(keywords::While) {
-            return self.parse_while_expr();
-        } else if Parser::token_is_lifetime(&self.token) {
-            let lifetime = self.get_lifetime();
-            self.bump();
-            self.expect(&token::COLON);
-            if self.eat_keyword(keywords::For) {
-                return self.parse_for_expr(Some(lifetime))
-            } else if self.eat_keyword(keywords::Loop) {
-                return self.parse_loop_expr(Some(lifetime))
-            } else {
-                self.fatal("expected `for` or `loop` after a label")
-            }
-        } else if self.eat_keyword(keywords::Loop) {
-            return self.parse_loop_expr(None);
-        } else if self.eat_keyword(keywords::Continue) {
-            let lo = self.span.lo;
-            let ex = if Parser::token_is_lifetime(&self.token) {
+            _ if self.eat_keyword(keywords::If) => {
+                return self.parse_if_expr();
+            },
+            _ if self.eat_keyword(keywords::For) => {
+                return self.parse_for_expr(None);
+            },
+            _ if self.eat_keyword(keywords::While) => {
+                return self.parse_while_expr();
+            },
+            _ if Parser::token_is_lifetime(&self.token) => {
                 let lifetime = self.get_lifetime();
                 self.bump();
-                ExprAgain(Some(lifetime))
-            } else {
-                ExprAgain(None)
-            };
-            let hi = self.span.hi;
-            return self.mk_expr(lo, hi, ex);
-        } else if self.eat_keyword(keywords::Match) {
-            return self.parse_match_expr();
-        } else if self.eat_keyword(keywords::Unsafe) {
-            return self.parse_block_expr(lo, UnsafeBlock(ast::UserProvided));
-        } else if self.token == token::LBRACKET {
-            self.bump();
-
-            if self.token == token::RBRACKET {
-                // Empty vector.
-                self.bump();
-                ex = ExprVec(Vec::new());
-            } else {
-                // Nonempty vector.
-                let first_expr = self.parse_expr();
-                if self.token == token::COMMA &&
-                        self.look_ahead(1, |t| *t == token::DOTDOT) {
-                    // Repeating vector syntax: [ 0, ..512 ]
-                    self.bump();
-                    self.bump();
-                    let count = self.parse_expr();
-                    self.expect(&token::RBRACKET);
-                    ex = ExprRepeat(first_expr, count);
-                } else if self.token == token::COMMA {
-                    // Vector with two or more elements.
-                    self.bump();
-                    let remaining_exprs = self.parse_seq_to_end(
-                        &token::RBRACKET,
-                        seq_sep_trailing_allowed(token::COMMA),
-                        |p| p.parse_expr()
-                    );
-                    let mut exprs = vec!(first_expr);
-                    exprs.push_all_move(remaining_exprs);
-                    ex = ExprVec(exprs);
+                self.expect(&token::COLON);
+                if self.eat_keyword(keywords::For) {
+                    return self.parse_for_expr(Some(lifetime))
+                } else if self.eat_keyword(keywords::Loop) {
+                    return self.parse_loop_expr(Some(lifetime))
                 } else {
-                    // Vector with one element.
-                    self.expect(&token::RBRACKET);
-                    ex = ExprVec(vec!(first_expr));
+                    self.fatal("expected `for` or `loop` after a label")
                 }
-            }
-            hi = self.last_span.hi;
-        } else if self.eat_keyword(keywords::Return) {
-            // RETURN expression
-            if can_begin_expr(&self.token) {
-                let e = self.parse_expr();
-                hi = e.span.hi;
-                ex = ExprRet(Some(e));
-            } else { ex = ExprRet(None); }
-        } else if self.eat_keyword(keywords::Break) {
-            // BREAK expression
-            if Parser::token_is_lifetime(&self.token) {
-                let lifetime = self.get_lifetime();
-                self.bump();
-                ex = ExprBreak(Some(lifetime));
-            } else {
-                ex = ExprBreak(None);
-            }
-            hi = self.span.hi;
-        } else if self.token == token::MOD_SEP ||
-                is_ident(&self.token) && !self.is_keyword(keywords::True) &&
-                !self.is_keyword(keywords::False) {
-            let pth = self.parse_path(LifetimeAndTypesWithColons).path;
-
-            // `!`, as an operator, is prefix, so we know this isn't that
-            if self.token == token::NOT {
-                // MACRO INVOCATION expression
-                self.bump();
-
-                let ket = token::close_delimiter_for(&self.token)
-                                .unwrap_or_else(|| self.fatal("expected open delimiter"));
-                self.bump();
-
-                let tts = self.parse_seq_to_end(&ket,
-                                                seq_sep_none(),
-                                                |p| p.parse_token_tree());
-                let hi = self.span.hi;
-
-                return self.mk_mac_expr(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT));
-            } else if self.token == token::LBRACE {
-                // This is a struct literal, unless we're prohibited from
-                // parsing struct literals here.
-                if self.restriction != RESTRICT_NO_STRUCT_LITERAL {
-                    // It's a struct literal.
+            },
+            _ if self.eat_keyword(keywords::Loop) => {
+                return self.parse_loop_expr(None);
+            },
+            _ if self.eat_keyword(keywords::Continue) => {
+                let lo = self.span.lo;
+                let ex = if Parser::token_is_lifetime(&self.token) {
+                    let lifetime = self.get_lifetime();
                     self.bump();
-                    let mut fields = Vec::new();
-                    let mut base = None;
+                    ExprAgain(Some(lifetime))
+                } else {
+                    ExprAgain(None)
+                };
+                let hi = self.span.hi;
+                return self.mk_expr(lo, hi, ex);
+            },
+            _ if self.eat_keyword(keywords::Match) => {
+                return self.parse_match_expr();
+            },
+            _ if self.eat_keyword(keywords::Unsafe) => {
+                return self.parse_block_expr(lo, UnsafeBlock(ast::UserProvided));
+            },
+            token::LBRACKET => {
+                self.bump();
 
-                    while self.token != token::RBRACE {
-                        if self.eat(&token::DOTDOT) {
-                            base = Some(self.parse_expr());
-                            break;
+                if self.token == token::RBRACKET {
+                    // Empty vector.
+                    self.bump();
+                    ex = ExprVec(Vec::new());
+                } else {
+                    // Nonempty vector.
+                    let first_expr = self.parse_expr();
+                    if self.token == token::COMMA &&
+                        self.look_ahead(1, |t| *t == token::DOTDOT) {
+                        // Repeating vector syntax: [ 0, ..512 ]
+                        self.bump();
+                        self.bump();
+                        let count = self.parse_expr();
+                        self.expect(&token::RBRACKET);
+                        ex = ExprRepeat(first_expr, count);
+                    } else if self.token == token::COMMA {
+                        // Vector with two or more elements.
+                        self.bump();
+                        let remaining_exprs = self.parse_seq_to_end(
+                            &token::RBRACKET,
+                            seq_sep_trailing_allowed(token::COMMA),
+                            |p| p.parse_expr()
+                                );
+                        let mut exprs = vec!(first_expr);
+                        exprs.push_all_move(remaining_exprs);
+                        ex = ExprVec(exprs);
+                    } else {
+                        // Vector with one element.
+                        self.expect(&token::RBRACKET);
+                        ex = ExprVec(vec!(first_expr));
+                    }
+                }
+                hi = self.last_span.hi;
+            },
+            _ if self.eat_keyword(keywords::Return) => {
+                // RETURN expression
+                if can_begin_expr(&self.token) {
+                    let e = self.parse_expr();
+                    hi = e.span.hi;
+                    ex = ExprRet(Some(e));
+                } else { ex = ExprRet(None); }
+            },
+            _ if self.eat_keyword(keywords::Break) => {
+                // BREAK expression
+                if Parser::token_is_lifetime(&self.token) {
+                    let lifetime = self.get_lifetime();
+                    self.bump();
+                    ex = ExprBreak(Some(lifetime));
+                } else {
+                    ex = ExprBreak(None);
+                }
+                hi = self.span.hi;
+            },
+            _ if self.token == token::MOD_SEP ||
+                is_ident(&self.token) && !self.is_keyword(keywords::True) &&
+                !self.is_keyword(keywords::False) => {
+                let pth = self.parse_path(LifetimeAndTypesWithColons).path;
+
+                // `!`, as an operator, is prefix, so we know this isn't that
+                if self.token == token::NOT {
+                    // MACRO INVOCATION expression
+                    self.bump();
+
+                    let ket = token::close_delimiter_for(&self.token)
+                        .unwrap_or_else(|| self.fatal("expected open delimiter"));
+                    self.bump();
+
+                    let tts = self.parse_seq_to_end(&ket,
+                                                    seq_sep_none(),
+                                                    |p| p.parse_token_tree());
+                    let hi = self.span.hi;
+
+                    return self.mk_mac_expr(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT));
+                } else if self.token == token::LBRACE {
+                    // This is a struct literal, unless we're prohibited from
+                    // parsing struct literals here.
+                    if self.restriction != RESTRICT_NO_STRUCT_LITERAL {
+                        // It's a struct literal.
+                        self.bump();
+                        let mut fields = Vec::new();
+                        let mut base = None;
+
+                        while self.token != token::RBRACE {
+                            if self.eat(&token::DOTDOT) {
+                                base = Some(self.parse_expr());
+                                break;
+                            }
+
+                            fields.push(self.parse_field());
+                            self.commit_expr(fields.last().unwrap().expr,
+                                             &[token::COMMA], &[token::RBRACE]);
                         }
 
-                        fields.push(self.parse_field());
-                        self.commit_expr(fields.last().unwrap().expr,
-                                         &[token::COMMA], &[token::RBRACE]);
-                    }
+                        if fields.len() == 0 && base.is_none() {
+                            let last_span = self.last_span;
+                            self.span_err(last_span,
+                                          "structure literal must either have at \
+                                          least one field or use functional \
+                                          structure update syntax");
+                        }
 
-                    if fields.len() == 0 && base.is_none() {
-                        let last_span = self.last_span;
-                        self.span_err(last_span,
-                                      "structure literal must either have at \
-                                       least one field or use functional \
-                                       structure update syntax");
+                        hi = self.span.hi;
+                        self.expect(&token::RBRACE);
+                        ex = ExprStruct(pth, fields, base);
+                        return self.mk_expr(lo, hi, ex);
                     }
-
-                    hi = self.span.hi;
-                    self.expect(&token::RBRACE);
-                    ex = ExprStruct(pth, fields, base);
-                    return self.mk_expr(lo, hi, ex);
                 }
-            }
 
             hi = pth.span.hi;
             ex = ExprPath(pth);
-        } else {
-            // other literal expression
-            let lit = self.parse_lit();
-            hi = lit.span.hi;
-            ex = ExprLit(box(GC) lit);
+            },
+            _ => {
+                // other literal expression
+                let lit = self.parse_lit();
+                hi = lit.span.hi;
+                ex = ExprLit(box(GC) lit);
+            }
         }
 
         return self.mk_expr(lo, hi, ex);
@@ -3213,18 +3233,6 @@ impl<'a> Parser<'a> {
         } else if is_ident(&self.token)
             && !token::is_any_keyword(&self.token)
             && self.look_ahead(1, |t| *t == token::NOT) {
-            // parse a macro invocation. Looks like there's serious
-            // overlap here; if this clause doesn't catch it (and it
-            // won't, for brace-delimited macros) it will fall through
-            // to the macro clause of parse_item_or_view_item. This
-            // could use some cleanup, it appears to me.
-
-            // whoops! I now have a guess: I'm guessing the "parens-only"
-            // rule here is deliberate, to allow macro users to use parens
-            // for things that should be parsed as stmt_mac, and braces
-            // for things that should expand into items. Tricky, and
-            // somewhat awkward... and probably undocumented. Of course,
-            // I could just be wrong.
 
             check_expected_item(self, !item_attrs.is_empty());
 
@@ -3740,13 +3748,18 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expect_self_ident(&mut self) {
-        if !self.is_self_ident() {
-            let token_str = self.this_token_to_string();
-            self.fatal(format!("expected `self` but found `{}`",
-                               token_str).as_slice())
+    fn expect_self_ident(&mut self) -> ast::Ident {
+        match self.token {
+            token::IDENT(id, false) if id.name == special_idents::self_.name => {
+                self.bump();
+                id
+            },
+            _ => {
+                let token_str = self.this_token_to_string();
+                self.fatal(format!("expected `self` but found `{}`",
+                                   token_str).as_slice())
+            }
         }
-        self.bump();
     }
 
     // parse the argument list and result type of a function
@@ -3766,24 +3779,21 @@ impl<'a> Parser<'a> {
 
             if this.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
                 this.bump();
-                this.expect_self_ident();
-                SelfRegion(None, MutImmutable)
+                SelfRegion(None, MutImmutable, this.expect_self_ident())
             } else if this.look_ahead(1, |t| Parser::token_is_mutability(t)) &&
                     this.look_ahead(2,
                                     |t| token::is_keyword(keywords::Self,
                                                           t)) {
                 this.bump();
                 let mutability = this.parse_mutability();
-                this.expect_self_ident();
-                SelfRegion(None, mutability)
+                SelfRegion(None, mutability, this.expect_self_ident())
             } else if this.look_ahead(1, |t| Parser::token_is_lifetime(t)) &&
                        this.look_ahead(2,
                                        |t| token::is_keyword(keywords::Self,
                                                              t)) {
                 this.bump();
                 let lifetime = this.parse_lifetime();
-                this.expect_self_ident();
-                SelfRegion(Some(lifetime), MutImmutable)
+                SelfRegion(Some(lifetime), MutImmutable, this.expect_self_ident())
             } else if this.look_ahead(1, |t| Parser::token_is_lifetime(t)) &&
                       this.look_ahead(2, |t| {
                           Parser::token_is_mutability(t)
@@ -3793,8 +3803,7 @@ impl<'a> Parser<'a> {
                 this.bump();
                 let lifetime = this.parse_lifetime();
                 let mutability = this.parse_mutability();
-                this.expect_self_ident();
-                SelfRegion(Some(lifetime), mutability)
+                SelfRegion(Some(lifetime), mutability, this.expect_self_ident())
             } else {
                 SelfStatic
             }
@@ -3814,15 +3823,13 @@ impl<'a> Parser<'a> {
                 // We need to make sure it isn't a type
                 if self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
                     self.bump();
-                    self.expect_self_ident();
-                    SelfUniq
+                    SelfUniq(self.expect_self_ident())
                 } else {
                     SelfStatic
                 }
             }
             token::IDENT(..) if self.is_self_ident() => {
-                self.bump();
-                SelfValue
+                SelfValue(self.expect_self_ident())
             }
             token::BINOP(token::STAR) => {
                 // Possibly "*self" or "*mut self" -- not supported. Try to avoid
@@ -3836,29 +3843,32 @@ impl<'a> Parser<'a> {
                     self.span_err(span, "cannot pass self by unsafe pointer");
                     self.bump();
                 }
-                SelfValue
+                // error case, making bogus self ident:
+                SelfValue(special_idents::self_)
             }
             _ if Parser::token_is_mutability(&self.token) &&
                     self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) => {
                 mutbl_self = self.parse_mutability();
-                self.expect_self_ident();
-                SelfValue
+                SelfValue(self.expect_self_ident())
             }
             _ if Parser::token_is_mutability(&self.token) &&
                     self.look_ahead(1, |t| *t == token::TILDE) &&
                     self.look_ahead(2, |t| token::is_keyword(keywords::Self, t)) => {
                 mutbl_self = self.parse_mutability();
                 self.bump();
-                self.expect_self_ident();
-                SelfUniq
+                SelfUniq(self.expect_self_ident())
             }
             _ => SelfStatic
         };
 
         let explicit_self_sp = mk_sp(lo, self.span.hi);
 
-        // If we parsed a self type, expect a comma before the argument list.
-        let fn_inputs = if explicit_self != SelfStatic {
+        // shared fall-through for the three cases below. borrowing prevents simply
+        // writing this as a closure
+        macro_rules! parse_remaining_arguments {
+            ($self_id:ident) =>
+            {
+            // If we parsed a self type, expect a comma before the argument list.
             match self.token {
                 token::COMMA => {
                     self.bump();
@@ -3868,11 +3878,11 @@ impl<'a> Parser<'a> {
                         sep,
                         parse_arg_fn
                     );
-                    fn_inputs.unshift(Arg::new_self(explicit_self_sp, mutbl_self));
+                    fn_inputs.unshift(Arg::new_self(explicit_self_sp, mutbl_self, $self_id));
                     fn_inputs
                 }
                 token::RPAREN => {
-                    vec!(Arg::new_self(explicit_self_sp, mutbl_self))
+                    vec!(Arg::new_self(explicit_self_sp, mutbl_self, $self_id))
                 }
                 _ => {
                     let token_str = self.this_token_to_string();
@@ -3880,10 +3890,20 @@ impl<'a> Parser<'a> {
                                        token_str).as_slice())
                 }
             }
-        } else {
-            let sep = seq_sep_trailing_disallowed(token::COMMA);
-            self.parse_seq_to_before_end(&token::RPAREN, sep, parse_arg_fn)
+            }
+        }
+
+        let fn_inputs = match explicit_self {
+            SelfStatic =>  {
+                let sep = seq_sep_trailing_disallowed(token::COMMA);
+                self.parse_seq_to_before_end(&token::RPAREN, sep, parse_arg_fn)
+            }
+            SelfValue(id) => parse_remaining_arguments!(id),
+            SelfRegion(_,_,id) => parse_remaining_arguments!(id),
+            SelfUniq(id) => parse_remaining_arguments!(id)
+
         };
+
 
         self.expect(&token::RPAREN);
 
