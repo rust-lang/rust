@@ -561,56 +561,56 @@ pub enum TokenTree {
     TTNonterminal(Span, Ident)
 }
 
-/// Matchers are nodes defined-by and recognized-by the main rust parser and
-/// language, but they're only ever found inside syntax-extension invocations;
-/// indeed, the only thing that ever _activates_ the rules in the rust parser
-/// for parsing a matcher is a matcher looking for the 'matchers' nonterminal
-/// itself. Matchers represent a small sub-language for pattern-matching
-/// token-trees, and are thus primarily used by the macro-defining extension
-/// itself.
-///
-/// MatchTok
-/// --------
-///
-///     A matcher that matches a single token, denoted by the token itself. So
-///     long as there's no $ involved.
-///
-///
-/// MatchSeq
-/// --------
-///
-///     A matcher that matches a sequence of sub-matchers, denoted various
-///     possible ways:
-///
-///             $(M)*       zero or more Ms
-///             $(M)+       one or more Ms
-///             $(M),+      one or more comma-separated Ms
-///             $(A B C);*  zero or more semi-separated 'A B C' seqs
-///
-///
-/// MatchNonterminal
-/// -----------------
-///
-///     A matcher that matches one of a few interesting named rust
-///     nonterminals, such as types, expressions, items, or raw token-trees. A
-///     black-box matcher on expr, for example, binds an expr to a given ident,
-///     and that ident can re-occur as an interpolation in the RHS of a
-///     macro-by-example rule. For example:
-///
-///        $foo:expr   =>     1 + $foo    // interpolate an expr
-///        $foo:tt     =>     $foo        // interpolate a token-tree
-///        $foo:tt     =>     bar! $foo   // only other valid interpolation
-///                                       // is in arg position for another
-///                                       // macro
-///
-/// As a final, horrifying aside, note that macro-by-example's input is
-/// also matched by one of these matchers. Holy self-referential! It is matched
-/// by a MatchSeq, specifically this one:
-///
-///                   $( $lhs:matchers => $rhs:tt );+
-///
-/// If you understand that, you have closed the loop and understand the whole
-/// macro system. Congratulations.
+// Matchers are nodes defined-by and recognized-by the main rust parser and
+// language, but they're only ever found inside syntax-extension invocations;
+// indeed, the only thing that ever _activates_ the rules in the rust parser
+// for parsing a matcher is a matcher looking for the 'matchers' nonterminal
+// itself. Matchers represent a small sub-language for pattern-matching
+// token-trees, and are thus primarily used by the macro-defining extension
+// itself.
+//
+// MatchTok
+// --------
+//
+//     A matcher that matches a single token, denoted by the token itself. So
+//     long as there's no $ involved.
+//
+//
+// MatchSeq
+// --------
+//
+//     A matcher that matches a sequence of sub-matchers, denoted various
+//     possible ways:
+//
+//             $(M)*       zero or more Ms
+//             $(M)+       one or more Ms
+//             $(M),+      one or more comma-separated Ms
+//             $(A B C);*  zero or more semi-separated 'A B C' seqs
+//
+//
+// MatchNonterminal
+// -----------------
+//
+//     A matcher that matches one of a few interesting named rust
+//     nonterminals, such as types, expressions, items, or raw token-trees. A
+//     black-box matcher on expr, for example, binds an expr to a given ident,
+//     and that ident can re-occur as an interpolation in the RHS of a
+//     macro-by-example rule. For example:
+//
+//        $foo:expr   =>     1 + $foo    // interpolate an expr
+//        $foo:tt     =>     $foo        // interpolate a token-tree
+//        $foo:tt     =>     bar! $foo   // only other valid interpolation
+//                                       // is in arg position for another
+//                                       // macro
+//
+// As a final, horrifying aside, note that macro-by-example's input is
+// also matched by one of these matchers. Holy self-referential! It is matched
+// by a MatchSeq, specifically this one:
+//
+//                   $( $lhs:matchers => $rhs:tt );+
+//
+// If you understand that, you have closed the loop and understand the whole
+// macro system. Congratulations.
 pub type Matcher = Spanned<Matcher_>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
