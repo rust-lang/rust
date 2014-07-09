@@ -323,7 +323,7 @@ fn item_name(intr: &IdentInterner, item: ebml::Doc) -> ast::Ident {
     let string = name.as_str_slice();
     match intr.find_equiv(&string) {
         None => token::str_to_ident(string),
-        Some(val) => ast::Ident::new(val as ast::Name),
+        Some(val) => ast::Ident::new(val),
     }
 }
 

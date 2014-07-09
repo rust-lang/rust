@@ -18,7 +18,6 @@ use parse::token::{str_to_ident};
 
 use std::char;
 use std::mem::replace;
-use std::num::from_str_radix;
 use std::rc::Rc;
 use std::str;
 
@@ -44,13 +43,13 @@ pub struct TokenAndSpan {
 
 pub struct StringReader<'a> {
     pub span_diagnostic: &'a SpanHandler,
-    // The absolute offset within the codemap of the next character to read
+    /// The absolute offset within the codemap of the next character to read
     pub pos: BytePos,
-    // The absolute offset within the codemap of the last character read(curr)
+    /// The absolute offset within the codemap of the last character read(curr)
     pub last_pos: BytePos,
-    // The column of the next character to read
+    /// The column of the next character to read
     pub col: CharPos,
-    // The last character to be read
+    /// The last character to be read
     pub curr: Option<char>,
     pub filemap: Rc<codemap::FileMap>,
     /* cached: */
@@ -60,7 +59,7 @@ pub struct StringReader<'a> {
 
 impl<'a> Reader for StringReader<'a> {
     fn is_eof(&self) -> bool { self.curr.is_none() }
-    // return the next token. EFFECT: advances the string_reader.
+    /// Return the next token. EFFECT: advances the string_reader.
     fn next_token(&mut self) -> TokenAndSpan {
         let ret_val = TokenAndSpan {
             tok: replace(&mut self.peek_tok, token::UNDERSCORE),
@@ -90,7 +89,7 @@ impl<'a> Reader for TtReader<'a> {
     }
     fn next_token(&mut self) -> TokenAndSpan {
         let r = tt_next_token(self);
-        debug!("TtReader: r={:?}", r);
+        debug!("TtReader: r={}", r);
         r
     }
     fn fatal(&self, m: &str) -> ! {
@@ -188,7 +187,7 @@ impl<'a> StringReader<'a> {
     /// Advance peek_tok and peek_span to refer to the next token, and
     /// possibly update the interner.
     fn advance_token(&mut self) {
-        match self.consume_whitespace_and_comments() {
+        match self.scan_whitespace_or_comment() {
             Some(comment) => {
                 self.peek_span = comment.sp;
                 self.peek_tok = comment.tok;
@@ -215,6 +214,20 @@ impl<'a> StringReader<'a> {
     /// the character `self.curr`.
     pub fn with_str_from<T>(&self, start: BytePos, f: |s: &str| -> T) -> T {
         self.with_str_from_to(start, self.last_pos, f)
+    }
+
+    /// Create a Name from a given offset to the current offset, each
+    /// adjusted 1 towards each other (assumes that on either side there is a
+    /// single-byte delimiter).
+    pub fn name_from(&self, start: BytePos) -> ast::Name {
+        debug!("taking an ident from {} to {}", start, self.last_pos);
+        self.with_str_from(start, token::intern)
+    }
+
+    /// As name_from, with an explicit endpoint.
+    pub fn name_from_to(&self, start: BytePos, end: BytePos) -> ast::Name {
+        debug!("taking an ident from {} to {}", start, end);
+        self.with_str_from_to(start, end, token::intern)
     }
 
     /// Calls `f` with a string slice of the source text spanning from `start`
@@ -326,8 +339,7 @@ impl<'a> StringReader<'a> {
 
     /// PRECONDITION: self.curr is not whitespace
     /// Eats any kind of comment.
-    /// Returns a Some(sugared-doc-attr) if one exists, None otherwise
-    fn consume_any_line_comment(&mut self) -> Option<TokenAndSpan> {
+    fn scan_comment(&mut self) -> Option<TokenAndSpan> {
         match self.curr {
             Some(c) => {
                 if c.is_whitespace() {
@@ -362,28 +374,32 @@ impl<'a> StringReader<'a> {
                             }
                             self.bump();
                         }
-                        let ret = self.with_str_from(start_bpos, |string| {
+                        return self.with_str_from(start_bpos, |string| {
                             // but comments with only more "/"s are not
-                            if !is_line_non_doc_comment(string) {
-                                Some(TokenAndSpan{
-                                    tok: token::DOC_COMMENT(str_to_ident(string)),
-                                    sp: codemap::mk_sp(start_bpos, self.last_pos)
-                                })
+                            let tok = if is_doc_comment(string) {
+                                token::DOC_COMMENT(token::intern(string))
                             } else {
-                                None
-                            }
-                        });
+                                token::COMMENT
+                            };
 
-                        if ret.is_some() {
-                            return ret;
-                        }
+                            return Some(TokenAndSpan{
+                                tok: tok,
+                                sp: codemap::mk_sp(start_bpos, self.last_pos)
+                            });
+                        });
                     } else {
+                        let start_bpos = self.last_pos - BytePos(2);
                         while !self.curr_is('\n') && !self.is_eof() { self.bump(); }
+                        return Some(TokenAndSpan {
+                            tok: token::COMMENT,
+                            sp: codemap::mk_sp(start_bpos, self.last_pos)
+                        });
                     }
-                    // Restart whitespace munch.
-                    self.consume_whitespace_and_comments()
                 }
-                Some('*') => { self.bump(); self.bump(); self.consume_block_comment() }
+                Some('*') => {
+                    self.bump(); self.bump();
+                    self.scan_block_comment()
+                }
                 _ => None
             }
         } else if self.curr_is('#') {
@@ -399,9 +415,15 @@ impl<'a> StringReader<'a> {
                 let cmap = CodeMap::new();
                 cmap.files.borrow_mut().push(self.filemap.clone());
                 let loc = cmap.lookup_char_pos_adj(self.last_pos);
+                debug!("Skipping a shebang");
                 if loc.line == 1u && loc.col == CharPos(0u) {
+                    // FIXME: Add shebang "token", return it
+                    let start = self.last_pos;
                     while !self.curr_is('\n') && !self.is_eof() { self.bump(); }
-                    return self.consume_whitespace_and_comments();
+                    return Some(TokenAndSpan {
+                        tok: token::SHEBANG(self.name_from(start)),
+                        sp: codemap::mk_sp(start, self.last_pos)
+                    });
                 }
             }
             None
@@ -410,15 +432,33 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    /// EFFECT: eats whitespace and comments.
-    /// Returns a Some(sugared-doc-attr) if one exists, None otherwise.
-    fn consume_whitespace_and_comments(&mut self) -> Option<TokenAndSpan> {
-        while is_whitespace(self.curr) { self.bump(); }
-        return self.consume_any_line_comment();
+    /// If there is whitespace, shebang, or a comment, scan it. Otherwise,
+    /// return None.
+    fn scan_whitespace_or_comment(&mut self) -> Option<TokenAndSpan> {
+        match self.curr.unwrap_or('\0') {
+            // # to handle shebang at start of file -- this is the entry point
+            // for skipping over all "junk"
+            '/' | '#' => {
+                let c = self.scan_comment();
+                debug!("scanning a comment {}", c);
+                c
+            },
+            c if is_whitespace(Some(c)) => {
+                let start_bpos = self.last_pos;
+                while is_whitespace(self.curr) { self.bump(); }
+                let c = Some(TokenAndSpan {
+                    tok: token::WS,
+                    sp: codemap::mk_sp(start_bpos, self.last_pos)
+                });
+                debug!("scanning whitespace: {}", c);
+                c
+            },
+            _ => None
+        }
     }
 
-    // might return a sugared-doc-attr
-    fn consume_block_comment(&mut self) -> Option<TokenAndSpan> {
+    /// Might return a sugared-doc-attr
+    fn scan_block_comment(&mut self) -> Option<TokenAndSpan> {
         // block comments starting with "/**" or "/*!" are doc-comments
         let is_doc_comment = self.curr_is('*') || self.curr_is('!');
         let start_bpos = self.last_pos - BytePos(2);
@@ -453,228 +493,132 @@ impl<'a> StringReader<'a> {
             self.bump();
         }
 
-        let res = if is_doc_comment {
-            self.with_str_from(start_bpos, |string| {
-                // but comments with only "*"s between two "/"s are not
-                if !is_block_non_doc_comment(string) {
-                    let string = if has_cr {
-                        self.translate_crlf(start_bpos, string,
-                                            "bare CR not allowed in block doc-comment")
-                    } else { string.into_maybe_owned() };
-                    Some(TokenAndSpan{
-                            tok: token::DOC_COMMENT(str_to_ident(string.as_slice())),
-                            sp: codemap::mk_sp(start_bpos, self.last_pos)
-                        })
-                } else {
-                    None
-                }
-            })
-        } else {
-            None
-        };
-
-        // restart whitespace munch.
-        if res.is_some() { res } else { self.consume_whitespace_and_comments() }
-    }
-
-    fn scan_exponent(&mut self, start_bpos: BytePos) -> Option<String> {
-        // \x00 hits the `return None` case immediately, so this is fine.
-        let mut c = self.curr.unwrap_or('\x00');
-        let mut rslt = String::new();
-        if c == 'e' || c == 'E' {
-            rslt.push_char(c);
-            self.bump();
-            c = self.curr.unwrap_or('\x00');
-            if c == '-' || c == '+' {
-                rslt.push_char(c);
-                self.bump();
-            }
-            let exponent = self.scan_digits(10u);
-            if exponent.len() > 0u {
-                rslt.push_str(exponent.as_slice());
-                return Some(rslt);
+        self.with_str_from(start_bpos, |string| {
+            // but comments with only "*"s between two "/"s are not
+            let tok = if is_block_doc_comment(string) {
+                let string = if has_cr {
+                    self.translate_crlf(start_bpos, string,
+                                        "bare CR not allowed in block doc-comment")
+                } else { string.into_maybe_owned() };
+                token::DOC_COMMENT(token::intern(string.as_slice()))
             } else {
-                let last_bpos = self.last_pos;
-                self.err_span_(start_bpos, last_bpos, "scan_exponent: bad fp literal");
-                rslt.push_str("1"); // arbitrary placeholder exponent
-                return Some(rslt);
-            }
-        } else {
-            return None::<String>;
-        }
+                token::COMMENT
+            };
+
+            Some(TokenAndSpan{
+                tok: tok,
+                sp: codemap::mk_sp(start_bpos, self.last_pos)
+            })
+        })
     }
 
-    fn scan_digits(&mut self, radix: uint) -> String {
-        let mut rslt = String::new();
+    /// Scan through any digits (base `radix`) or underscores, and return how
+    /// many digits there were.
+    fn scan_digits(&mut self, radix: uint) -> uint {
+        let mut len = 0u;
         loop {
             let c = self.curr;
-            if c == Some('_') { self.bump(); continue; }
+            if c == Some('_') { debug!("skipping a _"); self.bump(); continue; }
             match c.and_then(|cc| char::to_digit(cc, radix)) {
-              Some(_) => {
-                rslt.push_char(c.unwrap());
-                self.bump();
-              }
-              _ => return rslt
+                Some(_) => {
+                    debug!("{} in scan_digits", c);
+                    len += 1;
+                    self.bump();
+                }
+                _ => return len
             }
         };
     }
 
-    fn check_float_base(&mut self, start_bpos: BytePos, last_bpos: BytePos, base: uint) {
-        match base {
-          16u => self.err_span_(start_bpos, last_bpos,
-                                "hexadecimal float literal is not supported"),
-          8u => self.err_span_(start_bpos, last_bpos, "octal float literal is not supported"),
-          2u => self.err_span_(start_bpos, last_bpos, "binary float literal is not supported"),
-          _ => ()
-        }
-    }
-
+    /// Lex a LIT_INTEGER or a LIT_FLOAT
     fn scan_number(&mut self, c: char) -> token::Token {
-        let mut num_str;
-        let mut base = 10u;
-        let mut c = c;
-        let mut n = self.nextch().unwrap_or('\x00');
+        let mut num_digits;
+        let mut base = 10;
         let start_bpos = self.last_pos;
-        if c == '0' && n == 'x' {
-            self.bump();
-            self.bump();
-            base = 16u;
-        } else if c == '0' && n == 'o' {
-            self.bump();
-            self.bump();
-            base = 8u;
-        } else if c == '0' && n == 'b' {
-            self.bump();
-            self.bump();
-            base = 2u;
-        }
-        num_str = self.scan_digits(base);
-        c = self.curr.unwrap_or('\x00');
-        self.nextch();
-        if c == 'u' || c == 'i' {
-            enum Result { Signed(ast::IntTy), Unsigned(ast::UintTy) }
-            let signed = c == 'i';
-            let mut tp = {
-                if signed { Signed(ast::TyI) }
-                else { Unsigned(ast::TyU) }
-            };
-            self.bump();
-            c = self.curr.unwrap_or('\x00');
-            if c == '8' {
-                self.bump();
-                tp = if signed { Signed(ast::TyI8) }
-                          else { Unsigned(ast::TyU8) };
-            }
-            n = self.nextch().unwrap_or('\x00');
-            if c == '1' && n == '6' {
-                self.bump();
-                self.bump();
-                tp = if signed { Signed(ast::TyI16) }
-                          else { Unsigned(ast::TyU16) };
-            } else if c == '3' && n == '2' {
-                self.bump();
-                self.bump();
-                tp = if signed { Signed(ast::TyI32) }
-                          else { Unsigned(ast::TyU32) };
-            } else if c == '6' && n == '4' {
-                self.bump();
-                self.bump();
-                tp = if signed { Signed(ast::TyI64) }
-                          else { Unsigned(ast::TyU64) };
-            }
-            if num_str.len() == 0u {
-                let last_bpos = self.last_pos;
-                self.err_span_(start_bpos, last_bpos, "no valid digits found for number");
-                num_str = "1".to_string();
-            }
-            let parsed = match from_str_radix::<u64>(num_str.as_slice(),
-                                                     base as uint) {
-                Some(p) => p,
-                None => {
-                    let last_bpos = self.last_pos;
-                    self.err_span_(start_bpos, last_bpos, "int literal is too large");
-                    1
+
+        self.bump();
+
+        if c == '0' {
+            match self.curr.unwrap_or('\0') {
+                'b' => { self.bump(); base = 2; num_digits = self.scan_digits(2); }
+                'o' => { self.bump(); base = 8; num_digits = self.scan_digits(8); }
+                'x' => { self.bump(); base = 16; num_digits = self.scan_digits(16); }
+                '0'..'9' | '_' | '.' => {
+                    num_digits = self.scan_digits(10) + 1;
                 }
-            };
-
-            match tp {
-              Signed(t) => return token::LIT_INT(parsed as i64, t),
-              Unsigned(t) => return token::LIT_UINT(parsed, t)
+                'u' | 'i' => {
+                    self.scan_int_suffix();
+                    return token::LIT_INTEGER(self.name_from(start_bpos));
+                },
+                'f' => {
+                    let last_pos = self.last_pos;
+                    self.scan_float_suffix();
+                    self.check_float_base(start_bpos, last_pos, base);
+                    return token::LIT_FLOAT(self.name_from(start_bpos));
+                }
+                _ => {
+                    // just a 0
+                    return token::LIT_INTEGER(self.name_from(start_bpos));
+                }
             }
-        }
-        let mut is_float = false;
-        if self.curr_is('.') && !(ident_start(self.nextch()) || self.nextch_is('.')) {
-            is_float = true;
-            self.bump();
-            let dec_part = self.scan_digits(10u);
-            num_str.push_char('.');
-            num_str.push_str(dec_part.as_slice());
-        }
-        match self.scan_exponent(start_bpos) {
-          Some(ref s) => {
-            is_float = true;
-            num_str.push_str(s.as_slice());
-          }
-          None => ()
-        }
-
-        if self.curr_is('f') {
-            self.bump();
-            c = self.curr.unwrap_or('\x00');
-            n = self.nextch().unwrap_or('\x00');
-            if c == '3' && n == '2' {
-                self.bump();
-                self.bump();
-                let last_bpos = self.last_pos;
-                self.check_float_base(start_bpos, last_bpos, base);
-                return token::LIT_FLOAT(str_to_ident(num_str.as_slice()),
-                                        ast::TyF32);
-            } else if c == '6' && n == '4' {
-                self.bump();
-                self.bump();
-                let last_bpos = self.last_pos;
-                self.check_float_base(start_bpos, last_bpos, base);
-                return token::LIT_FLOAT(str_to_ident(num_str.as_slice()),
-                                        ast::TyF64);
-                /* FIXME (#2252): if this is out of range for either a
-                32-bit or 64-bit float, it won't be noticed till the
-                back-end.  */
-            }
-            let last_bpos = self.last_pos;
-            self.err_span_(start_bpos, last_bpos, "expected `f32` or `f64` suffix");
-        }
-        if is_float {
-            let last_bpos = self.last_pos;
-            self.check_float_base(start_bpos, last_bpos, base);
-            return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(
-                    num_str.as_slice()));
+        } else if c.is_digit_radix(10) {
+            num_digits = self.scan_digits(10) + 1;
         } else {
-            if num_str.len() == 0u {
-                let last_bpos = self.last_pos;
-                self.err_span_(start_bpos, last_bpos, "no valid digits found for number");
-                num_str = "1".to_string();
-            }
-            let parsed = match from_str_radix::<u64>(num_str.as_slice(),
-                                                     base as uint) {
-                Some(p) => p,
-                None => {
-                    let last_bpos = self.last_pos;
-                    self.err_span_(start_bpos, last_bpos, "int literal is too large");
-                    1
-                }
-            };
+            num_digits = 0;
+        }
 
-            debug!("lexing {} as an unsuffixed integer literal",
-                   num_str.as_slice());
-            return token::LIT_INT_UNSUFFIXED(parsed as i64);
+        if num_digits == 0 {
+            self.err_span_(start_bpos, self.last_pos, "no valid digits found for number");
+            // eat any suffix
+            self.scan_int_suffix();
+            return token::LIT_INTEGER(token::intern("0"));
+        }
+
+        // might be a float, but don't be greedy if this is actually an
+        // integer literal followed by field/method access or a range pattern
+        // (`0..2` and `12.foo()`)
+        if self.curr_is('.') && !self.nextch_is('.') && !self.nextch().unwrap_or('\0')
+                                                             .is_XID_start() {
+            // might have stuff after the ., and if it does, it needs to start
+            // with a number
+            self.bump();
+            if self.curr.unwrap_or('\0').is_digit_radix(10) {
+                self.scan_digits(10);
+                self.scan_float_exponent();
+                self.scan_float_suffix();
+            }
+            let last_pos = self.last_pos;
+            self.check_float_base(start_bpos, last_pos, base);
+            return token::LIT_FLOAT(self.name_from(start_bpos));
+        } else if self.curr_is('f') {
+            // or it might be an integer literal suffixed as a float
+            self.scan_float_suffix();
+            let last_pos = self.last_pos;
+            self.check_float_base(start_bpos, last_pos, base);
+            return token::LIT_FLOAT(self.name_from(start_bpos));
+        } else {
+            // it might be a float if it has an exponent
+            if self.curr_is('e') || self.curr_is('E') {
+                self.scan_float_exponent();
+                self.scan_float_suffix();
+                let last_pos = self.last_pos;
+                self.check_float_base(start_bpos, last_pos, base);
+                return token::LIT_FLOAT(self.name_from(start_bpos));
+            }
+            // but we certainly have an integer!
+            self.scan_int_suffix();
+            return token::LIT_INTEGER(self.name_from(start_bpos));
         }
     }
 
-
-    fn scan_numeric_escape(&mut self, n_hex_digits: uint, delim: char) -> char {
-        let mut accum_int = 0u32;
+    /// Scan over `n_digits` hex digits, stopping at `delim`, reporting an
+    /// error if too many or too few digits are encountered.
+    fn scan_hex_digits(&mut self, n_digits: uint, delim: char) -> bool {
+        debug!("scanning {} digits until {}", n_digits, delim);
         let start_bpos = self.last_pos;
-        for _ in range(0, n_hex_digits) {
+        let mut accum_int = 0;
+
+        for _ in range(0, n_digits) {
             if self.is_eof() {
                 let last_bpos = self.last_pos;
                 self.fatal_span_(start_bpos, last_bpos, "unterminated numeric character escape");
@@ -695,11 +639,11 @@ impl<'a> StringReader<'a> {
         }
 
         match char::from_u32(accum_int) {
-            Some(x) => x,
+            Some(_) => true,
             None => {
                 let last_bpos = self.last_pos;
                 self.err_span_(start_bpos, last_bpos, "illegal numeric character escape");
-                '?'
+                false
             }
         }
     }
@@ -707,8 +651,10 @@ impl<'a> StringReader<'a> {
     /// Scan for a single (possibly escaped) byte or char
     /// in a byte, (non-raw) byte string, char, or (non-raw) string literal.
     /// `start` is the position of `first_source_char`, which is already consumed.
+    ///
+    /// Returns true if there was a valid char/byte, false otherwise.
     fn scan_char_or_byte(&mut self, start: BytePos, first_source_char: char,
-                         ascii_only: bool, delim: char) -> Option<char> {
+                         ascii_only: bool, delim: char) -> bool {
         match first_source_char {
             '\\' => {
                 // '\X' for some X must be a character constant:
@@ -718,24 +664,18 @@ impl<'a> StringReader<'a> {
                 match escaped {
                     None => {},  // EOF here is an error that will be checked later.
                     Some(e) => {
-                        return Some(match e {
-                            'n' => '\n',
-                            'r' => '\r',
-                            't' => '\t',
-                            '\\' => '\\',
-                            '\'' => '\'',
-                            '"' => '"',
-                            '0' => '\x00',
-                            'x' => self.scan_numeric_escape(2u, delim),
-                            'u' if !ascii_only => self.scan_numeric_escape(4u, delim),
-                            'U' if !ascii_only => self.scan_numeric_escape(8u, delim),
+                        return match e {
+                            'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
+                            'x' => self.scan_hex_digits(2u, delim),
+                            'u' if !ascii_only => self.scan_hex_digits(4u, delim),
+                            'U' if !ascii_only => self.scan_hex_digits(8u, delim),
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
-                                return None
+                                true
                             },
                             '\r' if delim == '"' && self.curr_is('\n') => {
                                 self.consume_whitespace();
-                                return None
+                                true
                             }
                             c => {
                                 let last_pos = self.last_pos;
@@ -744,9 +684,9 @@ impl<'a> StringReader<'a> {
                                     if ascii_only { "unknown byte escape" }
                                     else { "unknown character escape" },
                                     c);
-                                c
+                                false
                             }
-                        })
+                        }
                     }
                 }
             }
@@ -757,14 +697,16 @@ impl<'a> StringReader<'a> {
                     if ascii_only { "byte constant must be escaped" }
                     else { "character constant must be escaped" },
                     first_source_char);
+                return false;
             }
             '\r' => {
                 if self.curr_is('\n') {
                     self.bump();
-                    return Some('\n');
+                    return true;
                 } else {
                     self.err_span_(start, self.last_pos,
                                    "bare CR not allowed in string, use \\r instead");
+                    return false;
                 }
             }
             _ => if ascii_only && first_source_char > '\x7F' {
@@ -773,9 +715,84 @@ impl<'a> StringReader<'a> {
                     start, last_pos,
                     "byte constant must be ASCII. \
                      Use a \\xHH escape for a non-ASCII byte", first_source_char);
+                return false;
             }
         }
-        Some(first_source_char)
+        true
+    }
+
+    /// Scan over an int literal suffix.
+    fn scan_int_suffix(&mut self) {
+        match self.curr {
+            Some('i') | Some('u') => {
+                self.bump();
+
+                if self.curr_is('8') {
+                    self.bump();
+                } else if self.curr_is('1') {
+                    if !self.nextch_is('6') {
+                        self.err_span_(self.last_pos, self.pos,
+                                      "illegal int suffix");
+                    } else {
+                        self.bump(); self.bump();
+                    }
+                } else if self.curr_is('3') {
+                    if !self.nextch_is('2') {
+                        self.err_span_(self.last_pos, self.pos,
+                                      "illegal int suffix");
+                    } else {
+                        self.bump(); self.bump();
+                    }
+                } else if self.curr_is('6') {
+                    if !self.nextch_is('4') {
+                        self.err_span_(self.last_pos, self.pos,
+                                      "illegal int suffix");
+                    } else {
+                        self.bump(); self.bump();
+                    }
+                }
+            },
+            _ => { }
+        }
+    }
+
+    /// Scan over a float literal suffix
+    fn scan_float_suffix(&mut self) {
+        if self.curr_is('f') {
+            if (self.nextch_is('3') && self.nextnextch_is('2'))
+            || (self.nextch_is('6') && self.nextnextch_is('4')) {
+                self.bump();
+                self.bump();
+                self.bump();
+            } else {
+                self.err_span_(self.last_pos, self.pos, "illegal float suffix");
+            }
+        }
+    }
+
+    /// Scan over a float exponent.
+    fn scan_float_exponent(&mut self) {
+        if self.curr_is('e') || self.curr_is('E') {
+            self.bump();
+            if self.curr_is('-') || self.curr_is('+') {
+                self.bump();
+            }
+            if self.scan_digits(10) == 0 {
+                self.err_span_(self.last_pos, self.pos, "expected at least one digit in exponent")
+            }
+        }
+    }
+
+    /// Check that a base is valid for a floating literal, emitting a nice
+    /// error if it isn't.
+    fn check_float_base(&mut self, start_bpos: BytePos, last_bpos: BytePos, base: uint) {
+        match base {
+            16u => self.err_span_(start_bpos, last_bpos, "hexadecimal float literal is not \
+                                 supported"),
+            8u => self.err_span_(start_bpos, last_bpos, "octal float literal is not supported"),
+            2u => self.err_span_(start_bpos, last_bpos, "binary float literal is not supported"),
+            _ => ()
+        }
     }
 
     fn binop(&mut self, op: token::BinOp) -> token::Token {
@@ -910,7 +927,7 @@ impl<'a> StringReader<'a> {
             let start = self.last_pos;
 
             // the eof will be picked up by the final `'` check below
-            let mut c2 = self.curr.unwrap_or('\x00');
+            let c2 = self.curr.unwrap_or('\x00');
             self.bump();
 
             // If the character is an ident start not followed by another single
@@ -953,7 +970,7 @@ impl<'a> StringReader<'a> {
             }
 
             // Otherwise it is a character constant:
-            c2 = self.scan_char_or_byte(start, c2, /* ascii_only = */ false, '\'').unwrap();
+            let valid = self.scan_char_or_byte(start, c2, /* ascii_only = */ false, '\'');
             if !self.curr_is('\'') {
                 let last_bpos = self.last_pos;
                 self.fatal_span_verbose(
@@ -963,118 +980,23 @@ impl<'a> StringReader<'a> {
                                    start - BytePos(1), last_bpos,
                                    "unterminated character constant".to_string());
             }
+            let id = if valid { self.name_from(start) } else { token::intern("0") };
             self.bump(); // advance curr past token
-            return token::LIT_CHAR(c2);
+            return token::LIT_CHAR(id);
           }
           'b' => {
             self.bump();
             return match self.curr {
-                Some('\'') => parse_byte(self),
-                Some('"') => parse_byte_string(self),
-                Some('r') => parse_raw_byte_string(self),
+                Some('\'') => self.scan_byte(),
+                Some('"') => self.scan_byte_string(),
+                Some('r') => self.scan_raw_byte_string(),
                 _ => unreachable!()  // Should have been a token::IDENT above.
             };
 
-            fn parse_byte(self_: &mut StringReader) -> token::Token {
-                self_.bump();
-                let start = self_.last_pos;
-
-                // the eof will be picked up by the final `'` check below
-                let mut c2 = self_.curr.unwrap_or('\x00');
-                self_.bump();
-
-                c2 = self_.scan_char_or_byte(start, c2, /* ascii_only = */ true, '\'').unwrap();
-                if !self_.curr_is('\'') {
-                    // Byte offsetting here is okay because the
-                    // character before position `start` are an
-                    // ascii single quote and ascii 'b'.
-                    let last_pos = self_.last_pos;
-                    self_.fatal_span_verbose(
-                        start - BytePos(2), last_pos,
-                        "unterminated byte constant".to_string());
-                }
-                self_.bump(); // advance curr past token
-                return token::LIT_BYTE(c2 as u8);
-            }
-
-            fn parse_byte_string(self_: &mut StringReader) -> token::Token {
-                self_.bump();
-                let start = self_.last_pos;
-                let mut value = Vec::new();
-                while !self_.curr_is('"') {
-                    if self_.is_eof() {
-                        let last_pos = self_.last_pos;
-                        self_.fatal_span_(start, last_pos,
-                                          "unterminated double quote byte string");
-                    }
-
-                    let ch_start = self_.last_pos;
-                    let ch = self_.curr.unwrap();
-                    self_.bump();
-                    self_.scan_char_or_byte(ch_start, ch, /* ascii_only = */ true, '"')
-                        .map(|ch| value.push(ch as u8));
-                }
-                self_.bump();
-                return token::LIT_BINARY(Rc::new(value));
-            }
-
-            fn parse_raw_byte_string(self_: &mut StringReader) -> token::Token {
-                let start_bpos = self_.last_pos;
-                self_.bump();
-                let mut hash_count = 0u;
-                while self_.curr_is('#') {
-                    self_.bump();
-                    hash_count += 1;
-                }
-
-                if self_.is_eof() {
-                    let last_pos = self_.last_pos;
-                    self_.fatal_span_(start_bpos, last_pos, "unterminated raw string");
-                } else if !self_.curr_is('"') {
-                    let last_pos = self_.last_pos;
-                    let ch = self_.curr.unwrap();
-                    self_.fatal_span_char(start_bpos, last_pos,
-                                    "only `#` is allowed in raw string delimitation; \
-                                     found illegal character",
-                                    ch);
-                }
-                self_.bump();
-                let content_start_bpos = self_.last_pos;
-                let mut content_end_bpos;
-                'outer: loop {
-                    match self_.curr {
-                        None => {
-                            let last_pos = self_.last_pos;
-                            self_.fatal_span_(start_bpos, last_pos, "unterminated raw string")
-                        },
-                        Some('"') => {
-                            content_end_bpos = self_.last_pos;
-                            for _ in range(0, hash_count) {
-                                self_.bump();
-                                if !self_.curr_is('#') {
-                                    continue 'outer;
-                                }
-                            }
-                            break;
-                        },
-                        Some(c) => if c > '\x7F' {
-                            let last_pos = self_.last_pos;
-                            self_.err_span_char(
-                                last_pos, last_pos, "raw byte string must be ASCII", c);
-                        }
-                    }
-                    self_.bump();
-                }
-                self_.bump();
-                let bytes = self_.with_str_from_to(content_start_bpos,
-                                                   content_end_bpos,
-                                                   |s| s.as_bytes().to_owned());
-                return token::LIT_BINARY_RAW(Rc::new(bytes), hash_count);
-            }
           }
           '"' => {
-            let mut accum_str = String::new();
             let start_bpos = self.last_pos;
+            let mut valid = true;
             self.bump();
             while !self.curr_is('"') {
                 if self.is_eof() {
@@ -1085,11 +1007,13 @@ impl<'a> StringReader<'a> {
                 let ch_start = self.last_pos;
                 let ch = self.curr.unwrap();
                 self.bump();
-                self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ false, '"')
-                    .map(|ch| accum_str.push_char(ch));
+                valid &= self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ false, '"');
             }
+            // adjust for the ACSII " at the start of the literal
+            let id = if valid { self.name_from(start_bpos + BytePos(1)) }
+                     else { token::intern("??") };
             self.bump();
-            return token::LIT_STR(str_to_ident(accum_str.as_slice()));
+            return token::LIT_STR(id);
           }
           'r' => {
             let start_bpos = self.last_pos;
@@ -1114,7 +1038,7 @@ impl<'a> StringReader<'a> {
             self.bump();
             let content_start_bpos = self.last_pos;
             let mut content_end_bpos;
-            let mut has_cr = false;
+            let mut valid = true;
             'outer: loop {
                 if self.is_eof() {
                     let last_bpos = self.last_pos;
@@ -1137,23 +1061,26 @@ impl<'a> StringReader<'a> {
                             }
                         }
                         break;
-                    }
+                    },
                     '\r' => {
-                        has_cr = true;
+                        if !self.nextch_is('\n') {
+                            let last_bpos = self.last_pos;
+                            self.err_span_(start_bpos, last_bpos, "bare CR not allowed in raw \
+                                           string, use \\r instead");
+                            valid = false;
+                        }
                     }
                     _ => ()
                 }
                 self.bump();
             }
             self.bump();
-            let str_content = self.with_str_from_to(content_start_bpos, content_end_bpos, |string| {
-                let string = if has_cr {
-                    self.translate_crlf(content_start_bpos, string,
-                                        "bare CR not allowed in raw string")
-                } else { string.into_maybe_owned() };
-                str_to_ident(string.as_slice())
-            });
-            return token::LIT_STR_RAW(str_content, hash_count);
+            let id = if valid {
+                self.name_from_to(content_start_bpos, content_end_bpos)
+            } else {
+                token::intern("??")
+            };
+            return token::LIT_STR_RAW(id, hash_count);
           }
           '-' => {
             if self.nextch_is('>') {
@@ -1221,6 +1148,104 @@ impl<'a> StringReader<'a> {
      // consider shebangs comments, but not inner attributes
      || (self.curr_is('#') && self.nextch_is('!') && !self.nextnextch_is('['))
     }
+
+    fn scan_byte(&mut self) -> token::Token {
+        self.bump();
+        let start = self.last_pos;
+
+        // the eof will be picked up by the final `'` check below
+        let c2 = self.curr.unwrap_or('\x00');
+        self.bump();
+
+        let valid = self.scan_char_or_byte(start, c2, /* ascii_only = */ true, '\'');
+        if !self.curr_is('\'') {
+            // Byte offsetting here is okay because the
+            // character before position `start` are an
+            // ascii single quote and ascii 'b'.
+            let last_pos = self.last_pos;
+            self.fatal_span_verbose(
+                start - BytePos(2), last_pos,
+                "unterminated byte constant".to_string());
+        }
+
+        let id = if valid { self.name_from(start) } else { token::intern("??") };
+        self.bump(); // advance curr past token
+        return token::LIT_BYTE(id);
+    }
+
+    fn scan_byte_string(&mut self) -> token::Token {
+        self.bump();
+        let start = self.last_pos;
+        let mut valid = true;
+
+        while !self.curr_is('"') {
+            if self.is_eof() {
+                let last_pos = self.last_pos;
+                self.fatal_span_(start, last_pos,
+                                  "unterminated double quote byte string");
+            }
+
+            let ch_start = self.last_pos;
+            let ch = self.curr.unwrap();
+            self.bump();
+            valid &= self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ true, '"');
+        }
+        let id = if valid { self.name_from(start) } else { token::intern("??") };
+        self.bump();
+        return token::LIT_BINARY(id);
+    }
+
+    fn scan_raw_byte_string(&mut self) -> token::Token {
+        let start_bpos = self.last_pos;
+        self.bump();
+        let mut hash_count = 0u;
+        while self.curr_is('#') {
+            self.bump();
+            hash_count += 1;
+        }
+
+        if self.is_eof() {
+            let last_pos = self.last_pos;
+            self.fatal_span_(start_bpos, last_pos, "unterminated raw string");
+        } else if !self.curr_is('"') {
+            let last_pos = self.last_pos;
+            let ch = self.curr.unwrap();
+            self.fatal_span_char(start_bpos, last_pos,
+                            "only `#` is allowed in raw string delimitation; \
+                             found illegal character",
+                            ch);
+        }
+        self.bump();
+        let content_start_bpos = self.last_pos;
+        let mut content_end_bpos;
+        'outer: loop {
+            match self.curr {
+                None => {
+                    let last_pos = self.last_pos;
+                    self.fatal_span_(start_bpos, last_pos, "unterminated raw string")
+                },
+                Some('"') => {
+                    content_end_bpos = self.last_pos;
+                    for _ in range(0, hash_count) {
+                        self.bump();
+                        if !self.curr_is('#') {
+                            continue 'outer;
+                        }
+                    }
+                    break;
+                },
+                Some(c) => if c > '\x7F' {
+                    let last_pos = self.last_pos;
+                    self.err_span_char(
+                        last_pos, last_pos, "raw byte string must be ASCII", c);
+                }
+            }
+            self.bump();
+        }
+        self.bump();
+        return token::LIT_BINARY_RAW(self.name_from_to(content_start_bpos, content_end_bpos),
+                                     hash_count);
+    }
 }
 
 pub fn is_whitespace(c: Option<char>) -> bool {
@@ -1239,12 +1264,18 @@ fn in_range(c: Option<char>, lo: char, hi: char) -> bool {
 
 fn is_dec_digit(c: Option<char>) -> bool { return in_range(c, '0', '9'); }
 
-pub fn is_line_non_doc_comment(s: &str) -> bool {
-    s.starts_with("////")
+pub fn is_doc_comment(s: &str) -> bool {
+    let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/')
+              || s.starts_with("//!");
+    debug!("is `{}` a doc comment? {}", s, res);
+    res
 }
 
-pub fn is_block_non_doc_comment(s: &str) -> bool {
-    s.starts_with("/***")
+pub fn is_block_doc_comment(s: &str) -> bool {
+    let res = (s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*')
+              || s.starts_with("/*!");
+    debug!("is `{}` a doc comment? {}", s, res);
+    res
 }
 
 fn ident_start(c: Option<char>) -> bool {
@@ -1295,11 +1326,14 @@ mod test {
             "/* my source file */ \
              fn main() { println!(\"zebra\"); }\n".to_string());
         let id = str_to_ident("fn");
+        assert_eq!(string_reader.next_token().tok, token::COMMENT);
+        assert_eq!(string_reader.next_token().tok, token::WS);
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan{
             tok:token::IDENT(id, false),
             sp:Span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
         assert_eq!(tok1,tok2);
+        assert_eq!(string_reader.next_token().tok, token::WS);
         // the 'main' id is already read:
         assert_eq!(string_reader.last_pos.clone(), BytePos(28));
         // read another token:
@@ -1328,6 +1362,7 @@ mod test {
     #[test] fn doublecolonparsing () {
         check_tokenization(setup(&mk_sh(), "a b".to_string()),
                            vec!(mk_ident("a",false),
+                            token::WS,
                              mk_ident("b",false)));
     }
 
@@ -1341,6 +1376,7 @@ mod test {
     #[test] fn dcparsing_3 () {
         check_tokenization(setup(&mk_sh(), "a ::b".to_string()),
                            vec!(mk_ident("a",false),
+                             token::WS,
                              token::MOD_SEP,
                              mk_ident("b",false)));
     }
@@ -1349,22 +1385,23 @@ mod test {
         check_tokenization(setup(&mk_sh(), "a:: b".to_string()),
                            vec!(mk_ident("a",true),
                              token::MOD_SEP,
+                             token::WS,
                              mk_ident("b",false)));
     }
 
     #[test] fn character_a() {
         assert_eq!(setup(&mk_sh(), "'a'".to_string()).next_token().tok,
-                   token::LIT_CHAR('a'));
+                   token::LIT_CHAR(token::intern("a")));
     }
 
     #[test] fn character_space() {
         assert_eq!(setup(&mk_sh(), "' '".to_string()).next_token().tok,
-                   token::LIT_CHAR(' '));
+                   token::LIT_CHAR(token::intern(" ")));
     }
 
     #[test] fn character_escaped() {
         assert_eq!(setup(&mk_sh(), "'\\n'".to_string()).next_token().tok,
-                   token::LIT_CHAR('\n'));
+                   token::LIT_CHAR(token::intern("\\n")));
     }
 
     #[test] fn lifetime_name() {
@@ -1376,19 +1413,23 @@ mod test {
         assert_eq!(setup(&mk_sh(),
                          "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token()
                                                                  .tok,
-                   token::LIT_STR_RAW(token::str_to_ident("\"#a\\b\x00c\""), 3));
+                   token::LIT_STR_RAW(token::intern("\"#a\\b\x00c\""), 3));
     }
 
     #[test] fn line_doc_comments() {
-        assert!(!is_line_non_doc_comment("///"));
-        assert!(!is_line_non_doc_comment("/// blah"));
-        assert!(is_line_non_doc_comment("////"));
+        assert!(is_doc_comment("///"));
+        assert!(is_doc_comment("/// blah"));
+        assert!(!is_doc_comment("////"));
     }
 
     #[test] fn nested_block_comments() {
-        assert_eq!(setup(&mk_sh(),
-                         "/* /* */ */'a'".to_string()).next_token().tok,
-                   token::LIT_CHAR('a'));
+        let sh = mk_sh();
+        let mut lexer = setup(&sh, "/* /* */ */'a'".to_string());
+        match lexer.next_token().tok {
+            token::COMMENT => { },
+            _ => fail!("expected a comment!")
+        }
+        assert_eq!(lexer.next_token().tok, token::LIT_CHAR(token::intern("a")));
     }
 
 }

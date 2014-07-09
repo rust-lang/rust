@@ -278,9 +278,9 @@ pub enum SyntaxExtension {
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
 pub struct BlockInfo {
-    // should macros escape from this scope?
+    /// Should macros escape from this scope?
     pub macros_escape: bool,
-    // what are the pending renames?
+    /// What are the pending renames?
     pub pending_renames: mtwt::RenameList,
 }
 
@@ -293,8 +293,8 @@ impl BlockInfo {
     }
 }
 
-// The base map of methods for expanding syntax extension
-// AST nodes into full ASTs
+/// The base map of methods for expanding syntax extension
+/// AST nodes into full ASTs
 pub fn syntax_expander_table() -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_expander(f: MacroExpanderFn) -> SyntaxExtension {
@@ -398,9 +398,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders
 }
 
-// One of these is made during expansion and incrementally updated as we go;
-// when a macro expansion occurs, the resulting nodes have the backtrace()
-// -> expn_info of their expansion context stored into their span.
+/// One of these is made during expansion and incrementally updated as we go;
+/// when a macro expansion occurs, the resulting nodes have the backtrace()
+/// -> expn_info of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub cfg: ast::CrateConfig,
@@ -535,6 +535,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn ident_of(&self, st: &str) -> ast::Ident {
         str_to_ident(st)
     }
+    pub fn name_of(&self, st: &str) -> ast::Name {
+        token::intern(st)
+    }
 }
 
 /// Extract a string literal from the macro expanded version of `expr`,
@@ -579,9 +582,9 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
         cx.span_err(sp, format!("{} takes 1 argument.", name).as_slice());
     } else {
         match tts[0] {
-            ast::TTTok(_, token::LIT_STR(ident))
-            | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => {
-                return Some(token::get_ident(ident).get().to_string())
+            ast::TTTok(_, token::LIT_STR(ident)) => return Some(parse::str_lit(ident.as_str())),
+            ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => {
+                return Some(parse::raw_str_lit(ident.as_str()))
             }
             _ => {
                 cx.span_err(sp,
@@ -612,11 +615,11 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
     Some(es)
 }
 
-// in order to have some notion of scoping for macros,
-// we want to implement the notion of a transformation
-// environment.
+/// In order to have some notion of scoping for macros,
+/// we want to implement the notion of a transformation
+/// environment.
 
-// This environment maps Names to SyntaxExtensions.
+/// This environment maps Names to SyntaxExtensions.
 
 //impl question: how to implement it? Initially, the
 // env will contain only macros, so it might be painful
@@ -633,7 +636,6 @@ struct MapChainFrame {
     map: HashMap<Name, SyntaxExtension>,
 }
 
-// Only generic to make it easy to test
 pub struct SyntaxEnv {
     chain: Vec<MapChainFrame> ,
 }

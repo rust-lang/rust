@@ -13,7 +13,7 @@ use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
 use parse::lexer::{is_whitespace, Reader};
 use parse::lexer::{StringReader, TokenAndSpan};
-use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
+use parse::lexer::is_block_doc_comment;
 use parse::lexer;
 use parse::token;
 
@@ -24,10 +24,14 @@ use std::uint;
 
 #[deriving(Clone, PartialEq)]
 pub enum CommentStyle {
-    Isolated, // No code on either side of each line of the comment
-    Trailing, // Code exists to the left of the comment
-    Mixed, // Code before /* foo */ and after the comment
-    BlankLine, // Just a manual blank line "\n\n", for layout
+    /// No code on either side of each line of the comment
+    Isolated,
+    /// Code exists to the left of the comment
+    Trailing,
+    /// Code before /* foo */ and after the comment
+    Mixed,
+    /// Just a manual blank line "\n\n", for layout
+    BlankLine,
 }
 
 #[deriving(Clone)]
@@ -38,9 +42,9 @@ pub struct Comment {
 }
 
 pub fn is_doc_comment(s: &str) -> bool {
-    (s.starts_with("///") && !is_line_non_doc_comment(s)) ||
+    (s.starts_with("///") && super::is_doc_comment(s)) ||
     s.starts_with("//!") ||
-    (s.starts_with("/**") && !is_block_non_doc_comment(s)) ||
+    (s.starts_with("/**") && is_block_doc_comment(s)) ||
     s.starts_with("/*!")
 }
 
@@ -198,9 +202,9 @@ fn read_line_comments(rdr: &mut StringReader, code_to_the_left: bool,
     }
 }
 
-// Returns None if the first col chars of s contain a non-whitespace char.
-// Otherwise returns Some(k) where k is first char offset after that leading
-// whitespace.  Note k may be outside bounds of s.
+/// Returns None if the first col chars of s contain a non-whitespace char.
+/// Otherwise returns Some(k) where k is first char offset after that leading
+/// whitespace.  Note k may be outside bounds of s.
 fn all_whitespace(s: &str, col: CharPos) -> Option<uint> {
     let len = s.len();
     let mut col = col.to_uint();
@@ -256,7 +260,7 @@ fn read_block_comment(rdr: &mut StringReader,
             rdr.bump();
             rdr.bump();
         }
-        if !is_block_non_doc_comment(curr_line.as_slice()) {
+        if is_block_doc_comment(curr_line.as_slice()) {
             return
         }
         assert!(!curr_line.as_slice().contains_char('\n'));
