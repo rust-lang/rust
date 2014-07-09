@@ -14,27 +14,35 @@
 #[must_use]
 enum MustUse { Test }
 
+#[must_use = "some message"]
+enum MustUseMsg { Test2 }
+
 fn foo<T>() -> T { fail!() }
 
 fn bar() -> int { return foo::<int>(); }
 fn baz() -> MustUse { return foo::<MustUse>(); }
+fn qux() -> MustUseMsg { return foo::<MustUseMsg>(); }
 
 #[allow(unused_result)]
 fn test() {
     foo::<int>();
     foo::<MustUse>(); //~ ERROR: unused result which must be used
+    foo::<MustUseMsg>(); //~ ERROR: unused result which must be used: some message
 }
 
 #[allow(unused_result, unused_must_use)]
 fn test2() {
     foo::<int>();
     foo::<MustUse>();
+    foo::<MustUseMsg>();
 }
 
 fn main() {
     foo::<int>(); //~ ERROR: unused result
     foo::<MustUse>(); //~ ERROR: unused result which must be used
+    foo::<MustUseMsg>(); //~ ERROR: unused result which must be used: some message
 
     let _ = foo::<int>();
     let _ = foo::<MustUse>();
+    let _ = foo::<MustUseMsg>();
 }
