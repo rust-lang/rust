@@ -938,10 +938,10 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
     let self_ty = opt_self_info.and_then(|self_info| {
         match self_info.explicit_self.node {
             ast::SelfStatic => None,
-            ast::SelfValue => {
+            ast::SelfValue(_) => {
                 Some(self_info.untransformed_self_ty)
             }
-            ast::SelfRegion(ref lifetime, mutability) => {
+            ast::SelfRegion(ref lifetime, mutability, _) => {
                 let region =
                     opt_ast_region_to_region(this, &rb,
                                              self_info.explicit_self.span,
@@ -950,7 +950,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
                                  ty::mt {ty: self_info.untransformed_self_ty,
                                          mutbl: mutability}))
             }
-            ast::SelfUniq => {
+            ast::SelfUniq(_) => {
                 Some(ty::mk_uniq(this.tcx(), self_info.untransformed_self_ty))
             }
         }

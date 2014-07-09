@@ -18,7 +18,7 @@ use parse::token::INTERPOLATED;
 
 use std::gc::{Gc, GC};
 
-// a parser that can parse attributes.
+/// A parser that can parse attributes.
 pub trait ParserAttr {
     fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute>;
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute;
@@ -30,11 +30,11 @@ pub trait ParserAttr {
 }
 
 impl<'a> ParserAttr for Parser<'a> {
-    // Parse attributes that appear before an item
+    /// Parse attributes that appear before an item
     fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         loop {
-            debug!("parse_outer_attributes: self.token={:?}",
+            debug!("parse_outer_attributes: self.token={}",
                    self.token);
             match self.token {
               token::POUND => {
@@ -43,7 +43,7 @@ impl<'a> ParserAttr for Parser<'a> {
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
                     attr::mk_attr_id(),
-                    self.id_to_interned_str(s),
+                    self.id_to_interned_str(s.ident()),
                     self.span.lo,
                     self.span.hi
                 );
@@ -59,10 +59,10 @@ impl<'a> ParserAttr for Parser<'a> {
         return attrs;
     }
 
-    // matches attribute = # ! [ meta_item ]
-    //
-    // if permit_inner is true, then a leading `!` indicates an inner
-    // attribute
+    /// Matches `attribute = # ! [ meta_item ]`
+    ///
+    /// If permit_inner is true, then a leading `!` indicates an inner
+    /// attribute
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute {
         debug!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
@@ -114,17 +114,17 @@ impl<'a> ParserAttr for Parser<'a> {
         };
     }
 
-    // Parse attributes that appear after the opening of an item. These should
-    // be preceded by an exclamation mark, but we accept and warn about one
-    // terminated by a semicolon. In addition to a vector of inner attributes,
-    // this function also returns a vector that may contain the first outer
-    // attribute of the next item (since we can't know whether the attribute
-    // is an inner attribute of the containing item or an outer attribute of
-    // the first contained item until we see the semi).
+    /// Parse attributes that appear after the opening of an item. These should
+    /// be preceded by an exclamation mark, but we accept and warn about one
+    /// terminated by a semicolon. In addition to a vector of inner attributes,
+    /// this function also returns a vector that may contain the first outer
+    /// attribute of the next item (since we can't know whether the attribute
+    /// is an inner attribute of the containing item or an outer attribute of
+    /// the first contained item until we see the semi).
 
-    // matches inner_attrs* outer_attr?
-    // you can make the 'next' field an Option, but the result is going to be
-    // more useful as a vector.
+    /// matches inner_attrs* outer_attr?
+    /// you can make the 'next' field an Option, but the result is going to be
+    /// more useful as a vector.
     fn parse_inner_attrs_and_next(&mut self)
                                   -> (Vec<ast::Attribute> , Vec<ast::Attribute> ) {
         let mut inner_attrs: Vec<ast::Attribute> = Vec::new();
@@ -139,7 +139,7 @@ impl<'a> ParserAttr for Parser<'a> {
                     let Span { lo, hi, .. } = self.span;
                     self.bump();
                     attr::mk_sugared_doc_attr(attr::mk_attr_id(),
-                                              self.id_to_interned_str(s),
+                                              self.id_to_interned_str(s.ident()),
                                               lo,
                                               hi)
                 }
@@ -157,9 +157,9 @@ impl<'a> ParserAttr for Parser<'a> {
         (inner_attrs, next_outer_attrs)
     }
 
-    // matches meta_item = IDENT
-    // | IDENT = lit
-    // | IDENT meta_seq
+    /// matches meta_item = IDENT
+    /// | IDENT = lit
+    /// | IDENT meta_seq
     fn parse_meta_item(&mut self) -> Gc<ast::MetaItem> {
         match self.token {
             token::INTERPOLATED(token::NtMeta(e)) => {
@@ -201,7 +201,7 @@ impl<'a> ParserAttr for Parser<'a> {
         }
     }
 
-    // matches meta_seq = ( COMMASEP(meta_item) )
+    /// matches meta_seq = ( COMMASEP(meta_item) )
     fn parse_meta_seq(&mut self) -> Vec<Gc<ast::MetaItem>> {
         self.parse_seq(&token::LPAREN,
                        &token::RPAREN,

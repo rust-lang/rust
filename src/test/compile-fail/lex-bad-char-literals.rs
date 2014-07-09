@@ -31,5 +31,19 @@ static s: &'static str =
 
 static s2: &'static str =
     "\u23q" //~ ERROR: illegal character in numeric character escape
+    //~^ ERROR: numeric character escape is too short
 ;
-//~^^ ERROR: numeric character escape is too short
+
+static c: char =
+    '\●' //~ ERROR: unknown character escape
+;
+
+static s: &'static str =
+    "\●" //~ ERROR: unknown character escape
+;
+
+// THIS MUST BE LAST, since unterminated character constants kill the lexer
+
+static c: char =
+    '●  //~ ERROR: unterminated character constant
+;

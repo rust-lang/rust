@@ -628,10 +628,10 @@ fn encode_explicit_self(ebml_w: &mut Encoder, explicit_self: ast::ExplicitSelf_)
 
     // Encode the base self type.
     match explicit_self {
-        SelfStatic => { ebml_w.writer.write(&[ 's' as u8 ]); }
-        SelfValue  => { ebml_w.writer.write(&[ 'v' as u8 ]); }
-        SelfUniq   => { ebml_w.writer.write(&[ '~' as u8 ]); }
-        SelfRegion(_, m) => {
+        SelfStatic   => { ebml_w.writer.write(&[ 's' as u8 ]); }
+        SelfValue(_) => { ebml_w.writer.write(&[ 'v' as u8 ]); }
+        SelfUniq(_)  => { ebml_w.writer.write(&[ '~' as u8 ]); }
+        SelfRegion(_, m, _) => {
             // FIXME(#4846) encode custom lifetime
             ebml_w.writer.write(&['&' as u8]);
             encode_mutability(ebml_w, m);

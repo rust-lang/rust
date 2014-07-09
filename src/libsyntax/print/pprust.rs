@@ -88,9 +88,9 @@ pub static indent_unit: uint = 4u;
 
 pub static default_columns: uint = 78u;
 
-// Requires you to pass an input filename and reader so that
-// it can scan the input text for comments and literals to
-// copy forward.
+/// Requires you to pass an input filename and reader so that
+/// it can scan the input text for comments and literals to
+/// copy forward.
 pub fn print_crate<'a>(cm: &'a CodeMap,
                        span_diagnostic: &diagnostic::SpanHandler,
                        krate: &ast::Crate,
@@ -1967,13 +1967,13 @@ impl<'a> State<'a> {
         try!(self.print_mutability(mutbl));
         match explicit_self {
             ast::SelfStatic => { return Ok(false); }
-            ast::SelfValue => {
+            ast::SelfValue(_) => {
                 try!(word(&mut self.s, "self"));
             }
-            ast::SelfUniq => {
+            ast::SelfUniq(_) => {
                 try!(word(&mut self.s, "~self"));
             }
-            ast::SelfRegion(ref lt, m) => {
+            ast::SelfRegion(ref lt, m, _) => {
                 try!(word(&mut self.s, "&"));
                 try!(self.print_opt_lifetime(lt));
                 try!(self.print_mutability(m));

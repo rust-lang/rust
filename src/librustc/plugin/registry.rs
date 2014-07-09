@@ -13,7 +13,7 @@
 use lint::LintPassObject;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
-use syntax::ext::base::{IdentTT, ItemDecorator, ItemModifier, BasicMacroExpander};
+use syntax::ext::base::{IdentTT, LetSyntaxTT, ItemDecorator, ItemModifier, BasicMacroExpander};
 use syntax::ext::base::{MacroExpanderFn};
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -57,6 +57,8 @@ impl Registry {
             IdentTT(ext, _) => IdentTT(ext, Some(self.krate_span)),
             ItemDecorator(ext) => ItemDecorator(ext),
             ItemModifier(ext) => ItemModifier(ext),
+            // there's probably a nicer way to signal this:
+            LetSyntaxTT(_, _) => fail!("can't register a new LetSyntax!"),
         }));
     }
 

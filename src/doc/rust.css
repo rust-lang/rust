@@ -23,22 +23,28 @@
     src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
 }
 @font-face {
-    font-family: 'Heuristica';
+    font-family: 'Source Serif Pro';
     font-style: normal;
     font-weight: 400;
-    src: local('Heuristica Regular'), url("Heuristica-Regular.woff") format('woff');
+    src: local('Source Serif Pro'), url("SourceSerifPro-Regular.woff") format('woff');
 }
 @font-face {
-    font-family: 'Heuristica';
+    font-family: 'Source Serif Pro';
     font-style: italic;
     font-weight: 400;
-    src: local('Heuristica Italic'), url("Heuristica-Italic.woff") format('woff');
+    src: url("Heuristica-Italic.woff") format('woff');
 }
 @font-face {
-    font-family: 'Heuristica';
+    font-family: 'Source Serif Pro';
     font-style: normal;
     font-weight: 700;
-    src: local('Heuristica Bold'), url("Heuristica-Bold.woff") format('woff');
+    src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
+}
+@font-face {
+    font-family: 'Source Code Pro';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Source Code Pro'), url("SourceCodePro-Regular.woff") format('woff');
 }
 
 *:not(body) {
@@ -52,7 +58,7 @@
 body {
     margin: 0 auto;
     padding: 0 15px;
-    font-family: "Heuristica", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: "Source Serif Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 18px;
     color: #333;
     line-height: 1.428571429;

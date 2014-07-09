@@ -19,13 +19,16 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{Span,respan};
 use owned_slice::OwnedSlice;
+use parse::token::special_idents;
 
 use std::gc::Gc;
 
 /// The types of pointers
 pub enum PtrTy<'a> {
-    Send, // ~
-    Borrowed(Option<&'a str>, ast::Mutability), // &['lifetime] [mut]
+    /// ~
+    Send,
+    /// &'lifetime mut
+    Borrowed(Option<&'a str>, ast::Mutability),
 }
 
 /// A path, e.g. `::std::option::Option::<int>` (global). Has support
@@ -82,12 +85,12 @@ impl<'a> Path<'a> {
 /// A type. Supports pointers (except for *), Self, and literals
 pub enum Ty<'a> {
     Self,
-    // &/Box/ Ty
+    /// &/Box/ Ty
     Ptr(Box<Ty<'a>>, PtrTy<'a>),
-    // mod::mod::Type<[lifetime], [Params...]>, including a plain type
-    // parameter, and things like `int`
+    /// mod::mod::Type<[lifetime], [Params...]>, including a plain type
+    /// parameter, and things like `int`
     Literal(Path<'a>),
-    // includes nil
+    /// includes unit
     Tuple(Vec<Ty<'a>> )
 }
 
@@ -244,22 +247,23 @@ impl<'a> LifetimeBounds<'a> {
     }
 }
 
-
 pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
     -> (Gc<Expr>, ast::ExplicitSelf) {
+    // this constructs a fresh `self` path, which will match the fresh `self` binding
+    // created below.
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => {
-            (self_path, respan(span, ast::SelfValue))
+            (self_path, respan(span, ast::SelfValue(special_idents::self_)))
         }
         Some(ref ptr) => {
             let self_ty = respan(
                 span,
                 match *ptr {
-                    Send => ast::SelfUniq,
+                    Send => ast::SelfUniq(special_idents::self_),
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s).name));
-                        ast::SelfRegion(lt, mutbl)
+                        ast::SelfRegion(lt, mutbl, special_idents::self_)
                     }
                 });
             let self_expr = cx.expr_deref(span, self_path);

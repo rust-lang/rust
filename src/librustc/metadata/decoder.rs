@@ -323,7 +323,7 @@ fn item_name(intr: &IdentInterner, item: ebml::Doc) -> ast::Ident {
     let string = name.as_str_slice();
     match intr.find_equiv(&string) {
         None => token::str_to_ident(string),
-        Some(val) => ast::Ident::new(val as ast::Name),
+        Some(val) => ast::Ident::new(val),
     }
 }
 
@@ -739,10 +739,11 @@ fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
     let explicit_self_kind = string.as_bytes()[0];
     match explicit_self_kind as char {
         's' => ast::SelfStatic,
-        'v' => ast::SelfValue,
-        '~' => ast::SelfUniq,
+        'v' => ast::SelfValue(special_idents::self_),
+        '~' => ast::SelfUniq(special_idents::self_),
         // FIXME(#4846) expl. region
-        '&' => ast::SelfRegion(None, get_mutability(string.as_bytes()[1])),
+        '&' => ast::SelfRegion(None, get_mutability(string.as_bytes()[1]),
+                               special_idents::self_),
         _ => fail!("unknown self type code: `{}`", explicit_self_kind as char)
     }
 }

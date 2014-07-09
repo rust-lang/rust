@@ -37,24 +37,24 @@ struct Context<'a, 'b> {
     ecx: &'a mut ExtCtxt<'b>,
     fmtsp: Span,
 
-    // Parsed argument expressions and the types that we've found so far for
-    // them.
+    /// Parsed argument expressions and the types that we've found so far for
+    /// them.
     args: Vec<Gc<ast::Expr>>,
     arg_types: Vec<Option<ArgumentType>>,
-    // Parsed named expressions and the types that we've found for them so far.
-    // Note that we keep a side-array of the ordering of the named arguments
-    // found to be sure that we can translate them in the same order that they
-    // were declared in.
+    /// Parsed named expressions and the types that we've found for them so far.
+    /// Note that we keep a side-array of the ordering of the named arguments
+    /// found to be sure that we can translate them in the same order that they
+    /// were declared in.
     names: HashMap<String, Gc<ast::Expr>>,
     name_types: HashMap<String, ArgumentType>,
     name_ordering: Vec<String>,
 
-    // Collection of the compiled `rt::Piece` structures
+    /// Collection of the compiled `rt::Piece` structures
     pieces: Vec<Gc<ast::Expr>>,
     name_positions: HashMap<String, uint>,
     method_statics: Vec<Gc<ast::Item>>,
 
-    // Updated as arguments are consumed or methods are entered
+    /// Updated as arguments are consumed or methods are entered
     nest_level: uint,
     next_arg: uint,
 }
