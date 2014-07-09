@@ -108,7 +108,6 @@ pub mod collections;
 
 /* Core types and methods on primitives */
 
-mod unicode;
 pub mod any;
 pub mod atomics;
 pub mod bool;
