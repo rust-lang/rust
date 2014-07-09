@@ -1053,6 +1053,49 @@ impl LintPass for UnnecessaryParens {
     }
 }
 
+declare_lint!(CATCH_ALL_MATCH_ARMS, Allow,
+              "detects catch-all arms in match statements")
+
+pub struct CatchAllMatch;
+
+impl CatchAllMatch {
+    fn check_catch_all_pattern(&mut self, cx: &Context, arm: &ast::Arm) {
+        for a in arm.pats.iter() {
+            match a.node {
+                ast::PatWild => {
+                    cx.span_lint(CATCH_ALL_MATCH_ARMS,
+                                 a.span,
+                                 "catch-all pattern in match")
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+impl LintPass for CatchAllMatch {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(CATCH_ALL_MATCH_ARMS)
+    }
+
+    fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
+        match e.node {
+            ast::ExprMatch(ref subexpression, ref arms) => {
+                let t = ty::expr_ty(cx.tcx, *subexpression);
+                match ty::get(t).sty {
+                    ty::ty_enum(_, _) => {
+                        for arm in arms.iter() {
+                            self.check_catch_all_pattern(cx, arm);
+                        }
+                    }
+                    _ => return
+                }
+            }
+            _ => return
+        }
+    }
+}
+
 declare_lint!(UNUSED_UNSAFE, Warn,
               "unnecessary use of an `unsafe` block")
 

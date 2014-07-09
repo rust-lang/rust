@@ -151,6 +151,7 @@ impl LintStore {
                      NonUppercasePatternStatics,
                      UppercaseVariables,
                      UnnecessaryParens,
+                     CatchAllMatch,
                      UnusedUnsafe,
                      UnsafeBlock,
                      UnusedMut,
