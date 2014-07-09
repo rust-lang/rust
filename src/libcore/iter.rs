@@ -1478,6 +1478,8 @@ impl<'a, A, T: Iterator<A>> Peekable<A, T> {
 
     /// Put a value "back" in the iterator,
     /// so that the next call to `peek()` or `next()` will return it.
+    ///
+    /// Fails if `peek()` or `put_back()` has been called more recently than `next()`.
     #[inline]
     pub fn put_back(&mut self, value: A) {
         assert!(self.peeked.is_none(), "Can not put back into a peeked iterator.");
