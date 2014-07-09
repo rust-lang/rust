@@ -16,6 +16,7 @@ use core::cmp;
 use core::default::Default;
 use core::fmt;
 use core::iter::Take;
+use core::ops::Index;
 use core::slice;
 use core::uint;
 use std::hash;
@@ -23,13 +24,8 @@ use std::hash;
 use {Collection, Mutable, Set, MutableSet};
 use vec::Vec;
 
-#[cfg(not(stage0))]
-use core::ops::Index;
 
-#[cfg(not(stage0))]
 static TRUE: bool = true;
-
-#[cfg(not(stage0))]
 static FALSE: bool = false;
 
 #[deriving(Clone)]
@@ -80,7 +76,6 @@ pub struct Bitv {
     nbits: uint
 }
 
-#[cfg(not(stage0))]
 impl Index<uint,bool> for Bitv {
     #[inline]
     fn index<'a>(&'a self, i: &uint) -> &'a bool {

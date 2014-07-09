@@ -636,7 +636,6 @@ shr_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
  * ```
  */
 #[lang="index"]
-#[cfg(not(stage0))]
 pub trait Index<Index,Result> {
     /// The method for the indexing (`Foo[Bar]`) operation
     fn index<'a>(&'a self, index: &Index) -> &'a Result;
@@ -668,7 +667,6 @@ pub trait Index<Index,Result> {
  * ```
  */
 #[lang="index_mut"]
-#[cfg(not(stage0))]
 pub trait IndexMut<Index,Result> {
     /// The method for the indexing (`Foo[Bar]`) operation
     fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Result;

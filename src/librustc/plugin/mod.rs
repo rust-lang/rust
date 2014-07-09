@@ -22,7 +22,7 @@
  * `#[plugin_registrar]` function:
  *
  * ```rust,ignore
- * #![crate_id = "myplugin"]
+ * #![crate_name = "myplugin"]
  * #![crate_type = "dylib"]
  * #![feature(plugin_registrar)]
  *
