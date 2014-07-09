@@ -753,7 +753,6 @@ impl Visitor<()> for PatIdentFinder {
             _ => visit::walk_pat(self, pattern, ())
         }
     }
-
 }
 
 /// find the PatIdent paths in a pattern
@@ -902,6 +901,9 @@ impl<'a> Folder for IdentRenamer<'a> {
             ctxt: mtwt::apply_renames(self.renames, id.ctxt),
         }
     }
+    fn fold_mac(&mut self, macro: &ast::Mac) -> ast::Mac {
+        fold::fold_mac(macro, self)
+    }
 }
 
 /// A tree-folder that applies every rename in its list to
@@ -930,6 +932,9 @@ impl<'a> Folder for PatIdentRenamer<'a> {
             },
             _ => noop_fold_pat(pat, self)
         }
+    }
+    fn fold_mac(&mut self, macro: &ast::Mac) -> ast::Mac {
+        fold::fold_mac(macro, self)
     }
 }
 
