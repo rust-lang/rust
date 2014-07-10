@@ -751,6 +751,7 @@ impl<A, B, T: ExactSize<A>, U: ExactSize<B>> ExactSize<(A, B)> for Zip<T, U> {}
 
 /// An double-ended iterator with the direction inverted
 #[deriving(Clone)]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Rev<T> {
     iter: T
 }
@@ -779,6 +780,7 @@ impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterato
 }
 
 /// A mutable reference to an iterator
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct ByRef<'a, T> {
     iter: &'a mut T
 }
@@ -1039,6 +1041,7 @@ impl<A, T: Clone + Iterator<A>> CloneableIterator for T {
 
 /// An iterator that repeats endlessly
 #[deriving(Clone)]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Cycle<T> {
     orig: T,
     iter: T,
@@ -1090,6 +1093,7 @@ impl<A, T: Clone + RandomAccessIterator<A>> RandomAccessIterator<A> for Cycle<T>
 
 /// An iterator which strings two iterators together
 #[deriving(Clone)]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Chain<T, U> {
     a: T,
     b: U,
@@ -1159,6 +1163,7 @@ for Chain<T, U> {
 
 /// An iterator which iterates two other iterators simultaneously
 #[deriving(Clone)]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Zip<T, U> {
     a: T,
     b: U
@@ -1237,6 +1242,7 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
 }
 
 /// An iterator which maps the values of `iter` with `f`
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Map<'a, A, B, T> {
     iter: T,
     f: |A|: 'a -> B
@@ -1287,6 +1293,7 @@ impl<'a, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B> for Map<'a, A
 }
 
 /// An iterator which filters the elements of `iter` with `predicate`
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Filter<'a, A, T> {
     iter: T,
     predicate: |&A|: 'a -> bool
@@ -1331,6 +1338,7 @@ impl<'a, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Filter<'a, A, 
 }
 
 /// An iterator which uses `f` to both filter and map elements from `iter`
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct FilterMap<'a, A, B, T> {
     iter: T,
     f: |A|: 'a -> Option<B>
@@ -1375,6 +1383,7 @@ for FilterMap<'a, A, B, T> {
 
 /// An iterator which yields the current count and the element during iteration
 #[deriving(Clone)]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Enumerate<T> {
     iter: T,
     count: uint
@@ -1429,6 +1438,7 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<(uint, A)> for Enumerat
 }
 
 /// An iterator with a `peek()` that returns an optional reference to the next element.
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Peekable<A, T> {
     iter: T,
     peeked: Option<A>,
@@ -1479,6 +1489,7 @@ impl<'a, A, T: Iterator<A>> Peekable<A, T> {
 }
 
 /// An iterator which rejects elements while `predicate` is true
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct SkipWhile<'a, A, T> {
     iter: T,
     flag: bool,
@@ -1517,6 +1528,7 @@ impl<'a, A, T: Iterator<A>> Iterator<A> for SkipWhile<'a, A, T> {
 }
 
 /// An iterator which only accepts elements while `predicate` is true
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct TakeWhile<'a, A, T> {
     iter: T,
     flag: bool,
@@ -1552,6 +1564,7 @@ impl<'a, A, T: Iterator<A>> Iterator<A> for TakeWhile<'a, A, T> {
 
 /// An iterator which skips over `n` elements of `iter`.
 #[deriving(Clone)]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Skip<T> {
     iter: T,
     n: uint
@@ -1616,6 +1629,7 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Skip<T> {
 
 /// An iterator which only iterates over the first `n` iterations of `iter`.
 #[deriving(Clone)]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Take<T> {
     iter: T,
     n: uint
@@ -1665,6 +1679,7 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Take<T> {
 
 
 /// An iterator to maintain state while iterating another iterator
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Scan<'a, A, B, T, St> {
     iter: T,
     f: |&mut St, A|: 'a -> Option<B>,
@@ -1689,6 +1704,7 @@ impl<'a, A, B, T: Iterator<A>, St> Iterator<B> for Scan<'a, A, B, T, St> {
 /// An iterator that maps each element to an iterator,
 /// and yields the elements of the produced iterators
 ///
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct FlatMap<'a, A, T, U> {
     iter: T,
     f: |A|: 'a -> U,
@@ -1748,6 +1764,7 @@ impl<'a,
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
 #[deriving(Clone)]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Fuse<T> {
     iter: T,
     done: bool
@@ -1820,6 +1837,7 @@ impl<T> Fuse<T> {
 
 /// An iterator that calls a function with a reference to each
 /// element before yielding it.
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 pub struct Inspect<'a, A, T> {
     iter: T,
     f: |&A|: 'a
@@ -2299,4 +2317,3 @@ pub mod order {
         }
     }
 }
-
