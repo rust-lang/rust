@@ -94,6 +94,7 @@ pub struct Process {
 ///
 /// let output = process.stdout.get_mut_ref().read_to_end();
 /// ```
+#[deriving(Clone)]
 pub struct Command {
     // The internal data for the builder. Documented by the builder
     // methods below, and serialized into rt::rtio::ProcessConfig.
@@ -340,6 +341,7 @@ pub struct ProcessOutput {
 }
 
 /// Describes what to do with a standard io stream for a child process.
+#[deriving(Clone)]
 pub enum StdioContainer {
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
