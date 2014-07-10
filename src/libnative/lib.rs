@@ -46,7 +46,6 @@
 //! }
 //! ```
 
-#![crate_id = "native#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "native"]
 #![experimental]
 #![license = "MIT/ASL2"]
@@ -58,7 +57,6 @@
 
 #![deny(unused_result, unused_must_use)]
 #![allow(non_camel_case_types, deprecated)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 #![feature(default_type_params, lang_items)]
 
 // NB this crate explicitly does *not* allow glob imports, please seriously

@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id = "rustdoc#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "rustdoc"]
 #![experimental]
 #![desc = "rustdoc, the Rust documentation extractor"]
 #![license = "MIT/ASL2"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #![feature(globs, struct_variant, managed_boxes, macro_rules, phase)]
 
