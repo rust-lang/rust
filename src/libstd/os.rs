@@ -1277,12 +1277,9 @@ pub fn page_size() -> uint {
 /// The memory map is released (unmapped) when the destructor is run, so don't
 /// let it leave scope by accident if you want it to stick around.
 pub struct MemoryMap {
-    /// Pointer to the memory created or modified by this map.
-    pub data: *mut u8,
-    /// Number of bytes this map applies to
-    pub len: uint,
-    /// Type of mapping
-    pub kind: MemoryMapKind,
+    data: *mut u8,
+    len: uint,
+    kind: MemoryMapKind,
 }
 
 /// Type of memory map
@@ -1615,6 +1612,15 @@ impl Drop for MemoryMap {
             }
         }
     }
+}
+
+impl MemoryMap {
+    /// Returns the pointer to the memory created or modified by this map.
+    pub fn data(&self) -> *mut u8 { self.data }
+    /// Returns the number of bytes this map applies to.
+    pub fn len(&self) -> uint { self.len }
+    /// Returns the type of mapping this represents.
+    pub fn kind(&self) -> MemoryMapKind { self.kind }
 }
 
 #[cfg(target_os = "linux")]
