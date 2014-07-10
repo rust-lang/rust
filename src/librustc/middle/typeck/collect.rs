@@ -1018,16 +1018,17 @@ fn ty_generics(ccx: &CrateCtxt,
     let mut result = base_generics;
 
     for (i, l) in lifetimes.iter().enumerate() {
-        result.regions.push(space,
-                            ty::RegionParameterDef { name: l.name,
-                                                     space: space,
-                                                     index: i,
-                                                     def_id: local_def(l.id) });
+        let def = ty::RegionParameterDef { name: l.name,
+                                           space: space,
+                                           index: i,
+                                           def_id: local_def(l.id) };
+        debug!("ty_generics: def for region param: {}", def);
+        result.regions.push(space, def);
     }
 
     for (i, param) in types.iter().enumerate() {
         let def = get_or_create_type_parameter_def(ccx, space, param, i);
-        debug!("def for param: {}", def.repr(ccx.tcx));
+        debug!("ty_generics: def for type param: {}", def.repr(ccx.tcx));
         result.types.push(space, def);
     }
 
