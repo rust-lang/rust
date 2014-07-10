@@ -116,7 +116,7 @@ fn test_iterator_enumerate() {
 #[test]
 fn test_iterator_peekable() {
     let xs = vec![0u, 1, 2, 3, 4, 5];
-    let mut it = xs.iter().map(|&x|x).peekable();
+    let mut it = xs.move_iter().peekable();
     assert_eq!(it.peek().unwrap(), &0);
     assert_eq!(it.next().unwrap(), 0);
     assert_eq!(it.next().unwrap(), 1);
@@ -124,11 +124,23 @@ fn test_iterator_peekable() {
     assert_eq!(it.peek().unwrap(), &3);
     assert_eq!(it.peek().unwrap(), &3);
     assert_eq!(it.next().unwrap(), 3);
+    it.put_back(12);
+    assert_eq!(it.peek().unwrap(), &12);
+    assert_eq!(it.next().unwrap(), 12);
     assert_eq!(it.next().unwrap(), 4);
     assert_eq!(it.peek().unwrap(), &5);
     assert_eq!(it.next().unwrap(), 5);
     assert!(it.peek().is_none());
     assert!(it.next().is_none());
+}
+
+#[test]
+#[should_fail]
+fn test_iterator_peekable_put_back_fail() {
+    let xs = vec![0u, 1, 2, 3, 4, 5];
+    let mut it = xs.move_iter().peekable();
+    assert_eq!(it.peek().unwrap(), &0);
+    it.put_back(12);
 }
 
 #[test]
