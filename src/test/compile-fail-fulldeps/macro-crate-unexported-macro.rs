@@ -18,5 +18,5 @@
 extern crate macro_crate_test;
 
 fn main() {
-    assert_eq!(3, unexported_macro!()); //~ ERROR macro undefined: 'unexported_macro'
+    assert_eq!(3, unexported_macro!()); //~ ERROR macro undefined: 'unexported_macro!'
 }

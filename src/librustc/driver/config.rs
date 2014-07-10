@@ -532,6 +532,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         optopt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
         optopt( "",  "out-dir", "Write output to compiler-chosen filename in <dir>", "DIR"),
         optflag("", "parse-only", "Parse only; do not compile, assemble, or link"),
+        optopt("", "explain", "Provide a detailed explanation of an error message", "OPT"),
         optflagopt("", "pretty",
                    "Pretty-print the input instead of compiling;
                    valid types are: `normal` (un-annotated source),
@@ -807,6 +808,7 @@ mod test {
     use getopts::getopts;
     use syntax::attr;
     use syntax::attr::AttrMetaMethods;
+    use syntax::diagnostics;
 
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
@@ -816,8 +818,9 @@ mod test {
               Ok(m) => m,
               Err(f) => fail!("test_switch_implies_cfg_test: {}", f)
             };
+        let registry = diagnostics::registry::Registry::new([]);
         let sessopts = build_session_options(matches);
-        let sess = build_session(sessopts, None);
+        let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess);
         assert!((attr::contains_name(cfg.as_slice(), "test")));
     }
@@ -834,8 +837,9 @@ mod test {
                 fail!("test_switch_implies_cfg_test_unless_cfg_test: {}", f)
               }
             };
+        let registry = diagnostics::registry::Registry::new([]);
         let sessopts = build_session_options(matches);
-        let sess = build_session(sessopts, None);
+        let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess);
         let mut test_items = cfg.iter().filter(|m| m.name().equiv(&("test")));
         assert!(test_items.next().is_some());

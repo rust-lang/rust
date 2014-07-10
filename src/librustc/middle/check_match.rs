@@ -194,7 +194,7 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
 
             let v = vec!(*pat);
             match is_useful(cx, &seen, v.as_slice(), LeaveOutWitness) {
-                NotUseful => cx.tcx.sess.span_err(pat.span, "unreachable pattern"),
+                NotUseful => span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern"),
                 Useful => (),
                 UsefulWithWitness(_) => unreachable!()
             }

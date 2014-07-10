@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    print!(test!());
-    //~^ ERROR: macro undefined: 'test!'
-    //~^^ ERROR: format argument must be a string literal
+__register_diagnostic!(E0001)
+//~^ ERROR macro undefined: '__register_diagnostic!'
 
-    concat!(test!());
-    //~^ ERROR: macro undefined: 'test!'
+fn main() {
+    __diagnostic_used!(E0001);
+    //~^ ERROR macro undefined: '__diagnostic_used!'
 }
+
+__build_diagnostic_array!(DIAGNOSTICS)
+//~^ ERROR macro undefined: '__build_diagnostic_array!'

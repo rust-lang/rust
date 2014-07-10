@@ -54,7 +54,7 @@ pub fn run(input: &str,
 
 
     let codemap = CodeMap::new();
-    let diagnostic_handler = diagnostic::default_handler(diagnostic::Auto);
+    let diagnostic_handler = diagnostic::default_handler(diagnostic::Auto, None);
     let span_diagnostic_handler =
     diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
@@ -150,7 +150,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
         };
         io::util::copy(&mut p, &mut err).unwrap();
     });
-    let emitter = diagnostic::EmitterWriter::new(box w2);
+    let emitter = diagnostic::EmitterWriter::new(box w2, None);
 
     // Compile the code
     let codemap = CodeMap::new();
