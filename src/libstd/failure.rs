@@ -10,7 +10,7 @@
 
 #![experimental]
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use any::{Any, AnyRefExt};
 use fmt;
 use io::{Writer, IoResult};

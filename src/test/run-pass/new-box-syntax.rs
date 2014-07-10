@@ -14,7 +14,7 @@
 // Tests that the new `box` syntax works with unique pointers and GC pointers.
 
 use std::gc::{Gc, GC};
-use std::owned::{Box, HEAP};
+use std::boxed::{Box, HEAP};
 
 struct Structure {
     x: int,
@@ -33,4 +33,3 @@ pub fn main() {
     let c = box()(3i + 4);
     let d = box(GC)(5i + 6);
 }
-

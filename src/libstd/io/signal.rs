@@ -26,7 +26,7 @@ use iter::Iterator;
 use kinds::Send;
 use mem::drop;
 use option::{Some, None};
-use owned::Box;
+use boxed::Box;
 use result::{Ok, Err};
 use rt::rtio::{IoFactory, LocalIo, RtioSignal, Callback};
 use slice::ImmutableVector;

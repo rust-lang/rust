@@ -11,7 +11,7 @@
 //! The EventLoop and internal synchronous I/O interface.
 
 use core::prelude::*;
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use collections::string::String;
 use collections::vec::Vec;
 use core::fmt;

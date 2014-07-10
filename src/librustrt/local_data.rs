@@ -40,7 +40,7 @@ assert_eq!(*key_vector.get().unwrap(), vec![4]);
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use collections::vec::Vec;
 use core::kinds::marker;
 use core::mem;

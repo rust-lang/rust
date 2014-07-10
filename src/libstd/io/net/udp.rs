@@ -19,7 +19,7 @@ use clone::Clone;
 use io::net::ip::{SocketAddr, IpAddr};
 use io::{Reader, Writer, IoResult, IoError};
 use kinds::Send;
-use owned::Box;
+use boxed::Box;
 use option::Option;
 use result::{Ok, Err};
 use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};

@@ -34,7 +34,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use core::mem;
 use rustrt::local::Local;
 use rustrt::task::{Task, BlockedTask};

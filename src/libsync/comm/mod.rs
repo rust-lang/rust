@@ -320,7 +320,7 @@
 use core::prelude::*;
 
 use alloc::arc::Arc;
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use core::cell::Cell;
 use core::kinds::marker;
 use core::mem;
