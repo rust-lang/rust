@@ -669,22 +669,13 @@ impl LintPass for UnusedResult {
                 if ast_util::is_local(did) {
                     match cx.tcx.map.get(did.node) {
                         ast_map::NodeItem(it) => {
-                            if attr::contains_name(it.attrs.as_slice(),
-                                                   "must_use") {
-                                cx.span_lint(UNUSED_MUST_USE, s.span,
-                                             "unused result which must be used");
-                                warned = true;
-                            }
+                            warned |= check_must_use(cx, it.attrs.as_slice(), s.span);
                         }
                         _ => {}
                     }
                 } else {
                     csearch::get_item_attrs(&cx.sess().cstore, did, |attrs| {
-                        if attr::contains_name(attrs.as_slice(), "must_use") {
-                            cx.span_lint(UNUSED_MUST_USE, s.span,
-                                         "unused result which must be used");
-                            warned = true;
-                        }
+                        warned |= check_must_use(cx, attrs.as_slice(), s.span);
                     });
                 }
             }
@@ -692,6 +683,25 @@ impl LintPass for UnusedResult {
         }
         if !warned {
             cx.span_lint(UNUSED_RESULT, s.span, "unused result");
+        }
+
+        fn check_must_use(cx: &Context, attrs: &[ast::Attribute], sp: Span) -> bool {
+            for attr in attrs.iter() {
+                if attr.check_name("must_use") {
+                    let mut msg = "unused result which must be used".to_string();
+                    // check for #[must_use="..."]
+                    match attr.value_str() {
+                        None => {}
+                        Some(s) => {
+                            msg.push_str(": ");
+                            msg.push_str(s.get());
+                        }
+                    }
+                    cx.span_lint(UNUSED_MUST_USE, sp, msg.as_slice());
+                    return true;
+                }
+            }
+            false
         }
     }
 }
