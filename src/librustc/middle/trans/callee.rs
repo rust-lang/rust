@@ -64,6 +64,10 @@ pub struct MethodData {
 pub enum CalleeData {
     Closure(Datum<Lvalue>),
 
+    // Constructor for enum variant/tuple-like-struct
+    // i.e. Some, Ok
+    TupleVariantConstructor(subst::Substs, ty::Disr),
+
     // Represents a (possibly monomorphized) top-level fn item or method
     // item. Note that this is just the fn-ptr and is not a Rust closure
     // value (which is a pair).
@@ -158,11 +162,16 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
                                                                 ref_expr.id))
             }
             def::DefVariant(tid, vid, _) => {
-                // nullary variants are not callable
-                assert!(ty::enum_variant_with_id(bcx.tcx(),
-                                                      tid,
-                                                      vid).args.len() > 0u);
-                fn_callee(bcx, trans_fn_ref(bcx, vid, ExprId(ref_expr.id)))
+                let vinfo = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
+                let substs = node_id_substs(bcx, ExprId(ref_expr.id));
+
+                // Nullary variants are not callable
+                assert!(vinfo.args.len() > 0u);
+
+                Callee {
+                    bcx: bcx,
+                    data: TupleVariantConstructor(substs, vinfo.disr_val)
+                }
             }
             def::DefStruct(def_id) => {
                 fn_callee(bcx, trans_fn_ref(bcx, def_id, ExprId(ref_expr.id)))
@@ -709,6 +718,14 @@ pub fn trans_call_inner<'a>(
             return intrinsic::trans_intrinsic_call(bcx, node, callee_ty,
                                                    arg_cleanup_scope, args,
                                                    dest.unwrap(), substs);
+        }
+        TupleVariantConstructor(substs, disr) => {
+            assert!(dest.is_some());
+            fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
+
+            let ctor_ty = callee_ty.subst(bcx.tcx(), &substs);
+            return base::trans_enum_variant_constructor(bcx, ctor_ty, disr,
+                                                        args, dest.unwrap());
         }
     };
 

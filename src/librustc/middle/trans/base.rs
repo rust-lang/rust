@@ -1704,6 +1704,61 @@ pub fn trans_enum_variant(ccx: &CrateContext,
         llfndecl);
 }
 
+pub fn trans_enum_variant_constructor<'a>(mut bcx: &'a Block<'a>,
+                                          ctor_ty: ty::t,
+                                          disr: ty::Disr,
+                                          args: callee::CallArgs,
+                                          dest: expr::Dest) -> Result<'a> {
+
+    let ccx = bcx.fcx.ccx;
+    let tcx = &ccx.tcx;
+
+    let result_ty = match ty::get(ctor_ty).sty {
+        ty::ty_bare_fn(ref bft) => bft.sig.output,
+        _ => ccx.sess().bug(
+            format!("trans_enum_variant_constructor: \
+                     unexpected ctor return type {}",
+                     ctor_ty.repr(tcx)).as_slice())
+    };
+
+    // Get location to store the result. If the user does not care about
+    // the result, just make a stack slot
+    let llresult = match dest {
+        expr::SaveIn(d) => d,
+        expr::Ignore => {
+            if !type_is_zero_size(ccx, result_ty) {
+                alloc_ty(bcx, result_ty, "constructor_result")
+            } else {
+                C_undef(type_of::type_of(ccx, result_ty))
+            }
+        }
+    };
+
+    if !type_is_zero_size(ccx, result_ty) {
+        let repr = adt::represent_type(ccx, result_ty);
+        adt::trans_start_init(bcx, &*repr, llresult, disr);
+
+        match args {
+            callee::ArgExprs(exprs) => {
+                for (i, expr) in exprs.iter().enumerate() {
+                    let lldestptr = adt::trans_field_ptr(bcx, &*repr, llresult, disr, i);
+                    bcx = expr::trans_into(bcx, *expr, expr::SaveIn(lldestptr));
+                }
+            }
+            _ => ccx.sess().bug("expected expr as arguments for variant/struct tuple constructor")
+        }
+    }
+
+    // If the caller doesn't care about the result
+    // drop the temporary we made
+    let bcx = match dest {
+        expr::SaveIn(_) => bcx,
+        expr::Ignore => glue::drop_ty(bcx, llresult, result_ty)
+    };
+
+    Result::new(bcx, llresult)
+}
+
 pub fn trans_tuple_struct(ccx: &CrateContext,
                           _fields: &[ast::StructField],
                           ctor_id: ast::NodeId,
