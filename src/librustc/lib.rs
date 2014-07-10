@@ -32,6 +32,9 @@ This API is completely unstable and subject to change.
 #![feature(macro_rules, globs, struct_variant, managed_boxes, quote)]
 #![feature(default_type_params, phase, unsafe_destructor)]
 
+#![allow(unknown_features)] // NOTE: Remove after next snapshot
+#![feature(rustc_diagnostic_macros)]
+
 extern crate arena;
 extern crate debug;
 extern crate flate;
@@ -39,9 +42,11 @@ extern crate getopts;
 extern crate graphviz;
 extern crate libc;
 extern crate serialize;
-extern crate syntax;
 extern crate time;
 #[phase(plugin, link)] extern crate log;
+#[phase(plugin, link)] extern crate syntax;
+
+mod diagnostics;
 
 pub mod middle {
     pub mod def;
@@ -126,6 +131,8 @@ pub mod lib {
     pub mod llvm;
     pub mod llvmdeps;
 }
+
+__build_diagnostic_array!(DIAGNOSTICS)
 
 // A private module so that macro-expanded idents like
 // `::rustc::lint::Lint` will also work in `rustc` itself.

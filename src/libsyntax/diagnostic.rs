@@ -12,6 +12,7 @@ extern crate libc;
 
 use codemap::{Pos, Span};
 use codemap;
+use diagnostics;
 
 use std::cell::{RefCell, Cell};
 use std::fmt;
@@ -59,7 +60,7 @@ pub enum ColorConfig {
 
 pub trait Emitter {
     fn emit(&mut self, cmsp: Option<(&codemap::CodeMap, Span)>,
-            msg: &str, lvl: Level);
+            msg: &str, code: Option<&str>, lvl: Level);
     fn custom_emit(&mut self, cm: &codemap::CodeMap,
                    sp: RenderSpan, msg: &str, lvl: Level);
 }
@@ -88,6 +89,10 @@ impl SpanHandler {
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&self.cm, sp)), msg, Error);
+        self.handler.bump_err_count();
+    }
+    pub fn span_err_with_code(&self, sp: Span, msg: &str, code: &str) {
+        self.handler.emit_with_code(Some((&self.cm, sp)), msg, code, Error);
         self.handler.bump_err_count();
     }
     pub fn span_warn(&self, sp: Span, msg: &str) {
@@ -124,11 +129,11 @@ pub struct Handler {
 
 impl Handler {
     pub fn fatal(&self, msg: &str) -> ! {
-        self.emit.borrow_mut().emit(None, msg, Fatal);
+        self.emit.borrow_mut().emit(None, msg, None, Fatal);
         fail!(FatalError);
     }
     pub fn err(&self, msg: &str) {
-        self.emit.borrow_mut().emit(None, msg, Error);
+        self.emit.borrow_mut().emit(None, msg, None, Error);
         self.bump_err_count();
     }
     pub fn bump_err_count(&self) {
@@ -153,13 +158,13 @@ impl Handler {
         self.fatal(s.as_slice());
     }
     pub fn warn(&self, msg: &str) {
-        self.emit.borrow_mut().emit(None, msg, Warning);
+        self.emit.borrow_mut().emit(None, msg, None, Warning);
     }
     pub fn note(&self, msg: &str) {
-        self.emit.borrow_mut().emit(None, msg, Note);
+        self.emit.borrow_mut().emit(None, msg, None, Note);
     }
     pub fn bug(&self, msg: &str) -> ! {
-        self.emit.borrow_mut().emit(None, msg, Bug);
+        self.emit.borrow_mut().emit(None, msg, None, Bug);
         fail!(ExplicitBug);
     }
     pub fn unimpl(&self, msg: &str) -> ! {
@@ -169,7 +174,14 @@ impl Handler {
                 cmsp: Option<(&codemap::CodeMap, Span)>,
                 msg: &str,
                 lvl: Level) {
-        self.emit.borrow_mut().emit(cmsp, msg, lvl);
+        self.emit.borrow_mut().emit(cmsp, msg, None, lvl);
+    }
+    pub fn emit_with_code(&self,
+                          cmsp: Option<(&codemap::CodeMap, Span)>,
+                          msg: &str,
+                          code: &str,
+                          lvl: Level) {
+        self.emit.borrow_mut().emit(cmsp, msg, Some(code), lvl);
     }
     pub fn custom_emit(&self, cm: &codemap::CodeMap,
                        sp: RenderSpan, msg: &str, lvl: Level) {
@@ -184,8 +196,9 @@ pub fn mk_span_handler(handler: Handler, cm: codemap::CodeMap) -> SpanHandler {
     }
 }
 
-pub fn default_handler(color_config: ColorConfig) -> Handler {
-    mk_handler(box EmitterWriter::stderr(color_config))
+pub fn default_handler(color_config: ColorConfig,
+                       registry: Option<diagnostics::registry::Registry>) -> Handler {
+    mk_handler(box EmitterWriter::stderr(color_config, registry))
 }
 
 pub fn mk_handler(e: Box<Emitter + Send>) -> Handler {
@@ -262,8 +275,8 @@ fn print_maybe_styled(w: &mut EmitterWriter,
     }
 }
 
-fn print_diagnostic(dst: &mut EmitterWriter,
-                    topic: &str, lvl: Level, msg: &str) -> io::IoResult<()> {
+fn print_diagnostic(dst: &mut EmitterWriter, topic: &str, lvl: Level,
+                    msg: &str, code: Option<&str>) -> io::IoResult<()> {
     if !topic.is_empty() {
         try!(write!(&mut dst.dst, "{} ", topic));
     }
@@ -272,13 +285,32 @@ fn print_diagnostic(dst: &mut EmitterWriter,
                             format!("{}: ", lvl.to_string()).as_slice(),
                             term::attr::ForegroundColor(lvl.color())));
     try!(print_maybe_styled(dst,
-                            format!("{}\n", msg).as_slice(),
+                            format!("{}", msg).as_slice(),
                             term::attr::Bold));
+
+    match code {
+        Some(code) => {
+            let style = term::attr::ForegroundColor(term::color::BRIGHT_MAGENTA);
+            try!(print_maybe_styled(dst, format!(" [{}]", code.clone()).as_slice(), style));
+            match dst.registry.as_ref().and_then(|registry| registry.find_description(code)) {
+                Some(_) => {
+                    try!(write!(&mut dst.dst,
+                        " (pass `--explain {}` to see a detailed explanation)",
+                        code
+                    ));
+                }
+                None => ()
+            }
+        }
+        None => ()
+    }
+    try!(dst.dst.write_char('\n'));
     Ok(())
 }
 
 pub struct EmitterWriter {
     dst: Destination,
+    registry: Option<diagnostics::registry::Registry>
 }
 
 enum Destination {
@@ -287,7 +319,8 @@ enum Destination {
 }
 
 impl EmitterWriter {
-    pub fn stderr(color_config: ColorConfig) -> EmitterWriter {
+    pub fn stderr(color_config: ColorConfig,
+                  registry: Option<diagnostics::registry::Registry>) -> EmitterWriter {
         let stderr = io::stderr();
 
         let use_color = match color_config {
@@ -301,14 +334,15 @@ impl EmitterWriter {
                 Some(t) => Terminal(t),
                 None    => Raw(box stderr),
             };
-            EmitterWriter { dst: dst }
+            EmitterWriter { dst: dst, registry: registry }
         } else {
-            EmitterWriter { dst: Raw(box stderr) }
+            EmitterWriter { dst: Raw(box stderr), registry: registry }
         }
     }
 
-    pub fn new(dst: Box<Writer + Send>) -> EmitterWriter {
-        EmitterWriter { dst: Raw(dst) }
+    pub fn new(dst: Box<Writer + Send>,
+               registry: Option<diagnostics::registry::Registry>) -> EmitterWriter {
+        EmitterWriter { dst: Raw(dst), registry: registry }
     }
 }
 
@@ -324,11 +358,10 @@ impl Writer for Destination {
 impl Emitter for EmitterWriter {
     fn emit(&mut self,
             cmsp: Option<(&codemap::CodeMap, Span)>,
-            msg: &str,
-            lvl: Level) {
+            msg: &str, code: Option<&str>, lvl: Level) {
         let error = match cmsp {
-            Some((cm, sp)) => emit(self, cm, FullSpan(sp), msg, lvl, false),
-            None => print_diagnostic(self, "", lvl, msg),
+            Some((cm, sp)) => emit(self, cm, FullSpan(sp), msg, code, lvl, false),
+            None => print_diagnostic(self, "", lvl, msg, code),
         };
 
         match error {
@@ -339,7 +372,7 @@ impl Emitter for EmitterWriter {
 
     fn custom_emit(&mut self, cm: &codemap::CodeMap,
                    sp: RenderSpan, msg: &str, lvl: Level) {
-        match emit(self, cm, sp, msg, lvl, true) {
+        match emit(self, cm, sp, msg, None, lvl, true) {
             Ok(()) => {}
             Err(e) => fail!("failed to print diagnostics: {}", e),
         }
@@ -347,7 +380,7 @@ impl Emitter for EmitterWriter {
 }
 
 fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
-        msg: &str, lvl: Level, custom: bool) -> io::IoResult<()> {
+        msg: &str, code: Option<&str>, lvl: Level, custom: bool) -> io::IoResult<()> {
     let sp = rsp.span();
     let ss = cm.span_to_string(sp);
     let lines = cm.span_to_lines(sp);
@@ -357,12 +390,12 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
         // the span)
         let span_end = Span { lo: sp.hi, hi: sp.hi, expn_info: sp.expn_info};
         let ses = cm.span_to_string(span_end);
-        try!(print_diagnostic(dst, ses.as_slice(), lvl, msg));
+        try!(print_diagnostic(dst, ses.as_slice(), lvl, msg, code));
         if rsp.is_full_span() {
             try!(custom_highlight_lines(dst, cm, sp, lvl, lines));
         }
     } else {
-        try!(print_diagnostic(dst, ss.as_slice(), lvl, msg));
+        try!(print_diagnostic(dst, ss.as_slice(), lvl, msg, code));
         if rsp.is_full_span() {
             try!(highlight_lines(dst, cm, sp, lvl, lines));
         }
@@ -501,9 +534,9 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
         try!(print_diagnostic(w, ss.as_slice(), Note,
                               format!("in expansion of {}{}{}", pre,
                                       ei.callee.name,
-                                      post).as_slice()));
+                                      post).as_slice(), None));
         let ss = cm.span_to_string(ei.call_site);
-        try!(print_diagnostic(w, ss.as_slice(), Note, "expansion site"));
+        try!(print_diagnostic(w, ss.as_slice(), Note, "expansion site", None));
         try!(print_macro_backtrace(w, cm, ei.call_site));
     }
     Ok(())

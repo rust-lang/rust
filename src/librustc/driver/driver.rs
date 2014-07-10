@@ -16,6 +16,7 @@ use driver::{PpmFlowGraph, PpmExpanded, PpmExpandedIdentified, PpmTyped};
 use driver::{PpmIdentified};
 use front;
 use lib::llvm::{ContextRef, ModuleRef};
+use lint;
 use metadata::common::LinkMeta;
 use metadata::creader;
 use middle::cfg;
@@ -26,7 +27,7 @@ use middle;
 use plugin::load::Plugins;
 use plugin::registry::Registry;
 use plugin;
-use lint;
+
 use util::common::time;
 use util::ppaux;
 use util::nodemap::{NodeSet};
@@ -41,6 +42,7 @@ use std::io::MemReader;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::{AttrMetaMethods};
+use syntax::diagnostics;
 use syntax::parse;
 use syntax::parse::token;
 use syntax::print::{pp, pprust};
@@ -213,6 +215,15 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let mut registry = Registry::new(&krate);
 
     time(time_passes, "plugin registration", (), |_| {
+        if sess.features.rustc_diagnostic_macros.get() {
+            registry.register_macro("__diagnostic_used",
+                diagnostics::plugin::expand_diagnostic_used);
+            registry.register_macro("__register_diagnostic",
+                diagnostics::plugin::expand_register_diagnostic);
+            registry.register_macro("__build_diagnostic_array",
+                diagnostics::plugin::expand_build_diagnostic_array);
+        }
+
         for &registrar in registrars.iter() {
             registrar(&mut registry);
         }
