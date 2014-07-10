@@ -13,7 +13,7 @@ use ast::{TTDelim};
 use ast;
 use codemap::{Span, Spanned, DUMMY_SP};
 use ext::base::{ExtCtxt, MacResult, MacroDef};
-use ext::base::{NormalTT, MacroExpander};
+use ext::base::{NormalTT, TTMacroExpander};
 use ext::base;
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
@@ -95,7 +95,7 @@ struct MacroRulesMacroExpander {
     rhses: Vec<Rc<NamedMatch>>,
 }
 
-impl MacroExpander for MacroRulesMacroExpander {
+impl TTMacroExpander for MacroRulesMacroExpander {
     fn expand(&self,
               cx: &mut ExtCtxt,
               sp: Span,

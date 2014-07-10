@@ -48,7 +48,8 @@ pub struct BasicMacroExpander {
     pub span: Option<Span>
 }
 
-pub trait MacroExpander {
+/// Represents a thing that maps token trees to Macro Results
+pub trait TTMacroExpander {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
@@ -60,7 +61,7 @@ pub type MacroExpanderFn =
     fn(ecx: &mut ExtCtxt, span: codemap::Span, token_tree: &[ast::TokenTree])
        -> Box<MacResult>;
 
-impl MacroExpander for BasicMacroExpander {
+impl TTMacroExpander for BasicMacroExpander {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
@@ -259,7 +260,7 @@ pub enum SyntaxExtension {
     /// A normal, function-like syntax extension.
     ///
     /// `bytes!` is a `NormalTT`.
-    NormalTT(Box<MacroExpander + 'static>, Option<Span>),
+    NormalTT(Box<TTMacroExpander + 'static>, Option<Span>),
 
     /// A function-like syntax extension that has an extra ident before
     /// the block.
