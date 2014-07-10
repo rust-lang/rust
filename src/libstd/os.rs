@@ -266,7 +266,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
                 let p = &*ch.offset(i);
                 let len = ptr::position(p, |c| *c == 0);
                 raw::buf_as_slice(p, len, |s| {
-                    result.push(str::from_utf16_lossy(s).into_bytes());
+                    result.push(String::from_utf16_lossy(s).into_bytes());
                 });
                 i += len as int + 1;
             }
