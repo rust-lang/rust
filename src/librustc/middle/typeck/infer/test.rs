@@ -78,6 +78,7 @@ impl Emitter for ExpectErrorEmitter {
     fn emit(&mut self,
             _cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
+            _: Option<&str>,
             lvl: Level)
     {
         remove_message(self, msg, lvl);

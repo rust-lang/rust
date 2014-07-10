@@ -26,6 +26,7 @@ use std::task::TaskBuilder;
 use syntax::ast;
 use syntax::parse;
 use syntax::diagnostic::Emitter;
+use syntax::diagnostics;
 
 use getopts;
 
@@ -49,8 +50,24 @@ fn run_compiler(args: &[String]) {
         Some(matches) => matches,
         None => return
     };
-    let sopts = config::build_session_options(&matches);
 
+    let descriptions = diagnostics::registry::Registry::new(super::DIAGNOSTICS);
+    match matches.opt_str("explain") {
+        Some(ref code) => {
+            match descriptions.find_description(code.as_slice()) {
+                Some(ref description) => {
+                    println!("{}", description);
+                }
+                None => {
+                    early_error(format!("no extended information for {}", code).as_slice());
+                }
+            }
+            return;
+        },
+        None => ()
+    }
+
+    let sopts = config::build_session_options(&matches);
     let (input, input_file_path) = match matches.free.len() {
         0u => {
             if sopts.describe_lints {
@@ -75,7 +92,7 @@ fn run_compiler(args: &[String]) {
         _ => early_error("multiple input filenames provided")
     };
 
-    let sess = build_session(sopts, input_file_path);
+    let sess = build_session(sopts, input_file_path, descriptions);
     let cfg = config::build_configuration(&sess);
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
@@ -383,14 +400,14 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
 }
 
 pub fn early_error(msg: &str) -> ! {
-    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto);
-    emitter.emit(None, msg, diagnostic::Fatal);
+    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
+    emitter.emit(None, msg, None, diagnostic::Fatal);
     fail!(diagnostic::FatalError);
 }
 
 pub fn early_warn(msg: &str) {
-    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto);
-    emitter.emit(None, msg, diagnostic::Warning);
+    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
+    emitter.emit(None, msg, None, diagnostic::Warning);
 }
 
 pub fn list_metadata(sess: &Session, path: &Path,
@@ -429,7 +446,7 @@ fn monitor(f: proc():Send) {
         Err(value) => {
             // Task failed without emitting a fatal diagnostic
             if !value.is::<diagnostic::FatalError>() {
-                let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto);
+                let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
 
                 // a .span_bug or .bug call has already printed what
                 // it wants to print.
@@ -437,6 +454,7 @@ fn monitor(f: proc():Send) {
                     emitter.emit(
                         None,
                         "unexpected failure",
+                        None,
                         diagnostic::Bug);
                 }
 
@@ -447,7 +465,7 @@ fn monitor(f: proc():Send) {
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
                 for note in xs.iter() {
-                    emitter.emit(None, note.as_slice(), diagnostic::Note)
+                    emitter.emit(None, note.as_slice(), None, diagnostic::Note)
                 }
 
                 match r.read_to_string() {
@@ -457,6 +475,7 @@ fn monitor(f: proc():Send) {
                                      format!("failed to read internal \
                                               stderr: {}",
                                              e).as_slice(),
+                                     None,
                                      diagnostic::Error)
                     }
                 }

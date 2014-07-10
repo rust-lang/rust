@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    print!(test!());
-    //~^ ERROR: macro undefined: 'test!'
-    //~^^ ERROR: format argument must be a string literal
+register_diagnostic!(E0001, r##"
+    This error suggests that the expression arm corresponding to the noted pattern
+    will never be reached as for all possible values of the expression being matched,
+    one of the preceeding patterns will match.
 
-    concat!(test!());
-    //~^ ERROR: macro undefined: 'test!'
-}
+    This means that perhaps some of the preceeding patterns are too general, this
+    one is too specific or the ordering is incorrect.
+"##)

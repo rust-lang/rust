@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    print!(test!());
-    //~^ ERROR: macro undefined: 'test!'
-    //~^^ ERROR: format argument must be a string literal
+use std::collections::HashMap;
 
-    concat!(test!());
-    //~^ ERROR: macro undefined: 'test!'
+pub struct Registry {
+    descriptions: HashMap<&'static str, &'static str>
+}
+
+impl Registry {
+    pub fn new(descriptions: &[(&'static str, &'static str)]) -> Registry {
+        Registry { descriptions: descriptions.iter().map(|&tuple| tuple).collect() }
+    }
+
+    pub fn find_description(&self, code: &str) -> Option<&'static str> {
+        self.descriptions.find_equiv(&code).map(|desc| *desc)
+    }
 }
