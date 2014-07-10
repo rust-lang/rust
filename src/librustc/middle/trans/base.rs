@@ -1735,14 +1735,12 @@ pub fn trans_named_tuple_constructor<'a>(mut bcx: &'a Block<'a>,
 
     if !type_is_zero_size(ccx, result_ty) {
         let repr = adt::represent_type(ccx, result_ty);
-        adt::trans_start_init(bcx, &*repr, llresult, disr);
 
         match args {
             callee::ArgExprs(exprs) => {
-                for (i, expr) in exprs.iter().enumerate() {
-                    let lldestptr = adt::trans_field_ptr(bcx, &*repr, llresult, disr, i);
-                    bcx = expr::trans_into(bcx, *expr, expr::SaveIn(lldestptr));
-                }
+                let fields = exprs.iter().map(|x| *x).enumerate().collect::<Vec<_>>();
+                bcx = expr::trans_adt(bcx, &*repr, disr, fields.as_slice(),
+                                      None, expr::SaveIn(llresult));
             }
             _ => ccx.sess().bug("expected expr as arguments for variant/struct tuple constructor")
         }
@@ -1800,7 +1798,6 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
 
     if !type_is_zero_size(fcx.ccx, result_ty) {
         let repr = adt::represent_type(ccx, result_ty);
-        adt::trans_start_init(bcx, &*repr, fcx.llretptr.get().unwrap(), disr);
         for (i, arg_datum) in arg_datums.move_iter().enumerate() {
             let lldestptr = adt::trans_field_ptr(bcx,
                                                  &*repr,
@@ -1809,6 +1806,7 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
                                                  i);
             arg_datum.store_to(bcx, lldestptr);
         }
+        adt::trans_set_discr(bcx, &*repr, fcx.llretptr.get().unwrap(), disr);
     }
 
     finish_fn(&fcx, bcx, result_ty);

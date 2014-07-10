@@ -674,11 +674,10 @@ pub fn trans_case<'a>(bcx: &'a Block<'a>, r: &Repr, discr: Disr)
 }
 
 /**
- * Begin initializing a new value of the given case of the given
- * representation.  The fields, if any, should then be initialized via
- * `trans_field_ptr`.
+ * Set the discriminant for a new value of the given case of the given
+ * representation.
  */
-pub fn trans_start_init(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr) {
+pub fn trans_set_discr(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr) {
     match *r {
         CEnum(ity, min, max) => {
             assert_discr_in_range(ity, min, max, discr);
