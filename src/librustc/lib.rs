@@ -18,7 +18,6 @@ This API is completely unstable and subject to change.
 
 */
 
-#![crate_id = "rustc#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "rustc"]
 #![experimental]
 #![comment = "The Rust compiler"]
@@ -32,7 +31,6 @@ This API is completely unstable and subject to change.
 #![allow(deprecated)]
 #![feature(macro_rules, globs, struct_variant, managed_boxes, quote)]
 #![feature(default_type_params, phase, unsafe_destructor)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 extern crate arena;
 extern crate debug;

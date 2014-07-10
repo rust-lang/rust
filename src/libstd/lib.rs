@@ -94,7 +94,6 @@
 //! all the standard macros, such as `assert!`, `fail!`, `println!`,
 //! and `format!`, also available to all Rust code.
 
-#![crate_id = "std#0.11.0"] // NOTE: remove after stage0 snap
 #![crate_name = "std"]
 #![unstable]
 #![comment = "The Rust standard library"]
@@ -108,7 +107,6 @@
 
 #![feature(macro_rules, globs, managed_boxes, linkage)]
 #![feature(default_type_params, phase, lang_items, unsafe_destructor)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 // Don't link to std. We are std.
 #![no_std]

@@ -19,7 +19,6 @@
 //! arena but can only hold objects of a single type, and Arena, which is a
 //! more complex, slower Arena which can hold objects of any type.
 
-#![crate_id = "arena#0.11.0"]
 #![crate_name = "arena"]
 #![experimental]
 #![crate_type = "rlib"]
@@ -31,7 +30,6 @@
 
 #![feature(unsafe_destructor)]
 #![allow(missing_doc)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 use std::cell::{Cell, RefCell};
 use std::cmp;

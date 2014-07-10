@@ -60,7 +60,6 @@
 //! by libc malloc/free.  The `libc_heap` module is defined to be wired up to
 //! the system malloc/free.
 
-#![crate_id = "alloc#0.11.0"] // NOTE: remove after a stage0 snap
 #![crate_name = "alloc"]
 #![experimental]
 #![license = "MIT/ASL2"]
@@ -71,7 +70,6 @@
 
 #![no_std]
 #![feature(lang_items, phase, unsafe_destructor)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #[phase(plugin, link)]
 extern crate core;

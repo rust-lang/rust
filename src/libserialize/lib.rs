@@ -14,7 +14,6 @@
 Core encoding and decoding interfaces.
 */
 
-#![crate_id = "serialize#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "serialize"]
 #![experimental]
 #![crate_type = "rlib"]
@@ -25,7 +24,6 @@ Core encoding and decoding interfaces.
        html_root_url = "http://doc.rust-lang.org/0.11.0/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(macro_rules, managed_boxes, default_type_params, phase)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 // test harness access
 #[cfg(test)]
