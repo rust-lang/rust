@@ -75,11 +75,13 @@ pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
             type_of_rust_fn(cx, true, f.sig.inputs.as_slice(), f.sig.output)
         }
         ty::ty_bare_fn(ref f) => {
-            if f.abi == abi::Rust || f.abi == abi::RustIntrinsic {
+            if f.abi == abi::Rust {
                 type_of_rust_fn(cx,
                                 false,
                                 f.sig.inputs.as_slice(),
                                 f.sig.output)
+            } else if f.abi == abi::RustIntrinsic {
+                cx.sess().bug("type_of_fn_from_ty given intrinsic")
             } else {
                 foreign::lltype_for_foreign_fn(cx, fty)
             }

@@ -76,7 +76,7 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
     abi.for_target(os, arch).map(|abi| {
         match abi {
             RustIntrinsic => {
-                // Intrinsics are emitted by monomorphic fn
+                // Intrinsics are emitted at the call site
                 ccx.sess().bug("asked to register intrinsic fn");
             }
 
