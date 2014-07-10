@@ -28,7 +28,6 @@
 //! An example version number with all five components is
 //! `0.8.1-rc.3.0+20130922.linux`.
 
-#![crate_id = "semver#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "semver"]
 #![experimental]
 #![crate_type = "rlib"]
@@ -37,7 +36,6 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/0.11.0/")]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 use std::char;
 use std::cmp;

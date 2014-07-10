@@ -212,11 +212,6 @@ pub fn mt_to_string(cx: &ctxt, m: &mt) -> String {
     format!("{}{}", mutability_to_string(m.mutbl), ty_to_string(cx, m.ty))
 }
 
-#[cfg(stage0)]
-pub fn trait_store_to_str(cx: &ctxt, s: ty::TraitStore) -> String {
-    trait_store_to_string(cx, s)
-}
-
 pub fn trait_store_to_string(cx: &ctxt, s: ty::TraitStore) -> String {
     match s {
         ty::UniqTraitStore => "Box ".to_string(),
@@ -238,11 +233,6 @@ pub fn fn_sig_to_string(cx: &ctxt, typ: &ty::FnSig) -> String {
 
 pub fn trait_ref_to_string(cx: &ctxt, trait_ref: &ty::TraitRef) -> String {
     trait_ref.user_string(cx).to_string()
-}
-
-#[cfg(stage0)]
-pub fn ty_to_str(cx: &ctxt, typ: t) -> String {
-    ty_to_string(cx, typ)
 }
 
 pub fn ty_to_string(cx: &ctxt, typ: t) -> String {

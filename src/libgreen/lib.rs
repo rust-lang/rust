@@ -197,7 +197,6 @@
 //! pool.shutdown();
 //! ```
 
-#![crate_id = "green#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "green"]
 #![experimental]
 #![license = "MIT/ASL2"]
@@ -211,7 +210,6 @@
 // NB this does *not* include globs, please keep it that way.
 #![feature(macro_rules, phase, default_type_params)]
 #![allow(visible_private_types, deprecated)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 #[cfg(test)] extern crate rustuv;

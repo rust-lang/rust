@@ -20,7 +20,6 @@
 //! necessary. It is an error to include this library when also linking with
 //! the system libc library.
 
-#![crate_id = "rlibc#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "rlibc"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
@@ -28,7 +27,6 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/0.11.0/")]
 #![feature(intrinsics)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #![no_std]
 #![experimental]

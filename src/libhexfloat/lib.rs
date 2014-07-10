@@ -36,7 +36,6 @@ fn main() {
 
 */
 
-#![crate_id = "hexfloat#0.11.0"] // NOTE: remove after stage0
 #![crate_name = "hexfloat"]
 #![experimental]
 #![crate_type = "rlib"]
@@ -46,7 +45,6 @@ fn main() {
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/0.11.0/")]
 #![feature(plugin_registrar, managed_boxes)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 extern crate syntax;
 extern crate rustc;
