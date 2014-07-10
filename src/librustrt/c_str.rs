@@ -69,6 +69,7 @@ use core::prelude::*;
 
 use alloc::libc_heap::malloc_raw;
 use collections::string::String;
+use collections::hash;
 use core::kinds::marker;
 use core::mem;
 use core::ptr;
@@ -113,6 +114,22 @@ impl PartialEq for CString {
                 libc::strcmp(self.buf, other.buf) == 0
             }
         }
+    }
+}
+
+impl PartialOrd for CString {
+    #[inline]
+    fn partial_cmp(&self, other: &CString) -> Option<Ordering> {
+        self.as_bytes().partial_cmp(&other.as_bytes())
+    }
+}
+
+impl Eq for CString {}
+
+impl<S: hash::Writer> hash::Hash<S> for CString {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.as_bytes().hash(state)
     }
 }
 

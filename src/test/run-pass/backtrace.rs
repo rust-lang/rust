@@ -37,19 +37,8 @@ fn double() {
 }
 
 fn runtest(me: &str) {
-    let mut env = os::env().move_iter()
-                           .map(|(ref k, ref v)| {
-                               (k.to_string(), v.to_string())
-                           }).collect::<Vec<(String,String)>>();
-    match env.iter()
-             .position(|&(ref s, _)| "RUST_BACKTRACE" == s.as_slice()) {
-        Some(i) => { env.remove(i); }
-        None => {}
-    }
-    env.push(("RUST_BACKTRACE".to_string(), "1".to_string()));
-
     // Make sure that the stack trace is printed
-    let mut p = Command::new(me).arg("fail").env(env.as_slice()).spawn().unwrap();
+    let mut p = Command::new(me).arg("fail").env("RUST_BACKTRACE", "1").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(out.error.as_slice()).unwrap();
@@ -73,7 +62,8 @@ fn runtest(me: &str) {
             "bad output3: {}", s);
 
     // Make sure a stack trace isn't printed too many times
-    let mut p = Command::new(me).arg("double-fail").env(env.as_slice()).spawn().unwrap();
+    let mut p = Command::new(me).arg("double-fail")
+                                .env("RUST_BACKTRACE", "1").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(out.error.as_slice()).unwrap();

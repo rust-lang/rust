@@ -75,7 +75,7 @@ pub struct ProcessConfig<'a> {
 
     /// Optional environment to specify for the program. If this is None, then
     /// it will inherit the current process's environment.
-    pub env: Option<&'a [(CString, CString)]>,
+    pub env: Option<&'a [(&'a CString, &'a CString)]>,
 
     /// Optional working directory for the new process. If this is None, then
     /// the current directory of the running process is inherited.
