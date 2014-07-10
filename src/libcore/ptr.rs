@@ -95,6 +95,10 @@ use option::{Some, None, Option};
 
 use cmp::{PartialEq, Eq, PartialOrd, Equiv, Ordering, Less, Equal, Greater};
 
+pub use intrinsics::copy_memory;
+pub use intrinsics::copy_nonoverlapping_memory;
+pub use intrinsics::set_memory;
+
 /// Create a null pointer.
 ///
 /// # Example
@@ -122,86 +126,6 @@ pub fn null<T>() -> *const T { 0 as *const T }
 #[inline]
 #[unstable = "may need a different name after pending changes to pointer types"]
 pub fn mut_null<T>() -> *mut T { 0 as *mut T }
-
-/// Copies data from one location to another.
-///
-/// Copies `count` elements (not bytes) from `src` to `dst`. The source
-/// and destination may overlap.
-///
-/// `copy_memory` is semantically equivalent to C's `memmove`.
-///
-/// # Example
-///
-/// Efficiently create a Rust vector from an unsafe buffer:
-///
-/// ```
-/// use std::ptr;
-///
-/// unsafe fn from_buf_raw<T>(ptr: *const T, elts: uint) -> Vec<T> {
-///     let mut dst = Vec::with_capacity(elts);
-///     dst.set_len(elts);
-///     ptr::copy_memory(dst.as_mut_ptr(), ptr, elts);
-///     dst
-/// }
-/// ```
-///
-#[inline]
-#[unstable]
-pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    intrinsics::copy_memory(dst, src, count)
-}
-
-/// Copies data from one location to another.
-///
-/// Copies `count` elements (not bytes) from `src` to `dst`. The source
-/// and destination may *not* overlap.
-///
-/// `copy_nonoverlapping_memory` is semantically equivalent to C's `memcpy`.
-///
-/// # Example
-///
-/// A safe swap function:
-///
-/// ```
-/// use std::mem;
-/// use std::ptr;
-///
-/// fn swap<T>(x: &mut T, y: &mut T) {
-///     unsafe {
-///         // Give ourselves some scratch space to work with
-///         let mut t: T = mem::uninitialized();
-///
-///         // Perform the swap, `&mut` pointers never alias
-///         ptr::copy_nonoverlapping_memory(&mut t, &*x, 1);
-///         ptr::copy_nonoverlapping_memory(x, &*y, 1);
-///         ptr::copy_nonoverlapping_memory(y, &t, 1);
-///
-///         // y and t now point to the same thing, but we need to completely forget `tmp`
-///         // because it's no longer relevant.
-///         mem::forget(t);
-///     }
-/// }
-/// ```
-///
-/// # Safety Note
-///
-/// If the source and destination overlap then the behavior of this
-/// function is undefined.
-#[inline]
-#[unstable]
-pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T,
-                                            src: *const T,
-                                            count: uint) {
-    intrinsics::copy_nonoverlapping_memory(dst, src, count)
-}
-
-/// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
-/// bytes of memory starting at `dst` to `c`.
-#[inline]
-#[experimental = "uncertain about naming and semantics"]
-pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
-    intrinsics::set_memory(dst, c, count)
-}
 
 /// Zeroes out `count * size_of::<T>` bytes of memory at `dst`
 #[inline]
