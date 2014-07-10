@@ -862,8 +862,11 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
         ty::ty_bare_fn(ref fn_ty) => {
             match fn_ty.abi.for_target(ccx.sess().targ_cfg.os,
                                        ccx.sess().targ_cfg.arch) {
-                Some(Rust) | Some(RustIntrinsic) => {
+                Some(Rust) => {
                     get_extern_rust_fn(ccx, t, name.as_slice(), did)
+                }
+                Some(RustIntrinsic) => {
+                    ccx.sess().bug("unexpected intrinsic in trans_external_path")
                 }
                 Some(..) | None => {
                     foreign::register_foreign_item_fn(ccx, fn_ty.abi, t,
@@ -1781,9 +1784,9 @@ fn register_fn(ccx: &CrateContext,
                -> ValueRef {
     match ty::get(node_type).sty {
         ty::ty_bare_fn(ref f) => {
-            assert!(f.abi == Rust || f.abi == RustIntrinsic);
+            assert!(f.abi == Rust);
         }
-        _ => fail!("expected bare rust fn or an intrinsic")
+        _ => fail!("expected bare rust fn")
     };
 
     let llfn = decl_rust_fn(ccx, node_type, sym.as_slice());
