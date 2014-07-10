@@ -1128,6 +1128,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     let (ident, fn_decl, generics, top_level_block, span, has_path) = match fnitem {
         ast_map::NodeItem(ref item) => {
+            if contains_nodebug_attribute(item.attrs.as_slice()) {
+                return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
+            }
+
             match item.node {
                 ast::ItemFn(fn_decl, _, _, ref generics, top_level_block) => {
                     (item.ident, fn_decl, generics, top_level_block, item.span, true)
@@ -1141,6 +1145,12 @@ pub fn create_function_debug_context(cx: &CrateContext,
         ast_map::NodeImplItem(ref item) => {
             match **item {
                 ast::MethodImplItem(ref method) => {
+                    if contains_nodebug_attribute(method.attrs.as_slice()) {
+                        return FunctionDebugContext {
+                            repr: FunctionWithoutDebugInfo
+                        };
+                    }
+
                     (method.pe_ident(),
                      method.pe_fn_decl(),
                      method.pe_generics(),
@@ -1173,6 +1183,12 @@ pub fn create_function_debug_context(cx: &CrateContext,
         ast_map::NodeTraitItem(ref trait_method) => {
             match **trait_method {
                 ast::ProvidedMethod(ref method) => {
+                    if contains_nodebug_attribute(method.attrs.as_slice()) {
+                        return FunctionDebugContext {
+                            repr: FunctionWithoutDebugInfo
+                        };
+                    }
+
                     (method.pe_ident(),
                      method.pe_fn_decl(),
                      method.pe_generics(),
@@ -3168,6 +3184,16 @@ fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
 //=-----------------------------------------------------------------------------
 //  Utility Functions
 //=-----------------------------------------------------------------------------
+
+fn contains_nodebug_attribute(attributes: &[ast::Attribute]) -> bool {
+    attributes.iter().any(|attr| {
+        let meta_item: &ast::MetaItem = &*attr.node.value;
+        match meta_item.node {
+            ast::MetaWord(ref value) => value.get() == "no_debug",
+            _ => false
+        }
+    })
+}
 
 /// Return codemap::Loc corresponding to the beginning of the span
 fn span_start(cx: &CrateContext, span: Span) -> codemap::Loc {
