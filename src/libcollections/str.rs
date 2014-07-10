@@ -384,23 +384,10 @@ pub fn from_utf16(v: &[u16]) -> Option<String> {
     String::from_utf16(v)
 }
 
-/// Decode a UTF-16 encoded vector `v` into a string, replacing
-/// invalid data with the replacement character (U+FFFD).
-///
-/// # Example
-/// ```rust
-/// use std::str;
-///
-/// // 𝄞mus<invalid>ic<invalid>
-/// let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
-///          0x0073, 0xDD1E, 0x0069, 0x0063,
-///          0xD834];
-///
-/// assert_eq!(str::from_utf16_lossy(v),
-///            "𝄞mus\uFFFDic\uFFFD".to_string());
-/// ```
+/// Deprecated. Use `String::from_utf16_lossy`.
+#[deprecated = "Replaced by String::from_utf16_lossy"]
 pub fn from_utf16_lossy(v: &[u16]) -> String {
-    utf16_items(v).map(|c| c.to_char_lossy()).collect()
+    String::from_utf16_lossy(v)
 }
 
 // Return the initial codepoint accumulator for the first byte.
@@ -1653,95 +1640,6 @@ mod tests {
         assert!("a".contains_char('a'));
         assert!(!"abc".contains_char('d'));
         assert!(!"".contains_char('a'));
-    }
-
-    #[test]
-    fn test_utf16() {
-        let pairs =
-            [(String::from_str("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n"),
-              vec![0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
-                0xd800_u16, 0xdf3b_u16, 0xd800_u16, 0xdf46_u16,
-                0xd800_u16, 0xdf39_u16, 0xd800_u16, 0xdf3b_u16,
-                0xd800_u16, 0xdf30_u16, 0x000a_u16]),
-
-             (String::from_str("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n"),
-              vec![0xd801_u16, 0xdc12_u16, 0xd801_u16,
-                0xdc49_u16, 0xd801_u16, 0xdc2e_u16, 0xd801_u16,
-                0xdc40_u16, 0xd801_u16, 0xdc32_u16, 0xd801_u16,
-                0xdc4b_u16, 0x0020_u16, 0xd801_u16, 0xdc0f_u16,
-                0xd801_u16, 0xdc32_u16, 0xd801_u16, 0xdc4d_u16,
-                0x000a_u16]),
-
-             (String::from_str("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n"),
-              vec![0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
-                0xd800_u16, 0xdf0b_u16, 0xd800_u16, 0xdf04_u16,
-                0xd800_u16, 0xdf11_u16, 0xd800_u16, 0xdf09_u16,
-                0x00b7_u16, 0xd800_u16, 0xdf0c_u16, 0xd800_u16,
-                0xdf04_u16, 0xd800_u16, 0xdf15_u16, 0xd800_u16,
-                0xdf04_u16, 0xd800_u16, 0xdf0b_u16, 0xd800_u16,
-                0xdf09_u16, 0xd800_u16, 0xdf11_u16, 0x000a_u16 ]),
-
-             (String::from_str("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n"),
-              vec![0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
-                0xd801_u16, 0xdc88_u16, 0xd801_u16, 0xdc91_u16,
-                0xd801_u16, 0xdc9b_u16, 0xd801_u16, 0xdc92_u16,
-                0x0020_u16, 0xd801_u16, 0xdc95_u16, 0xd801_u16,
-                0xdc93_u16, 0x0020_u16, 0xd801_u16, 0xdc88_u16,
-                0xd801_u16, 0xdc9a_u16, 0xd801_u16, 0xdc8d_u16,
-                0x0020_u16, 0xd801_u16, 0xdc8f_u16, 0xd801_u16,
-                0xdc9c_u16, 0xd801_u16, 0xdc92_u16, 0xd801_u16,
-                0xdc96_u16, 0xd801_u16, 0xdc86_u16, 0x0020_u16,
-                0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
-                0x000a_u16 ]),
-             // Issue #12318, even-numbered non-BMP planes
-             (String::from_str("\U00020000"),
-              vec![0xD840, 0xDC00])];
-
-        for p in pairs.iter() {
-            let (s, u) = (*p).clone();
-            let s_as_utf16 = s.as_slice().utf16_units().collect::<Vec<u16>>();
-            let u_as_string = String::from_utf16(u.as_slice()).unwrap();
-
-            assert!(is_utf16(u.as_slice()));
-            assert_eq!(s_as_utf16, u);
-
-            assert_eq!(u_as_string, s);
-            assert_eq!(from_utf16_lossy(u.as_slice()), s);
-
-            assert_eq!(String::from_utf16(s_as_utf16.as_slice()).unwrap(), s);
-            assert_eq!(u_as_string.as_slice().utf16_units().collect::<Vec<u16>>(), u);
-        }
-    }
-
-    #[test]
-    fn test_utf16_invalid() {
-        // completely positive cases tested above.
-        // lead + eof
-        assert_eq!(String::from_utf16([0xD800]), None);
-        // lead + lead
-        assert_eq!(String::from_utf16([0xD800, 0xD800]), None);
-
-        // isolated trail
-        assert_eq!(String::from_utf16([0x0061, 0xDC00]), None);
-
-        // general
-        assert_eq!(String::from_utf16([0xD800, 0xd801, 0xdc8b, 0xD800]), None);
-    }
-
-    #[test]
-    fn test_utf16_lossy() {
-        // completely positive cases tested above.
-        // lead + eof
-        assert_eq!(from_utf16_lossy([0xD800]), String::from_str("\uFFFD"));
-        // lead + lead
-        assert_eq!(from_utf16_lossy([0xD800, 0xD800]), String::from_str("\uFFFD\uFFFD"));
-
-        // isolated trail
-        assert_eq!(from_utf16_lossy([0x0061, 0xDC00]), String::from_str("a\uFFFD"));
-
-        // general
-        assert_eq!(from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]),
-                   String::from_str("\uFFFD𐒋\uFFFD"));
     }
 
     #[test]
