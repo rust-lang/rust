@@ -273,16 +273,11 @@ is still a work in progress. However, it is already good enough to use for many
 Rust projects, and so it is assumed that Rust projects will use Cargo from the
 beginning.
 
-Programmers love car analogies, so I've got a good one for you to think about
-the relationship between `cargo` and `rustc`: `rustc` is like a car, and
-`cargo` is like a robotic driver. You can drive your car yourself, of course,
-but isn't it just easier to let a computer drive it for you?
-
-Anyway, Cargo manages three things: building your code, downloading the
-dependencies your code needs, and building the dependencies your code needs.
-At first, your program doesn't have any dependencies, so we'll only be using
-the first part of its functionality. Eventually, we'll add more. Since we
-started off by using Cargo, it'll be easy to add later.
+Cargo manages three things: building your code, downloading the dependencies
+your code needs, and building the dependencies your code needs.  At first, your
+program doesn't have any dependencies, so we'll only be using the first part of
+its functionality. Eventually, we'll add more. Since we started off by using
+Cargo, it'll be easy to add later.
 
 Let's convert Hello World to Cargo. The first thing we need to do to begin using Cargo
 is to install Cargo. To do this, we need to build it from source. There are no binaries
