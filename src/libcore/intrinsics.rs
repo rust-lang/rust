@@ -326,19 +326,73 @@ extern "rust-intrinsic" {
     /// integer, since the conversion would throw away aliasing information.
     pub fn offset<T>(dst: *const T, offset: int) -> *const T;
 
-    /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
-    /// a size of `count` * `size_of::<T>()` and an alignment of
-    /// `min_align_of::<T>()`
+    /// Copies data from one location to another.
+    ///
+    /// Copies `count` elements (not bytes) from `src` to `dst`. The source
+    /// and destination may *not* overlap.
+    ///
+    /// `copy_nonoverlapping_memory` is semantically equivalent to C's `memcpy`.
+    ///
+    /// # Example
+    ///
+    /// A safe swap function:
+    ///
+    /// ```
+    /// use std::mem;
+    /// use std::ptr;
+    ///
+    /// fn swap<T>(x: &mut T, y: &mut T) {
+    ///     unsafe {
+    ///         // Give ourselves some scratch space to work with
+    ///         let mut t: T = mem::uninitialized();
+    ///
+    ///         // Perform the swap, `&mut` pointers never alias
+    ///         ptr::copy_nonoverlapping_memory(&mut t, &*x, 1);
+    ///         ptr::copy_nonoverlapping_memory(x, &*y, 1);
+    ///         ptr::copy_nonoverlapping_memory(y, &t, 1);
+    ///
+    ///         // y and t now point to the same thing, but we need to completely forget `tmp`
+    ///         // because it's no longer relevant.
+    ///         mem::forget(t);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// # Safety Note
+    ///
+    /// If the source and destination overlap then the behavior of this
+    /// function is undefined.
+    #[unstable]
     pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint);
 
-    /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
-    /// a size of `count` * `size_of::<T>()` and an alignment of
-    /// `min_align_of::<T>()`
+    /// Copies data from one location to another.
+    ///
+    /// Copies `count` elements (not bytes) from `src` to `dst`. The source
+    /// and destination may overlap.
+    ///
+    /// `copy_memory` is semantically equivalent to C's `memmove`.
+    ///
+    /// # Example
+    ///
+    /// Efficiently create a Rust vector from an unsafe buffer:
+    ///
+    /// ```
+    /// use std::ptr;
+    ///
+    /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: uint) -> Vec<T> {
+    ///     let mut dst = Vec::with_capacity(elts);
+    ///     dst.set_len(elts);
+    ///     ptr::copy_memory(dst.as_mut_ptr(), ptr, elts);
+    ///     dst
+    /// }
+    /// ```
+    ///
+    #[unstable]
     pub fn copy_memory<T>(dst: *mut T, src: *const T, count: uint);
 
-    /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
-    /// size of `count` * `size_of::<T>()` and an alignment of
-    /// `min_align_of::<T>()`
+    /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+    /// bytes of memory starting at `dst` to `c`.
+    #[experimental = "uncertain about naming and semantics"]
     pub fn set_memory<T>(dst: *mut T, val: u8, count: uint);
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
