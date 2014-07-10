@@ -18,7 +18,6 @@ use middle::trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use middle::trans::base::{trans_fn, decl_internal_rust_fn};
 use middle::trans::base;
 use middle::trans::common::*;
-use middle::trans::intrinsic;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
@@ -158,17 +157,6 @@ pub fn monomorphic_fn(ccx: &CrateContext,
               }
             }
         }
-        ast_map::NodeForeignItem(i) => {
-            let simple = intrinsic::get_simple_intrinsic(ccx, &*i);
-            match simple {
-                Some(decl) => decl,
-                None => {
-                    let d = mk_lldecl();
-                    intrinsic::trans_intrinsic(ccx, d, &*i, &psubsts, ref_id);
-                    d
-                }
-            }
-        }
         ast_map::NodeVariant(v) => {
             let parent = ccx.tcx.map.get_parent(fn_id.node);
             let tvs = ty::enum_variants(ccx.tcx(), local_def(parent));
@@ -223,6 +211,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         }
 
         // Ugh -- but this ensures any new variants won't be forgotten
+        ast_map::NodeForeignItem(..) |
         ast_map::NodeLifetime(..) |
         ast_map::NodeExpr(..) |
         ast_map::NodeStmt(..) |
