@@ -87,7 +87,8 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
                                     span: Span,
                                     struct_did: DefId) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
-    if !struct_tpt.generics.has_type_params(subst::TypeSpace) {
+    if !struct_tpt.generics.has_type_params(subst::TypeSpace)
+      && !struct_tpt.generics.has_region_params(subst::TypeSpace) {
         let struct_ty = ty::mk_struct(cx.tcx, struct_did,
                                       subst::Substs::empty());
         if !ty::type_is_sendable(cx.tcx, struct_ty) {

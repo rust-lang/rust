@@ -984,6 +984,10 @@ impl Generics {
     pub fn has_type_params(&self, space: subst::ParamSpace) -> bool {
         !self.types.is_empty_in(space)
     }
+
+    pub fn has_region_params(&self, space: subst::ParamSpace) -> bool {
+        !self.regions.is_empty_in(space)
+    }
 }
 
 /// When type checking, we use the `ParameterEnvironment` to track
