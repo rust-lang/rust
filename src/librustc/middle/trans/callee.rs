@@ -19,7 +19,6 @@
 use arena::TypedArena;
 use back::abi;
 use back::link;
-use driver::session;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
 use metadata::csearch;
@@ -40,6 +39,7 @@ use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::inline;
 use middle::trans::foreign;
+use middle::trans::intrinsic;
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::type_::Type;
@@ -53,7 +53,6 @@ use util::ppaux::Repr;
 use std::gc::Gc;
 use syntax::ast;
 use synabi = syntax::abi;
-use syntax::ast_map;
 
 pub struct MethodData {
     pub llfn: ValueRef,
@@ -67,6 +66,8 @@ pub enum CalleeData {
     // item. Note that this is just the fn-ptr and is not a Rust closure
     // value (which is a pair).
     Fn(/* llfn */ ValueRef),
+
+    Intrinsic(ast::NodeId, subst::Substs),
 
     TraitMethod(MethodData)
 }
@@ -119,7 +120,21 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
 
     fn trans_def<'a>(bcx: &'a Block<'a>, def: def::Def, ref_expr: &ast::Expr)
                  -> Callee<'a> {
+        debug!("trans_def(def={}, ref_expr={})", def.repr(bcx.tcx()), ref_expr.repr(bcx.tcx()));
+        let expr_ty = node_id_type(bcx, ref_expr.id);
         match def {
+            def::DefFn(did, _) if match ty::get(expr_ty).sty {
+                ty::ty_bare_fn(ref f) => f.abi == synabi::RustIntrinsic,
+                _ => false
+            } => {
+                let substs = node_id_substs(bcx, ExprId(ref_expr.id));
+                let def_id = if did.krate != ast::LOCAL_CRATE {
+                    inline::maybe_instantiate_inline(bcx.ccx(), did)
+                } else {
+                    did
+                };
+                Callee { bcx: bcx, data: Intrinsic(def_id.node, substs) }
+            }
             def::DefFn(did, _) |
             def::DefStaticMethod(did, def::FromImpl(_), _) => {
                 fn_callee(bcx, trans_fn_ref(bcx, did, ExprId(ref_expr.id)))
@@ -460,27 +475,8 @@ pub fn trans_fn_ref_with_vtables(
         }
     };
 
-    // We must monomorphise if the fn has type parameters, is a rust
-    // intrinsic, or is a default method.  In particular, if we see an
-    // intrinsic that is inlined from a different crate, we want to reemit the
-    // intrinsic instead of trying to call it in the other crate.
-    let must_monomorphise = if !substs.types.is_empty() || is_default {
-        true
-    } else if def_id.krate == ast::LOCAL_CRATE {
-        let map_node = session::expect(
-            ccx.sess(),
-            tcx.map.find(def_id.node),
-            || "local item should be in ast map".to_string());
-
-        match map_node {
-            ast_map::NodeForeignItem(_) => {
-                tcx.map.get_foreign_abi(def_id.node) == synabi::RustIntrinsic
-            }
-            _ => false
-        }
-    } else {
-        false
-    };
+    // We must monomorphise if the fn has type parameters or is a default method.
+    let must_monomorphise = !substs.types.is_empty() || is_default;
 
     // Create a monomorphic version of generic functions
     if must_monomorphise {
@@ -662,6 +658,12 @@ pub fn trans_call_inner<'a>(
     let callee = get_callee(bcx, cleanup::CustomScope(arg_cleanup_scope));
     let mut bcx = callee.bcx;
 
+    let (abi, ret_ty) = match ty::get(callee_ty).sty {
+        ty::ty_bare_fn(ref f) => (f.abi, f.sig.output),
+        ty::ty_closure(ref f) => (synabi::Rust, f.sig.output),
+        _ => fail!("expected bare rust fn or closure in trans_call_inner")
+    };
+
     let (llfn, llenv, llself) = match callee.data {
         Fn(llfn) => {
             (llfn, None, None)
@@ -679,14 +681,19 @@ pub fn trans_call_inner<'a>(
             let llenv = Load(bcx, llenv);
             (llfn, Some(llenv), None)
         }
+        Intrinsic(node, substs) => {
+            assert!(abi == synabi::RustIntrinsic);
+            assert!(dest.is_some());
+
+            return intrinsic::trans_intrinsic_call(bcx, node, callee_ty,
+                                                   arg_cleanup_scope, args,
+                                                   dest.unwrap(), substs);
+        }
     };
 
-    let (abi, ret_ty) = match ty::get(callee_ty).sty {
-        ty::ty_bare_fn(ref f) => (f.abi, f.sig.output),
-        ty::ty_closure(ref f) => (synabi::Rust, f.sig.output),
-        _ => fail!("expected bare rust fn or closure in trans_call_inner")
-    };
-    let is_rust_fn = abi == synabi::Rust || abi == synabi::RustIntrinsic;
+    // Intrinsics should not become actual functions.
+    // We trans them in place in `trans_intrinsic_call`
+    assert!(abi != synabi::RustIntrinsic);
 
     // Generate a location to store the result. If the user does
     // not care about the result, just make a stack slot.
@@ -716,7 +723,7 @@ pub fn trans_call_inner<'a>(
     // and done, either the return value of the function will have been
     // written in opt_llretslot (if it is Some) or `llresult` will be
     // set appropriately (otherwise).
-    if is_rust_fn {
+    if abi == synabi::Rust {
         let mut llargs = Vec::new();
 
         // Push the out-pointer if we use an out-pointer for this
@@ -816,13 +823,13 @@ pub enum CallArgs<'a> {
     ArgOverloadedOp(Datum<Expr>, Option<(Datum<Expr>, ast::NodeId)>),
 }
 
-fn trans_args<'a>(cx: &'a Block<'a>,
-                  args: CallArgs,
-                  fn_ty: ty::t,
-                  llargs: &mut Vec<ValueRef> ,
-                  arg_cleanup_scope: cleanup::ScopeId,
-                  ignore_self: bool)
-                  -> &'a Block<'a> {
+pub fn trans_args<'a>(cx: &'a Block<'a>,
+                      args: CallArgs,
+                      fn_ty: ty::t,
+                      llargs: &mut Vec<ValueRef> ,
+                      arg_cleanup_scope: cleanup::ScopeId,
+                      ignore_self: bool)
+                      -> &'a Block<'a> {
     let _icx = push_ctxt("trans_args");
     let arg_tys = ty::ty_fn_args(fn_ty);
     let variadic = ty::fn_is_variadic(fn_ty);
