@@ -269,7 +269,7 @@ pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
 mod tests {
     use test::Bencher;
     use std::prelude::*;
-    use std::num::ToStrRadix;
+    use std::fmt;
 
     use str::Str;
     use string::String;
@@ -370,7 +370,7 @@ mod tests {
         fn to_hex_str(r: &[u8, ..8]) -> String {
             let mut s = String::new();
             for b in r.iter() {
-                s.push_str((*b as uint).to_str_radix(16u).as_slice());
+                s.push_str(format!("{}", fmt::radix(*b, 16)).as_slice());
             }
             s
         }
@@ -391,7 +391,7 @@ mod tests {
             let r = result_bytes(h);
             let mut s = String::new();
             for b in r.iter() {
-                s.push_str((*b as uint).to_str_radix(16u).as_slice());
+                s.push_str(format!("{}", fmt::radix(*b, 16)).as_slice());
             }
             s
         }
