@@ -37,7 +37,7 @@ pub use self::unwind::{begin_unwind, begin_unwind_fmt};
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use core::any::Any;
 
 use task::{Task, BlockedTask, TaskOpts};

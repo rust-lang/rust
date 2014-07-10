@@ -16,7 +16,6 @@ use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::intrinsics;
-use core::kinds::Send;
 use core::mem;
 use core::option::Option;
 use core::raw::TraitObject;
@@ -27,17 +26,19 @@ use core::result::{Ok, Err, Result};
 ///
 /// The following two examples are equivalent:
 ///
-///     use std::owned::HEAP;
+///     use std::boxed::HEAP;
 ///
 ///     # struct Bar;
 ///     # impl Bar { fn new(_a: int) { } }
 ///     let foo = box(HEAP) Bar::new(2);
 ///     let foo = box Bar::new(2);
-#[lang="exchange_heap"]
+#[lang = "exchange_heap"]
+#[experimental = "may be renamed; uncertain about custom allocator design"]
 pub static HEAP: () = ();
 
 /// A type that represents a uniquely-owned value.
-#[lang="owned_box"]
+#[lang = "owned_box"]
+#[unstable = "custom allocators will add an additional type parameter (with default)"]
 pub struct Box<T>(*mut T);
 
 impl<T: Default> Default for Box<T> {
@@ -57,7 +58,6 @@ impl<T: Clone> Clone for Box<T> {
     }
 }
 
-// box pointers
 impl<T:PartialEq> PartialEq for Box<T> {
     #[inline]
     fn eq(&self, other: &Box<T>) -> bool { *(*self) == *(*other) }
@@ -85,48 +85,27 @@ impl<T: Ord> Ord for Box<T> {
 impl<T: Eq> Eq for Box<T> {}
 
 /// Extension methods for an owning `Any` trait object
-pub trait AnyOwnExt {
+#[unstable = "post-DST, the signature of `downcast` will change to take `Box<Self>`"]
+pub trait BoxAny {
     /// Returns the boxed value if it is of type `T`, or
     /// `Err(Self)` if it isn't.
-    fn move<T: 'static>(self) -> Result<Box<T>, Self>;
+    fn downcast<T: 'static>(self) -> Result<Box<T>, Self>;
+
+    /// Deprecated; this method has been renamed to `downcast`.
+    #[deprecated = "use downcast instead"]
+    fn move<T: 'static>(self) -> Result<Box<T>, Self> {
+        self.downcast::<T>()
+    }
 }
 
-impl AnyOwnExt for Box<Any> {
+impl BoxAny for Box<Any> {
     #[inline]
-    fn move<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
+    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
                 let to: TraitObject =
                     *mem::transmute::<&Box<Any>, &TraitObject>(&self);
-
-                // Prevent destructor on self being run
-                intrinsics::forget(self);
-
-                // Extract the data pointer
-                Ok(mem::transmute(to.data))
-            }
-        } else {
-            Err(self)
-        }
-    }
-}
-
-/// Extension methods for an owning `Any+Send` trait object
-pub trait AnySendOwnExt {
-    /// Returns the boxed value if it is of type `T`, or
-    /// `Err(Self)` if it isn't.
-    fn move_send<T: 'static>(self) -> Result<Box<T>, Self>;
-}
-
-impl AnySendOwnExt for Box<Any+Send> {
-    #[inline]
-    fn move_send<T: 'static>(self) -> Result<Box<T>, Box<Any+Send>> {
-        if self.is::<T>() {
-            unsafe {
-                // Get the raw representation of the trait object
-                let to: TraitObject =
-                    *mem::transmute::<&Box<Any+Send>, &TraitObject>(&self);
 
                 // Prevent destructor on self being run
                 intrinsics::forget(self);
@@ -166,11 +145,11 @@ mod test {
         let a = box 8u as Box<Any>;
         let b = box Test as Box<Any>;
 
-        match a.move::<uint>() {
+        match a.downcast::<uint>() {
             Ok(a) => { assert!(a == box 8u); }
             Err(..) => fail!()
         }
-        match b.move::<Test>() {
+        match b.downcast::<Test>() {
             Ok(a) => { assert!(a == box Test); }
             Err(..) => fail!()
         }
@@ -178,8 +157,8 @@ mod test {
         let a = box 8u as Box<Any>;
         let b = box Test as Box<Any>;
 
-        assert!(a.move::<Box<Test>>().is_err());
-        assert!(b.move::<Box<uint>>().is_err());
+        assert!(a.downcast::<Box<Test>>().is_err());
+        assert!(b.downcast::<Box<uint>>().is_err());
     }
 
     #[test]

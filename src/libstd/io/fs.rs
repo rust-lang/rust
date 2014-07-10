@@ -62,7 +62,7 @@ use iter::Iterator;
 use kinds::Send;
 use libc;
 use option::{Some, None, Option};
-use owned::Box;
+use boxed::Box;
 use path::{Path, GenericPath};
 use path;
 use result::{Err, Ok};

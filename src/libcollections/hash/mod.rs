@@ -65,7 +65,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use alloc::rc::Rc;
 use core::intrinsics::TypeId;
 use core::mem;

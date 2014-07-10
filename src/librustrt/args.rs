@@ -45,7 +45,7 @@ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
 mod imp {
     use core::prelude::*;
 
-    use alloc::owned::Box;
+    use alloc::boxed::Box;
     use collections::vec::Vec;
     use core::mem;
     use core::slice;

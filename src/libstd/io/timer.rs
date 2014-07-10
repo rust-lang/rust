@@ -20,7 +20,7 @@ and create receivers which will receive notifications after a period of time.
 use comm::{Receiver, Sender, channel};
 use io::{IoResult, IoError};
 use kinds::Send;
-use owned::Box;
+use boxed::Box;
 use rt::rtio::{IoFactory, LocalIo, RtioTimer, Callback};
 
 /// A synchronous timer object

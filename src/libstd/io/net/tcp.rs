@@ -29,7 +29,7 @@ use io::{Reader, Writer, Listener, Acceptor};
 use from_str::FromStr;
 use kinds::Send;
 use option::{None, Some, Option};
-use owned::Box;
+use boxed::Box;
 use rt::rtio::{IoFactory, LocalIo, RtioSocket, RtioTcpListener};
 use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 use rt::rtio;
