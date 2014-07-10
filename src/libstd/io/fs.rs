@@ -330,6 +330,11 @@ pub fn lstat(path: &Path) -> IoResult<FileStat> {
 }
 
 fn from_rtio(s: rtio::FileStat) -> FileStat {
+    #[cfg(windows)]
+    type Mode = libc::c_int;
+    #[cfg(unix)]
+    type Mode = libc::mode_t;
+
     let rtio::FileStat {
         size, kind, perm, created, modified,
         accessed, device, inode, rdev,
@@ -338,7 +343,7 @@ fn from_rtio(s: rtio::FileStat) -> FileStat {
 
     FileStat {
         size: size,
-        kind: match (kind as libc::c_int) & libc::S_IFMT {
+        kind: match (kind as Mode) & libc::S_IFMT {
             libc::S_IFREG => io::TypeFile,
             libc::S_IFDIR => io::TypeDirectory,
             libc::S_IFIFO => io::TypeNamedPipe,
