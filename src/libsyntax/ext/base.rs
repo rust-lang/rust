@@ -410,6 +410,7 @@ pub struct ExtCtxt<'a> {
 
     pub mod_path: Vec<ast::Ident> ,
     pub trace_mac: bool,
+    pub exported_macros: Vec<codemap::Span>
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -421,7 +422,8 @@ impl<'a> ExtCtxt<'a> {
             backtrace: None,
             mod_path: Vec::new(),
             ecfg: ecfg,
-            trace_mac: false
+            trace_mac: false,
+            exported_macros: Vec::new(),
         }
     }
 
@@ -538,6 +540,9 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
         token::intern(st)
+    }
+    pub fn push_exported_macro(&mut self, span: codemap::Span) {
+        self.exported_macros.push(span);
     }
 }
 

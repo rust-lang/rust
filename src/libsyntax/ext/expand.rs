@@ -518,10 +518,9 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
             // create issue to recommend refactoring here?
             fld.extsbox.insert(intern(name.as_slice()), ext);
             if attr::contains_name(it.attrs.as_slice(), "macro_export") {
-                SmallVector::one(it)
-            } else {
-                SmallVector::zero()
+                fld.cx.push_exported_macro(it.span);
             }
+            SmallVector::zero()
         }
         None => {
             match expanded.make_items() {
@@ -1039,6 +1038,7 @@ pub struct ExportedMacros {
 
 pub fn expand_crate(parse_sess: &parse::ParseSess,
                     cfg: ExpansionConfig,
+                    // these are the macros being imported to this crate:
                     macros: Vec<ExportedMacros>,
                     user_exts: Vec<NamedSyntaxExtension>,
                     c: Crate) -> Crate {
@@ -1066,7 +1066,8 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
         expander.extsbox.insert(name, extension);
     }
 
-    let ret = expander.fold_crate(c);
+    let mut ret = expander.fold_crate(c);
+    ret.exported_macros = expander.cx.exported_macros.clone();
     parse_sess.span_diagnostic.handler().abort_if_errors();
     return ret;
 }
