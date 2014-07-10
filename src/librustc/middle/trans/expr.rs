@@ -876,8 +876,8 @@ fn trans_def_dps_unadjusted<'a>(
                 // Nullary variant.
                 let ty = expr_ty(bcx, ref_expr);
                 let repr = adt::represent_type(bcx.ccx(), ty);
-                adt::trans_start_init(bcx, &*repr, lldest,
-                                      variant_info.disr_val);
+                adt::trans_set_discr(bcx, &*repr, lldest,
+                                     variant_info.disr_val);
                 return bcx;
             }
         }
@@ -886,7 +886,7 @@ fn trans_def_dps_unadjusted<'a>(
             match ty::get(ty).sty {
                 ty::ty_struct(did, _) if ty::has_dtor(bcx.tcx(), did) => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
-                    adt::trans_start_init(bcx, &*repr, lldest, 0);
+                    adt::trans_set_discr(bcx, &*repr, lldest, 0);
                 }
                 _ => {}
             }
@@ -1098,7 +1098,7 @@ fn trans_rec_or_struct<'a>(
  * Note that `fields` may be empty; the base expression must always be
  * evaluated for side-effects.
  */
-struct StructBaseInfo {
+pub struct StructBaseInfo {
     /// The base expression; will be evaluated after all explicit fields.
     expr: Gc<ast::Expr>,
     /// The indices of fields to copy paired with their types.
@@ -1114,14 +1114,12 @@ struct StructBaseInfo {
  * - `optbase` contains information on the base struct (if any) from
  * which remaining fields are copied; see comments on `StructBaseInfo`.
  */
-fn trans_adt<'a>(
-             bcx: &'a Block<'a>,
-             repr: &adt::Repr,
-             discr: ty::Disr,
-             fields: &[(uint, Gc<ast::Expr>)],
-             optbase: Option<StructBaseInfo>,
-             dest: Dest)
-             -> &'a Block<'a> {
+pub fn trans_adt<'a>(bcx: &'a Block<'a>,
+                     repr: &adt::Repr,
+                     discr: ty::Disr,
+                     fields: &[(uint, Gc<ast::Expr>)],
+                     optbase: Option<StructBaseInfo>,
+                     dest: Dest) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_adt");
     let fcx = bcx.fcx;
     let mut bcx = bcx;
@@ -1143,8 +1141,6 @@ fn trans_adt<'a>(
     // failure occur before the ADT as a whole is ready.
     let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
 
-    adt::trans_start_init(bcx, repr, addr, discr);
-
     for &(i, ref e) in fields.iter() {
         let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
         let e_ty = expr_ty_adjusted(bcx, &**e);
@@ -1165,6 +1161,8 @@ fn trans_adt<'a>(
             bcx = datum.store_to(bcx, dest);
         }
     }
+
+    adt::trans_set_discr(bcx, repr, addr, discr);
 
     fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
 
