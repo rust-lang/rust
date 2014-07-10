@@ -19,7 +19,6 @@
 use arena::TypedArena;
 use back::abi;
 use back::link;
-use driver::session;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
 use metadata::csearch;
@@ -54,7 +53,6 @@ use util::ppaux::Repr;
 use std::gc::Gc;
 use syntax::ast;
 use synabi = syntax::abi;
-use syntax::ast_map;
 
 pub struct MethodData {
     pub llfn: ValueRef,
@@ -477,27 +475,8 @@ pub fn trans_fn_ref_with_vtables(
         }
     };
 
-    // We must monomorphise if the fn has type parameters, is a rust
-    // intrinsic, or is a default method.  In particular, if we see an
-    // intrinsic that is inlined from a different crate, we want to reemit the
-    // intrinsic instead of trying to call it in the other crate.
-    let must_monomorphise = if !substs.types.is_empty() || is_default {
-        true
-    } else if def_id.krate == ast::LOCAL_CRATE {
-        let map_node = session::expect(
-            ccx.sess(),
-            tcx.map.find(def_id.node),
-            || "local item should be in ast map".to_string());
-
-        match map_node {
-            ast_map::NodeForeignItem(_) => {
-                tcx.map.get_foreign_abi(def_id.node) == synabi::RustIntrinsic
-            }
-            _ => false
-        }
-    } else {
-        false
-    };
+    // We must monomorphise if the fn has type parameters or is a default method.
+    let must_monomorphise = !substs.types.is_empty() || is_default;
 
     // Create a monomorphic version of generic functions
     if must_monomorphise {
@@ -711,6 +690,10 @@ pub fn trans_call_inner<'a>(
                                                    dest.unwrap(), substs);
         }
     };
+
+    // Intrinsics should not become actual functions.
+    // We trans them in place in `trans_intrinsic_call`
+    assert!(abi != synabi::RustIntrinsic);
 
     // Generate a location to store the result. If the user does
     // not care about the result, just make a stack slot.
