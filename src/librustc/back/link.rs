@@ -61,7 +61,7 @@ pub fn llvm_err(sess: &Session, msg: String) -> ! {
             sess.fatal(msg.as_slice());
         } else {
             let err = CString::new(cstr, true);
-            let err = str::from_utf8_lossy(err.as_bytes());
+            let err = String::from_utf8_lossy(err.as_bytes());
             sess.fatal(format!("{}: {}",
                                msg.as_slice(),
                                err.as_slice()).as_slice());

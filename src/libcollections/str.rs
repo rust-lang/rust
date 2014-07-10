@@ -402,131 +402,10 @@ macro_rules! utf8_acc_cont_byte(
     ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
 )
 
-static TAG_CONT_U8: u8 = 128u8;
-
-/// Converts a vector of bytes to a new utf-8 string.
-/// Any invalid utf-8 sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
-///
-/// # Example
-///
-/// ```rust
-/// let input = b"Hello \xF0\x90\x80World";
-/// let output = std::str::from_utf8_lossy(input);
-/// assert_eq!(output.as_slice(), "Hello \uFFFDWorld");
-/// ```
+/// Deprecated. Use `String::from_utf8_lossy`.
+#[deprecated = "Replaced by String::from_utf8_lossy"]
 pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
-    if is_utf8(v) {
-        return Slice(unsafe { mem::transmute(v) })
-    }
-
-    static REPLACEMENT: &'static [u8] = b"\xEF\xBF\xBD"; // U+FFFD in UTF-8
-    let mut i = 0;
-    let total = v.len();
-    fn unsafe_get(xs: &[u8], i: uint) -> u8 {
-        unsafe { *xs.unsafe_ref(i) }
-    }
-    fn safe_get(xs: &[u8], i: uint, total: uint) -> u8 {
-        if i >= total {
-            0
-        } else {
-            unsafe_get(xs, i)
-        }
-    }
-
-    let mut res = String::with_capacity(total);
-
-    if i > 0 {
-        unsafe {
-            res.push_bytes(v.slice_to(i))
-        };
-    }
-
-    // subseqidx is the index of the first byte of the subsequence we're looking at.
-    // It's used to copy a bunch of contiguous good codepoints at once instead of copying
-    // them one by one.
-    let mut subseqidx = 0;
-
-    while i < total {
-        let i_ = i;
-        let byte = unsafe_get(v, i);
-        i += 1;
-
-        macro_rules! error(() => ({
-            unsafe {
-                if subseqidx != i_ {
-                    res.push_bytes(v.slice(subseqidx, i_));
-                }
-                subseqidx = i;
-                res.push_bytes(REPLACEMENT);
-            }
-        }))
-
-        if byte < 128u8 {
-            // subseqidx handles this
-        } else {
-            let w = utf8_char_width(byte);
-
-            match w {
-                2 => {
-                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
-                        error!();
-                        continue;
-                    }
-                    i += 1;
-                }
-                3 => {
-                    match (byte, safe_get(v, i, total)) {
-                        (0xE0        , 0xA0 .. 0xBF) => (),
-                        (0xE1 .. 0xEC, 0x80 .. 0xBF) => (),
-                        (0xED        , 0x80 .. 0x9F) => (),
-                        (0xEE .. 0xEF, 0x80 .. 0xBF) => (),
-                        _ => {
-                            error!();
-                            continue;
-                        }
-                    }
-                    i += 1;
-                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
-                        error!();
-                        continue;
-                    }
-                    i += 1;
-                }
-                4 => {
-                    match (byte, safe_get(v, i, total)) {
-                        (0xF0        , 0x90 .. 0xBF) => (),
-                        (0xF1 .. 0xF3, 0x80 .. 0xBF) => (),
-                        (0xF4        , 0x80 .. 0x8F) => (),
-                        _ => {
-                            error!();
-                            continue;
-                        }
-                    }
-                    i += 1;
-                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
-                        error!();
-                        continue;
-                    }
-                    i += 1;
-                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
-                        error!();
-                        continue;
-                    }
-                    i += 1;
-                }
-                _ => {
-                    error!();
-                    continue;
-                }
-            }
-        }
-    }
-    if subseqidx < total {
-        unsafe {
-            res.push_bytes(v.slice(subseqidx, total))
-        };
-    }
-    Owned(res.into_string())
+    String::from_utf8_lossy(v)
 }
 
 /*
@@ -2053,41 +1932,6 @@ String::from_str("\u1111\u1171\u11b6"));
     }
 
     #[test]
-    fn test_str_from_utf8_lossy() {
-        let xs = b"hello";
-        assert_eq!(from_utf8_lossy(xs), Slice("hello"));
-
-        let xs = "ศไทย中华Việt Nam".as_bytes();
-        assert_eq!(from_utf8_lossy(xs), Slice("ศไทย中华Việt Nam"));
-
-        let xs = b"Hello\xC2 There\xFF Goodbye";
-        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("Hello\uFFFD There\uFFFD Goodbye")));
-
-        let xs = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
-        assert_eq!(from_utf8_lossy(xs),
-                   Owned(String::from_str("Hello\uFFFD\uFFFD There\uFFFD Goodbye")));
-
-        let xs = b"\xF5foo\xF5\x80bar";
-        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFDfoo\uFFFD\uFFFDbar")));
-
-        let xs = b"\xF1foo\xF1\x80bar\xF1\x80\x80baz";
-        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFDfoo\uFFFDbar\uFFFDbaz")));
-
-        let xs = b"\xF4foo\xF4\x80bar\xF4\xBFbaz";
-        assert_eq!(from_utf8_lossy(xs),
-                   Owned(String::from_str("\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz")));
-
-        let xs = b"\xF0\x80\x80\x80foo\xF0\x90\x80\x80bar";
-        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFD\uFFFD\uFFFD\uFFFD\
-                                               foo\U00010000bar")));
-
-        // surrogates
-        let xs = b"\xED\xA0\x80foo\xED\xBF\xBFbar";
-        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFD\uFFFD\uFFFDfoo\
-                                               \uFFFD\uFFFD\uFFFDbar")));
-    }
-
-    #[test]
     fn test_maybe_owned_traits() {
         let s = Slice("abcde");
         assert_eq!(s.len(), 5);
@@ -2293,42 +2137,6 @@ mod bench {
         assert_eq!(100, s.len());
         b.iter(|| {
             is_utf8(s)
-        });
-    }
-
-    #[bench]
-    fn from_utf8_lossy_100_ascii(b: &mut Bencher) {
-        let s = b"Hello there, the quick brown fox jumped over the lazy dog! \
-                  Lorem ipsum dolor sit amet, consectetur. ";
-
-        assert_eq!(100, s.len());
-        b.iter(|| {
-            let _ = from_utf8_lossy(s);
-        });
-    }
-
-    #[bench]
-    fn from_utf8_lossy_100_multibyte(b: &mut Bencher) {
-        let s = "𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰".as_bytes();
-        assert_eq!(100, s.len());
-        b.iter(|| {
-            let _ = from_utf8_lossy(s);
-        });
-    }
-
-    #[bench]
-    fn from_utf8_lossy_invalid(b: &mut Bencher) {
-        let s = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
-        b.iter(|| {
-            let _ = from_utf8_lossy(s);
-        });
-    }
-
-    #[bench]
-    fn from_utf8_lossy_100_invalid(b: &mut Bencher) {
-        let s = Vec::from_elem(100, 0xF5u8);
-        b.iter(|| {
-            let _ = from_utf8_lossy(s.as_slice());
         });
     }
 

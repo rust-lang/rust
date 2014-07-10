@@ -313,7 +313,6 @@ impl Command {
     ///
     /// ```
     /// use std::io::Command;
-    /// use std::str;
     ///
     /// let output = match Command::new("cat").arg("foot.txt").output() {
     ///     Ok(output) => output,
@@ -321,8 +320,8 @@ impl Command {
     /// };
     ///
     /// println!("status: {}", output.status);
-    /// println!("stdout: {}", str::from_utf8_lossy(output.output.as_slice()));
-    /// println!("stderr: {}", str::from_utf8_lossy(output.error.as_slice()));
+    /// println!("stdout: {}", String::from_utf8_lossy(output.output.as_slice()));
+    /// println!("stderr: {}", String::from_utf8_lossy(output.error.as_slice()));
     /// ```
     pub fn output(&self) -> IoResult<ProcessOutput> {
         self.spawn().and_then(|p| p.wait_with_output())
@@ -353,9 +352,9 @@ impl fmt::Show for Command {
     /// non-utf8 data is lossily converted using the utf8 replacement
     /// character.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{}", str::from_utf8_lossy(self.program.as_bytes_no_nul())));
+        try!(write!(f, "{}", String::from_utf8_lossy(self.program.as_bytes_no_nul())));
         for arg in self.args.iter() {
-            try!(write!(f, " '{}'", str::from_utf8_lossy(arg.as_bytes_no_nul())));
+            try!(write!(f, " '{}'", String::from_utf8_lossy(arg.as_bytes_no_nul())));
         }
         Ok(())
     }
@@ -903,7 +902,7 @@ mod tests {
         let new_env = vec![("RUN_TEST_NEW_ENV", "123")];
         let prog = env_cmd().env_set_all(new_env.as_slice()).spawn().unwrap();
         let result = prog.wait_with_output().unwrap();
-        let output = str::from_utf8_lossy(result.output.as_slice()).into_string();
+        let output = String::from_utf8_lossy(result.output.as_slice()).into_string();
 
         assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
