@@ -54,6 +54,7 @@ use util::ppaux::Repr;
 
 use std::gc::Gc;
 use syntax::ast;
+use syntax::ast_map;
 use synabi = syntax::abi;
 
 pub struct MethodData {
@@ -66,7 +67,7 @@ pub enum CalleeData {
 
     // Constructor for enum variant/tuple-like-struct
     // i.e. Some, Ok
-    TupleVariantConstructor(subst::Substs, ty::Disr),
+    NamedTupleConstructor(subst::Substs, ty::Disr),
 
     // Represents a (possibly monomorphized) top-level fn item or method
     // item. Note that this is just the fn-ptr and is not a Rust closure
@@ -138,6 +139,23 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
         debug!("trans_def(def={}, ref_expr={})", def.repr(bcx.tcx()), ref_expr.repr(bcx.tcx()));
         let expr_ty = node_id_type(bcx, ref_expr.id);
         match def {
+            def::DefFn(did, _) if {
+                let def_id = if did.krate != ast::LOCAL_CRATE {
+                    inline::maybe_instantiate_inline(bcx.ccx(), did)
+                } else {
+                    did
+                };
+                match bcx.tcx().map.find(def_id.node) {
+                    Some(ast_map::NodeStructCtor(_)) => true,
+                    _ => false
+                }
+            } => {
+                let substs = node_id_substs(bcx, ExprId(ref_expr.id));
+                Callee {
+                    bcx: bcx,
+                    data: NamedTupleConstructor(substs, 0)
+                }
+            }
             def::DefFn(did, _) if match ty::get(expr_ty).sty {
                 ty::ty_bare_fn(ref f) => f.abi == synabi::RustIntrinsic,
                 _ => false
@@ -170,11 +188,15 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
 
                 Callee {
                     bcx: bcx,
-                    data: TupleVariantConstructor(substs, vinfo.disr_val)
+                    data: NamedTupleConstructor(substs, vinfo.disr_val)
                 }
             }
-            def::DefStruct(def_id) => {
-                fn_callee(bcx, trans_fn_ref(bcx, def_id, ExprId(ref_expr.id)))
+            def::DefStruct(_) => {
+                let substs = node_id_substs(bcx, ExprId(ref_expr.id));
+                Callee {
+                    bcx: bcx,
+                    data: NamedTupleConstructor(substs, 0)
+                }
             }
             def::DefStatic(..) |
             def::DefArg(..) |
@@ -719,13 +741,13 @@ pub fn trans_call_inner<'a>(
                                                    arg_cleanup_scope, args,
                                                    dest.unwrap(), substs);
         }
-        TupleVariantConstructor(substs, disr) => {
+        NamedTupleConstructor(substs, disr) => {
             assert!(dest.is_some());
             fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
 
             let ctor_ty = callee_ty.subst(bcx.tcx(), &substs);
-            return base::trans_enum_variant_constructor(bcx, ctor_ty, disr,
-                                                        args, dest.unwrap());
+            return base::trans_named_tuple_constructor(bcx, ctor_ty, disr,
+                                                       args, dest.unwrap());
         }
     };
 

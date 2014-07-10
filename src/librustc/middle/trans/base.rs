@@ -1704,11 +1704,11 @@ pub fn trans_enum_variant(ccx: &CrateContext,
         llfndecl);
 }
 
-pub fn trans_enum_variant_constructor<'a>(mut bcx: &'a Block<'a>,
-                                          ctor_ty: ty::t,
-                                          disr: ty::Disr,
-                                          args: callee::CallArgs,
-                                          dest: expr::Dest) -> Result<'a> {
+pub fn trans_named_tuple_constructor<'a>(mut bcx: &'a Block<'a>,
+                                         ctor_ty: ty::t,
+                                         disr: ty::Disr,
+                                         args: callee::CallArgs,
+                                         dest: expr::Dest) -> Result<'a> {
 
     let ccx = bcx.fcx.ccx;
     let tcx = &ccx.tcx;
