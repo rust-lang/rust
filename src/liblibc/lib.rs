@@ -2008,6 +2008,7 @@ pub mod consts {
         pub mod posix88 {
             use types::os::arch::c95::c_int;
             use types::common::c95::c_void;
+            use types::os::arch::posix88::mode_t;
 
             pub static O_RDONLY : c_int = 0;
             pub static O_WRONLY : c_int = 1;
@@ -2016,20 +2017,20 @@ pub mod consts {
             pub static O_CREAT : c_int = 64;
             pub static O_EXCL : c_int = 128;
             pub static O_TRUNC : c_int = 512;
-            pub static S_IFIFO : c_int = 4096;
-            pub static S_IFCHR : c_int = 8192;
-            pub static S_IFBLK : c_int = 24576;
-            pub static S_IFDIR : c_int = 16384;
-            pub static S_IFREG : c_int = 32768;
-            pub static S_IFLNK : c_int = 40960;
-            pub static S_IFMT : c_int = 61440;
-            pub static S_IEXEC : c_int = 64;
-            pub static S_IWRITE : c_int = 128;
-            pub static S_IREAD : c_int = 256;
-            pub static S_IRWXU : c_int = 448;
-            pub static S_IXUSR : c_int = 64;
-            pub static S_IWUSR : c_int = 128;
-            pub static S_IRUSR : c_int = 256;
+            pub static S_IFIFO : mode_t = 4096;
+            pub static S_IFCHR : mode_t = 8192;
+            pub static S_IFBLK : mode_t = 24576;
+            pub static S_IFDIR : mode_t = 16384;
+            pub static S_IFREG : mode_t = 32768;
+            pub static S_IFLNK : mode_t = 40960;
+            pub static S_IFMT : mode_t = 61440;
+            pub static S_IEXEC : mode_t = 64;
+            pub static S_IWRITE : mode_t = 128;
+            pub static S_IREAD : mode_t = 256;
+            pub static S_IRWXU : mode_t = 448;
+            pub static S_IXUSR : mode_t = 64;
+            pub static S_IWUSR : mode_t = 128;
+            pub static S_IRUSR : mode_t = 256;
             pub static F_OK : c_int = 0;
             pub static R_OK : c_int = 4;
             pub static W_OK : c_int = 2;
@@ -2220,6 +2221,7 @@ pub mod consts {
         pub mod posix88 {
             use types::os::arch::c95::c_int;
             use types::common::c95::c_void;
+            use types::os::arch::posix88::mode_t;
 
             pub static O_RDONLY : c_int = 0;
             pub static O_WRONLY : c_int = 1;
@@ -2228,20 +2230,20 @@ pub mod consts {
             pub static O_CREAT : c_int = 256;
             pub static O_EXCL : c_int = 1024;
             pub static O_TRUNC : c_int = 512;
-            pub static S_IFIFO : c_int = 4096;
-            pub static S_IFCHR : c_int = 8192;
-            pub static S_IFBLK : c_int = 24576;
-            pub static S_IFDIR : c_int = 16384;
-            pub static S_IFREG : c_int = 32768;
-            pub static S_IFLNK : c_int = 40960;
-            pub static S_IFMT : c_int = 61440;
-            pub static S_IEXEC : c_int = 64;
-            pub static S_IWRITE : c_int = 128;
-            pub static S_IREAD : c_int = 256;
-            pub static S_IRWXU : c_int = 448;
-            pub static S_IXUSR : c_int = 64;
-            pub static S_IWUSR : c_int = 128;
-            pub static S_IRUSR : c_int = 256;
+            pub static S_IFIFO : mode_t = 4096;
+            pub static S_IFCHR : mode_t = 8192;
+            pub static S_IFBLK : mode_t = 24576;
+            pub static S_IFDIR : mode_t = 16384;
+            pub static S_IFREG : mode_t = 32768;
+            pub static S_IFLNK : mode_t = 40960;
+            pub static S_IFMT : mode_t = 61440;
+            pub static S_IEXEC : mode_t = 64;
+            pub static S_IWRITE : mode_t = 128;
+            pub static S_IREAD : mode_t = 256;
+            pub static S_IRWXU : mode_t = 448;
+            pub static S_IXUSR : mode_t = 64;
+            pub static S_IWUSR : mode_t = 128;
+            pub static S_IRUSR : mode_t = 256;
             pub static F_OK : c_int = 0;
             pub static R_OK : c_int = 4;
             pub static W_OK : c_int = 2;
@@ -2759,6 +2761,7 @@ pub mod consts {
         pub mod posix88 {
             use types::common::c95::c_void;
             use types::os::arch::c95::c_int;
+            use types::os::arch::posix88::mode_t;
 
             pub static O_RDONLY : c_int = 0;
             pub static O_WRONLY : c_int = 1;
@@ -2767,20 +2770,20 @@ pub mod consts {
             pub static O_CREAT : c_int = 512;
             pub static O_EXCL : c_int = 2048;
             pub static O_TRUNC : c_int = 1024;
-            pub static S_IFIFO : c_int = 4096;
-            pub static S_IFCHR : c_int = 8192;
-            pub static S_IFBLK : c_int = 24576;
-            pub static S_IFDIR : c_int = 16384;
-            pub static S_IFREG : c_int = 32768;
-            pub static S_IFLNK : c_int = 40960;
-            pub static S_IFMT : c_int = 61440;
-            pub static S_IEXEC : c_int = 64;
-            pub static S_IWRITE : c_int = 128;
-            pub static S_IREAD : c_int = 256;
-            pub static S_IRWXU : c_int = 448;
-            pub static S_IXUSR : c_int = 64;
-            pub static S_IWUSR : c_int = 128;
-            pub static S_IRUSR : c_int = 256;
+            pub static S_IFIFO : mode_t = 4096;
+            pub static S_IFCHR : mode_t = 8192;
+            pub static S_IFBLK : mode_t = 24576;
+            pub static S_IFDIR : mode_t = 16384;
+            pub static S_IFREG : mode_t = 32768;
+            pub static S_IFLNK : mode_t = 40960;
+            pub static S_IFMT : mode_t = 61440;
+            pub static S_IEXEC : mode_t = 64;
+            pub static S_IWRITE : mode_t = 128;
+            pub static S_IREAD : mode_t = 256;
+            pub static S_IRWXU : mode_t = 448;
+            pub static S_IXUSR : mode_t = 64;
+            pub static S_IWUSR : mode_t = 128;
+            pub static S_IRUSR : mode_t = 256;
             pub static F_OK : c_int = 0;
             pub static R_OK : c_int = 4;
             pub static W_OK : c_int = 2;
@@ -3148,6 +3151,7 @@ pub mod consts {
         pub mod posix88 {
             use types::common::c95::c_void;
             use types::os::arch::c95::c_int;
+            use types::os::arch::posix88::mode_t;
 
             pub static O_RDONLY : c_int = 0;
             pub static O_WRONLY : c_int = 1;
@@ -3156,20 +3160,20 @@ pub mod consts {
             pub static O_CREAT : c_int = 512;
             pub static O_EXCL : c_int = 2048;
             pub static O_TRUNC : c_int = 1024;
-            pub static S_IFIFO : c_int = 4096;
-            pub static S_IFCHR : c_int = 8192;
-            pub static S_IFBLK : c_int = 24576;
-            pub static S_IFDIR : c_int = 16384;
-            pub static S_IFREG : c_int = 32768;
-            pub static S_IFLNK : c_int = 40960;
-            pub static S_IFMT : c_int = 61440;
-            pub static S_IEXEC : c_int = 64;
-            pub static S_IWRITE : c_int = 128;
-            pub static S_IREAD : c_int = 256;
-            pub static S_IRWXU : c_int = 448;
-            pub static S_IXUSR : c_int = 64;
-            pub static S_IWUSR : c_int = 128;
-            pub static S_IRUSR : c_int = 256;
+            pub static S_IFIFO : mode_t = 4096;
+            pub static S_IFCHR : mode_t = 8192;
+            pub static S_IFBLK : mode_t = 24576;
+            pub static S_IFDIR : mode_t = 16384;
+            pub static S_IFREG : mode_t = 32768;
+            pub static S_IFLNK : mode_t = 40960;
+            pub static S_IFMT : mode_t = 61440;
+            pub static S_IEXEC : mode_t = 64;
+            pub static S_IWRITE : mode_t = 128;
+            pub static S_IREAD : mode_t = 256;
+            pub static S_IRWXU : mode_t = 448;
+            pub static S_IXUSR : mode_t = 64;
+            pub static S_IWUSR : mode_t = 128;
+            pub static S_IRUSR : mode_t = 256;
             pub static F_OK : c_int = 0;
             pub static R_OK : c_int = 4;
             pub static W_OK : c_int = 2;
@@ -3858,7 +3862,7 @@ pub mod funcs {
             use types::os::arch::posix88::mode_t;
 
             extern {
-                pub fn open(path: *const c_char, oflag: c_int, mode: c_int)
+                pub fn open(path: *const c_char, oflag: c_int, mode: mode_t)
                             -> c_int;
                 pub fn creat(path: *const c_char, mode: mode_t) -> c_int;
                 pub fn fcntl(fd: c_int, cmd: c_int, ...) -> c_int;
