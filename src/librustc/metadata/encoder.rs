@@ -314,8 +314,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                             ebml_w: &mut Encoder,
                             id: NodeId,
                             variants: &[P<Variant>],
-                            index: &mut Vec<entry<i64>>,
-                            generics: &ast::Generics) {
+                            index: &mut Vec<entry<i64>>) {
     debug!("encode_enum_variant_info(id={:?})", id);
 
     let mut disr_val = 0;
@@ -343,10 +342,6 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         encode_stability(ebml_w, stab);
 
         match variant.node.kind {
-            ast::TupleVariantKind(ref args)
-                    if args.len() > 0 && generics.ty_params.len() == 0 => {
-                encode_symbol(ecx, ebml_w, variant.node.id);
-            }
             ast::TupleVariantKind(_) => {},
             ast::StructVariantKind(_) => {
                 let fields = ty::lookup_struct_fields(ecx.tcx, def_id);
@@ -1019,7 +1014,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_stability(ebml_w, stab);
         ebml_w.end_tag();
       }
-      ItemEnum(ref enum_definition, ref generics) => {
+      ItemEnum(ref enum_definition, _) => {
         add_to_index(item, ebml_w, index);
 
         ebml_w.start_tag(tag_items_data_item);
@@ -1046,8 +1041,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                  ebml_w,
                                  item.id,
                                  (*enum_definition).variants.as_slice(),
-                                 index,
-                                 generics);
+                                 index);
       }
       ItemStruct(struct_def, _) => {
         let fields = ty::lookup_struct_fields(tcx, def_id);
