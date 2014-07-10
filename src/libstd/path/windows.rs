@@ -13,7 +13,7 @@
 use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
 use clone::Clone;
-use cmp::{PartialEq, Eq};
+use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use collections::Collection;
 use from_str::FromStr;
 use hash;
@@ -89,6 +89,18 @@ impl PartialEq for Path {
 }
 
 impl Eq for Path {}
+
+impl PartialOrd for Path {
+    fn partial_cmp(&self, other: &Path) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Path {
+    fn cmp(&self, other: &Path) -> Ordering {
+        self.repr.cmp(&other.repr)
+    }
+}
 
 impl FromStr for Path {
     fn from_str(s: &str) -> Option<Path> {
