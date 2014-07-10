@@ -91,6 +91,32 @@ impl String {
             Err(vec)
         }
     }
+    
+    /// Decode a UTF-16 encoded vector `v` into a string, returning `None`
+    /// if `v` contains any invalid data.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// // ð„žmusic
+    /// let mut v = [0xD834, 0xDD1E, 0x006d, 0x0075,
+    ///              0x0073, 0x0069, 0x0063];
+    /// assert_eq!(String::from_utf16(v), Some("ð„žmusic".to_string()));
+    ///
+    /// // ð„žmu<invalid>ic
+    /// v[4] = 0xD800;
+    /// assert_eq!(String::from_utf16(v), None);
+    /// ```
+    pub fn from_utf16(v: &[u16]) -> Option<String> {
+        let mut s = String::with_capacity(v.len() / 2);
+        for c in str::utf16_items(v) {
+            match c {
+                str::ScalarValue(c) => s.push_char(c),
+                str::LoneSurrogate(_) => return None
+            }
+        }
+        Some(s)
+    }
 
     /// Convert a vector of chars to a string
     ///

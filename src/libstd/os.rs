@@ -137,7 +137,7 @@ pub fn getcwd() -> Path {
             fail!();
         }
     }
-    Path::new(str::from_utf16(str::truncate_utf16_at_nul(buf))
+    Path::new(String::from_utf16(str::truncate_utf16_at_nul(buf))
               .expect("GetCurrentDirectoryW returned invalid UTF-16"))
 }
 
@@ -180,7 +180,7 @@ pub mod win32 {
                     // We want to explicitly catch the case when the
                     // closure returned invalid UTF-16, rather than
                     // set `res` to None and continue.
-                    let s = str::from_utf16(sub)
+                    let s = String::from_utf16(sub)
                         .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16");
                     res = option::Some(s)
                 }
@@ -1050,7 +1050,7 @@ pub fn error_string(errnum: uint) -> String {
                 return format!("OS Error {} (FormatMessageW() returned error {})", errnum, fm_err);
             }
 
-            let msg = str::from_utf16(str::truncate_utf16_at_nul(buf));
+            let msg = String::from_utf16(str::truncate_utf16_at_nul(buf));
             match msg {
                 Some(msg) => format!("OS Error {}: {}", errnum, msg),
                 None => format!("OS Error {} (FormatMessageW() returned invalid UTF-16)", errnum),
@@ -1207,7 +1207,7 @@ fn real_args() -> Vec<String> {
 
         // Push it onto the list.
         let opt_s = slice::raw::buf_as_slice(ptr as *const _, len, |buf| {
-            str::from_utf16(str::truncate_utf16_at_nul(buf))
+            String::from_utf16(str::truncate_utf16_at_nul(buf))
         });
         opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
     });

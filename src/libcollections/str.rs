@@ -378,32 +378,10 @@ pub fn replace(s: &str, from: &str, to: &str) -> String {
 Section: Misc
 */
 
-/// Decode a UTF-16 encoded vector `v` into a string, returning `None`
-/// if `v` contains any invalid data.
-///
-/// # Example
-///
-/// ```rust
-/// use std::str;
-///
-/// // 𝄞music
-/// let mut v = [0xD834, 0xDD1E, 0x006d, 0x0075,
-///              0x0073, 0x0069, 0x0063];
-/// assert_eq!(str::from_utf16(v), Some("𝄞music".to_string()));
-///
-/// // 𝄞mu<invalid>ic
-/// v[4] = 0xD800;
-/// assert_eq!(str::from_utf16(v), None);
-/// ```
+/// Deprecated. Use `String::from_utf16`.
+#[deprecated = "Replaced by String::from_utf16"]
 pub fn from_utf16(v: &[u16]) -> Option<String> {
-    let mut s = String::with_capacity(v.len() / 2);
-    for c in utf16_items(v) {
-        match c {
-            ScalarValue(c) => s.push_char(c),
-            LoneSurrogate(_) => return None
-        }
-    }
-    Some(s)
+    String::from_utf16(v)
 }
 
 /// Decode a UTF-16 encoded vector `v` into a string, replacing
@@ -1722,7 +1700,7 @@ mod tests {
         for p in pairs.iter() {
             let (s, u) = (*p).clone();
             let s_as_utf16 = s.as_slice().utf16_units().collect::<Vec<u16>>();
-            let u_as_string = from_utf16(u.as_slice()).unwrap();
+            let u_as_string = String::from_utf16(u.as_slice()).unwrap();
 
             assert!(is_utf16(u.as_slice()));
             assert_eq!(s_as_utf16, u);
@@ -1730,7 +1708,7 @@ mod tests {
             assert_eq!(u_as_string, s);
             assert_eq!(from_utf16_lossy(u.as_slice()), s);
 
-            assert_eq!(from_utf16(s_as_utf16.as_slice()).unwrap(), s);
+            assert_eq!(String::from_utf16(s_as_utf16.as_slice()).unwrap(), s);
             assert_eq!(u_as_string.as_slice().utf16_units().collect::<Vec<u16>>(), u);
         }
     }
@@ -1739,15 +1717,15 @@ mod tests {
     fn test_utf16_invalid() {
         // completely positive cases tested above.
         // lead + eof
-        assert_eq!(from_utf16([0xD800]), None);
+        assert_eq!(String::from_utf16([0xD800]), None);
         // lead + lead
-        assert_eq!(from_utf16([0xD800, 0xD800]), None);
+        assert_eq!(String::from_utf16([0xD800, 0xD800]), None);
 
         // isolated trail
-        assert_eq!(from_utf16([0x0061, 0xDC00]), None);
+        assert_eq!(String::from_utf16([0x0061, 0xDC00]), None);
 
         // general
-        assert_eq!(from_utf16([0xD800, 0xd801, 0xdc8b, 0xD800]), None);
+        assert_eq!(String::from_utf16([0xD800, 0xd801, 0xdc8b, 0xD800]), None);
     }
 
     #[test]
