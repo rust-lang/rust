@@ -11,6 +11,8 @@
 //! Operations and constants for 64-bits floats (`f64` type)
 
 #![doc(primitive = "f64")]
+// FIXME: MIN_VALUE and MAX_VALUE literals are parsed as -inf and inf #14353
+#![allow(type_overflow)]
 
 use intrinsics;
 use mem;
