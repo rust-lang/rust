@@ -32,4 +32,9 @@ enum Foo5 {
 trait foo6 { //~ ERROR trait `foo6` should have a camel case name such as `Foo6`
 }
 
+#[repr(C)]
+struct foo7 {
+    bar: int,
+}
+
 fn main() { }
