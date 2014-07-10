@@ -1461,12 +1461,15 @@ impl Clean<Item> for ty::VariantInfo {
                             name: Some(name.clean()),
                             attrs: Vec::new(),
                             visibility: Some(ast::Public),
-                            stability: get_stability(self.id),
                             // FIXME: this is not accurate, we need an id for
                             //        the specific field but we're using the id
-                            //        for the whole variant. Nothing currently
-                            //        uses this so we should be good for now.
+                            //        for the whole variant. Thus we read the
+                            //        stability from the whole variant as well.
+                            //        Struct variants are experimental and need
+                            //        more infrastructure work before we can get
+                            //        at the needed information here.
                             def_id: self.id,
+                            stability: get_stability(self.id),
                             inner: StructFieldItem(
                                 TypedStructField(ty.clean())
                             )
@@ -1482,7 +1485,7 @@ impl Clean<Item> for ty::VariantInfo {
             visibility: Some(ast::Public),
             def_id: self.id,
             inner: VariantItem(Variant { kind: kind }),
-            stability: None,
+            stability: get_stability(self.id),
         }
     }
 }
@@ -1890,7 +1893,7 @@ impl Clean<Item> for ast::ForeignItem {
             source: self.span.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
-            stability: None,
+            stability: get_stability(ast_util::local_def(self.id)),
             inner: inner,
         }
     }
