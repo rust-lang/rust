@@ -574,7 +574,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
         cmd.arg("./src/etc/lldb_batchmode.py")
            .arg(test_executable)
            .arg(debugger_script)
-           .env([("PYTHONPATH", config.lldb_python_dir.clone().unwrap().as_slice())]);
+           .env_set_all([("PYTHONPATH", config.lldb_python_dir.clone().unwrap().as_slice())]);
 
         let (status, out, err) = match cmd.spawn() {
             Ok(process) => {

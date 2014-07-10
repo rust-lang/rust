@@ -729,7 +729,7 @@ fn with_argv<T>(prog: &CString, args: &[CString],
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: Option<&[(CString, CString)]>,
+fn with_envp<T>(env: Option<&[(&CString, &CString)]>,
                 cb: proc(*const c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is a
     // null-terminated array of "k=v\0" strings. Since we must create
@@ -762,7 +762,7 @@ fn with_envp<T>(env: Option<&[(CString, CString)]>,
 }
 
 #[cfg(windows)]
-fn with_envp<T>(env: Option<&[(CString, CString)]>, cb: |*mut c_void| -> T) -> T {
+fn with_envp<T>(env: Option<&[(&CString, &CString)]>, cb: |*mut c_void| -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
