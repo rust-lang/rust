@@ -80,7 +80,6 @@ use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::{i8, i16, i32, i64};
-use std::gc::Gc;
 use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel, Rust, RustCall};
 use syntax::abi::{RustIntrinsic, Abi};
 use syntax::ast_util::{local_def, is_local};
@@ -1815,31 +1814,6 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
     finish_fn(&fcx, bcx, result_ty);
 }
 
-fn trans_enum_def(ccx: &CrateContext, enum_definition: &ast::EnumDef,
-                  sp: Span, id: ast::NodeId, vi: &[Rc<ty::VariantInfo>],
-                  i: &mut uint) {
-    for variant in enum_definition.variants.iter() {
-        let disr_val = vi[*i].disr_val;
-        *i += 1;
-
-        match variant.node.kind {
-            ast::TupleVariantKind(ref args) if args.len() > 0 => {
-                let llfn = get_item_val(ccx, variant.node.id);
-                trans_enum_variant(ccx, id, &**variant, args.as_slice(),
-                                   disr_val, &param_substs::empty(), llfn);
-            }
-            ast::TupleVariantKind(_) => {
-                // Nothing to do.
-            }
-            ast::StructVariantKind(struct_def) => {
-                trans_struct_def(ccx, struct_def);
-            }
-        }
-    }
-
-    enum_variant_size_lint(ccx, enum_definition, sp, id);
-}
-
 fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span, id: ast::NodeId) {
     let mut sizes = Vec::new(); // does no allocation if no pushes, thankfully
 
@@ -1932,12 +1906,8 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
       ast::ItemMod(ref m) => {
         trans_mod(ccx, m);
       }
-      ast::ItemEnum(ref enum_definition, ref generics) => {
-        if !generics.is_type_parameterized() {
-            let vi = ty::enum_variants(ccx.tcx(), local_def(item.id));
-            let mut i = 0;
-            trans_enum_def(ccx, enum_definition, item.span, item.id, vi.as_slice(), &mut i);
-        }
+      ast::ItemEnum(ref enum_definition, _) => {
+        enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
       }
       ast::ItemStatic(_, m, ref expr) => {
           // Recurse on the expression to catch items in blocks
@@ -1964,11 +1934,6 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
       ast::ItemForeignMod(ref foreign_mod) => {
         foreign::trans_foreign_mod(ccx, foreign_mod);
       }
-      ast::ItemStruct(struct_def, ref generics) => {
-        if !generics.is_type_parameterized() {
-            trans_struct_def(ccx, struct_def);
-        }
-      }
       ast::ItemTrait(..) => {
         // Inside of this trait definition, we won't be actually translating any
         // functions, but the trait still needs to be walked. Otherwise default
@@ -1978,20 +1943,6 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
         visit::walk_item(&mut v, item, ());
       }
       _ => {/* fall through */ }
-    }
-}
-
-pub fn trans_struct_def(ccx: &CrateContext, struct_def: Gc<ast::StructDef>) {
-    // If this is a tuple-like struct, translate the constructor.
-    match struct_def.ctor_id {
-        // We only need to translate a constructor if there are fields;
-        // otherwise this is a unit-like struct.
-        Some(ctor_id) if struct_def.fields.len() > 0 => {
-            let llfndecl = get_item_val(ccx, ctor_id);
-            trans_tuple_struct(ccx, struct_def.fields.as_slice(),
-                               ctor_id, &param_substs::empty(), llfndecl);
-        }
-        Some(_) | None => {}
     }
 }
 

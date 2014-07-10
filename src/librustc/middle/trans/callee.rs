@@ -19,6 +19,7 @@
 use arena::TypedArena;
 use back::abi;
 use back::link;
+use driver::session;
 use llvm::{ValueRef, get_param};
 use llvm;
 use metadata::csearch;
@@ -521,8 +522,27 @@ pub fn trans_fn_ref_with_vtables(
         }
     };
 
-    // We must monomorphise if the fn has type parameters or is a default method.
-    let must_monomorphise = !substs.types.is_empty() || is_default;
+    // We must monomorphise if the fn has type parameters, is a default method,
+    // or is a named tuple constructor.
+    let must_monomorphise = if !substs.types.is_empty() || is_default {
+        true
+    } else if def_id.krate == ast::LOCAL_CRATE {
+        let map_node = session::expect(
+            ccx.sess(),
+            tcx.map.find(def_id.node),
+            || "local item should be in ast map".to_string());
+
+        match map_node {
+            ast_map::NodeVariant(v) => match v.node.kind {
+                ast::TupleVariantKind(ref args) => args.len() > 0,
+                _ => false
+            },
+            ast_map::NodeStructCtor(_) => true,
+            _ => false
+        }
+    } else {
+        false
+    };
 
     // Create a monomorphic version of generic functions
     if must_monomorphise {
