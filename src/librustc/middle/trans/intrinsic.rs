@@ -10,8 +10,7 @@
 
 #![allow(non_uppercase_pattern_statics)]
 
-use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
-use lib::llvm::{ValueRef, Pointer, Array, Struct};
+use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg, ValueRef};
 use lib;
 use middle::subst;
 use middle::subst::FnSpace;
@@ -137,6 +136,47 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
         _ => fail!("expected bare_fn in trans_intrinsic_call")
     };
     let llret_ty = type_of::type_of(ccx, ret_ty);
+    let foreign_item = tcx.map.expect_foreign_item(node);
+    let name = token::get_ident(foreign_item.ident);
+
+    // For `transmute` we can just trans the input expr directly into dest
+    if name.get() == "transmute" {
+        match args {
+            callee::ArgExprs(arg_exprs) => {
+                assert_eq!(arg_exprs.len(), 1);
+
+                let (in_type, out_type) = (*substs.types.get(FnSpace, 0),
+                                           *substs.types.get(FnSpace, 1));
+                let llintype = type_of::type_of(ccx, in_type);
+                let llouttype = type_of::type_of(ccx, out_type);
+
+                let in_type_size = machine::llbitsize_of_real(ccx, llintype);
+                let out_type_size = machine::llbitsize_of_real(ccx, llouttype);
+
+                // This should be caught by the intrinsicck pass
+                assert_eq!(in_type_size, out_type_size);
+
+                // We need to cast the dest so the types work out
+                let dest = match dest {
+                    expr::SaveIn(d) => expr::SaveIn(PointerCast(bcx, d, llintype.ptr_to())),
+                    expr::Ignore => expr::Ignore
+                };
+                bcx = expr::trans_into(bcx, &*arg_exprs[0], dest);
+
+                fcx.pop_custom_cleanup_scope(cleanup_scope);
+
+                return match dest {
+                    expr::SaveIn(d) => Result::new(bcx, d),
+                    expr::Ignore => Result::new(bcx, C_undef(llret_ty.ptr_to()))
+                };
+
+            }
+
+            _ => {
+                ccx.sess().bug("expected expr as argument for transmute");
+            }
+        }
+    }
 
     // Get location to store the result. If the user does
     // not care about the result, just make a stack slot
@@ -158,8 +198,6 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
 
     fcx.pop_custom_cleanup_scope(cleanup_scope);
 
-    let foreign_item = tcx.map.expect_foreign_item(node);
-    let name = token::get_ident(foreign_item.ident);
     let simple = get_simple_intrinsic(ccx, &*foreign_item);
 
     let llval = match (simple, name.get()) {
@@ -239,60 +277,6 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
         // Effectively no-ops
         (_, "uninit") | (_, "forget") => {
             C_nil(ccx)
-        }
-        (_, "transmute") => {
-            let (in_type, out_type) = (*substs.types.get(FnSpace, 0),
-                                       *substs.types.get(FnSpace, 1));
-            let llintype = type_of::type_of(ccx, in_type);
-            let llouttype = type_of::type_of(ccx, out_type);
-
-            let in_type_size = machine::llbitsize_of_real(ccx, llintype);
-            let out_type_size = machine::llbitsize_of_real(ccx, llouttype);
-
-            // This should be caught by the intrinsicck pass
-            assert_eq!(in_type_size, out_type_size);
-
-            if !return_type_is_void(ccx, out_type) {
-                let llsrcval = *llargs.get(0);
-                if type_is_immediate(ccx, in_type) {
-                    if type_is_immediate(ccx, out_type) {
-                        Store(bcx, llsrcval, PointerCast(bcx, llresult, llintype.ptr_to()));
-                        C_nil(ccx)
-                    } else {
-                        match (llintype.kind(), llouttype.kind()) {
-                            (Pointer, other) | (other, Pointer) if other != Pointer => {
-                                let tmp = Alloca(bcx, llouttype, "");
-                                Store(bcx, llsrcval, PointerCast(bcx, tmp, llintype.ptr_to()));
-                                Load(bcx, tmp)
-                            }
-                            (Array, _) | (_, Array) | (Struct, _) | (_, Struct) => {
-                                let tmp = Alloca(bcx, llouttype, "");
-                                Store(bcx, llsrcval, PointerCast(bcx, tmp, llintype.ptr_to()));
-                                Load(bcx, tmp)
-                            }
-                            _ => {
-                                BitCast(bcx, llsrcval, llouttype)
-                            }
-                        }
-                    }
-                } else if type_is_immediate(ccx, out_type) {
-                    Load(bcx, PointerCast(bcx, llsrcval, llouttype.ptr_to()))
-                } else {
-                    // NB: Do not use a Load and Store here. This causes massive
-                    // code bloat when `transmute` is used on large structural
-                    // types.
-                    let lldestptr = llresult;
-                    let lldestptr = PointerCast(bcx, lldestptr, Type::i8p(ccx));
-                    let llsrcptr = PointerCast(bcx, llsrcval, Type::i8p(ccx));
-
-                    let llsize = llsize_of(ccx, llintype);
-                    call_memcpy(bcx, lldestptr, llsrcptr, llsize, 1);
-
-                    C_nil(ccx)
-                }
-            } else {
-                C_nil(ccx)
-            }
         }
         (_, "needs_drop") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
