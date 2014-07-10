@@ -286,11 +286,3 @@ mod std {
     // The test runner requires std::slice::Vector, so re-export std::slice just for it.
     #[cfg(test)] pub use slice;
 }
-
-#[deprecated]
-#[allow(missing_doc)]
-#[doc(hiden)]
-pub mod unstable {
-    #[deprecated = "use std::dynamic_lib"]
-    pub use dynamic_lib;
-}
