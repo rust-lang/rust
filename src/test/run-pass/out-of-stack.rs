@@ -12,7 +12,6 @@
 
 use std::io::process::Command;
 use std::os;
-use std::str;
 
 // lifted from the test module
 // Inlining to avoid llvm turning the recursive functions into tail calls,
@@ -42,12 +41,12 @@ fn main() {
     } else {
         let silent = Command::new(args[0].as_slice()).arg("silent").output().unwrap();
         assert!(!silent.status.success());
-        let error = str::from_utf8_lossy(silent.error.as_slice());
+        let error = String::from_utf8_lossy(silent.error.as_slice());
         assert!(error.as_slice().contains("has overflowed its stack"));
 
         let loud = Command::new(args[0].as_slice()).arg("loud").output().unwrap();
         assert!(!loud.status.success());
-        let error = str::from_utf8_lossy(silent.error.as_slice());
+        let error = String::from_utf8_lossy(silent.error.as_slice());
         assert!(error.as_slice().contains("has overflowed its stack"));
     }
 }

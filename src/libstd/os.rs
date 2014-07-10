@@ -208,7 +208,7 @@ fn with_env_lock<T>(f: || -> T) -> T {
 /// Returns a vector of (variable, value) pairs, for all the environment
 /// variables of the current process.
 ///
-/// Invalid UTF-8 bytes are replaced with \uFFFD. See `str::from_utf8_lossy()`
+/// Invalid UTF-8 bytes are replaced with \uFFFD. See `String::from_utf8_lossy()`
 /// for details.
 ///
 /// # Example
@@ -223,8 +223,8 @@ fn with_env_lock<T>(f: || -> T) -> T {
 /// ```
 pub fn env() -> Vec<(String,String)> {
     env_as_bytes().move_iter().map(|(k,v)| {
-        let k = String::from_str(str::from_utf8_lossy(k.as_slice()).as_slice());
-        let v = String::from_str(str::from_utf8_lossy(v.as_slice()).as_slice());
+        let k = String::from_utf8_lossy(k.as_slice()).into_string();
+        let v = String::from_utf8_lossy(v.as_slice()).into_string();
         (k,v)
     }).collect()
 }
@@ -316,7 +316,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// None if the variable isn't set.
 ///
 /// Any invalid UTF-8 bytes in the value are replaced by \uFFFD. See
-/// `str::from_utf8_lossy()` for details.
+/// `String::from_utf8_lossy()` for details.
 ///
 /// # Failure
 ///
@@ -334,7 +334,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// }
 /// ```
 pub fn getenv(n: &str) -> Option<String> {
-    getenv_as_bytes(n).map(|v| String::from_str(str::from_utf8_lossy(v.as_slice()).as_slice()))
+    getenv_as_bytes(n).map(|v| String::from_utf8_lossy(v.as_slice()).into_string())
 }
 
 #[cfg(unix)]
@@ -1186,7 +1186,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 fn real_args() -> Vec<String> {
     real_args_as_bytes().move_iter()
                         .map(|v| {
-                            str::from_utf8_lossy(v.as_slice()).into_string()
+                            String::from_utf8_lossy(v.as_slice()).into_string()
                         }).collect()
 }
 
@@ -1244,7 +1244,7 @@ extern "system" {
 /// via the command line).
 ///
 /// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
-/// See `str::from_utf8_lossy` for details.
+/// See `String::from_utf8_lossy` for details.
 /// # Example
 ///
 /// ```rust

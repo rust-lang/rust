@@ -37,7 +37,7 @@ pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
          class,
          id,
          &mut out).unwrap();
-    str::from_utf8_lossy(out.unwrap().as_slice()).to_string()
+    String::from_utf8_lossy(out.unwrap().as_slice()).into_string()
 }
 
 /// Exhausts the `lexer` writing the output into `out`.
