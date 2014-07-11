@@ -1041,8 +1041,7 @@ impl<'a> LookupContext<'a> {
         }
 
         if relevant_candidates.len() > 1 {
-            self.tcx().sess.span_err(
-                self.span,
+            span_err!(self.tcx().sess, self.span, E0034,
                 "multiple applicable methods in scope");
             for (idx, candidate) in relevant_candidates.iter().enumerate() {
                 self.report_candidate(idx, &candidate.origin);
@@ -1112,13 +1111,11 @@ impl<'a> LookupContext<'a> {
             if num_supplied_tps == 0u {
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else if num_method_tps == 0u {
-                tcx.sess.span_err(
-                    self.span,
-                    "this method does not take type parameters");
+                span_err!(tcx.sess, self.span, E0035,
+                    "does not take type parameters");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else if num_supplied_tps != num_method_tps {
-                tcx.sess.span_err(
-                    self.span,
+                span_err!(tcx.sess, self.span, E0036,
                     "incorrect number of type parameters given for this method");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else {
@@ -1221,10 +1218,8 @@ impl<'a> LookupContext<'a> {
 
         match candidate.method_ty.explicit_self {
             ast::SelfStatic => { // reason (a) above
-                self.tcx().sess.span_err(
-                    self.span,
-                    "cannot call a method without a receiver \
-                     through an object");
+                span_err!(self.tcx().sess, self.span, E0037,
+                    "cannot call a method without a receiver through an object");
             }
 
             ast::SelfValue(_) | ast::SelfRegion(..) | ast::SelfUniq(_) => {}
@@ -1233,8 +1228,7 @@ impl<'a> LookupContext<'a> {
         // reason (a) above
         let check_for_self_ty = |ty| {
             if ty::type_has_self(ty) {
-                self.tcx().sess.span_err(
-                    self.span,
+                span_err!(self.tcx().sess, self.span, E0038,
                     "cannot call a method whose type contains a \
                      self-type through an object");
                 true
@@ -1256,8 +1250,7 @@ impl<'a> LookupContext<'a> {
 
         if candidate.method_ty.generics.has_type_params(subst::FnSpace) {
             // reason (b) above
-            self.tcx().sess.span_err(
-                self.span,
+            span_err!(self.tcx().sess, self.span, E0039,
                 "cannot call a generic method through an object");
         }
     }
@@ -1279,8 +1272,8 @@ impl<'a> LookupContext<'a> {
         }
 
         if bad {
-            self.tcx().sess.span_err(self.span,
-                                     "explicit call to destructor");
+            span_err!(self.tcx().sess, self.span, E0040,
+                "explicit call to destructor");
         }
     }
 
@@ -1425,28 +1418,22 @@ impl<'a> LookupContext<'a> {
         } else {
             self.span
         };
-        self.tcx().sess.span_note(
-            span,
-            format!("candidate #{} is `{}`",
-                    idx + 1u,
-                    ty::item_path_str(self.tcx(), did)).as_slice());
+        span_note!(self.tcx().sess, span,
+            "candidate #{} is `{}`",
+            idx + 1u, ty::item_path_str(self.tcx(), did));
     }
 
     fn report_param_candidate(&self, idx: uint, did: DefId) {
-        self.tcx().sess.span_note(
-            self.span,
-            format!("candidate #{} derives from the bound `{}`",
-                    idx + 1u,
-                    ty::item_path_str(self.tcx(), did)).as_slice());
+        span_note!(self.tcx().sess, self.span,
+            "candidate #{} derives from the bound `{}`",
+            idx + 1u, ty::item_path_str(self.tcx(), did));
     }
 
     fn report_trait_candidate(&self, idx: uint, did: DefId) {
-        self.tcx().sess.span_note(
-            self.span,
-            format!("candidate #{} derives from the type of the receiver, \
-                     which is the trait `{}`",
-                    idx + 1u,
-                    ty::item_path_str(self.tcx(), did)).as_slice());
+        span_note!(self.tcx().sess, self.span,
+            "candidate #{} derives from the type of the receiver, \
+            which is the trait `{}`",
+            idx + 1u, ty::item_path_str(self.tcx(), did));
     }
 
     fn infcx(&'a self) -> &'a infer::InferCtxt<'a> {

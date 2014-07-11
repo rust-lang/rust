@@ -54,7 +54,8 @@ pub fn expand_diagnostic_used(ecx: &mut ExtCtxt, span: Span,
     with_registered_diagnostics(|diagnostics| {
         if !diagnostics.contains_key(&code.name) {
             ecx.span_err(span, format!(
-                "unknown diagnostic code {}", token::get_ident(code).get()
+                "unknown diagnostic code {}; add to librustc/diagnostics.rs",
+                token::get_ident(code).get()
             ).as_slice());
         }
         ()
