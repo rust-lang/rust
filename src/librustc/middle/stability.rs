@@ -14,9 +14,10 @@
 use util::nodemap::{NodeMap, DefIdMap};
 use syntax::codemap::Span;
 use syntax::{attr, visit};
+use syntax::ast;
 use syntax::ast::{Attribute, Block, Crate, DefId, FnDecl, NodeId, Variant};
 use syntax::ast::{Item, Required, Provided, TraitMethod, TypeMethod, Method};
-use syntax::ast::{Generics, StructDef, Ident};
+use syntax::ast::{Generics, StructDef, StructField, Ident};
 use syntax::ast_util::is_local;
 use syntax::attr::Stability;
 use syntax::visit::{FnKind, FkMethod, Visitor};
@@ -91,6 +92,11 @@ impl Visitor<Option<Stability>> for Annotator {
         s.ctor_id.map(|id| self.annotate(id, &[], parent.clone()));
         visit::walk_struct_def(self, s, parent)
     }
+
+    fn visit_struct_field(&mut self, s: &StructField, parent: Option<Stability>) {
+        let stab = self.annotate(s.node.id, s.node.attrs.as_slice(), parent);
+        visit::walk_struct_field(self, s, stab)
+    }
 }
 
 impl Index {
@@ -102,8 +108,8 @@ impl Index {
                 extern_cache: DefIdMap::new()
             }
         };
-        visit::walk_crate(&mut annotator, krate,
-                          attr::find_stability(krate.attrs.as_slice()));
+        let stab = annotator.annotate(ast::CRATE_NODE_ID, krate.attrs.as_slice(), None);
+        visit::walk_crate(&mut annotator, krate, stab);
         annotator.index
     }
 }

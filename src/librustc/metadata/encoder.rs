@@ -693,6 +693,10 @@ fn encode_info_for_struct(ecx: &EncodeContext,
         encode_name(ebml_w, nm);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
         encode_def_id(ebml_w, local_def(id));
+
+        let stab = stability::lookup(ecx.tcx, field.id);
+        encode_stability(ebml_w, stab);
+
         ebml_w.end_tag();
     }
     index
