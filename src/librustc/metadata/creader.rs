@@ -446,7 +446,7 @@ impl<'a> PluginMetadataReader<'a> {
             should_match_name: true,
         };
         let library = match load_ctxt.maybe_load_library_crate() {
-            Some (l) => l,
+            Some(l) => l,
             None if is_cross => {
                 // try loading from target crates (only valid if there are
                 // no syntax extensions)
@@ -473,6 +473,14 @@ impl<'a> PluginMetadataReader<'a> {
         let registrar = decoder::get_plugin_registrar_fn(library.metadata.as_slice()).map(|id| {
             decoder::get_symbol(library.metadata.as_slice(), id)
         });
+        if library.dylib.is_none() && registrar.is_some() {
+            let message = format!("plugin crate `{}` only found in rlib format, \
+                                   but must be available in dylib format",
+                                  info.ident);
+            self.env.sess.span_err(krate.span, message.as_slice());
+            // No need to abort because the loading code will just ignore this
+            // empty dylib.
+        }
         let pc = PluginMetadata {
             lib: library.dylib.clone(),
             macros: macros,
