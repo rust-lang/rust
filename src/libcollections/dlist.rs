@@ -30,7 +30,7 @@ use core::iter;
 use core::mem;
 use core::ptr;
 
-use {Collection, Mutable, Deque};
+use {Collection, Mutable, Deque, MutableSeq};
 
 /// A doubly-linked list.
 pub struct DList<T> {
@@ -263,6 +263,11 @@ impl<T> Deque<T> for DList<T> {
     fn pop_back(&mut self) -> Option<T> {
         self.pop_back_node().map(|box Node{value, ..}| value)
     }
+}
+
+impl<T> MutableSeq<T> for DList<T> {
+    fn push(&mut self, elt: T) { self.push_back(elt) }
+    fn pop(&mut self) -> Option<T> { self.pop_back() }
 }
 
 impl<T> Default for DList<T> {
@@ -719,7 +724,7 @@ mod tests {
     use test::Bencher;
     use test;
 
-    use Deque;
+    use {Deque, MutableSeq};
     use super::{DList, Node, ListInsertion};
     use vec::Vec;
 

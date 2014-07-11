@@ -20,7 +20,7 @@ use core::mem;
 use core::ptr;
 use core::raw::Slice;
 
-use {Collection, Mutable};
+use {Collection, Mutable, MutableSeq};
 use hash;
 use str;
 use str::{CharRange, StrAllocating, MaybeOwned, Owned, Slice};

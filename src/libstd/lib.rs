@@ -288,4 +288,6 @@ mod std {
     #[cfg(test)] pub use os = realstd::os;
     // The test runner requires std::slice::Vector, so re-export std::slice just for it.
     #[cfg(test)] pub use slice;
+
+    pub use collections; // vec!() uses MutableSeq
 }

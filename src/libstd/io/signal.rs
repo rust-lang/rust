@@ -20,6 +20,7 @@ definitions for a number of signals.
 */
 
 use clone::Clone;
+use collections::MutableSeq;
 use comm::{Sender, Receiver, channel};
 use io;
 use iter::Iterator;

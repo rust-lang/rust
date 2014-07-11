@@ -20,6 +20,7 @@ A simple wrapper over the platform's dynamic library facilities
 #![allow(missing_doc)]
 
 use clone::Clone;
+use collections::MutableSeq;
 use c_str::ToCStr;
 use iter::Iterator;
 use mem;
