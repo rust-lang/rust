@@ -653,10 +653,10 @@ impl<T> Vec<T> {
     /// ```rust
     /// let mut vec = vec!(box 1i);
     /// let other = vec!(box 2, box 3);
-    /// assert_eq!(vec.append_all_move(other), vec!(box 1, box 2, box 3));
+    /// assert_eq!(vec.append_move(other), vec!(box 1, box 2, box 3));
     /// ```
     #[inline]
-    pub fn append_all_move(mut self, other: Vec<T>) -> Vec<T> {
+    pub fn append_move(mut self, other: Vec<T>) -> Vec<T> {
         self.push_all_move(other);
         self
     }
