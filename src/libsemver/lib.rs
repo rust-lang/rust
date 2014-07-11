@@ -36,33 +36,21 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/0.11.0/")]
+#![feature(default_type_params)]
 
 use std::char;
 use std::cmp;
-use std::fmt;
 use std::fmt::Show;
-use std::option::{Option, Some, None};
-use std::string::String;
+use std::fmt;
+use std::hash;
 
 /// An identifier in the pre-release or build metadata. If the identifier can
 /// be parsed as a decimal value, it will be represented with `Numeric`.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(missing_doc)]
 pub enum Identifier {
     Numeric(uint),
     AlphaNumeric(String)
-}
-
-impl cmp::PartialOrd for Identifier {
-    #[inline]
-    fn partial_cmp(&self, other: &Identifier) -> Option<Ordering> {
-        match (self, other) {
-            (&Numeric(a), &Numeric(ref b)) => a.partial_cmp(b),
-            (&Numeric(_), _) => Some(Less),
-            (&AlphaNumeric(ref a), &AlphaNumeric(ref b)) => a.partial_cmp(b),
-            (&AlphaNumeric(_), _) => Some(Greater)
-        }
-    }
 }
 
 impl fmt::Show for Identifier {
@@ -77,7 +65,7 @@ impl fmt::Show for Identifier {
 
 
 /// Represents a version number conforming to the semantic versioning scheme.
-#[deriving(Clone)]
+#[deriving(Clone, Eq)]
 pub struct Version {
     /// The major version, to be incremented on incompatible changes.
     pub major: uint,
@@ -129,20 +117,25 @@ impl cmp::PartialEq for Version {
 }
 
 impl cmp::PartialOrd for Version {
-    #[inline]
     fn partial_cmp(&self, other: &Version) -> Option<Ordering> {
-        match self.major.partial_cmp(&other.major) {
-            Some(Equal) => {}
+        Some(self.cmp(other))
+    }
+}
+
+impl cmp::Ord for Version {
+    fn cmp(&self, other: &Version) -> Ordering {
+        match self.major.cmp(&other.major) {
+            Equal => {}
             r => return r,
         }
 
-        match self.minor.partial_cmp(&other.minor) {
-            Some(Equal) => {}
+        match self.minor.cmp(&other.minor) {
+            Equal => {}
             r => return r,
         }
 
-        match self.patch.partial_cmp(&other.patch) {
-            Some(Equal) => {}
+        match self.patch.cmp(&other.patch) {
+            Equal => {}
             r => return r,
         }
 
@@ -150,11 +143,20 @@ impl cmp::PartialOrd for Version {
         // but the version of ord defined for vec
         // says that [] < [pre] so we alter it here
         match (self.pre.len(), other.pre.len()) {
-            (0, 0) => Some(Equal),
-            (0, _) => Some(Greater),
-            (_, 0) => Some(Less),
-            (_, _) => self.pre.partial_cmp(&other.pre)
+            (0, 0) => Equal,
+            (0, _) => Greater,
+            (_, 0) => Less,
+            (_, _) => self.pre.cmp(&other.pre)
         }
+    }
+}
+
+impl<S: hash::Writer> hash::Hash<S> for Version {
+    fn hash(&self, into: &mut S) {
+        self.major.hash(into);
+        self.minor.hash(into);
+        self.patch.hash(into);
+        self.pre.hash(into);
     }
 }
 
