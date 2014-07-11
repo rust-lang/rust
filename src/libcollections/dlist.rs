@@ -253,6 +253,7 @@ impl<T> Deque<T> for DList<T> {
     /// Add an element last in the list
     ///
     /// O(1)
+    #[deprecated = "use the `push` method"]
     fn push_back(&mut self, elt: T) {
         self.push_back_node(box Node::new(elt))
     }
@@ -260,6 +261,7 @@ impl<T> Deque<T> for DList<T> {
     /// Remove the last element and return it, or None if the list is empty
     ///
     /// O(1)
+    #[deprecated = "use the `pop` method"]
     fn pop_back(&mut self) -> Option<T> {
         self.pop_back_node().map(|box Node{value, ..}| value)
     }
