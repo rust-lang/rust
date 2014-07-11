@@ -14,10 +14,13 @@ use std::mem;
 use std::rt::mutex;
 use std::rt::rtio;
 use std::rt::rtio::{IoResult, IoError};
+use std::sync::atomics;
 
 use super::{retry, keep_going};
 use super::c;
 use super::util;
+use super::file::FileDesc;
+use super::process;
 
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
@@ -479,9 +482,26 @@ impl TcpListener {
     pub fn fd(&self) -> sock_t { self.inner.fd }
 
     pub fn native_listen(self, backlog: int) -> IoResult<TcpAcceptor> {
+        try!(util::set_nonblocking(self.fd(), true));
         match unsafe { libc::listen(self.fd(), backlog as libc::c_int) } {
             -1 => Err(last_error()),
-            _ => Ok(TcpAcceptor { listener: self, deadline: 0 })
+
+            #[cfg(unix)]
+            _ => {
+                let (reader, writer) = try!(process::pipe());
+                try!(util::set_nonblocking(reader.fd(), true));
+                try!(util::set_nonblocking(writer.fd(), true));
+                try!(util::set_nonblocking(self.fd(), true));
+                Ok(TcpAcceptor {
+                    inner: Arc::new(AcceptorInner {
+                        listener: self,
+                        reader: reader,
+                        writer: writer,
+                        closed: atomics::AtomicBool::new(false),
+                    }),
+                    deadline: 0,
+                })
+            }
         }
     }
 }
@@ -502,31 +522,46 @@ impl rtio::RtioSocket for TcpListener {
 }
 
 pub struct TcpAcceptor {
-    listener: TcpListener,
+    inner: Arc<AcceptorInner>,
     deadline: u64,
 }
 
-impl TcpAcceptor {
-    pub fn fd(&self) -> sock_t { self.listener.fd() }
+#[cfg(unix)]
+struct AcceptorInner {
+    listener: TcpListener,
+    reader: FileDesc,
+    writer: FileDesc,
+    closed: atomics::AtomicBool,
+}
 
+impl TcpAcceptor {
+    pub fn fd(&self) -> sock_t { self.inner.listener.fd() }
+
+    #[cfg(unix)]
     pub fn native_accept(&mut self) -> IoResult<TcpStream> {
-        if self.deadline != 0 {
-            try!(util::await(self.fd(), Some(self.deadline), util::Readable));
-        }
-        unsafe {
-            let mut storage: libc::sockaddr_storage = mem::zeroed();
-            let storagep = &mut storage as *mut libc::sockaddr_storage;
-            let size = mem::size_of::<libc::sockaddr_storage>();
-            let mut size = size as libc::socklen_t;
-            match retry(|| {
-                libc::accept(self.fd(),
-                             storagep as *mut libc::sockaddr,
-                             &mut size as *mut libc::socklen_t) as libc::c_int
-            }) as sock_t {
-                -1 => Err(last_error()),
-                fd => Ok(TcpStream::new(Inner::new(fd))),
+        let deadline = if self.deadline == 0 {None} else {Some(self.deadline)};
+
+        while !self.inner.closed.load(atomics::SeqCst) {
+            unsafe {
+                let mut storage: libc::sockaddr_storage = mem::zeroed();
+                let storagep = &mut storage as *mut libc::sockaddr_storage;
+                let size = mem::size_of::<libc::sockaddr_storage>();
+                let mut size = size as libc::socklen_t;
+                match retry(|| {
+                    libc::accept(self.fd(),
+                                 storagep as *mut libc::sockaddr,
+                                 &mut size as *mut libc::socklen_t) as libc::c_int
+                }) as sock_t {
+                    -1 if util::wouldblock() => {}
+                    -1 => return Err(last_error()),
+                    fd => return Ok(TcpStream::new(Inner::new(fd))),
+                }
             }
+            try!(util::await([self.fd(), self.inner.reader.fd()],
+                             deadline, util::Readable));
         }
+
+        Err(util::eof())
     }
 }
 
@@ -545,6 +580,24 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
     fn dont_accept_simultaneously(&mut self) -> IoResult<()> { Ok(()) }
     fn set_timeout(&mut self, timeout: Option<u64>) {
         self.deadline = timeout.map(|a| ::io::timer::now() + a).unwrap_or(0);
+    }
+
+    fn clone(&self) -> Box<rtio::RtioTcpAcceptor + Send> {
+        box TcpAcceptor {
+            inner: self.inner.clone(),
+            deadline: 0,
+        } as Box<rtio::RtioTcpAcceptor + Send>
+    }
+
+    #[cfg(unix)]
+    fn close_accept(&mut self) -> IoResult<()> {
+        self.inner.closed.store(true, atomics::SeqCst);
+        let mut fd = FileDesc::new(self.inner.writer.fd(), false);
+        match fd.inner_write([0]) {
+            Ok(..) => Ok(()),
+            Err(..) if util::wouldblock() => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -817,7 +870,7 @@ pub fn read<T>(fd: sock_t,
             // With a timeout, first we wait for the socket to become
             // readable using select(), specifying the relevant timeout for
             // our previously set deadline.
-            try!(util::await(fd, deadline, util::Readable));
+            try!(util::await([fd], deadline, util::Readable));
 
             // At this point, we're still within the timeout, and we've
             // determined that the socket is readable (as returned by
@@ -871,7 +924,7 @@ pub fn write<T>(fd: sock_t,
         while written < buf.len() && (write_everything || written == 0) {
             // As with read(), first wait for the socket to be ready for
             // the I/O operation.
-            match util::await(fd, deadline, util::Writable) {
+            match util::await([fd], deadline, util::Writable) {
                 Err(ref e) if e.code == libc::EOF as uint && written > 0 => {
                     assert!(deadline.is_some());
                     return Err(util::short_write(written, "short write"))

@@ -246,6 +246,8 @@ pub trait RtioTcpAcceptor : RtioSocket {
     fn accept_simultaneously(&mut self) -> IoResult<()>;
     fn dont_accept_simultaneously(&mut self) -> IoResult<()>;
     fn set_timeout(&mut self, timeout: Option<u64>);
+    fn clone(&self) -> Box<RtioTcpAcceptor + Send>;
+    fn close_accept(&mut self) -> IoResult<()>;
 }
 
 pub trait RtioTcpStream : RtioSocket {
@@ -335,6 +337,8 @@ pub trait RtioUnixListener {
 pub trait RtioUnixAcceptor {
     fn accept(&mut self) -> IoResult<Box<RtioPipe + Send>>;
     fn set_timeout(&mut self, timeout: Option<u64>);
+    fn clone(&self) -> Box<RtioUnixAcceptor + Send>;
+    fn close_accept(&mut self) -> IoResult<()>;
 }
 
 pub trait RtioTTY {
