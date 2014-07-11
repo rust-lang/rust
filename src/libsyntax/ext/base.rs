@@ -104,6 +104,9 @@ pub type IdentMacroExpanderFn =
 /// just into the compiler's internal macro table, for `make_def`).
 pub trait MacResult {
     /// Define a new macro.
+    // this should go away; the idea that a macro might expand into
+    // either a macro definition or an expression, depending on what
+    // the context wants, is kind of silly.
     fn make_def(&self) -> Option<MacroDef> {
         None
     }
@@ -115,6 +118,12 @@ pub trait MacResult {
     fn make_items(&self) -> Option<SmallVector<Gc<ast::Item>>> {
         None
     }
+
+    /// Create zero or more methods.
+    fn make_methods(&self) -> Option<SmallVector<Gc<ast::Method>>> {
+        None
+    }
+
     /// Create a pattern.
     fn make_pat(&self) -> Option<Gc<ast::Pat>> {
         None
@@ -222,6 +231,7 @@ impl DummyResult {
             span: sp,
         }
     }
+
 }
 
 impl MacResult for DummyResult {
@@ -232,6 +242,14 @@ impl MacResult for DummyResult {
         Some(DummyResult::raw_pat(self.span))
     }
     fn make_items(&self) -> Option<SmallVector<Gc<ast::Item>>> {
+        // this code needs a comment... why not always just return the Some() ?
+        if self.expr_only {
+            None
+        } else {
+            Some(SmallVector::zero())
+        }
+    }
+    fn make_methods(&self) -> Option<SmallVector<Gc<ast::Method>>> {
         if self.expr_only {
             None
         } else {
