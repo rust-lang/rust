@@ -489,8 +489,7 @@ then
             err "${ERR}"
         else
             echo
-            echo "    please ensure '${CFG_PREFIX}/lib' is added to ${CFG_LD_PATH_VAR}"
-            echo
+            echo "    Note: please ensure '${CFG_PREFIX}/lib' is added to ${CFG_LD_PATH_VAR}"
         fi
     fi
 fi
