@@ -1555,19 +1555,6 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
 }
 
 impl<T> MutableSeq<T> for Vec<T> {
-    /// Append an element to a vector.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the number of elements in the vector overflows a `uint`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2);
-    /// vec.push(3);
-    /// assert_eq!(vec, vec!(1, 2, 3));
-    /// ```
     #[inline]
     fn push(&mut self, value: T) {
         if mem::size_of::<T>() == 0 {
@@ -1594,16 +1581,6 @@ impl<T> MutableSeq<T> for Vec<T> {
         }
     }
 
-    /// Remove the last element from a vector and return it, or `None` if it is
-    /// empty.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3);
-    /// assert_eq!(vec.pop(), Some(3));
-    /// assert_eq!(vec, vec!(1, 2));
-    /// ```
     #[inline]
     fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
