@@ -141,7 +141,7 @@ impl AtomicBool {
     ///
     /// fn with_lock(spinlock: &Arc<AtomicBool>, f: || -> ()) {
     ///     // CAS loop until we are able to replace `false` with `true`
-    ///     while spinlock.compare_and_swap(false, true, SeqCst) == false {
+    ///     while spinlock.compare_and_swap(false, true, SeqCst) != false {
     ///         // Since tasks may not be preemptive (if they are green threads)
     ///         // yield to the scheduler to let the other task run. Low level
     ///         // concurrent code needs to take into account Rust's two threading
