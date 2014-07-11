@@ -99,10 +99,10 @@ use super::c;
 use super::util;
 use super::file::to_utf16;
 
-struct Event(libc::HANDLE);
+pub struct Event(libc::HANDLE);
 
 impl Event {
-    fn new(manual_reset: bool, initial_state: bool) -> IoResult<Event> {
+    pub fn new(manual_reset: bool, initial_state: bool) -> IoResult<Event> {
         let event = unsafe {
             libc::CreateEventW(ptr::mut_null(),
                                manual_reset as libc::BOOL,
@@ -116,7 +116,7 @@ impl Event {
         }
     }
 
-    fn handle(&self) -> libc::HANDLE { let Event(handle) = *self; handle }
+    pub fn handle(&self) -> libc::HANDLE { let Event(handle) = *self; handle }
 }
 
 impl Drop for Event {
