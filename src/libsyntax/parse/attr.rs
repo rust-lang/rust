@@ -85,9 +85,9 @@ impl<'a> ParserAttr for Parser<'a> {
 
                 self.expect(&token::LBRACKET);
                 let meta_item = self.parse_meta_item();
+                let hi = self.span.hi;
                 self.expect(&token::RBRACKET);
 
-                let hi = self.span.hi;
                 (mk_sp(lo, hi), meta_item, style)
             }
             _ => {
