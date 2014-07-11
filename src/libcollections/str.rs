@@ -1056,6 +1056,15 @@ mod tests {
         assert_eq!("\u2620".char_len(), 1u);
         assert_eq!("\U0001d11e".char_len(), 1u);
         assert_eq!("ประเทศไทย中华Việt Nam".char_len(), 19u);
+
+        assert_eq!("ｈｅｌｌｏ".width(false), 10u);
+        assert_eq!("ｈｅｌｌｏ".width(true), 10u);
+        assert_eq!("\0\0\0\0\0".width(false), 0u);
+        assert_eq!("\0\0\0\0\0".width(true), 0u);
+        assert_eq!("".width(false), 0u);
+        assert_eq!("".width(true), 0u);
+        assert_eq!("\u2081\u2082\u2083\u2084".width(false), 4u);
+        assert_eq!("\u2081\u2082\u2083\u2084".width(true), 8u);
     }
 
     #[test]

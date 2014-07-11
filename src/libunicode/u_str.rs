@@ -16,10 +16,11 @@
  */
 
 use core::collections::Collection;
-use core::iter::{Filter};
+use core::iter::{Filter, AdditiveIterator};
 use core::str::{CharSplits, StrSlice};
 use core::iter::Iterator;
 use u_char;
+use u_char::UnicodeChar;
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
 pub type Words<'a> =
@@ -78,7 +79,7 @@ pub trait UnicodeStrSlice<'a> {
     /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// recommends that these characters be treated as 1 column (i.e.,
     /// `is_cjk` = `false`) if the locale is unknown.
-    //fn width(&self, is_cjk: bool) -> uint;
+    fn width(&self, is_cjk: bool) -> uint;
 
     /// Returns a string with leading and trailing whitespace removed.
     fn trim(&self) -> &'a str;
@@ -101,6 +102,11 @@ impl<'a> UnicodeStrSlice<'a> for &'a str {
 
     #[inline]
     fn is_alphanumeric(&self) -> bool { self.chars().all(u_char::is_alphanumeric) }
+
+    #[inline]
+    fn width(&self, is_cjk: bool) -> uint {
+        self.chars().map(|c| c.width(is_cjk).unwrap_or(0)).sum()
+    }
 
     #[inline]
     fn trim(&self) -> &'a str {
