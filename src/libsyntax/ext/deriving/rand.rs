@@ -45,7 +45,6 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                 ),
                 ret_ty: Self,
                 attributes: Vec::new(),
-                const_nonmatching: false,
                 combine_substructure: combine_substructure(|a, b, c| {
                     rand_substructure(a, b, c)
                 })

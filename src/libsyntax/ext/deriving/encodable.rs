@@ -121,7 +121,6 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                                 box Literal(Path::new_local("__E"))),
                                            true)),
                 attributes: Vec::new(),
-                const_nonmatching: true,
                 combine_substructure: combine_substructure(|a, b, c| {
                     encodable_substructure(a, b, c)
                 }),

@@ -37,18 +37,19 @@
 //!   `struct T(int, char)`).
 //! - `EnumMatching`, when `Self` is an enum and all the arguments are the
 //!   same variant of the enum (e.g. `Some(1)`, `Some(3)` and `Some(4)`)
-//! - `EnumNonMatching` when `Self` is an enum and the arguments are not
-//!   the same variant (e.g. `None`, `Some(1)` and `None`). If
-//!   `const_nonmatching` is true, this will contain an empty list.
+//! - `EnumNonMatchingCollapsed` when `Self` is an enum and the arguments
+//!   are not the same variant (e.g. `None`, `Some(1)` and `None`).
 //! - `StaticEnum` and `StaticStruct` for static methods, where the type
 //!   being derived upon is either an enum or struct respectively. (Any
 //!   argument with type Self is just grouped among the non-self
 //!   arguments.)
 //!
 //! In the first two cases, the values from the corresponding fields in
-//! all the arguments are grouped together. In the `EnumNonMatching` case
+//! all the arguments are grouped together. For `EnumNonMatchingCollapsed`
 //! this isn't possible (different variants have different fields), so the
-//! fields are grouped by which argument they come from. There are no
+//! fields are inaccessible. (Previous versions of the deriving infrastructure
+//! had a way to expand into code that could access them, at the cost of
+//! generating exponential amounts of code; see issue #15375). There are no
 //! fields with values in the static cases, so these are treated entirely
 //! differently.
 //!
@@ -150,14 +151,20 @@
 //! For `C0(a)` and `C1 {x}` ,
 //!
 //! ~~~text
-//! EnumNonMatching(~[(0, <ast::Variant for B0>,
-//!                    ~[(<span of int>, None, <expr for &a>)]),
-//!                   (1, <ast::Variant for B1>,
-//!                    ~[(<span of x>, Some(<ident of x>),
-//!                       <expr for &other.x>)])])
+//! EnumNonMatchingCollapsed(
+//!     ~[<ident of self>, <ident of __arg_1>],
+//!     &[<ast::Variant for C0>, <ast::Variant for C1>],
+//!     &[<ident for self index value>, <ident of __arg_1 index value>])
 //! ~~~
 //!
-//! (and vice versa, but with the order of the outermost list flipped.)
+//! It is the same for when the arguments are flipped to `C1 {x}` and
+//! `C0(a)`; the only difference is what the values of the identifiers
+//! <ident for self index value> and <ident of __arg_1 index value> will
+//! be in the generated code.
+//!
+//! `EnumNonMatchingCollapsed` deliberately provides far less information
+//! than is generally available for a given pair of variants; see #15375
+//! for discussion.
 //!
 //! ## Static
 //!
@@ -232,10 +239,6 @@ pub struct MethodDef<'a> {
 
     pub attributes: Vec<ast::Attribute>,
 
-    /// if the value of the nonmatching enums is independent of the
-    /// actual enum variants, i.e. can use _ => .. match.
-    pub const_nonmatching: bool,
-
     pub combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
 }
 
@@ -286,12 +289,14 @@ pub enum SubstructureFields<'a> {
     EnumMatching(uint, &'a ast::Variant, Vec<FieldInfo>),
 
     /**
-    non-matching variants of the enum, [(variant index, ast::Variant,
-    [field span, field ident, fields])] \(i.e. all fields for self are in the
-    first tuple, for other1 are in the second tuple, etc.)
+    non-matching variants of the enum, but with all state hidden from
+    the consequent code.  The first component holds Idents for all of
+    the Self arguments; the second component is a slice of all of the
+    variants for the enum itself, and the third component is a list of
+    Idents bound to the variant index values for each of the actual
+    input Self arguments.
     */
-    EnumNonMatching(&'a [(uint, P<ast::Variant>,
-                          Vec<(Span, Option<Ident>, Gc<Expr>)>)]),
+    EnumNonMatchingCollapsed(Vec<Ident>, &'a [Gc<ast::Variant>], &'a [Ident]),
 
     /// A static method where Self is a struct.
     StaticStruct(&'a ast::StructDef, StaticFields),
@@ -309,14 +314,16 @@ pub type CombineSubstructureFunc<'a> =
     |&mut ExtCtxt, Span, &Substructure|: 'a -> Gc<Expr>;
 
 /**
-Deal with non-matching enum variants, the arguments are a list
-representing each variant: (variant index, ast::Variant instance,
-[variant fields]), and a list of the nonself args of the type
+Deal with non-matching enum variants.  The tuple is a list of
+identifiers (one for each Self argument, which could be any of the
+variants since they have been collapsed together) and the identifiers
+holding the variant index value for each of the Self arguments.  The
+last argument is all the non-Self args of the method being derived.
 */
-pub type EnumNonMatchFunc<'a> =
+pub type EnumNonMatchCollapsedFunc<'a> =
     |&mut ExtCtxt,
            Span,
-           &[(uint, P<ast::Variant>, Vec<(Span, Option<Ident>, Gc<Expr>)>)],
+           (&[Ident], &[Ident]),
            &[Gc<Expr>]|: 'a
            -> Gc<Expr>;
 
@@ -514,6 +521,15 @@ impl<'a> TraitDef<'a> {
 
         self.create_derived_impl(cx, type_ident, generics, methods)
     }
+}
+
+fn variant_to_pat(cx: &mut ExtCtxt, sp: Span, variant: &ast::Variant)
+                  -> Gc<ast::Pat> {
+    let ident = cx.path_ident(sp, variant.node.name);
+    cx.pat(sp, match variant.node.kind {
+        ast::TupleVariantKind(..) => ast::PatEnum(ident, None),
+        ast::StructVariantKind(..) => ast::PatStruct(ident, Vec::new(), true),
+    })
 }
 
 impl<'a> MethodDef<'a> {
@@ -754,27 +770,32 @@ impl<'a> MethodDef<'a> {
    ~~~
     #[deriving(PartialEq)]
     enum A {
-        A1
+        A1,
         A2(int)
     }
 
-    // is equivalent to (with const_nonmatching == false)
+    // is equivalent to
 
     impl PartialEq for A {
-        fn eq(&self, __arg_1: &A) {
-            match *self {
-                A1 => match *__arg_1 {
-                    A1 => true
-                    A2(ref __arg_1_1) => false
-                },
-                A2(self_1) => match *__arg_1 {
-                    A1 => false,
-                    A2(ref __arg_1_1) => self_1.eq(__arg_1_1)
+        fn eq(&self, __arg_1: &A) -> ::bool {
+            match (&*self, &*__arg_1) {
+                (&A1, &A1) => true,
+                (&A2(ref __self_0),
+                 &A2(ref __arg_1_0)) => (*__self_0).eq(&(*__arg_1_0)),
+                _ => {
+                    let __self_vi = match *self { A1(..) => 0u, A2(..) => 1u };
+                    let __arg_1_vi = match *__arg_1 { A1(..) => 0u, A2(..) => 1u };
+                    false
                 }
             }
         }
     }
    ~~~
+
+    (Of course `__self_vi` and `__arg_1_vi` are unused for
+     `PartialEq`, and those subcomputations will hopefully be removed
+     as their results are unused.  The point of `__self_vi` and
+     `__arg_1_vi` is for `PartialOrd`; see #15503.)
     */
     fn expand_enum_method_body(&self,
                                cx: &mut ExtCtxt,
@@ -784,190 +805,296 @@ impl<'a> MethodDef<'a> {
                                self_args: &[Gc<Expr>],
                                nonself_args: &[Gc<Expr>])
                                -> Gc<Expr> {
-        let mut matches = Vec::new();
-        self.build_enum_match(cx, trait_, enum_def, type_ident,
-                              self_args, nonself_args,
-                              None, &mut matches, 0)
+        self.build_enum_match_tuple(
+            cx, trait_, enum_def, type_ident, self_args, nonself_args)
     }
 
 
     /**
-    Creates the nested matches for an enum definition recursively, i.e.
+    Creates a match for a tuple of all `self_args`, where either all
+    variants match, or it falls into a catch-all for when one variant
+    does not match.
 
-   ~~~text
-    match self {
-       Variant1 => match other { Variant1 => matching, Variant2 => nonmatching, ... },
-       Variant2 => match other { Variant1 => nonmatching, Variant2 => matching, ... },
-       ...
+    There are N + 1 cases because is a case for each of the N
+    variants where all of the variants match, and one catch-all for
+    when one does not match.
+
+    The catch-all handler is provided access the variant index values
+    for each of the self-args, carried in precomputed variables. (Nota
+    bene: the variant index values are not necessarily the
+    discriminant values.  See issue #15523.)
+
+    ~~~text
+    match (this, that, ...) {
+      (Variant1, Variant1, Variant1) => ... // delegate Matching on Variant1
+      (Variant2, Variant2, Variant2) => ... // delegate Matching on Variant2
+      ...
+      _ => {
+        let __this_vi = match this { Variant1 => 0u, Variant2 => 1u, ... };
+        let __that_vi = match that { Variant1 => 0u, Variant2 => 1u, ... };
+        ... // catch-all remainder can inspect above variant index values.
+      }
     }
-   ~~~
-
-    It acts in the most naive way, so every branch (and subbranch,
-    subsubbranch, etc) exists, not just the ones where all the variants in
-    the tree are the same. Hopefully the optimisers get rid of any
-    repetition, otherwise derived methods with many Self arguments will be
-    exponentially large.
-
-    `matching` is Some(n) if all branches in the tree above the
-    current position are variant `n`, `None` otherwise (including on
-    the first call).
+    ~~~
     */
-    fn build_enum_match(&self,
-                        cx: &mut ExtCtxt,
-                        trait_: &TraitDef,
-                        enum_def: &EnumDef,
-                        type_ident: Ident,
-                        self_args: &[Gc<Expr>],
-                        nonself_args: &[Gc<Expr>],
-                        matching: Option<uint>,
-                        matches_so_far: &mut Vec<(uint, P<ast::Variant>,
-                                              Vec<(Span, Option<Ident>, Gc<Expr>)>)> ,
-                        match_count: uint) -> Gc<Expr> {
-        if match_count == self_args.len() {
-            // we've matched against all arguments, so make the final
-            // expression at the bottom of the match tree
-            if matches_so_far.len() == 0 {
-                cx.span_bug(trait_.span,
-                                "no self match on an enum in \
-                                generic `deriving`");
+    fn build_enum_match_tuple(
+        &self,
+        cx: &mut ExtCtxt,
+        trait_: &TraitDef,
+        enum_def: &EnumDef,
+        type_ident: Ident,
+        self_args: &[Gc<Expr>],
+        nonself_args: &[Gc<Expr>]) -> Gc<Expr> {
+
+        let sp = trait_.span;
+        let variants = &enum_def.variants;
+
+        let self_arg_names = self_args.iter().enumerate()
+            .map(|(arg_count, _self_arg)| {
+                if arg_count == 0 {
+                    "__self".to_string()
+                } else {
+                    format!("__arg_{}", arg_count)
+                }
+            })
+            .collect::<Vec<String>>();
+
+        let self_arg_idents = self_arg_names.iter()
+            .map(|name|cx.ident_of(name.as_slice()))
+            .collect::<Vec<ast::Ident>>();
+
+        // The `vi_idents` will be bound, solely in the catch-all, to
+        // a series of let statements mapping each self_arg to a uint
+        // corresponding to its variant index.
+        let vi_idents : Vec<ast::Ident> = self_arg_names.iter()
+            .map(|name| { let vi_suffix = format!("{:s}_vi", name.as_slice());
+                          cx.ident_of(vi_suffix.as_slice()) })
+            .collect::<Vec<ast::Ident>>();
+
+        // Builds, via callback to call_substructure_method, the
+        // delegated expression that handles the catch-all case,
+        // using `__variants_tuple` to drive logic if necessary.
+        let catch_all_substructure = EnumNonMatchingCollapsed(
+            self_arg_idents, variants.as_slice(), vi_idents.as_slice());
+
+        // These arms are of the form:
+        // (Variant1, Variant1, ...) => Body1
+        // (Variant2, Variant2, ...) => Body2
+        // ...
+        // where each tuple has length = self_args.len()
+        let mut match_arms : Vec<ast::Arm> = variants.iter().enumerate()
+            .map(|(index, &variant)| {
+
+                // These self_pats have form Variant1, Variant2, ...
+                let self_pats : Vec<(Gc<ast::Pat>,
+                                     Vec<(Span, Option<Ident>, Gc<Expr>)>)>;
+                self_pats = self_arg_names.iter()
+                    .map(|self_arg_name|
+                         trait_.create_enum_variant_pattern(
+                             cx, &*variant, self_arg_name.as_slice(),
+                             ast::MutImmutable))
+                    .collect();
+
+                // A single arm has form (&VariantK, &VariantK, ...) => BodyK
+                // (see "Final wrinkle" note below for why.)
+                let subpats = self_pats.iter()
+                    .map(|&(p, ref _idents)| cx.pat(sp, ast::PatRegion(p)))
+                    .collect::<Vec<Gc<ast::Pat>>>();
+
+                // Here is the pat = `(&VariantK, &VariantK, ...)`
+                let single_pat = cx.pat(sp, ast::PatTup(subpats));
+
+                // For the BodyK, we need to delegate to our caller,
+                // passing it an EnumMatching to indicate which case
+                // we are in.
+
+                // All of the Self args have the same variant in these
+                // cases.  So we transpose the info in self_pats to
+                // gather the getter expressions together, in the form
+                // that EnumMatching expects.
+
+                // The transposition is driven by walking across the
+                // arg fields of the variant for the first self pat.
+                let &(_, ref self_arg_fields) = self_pats.get(0);
+
+                let field_tuples : Vec<FieldInfo>;
+
+                field_tuples = self_arg_fields.iter().enumerate()
+                    // For each arg field of self, pull out its getter expr ...
+                    .map(|(field_index, &(sp, opt_ident, self_getter_expr))| {
+                        // ... but FieldInfo also wants getter expr
+                        // for matching other arguments of Self type;
+                        // so walk across the *other* self_pats and
+                        // pull out getter for same field in each of
+                        // them (using `field_index` tracked above).
+                        // That is the heart of the transposition.
+                        let others = self_pats.tail().iter()
+                            .map(|&(_pat, ref fields)| {
+
+                                let &(_, _opt_ident, other_getter_expr) =
+                                    fields.get(field_index);
+
+                                // All Self args have same variant, so
+                                // opt_idents are the same.  (Assert
+                                // here to make it self-evident that
+                                // it is okay to ignore `_opt_ident`.)
+                                assert!(opt_ident == _opt_ident);
+
+                                other_getter_expr
+                            }).collect::<Vec<Gc<Expr>>>();
+
+                        FieldInfo { span: sp,
+                                    name: opt_ident,
+                                    self_: self_getter_expr,
+                                    other: others,
+                        }
+                    }).collect::<Vec<FieldInfo>>();
+
+                // Now, for some given VariantK, we have built up
+                // expressions for referencing every field of every
+                // Self arg, assuming all are instances of VariantK.
+                // Build up code associated with such a case.
+                let substructure = EnumMatching(index, variant, field_tuples);
+                let arm_expr = self.call_substructure_method(
+                    cx, trait_, type_ident, self_args, nonself_args,
+                    &substructure);
+
+                cx.arm(sp, vec![single_pat], arm_expr)
+            }).collect();
+
+        // We will usually need the catch-all after matching the
+        // tuples `(VariantK, VariantK, ...)` for each VariantK of the
+        // enum.  But:
+        //
+        // * when there is only one Self arg, the arms above suffice
+        // (and the deriving we call back into may not be prepared to
+        // handle EnumNonMatchCollapsed), and,
+        //
+        // * when the enum has only one variant, the single arm that
+        // is already present always suffices.
+        //
+        // * In either of the two cases above, if we *did* add a
+        //   catch-all `_` match, it would trigger the
+        //   unreachable-pattern error.
+        //
+        if variants.len() > 1 && self_args.len() > 1 {
+            let arms : Vec<ast::Arm> = variants.iter().enumerate()
+                .map(|(index, &variant)| {
+                    let pat = variant_to_pat(cx, sp, &*variant);
+                    let lit = ast::LitUint(index as u64, ast::TyU);
+                    cx.arm(sp, vec![pat], cx.expr_lit(sp, lit))
+                }).collect();
+
+            // Build a series of let statements mapping each self_arg
+            // to a uint corresponding to its variant index.
+            // i.e. for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
+            // with three Self args, builds three statements:
+            //
+            // ```
+            // let __self0_vi = match   self {
+            //     A => 0u, B(..) => 1u, C(..) => 2u
+            // };
+            // let __self1_vi = match __arg1 {
+            //     A => 0u, B(..) => 1u, C(..) => 2u
+            // };
+            // let __self2_vi = match __arg2 {
+            //     A => 0u, B(..) => 1u, C(..) => 2u
+            // };
+            // ```
+            let mut index_let_stmts : Vec<Gc<ast::Stmt>> = Vec::new();
+            for (&ident, &self_arg) in vi_idents.iter().zip(self_args.iter()) {
+                let variant_idx = cx.expr_match(sp, self_arg, arms.clone());
+                let let_stmt = cx.stmt_let(sp, false, ident, variant_idx);
+                index_let_stmts.push(let_stmt);
             }
 
-            // `ref` inside let matches is buggy. Causes havoc with rusc.
-            // let (variant_index, ref self_vec) = matches_so_far[0];
-            let (variant, self_vec) = match matches_so_far.get(0) {
-                &(_, v, ref s) => (v, s)
-            };
+            let arm_expr = self.call_substructure_method(
+                cx, trait_, type_ident, self_args, nonself_args,
+                &catch_all_substructure);
 
-            // we currently have a vec of vecs, where each
-            // subvec is the fields of one of the arguments,
-            // but if the variants all match, we want this as
-            // vec of tuples, where each tuple represents a
-            // field.
+            // Builds the expression:
+            // {
+            //   let __self0_vi = ...;
+            //   let __self1_vi = ...;
+            //   ...
+            //   <delegated expression referring to __self0_vi, et al.>
+            // }
+            let arm_expr = cx.expr_block(
+                cx.block_all(sp, Vec::new(), index_let_stmts, Some(arm_expr)));
 
-            // most arms don't have matching variants, so do a
-            // quick check to see if they match (even though
-            // this means iterating twice) instead of being
-            // optimistic and doing a pile of allocations etc.
-            let substructure = match matching {
-                Some(variant_index) => {
-                    let mut enum_matching_fields = Vec::from_elem(self_vec.len(), Vec::new());
+            // Builds arm:
+            // _ => { let __self0_vi = ...;
+            //        let __self1_vi = ...;
+            //        ...
+            //        <delegated expression as above> }
+            let catch_all_match_arm =
+                cx.arm(sp, vec![cx.pat_wild(sp)], arm_expr);
 
-                    for triple in matches_so_far.tail().iter() {
-                        match triple {
-                            &(_, _, ref other_fields) => {
-                                for (i, &(_, _, e)) in other_fields.iter().enumerate() {
-                                    enum_matching_fields.get_mut(i).push(e);
-                                }
-                            }
-                        }
-                    }
-                    let field_tuples =
-                        self_vec.iter()
-                                .zip(enum_matching_fields.iter())
-                                .map(|(&(span, id, self_f), other)| {
-                        FieldInfo {
-                            span: span,
-                            name: id,
-                            self_: self_f,
-                            other: (*other).clone()
-                        }
-                    }).collect();
-                    EnumMatching(variant_index, &*variant, field_tuples)
-                }
-                None => {
-                    EnumNonMatching(matches_so_far.as_slice())
-                }
-            };
-            self.call_substructure_method(cx, trait_, type_ident,
-                                          self_args, nonself_args,
-                                          &substructure)
+            match_arms.push(catch_all_match_arm);
 
-        } else {  // there are still matches to create
-            let current_match_str = if match_count == 0 {
-                "__self".to_string()
-            } else {
-                format!("__arg_{}", match_count)
-            };
+        } else if variants.len() == 0 {
+            // As an additional wrinkle, For a zero-variant enum A,
+            // currently the compiler
+            // will accept `fn (a: &Self) { match   *a   { } }`
+            // but rejects `fn (a: &Self) { match (&*a,) { } }`
+            // as well as  `fn (a: &Self) { match ( *a,) { } }`
+            //
+            // This means that the strategy of building up a tuple of
+            // all Self arguments fails when Self is a zero variant
+            // enum: rustc rejects the expanded program, even though
+            // the actual code tends to be impossible to execute (at
+            // least safely), according to the type system.
+            //
+            // The most expedient fix for this is to just let the
+            // code fall through to the catch-all.  But even this is
+            // error-prone, since the catch-all as defined above would
+            // generate code like this:
+            //
+            //     _ => { let __self0 = match *self { };
+            //            let __self1 = match *__arg_0 { };
+            //            <catch-all-expr> }
+            //
+            // Which is yields bindings for variables which type
+            // inference cannot resolve to unique types.
+            //
+            // One option to the above might be to add explicit type
+            // annotations.  But the *only* reason to go down that path
+            // would be to try to make the expanded output consistent
+            // with the case when the number of enum variants >= 1.
+            //
+            // That just isn't worth it.  In fact, trying to generate
+            // sensible code for *any* deriving on a zero-variant enum
+            // does not make sense.  But at the same time, for now, we
+            // do not want to cause a compile failure just because the
+            // user happened to attach a deriving to their
+            // zero-variant enum.
+            //
+            // Instead, just generate a failing expression for the
+            // zero variant case, skipping matches and also skipping
+            // delegating back to the end user code entirely.
+            //
+            // (See also #4499 and #12609; note that some of the
+            // discussions there influence what choice we make here;
+            // e.g. if we feature-gate `match x { ... }` when x refers
+            // to an uninhabited type (e.g. a zero-variant enum or a
+            // type holding such an enum), but do not feature-gate
+            // zero-variant enums themselves, then attempting to
+            // derive Show on such a type could here generate code
+            // that needs the feature gate enabled.)
 
-            let mut arms = Vec::new();
-
-            // the code for nonmatching variants only matters when
-            // we've seen at least one other variant already
-            if self.const_nonmatching && match_count > 0 {
-                // make a matching-variant match, and a _ match.
-                let index = match matching {
-                    Some(i) => i,
-                    None => cx.span_bug(trait_.span,
-                                        "non-matching variants when required to \
-                                        be matching in generic `deriving`")
-                };
-
-                // matching-variant match
-                let variant = *enum_def.variants.get(index);
-                let (pattern, idents) = trait_.create_enum_variant_pattern(
-                    cx,
-                    &*variant,
-                    current_match_str.as_slice(),
-                    ast::MutImmutable);
-
-                matches_so_far.push((index, variant, idents));
-                let arm_expr = self.build_enum_match(cx,
-                                                     trait_,
-                                                     enum_def,
-                                                     type_ident,
-                                                     self_args, nonself_args,
-                                                     matching,
-                                                     matches_so_far,
-                                                     match_count + 1);
-                matches_so_far.pop().unwrap();
-                arms.push(cx.arm(trait_.span, vec!( pattern ), arm_expr));
-
-                if enum_def.variants.len() > 1 {
-                    let e = &EnumNonMatching(&[]);
-                    let wild_expr = self.call_substructure_method(cx, trait_, type_ident,
-                                                                  self_args, nonself_args,
-                                                                  e);
-                    let wild_arm = cx.arm(
-                        trait_.span,
-                        vec!( cx.pat_wild(trait_.span) ),
-                        wild_expr);
-                    arms.push(wild_arm);
-                }
-            } else {
-                // create an arm matching on each variant
-                for (index, &variant) in enum_def.variants.iter().enumerate() {
-                    let (pattern, idents) =
-                        trait_.create_enum_variant_pattern(
-                            cx,
-                            &*variant,
-                            current_match_str.as_slice(),
-                            ast::MutImmutable);
-
-                    matches_so_far.push((index, variant, idents));
-                    let new_matching =
-                        match matching {
-                            _ if match_count == 0 => Some(index),
-                            Some(i) if index == i => Some(i),
-                            _ => None
-                        };
-                    let arm_expr = self.build_enum_match(cx,
-                                                         trait_,
-                                                         enum_def,
-                                                         type_ident,
-                                                         self_args, nonself_args,
-                                                         new_matching,
-                                                         matches_so_far,
-                                                         match_count + 1);
-                    matches_so_far.pop().unwrap();
-
-                    let arm = cx.arm(trait_.span, vec!( pattern ), arm_expr);
-                    arms.push(arm);
-                }
-            }
-
-            // match foo { arm, arm, arm, ... }
-            cx.expr_match(trait_.span, self_args[match_count], arms)
+            return cx.expr_unreachable(sp);
         }
+
+        // Final wrinkle: the self_args are expressions that deref
+        // down to desired l-values, but we cannot actually deref
+        // them when they are fed as r-values into a tuple
+        // expression; here add a layer of borrowing, turning
+        // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
+        let borrowed_self_args = self_args.iter()
+            .map(|&self_arg| cx.expr_addr_of(sp, self_arg))
+            .collect::<Vec<Gc<ast::Expr>>>();
+        let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
+        cx.expr_match(sp, match_arg, match_arms)
     }
 
     fn expand_static_enum_method_body(&self,
@@ -1168,7 +1295,7 @@ left-to-right (`true`) or right-to-left (`false`).
 pub fn cs_fold(use_foldl: bool,
                f: |&mut ExtCtxt, Span, Gc<Expr>, Gc<Expr>, &[Gc<Expr>]| -> Gc<Expr>,
                base: Gc<Expr>,
-               enum_nonmatch_f: EnumNonMatchFunc,
+               enum_nonmatch_f: EnumNonMatchCollapsedFunc,
                cx: &mut ExtCtxt,
                trait_span: Span,
                substructure: &Substructure)
@@ -1193,9 +1320,9 @@ pub fn cs_fold(use_foldl: bool,
                 })
             }
         },
-        EnumNonMatching(ref all_enums) => enum_nonmatch_f(cx, trait_span,
-                                                          *all_enums,
-                                                          substructure.nonself_args),
+        EnumNonMatchingCollapsed(ref all_args, _, tuple) =>
+            enum_nonmatch_f(cx, trait_span, (all_args.as_slice(), tuple),
+                            substructure.nonself_args),
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, "static function in `deriving`")
         }
@@ -1214,7 +1341,7 @@ f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
 */
 #[inline]
 pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<Gc<Expr>>| -> Gc<Expr>,
-                      enum_nonmatch_f: EnumNonMatchFunc,
+                      enum_nonmatch_f: EnumNonMatchCollapsedFunc,
                       cx: &mut ExtCtxt,
                       trait_span: Span,
                       substructure: &Substructure)
@@ -1233,9 +1360,9 @@ pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<Gc<Expr>>| -> Gc<Expr>,
 
             f(cx, trait_span, called)
         },
-        EnumNonMatching(ref all_enums) => enum_nonmatch_f(cx, trait_span,
-                                                          *all_enums,
-                                                          substructure.nonself_args),
+        EnumNonMatchingCollapsed(ref all_self_args, _, tuple) =>
+            enum_nonmatch_f(cx, trait_span, (all_self_args.as_slice(), tuple),
+                            substructure.nonself_args),
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, "static function in `deriving`")
         }
@@ -1251,7 +1378,7 @@ fields. `use_foldl` controls whether this is done left-to-right
 pub fn cs_same_method_fold(use_foldl: bool,
                            f: |&mut ExtCtxt, Span, Gc<Expr>, Gc<Expr>| -> Gc<Expr>,
                            base: Gc<Expr>,
-                           enum_nonmatch_f: EnumNonMatchFunc,
+                           enum_nonmatch_f: EnumNonMatchCollapsedFunc,
                            cx: &mut ExtCtxt,
                            trait_span: Span,
                            substructure: &Substructure)
@@ -1278,7 +1405,7 @@ on all the fields.
 */
 #[inline]
 pub fn cs_binop(binop: ast::BinOp, base: Gc<Expr>,
-                enum_nonmatch_f: EnumNonMatchFunc,
+                enum_nonmatch_f: EnumNonMatchCollapsedFunc,
                 cx: &mut ExtCtxt, trait_span: Span,
                 substructure: &Substructure) -> Gc<Expr> {
     cs_same_method_fold(
@@ -1296,7 +1423,7 @@ pub fn cs_binop(binop: ast::BinOp, base: Gc<Expr>,
 
 /// cs_binop with binop == or
 #[inline]
-pub fn cs_or(enum_nonmatch_f: EnumNonMatchFunc,
+pub fn cs_or(enum_nonmatch_f: EnumNonMatchCollapsedFunc,
              cx: &mut ExtCtxt, span: Span,
              substructure: &Substructure) -> Gc<Expr> {
     cs_binop(ast::BiOr, cx.expr_bool(span, false),
@@ -1306,7 +1433,7 @@ pub fn cs_or(enum_nonmatch_f: EnumNonMatchFunc,
 
 /// cs_binop with binop == and
 #[inline]
-pub fn cs_and(enum_nonmatch_f: EnumNonMatchFunc,
+pub fn cs_and(enum_nonmatch_f: EnumNonMatchCollapsedFunc,
               cx: &mut ExtCtxt, span: Span,
               substructure: &Substructure) -> Gc<Expr> {
     cs_binop(ast::BiAnd, cx.expr_bool(span, true),

@@ -39,7 +39,6 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                 args: Vec::new(),
                 ret_ty: Self,
                 attributes: attrs,
-                const_nonmatching: false,
                 combine_substructure: combine_substructure(|c, s, sub| {
                     cs_clone("Clone", c, s, sub)
                 }),
@@ -69,7 +68,7 @@ fn cs_clone(
             ctor_ident = variant.node.name;
             all_fields = af;
         },
-        EnumNonMatching(..) => {
+        EnumNonMatchingCollapsed (..) => {
             cx.span_bug(trait_span,
                         format!("non-matching enum variants in \
                                  `deriving({})`",
