@@ -81,6 +81,7 @@ impl<T> Deque<T> for RingBuf<T> {
     }
 
     /// Remove and return the last element in the RingBuf, or None if it is empty
+    #[deprecated = "use the `pop` method"]
     fn pop_back(&mut self) -> Option<T> {
         if self.nelts > 0 {
             self.nelts -= 1;
@@ -104,6 +105,7 @@ impl<T> Deque<T> for RingBuf<T> {
     }
 
     /// Append an element to the RingBuf
+    #[deprecated = "use the `push` method"]
     fn push_back(&mut self, t: T) {
         if self.nelts == self.elts.len() {
             grow(self.nelts, &mut self.lo, &mut self.elts);

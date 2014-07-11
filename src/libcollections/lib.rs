@@ -492,6 +492,7 @@ pub trait Deque<T> : MutableSeq<T> {
     /// d.push_back(2i);
     /// assert_eq!(d.front(), Some(&1i));
     /// ```
+    #[deprecated = "use the `push` method"]
     fn push_back(&mut self, elt: T);
 
     /// Remove the last element and return it, or `None` if the sequence is empty.
@@ -509,6 +510,7 @@ pub trait Deque<T> : MutableSeq<T> {
     /// assert_eq!(d.pop_back(), Some(1i));
     /// assert_eq!(d.pop_back(), None);
     /// ```
+    #[deprecated = "use the `pop` method"]
     fn pop_back(&mut self) -> Option<T>;
 
     /// Remove the first element and return it, or `None` if the sequence is empty.
