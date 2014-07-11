@@ -59,7 +59,7 @@
 #[doc(no_inline)] pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr};
 #[doc(no_inline)] pub use ascii::IntoBytes;
 #[doc(no_inline)] pub use c_str::ToCStr;
-#[doc(no_inline)] pub use char::Char;
+#[doc(no_inline)] pub use char::{Char, UnicodeChar};
 #[doc(no_inline)] pub use clone::Clone;
 #[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 #[doc(no_inline)] pub use cmp::{Ordering, Less, Equal, Greater, Equiv};
@@ -77,7 +77,7 @@
 #[doc(no_inline)] pub use ptr::RawPtr;
 #[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek};
 #[doc(no_inline)] pub use str::{Str, StrVector, StrSlice, OwnedStr};
-#[doc(no_inline)] pub use str::{IntoMaybeOwned, StrAllocating};
+#[doc(no_inline)] pub use str::{IntoMaybeOwned, StrAllocating, UnicodeStrSlice};
 #[doc(no_inline)] pub use to_str::{ToString, IntoStr};
 #[doc(no_inline)] pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
 #[doc(no_inline)] pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
@@ -89,7 +89,6 @@
 #[doc(no_inline)] pub use slice::{Vector, VectorVector};
 #[doc(no_inline)] pub use slice::MutableVectorAllocating;
 #[doc(no_inline)] pub use string::String;
-#[doc(no_inline)] pub use unicode::{UnicodeChar, UnicodeStrSlice};
 #[doc(no_inline)] pub use vec::Vec;
 
 // Reexported runtime types
