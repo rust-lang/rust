@@ -142,15 +142,16 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
             let pat_ty = node_id_to_type(cx.tcx, scrut.id);
-            if (*arms).is_empty() {
-               if !type_is_empty(cx.tcx, pat_ty) {
-                   // We know the type is inhabited, so this must be wrong
-                   cx.tcx.sess.span_err(ex.span, format!("non-exhaustive patterns: \
-                                type {} is non-empty",
-                                ty_to_string(cx.tcx, pat_ty)).as_slice());
-               }
-               // If the type *is* empty, it's vacuously exhaustive
-               return;
+            if arms.is_empty() {
+                if !type_is_empty(cx.tcx, pat_ty) {
+                    // We know the type is inhabited, so this must be wrong
+                    span_err!(cx.tcx.sess, ex.span, E0002,
+                        "non-exhaustive patterns: type {} is non-empty",
+                        ty_to_string(cx.tcx, pat_ty)
+                    );
+                }
+                // If the type *is* empty, it's vacuously exhaustive
+                return;
             }
             let m: Matrix = Matrix(arms
                 .iter()
@@ -186,8 +187,9 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
 
             walk_pat(&**pat, |p| {
                 if pat_matches_nan(p) {
-                    cx.tcx.sess.span_warn(p.span, "unmatchable NaN in pattern, \
-                                                   use the is_nan method in a guard instead");
+                    span_warn!(cx.tcx.sess, p.span, E0003,
+                        "unmatchable NaN in pattern, use the is_nan method in a guard instead"
+                    );
                 }
                 true
             });
@@ -222,9 +224,10 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &Matrix) {
                 [] => wild(),
                 _ => unreachable!()
             };
-            let msg = format!("non-exhaustive patterns: `{0}` not covered",
-                              pat_to_string(&*witness));
-            cx.tcx.sess.span_err(sp, msg.as_slice());
+            span_err!(cx.tcx.sess, sp, E0004,
+                "non-exhaustive patterns: `{}` not covered",
+                pat_to_string(&*witness)
+            );
         }
         NotUseful => {
             // This is good, wildcard pattern isn't reachable
@@ -779,11 +782,10 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
 
     match is_refutable(cx, loc.pat) {
         Some(pat) => {
-            let msg = format!(
+            span_err!(cx.tcx.sess, loc.pat.span, E0005,
                 "refutable pattern in {} binding: `{}` not covered",
                 name, pat_to_string(&*pat)
             );
-            cx.tcx.sess.span_err(loc.pat.span, msg.as_slice());
         },
         None => ()
     }
@@ -801,11 +803,10 @@ fn check_fn(cx: &mut MatchCheckCtxt,
     for input in decl.inputs.iter() {
         match is_refutable(cx, input.pat) {
             Some(pat) => {
-                let msg = format!(
+                span_err!(cx.tcx.sess, input.pat.span, E0006,
                     "refutable pattern in function argument: `{}` not covered",
                     pat_to_string(&*pat)
                 );
-                cx.tcx.sess.span_err(input.pat.span, msg.as_slice());
             },
             None => ()
         }
@@ -850,21 +851,13 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
         if sub.map_or(false, |p| pat_contains_bindings(def_map, &*p)) {
-            tcx.sess.span_err(
-                p.span,
-                "cannot bind by-move with sub-bindings");
+            span_err!(cx.tcx.sess, p.span, E0007, "cannot bind by-move with sub-bindings");
         } else if has_guard {
-            tcx.sess.span_err(
-                p.span,
-                "cannot bind by-move into a pattern guard");
+            span_err!(cx.tcx.sess, p.span, E0008, "cannot bind by-move into a pattern guard");
         } else if by_ref_span.is_some() {
-            tcx.sess.span_err(
-                p.span,
-                "cannot bind by-move and by-ref \
-                 in the same pattern");
-            tcx.sess.span_note(
-                by_ref_span.unwrap(),
-                "by-ref binding occurs here");
+            span_err!(cx.tcx.sess, p.span, E0009,
+                "cannot bind by-move and by-ref in the same pattern");
+            span_note!(cx.tcx.sess, by_ref_span.unwrap(), "by-ref binding occurs here");
         }
     };
 

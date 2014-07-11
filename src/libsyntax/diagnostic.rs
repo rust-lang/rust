@@ -98,6 +98,9 @@ impl SpanHandler {
     pub fn span_warn(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&self.cm, sp)), msg, Warning);
     }
+    pub fn span_warn_with_code(&self, sp: Span, msg: &str, code: &str) {
+        self.handler.emit_with_code(Some((&self.cm, sp)), msg, code, Warning);
+    }
     pub fn span_note(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&self.cm, sp)), msg, Note);
     }
