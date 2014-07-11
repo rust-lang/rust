@@ -164,10 +164,18 @@
 //! possibly pinned to a particular scheduler thread:
 //!
 //! ```rust
+//! extern crate green;
+//! extern crate rustuv;
+//!
+//! # fn main() {
 //! use std::task::TaskBuilder;
 //! use green::{SchedPool, PoolConfig, GreenTaskBuilder};
 //!
-//! let config = PoolConfig::new();
+//! let mut config = PoolConfig::new();
+//!
+//! // Optional: Set the event loop to be rustuv's to allow I/O to work
+//! config.event_loop_factory = rustuv::event_loop;
+//!
 //! let mut pool = SchedPool::new(config);
 //!
 //! // Spawn tasks into the pool of schedulers
@@ -195,6 +203,7 @@
 //! // Required to shut down this scheduler pool.
 //! // The task will fail if `shutdown` is not called.
 //! pool.shutdown();
+//! # }
 //! ```
 
 #![crate_name = "green"]
