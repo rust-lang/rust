@@ -555,6 +555,10 @@ pub fn find_crate_name(sess: Option<&Session>,
         s
     };
 
+    // Do this first to mark #[crate_name] even if one is specified via args
+    let attr_crate_name = attrs.iter().find(|at| at.check_name("crate_name"))
+                          .and_then(|at| at.value_str().map(|s| (at, s)));
+
     match sess {
         Some(sess) => {
             match sess.opts.crate_name {
@@ -565,9 +569,7 @@ pub fn find_crate_name(sess: Option<&Session>,
         None => {}
     }
 
-    let crate_name = attrs.iter().find(|at| at.check_name("crate_name"))
-                          .and_then(|at| at.value_str().map(|s| (at, s)));
-    match crate_name {
+    match attr_crate_name {
         Some((attr, s)) => return validate(s.get().to_string(), Some(attr.span)),
         None => {}
     }
