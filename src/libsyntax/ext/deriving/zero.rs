@@ -39,7 +39,6 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                 args: Vec::new(),
                 ret_ty: Self,
                 attributes: attrs.clone(),
-                const_nonmatching: false,
                 combine_substructure: combine_substructure(|a, b, c| {
                     zero_substructure(a, b, c)
                 })
@@ -51,7 +50,6 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                 args: Vec::new(),
                 ret_ty: Literal(Path::new(vec!("bool"))),
                 attributes: attrs,
-                const_nonmatching: false,
                 combine_substructure: combine_substructure(|cx, span, substr| {
                     cs_and(|cx, span, _, _| cx.span_bug(span,
                                                         "Non-matching enum \

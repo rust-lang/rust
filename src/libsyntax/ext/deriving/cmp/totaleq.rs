@@ -57,7 +57,6 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                 args: vec!(),
                 ret_ty: nil_ty(),
                 attributes: attrs,
-                const_nonmatching: true,
                 combine_substructure: combine_substructure(|a, b, c| {
                     cs_total_eq_assert(a, b, c)
                 })
