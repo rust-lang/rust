@@ -293,9 +293,11 @@ elif [ "$CFG_OSTYPE" = "Darwin" ]
 then
     CFG_LD_PATH_VAR=DYLD_LIBRARY_PATH
     CFG_OLD_LD_PATH_VAR=$DYLD_LIBRARY_PATH
+    UNIX=1
 else
     CFG_LD_PATH_VAR=LD_LIBRARY_PATH
     CFG_OLD_LD_PATH_VAR=$LD_LIBRARY_PATH
+    UNIX=1
 fi
 
 flag uninstall "only uninstall from the installation prefix"
@@ -466,6 +468,17 @@ while read p; do
 # The manifest lists all files to install
 done < "${CFG_SRC_DIR}/${CFG_LIBDIR_RELATIVE}/rustlib/manifest.in"
 
+# Run ldconfig to make dynamic libraries available to the linker
+if [ $UNIX -eq 1 ]
+    then
+    ldconfig
+    if [ $? -ne 0 ]
+    then
+	warn "failed to run ldconfig."
+	warn "this may happen when not installing as root, in which case you know what you are doing and it's probably fine."
+    fi
+fi
+
 # Sanity check: can we run the installed binaries?
 #
 # As with the verification above, make sure the right LD_LIBRARY_PATH-equivalent
@@ -493,7 +506,6 @@ then
         fi
     fi
 fi
-
 
 echo
 echo "    Rust is ready to roll."
