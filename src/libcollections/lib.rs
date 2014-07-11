@@ -326,7 +326,30 @@ pub trait MutableSet<T>: Set<T> + Mutable {
 }
 
 pub trait MutableSeq<T>: Mutable {
+    /// Append an element to the back of a collection.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the number of elements in the vector overflows a `uint`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1i, 2);
+    /// vec.push(3);
+    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// ```
     fn push(&mut self, t: T);
+    /// Remove the last element from a collection and return it, or `None` if it is
+    /// empty.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1i, 2, 3);
+    /// assert_eq!(vec.pop(), Some(3));
+    /// assert_eq!(vec, vec!(1, 2));
+    /// ```
     fn pop(&mut self) -> Option<T>;
 }
 
