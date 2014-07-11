@@ -238,7 +238,7 @@ nav.sub {
 .docblock h2 { font-size: 1.15em; }
 .docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
 
-.content .source {
+.content .out-of-band {
     float: right;
     font-size: 23px;
 }
@@ -408,6 +408,15 @@ h1 .stability {
 .stability.Frozen { border-color: #009431; color: #007726; }
 .stability.Locked { border-color: #0084B6; color: #00668c; }
 .stability.Unmarked { border-color: #FFFFFF; }
+
+.summary {
+    padding-right: 0px;
+}
+.summary.Deprecated { background-color: #A071A8; }
+.summary.Experimental { background-color: #D46D6A; }
+.summary.Unstable { background-color: #D4B16A; }
+.summary.Stable { background-color: #54A759; }
+.summary.Unmarked { background-color: #FFFFFF; }
 
 :target { background: #FDFFD3; }
 
