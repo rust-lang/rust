@@ -20,7 +20,7 @@ use core::default::Default;
 use core::fmt;
 use core::iter::RandomAccessIterator;
 
-use {Deque, Collection, Mutable};
+use {Deque, Collection, Mutable, MutableSeq};
 use vec::Vec;
 
 static INITIAL_CAPACITY: uint = 8u; // 2^3
@@ -112,6 +112,11 @@ impl<T> Deque<T> for RingBuf<T> {
         *self.elts.get_mut(hi) = Some(t);
         self.nelts += 1u;
     }
+}
+
+impl<T> MutableSeq<T> for RingBuf<T> {
+    fn push(&mut self, t: T) { self.push_back(t) }
+    fn pop(&mut self) -> Option<T> { self.pop_back() }
 }
 
 impl<T> Default for RingBuf<T> {

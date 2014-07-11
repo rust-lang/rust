@@ -325,6 +325,11 @@ pub trait MutableSet<T>: Set<T> + Mutable {
     fn remove(&mut self, value: &T) -> bool;
 }
 
+pub trait MutableSeq<T>: Mutable {
+    fn push(&mut self, t: T);
+    fn pop(&mut self) -> Option<T>;
+}
+
 /// A double-ended sequence that allows querying, insertion and deletion at both
 /// ends.
 ///
@@ -384,7 +389,7 @@ pub trait MutableSet<T>: Set<T> + Mutable {
 ///     println!("{}", (f, b));
 /// }
 /// ```
-pub trait Deque<T> : Mutable {
+pub trait Deque<T> : MutableSeq<T> {
     /// Provide a reference to the front element, or `None` if the sequence is
     /// empty.
     ///
@@ -535,4 +540,8 @@ mod std {
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
     pub use hash;           // deriving(Hash)
+
+    pub mod collections {
+        pub use MutableSeq;
+    }
 }

@@ -281,6 +281,8 @@ mod tests {
     use super::super::{Hash, Writer};
     use super::{SipState, hash, hash_with_keys};
 
+    use MutableSeq;
+
     // Hash just the bytes of the slice, without length prefix
     struct Bytes<'a>(&'a [u8]);
 

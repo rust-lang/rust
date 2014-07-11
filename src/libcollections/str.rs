@@ -77,7 +77,7 @@ use core::cmp;
 use core::iter::AdditiveIterator;
 use core::mem;
 
-use Collection;
+use {Collection, MutableSeq};
 use hash;
 use string::String;
 use unicode;
