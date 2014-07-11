@@ -54,7 +54,6 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                 args: vec!(Ptr(box Literal(args), Borrowed(None, MutMutable))),
                 ret_ty: nil_ty(),
                 attributes: attrs,
-                const_nonmatching: false,
                 combine_substructure: combine_substructure(|a, b, c| {
                     hash_substructure(a, b, c)
                 })
