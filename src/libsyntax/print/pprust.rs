@@ -864,6 +864,11 @@ impl<'a> State<'a> {
             self.end() // close the outer-box
         } else {
             try!(self.nbsp());
+            if struct_def.fields.len() == 0 {
+                try!(self.s.print_str(";"));
+                return Ok(());
+            }
+
             try!(self.bopen());
             try!(self.hardbreak_if_not_bol());
 
