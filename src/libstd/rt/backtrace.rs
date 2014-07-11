@@ -21,7 +21,7 @@ use os;
 use result::{Ok, Err};
 use str::StrSlice;
 use sync::atomics;
-use unicode::UnicodeChar;
+use unicode::char::UnicodeChar;
 
 pub use self::imp::write;
 
