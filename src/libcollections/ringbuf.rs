@@ -80,18 +80,6 @@ impl<T> Deque<T> for RingBuf<T> {
         result
     }
 
-    /// Remove and return the last element in the RingBuf, or None if it is empty
-    #[deprecated = "use the `pop` method"]
-    fn pop_back(&mut self) -> Option<T> {
-        if self.nelts > 0 {
-            self.nelts -= 1;
-            let hi = self.raw_index(self.nelts);
-            self.elts.get_mut(hi).take()
-        } else {
-            None
-        }
-    }
-
     /// Prepend an element to the RingBuf
     fn push_front(&mut self, t: T) {
         if self.nelts == self.elts.len() {
@@ -103,10 +91,10 @@ impl<T> Deque<T> for RingBuf<T> {
         *self.elts.get_mut(self.lo) = Some(t);
         self.nelts += 1u;
     }
+}
 
-    /// Append an element to the RingBuf
-    #[deprecated = "use the `push` method"]
-    fn push_back(&mut self, t: T) {
+impl<T> MutableSeq<T> for RingBuf<T> {
+    fn push(&mut self, t: T) {
         if self.nelts == self.elts.len() {
             grow(self.nelts, &mut self.lo, &mut self.elts);
         }
@@ -114,11 +102,15 @@ impl<T> Deque<T> for RingBuf<T> {
         *self.elts.get_mut(hi) = Some(t);
         self.nelts += 1u;
     }
-}
-
-impl<T> MutableSeq<T> for RingBuf<T> {
-    fn push(&mut self, t: T) { self.push_back(t) }
-    fn pop(&mut self) -> Option<T> { self.pop_back() }
+    fn pop(&mut self) -> Option<T> {
+        if self.nelts > 0 {
+            self.nelts -= 1;
+            let hi = self.raw_index(self.nelts);
+            self.elts.get_mut(hi).take()
+        } else {
+            None
+        }
+    }
 }
 
 impl<T> Default for RingBuf<T> {
