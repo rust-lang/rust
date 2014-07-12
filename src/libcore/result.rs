@@ -536,7 +536,10 @@ impl<T, E> Result<T, E> {
 impl<T, E: Show> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Ok`.
     ///
-    /// Fails if the value is an `Err`.
+    /// # Failure
+    ///
+    /// Fails if the value is an `Err`, with a custom failure message provided
+    /// by the `Err`'s value.
     #[inline]
     pub fn unwrap(self) -> T {
         match self {
@@ -550,7 +553,10 @@ impl<T, E: Show> Result<T, E> {
 impl<T: Show, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Err`.
     ///
-    /// Fails if the value is an `Ok`.
+    /// # Failure
+    ///
+    /// Fails if the value is an `Ok`, with a custom failure message provided
+    /// by the `Ok`'s value.
     #[inline]
     pub fn unwrap_err(self) -> E {
         match self {
