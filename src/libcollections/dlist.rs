@@ -249,27 +249,15 @@ impl<T> Deque<T> for DList<T> {
     fn pop_front(&mut self) -> Option<T> {
         self.pop_front_node().map(|box Node{value, ..}| value)
     }
-
-    /// Add an element last in the list
-    ///
-    /// O(1)
-    #[deprecated = "use the `push` method"]
-    fn push_back(&mut self, elt: T) {
-        self.push_back_node(box Node::new(elt))
-    }
-
-    /// Remove the last element and return it, or None if the list is empty
-    ///
-    /// O(1)
-    #[deprecated = "use the `pop` method"]
-    fn pop_back(&mut self) -> Option<T> {
-        self.pop_back_node().map(|box Node{value, ..}| value)
-    }
 }
 
 impl<T> MutableSeq<T> for DList<T> {
-    fn push(&mut self, elt: T) { self.push_back(elt) }
-    fn pop(&mut self) -> Option<T> { self.pop_back() }
+    fn push(&mut self, elt: T) {
+        self.push_back_node(box Node::new(elt))
+    }
+    fn pop(&mut self) -> Option<T> {
+        self.pop_back_node().map(|box Node{value, ..}| value)
+    }
 }
 
 impl<T> Default for DList<T> {
