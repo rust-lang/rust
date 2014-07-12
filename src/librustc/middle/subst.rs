@@ -15,6 +15,7 @@ use middle::ty_fold;
 use middle::ty_fold::{TypeFoldable, TypeFolder};
 use util::ppaux::Repr;
 
+use std::fmt;
 use std::mem;
 use std::raw;
 use std::slice::{Items, MutItems};
@@ -83,7 +84,7 @@ impl<T> HomogeneousTuple3<T> for (T, T, T) {
  * space* (which indices where the parameter is defined; see
  * `ParamSpace`).
  */
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct Substs {
     pub types: VecPerParamSpace<ty::t>,
     pub regions: RegionSubsts,
@@ -93,7 +94,7 @@ pub struct Substs {
  * Represents the values to use when substituting lifetime parameters.
  * If the value is `ErasedRegions`, then this subst is occurring during
  * trans, and all region parameters will be replaced with `ty::ReStatic`. */
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum RegionSubsts {
     ErasedRegions,
     NonerasedRegions(VecPerParamSpace<ty::Region>)
@@ -273,6 +274,17 @@ pub struct VecPerParamSpace<T> {
     type_limit: uint,
     self_limit: uint,
     content: Vec<T>,
+}
+
+impl<T:fmt::Show> fmt::Show for VecPerParamSpace<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(fmt, "VecPerParamSpace {{"));
+        for space in ParamSpace::all().iter() {
+            try!(write!(fmt, "{}: {}, ", *space, self.get_slice(*space)));
+        }
+        try!(write!(fmt, "}}"));
+        Ok(())
+    }
 }
 
 impl<T:Clone> VecPerParamSpace<T> {
