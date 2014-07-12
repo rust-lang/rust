@@ -38,6 +38,8 @@ pub struct FnStyleSpace(pub ast::FnStyle);
 pub struct Method<'a>(pub &'a clean::SelfTy, pub &'a clean::FnDecl);
 /// Similar to VisSpace, but used for mutability
 pub struct MutableSpace(pub clean::Mutability);
+/// Similar to VisSpace, but used for mutability
+pub struct RawMutableSpace(pub clean::Mutability);
 /// Wrapper struct for properly emitting the stability level.
 pub struct Stability<'a>(pub &'a Option<clean::Stability>);
 /// Wrapper struct for emitting the stability level concisely.
@@ -442,7 +444,7 @@ impl fmt::Show for clean::Type {
             clean::Unique(ref t) => write!(f, "Box<{}>", **t),
             clean::Managed(ref t) => write!(f, "Gc<{}>", **t),
             clean::RawPointer(m, ref t) => {
-                write!(f, "*{}{}", MutableSpace(m), **t)
+                write!(f, "*{}{}", RawMutableSpace(m), **t)
             }
             clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
                 let lt = match *l {
@@ -598,6 +600,15 @@ impl fmt::Show for MutableSpace {
         match *self {
             MutableSpace(clean::Immutable) => Ok(()),
             MutableSpace(clean::Mutable) => write!(f, "mut "),
+        }
+    }
+}
+
+impl fmt::Show for RawMutableSpace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            RawMutableSpace(clean::Immutable) => write!(f, "const "),
+            RawMutableSpace(clean::Mutable) => write!(f, "mut "),
         }
     }
 }
