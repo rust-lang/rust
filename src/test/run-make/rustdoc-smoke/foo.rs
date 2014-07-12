@@ -22,4 +22,8 @@ pub mod bar {
 
     /// *wow*
     pub trait Doge { }
+
+    pub struct Foo { x: int, y: uint }
+
+    pub fn prawns((a, b): (int, uint), Foo { x, y }: Foo) { }
 }
