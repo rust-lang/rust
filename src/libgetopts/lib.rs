@@ -59,7 +59,7 @@
 //!     ];
 //!     let matches = match getopts(args.tail(), opts) {
 //!         Ok(m) => { m }
-//!         Err(f) => { fail!(f.to_string()) }
+//!         Err(f) => { fail!(f) }
 //!     };
 //!     if matches.opt_present("h") {
 //!         print_usage(program.as_slice(), opts);
