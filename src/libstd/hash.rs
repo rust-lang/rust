@@ -61,6 +61,8 @@
  * ```
  */
 
+#![experimental]
+
 pub use core_collections::hash::{Hash, Hasher, Writer, hash, sip};
 
 use default::Default;
