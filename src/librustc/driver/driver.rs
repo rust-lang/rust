@@ -270,6 +270,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
     );
 
+    // JBC: make CFG processing part of expansion to avoid this problem:
+
     // strip again, in case expansion added anything with a #[cfg].
     krate = time(time_passes, "configuration 2", krate, |krate|
                  front::config::strip_unconfigured_items(krate));
@@ -290,6 +292,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         krate.encode(&mut json).unwrap();
     }
 
+    time(time_passes, "checking that all macro invocations are gone", &krate, |krate|
+         syntax::ext::expand::check_for_macros(&sess.parse_sess, krate));
+
     Some((krate, map))
 }
 
@@ -302,6 +307,7 @@ pub struct CrateAnalysis {
     pub name: String,
 }
 
+
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
@@ -309,7 +315,6 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                                    krate: &ast::Crate,
                                    ast_map: syntax::ast_map::Map,
                                    name: String) -> CrateAnalysis {
-
     let time_passes = sess.time_passes();
 
     time(time_passes, "external crate/lib resolution", (), |_|

@@ -20,6 +20,10 @@
 //! execute before AST node B, then A is visited first.  The borrow checker in
 //! particular relies on this property.
 //!
+//! Note: walking an AST before macro expansion is probably a bad idea. For
+//! instance, a walker looking for item names in a module will miss all of
+//! those that are created by the expansion of a macro.
+
 use abi::Abi;
 use ast::*;
 use ast;
@@ -124,8 +128,13 @@ pub trait Visitor<E: Clone> {
     fn visit_explicit_self(&mut self, es: &ExplicitSelf, e: E) {
         walk_explicit_self(self, es, e)
     }
-    fn visit_mac(&mut self, macro: &Mac, e: E) {
-        walk_mac(self, macro, e)
+    fn visit_mac(&mut self, _macro: &Mac, _e: E) {
+        fail!("visit_mac disabled by default");
+        // NB: see note about macros above.
+        // if you really want a visitor that
+        // works on macros, use this
+        // definition in your trait impl:
+        // visit::walk_mac(self, _macro, _e)
     }
     fn visit_path(&mut self, path: &Path, _id: ast::NodeId, e: E) {
         walk_path(self, path, e)

@@ -518,10 +518,9 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
             // create issue to recommend refactoring here?
             fld.extsbox.insert(intern(name.as_slice()), ext);
             if attr::contains_name(it.attrs.as_slice(), "macro_export") {
-                SmallVector::one(it)
-            } else {
-                SmallVector::zero()
+                fld.cx.push_exported_macro(it.span);
             }
+            SmallVector::zero()
         }
         None => {
             match expanded.make_items() {
@@ -754,7 +753,6 @@ impl Visitor<()> for PatIdentFinder {
             _ => visit::walk_pat(self, pattern, ())
         }
     }
-
 }
 
 /// find the PatIdent paths in a pattern
@@ -903,6 +901,9 @@ impl<'a> Folder for IdentRenamer<'a> {
             ctxt: mtwt::apply_renames(self.renames, id.ctxt),
         }
     }
+    fn fold_mac(&mut self, macro: &ast::Mac) -> ast::Mac {
+        fold::fold_mac(macro, self)
+    }
 }
 
 /// A tree-folder that applies every rename in its list to
@@ -931,6 +932,9 @@ impl<'a> Folder for PatIdentRenamer<'a> {
             },
             _ => noop_fold_pat(pat, self)
         }
+    }
+    fn fold_mac(&mut self, macro: &ast::Mac) -> ast::Mac {
+        fold::fold_mac(macro, self)
     }
 }
 
@@ -1039,6 +1043,7 @@ pub struct ExportedMacros {
 
 pub fn expand_crate(parse_sess: &parse::ParseSess,
                     cfg: ExpansionConfig,
+                    // these are the macros being imported to this crate:
                     macros: Vec<ExportedMacros>,
                     user_exts: Vec<NamedSyntaxExtension>,
                     c: Crate) -> Crate {
@@ -1066,7 +1071,8 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
         expander.extsbox.insert(name, extension);
     }
 
-    let ret = expander.fold_crate(c);
+    let mut ret = expander.fold_crate(c);
+    ret.exported_macros = expander.cx.exported_macros.clone();
     parse_sess.span_diagnostic.handler().abort_if_errors();
     return ret;
 }
@@ -1144,6 +1150,25 @@ fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
     }
     return einfo;
 }
+
+/// Check that there are no macro invocations left in the AST:
+pub fn check_for_macros(sess: &parse::ParseSess, krate: &ast::Crate) {
+    visit::walk_crate(&mut MacroExterminator{sess:sess}, krate, ());
+}
+
+/// A visitor that ensures that no macro invocations remain in an AST.
+struct MacroExterminator<'a>{
+    sess: &'a parse::ParseSess
+}
+
+impl<'a> visit::Visitor<()> for MacroExterminator<'a> {
+    fn visit_mac(&mut self, macro: &ast::Mac, _:()) {
+        self.sess.span_diagnostic.span_bug(macro.span,
+                                           "macro exterminator: expected AST \
+                                           with no macro invocations");
+    }
+}
+
 
 #[cfg(test)]
 mod test {
