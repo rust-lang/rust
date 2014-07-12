@@ -466,6 +466,17 @@ while read p; do
 # The manifest lists all files to install
 done < "${CFG_SRC_DIR}/${CFG_LIBDIR_RELATIVE}/rustlib/manifest.in"
 
+# Run ldconfig to make dynamic libraries available to the linker
+if [ "$CFG_OSTYPE" = "Linux" ]
+    then
+    ldconfig
+    if [ $? -ne 0 ]
+    then
+        warn "failed to run ldconfig."
+        warn "this may happen when not installing as root and may be fine"
+    fi
+fi
+
 # Sanity check: can we run the installed binaries?
 #
 # As with the verification above, make sure the right LD_LIBRARY_PATH-equivalent
@@ -489,12 +500,10 @@ then
             err "${ERR}"
         else
             echo
-            echo "    please ensure '${CFG_PREFIX}/lib' is added to ${CFG_LD_PATH_VAR}"
-            echo
+            echo "    Note: please ensure '${CFG_PREFIX}/lib' is added to ${CFG_LD_PATH_VAR}"
         fi
     fi
 fi
-
 
 echo
 echo "    Rust is ready to roll."
