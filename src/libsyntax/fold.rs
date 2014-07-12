@@ -8,6 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! A Folder represents an AST->AST fold; it accepts an AST piece,
+//! and returns a piece of the same type. So, for instance, macro
+//! expansion is a Folder that walks over an AST and produces another
+//! AST.
+//!
+//! Note: using a Folder (other than the MacroExpander Folder) on
+//! an AST before macro expansion is probably a bad idea. For instance,
+//! a folder renaming item names in a module will miss all of those
+//! that are created by the expansion of a macro.
+
 use ast::*;
 use ast;
 use ast_util;
@@ -299,17 +309,13 @@ pub trait Folder {
         }
     }
 
-    fn fold_mac(&mut self, macro: &Mac) -> Mac {
-        Spanned {
-            node: match macro.node {
-                MacInvocTT(ref p, ref tts, ctxt) => {
-                    MacInvocTT(self.fold_path(p),
-                               fold_tts(tts.as_slice(), self),
-                               ctxt)
-                }
-            },
-            span: self.new_span(macro.span)
-        }
+    fn fold_mac(&mut self, _macro: &Mac) -> Mac {
+        fail!("fold_mac disabled by default");
+        // NB: see note about macros above.
+        // if you really want a folder that
+        // works on macros, use this
+        // definition in your trait impl:
+        // fold::fold_mac(_macro, self)
     }
 
     fn map_exprs(&self, f: |Gc<Expr>| -> Gc<Expr>,
@@ -359,6 +365,20 @@ pub trait Folder {
     }
 
 
+}
+
+
+pub fn fold_mac<T: Folder>(macro: &Mac, fld: &mut T) -> Mac {
+    Spanned {
+        node: match macro.node {
+            MacInvocTT(ref p, ref tts, ctxt) => {
+                MacInvocTT(fld.fold_path(p),
+                           fold_tts(tts.as_slice(), fld),
+                           ctxt)
+            }
+        },
+        span: fld.new_span(macro.span)
+    }
 }
 
 /* some little folds that probably aren't useful to have in Folder itself*/
@@ -713,6 +733,7 @@ pub fn noop_fold_crate<T: Folder>(c: Crate, folder: &mut T) -> Crate {
         attrs: c.attrs.iter().map(|x| folder.fold_attribute(*x)).collect(),
         config: c.config.iter().map(|x| fold_meta_item_(*x, folder)).collect(),
         span: folder.new_span(c.span),
+        exported_macros: c.exported_macros.iter().map(|sp| folder.new_span(*sp)).collect(),
     }
 }
 
@@ -985,6 +1006,7 @@ mod test {
     use util::parser_testing::{string_to_crate, matches_codepattern};
     use parse::token;
     use print::pprust;
+    use fold;
     use super::*;
 
     // this version doesn't care about getting comments or docstrings in.
@@ -999,6 +1021,9 @@ mod test {
     impl Folder for ToZzIdentFolder {
         fn fold_ident(&mut self, _: ast::Ident) -> ast::Ident {
             token::str_to_ident("zz")
+        }
+        fn fold_mac(&mut self, macro: &ast::Mac) -> ast::Mac {
+            fold::fold_mac(macro, self)
         }
     }
 

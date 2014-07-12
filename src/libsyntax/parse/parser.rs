@@ -5386,7 +5386,8 @@ impl<'a> Parser<'a> {
             module: m,
             attrs: inner,
             config: self.cfg.clone(),
-            span: mk_sp(lo, self.span.lo)
+            span: mk_sp(lo, self.span.lo),
+            exported_macros: Vec::new(),
         }
     }
 

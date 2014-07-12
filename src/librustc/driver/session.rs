@@ -29,7 +29,8 @@ use syntax::{ast, codemap};
 use std::os;
 use std::cell::{Cell, RefCell};
 
-
+// Represents the data associated with a compilation
+// session for a single crate.
 pub struct Session {
     pub targ_cfg: config::Config,
     pub opts: config::Options,
