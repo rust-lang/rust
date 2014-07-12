@@ -63,8 +63,9 @@ Parse only; do not compile, assemble, or link
 \fB\-\-pretty\fR [TYPE]
 Pretty-print the input instead of compiling; valid types are: normal
 (un-annotated source), expanded (crates expanded), typed (crates
-expanded, with type annotations), or identified (fully parenthesized,
-AST nodes and blocks with IDs)
+expanded, with type annotations), identified (fully parenthesized,
+AST nodes and blocks with IDs), or flowgraph=<nodeid> (graphviz
+formatted flowgraph for node)
 .TP
 \fB\-\-dep-info\fR [FILENAME]
 Output dependency info to <filename> after compiling, in o format suitable
