@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ptr;
 use std::sync::atomics;
 use std::os::{errno, page_size, MemoryMap, MapReadable, MapWritable,
-              MapNonStandardFlags, MapVirtual, getenv};
+              MapNonStandardFlags, getenv};
 use libc;
 
 /// A task's stack. The name "Stack" is a vestige of segmented stacks.
 pub struct Stack {
-    buf: MemoryMap,
+    buf: Option<MemoryMap>,
     min_size: uint,
     valgrind_id: libc::c_uint,
 }
@@ -52,11 +53,11 @@ impl Stack {
         // guaranteed to be aligned properly.
         if !protect_last_page(&stack) {
             fail!("Could not memory-protect guard page. stack={}, errno={}",
-                  stack.data, errno());
+                  stack.data(), errno());
         }
 
         let mut stk = Stack {
-            buf: stack,
+            buf: Some(stack),
             min_size: size,
             valgrind_id: 0
         };
@@ -71,7 +72,7 @@ impl Stack {
     /// Create a 0-length stack which starts (and ends) at 0.
     pub unsafe fn dummy_stack() -> Stack {
         Stack {
-            buf: MemoryMap { data: 0 as *mut u8, len: 0, kind: MapVirtual },
+            buf: None,
             min_size: 0,
             valgrind_id: 0
         }
@@ -79,14 +80,15 @@ impl Stack {
 
     /// Point to the low end of the allocated stack
     pub fn start(&self) -> *const uint {
-        self.buf.data as *const uint
+        self.buf.as_ref().map(|m| m.data() as *const uint)
+            .unwrap_or(ptr::null())
     }
 
     /// Point one uint beyond the high end of the allocated stack
     pub fn end(&self) -> *const uint {
-        unsafe {
-            self.buf.data.offset(self.buf.len as int) as *const uint
-        }
+        self.buf.as_ref().map(|buf| unsafe {
+            buf.data().offset(buf.len() as int) as *const uint
+        }).unwrap_or(ptr::null())
     }
 }
 
@@ -96,7 +98,7 @@ fn protect_last_page(stack: &MemoryMap) -> bool {
         // This may seem backwards: the start of the segment is the last page?
         // Yes! The stack grows from higher addresses (the end of the allocated
         // block) to lower addresses (the start of the allocated block).
-        let last_page = stack.data as *mut libc::c_void;
+        let last_page = stack.data() as *mut libc::c_void;
         libc::mprotect(last_page, page_size() as libc::size_t,
                        libc::PROT_NONE) != -1
     }
@@ -106,7 +108,7 @@ fn protect_last_page(stack: &MemoryMap) -> bool {
 fn protect_last_page(stack: &MemoryMap) -> bool {
     unsafe {
         // see above
-        let last_page = stack.data as *mut libc::c_void;
+        let last_page = stack.data() as *mut libc::c_void;
         let mut old_prot: libc::DWORD = 0;
         libc::VirtualProtect(last_page, page_size() as libc::SIZE_T,
                              libc::PAGE_NOACCESS,
