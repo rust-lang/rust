@@ -560,15 +560,21 @@ pub fn walk_fn_decl<E: Clone, V: Visitor<E>>(visitor: &mut V,
 pub fn walk_method_helper<E: Clone, V: Visitor<E>>(visitor: &mut V,
                                                    method: &Method,
                                                    env: E) {
-    visitor.visit_ident(method.span, method.ident, env.clone());
-    visitor.visit_fn(&FkMethod(method.ident, &method.generics, method),
-                     &*method.decl,
-                     &*method.body,
-                     method.span,
-                     method.id,
-                     env.clone());
-    for attr in method.attrs.iter() {
-        visitor.visit_attribute(attr, env.clone());
+    match method.node {
+        MethDecl(ident, ref generics, _, _, decl, body, _) => {
+            visitor.visit_ident(method.span, ident, env.clone());
+            visitor.visit_fn(&FkMethod(ident, generics, method),
+                             decl,
+                             body,
+                             method.span,
+                             method.id,
+                             env.clone());
+            for attr in method.attrs.iter() {
+                visitor.visit_attribute(attr, env.clone());
+            }
+
+        },
+        MethMac(ref mac) => visitor.visit_mac(mac, env.clone())
     }
 }
 
@@ -586,8 +592,12 @@ pub fn walk_fn<E: Clone, V: Visitor<E>>(visitor: &mut V,
         }
         FkMethod(_, generics, method) => {
             visitor.visit_generics(generics, env.clone());
-
-            visitor.visit_explicit_self(&method.explicit_self, env.clone());
+            match method.node {
+                MethDecl(_, _, ref explicit_self, _, _, _, _) =>
+                    visitor.visit_explicit_self(explicit_self, env.clone()),
+                MethMac(ref mac) =>
+                    visitor.visit_mac(mac, env.clone())
+            }
         }
         FkFnBlock(..) => {}
     }

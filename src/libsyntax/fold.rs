@@ -794,16 +794,21 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: &ForeignItem,
 pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> Gc<Method> {
     let id = folder.new_id(m.id); // Needs to be first, for ast_map.
     box(GC) Method {
-        id: id,
-        ident: folder.fold_ident(m.ident),
         attrs: m.attrs.iter().map(|a| folder.fold_attribute(*a)).collect(),
-        generics: fold_generics(&m.generics, folder),
-        explicit_self: folder.fold_explicit_self(&m.explicit_self),
-        fn_style: m.fn_style,
-        decl: folder.fold_fn_decl(&*m.decl),
-        body: folder.fold_block(m.body),
+        id: id,
         span: folder.new_span(m.span),
-        vis: m.vis
+        node: match m.node {
+            MethDecl(ident, ref generics, ref explicit_self, fn_style, decl, body, vis) => {
+                MethDecl(folder.fold_ident(ident),
+                         fold_generics(generics, folder),
+                         folder.fold_explicit_self(explicit_self),
+                         fn_style,
+                         folder.fold_fn_decl(&*decl),
+                         folder.fold_block(body),
+                         vis)
+            },
+            MethMac(ref mac) => MethMac(folder.fold_mac(mac)),
+        }
     }
 }
 
