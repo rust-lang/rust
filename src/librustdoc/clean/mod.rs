@@ -1951,9 +1951,16 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatWildMulti => "..".to_string(),
         PatIdent(_, ref p, _) => token::get_ident(p.node).get().to_string(),
         PatEnum(ref p, _) => path_to_string(p),
-        PatStruct(..) => fail!("tried to get argument name from pat_struct, \
-                                which is not allowed in function arguments"),
-        PatTup(..) => "(tuple arg NYI)".to_string(),
+        PatStruct(ref name, ref fields, etc) => {
+            format!("{} {{ {}{} }}", path_to_string(name),
+                fields.iter().map(|fp|
+                                  format!("{}: {}", fp.ident.as_str(), name_from_pat(&*fp.pat)))
+                             .collect::<Vec<String>>().connect(", "),
+                if etc { ", ..." } else { "" }
+            )
+        },
+        PatTup(ref elts) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
+                                            .collect::<Vec<String>>().connect(", ")),
         PatBox(p) => name_from_pat(&*p),
         PatRegion(p) => name_from_pat(&*p),
         PatLit(..) => {
