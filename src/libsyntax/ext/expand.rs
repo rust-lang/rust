@@ -37,92 +37,28 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
         ExprMac(ref mac) => {
-            match (*mac).node {
-                // it would almost certainly be cleaner to pass the whole
-                // macro invocation in, rather than pulling it apart and
-                // marking the tts and the ctxt separately. This also goes
-                // for the other three macro invocation chunks of code
-                // in this file.
-                // Token-tree macros:
-                MacInvocTT(ref pth, ref tts, _) => {
-                    if pth.segments.len() > 1u {
-                        fld.cx.span_err(pth.span,
-                                        "expected macro name without module \
-                                         separators");
-                        // let compilation continue
-                        return DummyResult::raw_expr(e.span);
-                    }
-                    let extname = pth.segments.get(0).identifier;
-                    let extnamestr = token::get_ident(extname);
-                    let marked_after = match fld.extsbox.find(&extname.name) {
-                        None => {
-                            fld.cx.span_err(
-                                pth.span,
-                                format!("macro undefined: '{}!'",
-                                        extnamestr.get()).as_slice());
-
-                            // let compilation continue
-                            return DummyResult::raw_expr(e.span);
-                        }
-                        Some(&NormalTT(ref expandfun, exp_span)) => {
-                            fld.cx.bt_push(ExpnInfo {
-                                call_site: e.span,
-                                callee: NameAndSpan {
-                                    name: extnamestr.get().to_string(),
-                                    format: MacroBang,
-                                    span: exp_span,
-                                },
-                            });
-                            let fm = fresh_mark();
-                            // mark before:
-                            let marked_before = mark_tts(tts.as_slice(), fm);
-
-                            // The span that we pass to the expanders we want to
-                            // be the root of the call stack. That's the most
-                            // relevant span and it's the actual invocation of
-                            // the macro.
-                            let mac_span = original_span(fld.cx);
-
-                            let expanded = match expandfun.expand(fld.cx,
-                                                   mac_span.call_site,
-                                                   marked_before.as_slice()).make_expr() {
-                                Some(e) => e,
-                                None => {
-                                    fld.cx.span_err(
-                                        pth.span,
-                                        format!("non-expression macro in expression position: {}",
-                                                extnamestr.get().as_slice()
-                                        ).as_slice());
-                                    return DummyResult::raw_expr(e.span);
-                                }
-                            };
-
-                            // mark after:
-                            mark_expr(expanded,fm)
-                        }
-                        _ => {
-                            fld.cx.span_err(
-                                pth.span,
-                                format!("'{}' is not a tt-style macro",
-                                        extnamestr.get()).as_slice());
-                            return DummyResult::raw_expr(e.span);
-                        }
-                    };
-
-                    // Keep going, outside-in.
-                    //
-                    // FIXME(pcwalton): Is it necessary to clone the
-                    // node here?
-                    let fully_expanded =
-                        fld.fold_expr(marked_after).node.clone();
-                    fld.cx.bt_pop();
-
-                    box(GC) ast::Expr {
-                        id: ast::DUMMY_NODE_ID,
-                        node: fully_expanded,
-                        span: e.span,
-                    }
+            let expanded_expr = match expand_mac_invoc(mac,&e.span,
+                                                       |r|{r.make_expr()},
+                                                       |expr,fm|{mark_expr(expr,fm)},
+                                                       fld) {
+                Some(expr) => expr,
+                None => {
+                    return DummyResult::raw_expr(e.span);
                 }
+            };
+
+            // Keep going, outside-in.
+            //
+            // FIXME(pcwalton): Is it necessary to clone the
+            // node here?
+            let fully_expanded =
+                fld.fold_expr(expanded_expr).node.clone();
+            fld.cx.bt_pop();
+
+            box(GC) ast::Expr {
+                id: ast::DUMMY_NODE_ID,
+                node: fully_expanded,
+                span: e.span,
             }
         }
 
@@ -243,6 +179,88 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
         }
 
         _ => noop_fold_expr(e, fld)
+    }
+}
+
+/// Expand a (not-ident-style) macro invocation. Returns the result
+/// of expansion and the mark which must be applied to the result.
+/// Our current interface doesn't allow us to apply the mark to the
+/// result until after calling make_expr, make_items, etc.
+fn expand_mac_invoc<T>(mac: &ast::Mac, span: &codemap::Span,
+                       parse_thunk: |Box<MacResult>|->Option<T>,
+                       mark_thunk: |T,Mrk|->T,
+                       fld: &mut MacroExpander)
+    -> Option<T> {
+    match (*mac).node {
+        // it would almost certainly be cleaner to pass the whole
+        // macro invocation in, rather than pulling it apart and
+        // marking the tts and the ctxt separately. This also goes
+        // for the other three macro invocation chunks of code
+        // in this file.
+        // Token-tree macros:
+        MacInvocTT(ref pth, ref tts, _) => {
+            if pth.segments.len() > 1u {
+                fld.cx.span_err(pth.span,
+                                "expected macro name without module \
+                                separators");
+                // let compilation continue
+                return None;
+            }
+            let extname = pth.segments.get(0).identifier;
+            let extnamestr = token::get_ident(extname);
+            match fld.extsbox.find(&extname.name) {
+                None => {
+                    fld.cx.span_err(
+                        pth.span,
+                        format!("macro undefined: '{}!'",
+                                extnamestr.get()).as_slice());
+
+                    // let compilation continue
+                    None
+                }
+                Some(&NormalTT(ref expandfun, exp_span)) => {
+                    fld.cx.bt_push(ExpnInfo {
+                            call_site: *span,
+                            callee: NameAndSpan {
+                                name: extnamestr.get().to_string(),
+                                format: MacroBang,
+                                span: exp_span,
+                            },
+                        });
+                    let fm = fresh_mark();
+                    let marked_before = mark_tts(tts.as_slice(), fm);
+
+                    // The span that we pass to the expanders we want to
+                    // be the root of the call stack. That's the most
+                    // relevant span and it's the actual invocation of
+                    // the macro.
+                    let mac_span = original_span(fld.cx);
+
+                    let expanded = expandfun.expand(fld.cx,
+                                                    mac_span.call_site,
+                                                    marked_before.as_slice());
+                    let parsed = match parse_thunk(expanded) {
+                        Some(e) => e,
+                        None => {
+                            fld.cx.span_err(
+                                pth.span,
+                                format!("non-expression macro in expression position: {}",
+                                        extnamestr.get().as_slice()
+                                        ).as_slice());
+                            return None;
+                        }
+                    };
+                    Some(mark_thunk(parsed,fm))
+                }
+                _ => {
+                    fld.cx.span_err(
+                        pth.span,
+                        format!("'{}' is not a tt-style macro",
+                                extnamestr.get()).as_slice());
+                    None
+                }
+            }
+        }
     }
 }
 
@@ -543,75 +561,27 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
     return items;
 }
 
-// expand a stmt
+/// Expand a stmt
+//
+// I don't understand why this returns a vector... it looks like someone got
+// half done adding machinery to allow macros to expand into multiple statements.
 fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<Gc<Stmt>> {
-    // why the copying here and not in expand_expr?
-    // looks like classic changed-in-only-one-place
-    let (pth, tts, semi) = match s.node {
-        StmtMac(ref mac, semi) => {
-            match mac.node {
-                MacInvocTT(ref pth, ref tts, _) => {
-                    (pth, (*tts).clone(), semi)
-                }
-            }
-        }
+    let (mac, semi) = match s.node {
+        StmtMac(ref mac, semi) => (mac, semi),
         _ => return expand_non_macro_stmt(s, fld)
     };
-    if pth.segments.len() > 1u {
-        fld.cx.span_err(pth.span, "expected macro name without module separators");
-        return SmallVector::zero();
-    }
-    let extname = pth.segments.get(0).identifier;
-    let extnamestr = token::get_ident(extname);
-    let marked_after = match fld.extsbox.find(&extname.name) {
+    let expanded_stmt = match expand_mac_invoc(mac,s.span,
+                                                |r|{r.make_stmt()},
+                                                |sts,mrk|{mark_stmt(sts,mrk)},
+                                                fld) {
+        Some(stmt) => stmt,
         None => {
-            fld.cx.span_err(pth.span,
-                            format!("macro undefined: '{}!'",
-                                    extnamestr).as_slice());
-            return SmallVector::zero();
-        }
-
-        Some(&NormalTT(ref expandfun, exp_span)) => {
-            fld.cx.bt_push(ExpnInfo {
-                call_site: s.span,
-                callee: NameAndSpan {
-                    name: extnamestr.get().to_string(),
-                    format: MacroBang,
-                    span: exp_span,
-                }
-            });
-            let fm = fresh_mark();
-            // mark before expansion:
-            let marked_tts = mark_tts(tts.as_slice(), fm);
-
-            // See the comment in expand_expr for why we want the original span,
-            // not the current mac.span.
-            let mac_span = original_span(fld.cx);
-
-            let expanded = match expandfun.expand(fld.cx,
-                                                  mac_span.call_site,
-                                                  marked_tts.as_slice()).make_stmt() {
-                Some(stmt) => stmt,
-                None => {
-                    fld.cx.span_err(pth.span,
-                                    format!("non-statement macro in statement position: {}",
-                                            extnamestr).as_slice());
-                    return SmallVector::zero();
-                }
-            };
-
-            mark_stmt(&*expanded,fm)
-        }
-
-        _ => {
-            fld.cx.span_err(pth.span, format!("'{}' is not a tt-style macro",
-                                              extnamestr).as_slice());
             return SmallVector::zero();
         }
     };
 
     // Keep going, outside-in.
-    let fully_expanded = fld.fold_stmt(&*marked_after);
+    let fully_expanded = fld.fold_stmt(&*expanded_stmt);
     fld.cx.bt_pop();
     let fully_expanded: SmallVector<Gc<Stmt>> = fully_expanded.move_iter()
             .map(|s| box(GC) Spanned { span: s.span, node: s.node.clone() })
