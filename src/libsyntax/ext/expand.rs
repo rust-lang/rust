@@ -1531,9 +1531,9 @@ mod test {
     }
 
     // macro_rules in method position. Sadly, unimplemented.
-    #[ignore] #[test] fn macro_in_method_posn(){
+    #[test] fn macro_in_method_posn(){
         expand_crate_str(
-            "macro_rules! my_method (() => fn thirteen(&self) -> int {13})
+            "macro_rules! my_method (() => (fn thirteen(&self) -> int {13}))
             struct A;
             impl A{ my_method!()}
             fn f(){A.thirteen;}".to_string());
