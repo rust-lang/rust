@@ -259,8 +259,8 @@ impl<'a> Writer for BufWriter<'a> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         // return an error if the entire write does not fit in the buffer
-        let max_size = self.buf.len();
-        if self.pos >= max_size || (self.pos + buf.len()) > max_size {
+        let cap = if self.pos >= self.buf.len() { 0 } else { self.buf.len() - self.pos };
+        if buf.len() > cap {
             return Err(IoError {
                 kind: io::OtherIoError,
                 desc: "Trying to write past end of buffer",
@@ -415,6 +415,8 @@ mod test {
             assert_eq!(writer.tell(), Ok(1));
             writer.write([1, 2, 3]).unwrap();
             writer.write([4, 5, 6, 7]).unwrap();
+            assert_eq!(writer.tell(), Ok(8));
+            writer.write([]).unwrap();
             assert_eq!(writer.tell(), Ok(8));
         }
         assert_eq!(buf.as_slice(), &[0, 1, 2, 3, 4, 5, 6, 7]);
