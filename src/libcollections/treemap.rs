@@ -860,6 +860,19 @@ impl<T: Ord> PartialOrd for TreeMultiset<T> {
     }
 }
 
+impl<T: Ord + Show> Show for TreeMultiset<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{{"));
+
+        for (i, x) in self.iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}", *x));
+        }
+
+        write!(f, "}}")
+    }
+}
+
 impl<T: Ord> Collection for TreeMultiset<T> {
     #[inline]
     fn len(&self) -> uint { self.map.len() }
@@ -963,6 +976,11 @@ impl<T: Ord> MutableMultiset<T> for TreeMultiset<T> {
         }
     }
 
+}
+
+impl<T: Ord> Default for TreeMultiset<T> {
+    #[inline]
+    fn default() -> TreeMultiset<T> { TreeMultiset::new() }
 }
 
 impl<T: Ord> TreeMultiset<T> {
@@ -2162,6 +2180,25 @@ mod test_mset {
     }
 
     #[test]
+    fn test_count() {
+        let mut m = TreeMultiset::new();
+        assert!(m.insert_one(1i));
+        assert!(m.count(&1) == 1);
+        assert!(!m.insert_one(1i));
+        assert!(m.count(&1) == 2);
+
+        assert!(m.count(&2) == 0);
+        assert!(m.insert(2i, 4));
+        assert!(m.count(&2) == 4);
+        assert!(m.remove(&2, 3) == 3);
+        assert!(m.count(&2) == 1);
+        assert!(m.remove_one(&2));
+        assert!(m.count(&2) == 0);
+        assert!(!m.remove_one(&2));
+        assert!(m.count(&2) == 0);
+    }
+
+    #[test]
     fn test_disjoint() {
         let mut xs = TreeMultiset::new();
         let mut ys = TreeMultiset::new();
@@ -2359,5 +2396,19 @@ mod test_mset {
         check_union([1, 3, 5, 9, 11, 16, 19, 24],
                     [-2, 1, 5, 9, 13, 19],
                     [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24]);
+    }
+
+    #[test]
+    fn test_show() {
+        let mut set: TreeMultiset<int> = TreeMultiset::new();
+        let empty: TreeMultiset<int> = TreeMultiset::new();
+
+        set.insert_one(1);
+        set.insert(2, 3);
+
+        let set_str = format!("{}", set);
+
+        assert!(set_str == "{1, 2, 2, 2}".to_string());
+        assert_eq!(format!("{}", empty), "{}".to_string());
     }
 }
