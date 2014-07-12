@@ -240,32 +240,31 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
     token::gensym_ident(pretty.as_slice())
 }
 
-pub fn public_methods(ms: Vec<Gc<Method>> ) -> Vec<Gc<Method>> {
-    ms.move_iter().filter(|m| {
-        match m.vis {
-            Public => true,
-            _   => false
-        }
-    }).collect()
-}
-
 /// extract a TypeMethod from a TraitMethod. if the TraitMethod is
 /// a default, pull out the useful fields to make a TypeMethod
+//
+// NB: to be used only after expansion is complete, and macros are gone.
 pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
     match *method {
         Required(ref m) => (*m).clone(),
-        Provided(ref m) => {
-            TypeMethod {
-                ident: m.ident,
-                attrs: m.attrs.clone(),
-                fn_style: m.fn_style,
-                decl: m.decl,
-                generics: m.generics.clone(),
-                explicit_self: m.explicit_self,
-                id: m.id,
-                span: m.span,
-                vis: m.vis,
+        Provided(m) => {
+            match m.node {
+                MethDecl(ident, ref generics, explicit_self, fn_style, decl, _, vis) => {
+                    TypeMethod {
+                        ident: ident,
+                        attrs: m.attrs.clone(),
+                        fn_style: fn_style,
+                        decl: decl,
+                        generics: generics.clone(),
+                        explicit_self: explicit_self,
+                        id: m.id,
+                        span: m.span,
+                        vis: vis,
+                    }
+                },
+                MethMac(_) => fail!("expected non-macro method declaration")
             }
+
         }
     }
 }
@@ -345,6 +344,9 @@ impl IdRange {
 pub trait IdVisitingOperation {
     fn visit_id(&self, node_id: NodeId);
 }
+
+/// A visitor that applies its operation to all of the node IDs
+/// in a visitable thing.
 
 pub struct IdVisitor<'a, O> {
     pub operation: &'a O,
@@ -740,6 +742,38 @@ pub fn static_has_significant_address(mutbl: ast::Mutability,
     inline == InlineNever || inline == InlineNone
 }
 
+
+/// Macro invocations are guaranteed not to occur after expansion is complete.
+/// extracting fields of a method requires a dynamic check to make sure that it's
+/// not a macro invocation, though this check is guaranteed to succeed, assuming
+/// that the invocations are indeed gone.
+macro_rules! method_field_extractor {
+    ($fn_name:ident, $field_ty:ty, $field_pat:pat, $result:ident) => {
+        /// Returns the ident of a Method. To be used after expansion is complete
+        pub fn $fn_name<'a>(method: &'a ast::Method) -> $field_ty {
+            match method.node {
+                $field_pat => $result,
+                MethMac(_) => {
+                    fail!("expected an AST without macro invocations");
+                }
+            }
+        }
+    }
+}
+
+// Note: this is unhygienic in the lifetime 'a. In order to fix this, we'd have to
+// add :lifetime as a macro argument type, so that the 'a could be supplied by the macro
+// invocation.
+pub method_field_extractor!(method_ident,ast::Ident,MethDecl(ident,_,_,_,_,_,_),ident)
+pub method_field_extractor!(method_generics,&'a ast::Generics,
+                            MethDecl(_,ref generics,_,_,_,_,_),generics)
+pub method_field_extractor!(method_explicit_self,&'a ast::ExplicitSelf,
+                            MethDecl(_,_,ref explicit_self,_,_,_,_),explicit_self)
+pub method_field_extractor!(method_fn_style,ast::FnStyle,MethDecl(_,_,_,fn_style,_,_,_),fn_style)
+pub method_field_extractor!(method_fn_decl,P<ast::FnDecl>,MethDecl(_,_,_,_,decl,_,_),decl)
+pub method_field_extractor!(method_body,P<ast::Block>,MethDecl(_,_,_,_,_,body,_),body)
+pub method_field_extractor!(method_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,vis),vis)
+
 #[cfg(test)]
 mod test {
     use ast::*;
@@ -765,3 +799,4 @@ mod test {
                 .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice()));
     }
 }
+

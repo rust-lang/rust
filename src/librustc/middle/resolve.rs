@@ -22,6 +22,7 @@ use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
 use syntax::ast::*;
 use syntax::ast;
+use syntax::ast_util;
 use syntax::ast_util::{local_def};
 use syntax::ast_util::{walk_pat, trait_method_to_ty_method};
 use syntax::ext::mtwt;
@@ -1298,20 +1299,20 @@ impl<'a> Resolver<'a> {
                         // For each method...
                         for method in methods.iter() {
                             // Add the method to the module.
-                            let ident = method.ident;
+                            let ident = ast_util::method_ident(&**method);
                             let method_name_bindings =
                                 self.add_child(ident,
                                                new_parent.clone(),
                                                ForbidDuplicateValues,
                                                method.span);
-                            let def = match method.explicit_self.node {
+                            let def = match ast_util::method_explicit_self(&**method).node {
                                 SelfStatic => {
                                     // Static methods become
                                     // `def_static_method`s.
                                     DefStaticMethod(local_def(method.id),
                                                       FromImpl(local_def(
                                                         item.id)),
-                                                      method.fn_style)
+                                                    ast_util::method_fn_style(&**method))
                                 }
                                 _ => {
                                     // Non-static methods become
@@ -1320,7 +1321,7 @@ impl<'a> Resolver<'a> {
                                 }
                             };
 
-                            let is_public = method.vis == ast::Public;
+                            let is_public = ast_util::method_vis(&**method) == ast::Public;
                             method_name_bindings.define_value(def,
                                                               method.span,
                                                               is_public);
@@ -4003,13 +4004,15 @@ impl<'a> Resolver<'a> {
     fn resolve_method(&mut self,
                       rib_kind: RibKind,
                       method: &Method) {
-        let method_generics = &method.generics;
+        let method_generics = ast_util::method_generics(method);
         let type_parameters = HasTypeParameters(method_generics,
                                                 FnSpace,
                                                 method.id,
                                                 rib_kind);
 
-        self.resolve_function(rib_kind, Some(method.decl), type_parameters, method.body);
+        self.resolve_function(rib_kind, Some(ast_util::method_fn_decl(method)),
+                              type_parameters,
+                              ast_util::method_body(method));
     }
 
     fn with_current_self_type<T>(&mut self, self_type: &Ty, f: |&mut Resolver| -> T) -> T {
@@ -4080,7 +4083,7 @@ impl<'a> Resolver<'a> {
     fn check_trait_method(&self, method: &Method) {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
         for &(did, ref trait_ref) in self.current_trait_ref.iter() {
-            let method_name = method.ident.name;
+            let method_name = ast_util::method_ident(method).name;
 
             if self.method_map.borrow().find(&(method_name, did)).is_none() {
                 let path_str = self.path_idents_to_string(&trait_ref.path);

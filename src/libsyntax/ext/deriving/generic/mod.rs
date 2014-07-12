@@ -648,16 +648,16 @@ impl<'a> MethodDef<'a> {
 
         // Create the method.
         box(GC) ast::Method {
-            ident: method_ident,
             attrs: self.attributes.clone(),
-            generics: fn_generics,
-            explicit_self: explicit_self,
-            fn_style: ast::NormalFn,
-            decl: fn_decl,
-            body: body_block,
             id: ast::DUMMY_NODE_ID,
             span: trait_.span,
-            vis: ast::Inherited,
+            node: ast::MethDecl(method_ident,
+                                fn_generics,
+                                explicit_self,
+                                ast::NormalFn,
+                                fn_decl,
+                                body_block,
+                                ast::Inherited)
         }
     }
 

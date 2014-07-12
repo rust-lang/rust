@@ -1249,16 +1249,10 @@ impl<'a> Parser<'a> {
                     p.parse_inner_attrs_and_block();
                 let attrs = attrs.append(inner_attrs.as_slice());
                 Provided(box(GC) ast::Method {
-                    ident: ident,
                     attrs: attrs,
-                    generics: generics,
-                    explicit_self: explicit_self,
-                    fn_style: style,
-                    decl: d,
-                    body: body,
                     id: ast::DUMMY_NODE_ID,
                     span: mk_sp(lo, hi),
-                    vis: vis,
+                    node: ast::MethDecl(ident, generics, explicit_self, style, d, body, vis)
                 })
               }
 
@@ -4049,16 +4043,10 @@ impl<'a> Parser<'a> {
         let hi = body.span.hi;
         let attrs = attrs.append(inner_attrs.as_slice());
         box(GC) ast::Method {
-            ident: ident,
             attrs: attrs,
-            generics: generics,
-            explicit_self: explicit_self,
-            fn_style: fn_style,
-            decl: decl,
-            body: body,
             id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, hi),
-            vis: visa,
+            node: ast::MethDecl(ident, generics, explicit_self, fn_style, decl, body, visa),
         }
     }
 

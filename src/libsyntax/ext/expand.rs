@@ -941,21 +941,25 @@ impl<'a> Folder for PatIdentRenamer<'a> {
 // expand a method
 fn expand_method(m: &ast::Method, fld: &mut MacroExpander) -> Gc<ast::Method> {
     let id = fld.new_id(m.id);
-    let (rewritten_fn_decl, rewritten_body)
-        = expand_and_rename_fn_decl_and_block(m.decl,m.body,fld);
-
-    // all of the other standard stuff:
     box(GC) ast::Method {
-        id: id,
-        ident: fld.fold_ident(m.ident),
         attrs: m.attrs.iter().map(|a| fld.fold_attribute(*a)).collect(),
-        generics: fold_generics(&m.generics, fld),
-        explicit_self: fld.fold_explicit_self(&m.explicit_self),
-        fn_style: m.fn_style,
-        decl: rewritten_fn_decl,
-        body: rewritten_body,
+        id: id,
         span: fld.new_span(m.span),
-        vis: m.vis
+        node: match m.node {
+            ast::MethDecl(ident, ref generics, ref explicit_self, fn_style, decl, body, vis) => {
+                let (rewritten_fn_decl, rewritten_body)
+                    = expand_and_rename_fn_decl_and_block(decl,body,fld);
+
+                ast::MethDecl(fld.fold_ident(ident),
+                         fold_generics(generics, fld),
+                         fld.fold_explicit_self(explicit_self),
+                         fn_style,
+                         rewritten_fn_decl,
+                         rewritten_body,
+                         vis)
+            },
+            ast::MethMac(ref _mac) => fail!("expansion in method position not implemented yet!")
+        }
     }
 }
 
