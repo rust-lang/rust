@@ -20,7 +20,6 @@
 //! provide for basic string-related manipulations. This crate does not
 //! (yet) aim to provide a full set of Unicode tables.
 
-#![crate_id = "unicode#0.11.0"]
 #![crate_name = "unicode"]
 #![experimental]
 #![license = "MIT/ASL2"]
