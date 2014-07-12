@@ -308,6 +308,7 @@ impl Type {
     }
 }
 
+
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
@@ -330,7 +331,7 @@ impl TypeNames {
         self.named_types.borrow().find_equiv(&s).map(|x| Type::from_ref(*x))
     }
 
-    pub fn type_to_str(&self, ty: Type) -> String {
+    pub fn type_to_string(&self, ty: Type) -> String {
         unsafe {
             let s = llvm::LLVMTypeToString(ty.to_ref());
             let ret = from_c_str(s);
@@ -340,11 +341,11 @@ impl TypeNames {
     }
 
     pub fn types_to_str(&self, tys: &[Type]) -> String {
-        let strs: Vec<String> = tys.iter().map(|t| self.type_to_str(*t)).collect();
+        let strs: Vec<String> = tys.iter().map(|t| self.type_to_string(*t)).collect();
         format!("[{}]", strs.connect(","))
     }
 
-    pub fn val_to_str(&self, val: ValueRef) -> String {
+    pub fn val_to_string(&self, val: ValueRef) -> String {
         unsafe {
             let s = llvm::LLVMValueToString(val);
             let ret = from_c_str(s);
@@ -353,4 +354,3 @@ impl TypeNames {
         }
     }
 }
-

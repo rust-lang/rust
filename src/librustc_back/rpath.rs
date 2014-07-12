@@ -230,7 +230,7 @@ mod test {
             used_crates: Vec::new(),
             out_filename: Path::new("bin/rustc"),
             get_install_prefix_lib_path: || fail!(),
-            realpath: |p| p.clone()
+            realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
         assert_eq!(res.as_slice(), "@loader_path/../lib");

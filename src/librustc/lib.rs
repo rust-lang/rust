@@ -66,7 +66,6 @@ pub mod back {
     pub mod lto;
 
 }
->>>>>>> Extract librustc_back from librustc
 
 pub mod middle {
     pub mod def;

@@ -1869,52 +1869,6 @@ pub fn SetFunctionAttribute(fn_: ValueRef, attr: Attribute) {
     }
 }
 
-/* Memory-managed object interface to type handles. */
-
-pub struct TypeNames {
-    named_types: RefCell<HashMap<String, TypeRef>>,
-}
-
-impl TypeNames {
-    pub fn new() -> TypeNames {
-        TypeNames {
-            named_types: RefCell::new(HashMap::new())
-        }
-    }
-
-    pub fn associate_type(&self, s: &str, t: &Type) {
-        assert!(self.named_types.borrow_mut().insert(s.to_string(),
-                                                     t.to_ref()));
-    }
-
-    pub fn find_type(&self, s: &str) -> Option<Type> {
-        self.named_types.borrow().find_equiv(&s).map(|x| Type::from_ref(*x))
-    }
-
-    pub fn type_to_string(&self, ty: Type) -> String {
-        unsafe {
-            let s = llvm::LLVMTypeToString(ty.to_ref());
-            let ret = from_c_str(s);
-            free(s as *mut c_void);
-            ret.to_string()
-        }
-    }
-
-    pub fn types_to_str(&self, tys: &[Type]) -> String {
-        let strs: Vec<String> = tys.iter().map(|t| self.type_to_string(*t)).collect();
-        format!("[{}]", strs.connect(","))
-    }
-
-    pub fn val_to_string(&self, val: ValueRef) -> String {
-        unsafe {
-            let s = llvm::LLVMValueToString(val);
-            let ret = from_c_str(s);
-            free(s as *mut c_void);
-            ret.to_string()
-        }
-    }
-}
-
 /* Memory-managed interface to target data. */
 
 pub struct TargetData {
