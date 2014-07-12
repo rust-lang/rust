@@ -112,6 +112,7 @@ pub enum Node {
     NodeLifetime(Gc<Lifetime>),
 }
 
+/// Represents an entry and its parent Node ID
 /// The odd layout is to bring down the total size.
 #[deriving(Clone)]
 enum MapEntry {
@@ -184,6 +185,8 @@ impl MapEntry {
     }
 }
 
+/// Represents a mapping from Node IDs to AST elements and their parent
+/// Node IDs
 pub struct Map {
     /// NodeIds are sequential integers from 0, so we can be
     /// super-compact by storing them in a vector. Not everything with
@@ -430,6 +433,8 @@ pub trait FoldOps {
     }
 }
 
+/// A Folder that walks over an AST and constructs a Node ID Map. Its
+/// fold_ops argument has the opportunity to replace Node IDs and spans.
 pub struct Ctx<'a, F> {
     map: &'a Map,
     /// The node in which we are currently mapping (an item or a method).
@@ -583,6 +588,10 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         let lifetime = fold::noop_fold_lifetime(lifetime, self);
         self.insert(lifetime.id, EntryLifetime(self.parent, box(GC) lifetime));
         lifetime
+    }
+
+    fn fold_mac(&mut self, mac: &Mac) -> Mac {
+        fold::fold_mac(mac, self)
     }
 }
 

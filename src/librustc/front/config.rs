@@ -14,6 +14,8 @@ use syntax::codemap;
 
 use std::gc::{Gc, GC};
 
+/// A folder that strips out items that do not belong in the current
+/// configuration.
 struct Context<'a> {
     in_cfg: |attrs: &[ast::Attribute]|: 'a -> bool,
 }
@@ -40,6 +42,9 @@ impl<'a> fold::Folder for Context<'a> {
     }
     fn fold_expr(&mut self, expr: Gc<ast::Expr>) -> Gc<ast::Expr> {
         fold_expr(self, expr)
+    }
+    fn fold_mac(&mut self, mac: &ast::Mac) -> ast::Mac {
+        fold::fold_mac(mac, self)
     }
 }
 

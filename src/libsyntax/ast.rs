@@ -249,6 +249,7 @@ pub struct Crate {
     pub attrs: Vec<Attribute>,
     pub config: CrateConfig,
     pub span: Span,
+    pub exported_macros: Vec<Span>
 }
 
 pub type MetaItem = Spanned<MetaItem_>;
@@ -1245,6 +1246,7 @@ mod test {
                 hi: BytePos(20),
                 expn_info: None,
             },
+            exported_macros: Vec::new(),
         };
         // doesn't matter which encoder we use....
         let _f = &e as &serialize::Encodable<json::Encoder, io::IoError>;
