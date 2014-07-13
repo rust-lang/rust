@@ -159,6 +159,8 @@ impl rtio::RtioFileStream for FileDesc {
             _ => Err(super::last_error()),
         }
     }
+
+    fn get_fd(&self) -> libc::c_int { self.fd() }
 }
 
 impl rtio::RtioPipe for FileDesc {
@@ -314,6 +316,8 @@ impl rtio::RtioFileStream for CFile {
     fn fstat(&mut self) -> IoResult<rtio::FileStat> {
         self.flush().and_then(|()| self.fd.fstat())
     }
+
+    fn get_fd(&self) -> libc::c_int { self.fd.get_fd() }
 }
 
 impl Drop for CFile {

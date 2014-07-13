@@ -307,6 +307,7 @@ pub trait RtioFileStream {
     fn datasync(&mut self) -> IoResult<()>;
     fn truncate(&mut self, offset: i64) -> IoResult<()>;
     fn fstat(&mut self) -> IoResult<FileStat>;
+    fn get_fd(&self) -> c_int;
 }
 
 pub trait RtioProcess {
