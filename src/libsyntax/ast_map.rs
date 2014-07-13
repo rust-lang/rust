@@ -304,8 +304,10 @@ impl Map {
         }
     }
 
+    /// returns the name associated with the given NodeId's AST
     pub fn get_path_elem(&self, id: NodeId) -> PathElem {
-        match self.get(id) {
+        let node = self.get(id);
+        match node {
             NodeItem(item) => {
                 match item.node {
                     ItemMod(_) | ItemForeignMod(_) => {
@@ -315,13 +317,19 @@ impl Map {
                 }
             }
             NodeForeignItem(i) => PathName(i.ident.name),
-            NodeMethod(m) => PathName(m.ident.name),
+            NodeMethod(m) => match m.node {
+                MethDecl(ident, _, _, _, _, _, _) => PathName(ident.name),
+                MethMac(_) => fail!("no path elem for {:?}", node)
+            },
             NodeTraitMethod(tm) => match *tm {
                 Required(ref m) => PathName(m.ident.name),
-                Provided(ref m) => PathName(m.ident.name)
+                Provided(m) => match m.node {
+                    MethDecl(ident, _, _, _, _, _, _) => PathName(ident.name),
+                    MethMac(_) => fail!("no path elem for {:?}", node),
+                }
             },
             NodeVariant(v) => PathName(v.node.name.name),
-            node => fail!("no path elem for {:?}", node)
+            _ => fail!("no path elem for {:?}", node)
         }
     }
 
@@ -369,6 +377,8 @@ impl Map {
         }
     }
 
+    /// Given a node ID and a closure, apply the closure to the array
+    /// of attributes associated with the AST corresponding to the Node ID
     pub fn with_attrs<T>(&self, id: NodeId, f: |Option<&[Attribute]>| -> T) -> T {
         let node = self.get(id);
         let attrs = match node {
@@ -561,13 +571,14 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         m
     }
 
-    fn fold_method(&mut self, m: Gc<Method>) -> Gc<Method> {
+    fn fold_method(&mut self, m: Gc<Method>) -> SmallVector<Gc<Method>> {
         let parent = self.parent;
         self.parent = DUMMY_NODE_ID;
-        let m = fold::noop_fold_method(&*m, self);
+        let m = fold::noop_fold_method(&*m, self).expect_one(
+            "noop_fold_method must produce exactly one method");
         assert_eq!(self.parent, m.id);
         self.parent = parent;
-        m
+        SmallVector::one(m)
     }
 
     fn fold_fn_decl(&mut self, decl: &FnDecl) -> P<FnDecl> {
@@ -695,11 +706,15 @@ fn node_id_to_string(map: &Map, id: NodeId) -> String {
             let path_str = map.path_to_str_with_ident(id, item.ident);
             format!("foreign item {} (id={})", path_str, id)
         }
-        Some(NodeMethod(m)) => {
-            format!("method {} in {} (id={})",
-                    token::get_ident(m.ident),
-                    map.path_to_string(id), id)
-        }
+        Some(NodeMethod(m)) => match m.node {
+            MethDecl(ident, _, _, _, _, _, _) =>
+                format!("method {} in {} (id={})",
+                        token::get_ident(ident),
+                        map.path_to_string(id), id),
+            MethMac(ref mac) =>
+                format!("method macro {} (id={})",
+                        pprust::mac_to_string(mac), id)
+        },
         Some(NodeTraitMethod(ref tm)) => {
             let m = ast_util::trait_method_to_ty_method(&**tm);
             format!("method {} in {} (id={})",

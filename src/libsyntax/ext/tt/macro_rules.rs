@@ -38,7 +38,7 @@ struct ParserAnyMacro<'a> {
 impl<'a> ParserAnyMacro<'a> {
     /// Make sure we don't have any tokens left to parse, so we don't
     /// silently drop anything. `allow_semi` is so that "optional"
-    /// semilons at the end of normal expressions aren't complained
+    /// semicolons at the end of normal expressions aren't complained
     /// about e.g. the semicolon in `macro_rules! kapow( () => {
     /// fail!(); } )` doesn't get picked up by .parse_expr(), but it's
     /// allowed to be there.
@@ -73,6 +73,9 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();
+            // so... do outer attributes attached to the macro invocation
+            // just disappear? This question applies to make_methods, as
+            // well.
             match parser.parse_item_with_outer_attributes() {
                 Some(item) => ret.push(item),
                 None => break
@@ -81,6 +84,20 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         self.ensure_complete_parse(false);
         Some(ret)
     }
+
+    fn make_methods(&self) -> Option<SmallVector<Gc<ast::Method>>> {
+        let mut ret = SmallVector::zero();
+        loop {
+            let mut parser = self.parser.borrow_mut();
+            match parser.token {
+                EOF => break,
+                _ => ret.push(parser.parse_method(None))
+            }
+        }
+        self.ensure_complete_parse(false);
+        Some(ret)
+    }
+
     fn make_stmt(&self) -> Option<Gc<ast::Stmt>> {
         let attrs = self.parser.borrow_mut().parse_outer_attributes();
         let ret = self.parser.borrow_mut().parse_stmt(attrs);

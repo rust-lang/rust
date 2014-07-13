@@ -136,7 +136,7 @@ pub fn decode_inlined_item(cdata: &cstore::crate_metadata,
         let ident = match ii {
             ast::IIItem(i) => i.ident,
             ast::IIForeign(i) => i.ident,
-            ast::IIMethod(_, _, m) => m.ident,
+            ast::IIMethod(_, _, m) => ast_util::method_ident(&*m),
         };
         debug!("Fn named: {}", token::get_ident(ident));
         debug!("< Decoded inlined fn: {}::{}",
@@ -345,7 +345,9 @@ fn simplify_ast(ii: e::InlinedItemRef) -> ast::InlinedItem {
         // HACK we're not dropping items.
         e::IIItemRef(i) => ast::IIItem(fold::noop_fold_item(i, &mut fld)
                                        .expect_one("expected one item")),
-        e::IIMethodRef(d, p, m) => ast::IIMethod(d, p, fold::noop_fold_method(m, &mut fld)),
+        e::IIMethodRef(d, p, m) => ast::IIMethod(d, p, fold::noop_fold_method(m, &mut fld)
+                                                 .expect_one(
+                "noop_fold_method must produce exactly one method")),
         e::IIForeignRef(i) => ast::IIForeign(fold::noop_fold_foreign_item(i, &mut fld))
     }
 }
@@ -387,7 +389,8 @@ fn renumber_and_map_ast(xcx: &ExtendedDecodeContext,
                 ast::IIItem(fld.fold_item(i).expect_one("expected one item"))
             }
             ast::IIMethod(d, is_provided, m) => {
-                ast::IIMethod(xcx.tr_def_id(d), is_provided, fld.fold_method(m))
+                ast::IIMethod(xcx.tr_def_id(d), is_provided, fld.fold_method(m)
+                              .expect_one("expected one method"))
             }
             ast::IIForeign(i) => ast::IIForeign(fld.fold_foreign_item(i))
         }

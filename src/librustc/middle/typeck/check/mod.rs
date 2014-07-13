@@ -757,14 +757,16 @@ fn check_method_body(ccx: &CrateCtxt,
     let method_def_id = local_def(method.id);
     let method_ty = ty::method(ccx.tcx, method_def_id);
     let method_generics = &method_ty.generics;
+    let m_body = ast_util::method_body(&*method);
 
     let param_env = ty::construct_parameter_environment(ccx.tcx,
                                                         method_generics,
-                                                        method.body.id);
+                                                        m_body.id);
 
     let fty = ty::node_id_to_type(ccx.tcx, method.id);
 
-    check_bare_fn(ccx, &*method.decl, &*method.body, method.id, fty, param_env);
+    check_bare_fn(ccx, ast_util::method_fn_decl(&*method),
+                  m_body, method.id, fty, param_env);
 }
 
 fn check_impl_methods_against_trait(ccx: &CrateCtxt,
@@ -792,7 +794,7 @@ fn check_impl_methods_against_trait(ccx: &CrateCtxt,
                 compare_impl_method(ccx.tcx,
                                     &*impl_method_ty,
                                     impl_method.span,
-                                    impl_method.body.id,
+                                    ast_util::method_body(&**impl_method).id,
                                     &**trait_method_ty,
                                     &impl_trait_ref.substs);
             }
@@ -815,7 +817,7 @@ fn check_impl_methods_against_trait(ccx: &CrateCtxt,
     for trait_method in trait_methods.iter() {
         let is_implemented =
             impl_methods.iter().any(
-                |m| m.ident.name == trait_method.ident.name);
+                |m| ast_util::method_ident(&**m).name == trait_method.ident.name);
         let is_provided =
             provided_methods.iter().any(
                 |m| m.ident.name == trait_method.ident.name);

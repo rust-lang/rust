@@ -128,11 +128,12 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
             let unparameterized =
                 impl_tpt.generics.types.is_empty() &&
-                mth.generics.ty_params.is_empty();
+                ast_util::method_generics(&*mth).ty_params.is_empty();
 
           if unparameterized {
               let llfn = get_item_val(ccx, mth.id);
-              trans_fn(ccx, &*mth.decl, &*mth.body, llfn,
+              trans_fn(ccx, ast_util::method_fn_decl(&*mth),
+                       ast_util::method_body(&*mth), llfn,
                        &param_substs::empty(), mth.id, []);
           }
           local_def(mth.id)

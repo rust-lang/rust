@@ -245,6 +245,10 @@ pub fn arg_to_string(arg: &ast::Arg) -> String {
     to_string(|s| s.print_arg(arg))
 }
 
+pub fn mac_to_string(arg: &ast::Mac) -> String {
+    to_string(|s| s.print_mac(arg))
+}
+
 pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
     match vis {
         ast::Public => format!("pub {}", s),
@@ -342,6 +346,7 @@ impl<'a> State<'a> {
         match self.s.last_token() { pp::End => true, _ => false }
     }
 
+    // is this the beginning of a line?
     pub fn is_bol(&mut self) -> bool {
         self.s.last_token().is_eof() || self.s.last_token().is_hardbreak_tok()
     }
@@ -627,6 +632,7 @@ impl<'a> State<'a> {
         }
     }
 
+    /// Pretty-print an item
     pub fn print_item(&mut self, item: &ast::Item) -> IoResult<()> {
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(item.span.lo));
@@ -998,11 +1004,26 @@ impl<'a> State<'a> {
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(meth.span.lo));
         try!(self.print_outer_attributes(meth.attrs.as_slice()));
-        try!(self.print_fn(&*meth.decl, Some(meth.fn_style), abi::Rust,
-                        meth.ident, &meth.generics, Some(meth.explicit_self.node),
-                        meth.vis));
-        try!(word(&mut self.s, " "));
-        self.print_block_with_attrs(&*meth.body, meth.attrs.as_slice())
+        match meth.node {
+            ast::MethDecl(ident, ref generics, ref explicit_self, fn_style, decl, body, vis) => {
+                try!(self.print_fn(&*decl, Some(fn_style), abi::Rust,
+                                   ident, generics, Some(explicit_self.node),
+                                   vis));
+                try!(word(&mut self.s, " "));
+                self.print_block_with_attrs(&*body, meth.attrs.as_slice())
+            },
+            ast::MethMac(codemap::Spanned { node: ast::MacInvocTT(ref pth, ref tts, _),
+                                            ..}) => {
+                // code copied from ItemMac:
+                try!(self.print_path(pth, false));
+                try!(word(&mut self.s, "! "));
+                try!(self.cbox(indent_unit));
+                try!(self.popen());
+                try!(self.print_tts(tts.as_slice()));
+                try!(self.pclose());
+                self.end()
+            }
+        }
     }
 
     pub fn print_outer_attributes(&mut self,

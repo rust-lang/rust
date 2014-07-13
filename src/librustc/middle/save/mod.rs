@@ -333,7 +333,7 @@ impl <'l> DxrVisitor<'l> {
             },
         };
 
-        qualname.push_str(get_ident(method.ident).get());
+        qualname.push_str(get_ident(ast_util::method_ident(&*method)).get());
         let qualname = qualname.as_slice();
 
         // record the decl for this def (if it has one)
@@ -349,17 +349,18 @@ impl <'l> DxrVisitor<'l> {
                             decl_id,
                             scope_id);
 
-        self.process_formals(&method.decl.inputs, qualname, e);
+        let m_decl = ast_util::method_fn_decl(&*method);
+        self.process_formals(&m_decl.inputs, qualname, e);
 
         // walk arg and return types
-        for arg in method.decl.inputs.iter() {
+        for arg in m_decl.inputs.iter() {
             self.visit_ty(&*arg.ty, e);
         }
-        self.visit_ty(&*method.decl.output, e);
+        self.visit_ty(m_decl.output, e);
         // walk the fn body
-        self.visit_block(&*method.body, DxrVisitorEnv::new_nested(method.id));
+        self.visit_block(ast_util::method_body(&*method), DxrVisitorEnv::new_nested(method.id));
 
-        self.process_generic_params(&method.generics,
+        self.process_generic_params(ast_util::method_generics(&*method),
                                     method.span,
                                     qualname,
                                     method.id,
