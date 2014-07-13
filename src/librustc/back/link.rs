@@ -555,6 +555,12 @@ pub fn find_crate_name(sess: Option<&Session>,
         s
     };
 
+    // Look in attributes 100% of the time to make sure the attribute is marked
+    // as used. After doing this, however, favor crate names from the command
+    // line.
+    let attr_crate_name = attrs.iter().find(|at| at.check_name("crate_name"))
+                               .and_then(|at| at.value_str().map(|s| (at, s)));
+
     match sess {
         Some(sess) => {
             match sess.opts.crate_name {
@@ -565,9 +571,7 @@ pub fn find_crate_name(sess: Option<&Session>,
         None => {}
     }
 
-    let crate_name = attrs.iter().find(|at| at.check_name("crate_name"))
-                          .and_then(|at| at.value_str().map(|s| (at, s)));
-    match crate_name {
+    match attr_crate_name {
         Some((attr, s)) => return validate(s.get().to_string(), Some(attr.span)),
         None => {}
     }
