@@ -547,7 +547,7 @@ mod test {
         let path = &"./tmp/mk_rm_dir".to_c_str();
         let mode = S_IWUSR | S_IRUSR;
 
-        let result = FsRequest::mkdir(l(), path, mode);
+        let result = FsRequest::mkdir(l(), path, mode as c_int);
         assert!(result.is_ok());
 
         let result = FsRequest::rmdir(l(), path);
