@@ -846,6 +846,7 @@ impl<'a, T: Ord, I: Iterator<&'a T>> Iterator<&'a T> for UnionItems<'a, T, I> {
 #[deriving(Clone)]
 pub struct TreeMultiset<T> {
     map: TreeMap<T,uint>,
+    length: uint,
 }
 
 impl<T: PartialEq + Ord> PartialEq for TreeMultiset<T> {
@@ -875,12 +876,15 @@ impl<T: Ord + Show> Show for TreeMultiset<T> {
 
 impl<T: Ord> Collection for TreeMultiset<T> {
     #[inline]
-    fn len(&self) -> uint { self.map.len() }
+    fn len(&self) -> uint { self.length }
 }
 
 impl<T: Ord> Mutable for TreeMultiset<T> {
     #[inline]
-    fn clear(&mut self) { self.map.clear() }
+    fn clear(&mut self) {
+        self.map.clear();
+        self.length = 0;
+    }
 }
 
 impl<T: Ord> Extendable<T> for TreeMultiset<T> {
@@ -956,6 +960,7 @@ impl<T: Ord> Multiset<T> for TreeMultiset<T> {
 impl<T: Ord> MutableMultiset<T> for TreeMultiset<T> {
     fn insert(&mut self, value: T, n: uint) -> bool {
         let curr = self.count(&value);
+        self.length += n;
         self.map.insert(value, curr + n)
     }
 
@@ -964,18 +969,19 @@ impl<T: Ord> MutableMultiset<T> for TreeMultiset<T> {
 
         if n >= curr {
             self.map.remove(value);
+            self.length -= curr;
             curr
         } else {
             match self.map.find_mut(value) {
                 None => 0u,
                 Some(mult) => {
+                    self.length -= n;
                     *mult = curr - n;
                     n
                 }
             }
         }
     }
-
 }
 
 impl<T: Ord> Default for TreeMultiset<T> {
@@ -986,7 +992,10 @@ impl<T: Ord> Default for TreeMultiset<T> {
 impl<T: Ord> TreeMultiset<T> {
     /// Create an empty TreeMultiset
     #[inline]
-    pub fn new() -> TreeMultiset<T> { TreeMultiset {map: TreeMap::new()} }
+    pub fn new() -> TreeMultiset<T> { TreeMultiset {map: TreeMap::new(), length: 0} }
+
+    /// Get the number of distinct values in the multiset
+    pub fn num_distinct(&self) -> uint { self.map.len() }
 
     /// Get a lazy iterator over the values in the multiset.
     /// Requires that it be frozen (immutable).
@@ -2164,6 +2173,29 @@ mod test_mset {
 
     use {Multiset, MutableMultiset, Mutable, MutableMap};
     use super::{TreeMap, TreeMultiset};
+
+    #[test]
+    fn test_len() {
+        let mut s = TreeMultiset::new();
+        assert!(s.len() == 0);
+        assert!(s.insert_one(1i));
+        assert!(s.len() == 1);
+        assert!(s.insert(3, 5));
+        assert!(s.len() == 6);
+        assert!(s.insert(7, 2));
+        assert!(s.len() == 8);
+
+        assert!(s.remove_one(&7));
+        assert!(s.len() == 7);
+        assert!(s.remove_one(&7));
+        assert!(s.len() == 6);
+        assert!(!s.remove_one(&7));
+        assert!(s.len() == 6);
+        assert!(s.remove(&3, 3) == 3);
+        assert!(s.len() == 3);
+        assert!(s.remove(&3, 8) == 2);
+        assert!(s.len() == 1);
+    }
 
     #[test]
     fn test_clear() {
