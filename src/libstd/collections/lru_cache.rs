@@ -45,7 +45,7 @@ use iter::{range, Iterator};
 use mem;
 use ops::Drop;
 use option::{Some, None, Option};
-use owned::Box;
+use boxed::Box;
 use ptr;
 use result::{Ok, Err};
 

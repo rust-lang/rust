@@ -16,7 +16,7 @@
 use core::prelude::*;
 
 use alloc::arc::Arc;
-use alloc::owned::{AnyOwnExt, Box};
+use alloc::boxed::{BoxAny, Box};
 use core::any::Any;
 use core::atomics::{AtomicUint, SeqCst};
 use core::iter::Take;
@@ -376,7 +376,7 @@ impl Task {
         unsafe {
             let imp = self.imp.take_unwrap();
             let vtable = mem::transmute::<_, &raw::TraitObject>(&imp).vtable;
-            match imp.wrap().move::<T>() {
+            match imp.wrap().downcast::<T>() {
                 Ok(t) => Some(t),
                 Err(t) => {
                     let data = mem::transmute::<_, raw::TraitObject>(t).data;

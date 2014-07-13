@@ -21,7 +21,7 @@ use io::{IoResult, IoError};
 use io;
 use libc;
 use mem;
-use owned::Box;
+use boxed::Box;
 use rt::rtio::{RtioProcess, ProcessConfig, IoFactory, LocalIo};
 use rt::rtio;
 use c_str::CString;

@@ -20,7 +20,7 @@
 use core::prelude::*;
 
 use core::mem;
-use alloc::owned::Box;
+use alloc::boxed::Box;
 
 #[cfg(windows)]               // mingw-w32 doesn't like thread_local things
 #[cfg(target_os = "android")] // see #10686
@@ -86,7 +86,7 @@ pub unsafe fn borrow<T>() -> Borrowed<T> {
 pub mod compiled {
     use core::prelude::*;
 
-    use alloc::owned::Box;
+    use alloc::boxed::Box;
     use core::mem;
 
     #[cfg(test)]
@@ -237,7 +237,7 @@ pub mod compiled {
 pub mod native {
     use core::prelude::*;
 
-    use alloc::owned::Box;
+    use alloc::boxed::Box;
     use core::mem;
     use core::ptr;
     use tls = thread_local_storage;

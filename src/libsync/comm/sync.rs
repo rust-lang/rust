@@ -35,7 +35,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use collections::Vec;
 use collections::Collection;
 use core::mem;

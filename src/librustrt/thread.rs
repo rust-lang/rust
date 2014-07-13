@@ -18,7 +18,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use core::mem;
 use core::uint;
 use libc;
@@ -147,7 +147,7 @@ impl<T: Send> Drop for Thread<T> {
 mod imp {
     use core::prelude::*;
 
-    use alloc::owned::Box;
+    use alloc::boxed::Box;
     use core::cmp;
     use core::mem;
     use core::ptr;
@@ -215,7 +215,7 @@ mod imp {
 mod imp {
     use core::prelude::*;
 
-    use alloc::owned::Box;
+    use alloc::boxed::Box;
     use core::cmp;
     use core::mem;
     use core::ptr;

@@ -138,7 +138,7 @@ extern crate rustrt;
 #[cfg(test)] pub use realstd::ops;
 #[cfg(test)] pub use realstd::cmp;
 #[cfg(test)] pub use realstd::ty;
-#[cfg(test)] pub use realstd::owned;
+#[cfg(test)] pub use realstd::boxed;
 #[cfg(test)] pub use realstd::gc;
 
 
@@ -167,7 +167,10 @@ pub use core::unit;
 pub use core::result;
 pub use core::option;
 
-pub use alloc::owned;
+pub use alloc::boxed;
+#[deprecated = "use boxed instead"]
+pub use owned = boxed;
+
 pub use alloc::rc;
 
 pub use core_collections::slice;

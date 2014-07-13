@@ -30,7 +30,7 @@ use c_str::ToCStr;
 use clone::Clone;
 use io::{Listener, Acceptor, Reader, Writer, IoResult, IoError};
 use kinds::Send;
-use owned::Box;
+use boxed::Box;
 use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 

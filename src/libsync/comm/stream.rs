@@ -19,7 +19,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use core::cmp;
 use core::int;
 use rustrt::local::Local;
