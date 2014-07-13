@@ -1249,16 +1249,10 @@ impl<'a> Parser<'a> {
                     p.parse_inner_attrs_and_block();
                 let attrs = attrs.append(inner_attrs.as_slice());
                 Provided(box(GC) ast::Method {
-                    ident: ident,
                     attrs: attrs,
-                    generics: generics,
-                    explicit_self: explicit_self,
-                    fn_style: style,
-                    decl: d,
-                    body: body,
                     id: ast::DUMMY_NODE_ID,
                     span: mk_sp(lo, hi),
-                    vis: vis,
+                    node: ast::MethDecl(ident, generics, explicit_self, style, d, body, vis)
                 })
               }
 
@@ -3252,6 +3246,7 @@ impl<'a> Parser<'a> {
         } else if is_ident(&self.token)
             && !token::is_any_keyword(&self.token)
             && self.look_ahead(1, |t| *t == token::NOT) {
+            // it's a macro invocation:
 
             check_expected_item(self, !item_attrs.is_empty());
 
@@ -4027,7 +4022,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a method in a trait impl, starting with `attrs` attributes.
-    fn parse_method(&mut self,
+    pub fn parse_method(&mut self,
                     already_parsed_attrs: Option<Vec<Attribute>>) -> Gc<Method> {
         let next_attrs = self.parse_outer_attributes();
         let attrs = match already_parsed_attrs {
@@ -4037,28 +4032,50 @@ impl<'a> Parser<'a> {
 
         let lo = self.span.lo;
 
-        let visa = self.parse_visibility();
-        let fn_style = self.parse_fn_style();
-        let ident = self.parse_ident();
-        let generics = self.parse_generics();
-        let (explicit_self, decl) = self.parse_fn_decl_with_self(|p| {
-            p.parse_arg()
-        });
+        // code copied from parse_macro_use_or_failure... abstraction!
+        let (method_, hi, new_attrs) = {
+            if !token::is_any_keyword(&self.token)
+                && self.look_ahead(1, |t| *t == token::NOT)
+                && (self.look_ahead(2, |t| *t == token::LPAREN)
+                    || self.look_ahead(2, |t| *t == token::LBRACE)) {
+                // method macro.
+                let pth = self.parse_path(NoTypesAllowed).path;
+                self.expect(&token::NOT);
 
-        let (inner_attrs, body) = self.parse_inner_attrs_and_block();
-        let hi = body.span.hi;
-        let attrs = attrs.append(inner_attrs.as_slice());
+                // eat a matched-delimiter token tree:
+                let tts = match token::close_delimiter_for(&self.token) {
+                    Some(ket) => {
+                        self.bump();
+                        self.parse_seq_to_end(&ket,
+                                              seq_sep_none(),
+                                              |p| p.parse_token_tree())
+                    }
+                    None => self.fatal("expected open delimiter")
+                };
+                let m_ = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
+                let m: ast::Mac = codemap::Spanned { node: m_,
+                                                 span: mk_sp(self.span.lo,
+                                                             self.span.hi) };
+                (ast::MethMac(m), self.span.hi, attrs)
+            } else {
+                let visa = self.parse_visibility();
+                let fn_style = self.parse_fn_style();
+                let ident = self.parse_ident();
+                let generics = self.parse_generics();
+                let (explicit_self, decl) = self.parse_fn_decl_with_self(|p| {
+                        p.parse_arg()
+                    });
+                let (inner_attrs, body) = self.parse_inner_attrs_and_block();
+                let new_attrs = attrs.append(inner_attrs.as_slice());
+                (ast::MethDecl(ident, generics, explicit_self, fn_style, decl, body, visa),
+                 body.span.hi, new_attrs)
+            }
+        };
         box(GC) ast::Method {
-            ident: ident,
-            attrs: attrs,
-            generics: generics,
-            explicit_self: explicit_self,
-            fn_style: fn_style,
-            decl: decl,
-            body: body,
+            attrs: new_attrs,
             id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, hi),
-            vis: visa,
+            node: method_,
         }
     }
 

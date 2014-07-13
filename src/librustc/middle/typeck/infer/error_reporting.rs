@@ -693,15 +693,18 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             Some(ref node) => match *node {
                 ast_map::NodeItem(ref item) => {
                     match item.node {
-                        ast::ItemFn(ref fn_decl, ref pur, _, ref gen, _) => {
+                        ast::ItemFn(fn_decl, ref pur, _, ref gen, _) => {
                             Some((fn_decl, gen, *pur, item.ident, None, item.span))
                         },
                         _ => None
                     }
                 }
                 ast_map::NodeMethod(ref m) => {
-                    Some((&m.decl, &m.generics, m.fn_style,
-                          m.ident, Some(m.explicit_self.node), m.span))
+                    Some((ast_util::method_fn_decl(&**m),
+                          ast_util::method_generics(&**m),
+                          ast_util::method_fn_style(&**m),
+                          ast_util::method_ident(&**m),
+                          Some(ast_util::method_explicit_self(&**m).node), m.span))
                 },
                 _ => None
             },
@@ -711,7 +714,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                                     = node_inner.expect("expect item fn");
         let taken = lifetimes_in_scope(self.tcx, scope_id);
         let life_giver = LifeGiver::with_taken(taken.as_slice());
-        let rebuilder = Rebuilder::new(self.tcx, *fn_decl, expl_self,
+        let rebuilder = Rebuilder::new(self.tcx, fn_decl, expl_self,
                                        generics, same_regions, &life_giver);
         let (fn_decl, expl_self, generics) = rebuilder.rebuild();
         self.give_expl_lifetime_param(&fn_decl, fn_style, ident,
@@ -1452,7 +1455,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
                 _ => None
             },
             ast_map::NodeMethod(m) => {
-                taken.push_all(m.generics.lifetimes.as_slice());
+                taken.push_all(ast_util::method_generics(&*m).lifetimes.as_slice());
                 Some(m.id)
             },
             _ => None
