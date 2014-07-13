@@ -78,7 +78,7 @@
 //! passing. [`sync`](sync/index.html) contains further, primitive, shared
 //! memory types, including [`atomics`](sync/atomics/index.html).
 //!
-//! Common types of I/O, including files, TCP, UPD, pipes, Unix domain sockets,
+//! Common types of I/O, including files, TCP, UDP, pipes, Unix domain sockets,
 //! timers, and process spawning, are defined in the [`io`](io/index.html) module.
 //!
 //! Rust's I/O and concurrency depends on a small runtime interface
