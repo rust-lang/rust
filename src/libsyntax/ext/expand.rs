@@ -544,7 +544,7 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
             match expanded.make_items() {
                 Some(items) => {
                     items.move_iter()
-                        .flat_map(|i| mark_item(i, fm).move_iter())
+                        .map(|i| mark_item(i, fm))
                         .flat_map(|i| fld.fold_item(i).move_iter())
                         .collect()
                 }
@@ -563,14 +563,14 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
 
 /// Expand a stmt
 //
-// I don't understand why this returns a vector... it looks like someone got
+// I don't understand why this returns a vector... it looks like we're
 // half done adding machinery to allow macros to expand into multiple statements.
 fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<Gc<Stmt>> {
     let (mac, semi) = match s.node {
         StmtMac(ref mac, semi) => (mac, semi),
         _ => return expand_non_macro_stmt(s, fld)
     };
-    let expanded_stmt = match expand_mac_invoc(mac,s.span,
+    let expanded_stmt = match expand_mac_invoc(mac,&s.span,
                                                 |r|{r.make_stmt()},
                                                 |sts,mrk|{mark_stmt(sts,mrk)},
                                                 fld) {
@@ -905,26 +905,41 @@ impl<'a> Folder for PatIdentRenamer<'a> {
 }
 
 // expand a method
-fn expand_method(m: &ast::Method, fld: &mut MacroExpander) -> Gc<ast::Method> {
+fn expand_method(m: &ast::Method, fld: &mut MacroExpander) -> SmallVector<Gc<ast::Method>> {
     let id = fld.new_id(m.id);
-    box(GC) ast::Method {
-        attrs: m.attrs.iter().map(|a| fld.fold_attribute(*a)).collect(),
-        id: id,
-        span: fld.new_span(m.span),
-        node: match m.node {
-            ast::MethDecl(ident, ref generics, ref explicit_self, fn_style, decl, body, vis) => {
-                let (rewritten_fn_decl, rewritten_body)
-                    = expand_and_rename_fn_decl_and_block(decl,body,fld);
+    match m.node {
+        ast::MethDecl(ident, ref generics, ref explicit_self, fn_style, decl, body, vis) => {
+            let (rewritten_fn_decl, rewritten_body)
+                = expand_and_rename_fn_decl_and_block(decl,body,fld);
+            SmallVector::one(box(GC) ast::Method {
+                    attrs: m.attrs.iter().map(|a| fld.fold_attribute(*a)).collect(),
+                    id: id,
+                    span: fld.new_span(m.span),
+                    node: ast::MethDecl(fld.fold_ident(ident),
+                                        fold_generics(generics, fld),
+                                        fld.fold_explicit_self(explicit_self),
+                                        fn_style,
+                                        rewritten_fn_decl,
+                                        rewritten_body,
+                                        vis)
+                })
+        },
+        ast::MethMac(ref mac) => {
+            let maybe_new_methods =
+                expand_mac_invoc(mac, &m.span,
+                                 |r|{r.make_methods()},
+                                 |meths,mark|{
+                    meths.move_iter().map(|m|{mark_method(m,mark)})
+                        .collect()},
+                                 fld);
 
-                ast::MethDecl(fld.fold_ident(ident),
-                         fold_generics(generics, fld),
-                         fld.fold_explicit_self(explicit_self),
-                         fn_style,
-                         rewritten_fn_decl,
-                         rewritten_body,
-                         vis)
-            },
-            ast::MethMac(ref _mac) => fail!("expansion in method position not implemented yet!")
+            let new_methods = match maybe_new_methods {
+                Some(methods) => methods,
+                None => SmallVector::zero()
+            };
+
+            // expand again if necessary
+            new_methods.move_iter().flat_map(|m| fld.fold_method(m).move_iter()).collect()
         }
     }
 }
@@ -983,7 +998,7 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         expand_arm(arm, self)
     }
 
-    fn fold_method(&mut self, method: Gc<ast::Method>) -> Gc<ast::Method> {
+    fn fold_method(&mut self, method: Gc<ast::Method>) -> SmallVector<Gc<ast::Method>> {
         expand_method(method, self)
     }
 
@@ -1098,12 +1113,19 @@ fn mark_pat(pat: Gc<ast::Pat>, m: Mrk) -> Gc<ast::Pat> {
 // apply a given mark to the given stmt. Used following the expansion of a macro.
 fn mark_stmt(expr: &ast::Stmt, m: Mrk) -> Gc<ast::Stmt> {
     Marker{mark:m}.fold_stmt(expr)
-            .expect_one("marking a stmt didn't return a stmt")
+        .expect_one("marking a stmt didn't return exactly one stmt")
 }
 
 // apply a given mark to the given item. Used following the expansion of a macro.
-fn mark_item(expr: Gc<ast::Item>, m: Mrk) -> SmallVector<Gc<ast::Item>> {
+fn mark_item(expr: Gc<ast::Item>, m: Mrk) -> Gc<ast::Item> {
     Marker{mark:m}.fold_item(expr)
+        .expect_one("marking an item didn't return exactly one item")
+}
+
+// apply a given mark to the given item. Used following the expansion of a macro.
+fn mark_method(expr: Gc<ast::Method>, m: Mrk) -> Gc<ast::Method> {
+    Marker{mark:m}.fold_method(expr)
+        .expect_one("marking an item didn't return exactly one method")
 }
 
 fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
