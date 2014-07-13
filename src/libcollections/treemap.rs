@@ -14,7 +14,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use core::default::Default;
 use core::fmt;
 use core::fmt::Show;

@@ -42,7 +42,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use core::mem;
 use core::ty::Unsafe;
 

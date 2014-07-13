@@ -14,7 +14,7 @@
 // Tests that the new `box` syntax works with unique pointers and GC pointers.
 
 use std::gc::{Gc, GC};
-use std::owned::{Box, HEAP};
+use std::boxed::{Box, HEAP};
 
 pub fn main() {
     let x: Gc<int> = box(HEAP) 2;  //~ ERROR mismatched types

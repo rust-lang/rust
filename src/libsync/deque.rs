@@ -54,7 +54,7 @@ use core::prelude::*;
 
 use alloc::arc::Arc;
 use alloc::heap::{allocate, deallocate};
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use collections::Vec;
 use core::kinds::marker;
 use core::mem::{forget, min_align_of, size_of, transmute};
