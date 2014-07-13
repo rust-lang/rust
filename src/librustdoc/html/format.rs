@@ -431,7 +431,10 @@ impl fmt::Show for clean::Type {
             }
             clean::Tuple(ref typs) => {
                 primitive_link(f, clean::PrimitiveTuple,
-                               format!("({:#})", typs).as_slice())
+                               match typs.as_slice() {
+                                    [ref one] => format!("({},)", one),
+                                    many => format!("({:#})", many)
+                               }.as_slice())
             }
             clean::Vector(ref t) => {
                 primitive_link(f, clean::Slice, format!("[{}]", **t).as_slice())
