@@ -305,6 +305,25 @@ fn spawn_process_os(cfg: ProcessConfig,
         })
     }
 
+    // To have the spawning semantics of unix/windows stay the same, we need to
+    // read the *child's* PATH if one is provided. See #15149 for more details.
+    let program = cfg.env.and_then(|env| {
+        for &(ref key, ref v) in env.iter() {
+            if b"PATH" != key.as_bytes_no_nul() { continue }
+
+            // Split the value and test each path to see if the program exists.
+            for path in os::split_paths(v.as_bytes_no_nul()).move_iter() {
+                let path = path.join(cfg.program.as_bytes_no_nul())
+                               .with_extension(os::consts::EXE_EXTENSION);
+                if path.exists() {
+                    return Some(path.to_c_str())
+                }
+            }
+            break
+        }
+        None
+    });
+
     unsafe {
         let mut si = zeroed_startupinfo();
         si.cb = mem::size_of::<STARTUPINFO>() as DWORD;
@@ -362,7 +381,8 @@ fn spawn_process_os(cfg: ProcessConfig,
         try!(set_fd(&out_fd, &mut si.hStdOutput, false));
         try!(set_fd(&err_fd, &mut si.hStdError, false));
 
-        let cmd_str = make_command_line(cfg.program, cfg.args);
+        let cmd_str = make_command_line(program.as_ref().unwrap_or(cfg.program),
+                                        cfg.args);
         let mut pi = zeroed_process_information();
         let mut create_err = None;
 
