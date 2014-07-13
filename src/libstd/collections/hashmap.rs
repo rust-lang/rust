@@ -11,7 +11,8 @@
 //! Unordered containers, implemented as hash-tables (`HashSet` and `HashMap` types)
 
 use clone::Clone;
-use cmp::{max, Eq, Equiv, PartialEq};
+use cmp;
+use cmp::{max, Eq, Equiv, PartialEq, Ordering};
 use collections::{Collection, Mutable, Set, MutableSet, Map, MutableMap};
 use default::Default;
 use fmt::Show;
@@ -1498,6 +1499,18 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {}
+
+impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialOrd for HashSet<T, H> {
+    #[inline]
+    fn partial_cmp(&self, other: &HashSet<T, H>) -> Option<Ordering> {
+        match (self.is_subset(other), other.is_subset(&self)) {
+            (true, true) => Some(cmp::Equal),
+            (true, false) => Some(cmp::Less),
+            (false, true) => Some(cmp::Greater),
+            (false, false) => None
+        }
+    }
+}
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Collection for HashSet<T, H> {
     fn len(&self) -> uint { self.map.len() }
