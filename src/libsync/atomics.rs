@@ -103,7 +103,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use core::mem;
 
 pub use core::atomics::{AtomicBool, AtomicInt, AtomicUint, AtomicPtr};

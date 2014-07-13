@@ -21,11 +21,11 @@
 //!
 //! Currently, there are four major definitions in this library.
 //!
-//! ## Owned pointers
+//! ## Boxed values
 //!
-//! The [`Box`](owned/index.html) type is the core owned pointer type in rust.
+//! The [`Box`](boxed/index.html) type is the core owned pointer type in rust.
 //! There can only be one owner of a `Box`, and the owner can decide to mutate
-//! the contents.
+//! the contents, which live on the heap.
 //!
 //! This type can be sent among tasks efficiently as the size of a `Box` value
 //! is just a pointer. Tree-like data structures are often built on owned
@@ -82,6 +82,12 @@ extern crate libc;
 #[cfg(test)] #[phase(plugin, link)] extern crate std;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
+// The deprecated name of the boxed module
+
+#[deprecated = "use boxed instead"]
+#[cfg(not(test))]
+pub use owned = boxed;
+
 // Heaps provided for low-level allocation strategies
 
 pub mod heap;
@@ -91,7 +97,7 @@ pub mod util;
 // Primitive types using the heaps above
 
 #[cfg(not(test))]
-pub mod owned;
+pub mod boxed;
 pub mod arc;
 pub mod rc;
 

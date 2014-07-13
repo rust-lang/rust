@@ -20,7 +20,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use core::fmt;
 use core::fmt::Show;
 

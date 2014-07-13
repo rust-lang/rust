@@ -56,7 +56,7 @@ pub static RED_ZONE: uint = 20 * 1024;
 #[lang = "stack_exhausted"]
 extern fn stack_exhausted() {
     use core::prelude::*;
-    use alloc::owned::Box;
+    use alloc::boxed::Box;
     use local::Local;
     use task::Task;
     use core::intrinsics;

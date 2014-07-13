@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use local_ptr;
 use task::Task;
 

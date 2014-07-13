@@ -59,7 +59,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use core::atomics;
 use core::kinds::marker;
 use core::mem;

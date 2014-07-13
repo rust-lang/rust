@@ -35,7 +35,7 @@ use iter::Iterator;
 use kinds::Send;
 use libc;
 use option::{Option, Some, None};
-use owned::Box;
+use boxed::Box;
 use result::{Ok, Err};
 use rt;
 use rt::local::Local;

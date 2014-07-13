@@ -14,7 +14,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use collections::vec::Vec;
 use core::atomics;
 use core::mem;

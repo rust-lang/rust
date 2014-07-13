@@ -59,7 +59,7 @@
 
 use core::prelude::*;
 
-use alloc::owned::Box;
+use alloc::boxed::Box;
 use collections::string::String;
 use collections::vec::Vec;
 use core::any::Any;

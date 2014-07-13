@@ -229,7 +229,7 @@ use mem::transmute;
 use ops::{BitOr, BitAnd, Sub, Not};
 use option::{Option, Some, None};
 use os;
-use owned::Box;
+use boxed::Box;
 use result::{Ok, Err, Result};
 use rt::rtio;
 use slice::{Vector, MutableVector, ImmutableVector};

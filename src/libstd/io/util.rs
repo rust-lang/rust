@@ -13,7 +13,7 @@
 use prelude::*;
 use cmp;
 use io;
-use owned::Box;
+use boxed::Box;
 use slice::bytes::MutableByteVector;
 
 /// Wraps a `Reader`, limiting the number of bytes that can be read from it.
@@ -263,7 +263,7 @@ impl<T: Iterator<u8>> Reader for IterReader<T> {
 mod test {
     use io::{MemReader, MemWriter, BufReader};
     use io;
-    use owned::Box;
+    use boxed::Box;
     use super::*;
     use prelude::*;
 

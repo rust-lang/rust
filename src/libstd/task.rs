@@ -98,7 +98,7 @@ use comm::channel;
 use io::{Writer, stdio};
 use kinds::{Send, marker};
 use option::{None, Some, Option};
-use owned::Box;
+use boxed::Box;
 use result::Result;
 use rt::local::Local;
 use rt::task;
@@ -374,7 +374,7 @@ pub fn failing() -> bool {
 #[cfg(test)]
 mod test {
     use any::{Any, AnyRefExt};
-    use owned::AnyOwnExt;
+    use boxed::BoxAny;
     use result;
     use result::{Ok, Err};
     use str::StrAllocating;
@@ -578,7 +578,7 @@ mod test {
             Err(e) => {
                 type T = &'static str;
                 assert!(e.is::<T>());
-                assert_eq!(*e.move::<T>().unwrap(), "static string");
+                assert_eq!(*e.downcast::<T>().unwrap(), "static string");
             }
             Ok(()) => fail!()
         }
@@ -592,7 +592,7 @@ mod test {
             Err(e) => {
                 type T = String;
                 assert!(e.is::<T>());
-                assert_eq!(*e.move::<T>().unwrap(), "owned string".to_string());
+                assert_eq!(*e.downcast::<T>().unwrap(), "owned string".to_string());
             }
             Ok(()) => fail!()
         }
@@ -606,9 +606,9 @@ mod test {
             Err(e) => {
                 type T = Box<Any + Send>;
                 assert!(e.is::<T>());
-                let any = e.move::<T>().unwrap();
+                let any = e.downcast::<T>().unwrap();
                 assert!(any.is::<u16>());
-                assert_eq!(*any.move::<u16>().unwrap(), 413u16);
+                assert_eq!(*any.downcast::<u16>().unwrap(), 413u16);
             }
             Ok(()) => fail!()
         }
