@@ -12,7 +12,7 @@
 
 use clone::Clone;
 use cmp;
-use cmp::{max, Eq, Equiv, PartialEq, Ordering};
+use cmp::{max, Eq, Equiv, PartialEq, PartialOrd, Ordering};
 use collections::{Collection, Mutable, Set, MutableSet, Map, MutableMap};
 use default::Default;
 use fmt::Show;
@@ -1503,7 +1503,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {}
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialOrd for HashSet<T, H> {
     #[inline]
     fn partial_cmp(&self, other: &HashSet<T, H>) -> Option<Ordering> {
-        match (self.is_subset(other), other.is_subset(&self)) {
+        match (self.is_subset(other), other.is_subset(self)) {
             (true, true) => Some(cmp::Equal),
             (true, false) => Some(cmp::Less),
             (false, true) => Some(cmp::Greater),
