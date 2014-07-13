@@ -571,13 +571,14 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         m
     }
 
-    fn fold_method(&mut self, m: Gc<Method>) -> Gc<Method> {
+    fn fold_method(&mut self, m: Gc<Method>) -> SmallVector<Gc<Method>> {
         let parent = self.parent;
         self.parent = DUMMY_NODE_ID;
-        let m = fold::noop_fold_method(&*m, self);
+        let m = fold::noop_fold_method(&*m, self).expect_one(
+            "noop_fold_method must produce exactly one method");
         assert_eq!(self.parent, m.id);
         self.parent = parent;
-        m
+        SmallVector::one(m)
     }
 
     fn fold_fn_decl(&mut self, decl: &FnDecl) -> P<FnDecl> {
