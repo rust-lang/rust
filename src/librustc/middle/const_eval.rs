@@ -13,8 +13,8 @@
 
 use metadata::csearch;
 use middle::astencode;
-
 use middle::def;
+use middle::pat_util::def_to_path;
 use middle::ty;
 use middle::typeck::astconv;
 use util::nodemap::{DefIdMap};
@@ -26,7 +26,7 @@ use syntax::visit;
 use syntax::{ast, ast_map, ast_util};
 
 use std::rc::Rc;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -301,6 +301,57 @@ pub enum const_val {
     const_binary(Rc<Vec<u8> >),
     const_bool(bool),
     const_nil
+}
+
+pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: Gc<Expr>) -> Gc<Pat> {
+    let pat = match expr.node {
+        ExprTup(ref exprs) =>
+            PatTup(exprs.iter().map(|&expr| const_expr_to_pat(tcx, expr)).collect()),
+
+        ExprCall(callee, ref args) => {
+            let def = tcx.def_map.borrow().get_copy(&callee.id);
+            tcx.def_map.borrow_mut().find_or_insert(expr.id, def);
+            let path = match def {
+                def::DefStruct(def_id) => def_to_path(tcx, def_id),
+                def::DefVariant(_, variant_did, _) => def_to_path(tcx, variant_did),
+                _ => unreachable!()
+            };
+            let pats = args.iter().map(|&expr| const_expr_to_pat(tcx, expr)).collect();
+            PatEnum(path, Some(pats))
+        }
+
+        ExprStruct(ref path, ref fields, None) => {
+            let field_pats = fields.iter().map(|field| FieldPat {
+                ident: field.ident.node,
+                pat: const_expr_to_pat(tcx, field.expr)
+            }).collect();
+            PatStruct(path.clone(), field_pats, false)
+        }
+
+        ExprVec(ref exprs) => {
+            let pats = exprs.iter().map(|&expr| const_expr_to_pat(tcx, expr)).collect();
+            PatVec(pats, None, vec![])
+        }
+
+        ExprPath(ref path) => {
+            let opt_def = tcx.def_map.borrow().find_copy(&expr.id);
+            match opt_def {
+                Some(def::DefStruct(..)) =>
+                    PatStruct(path.clone(), vec![], false),
+                Some(def::DefVariant(..)) =>
+                    PatEnum(path.clone(), None),
+                _ => {
+                    match lookup_const(tcx, &*expr) {
+                        Some(actual) => return const_expr_to_pat(tcx, actual),
+                        _ => unreachable!()
+                    }
+                }
+            }
+        }
+
+        _ => PatLit(expr)
+    };
+    box (GC) Pat { id: expr.id, node: pat, span: expr.span }
 }
 
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
