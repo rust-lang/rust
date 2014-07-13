@@ -10,12 +10,14 @@
 
 use middle::def::*;
 use middle::resolve;
+use middle::ty;
 
 use std::collections::HashMap;
 use std::gc::{Gc, GC};
 use syntax::ast::*;
 use syntax::ast_util::{walk_pat};
 use syntax::codemap::{Span, DUMMY_SP};
+use syntax::owned_slice::OwnedSlice;
 
 pub type PatIdMap = HashMap<Ident, NodeId>;
 
@@ -115,4 +117,16 @@ pub fn simple_identifier<'a>(pat: &'a Pat) -> Option<&'a Ident> {
 
 pub fn wild() -> Gc<Pat> {
     box (GC) Pat { id: 0, node: PatWild, span: DUMMY_SP }
+}
+
+pub fn def_to_path(tcx: &ty::ctxt, id: DefId) -> Path {
+    ty::with_path(tcx, id, |mut path| Path {
+        global: false,
+        segments: path.last().map(|elem| PathSegment {
+            identifier: Ident::new(elem.name()),
+            lifetimes: vec!(),
+            types: OwnedSlice::empty()
+        }).move_iter().collect(),
+        span: DUMMY_SP,
+    })
 }
