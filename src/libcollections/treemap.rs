@@ -22,6 +22,7 @@ use core::iter::Peekable;
 use core::iter;
 use core::mem::{replace, swap};
 use core::ptr;
+use std::hash::{Writer, Hash};
 
 use {Collection, Mutable, Set, MutableSet, MutableMap, Map};
 use vec::Vec;
@@ -1055,6 +1056,14 @@ impl<K: Ord, V> Extendable<(K, V)> for TreeMap<K, V> {
     }
 }
 
+impl<S: Writer, K: Ord + Hash<S>, V: Hash<S>> Hash<S> for TreeMap<K, V> {
+    fn hash(&self, state: &mut S) {
+        for elt in self.iter() {
+            elt.hash(state);
+        }
+    }
+}
+
 impl<T: Ord> FromIterator<T> for TreeSet<T> {
     fn from_iter<Iter: Iterator<T>>(iter: Iter) -> TreeSet<T> {
         let mut set = TreeSet::new();
@@ -1068,6 +1077,14 @@ impl<T: Ord> Extendable<T> for TreeSet<T> {
     fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
         for elem in iter {
             self.insert(elem);
+        }
+    }
+}
+
+impl<S: Writer, T: Ord + Hash<S>> Hash<S> for TreeSet<T> {
+    fn hash(&self, state: &mut S) {
+        for elt in self.iter() {
+            elt.hash(state);
         }
     }
 }
@@ -1608,6 +1625,7 @@ mod bench {
 #[cfg(test)]
 mod test_set {
     use std::prelude::*;
+    use std::hash;
 
     use {Set, MutableSet, Mutable, MutableMap};
     use super::{TreeMap, TreeSet};
@@ -1746,6 +1764,22 @@ mod test_set {
       m.insert(2);
 
       assert!(m.clone() == m);
+    }
+
+    #[test]
+    fn test_hash() {
+      let mut x = TreeSet::new();
+      let mut y = TreeSet::new();
+
+      x.insert(1i);
+      x.insert(2);
+      x.insert(3);
+
+      y.insert(3i);
+      y.insert(2);
+      y.insert(1);
+
+      assert!(hash::hash(&x) == hash::hash(&y));
     }
 
     fn check(a: &[int],
