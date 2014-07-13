@@ -640,6 +640,8 @@ pub type Mac = Spanned<Mac_>;
 /// There's only one flavor, now, so this could presumably be simplified.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum Mac_ {
+    // NB: the additional ident for a macro_rules-style macro is actually
+    // stored in the enclosing item. Oog.
     MacInvocTT(Path, Vec<TokenTree> , SyntaxContext),   // new macro-invocation
 }
 
@@ -957,19 +959,20 @@ pub enum ExplicitSelf_ {
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 
-// Represents a method declaration
 #[deriving(PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Method {
-    pub ident: Ident,
     pub attrs: Vec<Attribute>,
-    pub generics: Generics,
-    pub explicit_self: ExplicitSelf,
-    pub fn_style: FnStyle,
-    pub decl: P<FnDecl>,
-    pub body: P<Block>,
     pub id: NodeId,
     pub span: Span,
-    pub vis: Visibility,
+    pub node: Method_
+}
+
+#[deriving(PartialEq, Eq, Encodable, Decodable, Hash)]
+pub enum Method_ {
+    /// Represents a method declaration
+    MethDecl(Ident, Generics, ExplicitSelf, FnStyle, P<FnDecl>, P<Block>, Visibility),
+    /// Represents a macro in method position
+    MethMac(Mac),
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]

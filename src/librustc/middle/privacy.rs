@@ -26,6 +26,7 @@ use util::nodemap::{NodeMap, NodeSet};
 
 use syntax::ast;
 use syntax::ast_map;
+use syntax::ast_util;
 use syntax::ast_util::{is_local, local_def};
 use syntax::attr;
 use syntax::codemap::Span;
@@ -263,10 +264,10 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
 
                 if public_ty || public_trait {
                     for method in methods.iter() {
-                        let meth_public = match method.explicit_self.node {
+                        let meth_public = match ast_util::method_explicit_self(&**method).node {
                             ast::SelfStatic => public_ty,
                             _ => true,
-                        } && method.vis == ast::Public;
+                        } && ast_util::method_vis(&**method) == ast::Public;
                         if meth_public || tr.is_some() {
                             self.exported_items.insert(method.id);
                         }
@@ -456,8 +457,8 @@ impl<'a> PrivacyVisitor<'a> {
                     let imp = self.tcx.map.get_parent_did(closest_private_id);
                     match ty::impl_trait_ref(self.tcx, imp) {
                         Some(..) => return Allowable,
-                        _ if m.vis == ast::Public => return Allowable,
-                        _ => m.vis
+                        _ if ast_util::method_vis(&**m) == ast::Public => return Allowable,
+                        _ => ast_util::method_vis(&**m)
                     }
                 }
                 Some(ast_map::NodeTraitMethod(_)) => {
@@ -1078,7 +1079,7 @@ impl<'a> SanePrivacyVisitor<'a> {
                                 "visibility qualifiers have no effect on trait \
                                  impls");
                 for m in methods.iter() {
-                    check_inherited(m.span, m.vis, "");
+                    check_inherited(m.span, ast_util::method_vis(&**m), "");
                 }
             }
 
@@ -1110,7 +1111,7 @@ impl<'a> SanePrivacyVisitor<'a> {
                 for m in methods.iter() {
                     match *m {
                         ast::Provided(ref m) => {
-                            check_inherited(m.span, m.vis,
+                            check_inherited(m.span, ast_util::method_vis(&**m),
                                             "unnecessary visibility");
                         }
                         ast::Required(ref m) => {
@@ -1148,7 +1149,7 @@ impl<'a> SanePrivacyVisitor<'a> {
         match item.node {
             ast::ItemImpl(_, _, _, ref methods) => {
                 for m in methods.iter() {
-                    check_inherited(tcx, m.span, m.vis);
+                    check_inherited(tcx, m.span, ast_util::method_vis(&**m));
                 }
             }
             ast::ItemForeignMod(ref fm) => {
@@ -1174,7 +1175,7 @@ impl<'a> SanePrivacyVisitor<'a> {
                     match *m {
                         ast::Required(..) => {}
                         ast::Provided(ref m) => check_inherited(tcx, m.span,
-                                                                m.vis),
+                                                                ast_util::method_vis(&**m)),
                     }
                 }
             }
@@ -1344,7 +1345,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
                     // methods will be visible as `Public::foo`.
                     let mut found_pub_static = false;
                     for method in methods.iter() {
-                        if method.explicit_self.node == ast::SelfStatic &&
+                        if ast_util::method_explicit_self(&**method).node == ast::SelfStatic &&
                             self.exported_items.contains(&method.id) {
                             found_pub_static = true;
                             visit::walk_method_helper(self, &**method, ());

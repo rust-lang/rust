@@ -1138,10 +1138,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
             }
         }
         ast_map::NodeMethod(ref method) => {
-            (method.ident,
-             method.decl,
-             &method.generics,
-             method.body,
+            (ast_util::method_ident(&**method),
+             ast_util::method_fn_decl(&**method),
+             ast_util::method_generics(&**method),
+             ast_util::method_body(&**method),
              method.span,
              true)
         }
@@ -1167,10 +1167,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
         ast_map::NodeTraitMethod(ref trait_method) => {
             match **trait_method {
                 ast::Provided(ref method) => {
-                    (method.ident,
-                     method.decl,
-                     &method.generics,
-                     method.body,
+                    (ast_util::method_ident(&**method),
+                     ast_util::method_fn_decl(&**method),
+                     ast_util::method_generics(&**method),
+                     ast_util::method_body(&**method),
                      method.span,
                      true)
                 }

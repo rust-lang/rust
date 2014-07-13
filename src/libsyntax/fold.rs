@@ -114,7 +114,7 @@ pub trait Folder {
         noop_fold_type_method(m, self)
     }
 
-    fn fold_method(&mut self, m: Gc<Method>) -> Gc<Method>  {
+    fn fold_method(&mut self, m: Gc<Method>) -> SmallVector<Gc<Method>>  {
         noop_fold_method(&*m, self)
     }
 
@@ -465,10 +465,16 @@ fn fold_interpolated<T: Folder>(nt : &token::Nonterminal, fld: &mut T) -> token:
     match *nt {
         token::NtItem(item) =>
             token::NtItem(fld.fold_item(item)
+                          // this is probably okay, because the only folds likely
+                          // to peek inside interpolated nodes will be renamings/markings,
+                          // which map single items to single items
                           .expect_one("expected fold to produce exactly one item")),
         token::NtBlock(block) => token::NtBlock(fld.fold_block(block)),
         token::NtStmt(stmt) =>
             token::NtStmt(fld.fold_stmt(stmt)
+                          // this is probably okay, because the only folds likely
+                          // to peek inside interpolated nodes will be renamings/markings,
+                          // which map single items to single items
                           .expect_one("expected fold to produce exactly one statement")),
         token::NtPat(pat) => token::NtPat(fld.fold_pat(pat)),
         token::NtExpr(expr) => token::NtExpr(fld.fold_expr(expr)),
@@ -683,15 +689,26 @@ pub fn noop_fold_item_underscore<T: Folder>(i: &Item_, folder: &mut T) -> Item_ 
             ItemImpl(fold_generics(generics, folder),
                      ifce.as_ref().map(|p| fold_trait_ref(p, folder)),
                      folder.fold_ty(ty),
-                     methods.iter().map(|x| folder.fold_method(*x)).collect()
+                     methods.iter().flat_map(|x| folder.fold_method(*x).move_iter()).collect()
             )
         }
         ItemTrait(ref generics, ref unbound, ref traits, ref methods) => {
-            let methods = methods.iter().map(|method| {
-                match *method {
-                    Required(ref m) => Required(folder.fold_type_method(m)),
-                    Provided(method) => Provided(folder.fold_method(method))
-                }
+            let methods = methods.iter().flat_map(|method| {
+                let r = match *method {
+                    Required(ref m) =>
+                            SmallVector::one(Required(folder.fold_type_method(m))).move_iter(),
+                    Provided(method) => {
+                            // the awkward collect/iter idiom here is because
+                            // even though an iter and a map satisfy the same trait bound,
+                            // they're not actually the same type, so the method arms
+                            // don't unify.
+                            let methods : SmallVector<ast::TraitMethod> =
+                                folder.fold_method(method).move_iter()
+                                .map(|m| Provided(m)).collect();
+                            methods.move_iter()
+                        }
+                };
+                r
             }).collect();
             ItemTrait(fold_generics(generics, folder),
                       unbound.clone(),
@@ -791,20 +808,27 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: &ForeignItem,
     }
 }
 
-pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> Gc<Method> {
+// Default fold over a method.
+// Invariant: produces exactly one method.
+pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> SmallVector<Gc<Method>> {
     let id = folder.new_id(m.id); // Needs to be first, for ast_map.
-    box(GC) Method {
-        id: id,
-        ident: folder.fold_ident(m.ident),
+    SmallVector::one(box(GC) Method {
         attrs: m.attrs.iter().map(|a| folder.fold_attribute(*a)).collect(),
-        generics: fold_generics(&m.generics, folder),
-        explicit_self: folder.fold_explicit_self(&m.explicit_self),
-        fn_style: m.fn_style,
-        decl: folder.fold_fn_decl(&*m.decl),
-        body: folder.fold_block(m.body),
+        id: id,
         span: folder.new_span(m.span),
-        vis: m.vis
-    }
+        node: match m.node {
+            MethDecl(ident, ref generics, ref explicit_self, fn_style, decl, body, vis) => {
+                MethDecl(folder.fold_ident(ident),
+                         fold_generics(generics, folder),
+                         folder.fold_explicit_self(explicit_self),
+                         fn_style,
+                         folder.fold_fn_decl(&*decl),
+                         folder.fold_block(body),
+                         vis)
+            },
+            MethMac(ref mac) => MethMac(folder.fold_mac(mac)),
+        }
+    })
 }
 
 pub fn noop_fold_pat<T: Folder>(p: Gc<Pat>, folder: &mut T) -> Gc<Pat> {
