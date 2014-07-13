@@ -363,6 +363,21 @@ impl<T:Clone> Clone for Vec<T> {
     }
 }
 
+impl<T> Index<uint,T> for Vec<T> {
+    #[inline]
+    fn index<'a>(&'a self, index: &uint) -> &'a T {
+        self.get(*index)
+    }
+}
+
+// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
+/*impl<T> IndexMut<uint,T> for Vec<T> {
+    #[inline]
+    fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut T {
+        self.get_mut(*index)
+    }
+}*/
+
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I:Iterator<T>>(mut iterator: I) -> Vec<T> {
@@ -1845,6 +1860,19 @@ mod tests {
 
         let mut v = vec![BadElem(1), BadElem(2), BadElem(0xbadbeef), BadElem(4)];
         v.truncate(0);
+    }
+
+    #[test]
+    fn test_index() {
+        let vec = vec!(1i, 2, 3);
+        assert!(vec[1] == 2);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_index_out_of_bounds() {
+        let vec = vec!(1i, 2, 3);
+        let _ = vec[3];
     }
 
     #[bench]
