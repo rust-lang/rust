@@ -758,6 +758,11 @@ impl LintPass for NonCamelCaseTypes {
             }
         }
 
+        let has_extern_repr = it.attrs.iter().fold(attr::ReprAny, |acc, attr| {
+            attr::find_repr_attr(cx.tcx.sess.diagnostic(), attr, acc)
+        }) == attr::ReprExtern;
+        if has_extern_repr { return }
+
         match it.node {
             ast::ItemTy(..) | ast::ItemStruct(..) => {
                 check_case(cx, "type", it.ident, it.span)
