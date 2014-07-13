@@ -612,10 +612,6 @@ fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<Gc<Stmt>> {
 
     // Keep going, outside-in.
     let fully_expanded = fld.fold_stmt(&*marked_after);
-    if fully_expanded.is_empty() {
-        fld.cx.span_err(pth.span, "macro didn't expand to a statement");
-        return SmallVector::zero();
-    }
     fld.cx.bt_pop();
     let fully_expanded: SmallVector<Gc<Stmt>> = fully_expanded.move_iter()
             .map(|s| box(GC) Spanned { span: s.span, node: s.node.clone() })
