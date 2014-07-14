@@ -361,7 +361,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     }
     if default_passes {
         for name in DEFAULT_PASSES.iter().rev() {
-            passes.unshift(name.to_string());
+            passes.insert(0, name.to_string());
         }
     }
 

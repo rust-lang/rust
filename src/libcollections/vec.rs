@@ -987,6 +987,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![4, 1, 2, 3]);
     /// ```
     #[inline]
+    #[deprecated = "use insert(0, ...)"]
     pub fn unshift(&mut self, element: T) {
         self.insert(0, element)
     }
@@ -1007,6 +1008,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![2, 3]);
     /// ```
     #[inline]
+    #[deprecated = "use remove(0)"]
     pub fn shift(&mut self) -> Option<T> {
         self.remove(0)
     }
