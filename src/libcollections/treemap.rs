@@ -763,6 +763,12 @@ pub struct SymDifferenceItems<'a, T, I> {
     b: Peekable<&'a T, I>,
 }
 
+/// Lazy iterator producing elements in the multiset sum (in-order)
+pub struct SumItems<'a, T, I> {
+    a: Peekable<&'a T, I>,
+    b: Peekable<&'a T, I>,
+}
+
 /// Lazy iterator producing elements in the set intersection (in-order)
 pub struct IntersectionItems<'a, T, I> {
     a: Peekable<&'a T, I>,
@@ -803,6 +809,18 @@ impl<'a, T: Ord, I: Iterator<&'a T>> Iterator<&'a T> for SymDifferenceItems<'a, 
             match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
                 Less    => return self.a.next(),
                 Equal   => { self.a.next(); self.b.next(); }
+                Greater => return self.b.next(),
+            }
+        }
+    }
+}
+
+impl<'a, T: Ord, I: Iterator<&'a T>> Iterator<&'a T> for SumItems<'a, T, I> {
+    fn next(&mut self) -> Option<&'a T> {
+        loop {
+            match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
+                Less    => return self.a.next(),
+                Equal   => return self.a.next(),
                 Greater => return self.b.next(),
             }
         }
@@ -1021,6 +1039,12 @@ impl<T: Ord> TreeMultiset<T> {
     pub fn symmetric_difference<'a>(&'a self, other: &'a TreeMultiset<T>)
         -> SymDifferenceItems<'a, T, MultisetItems<'a, T>> {
         SymDifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
+    }
+
+    /// Visit the values (in-order) representing the multiset sum
+    pub fn sum<'a>(&'a self, other: &'a TreeMultiset<T>)
+        -> SumItems<'a, T, MultisetItems<'a, T>> {
+        SumItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visit the values (in-order) representing the intersection
@@ -2413,6 +2437,21 @@ mod test_mset {
         check_symmetric_difference([1, 3, 5, 9, 11],
                                    [-2, 3, 9, 14, 22],
                                    [-2, 1, 5, 11, 14, 22]);
+    }
+
+    #[test]
+    fn test_sum() {
+        fn check_sum(a: &[int], b: &[int],
+                                      expected: &[int]) {
+            check(a, b, expected, |x, y, f| x.sum(y).all(f))
+        }
+
+        check_sum([], [], []);
+        check_sum([1, 2, 2, 3], [2], [1, 2, 2, 2, 3]);
+        check_sum([2, 2], [1, 2, 2, 3], [1, 2, 2, 2, 2, 3]);
+        check_sum([1, 3, 5, 9, 11, 16, 19, 24],
+                    [-2, 1, 5, 9, 13, 19],
+                    [-2, 1, 1, 3, 5, 5, 9, 9, 11, 13, 16, 19, 19, 24]);
     }
 
     #[test]
