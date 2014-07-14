@@ -112,7 +112,7 @@ Lifetime positions can appear as either "input" or "output":
   is assigned to _all_ elided output lifetimes.
 
 * If there are multiple input lifetime positions, but one of them is `&self` or
-  `&mut sef`, the lifetime of `self` is assigned to _all_ elided output lifetimes.
+  `&mut self`, the lifetime of `self` is assigned to _all_ elided output lifetimes.
 
 * Otherwise, it is an error to elide an output lifetime.
 
