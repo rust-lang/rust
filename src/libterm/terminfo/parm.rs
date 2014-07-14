@@ -514,12 +514,12 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                 FormatDigit => {
                     if flags.space && !(s[0] == '-' as u8 ||
                                         s[0] == '+' as u8) {
-                        s.unshift(' ' as u8);
+                        s.insert(0, ' ' as u8);
                     }
                 }
                 FormatOctal => {
                     if flags.alternate && s[0] != '0' as u8 {
-                        s.unshift('0' as u8);
+                        s.insert(0, '0' as u8);
                     }
                 }
                 FormatHex => {
