@@ -891,7 +891,7 @@ impl<T: Ord> Extendable<T> for TreeMultiset<T> {
     #[inline]
     fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
         for elem in iter {
-            self.insert(elem, 1);
+            self.insert_one(elem);
         }
     }
 }
