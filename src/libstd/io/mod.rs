@@ -293,7 +293,7 @@ pub type IoResult<T> = Result<T, IoError>;
 /// # FIXME
 ///
 /// Is something like this sufficient? It's kind of archaic
-#[deriving(PartialEq, Clone)]
+#[deriving(PartialEq, Eq, Clone)]
 pub struct IoError {
     /// An enumeration which can be matched against for determining the flavor
     /// of error.
@@ -435,7 +435,7 @@ impl fmt::Show for IoError {
 }
 
 /// A list specifying general categories of I/O error.
-#[deriving(PartialEq, Clone, Show)]
+#[deriving(PartialEq, Eq, Clone, Show)]
 pub enum IoErrorKind {
     /// Any I/O error not part of this list.
     OtherIoError,
