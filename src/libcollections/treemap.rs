@@ -2470,6 +2470,23 @@ mod test_mset {
     }
 
     #[test]
+    fn test_from_iter() {
+        let xs = [1i, 2, 3, 3, 3, 4, 5, 4, 6, 7, 8, 9];
+
+        let set: TreeMultiset<int> = xs.iter().map(|&x| x).collect();
+
+        for x in xs.iter() {
+            if *x == 3 {
+                assert!(set.count(x) == 3);
+            } else if *x == 4 {
+                assert!(set.count(x) == 2);
+            } else {
+                assert!(set.count(x) == 1);
+            }
+        }
+    }
+
+    #[test]
     fn test_show() {
         let mut set: TreeMultiset<int> = TreeMultiset::new();
         let empty: TreeMultiset<int> = TreeMultiset::new();
