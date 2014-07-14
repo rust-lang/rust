@@ -1,5 +1,8 @@
 % Language FAQ
 
+## What is the origin of the name?
+
+Rust is named after a fungus that is robust, distributed, and parallel.
 
 ## Are there any big programs written in it yet? I want to read big samples.
 
