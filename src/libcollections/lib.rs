@@ -328,10 +328,6 @@ pub trait MutableSet<T>: Set<T> + Mutable {
 pub trait MutableSeq<T>: Mutable {
     /// Append an element to the back of a collection.
     ///
-    /// # Failure
-    ///
-    /// Fails if the number of elements in the vector overflows a `uint`.
-    ///
     /// # Example
     ///
     /// ```rust
