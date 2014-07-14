@@ -742,16 +742,48 @@ pub fn static_has_significant_address(mutbl: ast::Mutability,
     inline == InlineNever || inline == InlineNone
 }
 
-
 /// Macro invocations are guaranteed not to occur after expansion is complete.
-/// extracting fields of a method requires a dynamic check to make sure that it's
-/// not a macro invocation, though this check is guaranteed to succeed, assuming
+/// Extracting fields of a method requires a dynamic check to make sure that it's
+/// not a macro invocation. This check is guaranteed to succeed, assuming
 /// that the invocations are indeed gone.
-macro_rules! method_field_extractor {
-    ($fn_name:ident, $field_ty:ty, $field_pat:pat, $result:ident) => {
-        /// Returns the ident of a Method. To be used after expansion is complete
-        pub fn $fn_name<'a>(method: &'a ast::Method) -> $field_ty {
-            match method.node {
+pub trait PostExpansionMethod {
+    fn pe_ident(&self) -> ast::Ident;
+    fn pe_generics<'a>(&'a self) -> &'a ast::Generics;
+    fn pe_explicit_self<'a>(&'a self) -> &'a ast::ExplicitSelf;
+    fn pe_fn_style(&self) -> ast::FnStyle;
+    fn pe_fn_decl(&self) -> P<ast::FnDecl>;
+    fn pe_body(&self) -> P<ast::Block>;
+    fn pe_vis(&self) -> ast::Visibility;
+}
+
+
+/// can't use the standard cfg(stage0) tricks here, because the error occurs in
+/// parsing, before cfg gets a chance to save the day. (yes, interleaved parsing
+/// / expansion / configuring would solve this problem...)
+
+// NOTE: remove after next snapshot
+/// to be more specific: after a snapshot, swap out the "PRE" stuff, and
+// swap in the "POST" stuff.
+
+/// PRE
+macro_rules! mf_method_body{
+    ($slf:ident, $field_pat:pat, $result:ident) => {
+        match $slf.node {
+            $field_pat => $result,
+                MethMac(_) => {
+                    fail!("expected an AST without macro invocations");
+                }
+        }
+    }
+}
+
+/// POST
+/*
+#[cfg(not(stage0))]
+macro_rules! mf_method{
+    ($meth_name:ident, $field_ty:ty, $field_pat:pat, $result:ident) => {
+        fn $meth_name<'a>(&'a self) -> $field_ty {
+            match self.node {
                 $field_pat => $result,
                 MethMac(_) => {
                     fail!("expected an AST without macro invocations");
@@ -759,20 +791,49 @@ macro_rules! method_field_extractor {
             }
         }
     }
+}*/
+
+
+// PRE
+impl PostExpansionMethod for Method {
+    fn pe_ident(&self) -> ast::Ident {
+        mf_method_body!(self,MethDecl(ident,_,_,_,_,_,_),ident)
+    }
+    fn pe_generics<'a>(&'a self) -> &'a ast::Generics {
+        mf_method_body!(self,MethDecl(_,ref generics,_,_,_,_,_),generics)
+    }
+    fn pe_explicit_self<'a>(&'a self) -> &'a ast::ExplicitSelf {
+        mf_method_body!(self,MethDecl(_,_,ref explicit_self,_,_,_,_),explicit_self)
+    }
+    fn pe_fn_style(&self) -> ast::FnStyle{
+        mf_method_body!(self,MethDecl(_,_,_,fn_style,_,_,_),fn_style)
+    }
+    fn pe_fn_decl(&self) -> P<ast::FnDecl> {
+        mf_method_body!(self,MethDecl(_,_,_,_,decl,_,_),decl)
+    }
+    fn pe_body(&self) -> P<ast::Block> {
+        mf_method_body!(self,MethDecl(_,_,_,_,_,body,_),body)
+    }
+    fn pe_vis(&self) -> ast::Visibility {
+        mf_method_body!(self,MethDecl(_,_,_,_,_,_,vis),vis)
+    }
 }
 
-// Note: this is unhygienic in the lifetime 'a. In order to fix this, we'd have to
-// add :lifetime as a macro argument type, so that the 'a could be supplied by the macro
-// invocation.
-pub method_field_extractor!(method_ident,ast::Ident,MethDecl(ident,_,_,_,_,_,_),ident)
-pub method_field_extractor!(method_generics,&'a ast::Generics,
-                            MethDecl(_,ref generics,_,_,_,_,_),generics)
-pub method_field_extractor!(method_explicit_self,&'a ast::ExplicitSelf,
-                            MethDecl(_,_,ref explicit_self,_,_,_,_),explicit_self)
-pub method_field_extractor!(method_fn_style,ast::FnStyle,MethDecl(_,_,_,fn_style,_,_,_),fn_style)
-pub method_field_extractor!(method_fn_decl,P<ast::FnDecl>,MethDecl(_,_,_,_,decl,_,_),decl)
-pub method_field_extractor!(method_body,P<ast::Block>,MethDecl(_,_,_,_,_,body,_),body)
-pub method_field_extractor!(method_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,vis),vis)
+// POST
+/*
+#[cfg(not(stage0))]
+impl PostExpansionMethod for Method {
+    mf_method!(pe_ident,ast::Ident,MethDecl(ident,_,_,_,_,_,_),ident)
+    mf_method!(pe_generics,&'a ast::Generics,
+               MethDecl(_,ref generics,_,_,_,_,_),generics)
+    mf_method!(pe_explicit_self,&'a ast::ExplicitSelf,
+               MethDecl(_,_,ref explicit_self,_,_,_,_),explicit_self)
+    mf_method!(pe_fn_style,ast::FnStyle,MethDecl(_,_,_,fn_style,_,_,_),fn_style)
+    mf_method!(pe_fn_decl,P<ast::FnDecl>,MethDecl(_,_,_,_,decl,_,_),decl)
+    mf_method!(pe_body,P<ast::Block>,MethDecl(_,_,_,_,_,body,_),body)
+    mf_method!(pe_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,vis),vis)
+}
+*/
 
 #[cfg(test)]
 mod test {
@@ -799,4 +860,3 @@ mod test {
                 .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice()));
     }
 }
-
