@@ -377,7 +377,7 @@ define SREQ_CMDS
 ifeq ($$(OSTYPE_$(3)),apple-darwin)
   LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3) := DYLD_LIBRARY_PATH
 else
-ifeq ($$(CFG_WINDOWSY_$(2)),1)
+ifeq ($$(CFG_WINDOWSY_$(3)),1)
   LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3) := PATH
 else
   LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3) := LD_LIBRARY_PATH
