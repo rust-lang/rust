@@ -837,13 +837,24 @@ pub fn tmpdir() -> Path {
     }
 }
 
-/**
- * Convert a relative path to an absolute path
- *
- * If the given path is relative, return it prepended with the current working
- * directory. If the given path is already an absolute path, return it
- * as is.
- */
+///
+/// Convert a relative path to an absolute path
+///
+/// If the given path is relative, return it prepended with the current working
+/// directory. If the given path is already an absolute path, return it
+/// as is.
+///
+/// # Example
+/// ```rust
+/// use std::os;
+/// use std::path::Path;
+///
+/// // Assume we're in a path like /home/someuser
+/// let rel_path = Path::new("..");
+/// let abs_path = os::make_absolute(&rel_path);
+/// println!("The absolute path is {}", abs_path.display());
+/// // Prints "The absolute path is /home"
+/// ```
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
@@ -859,6 +870,16 @@ pub fn make_absolute(p: &Path) -> Path {
 
 /// Changes the current working directory to the specified path, returning
 /// whether the change was completed successfully or not.
+///
+/// # Example
+/// ```rust
+/// use std::os;
+/// use std::path::Path;
+///
+/// let root = Path::new("/");
+/// assert!(os::change_dir(&root));
+/// println!("Succesfully changed working directory to {}!", root.display());
+/// ```
 pub fn change_dir(p: &Path) -> bool {
     return chdir(p);
 
@@ -930,6 +951,13 @@ pub fn errno() -> uint {
 }
 
 /// Return the string corresponding to an `errno()` value of `errnum`.
+/// # Example
+/// ```rust
+/// use std::os;
+///
+/// // Same as println!("{}", last_os_error());
+/// println!("{}", os::error_string(os::errno() as uint));
+/// ```
 pub fn error_string(errnum: uint) -> String {
     return strerror(errnum);
 
@@ -1217,6 +1245,16 @@ extern "system" {
 ///
 /// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
 /// See `str::from_utf8_lossy` for details.
+/// # Example
+///
+/// ```rust
+/// use std::os;
+///
+/// // Prints each argument on a separate line
+/// for argument in os::args().iter() {
+///     println!("{}", argument);
+/// }
+/// ```
 pub fn args() -> Vec<String> {
     real_args()
 }
