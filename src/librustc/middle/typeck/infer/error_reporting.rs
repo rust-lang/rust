@@ -84,7 +84,7 @@ use std::string::String;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
-use syntax::ast_util::name_to_dummy_lifetime;
+use syntax::ast_util::{name_to_dummy_lifetime, PostExpansionMethod};
 use syntax::owned_slice::OwnedSlice;
 use syntax::codemap;
 use syntax::parse::token;
@@ -700,11 +700,8 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     }
                 }
                 ast_map::NodeMethod(ref m) => {
-                    Some((ast_util::method_fn_decl(&**m),
-                          ast_util::method_generics(&**m),
-                          ast_util::method_fn_style(&**m),
-                          ast_util::method_ident(&**m),
-                          Some(ast_util::method_explicit_self(&**m).node), m.span))
+                    Some((m.pe_fn_decl(), m.pe_generics(), m.pe_fn_style(),
+                          m.pe_ident(), Some(m.pe_explicit_self().node), m.span))
                 },
                 _ => None
             },
@@ -1455,7 +1452,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
                 _ => None
             },
             ast_map::NodeMethod(m) => {
-                taken.push_all(ast_util::method_generics(&*m).lifetimes.as_slice());
+                taken.push_all(m.pe_generics().lifetimes.as_slice());
                 Some(m.id)
             },
             _ => None

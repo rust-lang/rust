@@ -17,7 +17,7 @@ use middle::typeck::MethodCall;
 use util::ppaux;
 
 use syntax::ast;
-use syntax::ast_util;
+use syntax::ast_util::PostExpansionMethod;
 use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -95,7 +95,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
             visit::FkItemFn(_, _, fn_style, _) =>
                 (true, fn_style == ast::UnsafeFn),
             visit::FkMethod(_, _, method) =>
-                (true, ast_util::method_fn_style(method) == ast::UnsafeFn),
+                (true, method.pe_fn_style() == ast::UnsafeFn),
             _ => (false, false),
         };
 

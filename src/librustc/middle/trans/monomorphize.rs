@@ -25,8 +25,7 @@ use util::ppaux::Repr;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util;
-use syntax::ast_util::local_def;
+use syntax::ast_util::{local_def, PostExpansionMethod};
 use std::hash::{sip, Hash};
 
 pub fn monomorphic_fn(ccx: &CrateContext,
@@ -182,8 +181,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeMethod(mth) => {
             let d = mk_lldecl();
             set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-            trans_fn(ccx, ast_util::method_fn_decl(&*mth),
-                     ast_util::method_body(&*mth), d, &psubsts, mth.id, []);
+            trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d, &psubsts, mth.id, []);
             d
         }
         ast_map::NodeTraitMethod(method) => {
@@ -191,8 +189,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                 ast::Provided(mth) => {
                     let d = mk_lldecl();
                     set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-                    trans_fn(ccx, ast_util::method_fn_decl(&*mth),
-                             ast_util::method_body(&*mth), d, &psubsts, mth.id, []);
+                    trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d,
+                             &psubsts, mth.id, []);
                     d
                 }
                 _ => {
