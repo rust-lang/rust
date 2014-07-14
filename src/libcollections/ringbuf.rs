@@ -422,7 +422,7 @@ mod tests {
     use test::Bencher;
     use test;
 
-    use {Deque, Mutable};
+    use {Deque, Mutable, MutableSeq};
     use super::RingBuf;
     use vec::Vec;
 

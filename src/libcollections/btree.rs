@@ -782,6 +782,8 @@ mod test_btree {
 
     use super::{BTree, Node, LeafElt};
 
+    use MutableSeq;
+
     //Tests the functionality of the insert methods (which are unfinished).
     #[test]
     fn insert_test_one() {

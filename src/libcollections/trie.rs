@@ -682,7 +682,7 @@ mod test_map {
     use std::uint;
     use std::hash;
 
-    use {MutableMap, Map};
+    use {MutableMap, Map, MutableSeq};
     use super::{TrieMap, TrieNode, Internal, External, Nothing};
 
     fn check_integrity<T>(trie: &TrieNode<T>) {
@@ -1105,7 +1105,7 @@ mod test_set {
     use std::prelude::*;
     use std::uint;
 
-    use {MutableSet, Set};
+    use {MutableSet, Set, MutableSeq};
     use super::TrieSet;
 
     #[test]

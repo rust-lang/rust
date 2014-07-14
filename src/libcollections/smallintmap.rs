@@ -22,7 +22,7 @@ use core::fmt;
 use core::iter::{Enumerate, FilterMap};
 use core::mem::replace;
 
-use {Collection, Mutable, Map, MutableMap};
+use {Collection, Mutable, Map, MutableMap, MutableSeq};
 use {vec, slice};
 use vec::Vec;
 
