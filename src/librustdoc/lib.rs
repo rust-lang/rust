@@ -167,7 +167,7 @@ pub fn main_args(args: &[String]) -> int {
         println!("only one input file may be specified");
         return 1;
     }
-    let input = matches.free.get(0).as_slice();
+    let input = matches.free[0].as_slice();
 
     let libs = matches.opt_strs("L").iter().map(|s| Path::new(s.as_slice())).collect();
 

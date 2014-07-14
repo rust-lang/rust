@@ -89,9 +89,9 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optflag("h", "help", "show this message"));
 
     assert!(!args.is_empty());
-    let argv0 = (*args.get(0)).clone();
+    let argv0 = args[0].clone();
     let args_ = args.tail();
-    if args.get(1).as_slice() == "-h" || args.get(1).as_slice() == "--help" {
+    if args[1].as_slice() == "-h" || args[1].as_slice() == "--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
         println!("{}", getopts::usage(message.as_slice(), groups.as_slice()));
         println!("");
@@ -116,7 +116,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     }
 
     let filter = if !matches.free.is_empty() {
-        let s = matches.free.get(0).as_slice();
+        let s = matches.free[0].as_slice();
         match regex::Regex::new(s) {
             Ok(re) => Some(re),
             Err(e) => {
