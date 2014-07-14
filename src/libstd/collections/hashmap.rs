@@ -1358,6 +1358,19 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
+    /// Return the (mutable) value corresponding to the key in the map, using
+    /// equivalence.
+    pub fn find_mut_equiv<'a, Q: Hash<S> + Equiv<K>>(&'a mut self, k: &Q
+                                                    ) -> Option<&'a mut V> {
+        match self.search_equiv(k) {
+            Some(idx) => {
+                let (_, v_ref) = self.table.read_mut(&idx);
+                Some(v_ref)
+            }
+            None => None
+        }
+    }
+
     /// An iterator visiting all keys in arbitrary order.
     /// Iterator element type is &'a K.
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
