@@ -1659,7 +1659,7 @@ mod test_set {
     use std::prelude::*;
     use std::hash;
 
-    use {Set, MutableSet, Mutable, MutableMap};
+    use {Set, MutableSet, Mutable, MutableMap, MutableSeq};
     use super::{TreeMap, TreeSet};
 
     #[test]

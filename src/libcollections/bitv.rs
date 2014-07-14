@@ -1574,7 +1574,7 @@ mod tests {
     use std::rand::Rng;
     use test::Bencher;
 
-    use {Set, Mutable, MutableSet};
+    use {Set, Mutable, MutableSet, MutableSeq};
     use bitv::{Bitv, BitvSet, from_fn, from_bytes};
     use bitv;
     use vec::Vec;

@@ -315,9 +315,6 @@ macro_rules! try(
 #[macro_export]
 macro_rules! vec(
     ($($e:expr),*) => ({
-        #[allow(unused_imports)]
-        use std::collections::MutableSeq;
-
         // leading _ to allow empty construction without a warning.
         let mut _temp = ::std::vec::Vec::new();
         $(_temp.push($e);)*
