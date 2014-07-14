@@ -1,10 +1,22 @@
 lexer grammar RustLexer;
 
+tokens {
+    EQ, LT, LE, EQEQ, NE, GE, GT, ANDAND, OROR, NOT, TILDE, PLUT,
+    MINUS, STAR, SLASH, PERCENT, CARET, AND, OR, SHL, SHR, BINOP,
+    BINOPEQ, AT, DOT, DOTDOT, DOTDOTDOT, COMMA, SEMI, COLON,
+    MOD_SEP, RARROW, FAT_ARROW, LPAREN, RPAREN, LBRACKET, RBRACKET,
+    LBRACE, RBRACE, POUND, DOLLAR, UNDERSCORE, LIT_CHAR,
+    LIT_INTEGER, LIT_FLOAT, LIT_STR, LIT_STR_RAW, LIT_BINARY,
+    LIT_BINARY_RAW, IDENT, LIFETIME, WHITESPACE, DOC_COMMENT,
+    COMMENT
+}
+
 /* Note: due to antlr limitations, we can't represent XID_start and
  * XID_continue properly. ASCII-only substitute. */
 
 fragment XID_start : [_a-zA-Z] ;
 fragment XID_continue : [_a-zA-Z0-9] ;
+
 
 /* Expression-operator symbols */
 
@@ -83,7 +95,7 @@ LIT_CHAR
   : '\'' ( '\\' CHAR_ESCAPE | ~[\\'\n\t\r] ) '\''
   ;
 
-INT_SUFFIX
+fragment INT_SUFFIX
   : 'i'
   | 'i8'
   | 'i16'
@@ -141,25 +153,28 @@ LIFETIME : '\'' IDENT ;
 
 WHITESPACE : [ \r\n\t]+ ;
 
-COMMENT
-  : '//' ~[\r\n]*
-  | '////' ~[\r\n]*
-  | BLOCK_COMMENT
+LINE_COMMENT_NOT_A_TOKEN : '//' -> more, pushMode(LINE_COMMENT) ;
+
+
+DOC_BLOCK_COMMENT
+  : ('/**' | '/*!') (DOC_BLOCK_COMMENT | .)*? '*/' -> type(DOC_COMMENT)
   ;
 
-mode DOCCOMMENT;
+BLOCK_COMMENT : '/*' (BLOCK_COMMENT | .)*? '*/' -> type(COMMENT) ;
 
-fragment DOC_BLOCK_COMMENT
-  : ('/**' | '/*!') (DOC_BLOCK_COMMENT | .)*? '*/'
+mode LINE_COMMENT;
+
+MAYBE_DOC_COMMENT
+  : '/' -> more, pushMode(LINE_DOC_COMMENT)
   ;
 
-DOC_COMMENT
-  : '///' ~[\r\n]*
-  | '//!' ~[\r\n]*
-  | DOC_BLOCK_COMMENT
+MAYBE_OUTER_DOC_COMMENT
+  : '!' ~[\r\n]* -> type(LINE_DOC_COMMENT), popMode
   ;
 
-fragment BLOCK_COMMENT
-  : '/*' (BLOCK_COMMENT | .)*? '*/'
-  ;
+COMMENT : ~[\r\n]* -> popMode ;
 
+mode LINE_DOC_COMMENT;
+
+ACTUALLY_A_COMMENT : '/' ~[\r\n]* -> type(COMMENT), popMode ;
+REALLY_A_DOC_COMMENT : ~[\r\n]* -> type(DOC_COMMENT), popMode ;
