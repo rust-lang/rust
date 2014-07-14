@@ -2427,7 +2427,7 @@ as in this version of `print_all` that copies elements.
 fn print_all<T: Printable + Clone>(printable_things: Vec<T>) {
     let mut i = 0;
     while i < printable_things.len() {
-        let copy_of_thing = printable_things.get(i).clone();
+        let copy_of_thing = printable_things[i].clone();
         copy_of_thing.print();
         i += 1;
     }

@@ -205,7 +205,7 @@ fn main() {
 
     spawn(proc() {
         let numbers = rx.recv();
-        println!("{}", *numbers.get(0));
+        println!("{}", numbers[0]);
     })
 }
 ```
@@ -244,11 +244,11 @@ fn main() {
 
     spawn(proc() {
         let numbers = rx.recv();
-        println!("{}", numbers.get(0));
+        println!("{}", numbers[0]);
     });
 
     // Try to print a number from the original task
-    println!("{}", *numbers.get(0));
+    println!("{}", numbers[0]);
 }
 ```
 
@@ -256,7 +256,7 @@ The compiler will produce an error indicating that the value is no longer in sco
 
 ```text
 concurrency.rs:12:20: 12:27 error: use of moved value: 'numbers'
-concurrency.rs:12     println!("{}", numbers.get(0));
+concurrency.rs:12     println!("{}", numbers[0]);
                                      ^~~~~~~
 ```
 
@@ -276,7 +276,7 @@ fn main() {
 
         spawn(proc() {
             let numbers = rx.recv();
-            println!("{:d}", *numbers.get(num as uint));
+            println!("{:d}", numbers[num as uint]);
         })
     }
 }
@@ -309,7 +309,7 @@ fn main() {
 
         spawn(proc() {
             let numbers = rx.recv();
-            println!("{:d}", *numbers.get(num as uint));
+            println!("{:d}", (*numbers)[num as uint]);
         })
     }
 }
@@ -364,7 +364,7 @@ fn main() {
             // See: https://github.com/rust-lang/rust/issues/6515
             *numbers.get_mut(num as uint) = *numbers.get_mut(num as uint) + 1;
 
-            println!("{}", *numbers.get(num as uint));
+            println!("{}", (*numbers)[num as uint]);
 
             // When `numbers` goes out of scope the lock is dropped
         })

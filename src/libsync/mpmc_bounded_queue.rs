@@ -90,7 +90,7 @@ impl<T: Send> State<T> {
         let mask = self.mask;
         let mut pos = self.enqueue_pos.load(Relaxed);
         loop {
-            let node = self.buffer.get(pos & mask);
+            let node = &self.buffer[pos & mask];
             let seq = unsafe { (*node.get()).sequence.load(Acquire) };
             let diff: int = seq as int - pos as int;
 
@@ -118,7 +118,7 @@ impl<T: Send> State<T> {
         let mask = self.mask;
         let mut pos = self.dequeue_pos.load(Relaxed);
         loop {
-            let node = self.buffer.get(pos & mask);
+            let node = &self.buffer[pos & mask];
             let seq = unsafe { (*node.get()).sequence.load(Acquire) };
             let diff: int = seq as int - (pos + 1) as int;
             if diff == 0 {

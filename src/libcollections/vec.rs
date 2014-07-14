@@ -42,7 +42,7 @@ pub static PTR_MARKER: u8 = 0;
 /// vec.push(2i);
 ///
 /// assert_eq!(vec.len(), 2);
-/// assert_eq!(vec.get(0), &1);
+/// assert_eq!(vec[0], 1);
 ///
 /// assert_eq!(vec.pop(), Some(2));
 /// assert_eq!(vec.len(), 1);
@@ -746,9 +746,12 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
+    /// #![allow(deprecated)]
+    ///
     /// let vec = vec!(1i, 2, 3);
     /// assert!(vec.get(1) == &2);
     /// ```
+    #[deprecated="prefer using indexing, e.g., vec[0]"]
     #[inline]
     pub fn get<'a>(&'a self, index: uint) -> &'a T {
         &self.as_slice()[index]

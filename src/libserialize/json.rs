@@ -1015,7 +1015,7 @@ impl Stack {
     /// lower indices are at the bottom of the stack while higher indices are
     /// at the top.
     pub fn get<'l>(&'l self, idx: uint) -> StackElement<'l> {
-        match *self.stack.get(idx) {
+        match self.stack[idx] {
             InternalIndex(i) => { Index(i) }
             InternalKey(start, size) => {
                 Key(str::from_utf8(

@@ -551,7 +551,7 @@ fn write_shared(cx: &Context,
         }
         mydst.push(format!("{}.{}.js",
                            remote_item_type.to_static_str(),
-                           *remote_path.get(remote_path.len() - 1)));
+                           remote_path[remote_path.len() - 1]));
         let all_implementors = try!(collect(&mydst, krate.name.as_slice(),
                                             "implementors"));
 
