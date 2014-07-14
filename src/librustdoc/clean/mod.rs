@@ -14,6 +14,7 @@
 use syntax;
 use syntax::ast;
 use syntax::ast_util;
+use syntax::ast_util::PostExpansionMethod;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::Pos;
@@ -695,30 +696,30 @@ pub struct Method {
 
 impl Clean<Item> for ast::Method {
     fn clean(&self) -> Item {
-        let fn_decl = ast_util::method_fn_decl(self);
-        let inputs = match ast_util::method_explicit_self(self).node {
-            ast::SelfStatic => fn_decl.inputs.as_slice(),
-            _ => fn_decl.inputs.slice_from(1)
+        let all_inputs = &self.pe_fn_decl().inputs;
+        let inputs = match self.pe_explicit_self().node {
+            ast::SelfStatic => all_inputs.as_slice(),
+            _ => all_inputs.slice_from(1)
         };
         let decl = FnDecl {
             inputs: Arguments {
                 values: inputs.iter().map(|x| x.clean()).collect(),
             },
-            output: (fn_decl.output.clean()),
-            cf: fn_decl.cf.clean(),
+            output: (self.pe_fn_decl().output.clean()),
+            cf: self.pe_fn_decl().cf.clean(),
             attrs: Vec::new()
         };
         Item {
-            name: Some(ast_util::method_ident(self).clean()),
+            name: Some(self.pe_ident().clean()),
             attrs: self.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
             def_id: ast_util::local_def(self.id),
-            visibility: ast_util::method_vis(self).clean(),
+            visibility: self.pe_vis().clean(),
             stability: get_stability(ast_util::local_def(self.id)),
             inner: MethodItem(Method {
-                generics: ast_util::method_generics(self).clean(),
-                self_: ast_util::method_explicit_self(self).node.clean(),
-                fn_style: ast_util::method_fn_style(self).clone(),
+                generics: self.pe_generics().clean(),
+                self_: self.pe_explicit_self().node.clean(),
+                fn_style: self.pe_fn_style().clone(),
                 decl: decl,
             }),
         }
