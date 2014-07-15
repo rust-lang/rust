@@ -85,6 +85,9 @@ impl Session {
     pub fn span_warn(&self, sp: Span, msg: &str) {
         self.diagnostic().span_warn(sp, msg)
     }
+    pub fn span_warn_with_code(&self, sp: Span, msg: &str, code: &str) {
+        self.diagnostic().span_warn_with_code(sp, msg, code)
+    }
     pub fn warn(&self, msg: &str) {
         self.diagnostic().handler().warn(msg)
     }
