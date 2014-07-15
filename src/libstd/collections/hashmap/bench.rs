@@ -38,7 +38,7 @@ fn new_insert_drop(b : &mut Bencher) {
 }
 
 #[bench]
-fn insert(b: &mut Bencher) {
+fn grow_by_insertion(b: &mut Bencher) {
     use super::HashMap;
 
     let mut m = HashMap::new();

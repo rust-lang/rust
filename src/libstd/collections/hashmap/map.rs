@@ -16,8 +16,7 @@ use collections::{Collection, Mutable, MutableSet, Map, MutableMap};
 use default::Default;
 use fmt::Show;
 use fmt;
-use RandomSipHasher;
-use hash::{Hash, Hasher};
+use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter;
 use mem::replace;
@@ -26,8 +25,18 @@ use ops::Deref;
 use option::{Some, None, Option};
 use result::{Ok, Err};
 
-use super::table::{BucketWithTable, FullBucketImm, RawTable, FullBucket, FullBucketMut, Bucket};
 use super::table;
+use super::table::{
+    Bucket,
+    BucketWithTable,
+    Empty,
+    Full,
+    FullBucket,
+    FullBucketImm,
+    FullBucketMut,
+    RawTable,
+    SafeHash
+};
 
 static INITIAL_LOG2_CAP: uint = 5;
 pub static INITIAL_CAPACITY: uint = 1 << INITIAL_LOG2_CAP; // 2^5
@@ -64,7 +73,7 @@ impl DefaultResizePolicy {
 }
 
 // The main performance trick in this hashmap is called Robin Hood Hashing.
-// It gains its excellent performance from one crucial operation:
+// It gains its excellent performance from one essential operation:
 //
 //    If an insertion collides with an existing element, and that elements
 //    "probe distance" (how far away the element is from its ideal location)
@@ -93,6 +102,15 @@ impl DefaultResizePolicy {
 // α^3, etc. Therefore, the odds of colliding k times is α^k. The odds of NOT
 // colliding after k tries is 1-α^k.
 //
+// The paper from 1986 cited below mentions an implementation which keeps track
+// of the distance-to-initial-bucket histogram. This approach is not suitable
+// for modern architectures because it requires maintaining an internal data
+// structure. This allows very good first guesses, but we are most concerned
+// with guessing entire cache lines, not individual indexes. Furthermore, array
+// accesses are no longer linear and in one direction, as we have now. There
+// is also memory and cache pressure that this would entail that would be very
+// difficult to properly see in a microbenchmark.
+//
 // Future Improvements (FIXME!)
 // ============================
 //
@@ -105,15 +123,6 @@ impl DefaultResizePolicy {
 // Future Optimizations (FIXME!)
 // =============================
 //
-// The paper cited below mentions an implementation which keeps track of the
-// distance-to-initial-bucket histogram. I'm suspicious of this approach because
-// it requires maintaining an internal map. If this map were replaced with a
-// hashmap, it would be faster, but now our data structure is self-referential
-// and blows up. Also, this allows very good first guesses, but array accesses
-// are no longer linear and in one direction, as we have now. There is also
-// memory and cache pressure that this map would entail that would be very
-// difficult to properly see in a microbenchmark.
-//
 // Another possible design choice that I made without any real reason is
 // parameterizing the raw table over keys and values. Technically, all we need
 // is the size and alignment of keys and values, and the code should be just as
@@ -124,12 +133,19 @@ impl DefaultResizePolicy {
 // This would definitely be an avenue worth exploring if people start complaining
 // about the size of rust executables.
 //
-// There's also an "optimization" that has been omitted regarding how the
-// hashtable allocates. The vector type has set the expectation that a hashtable
-// which never has an element inserted should not allocate. I'm suspicious of
-// implementing this for hashtables, because supporting it has no performance
-// benefit over using an `Option<HashMap<K, V>>`, and is significantly more
-// complicated.
+// Annotate exceedingly likely branches in `table::make_hash`
+// and `search_hashed_generic` to reduce instruction cache pressure
+// and mispredictions once it becomes possible (blocked on issue #11092).
+//
+// Shrinking the table could simply reallocate in place after moving buckets
+// to the first half.
+//
+// The growth algorithm - FIXME(pczarn)
+// ------------------------------------
+//
+// Investigate soundness of the growth algorithm. It's basically a fast path
+// of the naive reinsertion-during-resize algorithm. Prove that other paths
+// would never be taken.
 
 /// A hash map implementation which uses linear probing with Robin
 /// Hood bucket stealing.
@@ -218,23 +234,25 @@ pub struct HashMap<K, V, H = RandomSipHasher> {
     // All hashes are keyed on these values, to prevent hash collision attacks.
     hasher: H,
 
-    table: table::RawTable<K, V>,
+    table: RawTable<K, V>,
 
     // We keep this at the end since it might as well have tail padding.
     resize_policy: DefaultResizePolicy,
 }
 
 /// Search for a pre-hashed key.
-fn search_hashed_generic<K, V, M: Deref<RawTable<K, V>>>(table: M, hash: &table::SafeHash, is_match: |&K| -> bool)
-                        -> Option<FullBucket<K, V, M>> {
+fn search_hashed_generic<K, V, M: Deref<RawTable<K, V>>>(table: M,
+                                                         hash: &SafeHash,
+                                                         is_match: |&K| -> bool)
+                                                         -> Option<FullBucket<K, V, M>> {
     let size = table.size();
     let mut probe = Bucket::new(table, hash);
     let ib = probe.index();
 
     while probe.index() != ib + size {
         let full = match probe.peek() {
-            table::Empty(_) => return None, // hit an empty bucket
-            table::Full(b) => b
+            Empty(..) => return None, // hit an empty bucket
+            Full(b) => b
         };
 
         if full.distance() + ib < full.index() {
@@ -260,14 +278,14 @@ fn search_hashed_generic<K, V, M: Deref<RawTable<K, V>>>(table: M, hash: &table:
     None
 }
 
-fn search_hashed<K: Eq, V, M: Deref<RawTable<K, V>>>(table: M, hash: &table::SafeHash, k: &K)
-                -> Option<table::FullBucket<K, V, M>> {
+fn search_hashed<K: Eq, V, M: Deref<RawTable<K, V>>>(table: M, hash: &SafeHash, k: &K)
+                                                     -> Option<FullBucket<K, V, M>> {
     search_hashed_generic(table, hash, |k_| *k == *k_)
 }
 
 fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>) -> V {
     let size = {
-        let table = starting_bucket.table();
+        let table = starting_bucket.table(); // FIXME "lifetime too short".
         table.size()
     };
     let (empty, _k, retval) = starting_bucket.take();
@@ -275,7 +293,6 @@ fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>) -> V {
         Some(b) => b,
         None => return retval
     };
-    // COMPILER error! wrong enum optimization. sets ptr to 0
 
     for _ in range(0, size) {
         if gap.full().distance() != 0 {
@@ -294,8 +311,57 @@ fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>) -> V {
     return retval;
 }
 
+fn robin_hood<'a, K, V>(mut bucket: FullBucketMut<'a, K, V>,
+                        mut ib: uint,
+                        mut hash: SafeHash,
+                        mut k: K,
+                        mut v: V)
+                        -> &'a mut V {
+    let starting_index = bucket.index();
+    let size = {
+        let table = bucket.table(); // FIXME "lifetime too short".
+        table.size()
+    };
+    let idx_end = size + starting_index - bucket.distance();
+
+    loop {
+        let (old_hash, old_key, old_val) = bucket.replace(hash, k, v);
+        loop {
+            let probe = bucket.next();
+            assert!(probe.index() != idx_end);
+
+            let full_bucket = match probe.peek() {
+                table::Empty(bucket) => {
+                    // Found a hole!
+                    let b = bucket.put(old_hash, old_key, old_val);
+                    // Now that it's stolen, just read the value's pointer
+                    // right out of the table!
+                    let (_, v) = Bucket::at_index(b.into_table(), starting_index).peek()
+                                                                                 .expect_full()
+                                                                                 .into_mut_refs();
+                    return v;
+                },
+                table::Full(bucket) => bucket
+            };
+
+            let probe_ib = full_bucket.index() - full_bucket.distance();
+
+            bucket = full_bucket;
+
+            // Robin hood! Steal the spot.
+            if ib < probe_ib {
+                ib = probe_ib;
+                hash = old_hash;
+                k = old_key;
+                v = old_val;
+                break;
+            }
+        }
+    }
+}
+
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
-    fn make_hash<X: Hash<S>>(&self, x: &X) -> table::SafeHash {
+    fn make_hash<X: Hash<S>>(&self, x: &X) -> SafeHash {
         table::make_hash(&self.hasher, x)
     }
 
@@ -324,17 +390,20 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         search_hashed(&mut self.table, &hash, k)
     }
 
-    fn insert_hashed_ordered(&mut self, hash: table::SafeHash, k: K, v: V) {
+    fn insert_hashed_ordered(&mut self, hash: SafeHash, k: K, v: V) {
         let cap = self.table.capacity();
         let mut buckets = Bucket::new(&mut self.table, &hash);
         let ib = buckets.index();
+
         while buckets.index() != ib + cap {
+            // We don't need to compare hashes for value swap.
+            // Not even DIBs for Robin Hood.
             buckets = match buckets.peek() {
-                table::Empty(empty) => {
+                Empty(empty) => {
                     empty.put(hash, k, v);
                     return;
                 }
-                table::Full(b) => b.into_bucket()
+                Full(b) => b.into_bucket()
             };
             buckets.next();
         }
@@ -360,8 +429,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Mutable for HashMap<K, V, H> {
 
         while buckets.index() != cap {
             buckets = match buckets.peek() {
-                table::Empty(b)  => b.next(),
-                table::Full(full) => {
+                Empty(b)  => b.next(),
+                Full(full) => {
                     let (b, _, _) = full.take();
                     b.next()
                 }
@@ -400,7 +469,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> MutableMap<K, V> for HashMap<K, V, H> 
         self.make_some_room(potential_new_size);
 
         let mut retval = None;
-        self.insert_or_replace_with(hash, k, v, |val_ref, val| {
+        self.insert_or_replace_with(hash, k, v, |_, val_ref, val| {
             retval = Some(replace(val_ref, val));
         });
         retval
@@ -471,7 +540,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         HashMap {
             hasher:        hasher,
             resize_policy: DefaultResizePolicy::new(INITIAL_CAPACITY),
-            table:         table::RawTable::new(0),
+            table:         RawTable::new(0),
         }
     }
 
@@ -499,7 +568,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         HashMap {
             hasher:        hasher,
             resize_policy: DefaultResizePolicy::new(cap),
-            table:         table::RawTable::new(cap),
+            table:         RawTable::new(cap),
         }
     }
 
@@ -536,49 +605,108 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         assert!(self.table.size() <= new_capacity);
         assert!(num::is_power_of_two(new_capacity));
 
-        let mut old_table = replace(&mut self.table, table::RawTable::new(new_capacity));
+        let mut old_table = replace(&mut self.table, RawTable::new(new_capacity));
         let old_size = old_table.size();
 
-        if old_table.capacity() == 0 {
+        if old_table.capacity() == 0 || old_table.size() == 0 {
             return;
         }
 
         if new_capacity < old_table.capacity() {
+            // Shrink the table. Naive algorithm for resizing:
             for (h, k, v) in old_table.move_iter() {
                 self.insert_hashed_nocheck(h, k, v);
             }
         } else {
+            // Grow the table.
+            // Specialization of the other branch:
+            // A fast path of the usual reinsertion-during-resize algorithm.
+            //
+            // To simplify the algorithm, I made some assumptions:
+            //
+            // Theorem 1. In all non-empty maps with Robin Hood, there exists
+            // a bucket that has a desired position (DIB = 0).
+            //
+            // Intuitively, an empty spot is followed by a full bucket `A`.
+            // This bucket must have an ideal position, DIB(A) = 0.
+            // And even when the last empty spot is filled once the capacity
+            // is reached, the situation shouldn't change.
+            //
+            // Observe that the reinsertion of said bucket `A` without rehashing
+            // means that it will keep the index or move by `old_cap` spots
+            // to an entirely new half of the map.
+            // In other words, an additional bit of `hash` affects the index.
+            //
+            // The reinsertion of the next bucket B could place it right
+            // after the previous bucket A. Except that if A is now far away
+            // and DIB(B) = 1, then B might take over the old position of A.
+            //
+            // Either way, it would never displace an already reinserted
+            // bucket, thus stealing that bucket's spot with the help of Robin
+            // Hood.
+            //
+            // Theorem 2. Linear reinsertion that starts with the bucket with
+            // DIB = 0 in the old map will never perform robin_hood operation.
+            //
+            // FIXME: no proof.
+            //
             let mut bucket = Bucket::first(&mut old_table);
 
+            // "So a few of the first shall be last: for many be called,
+            // but few chosen."
+            //
+            // We'll most likely encounter a few buckets at the beginning that
+            // have their initial buckets near the end of the table. They were
+            // placed at the beginning as the probe wrapped around the table
+            // during insertion. We must skip forward to a bucket that won't
+            // get reinserted too early and won't unfairly steal others spot.
+            // This eliminates the need for robin hood.
             loop {
-                match bucket.peek() {
-                    table::Full(full) => {
+                bucket = match bucket.peek() {
+                    Full(full) => {
                         if full.distance() == 0 {
+                            // This bucket occupies its ideal spot.
+                            // It indicates the start of another "cluster".
                             bucket = full.into_bucket();
                             break;
                         }
-                        bucket = full.next();
+                        // Leaving this bucket in the last cluster for later.
+                        full.into_bucket()
                     }
-                    table::Empty(b) => {
-                        bucket = b.next();
-                        break;
+                    Empty(b) => {
+                        // Encountered a hole between clusters.
+                        b.into_bucket()
                     }
                 };
+                bucket.next();
             }
 
+            // This is how the buckets might be laid out in memory:
+            // ($ marks an initialized bucket)
+            //  ________________
+            // |$$$_$$$$$$_$$$$$|
+            //
+            // But we've skipped the entire initial cluster of buckets
+            // and will continue iteration in this order:
+            //  ________________
+            //     |$$$$$$_$$$$$
+            //                  ^ wrap around once end is reached
+            //  ________________
+            //  $$$_____________|
+            //    ^ exit once table.size == 0
             loop {
                 bucket = match bucket.peek() {
-                    table::Full(bucket) => {
-                        {
-                            let t = bucket.table();
-                            if t.size() == 0 { break }
-                        }
+                    Full(bucket) => {
                         let h = bucket.hash();
                         let (b, k, v) = bucket.take();
                         self.insert_hashed_ordered(h, k, v);
+                        {
+                            let t = b.table(); // FIXME "lifetime too short".
+                            if t.size() == 0 { break }
+                        };
                         b.into_bucket()
                     }
-                    table::Empty(b) => b.into_bucket()
+                    Empty(b) => b.into_bucket()
                 };
                 bucket.next();
             }
@@ -612,29 +740,30 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// If the key already exists, the hashtable will be returned untouched
     /// and a reference to the existing element will be returned.
     fn insert_hashed_nocheck<'a>(
-        &'a mut self, hash: table::SafeHash, k: K, v: V) -> &'a mut V {
-        self.insert_or_replace_with(hash, k, v, |_, _| ())
+        &'a mut self, hash: SafeHash, k: K, v: V) -> &'a mut V {
+        self.insert_or_replace_with(hash, k, v, |_, _, _| ())
     }
 
-    fn insert_or_replace_with<'a>(
-        &'a mut self, hash: table::SafeHash, k: K, v: V,
-        found_existing: |&mut V, V|
-    ) -> &'a mut V {
-
+    fn insert_or_replace_with<'a>(&'a mut self,
+                                  hash: SafeHash,
+                                  k: K,
+                                  v: V,
+                                  found_existing: |&mut K, &mut V, V|)
+                                  -> &'a mut V {
         // Worst case, we'll find one empty bucket among `size + 1` buckets.
         let size = self.table.size();
-        let mut rbucket = Bucket::new(&mut self.table, &hash);
-        let ib = rbucket.index();
+        let mut probe = Bucket::new(&mut self.table, &hash);
+        let ib = probe.index();
 
         loop {
-            let mut bucket = match rbucket.peek() {
-                table::Empty(bucket) => {
+            let mut bucket = match probe.peek() {
+                Empty(bucket) => {
                     // Found a hole!
                     let bucket = bucket.put(hash, k, v);
                     let (_, val) = bucket.into_mut_refs();
                     return val;
                 },
-                table::Full(bucket) => bucket
+                Full(bucket) => bucket
             };
 
             if bucket.hash() == hash {
@@ -644,7 +773,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
                 let bv: *mut V = bucket_v;
                 if k == *bucket_k {
                     // Key already exists. Get its reference.
-                    found_existing(bucket_v, v);
+                    found_existing(bucket_k, bucket_v, v);
                     return unsafe {&mut *bv};
                 }
             }
@@ -653,53 +782,18 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
 
             if (ib as int) < robin_ib {
                 // Found a luckier bucket than me. Better steal his spot.
-                let (mut hash, mut k, mut v) = bucket.replace(hash, k, v);
-                let robin_index = bucket.index();
-                let mut robin_ib = robin_ib as uint;
-                let mut rbucket = bucket.next();
-                loop {
-                    let mut bucket = match rbucket.peek() {
-                        table::Empty(bucket) => {
-                            // Found a hole!
-                            let b = bucket.put(hash, k, v);
-                            // Now that it's stolen, just read the value's pointer
-                            // right out of the table!
-                            let (_, v) = match Bucket::at_index(b.into_table(), robin_index).peek() {
-                                table::Full(b) => b.into_mut_refs(),
-                                _ => fail!()
-                            };
-                            return v;
-                        },
-                        table::Full(bucket) => bucket
-                    };
-
-                    let probe_ib = bucket.index() - bucket.distance();
-
-                    // Robin hood! Steal the spot.
-                    if robin_ib < probe_ib {
-                        robin_ib = probe_ib;
-                        let (old_hash, old_key, old_val) = bucket.replace(hash, k, v);
-                        hash = old_hash;
-                        k = old_key;
-                        v = old_val;
-                    }
-                    rbucket = bucket.next();
-                    if rbucket.index() == ib + size + 1 {
-                        fail!("HashMap fatal error: 100% load factor?")
-                    }
-                }
+                return robin_hood(bucket, robin_ib as uint, hash, k, v);
             }
-            rbucket = bucket.next();
-            if rbucket.index() == ib + size + 1 {
-                fail!("Internal HashMap error: Out of space.")
-            }
+
+            probe = bucket.next();
+            assert!(probe.index() != ib + size + 1);
         }
     }
 
     /// Inserts an element which has already been hashed, returning a reference
     /// to that element inside the hashtable. This is more efficient that using
     /// `insert`, since the key will not be rehashed.
-    fn insert_hashed<'a>(&'a mut self, hash: table::SafeHash, k: K, v: V) -> &'a mut V {
+    fn insert_hashed<'a>(&'a mut self, hash: SafeHash, k: K, v: V) -> &'a mut V {
         let potential_new_size = self.table.size() + 1;
         self.make_some_room(potential_new_size);
         self.insert_hashed_nocheck(hash, k, v)
@@ -767,7 +861,11 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
                                  v: V,
                                  f: |&K, &mut V|)
                                  -> &'a mut V {
-        self.find_with_or_insert_with(k, v, |k, v, _a| f(k, v), |_k, a| a)
+        let potential_new_size = self.table.size() + 1;
+        self.make_some_room(potential_new_size);
+
+        let hash = self.make_hash(&k);
+        self.insert_or_replace_with(hash, k, v, |kref, vref, _v| f(kref, vref))
     }
 
     /// Modify and return the value corresponding to the key in the map, or
@@ -826,12 +924,14 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
                 Some(bucket) => {
                     let (_, v_ref) = bucket.into_mut_refs();
                     found(&k, v_ref, a);
-                    return v_ref;
+                    // FIXME cannot borrow `*self` as mutable more than once at a time
+                    let vr: *mut V = v_ref;
+                    return unsafe {&mut *vr};
+                    // Maybe this lifetime is tied to other one obtained below.
                 }
-                _ => {
-                }
+                _ => {}
             };
-        }
+        };
         let v = not_found(&k, a);
         self.insert_hashed(hash, k, v)
     }
@@ -1035,7 +1135,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     /// ```
     pub fn iter<'a>(&'a self) -> Entries<'a, K, V> {
-        self.table.iter()
+        Entries { inner: self.table.iter() }
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order,
@@ -1062,7 +1162,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     /// ```
     pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
-        self.table.mut_iter()
+        MutEntries { inner: self.table.mut_iter() }
     }
 
     /// Creates a consuming iterator, that is, one that moves each key-value
@@ -1083,7 +1183,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// let vec: Vec<(&str, int)> = map.move_iter().collect();
     /// ```
     pub fn move_iter(self) -> MoveEntries<K, V> {
-        self.table.move_iter().map(|(_, k, v)| (k, v))
+        MoveEntries {
+            inner: self.table.move_iter().map(|(_, k, v)| (k, v))
+        }
     }
 }
 
@@ -1127,13 +1229,9 @@ impl<K: Eq + Hash<S>, V: PartialEq, S, H: Hasher<S>> PartialEq for HashMap<K, V,
     fn eq(&self, other: &HashMap<K, V, H>) -> bool {
         if self.len() != other.len() { return false; }
 
-        self.iter()
-          .all(|(key, value)| {
-            match other.find(key) {
-                None    => false,
-                Some(v) => *value == *v
-            }
-        })
+        self.iter().all(|(key, value)|
+            other.find(key).map_or(false, |v| *value == *v)
+        )
     }
 }
 
@@ -1159,14 +1257,52 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H>
 }
 
 /// HashMap iterator
-pub type Entries<'a, K, V> = table::Entries<'a, K, V>;
+pub struct Entries<'a, K, V> {
+    inner: table::Entries<'a, K, V>
+}
 
 /// HashMap mutable values iterator
-pub type MutEntries<'a, K, V> = table::MutEntries<'a, K, V>;
+pub struct MutEntries<'a, K, V> {
+    inner: table::MutEntries<'a, K, V>
+}
 
 /// HashMap move iterator
-pub type MoveEntries<K, V> =
-    iter::Map<'static, (table::SafeHash, K, V), (K, V), table::MoveEntries<K, V>>;
+pub struct MoveEntries<K, V> {
+    inner: iter::Map<'static, (SafeHash, K, V), (K, V), table::MoveEntries<K, V>>
+}
+
+impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(&'a K, &'a V)> {
+        self.inner.next()
+    }
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
+        self.inner.next()
+    }
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<K, V> Iterator<(K, V)> for MoveEntries<K, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(K, V)> {
+        self.inner.next()
+    }
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        self.inner.size_hint()
+    }
+}
 
 /// HashMap keys iterator
 pub type Keys<'a, K, V> =
@@ -1246,7 +1382,6 @@ mod test_map {
     struct Dropable {
         k: uint
     }
-
 
     impl Dropable {
         fn new(k: uint) -> Dropable {
@@ -1352,6 +1487,7 @@ mod test_map {
             hm
         };
 
+        // By the way, ensure that cloning doesn't screw up the dropping.
         drop(hm.clone());
 
         {
@@ -1484,6 +1620,28 @@ mod test_map {
         assert_eq!(*m.find(&9).unwrap(), 4);
         assert_eq!(*m.find(&5).unwrap(), 3);
         assert_eq!(*m.find(&1).unwrap(), 2);
+    }
+
+    #[test]
+    fn test_update_with() {
+        let mut m = HashMap::with_capacity(4);
+        assert!(m.insert(1i, 2i));
+
+        for i in range(1i, 1000) {
+            assert_eq!(
+                i + 2,
+                *m.insert_or_update_with(i + 1, i + 2, |_k, _v| {
+                    fail!("Key not yet present");
+                })
+            );
+            assert_eq!(
+                i + 1,
+                *m.insert_or_update_with(i, i + 3, |k, v| {
+                    assert_eq!(*k, i);
+                    assert_eq!(*v, i + 1);
+                })
+            );
+        }
     }
 
     #[test]
