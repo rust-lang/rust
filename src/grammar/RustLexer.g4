@@ -44,6 +44,7 @@ SHR     : '>>' ;
 
 BINOP
     : PLUS
+    | SLASH
     | MINUS
     | STAR
     | PERCENT
@@ -95,6 +96,10 @@ LIT_CHAR
   : '\'' ( '\\' CHAR_ESCAPE | ~[\\'\n\t\r] ) '\''
   ;
 
+LIT_BYTE
+  : 'b\'' ( '\\' ( [xX] HEXIT HEXIT | [nrt\\'"0] ) | ~[\\'\n\t\r] ) '\''
+  ;
+
 fragment INT_SUFFIX
   : 'i'
   | 'i8'
@@ -130,7 +135,7 @@ LIT_STR
   ;
 
 LIT_BINARY : 'b' LIT_STR ;
-LIT_BINARY_RAW : 'b' LIT_STR_RAW ;
+LIT_BINARY_RAW : 'rb' LIT_STR_RAW ;
 
 /* this is a bit messy */
 
@@ -159,7 +164,7 @@ OUTER_DOC_COMMENT : '//!' ~[\r\n]* -> type(DOC_COMMENT) ;
 LINE_COMMENT      : '//' ~[\r\n]* -> type(COMMENT) ;
 
 DOC_BLOCK_COMMENT
-  : ('/**' | '/*!') (DOC_BLOCK_COMMENT | .)*? '*/' -> type(DOC_COMMENT)
+  : ('/**' ~[*] | '/*!') (DOC_BLOCK_COMMENT | .)*? '*/' -> type(DOC_COMMENT)
   ;
 
 BLOCK_COMMENT : '/*' (BLOCK_COMMENT | .)*? '*/' -> type(COMMENT) ;

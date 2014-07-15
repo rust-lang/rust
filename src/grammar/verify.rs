@@ -71,6 +71,7 @@ fn parse_token_list(file: &str) -> HashMap<String, Token> {
             "IDENT" => id(),
             "PLUS" => BINOP(PLUS),
             "LIT_CHAR" => LIT_CHAR(Name(0)),
+            "LIT_BYTE" => LIT_BYTE(Name(0)),
             "EQ" => EQ,
             "RBRACKET" => RBRACKET,
             "COMMENT" => COMMENT,
@@ -124,7 +125,7 @@ fn str_to_binop(s: &str) -> BinOp {
     }
 }
 
-/// Assuming a raw string/binary literal, strip out the leading/trailing
+/// Assuming a string/binary literal, strip out the leading/trailing
 /// hashes and surrounding quotes/raw/binary prefix.
 fn fix(mut lit: &str) -> ast::Name {
     if lit.char_at(0) == 'r' {
@@ -141,6 +142,15 @@ fn fix(mut lit: &str) -> ast::Name {
 
     // +1/-1 to adjust for single quotes
     parse::token::intern(lit.slice(leading_hashes + 1, lit.len() - leading_hashes - 1))
+}
+
+/// Assuming a char/byte literal, strip the 'b' prefix and the single quotes.
+fn fixchar(mut lit: &str) -> ast::Name {
+    if lit.char_at(0) == 'b' {
+        lit = lit.slice_from(1);
+    }
+
+    parse::token::intern(lit.slice(1, lit.len() - 1))
 }
 
 fn count(lit: &str) -> uint {
@@ -167,7 +177,8 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
         BINOPEQ(..) => BINOPEQ(str_to_binop(content.slice_to(content.len() - 1))),
         LIT_STR(..) => LIT_STR(fix(content)),
         LIT_STR_RAW(..) => LIT_STR_RAW(fix(content), count(content)),
-        LIT_CHAR(..) => LIT_CHAR(nm),
+        LIT_CHAR(..) => LIT_CHAR(fixchar(content)),
+        LIT_BYTE(..) => LIT_BYTE(fixchar(content)),
         DOC_COMMENT(..) => DOC_COMMENT(nm),
         LIT_INTEGER(..) => LIT_INTEGER(nm),
         LIT_FLOAT(..) => LIT_FLOAT(nm),
