@@ -223,11 +223,13 @@ fn main() {
         r.next_token()
     }
 
-    let token_map = parse_token_list(File::open(&Path::new("RustLexer.tokens")).unwrap().read_to_string().unwrap().as_slice());
+    let args = std::os::args();
+
+    let token_map = parse_token_list(File::open(&Path::new(args.get(2).as_slice())).unwrap().read_to_string().unwrap().as_slice());
     let mut stdin = std::io::stdin();
     let mut antlr_tokens = stdin.lines().map(|l| parse_antlr_token(l.unwrap().as_slice().trim(), &token_map));
 
-    let code = File::open(&Path::new(std::os::args().get(1).as_slice())).unwrap().read_to_string().unwrap();
+    let code = File::open(&Path::new(args.get(1).as_slice())).unwrap().read_to_string().unwrap();
     let options = config::basic_options();
     let session = session::build_session(options, None,
                                          syntax::diagnostics::registry::Registry::new([]));
