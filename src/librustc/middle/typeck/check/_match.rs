@@ -253,14 +253,10 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
     if arg_len > 0 {
         // N-ary variant.
         if arg_len != subpats_len {
-            let s = format!("this pattern has {} field{}, \
-                             but the corresponding {} has {} field{}",
-                         subpats_len,
-                         if subpats_len == 1 {""} else {"s"},
-                         kind_name,
-                         arg_len,
-                         if arg_len == 1 {""} else {"s"});
-            tcx.sess.span_err(pat.span, s.as_slice());
+            span_err!(tcx.sess, pat.span, E0023,
+                      "this pattern has {} field{}, but the corresponding {} has {} field{}",
+                      subpats_len, if subpats_len == 1 {""} else {"s"},
+                      kind_name, arg_len, if arg_len == 1 {""} else {"s"});
             error_happened = true;
         }
 
@@ -272,12 +268,10 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
             }
         }
     } else if subpats_len > 0 {
-        tcx.sess.span_err(pat.span,
-                          format!("this pattern has {} field{}, \
-                                   but the corresponding {} has no fields",
-                               subpats_len,
-                               if subpats_len == 1 {""} else {"s"},
-                               kind_name).as_slice());
+        span_err!(tcx.sess, pat.span, E0024,
+                  "this pattern has {} field{}, but the corresponding {} has no fields",
+                  subpats_len, if subpats_len == 1 {""} else {"s"},
+                  kind_name);
         error_happened = true;
     }
 
@@ -321,9 +315,9 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                 // Check the pattern anyway, so that attempts to look
                 // up its type won't fail
                 check_pat(pcx, &*field.pat, ty::mk_err());
-                tcx.sess.span_err(span,
-                    format!("field `{}` bound twice in pattern",
-                            token::get_ident(field.ident)).as_slice());
+                span_err!(tcx.sess, span, E0025,
+                    "field `{}` bound twice in pattern",
+                    token::get_ident(field.ident));
             }
             Some(&(index, ref mut used)) => {
                 *used = true;
@@ -339,10 +333,10 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                 // Check the pattern anyway, so that attempts to look
                 // up its type won't fail
                 check_pat(pcx, &*field.pat, ty::mk_err());
-                tcx.sess.span_err(span,
-                    format!("struct `{}` does not have a field named `{}`",
-                            ty::item_path_str(tcx, class_id),
-                            token::get_ident(field.ident)).as_slice());
+                span_err!(tcx.sess, span, E0026,
+                    "struct `{}` does not have a field named `{}`",
+                    ty::item_path_str(tcx, class_id),
+                    token::get_ident(field.ident));
             }
         }
     }
@@ -353,11 +347,9 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
             if found_fields.contains(&i) {
                 continue;
             }
-
-            tcx.sess
-               .span_err(span,
-                         format!("pattern does not mention field `{}`",
-                                 token::get_name(field.name)).as_slice());
+            span_err!(tcx.sess, span, E0027,
+                "pattern does not mention field `{}`",
+                token::get_name(field.name));
         }
     }
 }
@@ -400,11 +392,9 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
         }
         Some(&def::DefStruct(..)) | Some(&def::DefVariant(..)) => {
             let name = pprust::path_to_string(path);
-            tcx.sess.span_err(span,
-                              format!("mismatched types: expected `{}` but \
-                                       found `{}`",
-                                      fcx.infcx().ty_to_string(expected),
-                                      name).as_slice());
+            span_err!(tcx.sess, span, E0028,
+                "mismatched types: expected `{}` but found `{}`",
+                fcx.infcx().ty_to_string(expected), name);
         }
         _ => {
             tcx.sess.span_bug(span, "resolve didn't write in variant");
@@ -441,16 +431,16 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         {
             // no-op
         } else if !ty::type_is_numeric(b_ty) && !ty::type_is_char(b_ty) {
-            tcx.sess.span_err(pat.span,
+            span_err!(tcx.sess, begin.span, E0029,
                 "only char and numeric types are allowed in range");
         } else {
             match valid_range_bounds(fcx.ccx, &**begin, &**end) {
                 Some(false) => {
-                    tcx.sess.span_err(begin.span,
+                    span_err!(tcx.sess, begin.span, E0030,
                         "lower range bound must be less than upper");
                 },
                 None => {
-                    tcx.sess.span_err(begin.span,
+                    span_err!(tcx.sess, begin.span, E0031,
                         "mismatched types in range");
                 },
                 _ => { },
@@ -521,13 +511,10 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                     ty::ty_to_def_id(
                         ty::lookup_item_type(tcx, item_did).ty).unwrap();
                 if struct_did != cid {
-                    tcx.sess
-                       .span_err(path.span,
-                                 format!("`{}` does not name the \
-                                          structure `{}`",
-                                         pprust::path_to_string(path),
-                                         fcx.infcx()
-                                            .ty_to_string(expected)).as_slice())
+                    span_err!(tcx.sess, pat.span, E0032,
+                        "`{}` does not name the structure `{}`",
+                        pprust::path_to_string(path),
+                        fcx.infcx().ty_to_string(expected));
                 }
 
                 check_struct_pat(pcx, pat.id, pat.span, expected, path,
@@ -744,10 +731,9 @@ fn check_pointer_pat(pcx: &pat_ctxt,
                 // This is "x = SomeTrait" being reduced from
                 // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
                 check_pat(pcx, inner, ty::mk_err());
-                tcx.sess.span_err(
-                    span,
-                    format!("type `{}` cannot be dereferenced",
-                            fcx.infcx().ty_to_string(expected)).as_slice());
+                span_err!(tcx.sess, span, E0033,
+                    "type `{}` cannot be dereferenced",
+                    fcx.infcx().ty_to_string(expected));
                 fcx.write_error(pat_id);
             }
             _ => {

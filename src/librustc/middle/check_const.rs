@@ -87,28 +87,25 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
         match e.node {
           ExprUnary(UnDeref, _) => { }
           ExprUnary(UnBox, _) | ExprUnary(UnUniq, _) => {
-            v.tcx.sess.span_err(e.span,
-                                "cannot do allocations in constant expressions");
+            span_err!(v.tcx.sess, e.span, E0010, "cannot do allocations in constant expressions");
             return;
           }
           ExprLit(lit) if ast_util::lit_is_str(lit) => {}
           ExprBinary(..) | ExprUnary(..) => {
             let method_call = typeck::MethodCall::expr(e.id);
             if v.tcx.method_map.borrow().contains_key(&method_call) {
-                v.tcx.sess.span_err(e.span, "user-defined operators are not \
-                                             allowed in constant expressions");
+                span_err!(v.tcx.sess, e.span, E0011,
+                    "user-defined operators are not allowed in constant expressions");
             }
           }
           ExprLit(_) => (),
           ExprCast(_, _) => {
             let ety = ty::expr_ty(v.tcx, e);
             if !ty::type_is_numeric(ety) && !ty::type_is_unsafe_ptr(ety) {
-                v.tcx
-                 .sess
-                 .span_err(e.span,
-                           format!("can not cast to `{}` in a constant \
-                                    expression",
-                                   ppaux::ty_to_string(v.tcx, ety)).as_slice())
+                span_err!(v.tcx.sess, e.span, E0012,
+                    "can not cast to `{}` in a constant expression",
+                    ppaux::ty_to_string(v.tcx, ety)
+                );
             }
           }
           ExprPath(ref pth) => {
@@ -117,9 +114,8 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
             // foo::<bar> in a const. Currently that is only done on
             // a path in trans::callee that only works in block contexts.
             if !pth.segments.iter().all(|segment| segment.types.is_empty()) {
-                v.tcx.sess.span_err(e.span,
-                                    "paths in constants may only refer to \
-                                     items without type parameters");
+                span_err!(v.tcx.sess, e.span, E0013,
+                    "paths in constants may only refer to items without type parameters");
             }
             match v.tcx.def_map.borrow().find(&e.id) {
               Some(&DefStatic(..)) |
@@ -129,9 +125,8 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
 
               Some(&def) => {
                 debug!("(checking const) found bad def: {:?}", def);
-                v.tcx.sess.span_err(e.span,
-                    "paths in constants may only refer to \
-                     constants or functions");
+                span_err!(v.tcx.sess, e.span, E0014,
+                    "paths in constants may only refer to constants or functions");
               }
               None => {
                 v.tcx.sess.span_bug(e.span, "unbound path in const?!");
@@ -143,9 +138,8 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
                 Some(&DefStruct(..)) => {}    // OK.
                 Some(&DefVariant(..)) => {}    // OK.
                 _ => {
-                    v.tcx.sess.span_err(e.span,
-                        "function calls in constants are limited to \
-                         struct and enum constructors");
+                    span_err!(v.tcx.sess, e.span, E0015,
+                      "function calls in constants are limited to struct and enum constructors");
                 }
             }
           }
@@ -153,9 +147,8 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
             // Check all statements in the block
             for stmt in block.stmts.iter() {
                 let block_span_err = |span|
-                    v.tcx.sess.span_err(span,
-                        "blocks in constants are limited to \
-                        items and tail expressions");
+                    span_err!(v.tcx.sess, span, E0016,
+                        "blocks in constants are limited to items and tail expressions");
                 match stmt.node {
                     StmtDecl(ref span, _) => {
                         match span.node {
@@ -187,18 +180,18 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
           ExprRepeat(..) |
           ExprStruct(..) => { }
           ExprAddrOf(..) => {
-                v.tcx.sess.span_err(e.span,
-                    "references in constants may only refer to \
-                     immutable values");
+              span_err!(v.tcx.sess, e.span, E0017,
+                  "references in constants may only refer to immutable values");
           },
           ExprVstore(_, ExprVstoreUniq) => {
-              v.tcx.sess.span_err(e.span, "cannot allocate vectors in constant expressions")
+              span_err!(v.tcx.sess, e.span, E0018,
+                  "cannot allocate vectors in constant expressions");
           },
 
           _ => {
-            v.tcx.sess.span_err(e.span,
-                                "constant contains unimplemented expression type");
-            return;
+              span_err!(v.tcx.sess, e.span, E0019,
+                  "constant contains unimplemented expression type");
+              return;
           }
         }
     }
