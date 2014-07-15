@@ -70,11 +70,11 @@ pub struct Timer {
 struct TimerCallback { tx: Sender<()> }
 
 /// Sleep the current task for `msecs` milliseconds.
-pub fn sleep(msecs: u64) {
+pub fn sleep_ms(msecs: u64) {
     let timer = Timer::new();
     let mut timer = timer.ok().expect("timer::sleep: could not create a Timer");
 
-    timer.sleep(msecs)
+    timer.sleep_ms(msecs)
 }
 
 impl Timer {
@@ -91,7 +91,7 @@ impl Timer {
     ///
     /// Note that this function will cause any other receivers for this timer to
     /// be invalidated (the other end will be closed).
-    pub fn sleep(&mut self, msecs: u64) {
+    pub fn sleep_ms(&mut self, msecs: u64) {
         self.obj.sleep(msecs);
     }
 
@@ -129,7 +129,7 @@ impl Timer {
     /// // The timer object was destroyed, so this will always fail:
     /// // five_ms.recv()
     /// ```
-    pub fn oneshot(&mut self, msecs: u64) -> Receiver<()> {
+    pub fn oneshot_ms(&mut self, msecs: u64) -> Receiver<()> {
         let (tx, rx) = channel();
         self.obj.oneshot(msecs, box TimerCallback { tx: tx });
         return rx
@@ -177,7 +177,7 @@ impl Timer {
     /// // The timer object was destroyed, so this will always fail:
     /// // five_ms.recv()
     /// ```
-    pub fn periodic(&mut self, msecs: u64) -> Receiver<()> {
+    pub fn periodic_ms(&mut self, msecs: u64) -> Receiver<()> {
         let (tx, rx) = channel();
         self.obj.period(msecs, box TimerCallback { tx: tx });
         return rx
@@ -192,101 +192,101 @@ impl Callback for TimerCallback {
 
 #[cfg(test)]
 mod test {
-    iotest!(fn test_io_timer_sleep_simple() {
+    iotest!(fn test_io_timer_sleep_ms_simple() {
         let mut timer = Timer::new().unwrap();
-        timer.sleep(1);
+        timer.sleep_ms(1);
     })
 
-    iotest!(fn test_io_timer_sleep_oneshot() {
+    iotest!(fn test_io_timer_sleep_oneshot_ms() {
         let mut timer = Timer::new().unwrap();
-        timer.oneshot(1).recv();
+        timer.oneshot_ms(1).recv();
     })
 
-    iotest!(fn test_io_timer_sleep_oneshot_forget() {
+    iotest!(fn test_io_timer_sleep_oneshot_ms_forget() {
         let mut timer = Timer::new().unwrap();
-        timer.oneshot(100000000000);
+        timer.oneshot_ms(100000000000);
     })
 
-    iotest!(fn oneshot_twice() {
+    iotest!(fn oneshot_ms_twice() {
         let mut timer = Timer::new().unwrap();
-        let rx1 = timer.oneshot(10000);
-        let rx = timer.oneshot(1);
+        let rx1 = timer.oneshot_ms(10000);
+        let rx = timer.oneshot_ms(1);
         rx.recv();
         assert_eq!(rx1.recv_opt(), Err(()));
     })
 
-    iotest!(fn test_io_timer_oneshot_then_sleep() {
+    iotest!(fn test_io_timer_oneshot_ms_then_sleep() {
         let mut timer = Timer::new().unwrap();
-        let rx = timer.oneshot(100000000000);
-        timer.sleep(1); // this should invalidate rx
+        let rx = timer.oneshot_ms(100000000000);
+        timer.sleep_ms(1); // this should invalidate rx
 
         assert_eq!(rx.recv_opt(), Err(()));
     })
 
-    iotest!(fn test_io_timer_sleep_periodic() {
+    iotest!(fn test_io_timer_sleep_periodic_ms() {
         let mut timer = Timer::new().unwrap();
-        let rx = timer.periodic(1);
+        let rx = timer.periodic_ms(1);
         rx.recv();
         rx.recv();
         rx.recv();
     })
 
-    iotest!(fn test_io_timer_sleep_periodic_forget() {
+    iotest!(fn test_io_timer_sleep_periodic_ms_forget() {
         let mut timer = Timer::new().unwrap();
-        timer.periodic(100000000000);
+        timer.periodic_ms(100000000000);
     })
 
-    iotest!(fn test_io_timer_sleep_standalone() {
-        sleep(1)
+    iotest!(fn test_io_timer_sleep_ms_standalone() {
+        sleep_ms(1)
     })
 
-    iotest!(fn oneshot() {
+    iotest!(fn oneshot_ms() {
         let mut timer = Timer::new().unwrap();
 
-        let rx = timer.oneshot(1);
+        let rx = timer.oneshot_ms(1);
         rx.recv();
         assert!(rx.recv_opt().is_err());
 
-        let rx = timer.oneshot(1);
+        let rx = timer.oneshot_ms(1);
         rx.recv();
         assert!(rx.recv_opt().is_err());
     })
 
     iotest!(fn override() {
         let mut timer = Timer::new().unwrap();
-        let orx = timer.oneshot(100);
-        let prx = timer.periodic(100);
-        timer.sleep(1);
+        let orx = timer.oneshot_ms(100);
+        let prx = timer.periodic_ms(100);
+        timer.sleep_ms(1);
         assert_eq!(orx.recv_opt(), Err(()));
         assert_eq!(prx.recv_opt(), Err(()));
-        timer.oneshot(1).recv();
+        timer.oneshot_ms(1).recv();
     })
 
-    iotest!(fn period() {
+    iotest!(fn period_ms() {
         let mut timer = Timer::new().unwrap();
-        let rx = timer.periodic(1);
+        let rx = timer.periodic_ms(1);
         rx.recv();
         rx.recv();
-        let rx2 = timer.periodic(1);
+        let rx2 = timer.periodic_ms(1);
         rx2.recv();
         rx2.recv();
     })
 
-    iotest!(fn sleep() {
+    iotest!(fn sleep_ms() {
         let mut timer = Timer::new().unwrap();
-        timer.sleep(1);
-        timer.sleep(1);
+        timer.sleep_ms(1);
+        timer.sleep_ms(1);
     })
 
-    iotest!(fn oneshot_fail() {
+    iotest!(fn oneshot_ms_fail() {
         let mut timer = Timer::new().unwrap();
-        let _rx = timer.oneshot(1);
+        let _rx = timer.oneshot_ms(1);
         fail!();
     } #[should_fail])
 
-    iotest!(fn period_fail() {
+    iotest!(fn period_ms_fail() {
         let mut timer = Timer::new().unwrap();
-        let _rx = timer.periodic(1);
+        let _rx = timer.periodic_ms(1);
         fail!();
     } #[should_fail])
 
@@ -298,7 +298,7 @@ mod test {
     iotest!(fn closing_channel_during_drop_doesnt_kill_everything() {
         // see issue #10375
         let mut timer = Timer::new().unwrap();
-        let timer_rx = timer.periodic(1000);
+        let timer_rx = timer.periodic_ms(1000);
 
         spawn(proc() {
             let _ = timer_rx.recv_opt();
@@ -311,31 +311,31 @@ mod test {
     iotest!(fn reset_doesnt_switch_tasks() {
         // similar test to the one above.
         let mut timer = Timer::new().unwrap();
-        let timer_rx = timer.periodic(1000);
+        let timer_rx = timer.periodic_ms(1000);
 
         spawn(proc() {
             let _ = timer_rx.recv_opt();
         });
 
-        timer.oneshot(1);
+        timer.oneshot_ms(1);
     })
 
     iotest!(fn reset_doesnt_switch_tasks2() {
         // similar test to the one above.
         let mut timer = Timer::new().unwrap();
-        let timer_rx = timer.periodic(1000);
+        let timer_rx = timer.periodic_ms(1000);
 
         spawn(proc() {
             let _ = timer_rx.recv_opt();
         });
 
-        timer.sleep(1);
+        timer.sleep_ms(1);
     })
 
     iotest!(fn sender_goes_away_oneshot() {
         let rx = {
             let mut timer = Timer::new().unwrap();
-            timer.oneshot(1000)
+            timer.oneshot_ms(1000)
         };
         assert_eq!(rx.recv_opt(), Err(()));
     })
@@ -343,26 +343,26 @@ mod test {
     iotest!(fn sender_goes_away_period() {
         let rx = {
             let mut timer = Timer::new().unwrap();
-            timer.periodic(1000)
+            timer.periodic_ms(1000)
         };
         assert_eq!(rx.recv_opt(), Err(()));
     })
 
     iotest!(fn receiver_goes_away_oneshot() {
         let mut timer1 = Timer::new().unwrap();
-        timer1.oneshot(1);
+        timer1.oneshot_ms(1);
         let mut timer2 = Timer::new().unwrap();
         // while sleeping, the previous timer should fire and not have its
         // callback do something terrible.
-        timer2.sleep(2);
+        timer2.sleep_ms(2);
     })
 
     iotest!(fn receiver_goes_away_period() {
         let mut timer1 = Timer::new().unwrap();
-        timer1.periodic(1);
+        timer1.periodic_ms(1);
         let mut timer2 = Timer::new().unwrap();
         // while sleeping, the previous timer should fire and not have its
         // callback do something terrible.
-        timer2.sleep(2);
+        timer2.sleep_ms(2);
     })
 }

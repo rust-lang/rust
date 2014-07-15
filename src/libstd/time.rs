@@ -342,6 +342,7 @@ fn div_rem_64(this: i64, other: i64) -> (i64, i64) {
 
 #[cfg(test)]
 mod tests {
+    use option::Some;
     use super::{Duration, MIN_DAYS, MAX_DAYS};
     use i32;
     use num::{CheckedAdd, CheckedSub, Zero};
