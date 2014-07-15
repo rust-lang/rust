@@ -202,12 +202,12 @@ use middle::resolve::DefMap;
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
+use middle::trans::build;
 use middle::trans::callee;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
 use middle::trans::consts;
-use middle::trans::controlflow;
 use middle::trans::datum::*;
 use middle::trans::expr::Dest;
 use middle::trans::expr;
@@ -220,14 +220,12 @@ use util::ppaux::{Repr, vec_map_to_string};
 
 use std;
 use std::collections::HashMap;
-use std::cell::Cell;
 use std::rc::Rc;
 use std::gc::{Gc};
 use syntax::ast;
 use syntax::ast::Ident;
 use syntax::codemap::Span;
 use syntax::fold::Folder;
-use syntax::parse::token::InternedString;
 
 #[deriving(PartialEq)]
 pub enum VecLenOpt {
@@ -297,20 +295,6 @@ fn trans_opt<'a>(mut bcx: &'a Block<'a>, o: &Opt) -> opt_result<'a> {
         }
         vec_len(n, vec_len_ge(_), _) => {
             return lower_bound(Result::new(bcx, C_int(ccx, n as int)));
-        }
-    }
-}
-
-fn variant_opt(bcx: &Block, pat_id: ast::NodeId) -> Opt {
-    let ccx = bcx.ccx();
-    let def = ccx.tcx.def_map.borrow().get_copy(&pat_id);
-    match def {
-        def::DefVariant(enum_id, var_id, _) => {
-            let variant = ty::enum_variant_with_id(ccx.tcx(), enum_id, var_id);
-            var(variant.disr_val, adt::represent_node(bcx, pat_id), var_id)
-        }
-        _ => {
-            ccx.sess().bug("non-variant or struct in variant_opt()");
         }
     }
 }
@@ -630,26 +614,15 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
             ast::PatLit(l) => {
                 add_to_set(ccx.tcx(), &mut found, lit(l));
             }
-            ast::PatIdent(..) => {
+            ast::PatIdent(..) | ast::PatEnum(..) | ast::PatStruct(..) => {
                 // This is either an enum variant or a variable binding.
                 let opt_def = ccx.tcx.def_map.borrow().find_copy(&cur.id);
                 match opt_def {
-                    Some(def::DefVariant(..)) => {
+                    Some(def::DefVariant(enum_id, var_id, _)) => {
+                        let variant = ty::enum_variant_with_id(ccx.tcx(), enum_id, var_id);
                         add_to_set(ccx.tcx(), &mut found,
-                                   variant_opt(bcx, cur.id));
-                    }
-                    _ => {}
-                }
-            }
-            ast::PatEnum(..) | ast::PatStruct(..) => {
-                // This could be one of: a tuple-like enum variant, a
-                // struct-like enum variant, or a struct.
-                let opt_def = ccx.tcx.def_map.borrow().find_copy(&cur.id);
-                match opt_def {
-                    Some(def::DefFn(..)) |
-                    Some(def::DefVariant(..)) => {
-                        add_to_set(ccx.tcx(), &mut found,
-                                   variant_opt(bcx, cur.id));
+                                   var(variant.disr_val,
+                                       adt::represent_node(bcx, cur.id), var_id));
                     }
                     _ => {}
                 }
@@ -795,40 +768,18 @@ fn any_irrefutable_adt_pat(bcx: &Block, m: &[Match], col: uint) -> bool {
     })
 }
 
-struct DynamicFailureHandler<'a> {
-    bcx: &'a Block<'a>,
-    sp: Span,
-    msg: InternedString,
-    finished: Cell<Option<BasicBlockRef>>,
-}
-
-impl<'a> DynamicFailureHandler<'a> {
-    fn handle_fail(&self) -> BasicBlockRef {
-        match self.finished.get() {
-            Some(bb) => return bb,
-            _ => (),
-        }
-
-        let fcx = self.bcx.fcx;
-        let fail_cx = fcx.new_block(false, "case_fallthrough", None);
-        controlflow::trans_fail(fail_cx, self.sp, self.msg.clone());
-        self.finished.set(Some(fail_cx.llbb));
-        fail_cx.llbb
-    }
-}
-
 /// What to do when the pattern match fails.
 enum FailureHandler<'a> {
     Infallible,
     JumpToBasicBlock(BasicBlockRef),
-    DynamicFailureHandlerClass(Box<DynamicFailureHandler<'a>>),
+    Unreachable
 }
 
 impl<'a> FailureHandler<'a> {
     fn is_infallible(&self) -> bool {
         match *self {
             Infallible => true,
-            _ => false,
+            _ => false
         }
     }
 
@@ -836,15 +787,14 @@ impl<'a> FailureHandler<'a> {
         !self.is_infallible()
     }
 
-    fn handle_fail(&self) -> BasicBlockRef {
+    fn handle_fail(&self, bcx: &Block) {
         match *self {
-            Infallible => {
-                fail!("attempted to fail in infallible failure handler!")
-            }
-            JumpToBasicBlock(basic_block) => basic_block,
-            DynamicFailureHandlerClass(ref dynamic_failure_handler) => {
-                dynamic_failure_handler.handle_fail()
-            }
+            Infallible =>
+                fail!("attempted to fail in infallible failure handler!"),
+            JumpToBasicBlock(basic_block) =>
+                Br(bcx, basic_block),
+            Unreachable =>
+                build::Unreachable(bcx)
         }
     }
 }
@@ -1005,7 +955,7 @@ fn compile_guard<'a, 'b>(
             // condition explicitly rather than (possibly) falling back to
             // the default arm.
             &JumpToBasicBlock(_) if m.len() == 1 && has_genuine_default => {
-                Br(bcx, chk.handle_fail());
+                chk.handle_fail(bcx);
             }
             _ => {
                 compile_submatch(bcx, m, vals, chk, has_genuine_default);
@@ -1030,7 +980,7 @@ fn compile_submatch<'a, 'b>(
     let mut bcx = bcx;
     if m.len() == 0u {
         if chk.is_fallible() {
-            Br(bcx, chk.handle_fail());
+            chk.handle_fail(bcx);
         }
         return;
     }
@@ -1301,7 +1251,7 @@ fn compile_submatch_continue<'a, 'b>(
             // condition explicitly rather than (eventually) falling back to
             // the last default arm.
             &JumpToBasicBlock(_) if defaults.len() == 1 && has_genuine_default => {
-                Br(else_cx, chk.handle_fail());
+                chk.handle_fail(else_cx);
             }
             _ => {
                 compile_submatch(else_cx,
@@ -1395,21 +1345,10 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
     }
 
     let t = node_id_type(bcx, discr_expr.id);
-    let chk = {
-        if ty::type_is_empty(tcx, t) {
-            // Special case for empty types
-            let fail_cx = Cell::new(None);
-            let fail_handler = box DynamicFailureHandler {
-                bcx: scope_cx,
-                sp: discr_expr.span,
-                msg: InternedString::new("scrutinizing value that can't \
-                                          exist"),
-                finished: fail_cx,
-            };
-            DynamicFailureHandlerClass(fail_handler)
-        } else {
-            Infallible
-        }
+    let chk = if ty::type_is_empty(tcx, t) {
+        Unreachable
+    } else {
+        Infallible
     };
 
     let arm_datas: Vec<ArmData> = arms.iter().map(|arm| ArmData {
