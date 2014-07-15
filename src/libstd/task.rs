@@ -669,5 +669,5 @@ fn task_abort_no_kill_runtime() {
     let tb = TaskBuilder::new();
     let rx = tb.try_future(proc() {});
     mem::drop(rx);
-    timer::sleep(1000);
+    timer::sleep_ms(1000);
 }
