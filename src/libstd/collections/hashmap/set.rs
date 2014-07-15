@@ -16,8 +16,7 @@ use collections::{Collection, Mutable, Set, MutableSet, Map, MutableMap};
 use default::Default;
 use fmt::Show;
 use fmt;
-use RandomSipHasher;
-use hash::{Hash, Hasher};
+use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{Iterator, FromIterator, FilterMap, Chain, Repeat, Zip, Extendable};
 use iter;
 use option::{Some, None};
@@ -25,13 +24,13 @@ use result::{Ok, Err};
 
 use super::{HashMap, Entries, MoveEntries, INITIAL_CAPACITY};
 
-/// HashSet iterator
-pub type SetItems<'a, K> =
-    iter::Map<'static, (&'a K, &'a ()), &'a K, Entries<'a, K, ()>>;
 
-/// HashSet move iterator
-pub type SetMoveItems<K> =
-    iter::Map<'static, (K, ()), K, MoveEntries<K, ()>>;
+// Future Optimization (FIXME!)
+// =============================
+//
+// Iteration over zero sized values is a noop. There is no need
+// for `bucket.val` in the case of HashSet. I suppose we would need HKT
+// to get rid of it properly.
 
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
@@ -443,6 +442,14 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
         HashSet::with_hasher(Default::default())
     }
 }
+
+/// HashSet iterator
+pub type SetItems<'a, K> =
+    iter::Map<'static, (&'a K, &'a ()), &'a K, Entries<'a, K, ()>>;
+
+/// HashSet move iterator
+pub type SetMoveItems<K> =
+    iter::Map<'static, (K, ()), K, MoveEntries<K, ()>>;
 
 // `Repeat` is used to feed the filter closure an explicit capture
 // of a reference to the other set
