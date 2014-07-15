@@ -1503,6 +1503,112 @@ building our guessing game, but we need to know how to do one last thing first:
 get input from the keyboard. You can't have a guessing game without the ability
 to guess!
 
+## Standard Input
+
+Getting input from the keyboard is pretty easy, but uses some things
+we haven't seen before. Here's a simple program that reads some input,
+and then prints it back out:
+
+```{rust,ignore}
+fn main() {
+    println!("Type something!");
+
+    let input = std::io::stdin().read_line().ok().expect("Failed to read line");
+
+    println!("{}", input);
+}
+```
+
+Let's go over these chunks, one by one:
+
+```{rust}
+std::io::stdin();
+```
+
+This calls a function, `stdin()`, that lives inside the `std::io` module. As
+you can imagine, everything in `std` is provided by Rust, the 'standard
+library.' We'll talk more about the module system later.
+
+Since writing the fully qualified name all the time is annoying, we can use
+the `use` statement to import it in:
+
+```{rust}
+use std::io::stdin;
+
+stdin();
+```
+
+However, it's considered better practice to not import individual functions, but
+to import the module, and only use one level of qualification:
+
+```{rust}
+use std::io;
+
+io::stdin();
+```
+
+Let's update our example to use this style:
+
+```{rust,ignore}
+use std::io;
+
+fn main() {
+    println!("Type something!");
+
+    let input = io::stdin().read_line().ok().expect("Failed to read line");
+
+    println!("{}", input);
+}
+```
+
+Next up:
+
+```{rust,ignore}
+.read_line()
+```
+
+The `read_line()` method can be called on the result of `stdin()` to return
+a full line of input. Nice and easy.
+
+```{rust,ignore}
+.ok().expect("Failed to read line");
+```
+
+Here's the thing: reading a line from standard input could fail. For example,
+if this program isn't running in a terminal, but is running as part of a cron
+job, or some other context where there's no standard input. So Rust expects us
+to handle this case. Given that we plan on always running this program in a
+terminal, we use the `ok()` method to tell Rust that we're expecting everything
+to be just peachy, and the `expect()` method on that result to give an error
+message if our expectation goes wrong.
+
+We will cover the exact details of how all of this works later in the Guide.
+For now, this is all you need.
+
+With long lines like this, Rust gives you some flexibility with the whitespace.
+We _could_ write the example like this:
+
+```{rust,ignore}
+use std::io;
+
+fn main() {
+    println!("Type something!");
+
+    let input = io::stdin()
+                  .read_line()
+                  .ok()
+                  .expect("Failed to read line");
+
+    println!("{}", input);
+}
+```
+
+Sometimes, this makes things more readable. Sometimes, less. Use your judgement
+here.
+
+That's all you need to get basic input from the standard input! It's not too
+complicated, but there are a number of small parts.
+
 ## Guessing Game: complete
 
 At this point, you have successfully built the Guessing Game! Congratulations!
