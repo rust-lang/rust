@@ -493,6 +493,9 @@ probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
 probe CFG_ISCC             iscc
 probe CFG_LLNEXTGEN        LLnextgen
+probe CFG_JAVAC            javac
+probe CFG_ANTLR4           antlr4
+probe CFG_GRUN             grun
 probe CFG_PANDOC           pandoc
 probe CFG_PDFLATEX         pdflatex
 probe CFG_XELATEX          xelatex
