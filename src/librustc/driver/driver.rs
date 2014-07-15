@@ -19,6 +19,9 @@ use lint;
 use llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
 use metadata::creader;
+use middle::borrowck::{FnPartsWithCFG};
+use middle::borrowck;
+use borrowck_dot = middle::borrowck::graphviz;
 use middle::cfg;
 use middle::cfg::graphviz::LabelledCFG;
 use middle::{trans, freevars, stability, kind, ty, typeck, reachable};
@@ -40,6 +43,7 @@ use std::io;
 use std::io::fs;
 use std::io::MemReader;
 use syntax::ast;
+use syntax::ast_map::blocks;
 use syntax::attr;
 use syntax::attr::{AttrMetaMethods};
 use syntax::diagnostics;
@@ -662,6 +666,25 @@ impl pprust::PpAnn for TypedAnnotation {
     }
 }
 
+fn gather_flowgraph_variants(sess: &Session) -> Vec<borrowck_dot::Variant> {
+    let print_loans   = config::FLOWGRAPH_PRINT_LOANS;
+    let print_moves   = config::FLOWGRAPH_PRINT_MOVES;
+    let print_assigns = config::FLOWGRAPH_PRINT_ASSIGNS;
+    let print_all     = config::FLOWGRAPH_PRINT_ALL;
+    let opt = |print_which| sess.debugging_opt(print_which);
+    let mut variants = Vec::new();
+    if opt(print_all) || opt(print_loans) {
+        variants.push(borrowck_dot::Loans);
+    }
+    if opt(print_all) || opt(print_moves) {
+        variants.push(borrowck_dot::Moves);
+    }
+    if opt(print_all) || opt(print_assigns) {
+        variants.push(borrowck_dot::Assigns);
+    }
+    variants
+}
+
 pub fn pretty_print_input(sess: Session,
                           cfg: ast::CrateConfig,
                           input: &Input,
@@ -733,10 +756,17 @@ pub fn pretty_print_input(sess: Session,
                 sess.fatal(format!("--pretty flowgraph couldn't find id: {}",
                                    nodeid).as_slice())
             });
-            let block = match node {
-                syntax::ast_map::NodeBlock(block) => block,
-                _ => {
-                    let message = format!("--pretty=flowgraph needs block, got {:?}",
+            let code = blocks::Code::from_node(node);
+            match code {
+                Some(code) => {
+                    let variants = gather_flowgraph_variants(&sess);
+                    let analysis = phase_3_run_analysis_passes(sess, &krate,
+                                                               ast_map, id);
+                    print_flowgraph(variants, analysis, code, out)
+                }
+                None => {
+                    let message = format!("--pretty=flowgraph needs \
+                                           block, fn, or method; got {:?}",
                                           node);
 
                     // point to what was found, if there's an
@@ -746,10 +776,7 @@ pub fn pretty_print_input(sess: Session,
                         None => sess.fatal(message.as_slice())
                     }
                 }
-            };
-            let analysis = phase_3_run_analysis_passes(sess, &krate,
-                                                       ast_map, id);
-            print_flowgraph(analysis, block, out)
+            }
         }
         _ => {
             pprust::print_crate(sess.codemap(),
@@ -765,17 +792,52 @@ pub fn pretty_print_input(sess: Session,
 
 }
 
-fn print_flowgraph<W:io::Writer>(analysis: CrateAnalysis,
-                                 block: ast::P<ast::Block>,
+fn print_flowgraph<W:io::Writer>(variants: Vec<borrowck_dot::Variant>,
+                                 analysis: CrateAnalysis,
+                                 code: blocks::Code,
                                  mut out: W) -> io::IoResult<()> {
     let ty_cx = &analysis.ty_cx;
-    let cfg = cfg::CFG::new(ty_cx, &*block);
-    let lcfg = LabelledCFG { ast_map: &ty_cx.map,
-                             cfg: &cfg,
-                             name: format!("block{}", block.id), };
+    let cfg = match code {
+        blocks::BlockCode(block) => cfg::CFG::new(ty_cx, &*block),
+        blocks::FnLikeCode(fn_like) => cfg::CFG::new(ty_cx, fn_like.body()),
+    };
     debug!("cfg: {:?}", cfg);
-    let r = dot::render(&lcfg, &mut out);
-    return expand_err_details(r);
+
+    match code {
+        _ if variants.len() == 0 => {
+            let lcfg = LabelledCFG {
+                ast_map: &ty_cx.map,
+                cfg: &cfg,
+                name: format!("node_{}", code.id()),
+            };
+            let r = dot::render(&lcfg, &mut out);
+            return expand_err_details(r);
+        }
+        blocks::BlockCode(_) => {
+            ty_cx.sess.err("--pretty flowgraph with -Z flowgraph-print \
+                            annotations requires fn-like node id.");
+            return Ok(())
+        }
+        blocks::FnLikeCode(fn_like) => {
+            let fn_parts = FnPartsWithCFG::from_fn_like(&fn_like, &cfg);
+            let (bccx, analysis_data) =
+                borrowck::build_borrowck_dataflow_data_for_fn(ty_cx, fn_parts);
+
+            let lcfg = LabelledCFG {
+                ast_map: &ty_cx.map,
+                cfg: &cfg,
+                name: format!("node_{}", code.id()),
+            };
+            let lcfg = borrowck_dot::DataflowLabeller {
+                inner: lcfg,
+                variants: variants,
+                borrowck_ctxt: &bccx,
+                analysis_data: &analysis_data,
+            };
+            let r = dot::render(&lcfg, &mut out);
+            return expand_err_details(r);
+        }
+    }
 
     fn expand_err_details(r: io::IoResult<()>) -> io::IoResult<()> {
         r.map_err(|ioerr| {
