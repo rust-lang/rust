@@ -186,6 +186,22 @@ pub mod write {
                 }
             };
 
+            let code_model = match sess.opts.cg.code_model.as_slice() {
+                "default" => llvm::CodeModelDefault,
+                "small" => llvm::CodeModelSmall,
+                "kernel" => llvm::CodeModelKernel,
+                "medium" => llvm::CodeModelMedium,
+                "large" => llvm::CodeModelLarge,
+                _ => {
+                    sess.err(format!("{} is not a valid code model",
+                                     sess.opts
+                                         .cg
+                                         .code_model).as_slice());
+                    sess.abort_if_errors();
+                    return;
+                }
+            };
+
             let tm = sess.targ_cfg
                          .target_strs
                          .target_triple
@@ -195,7 +211,7 @@ pub mod write {
                     target_feature(sess).with_c_str(|features| {
                         llvm::LLVMRustCreateTargetMachine(
                             t, cpu, features,
-                            llvm::CodeModelDefault,
+                            code_model,
                             reloc_model,
                             opt_level,
                             true /* EnableSegstk */,
