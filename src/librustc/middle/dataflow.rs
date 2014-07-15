@@ -28,6 +28,9 @@ use syntax::visit;
 use syntax::print::{pp, pprust};
 use util::nodemap::NodeMap;
 
+#[deriving(Show)]
+pub enum EntryOrExit { Entry, Exit }
+
 #[deriving(Clone)]
 pub struct DataFlowContext<'a, O> {
     tcx: &'a ty::ctxt,
@@ -93,16 +96,17 @@ fn to_cfgidx_or_die(id: ast::NodeId, index: &NodeMap<CFGIndex>) -> CFGIndex {
 }
 
 impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
-    fn has_bitset(&self, n: ast::NodeId) -> bool {
+    fn has_bitset_for_nodeid(&self, n: ast::NodeId) -> bool {
         assert!(n != ast::DUMMY_NODE_ID);
         match self.nodeid_to_index.find(&n) {
             None => false,
-            Some(&cfgidx) => {
-                let node_id = cfgidx.node_id();
-                node_id < self.index_to_bitset.len() &&
-                    self.index_to_bitset.get(node_id).is_some()
-            }
+            Some(&cfgidx) => self.has_bitset_for_cfgidx(cfgidx),
         }
+    }
+    fn has_bitset_for_cfgidx(&self, cfgidx: CFGIndex) -> bool {
+        let node_id = cfgidx.node_id();
+        node_id < self.index_to_bitset.len() &&
+            self.index_to_bitset.get(node_id).is_some()
     }
     fn get_bitset_index(&self, cfgidx: CFGIndex) -> uint {
         let node_id = cfgidx.node_id();
@@ -160,7 +164,7 @@ impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
             pprust::NodePat(pat) => pat.id
         };
 
-        if self.has_bitset(id) {
+        if self.has_bitset_for_nodeid(id) {
             let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
             let (start, end) = self.compute_id_range_frozen(cfgidx);
             let on_entry = self.on_entry.slice(start, end);
@@ -287,10 +291,25 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
     }
 
     fn apply_gen_kill(&mut self, cfgidx: CFGIndex, bits: &mut [uint]) {
-        //! Applies the gen and kill sets for `id` to `bits`
+        //! Applies the gen and kill sets for `cfgidx` to `bits`
         debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [before]",
                self.analysis_name, cfgidx, mut_bits_to_string(bits));
         let (start, end) = self.compute_id_range(cfgidx);
+        let gens = self.gens.slice(start, end);
+        bitwise(bits, gens, &Union);
+        let kills = self.kills.slice(start, end);
+        bitwise(bits, kills, &Subtract);
+
+        debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [after]",
+               self.analysis_name, cfgidx, mut_bits_to_string(bits));
+    }
+
+    fn apply_gen_kill_frozen(&self, cfgidx: CFGIndex, bits: &mut [uint]) {
+        //! Applies the gen and kill sets for `cfgidx` to `bits`
+        //! Only useful after `propagate()` has been called.
+        debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [before]",
+               self.analysis_name, cfgidx, mut_bits_to_string(bits));
+        let (start, end) = self.compute_id_range_frozen(cfgidx);
         let gens = self.gens.slice(start, end);
         bitwise(bits, gens, &Union);
         let kills = self.kills.slice(start, end);
@@ -327,21 +346,45 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
                                     -> bool {
         //! Iterates through each bit that is set on entry to `id`.
         //! Only useful after `propagate()` has been called.
-        if !self.has_bitset(id) {
+        if !self.has_bitset_for_nodeid(id) {
             return true;
         }
         let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
+        self.each_bit_for_node(Entry, cfgidx, f)
+    }
+
+    pub fn each_bit_for_node(&self,
+                             e: EntryOrExit,
+                             cfgidx: CFGIndex,
+                             f: |uint| -> bool)
+                             -> bool {
+        //! Iterates through each bit that is set on entry/exit to `cfgidx`.
+        //! Only useful after `propagate()` has been called.
+        if !self.has_bitset_for_cfgidx(cfgidx) {
+            return true;
+        }
         let (start, end) = self.compute_id_range_frozen(cfgidx);
         let on_entry = self.on_entry.slice(start, end);
-        debug!("{:s} each_bit_on_entry_frozen(id={:?}, on_entry={})",
-               self.analysis_name, id, bits_to_string(on_entry));
-        self.each_bit(on_entry, f)
+        let temp_bits;
+        let slice = match e {
+            Entry => on_entry,
+            Exit => {
+                let mut t = on_entry.to_owned();
+                self.apply_gen_kill_frozen(cfgidx, t.as_mut_slice());
+                temp_bits = t;
+                temp_bits.as_slice()
+            }
+        };
+        debug!("{:s} each_bit_for_node({}, cfgidx={}) bits={}",
+               self.analysis_name, e, cfgidx, bits_to_string(slice));
+        self.each_bit(slice, f)
     }
 
     pub fn each_gen_bit_frozen(&self, id: ast::NodeId, f: |uint| -> bool)
                                -> bool {
         //! Iterates through each bit in the gen set for `id`.
-        if !self.has_bitset(id) {
+        //! Only useful after `propagate()` has been called.
+        if !self.has_bitset_for_nodeid(id) {
             return true;
         }
         let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
