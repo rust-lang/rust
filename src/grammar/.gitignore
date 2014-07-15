@@ -1,0 +1,4 @@
+verify
+*.class
+*.java
+*.tokens
