@@ -108,13 +108,10 @@ fn parse_token_list(file: &str) -> HashMap<String, Token> {
     res
 }
 
-fn str_to_binop(mut s: &str) -> BinOp {
-    if s.ends_with("'") {
-        s = s.slice_to(s.len() - 1);
-    }
-
+fn str_to_binop(s: &str) -> BinOp {
     match s {
         "+" => PLUS,
+        "/" => SLASH,
         "-" => MINUS,
         "*" => STAR,
         "%" => PERCENT,
@@ -123,12 +120,35 @@ fn str_to_binop(mut s: &str) -> BinOp {
         "|" => OR,
         "<<" => SHL,
         ">>" => SHR,
-        _ => fail!("Bad binop str {}", s)
+        _ => fail!("Bad binop str `{}`", s)
     }
 }
 
+/// Assuming a raw string/binary literal, strip out the leading/trailing
+/// hashes and surrounding quotes/raw/binary prefix.
+fn fix(mut lit: &str) -> ast::Name {
+    if lit.char_at(0) == 'r' {
+        if lit.char_at(1) == 'b' {
+            lit = lit.slice_from(2)
+        } else {
+            lit = lit.slice_from(1);
+        }
+    } else if lit.char_at(0) == 'b' {
+        lit = lit.slice_from(1);
+    }
+
+    let leading_hashes = count(lit);
+
+    // +1/-1 to adjust for single quotes
+    parse::token::intern(lit.slice(leading_hashes + 1, lit.len() - leading_hashes - 1))
+}
+
+fn count(lit: &str) -> uint {
+    lit.chars().take_while(|c| *c == '#').count()
+}
+
 fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
-    let re = regex!(r"\[@(?P<seq>\d+),(?P<start>\d+):(?P<end>\d+)='(?P<content>.+?),<(?P<toknum>-?\d+)>,\d+:\d+]");
+    let re = regex!(r"\[@(?P<seq>\d+),(?P<start>\d+):(?P<end>\d+)='(?P<content>.+?)',<(?P<toknum>-?\d+)>,\d+:\d+]");
 
     let m = re.captures(s).expect(format!("The regex didn't match {}", s).as_slice());
     let start = m.name("start");
@@ -137,9 +157,24 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
     let content = m.name("content");
 
     let proto_tok = tokens.find_equiv(&toknum).expect(format!("didn't find token {} in the map", toknum).as_slice());
+
+    let nm = parse::token::intern(content);
+
+    debug!("What we got: content (`{}`), proto: {}", content, proto_tok);
+
     let real_tok = match *proto_tok {
-        BINOP(PLUS) => BINOP(str_to_binop(content)),
-        BINOPEQ(PLUS) => BINOPEQ(str_to_binop(content.slice_to(content.len() - 2))),
+        BINOP(..) => BINOP(str_to_binop(content)),
+        BINOPEQ(..) => BINOPEQ(str_to_binop(content.slice_to(content.len() - 1))),
+        LIT_STR(..) => LIT_STR(fix(content)),
+        LIT_STR_RAW(..) => LIT_STR_RAW(fix(content), count(content)),
+        LIT_CHAR(..) => LIT_CHAR(nm),
+        DOC_COMMENT(..) => DOC_COMMENT(nm),
+        LIT_INTEGER(..) => LIT_INTEGER(nm),
+        LIT_FLOAT(..) => LIT_FLOAT(nm),
+        LIT_BINARY(..) => LIT_BINARY(nm),
+        LIT_BINARY_RAW(..) => LIT_BINARY_RAW(fix(content), count(content)),
+        IDENT(..) => IDENT(ast::Ident { name: nm, ctxt: 0 }, true),
+        LIFETIME(..) => LIFETIME(ast::Ident { name: nm, ctxt: 0 }),
         ref t => t.clone()
     };
 
@@ -161,6 +196,16 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
     }
 }
 
+fn tok_cmp(a: &Token, b: &Token) -> bool {
+    match a {
+        &IDENT(id, _) => match b {
+                &IDENT(id2, _) => id == id2,
+                _ => false
+        },
+        _ => a == b
+    }
+}
+
 fn main() {
     fn next(r: &mut lexer::StringReader) -> TokenAndSpan {
         use syntax::parse::lexer::Reader;
@@ -173,7 +218,8 @@ fn main() {
 
     let code = File::open(&Path::new(std::os::args().get(1).as_slice())).unwrap().read_to_string().unwrap();
     let options = config::basic_options();
-    let session = session::build_session(options, None);
+    let session = session::build_session(options, None,
+                                         syntax::diagnostics::registry::Registry::new([]));
     let filemap = parse::string_to_filemap(&session.parse_sess,
                                            code,
                                            String::from_str("<n/a>"));
@@ -191,10 +237,16 @@ fn main() {
             ( $($x:pat),+ ) => (
                 match rustc_tok.tok {
                     $($x => match antlr_tok.tok {
-                        $x => (),
+                        $x => {
+                            if !tok_cmp(&rustc_tok.tok, &antlr_tok.tok) {
+                                // FIXME #15677: needs more robust escaping in
+                                // antlr
+                                warn!("Different names for {} and {}", rustc_tok, antlr_tok);
+                            }
+                        }
                         _ => fail!("{} is not {}", antlr_tok, rustc_tok)
                     },)*
-                    ref c => assert!(c == antlr_tok.tok, "{} is not {}", rustc_tok, antlr_tok)
+                    ref c => assert!(c == &antlr_tok.tok, "{} is not {}", rustc_tok, antlr_tok)
                 }
             )
         )
