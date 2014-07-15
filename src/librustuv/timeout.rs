@@ -14,7 +14,7 @@ use std::rt::task::BlockedTask;
 use std::rt::rtio::IoResult;
 
 use access;
-use homing::{HomeHandle, HomingMissile, HomingIO};
+use homing::{HomeHandle, HomingMissile};
 use timer::TimerWatcher;
 use uvll;
 use uvio::UvIoFactory;
@@ -22,15 +22,15 @@ use {Loop, UvError, uv_error_to_io_error, Request, wakeup};
 use {UvHandle, wait_until_woken_after};
 
 /// Management of a timeout when gaining access to a portion of a duplex stream.
-pub struct AccessTimeout {
+pub struct AccessTimeout<T> {
     state: TimeoutState,
     timer: Option<Box<TimerWatcher>>,
-    pub access: access::Access,
+    pub access: access::Access<T>,
 }
 
-pub struct Guard<'a> {
+pub struct Guard<'a, T> {
     state: &'a mut TimeoutState,
-    pub access: access::Guard<'a>,
+    pub access: access::Guard<'a, T>,
     pub can_timeout: bool,
 }
 
@@ -49,17 +49,18 @@ enum ClientState {
 }
 
 struct TimerContext {
-    timeout: *mut AccessTimeout,
-    callback: fn(uint) -> Option<BlockedTask>,
-    payload: uint,
+    timeout: *mut AccessTimeout<()>,
+    callback: fn(*mut AccessTimeout<()>, &TimerContext),
+    user_unblock: fn(uint) -> Option<BlockedTask>,
+    user_payload: uint,
 }
 
-impl AccessTimeout {
-    pub fn new() -> AccessTimeout {
+impl<T: Send> AccessTimeout<T> {
+    pub fn new(data: T) -> AccessTimeout<T> {
         AccessTimeout {
             state: NoTimeout,
             timer: None,
-            access: access::Access::new(),
+            access: access::Access::new(data),
         }
     }
 
@@ -68,7 +69,7 @@ impl AccessTimeout {
     /// On success, Ok(Guard) is returned and access has been granted to the
     /// stream. If a timeout occurs, then Err is returned with an appropriate
     /// error.
-    pub fn grant<'a>(&'a mut self, m: HomingMissile) -> IoResult<Guard<'a>> {
+    pub fn grant<'a>(&'a mut self, m: HomingMissile) -> IoResult<Guard<'a, T>> {
         // First, flag that we're attempting to acquire access. This will allow
         // us to cancel the pending grant if we timeout out while waiting for a
         // grant.
@@ -92,6 +93,13 @@ impl AccessTimeout {
             state: &mut self.state,
             can_timeout: can_timeout
         })
+    }
+
+    pub fn timed_out(&self) -> bool {
+        match self.state {
+            TimedOut => true,
+            _ => false,
+        }
     }
 
     /// Sets the pending timeout to the value specified.
@@ -120,9 +128,10 @@ impl AccessTimeout {
         if self.timer.is_none() {
             let mut timer = box TimerWatcher::new_home(loop_, home.clone());
             let mut cx = box TimerContext {
-                timeout: self as *mut _,
-                callback: cb,
-                payload: data,
+                timeout: self as *mut _ as *mut AccessTimeout<()>,
+                callback: real_cb::<T>,
+                user_unblock: cb,
+                user_payload: data,
             };
             unsafe {
                 timer.set_data(&mut *cx);
@@ -135,8 +144,8 @@ impl AccessTimeout {
         unsafe {
             let cx = uvll::get_data_for_uv_handle(timer.handle);
             let cx = cx as *mut TimerContext;
-            (*cx).callback = cb;
-            (*cx).payload = data;
+            (*cx).user_unblock = cb;
+            (*cx).user_payload = data;
         }
         timer.stop();
         timer.start(timer_cb, ms, 0);
@@ -146,7 +155,12 @@ impl AccessTimeout {
             let cx: &TimerContext = unsafe {
                 &*(uvll::get_data_for_uv_handle(timer) as *const TimerContext)
             };
-            let me = unsafe { &mut *cx.timeout };
+            (cx.callback)(cx.timeout, cx);
+        }
+
+        fn real_cb<T: Send>(timeout: *mut AccessTimeout<()>, cx: &TimerContext) {
+            let timeout = timeout as *mut AccessTimeout<T>;
+            let me = unsafe { &mut *timeout };
 
             match mem::replace(&mut me.state, TimedOut) {
                 TimedOut | NoTimeout => unreachable!(),
@@ -158,7 +172,7 @@ impl AccessTimeout {
                     }
                 }
                 TimeoutPending(RequestPending) => {
-                    match (cx.callback)(cx.payload) {
+                    match (cx.user_unblock)(cx.user_payload) {
                         Some(task) => task.reawaken(),
                         None => unreachable!(),
                     }
@@ -168,8 +182,8 @@ impl AccessTimeout {
     }
 }
 
-impl Clone for AccessTimeout {
-    fn clone(&self) -> AccessTimeout {
+impl<T: Send> Clone for AccessTimeout<T> {
+    fn clone(&self) -> AccessTimeout<T> {
         AccessTimeout {
             access: self.access.clone(),
             state: NoTimeout,
@@ -179,7 +193,7 @@ impl Clone for AccessTimeout {
 }
 
 #[unsafe_destructor]
-impl<'a> Drop for Guard<'a> {
+impl<'a, T> Drop for Guard<'a, T> {
     fn drop(&mut self) {
         match *self.state {
             TimeoutPending(NoWaiter) | TimeoutPending(AccessPending) =>
@@ -193,7 +207,8 @@ impl<'a> Drop for Guard<'a> {
     }
 }
 
-impl Drop for AccessTimeout {
+#[unsafe_destructor]
+impl<T> Drop for AccessTimeout<T> {
     fn drop(&mut self) {
         match self.timer {
             Some(ref timer) => unsafe {
@@ -213,12 +228,6 @@ pub struct ConnectCtx {
     pub status: c_int,
     pub task: Option<BlockedTask>,
     pub timer: Option<Box<TimerWatcher>>,
-}
-
-pub struct AcceptTimeout {
-    timer: Option<TimerWatcher>,
-    timeout_tx: Option<Sender<()>>,
-    timeout_rx: Option<Receiver<()>>,
 }
 
 impl ConnectCtx {
@@ -306,88 +315,97 @@ impl ConnectCtx {
     }
 }
 
-impl AcceptTimeout {
-    pub fn new() -> AcceptTimeout {
-        AcceptTimeout { timer: None, timeout_tx: None, timeout_rx: None }
+pub struct AcceptTimeout<T> {
+    access: AccessTimeout<AcceptorState<T>>,
+}
+
+struct AcceptorState<T> {
+    blocked_acceptor: Option<BlockedTask>,
+    pending: Vec<IoResult<T>>,
+}
+
+impl<T: Send> AcceptTimeout<T> {
+    pub fn new() -> AcceptTimeout<T> {
+        AcceptTimeout {
+            access: AccessTimeout::new(AcceptorState {
+                blocked_acceptor: None,
+                pending: Vec::new(),
+            })
+        }
     }
 
-    pub fn accept<T: Send>(&mut self, c: &Receiver<IoResult<T>>) -> IoResult<T> {
-        match self.timeout_rx {
-            None => c.recv(),
-            Some(ref rx) => {
-                use std::comm::Select;
-
-                // Poll the incoming channel first (don't rely on the order of
-                // select just yet). If someone's pending then we should return
-                // them immediately.
-                match c.try_recv() {
-                    Ok(data) => return data,
-                    Err(..) => {}
-                }
-
-                // Use select to figure out which channel gets ready first. We
-                // do some custom handling of select to ensure that we never
-                // actually drain the timeout channel (we'll keep seeing the
-                // timeout message in the future).
-                let s = Select::new();
-                let mut timeout = s.handle(rx);
-                let mut data = s.handle(c);
-                unsafe {
-                    timeout.add();
-                    data.add();
-                }
-                if s.wait() == timeout.id() {
-                    Err(uv_error_to_io_error(UvError(uvll::ECANCELED)))
-                } else {
-                    c.recv()
-                }
+    pub fn accept(&mut self,
+                  missile: HomingMissile,
+                  loop_: &Loop) -> IoResult<T> {
+        // If we've timed out but we're not closed yet, poll the state of the
+        // queue to see if we can peel off a connection.
+        if self.access.timed_out() && !self.access.access.is_closed(&missile) {
+            let tmp = self.access.access.get_mut(&missile);
+            return match tmp.pending.remove(0) {
+                Some(msg) => msg,
+                None => Err(uv_error_to_io_error(UvError(uvll::ECANCELED)))
             }
         }
-    }
 
-    pub fn clear(&mut self) {
-        match self.timeout_rx {
-            Some(ref t) => { let _ = t.try_recv(); }
+        // Now that we're not polling, attempt to gain access and then peel off
+        // a connection. If we have no pending connections, then we need to go
+        // to sleep and wait for one.
+        //
+        // Note that if we're woken up for a pending connection then we're
+        // guaranteed that the check above will not steal our connection due to
+        // the single-threaded nature of the event loop.
+        let mut guard = try!(self.access.grant(missile));
+        if guard.access.is_closed() {
+            return Err(uv_error_to_io_error(UvError(uvll::EOF)))
+        }
+
+        match guard.access.pending.remove(0) {
+            Some(msg) => return msg,
             None => {}
         }
-        match self.timer {
-            Some(ref mut t) => t.stop(),
-            None => {}
+
+        wait_until_woken_after(&mut guard.access.blocked_acceptor, loop_, || {});
+
+        match guard.access.pending.remove(0) {
+            _ if guard.access.is_closed() => {
+                Err(uv_error_to_io_error(UvError(uvll::EOF)))
+            }
+            Some(msg) => msg,
+            None => Err(uv_error_to_io_error(UvError(uvll::ECANCELED)))
         }
     }
 
-    pub fn set_timeout<U, T: UvHandle<U> + HomingIO>(
-        &mut self, ms: u64, t: &mut T
-    ) {
-        // If we have a timeout, lazily initialize the timer which will be used
-        // to fire when the timeout runs out.
-        if self.timer.is_none() {
-            let loop_ = Loop::wrap(unsafe {
-                uvll::get_loop_for_uv_handle(t.uv_handle())
-            });
-            let mut timer = TimerWatcher::new_home(&loop_, t.home().clone());
+    pub unsafe fn push(&mut self, t: IoResult<T>) {
+        let state = self.access.access.unsafe_get();
+        (*state).pending.push(t);
+        let _ = (*state).blocked_acceptor.take().map(|t| t.reawaken());
+    }
+
+    pub fn set_timeout(&mut self,
+                       ms: Option<u64>,
+                       loop_: &Loop,
+                       home: &HomeHandle) {
+        self.access.set_timeout(ms, home, loop_, cancel_accept::<T>,
+                                self as *mut _ as uint);
+
+        fn cancel_accept<T: Send>(me: uint) -> Option<BlockedTask> {
             unsafe {
-                timer.set_data(self as *mut _);
+                let me: &mut AcceptTimeout<T> = mem::transmute(me);
+                (*me.access.access.unsafe_get()).blocked_acceptor.take()
             }
-            self.timer = Some(timer);
         }
+    }
 
-        // Once we've got a timer, stop any previous timeout, reset it for the
-        // current one, and install some new channels to send/receive data on
-        let timer = self.timer.get_mut_ref();
-        timer.stop();
-        timer.start(timer_cb, ms, 0);
-        let (tx, rx) = channel();
-        self.timeout_tx = Some(tx);
-        self.timeout_rx = Some(rx);
+    pub fn close(&mut self, m: HomingMissile) {
+        self.access.access.close(&m);
+        let task = self.access.access.get_mut(&m).blocked_acceptor.take();
+        drop(m);
+        let _ = task.map(|t| t.reawaken());
+    }
+}
 
-        extern fn timer_cb(timer: *mut uvll::uv_timer_t) {
-            let acceptor: &mut AcceptTimeout = unsafe {
-                &mut *(uvll::get_data_for_uv_handle(timer) as *mut AcceptTimeout)
-            };
-            // This send can never fail because if this timer is active then the
-            // receiving channel is guaranteed to be alive
-            acceptor.timeout_tx.get_ref().send(());
-        }
+impl<T: Send> Clone for AcceptTimeout<T> {
+    fn clone(&self) -> AcceptTimeout<T> {
+        AcceptTimeout { access: self.access.clone() }
     }
 }
