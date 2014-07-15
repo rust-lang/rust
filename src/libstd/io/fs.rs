@@ -999,9 +999,9 @@ mod test {
             let mut read_buf = [0, .. 1028];
             let read_str = match check!(read_stream.read(read_buf)) {
                 -1|0 => fail!("shouldn't happen"),
-                n => str::from_utf8(read_buf.slice_to(n)).unwrap().to_owned()
+                n => str::from_utf8(read_buf.slice_to(n)).unwrap().to_string()
             };
-            assert_eq!(read_str, message.to_owned());
+            assert_eq!(read_str.as_slice(), message);
         }
         check!(unlink(filename));
     })

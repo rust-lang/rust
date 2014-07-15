@@ -13,13 +13,13 @@ use std::str;
 pub fn main() {
     // Chars of 1, 2, 3, and 4 bytes
     let chs: Vec<char> = vec!('e', 'é', '€', '\U00010000');
-    let s: String = str::from_chars(chs.as_slice()).to_string();
+    let s: String = String::from_chars(chs.as_slice()).to_string();
     let schs: Vec<char> = s.as_slice().chars().collect();
 
     assert!(s.len() == 10u);
     assert!(s.as_slice().char_len() == 4u);
     assert!(schs.len() == 4u);
-    assert!(str::from_chars(schs.as_slice()).to_string() == s);
+    assert!(String::from_chars(schs.as_slice()) == s);
     assert!(s.as_slice().char_at(0u) == 'e');
     assert!(s.as_slice().char_at(1u) == 'é');
 

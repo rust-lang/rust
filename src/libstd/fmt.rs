@@ -417,10 +417,7 @@ the `}` character is escaped with `}}`.
 use io::Writer;
 use io;
 use result::{Ok, Err};
-use str::{Str, StrAllocating};
-use str;
 use string;
-use slice::Vector;
 
 pub use core::fmt::{Formatter, Result, FormatWriter, rt};
 pub use core::fmt::{Show, Bool, Char, Signed, Unsigned, Octal, Binary};
@@ -464,7 +461,7 @@ pub use core::fmt::{secret_pointer};
 pub fn format(args: &Arguments) -> string::String{
     let mut output = io::MemWriter::new();
     let _ = write!(&mut output, "{}", args);
-    str::from_utf8(output.unwrap().as_slice()).unwrap().into_string()
+    string::String::from_utf8(output.unwrap()).unwrap()
 }
 
 impl<'a> Writer for Formatter<'a> {

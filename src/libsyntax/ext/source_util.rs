@@ -22,7 +22,6 @@ use print::pprust;
 use std::gc::Gc;
 use std::io::File;
 use std::rc::Rc;
-use std::str;
 
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include
@@ -122,17 +121,17 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
         Ok(bytes) => bytes,
     };
-    match str::from_utf8(bytes.as_slice()) {
-        Some(src) => {
+    match String::from_utf8(bytes) {
+        Ok(src) => {
             // Add this input file to the code map to make it available as
             // dependency information
             let filename = file.display().to_string();
-            let interned = token::intern_and_get_ident(src);
-            cx.codemap().new_filemap(filename, src.to_string());
+            let interned = token::intern_and_get_ident(src.as_slice());
+            cx.codemap().new_filemap(filename, src);
 
             base::MacExpr::new(cx.expr_str(sp, interned))
         }
-        None => {
+        Err(_) => {
             cx.span_err(sp,
                         format!("{} wasn't a utf-8 file",
                                 file.display()).as_slice());

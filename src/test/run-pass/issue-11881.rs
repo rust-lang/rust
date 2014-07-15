@@ -14,7 +14,6 @@ use serialize::{Encodable, Encoder};
 use serialize::json;
 use serialize::ebml::writer;
 use std::io::MemWriter;
-use std::str::from_utf8_owned;
 
 #[deriving(Encodable)]
 struct Foo {

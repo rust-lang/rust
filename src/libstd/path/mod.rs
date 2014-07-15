@@ -72,7 +72,7 @@ use fmt;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str;
-use str::{MaybeOwned, Str, StrSlice, from_utf8_lossy};
+use str::{MaybeOwned, Str, StrSlice};
 use string::String;
 use slice::Vector;
 use slice::{ImmutableEqVector, ImmutableVector};
@@ -483,7 +483,7 @@ impl<'a, P: GenericPath> Display<'a, P> {
     /// unicode replacement char. This involves allocation.
     #[inline]
     pub fn as_maybe_owned(&self) -> MaybeOwned<'a> {
-        from_utf8_lossy(if self.filename {
+        String::from_utf8_lossy(if self.filename {
             match self.path.filename() {
                 None => &[],
                 Some(v) => v

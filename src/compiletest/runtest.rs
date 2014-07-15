@@ -158,7 +158,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
         match props.pp_exact { Some(_) => 1, None => 2 };
 
     let src = File::open(testfile).read_to_end().unwrap();
-    let src = str::from_utf8(src.as_slice()).unwrap().to_string();
+    let src = String::from_utf8(src.clone()).unwrap();
     let mut srcs = vec!(src);
 
     let mut round = 0;
@@ -185,10 +185,10 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
         Some(ref file) => {
             let filepath = testfile.dir_path().join(file);
             let s = File::open(&filepath).read_to_end().unwrap();
-            str::from_utf8(s.as_slice()).unwrap().to_string()
-          }
-          None => { (*srcs.get(srcs.len() - 2u)).clone() }
-        };
+            String::from_utf8(s).unwrap()
+        }
+        None => { (*srcs.get(srcs.len() - 2u)).clone() }
+    };
     let mut actual = (*srcs.get(srcs.len() - 1u)).clone();
 
     if props.pp_exact.is_some() {
@@ -582,8 +582,8 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
                     process.wait_with_output().unwrap();
 
                 (status,
-                 str::from_utf8(output.as_slice()).unwrap().to_string(),
-                 str::from_utf8(error.as_slice()).unwrap().to_string())
+                 String::from_utf8(output).unwrap(),
+                 String::from_utf8(error).unwrap())
             },
             Err(e) => {
                 fatal(format!("Failed to setup Python process for \
@@ -813,7 +813,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
                 c
             }
         } ).collect();
-        str::from_chars(c.as_slice()).to_string()
+        String::from_chars(c.as_slice())
     }
 
     #[cfg(target_os = "win32")]

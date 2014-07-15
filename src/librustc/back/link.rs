@@ -61,7 +61,7 @@ pub fn llvm_err(sess: &Session, msg: String) -> ! {
             sess.fatal(msg.as_slice());
         } else {
             let err = CString::new(cstr, true);
-            let err = str::from_utf8_lossy(err.as_bytes());
+            let err = String::from_utf8_lossy(err.as_bytes());
             sess.fatal(format!("{}: {}",
                                msg.as_slice(),
                                err.as_slice()).as_slice());
@@ -380,8 +380,7 @@ pub mod write {
                     sess.note(format!("{}", &cmd).as_slice());
                     let mut note = prog.error.clone();
                     note.push_all(prog.output.as_slice());
-                    sess.note(str::from_utf8(note.as_slice()).unwrap()
-                                                             .as_slice());
+                    sess.note(str::from_utf8(note.as_slice()).unwrap());
                     sess.abort_if_errors();
                 }
             },
@@ -1177,8 +1176,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                 sess.note(format!("{}", &cmd).as_slice());
                 let mut output = prog.error.clone();
                 output.push_all(prog.output.as_slice());
-                sess.note(str::from_utf8(output.as_slice()).unwrap()
-                                                           .as_slice());
+                sess.note(str::from_utf8(output.as_slice()).unwrap());
                 sess.abort_if_errors();
             }
         },

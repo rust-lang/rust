@@ -137,7 +137,7 @@ pub fn getcwd() -> Path {
             fail!();
         }
     }
-    Path::new(str::from_utf16(str::truncate_utf16_at_nul(buf))
+    Path::new(String::from_utf16(str::truncate_utf16_at_nul(buf))
               .expect("GetCurrentDirectoryW returned invalid UTF-16"))
 }
 
@@ -151,7 +151,6 @@ pub mod win32 {
     use slice::{MutableVector, ImmutableVector};
     use string::String;
     use str::StrSlice;
-    use str;
     use vec::Vec;
 
     pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD)
@@ -180,7 +179,7 @@ pub mod win32 {
                     // We want to explicitly catch the case when the
                     // closure returned invalid UTF-16, rather than
                     // set `res` to None and continue.
-                    let s = str::from_utf16(sub)
+                    let s = String::from_utf16(sub)
                         .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16");
                     res = option::Some(s)
                 }
@@ -208,7 +207,7 @@ fn with_env_lock<T>(f: || -> T) -> T {
 /// Returns a vector of (variable, value) pairs, for all the environment
 /// variables of the current process.
 ///
-/// Invalid UTF-8 bytes are replaced with \uFFFD. See `str::from_utf8_lossy()`
+/// Invalid UTF-8 bytes are replaced with \uFFFD. See `String::from_utf8_lossy()`
 /// for details.
 ///
 /// # Example
@@ -223,8 +222,8 @@ fn with_env_lock<T>(f: || -> T) -> T {
 /// ```
 pub fn env() -> Vec<(String,String)> {
     env_as_bytes().move_iter().map(|(k,v)| {
-        let k = String::from_str(str::from_utf8_lossy(k.as_slice()).as_slice());
-        let v = String::from_str(str::from_utf8_lossy(v.as_slice()).as_slice());
+        let k = String::from_utf8_lossy(k.as_slice()).into_string();
+        let v = String::from_utf8_lossy(v.as_slice()).into_string();
         (k,v)
     }).collect()
 }
@@ -266,7 +265,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
                 let p = &*ch.offset(i);
                 let len = ptr::position(p, |c| *c == 0);
                 raw::buf_as_slice(p, len, |s| {
-                    result.push(str::from_utf16_lossy(s).into_bytes());
+                    result.push(String::from_utf16_lossy(s).into_bytes());
                 });
                 i += len as int + 1;
             }
@@ -316,7 +315,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// None if the variable isn't set.
 ///
 /// Any invalid UTF-8 bytes in the value are replaced by \uFFFD. See
-/// `str::from_utf8_lossy()` for details.
+/// `String::from_utf8_lossy()` for details.
 ///
 /// # Failure
 ///
@@ -334,7 +333,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// }
 /// ```
 pub fn getenv(n: &str) -> Option<String> {
-    getenv_as_bytes(n).map(|v| String::from_str(str::from_utf8_lossy(v.as_slice()).as_slice()))
+    getenv_as_bytes(n).map(|v| String::from_utf8_lossy(v.as_slice()).into_string())
 }
 
 #[cfg(unix)]
@@ -1050,7 +1049,7 @@ pub fn error_string(errnum: uint) -> String {
                 return format!("OS Error {} (FormatMessageW() returned error {})", errnum, fm_err);
             }
 
-            let msg = str::from_utf16(str::truncate_utf16_at_nul(buf));
+            let msg = String::from_utf16(str::truncate_utf16_at_nul(buf));
             match msg {
                 Some(msg) => format!("OS Error {}: {}", errnum, msg),
                 None => format!("OS Error {} (FormatMessageW() returned invalid UTF-16)", errnum),
@@ -1186,7 +1185,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 fn real_args() -> Vec<String> {
     real_args_as_bytes().move_iter()
                         .map(|v| {
-                            str::from_utf8_lossy(v.as_slice()).into_string()
+                            String::from_utf8_lossy(v.as_slice()).into_string()
                         }).collect()
 }
 
@@ -1207,7 +1206,7 @@ fn real_args() -> Vec<String> {
 
         // Push it onto the list.
         let opt_s = slice::raw::buf_as_slice(ptr as *const _, len, |buf| {
-            str::from_utf16(str::truncate_utf16_at_nul(buf))
+            String::from_utf16(str::truncate_utf16_at_nul(buf))
         });
         opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
     });
@@ -1244,7 +1243,7 @@ extern "system" {
 /// via the command line).
 ///
 /// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
-/// See `str::from_utf8_lossy` for details.
+/// See `String::from_utf8_lossy` for details.
 /// # Example
 ///
 /// ```rust
