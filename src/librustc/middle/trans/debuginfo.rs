@@ -180,9 +180,9 @@ seen before (which is most of the time). */
 
 use driver::config;
 use driver::config::{FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
-use lib::llvm::llvm;
-use lib::llvm::{ModuleRef, ContextRef, ValueRef};
-use lib::llvm::debuginfo::*;
+use llvm;
+use llvm::{ModuleRef, ContextRef, ValueRef};
+use llvm::debuginfo::*;
 use metadata::csearch;
 use middle::subst;
 use middle::trans::adt;

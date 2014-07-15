@@ -10,7 +10,7 @@
 
 use middle::trans::context::CrateContext;
 use middle::trans::type_::Type;
-use lib::llvm::ValueRef;
+use llvm::ValueRef;
 
 pub trait LlvmRepr {
     fn llrepr(&self, ccx: &CrateContext) -> String;

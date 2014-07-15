@@ -212,10 +212,12 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::loader or metadata::creader for all the juicy details!
 
-use back::archive::{ArchiveRO, METADATA_FILENAME};
+use back::archive::{METADATA_FILENAME};
 use back::svh::Svh;
 use driver::session::Session;
-use lib::llvm::{False, llvm, ObjectFile, mk_section_iter};
+use llvm;
+use llvm::{False, ObjectFile, mk_section_iter};
+use llvm::archive_ro::ArchiveRO;
 use metadata::cstore::{MetadataBlob, MetadataVec, MetadataArchive};
 use metadata::decoder;
 use metadata::encoder;

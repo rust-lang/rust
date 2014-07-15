@@ -15,8 +15,8 @@
 
 use back::abi;
 use back::link::*;
-use lib::llvm::{llvm, ValueRef, True};
-use lib;
+use llvm;
+use llvm::{ValueRef, True};
 use middle::lang_items::{FreeFnLangItem, ExchangeFreeFnLangItem};
 use middle::subst;
 use middle::trans::adt;
@@ -492,7 +492,7 @@ fn make_generic_glue(ccx: &CrateContext,
 
     let bcx = init_function(&fcx, false, ty::mk_nil());
 
-    lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
+    llvm::SetLinkage(llfn, llvm::InternalLinkage);
     ccx.stats.n_glues_created.set(ccx.stats.n_glues_created.get() + 1u);
     // All glue functions take values passed *by alias*; this is a
     // requirement since in many contexts glue is invoked indirectly and
@@ -550,7 +550,7 @@ pub fn emit_tydescs(ccx: &CrateContext) {
             let gvar = ti.tydesc;
             llvm::LLVMSetInitializer(gvar, tydesc);
             llvm::LLVMSetGlobalConstant(gvar, True);
-            lib::llvm::SetLinkage(gvar, lib::llvm::InternalLinkage);
+            llvm::SetLinkage(gvar, llvm::InternalLinkage);
         }
     };
 }

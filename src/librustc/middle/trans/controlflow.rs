@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use lib::llvm::*;
+use llvm::*;
 use driver::config::FullDebugInfo;
 use middle::def;
 use middle::lang_items::{FailFnLangItem, FailBoundsCheckFnLangItem};

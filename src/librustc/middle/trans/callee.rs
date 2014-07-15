@@ -19,8 +19,8 @@
 use arena::TypedArena;
 use back::abi;
 use back::link;
-use lib::llvm::ValueRef;
-use lib::llvm::llvm;
+use llvm;
+use llvm::ValueRef;
 use metadata::csearch;
 use middle::def;
 use middle::subst;

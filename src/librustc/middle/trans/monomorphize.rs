@@ -10,7 +10,7 @@
 
 use back::link::exported_name;
 use driver::session;
-use lib::llvm::ValueRef;
+use llvm::ValueRef;
 use middle::subst;
 use middle::subst::Subst;
 use middle::trans::base::{set_llvm_fn_attrs, set_inline_hint};

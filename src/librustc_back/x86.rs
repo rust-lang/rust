@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use back::target_strs;
+use target_strs;
 use syntax::abi;
 
 pub fn get_target_strs(target_triple: String, target_os: abi::Os)
