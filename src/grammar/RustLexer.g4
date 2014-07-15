@@ -153,28 +153,13 @@ LIFETIME : '\'' IDENT ;
 
 WHITESPACE : [ \r\n\t]+ ;
 
-LINE_COMMENT_NOT_A_TOKEN : '//' -> more, pushMode(LINE_COMMENT) ;
-
+UNDOC_COMMENT     : '////' ~[\r\n]* -> type(COMMENT) ;
+YESDOC_COMMENT    : '///' ~[\r\n]* -> type(DOC_COMMENT) ;
+OUTER_DOC_COMMENT : '//!' ~[\r\n]* -> type(DOC_COMMENT) ;
+LINE_COMMENT      : '//' ~[\r\n]* -> type(COMMENT) ;
 
 DOC_BLOCK_COMMENT
   : ('/**' | '/*!') (DOC_BLOCK_COMMENT | .)*? '*/' -> type(DOC_COMMENT)
   ;
 
 BLOCK_COMMENT : '/*' (BLOCK_COMMENT | .)*? '*/' -> type(COMMENT) ;
-
-mode LINE_COMMENT;
-
-MAYBE_DOC_COMMENT
-  : '/' -> more, pushMode(LINE_DOC_COMMENT)
-  ;
-
-MAYBE_OUTER_DOC_COMMENT
-  : '!' ~[\r\n]* -> type(LINE_DOC_COMMENT), popMode
-  ;
-
-COMMENT : ~[\r\n]* -> popMode ;
-
-mode LINE_DOC_COMMENT;
-
-ACTUALLY_A_COMMENT : '/' ~[\r\n]* -> type(COMMENT), popMode ;
-REALLY_A_DOC_COMMENT : ~[\r\n]* -> type(DOC_COMMENT), popMode ;
