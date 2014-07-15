@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{char, os, str};
+use std::{char, os};
 use std::io::{File, Command};
 use std::rand::{task_rng, Rng};
 
@@ -57,7 +57,7 @@ fn main() {
                                                    .unwrap()).as_slice())
                              .output().unwrap();
 
-        let err = str::from_utf8_lossy(result.error.as_slice());
+        let err = String::from_utf8_lossy(result.error.as_slice());
 
         // the span should end the line (e.g no extra ~'s)
         let expected_span = format!("^{}\n", "~".repeat(n - 1));

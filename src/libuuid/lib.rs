@@ -81,7 +81,6 @@ use std::num::FromStrRadix;
 use std::rand;
 use std::rand::Rng;
 use std::slice;
-use std::str;
 
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 
@@ -327,7 +326,7 @@ impl Uuid {
             *s.get_mut(i*2+0) = digit.as_bytes()[0];
             *s.get_mut(i*2+1) = digit.as_bytes()[1];
         }
-        str::from_utf8(s.as_slice()).unwrap().to_string()
+        String::from_utf8(s).unwrap()
     }
 
     /// Returns a string of hexadecimal digits, separated into groups with a hyphen.
@@ -685,7 +684,7 @@ mod test {
         let hs = uuid1.to_hyphenated_str();
         let ss = uuid1.to_string();
 
-        let hsn = str::from_chars(hs.as_slice()
+        let hsn = String::from_chars(hs.as_slice()
                                     .chars()
                                     .filter(|&c| c != '-')
                                     .collect::<Vec<char>>()

@@ -457,7 +457,6 @@ mod tests {
     use stats::write_5_number_summary;
     use stats::write_boxplot;
     use std::io;
-    use std::str;
     use std::f64;
 
     macro_rules! assert_approx_eq(
@@ -1030,7 +1029,7 @@ mod tests {
             use std::io::MemWriter;
             let mut m = MemWriter::new();
             write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
-            let out = str::from_utf8(m.unwrap().as_slice()).unwrap().to_string();
+            let out = String::from_utf8(m.unwrap()).unwrap();
             assert_eq!(out, expected);
         }
 

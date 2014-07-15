@@ -13,7 +13,6 @@ use std::cmp;
 use std::fmt;
 use std::iter;
 use std::num;
-use std::str;
 
 /// Static data containing Unicode ranges for general categories and scripts.
 use unicode::regex::{UNICODE_CLASSES, PERLD, PERLS, PERLW};
@@ -510,7 +509,7 @@ impl<'a> Parser<'a> {
             };
         self.chari = closer;
         let greed = try!(self.get_next_greedy());
-        let inner = str::from_chars(
+        let inner = String::from_chars(
             self.chars.as_slice().slice(start + 1, closer));
 
         // Parse the min and max values from the regex.
@@ -944,7 +943,7 @@ impl<'a> Parser<'a> {
     }
 
     fn slice(&self, start: uint, end: uint) -> String {
-        str::from_chars(self.chars.as_slice().slice(start, end)).to_string()
+        String::from_chars(self.chars.as_slice().slice(start, end))
     }
 }
 

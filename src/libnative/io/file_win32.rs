@@ -378,7 +378,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
                 } else {
                     let fp_vec = vec::raw::from_buf(fp_buf, libc::wcslen(fp_buf) as uint);
                     let fp_trimmed = str::truncate_utf16_at_nul(fp_vec.as_slice());
-                    let fp_str = str::from_utf16(fp_trimmed)
+                    let fp_str = String::from_utf16(fp_trimmed)
                             .expect("rust_list_dir_wfd_fp_buf returned invalid UTF-16");
                     paths.push(Path::new(fp_str));
                 }

@@ -14,7 +14,6 @@
 
 use std::collections::HashMap;
 use std::io;
-use std::str;
 use super::super::TermInfo;
 
 // These are the orders ncurses uses in its compiled format (as of 5.9). Not sure if portable.
@@ -214,9 +213,9 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
 
     // don't read NUL
     let bytes = try!(file.read_exact(names_bytes as uint - 1));
-    let names_str = match str::from_utf8(bytes.as_slice()) {
-        Some(s) => s.to_string(),
-        None => return Err("input not utf-8".to_string()),
+    let names_str = match String::from_utf8(bytes) {
+        Ok(s)  => s,
+        Err(_) => return Err("input not utf-8".to_string()),
     };
 
     let term_names: Vec<String> = names_str.as_slice()

@@ -60,7 +60,6 @@ use std::io::stdio::StdWriter;
 use std::io::{File, ChanReader, ChanWriter};
 use std::io;
 use std::os;
-use std::str;
 use std::string::String;
 use std::task::TaskBuilder;
 
@@ -636,7 +635,7 @@ impl<T: Writer> ConsoleTestState<T> {
             if stdout.len() > 0 {
                 fail_out.push_str(format!("---- {} stdout ----\n\t",
                                           f.name.as_slice()).as_slice());
-                let output = str::from_utf8_lossy(stdout.as_slice());
+                let output = String::from_utf8_lossy(stdout.as_slice());
                 fail_out.push_str(output.as_slice()
                                         .replace("\n", "\n\t")
                                         .as_slice());
@@ -873,7 +872,7 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures().unwrap();
     let s = match st.out {
-        Raw(ref m) => str::from_utf8_lossy(m.get_ref()),
+        Raw(ref m) => String::from_utf8_lossy(m.get_ref()),
         Pretty(_) => unreachable!()
     };
 

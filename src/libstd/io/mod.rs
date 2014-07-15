@@ -705,9 +705,9 @@ pub trait Reader {
     /// UTF-8 bytes.
     fn read_to_string(&mut self) -> IoResult<String> {
         self.read_to_end().and_then(|s| {
-            match str::from_utf8(s.as_slice()) {
-                Some(s) => Ok(String::from_str(s)),
-                None => Err(standard_error(InvalidInput)),
+            match String::from_utf8(s) {
+                Ok(s)  => Ok(s),
+                Err(_) => Err(standard_error(InvalidInput)),
             }
         })
     }
@@ -1440,9 +1440,9 @@ pub trait Buffer: Reader {
     /// valid UTF-8 sequence of bytes.
     fn read_line(&mut self) -> IoResult<String> {
         self.read_until('\n' as u8).and_then(|line|
-            match str::from_utf8(line.as_slice()) {
-                Some(s) => Ok(String::from_str(s)),
-                None => Err(standard_error(InvalidInput)),
+            match String::from_utf8(line) {
+                Ok(s)  => Ok(s),
+                Err(_) => Err(standard_error(InvalidInput)),
             }
         )
     }
