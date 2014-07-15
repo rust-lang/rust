@@ -10,6 +10,6 @@
 
 // compile-flags:--crate-name crate-name-attr-used -F unused-attribute
 
-#![crate_name = "test"]
+#![crate_name = "crate-name-attr-used"]
 
 fn main() {}
