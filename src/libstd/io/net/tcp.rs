@@ -461,8 +461,7 @@ impl TcpAcceptor {
     ///
     /// ```
     /// # #![allow(experimental)]
-    /// use std::io::TcpListener;
-    /// use std::io::{Listener, Acceptor, TimedOut};
+    /// use std::io::{TcpListener, Listener, Acceptor, EndOfFile};
     ///
     /// let mut a = TcpListener::bind("127.0.0.1", 8482).listen().unwrap();
     /// let a2 = a.clone();

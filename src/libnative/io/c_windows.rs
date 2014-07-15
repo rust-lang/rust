@@ -115,6 +115,12 @@ extern "system" {
                       optval: *mut libc::c_char,
                       optlen: *mut libc::c_int) -> libc::c_int;
 
+    pub fn SetEvent(hEvent: libc::HANDLE) -> libc::BOOL;
+    pub fn WaitForMultipleObjects(nCount: libc::DWORD,
+                                  lpHandles: *const libc::HANDLE,
+                                  bWaitAll: libc::BOOL,
+                                  dwMilliseconds: libc::DWORD) -> libc::DWORD;
+
     pub fn CancelIo(hFile: libc::HANDLE) -> libc::BOOL;
     pub fn CancelIoEx(hFile: libc::HANDLE,
                       lpOverlapped: libc::LPOVERLAPPED) -> libc::BOOL;

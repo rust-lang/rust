@@ -15,7 +15,7 @@ use std::mem;
 use std::rt::mutex;
 use std::rt::rtio;
 use std::rt::rtio::{IoResult, IoError};
-use std::sync::atomics;
+use std::sync::atomic;
 
 use super::retry;
 use super::net;
@@ -239,7 +239,7 @@ impl UnixListener {
                         listener: self,
                         reader: reader,
                         writer: writer,
-                        closed: atomics::AtomicBool::new(false),
+                        closed: atomic::AtomicBool::new(false),
                     }),
                     deadline: 0,
                 })
@@ -267,7 +267,7 @@ struct AcceptorInner {
     listener: UnixListener,
     reader: FileDesc,
     writer: FileDesc,
-    closed: atomics::AtomicBool,
+    closed: atomic::AtomicBool,
 }
 
 impl UnixAcceptor {
@@ -276,7 +276,7 @@ impl UnixAcceptor {
     pub fn native_accept(&mut self) -> IoResult<UnixStream> {
         let deadline = if self.deadline == 0 {None} else {Some(self.deadline)};
 
-        while !self.inner.closed.load(atomics::SeqCst) {
+        while !self.inner.closed.load(atomic::SeqCst) {
             unsafe {
                 let mut storage: libc::sockaddr_storage = mem::zeroed();
                 let storagep = &mut storage as *mut libc::sockaddr_storage;
@@ -317,7 +317,7 @@ impl rtio::RtioUnixAcceptor for UnixAcceptor {
 
     #[cfg(unix)]
     fn close_accept(&mut self) -> IoResult<()> {
-        self.inner.closed.store(true, atomics::SeqCst);
+        self.inner.closed.store(true, atomic::SeqCst);
         let mut fd = FileDesc::new(self.inner.writer.fd(), false);
         match fd.inner_write([0]) {
             Ok(..) => Ok(()),

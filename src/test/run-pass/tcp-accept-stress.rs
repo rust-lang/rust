@@ -15,7 +15,7 @@ extern crate green;
 extern crate native;
 
 use std::io::{TcpListener, Listener, Acceptor, EndOfFile, TcpStream};
-use std::sync::{atomics, Arc};
+use std::sync::{atomic, Arc};
 use std::task::TaskBuilder;
 use native::NativeTaskBuilder;
 
@@ -38,7 +38,7 @@ fn test() {
     let mut l = TcpListener::bind("127.0.0.1", 0).unwrap();
     let addr = l.socket_name().unwrap();
     let mut a = l.listen().unwrap();
-    let cnt = Arc::new(atomics::AtomicUint::new(0));
+    let cnt = Arc::new(atomic::AtomicUint::new(0));
 
     let (tx, rx) = channel();
     for _ in range(0, N) {
@@ -52,7 +52,7 @@ fn test() {
                 match a.accept() {
                     Ok(..) => {
                         mycnt += 1;
-                        if cnt.fetch_add(1, atomics::SeqCst) == N * M - 1 {
+                        if cnt.fetch_add(1, atomic::SeqCst) == N * M - 1 {
                             break
                         }
                     }
@@ -89,6 +89,6 @@ fn test() {
     assert_eq!(rx.iter().take(N - 1).count(), N - 1);
 
     // Everything should have been accepted.
-    assert_eq!(cnt.load(atomics::SeqCst), N * M);
+    assert_eq!(cnt.load(atomic::SeqCst), N * M);
 }
 

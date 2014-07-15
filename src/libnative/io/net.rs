@@ -15,7 +15,7 @@ use std::ptr;
 use std::rt::mutex;
 use std::rt::rtio;
 use std::rt::rtio::{IoResult, IoError};
-use std::sync::atomics;
+use std::sync::atomic;
 
 use super::{retry, keep_going};
 use super::c;
@@ -456,7 +456,7 @@ impl TcpListener {
                         listener: self,
                         reader: reader,
                         writer: writer,
-                        closed: atomics::AtomicBool::new(false),
+                        closed: atomic::AtomicBool::new(false),
                     }),
                     deadline: 0,
                 })
@@ -476,7 +476,7 @@ impl TcpListener {
                         listener: self,
                         abort: try!(os::Event::new()),
                         accept: accept,
-                        closed: atomics::AtomicBool::new(false),
+                        closed: atomic::AtomicBool::new(false),
                     }),
                     deadline: 0,
                 })
@@ -510,7 +510,7 @@ struct AcceptorInner {
     listener: TcpListener,
     reader: FileDesc,
     writer: FileDesc,
-    closed: atomics::AtomicBool,
+    closed: atomic::AtomicBool,
 }
 
 #[cfg(windows)]
@@ -518,7 +518,7 @@ struct AcceptorInner {
     listener: TcpListener,
     abort: os::Event,
     accept: os::Event,
-    closed: atomics::AtomicBool,
+    closed: atomic::AtomicBool,
 }
 
 impl TcpAcceptor {
@@ -542,7 +542,7 @@ impl TcpAcceptor {
         // self-pipe is never written to unless close_accept() is called.
         let deadline = if self.deadline == 0 {None} else {Some(self.deadline)};
 
-        while !self.inner.closed.load(atomics::SeqCst) {
+        while !self.inner.closed.load(atomic::SeqCst) {
             match retry(|| unsafe {
                 libc::accept(self.fd(), ptr::mut_null(), ptr::mut_null())
             }) {
@@ -581,12 +581,12 @@ impl TcpAcceptor {
         // stolen, so we do all of this in a loop as well.
         let events = [self.inner.abort.handle(), self.inner.accept.handle()];
 
-        while !self.inner.closed.load(atomics::SeqCst) {
+        while !self.inner.closed.load(atomic::SeqCst) {
             let ms = if self.deadline == 0 {
                 c::WSA_INFINITE as u64
             } else {
                 let now = ::io::timer::now();
-                if self.deadline < now {0} else {now - self.deadline}
+                if self.deadline < now {0} else {self.deadline - now}
             };
             let ret = unsafe {
                 c::WSAWaitForMultipleEvents(2, events.as_ptr(), libc::FALSE,
@@ -600,7 +600,6 @@ impl TcpAcceptor {
                 c::WSA_WAIT_EVENT_0 => break,
                 n => assert_eq!(n, c::WSA_WAIT_EVENT_0 + 1),
             }
-            println!("woke up");
 
             let mut wsaevents: c::WSANETWORKEVENTS = unsafe { mem::zeroed() };
             let ret = unsafe {
@@ -614,7 +613,19 @@ impl TcpAcceptor {
             } {
                 -1 if util::wouldblock() => {}
                 -1 => return Err(os::last_error()),
-                fd => return Ok(TcpStream::new(Inner::new(fd))),
+
+                // Accepted sockets inherit the same properties as the caller,
+                // so we need to deregister our event and switch the socket back
+                // to blocking mode
+                fd => {
+                    let stream = TcpStream::new(Inner::new(fd));
+                    let ret = unsafe {
+                        c::WSAEventSelect(fd, events[1], 0)
+                    };
+                    if ret != 0 { return Err(os::last_error()) }
+                    try!(util::set_nonblocking(fd, false));
+                    return Ok(stream)
+                }
             }
         }
 
@@ -648,7 +659,7 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
 
     #[cfg(unix)]
     fn close_accept(&mut self) -> IoResult<()> {
-        self.inner.closed.store(true, atomics::SeqCst);
+        self.inner.closed.store(true, atomic::SeqCst);
         let mut fd = FileDesc::new(self.inner.writer.fd(), false);
         match fd.inner_write([0]) {
             Ok(..) => Ok(()),
@@ -659,7 +670,7 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
 
     #[cfg(windows)]
     fn close_accept(&mut self) -> IoResult<()> {
-        self.inner.closed.store(true, atomics::SeqCst);
+        self.inner.closed.store(true, atomic::SeqCst);
         let ret = unsafe { c::WSASetEvent(self.inner.abort.handle()) };
         if ret == libc::TRUE {
             Ok(())

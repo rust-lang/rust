@@ -387,7 +387,7 @@ impl rtio::RtioSocket for TcpListener {
 }
 
 impl rtio::RtioTcpListener for TcpListener {
-    fn listen(self: Box<TcpListener>)
+    fn listen(mut self: Box<TcpListener>)
               -> Result<Box<rtio::RtioTcpAcceptor + Send>, IoError> {
         let _m = self.fire_homing_missile();
 
