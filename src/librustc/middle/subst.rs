@@ -561,7 +561,18 @@ impl<'a> TypeFolder for SubstFolder<'a> {
             ty::ReEarlyBound(_, space, i, _) => {
                 match self.substs.regions {
                     ErasedRegions => ty::ReStatic,
-                    NonerasedRegions(ref regions) => *regions.get(space, i),
+                    NonerasedRegions(ref regions) =>
+                        match regions.opt_get(space, i) {
+                            Some(t) => *t,
+                            None => {
+                              let span = self.span.unwrap_or(DUMMY_SP);
+                              self.tcx().sess.span_bug(
+                                  span,
+                                  format!("Type parameter out of range \
+                                     when substituting (root type={})",
+                                    self.root_ty.repr(self.tcx())).as_slice());
+                            }
+                        }
                 }
             }
             _ => r
