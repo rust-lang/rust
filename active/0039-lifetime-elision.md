@@ -94,14 +94,21 @@ elided a single lifetime.
 
 Lifetime positions can appear as either "input" or "output":
 
-* For `fn` definitions, input refers to argument types while output refers to
+* For `fn` definitions, input refers to the types of the formal arguments
+  in the `fn` definition, while output refers to
   result types. So `fn foo(s: &str) -> (&str, &str)` has elided one lifetime in
   input position and two lifetimes in output position.
+  Note that the input positions of a `fn` method definition do not
+  include the lifetimes that occur in the method's `impl` header
+  `impl` (nor lifetimes that occur in the trait header, for a default
+  method).
+
 
 * For `impl` headers, input refers to the lifetimes appears in the type
   receiving the `impl`, while output refers to the trait, if any. So `impl<'a>
-  Foo<'a>` has `'a` in input position, while `impl<'a> SomeTrait<'a> Foo<'a>`
-  has `'a` in both input and output positions.
+  Foo<'a>` has `'a` in input position, while `impl<'a, 'b, 'c>
+  SomeTrait<'b, 'c> for Foo<'a, 'c>` has `'a` in input position, `'b`
+  in output position, and `'c` in both input and output positions.
 
 ### The rules
 
@@ -152,6 +159,32 @@ impl<'a, 'b> Reader for (&'a str, &'b str) { ... }      // expanded
 
 impl StrSlice for &str { ... }                          // elided
 impl<'a> StrSlice<'a> for &'a str { ... }               // expanded
+
+trait Bar<'a> { fn bound(&'a self) -> &int { ... }    fn fresh(&self) -> &int { ... } }           // elided
+trait Bar<'a> { fn bound(&'a self) -> &'a int { ... } fn fresh<'b>(&'b self) -> &'b int { ... } } // expanded
+
+impl Bar for &str            { fn bound(&self) -> &int { ... } }           // elided
+impl<'a> Bar<'a> for &'a str { fn bound<'b>(&'b self) -> &'b int { ... } } // expanded
+
+// Note that the preceding example's expanded methods do not match the
+// signatures from the above trait definition for `Bar`, and in the
+// general case the expanded `impl` may not be compatible with the given
+// `trait` (and thus would not compile).
+
+impl Bar for &str            { fn fresh(&self) -> &int { ... } }           // elided
+impl<'a> Bar<'a> for &'a str { fn fresh<'b>(&'b self) -> &'b int { ... } } // expanded
+
+impl Bar for &str {
+  fn bound(&'a self) -> &'a int { ... } fn fresh(&self) -> &int { ... }    // ILLEGAL: unbound 'a
+}
+
+impl<'a> Bar<'a> for &'a str {
+  fn bound(&'a self) -> &'a int { ... } fn fresh(&self) -> &int { ... }              // elided
+}
+impl<'a> Bar<'a> for &'a str {
+  fn bound(&'a self) -> &'a int { ... } fn fresh<'b>(&'b self) -> &'b int { ... }    // expanded
+}
+
 ```
 
 ## Error messages
