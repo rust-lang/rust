@@ -18,9 +18,11 @@ and create receivers which will receive notifications after a period of time.
 */
 
 use comm::{Receiver, Sender, channel};
+use time::Duration;
 use io::{IoResult, IoError};
 use kinds::Send;
 use boxed::Box;
+use num::{CheckedMul, CheckedAdd};
 use rt::rtio::{IoFactory, LocalIo, RtioTimer, Callback};
 
 /// A synchronous timer object
@@ -69,6 +71,33 @@ pub struct Timer {
 
 struct TimerCallback { tx: Sender<()> }
 
+#[allow(missing_doc)]
+trait DurationExtension {
+    fn in_ms(&self) -> u64;
+}
+
+impl DurationExtension for Duration {
+    fn in_ms(&self) -> u64 {
+        if self.ndays() < 0 { fail!("negative duration") }
+        let nanos = self.nnanoseconds() as u64;
+        let secs = self.nseconds() as u64;
+        let days = self.ndays() as u64;
+        let nanos_in_ms = nanos / 1000;
+        let secs_in_ms = secs.checked_mul(&1000).expect("overflow");
+        let ms_per_day = 24 * 60 * 60 * 1000; // hours/day * min/hour * sec/min * ms/sec
+        let days_in_ms = days.checked_mul(&ms_per_day).expect("overflow");
+        let result = nanos_in_ms;
+        let result = result.checked_add(&secs_in_ms).expect("overflow");
+        let result = result.checked_add(&(days_in_ms as u64)).expect("overflow");
+        return result;
+    }
+}
+
+/// Sleep the current task for the specified duration.
+pub fn sleep(duration: Duration) {
+    sleep_ms(duration.in_ms())
+}
+
 /// Sleep the current task for `msecs` milliseconds.
 pub fn sleep_ms(msecs: u64) {
     let timer = Timer::new();
@@ -87,12 +116,37 @@ impl Timer {
         }).map_err(IoError::from_rtio_error)
     }
 
+    /// Blocks the current task for the specified duration.
+    ///
+    /// Note that this function will cause any other receivers for this timer to
+    /// be invalidated (the other end will be closed).
+    pub fn sleep(&mut self, duration: Duration) {
+        self.obj.sleep(duration.in_ms());
+    }
+
     /// Blocks the current task for `msecs` milliseconds.
     ///
     /// Note that this function will cause any other receivers for this timer to
     /// be invalidated (the other end will be closed).
     pub fn sleep_ms(&mut self, msecs: u64) {
         self.obj.sleep(msecs);
+    }
+
+    /// Creates a oneshot receiver which will have a notification sent when
+    /// the specified duration has elapsed.
+    ///
+    /// This does *not* block the current task, but instead returns immediately.
+    ///
+    /// Note that this invalidates any previous receiver which has been created
+    /// by this timer, and that the returned receiver will be invalidated once
+    /// the timer is destroyed (when it falls out of scope). In particular, if
+    /// this is called in method-chaining style, the receiver will be
+    /// invalidated at the end of that statement, and all `recv` calls will
+    /// fail.
+    pub fn oneshot(&mut self, duration: Duration) -> Receiver<()> {
+        let (tx, rx) = channel();
+        self.obj.oneshot(duration.in_ms(), box TimerCallback { tx: tx });
+        return rx
     }
 
     /// Creates a oneshot receiver which will have a notification sent when
@@ -132,6 +186,25 @@ impl Timer {
     pub fn oneshot_ms(&mut self, msecs: u64) -> Receiver<()> {
         let (tx, rx) = channel();
         self.obj.oneshot(msecs, box TimerCallback { tx: tx });
+        return rx
+    }
+
+    /// Creates a receiver which will have a continuous stream of notifications
+    /// being sent each time the specified duration has elapsed.
+    ///
+    /// This does *not* block the current task, but instead returns
+    /// immediately. The first notification will not be received immediately,
+    /// but rather after the first duration.
+    ///
+    /// Note that this invalidates any previous receiver which has been created
+    /// by this timer, and that the returned receiver will be invalidated once
+    /// the timer is destroyed (when it falls out of scope). In particular, if
+    /// this is called in method-chaining style, the receiver will be
+    /// invalidated at the end of that statement, and all `recv` calls will
+    /// fail.
+    pub fn periodic(&mut self, duration: Duration) -> Receiver<()> {
+        let (tx, rx) = channel();
+        self.obj.period(duration.in_ms(), box TimerCallback { tx: tx });
         return rx
     }
 
@@ -365,4 +438,28 @@ mod test {
         // callback do something terrible.
         timer2.sleep_ms(2);
     })
+
+
+    iotest!(fn test_io_timer_sleep_duration_simple() {
+        use time::Duration;
+        let mut timer = Timer::new().unwrap();
+        timer.sleep(Duration::seconds(1));
+    })
+
+    iotest!(fn test_io_timer_sleep_oneshot_duration() {
+        use time::Duration;
+        let mut timer = Timer::new().unwrap();
+        timer.oneshot(Duration::seconds(1)).recv();
+    })
+
+    iotest!(fn test_io_timer_sleep_periodic_duration() {
+        use time::Duration;
+        let mut timer = Timer::new().unwrap();
+        let rx = timer.periodic(Duration::seconds(1));
+        rx.recv();
+        rx.recv();
+        rx.recv();
+    })
+
+
 }
