@@ -109,6 +109,9 @@ pub struct uv_buf_t {
     pub len: uv_buf_len_t,
 }
 
+#[cfg(unix)]
+pub type uv_os_socket_t = c_int;
+
 // see libuv/include/uv-win.h
 #[cfg(windows)]
 pub struct uv_buf_t {
@@ -116,11 +119,20 @@ pub struct uv_buf_t {
     pub base: *mut u8,
 }
 
+#[cfg(windows)]
+pub type uv_os_socket_t = libc::SOCKET;
+
 #[repr(C)]
 pub enum uv_run_mode {
     RUN_DEFAULT = 0,
     RUN_ONCE,
     RUN_NOWAIT,
+}
+
+#[repr(C)]
+pub enum uv_poll_event {
+    UV_READABLE = 1,
+    UV_WRITABLE = 2,
 }
 
 pub struct uv_process_options_t {
@@ -150,6 +162,7 @@ pub type uv_loop_t = c_void;
 pub type uv_idle_t = c_void;
 pub type uv_tcp_t = c_void;
 pub type uv_udp_t = c_void;
+pub type uv_poll_t = c_void;
 pub type uv_connect_t = c_void;
 pub type uv_connection_t = c_void;
 pub type uv_write_t = c_void;
@@ -233,6 +246,9 @@ pub type uv_udp_recv_cb = extern "C" fn(handle: *mut uv_udp_t,
                                         addr: *const sockaddr,
                                         flags: c_uint);
 pub type uv_close_cb = extern "C" fn(handle: *mut uv_handle_t);
+pub type uv_poll_cb = extern "C" fn(handle: *mut uv_poll_t,
+                                    status: c_int,
+                                    events: c_int);
 pub type uv_walk_cb = extern "C" fn(handle: *mut uv_handle_t,
                                     arg: *mut c_void);
 pub type uv_async_cb = extern "C" fn(handle: *mut uv_async_t);
@@ -650,6 +666,11 @@ extern {
                        path: *const c_char, mode: c_int, cb: uv_fs_cb) -> c_int;
     pub fn uv_fs_lstat(handle: *mut uv_loop_t, req: *mut uv_fs_t,
                        file: *const c_char, cb: uv_fs_cb) -> c_int;
+
+    // poll bindings
+    pub fn uv_poll_init_socket(l: *mut uv_loop_t, h: *mut uv_poll_t, s: uv_os_socket_t) -> c_int;
+    pub fn uv_poll_start(h: *mut uv_poll_t, events: c_int, cb: uv_poll_cb) -> c_int;
+    pub fn uv_poll_stop(h: *mut uv_poll_t) -> c_int;
 
     // getaddrinfo
     pub fn uv_getaddrinfo(loop_: *mut uv_loop_t, req: *mut uv_getaddrinfo_t,
