@@ -245,7 +245,7 @@ impl PipeListener {
 }
 
 impl rtio::RtioUnixListener for PipeListener {
-    fn listen(self: Box<PipeListener>)
+    fn listen(mut self: Box<PipeListener>)
               -> IoResult<Box<rtio::RtioUnixAcceptor + Send>> {
         let _m = self.fire_homing_missile();
 

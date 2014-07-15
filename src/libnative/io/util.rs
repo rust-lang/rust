@@ -175,6 +175,9 @@ pub fn await(fds: &[net::sock_t], deadline: Option<u64>,
         c::fd_set(&mut set, fd);
         max = cmp::max(max, fd + 1);
     }
+    if cfg!(windows) {
+        max = fds.len() as net::sock_t;
+    }
 
     let (read, write) = match status {
         Readable => (&mut set as *mut _, ptr::mut_null()),

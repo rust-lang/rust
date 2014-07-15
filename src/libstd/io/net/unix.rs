@@ -731,6 +731,7 @@ mod tests {
         rx2.recv();
     })
 
+    #[cfg(not(windows))]
     iotest!(fn clone_accept_smoke() {
         let addr = next_test_unix();
         let l = UnixListener::bind(&addr);
@@ -746,6 +747,7 @@ mod tests {
         });
 
         assert!(a.accept().is_ok());
+        drop(a);
         assert!(a2.accept().is_ok());
     })
 
