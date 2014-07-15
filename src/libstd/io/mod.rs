@@ -237,7 +237,7 @@ use str::{Str, StrSlice};
 use str;
 use string::String;
 use uint;
-use unicode::UnicodeChar;
+use unicode::char::UnicodeChar;
 use vec::Vec;
 
 // Reexports
