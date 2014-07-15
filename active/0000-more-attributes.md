@@ -196,7 +196,9 @@ functions, but to a low degree degree (e.g. how would one annotate a
 general `unsafe` block).
 
 Only allowing attributes on "statement expressions" that is,
-expressions at the top level of a block,
+expressions at the top level of a block, this is slightly limiting;
+but we can expand to support other contexts backwards compatibly in
+the future.
 
 The `if`/`else` issue may be able to be resolved by introducing
 explicit "interior" and "exterior" attributes on `if`: by having
