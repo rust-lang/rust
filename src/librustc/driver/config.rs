@@ -334,6 +334,8 @@ cgoptions!(
         "use an external assembler rather than LLVM's integrated one"),
     relocation_model: String = ("pic".to_string(), parse_string,
          "choose the relocation model to use (llc -relocation-model for details)"),
+    code_model: String = ("default".to_string(), parse_string,
+         "choose the code model to use (llc -code-model for details)"),
     metadata: Vec<String> = (Vec::new(), parse_list,
          "metadata to mangle symbol names with"),
     extra_filename: String = ("".to_string(), parse_string,
