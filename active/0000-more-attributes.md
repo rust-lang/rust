@@ -63,33 +63,29 @@ fn foo() {
     }
     #[attr4] foo();
 
-    #[attr5]
-    if cond {
-        bar()
-    } else #[attr6] if cond {
-        baz()
-    } else #[attr7] {
+    let x = #[attr5] 1;
 
-    };
+    qux(3 + #[attr6] 2);
 
-    let x = #[attr8] 1;
-
-    qux(3 + #[attr9] 2);
-
-    foo(x, #[attr10] y, z);
+    foo(x, #[attr7] y, z);
 }
 ```
 
-## `cfg`
-
-It is an error to place a `#[cfg]` attribute on a non-statement
-expressions, including `if`s/blocks inside an `if`/`else` chain, that
-is, `attr1`--`attr7` can legally be `#[cfg(foo)]`, but
-`attr8`--`attr10` cannot, since it makes little sense to strip code
-down to `let x = ;`.
-
 Attributes bind tighter than any operator, that is `#[attr] x op y` is
 always parsed as `(#[attr] x) op y`.
+
+## `cfg`
+
+It is definitely an error to place a `#[cfg]` attribute on a
+non-statement expressions, that is, `attr1`--`attr4` can possibly be
+`#[cfg(foo)]`, but `attr5`--`attr7` cannot, since it makes little
+sense to strip code down to `let x = ;`.
+
+However, like `#ifdef` in C/C++, widespread use of `#[cfg]` may be an
+antipattern that makes code harder to read. This RFC is just adding
+the ability for attributes to be placed in specific places, it is not
+mandating that `#[cfg]` actually be stripped in those places (although
+it should be an error if it is ignored).
 
 ## Inner attributes
 
@@ -109,10 +105,6 @@ match bar {
     _ => {}
 }
 
-if cond {
-    #![attr13]
-}
-
 // are the same as
 
 #[attr11]
@@ -124,12 +116,78 @@ if cond {
 match bar {
     _ => {}
 }
+```
 
-#[attr13]
-if cond {
+## `if`
+
+Attributes would be disallowed on `if` for now, because the
+interaction with `if`/`else` chains are funky, and can be simulated in
+other ways.
+
+```rust
+#[cfg(not(foo))]
+if cond1 {
+} else #[cfg(not(bar))] if cond2 {
+} else #[cfg(not(baz))] {
 }
 ```
 
+There is two possible interpretations of such a piece of code,
+depending on if one regards the attributes as attaching to the whole
+`if ... else` chain ("exterior") or just to the branch on which they
+are placed ("interior").
+
+- `--cfg foo`: could be either removing the whole chain (exterior) or
+  equivalent to `if cond2 {} else {}` (interior).
+- `--cfg bar`: could be either `if cond1 {}` (*e*) or `if cond1 {}
+  else {}` (*i*)
+- `--cfg baz`: equivalent to `if cond1 {} else if cond2 {}` (no subtlety).
+- `--cfg foo --cfg bar`: could be removing the whole chain (*e*) or the two
+  `if` branches (leaving only the `else` branch) (*i*).
+
+(This applies to any attribute that has some sense of scoping, not
+just `#[cfg]`, e.g. `#[allow]` and `#[warn]` for lints.)
+
+As such, to avoid confusion, attributes would not be supported on
+`if`. Alternatives include using blocks:
+
+```rust
+#[attr] if cond { ... } else ...
+// becomes, for an exterior attribute,
+#[attr] {
+    if cond { ... } else ...
+}
+// and, for an interior attribute,
+if cond {
+    #[attr] { ... }
+} else ...
+```
+
+And, if the attributes are meant to be associated with the actual
+branching (e.g. a hypothetical `#[cold]` attribute that indicates a
+branch is unlikely), one can annotate `match` arms:
+
+```rust
+match cond {
+    #[attr] true => { ... }
+    #[attr] false => { ... }
+}
+```
+
+# Drawbacks
+
+This starts mixing attributes with nearly arbitrary code, possibly
+dramatically restricting syntactic changes related to them, for
+example, there was some consideration for using `@` for attributes,
+this change may make this impossible (especially if `@` gets reused
+for something else, e.g. Python is
+[using it for matrix multiplication](http://legacy.python.org/dev/peps/pep-0465/)). It
+may also make it impossible to use `#` for other things.
+
+As stated above, allowing `#[cfg]`s everywhere can make code harder to
+reason about, but (also stated), this RFC is not for making such
+`#[cfg]`s be obeyed, it just opens the language syntax to possibly
+allow it.
 
 # Alternatives
 
@@ -140,31 +198,16 @@ general `unsafe` block).
 Only allowing attributes on "statement expressions" that is,
 expressions at the top level of a block,
 
+The `if`/`else` issue may be able to be resolved by introducing
+explicit "interior" and "exterior" attributes on `if`: by having
+`#[attr] if cond { ...` be an exterior attribute (applying to the
+whole `if`/`else` chain) and `if cond #[attr] { ... ` be an interior
+attribute (applying to only the current `if` branch). There is no
+difference between interior and exterior for an `else {` branch, and
+so `else #[attr] {` is sufficient.
+
+
 # Unresolved questions
 
 Are the complications of allowing attributes on arbitrary
 expressions worth the benefits?
-
-The interaction with `if`/`else` chains are somewhat subtle, and it
-may be worth introducing "interior" and "exterior" attributes on `if`, or
-just disallowing them entirely.
-
-```rust
-#[cfg(not(foo))]
-if cond1 {
-} else #[cfg(not(bar))] if cond2 {
-} else #[cfg(not(baz))] {
-}
-```
-
-- `--cfg foo`: could be either removing the whole chain ("exterior") or
-  equivalent to `if cond2 {} else {}` ("interior").
-- `--cfg bar`: could be either `if cond1 {}` or `if cond1 {} else {}`
-- `--cfg baz`: equivalent to `if cond1 {} else if cond2 {}` (no subtlety).
-- `--cfg foo --cfg bar`: could be removing the whole chain or the two
-  `if` branches (leaving only the `else` branch).
-
-This can be addressed by having `#[attr] if cond { ...` be an exterior
-attribute (applying to the whole `if`/`else` chain) and
-`if cond #[attr] { ... ` be an interior attribute (applying to only
-the current `if` branch).
