@@ -579,7 +579,18 @@ pub fn find_crate_name(sess: Option<&Session>,
     match sess {
         Some(sess) => {
             match sess.opts.crate_name {
-                Some(ref s) => return validate(s.clone(), None),
+                Some(ref s) => {
+                    match attr_crate_name {
+                        Some((attr, ref name)) if s.as_slice() != name.get() => {
+                            let msg = format!("--crate-name and #[crate_name] \
+                                               are required to match, but `{}` \
+                                               != `{}`", s, name);
+                            sess.span_err(attr.span, msg.as_slice());
+                        }
+                        _ => {},
+                    }
+                    return validate(s.clone(), None);
+                }
                 None => {}
             }
         }
