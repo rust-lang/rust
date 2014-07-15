@@ -155,7 +155,7 @@ impl<'a, T: Clone, V: Vector<T>> VectorVector<T> for &'a [V] {
 /// a sequence of all possible permutations for an indexed sequence of
 /// elements. Each permutation is only a single swap apart.
 ///
-/// The Steinhaus–Johnson–Trotter algorithm is used.
+/// The Steinhaus-Johnson-Trotter algorithm is used.
 ///
 /// Generates even and odd permutations alternately.
 ///
