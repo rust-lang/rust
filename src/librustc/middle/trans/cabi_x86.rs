@@ -10,7 +10,7 @@
 
 
 use syntax::abi::{OsWin32, OsMacos, OsiOS};
-use lib::llvm::*;
+use llvm::*;
 use super::cabi::*;
 use super::common::*;
 use super::machine::*;

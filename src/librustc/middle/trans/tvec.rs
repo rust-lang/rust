@@ -11,8 +11,8 @@
 #![allow(non_camel_case_types)]
 
 use back::abi;
-use lib;
-use lib::llvm::{llvm, ValueRef};
+use llvm;
+use llvm::{ValueRef};
 use middle::lang_items::StrDupUniqFnLangItem;
 use middle::trans::base::*;
 use middle::trans::base;
@@ -543,7 +543,7 @@ pub fn iter_vec_loop<'r,
     { // i < count
         let lhs = Load(cond_bcx, loop_counter);
         let rhs = count;
-        let cond_val = ICmp(cond_bcx, lib::llvm::IntULT, lhs, rhs);
+        let cond_val = ICmp(cond_bcx, llvm::IntULT, lhs, rhs);
 
         CondBr(cond_bcx, cond_val, body_bcx.llbb, next_bcx.llbb);
     }
@@ -599,7 +599,7 @@ pub fn iter_vec_raw<'r,
         let data_ptr =
             Phi(header_bcx, val_ty(data_ptr), [data_ptr], [bcx.llbb]);
         let not_yet_at_end =
-            ICmp(header_bcx, lib::llvm::IntULT, data_ptr, data_end_ptr);
+            ICmp(header_bcx, llvm::IntULT, data_ptr, data_end_ptr);
         let body_bcx = fcx.new_temp_block("iter_vec_loop_body");
         let next_bcx = fcx.new_temp_block("iter_vec_next");
         CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb);

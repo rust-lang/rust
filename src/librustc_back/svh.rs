@@ -53,8 +53,6 @@ use std::iter::range_step;
 use syntax::ast;
 use syntax::visit;
 
-use driver::session::Session;
-
 #[deriving(Clone, PartialEq)]
 pub struct Svh {
     hash: String,
@@ -70,7 +68,7 @@ impl Svh {
         self.hash.as_slice()
     }
 
-    pub fn calculate(sess: &Session, krate: &ast::Crate) -> Svh {
+    pub fn calculate(metadata: &Vec<String>, krate: &ast::Crate) -> Svh {
         // FIXME (#14132): This is better than it used to be, but it still not
         // ideal. We now attempt to hash only the relevant portions of the
         // Crate AST as well as the top-level crate attributes. (However,
@@ -82,7 +80,7 @@ impl Svh {
         //        avoid collisions.
         let mut state = SipState::new();
 
-        for data in sess.opts.cg.metadata.iter() {
+        for data in metadata.iter() {
             data.hash(&mut state);
         }
 

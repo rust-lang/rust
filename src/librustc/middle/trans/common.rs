@@ -13,10 +13,9 @@
 //! Code that is useful in various trans modules.
 
 use driver::session::Session;
-use lib::llvm::{ValueRef, BasicBlockRef, BuilderRef};
-use lib::llvm::{True, False, Bool};
-use lib::llvm::llvm;
-use lib;
+use llvm;
+use llvm::{ValueRef, BasicBlockRef, BuilderRef};
+use llvm::{True, False, Bool};
 use middle::def;
 use middle::lang_items::LangItem;
 use middle::subst;
@@ -570,7 +569,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
         });
         llvm::LLVMSetInitializer(g, sc);
         llvm::LLVMSetGlobalConstant(g, True);
-        lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
+        llvm::SetLinkage(g, llvm::InternalLinkage);
 
         cx.const_cstr_cache.borrow_mut().insert(s, g);
         g
@@ -599,7 +598,7 @@ pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
         });
         llvm::LLVMSetInitializer(g, lldata);
         llvm::LLVMSetGlobalConstant(g, True);
-        lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
+        llvm::SetLinkage(g, llvm::InternalLinkage);
 
         let cs = llvm::LLVMConstPointerCast(g, Type::i8p(cx).to_ref());
         C_struct(cx, [cs, C_uint(cx, len)], false)

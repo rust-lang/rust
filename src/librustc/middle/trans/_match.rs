@@ -190,7 +190,8 @@
 
 use back::abi;
 use driver::config::FullDebugInfo;
-use lib::llvm::{llvm, ValueRef, BasicBlockRef};
+use llvm;
+use llvm::{ValueRef, BasicBlockRef};
 use middle::const_eval;
 use middle::def;
 use middle::check_match;

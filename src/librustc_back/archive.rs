@@ -10,36 +10,40 @@
 
 //! A helper class for dealing with static archives
 
-use back::link::{get_ar_prog};
-use driver::session::Session;
-use metadata::filesearch;
-use lib::llvm::{ArchiveRef, llvm};
-
-use libc;
 use std::io::process::{Command, ProcessOutput};
 use std::io::{fs, TempDir};
 use std::io;
-use std::mem;
 use std::os;
-use std::raw;
 use std::str;
 use syntax::abi;
+use ErrorHandler = syntax::diagnostic::Handler;
 
 pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
 
+pub struct ArchiveConfig<'a> {
+    pub handler: &'a ErrorHandler,
+    pub dst: Path,
+    pub lib_search_paths: Vec<Path>,
+    pub os: abi::Os,
+    pub maybe_ar_prog: Option<String>
+}
+
 pub struct Archive<'a> {
-    sess: &'a Session,
+    handler: &'a ErrorHandler,
     dst: Path,
+    lib_search_paths: Vec<Path>,
+    os: abi::Os,
+    maybe_ar_prog: Option<String>
 }
 
-pub struct ArchiveRO {
-    ptr: ArchiveRef,
-}
-
-fn run_ar(sess: &Session, args: &str, cwd: Option<&Path>,
+fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
+          args: &str, cwd: Option<&Path>,
           paths: &[&Path]) -> ProcessOutput {
-    let ar = get_ar_prog(sess);
-    let mut cmd = Command::new(ar.as_slice());
+    let ar = match *maybe_ar_prog {
+        Some(ref ar) => ar.as_slice(),
+        None => "ar"
+    };
+    let mut cmd = Command::new(ar);
 
     cmd.arg(args).args(paths);
     debug!("{}", cmd);
@@ -56,25 +60,25 @@ fn run_ar(sess: &Session, args: &str, cwd: Option<&Path>,
         Ok(prog) => {
             let o = prog.wait_with_output().unwrap();
             if !o.status.success() {
-                sess.err(format!("{} failed with: {}",
+                handler.err(format!("{} failed with: {}",
                                  cmd,
                                  o.status).as_slice());
-                sess.note(format!("stdout ---\n{}",
+                handler.note(format!("stdout ---\n{}",
                                   str::from_utf8(o.output
                                                   .as_slice()).unwrap())
                           .as_slice());
-                sess.note(format!("stderr ---\n{}",
+                handler.note(format!("stderr ---\n{}",
                                   str::from_utf8(o.error
                                                   .as_slice()).unwrap())
                           .as_slice());
-                sess.abort_if_errors();
+                handler.abort_if_errors();
             }
             o
         },
         Err(e) => {
-            sess.err(format!("could not exec `{}`: {}", ar.as_slice(),
+            handler.err(format!("could not exec `{}`: {}", ar.as_slice(),
                              e).as_slice());
-            sess.abort_if_errors();
+            handler.abort_if_errors();
             fail!("rustc::back::archive::run_ar() should not reach this point");
         }
     }
@@ -82,16 +86,29 @@ fn run_ar(sess: &Session, args: &str, cwd: Option<&Path>,
 
 impl<'a> Archive<'a> {
     /// Initializes a new static archive with the given object file
-    pub fn create<'b>(sess: &'a Session, dst: &'b Path,
-                      initial_object: &'b Path) -> Archive<'a> {
-        run_ar(sess, "crus", None, [dst, initial_object]);
-        Archive { sess: sess, dst: dst.clone() }
+    pub fn create<'b>(config: ArchiveConfig<'a>, initial_object: &'b Path) -> Archive<'a> {
+        let ArchiveConfig { handler, dst, lib_search_paths, os, maybe_ar_prog } = config;
+        run_ar(handler, &maybe_ar_prog, "crus", None, [&dst, initial_object]);
+        Archive {
+            handler: handler,
+            dst: dst,
+            lib_search_paths: lib_search_paths,
+            os: os,
+            maybe_ar_prog: maybe_ar_prog
+        }
     }
 
     /// Opens an existing static archive
-    pub fn open(sess: &'a Session, dst: Path) -> Archive<'a> {
+    pub fn open(config: ArchiveConfig<'a>) -> Archive<'a> {
+        let ArchiveConfig { handler, dst, lib_search_paths, os, maybe_ar_prog } = config;
         assert!(dst.exists());
-        Archive { sess: sess, dst: dst }
+        Archive {
+            handler: handler,
+            dst: dst,
+            lib_search_paths: lib_search_paths,
+            os: os,
+            maybe_ar_prog: maybe_ar_prog
+        }
     }
 
     /// Adds all of the contents of a native library to this archive. This will
@@ -120,22 +137,22 @@ impl<'a> Archive<'a> {
     /// Adds an arbitrary file to this archive
     pub fn add_file(&mut self, file: &Path, has_symbols: bool) {
         let cmd = if has_symbols {"r"} else {"rS"};
-        run_ar(self.sess, cmd, None, [&self.dst, file]);
+        run_ar(self.handler, &self.maybe_ar_prog, cmd, None, [&self.dst, file]);
     }
 
     /// Removes a file from this archive
     pub fn remove_file(&mut self, file: &str) {
-        run_ar(self.sess, "d", None, [&self.dst, &Path::new(file)]);
+        run_ar(self.handler, &self.maybe_ar_prog, "d", None, [&self.dst, &Path::new(file)]);
     }
 
     /// Updates all symbols in the archive (runs 'ar s' over it)
     pub fn update_symbols(&mut self) {
-        run_ar(self.sess, "s", None, [&self.dst]);
+        run_ar(self.handler, &self.maybe_ar_prog, "s", None, [&self.dst]);
     }
 
     /// Lists all files in an archive
     pub fn files(&self) -> Vec<String> {
-        let output = run_ar(self.sess, "t", None, [&self.dst]);
+        let output = run_ar(self.handler, &self.maybe_ar_prog, "t", None, [&self.dst]);
         let output = str::from_utf8(output.output.as_slice()).unwrap();
         // use lines_any because windows delimits output with `\r\n` instead of
         // just `\n`
@@ -148,7 +165,7 @@ impl<'a> Archive<'a> {
 
         // First, extract the contents of the archive to a temporary directory
         let archive = os::make_absolute(archive);
-        run_ar(self.sess, "x", Some(loc.path()), [&archive]);
+        run_ar(self.handler, &self.maybe_ar_prog, "x", Some(loc.path()), [&archive]);
 
         // Next, we must rename all of the inputs to "guaranteed unique names".
         // The reason for this is that archives are keyed off the name of the
@@ -184,12 +201,12 @@ impl<'a> Archive<'a> {
         // Finally, add all the renamed files to this archive
         let mut args = vec!(&self.dst);
         args.extend(inputs.iter());
-        run_ar(self.sess, "r", None, args.as_slice());
+        run_ar(self.handler, &self.maybe_ar_prog, "r", None, args.as_slice());
         Ok(())
     }
 
     fn find_library(&self, name: &str) -> Path {
-        let (osprefix, osext) = match self.sess.targ_cfg.os {
+        let (osprefix, osext) = match self.os {
             abi::OsWin32 => ("", "lib"), _ => ("lib", "a"),
         };
         // On Windows, static libraries sometimes show up as libfoo.a and other
@@ -197,10 +214,7 @@ impl<'a> Archive<'a> {
         let oslibname = format!("{}{}.{}", osprefix, name, osext);
         let unixlibname = format!("lib{}.a", name);
 
-        let mut rustpath = filesearch::rust_path();
-        rustpath.push(self.sess.target_filesearch().get_lib_path());
-        let search = self.sess.opts.addl_lib_search_paths.borrow();
-        for path in search.iter().chain(rustpath.iter()) {
+        for path in self.lib_search_paths.iter() {
             debug!("looking for {} inside {}", name, path.display());
             let test = path.join(oslibname.as_slice());
             if test.exists() { return test }
@@ -209,55 +223,9 @@ impl<'a> Archive<'a> {
                 if test.exists() { return test }
             }
         }
-        self.sess.fatal(format!("could not find native static library `{}`, \
+        self.handler.fatal(format!("could not find native static library `{}`, \
                                  perhaps an -L flag is missing?",
                                 name).as_slice());
     }
 }
 
-impl ArchiveRO {
-    /// Opens a static archive for read-only purposes. This is more optimized
-    /// than the `open` method because it uses LLVM's internal `Archive` class
-    /// rather than shelling out to `ar` for everything.
-    ///
-    /// If this archive is used with a mutable method, then an error will be
-    /// raised.
-    pub fn open(dst: &Path) -> Option<ArchiveRO> {
-        unsafe {
-            let ar = dst.with_c_str(|dst| {
-                llvm::LLVMRustOpenArchive(dst)
-            });
-            if ar.is_null() {
-                None
-            } else {
-                Some(ArchiveRO { ptr: ar })
-            }
-        }
-    }
-
-    /// Reads a file in the archive
-    pub fn read<'a>(&'a self, file: &str) -> Option<&'a [u8]> {
-        unsafe {
-            let mut size = 0 as libc::size_t;
-            let ptr = file.with_c_str(|file| {
-                llvm::LLVMRustArchiveReadSection(self.ptr, file, &mut size)
-            });
-            if ptr.is_null() {
-                None
-            } else {
-                Some(mem::transmute(raw::Slice {
-                    data: ptr,
-                    len: size as uint,
-                }))
-            }
-        }
-    }
-}
-
-impl Drop for ArchiveRO {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustDestroyArchive(self.ptr);
-        }
-    }
-}

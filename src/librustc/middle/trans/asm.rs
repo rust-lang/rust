@@ -12,7 +12,7 @@
 # Translation of inline assembly.
 */
 
-use lib;
+use llvm;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
@@ -99,8 +99,8 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     };
 
     let dialect = match ia.dialect {
-        ast::AsmAtt   => lib::llvm::AD_ATT,
-        ast::AsmIntel => lib::llvm::AD_Intel
+        ast::AsmAtt   => llvm::AD_ATT,
+        ast::AsmIntel => llvm::AD_Intel
     };
 
     let r = ia.asm.get().with_c_str(|a| {
