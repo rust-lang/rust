@@ -94,66 +94,27 @@ pub use unicode::{Words, UnicodeStrSlice};
 Section: Creating a string
 */
 
-/// Consumes a vector of bytes to create a new utf-8 string.
-///
-/// Returns `Err` with the original vector if the vector contains invalid
-/// UTF-8.
-///
-/// # Example
-///
-/// ```rust
-/// use std::str;
-/// let hello_vec = vec![104, 101, 108, 108, 111];
-/// let string = str::from_utf8_owned(hello_vec);
-/// assert_eq!(string, Ok("hello".to_string()));
-/// ```
+/// Deprecated. Replaced by `String::from_utf8`
+#[deprecated = "Replaced by `String::from_utf8`"]
 pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
     String::from_utf8(vv)
 }
 
-/// Convert a byte to a UTF-8 string
-///
-/// # Failure
-///
-/// Fails if invalid UTF-8
-///
-/// # Example
-///
-/// ```rust
-/// use std::str;
-/// let string = str::from_byte(104);
-/// assert_eq!(string.as_slice(), "h");
-/// ```
+/// Deprecated. Replaced by `String::from_byte`
+#[deprecated = "Replaced by String::from_byte"]
 pub fn from_byte(b: u8) -> String {
     assert!(b < 128u8);
     String::from_char(1, b as char)
 }
 
-/// Convert a char to a string
-///
-/// # Example
-///
-/// ```rust
-/// use std::str;
-/// let string = str::from_char('b');
-/// assert_eq!(string.as_slice(), "b");
-/// ```
+/// Deprecated. Use `String::from_char` or `char::to_string()` instead
+#[deprecated = "use String::from_char or char.to_string()"]
 pub fn from_char(ch: char) -> String {
-    let mut buf = String::new();
-    buf.push_char(ch);
-    buf
+    String::from_char(1, ch)
 }
 
-/// Convert a vector of chars to a string
-///
-/// # Example
-///
-/// ```rust
-/// use std::str;
-/// let chars = ['h', 'e', 'l', 'l', 'o'];
-/// let string = str::from_chars(chars);
-/// assert_eq!(string.as_slice(), "hello");
-/// ```
+/// Deprecated. Replaced by `String::from_chars`
+#[deprecated = "use String::from_chars instead"]
 pub fn from_chars(chs: &[char]) -> String {
     chs.iter().map(|c| *c).collect()
 }
@@ -377,51 +338,16 @@ pub fn replace(s: &str, from: &str, to: &str) -> String {
 Section: Misc
 */
 
-/// Decode a UTF-16 encoded vector `v` into a string, returning `None`
-/// if `v` contains any invalid data.
-///
-/// # Example
-///
-/// ```rust
-/// use std::str;
-///
-/// // 𝄞music
-/// let mut v = [0xD834, 0xDD1E, 0x006d, 0x0075,
-///              0x0073, 0x0069, 0x0063];
-/// assert_eq!(str::from_utf16(v), Some("𝄞music".to_string()));
-///
-/// // 𝄞mu<invalid>ic
-/// v[4] = 0xD800;
-/// assert_eq!(str::from_utf16(v), None);
-/// ```
+/// Deprecated. Use `String::from_utf16`.
+#[deprecated = "Replaced by String::from_utf16"]
 pub fn from_utf16(v: &[u16]) -> Option<String> {
-    let mut s = String::with_capacity(v.len() / 2);
-    for c in utf16_items(v) {
-        match c {
-            ScalarValue(c) => s.push_char(c),
-            LoneSurrogate(_) => return None
-        }
-    }
-    Some(s)
+    String::from_utf16(v)
 }
 
-/// Decode a UTF-16 encoded vector `v` into a string, replacing
-/// invalid data with the replacement character (U+FFFD).
-///
-/// # Example
-/// ```rust
-/// use std::str;
-///
-/// // 𝄞mus<invalid>ic<invalid>
-/// let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
-///          0x0073, 0xDD1E, 0x0069, 0x0063,
-///          0xD834];
-///
-/// assert_eq!(str::from_utf16_lossy(v),
-///            "𝄞mus\uFFFDic\uFFFD".to_string());
-/// ```
+/// Deprecated. Use `String::from_utf16_lossy`.
+#[deprecated = "Replaced by String::from_utf16_lossy"]
 pub fn from_utf16_lossy(v: &[u16]) -> String {
-    utf16_items(v).map(|c| c.to_char_lossy()).collect()
+    String::from_utf16_lossy(v)
 }
 
 // Return the initial codepoint accumulator for the first byte.
@@ -436,131 +362,10 @@ macro_rules! utf8_acc_cont_byte(
     ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
 )
 
-static TAG_CONT_U8: u8 = 128u8;
-
-/// Converts a vector of bytes to a new utf-8 string.
-/// Any invalid utf-8 sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
-///
-/// # Example
-///
-/// ```rust
-/// let input = b"Hello \xF0\x90\x80World";
-/// let output = std::str::from_utf8_lossy(input);
-/// assert_eq!(output.as_slice(), "Hello \uFFFDWorld");
-/// ```
+/// Deprecated. Use `String::from_utf8_lossy`.
+#[deprecated = "Replaced by String::from_utf8_lossy"]
 pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
-    if is_utf8(v) {
-        return Slice(unsafe { mem::transmute(v) })
-    }
-
-    static REPLACEMENT: &'static [u8] = b"\xEF\xBF\xBD"; // U+FFFD in UTF-8
-    let mut i = 0;
-    let total = v.len();
-    fn unsafe_get(xs: &[u8], i: uint) -> u8 {
-        unsafe { *xs.unsafe_ref(i) }
-    }
-    fn safe_get(xs: &[u8], i: uint, total: uint) -> u8 {
-        if i >= total {
-            0
-        } else {
-            unsafe_get(xs, i)
-        }
-    }
-
-    let mut res = String::with_capacity(total);
-
-    if i > 0 {
-        unsafe {
-            res.push_bytes(v.slice_to(i))
-        };
-    }
-
-    // subseqidx is the index of the first byte of the subsequence we're looking at.
-    // It's used to copy a bunch of contiguous good codepoints at once instead of copying
-    // them one by one.
-    let mut subseqidx = 0;
-
-    while i < total {
-        let i_ = i;
-        let byte = unsafe_get(v, i);
-        i += 1;
-
-        macro_rules! error(() => ({
-            unsafe {
-                if subseqidx != i_ {
-                    res.push_bytes(v.slice(subseqidx, i_));
-                }
-                subseqidx = i;
-                res.push_bytes(REPLACEMENT);
-            }
-        }))
-
-        if byte < 128u8 {
-            // subseqidx handles this
-        } else {
-            let w = utf8_char_width(byte);
-
-            match w {
-                2 => {
-                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
-                        error!();
-                        continue;
-                    }
-                    i += 1;
-                }
-                3 => {
-                    match (byte, safe_get(v, i, total)) {
-                        (0xE0        , 0xA0 .. 0xBF) => (),
-                        (0xE1 .. 0xEC, 0x80 .. 0xBF) => (),
-                        (0xED        , 0x80 .. 0x9F) => (),
-                        (0xEE .. 0xEF, 0x80 .. 0xBF) => (),
-                        _ => {
-                            error!();
-                            continue;
-                        }
-                    }
-                    i += 1;
-                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
-                        error!();
-                        continue;
-                    }
-                    i += 1;
-                }
-                4 => {
-                    match (byte, safe_get(v, i, total)) {
-                        (0xF0        , 0x90 .. 0xBF) => (),
-                        (0xF1 .. 0xF3, 0x80 .. 0xBF) => (),
-                        (0xF4        , 0x80 .. 0x8F) => (),
-                        _ => {
-                            error!();
-                            continue;
-                        }
-                    }
-                    i += 1;
-                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
-                        error!();
-                        continue;
-                    }
-                    i += 1;
-                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
-                        error!();
-                        continue;
-                    }
-                    i += 1;
-                }
-                _ => {
-                    error!();
-                    continue;
-                }
-            }
-        }
-    }
-    if subseqidx < total {
-        unsafe {
-            res.push_bytes(v.slice(subseqidx, total))
-        };
-    }
-    Owned(res.into_string())
+    String::from_utf8_lossy(v)
 }
 
 /*
@@ -804,7 +609,6 @@ pub mod raw {
     #[test]
     fn test_from_buf_len() {
         use slice::ImmutableVector;
-        use str::StrAllocating;
 
         unsafe {
             let a = vec![65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
@@ -1009,8 +813,7 @@ mod tests {
     use std::default::Default;
     use std::char::Char;
     use std::clone::Clone;
-    use std::cmp::{Equal, Greater, Less, Ord, Eq, PartialOrd, PartialEq, Equiv};
-    use std::result::{Ok, Err};
+    use std::cmp::{Equal, Greater, Less, Ord, PartialOrd, Equiv};
     use std::option::{Some, None};
     use std::ptr::RawPtr;
     use std::iter::{Iterator, DoubleEndedIterator};
@@ -1677,95 +1480,6 @@ mod tests {
     }
 
     #[test]
-    fn test_utf16() {
-        let pairs =
-            [(String::from_str("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n"),
-              vec![0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
-                0xd800_u16, 0xdf3b_u16, 0xd800_u16, 0xdf46_u16,
-                0xd800_u16, 0xdf39_u16, 0xd800_u16, 0xdf3b_u16,
-                0xd800_u16, 0xdf30_u16, 0x000a_u16]),
-
-             (String::from_str("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n"),
-              vec![0xd801_u16, 0xdc12_u16, 0xd801_u16,
-                0xdc49_u16, 0xd801_u16, 0xdc2e_u16, 0xd801_u16,
-                0xdc40_u16, 0xd801_u16, 0xdc32_u16, 0xd801_u16,
-                0xdc4b_u16, 0x0020_u16, 0xd801_u16, 0xdc0f_u16,
-                0xd801_u16, 0xdc32_u16, 0xd801_u16, 0xdc4d_u16,
-                0x000a_u16]),
-
-             (String::from_str("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n"),
-              vec![0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
-                0xd800_u16, 0xdf0b_u16, 0xd800_u16, 0xdf04_u16,
-                0xd800_u16, 0xdf11_u16, 0xd800_u16, 0xdf09_u16,
-                0x00b7_u16, 0xd800_u16, 0xdf0c_u16, 0xd800_u16,
-                0xdf04_u16, 0xd800_u16, 0xdf15_u16, 0xd800_u16,
-                0xdf04_u16, 0xd800_u16, 0xdf0b_u16, 0xd800_u16,
-                0xdf09_u16, 0xd800_u16, 0xdf11_u16, 0x000a_u16 ]),
-
-             (String::from_str("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n"),
-              vec![0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
-                0xd801_u16, 0xdc88_u16, 0xd801_u16, 0xdc91_u16,
-                0xd801_u16, 0xdc9b_u16, 0xd801_u16, 0xdc92_u16,
-                0x0020_u16, 0xd801_u16, 0xdc95_u16, 0xd801_u16,
-                0xdc93_u16, 0x0020_u16, 0xd801_u16, 0xdc88_u16,
-                0xd801_u16, 0xdc9a_u16, 0xd801_u16, 0xdc8d_u16,
-                0x0020_u16, 0xd801_u16, 0xdc8f_u16, 0xd801_u16,
-                0xdc9c_u16, 0xd801_u16, 0xdc92_u16, 0xd801_u16,
-                0xdc96_u16, 0xd801_u16, 0xdc86_u16, 0x0020_u16,
-                0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
-                0x000a_u16 ]),
-             // Issue #12318, even-numbered non-BMP planes
-             (String::from_str("\U00020000"),
-              vec![0xD840, 0xDC00])];
-
-        for p in pairs.iter() {
-            let (s, u) = (*p).clone();
-            let s_as_utf16 = s.as_slice().utf16_units().collect::<Vec<u16>>();
-            let u_as_string = from_utf16(u.as_slice()).unwrap();
-
-            assert!(is_utf16(u.as_slice()));
-            assert_eq!(s_as_utf16, u);
-
-            assert_eq!(u_as_string, s);
-            assert_eq!(from_utf16_lossy(u.as_slice()), s);
-
-            assert_eq!(from_utf16(s_as_utf16.as_slice()).unwrap(), s);
-            assert_eq!(u_as_string.as_slice().utf16_units().collect::<Vec<u16>>(), u);
-        }
-    }
-
-    #[test]
-    fn test_utf16_invalid() {
-        // completely positive cases tested above.
-        // lead + eof
-        assert_eq!(from_utf16([0xD800]), None);
-        // lead + lead
-        assert_eq!(from_utf16([0xD800, 0xD800]), None);
-
-        // isolated trail
-        assert_eq!(from_utf16([0x0061, 0xDC00]), None);
-
-        // general
-        assert_eq!(from_utf16([0xD800, 0xd801, 0xdc8b, 0xD800]), None);
-    }
-
-    #[test]
-    fn test_utf16_lossy() {
-        // completely positive cases tested above.
-        // lead + eof
-        assert_eq!(from_utf16_lossy([0xD800]), String::from_str("\uFFFD"));
-        // lead + lead
-        assert_eq!(from_utf16_lossy([0xD800, 0xD800]), String::from_str("\uFFFD\uFFFD"));
-
-        // isolated trail
-        assert_eq!(from_utf16_lossy([0x0061, 0xDC00]), String::from_str("a\uFFFD"));
-
-        // general
-        assert_eq!(from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]),
-                   String::from_str("\uFFFD𐒋\uFFFD"));
-    }
-
-    #[test]
     fn test_truncate_utf16_at_nul() {
         let v = [];
         assert_eq!(truncate_utf16_at_nul(v), &[]);
@@ -1790,7 +1504,7 @@ mod tests {
         let mut pos = 0;
         for ch in v.iter() {
             assert!(s.char_at(pos) == *ch);
-            pos += from_char(*ch).len();
+            pos += String::from_char(1, *ch).len();
         }
     }
 
@@ -1801,7 +1515,7 @@ mod tests {
         let mut pos = s.len();
         for ch in v.iter().rev() {
             assert!(s.char_at_reverse(pos) == *ch);
-            pos -= from_char(*ch).len();
+            pos -= String::from_char(1, *ch).len();
         }
     }
 
@@ -2176,54 +1890,6 @@ String::from_str("\u1111\u1171\u11b6"));
     }
 
     #[test]
-    fn test_str_from_utf8_owned() {
-        let xs = Vec::from_slice(b"hello");
-        assert_eq!(from_utf8_owned(xs), Ok(String::from_str("hello")));
-
-        let xs = Vec::from_slice("ศไทย中华Việt Nam".as_bytes());
-        assert_eq!(from_utf8_owned(xs), Ok(String::from_str("ศไทย中华Việt Nam")));
-
-        let xs = Vec::from_slice(b"hello\xFF");
-        assert_eq!(from_utf8_owned(xs),
-                   Err(Vec::from_slice(b"hello\xFF")));
-    }
-
-    #[test]
-    fn test_str_from_utf8_lossy() {
-        let xs = b"hello";
-        assert_eq!(from_utf8_lossy(xs), Slice("hello"));
-
-        let xs = "ศไทย中华Việt Nam".as_bytes();
-        assert_eq!(from_utf8_lossy(xs), Slice("ศไทย中华Việt Nam"));
-
-        let xs = b"Hello\xC2 There\xFF Goodbye";
-        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("Hello\uFFFD There\uFFFD Goodbye")));
-
-        let xs = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
-        assert_eq!(from_utf8_lossy(xs),
-                   Owned(String::from_str("Hello\uFFFD\uFFFD There\uFFFD Goodbye")));
-
-        let xs = b"\xF5foo\xF5\x80bar";
-        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFDfoo\uFFFD\uFFFDbar")));
-
-        let xs = b"\xF1foo\xF1\x80bar\xF1\x80\x80baz";
-        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFDfoo\uFFFDbar\uFFFDbaz")));
-
-        let xs = b"\xF4foo\xF4\x80bar\xF4\xBFbaz";
-        assert_eq!(from_utf8_lossy(xs),
-                   Owned(String::from_str("\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz")));
-
-        let xs = b"\xF0\x80\x80\x80foo\xF0\x90\x80\x80bar";
-        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFD\uFFFD\uFFFD\uFFFD\
-                                               foo\U00010000bar")));
-
-        // surrogates
-        let xs = b"\xED\xA0\x80foo\xED\xBF\xBFbar";
-        assert_eq!(from_utf8_lossy(xs), Owned(String::from_str("\uFFFD\uFFFD\uFFFDfoo\
-                                               \uFFFD\uFFFD\uFFFDbar")));
-    }
-
-    #[test]
     fn test_maybe_owned_traits() {
         let s = Slice("abcde");
         assert_eq!(s.len(), 5);
@@ -2288,10 +1954,8 @@ String::from_str("\u1111\u1171\u11b6"));
 mod bench {
     use test::Bencher;
     use super::*;
-    use vec::Vec;
     use std::iter::{Iterator, DoubleEndedIterator};
     use std::collections::Collection;
-    use std::slice::Vector;
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {
@@ -2429,42 +2093,6 @@ mod bench {
         assert_eq!(100, s.len());
         b.iter(|| {
             is_utf8(s)
-        });
-    }
-
-    #[bench]
-    fn from_utf8_lossy_100_ascii(b: &mut Bencher) {
-        let s = b"Hello there, the quick brown fox jumped over the lazy dog! \
-                  Lorem ipsum dolor sit amet, consectetur. ";
-
-        assert_eq!(100, s.len());
-        b.iter(|| {
-            let _ = from_utf8_lossy(s);
-        });
-    }
-
-    #[bench]
-    fn from_utf8_lossy_100_multibyte(b: &mut Bencher) {
-        let s = "𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰".as_bytes();
-        assert_eq!(100, s.len());
-        b.iter(|| {
-            let _ = from_utf8_lossy(s);
-        });
-    }
-
-    #[bench]
-    fn from_utf8_lossy_invalid(b: &mut Bencher) {
-        let s = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
-        b.iter(|| {
-            let _ = from_utf8_lossy(s);
-        });
-    }
-
-    #[bench]
-    fn from_utf8_lossy_100_invalid(b: &mut Bencher) {
-        let s = Vec::from_elem(100, 0xF5u8);
-        b.iter(|| {
-            let _ = from_utf8_lossy(s.as_slice());
         });
     }
 

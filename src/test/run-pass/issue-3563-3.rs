@@ -20,7 +20,6 @@
 // Extern mod controls linkage. Use controls the visibility of names to modules that are
 // already linked in. Using WriterUtil allows us to use the write_line method.
 
-use std::str;
 use std::slice;
 use std::fmt;
 
@@ -100,9 +99,7 @@ impl fmt::Show for AsciiArt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Convert each line into a string.
         let lines = self.lines.iter()
-                              .map(|line| {
-                                  str::from_chars(line.as_slice()).to_string()
-                              })
+                              .map(|line| String::from_chars(line.as_slice()))
                               .collect::<Vec<String>>();
 
         // Concatenate the lines together using a new-line.

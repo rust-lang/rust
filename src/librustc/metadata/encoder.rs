@@ -35,7 +35,6 @@ use std::hash::Hash;
 use std::hash;
 use std::io::MemWriter;
 use std::mem;
-use std::str;
 use std::collections::HashMap;
 use syntax::abi;
 use syntax::ast::*;
@@ -619,7 +618,7 @@ fn encode_visibility(ebml_w: &mut Encoder, visibility: Visibility) {
         Public => 'y',
         Inherited => 'i',
     };
-    ebml_w.wr_str(str::from_char(ch).as_slice());
+    ebml_w.wr_str(ch.to_string().as_slice());
     ebml_w.end_tag();
 }
 
@@ -1922,5 +1921,5 @@ pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> String {
         tcx: tcx,
         abbrevs: &RefCell::new(HashMap::new())
     }, t);
-    str::from_utf8_owned(Vec::from_slice(wr.get_ref())).unwrap().to_string()
+    String::from_utf8(wr.unwrap()).unwrap()
 }

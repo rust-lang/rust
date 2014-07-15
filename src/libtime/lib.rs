@@ -31,7 +31,6 @@ extern crate libc;
 use std::io::BufReader;
 use std::num;
 use std::string::String;
-use std::str;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 
@@ -486,9 +485,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
         if c == range.ch {
             Ok(range.next)
         } else {
-            Err(format!("Expected {}, found {}",
-                str::from_char(c),
-                str::from_char(range.ch)))
+            Err(format!("Expected {}, found {}", c, range.ch))
         }
     }
 
@@ -789,7 +786,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
           }
           '%' => parse_char(s, pos, '%'),
           ch => {
-            Err(format!("unknown formatting type: {}", str::from_char(ch)))
+            Err(format!("unknown formatting type: {}", ch))
           }
         }
     }
@@ -1086,7 +1083,7 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
         }
     }
 
-    str::from_utf8(buf.as_slice()).unwrap().to_string()
+    String::from_utf8(buf).unwrap()
 }
 
 #[cfg(test)]

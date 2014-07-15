@@ -29,7 +29,6 @@ extern crate time;
 
 use std::io;
 use std::io::{File, MemWriter};
-use std::str;
 use std::gc::Gc;
 use serialize::{json, Decodable, Encodable};
 use externalfiles::ExternalHtml;
@@ -429,7 +428,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
             let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
             krate.encode(&mut encoder).unwrap();
         }
-        str::from_utf8_owned(w.unwrap()).unwrap()
+        String::from_utf8(w.unwrap()).unwrap()
     };
     let crate_json = match json::from_str(crate_json_str.as_slice()) {
         Ok(j) => j,

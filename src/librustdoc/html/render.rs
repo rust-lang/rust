@@ -460,7 +460,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
 
     try!(write!(&mut w, "]}};"));
 
-    Ok(str::from_utf8(w.unwrap().as_slice()).unwrap().to_string())
+    Ok(String::from_utf8(w.unwrap()).unwrap())
 }
 
 fn write_shared(cx: &Context,
@@ -723,9 +723,9 @@ impl<'a> SourceCollector<'a> {
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\ufeff") {
-            contents.as_slice().slice_from(3)
+            contents.slice_from(3)
         } else {
-            contents.as_slice()
+            contents
         };
 
         // Create the intermediate directories

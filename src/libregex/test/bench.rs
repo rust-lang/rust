@@ -10,7 +10,6 @@
 #![allow(non_snake_case_functions)]
 
 use std::rand::{Rng, task_rng};
-use std::str;
 use stdtest::Bencher;
 
 use regex::{Regex, NoExpand};
@@ -163,7 +162,7 @@ fn gen_text(n: uint) -> String {
             *b = '\n' as u8
         }
     }
-    str::from_utf8(bytes.as_slice()).unwrap().to_string()
+    String::from_utf8(bytes).unwrap()
 }
 
 throughput!(easy0_32, easy0(), 32)
