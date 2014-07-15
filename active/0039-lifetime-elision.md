@@ -100,8 +100,7 @@ Lifetime positions can appear as either "input" or "output":
   input position and two lifetimes in output position.
   Note that the input positions of a `fn` method definition do not
   include the lifetimes that occur in the method's `impl` header
-  `impl` (nor lifetimes that occur in the trait header, for a default
-  method).
+  (nor lifetimes that occur in the trait header, for a default method).
 
 
 * For `impl` headers, input refers to the lifetimes appears in the type
@@ -188,13 +187,6 @@ impl<'a> Bar<'a> for &'a str { fn fresh<'b>(&'b self) -> &'b int { ... } } // ex
 
 impl Bar for &str {
   fn bound(&'a self) -> &'a int { ... } fn fresh(&self) -> &int { ... }    // ILLEGAL: unbound 'a
-}
-
-impl<'a> Bar<'a> for &'a str {
-  fn bound(&'a self) -> &'a int { ... } fn fresh(&self) -> &int { ... }              // elided
-}
-impl<'a> Bar<'a> for &'a str {
-  fn bound(&'a self) -> &'a int { ... } fn fresh<'b>(&'b self) -> &'b int { ... }    // expanded
 }
 
 ```
