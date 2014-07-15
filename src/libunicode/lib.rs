@@ -33,12 +33,8 @@
 
 extern crate core;
 
-pub use tables::normalization::canonical_combining_class;
+// regex module
 pub use tables::regex;
-
-pub use u_char::UnicodeChar;
-pub use u_str::UnicodeStrSlice;
-pub use u_str::Words;
 
 mod decompose;
 mod tables;
@@ -66,11 +62,22 @@ pub mod char {
     pub use core::char::{from_digit, escape_unicode, escape_default};
     pub use core::char::{len_utf8_bytes, Char};
 
-    pub use decompose::decompose_canonical;
-    pub use decompose::decompose_compatible;
+    pub use decompose::{decompose_canonical, decompose_compatible};
+
+    pub use tables::normalization::canonical_combining_class;
 
     pub use u_char::{is_alphabetic, is_XID_start, is_XID_continue};
     pub use u_char::{is_lowercase, is_uppercase, is_whitespace};
     pub use u_char::{is_alphanumeric, is_control, is_digit};
     pub use u_char::{to_uppercase, to_lowercase, width, UnicodeChar};
+}
+
+pub mod str {
+    pub use u_str::{UnicodeStrSlice, Words, Graphemes, GraphemeIndices};
+}
+
+// this lets us use #[deriving(Clone)]
+mod std {
+    pub use core::clone;
+    pub use core::cmp;
 }

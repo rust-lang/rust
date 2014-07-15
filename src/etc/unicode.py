@@ -51,6 +51,30 @@ expanded_categories = {
     'Cc': ['C'], 'Cf': ['C'], 'Cs': ['C'], 'Co': ['C'], 'Cn': ['C'],
 }
 
+
+# Grapheme cluster data
+# taken from UAX29, http://www.unicode.org/reports/tr29/
+# these code points are excluded from the Control category
+# NOTE: CR and LF are also technically excluded, but for
+# the sake of convenience we leave them in the Control group
+# and manually check them in the appropriate place. This is
+# still compliant with the implementation requirements.
+grapheme_control_exceptions = set([0x200c, 0x200d])
+
+# the Regional_Indicator category
+grapheme_regional_indicator = [(0x1f1e6, 0x1f1ff)]
+
+# "The following ... are specifically excluded" from the SpacingMark category
+# http://www.unicode.org/reports/tr29/#SpacingMark
+grapheme_spacingmark_exceptions = [(0x102b, 0x102c), (0x1038, 0x1038),
+    (0x1062, 0x1064), (0x1067, 0x106d), (0x1083, 0x1083), (0x1087, 0x108c),
+    (0x108f, 0x108f), (0x109a, 0x109c), (0x19b0, 0x19b4), (0x19b8, 0x19b9),
+    (0x19bb, 0x19c0), (0x19c8, 0x19c9), (0x1a61, 0x1a61), (0x1a63, 0x1a64),
+    (0xaa7b, 0xaa7b), (0xaa7d, 0xaa7d)]
+
+# these are included in the SpacingMark category
+grapheme_spacingmark_extra = set([0xe33, 0xeb3])
+
 def fetch(f):
     if not os.path.exists(f):
         os.system("curl -O http://www.unicode.org/Public/UNIDATA/%s"
@@ -109,7 +133,7 @@ def load_unicode_data(f):
                 canon_decomp[code] = seq
 
         # place letter in categories as appropriate
-        for cat in [gencat] + expanded_categories.get(gencat, []):
+        for cat in [gencat, "Assigned"] + expanded_categories.get(gencat, []):
             if cat not in gencats:
                 gencats[cat] = []
             gencats[cat].append(code)
@@ -120,6 +144,12 @@ def load_unicode_data(f):
                 combines[combine] = []
             combines[combine].append(code)
 
+    # generate Not_Assigned from Assigned
+    gencats["Cn"] = gen_unassigned(gencats["Assigned"])
+    # Assigned is not a real category
+    del(gencats["Assigned"])
+    # Other contains Not_Assigned
+    gencats["C"].extend(gencats["Cn"])
     gencats = group_cats(gencats)
     combines = to_combines(group_cats(combines))
 
@@ -154,6 +184,11 @@ def ungroup_cat(cat):
             cat_out.append(lo)
             lo += 1
     return cat_out
+
+def gen_unassigned(assigned):
+    assigned = set(assigned)
+    return ([i for i in range(0, 0xd800) if i not in assigned] +
+            [i for i in range(0xe000, 0x110000) if i not in assigned])
 
 def to_combines(combs):
     combs_out = []
@@ -350,6 +385,45 @@ def emit_conversions_module(f, lowerupper, upperlower):
         sorted(lowerupper.iteritems(), key=operator.itemgetter(0)), is_pub=False)
     f.write("}\n\n")
 
+def emit_grapheme_module(f, grapheme_table, grapheme_cats):
+    f.write("""pub mod grapheme {
+    use core::option::{Some, None};
+    use core::slice::ImmutableVector;
+
+    #[allow(non_camel_case_types)]
+    #[deriving(Clone)]
+    pub enum GraphemeCat {
+""")
+    for cat in grapheme_cats + ["Any"]:
+        f.write("        GC_" + cat + ",\n")
+    f.write("""    }
+
+    fn bsearch_range_value_table(c: char, r: &'static [(char, char, GraphemeCat)]) -> GraphemeCat {
+        use core::cmp::{Equal, Less, Greater};
+        match r.bsearch(|&(lo, hi, _)| {
+            if lo <= c && c <= hi { Equal }
+            else if hi < c { Less }
+            else { Greater }
+        }) {
+            Some(idx) => {
+                let (_, _, cat) = r[idx];
+                cat
+            }
+            None => GC_Any
+        }
+    }
+
+    pub fn grapheme_category(c: char) -> GraphemeCat {
+        bsearch_range_value_table(c, grapheme_cat_table)
+    }
+
+""")
+
+    emit_table(f, "grapheme_cat_table", grapheme_table, "&'static [(char, char, GraphemeCat)]",
+        pfun=lambda x: "(%s,%s,GC_%s)" % (escape_char(x[0]), escape_char(x[1]), x[2]),
+        is_pub=False)
+    f.write("}\n")
+
 def emit_charwidth_module(f, width_table):
     f.write("pub mod charwidth {\n")
     f.write("    use core::option::{Option, Some, None};\n")
@@ -388,7 +462,7 @@ def emit_charwidth_module(f, width_table):
     f.write("    //     http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c\n")
     emit_table(f, "charwidth_table", width_table, "&'static [(char, char, u8, u8)]", is_pub=False,
             pfun=lambda x: "(%s,%s,%s,%s)" % (escape_char(x[0]), escape_char(x[1]), x[2], x[3]))
-    f.write("}\n")
+    f.write("}\n\n")
 
 def emit_norm_module(f, canon, compat, combine):
     canon_keys = canon.keys()
@@ -473,6 +547,8 @@ def remove_from_wtable(wtable, val):
         wtable_out.extend(wtable)
     return wtable_out
 
+
+
 def optimize_width_table(wtable):
     wtable_out = []
     w_this = wtable.pop(0)
@@ -487,7 +563,7 @@ def optimize_width_table(wtable):
     return wtable_out
 
 if __name__ == "__main__":
-    r = "unicode.rs"
+    r = "tables.rs"
     if os.path.exists(r):
         os.remove(r)
     with open(r, "w") as rf:
@@ -498,11 +574,17 @@ if __name__ == "__main__":
         (canon_decomp, compat_decomp, gencats, combines,
                 lowerupper, upperlower) = load_unicode_data("UnicodeData.txt")
         want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"]
-        other_derived = ["Default_Ignorable_Code_Point"]
+        other_derived = ["Default_Ignorable_Code_Point", "Grapheme_Extend"]
         derived = load_properties("DerivedCoreProperties.txt", want_derived + other_derived)
         scripts = load_properties("Scripts.txt", [])
         props = load_properties("PropList.txt",
                 ["White_Space", "Join_Control", "Noncharacter_Code_Point"])
+
+        # grapheme cluster category from DerivedCoreProperties
+        # the rest are defined below
+        grapheme_cats = {}
+        grapheme_cats["Extend"] = derived["Grapheme_Extend"]
+        del(derived["Grapheme_Extend"])
 
         # bsearch_range_table is used in all the property modules below
         emit_bsearch_range_table(rf)
@@ -533,7 +615,7 @@ if __name__ == "__main__":
         emit_norm_module(rf, canon_decomp, compat_decomp, combines)
         emit_conversions_module(rf, lowerupper, upperlower)
 
-        # character width module
+        ### character width module
         width_table = []
         for zwcat in ["Me", "Mn", "Cf"]:
             width_table.extend(map(lambda (lo, hi): (lo, hi, 0, 0), gencats[zwcat]))
@@ -555,3 +637,40 @@ if __name__ == "__main__":
         # optimize the width table by collapsing adjacent entities when possible
         width_table = optimize_width_table(width_table)
         emit_charwidth_module(rf, width_table)
+
+        ### grapheme cluster module
+        # from http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Break_Property_Values
+        # Hangul syllable categories
+        want_hangul = ["L", "V", "T", "LV", "LVT"]
+        grapheme_cats.update(load_properties("HangulSyllableType.txt", want_hangul))
+
+        # Control
+        # This category also includes Cs (surrogate codepoints), but Rust's `char`s are
+        # Unicode Scalar Values only, and surrogates are thus invalid `char`s.
+        grapheme_cats["Control"] = set()
+        for cat in ["Zl", "Zp", "Cc", "Cf"]:
+            grapheme_cats["Control"] |= set(ungroup_cat(gencats[cat]))
+        grapheme_cats["Control"] = group_cat(list(
+            grapheme_cats["Control"]
+            - grapheme_control_exceptions
+            | (set(ungroup_cat(gencats["Cn"]))
+               & set(ungroup_cat(derived["Default_Ignorable_Code_Point"])))))
+
+        # Regional Indicator
+        grapheme_cats["RegionalIndicator"] = grapheme_regional_indicator
+
+        # Prepend - "Currently there are no characters with this value"
+        # (from UAX#29, Unicode 7.0)
+
+        # SpacingMark
+        grapheme_cats["SpacingMark"] = group_cat(list(
+            set(ungroup_cat(gencats["Mc"]))
+            - set(ungroup_cat(grapheme_cats["Extend"]))
+            | grapheme_spacingmark_extra
+            - set(ungroup_cat(grapheme_spacingmark_exceptions))))
+
+        grapheme_table = []
+        for cat in grapheme_cats:
+            grapheme_table.extend([(x, y, cat) for (x, y) in grapheme_cats[cat]])
+        grapheme_table.sort(key=lambda w: w[0])
+        emit_grapheme_module(rf, grapheme_table, grapheme_cats.keys())

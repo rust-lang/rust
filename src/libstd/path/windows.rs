@@ -24,7 +24,7 @@ use option::{Option, Some, None};
 use slice::{Vector, ImmutableVector};
 use str::{CharSplits, Str, StrAllocating, StrVector, StrSlice};
 use string::String;
-use unicode::UnicodeChar;
+use unicode::char::UnicodeChar;
 use vec::Vec;
 
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
