@@ -1264,6 +1264,102 @@ do that with `match`.
 
 ## Match
 
+Often, a simple `if`/`else` isn't enough, because you have more than two
+possible options. And `else` conditions can get incredibly complicated. So
+what's the solution?
+
+Rust has a keyword, `match`, that allows you to replace complicated `if`/`else`
+groupings with something more powerful. Check it out:
+
+```rust
+let x = 5i;
+
+match x {
+    1 => println!("one"),
+    2 => println!("two"),
+    3 => println!("three"),
+    4 => println!("four"),
+    5 => println!("five"),
+    _ => println!("something else"),
+}
+```
+
+`match` takes an expression, and then branches based on its value. Each 'arm' of
+the branch is of the form `val => expression`. When the value matches, that arm's
+expression will be evaluated. It's called `match` because of the term 'pattern
+matching,' which `match` is an implementation of.
+
+So what's the big advantage here? Well, there are a few. First of all, `match`
+does 'exhaustiveness checking.' Do you see that last arm, the one with the
+underscore (`_`)? If we remove that arm, Rust will give us an error:
+
+```{ignore,notrust}
+error: non-exhaustive patterns: `_` not covered
+```
+
+In other words, Rust is trying to tell us we forgot a value. Because `x` is an
+integer, Rust knows that it can have a number of different values. For example,
+`6i`. But without the `_`, there is no arm that could match, and so Rust refuses
+to compile. `_` is sort of like a catch-all arm. If none of the other arms match,
+the arm with `_` will. And since we have this catch-all arm, we now have an arm
+for every possible value of `x`, and so our program will now compile.
+
+`match` statements also destructure enums, as well. Remember this code from the
+section on enums?
+
+```{rust}
+let x = 5i;
+let y = 10i;
+
+let ordering = x.cmp(&y);
+
+if ordering == Less {
+    println!("less");
+} else if ordering == Greater {
+    println!("greater");
+} else if ordering == Equal {
+    println!("equal");
+}
+```
+
+We can re-write this as a `match`:
+
+```{rust}
+let x = 5i;
+let y = 10i;
+
+match x.cmp(&y) {
+    Less    => println!("less"),
+    Greater => println!("greater"),
+    Equal   => println!("equal"),
+}
+```
+
+This version has way less noise, and it also checks exhaustively to make sure
+that we have covered all possible variants of `Ordering`. With our `if`/`else`
+version, if we had forgotten the `Greater` case, for example, our program would
+have happily compiled. If we forget in the `match`, it will not. Rust helps us
+make sure to cover all of our bases.
+
+`match` is also an expression, which means we can use it on the right hand side
+of a `let` binding. We could also implement the previous line like this:
+
+```
+let x = 5i;
+let y = 10i;
+
+let result = match x.cmp(&y) {
+    Less    => "less",
+    Greater => "greater",
+    Equal   => "equal",
+};
+
+println!("{}", result);
+```
+
+In this case, it doesn't make a lot of sense, as we are just making a temporary
+string where we don't need to, but sometimes, it's a nice pattern.
+
 ## Looping
 
 for
