@@ -10,8 +10,9 @@
 
 #![allow(non_uppercase_pattern_statics)]
 
-use lib::llvm::{llvm, TypeRef, Bool, False, True, TypeKind};
-use lib::llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
+use llvm;
+use llvm::{TypeRef, Bool, False, True, TypeKind, ValueRef};
+use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use middle::trans::context::CrateContext;
 
@@ -20,8 +21,11 @@ use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel};
 
 use std::c_str::ToCStr;
 use std::mem;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::str::raw::from_c_str;
 
-use libc::{c_uint};
+use libc::{c_uint, c_void, free};
 
 #[deriving(Clone, PartialEq, Show)]
 pub struct Type {
@@ -300,6 +304,53 @@ impl Type {
             X86_FP80 => 80,
             FP128 | PPC_FP128 => 128,
             _ => fail!("llvm_float_width called on a non-float type")
+        }
+    }
+}
+
+
+/* Memory-managed object interface to type handles. */
+
+pub struct TypeNames {
+    named_types: RefCell<HashMap<String, TypeRef>>,
+}
+
+impl TypeNames {
+    pub fn new() -> TypeNames {
+        TypeNames {
+            named_types: RefCell::new(HashMap::new())
+        }
+    }
+
+    pub fn associate_type(&self, s: &str, t: &Type) {
+        assert!(self.named_types.borrow_mut().insert(s.to_string(),
+                                                     t.to_ref()));
+    }
+
+    pub fn find_type(&self, s: &str) -> Option<Type> {
+        self.named_types.borrow().find_equiv(&s).map(|x| Type::from_ref(*x))
+    }
+
+    pub fn type_to_string(&self, ty: Type) -> String {
+        unsafe {
+            let s = llvm::LLVMTypeToString(ty.to_ref());
+            let ret = from_c_str(s);
+            free(s as *mut c_void);
+            ret.to_string()
+        }
+    }
+
+    pub fn types_to_str(&self, tys: &[Type]) -> String {
+        let strs: Vec<String> = tys.iter().map(|t| self.type_to_string(*t)).collect();
+        format!("[{}]", strs.connect(","))
+    }
+
+    pub fn val_to_string(&self, val: ValueRef) -> String {
+        unsafe {
+            let s = llvm::LLVMValueToString(val);
+            let ret = from_c_str(s);
+            free(s as *mut c_void);
+            ret.to_string()
         }
     }
 }

@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use back::archive::{Archive, METADATA_FILENAME};
-use back::rpath;
-use back::svh::Svh;
+use super::archive::{Archive, ArchiveConfig, METADATA_FILENAME};
+use super::rpath;
+use super::rpath::RPathConfig;
+use super::svh::Svh;
 use driver::driver::{CrateTranslation, OutputFilenames, Input, FileInput};
 use driver::config::NoDebugInfo;
 use driver::session::Session;
 use driver::config;
-use lib::llvm::llvm;
-use lib::llvm::ModuleRef;
-use lib;
+use llvm;
+use llvm::ModuleRef;
 use metadata::common::LinkMeta;
 use metadata::{encoder, cstore, filesearch, csearch, loader, creader};
 use middle::trans::context::CrateContext;
@@ -29,6 +29,7 @@ use util::sha2::{Digest, Sha256};
 
 use std::c_str::{ToCStr, CString};
 use std::char;
+use std::collections::HashSet;
 use std::io::{fs, TempDir, Command};
 use std::io;
 use std::ptr;
@@ -70,11 +71,11 @@ pub fn llvm_err(sess: &Session, msg: String) -> ! {
 
 pub fn write_output_file(
         sess: &Session,
-        target: lib::llvm::TargetMachineRef,
-        pm: lib::llvm::PassManagerRef,
+        target: llvm::TargetMachineRef,
+        pm: llvm::PassManagerRef,
         m: ModuleRef,
         output: &Path,
-        file_type: lib::llvm::FileType) {
+        file_type: llvm::FileType) {
     unsafe {
         output.with_c_str(|output| {
             let result = llvm::LLVMRustWriteOutputFile(
@@ -88,18 +89,17 @@ pub fn write_output_file(
 
 pub mod write {
 
-    use back::lto;
-    use back::link::{write_output_file, OutputType};
-    use back::link::{OutputTypeAssembly, OutputTypeBitcode};
-    use back::link::{OutputTypeExe, OutputTypeLlvmAssembly};
-    use back::link::{OutputTypeObject};
+    use super::super::lto;
+    use super::{write_output_file, OutputType};
+    use super::{OutputTypeAssembly, OutputTypeBitcode};
+    use super::{OutputTypeExe, OutputTypeLlvmAssembly};
+    use super::{OutputTypeObject};
     use driver::driver::{CrateTranslation, OutputFilenames};
     use driver::config::NoDebugInfo;
     use driver::session::Session;
     use driver::config;
-    use lib::llvm::llvm;
-    use lib::llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
-    use lib;
+    use llvm;
+    use llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
     use util::common::time;
     use syntax::abi;
 
@@ -152,10 +152,10 @@ pub mod write {
             }
 
             let opt_level = match sess.opts.optimize {
-              config::No => lib::llvm::CodeGenLevelNone,
-              config::Less => lib::llvm::CodeGenLevelLess,
-              config::Default => lib::llvm::CodeGenLevelDefault,
-              config::Aggressive => lib::llvm::CodeGenLevelAggressive,
+              config::No => llvm::CodeGenLevelNone,
+              config::Less => llvm::CodeGenLevelLess,
+              config::Default => llvm::CodeGenLevelDefault,
+              config::Aggressive => llvm::CodeGenLevelAggressive,
             };
             let use_softfp = sess.opts.cg.soft_float;
 
@@ -172,10 +172,10 @@ pub mod write {
             let fdata_sections = ffunction_sections;
 
             let reloc_model = match sess.opts.cg.relocation_model.as_slice() {
-                "pic" => lib::llvm::RelocPIC,
-                "static" => lib::llvm::RelocStatic,
-                "default" => lib::llvm::RelocDefault,
-                "dynamic-no-pic" => lib::llvm::RelocDynamicNoPic,
+                "pic" => llvm::RelocPIC,
+                "static" => llvm::RelocStatic,
+                "default" => llvm::RelocDefault,
+                "dynamic-no-pic" => llvm::RelocDynamicNoPic,
                 _ => {
                     sess.err(format!("{} is not a valid relocation mode",
                                      sess.opts
@@ -195,7 +195,7 @@ pub mod write {
                     target_feature(sess).with_c_str(|features| {
                         llvm::LLVMRustCreateTargetMachine(
                             t, cpu, features,
-                            lib::llvm::CodeModelDefault,
+                            llvm::CodeModelDefault,
                             reloc_model,
                             opt_level,
                             true /* EnableSegstk */,
@@ -320,7 +320,7 @@ pub mod write {
                         };
                         with_codegen(tm, llmod, trans.no_builtins, |cpm| {
                             write_output_file(sess, tm, cpm, llmod, &path,
-                                            lib::llvm::AssemblyFile);
+                                            llvm::AssemblyFile);
                         });
                     }
                     OutputTypeObject => {
@@ -338,7 +338,7 @@ pub mod write {
                     Some(ref path) => {
                         with_codegen(tm, llmod, trans.no_builtins, |cpm| {
                             write_output_file(sess, tm, cpm, llmod, path,
-                                            lib::llvm::ObjectFile);
+                                            llvm::ObjectFile);
                         });
                     }
                     None => {}
@@ -350,7 +350,7 @@ pub mod write {
                                         .with_extension("metadata.o");
                         write_output_file(sess, tm, cpm,
                                         trans.metadata_module, &out,
-                                        lib::llvm::ObjectFile);
+                                        llvm::ObjectFile);
                     })
                 }
             });
@@ -455,29 +455,29 @@ pub mod write {
         });
     }
 
-    unsafe fn populate_llvm_passes(fpm: lib::llvm::PassManagerRef,
-                                   mpm: lib::llvm::PassManagerRef,
+    unsafe fn populate_llvm_passes(fpm: llvm::PassManagerRef,
+                                   mpm: llvm::PassManagerRef,
                                    llmod: ModuleRef,
-                                   opt: lib::llvm::CodeGenOptLevel,
+                                   opt: llvm::CodeGenOptLevel,
                                    no_builtins: bool) {
         // Create the PassManagerBuilder for LLVM. We configure it with
         // reasonable defaults and prepare it to actually populate the pass
         // manager.
         let builder = llvm::LLVMPassManagerBuilderCreate();
         match opt {
-            lib::llvm::CodeGenLevelNone => {
+            llvm::CodeGenLevelNone => {
                 // Don't add lifetime intrinsics at O0
                 llvm::LLVMRustAddAlwaysInlinePass(builder, false);
             }
-            lib::llvm::CodeGenLevelLess => {
+            llvm::CodeGenLevelLess => {
                 llvm::LLVMRustAddAlwaysInlinePass(builder, true);
             }
             // numeric values copied from clang
-            lib::llvm::CodeGenLevelDefault => {
+            llvm::CodeGenLevelDefault => {
                 llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
                                                                     225);
             }
-            lib::llvm::CodeGenLevelAggressive => {
+            llvm::CodeGenLevelAggressive => {
                 llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
                                                                     275);
             }
@@ -611,7 +611,7 @@ pub fn build_link_meta(sess: &Session, krate: &ast::Crate,
                        name: String) -> LinkMeta {
     let r = LinkMeta {
         crate_name: name,
-        crate_hash: Svh::calculate(sess, krate),
+        crate_hash: Svh::calculate(&sess.opts.cg.metadata, krate),
     };
     info!("{}", r);
     return r;
@@ -963,6 +963,17 @@ fn link_binary_output(sess: &Session,
     out_filename
 }
 
+fn archive_search_paths(sess: &Session) -> Vec<Path> {
+    let mut rustpath = filesearch::rust_path();
+    rustpath.push(sess.target_filesearch().get_lib_path());
+    // FIXME: Addl lib search paths are an unordered HashSet?
+    // Shouldn't this search be done in some order?
+    let addl_lib_paths: HashSet<Path> = sess.opts.addl_lib_search_paths.borrow().clone();
+    let mut search: Vec<Path> = addl_lib_paths.move_iter().collect();
+    search.push_all(rustpath.as_slice());
+    return search;
+}
+
 // Create an 'rlib'
 //
 // An rlib in its current incarnation is essentially a renamed .a file. The
@@ -973,7 +984,15 @@ fn link_rlib<'a>(sess: &'a Session,
                  trans: Option<&CrateTranslation>, // None == no metadata/bytecode
                  obj_filename: &Path,
                  out_filename: &Path) -> Archive<'a> {
-    let mut a = Archive::create(sess, out_filename, obj_filename);
+    let handler = &sess.diagnostic().handler;
+    let config = ArchiveConfig {
+        handler: handler,
+        dst: out_filename.clone(),
+        lib_search_paths: archive_search_paths(sess),
+        os: sess.targ_cfg.os,
+        maybe_ar_prog: sess.opts.cg.ar.clone()
+    };
+    let mut a = Archive::create(config, obj_filename);
 
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
@@ -1387,7 +1406,24 @@ fn link_args(cmd: &mut Command,
     // where extern libraries might live, based on the
     // addl_lib_search_paths
     if sess.opts.cg.rpath {
-        cmd.args(rpath::get_rpath_flags(sess, out_filename).as_slice());
+        let sysroot = sess.sysroot();
+        let target_triple = sess.opts.target_triple.as_slice();
+        let get_install_prefix_lib_path = || {
+            let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
+            let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
+            let mut path = Path::new(install_prefix);
+            path.push(&tlib);
+
+            path
+        };
+        let rpath_config = RPathConfig {
+            os: sess.targ_cfg.os,
+            used_crates: sess.cstore.get_used_crates(cstore::RequireDynamic),
+            out_filename: out_filename.clone(),
+            get_install_prefix_lib_path: get_install_prefix_lib_path,
+            realpath: ::util::fs::realpath
+        };
+        cmd.args(rpath::get_rpath_flags(rpath_config).as_slice());
     }
 
     // compiler-rt contains implementations of low-level LLVM helpers. This is
@@ -1545,7 +1581,15 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                         sess.abort_if_errors();
                     }
                 }
-                let mut archive = Archive::open(sess, dst.clone());
+                let handler = &sess.diagnostic().handler;
+                let config = ArchiveConfig {
+                    handler: handler,
+                    dst: dst.clone(),
+                    lib_search_paths: archive_search_paths(sess),
+                    os: sess.targ_cfg.os,
+                    maybe_ar_prog: sess.opts.cg.ar.clone()
+                };
+                let mut archive = Archive::open(config);
                 archive.remove_file(format!("{}.o", name).as_slice());
                 let files = archive.files();
                 if files.iter().any(|s| s.as_slice().ends_with(".o")) {

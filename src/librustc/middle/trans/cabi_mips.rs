@@ -12,8 +12,9 @@
 
 use libc::c_uint;
 use std::cmp;
-use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
-use lib::llvm::{StructRetAttribute, ZExtAttribute};
+use llvm;
+use llvm::{Integer, Pointer, Float, Double, Struct, Array};
+use llvm::{StructRetAttribute, ZExtAttribute};
 use middle::trans::context::CrateContext;
 use middle::trans::cabi::*;
 use middle::trans::type_::Type;

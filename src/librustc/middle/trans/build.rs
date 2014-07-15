@@ -11,11 +11,10 @@
 #![allow(dead_code)] // FFI wrappers
 #![allow(non_snake_case_functions)]
 
-use lib::llvm::llvm;
-use lib::llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};
-use lib::llvm::{Opcode, IntPredicate, RealPredicate};
-use lib::llvm::{ValueRef, BasicBlockRef};
-use lib;
+use llvm;
+use llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};
+use llvm::{Opcode, IntPredicate, RealPredicate};
+use llvm::{ValueRef, BasicBlockRef};
 use middle::trans::common::*;
 use syntax::codemap::Span;
 
@@ -97,7 +96,7 @@ pub fn Switch(cx: &Block, v: ValueRef, else_: BasicBlockRef, num_cases: uint)
 
 pub fn AddCase(s: ValueRef, on_val: ValueRef, dest: BasicBlockRef) {
     unsafe {
-        if llvm::LLVMIsUndef(s) == lib::llvm::True { return; }
+        if llvm::LLVMIsUndef(s) == llvm::True { return; }
         llvm::LLVMAddCase(s, on_val, dest);
     }
 }
@@ -350,7 +349,7 @@ pub fn Load(cx: &Block, pointer_val: ValueRef) -> ValueRef {
         let ccx = cx.fcx.ccx;
         if cx.unreachable.get() {
             let ty = val_ty(pointer_val);
-            let eltty = if ty.kind() == lib::llvm::Array {
+            let eltty = if ty.kind() == llvm::Array {
                 ty.element_type()
             } else {
                 ccx.int_type
@@ -382,11 +381,11 @@ pub fn AtomicLoad(cx: &Block, pointer_val: ValueRef, order: AtomicOrdering) -> V
 
 
 pub fn LoadRangeAssert(cx: &Block, pointer_val: ValueRef, lo: c_ulonglong,
-                       hi: c_ulonglong, signed: lib::llvm::Bool) -> ValueRef {
+                       hi: c_ulonglong, signed: llvm::Bool) -> ValueRef {
     if cx.unreachable.get() {
         let ccx = cx.fcx.ccx;
         let ty = val_ty(pointer_val);
-        let eltty = if ty.kind() == lib::llvm::Array {
+        let eltty = if ty.kind() == llvm::Array {
             ty.element_type()
         } else {
             ccx.int_type
@@ -647,7 +646,7 @@ pub fn Phi(cx: &Block, ty: Type, vals: &[ValueRef],
 
 pub fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
     unsafe {
-        if llvm::LLVMIsUndef(phi) == lib::llvm::True { return; }
+        if llvm::LLVMIsUndef(phi) == llvm::True { return; }
         llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);
     }
 }
@@ -656,7 +655,7 @@ pub fn _UndefReturn(cx: &Block, fn_: ValueRef) -> ValueRef {
     unsafe {
         let ccx = cx.fcx.ccx;
         let ty = val_ty(fn_);
-        let retty = if ty.kind() == lib::llvm::Integer {
+        let retty = if ty.kind() == llvm::Integer {
             ty.return_type()
         } else {
             ccx.int_type

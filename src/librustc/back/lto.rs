@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use back::archive::ArchiveRO;
-use back::link;
+use super::link;
 use driver::session;
 use driver::config;
-use lib::llvm::{ModuleRef, TargetMachineRef, llvm, True, False};
+use llvm;
+use llvm::archive_ro::ArchiveRO;
+use llvm::{ModuleRef, TargetMachineRef, True, False};
 use metadata::cstore;
 use util::common::time;
 

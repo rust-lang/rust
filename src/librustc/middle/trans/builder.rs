@@ -10,11 +10,10 @@
 
 #![allow(dead_code)] // FFI wrappers
 
-use lib;
-use lib::llvm::llvm;
-use lib::llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};
-use lib::llvm::{Opcode, IntPredicate, RealPredicate, False};
-use lib::llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
+use llvm;
+use llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};
+use llvm::{Opcode, IntPredicate, RealPredicate, False};
+use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
 use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::machine::llalign_of_pref;
@@ -460,7 +459,7 @@ impl<'a> Builder<'a> {
         self.count_insn("load.volatile");
         unsafe {
             let insn = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
-            llvm::LLVMSetVolatile(insn, lib::llvm::True);
+            llvm::LLVMSetVolatile(insn, llvm::True);
             insn
         }
     }
@@ -477,7 +476,7 @@ impl<'a> Builder<'a> {
 
 
     pub fn load_range_assert(&self, ptr: ValueRef, lo: c_ulonglong,
-                           hi: c_ulonglong, signed: lib::llvm::Bool) -> ValueRef {
+                           hi: c_ulonglong, signed: llvm::Bool) -> ValueRef {
         let value = self.load(ptr);
 
         unsafe {
@@ -487,7 +486,7 @@ impl<'a> Builder<'a> {
 
             let v = [min, max];
 
-            llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
+            llvm::LLVMSetMetadata(value, llvm::MD_range as c_uint,
                                   llvm::LLVMMDNodeInContext(self.ccx.llcx,
                                                             v.as_ptr(), v.len() as c_uint));
         }
@@ -514,7 +513,7 @@ impl<'a> Builder<'a> {
         self.count_insn("store.volatile");
         unsafe {
             let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
-            llvm::LLVMSetVolatile(insn, lib::llvm::True);
+            llvm::LLVMSetVolatile(insn, llvm::True);
         }
     }
 
@@ -788,10 +787,10 @@ impl<'a> Builder<'a> {
                          dia: AsmDialect) -> ValueRef {
         self.count_insn("inlineasm");
 
-        let volatile = if volatile { lib::llvm::True }
-                       else        { lib::llvm::False };
-        let alignstack = if alignstack { lib::llvm::True }
-                         else          { lib::llvm::False };
+        let volatile = if volatile { llvm::True }
+                       else        { llvm::False };
+        let alignstack = if alignstack { llvm::True }
+                         else          { llvm::False };
 
         let argtys = inputs.iter().map(|v| {
             debug!("Asm Input Type: {:?}", self.ccx.tn.val_to_string(*v));
@@ -832,7 +831,7 @@ impl<'a> Builder<'a> {
                           conv: CallConv, attributes: &[(uint, u64)]) -> ValueRef {
         self.count_insn("callwithconv");
         let v = self.call(llfn, args, attributes);
-        lib::llvm::SetInstructionCallConv(v, conv);
+        llvm::SetInstructionCallConv(v, conv);
         v
     }
 
@@ -945,7 +944,7 @@ impl<'a> Builder<'a> {
     pub fn set_cleanup(&self, landing_pad: ValueRef) {
         self.count_insn("setcleanup");
         unsafe {
-            llvm::LLVMSetCleanup(landing_pad, lib::llvm::True);
+            llvm::LLVMSetCleanup(landing_pad, llvm::True);
         }
     }
 

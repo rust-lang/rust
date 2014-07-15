@@ -10,8 +10,8 @@
 
 #![allow(non_uppercase_pattern_statics)]
 
-use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg, ValueRef};
-use lib;
+use llvm;
+use llvm::{SequentiallyConsistent, Acquire, Release, Xchg, ValueRef};
 use middle::subst;
 use middle::subst::FnSpace;
 use middle::trans::base::*;
@@ -426,13 +426,13 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
             assert!(split.len() >= 2, "Atomic intrinsic not correct format");
 
             let order = if split.len() == 2 {
-                lib::llvm::SequentiallyConsistent
+                llvm::SequentiallyConsistent
             } else {
                 match *split.get(2) {
-                    "relaxed" => lib::llvm::Monotonic,
-                    "acq"     => lib::llvm::Acquire,
-                    "rel"     => lib::llvm::Release,
-                    "acqrel"  => lib::llvm::AcquireRelease,
+                    "relaxed" => llvm::Monotonic,
+                    "acq"     => llvm::Acquire,
+                    "rel"     => llvm::Release,
+                    "acqrel"  => llvm::AcquireRelease,
                     _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
                 }
             };
@@ -443,23 +443,23 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
                     // of this, I assume that it's good enough for us to use for
                     // now.
                     let strongest_failure_ordering = match order {
-                        lib::llvm::NotAtomic | lib::llvm::Unordered =>
+                        llvm::NotAtomic | llvm::Unordered =>
                             ccx.sess().fatal("cmpxchg must be atomic"),
 
-                        lib::llvm::Monotonic | lib::llvm::Release =>
-                            lib::llvm::Monotonic,
+                        llvm::Monotonic | llvm::Release =>
+                            llvm::Monotonic,
 
-                        lib::llvm::Acquire | lib::llvm::AcquireRelease =>
-                            lib::llvm::Acquire,
+                        llvm::Acquire | llvm::AcquireRelease =>
+                            llvm::Acquire,
 
-                        lib::llvm::SequentiallyConsistent =>
-                            lib::llvm::SequentiallyConsistent
+                        llvm::SequentiallyConsistent =>
+                            llvm::SequentiallyConsistent
                     };
 
                     let res = AtomicCmpXchg(bcx, *llargs.get(0), *llargs.get(1),
                                             *llargs.get(2), order,
                                             strongest_failure_ordering);
-                    if unsafe { lib::llvm::llvm::LLVMVersionMinor() >= 5 } {
+                    if unsafe { llvm::LLVMVersionMinor() >= 5 } {
                         ExtractValue(bcx, res, 0)
                     } else {
                         res
@@ -482,17 +482,17 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
                 // These are all AtomicRMW ops
                 op => {
                     let atom_op = match op {
-                        "xchg"  => lib::llvm::Xchg,
-                        "xadd"  => lib::llvm::Add,
-                        "xsub"  => lib::llvm::Sub,
-                        "and"   => lib::llvm::And,
-                        "nand"  => lib::llvm::Nand,
-                        "or"    => lib::llvm::Or,
-                        "xor"   => lib::llvm::Xor,
-                        "max"   => lib::llvm::Max,
-                        "min"   => lib::llvm::Min,
-                        "umax"  => lib::llvm::UMax,
-                        "umin"  => lib::llvm::UMin,
+                        "xchg"  => llvm::Xchg,
+                        "xadd"  => llvm::Add,
+                        "xsub"  => llvm::Sub,
+                        "and"   => llvm::And,
+                        "nand"  => llvm::Nand,
+                        "or"    => llvm::Or,
+                        "xor"   => llvm::Xor,
+                        "max"   => llvm::Max,
+                        "min"   => llvm::Min,
+                        "umax"  => llvm::UMax,
+                        "umin"  => llvm::UMin,
                         _ => ccx.sess().fatal("unknown atomic operation")
                     };
 
