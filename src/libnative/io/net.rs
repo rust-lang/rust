@@ -526,6 +526,20 @@ impl TcpAcceptor {
 
     #[cfg(unix)]
     pub fn native_accept(&mut self) -> IoResult<TcpStream> {
+        // In implementing accept, the two main concerns are dealing with
+        // close_accept() and timeouts. The unix implementation is based on a
+        // nonblocking accept plus a call to select(). Windows ends up having
+        // an entirely separate implementation than unix, which is explained
+        // below.
+        //
+        // To implement timeouts, all blocking is done via select() instead of
+        // accept() by putting the socket in non-blocking mode. Because
+        // select() takes a timeout argument, we just pass through the timeout
+        // to select().
+        //
+        // To implement close_accept(), we have a self-pipe to ourselves which
+        // is passed to select() along with the socket being accepted on. The
+        // self-pipe is never written to unless close_accept() is called.
         let deadline = if self.deadline == 0 {None} else {Some(self.deadline)};
 
         while !self.inner.closed.load(atomics::SeqCst) {
@@ -545,6 +559,26 @@ impl TcpAcceptor {
 
     #[cfg(windows)]
     pub fn native_accept(&mut self) -> IoResult<TcpStream> {
+        // Unlink unix, windows cannot invoke `select` on arbitrary file
+        // descriptors like pipes, only sockets. Consequently, windows cannot
+        // use the same implementation as unix for accept() when close_accept()
+        // is considered.
+        //
+        // In order to implement close_accept() and timeouts, windows uses
+        // event handles. An acceptor-specific abort event is created which
+        // will only get set in close_accept(), and it will never be un-set.
+        // Additionally, another acceptor-specific event is associated with the
+        // FD_ACCEPT network event.
+        //
+        // These two events are then passed to WaitForMultipleEvents to see
+        // which one triggers first, and the timeout passed to this function is
+        // the local timeout for the acceptor.
+        //
+        // If the wait times out, then the accept timed out. If the wait
+        // succeeds with the abort event, then we were closed, and if the wait
+        // succeeds otherwise, then we do a nonblocking poll via `accept` to
+        // see if we can accept a connection. The connection is candidate to be
+        // stolen, so we do all of this in a loop as well.
         let events = [self.inner.abort.handle(), self.inner.accept.handle()];
 
         while !self.inner.closed.load(atomics::SeqCst) {
