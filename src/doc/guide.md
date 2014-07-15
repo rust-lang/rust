@@ -279,59 +279,12 @@ program doesn't have any dependencies, so we'll only be using the first part of
 its functionality. Eventually, we'll add more. Since we started off by using
 Cargo, it'll be easy to add later.
 
-Let's convert Hello World to Cargo. The first thing we need to do to begin using Cargo
-is to install Cargo. To do this, we need to build it from source. There are no binaries
-yet.
-
-First, let's go back to our projects directory. We don't want Cargo to
-live in our project!
-
-```{bash}
-$ cd ..
-```
-
-Next, we need these commands:
-
-```{bash}
-$ git clone --recursive https://github.com/rust-lang/cargo
-$ cd cargo
-$ make
-$ make install # may need sudo or admin permissions
-```
-
-The `--recursive` downloads Cargo's own dependencies. You can't use Cargo to
-fetch dependencies until you have Cargo installed! Also, you will need to have
-`git` installed. Much of the Rust world assumes `git` usage, so it's a good
-thing to have around. Please check out [the git
-documentation](http://git-scm.com/book/en/Getting-Started-Installing-Git) for
-more on installing `git`.
-
-We hope to give Cargo a binary installer, similar to Rust's own, so that
-this will not be necessary in the future.
-
-Let's see if that worked. Try this:
-
-```{bash}
-$ cargo
-Commands:
-  build          # compile the current project
-
-Options (for all commands):
-
--v, [--verbose]
--h, [--help]
-```
-
-If you see this output when you run `cargo`, congrats! Cargo is working. If
-not, please [open an issue](https://github.com/rust-lang/cargo/issues/new) or
-drop by the Rust IRC, and we can help you out.
-
-Let's move back into our `hello_world` directory now:
-
-```{bash}
-$ cd ..              # move back up into projects
-$ cd hello_world     # move into hello_world
-```
+Let's convert Hello World to Cargo. The first thing we need to do to begin
+using Cargo is to install Cargo. Luckily for us, the script we ran to install
+Rust includes Cargo by default. If you installed Rust some other way, you may
+want to [check the Cargo
+README](https://github.com/rust-lang/cargo#installing-cargo-from-nightlies)
+for specific instructions about installing it.
 
 To Cargo-ify our project, we need to do two things: Make a `Cargo.toml`
 configuration file, and put our source file in the right place. Let's
