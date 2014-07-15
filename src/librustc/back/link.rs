@@ -571,8 +571,9 @@ pub fn find_crate_name(sess: Option<&Session>,
     };
 
     // Look in attributes 100% of the time to make sure the attribute is marked
-    // as used. After doing this, however, favor crate names from the command
-    // line.
+    // as used. After doing this, however, we still prioritize a crate name from
+    // the command line over one found in the #[crate_name] attribute. If we
+    // find both we ensure that they're the same later on as well.
     let attr_crate_name = attrs.iter().find(|at| at.check_name("crate_name"))
                                .and_then(|at| at.value_str().map(|s| (at, s)));
 
@@ -1558,7 +1559,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                 add_dynamic_crate(cmd, sess, src.dylib.unwrap())
             }
             cstore::RequireStatic => {
-                add_static_crate(cmd, sess, tmpdir, cnum, src.rlib.unwrap())
+                add_static_crate(cmd, sess, tmpdir, src.rlib.unwrap())
             }
         }
 
@@ -1575,7 +1576,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
 
     // Adds the static "rlib" versions of all crates to the command line.
     fn add_static_crate(cmd: &mut Command, sess: &Session, tmpdir: &Path,
-                        cnum: ast::CrateNum, cratepath: Path) {
+                        cratepath: Path) {
         // When performing LTO on an executable output, all of the
         // bytecode from the upstream libraries has already been
         // included in our object file output. We need to modify all of
@@ -1591,7 +1592,8 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         // If we're not doing LTO, then our job is simply to just link
         // against the archive.
         if sess.lto() {
-            let name = sess.cstore.get_crate_data(cnum).name.clone();
+            let name = cratepath.filename_str().unwrap();
+            let name = name.slice(3, name.len() - 5); // chop off lib/.rlib
             time(sess.time_passes(),
                  format!("altering {}.rlib", name).as_slice(),
                  (), |()| {
