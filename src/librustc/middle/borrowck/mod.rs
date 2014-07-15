@@ -28,6 +28,7 @@ use std::gc::{Gc, GC};
 use std::string::String;
 use syntax::ast;
 use syntax::ast_map;
+use syntax::ast_map::blocks::{FnLikeNode, FnParts};
 use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -49,6 +50,8 @@ pub mod doc;
 pub mod check_loans;
 
 pub mod gather_loans;
+
+pub mod graphviz;
 
 pub mod move_data;
 
@@ -116,6 +119,13 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &ast::Item) {
     }
 }
 
+/// Collection of conclusions determined via borrow checker analyses.
+pub struct AnalysisData<'a> {
+    pub all_loans: Vec<Loan>,
+    pub loans: DataFlowContext<'a, LoanDataFlowOperator>,
+    pub move_data: move_data::FlowedMoveData<'a>,
+}
+
 fn borrowck_fn(this: &mut BorrowckCtxt,
                fk: &FnKind,
                decl: &ast::FnDecl,
@@ -123,18 +133,35 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                sp: Span,
                id: ast::NodeId) {
     debug!("borrowck_fn(id={})", id);
+    let cfg = cfg::CFG::new(this.tcx, body);
+    let AnalysisData { all_loans,
+                       loans: loan_dfcx,
+                       move_data:flowed_moves } =
+        build_borrowck_dataflow_data(this, fk, decl, &cfg, body, sp, id);
 
+    check_loans::check_loans(this, &loan_dfcx, flowed_moves,
+                             all_loans.as_slice(), decl, body);
+
+    visit::walk_fn(this, fk, decl, body, sp, ());
+}
+
+fn build_borrowck_dataflow_data<'a>(this: &mut BorrowckCtxt<'a>,
+                                    fk: &FnKind,
+                                    decl: &ast::FnDecl,
+                                    cfg: &cfg::CFG,
+                                    body: &ast::Block,
+                                    sp: Span,
+                                    id: ast::NodeId) -> AnalysisData<'a> {
     // Check the body of fn items.
     let id_range = ast_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
     let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, decl, body);
-    let cfg = cfg::CFG::new(this.tcx, body);
 
     let mut loan_dfcx =
         DataFlowContext::new(this.tcx,
                              "borrowck",
                              Some(decl),
-                             &cfg,
+                             cfg,
                              LoanDataFlowOperator,
                              id_range,
                              all_loans.len());
@@ -142,20 +169,57 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
         loan_dfcx.add_gen(loan.gen_scope, loan_idx);
         loan_dfcx.add_kill(loan.kill_scope, loan_idx);
     }
-    loan_dfcx.add_kills_from_flow_exits(&cfg);
-    loan_dfcx.propagate(&cfg, body);
+    loan_dfcx.add_kills_from_flow_exits(cfg);
+    loan_dfcx.propagate(cfg, body);
 
     let flowed_moves = move_data::FlowedMoveData::new(move_data,
                                                       this.tcx,
-                                                      &cfg,
+                                                      cfg,
                                                       id_range,
                                                       decl,
                                                       body);
 
-    check_loans::check_loans(this, &loan_dfcx, flowed_moves,
-                             all_loans.as_slice(), decl, body);
+    AnalysisData { all_loans: all_loans,
+                   loans: loan_dfcx,
+                   move_data:flowed_moves }
+}
 
-    visit::walk_fn(this, fk, decl, body, sp, ());
+/// This and a `ty::ctxt` is all you need to run the dataflow analyses
+/// used in the borrow checker.
+pub struct FnPartsWithCFG<'a> {
+    pub fn_parts: FnParts<'a>,
+    pub cfg:  &'a cfg::CFG,
+}
+
+impl<'a> FnPartsWithCFG<'a> {
+    pub fn from_fn_like(f: &'a FnLikeNode,
+                        g: &'a cfg::CFG) -> FnPartsWithCFG<'a> {
+        FnPartsWithCFG { fn_parts: f.to_fn_parts(), cfg: g }
+    }
+}
+
+/// Accessor for introspective clients inspecting `AnalysisData` and
+/// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
+pub fn build_borrowck_dataflow_data_for_fn<'a>(
+    tcx: &'a ty::ctxt,
+    input: FnPartsWithCFG<'a>) -> (BorrowckCtxt<'a>, AnalysisData<'a>) {
+
+    let mut bccx = BorrowckCtxt {
+        tcx: tcx,
+        stats: box(GC) BorrowStats {
+            loaned_paths_same: Cell::new(0),
+            loaned_paths_imm: Cell::new(0),
+            stable_paths: Cell::new(0),
+            guaranteed_paths: Cell::new(0),
+        }
+    };
+
+    let p = input.fn_parts;
+
+    let dataflow_data = build_borrowck_dataflow_data(
+        &mut bccx, &p.kind, p.decl, input.cfg, p.body, p.span, p.id);
+
+    (bccx, dataflow_data)
 }
 
 // ----------------------------------------------------------------------
@@ -196,6 +260,12 @@ pub struct Loan {
     kill_scope: ast::NodeId,
     span: Span,
     cause: euv::LoanCause,
+}
+
+impl Loan {
+    pub fn loan_path(&self) -> Rc<LoanPath> {
+        self.loan_path.clone()
+    }
 }
 
 #[deriving(PartialEq, Eq, Hash)]

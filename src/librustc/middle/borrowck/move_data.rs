@@ -189,7 +189,7 @@ impl MoveData {
         }
     }
 
-    fn path_loan_path(&self, index: MovePathIndex) -> Rc<LoanPath> {
+    pub fn path_loan_path(&self, index: MovePathIndex) -> Rc<LoanPath> {
         self.paths.borrow().get(index.get()).loan_path.clone()
     }
 
@@ -534,7 +534,7 @@ impl MoveData {
 impl<'a> FlowedMoveData<'a> {
     pub fn new(move_data: MoveData,
                tcx: &'a ty::ctxt,
-               cfg: &'a cfg::CFG,
+               cfg: &cfg::CFG,
                id_range: ast_util::IdRange,
                decl: &ast::FnDecl,
                body: &ast::Block)

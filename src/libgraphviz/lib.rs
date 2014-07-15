@@ -434,9 +434,36 @@ impl<'a> LabelText<'a> {
     /// Renders text as string suitable for a label in a .dot file.
     pub fn escape(&self) -> String {
         match self {
-            &LabelStr(ref s) => s.as_slice().escape_default().to_string(),
-            &EscStr(ref s) => LabelText::escape_str(s.as_slice()).to_string(),
+            &LabelStr(ref s) => s.as_slice().escape_default(),
+            &EscStr(ref s) => LabelText::escape_str(s.as_slice()),
         }
+    }
+
+    /// Decomposes content into string suitable for making EscStr that
+    /// yields same content as self.  The result obeys the law
+    /// render(`lt`) == render(`EscStr(lt.pre_escaped_content())`) for
+    /// all `lt: LabelText`.
+    fn pre_escaped_content(self) -> str::MaybeOwned<'a> {
+        match self {
+            EscStr(s) => s,
+            LabelStr(s) => if s.as_slice().contains_char('\\') {
+                str::Owned(s.as_slice().escape_default())
+            } else {
+                s
+            },
+        }
+    }
+
+    /// Puts `prefix` on a line above this label, with a blank line separator.
+    pub fn prefix_line(self, prefix: LabelText) -> LabelText {
+        prefix.suffix_line(self)
+    }
+
+    /// Puts `suffix` on a line below this label, with a blank line separator.
+    pub fn suffix_line(self, suffix: LabelText) -> LabelText {
+        let prefix = self.pre_escaped_content().into_string();
+        let suffix = suffix.pre_escaped_content();
+        EscStr(str::Owned(prefix.append(r"\n\n").append(suffix.as_slice())))
     }
 }
 
@@ -664,10 +691,7 @@ mod tests {
         let mut writer = MemWriter::new();
         render(&g, &mut writer).unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        match r.read_to_string() {
-            Ok(string) => Ok(string.to_string()),
-            Err(err) => Err(err),
-        }
+        r.read_to_string()
     }
 
     // All of the tests use raw-strings as the format for the expected outputs,
