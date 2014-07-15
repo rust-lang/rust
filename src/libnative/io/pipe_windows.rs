@@ -99,10 +99,10 @@ use super::c;
 use super::util;
 use super::file::to_utf16;
 
-pub struct Event(libc::HANDLE);
+struct Event(libc::HANDLE);
 
 impl Event {
-    pub fn new(manual_reset: bool, initial_state: bool) -> IoResult<Event> {
+    fn new(manual_reset: bool, initial_state: bool) -> IoResult<Event> {
         let event = unsafe {
             libc::CreateEventW(ptr::mut_null(),
                                manual_reset as libc::BOOL,
@@ -116,7 +116,7 @@ impl Event {
         }
     }
 
-    pub fn handle(&self) -> libc::HANDLE { let Event(handle) = *self; handle }
+    fn handle(&self) -> libc::HANDLE { let Event(handle) = *self; handle }
 }
 
 impl Drop for Event {
@@ -708,6 +708,14 @@ impl rtio::RtioUnixAcceptor for UnixAcceptor {
     }
     fn set_timeout(&mut self, timeout: Option<u64>) {
         self.deadline = timeout.map(|i| i + ::io::timer::now()).unwrap_or(0);
+    }
+
+    fn clone(&self) -> Box<rtio::RtioUnixAcceptor + Send> {
+        fail!()
+    }
+
+    fn close_accept(&mut self) -> IoResult<()> {
+        fail!()
     }
 }
 

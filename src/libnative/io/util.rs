@@ -194,7 +194,9 @@ pub fn await(fds: &[net::sock_t], deadline: Option<u64>,
                 &mut tv as *mut _
             }
         };
-        let r = unsafe { c::select(max, read, write, ptr::mut_null(), tvp) };
+        let r = unsafe {
+            c::select(max as libc::c_int, read, write, ptr::mut_null(), tvp)
+        };
         r
     }) {
         -1 => Err(last_error()),
