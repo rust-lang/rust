@@ -2079,17 +2079,17 @@ struct Stack<T> {
     elements: Vec<T>
 }
 
-enum MyOption<T> {
-    MySome(T),
-    MyNone
+enum Maybe<T> {
+    Just(T),
+    Nothing
 }
 # fn main() {}
 ~~~~
 
 These declarations can be instantiated to valid types like `Set<int>`,
-`Stack<int>`, and `MyOption<int>`.
+`Stack<int>`, and `Maybe<int>`.
 
-The last type in that example, `MyOption`, is already defined in Rust as
+The last type in that example, `Maybe`, is already defined in Rust as
 the type `Option` with the constants `Some(T)` and `None`.
 `Option` appears frequently in Rust code. 
 Because Rust does not have null pointers (except in unsafe code),
