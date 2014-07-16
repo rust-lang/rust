@@ -2090,7 +2090,7 @@ These declarations can be instantiated to valid types like `Set<int>`,
 `Stack<int>`, and `Maybe<int>`.
 
 The last type in that example, `Maybe`, is already defined in Rust as
-the type `Option` with the constants `Some(T)` and `None`.
+the type `Option` with the variants `Some(T)` and `None`.
 `Option` appears frequently in Rust code. 
 Because Rust does not have null pointers (except in unsafe code),
 we need another way to write a function whose result isn't defined on every
