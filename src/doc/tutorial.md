@@ -2079,21 +2079,23 @@ struct Stack<T> {
     elements: Vec<T>
 }
 
-enum Option<T> {
-    Some(T),
-    None
+enum MyOption<T> {
+    MySome(T),
+    MyNone
 }
 # fn main() {}
 ~~~~
 
 These declarations can be instantiated to valid types like `Set<int>`,
-`Stack<int>`, and `Option<int>`.
+`Stack<int>`, and `MyOption<int>`.
 
-The last type in that example, `Option`, appears frequently in Rust code.
-Because Rust does not have null pointers (except in unsafe code), we need
-another way to write a function whose result isn't defined on every possible
-combination of arguments of the appropriate types. The usual way is to write
-a function that returns `Option<T>` instead of `T`.
+The last type in that example, `MyOption`, is already defined in Rust as
+the type `Option` with the constants `Some(T)` and `None`.
+`Option` appears frequently in Rust code. 
+Because Rust does not have null pointers (except in unsafe code),
+we need another way to write a function whose result isn't defined on every
+possible combination of arguments of the appropriate types. The usual way is to
+write a function that returns `Option<T>` instead of `T`.`
 
 ~~~~
 # struct Point { x: f64, y: f64 }
