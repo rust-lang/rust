@@ -141,7 +141,7 @@ pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
         }
     };
 
-    debug!("opt_ast_region_to_region(opt_lifetime={:?}) yields {}",
+    debug!("opt_ast_region_to_region(opt_lifetime={}) yields {}",
             opt_lifetime.as_ref().map(|e| lifetime_to_string(e)),
             r.repr(this.tcx()));
 
@@ -504,6 +504,7 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
     }
 }
 
+#[deriving(Show)]
 enum PointerTy {
     Box,
     RPtr(ty::Region),
@@ -565,7 +566,7 @@ fn mk_pointer<AC:AstConv,
               constr: |ty::t| -> ty::t)
               -> ty::t {
     let tcx = this.tcx();
-    debug!("mk_pointer(ptr_ty={:?})", ptr_ty);
+    debug!("mk_pointer(ptr_ty={})", ptr_ty);
 
     match a_seq_ty.ty.node {
         ast::TyVec(ref ty) => {
