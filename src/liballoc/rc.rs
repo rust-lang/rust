@@ -135,8 +135,9 @@ fn main() {
         // that their object is still alive, we need to call upgrade() on them
         // to turn them into a strong reference.  This returns an Option, which
         // contains a reference to our object if it still exists.
-        let gadget = gadget_opt.upgrade().unwrap();
-        println!("Gadget {} owned by {}", gadget.id, gadget.owner.name);
+        gadget_opt.upgrade().map(|gadget| {
+            println!("Gadget {} owned by {}", gadget.id, gadget.owner.name);
+        });
     }
 
     // At the end of the method, gadget_owner, gadget1 and gadget2 get
