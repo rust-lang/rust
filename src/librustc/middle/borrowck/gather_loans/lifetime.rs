@@ -72,6 +72,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_arg(..) |                           // L-Local
             mc::cat_upvar(..) |
             mc::cat_deref(_, _, mc::BorrowedPtr(..)) |  // L-Deref-Borrowed
+            mc::cat_deref(_, _, mc::Implicit(..)) |
             mc::cat_deref(_, _, mc::UnsafePtr(..)) => {
                 self.check_scope(self.scope(cmt))
             }
@@ -180,7 +181,8 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_deref(_, _, mc::UnsafePtr(..)) => {
                 ty::ReStatic
             }
-            mc::cat_deref(_, _, mc::BorrowedPtr(_, r)) => {
+            mc::cat_deref(_, _, mc::BorrowedPtr(_, r)) |
+            mc::cat_deref(_, _, mc::Implicit(_, r)) => {
                 r
             }
             mc::cat_downcast(ref cmt) |

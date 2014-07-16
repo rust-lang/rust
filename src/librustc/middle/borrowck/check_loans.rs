@@ -734,7 +734,8 @@ impl<'a> CheckLoanCtxt<'a> {
                     mc::cat_static_item |
                     mc::cat_copied_upvar(..) |
                     mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-                    mc::cat_deref(_, _, mc::BorrowedPtr(..)) => {
+                    mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
+                    mc::cat_deref(_, _, mc::Implicit(..)) => {
                         assert_eq!(cmt.mutbl, mc::McDeclared);
                         return;
                     }
