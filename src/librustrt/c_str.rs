@@ -778,11 +778,11 @@ mod tests {
             c_ = Some(c.clone());
             c.clone();
             // force a copy, reading the memory
-            c.as_bytes().to_owned();
+            c.as_bytes().to_vec();
         });
         let c_ = c_.unwrap();
         // force a copy, reading the memory
-        c_.as_bytes().to_owned();
+        c_.as_bytes().to_vec();
     }
 
     #[test]

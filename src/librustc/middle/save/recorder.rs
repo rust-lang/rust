@@ -170,7 +170,7 @@ impl<'a> FmtStrs<'a> {
                 String::from_str(v)
             }
         )));
-        Some(strs.fold(String::new(), |s, ss| s.append(ss.as_slice()))).map(|s| s.into_owned())
+        Some(strs.fold(String::new(), |s, ss| s.append(ss.as_slice())))
     }
 
     pub fn record_without_span(&mut self,
@@ -503,7 +503,7 @@ impl<'a> FmtStrs<'a> {
         };
         let (dcn, dck) = match declid {
             Some(declid) => (s!(declid.node), s!(declid.krate)),
-            None => ("".to_owned(), "".to_owned())
+            None => ("".to_string(), "".to_string())
         };
         self.check_and_record(MethodCall,
                               span,

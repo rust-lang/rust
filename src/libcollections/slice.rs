@@ -277,21 +277,33 @@ impl<T: Clone> Iterator<Vec<T>> for Permutations<T> {
 
 /// Extension methods for vector slices with cloneable elements
 pub trait CloneableVector<T> {
-    /// Copy `self` into a new owned vector
-    fn to_owned(&self) -> Vec<T>;
+    /// Copy `self` into a new vector
+    fn to_vec(&self) -> Vec<T>;
+
+    /// Deprecated. Use `to_vec`
+    #[deprecated = "Replaced by `to_vec`"]
+    fn to_owned(&self) -> Vec<T> {
+        self.to_vec()
+    }
 
     /// Convert `self` into an owned vector, not making a copy if possible.
-    fn into_owned(self) -> Vec<T>;
+    fn into_vec(self) -> Vec<T>;
+
+    /// Deprecated. Use `into_vec`
+    #[deprecated = "Replaced by `into_vec`"]
+    fn into_owned(self) -> Vec<T> {
+        self.into_vec()
+    }
 }
 
 /// Extension methods for vector slices
 impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     /// Returns a copy of `v`.
     #[inline]
-    fn to_owned(&self) -> Vec<T> { Vec::from_slice(*self) }
+    fn to_vec(&self) -> Vec<T> { Vec::from_slice(*self) }
 
     #[inline(always)]
-    fn into_owned(self) -> Vec<T> { self.to_owned() }
+    fn into_vec(self) -> Vec<T> { self.to_vec() }
 }
 
 /// Extension methods for vectors containing `Clone` elements.
@@ -325,7 +337,7 @@ impl<'a,T:Clone> ImmutableCloneableVector<T> for &'a [T] {
     fn permutations(self) -> Permutations<T> {
         Permutations{
             swaps: ElementSwaps::new(self.len()),
-            v: self.to_owned(),
+            v: self.to_vec(),
         }
     }
 
@@ -888,7 +900,7 @@ mod tests {
     fn test_slice() {
         // Test fixed length vector.
         let vec_fixed = [1i, 2, 3, 4];
-        let v_a = vec_fixed.slice(1u, vec_fixed.len()).to_owned();
+        let v_a = vec_fixed.slice(1u, vec_fixed.len()).to_vec();
         assert_eq!(v_a.len(), 3u);
         let v_a = v_a.as_slice();
         assert_eq!(v_a[0], 2);
@@ -897,7 +909,7 @@ mod tests {
 
         // Test on stack.
         let vec_stack = &[1i, 2, 3];
-        let v_b = vec_stack.slice(1u, 3u).to_owned();
+        let v_b = vec_stack.slice(1u, 3u).to_vec();
         assert_eq!(v_b.len(), 2u);
         let v_b = v_b.as_slice();
         assert_eq!(v_b[0], 2);
@@ -905,7 +917,7 @@ mod tests {
 
         // Test `Box<[T]>`
         let vec_unique = vec![1i, 2, 3, 4, 5, 6];
-        let v_d = vec_unique.slice(1u, 6u).to_owned();
+        let v_d = vec_unique.slice(1u, 6u).to_vec();
         assert_eq!(v_d.len(), 5u);
         let v_d = v_d.as_slice();
         assert_eq!(v_d[0], 2);
@@ -1132,7 +1144,7 @@ mod tests {
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);
             assert_eq!(max_opt.unwrap(), 1);
-            assert_eq!(it.next(), Some(v.as_slice().to_owned()));
+            assert_eq!(it.next(), Some(v.as_slice().to_vec()));
             assert_eq!(it.next(), None);
         }
         {
@@ -1141,7 +1153,7 @@ mod tests {
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);
             assert_eq!(max_opt.unwrap(), 1);
-            assert_eq!(it.next(), Some(v.as_slice().to_owned()));
+            assert_eq!(it.next(), Some(v.as_slice().to_vec()));
             assert_eq!(it.next(), None);
         }
         {
