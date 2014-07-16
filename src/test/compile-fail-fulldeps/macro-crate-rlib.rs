@@ -12,6 +12,7 @@
 // ignore-stage1
 // ignore-tidy-linelength
 // ignore-android
+// ignore-cross-compile gives a different error message
 
 #![feature(phase)]
 #[phase(plugin)] extern crate rlib_crate_test;
