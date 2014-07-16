@@ -1219,7 +1219,8 @@ fn link_region(rcx: &Rcx,
                kind.repr(rcx.tcx()),
                cmt_borrowed.repr(rcx.tcx()));
         match cmt_borrowed.cat.clone() {
-            mc::cat_deref(base, _, mc::BorrowedPtr(_, r_borrowed)) => {
+            mc::cat_deref(base, _, mc::BorrowedPtr(_, r_borrowed)) |
+            mc::cat_deref(base, _, mc::Implicit(_, r_borrowed)) => {
                 // References to an upvar `x` are translated to
                 // `*x`, since that is what happens in the
                 // underlying machine.  We detect such references
@@ -1340,7 +1341,8 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
                 continue;
             }
 
-            mc::cat_deref(base, _, mc::BorrowedPtr(..)) => {
+            mc::cat_deref(base, _, mc::BorrowedPtr(..)) |
+            mc::cat_deref(base, _, mc::Implicit(..)) => {
                 match base.cat {
                     mc::cat_upvar(ref upvar_id, _) => {
                         // if this is an implicit deref of an
@@ -1394,7 +1396,8 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
                 continue;
             }
 
-            mc::cat_deref(base, _, mc::BorrowedPtr(..)) => {
+            mc::cat_deref(base, _, mc::BorrowedPtr(..)) |
+            mc::cat_deref(base, _, mc::Implicit(..)) => {
                 match base.cat {
                     mc::cat_upvar(ref upvar_id, _) => {
                         // if this is an implicit deref of an

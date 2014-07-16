@@ -58,7 +58,7 @@ fn main() {
         x: 1,
     };
     s[2] = 20;
-    //~^ ERROR cannot assign to immutable indexed content
+    //~^ ERROR cannot assign to immutable dereference (dereference is implicit, due to indexing)
 }
 
 
