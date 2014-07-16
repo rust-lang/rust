@@ -11,6 +11,22 @@
 //! An ordered map and set implemented as self-balancing binary search
 //! trees. The only requirement for the types is that the key implements
 //! `Ord`.
+//!
+//! ## Example
+//!
+//! ```{rust}
+//! use std::collections::TreeSet;
+//!
+//! let mut tree_set = TreeSet::new();
+//!
+//! tree_set.insert(2i);
+//! tree_set.insert(1i);
+//! tree_set.insert(3i);
+//!
+//! for i in tree_set.iter() {
+//!    println!("{}", i) // prints 1, then 2, then 3
+//! }
+//! ```
 
 use core::prelude::*;
 
@@ -587,6 +603,22 @@ impl<'a, T> Iterator<&'a T> for RevSetItems<'a, T> {
 /// A implementation of the `Set` trait on top of the `TreeMap` container. The
 /// only requirement is that the type of the elements contained ascribes to the
 /// `Ord` trait.
+///
+/// ## Example
+///
+/// ```{rust}
+/// use std::collections::TreeSet;
+///
+/// let mut tree_set = TreeSet::new();
+///
+/// tree_set.insert(2i);
+/// tree_set.insert(1i);
+/// tree_set.insert(3i);
+///
+/// for i in tree_set.iter() {
+///    println!("{}", i) // prints 1, then 2, then 3
+/// }
+/// ```
 #[deriving(Clone)]
 pub struct TreeSet<T> {
     map: TreeMap<T, ()>
