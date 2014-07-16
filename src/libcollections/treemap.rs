@@ -879,6 +879,14 @@ impl<T: Ord> PartialOrd for TreeMultiset<T> {
     }
 }
 
+impl<S: Writer, T: Ord + Hash<S>> Hash<S> for TreeMultiset<T> {
+    fn hash(&self, state: &mut S) {
+        for elt in self.iter() {
+            elt.hash(state);
+        }
+    }
+}
+
 impl<T: Ord + Show> Show for TreeMultiset<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
@@ -2194,6 +2202,7 @@ mod test_set {
 #[cfg(test)]
 mod test_mset {
     use std::prelude::*;
+    use std::hash;
 
     use {Multiset, MutableMultiset, Mutable, MutableMap};
     use super::{TreeMap, TreeMultiset};
@@ -2368,6 +2377,22 @@ mod test_mset {
       m.insert(2);
 
       assert!(m.clone() == m);
+    }
+
+    #[test]
+    fn test_hash() {
+      let mut x = TreeMultiset::new();
+      let mut y = TreeMultiset::new();
+
+      x.insert(1i);
+      x.insert(2);
+      x.insert(3);
+
+      y.insert(3i);
+      y.insert(2);
+      y.insert(1);
+
+      assert!(hash::hash(&x) == hash::hash(&y));
     }
 
     fn check(a: &[int],
