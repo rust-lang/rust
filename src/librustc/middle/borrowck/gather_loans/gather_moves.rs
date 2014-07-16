@@ -131,6 +131,7 @@ fn check_and_get_illegal_move_origin(bccx: &BorrowckCtxt,
                                      cmt: &mc::cmt) -> Option<mc::cmt> {
     match cmt.cat {
         mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
+        mc::cat_deref(_, _, mc::Implicit(..)) |
         mc::cat_deref(_, _, mc::GcPtr) |
         mc::cat_deref(_, _, mc::UnsafePtr(..)) |
         mc::cat_upvar(..) | mc::cat_static_item |
