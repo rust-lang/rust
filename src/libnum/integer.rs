@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Integer trait and functions
+//! Integer trait and functions.
 
 pub trait Integer: Num + PartialOrd
                  + Div<Self, Self>
                  + Rem<Self, Self> {
-    /// Simultaneous truncated integer division and modulus
-    #[inline]
-    fn div_rem(&self, other: &Self) -> (Self, Self) {
-        (*self / *other, *self % *other)
-    }
-
-    /// Floored integer division
+    /// Floored integer division.
     ///
     /// # Examples
     ///
@@ -61,25 +55,103 @@ pub trait Integer: Num + PartialOrd
     /// ~~~
     fn mod_floor(&self, other: &Self) -> Self;
 
-    /// Simultaneous floored integer division and modulus
+    /// Greatest Common Divisor (GCD).
+    ///
+    /// # Examples
+    ///
+    /// ~~~
+    /// # use num::Integer;
+    /// assert_eq!(6i.gcd(&8), 2);
+    /// assert_eq!(7i.gcd(&3), 1);
+    /// ~~~
+    fn gcd(&self, other: &Self) -> Self;
+
+    /// Lowest Common Multiple (LCM).
+    ///
+    /// # Examples
+    ///
+    /// ~~~
+    /// # use num::Integer;
+    /// assert_eq!(7i.lcm(&3), 21);
+    /// assert_eq!(2i.lcm(&4), 4);
+    /// ~~~
+    fn lcm(&self, other: &Self) -> Self;
+
+    /// Returns `true` if `other` divides evenly into `self`.
+    ///
+    /// # Examples
+    ///
+    /// ~~~
+    /// # use num::Integer;
+    /// assert_eq!(9i.divides(&3), true);
+    /// assert_eq!(3i.divides(&9), false);
+    /// ~~~
+    fn divides(&self, other: &Self) -> bool;
+
+    /// Returns `true` if the number is even.
+    ///
+    /// # Examples
+    ///
+    /// ~~~
+    /// # use num::Integer;
+    /// assert_eq!(3i.is_even(), false);
+    /// assert_eq!(4i.is_even(), true);
+    /// ~~~
+    fn is_even(&self) -> bool;
+
+    /// Returns `true` if the number is odd.
+    ///
+    /// # Examples
+    ///
+    /// ~~~
+    /// # use num::Integer;
+    /// assert_eq!(3i.is_odd(), true);
+    /// assert_eq!(4i.is_odd(), false);
+    /// ~~~
+    fn is_odd(&self) -> bool;
+
+    /// Simultaneous truncated integer division and modulus.
+    /// Returns `(quotient, remainder)`.
+    ///
+    /// # Examples
+    ///
+    /// ~~~
+    /// # use num::Integer;
+    /// assert_eq!(( 8i).div_rem( &3), ( 2,  2));
+    /// assert_eq!(( 8i).div_rem(&-3), (-2,  2));
+    /// assert_eq!((-8i).div_rem( &3), (-2, -2));
+    /// assert_eq!((-8i).div_rem(&-3), ( 2, -2));
+    ///
+    /// assert_eq!(( 1i).div_rem( &2), ( 0,  1));
+    /// assert_eq!(( 1i).div_rem(&-2), ( 0,  1));
+    /// assert_eq!((-1i).div_rem( &2), ( 0, -1));
+    /// assert_eq!((-1i).div_rem(&-2), ( 0, -1));
+    /// ~~~
+    #[inline]
+    fn div_rem(&self, other: &Self) -> (Self, Self) {
+        (*self / *other, *self % *other)
+    }
+
+    /// Simultaneous floored integer division and modulus.
+    /// Returns `(quotient, remainder)`.
+    ///
+    /// # Examples
+    ///
+    /// ~~~
+    /// # use num::Integer;
+    /// assert_eq!(( 8i).div_mod_floor( &3), ( 2,  2));
+    /// assert_eq!(( 8i).div_mod_floor(&-3), (-3, -1));
+    /// assert_eq!((-8i).div_mod_floor( &3), (-3,  1));
+    /// assert_eq!((-8i).div_mod_floor(&-3), ( 2, -2));
+    ///
+    /// assert_eq!(( 1i).div_mod_floor( &2), ( 0,  1));
+    /// assert_eq!(( 1i).div_mod_floor(&-2), (-1, -1));
+    /// assert_eq!((-1i).div_mod_floor( &2), (-1,  1));
+    /// assert_eq!((-1i).div_mod_floor(&-2), ( 0, -1));
+    /// ~~~
     fn div_mod_floor(&self, other: &Self) -> (Self, Self) {
         (self.div_floor(other), self.mod_floor(other))
     }
-
-    /// Greatest Common Divisor (GCD)
-    fn gcd(&self, other: &Self) -> Self;
-
-    /// Lowest Common Multiple (LCM)
-    fn lcm(&self, other: &Self) -> Self;
-
-    /// Returns `true` if `other` divides evenly into `self`
-    fn divides(&self, other: &Self) -> bool;
-
-    /// Returns `true` if the number is even
-    fn is_even(&self) -> bool;
-
-    /// Returns `true` if the number is odd
-    fn is_odd(&self) -> bool;
 }
 
 /// Simultaneous integer division and modulus
