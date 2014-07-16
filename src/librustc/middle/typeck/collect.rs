@@ -57,8 +57,7 @@ use syntax::ast::{StaticRegionTyParamBound, OtherRegionTyParamBound};
 use syntax::ast::{TraitTyParamBound, UnboxedFnTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util;
-use syntax::ast_util::{local_def, method_ident, split_trait_methods};
+use syntax::ast_util::{local_def, split_trait_methods, PostExpansionMethod};
 use syntax::codemap::Span;
 use syntax::codemap;
 use syntax::owned_slice::OwnedSlice;
@@ -214,11 +213,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                             &ast::Provided(ref m) => {
                                 ty_method_of_trait_method(
                                     ccx, trait_id, &trait_def.generics,
-                                    &m.id, &ast_util::method_ident(&**m),
-                                    ast_util::method_explicit_self(&**m),
-                                    ast_util::method_generics(&**m),
-                                    &ast_util::method_fn_style(&**m),
-                                    ast_util::method_fn_decl(&**m))
+                                    &m.id, &m.pe_ident(), m.pe_explicit_self(),
+                                    m.pe_generics(), &m.pe_fn_style(), m.pe_fn_decl())
                             }
                         });
 
@@ -334,7 +330,7 @@ fn convert_methods(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
     let mut seen_methods = HashSet::new();
     for m in ms.iter() {
-        if !seen_methods.insert(ast_util::method_ident(&**m).repr(tcx)) {
+        if !seen_methods.insert(m.pe_ident().repr(ccx.tcx)) {
             tcx.sess.span_err(m.span, "duplicate method in trait impl");
         }
 
@@ -346,9 +342,9 @@ fn convert_methods(ccx: &CrateCtxt,
                                        rcvr_visibility));
         let fty = ty::mk_bare_fn(tcx, mty.fty.clone());
         debug!("method {} (id {}) has type {}",
-                method_ident(&**m).repr(tcx),
+                m.pe_ident().repr(ccx.tcx),
                 m.id,
-                fty.repr(tcx));
+                fty.repr(ccx.tcx));
         tcx.tcache.borrow_mut().insert(
             local_def(m.id),
             Polytype {
@@ -369,24 +365,23 @@ fn convert_methods(ccx: &CrateCtxt,
                     rcvr_visibility: ast::Visibility)
                     -> ty::Method
     {
-        let fty = astconv::ty_of_method(ccx, m.id, ast_util::method_fn_style(&*m),
+        let fty = astconv::ty_of_method(ccx, m.id, m.pe_fn_style(),
                                         untransformed_rcvr_ty,
-                                        *ast_util::method_explicit_self(&*m),
-                                        ast_util::method_fn_decl(&*m));
+                                        *m.pe_explicit_self(), m.pe_fn_decl());
 
         // if the method specifies a visibility, use that, otherwise
         // inherit the visibility from the impl (so `foo` in `pub impl
         // { fn foo(); }` is public, but private in `priv impl { fn
         // foo(); }`).
-        let method_vis = ast_util::method_vis(&*m).inherit_from(rcvr_visibility);
+        let method_vis = m.pe_vis().inherit_from(rcvr_visibility);
 
         let m_ty_generics =
-            ty_generics_for_fn_or_method(ccx, ast_util::method_generics(&*m),
+            ty_generics_for_fn_or_method(ccx, m.pe_generics(),
                                          (*rcvr_ty_generics).clone());
-        ty::Method::new(ast_util::method_ident(&*m),
+        ty::Method::new(m.pe_ident(),
                         m_ty_generics,
                         fty,
-                        ast_util::method_explicit_self(&*m).node,
+                        m.pe_explicit_self().node,
                         method_vis,
                         local_def(m.id),
                         container,

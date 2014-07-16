@@ -43,6 +43,7 @@ use syntax::ast_map::{PathElem, PathElems};
 use syntax::ast_map;
 use syntax::ast_util::*;
 use syntax::ast_util;
+use syntax::ast_util::PostExpansionMethod;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::SpanHandler;
@@ -798,7 +799,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
         } else {
             encode_symbol(ecx, ebml_w, m.def_id.node);
         }
-        encode_method_argument_names(ebml_w, method_fn_decl(&*ast_method));
+        encode_method_argument_names(ebml_w, &*ast_method.pe_fn_decl());
     }
 
     ebml_w.end_tag();
@@ -1240,7 +1241,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     encode_method_sort(ebml_w, 'p');
                     encode_inlined_item(ecx, ebml_w,
                                         IIMethodRef(def_id, true, &*m));
-                    encode_method_argument_names(ebml_w, method_fn_decl(m));
+                    encode_method_argument_names(ebml_w, m.pe_fn_decl());
                 }
             }
 

@@ -26,7 +26,7 @@ use ast::{P, Block, FnDecl, NodeId};
 use ast;
 use ast_map::{Node};
 use ast_map;
-use ast_util;
+use ast_util::PostExpansionMethod;
 use codemap::Span;
 use visit;
 
@@ -152,13 +152,13 @@ impl FnLikeNode {
 
     pub fn body<'a>(&'a self) -> P<Block> {
         self.handle(|i: ItemFnParts|     i.body,
-                    |m: &'a ast::Method| ast_util::method_body(m),
+                    |m: &'a ast::Method| m.pe_body(),
                     |c: ClosureParts|    c.body)
     }
 
     pub fn decl<'a>(&'a self) -> P<FnDecl> {
         self.handle(|i: ItemFnParts|     i.decl,
-                    |m: &'a ast::Method| ast_util::method_fn_decl(m),
+                    |m: &'a ast::Method| m.pe_fn_decl(),
                     |c: ClosureParts|    c.decl)
     }
 
@@ -182,7 +182,7 @@ impl FnLikeNode {
             visit::FkFnBlock
         };
         let method = |m: &'a ast::Method| {
-            visit::FkMethod(ast_util::method_ident(m), ast_util::method_generics(m), m)
+            visit::FkMethod(m.pe_ident(), m.pe_generics(), m)
         };
         self.handle(item, method, closure)
     }
