@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 
@@ -43,6 +46,35 @@
 // gdb-check:$7 = {{Case1, x = 0, y = 8970181431921507452}, {Case1, 0, 2088533116, 2088533116}}
 // gdb-command:continue
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print s
+// lldb-check:[...]$0 = Struct { a: 1, b: 2.5 }
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$1 = Struct { a: 3, b: 4.5 }
+// lldb-command:print y
+// lldb-check:[...]$2 = 5
+// lldb-command:print z
+// lldb-check:[...]$3 = 6.5
+// lldb-command:continue
+
+// lldb-command:print a
+// lldb-check:[...]$4 = (7, 8, 9.5, 10.5)
+// lldb-command:continue
+
+// lldb-command:print a
+// lldb-check:[...]$5 = Newtype(11.5, 12.5, 13, 14)
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$6 = Case1 { x: 0, y: 8970181431921507452 }
+// lldb-command:continue
+
 #![feature(struct_variant)]
 
 #[deriving(Clone)]
@@ -58,21 +90,21 @@ struct StructStruct {
 }
 
 fn fun(s: Struct) {
-    zzz();
+    zzz(); // #break
 }
 
 fn fun_fun(StructStruct { a: x, b: Struct { a: y, b: z } }: StructStruct) {
-    zzz();
+    zzz(); // #break
 }
 
 fn tup(a: (int, uint, f64, f64)) {
-    zzz();
+    zzz(); // #break
 }
 
 struct Newtype(f64, f64, int, uint);
 
 fn new_type(a: Newtype) {
-    zzz();
+    zzz(); // #break
 }
 
 // The first element is to ensure proper alignment, irrespective of the machines word size. Since
@@ -84,7 +116,7 @@ enum Enum {
 }
 
 fn by_val_enum(x: Enum) {
-    zzz();
+    zzz(); // #break
 }
 
 fn main() {
@@ -100,4 +132,4 @@ fn main() {
     by_val_enum(Case1 { x: 0, y: 8970181431921507452 });
 }
 
-fn zzz() {()}
+fn zzz() { () }

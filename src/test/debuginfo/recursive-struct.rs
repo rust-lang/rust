@@ -10,6 +10,7 @@
 
 // ignore-tidy-linelength
 // ignore-android: FIXME(#10381)
+// ignore-lldb
 
 #![feature(managed_boxes)]
 

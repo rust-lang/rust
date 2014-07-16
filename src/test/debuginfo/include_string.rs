@@ -15,12 +15,26 @@
 // gdb-command:run
 // gdb-command:finish
 // gdb-command:print string1.length
-// gdb-check:$1 = 49
+// gdb-check:$1 = 48
 // gdb-command:print string2.length
 // gdb-check:$2 = 49
 // gdb-command:print string3.length
-// gdb-check:$3 = 49
+// gdb-check:$3 = 50
 // gdb-command:continue
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print string1.length
+// lldb-check:[...]$0 = 48
+// lldb-command:print string2.length
+// lldb-check:[...]$1 = 49
+// lldb-command:print string3.length
+// lldb-check:[...]$2 = 50
+
+// lldb-command:continue
 
 #![allow(unused_variable)]
 
@@ -31,7 +45,8 @@ fn main() {
     let string1 = include_str!("text-to-include-1.txt");
     let string2 = include_str!("text-to-include-2.txt");
     let string3 = include_str!("text-to-include-3.txt");
-    zzz();
+
+    zzz(); // #break
 }
 
 fn zzz() {()}

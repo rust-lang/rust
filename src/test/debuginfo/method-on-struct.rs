@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 
@@ -64,6 +67,56 @@
 // gdb-check:$15 = -10
 // gdb-command:continue
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// STACK BY REF
+// lldb-command:print *self
+// lldb-check:[...]$0 = Struct { x: 100 }
+// lldb-command:print arg1
+// lldb-check:[...]$1 = -1
+// lldb-command:print arg2
+// lldb-check:[...]$2 = -2
+// lldb-command:continue
+
+// STACK BY VAL
+// lldb-command:print self
+// lldb-check:[...]$3 = Struct { x: 100 }
+// lldb-command:print arg1
+// lldb-check:[...]$4 = -3
+// lldb-command:print arg2
+// lldb-check:[...]$5 = -4
+// lldb-command:continue
+
+// OWNED BY REF
+// lldb-command:print *self
+// lldb-check:[...]$6 = Struct { x: 200 }
+// lldb-command:print arg1
+// lldb-check:[...]$7 = -5
+// lldb-command:print arg2
+// lldb-check:[...]$8 = -6
+// lldb-command:continue
+
+// OWNED BY VAL
+// lldb-command:print self
+// lldb-check:[...]$9 = Struct { x: 200 }
+// lldb-command:print arg1
+// lldb-check:[...]$10 = -7
+// lldb-command:print arg2
+// lldb-check:[...]$11 = -8
+// lldb-command:continue
+
+// OWNED MOVED
+// lldb-command:print *self
+// lldb-check:[...]$12 = Struct { x: 200 }
+// lldb-command:print arg1
+// lldb-check:[...]$13 = -9
+// lldb-command:print arg2
+// lldb-check:[...]$14 = -10
+// lldb-command:continue
+
 struct Struct {
     x: int
 }
@@ -71,17 +124,17 @@ struct Struct {
 impl Struct {
 
     fn self_by_ref(&self, arg1: int, arg2: int) -> int {
-        zzz();
+        zzz(); // #break
         self.x + arg1 + arg2
     }
 
     fn self_by_val(self, arg1: int, arg2: int) -> int {
-        zzz();
+        zzz(); // #break
         self.x + arg1 + arg2
     }
 
     fn self_owned(~self, arg1: int, arg2: int) -> int {
-        zzz();
+        zzz(); // #break
         self.x + arg1 + arg2
     }
 }

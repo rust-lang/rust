@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 
@@ -32,6 +35,27 @@
 // gdb-check:$5 = 5
 // gdb-command:continue
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// STRUCT
+// lldb-command:print arg1
+// lldb-check:[...]$0 = 1
+// lldb-command:print arg2
+// lldb-check:[...]$1 = 2
+// lldb-command:continue
+
+// ENUM
+// lldb-command:print arg1
+// lldb-check:[...]$2 = -3
+// lldb-command:print arg2
+// lldb-check:[...]$3 = 4.5
+// lldb-command:print arg3
+// lldb-check:[...]$4 = 5
+// lldb-command:continue
+
 #![feature(struct_variant)]
 
 struct Struct {
@@ -41,7 +65,7 @@ struct Struct {
 impl Struct {
 
     fn static_method(arg1: int, arg2: int) -> int {
-        zzz();
+        zzz(); // #break
         arg1 + arg2
     }
 }
@@ -55,7 +79,7 @@ enum Enum {
 impl Enum {
 
     fn static_method(arg1: int, arg2: f64, arg3: uint) -> int {
-        zzz();
+        zzz(); // #break
         arg1
     }
 }

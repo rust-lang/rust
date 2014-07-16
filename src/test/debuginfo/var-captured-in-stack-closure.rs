@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 // gdb-command:finish
@@ -27,6 +30,24 @@
 // gdb-check:$5 = 6
 // gdb-command:print managed->val
 // gdb-check:$6 = 7
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print variable
+// lldb-check:[...]$0 = 1
+// lldb-command:print constant
+// lldb-check:[...]$1 = 2
+// lldb-command:print a_struct
+// lldb-check:[...]$2 = Struct { a: -3, b: 4.5, c: 5 }
+// lldb-command:print *struct_ref
+// lldb-check:[...]$3 = Struct { a: -3, b: 4.5, c: 5 }
+// lldb-command:print *owned
+// lldb-check:[...]$4 = 6
+// lldb-command:print managed->val
+// lldb-check:[...]$5 = 7
 
 #![feature(managed_boxes)]
 #![allow(unused_variable)]
@@ -54,7 +75,7 @@ fn main() {
     let managed = box(GC) 7;
 
     let closure = || {
-        zzz();
+        zzz(); // #break
         variable = constant + a_struct.a + struct_ref.a + *owned + *managed;
     };
 

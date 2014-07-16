@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 // gdb-command:finish
@@ -21,6 +24,18 @@
 // gdb-check:$2 = {a = -2, b = 3.5, c = 4}
 // gdb-command:print *owned
 // gdb-check:$3 = 5
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print constant
+// lldb-check:[...]$0 = 1
+// lldb-command:print a_struct
+// lldb-check:[...]$1 = Struct { a: -2, b: 3.5, c: 4 }
+// lldb-command:print *owned
+// lldb-check:[...]$2 = 5
 
 #![allow(unused_variable)]
 
@@ -42,7 +57,7 @@ fn main() {
     let owned = box 5;
 
     let closure: proc() = proc() {
-        zzz();
+        zzz(); // #break
         do_something(&constant, &a_struct.a, owned);
     };
 

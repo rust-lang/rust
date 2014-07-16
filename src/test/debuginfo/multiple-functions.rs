@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 // gdb-command:finish
@@ -28,22 +31,38 @@
 // gdb-command:print c
 // gdb-check:$3 = 30303
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print a
+// lldb-check:[...]$0 = 10101
+// lldb-command:continue
+
+// lldb-command:print b
+// lldb-check:[...]$1 = 20202
+// lldb-command:continue
+
+// lldb-command:print c
+// lldb-check:[...]$2 = 30303
+
 #![allow(unused_variable)]
 
 fn function_one() {
     let a = 10101i;
-    zzz();
+    zzz(); // #break
 }
 
 fn function_two() {
     let b = 20202i;
-    zzz();
+    zzz(); // #break
 }
 
 
 fn function_three() {
     let c = 30303i;
-    zzz();
+    zzz(); // #break
 }
 
 

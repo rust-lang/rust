@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:set print pretty off
 // gdb-command:rbreak zzz
 // gdb-command:run
@@ -33,6 +36,28 @@
 // gdb-command:print padding_at_end2
 // gdb-check:$7 = {{21, 22}, 23}
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print no_padding1
+// lldb-check:[...]$0 = ((0, 1), 2, 3)
+// lldb-command:print no_padding2
+// lldb-check:[...]$1 = (4, (5, 6), 7)
+// lldb-command:print no_padding3
+// lldb-check:[...]$2 = (8, 9, (10, 11))
+
+// lldb-command:print internal_padding1
+// lldb-check:[...]$3 = (12, (13, 14))
+// lldb-command:print internal_padding2
+// lldb-check:[...]$4 = (15, (16, 17))
+
+// lldb-command:print padding_at_end1
+// lldb-check:[...]$5 = (18, (19, 20))
+// lldb-command:print padding_at_end2
+// lldb-check:[...]$6 = ((21, 22), 23)
+
 #![allow(unused_variable)]
 
 fn main() {
@@ -46,7 +71,7 @@ fn main() {
     let padding_at_end1: (i32, (i32, i16)) = (18, (19, 20));
     let padding_at_end2: ((i32, i16), i32) = ((21, 22), 23);
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

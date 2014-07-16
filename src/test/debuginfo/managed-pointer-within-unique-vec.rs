@@ -13,6 +13,9 @@
 #![feature(managed_boxes)]
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 // gdb-command:finish
@@ -29,6 +32,24 @@
 // gdb-command:print unique.ptr[3]->val
 // gdb-check:$4 = 13
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print unique.ptr[0]->val
+// lldb-check:[...]$0 = 10
+
+// lldb-command:print unique.ptr[1]->val
+// lldb-check:[...]$1 = 11
+
+// lldb-command:print unique.ptr[2]->val
+// lldb-check:[...]$2 = 12
+
+// lldb-command:print unique.ptr[3]->val
+// lldb-check:[...]$3 = 13
+
+
 #![allow(unused_variable)]
 
 use std::gc::{Gc, GC};
@@ -37,7 +58,7 @@ fn main() {
 
     let unique: Vec<Gc<i64>> = vec!(box(GC) 10, box(GC) 11, box(GC) 12, box(GC) 13);
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

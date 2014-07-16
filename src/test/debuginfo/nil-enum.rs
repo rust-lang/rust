@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// LLDB can't handle zero-sized values
+// ignore-lldb
+
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
