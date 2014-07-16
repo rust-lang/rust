@@ -909,7 +909,7 @@ impl<T: Ord> Extendable<T> for TreeMultiset<T> {
     #[inline]
     fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
         for elem in iter {
-            self.insert_one(elem);
+            self.insert(elem);
         }
     }
 }
@@ -976,13 +976,13 @@ impl<T: Ord> Multiset<T> for TreeMultiset<T> {
 }
 
 impl<T: Ord> MutableMultiset<T> for TreeMultiset<T> {
-    fn insert(&mut self, value: T, n: uint) -> bool {
+    fn insert_many(&mut self, value: T, n: uint) -> bool {
         let curr = self.count(&value);
         self.length += n;
         self.map.insert(value, curr + n)
     }
 
-    fn remove(&mut self, value: &T, n: uint) -> uint {
+    fn remove_many(&mut self, value: &T, n: uint) -> uint {
         let curr = self.count(value);
 
         if n >= curr {
@@ -2202,22 +2202,22 @@ mod test_mset {
     fn test_len() {
         let mut s = TreeMultiset::new();
         assert!(s.len() == 0);
-        assert!(s.insert_one(1i));
+        assert!(s.insert(1i));
         assert!(s.len() == 1);
-        assert!(s.insert(3, 5));
+        assert!(s.insert_many(3, 5));
         assert!(s.len() == 6);
-        assert!(s.insert(7, 2));
+        assert!(s.insert_many(7, 2));
         assert!(s.len() == 8);
 
-        assert!(s.remove_one(&7));
+        assert!(s.remove(&7));
         assert!(s.len() == 7);
-        assert!(s.remove_one(&7));
+        assert!(s.remove(&7));
         assert!(s.len() == 6);
-        assert!(!s.remove_one(&7));
+        assert!(!s.remove(&7));
         assert!(s.len() == 6);
-        assert!(s.remove(&3, 3) == 3);
+        assert!(s.remove_many(&3, 3) == 3);
         assert!(s.len() == 3);
-        assert!(s.remove(&3, 8) == 2);
+        assert!(s.remove_many(&3, 8) == 2);
         assert!(s.len() == 1);
     }
 
@@ -2225,9 +2225,9 @@ mod test_mset {
     fn test_clear() {
         let mut s = TreeMultiset::new();
         s.clear();
-        assert!(s.insert_one(5i));
-        assert!(s.insert_one(12));
-        assert!(s.insert_one(19));
+        assert!(s.insert(5i));
+        assert!(s.insert(12));
+        assert!(s.insert(19));
         s.clear();
         assert!(!s.contains(&5));
         assert!(!s.contains(&12));
@@ -2238,19 +2238,19 @@ mod test_mset {
     #[test]
     fn test_count() {
         let mut m = TreeMultiset::new();
-        assert!(m.insert_one(1i));
+        assert!(m.insert(1i));
         assert!(m.count(&1) == 1);
-        assert!(!m.insert_one(1i));
+        assert!(!m.insert(1i));
         assert!(m.count(&1) == 2);
 
         assert!(m.count(&2) == 0);
-        assert!(m.insert(2i, 4));
+        assert!(m.insert_many(2i, 4));
         assert!(m.count(&2) == 4);
-        assert!(m.remove(&2, 3) == 3);
+        assert!(m.remove_many(&2, 3) == 3);
         assert!(m.count(&2) == 1);
-        assert!(m.remove_one(&2));
+        assert!(m.remove(&2));
         assert!(m.count(&2) == 0);
-        assert!(!m.remove_one(&2));
+        assert!(!m.remove(&2));
         assert!(m.count(&2) == 0);
     }
 
@@ -2260,21 +2260,21 @@ mod test_mset {
         let mut ys = TreeMultiset::new();
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
-        assert!(xs.insert_one(5i));
-        assert!(ys.insert_one(11i));
+        assert!(xs.insert(5i));
+        assert!(ys.insert(11i));
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
-        assert!(xs.insert_one(7));
-        assert!(xs.insert_one(19));
-        assert!(xs.insert_one(4));
-        assert!(ys.insert_one(2));
-        assert!(ys.insert_one(-11));
+        assert!(xs.insert(7));
+        assert!(xs.insert(19));
+        assert!(xs.insert(4));
+        assert!(ys.insert(2));
+        assert!(ys.insert(-11));
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
-        assert!(ys.insert_one(7));
+        assert!(ys.insert(7));
         assert!(!ys.is_disjoint(&xs));
         assert!(!xs.is_disjoint(&ys));
-        assert!(!xs.insert_one(7));
+        assert!(!xs.insert(7));
         assert!(!ys.is_disjoint(&xs));
         assert!(!xs.is_disjoint(&ys));
     }
@@ -2282,41 +2282,41 @@ mod test_mset {
     #[test]
     fn test_subset_and_superset() {
         let mut a = TreeMultiset::new();
-        assert!(a.insert_one(0i));
-        assert!(a.insert_one(5));
-        assert!(a.insert_one(11));
-        assert!(a.insert_one(7));
+        assert!(a.insert(0i));
+        assert!(a.insert(5));
+        assert!(a.insert(11));
+        assert!(a.insert(7));
 
         let mut b = TreeMultiset::new();
-        assert!(b.insert_one(0i));
-        assert!(b.insert_one(7));
-        assert!(b.insert_one(19));
-        assert!(b.insert_one(250));
-        assert!(b.insert_one(11));
-        assert!(b.insert_one(200));
+        assert!(b.insert(0i));
+        assert!(b.insert(7));
+        assert!(b.insert(19));
+        assert!(b.insert(250));
+        assert!(b.insert(11));
+        assert!(b.insert(200));
 
         assert!(!a.is_subset(&b));
         assert!(!a.is_superset(&b));
         assert!(!b.is_subset(&a));
         assert!(!b.is_superset(&a));
 
-        assert!(!a.insert_one(5));
-        assert!(b.insert_one(5));
+        assert!(!a.insert(5));
+        assert!(b.insert(5));
 
         assert!(!a.is_subset(&b));
         assert!(!a.is_superset(&b));
         assert!(!b.is_subset(&a));
         assert!(!b.is_superset(&a));
 
-        assert!(!b.insert_one(5));
+        assert!(!b.insert(5));
 
         assert!(a.is_subset(&b));
         assert!(!a.is_superset(&b));
         assert!(!b.is_subset(&a));
         assert!(b.is_superset(&a));
 
-        assert!(!b.insert_one(7));
-        assert!(!b.insert_one(7));
+        assert!(!b.insert(7));
+        assert!(!b.insert(7));
 
         assert!(a.is_subset(&b));
         assert!(!a.is_superset(&b));
@@ -2328,13 +2328,13 @@ mod test_mset {
     fn test_iterator() {
         let mut m = TreeMultiset::new();
 
-        assert!(m.insert_one(3i));
-        assert!(m.insert_one(2));
-        assert!(m.insert_one(0));
-        assert!(m.insert_one(-2));
-        assert!(m.insert_one(4));
-        assert!(!m.insert_one(2));
-        assert!(m.insert_one(1));
+        assert!(m.insert(3i));
+        assert!(m.insert(2));
+        assert!(m.insert(0));
+        assert!(m.insert(-2));
+        assert!(m.insert(4));
+        assert!(!m.insert(2));
+        assert!(m.insert(1));
 
         let v = vec!(-2i, 0, 1, 2, 2, 3, 4);
         for (x, y) in m.iter().zip(v.iter()) {
@@ -2346,13 +2346,13 @@ mod test_mset {
     fn test_rev_iter() {
         let mut m = TreeMultiset::new();
 
-        assert!(m.insert_one(3i));
-        assert!(m.insert_one(2));
-        assert!(m.insert_one(0));
-        assert!(m.insert_one(-2));
-        assert!(m.insert_one(4));
-        assert!(!m.insert_one(2));
-        assert!(m.insert_one(1));
+        assert!(m.insert(3i));
+        assert!(m.insert(2));
+        assert!(m.insert(0));
+        assert!(m.insert(-2));
+        assert!(m.insert(4));
+        assert!(!m.insert(2));
+        assert!(m.insert(1));
 
         let v = vec!(4i, 3, 2, 2, 1, 0, -2);
         for (x, y) in m.rev_iter().zip(v.iter()) {
@@ -2364,8 +2364,8 @@ mod test_mset {
     fn test_clone_eq() {
       let mut m = TreeMultiset::new();
 
-      m.insert_one(1i);
-      m.insert_one(2);
+      m.insert(1i);
+      m.insert(2);
 
       assert!(m.clone() == m);
     }
@@ -2377,8 +2377,8 @@ mod test_mset {
         let mut set_a = TreeMultiset::new();
         let mut set_b = TreeMultiset::new();
 
-        for x in a.iter() { set_a.insert_one(*x); }
-        for y in b.iter() { set_b.insert_one(*y); }
+        for x in a.iter() { set_a.insert(*x); }
+        for y in b.iter() { set_b.insert(*y); }
 
         let mut i = 0;
         f(&set_a, &set_b, |x| {
@@ -2491,8 +2491,8 @@ mod test_mset {
         let mut set: TreeMultiset<int> = TreeMultiset::new();
         let empty: TreeMultiset<int> = TreeMultiset::new();
 
-        set.insert_one(1);
-        set.insert(2, 3);
+        set.insert(1);
+        set.insert_many(2, 3);
 
         let set_str = format!("{}", set);
 

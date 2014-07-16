@@ -186,23 +186,23 @@ pub trait Multiset<T>: Collection {
 pub trait MutableMultiset<T>: Multiset<T> + Mutable {
     /// Add `n` occurrences of `value` to the multiset. Return true if the value
     /// was not already present in the multiset.
-    fn insert(&mut self, value: T, n: uint) -> bool;
+    fn insert_many(&mut self, value: T, n: uint) -> bool;
 
     /// Remove `n` occurrences of `value` from the multiset. If there are less
     /// than `n` occurrences, remove all occurrences. Return the number of
     /// occurrences removed.
-    fn remove(&mut self, value: &T, n: uint) -> uint;
+    fn remove_many(&mut self, value: &T, n: uint) -> uint;
 
     /// Add one occurrence of `value` to the multiset. Return true if the value
     /// was not already present in the multiset.
-    fn insert_one(&mut self, value: T) -> bool {
-        self.insert(value, 1)
+    fn insert(&mut self, value: T) -> bool {
+        self.insert_many(value, 1)
     }
 
     /// Remove one occurrence of `value` from the multiset. Return true if the
     /// value was present in the multiset.
-    fn remove_one(&mut self, value: &T) -> bool {
-        self.remove(value, 1) > 0u
+    fn remove(&mut self, value: &T) -> bool {
+        self.remove_many(value, 1) > 0u
     }
 }
 
