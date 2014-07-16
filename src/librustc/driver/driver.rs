@@ -444,6 +444,7 @@ pub fn phase_save_analysis(sess: &Session,
 pub struct CrateTranslation {
     pub context: ContextRef,
     pub module: ModuleRef,
+    pub metadata_context: ContextRef,
     pub metadata_module: ModuleRef,
     pub link: LinkMeta,
     pub metadata: Vec<u8>,

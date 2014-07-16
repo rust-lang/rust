@@ -56,6 +56,7 @@ use middle::trans::common::{tydesc_info, type_is_immediate};
 use middle::trans::common::{type_is_zero_size, val_ty};
 use middle::trans::common;
 use middle::trans::consts;
+use middle::trans::context::SharedCrateContext;
 use middle::trans::controlflow;
 use middle::trans::datum;
 use middle::trans::debuginfo;
@@ -136,7 +137,7 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
 }
 
 pub struct StatRecorder<'a> {
-    ccx: &'a CrateContext,
+    ccx: &'a CrateContext<'a>,
     name: Option<String>,
     start: u64,
     istart: uint,
@@ -2114,7 +2115,7 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
 }
 
 pub struct TransItemVisitor<'a> {
-    pub ccx: &'a CrateContext,
+    pub ccx: &'a CrateContext<'a>,
 }
 
 impl<'a> Visitor<()> for TransItemVisitor<'a> {
@@ -2895,52 +2896,54 @@ pub fn trans_crate(krate: ast::Crate,
 
     let link_meta = link::build_link_meta(&tcx.sess, &krate, name);
 
-    // Append ".rs" to crate name as LLVM module identifier.
-    //
-    // LLVM code generator emits a ".file filename" directive
-    // for ELF backends. Value of the "filename" is set as the
-    // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
-    // crashes if the module identifier is same as other symbols
-    // such as a function name in the module.
-    // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-    let mut llmod_id = link_meta.crate_name.clone();
-    llmod_id.push_str(".rs");
+    // Multiple compilation units won't be supported until a later commit.
+    let codegen_units = 1;
+    let shared_ccx = SharedCrateContext::new(link_meta.crate_name.as_slice(),
+                                             codegen_units,
+                                             tcx,
+                                             exp_map2,
+                                             Sha256::new(),
+                                             link_meta.clone(),
+                                             reachable);
 
-    let ccx = CrateContext::new(llmod_id.as_slice(), tcx, exp_map2,
-                                Sha256::new(), link_meta, reachable);
+    let metadata = {
+        let ccx = shared_ccx.get_ccx(0);
 
-    // First, verify intrinsics.
-    intrinsic::check_intrinsics(&ccx);
+        // First, verify intrinsics.
+        intrinsic::check_intrinsics(&ccx);
 
-    // Next, translate the module.
-    {
-        let _icx = push_ctxt("text");
-        trans_mod(&ccx, &krate.module);
-    }
+        // Next, translate the module.
+        {
+            let _icx = push_ctxt("text");
+            trans_mod(&ccx, &krate.module);
+        }
 
-    glue::emit_tydescs(&ccx);
-    if ccx.sess().opts.debuginfo != NoDebugInfo {
-        debuginfo::finalize(&ccx);
-    }
+        glue::emit_tydescs(&ccx);
+        if ccx.sess().opts.debuginfo != NoDebugInfo {
+            debuginfo::finalize(&ccx);
+        }
 
-    // Translate the metadata.
-    let metadata = write_metadata(&ccx, &krate);
-    if ccx.sess().trans_stats() {
+        // Translate the metadata.
+        write_metadata(&ccx, &krate)
+    };
+
+    if shared_ccx.sess().trans_stats() {
+        let stats = shared_ccx.stats();
         println!("--- trans stats ---");
-        println!("n_static_tydescs: {}", ccx.stats().n_static_tydescs.get());
-        println!("n_glues_created: {}", ccx.stats().n_glues_created.get());
-        println!("n_null_glues: {}", ccx.stats().n_null_glues.get());
-        println!("n_real_glues: {}", ccx.stats().n_real_glues.get());
+        println!("n_static_tydescs: {}", stats.n_static_tydescs.get());
+        println!("n_glues_created: {}", stats.n_glues_created.get());
+        println!("n_null_glues: {}", stats.n_null_glues.get());
+        println!("n_real_glues: {}", stats.n_real_glues.get());
 
-        println!("n_fns: {}", ccx.stats().n_fns.get());
-        println!("n_monos: {}", ccx.stats().n_monos.get());
-        println!("n_inlines: {}", ccx.stats().n_inlines.get());
-        println!("n_closures: {}", ccx.stats().n_closures.get());
+        println!("n_fns: {}", stats.n_fns.get());
+        println!("n_monos: {}", stats.n_monos.get());
+        println!("n_inlines: {}", stats.n_inlines.get());
+        println!("n_closures: {}", stats.n_closures.get());
         println!("fn stats:");
-        ccx.stats().fn_stats.borrow_mut().sort_by(|&(_, _, insns_a), &(_, _, insns_b)| {
+        stats.fn_stats.borrow_mut().sort_by(|&(_, _, insns_a), &(_, _, insns_b)| {
             insns_b.cmp(&insns_a)
         });
-        for tuple in ccx.stats().fn_stats.borrow().iter() {
+        for tuple in stats.fn_stats.borrow().iter() {
             match *tuple {
                 (ref name, ms, insns) => {
                     println!("{} insns, {} ms, {}", insns, ms, *name);
@@ -2948,27 +2951,26 @@ pub fn trans_crate(krate: ast::Crate,
             }
         }
     }
-    if ccx.sess().count_llvm_insns() {
-        for (k, v) in ccx.stats().llvm_insns.borrow().iter() {
+    if shared_ccx.sess().count_llvm_insns() {
+        for (k, v) in shared_ccx.stats().llvm_insns.borrow().iter() {
             println!("{:7u} {}", *v, *k);
         }
     }
 
-    let llcx = ccx.llcx();
-    let link_meta = ccx.link_meta().clone();
-    let llmod = ccx.llmod();
+    let llcx = shared_ccx.get_ccx(0).llcx();
+    let llmod = shared_ccx.get_ccx(0).llmod();
 
-    let mut reachable: Vec<String> = ccx.reachable().iter().filter_map(|id| {
-        ccx.item_symbols().borrow().find(id).map(|s| s.to_string())
+    let mut reachable: Vec<String> = shared_ccx.reachable().iter().filter_map(|id| {
+        shared_ccx.item_symbols().borrow().find(id).map(|s| s.to_string())
     }).collect();
 
     // For the purposes of LTO, we add to the reachable set all of the upstream
     // reachable extern fns. These functions are all part of the public ABI of
     // the final product, so LTO needs to preserve them.
-    ccx.sess().cstore.iter_crate_data(|cnum, _| {
-        let syms = csearch::get_reachable_extern_fns(&ccx.sess().cstore, cnum);
+    shared_ccx.sess().cstore.iter_crate_data(|cnum, _| {
+        let syms = csearch::get_reachable_extern_fns(&shared_ccx.sess().cstore, cnum);
         reachable.extend(syms.move_iter().map(|did| {
-            csearch::get_symbol(&ccx.sess().cstore, did)
+            csearch::get_symbol(&shared_ccx.sess().cstore, did)
         }));
     });
 
@@ -2986,15 +2988,17 @@ pub fn trans_crate(krate: ast::Crate,
     // referenced from rt/rust_try.ll
     reachable.push("rust_eh_personality_catch".to_string());
 
-    let metadata_module = ccx.metadata_llmod();
-    let formats = ccx.tcx().dependency_formats.borrow().clone();
+    let metadata_module = shared_ccx.metadata_llmod();
+    let metadata_context = shared_ccx.metadata_llcx();
+    let formats = shared_ccx.tcx().dependency_formats.borrow().clone();
     let no_builtins = attr::contains_name(krate.attrs.as_slice(), "no_builtins");
 
-    (ccx.take_tcx(), CrateTranslation {
+    (shared_ccx.take_tcx(), CrateTranslation {
         context: llcx,
         module: llmod,
         link: link_meta,
         metadata_module: metadata_module,
+        metadata_context: metadata_context,
         metadata: metadata,
         reachable: reachable,
         crate_formats: formats,

@@ -51,18 +51,40 @@ pub struct Stats {
     pub fn_stats: RefCell<Vec<(String, uint, uint)> >,
 }
 
-pub struct CrateContext {
-    llmod: ModuleRef,
-    llcx: ContextRef,
+/// The shared portion of a `CrateContext`.  There is one `SharedCrateContext`
+/// per crate.  The data here is shared between all compilation units of the
+/// crate, so it must not contain references to any LLVM data structures
+/// (aside from metadata-related ones).
+pub struct SharedCrateContext {
+    local_ccxs: Vec<LocalCrateContext>,
+
     metadata_llmod: ModuleRef,
-    td: TargetData,
-    tn: TypeNames,
-    externs: RefCell<ExternMap>,
-    item_vals: RefCell<NodeMap<ValueRef>>,
+    metadata_llcx: ContextRef,
+
     exp_map2: resolve::ExportMap2,
     reachable: NodeSet,
     item_symbols: RefCell<NodeMap<String>>,
     link_meta: LinkMeta,
+    /// A set of static items which cannot be inlined into other crates. This
+    /// will prevent in IIItem() structures from being encoded into the metadata
+    /// that is generated
+    non_inlineable_statics: RefCell<NodeSet>,
+    symbol_hasher: RefCell<Sha256>,
+    tcx: ty::ctxt,
+    stats: Stats,
+}
+
+/// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
+/// per compilation unit.  Each one has its own LLVM `ContextRef` so that
+/// several compilation units may be optimized in parallel.  All other LLVM
+/// data structures in the `LocalCrateContext` are tied to that `ContextRef`.
+pub struct LocalCrateContext {
+    llmod: ModuleRef,
+    llcx: ContextRef,
+    td: TargetData,
+    tn: TypeNames,
+    externs: RefCell<ExternMap>,
+    item_vals: RefCell<NodeMap<ValueRef>>,
     drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
     tydescs: RefCell<HashMap<ty::t, Rc<tydesc_info>>>,
     /// Set when running emit_tydescs to enforce that no more tydescs are
@@ -73,10 +95,6 @@ pub struct CrateContext {
     /// Backwards version of the `external` map (inlined items to where they
     /// came from)
     external_srcs: RefCell<NodeMap<ast::DefId>>,
-    /// A set of static items which cannot be inlined into other crates. This
-    /// will prevent in IIItem() structures from being encoded into the metadata
-    /// that is generated
-    non_inlineable_statics: RefCell<NodeSet>,
     /// Cache instances of monomorphized functions
     monomorphized: RefCell<HashMap<MonoId, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<uint>>,
@@ -109,11 +127,8 @@ pub struct CrateContext {
     lltypes: RefCell<HashMap<ty::t, Type>>,
     llsizingtypes: RefCell<HashMap<ty::t, Type>>,
     adt_reprs: RefCell<HashMap<ty::t, Rc<adt::Repr>>>,
-    symbol_hasher: RefCell<Sha256>,
     type_hashcodes: RefCell<HashMap<ty::t, String>>,
     all_llvm_symbols: RefCell<HashSet<String>>,
-    tcx: ty::ctxt,
-    stats: Stats,
     int_type: Type,
     opaque_vec_type: Type,
     builder: BuilderRef_res,
@@ -128,124 +143,127 @@ pub struct CrateContext {
     intrinsics: RefCell<HashMap<&'static str, ValueRef>>,
 }
 
-impl CrateContext {
-    pub fn new(name: &str,
+pub struct CrateContext<'a> {
+    shared: &'a SharedCrateContext,
+    local: &'a LocalCrateContext,
+}
+
+unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
+    let llcx = llvm::LLVMContextCreate();
+    let llmod = mod_name.with_c_str(|buf| {
+        llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
+    });
+    sess.targ_cfg
+        .target_strs
+        .data_layout
+        .as_slice()
+        .with_c_str(|buf| {
+        llvm::LLVMSetDataLayout(llmod, buf);
+    });
+    sess.targ_cfg
+        .target_strs
+        .target_triple
+        .as_slice()
+        .with_c_str(|buf| {
+        llvm::LLVMRustSetNormalizedTarget(llmod, buf);
+    });
+    (llcx, llmod)
+}
+
+impl SharedCrateContext {
+    pub fn new(crate_name: &str,
+               local_count: uint,
                tcx: ty::ctxt,
                emap2: resolve::ExportMap2,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: NodeSet)
-               -> CrateContext {
-        unsafe {
-            let llcx = llvm::LLVMContextCreate();
-            let llmod = name.with_c_str(|buf| {
-                llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
-            });
-            let metadata_llmod = format!("{}_metadata", name).with_c_str(|buf| {
-                llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
-            });
-            tcx.sess
-               .targ_cfg
-               .target_strs
-               .data_layout
-               .as_slice()
-               .with_c_str(|buf| {
-                llvm::LLVMSetDataLayout(llmod, buf);
-                llvm::LLVMSetDataLayout(metadata_llmod, buf);
-            });
-            tcx.sess
-               .targ_cfg
-               .target_strs
-               .target_triple
-               .as_slice()
-               .with_c_str(|buf| {
-                llvm::LLVMRustSetNormalizedTarget(llmod, buf);
-                llvm::LLVMRustSetNormalizedTarget(metadata_llmod, buf);
-            });
+               -> SharedCrateContext {
+        let (metadata_llcx, metadata_llmod) = unsafe {
+            create_context_and_module(&tcx.sess, "metadata")
+        };
 
-            let td = mk_target_data(tcx.sess
-                                       .targ_cfg
-                                       .target_strs
-                                       .data_layout
-                                       .as_slice());
+        let mut shared_ccx = SharedCrateContext {
+            local_ccxs: Vec::with_capacity(local_count),
+            metadata_llmod: metadata_llmod,
+            metadata_llcx: metadata_llcx,
+            exp_map2: emap2,
+            reachable: reachable,
+            item_symbols: RefCell::new(NodeMap::new()),
+            link_meta: link_meta,
+            non_inlineable_statics: RefCell::new(NodeSet::new()),
+            symbol_hasher: RefCell::new(symbol_hasher),
+            tcx: tcx,
+            stats: Stats {
+                n_static_tydescs: Cell::new(0u),
+                n_glues_created: Cell::new(0u),
+                n_null_glues: Cell::new(0u),
+                n_real_glues: Cell::new(0u),
+                n_fns: Cell::new(0u),
+                n_monos: Cell::new(0u),
+                n_inlines: Cell::new(0u),
+                n_closures: Cell::new(0u),
+                n_llvm_insns: Cell::new(0u),
+                llvm_insns: RefCell::new(HashMap::new()),
+                fn_stats: RefCell::new(Vec::new()),
+            },
+        };
 
-            let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
-                Some(debuginfo::CrateDebugContext::new(llmod))
-            } else {
-                None
-            };
-
-            let mut ccx = CrateContext {
-                llmod: llmod,
-                llcx: llcx,
-                metadata_llmod: metadata_llmod,
-                td: td,
-                tn: TypeNames::new(),
-                externs: RefCell::new(HashMap::new()),
-                item_vals: RefCell::new(NodeMap::new()),
-                exp_map2: emap2,
-                reachable: reachable,
-                item_symbols: RefCell::new(NodeMap::new()),
-                link_meta: link_meta,
-                drop_glues: RefCell::new(HashMap::new()),
-                tydescs: RefCell::new(HashMap::new()),
-                finished_tydescs: Cell::new(false),
-                external: RefCell::new(DefIdMap::new()),
-                external_srcs: RefCell::new(NodeMap::new()),
-                non_inlineable_statics: RefCell::new(NodeSet::new()),
-                monomorphized: RefCell::new(HashMap::new()),
-                monomorphizing: RefCell::new(DefIdMap::new()),
-                vtables: RefCell::new(HashMap::new()),
-                const_cstr_cache: RefCell::new(HashMap::new()),
-                const_globals: RefCell::new(HashMap::new()),
-                const_values: RefCell::new(NodeMap::new()),
-                extern_const_values: RefCell::new(DefIdMap::new()),
-                impl_method_cache: RefCell::new(HashMap::new()),
-                closure_bare_wrapper_cache: RefCell::new(HashMap::new()),
-                lltypes: RefCell::new(HashMap::new()),
-                llsizingtypes: RefCell::new(HashMap::new()),
-                adt_reprs: RefCell::new(HashMap::new()),
-                symbol_hasher: RefCell::new(symbol_hasher),
-                type_hashcodes: RefCell::new(HashMap::new()),
-                all_llvm_symbols: RefCell::new(HashSet::new()),
-                tcx: tcx,
-                stats: Stats {
-                    n_static_tydescs: Cell::new(0u),
-                    n_glues_created: Cell::new(0u),
-                    n_null_glues: Cell::new(0u),
-                    n_real_glues: Cell::new(0u),
-                    n_fns: Cell::new(0u),
-                    n_monos: Cell::new(0u),
-                    n_inlines: Cell::new(0u),
-                    n_closures: Cell::new(0u),
-                    n_llvm_insns: Cell::new(0u),
-                    llvm_insns: RefCell::new(HashMap::new()),
-                    fn_stats: RefCell::new(Vec::new()),
-                },
-                int_type: Type::from_ref(ptr::mut_null()),
-                opaque_vec_type: Type::from_ref(ptr::mut_null()),
-                builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
-                unboxed_closure_vals: RefCell::new(DefIdMap::new()),
-                dbg_cx: dbg_cx,
-                eh_personality: RefCell::new(None),
-                intrinsics: RefCell::new(HashMap::new()),
-            };
-
-            ccx.int_type = Type::int(&ccx);
-            ccx.opaque_vec_type = Type::opaque_vec(&ccx);
-
-            let mut str_slice_ty = Type::named_struct(&ccx, "str_slice");
-            str_slice_ty.set_struct_body([Type::i8p(&ccx), ccx.int_type()], false);
-            ccx.tn().associate_type("str_slice", &str_slice_ty);
-
-            ccx.tn().associate_type("tydesc", &Type::tydesc(&ccx, str_slice_ty));
-
-            if ccx.sess().count_llvm_insns() {
-                base::init_insn_ctxt()
-            }
-
-            ccx
+        for i in range(0, local_count) {
+            // Append ".rs" to crate name as LLVM module identifier.
+            //
+            // LLVM code generator emits a ".file filename" directive
+            // for ELF backends. Value of the "filename" is set as the
+            // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
+            // crashes if the module identifier is same as other symbols
+            // such as a function name in the module.
+            // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
+            let llmod_id = format!("{}.{}.rs", crate_name, i);
+            let local_ccx = LocalCrateContext::new(&shared_ccx, llmod_id.as_slice());
+            shared_ccx.local_ccxs.push(local_ccx);
         }
+
+        shared_ccx
+    }
+
+    pub fn get_ccx<'a>(&'a self, index: uint) -> CrateContext<'a> {
+        CrateContext {
+            shared: self,
+            local: &self.local_ccxs[index],
+        }
+    }
+
+
+    pub fn metadata_llmod(&self) -> ModuleRef {
+        self.metadata_llmod
+    }
+
+    pub fn metadata_llcx(&self) -> ContextRef {
+        self.metadata_llcx
+    }
+
+    pub fn exp_map2<'a>(&'a self) -> &'a resolve::ExportMap2 {
+        &self.exp_map2
+    }
+
+    pub fn reachable<'a>(&'a self) -> &'a NodeSet {
+        &self.reachable
+    }
+
+    pub fn item_symbols<'a>(&'a self) -> &'a RefCell<NodeMap<String>> {
+        &self.item_symbols
+    }
+
+    pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
+        &self.link_meta
+    }
+
+    pub fn non_inlineable_statics<'a>(&'a self) -> &'a RefCell<NodeSet> {
+        &self.non_inlineable_statics
+    }
+
+    pub fn symbol_hasher<'a>(&'a self) -> &'a RefCell<Sha256> {
+        &self.symbol_hasher
     }
 
     pub fn tcx<'a>(&'a self) -> &'a ty::ctxt {
@@ -260,20 +278,137 @@ impl CrateContext {
         &self.tcx.sess
     }
 
+    pub fn stats<'a>(&'a self) -> &'a Stats {
+        &self.stats
+    }
+}
+
+impl LocalCrateContext {
+    fn new(shared: &SharedCrateContext,
+           name: &str)
+           -> LocalCrateContext {
+        unsafe {
+            let (llcx, llmod) = create_context_and_module(&shared.tcx.sess, name);
+
+            let td = mk_target_data(shared.tcx
+                                          .sess
+                                          .targ_cfg
+                                          .target_strs
+                                          .data_layout
+                                          .as_slice());
+
+            let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
+                Some(debuginfo::CrateDebugContext::new(llmod))
+            } else {
+                None
+            };
+
+            let mut local_ccx = LocalCrateContext {
+                llmod: llmod,
+                llcx: llcx,
+                td: td,
+                tn: TypeNames::new(),
+                externs: RefCell::new(HashMap::new()),
+                item_vals: RefCell::new(NodeMap::new()),
+                drop_glues: RefCell::new(HashMap::new()),
+                tydescs: RefCell::new(HashMap::new()),
+                finished_tydescs: Cell::new(false),
+                external: RefCell::new(DefIdMap::new()),
+                external_srcs: RefCell::new(NodeMap::new()),
+                monomorphized: RefCell::new(HashMap::new()),
+                monomorphizing: RefCell::new(DefIdMap::new()),
+                vtables: RefCell::new(HashMap::new()),
+                const_cstr_cache: RefCell::new(HashMap::new()),
+                const_globals: RefCell::new(HashMap::new()),
+                const_values: RefCell::new(NodeMap::new()),
+                extern_const_values: RefCell::new(DefIdMap::new()),
+                impl_method_cache: RefCell::new(HashMap::new()),
+                closure_bare_wrapper_cache: RefCell::new(HashMap::new()),
+                lltypes: RefCell::new(HashMap::new()),
+                llsizingtypes: RefCell::new(HashMap::new()),
+                adt_reprs: RefCell::new(HashMap::new()),
+                type_hashcodes: RefCell::new(HashMap::new()),
+                all_llvm_symbols: RefCell::new(HashSet::new()),
+                int_type: Type::from_ref(ptr::mut_null()),
+                opaque_vec_type: Type::from_ref(ptr::mut_null()),
+                builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
+                unboxed_closure_vals: RefCell::new(DefIdMap::new()),
+                dbg_cx: dbg_cx,
+                eh_personality: RefCell::new(None),
+                intrinsics: RefCell::new(HashMap::new()),
+            };
+
+            local_ccx.int_type = Type::int(&local_ccx.dummy_ccx(shared));
+            local_ccx.opaque_vec_type = Type::opaque_vec(&local_ccx.dummy_ccx(shared));
+
+            // Done mutating local_ccx directly.  (The rest of the
+            // initialization goes through RefCell.)
+            {
+                let ccx = local_ccx.dummy_ccx(shared);
+
+                let mut str_slice_ty = Type::named_struct(&ccx, "str_slice");
+                str_slice_ty.set_struct_body([Type::i8p(&ccx), ccx.int_type()], false);
+                ccx.tn().associate_type("str_slice", &str_slice_ty);
+
+                ccx.tn().associate_type("tydesc", &Type::tydesc(&ccx, str_slice_ty));
+
+                if ccx.sess().count_llvm_insns() {
+                    base::init_insn_ctxt()
+                }
+            }
+
+            local_ccx
+        }
+    }
+
+    /// Create a dummy `CrateContext` from `self` and  the provided
+    /// `SharedCrateContext`.  This is somewhat dangerous because `self` may
+    /// not actually be an element of `shared.local_ccxs`, which can cause some
+    /// operations to `fail` unexpectedly.
+    ///
+    /// This is used in the `LocalCrateContext` constructor to allow calling
+    /// functions that expect a complete `CrateContext`, even before the local
+    /// portion is fully initialized and attached to the `SharedCrateContext`.
+    fn dummy_ccx<'a>(&'a self, shared: &'a SharedCrateContext) -> CrateContext<'a> {
+        CrateContext {
+            shared: shared,
+            local: self,
+        }
+    }
+}
+
+impl<'b> CrateContext<'b> {
+    pub fn shared(&self) -> &'b SharedCrateContext {
+        self.shared
+    }
+
+    pub fn local(&self) -> &'b LocalCrateContext {
+        self.local
+    }
+
+
+    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+        &self.shared.tcx
+    }
+
+    pub fn sess<'a>(&'a self) -> &'a Session {
+        &self.shared.tcx.sess
+    }
+
     pub fn builder<'a>(&'a self) -> Builder<'a> {
         Builder::new(self)
     }
 
     pub fn raw_builder<'a>(&'a self) -> BuilderRef {
-        self.builder.b
+        self.local.builder.b
     }
 
     pub fn tydesc_type(&self) -> Type {
-        self.tn.find_type("tydesc").unwrap()
+        self.local.tn.find_type("tydesc").unwrap()
     }
 
     pub fn get_intrinsic(&self, key: & &'static str) -> ValueRef {
-        match self.intrinsics.borrow().find_copy(key) {
+        match self.intrinsics().borrow().find_copy(key) {
             Some(v) => return v,
             _ => {}
         }
@@ -297,160 +432,164 @@ impl CrateContext {
 
 
     pub fn llmod(&self) -> ModuleRef {
-        self.llmod
+        self.local.llmod
     }
 
     pub fn llcx(&self) -> ContextRef {
-        self.llcx
+        self.local.llcx
     }
 
     pub fn metadata_llmod(&self) -> ModuleRef {
-        self.metadata_llmod
+        self.shared.metadata_llmod
+    }
+
+    pub fn metadata_llcx(&self) -> ContextRef {
+        self.shared.metadata_llcx
     }
 
     pub fn td<'a>(&'a self) -> &'a TargetData {
-        &self.td
+        &self.local.td
     }
 
     pub fn tn<'a>(&'a self) -> &'a TypeNames {
-        &self.tn
+        &self.local.tn
     }
 
     pub fn externs<'a>(&'a self) -> &'a RefCell<ExternMap> {
-        &self.externs
+        &self.local.externs
     }
 
     pub fn item_vals<'a>(&'a self) -> &'a RefCell<NodeMap<ValueRef>> {
-        &self.item_vals
+        &self.local.item_vals
     }
 
     pub fn exp_map2<'a>(&'a self) -> &'a resolve::ExportMap2 {
-        &self.exp_map2
+        &self.shared.exp_map2
     }
 
     pub fn reachable<'a>(&'a self) -> &'a NodeSet {
-        &self.reachable
+        &self.shared.reachable
     }
 
     pub fn item_symbols<'a>(&'a self) -> &'a RefCell<NodeMap<String>> {
-        &self.item_symbols
+        &self.shared.item_symbols
     }
 
     pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
-        &self.link_meta
+        &self.shared.link_meta
     }
 
     pub fn drop_glues<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, ValueRef>> {
-        &self.drop_glues
+        &self.local.drop_glues
     }
 
     pub fn tydescs<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, Rc<tydesc_info>>> {
-        &self.tydescs
+        &self.local.tydescs
     }
 
     pub fn finished_tydescs<'a>(&'a self) -> &'a Cell<bool> {
-        &self.finished_tydescs
+        &self.local.finished_tydescs
     }
 
     pub fn external<'a>(&'a self) -> &'a RefCell<DefIdMap<Option<ast::NodeId>>> {
-        &self.external
+        &self.local.external
     }
 
     pub fn external_srcs<'a>(&'a self) -> &'a RefCell<NodeMap<ast::DefId>> {
-        &self.external_srcs
+        &self.local.external_srcs
     }
 
     pub fn non_inlineable_statics<'a>(&'a self) -> &'a RefCell<NodeSet> {
-        &self.non_inlineable_statics
+        &self.shared.non_inlineable_statics
     }
 
     pub fn monomorphized<'a>(&'a self) -> &'a RefCell<HashMap<MonoId, ValueRef>> {
-        &self.monomorphized
+        &self.local.monomorphized
     }
 
     pub fn monomorphizing<'a>(&'a self) -> &'a RefCell<DefIdMap<uint>> {
-        &self.monomorphizing
+        &self.local.monomorphizing
     }
 
     pub fn vtables<'a>(&'a self) -> &'a RefCell<HashMap<(ty::t, MonoId), ValueRef>> {
-        &self.vtables
+        &self.local.vtables
     }
 
     pub fn const_cstr_cache<'a>(&'a self) -> &'a RefCell<HashMap<InternedString, ValueRef>> {
-        &self.const_cstr_cache
+        &self.local.const_cstr_cache
     }
 
     pub fn const_globals<'a>(&'a self) -> &'a RefCell<HashMap<int, ValueRef>> {
-        &self.const_globals
+        &self.local.const_globals
     }
 
     pub fn const_values<'a>(&'a self) -> &'a RefCell<NodeMap<ValueRef>> {
-        &self.const_values
+        &self.local.const_values
     }
 
     pub fn extern_const_values<'a>(&'a self) -> &'a RefCell<DefIdMap<ValueRef>> {
-        &self.extern_const_values
+        &self.local.extern_const_values
     }
 
     pub fn impl_method_cache<'a>(&'a self)
             -> &'a RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>> {
-        &self.impl_method_cache
+        &self.local.impl_method_cache
     }
 
     pub fn closure_bare_wrapper_cache<'a>(&'a self) -> &'a RefCell<HashMap<ValueRef, ValueRef>> {
-        &self.closure_bare_wrapper_cache
+        &self.local.closure_bare_wrapper_cache
     }
 
     pub fn lltypes<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, Type>> {
-        &self.lltypes
+        &self.local.lltypes
     }
 
     pub fn llsizingtypes<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, Type>> {
-        &self.llsizingtypes
+        &self.local.llsizingtypes
     }
 
     pub fn adt_reprs<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, Rc<adt::Repr>>> {
-        &self.adt_reprs
+        &self.local.adt_reprs
     }
 
     pub fn symbol_hasher<'a>(&'a self) -> &'a RefCell<Sha256> {
-        &self.symbol_hasher
+        &self.shared.symbol_hasher
     }
 
     pub fn type_hashcodes<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, String>> {
-        &self.type_hashcodes
+        &self.local.type_hashcodes
     }
 
     pub fn all_llvm_symbols<'a>(&'a self) -> &'a RefCell<HashSet<String>> {
-        &self.all_llvm_symbols
+        &self.local.all_llvm_symbols
     }
 
     pub fn stats<'a>(&'a self) -> &'a Stats {
-        &self.stats
+        &self.shared.stats
     }
 
     pub fn int_type(&self) -> Type {
-        self.int_type
+        self.local.int_type
     }
 
     pub fn opaque_vec_type(&self) -> Type {
-        self.opaque_vec_type
+        self.local.opaque_vec_type
     }
 
     pub fn unboxed_closure_vals<'a>(&'a self) -> &'a RefCell<DefIdMap<ValueRef>> {
-        &self.unboxed_closure_vals
+        &self.local.unboxed_closure_vals
     }
 
     pub fn dbg_cx<'a>(&'a self) -> &'a Option<debuginfo::CrateDebugContext> {
-        &self.dbg_cx
+        &self.local.dbg_cx
     }
 
     pub fn eh_personality<'a>(&'a self) -> &'a RefCell<Option<ValueRef>> {
-        &self.eh_personality
+        &self.local.eh_personality
     }
 
     fn intrinsics<'a>(&'a self) -> &'a RefCell<HashMap<&'static str, ValueRef>> {
-        &self.intrinsics
+        &self.local.intrinsics
     }
 }
 

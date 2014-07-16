@@ -405,6 +405,7 @@ pub mod write {
 
             llvm::LLVMRustDisposeTargetMachine(tm);
             llvm::LLVMDisposeModule(trans.metadata_module);
+            llvm::LLVMContextDispose(trans.metadata_context);
             llvm::LLVMDisposeModule(llmod);
             llvm::LLVMContextDispose(llcx);
             if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
