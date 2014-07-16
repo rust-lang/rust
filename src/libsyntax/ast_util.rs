@@ -766,30 +766,6 @@ pub trait PostExpansionMethod {
     fn pe_vis(&self) -> ast::Visibility;
 }
 
-
-/// can't use the standard cfg(stage0) tricks here, because the error occurs in
-/// parsing, before cfg gets a chance to save the day. (yes, interleaved parsing
-/// / expansion / configuring would solve this problem...)
-
-// NOTE: remove after next snapshot
-/// to be more specific: after a snapshot, swap out the "PRE" stuff, and
-// swap in the "POST" stuff.
-
-/// PRE
-macro_rules! mf_method_body{
-    ($slf:ident, $field_pat:pat, $result:ident) => {
-        match $slf.node {
-            $field_pat => $result,
-                MethMac(_) => {
-                    fail!("expected an AST without macro invocations");
-                }
-        }
-    }
-}
-
-/// POST
-/*
-#[cfg(not(stage0))]
 macro_rules! mf_method{
     ($meth_name:ident, $field_ty:ty, $field_pat:pat, $result:ident) => {
         fn $meth_name<'a>(&'a self) -> $field_ty {
@@ -801,52 +777,21 @@ macro_rules! mf_method{
             }
         }
     }
-}*/
-
-
-// PRE
-impl PostExpansionMethod for Method {
-    fn pe_ident(&self) -> ast::Ident {
-        mf_method_body!(self, MethDecl(ident,_,_,_,_,_,_,_),ident)
-    }
-    fn pe_generics<'a>(&'a self) -> &'a ast::Generics {
-        mf_method_body!(self, MethDecl(_,ref generics,_,_,_,_,_,_),generics)
-    }
-    fn pe_abi(&self) -> Abi {
-        mf_method_body!(self, MethDecl(_,_,abi,_,_,_,_,_),abi)
-    }
-    fn pe_explicit_self<'a>(&'a self) -> &'a ast::ExplicitSelf {
-        mf_method_body!(self, MethDecl(_,_,_,ref explicit_self,_,_,_,_),explicit_self)
-    }
-    fn pe_fn_style(&self) -> ast::FnStyle{
-        mf_method_body!(self, MethDecl(_,_,_,_,fn_style,_,_,_),fn_style)
-    }
-    fn pe_fn_decl(&self) -> P<ast::FnDecl> {
-        mf_method_body!(self, MethDecl(_,_,_,_,_,decl,_,_),decl)
-    }
-    fn pe_body(&self) -> P<ast::Block> {
-        mf_method_body!(self, MethDecl(_,_,_,_,_,_,body,_),body)
-    }
-    fn pe_vis(&self) -> ast::Visibility {
-        mf_method_body!(self, MethDecl(_,_,_,_,_,_,_,vis),vis)
-    }
 }
 
-// POST
-/*
-#[cfg(not(stage0))]
+
 impl PostExpansionMethod for Method {
-    mf_method!(pe_ident,ast::Ident,MethDecl(ident,_,_,_,_,_,_),ident)
+    mf_method!(pe_ident,ast::Ident,MethDecl(ident,_,_,_,_,_,_,_),ident)
     mf_method!(pe_generics,&'a ast::Generics,
-               MethDecl(_,ref generics,_,_,_,_,_),generics)
+               MethDecl(_,ref generics,_,_,_,_,_,_),generics)
+    mf_method!(pe_abi,Abi,MethDecl(_,_,abi,_,_,_,_,_),abi)
     mf_method!(pe_explicit_self,&'a ast::ExplicitSelf,
-               MethDecl(_,_,ref explicit_self,_,_,_,_),explicit_self)
-    mf_method!(pe_fn_style,ast::FnStyle,MethDecl(_,_,_,fn_style,_,_,_),fn_style)
-    mf_method!(pe_fn_decl,P<ast::FnDecl>,MethDecl(_,_,_,_,decl,_,_),decl)
-    mf_method!(pe_body,P<ast::Block>,MethDecl(_,_,_,_,_,body,_),body)
-    mf_method!(pe_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,vis),vis)
+               MethDecl(_,_,_,ref explicit_self,_,_,_,_),explicit_self)
+    mf_method!(pe_fn_style,ast::FnStyle,MethDecl(_,_,_,_,fn_style,_,_,_),fn_style)
+    mf_method!(pe_fn_decl,P<ast::FnDecl>,MethDecl(_,_,_,_,_,decl,_,_),decl)
+    mf_method!(pe_body,P<ast::Block>,MethDecl(_,_,_,_,_,_,body,_),body)
+    mf_method!(pe_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,_,vis),vis)
 }
-*/
 
 #[cfg(test)]
 mod test {
