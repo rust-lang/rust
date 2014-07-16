@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:set print pretty off
 // gdb-command:rbreak zzz
 // gdb-command:run
@@ -35,6 +38,28 @@
 // gdb-check:$6 = {-10014, 10015}
 
 
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print no_padding16
+// lldb-check:[...]$0 = NoPadding16(10000, -10001)
+
+// lldb-command:print no_padding32
+// lldb-check:[...]$1 = NoPadding32(-10002, -10003.5, 10004)
+
+// lldb-command:print no_padding64
+// lldb-check:[...]$2 = NoPadding64(-10005.5, 10006, 10007)
+
+// lldb-command:print no_padding163264
+// lldb-check:[...]$3 = NoPadding163264(-10008, 10009, 10010, 10011)
+
+// lldb-command:print internal_padding
+// lldb-check:[...]$4 = InternalPadding(10012, -10013)
+
+// lldb-command:print padding_at_end
+// lldb-check:[...]$5 = PaddingAtEnd(-10014, 10015)
+
 // This test case mainly makes sure that no field names are generated for tuple structs (as opposed
 // to all fields having the name "<unnamed_field>"). Otherwise they are handled the same a normal
 // structs.
@@ -55,7 +80,7 @@ fn main() {
     let internal_padding = InternalPadding(10012, -10013);
     let padding_at_end = PaddingAtEnd(-10014, 10015);
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

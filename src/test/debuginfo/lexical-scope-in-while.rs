@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 
@@ -82,40 +85,101 @@
 // gdb-check:$13 = 2
 // gdb-command:continue
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// FIRST ITERATION
+// lldb-command:print x
+// lldb-check:[...]$0 = 0
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$1 = 1
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$2 = 101
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$3 = 101
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$4 = -987
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$5 = 101
+// lldb-command:continue
+
+
+// SECOND ITERATION
+// lldb-command:print x
+// lldb-check:[...]$6 = 1
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$7 = 2
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$8 = 102
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$9 = 102
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$10 = -987
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$11 = 102
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$12 = 2
+// lldb-command:continue
+
+
 fn main() {
 
     let mut x = 0i;
 
     while x < 2 {
-        zzz();
+        zzz(); // #break
         sentinel();
 
         x += 1;
-        zzz();
+        zzz(); // #break
         sentinel();
 
         // Shadow x
         let x = x + 100;
-        zzz();
+        zzz(); // #break
         sentinel();
 
         // open scope within loop's top level scope
         {
-            zzz();
+            zzz(); // #break
             sentinel();
 
             let x = -987i;
 
-            zzz();
+            zzz(); // #break
             sentinel();
         }
 
         // Check that we get the x before the inner scope again
-        zzz();
+        zzz(); // #break
         sentinel();
     }
 
-    zzz();
+    zzz(); // #break
     sentinel();
 }
 

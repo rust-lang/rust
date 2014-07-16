@@ -12,6 +12,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:set print union on
 // gdb-command:rbreak zzz
 // gdb-command:run
@@ -28,6 +31,23 @@
 
 // gdb-command:print univariant
 // gdb-check:$4 = {{-1}}
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print case1
+// lldb-check:[...]$0 = Case1(0, 31868, 31868, 31868, 31868)
+
+// lldb-command:print case2
+// lldb-check:[...]$1 = Case2(0, 286331153, 286331153)
+
+// lldb-command:print case3
+// lldb-check:[...]$2 = Case3(0, 6438275382588823897)
+
+// lldb-command:print univariant
+// lldb-check:[...]$3 = TheOnlyCase(-1)
 
 
 // NOTE: This is a copy of the non-generic test case. The `Txx` type parameters have to be
@@ -73,7 +93,7 @@ fn main() {
 
     let univariant = TheOnlyCase(-1_i64);
 
-    zzz();
+    zzz(); // #break
 }
 
-fn zzz() {()}
+fn zzz() { () }

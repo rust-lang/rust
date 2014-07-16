@@ -12,6 +12,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 
@@ -211,6 +214,164 @@
 // gdb-check:$57 = 10
 // gdb-command:continue
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// STRUCT EXPRESSION
+// lldb-command:print val
+// lldb-check:[...]$0 = -1
+// lldb-command:print ten
+// lldb-check:[...]$1 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$2 = 11
+// lldb-command:print ten
+// lldb-check:[...]$3 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$4 = -1
+// lldb-command:print ten
+// lldb-check:[...]$5 = 10
+// lldb-command:continue
+
+// FUNCTION CALL
+// lldb-command:print val
+// lldb-check:[...]$6 = -1
+// lldb-command:print ten
+// lldb-check:[...]$7 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$8 = 12
+// lldb-command:print ten
+// lldb-check:[...]$9 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$10 = -1
+// lldb-command:print ten
+// lldb-check:[...]$11 = 10
+// lldb-command:continue
+
+// TUPLE EXPRESSION
+// lldb-command:print val
+// lldb-check:[...]$12 = -1
+// lldb-command:print ten
+// lldb-check:[...]$13 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$14 = 13
+// lldb-command:print ten
+// lldb-check:[...]$15 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$16 = -1
+// lldb-command:print ten
+// lldb-check:[...]$17 = 10
+// lldb-command:continue
+
+// VEC EXPRESSION
+// lldb-command:print val
+// lldb-check:[...]$18 = -1
+// lldb-command:print ten
+// lldb-check:[...]$19 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$20 = 14
+// lldb-command:print ten
+// lldb-check:[...]$21 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$22 = -1
+// lldb-command:print ten
+// lldb-check:[...]$23 = 10
+// lldb-command:continue
+
+// REPEAT VEC EXPRESSION
+// lldb-command:print val
+// lldb-check:[...]$24 = -1
+// lldb-command:print ten
+// lldb-check:[...]$25 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$26 = 15
+// lldb-command:print ten
+// lldb-check:[...]$27 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$28 = -1
+// lldb-command:print ten
+// lldb-check:[...]$29 = 10
+// lldb-command:continue
+
+// ASSIGNMENT EXPRESSION
+// lldb-command:print val
+// lldb-check:[...]$30 = -1
+// lldb-command:print ten
+// lldb-check:[...]$31 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$32 = 16
+// lldb-command:print ten
+// lldb-check:[...]$33 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$34 = -1
+// lldb-command:print ten
+// lldb-check:[...]$35 = 10
+// lldb-command:continue
+
+
+// ARITHMETIC EXPRESSION
+// lldb-command:print val
+// lldb-check:[...]$36 = -1
+// lldb-command:print ten
+// lldb-check:[...]$37 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$38 = 17
+// lldb-command:print ten
+// lldb-check:[...]$39 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$40 = -1
+// lldb-command:print ten
+// lldb-check:[...]$41 = 10
+// lldb-command:continue
+
+// INDEX EXPRESSION
+// lldb-command:print val
+// lldb-check:[...]$42 = -1
+// lldb-command:print ten
+// lldb-check:[...]$43 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$44 = 18
+// lldb-command:print ten
+// lldb-check:[...]$45 = 10
+// lldb-command:continue
+
+// lldb-command:print val
+// lldb-check:[...]$46 = -1
+// lldb-command:print ten
+// lldb-check:[...]$47 = 10
+// lldb-command:continue
+
 #![allow(unused_variable)]
 #![allow(dead_assignment)]
 
@@ -233,13 +394,13 @@ fn main() {
     // surrounded by struct expression
     let point = Point {
         x: {
-            zzz();
+            zzz(); // #break
             sentinel();
 
             let val = ten + 1;
             unsafe {MUT_INT = 1;};
 
-            zzz();
+            zzz(); // #break
             sentinel();
 
             val
@@ -247,129 +408,129 @@ fn main() {
         y: 10
     };
 
-    zzz();
+    zzz(); // #break
     sentinel();
 
     // surrounded by function call
     let _ = a_function({
-        zzz();
+        zzz(); // #break
         sentinel();
 
         let val = ten + 2;
         unsafe {MUT_INT = 2;};
 
-        zzz();
+        zzz(); // #break
         sentinel();
 
         val
     });
 
-    zzz();
+    zzz(); // #break
     sentinel();
 
 
     // surrounded by tup
     let _ = ({
-        zzz();
+        zzz(); // #break
         sentinel();
 
         let val = ten + 3;
         unsafe {MUT_INT = 3;};
 
-        zzz();
+        zzz(); // #break
         sentinel();
 
         val
     }, 0i);
 
-    zzz();
+    zzz(); // #break
     sentinel();
 
     // surrounded by vec
     let _ = [{
-        zzz();
+        zzz(); // #break
         sentinel();
 
         let val = ten + 4;
         unsafe {MUT_INT = 4;};
 
-        zzz();
+        zzz(); // #break
         sentinel();
 
         val
     }, 0, 0];
 
-    zzz();
+    zzz(); // #break
     sentinel();
 
     // surrounded by repeat vec
     let _ = [{
-        zzz();
+        zzz(); // #break
         sentinel();
 
         let val = ten + 5;
         unsafe {MUT_INT = 5;};
 
-        zzz();
+        zzz(); // #break
         sentinel();
 
         val
     }, ..10];
 
-    zzz();
+    zzz(); // #break
     sentinel();
 
     // assignment expression
     let mut var = 0;
     var = {
-        zzz();
+        zzz(); // #break
         sentinel();
 
         let val = ten + 6;
         unsafe {MUT_INT = 6;};
 
-        zzz();
+        zzz(); // #break
         sentinel();
 
         val
     };
 
-    zzz();
+    zzz(); // #break
     sentinel();
 
     // arithmetic expression
     var = 10 + -{
-        zzz();
+        zzz(); // #break
         sentinel();
 
         let val = ten + 7;
         unsafe {MUT_INT = 7;};
 
-        zzz();
+        zzz(); // #break
         sentinel();
 
         val
     } * 5;
 
-    zzz();
+    zzz(); // #break
     sentinel();
 
     // index expression
     let a_vector = [10i, ..20];
     let _ = a_vector[{
-        zzz();
+        zzz(); // #break
         sentinel();
 
         let val = ten + 8;
         unsafe {MUT_INT = 8;};
 
-        zzz();
+        zzz(); // #break
         sentinel();
 
         val as uint
     }];
 
-    zzz();
+    zzz(); // #break
     sentinel();
 }
 

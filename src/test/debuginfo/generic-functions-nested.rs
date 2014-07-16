@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 
@@ -42,12 +45,41 @@
 // gdb-check:$8 = 2.5
 // gdb-command:continue
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print x
+// lldb-check:[...]$0 = -1
+// lldb-command:print y
+// lldb-check:[...]$1 = 1
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$2 = -1
+// lldb-command:print y
+// lldb-check:[...]$3 = 2.5
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$4 = -2.5
+// lldb-command:print y
+// lldb-check:[...]$5 = 1
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$6 = -2.5
+// lldb-command:print y
+// lldb-check:[...]$7 = 2.5
+// lldb-command:continue
+
 fn outer<TA: Clone>(a: TA) {
     inner(a.clone(), 1i);
     inner(a.clone(), 2.5f64);
 
     fn inner<TX, TY>(x: TX, y: TY) {
-        zzz();
+        zzz(); // #break
     }
 }
 
@@ -56,4 +88,4 @@ fn main() {
     outer(-2.5f64);
 }
 
-fn zzz() {()}
+fn zzz() { () }

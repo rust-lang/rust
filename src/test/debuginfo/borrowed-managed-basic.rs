@@ -16,6 +16,9 @@
 // its numerical value.
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 // gdb-command:finish
@@ -60,6 +63,56 @@
 
 // gdb-command:print *f64_ref
 // gdb-check:$14 = 3.5
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:type format add -f decimal char
+// lldb-command:type format add -f decimal 'unsigned char'
+// lldb-command:run
+
+// lldb-command:print *bool_ref
+// lldb-check:[...]$0 = true
+
+// lldb-command:print *int_ref
+// lldb-check:[...]$1 = -1
+
+// LLDB can't handle 32bit chars yet
+// d ebugger:print *char_ref
+// c heck:[...]$x = 97
+
+// lldb-command:print *i8_ref
+// lldb-check:[...]$2 = 68
+
+// lldb-command:print *i16_ref
+// lldb-check:[...]$3 = -16
+
+// lldb-command:print *i32_ref
+// lldb-check:[...]$4 = -32
+
+// lldb-command:print *i64_ref
+// lldb-check:[...]$5 = -64
+
+// lldb-command:print *uint_ref
+// lldb-check:[...]$6 = 1
+
+// lldb-command:print *u8_ref
+// lldb-check:[...]$7 = 100
+
+// lldb-command:print *u16_ref
+// lldb-check:[...]$8 = 16
+
+// lldb-command:print *u32_ref
+// lldb-check:[...]$9 = 32
+
+// lldb-command:print *u64_ref
+// lldb-check:[...]$10 = 64
+
+// lldb-command:print *f32_ref
+// lldb-check:[...]$11 = 2.5
+
+// lldb-command:print *f64_ref
+// lldb-check:[...]$12 = 3.5
 
 #![allow(unused_variable)]
 
@@ -107,7 +160,8 @@ fn main() {
 
     let f64_box: Gc<f64> = box(GC) 3.5;
     let f64_ref: &f64 = f64_box;
-    zzz();
+
+    zzz(); // #break
 }
 
 fn zzz() {()}
