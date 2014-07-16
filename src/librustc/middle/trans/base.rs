@@ -193,6 +193,14 @@ fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
         _ => {}
     }
 
+    if ccx.tcx.sess.opts.cg.no_redzone {
+        unsafe {
+            llvm::LLVMAddFunctionAttribute(llfn,
+                                           llvm::FunctionIndex as c_uint,
+                                           llvm::NoRedZoneAttribute as uint64_t)
+        }
+    }
+
     llvm::SetFunctionCallConv(llfn, cc);
     // Function addresses in Rust are never significant, allowing functions to be merged.
     llvm::SetUnnamedAddr(llfn, true);
