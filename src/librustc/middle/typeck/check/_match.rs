@@ -507,14 +507,20 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
             ty::ty_struct(cid, ref substs) => {
                 // Verify that the pattern named the right structure.
                 let item_did = tcx.def_map.borrow().get(&pat.id).def_id();
-                let struct_did =
-                    ty::ty_to_def_id(
-                        ty::lookup_item_type(tcx, item_did).ty).unwrap();
-                if struct_did != cid {
-                    span_err!(tcx.sess, pat.span, E0032,
-                        "`{}` does not name the structure `{}`",
-                        pprust::path_to_string(path),
-                        fcx.infcx().ty_to_string(expected));
+                match ty::ty_to_def_id(ty::lookup_item_type(tcx, item_did).ty) {
+                    Some(struct_did) if struct_did != cid => {
+                        span_err!(tcx.sess, path.span, E0032,
+                                  "`{}` does not name the structure `{}`",
+                                  pprust::path_to_string(path),
+                                  fcx.infcx().ty_to_string(expected));
+                    },
+                    Some(_) => {},
+                    None => {
+                        tcx.sess.span_bug(
+                            path.span,
+                            format!("This shouldn't happen: failed to lookup structure. \
+                                item_did = {}", item_did).as_slice())
+                    },
                 }
 
                 check_struct_pat(pcx, pat.id, pat.span, expected, path,

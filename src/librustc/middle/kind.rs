@@ -87,7 +87,8 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
                                     span: Span,
                                     struct_did: DefId) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
-    if !struct_tpt.generics.has_type_params(subst::TypeSpace) {
+    if !struct_tpt.generics.has_type_params(subst::TypeSpace)
+      && !struct_tpt.generics.has_region_params(subst::TypeSpace) {
         let struct_ty = ty::mk_struct(cx.tcx, struct_did,
                                       subst::Substs::empty());
         if !ty::type_is_sendable(cx.tcx, struct_ty) {
@@ -121,7 +122,7 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
 
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
-    debug!("checking impl with self type {:?}", ty::get(self_ty).sty);
+    debug!("checking impl with self type {}", ty::get(self_ty).sty);
     check_builtin_bounds(cx, self_ty, trait_def.bounds, |missing| {
         cx.tcx.sess.span_err(self_type.span,
             format!("the type `{}', which does not fulfill `{}`, cannot implement this \

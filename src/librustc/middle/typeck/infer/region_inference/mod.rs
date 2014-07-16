@@ -246,7 +246,7 @@ impl<'a> RegionVarBindings<'a> {
         if self.in_snapshot() {
             self.undo_log.borrow_mut().push(AddVar(vid));
         }
-        debug!("created new region variable {:?} with origin {:?}",
+        debug!("created new region variable {} with origin {}",
                vid, origin.repr(self.tcx));
         return vid;
     }

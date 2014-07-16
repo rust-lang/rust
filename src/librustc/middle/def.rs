@@ -14,7 +14,7 @@ use syntax::ast_util::local_def;
 
 use std::gc::Gc;
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Def {
     DefFn(ast::DefId, ast::FnStyle),
     DefStaticMethod(/* method */ ast::DefId, MethodProvenance, ast::FnStyle),
@@ -51,7 +51,7 @@ pub enum Def {
     DefMethod(ast::DefId /* method */, Option<ast::DefId> /* trait */),
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MethodProvenance {
     FromTrait(ast::DefId),
     FromImpl(ast::DefId),
