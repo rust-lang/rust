@@ -152,60 +152,6 @@ pub trait MutableSet<T>: Set<T> + Mutable {
     fn remove(&mut self, value: &T) -> bool;
 }
 
-/// A multiset is an unordered collection of objects in which each object can
-/// appear multiple times. This trait represents actions which can be performed
-/// on multisets to iterate over them.
-pub trait Multiset<T>: Collection {
-    /// Return the number of occurrences of the value in the multiset.
-    fn count(&self, value: &T) -> uint;
-
-    /// Return true if the multiset has no elements in common with `other`.
-    fn is_disjoint(&self, other: &Self) -> bool;
-
-    /// Return true if, for any given element, the number times it occurs in the
-    /// multiset is not greater than the number of times it occurs in `other`.
-    fn is_subset(&self, other: &Self) -> bool;
-
-    /// Return true if the value occurs at least once in the multiset.
-    fn contains(&self, value: &T) -> bool {
-        self.count(value) > 0u
-    }
-
-    /// Return true if the multiset is a superset of another.
-    fn is_superset(&self, other: &Self) -> bool {
-        other.is_subset(self)
-    }
-
-    // FIXME: Ideally we would have a method to return the underlying set
-    // of a multiset. However, currently there's no way to have a trait method
-    // return a trait. We need something like associated type synonyms (see #5033)
-}
-
-/// This trait represents actions which can be performed on multisets to mutate
-/// them.
-pub trait MutableMultiset<T>: Multiset<T> + Mutable {
-    /// Add `n` occurrences of `value` to the multiset. Return true if the value
-    /// was not already present in the multiset.
-    fn insert_many(&mut self, value: T, n: uint) -> bool;
-
-    /// Remove `n` occurrences of `value` from the multiset. If there are less
-    /// than `n` occurrences, remove all occurrences. Return the number of
-    /// occurrences removed.
-    fn remove_many(&mut self, value: &T, n: uint) -> uint;
-
-    /// Add one occurrence of `value` to the multiset. Return true if the value
-    /// was not already present in the multiset.
-    fn insert(&mut self, value: T) -> bool {
-        self.insert_many(value, 1)
-    }
-
-    /// Remove one occurrence of `value` from the multiset. Return true if the
-    /// value was present in the multiset.
-    fn remove(&mut self, value: &T) -> bool {
-        self.remove_many(value, 1) > 0u
-    }
-}
-
 /// A double-ended sequence that allows querying, insertion and deletion at both
 /// ends.
 pub trait Deque<T> : Mutable {
