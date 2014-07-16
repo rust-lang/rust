@@ -56,7 +56,7 @@ priv fn parse_list(len: uint, io: @io::Reader) -> Result {
 }
 
 priv fn chop(s: String) -> String {
-  s.slice(0, s.len() - 1).to_owned()
+  s.slice(0, s.len() - 1).to_string()
 }
 
 priv fn parse_bulk(io: @io::Reader) -> Result {
