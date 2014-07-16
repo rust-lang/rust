@@ -26,7 +26,7 @@ use std::collections::HashSet;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::is_local;
+use syntax::ast_util::{is_local, PostExpansionMethod};
 use syntax::ast_util;
 use syntax::attr::{InlineAlways, InlineHint, InlineNever, InlineNone};
 use syntax::attr;
@@ -68,7 +68,7 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
 fn method_might_be_inlined(tcx: &ty::ctxt, method: &ast::Method,
                            impl_src: ast::DefId) -> bool {
     if attributes_specify_inlining(method.attrs.as_slice()) ||
-        generics_require_inlining(ast_util::method_generics(&*method)) {
+        generics_require_inlining(method.pe_generics()) {
         return true
     }
     if is_local(impl_src) {
@@ -200,7 +200,7 @@ impl<'a> ReachableContext<'a> {
                 }
             }
             Some(ast_map::NodeMethod(method)) => {
-                if generics_require_inlining(ast_util::method_generics(&*method)) ||
+                if generics_require_inlining(method.pe_generics()) ||
                         attributes_specify_inlining(method.attrs.as_slice()) {
                     true
                 } else {
@@ -316,14 +316,14 @@ impl<'a> ReachableContext<'a> {
                         // Keep going, nothing to get exported
                     }
                     ast::Provided(ref method) => {
-                        visit::walk_block(self, ast_util::method_body(&**method), ())
+                        visit::walk_block(self, method.pe_body(), ())
                     }
                 }
             }
             ast_map::NodeMethod(method) => {
                 let did = self.tcx.map.get_parent_did(search_item);
                 if method_might_be_inlined(self.tcx, &*method, did) {
-                    visit::walk_block(self, ast_util::method_body(&*method), ())
+                    visit::walk_block(self, method.pe_body(), ())
                 }
             }
             // Nothing to recurse on for these

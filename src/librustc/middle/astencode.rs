@@ -31,6 +31,7 @@ use middle::{ty, typeck};
 use util::ppaux::ty_to_string;
 
 use syntax::{ast, ast_map, ast_util, codemap, fold};
+use syntax::ast_util::PostExpansionMethod;
 use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::parse::token;
@@ -136,7 +137,7 @@ pub fn decode_inlined_item(cdata: &cstore::crate_metadata,
         let ident = match ii {
             ast::IIItem(i) => i.ident,
             ast::IIForeign(i) => i.ident,
-            ast::IIMethod(_, _, m) => ast_util::method_ident(&*m),
+            ast::IIMethod(_, _, m) => m.pe_ident(),
         };
         debug!("Fn named: {}", token::get_ident(ident));
         debug!("< Decoded inlined fn: {}::{}",

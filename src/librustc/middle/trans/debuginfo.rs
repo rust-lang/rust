@@ -207,6 +207,7 @@ use std::rc::{Rc, Weak};
 use syntax::util::interner::Interner;
 use syntax::codemap::{Span, Pos};
 use syntax::{abi, ast, codemap, ast_util, ast_map};
+use syntax::ast_util::PostExpansionMethod;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::parse::token::special_idents;
@@ -1138,10 +1139,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
             }
         }
         ast_map::NodeMethod(ref method) => {
-            (ast_util::method_ident(&**method),
-             ast_util::method_fn_decl(&**method),
-             ast_util::method_generics(&**method),
-             ast_util::method_body(&**method),
+            (method.pe_ident(),
+             method.pe_fn_decl(),
+             method.pe_generics(),
+             method.pe_body(),
              method.span,
              true)
         }
@@ -1167,10 +1168,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
         ast_map::NodeTraitMethod(ref trait_method) => {
             match **trait_method {
                 ast::Provided(ref method) => {
-                    (ast_util::method_ident(&**method),
-                     ast_util::method_fn_decl(&**method),
-                     ast_util::method_generics(&**method),
-                     ast_util::method_body(&**method),
+                    (method.pe_ident(),
+                     method.pe_fn_decl(),
+                     method.pe_generics(),
+                     method.pe_body(),
                      method.span,
                      true)
                 }
