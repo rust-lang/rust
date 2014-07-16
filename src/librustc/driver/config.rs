@@ -332,6 +332,8 @@ cgoptions!(
         "prefer dynamic linking to static linking"),
     no_integrated_as: bool = (false, parse_bool,
         "use an external assembler rather than LLVM's integrated one"),
+    no_redzone: bool = (false, parse_bool,
+        "disable the use of the redzone"),
     relocation_model: String = ("pic".to_string(), parse_string,
          "choose the relocation model to use (llc -relocation-model for details)"),
     metadata: Vec<String> = (Vec::new(), parse_list,
