@@ -18,8 +18,9 @@ something special, and we hope you do too.
 
 To show you how to get going with Rust, we're going to write the traditional
 "Hello, World!" program. Next, we'll introduce you to a tool that's useful for
-writing real-world Rust programs and libraries: "Cargo." Then, we'll show off
-Rust's features by writing a little program together.
+writing real-world Rust programs and libraries: "Cargo." After that, we'll talk
+about the basics of Rust, write a little program to try them out, and then learn
+more advanced things.
 
 Sound good? Let's go!
 
@@ -359,68 +360,9 @@ rest of your Rust career.
 
 Next, we'll learn more about Rust itself, by starting to write a more complicated
 program. We hope you want to do more with Rust than just print "Hello, world!"
-
-## Guessing Game
-
-Let's write a bigger program in Rust. We could just go through a laundry list
-of Rust features, but that's boring. Instead, we'll learn more about how to
-code in Rust by writing a few example projects.
-
-For our first project, we'll implement a classic beginner programming problem:
-the guessing game. Here's how it works: Our program will generate a random
-integer between one and a hundred. It will then prompt us to enter a guess.
-Upon entering our guess, it will tell us if we're too low or too high. Once we
-guess correctly, it will congratulate us, and print the number of guesses we've
-taken to the screen. Sound good? It sounds easy, but it'll end up showing off a
-number of basic features of Rust.
-
-### Set up
-
-Let's set up a new project. Go to your projects directory, and make a new
-directory for the project, as well as a `src` directory for our code:
-
-```{bash}
-$ cd ~/projects
-$ mkdir guessing_game
-$ cd guessing_game
-$ mkdir src
-```
-
-Great. Next, let's make a `Cargo.toml` file so Cargo knows how to build our
-project:
-
-```{ignore}
-[package]
-
-name = "guessing_game"
-version = "0.1.0"
-authors = [ "someone@example.com" ]
-
-[[bin]]
-
-name = "guessing_game"
-```
-
-Finally, we need our source file. Let's just make it hello world for now, so we
-can check that our setup works. In `src/guessing_game.rs`:
-
-```{rust}
-fn main() {
-    println!("Hello world!");
-}
-```
-
-Let's make sure that worked:
-
-```{bash}
-$ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-$
-```
-
-Excellent! Open up your `src/guessing_game.rs` again. We'll be writing all of
-our code in this file. The next section of the tutorial will show you how to
-build multiple-file projects.
+Before we get there, though, let's talk about some of Rust's basic features. We
+haven't learned enough Rust yet to really build anything useful, so let's
+learn some stuff, and then we'll write some code.
 
 ## Variable bindings
 
@@ -1562,7 +1504,66 @@ here.
 That's all you need to get basic input from the standard input! It's not too
 complicated, but there are a number of small parts.
 
-## Guessing Game: complete
+## Guessing Game
+
+Okay! We've got the basics of Rust down. Let's write a bigger program.
+
+For our first project, we'll implement a classic beginner programming problem:
+the guessing game. Here's how it works: Our program will generate a random
+integer between one and a hundred. It will then prompt us to enter a guess.
+Upon entering our guess, it will tell us if we're too low or too high. Once we
+guess correctly, it will congratulate us, and print the number of guesses we've
+taken to the screen. Sound good?
+
+### Set up
+
+Let's set up a new project. Go to your projects directory, and make a new
+directory for the project, as well as a `src` directory for our code:
+
+```{bash}
+$ cd ~/projects
+$ mkdir guessing_game
+$ cd guessing_game
+$ mkdir src
+```
+
+Great. Next, let's make a `Cargo.toml` file so Cargo knows how to build our
+project:
+
+```{ignore}
+[package]
+
+name = "guessing_game"
+version = "0.1.0"
+authors = [ "someone@example.com" ]
+
+[[bin]]
+
+name = "guessing_game"
+```
+
+Finally, we need our source file. Let's just make it hello world for now, so we
+can check that our setup works. In `src/guessing_game.rs`:
+
+```{rust}
+fn main() {
+    println!("Hello world!");
+}
+```
+
+Let's make sure that worked:
+
+```{bash}
+$ cargo build
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+$
+```
+
+Excellent! Open up your `src/guessing_game.rs` again. We'll be writing all of
+our code in this file. We'll talk about multiple-file projects later on in the
+guide.
+
+### Complete!
 
 At this point, you have successfully built the Guessing Game! Congratulations!
 For reference, [We've placed the sample code on
