@@ -11,6 +11,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:rbreak zzz
 // gdb-command:run
 
@@ -28,10 +31,27 @@
 // gdb-check:$4 = 110
 // gdb-command:continue
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print x
+// lldb-check:[...]$0 = 0.5
+// lldb-command:print y
+// lldb-check:[...]$1 = 10
+// lldb-command:continue
+
+// lldb-command:print *x
+// lldb-check:[...]$2 = 29
+// lldb-command:print *y
+// lldb-check:[...]$3 = 110
+// lldb-command:continue
+
 fn some_generic_fun<T1, T2>(a: T1, b: T2) -> (T2, T1) {
 
     let closure = |x, y| {
-        zzz();
+        zzz(); // #break
         (y, x)
     };
 
@@ -43,4 +63,4 @@ fn main() {
     some_generic_fun(&29i, box 110i);
 }
 
-fn zzz() {()}
+fn zzz() { () }

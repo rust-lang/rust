@@ -12,6 +12,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:set print pretty off
 // gdb-command:rbreak zzz
 
@@ -75,6 +78,28 @@
 // gdb-command:print inheriting
 // gdb-check:$19 = {a = 10019, b = -10020, x = -10016, y = -10017.5, z = 10018}
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print no_padding16
+// lldb-check:[...]$0 = NoPadding16 { x: 10000, y: -10001 }
+
+// lldb-command:print no_padding32
+// lldb-check:[...]$1 = NoPadding32 { x: -10002, y: -10003.5, z: 10004 }
+
+// lldb-command:print no_padding64
+// lldb-check:[...]$2 = NoPadding64 { x: -10005.5, y: 10006, z: 10007 }
+
+// lldb-command:print no_padding163264
+// lldb-check:[...]$3 = NoPadding163264 { a: -10008, b: 10009, c: 10010, d: 10011 }
+
+// lldb-command:print internal_padding
+// lldb-check:[...]$4 = InternalPadding { x: 10012, y: -10013 }
+
+// lldb-command:print padding_at_end
+// lldb-check:[...]$5 = PaddingAtEnd { x: -10014, y: 10015 }
 
 #![feature(struct_inherit)];
 #![allow(unused_variable)];
@@ -188,7 +213,7 @@ fn main() {
         PADDING_AT_END.y = 28;
     }
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}

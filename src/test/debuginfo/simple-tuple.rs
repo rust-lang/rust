@@ -12,6 +12,9 @@
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
+
+// === GDB TESTS ===================================================================================
+
 // gdb-command:set print pretty off
 // gdb-command:rbreak zzz
 
@@ -69,6 +72,28 @@
 // gdb-command:print 'simple-tuple::PADDING_AT_END'
 // gdb-check:$21 = {116, 117}
 
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print/d noPadding8
+// lldb-check:[...]$0 = (-100, 100)
+// lldb-command:print noPadding16
+// lldb-check:[...]$1 = (0, 1, 2)
+// lldb-command:print noPadding32
+// lldb-check:[...]$2 = (3, 4.5, 5)
+// lldb-command:print noPadding64
+// lldb-check:[...]$3 = (6, 7.5, 8)
+
+// lldb-command:print internalPadding1
+// lldb-check:[...]$4 = (9, 10)
+// lldb-command:print internalPadding2
+// lldb-check:[...]$5 = (11, 12, 13, 14)
+
+// lldb-command:print paddingAtEnd
+// lldb-check:[...]$6 = (15, 16)
+
 #![allow(unused_variable)]
 #![allow(dead_code)]
 
@@ -107,7 +132,7 @@ fn main() {
         PADDING_AT_END = (116, 117);
     }
 
-    zzz();
+    zzz(); // #break
 }
 
 fn zzz() {()}
