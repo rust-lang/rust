@@ -1484,6 +1484,36 @@ pub type SetMoveItems<K> =
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
 /// requires that the elements implement the `Eq` and `Hash` traits.
+///
+/// # Example
+///
+/// ```rust
+/// use std::collections::HashSet;
+///
+/// // Type inference lets us omit an explicit type signature (which
+/// // would be `HashSet<&str>` in this example).
+/// let mut books = HashSet::new();
+///
+/// // Add some books.
+/// books.insert("A Dance With Dragons");
+/// books.insert("To Kill a Mockingbird");
+/// books.insert("The Odyssey");
+/// books.insert("The Great Gatsby");
+///
+/// // Check for a specific one.
+/// if !books.contains(&("The Winds of Winter")) {
+///     println!("We have {} books, but The Winds of Winter ain't one.",
+///              books.len());
+/// }
+///
+/// // Remove a book.
+/// books.remove(&"The Odyssey");
+///
+/// // Iterate over everything.
+/// for book in books.iter() {
+///     println!("{}", *book);
+/// }
+/// ```
 #[deriving(Clone)]
 pub struct HashSet<T, H = RandomSipHasher> {
     map: HashMap<T, (), H>
@@ -1527,6 +1557,13 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> MutableSet<T> for HashSet<T, H> {
 
 impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     /// Create an empty HashSet
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// let mut set: HashSet<int> = HashSet::new();
+    /// ```
     #[inline]
     pub fn new() -> HashSet<T, RandomSipHasher> {
         HashSet::with_capacity(INITIAL_CAPACITY)
@@ -1534,6 +1571,13 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
 
     /// Create an empty HashSet with space for at least `n` elements in
     /// the hash table.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// let mut set: HashSet<int> = HashSet::with_capacity(10);
+    /// ```
     #[inline]
     pub fn with_capacity(capacity: uint) -> HashSet<T, RandomSipHasher> {
         HashSet { map: HashMap::with_capacity(capacity) }
@@ -1563,6 +1607,14 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     }
 
     /// Reserve space for at least `n` elements in the hash table.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// let mut set: HashSet<int> = HashSet::new();
+    /// set.reserve(10);
+    /// ```
     pub fn reserve(&mut self, n: uint) {
         self.map.reserve(n)
     }
@@ -1575,6 +1627,20 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 
     /// An iterator visiting all elements in arbitrary order.
     /// Iterator element type is &'a T.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// let mut set = HashSet::new();
+    /// set.insert("a");
+    /// set.insert("b");
+    ///
+    /// // Will print in an arbitrary order.
+    /// for x in set.iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     pub fn iter<'a>(&'a self) -> SetItems<'a, T> {
         self.map.keys()
     }
@@ -1582,11 +1648,49 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// Creates a consuming iterator, that is, one that moves each value out
     /// of the set in arbitrary order. The set cannot be used after calling
     /// this.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// let mut set = HashSet::new();
+    /// set.insert("a".to_string());
+    /// set.insert("b".to_string());
+    ///
+    /// // Not possible to collect to a Vec<String> with a regular `.iter()`.
+    /// let v: Vec<String> = set.move_iter().collect();
+    ///
+    /// // Will print in an arbitrary order.
+    /// for x in v.iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     pub fn move_iter(self) -> SetMoveItems<T> {
         self.map.move_iter().map(|(k, _)| k)
     }
 
-    /// Visit the values representing the difference
+    /// Visit the values representing the difference.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    ///
+    /// // Can be seen as `a - b`.
+    /// for x in a.difference(&b) {
+    ///     println!("{}", x); // Print 1
+    /// }
+    ///
+    /// let diff: HashSet<int> = a.difference(&b).map(|&x| x).collect();
+    /// assert_eq!(diff, [1i].iter().map(|&x| x).collect());
+    ///
+    /// // Note that difference is not symmetric,
+    /// // and `b - a` means something else:
+    /// let diff: HashSet<int> = b.difference(&a).map(|&x| x).collect();
+    /// assert_eq!(diff, [4i].iter().map(|&x| x).collect());
+    /// ```
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, H>) -> SetAlgebraItems<'a, T, H> {
         Repeat::new(other).zip(self.iter())
             .filter_map(|(other, elt)| {
@@ -1594,13 +1698,48 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
             })
     }
 
-    /// Visit the values representing the symmetric difference
+    /// Visit the values representing the symmetric difference.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    ///
+    /// // Print 1, 4 in arbitrary order.
+    /// for x in a.symmetric_difference(&b) {
+    ///     println!("{}", x);
+    /// }
+    ///
+    /// let diff1: HashSet<int> = a.symmetric_difference(&b).map(|&x| x).collect();
+    /// let diff2: HashSet<int> = b.symmetric_difference(&a).map(|&x| x).collect();
+    ///
+    /// assert_eq!(diff1, diff2);
+    /// assert_eq!(diff1, [1i, 4].iter().map(|&x| x).collect());
+    /// ```
     pub fn symmetric_difference<'a>(&'a self, other: &'a HashSet<T, H>)
         -> Chain<SetAlgebraItems<'a, T, H>, SetAlgebraItems<'a, T, H>> {
         self.difference(other).chain(other.difference(self))
     }
 
-    /// Visit the values representing the intersection
+    /// Visit the values representing the intersection.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    ///
+    /// // Print 2, 3 in arbitrary order.
+    /// for x in a.intersection(&b) {
+    ///     println!("{}", x);
+    /// }
+    ///
+    /// let diff: HashSet<int> = a.intersection(&b).map(|&x| x).collect();
+    /// assert_eq!(diff, [2i, 3].iter().map(|&x| x).collect());
+    /// ```
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, H>)
         -> SetAlgebraItems<'a, T, H> {
         Repeat::new(other).zip(self.iter())
@@ -1609,7 +1748,23 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
             })
     }
 
-    /// Visit the values representing the union
+    /// Visit the values representing the union.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    ///
+    /// // Print 1, 2, 3, 4 in arbitrary order.
+    /// for x in a.union(&b) {
+    ///     println!("{}", x);
+    /// }
+    ///
+    /// let diff: HashSet<int> = a.union(&b).map(|&x| x).collect();
+    /// assert_eq!(diff, [1i, 2, 3, 4].iter().map(|&x| x).collect());
+    /// ```
     pub fn union<'a>(&'a self, other: &'a HashSet<T, H>)
         -> Chain<SetItems<'a, T>, SetAlgebraItems<'a, T, H>> {
         self.iter().chain(other.difference(self))
