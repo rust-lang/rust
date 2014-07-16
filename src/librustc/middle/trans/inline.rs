@@ -16,7 +16,7 @@ use middle::trans::common::*;
 use middle::ty;
 
 use syntax::ast;
-use syntax::ast_util::local_def;
+use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::ast_util;
 
 pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
@@ -128,12 +128,11 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
             let unparameterized =
                 impl_tpt.generics.types.is_empty() &&
-                ast_util::method_generics(&*mth).ty_params.is_empty();
+                mth.pe_generics().ty_params.is_empty();
 
           if unparameterized {
               let llfn = get_item_val(ccx, mth.id);
-              trans_fn(ccx, ast_util::method_fn_decl(&*mth),
-                       ast_util::method_body(&*mth), llfn,
+                trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), llfn,
                        &param_substs::empty(), mth.id, []);
           }
           local_def(mth.id)
