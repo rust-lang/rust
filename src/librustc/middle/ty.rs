@@ -124,7 +124,7 @@ impl Method {
     }
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct mt {
     pub ty: t,
     pub mutbl: ast::Mutability,
@@ -138,7 +138,7 @@ pub enum TraitStore {
     RegionTraitStore(Region, ast::Mutability),
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct field_ty {
     pub name: Name,
     pub id: DefId,
@@ -394,6 +394,7 @@ pub enum tbox_flag {
 
 pub type t_box = &'static t_box_;
 
+#[deriving(Show)]
 pub struct t_box_ {
     pub sty: sty,
     pub id: uint,
@@ -436,14 +437,14 @@ pub fn type_needs_infer(t: t) -> bool {
 }
 pub fn type_id(t: t) -> uint { get(t).id }
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct BareFnTy {
     pub fn_style: ast::FnStyle,
     pub abi: abi::Abi,
     pub sig: FnSig,
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ClosureTy {
     pub fn_style: ast::FnStyle,
     pub onceness: ast::Onceness,
@@ -472,7 +473,7 @@ pub struct FnSig {
     pub variadic: bool
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ParamTy {
     pub space: subst::ParamSpace,
     pub idx: uint,
@@ -712,7 +713,7 @@ mod primitives {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in libsyntax/ast.rs as well.
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum sty {
     ty_nil,
     ty_bot,
@@ -741,14 +742,14 @@ pub enum sty {
             // on non-useful type error messages)
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TyTrait {
     pub def_id: DefId,
     pub substs: Substs,
     pub bounds: BuiltinBounds
 }
 
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(PartialEq, Eq, Hash, Show)]
 pub struct TraitRef {
     pub def_id: DefId,
     pub substs: Substs,
@@ -808,7 +809,7 @@ pub enum type_err {
     terr_variadic_mismatch(expected_found<bool>)
 }
 
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(PartialEq, Eq, Hash, Show)]
 pub struct ParamBounds {
     pub builtin_bounds: BuiltinBounds,
     pub trait_bounds: Vec<Rc<TraitRef>>
@@ -948,7 +949,7 @@ impl fmt::Show for IntVarValue {
     }
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct TypeParameterDef {
     pub ident: ast::Ident,
     pub def_id: ast::DefId,
@@ -958,7 +959,7 @@ pub struct TypeParameterDef {
     pub default: Option<ty::t>
 }
 
-#[deriving(Encodable, Decodable, Clone)]
+#[deriving(Encodable, Decodable, Clone, Show)]
 pub struct RegionParameterDef {
     pub name: ast::Name,
     pub def_id: ast::DefId,
@@ -968,7 +969,7 @@ pub struct RegionParameterDef {
 
 /// Information about the type/lifetime parameters associated with an
 /// item or method. Analogous to ast::Generics.
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct Generics {
     pub types: VecPerParamSpace<TypeParameterDef>,
     pub regions: VecPerParamSpace<RegionParameterDef>,
@@ -982,6 +983,10 @@ impl Generics {
 
     pub fn has_type_params(&self, space: subst::ParamSpace) -> bool {
         !self.types.is_empty_in(space)
+    }
+
+    pub fn has_region_params(&self, space: subst::ParamSpace) -> bool {
+        !self.regions.is_empty_in(space)
     }
 }
 
@@ -1014,7 +1019,7 @@ pub struct ParameterEnvironment {
 /// - `generics`: the set of type parameters and their bounds
 /// - `ty`: the base types, which may reference the parameters defined
 ///   in `generics`
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct Polytype {
     pub generics: Generics,
     pub ty: t
