@@ -8,13 +8,53 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-A Big integer (signed version: `BigInt`, unsigned version: `BigUint`).
-
-A `BigUint` is represented as an array of `BigDigit`s.
-A `BigInt` is a combination of `BigUint` and `Sign`.
-*/
+//! A Big integer (signed version: `BigInt`, unsigned version: `BigUint`).
+//!
+//! A `BigUint` is represented as an array of `BigDigit`s.
+//! A `BigInt` is a combination of `BigUint` and `Sign`.
+//!
+//! Common numerical operations are overloaded, so we can treat them
+//! the same way we treat other numbers.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use num::bigint::BigUint;
+//! use std::num::{Zero, One};
+//! use std::mem::replace;
+//!
+//! // Calculate large fibonacci numbers.
+//! fn fib(n: uint) -> BigUint {
+//!     let mut f0: BigUint = Zero::zero();
+//!     let mut f1: BigUint = One::one();
+//!     for _ in range(0, n) {
+//!         let f2 = f0 + f1;
+//!         // This is a low cost way of swapping f0 with f1 and f1 with f2.
+//!         f0 = replace(&mut f1, f2);
+//!     }
+//!     f0
+//! }
+//!
+//! // This is a very large number.
+//! println!("fib(1000) = {}", fib(1000));
+//! ```
+//!
+//! It's easy to generate large random numbers:
+//!
+//! ```rust
+//! use num::bigint::{ToBigInt, RandBigInt};
+//! use std::rand;
+//!
+//! let mut rng = rand::task_rng();
+//! let a = rng.gen_bigint(1000u);
+//!
+//! let low = -10000i.to_bigint().unwrap();
+//! let high = 10000i.to_bigint().unwrap();
+//! let b = rng.gen_bigint_range(&low, &high);
+//!
+//! // Probably an even larger number.
+//! println!("{}", a * b);
+//! ```
 
 use Integer;
 use rand::Rng;
@@ -28,15 +68,11 @@ use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use std::string::String;
 use std::{uint, i64, u64};
 
-/**
-A `BigDigit` is a `BigUint`'s composing element.
-*/
+/// A `BigDigit` is a `BigUint`'s composing element.
 pub type BigDigit = u32;
 
-/**
-A `DoubleBigDigit` is the internal type used to do the computations.  Its
-size is the double of the size of `BigDigit`.
-*/
+/// A `DoubleBigDigit` is the internal type used to do the computations.  Its
+/// size is the double of the size of `BigDigit`.
 pub type DoubleBigDigit = u64;
 
 pub static ZERO_BIG_DIGIT: BigDigit = 0;
@@ -70,12 +106,10 @@ pub mod BigDigit {
     }
 }
 
-/**
-A big unsigned integer type.
-
-A `BigUint`-typed value `BigUint { data: vec!(a, b, c) }` represents a number
-`(a + b * BigDigit::base + c * BigDigit::base^2)`.
-*/
+/// A big unsigned integer type.
+///
+/// A `BigUint`-typed value `BigUint { data: vec!(a, b, c) }` represents a number
+/// `(a + b * BigDigit::base + c * BigDigit::base^2)`.
 #[deriving(Clone)]
 pub struct BigUint {
     data: Vec<BigDigit>
@@ -460,11 +494,9 @@ impl Integer for BigUint {
         }
     }
 
-    /**
-     * Calculates the Greatest Common Divisor (GCD) of the number and `other`
-     *
-     * The result is always positive
-     */
+    /// Calculates the Greatest Common Divisor (GCD) of the number and `other`.
+    ///
+    /// The result is always positive.
     #[inline]
     fn gcd(&self, other: &BigUint) -> BigUint {
         // Use Euclid's algorithm
@@ -478,17 +510,15 @@ impl Integer for BigUint {
         return n;
     }
 
-    /**
-     * Calculates the Lowest Common Multiple (LCM) of the number and `other`
-     */
+    /// Calculates the Lowest Common Multiple (LCM) of the number and `other`.
     #[inline]
     fn lcm(&self, other: &BigUint) -> BigUint { ((*self * *other) / self.gcd(other)) }
 
-    /// Returns `true` if the number can be divided by `other` without leaving a remainder
+    /// Returns `true` if the number can be divided by `other` without leaving a remainder.
     #[inline]
     fn divides(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
 
-    /// Returns `true` if the number is divisible by `2`
+    /// Returns `true` if the number is divisible by `2`.
     #[inline]
     fn is_even(&self) -> bool {
         // Considering only the last digit.
@@ -498,7 +528,7 @@ impl Integer for BigUint {
         }
     }
 
-    /// Returns `true` if the number is not divisible by `2`
+    /// Returns `true` if the number is not divisible by `2`.
     #[inline]
     fn is_odd(&self) -> bool { !self.is_even() }
 }
@@ -1068,33 +1098,29 @@ impl Integer for BigInt {
         }
     }
 
-    /**
-     * Calculates the Greatest Common Divisor (GCD) of the number and `other`
-     *
-     * The result is always positive
-     */
+    /// Calculates the Greatest Common Divisor (GCD) of the number and `other`.
+    ///
+    /// The result is always positive.
     #[inline]
     fn gcd(&self, other: &BigInt) -> BigInt {
         BigInt::from_biguint(Plus, self.data.gcd(&other.data))
     }
 
-    /**
-     * Calculates the Lowest Common Multiple (LCM) of the number and `other`
-     */
+    /// Calculates the Lowest Common Multiple (LCM) of the number and `other`.
     #[inline]
     fn lcm(&self, other: &BigInt) -> BigInt {
         BigInt::from_biguint(Plus, self.data.lcm(&other.data))
     }
 
-    /// Returns `true` if the number can be divided by `other` without leaving a remainder
+    /// Returns `true` if the number can be divided by `other` without leaving a remainder.
     #[inline]
     fn divides(&self, other: &BigInt) -> bool { self.data.divides(&other.data) }
 
-    /// Returns `true` if the number is divisible by `2`
+    /// Returns `true` if the number is divisible by `2`.
     #[inline]
     fn is_even(&self) -> bool { self.data.is_even() }
 
-    /// Returns `true` if the number is not divisible by `2`
+    /// Returns `true` if the number is not divisible by `2`.
     #[inline]
     fn is_odd(&self) -> bool { self.data.is_odd() }
 }
