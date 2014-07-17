@@ -1480,11 +1480,10 @@ reference. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are creating an alias: that is, another
 route to the same data.
 
-In the case of `owned_box`, however, no
-explicit action is necessary. The compiler will automatically convert
-a box `box point` to a reference like
-`&point`. This is another form of borrowing; in this case, the
-contents of the owned box are being lent out.
+In the case of `on_the_heap`, however, no explicit action is
+necessary. The compiler will automatically convert a box `box point`
+to a reference like `&point`. This is another form of borrowing; in
+this case, the contents of the owned box are being lent out.
 
 Whenever a value is borrowed, there are some limitations on what you
 can do with the original. For example, if the contents of a variable
