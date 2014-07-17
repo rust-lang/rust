@@ -808,6 +808,7 @@ impl OwnedStr for String {
 #[cfg(test)]
 mod tests {
     use std::iter::AdditiveIterator;
+    use std::iter::range;
     use std::default::Default;
     use std::char::Char;
     use std::clone::Clone;
@@ -1608,6 +1609,30 @@ mod tests {
             pos += 1;
         }
         assert_eq!(pos, v.len());
+    }
+
+    #[test]
+    fn test_chars_decoding() {
+        let mut bytes = [0u8, ..4];
+        for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
+            let len = c.encode_utf8(bytes);
+            let s = ::core::str::from_utf8(bytes.slice_to(len)).unwrap();
+            if Some(c) != s.chars().next() {
+                fail!("character {:x}={} does not decode correctly", c as u32, c);
+            }
+        }
+    }
+
+    #[test]
+    fn test_chars_rev_decoding() {
+        let mut bytes = [0u8, ..4];
+        for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
+            let len = c.encode_utf8(bytes);
+            let s = ::core::str::from_utf8(bytes.slice_to(len)).unwrap();
+            if Some(c) != s.chars().rev().next() {
+                fail!("character {:x}={} does not decode correctly", c as u32, c);
+            }
+        }
     }
 
     #[test]
