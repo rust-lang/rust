@@ -412,7 +412,10 @@ impl IoError {
         IoError::from_errno(os::errno() as uint, true)
     }
 
-    fn from_rtio_error(err: rtio::IoError) -> IoError {
+    /// Convert a from a runtime I/O error to a IoError
+    ///
+    /// Primarily useful when using `IoFactory::socket_from_raw_fd()`.
+    pub fn from_rtio_error(err: rtio::IoError) -> IoError {
         let rtio::IoError { code, extra, detail } = err;
         let mut ioerr = IoError::from_errno(code, false);
         ioerr.detail = detail;

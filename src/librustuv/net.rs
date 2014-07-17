@@ -10,6 +10,7 @@
 
 use libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use libc;
+use std::intrinsics;
 use std::mem;
 use std::ptr;
 use std::rt::rtio;
@@ -839,6 +840,265 @@ impl Drop for UdpWatcher {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// Raw socket implementation
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct SocketWatcher {
+    handle: *mut uvll::uv_poll_t,
+    socket: uvll::uv_os_socket_t,
+    home: HomeHandle,
+    close_on_drop: bool,
+}
+
+#[cfg(windows)]
+pub fn net_buflen(buf: &[u8]) -> i32 {
+    buf.len() as i32
+}
+
+#[cfg(not(windows))]
+pub fn net_buflen(buf: &[u8]) -> u64 {
+    buf.len() as u64
+}
+
+#[cfg(windows)]
+fn last_error() -> IoError {
+    use std::os;
+    let code = unsafe { libc::GetLastError() as uint };
+    IoError {
+        code: code,
+        extra: 0,
+        detail: Some(os::error_string(code)),
+    }
+}
+
+#[cfg(not(windows))]
+fn last_error() -> IoError {
+    use std::os;
+
+    let errno = os::errno() as uint;
+    IoError {
+        code: os::errno() as uint,
+        extra: 0,
+        detail: Some(os::error_string(errno)),
+    }
+}
+
+
+#[cfg(windows)]
+fn make_nonblocking(socket: libc::SOCKET) -> Option<IoError> {
+    let mut one: libc::c_ulong = 1;
+    if unsafe { libc::ioctlsocket(socket, libc::FIONBIO, &mut one as *mut libc::c_ulong) } != 0 {
+        Some(last_error())
+    } else {
+        None
+    }
+}
+
+#[cfg(not(windows))]
+fn make_nonblocking(socket: c_int) -> Option<IoError> {
+    let flags = unsafe { libc::fcntl(socket, libc::F_GETFL, 0i) };
+    if flags == -1 {
+        return Some(last_error());
+    }
+    if unsafe { libc::fcntl(socket, libc::F_SETFL, flags | libc::O_NONBLOCK) } == -1 {
+        return Some(last_error());
+    }
+    return None;
+}
+
+impl SocketWatcher {
+    pub fn new(io: &mut UvIoFactory, socket: uvll::uv_os_socket_t, close_on_drop: bool)
+        -> Result<SocketWatcher, IoError>
+    {
+        let handle = unsafe { uvll::malloc_handle(uvll::UV_POLL) };
+
+        let raw = SocketWatcher {
+            handle: handle,
+            home: io.make_handle(),
+            socket: socket,
+            close_on_drop: close_on_drop
+        };
+
+        // Make socket non-blocking - required for libuv
+        match make_nonblocking(raw.socket) {
+            Some(e) => return Err(e),
+            None => ()
+        }
+
+        assert_eq!(unsafe {
+            uvll::uv_poll_init_socket(io.uv_loop(), raw.handle, raw.socket)
+        }, 0);
+        return Ok(raw);
+    }
+}
+
+impl UvHandle<uvll::uv_poll_t> for SocketWatcher {
+    fn uv_handle(&self) -> *mut uvll::uv_poll_t { self.handle }
+}
+
+impl Drop for SocketWatcher {
+    fn drop(&mut self) {
+        let _m = self.fire_homing_missile();
+        if self.close_on_drop {
+            self.close();
+        }
+    }
+}
+
+impl HomingIO for SocketWatcher {
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
+}
+
+impl rtio::RtioCustomSocket for SocketWatcher {
+    fn recv_from(&mut self, buf: &mut [u8], addr: *mut libc::sockaddr_storage)
+        -> Result<uint, IoError>
+    {
+        struct Ctx<'b> {
+            task: Option<BlockedTask>,
+            buf: &'b [u8],
+            result: Option<Result<ssize_t, IoError>>,
+            socket: Option<uvll::uv_os_socket_t>,
+            addr: *mut libc::sockaddr_storage
+        }
+        let _m = self.fire_homing_missile();
+        let a = match unsafe {
+            uvll::uv_poll_start(self.handle, uvll::UV_READABLE as c_int, recv_cb)
+        } {
+            0 => {
+                let mut cx = Ctx {
+                    task: None,
+                    buf: buf,
+                    result: None,
+                    socket: Some(self.socket),
+                    addr: addr,
+                };
+                wait_until_woken_after(&mut cx.task, &self.uv_loop(), || {
+                    unsafe { uvll::set_data_for_uv_handle(self.handle, &mut cx) }
+                });
+                cx.result.unwrap().map(|n| n as uint)
+            }
+            n => Err(uv_error_to_io_error(UvError(n)))
+        };
+        return a;
+
+        extern fn recv_cb(handle: *mut uvll::uv_poll_t, status: c_int, events: c_int) {
+            assert!((events & (uvll::UV_READABLE as c_int)) != 0);
+            let cx: &mut Ctx = unsafe {
+                intrinsics::transmute(uvll::get_data_for_uv_handle(handle))
+            };
+
+            if status < 0 {
+                cx.result = Some(Err(uv_error_to_io_error(UvError(status))));
+                wakeup(&mut cx.task);
+                return;
+            }
+
+            unsafe {
+                assert_eq!(uvll::uv_poll_stop(handle), 0)
+            }
+
+            let mut caddrlen = unsafe {
+                                   intrinsics::size_of::<libc::sockaddr_storage>()
+                               } as libc::socklen_t;
+            let len = match cx.socket {
+                Some(sock) => unsafe {
+                    libc::recvfrom(sock,
+                                   cx.buf.as_ptr() as *mut c_void,
+                                   net_buflen(cx.buf),
+                                   0,
+                                   cx.addr as *mut libc::sockaddr,
+                                   &mut caddrlen)
+                },
+                _   => -1
+            };
+            if len == -1 {
+                cx.result = Some(Err(last_error()));
+                wakeup(&mut cx.task);
+                return;
+            }
+
+            cx.result = Some(Ok(len as ssize_t));
+
+            wakeup(&mut cx.task);
+        }
+    }
+
+    fn send_to(&mut self, buf: &[u8], dst: *const libc::sockaddr, slen: uint)
+        -> Result<uint, IoError>
+    {
+        struct Ctx<'b> {
+            task: Option<BlockedTask>,
+            buf: &'b [u8],
+            result: Option<Result<uint, IoError>>,
+            socket: Option<uvll::uv_os_socket_t>,
+            addr: *const libc::sockaddr,
+            len: uint
+        }
+        let _m = self.fire_homing_missile();
+
+        let a = match unsafe {
+            uvll::uv_poll_start(self.handle, uvll::UV_WRITABLE as c_int, send_cb)
+        } {
+            0 => {
+                let mut cx = Ctx {
+                    task: None,
+                    buf: buf,
+                    result: None,
+                    socket: Some(self.socket),
+                    addr: dst,
+                    len: slen
+                };
+                wait_until_woken_after(&mut cx.task, &self.uv_loop(), || {
+                    unsafe { uvll::set_data_for_uv_handle(self.handle, &mut cx) }
+                });
+                cx.result.unwrap()
+            }
+            n => Err(uv_error_to_io_error(UvError(n)))
+        };
+        return a;
+
+        extern fn send_cb(handle: *mut uvll::uv_poll_t, status: c_int, events: c_int) {
+            assert!((events & (uvll::UV_WRITABLE as c_int)) != 0);
+            let cx: &mut Ctx = unsafe {
+                intrinsics::transmute(uvll::get_data_for_uv_handle(handle))
+            };
+            if status < 0 {
+                cx.result = Some(Err(uv_error_to_io_error(UvError(status))));
+                wakeup(&mut cx.task);
+                return;
+            }
+
+            unsafe {
+                assert_eq!(uvll::uv_poll_stop(handle), 0)
+            }
+
+            let len = match cx.socket {
+                Some(sock) => {
+                    unsafe {
+                        libc::sendto(sock,
+                            cx.buf.as_ptr() as *const c_void,
+                            net_buflen(cx.buf),
+                            0,
+                            cx.addr,
+                            cx.len as libc::socklen_t)
+                    }
+                },
+                _   => -1
+            };
+
+            cx.result = if len < 0 {
+                            Some(Err(last_error()))
+                        } else {
+                            Some(Ok(len as uint))
+                        };
+
+            wakeup(&mut cx.task);
+        }
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Shutdown helper

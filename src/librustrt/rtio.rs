@@ -23,6 +23,9 @@ use c_str::CString;
 use local::Local;
 use task::Task;
 
+#[cfg(windows)] pub type CSocketT = libc::SOCKET;
+#[cfg(unix)]    pub type CSocketT = libc::c_int;
+
 pub trait EventLoop {
     fn run(&mut self);
     fn callback(&mut self, arg: proc(): Send);
@@ -201,6 +204,8 @@ pub trait IoFactory {
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<AddrinfoHint>)
                           -> IoResult<Vec<AddrinfoInfo>>;
+    fn socket_from_raw_fd(&mut self, fd: CSocketT, close: CloseBehavior)
+                          -> IoResult<Box<RtioCustomSocket + Send>>;
 
     // filesystem operations
     fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior)
@@ -290,6 +295,11 @@ pub trait RtioUdpSocket : RtioSocket {
     fn set_timeout(&mut self, timeout_ms: Option<u64>);
     fn set_read_timeout(&mut self, timeout_ms: Option<u64>);
     fn set_write_timeout(&mut self, timeout_ms: Option<u64>);
+}
+
+pub trait RtioCustomSocket {
+    fn recv_from(&mut self, buf: &mut [u8], *mut libc::sockaddr_storage) -> IoResult<uint>;
+    fn send_to(&mut self, buf: &[u8], dst: *const libc::sockaddr, len: uint) -> IoResult<uint>;
 }
 
 pub trait RtioTimer {

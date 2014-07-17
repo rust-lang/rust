@@ -10,6 +10,7 @@
 
 use alloc::arc::Arc;
 use libc;
+use std::intrinsics;
 use std::mem;
 use std::ptr;
 use std::rt::mutex;
@@ -874,6 +875,83 @@ impl rtio::RtioUdpSocket for UdpSocket {
     }
     fn set_write_timeout(&mut self, timeout: Option<u64>) {
         self.write_deadline = timeout.map(|a| ::io::timer::now() + a).unwrap_or(0);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Arbitrary sockets
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(windows)]
+pub fn net_buflen(buf: &[u8]) -> i32 {
+    buf.len() as i32
+}
+
+#[cfg(not(windows))]
+pub fn net_buflen(buf: &[u8]) -> u64 {
+    buf.len() as u64
+}
+
+pub struct Socket {
+    fd: sock_t,
+    close_on_drop: bool
+}
+
+impl Socket {
+    pub fn new(sock: sock_t, close_on_drop: bool) -> IoResult<Socket>
+    {
+        let socket = Socket { fd: sock, close_on_drop: close_on_drop };
+        return Ok(socket);
+    }
+}
+
+impl rtio::RtioCustomSocket for Socket {
+    fn recv_from(&mut self, buf: &mut [u8], addr: *mut libc::sockaddr_storage)
+        -> IoResult<uint>
+    {
+        let mut caddrlen = unsafe {
+                                intrinsics::size_of::<libc::sockaddr_storage>()
+                           } as libc::socklen_t;
+        let len = unsafe {
+                    retry( || libc::recvfrom(self.fd,
+                                   buf.as_ptr() as *mut libc::c_void,
+                                   net_buflen(buf),
+                                   0,
+                                   addr as *mut libc::sockaddr,
+                                   &mut caddrlen))
+                  };
+        if len == -1 {
+            return Err(last_error());
+        }
+
+        return Ok(len as uint);
+    }
+
+    fn send_to(&mut self, buf: &[u8], addr: *const libc::sockaddr, slen: uint)
+        -> IoResult<uint>
+    {
+        let len = unsafe {
+                    retry( || libc::sendto(self.fd,
+                                 buf.as_ptr() as *const libc::c_void,
+                                 net_buflen(buf),
+                                 0,
+                                 addr,
+                                 slen as libc::socklen_t))
+                  };
+
+        return if len < 0 {
+            Err(last_error())
+        } else {
+            Ok(len as uint)
+        };
+    }
+}
+
+impl Drop for Socket {
+    fn drop(&mut self) {
+        if self.close_on_drop {
+            unsafe { close(self.fd) }
+        }
     }
 }
 
