@@ -48,9 +48,6 @@ pub struct DataFlowContext<'a, O> {
     /// equal to bits_per_id/uint::BITS rounded up.
     words_per_id: uint,
 
-    // mapping from cfg node index to bitset index.
-    index_to_bitset: Vec<Option<uint>>,
-
     // mapping from node to cfg node index
     // FIXME (#6298): Shouldn't this go with CFG?
     nodeid_to_index: NodeMap<CFGIndex>,
@@ -98,58 +95,16 @@ fn to_cfgidx_or_die(id: ast::NodeId, index: &NodeMap<CFGIndex>) -> CFGIndex {
 impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
     fn has_bitset_for_nodeid(&self, n: ast::NodeId) -> bool {
         assert!(n != ast::DUMMY_NODE_ID);
-        match self.nodeid_to_index.find(&n) {
-            None => false,
-            Some(&cfgidx) => self.has_bitset_for_cfgidx(cfgidx),
-        }
+        self.nodeid_to_index.contains_key(&n)
     }
-    fn has_bitset_for_cfgidx(&self, cfgidx: CFGIndex) -> bool {
-        let node_id = cfgidx.node_id();
-        node_id < self.index_to_bitset.len() &&
-            self.index_to_bitset.get(node_id).is_some()
+    fn has_bitset_for_cfgidx(&self, _cfgidx: CFGIndex) -> bool {
+        true
     }
     fn get_bitset_index(&self, cfgidx: CFGIndex) -> uint {
-        let node_id = cfgidx.node_id();
-        self.index_to_bitset.get(node_id).unwrap()
+        cfgidx.node_id()
     }
     fn get_or_create_bitset_index(&mut self, cfgidx: CFGIndex) -> uint {
-        assert!(self.words_per_id > 0);
-        let len = self.gens.len() / self.words_per_id;
-        let expanded;
-        let n;
-        if self.index_to_bitset.len() <= cfgidx.node_id() {
-            self.index_to_bitset.grow_set(cfgidx.node_id(), &None, Some(len));
-            expanded = true;
-            n = len;
-        } else {
-            let entry = self.index_to_bitset.get_mut(cfgidx.node_id());
-            match *entry {
-                None => {
-                    *entry = Some(len);
-                    expanded = true;
-                    n = len;
-                }
-                Some(bitidx) => {
-                    expanded = false;
-                    n = bitidx;
-                }
-            }
-        }
-        if expanded {
-            let entry = if self.oper.initial_value() { uint::MAX } else {0};
-            for _ in range(0, self.words_per_id) {
-                self.gens.push(0);
-                self.kills.push(0);
-                self.on_entry.push(entry);
-            }
-        }
-
-        let start = n * self.words_per_id;
-        let end = start + self.words_per_id;
-        let len = self.gens.len();
-        assert!(start < len);
-        assert!(end <= len);
-        n
+        cfgidx.node_id()
     }
 }
 
@@ -243,14 +198,19 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
                id_range: IdRange,
                bits_per_id: uint) -> DataFlowContext<'a, O> {
         let words_per_id = (bits_per_id + uint::BITS - 1) / uint::BITS;
+        let num_nodes = cfg.graph.all_nodes().len();
 
         debug!("DataFlowContext::new(analysis_name: {:s}, id_range={:?}, \
-                                     bits_per_id={:?}, words_per_id={:?})",
-               analysis_name, id_range, bits_per_id, words_per_id);
+                                     bits_per_id={:?}, words_per_id={:?}) \
+                                     num_nodes: {}",
+               analysis_name, id_range, bits_per_id, words_per_id,
+               num_nodes);
 
-        let gens = Vec::new();
-        let kills = Vec::new();
-        let on_entry = Vec::new();
+        let entry = if oper.initial_value() { uint::MAX } else {0};
+
+        let gens = Vec::from_elem(num_nodes * words_per_id, 0);
+        let kills = Vec::from_elem(num_nodes * words_per_id, 0);
+        let on_entry = Vec::from_elem(num_nodes * words_per_id, entry);
 
         let nodeid_to_index = build_nodeid_to_index(decl, cfg);
 
@@ -258,7 +218,6 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
             tcx: tcx,
             analysis_name: analysis_name,
             words_per_id: words_per_id,
-            index_to_bitset: Vec::new(),
             nodeid_to_index: nodeid_to_index,
             bits_per_id: bits_per_id,
             oper: oper,
