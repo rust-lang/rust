@@ -512,13 +512,13 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
             assert!(!s.is_empty(), "string conversion produced empty result");
             match op {
                 FormatDigit => {
-                    if flags.space && !(*s.get(0) == '-' as u8 ||
-                                        *s.get(0) == '+' as u8) {
+                    if flags.space && !(s[0] == '-' as u8 ||
+                                        s[0] == '+' as u8) {
                         s.unshift(' ' as u8);
                     }
                 }
                 FormatOctal => {
-                    if flags.alternate && *s.get(0) != '0' as u8 {
+                    if flags.alternate && s[0] != '0' as u8 {
                         s.unshift('0' as u8);
                     }
                 }

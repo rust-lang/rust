@@ -168,7 +168,7 @@ impl<'a> dot::Labeller<'a, Nd, Ed<'a>> for Graph {
         dot::Id::new(format!("N{}", n))
     }
     fn node_label<'a>(&'a self, n: &Nd) -> dot::LabelText<'a> {
-        dot::LabelStr(str::Slice(self.nodes.get(*n).as_slice()))
+        dot::LabelStr(str::Slice(self.nodes[*n].as_slice()))
     }
     fn edge_label<'a>(&'a self, _: &Ed) -> dot::LabelText<'a> {
         dot::LabelStr(str::Slice("&sube;"))
@@ -225,7 +225,7 @@ impl<'a> dot::Labeller<'a, Nd<'a>, Ed<'a>> for Graph {
     }
     fn node_label<'a>(&'a self, n: &Nd<'a>) -> dot::LabelText<'a> {
         let &(i, _) = n;
-        dot::LabelStr(str::Slice(self.nodes.get(i).as_slice()))
+        dot::LabelStr(str::Slice(self.nodes[i].as_slice()))
     }
     fn edge_label<'a>(&'a self, _: &Ed<'a>) -> dot::LabelText<'a> {
         dot::LabelStr(str::Slice("&sube;"))
@@ -238,8 +238,8 @@ impl<'a> dot::GraphWalk<'a, Nd<'a>, Ed<'a>> for Graph {
     }
     fn edges(&'a self) -> dot::Edges<'a,Ed<'a>> {
         self.edges.iter()
-            .map(|&(i,j)|((i, self.nodes.get(i).as_slice()),
-                          (j, self.nodes.get(j).as_slice())))
+            .map(|&(i,j)|((i, self.nodes[i].as_slice()),
+                          (j, self.nodes[j].as_slice())))
             .collect()
     }
     fn source(&self, e: &Ed<'a>) -> Nd<'a> { let &(s,_) = e; s }

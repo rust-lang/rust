@@ -235,7 +235,7 @@ impl<'a> Parser<'a> {
                     // left paren, let's grab the old flags and see if we
                     // need a capture.
                     let (cap, cap_name, oldflags) = {
-                        let paren = self.stack.get(altfrom-1);
+                        let paren = &self.stack[altfrom-1];
                         (paren.capture(), paren.capture_name(), paren.flags())
                     };
                     try!(self.alternate(altfrom));
@@ -464,7 +464,7 @@ impl<'a> Parser<'a> {
                 Some(i) => i,
                 None => return None,
             };
-        if *self.chars.get(closer-1) != ':' {
+        if self.chars[closer-1] != ':' {
             return None
         }
         if closer - self.chari <= 3 {
@@ -519,7 +519,7 @@ impl<'a> Parser<'a> {
             max = Some(min);
         } else {
             let pieces: Vec<&str> = inner.as_slice().splitn(',', 1).collect();
-            let (smin, smax) = (*pieces.get(0), *pieces.get(1));
+            let (smin, smax) = (pieces[0], pieces[1]);
             if smin.len() == 0 {
                 return self.err("Max repetitions cannot be specified \
                                     without min repetitions.")
@@ -931,7 +931,7 @@ impl<'a> Parser<'a> {
         if self.chari + offset >= self.chars.len() {
             return None
         }
-        Some(*self.chars.get(self.chari + offset))
+        Some(self.chars[self.chari + offset])
     }
 
     fn peek_is(&self, offset: uint, is: char) -> bool {
@@ -939,7 +939,7 @@ impl<'a> Parser<'a> {
     }
 
     fn cur(&self) -> char {
-        *self.chars.get(self.chari)
+        self.chars[self.chari]
     }
 
     fn slice(&self, start: uint, end: uint) -> String {

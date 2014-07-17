@@ -466,7 +466,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
                                 _offset: uint,
                                 inner: *const TyDesc)
                                 -> bool {
-        match *self.var_stk.get(self.var_stk.len() - 1) {
+        match self.var_stk[self.var_stk.len() - 1] {
             Matched => {
                 if i != 0 {
                     try!(self, self.writer.write(", ".as_bytes()));
@@ -484,7 +484,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
                                 _disr_val: Disr,
                                 n_fields: uint,
                                 _name: &str) -> bool {
-        match *self.var_stk.get(self.var_stk.len() - 1) {
+        match self.var_stk[self.var_stk.len() - 1] {
             Matched => {
                 if n_fields > 0 {
                     try!(self, self.writer.write([')' as u8]));

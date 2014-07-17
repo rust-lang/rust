@@ -373,7 +373,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     if matches.opt_present("h") { usage(args[0].as_slice()); return None; }
 
     let filter = if matches.free.len() > 0 {
-        let s = matches.free.get(0).as_slice();
+        let s = matches.free[0].as_slice();
         match Regex::new(s) {
             Ok(re) => Some(re),
             Err(e) => return Some(Err(format!("could not parse /{}/: {}", s, e)))

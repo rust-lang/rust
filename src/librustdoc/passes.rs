@@ -339,7 +339,7 @@ pub fn unindent(s: &str) -> String {
     });
 
     if lines.len() >= 1 {
-        let mut unindented = vec![ lines.get(0).trim().to_string() ];
+        let mut unindented = vec![ lines[0].trim().to_string() ];
         unindented.push_all(lines.tail().iter().map(|&line| {
             if line.is_whitespace() {
                 line.to_string()
