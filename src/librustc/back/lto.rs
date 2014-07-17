@@ -67,7 +67,14 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                                   archive.read(format!("{}.bytecode.deflate",
                                                        file).as_slice())
                               });
-        let bc_encoded = bc_encoded.expect("missing compressed bytecode in archive!");
+        let bc_encoded = match bc_encoded {
+            Some(data) => data,
+            None => {
+                sess.fatal(format!("missing compressed bytecode in {} \
+                                    (perhaps it was compiled with -C codegen-units > 1)",
+                                   path.display()).as_slice());
+            },
+        };
         let bc_extractor = if is_versioned_bytecode_format(bc_encoded) {
             |_| {
                 // Read the version
@@ -120,7 +127,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                     ptr as *const libc::c_char,
                                                     bc_decoded.len() as libc::size_t) {
-                write::llvm_err(sess,
+                write::llvm_err(sess.diagnostic().handler(),
                                 format!("failed to load bc of `{}`",
                                         name.as_slice()));
             }

@@ -662,51 +662,56 @@ fn link_rlib<'a>(sess: &'a Session,
             ab.add_file(&metadata).unwrap();
             remove(sess, &metadata);
 
-            // For LTO purposes, the bytecode of this library is also inserted
-            // into the archive.
-            //
-            // Note that we make sure that the bytecode filename in the archive
-            // is never exactly 16 bytes long by adding a 16 byte extension to
-            // it. This is to work around a bug in LLDB that would cause it to
-            // crash if the name of a file in an archive was exactly 16 bytes.
-            let bc_filename = obj_filename.with_extension("bc");
-            let bc_deflated_filename = obj_filename.with_extension("bytecode.deflate");
+            if sess.opts.cg.codegen_units == 1 {
+                // For LTO purposes, the bytecode of this library is also
+                // inserted into the archive.  We currently do this only when
+                // codegen_units == 1, so we don't have to deal with multiple
+                // bitcode files per crate.
+                //
+                // Note that we make sure that the bytecode filename in the
+                // archive is never exactly 16 bytes long by adding a 16 byte
+                // extension to it. This is to work around a bug in LLDB that
+                // would cause it to crash if the name of a file in an archive
+                // was exactly 16 bytes.
+                let bc_filename = obj_filename.with_extension("bc");
+                let bc_deflated_filename = obj_filename.with_extension("bytecode.deflate");
 
-            let bc_data = match fs::File::open(&bc_filename).read_to_end() {
-                Ok(buffer) => buffer,
-                Err(e) => sess.fatal(format!("failed to read bytecode: {}",
-                                             e).as_slice())
-            };
+                let bc_data = match fs::File::open(&bc_filename).read_to_end() {
+                    Ok(buffer) => buffer,
+                    Err(e) => sess.fatal(format!("failed to read bytecode: {}",
+                                                 e).as_slice())
+                };
 
-            let bc_data_deflated = match flate::deflate_bytes(bc_data.as_slice()) {
-                Some(compressed) => compressed,
-                None => sess.fatal(format!("failed to compress bytecode from {}",
-                                           bc_filename.display()).as_slice())
-            };
+                let bc_data_deflated = match flate::deflate_bytes(bc_data.as_slice()) {
+                    Some(compressed) => compressed,
+                    None => sess.fatal(format!("failed to compress bytecode from {}",
+                                               bc_filename.display()).as_slice())
+                };
 
-            let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
-                Ok(file) => file,
-                Err(e) => {
-                    sess.fatal(format!("failed to create compressed bytecode \
-                                        file: {}", e).as_slice())
+                let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        sess.fatal(format!("failed to create compressed bytecode \
+                                            file: {}", e).as_slice())
+                    }
+                };
+
+                match write_rlib_bytecode_object_v1(&mut bc_file_deflated,
+                                                    bc_data_deflated.as_slice()) {
+                    Ok(()) => {}
+                    Err(e) => {
+                        sess.err(format!("failed to write compressed bytecode: \
+                                          {}", e).as_slice());
+                        sess.abort_if_errors()
+                    }
+                };
+
+                ab.add_file(&bc_deflated_filename).unwrap();
+                remove(sess, &bc_deflated_filename);
+                if !sess.opts.cg.save_temps &&
+                   !sess.opts.output_types.contains(&OutputTypeBitcode) {
+                    remove(sess, &bc_filename);
                 }
-            };
-
-            match write_rlib_bytecode_object_v1(&mut bc_file_deflated,
-                                                bc_data_deflated.as_slice()) {
-                Ok(()) => {}
-                Err(e) => {
-                    sess.err(format!("failed to write compressed bytecode: \
-                                      {}", e).as_slice());
-                    sess.abort_if_errors()
-                }
-            };
-
-            ab.add_file(&bc_deflated_filename).unwrap();
-            remove(sess, &bc_deflated_filename);
-            if !sess.opts.cg.save_temps &&
-               !sess.opts.output_types.contains(&OutputTypeBitcode) {
-                remove(sess, &bc_filename);
             }
         }
 

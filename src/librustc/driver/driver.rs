@@ -442,11 +442,14 @@ pub fn phase_save_analysis(sess: &Session,
          middle::save::process_crate(sess, krate, analysis, odir));
 }
 
+pub struct ModuleTranslation {
+    pub llcx: ContextRef,
+    pub llmod: ModuleRef,
+}
+
 pub struct CrateTranslation {
-    pub context: ContextRef,
-    pub module: ModuleRef,
-    pub metadata_context: ContextRef,
-    pub metadata_module: ModuleRef,
+    pub modules: Vec<ModuleTranslation>,
+    pub metadata_module: ModuleTranslation,
     pub link: LinkMeta,
     pub metadata: Vec<u8>,
     pub reachable: Vec<String>,
@@ -681,6 +684,7 @@ pub fn collect_crate_metadata(session: &Session,
     session.opts.cg.metadata.clone()
 }
 
+#[deriving(Clone)]
 pub struct OutputFilenames {
     pub out_directory: Path,
     pub out_filestem: String,

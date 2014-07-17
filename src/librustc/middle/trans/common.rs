@@ -14,7 +14,7 @@
 
 use driver::session::Session;
 use llvm;
-use llvm::{ValueRef, BasicBlockRef, BuilderRef};
+use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef};
 use llvm::{True, False, Bool};
 use middle::def;
 use middle::freevars;
@@ -669,9 +669,13 @@ pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
     }
 }
 
-pub fn C_struct(ccx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {
+pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {
+    C_struct_in_context(cx.llcx(), elts, packed)
+}
+
+pub fn C_struct_in_context(llcx: ContextRef, elts: &[ValueRef], packed: bool) -> ValueRef {
     unsafe {
-        llvm::LLVMConstStructInContext(ccx.llcx(),
+        llvm::LLVMConstStructInContext(llcx,
                                        elts.as_ptr(), elts.len() as c_uint,
                                        packed as Bool)
     }
@@ -689,10 +693,14 @@ pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn C_bytes(ccx: &CrateContext, bytes: &[u8]) -> ValueRef {
+pub fn C_bytes(cx: &CrateContext, bytes: &[u8]) -> ValueRef {
+    C_bytes_in_context(cx.llcx(), bytes)
+}
+
+pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
-        return llvm::LLVMConstStringInContext(ccx.llcx(), ptr, bytes.len() as c_uint, True);
+        return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
     }
 }
 
