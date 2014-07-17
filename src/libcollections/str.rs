@@ -2240,16 +2240,26 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use test::Bencher;
+    use test::black_box;
     use super::*;
+    use std::option::{None, Some};
     use std::iter::{Iterator, DoubleEndedIterator};
     use std::collections::Collection;
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
-        let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.chars().count(), len));
+        b.iter(|| s.chars().count());
+    }
+
+    #[bench]
+    fn char_iterator_for(b: &mut Bencher) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+
+        b.iter(|| {
+            for ch in s.chars() { black_box(ch) }
+        });
     }
 
     #[bench]
@@ -2260,17 +2270,24 @@ mod bench {
         Mary had a little lamb, Little lamb
         Mary had a little lamb, Little lamb
         Mary had a little lamb, Little lamb";
-        let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.chars().count(), len));
+        b.iter(|| s.chars().count());
     }
 
     #[bench]
     fn char_iterator_rev(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
-        let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.chars().rev().count(), len));
+        b.iter(|| s.chars().rev().count());
+    }
+
+    #[bench]
+    fn char_iterator_rev_for(b: &mut Bencher) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+
+        b.iter(|| {
+            for ch in s.chars().rev() { black_box(ch) }
+        });
     }
 
     #[bench]
