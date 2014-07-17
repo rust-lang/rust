@@ -114,11 +114,11 @@ macro_rules! utf8_first_byte(
 
 // return the value of $ch updated with continuation byte $byte
 macro_rules! utf8_acc_cont_byte(
-    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
+    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & CONT_MASK) as u32)
 )
 
 macro_rules! utf8_is_cont_byte(
-    ($byte:expr) => (($byte & 192u8) == 128)
+    ($byte:expr) => (($byte & !CONT_MASK) == TAG_CONT_U8)
 )
 
 #[inline]
@@ -137,20 +137,20 @@ impl<'a> Iterator<char> for Chars<'a> {
         fn decode_multibyte<'a>(x: u8, it: &mut slice::Items<'a, u8>) -> char {
             // NOTE: Performance is very sensitive to the exact formulation here
             // Decode from a byte combination out of: [[[x y] z] w]
-            let cont_mask = 0x3F; // continuation byte mask
             let init = utf8_first_byte!(x, 2);
             let y = unwrap_or_0(it.next());
             let mut ch = utf8_acc_cont_byte!(init, y);
             if x >= 0xE0 {
-                /* [[x y z] w] case */
+                /* [[x y z] w] case
+                 * 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid */
                 let z = unwrap_or_0(it.next());
-
-                let y_z = (((y & cont_mask) as u32) << 6) | (z & cont_mask) as u32;
+                let y_z = utf8_acc_cont_byte!((y & CONT_MASK) as u32, z);
                 ch = init << 12 | y_z;
                 if x >= 0xF0 {
-                    /* [x y z w] case */
+                    /* [x y z w] case
+                     * use only the lower 3 bits of `init` */
                     let w = unwrap_or_0(it.next());
-                    ch = (init & 7) << 18 | y_z << 6 | (w & cont_mask) as u32;
+                    ch = (init & 7) << 18 | utf8_acc_cont_byte!(y_z, w);
                 }
             }
             unsafe {
@@ -754,9 +754,9 @@ fn run_utf8_validation_iterator(iter: &mut slice::Items<u8>) -> bool {
             // UTF8-4      = %xF0 %x90-BF 2( UTF8-tail ) / %xF1-F3 3( UTF8-tail ) /
             //               %xF4 %x80-8F 2( UTF8-tail )
             match w {
-                2 => if second & 192 != TAG_CONT_U8 {err!()},
+                2 => if second & !CONT_MASK != TAG_CONT_U8 {err!()},
                 3 => {
-                    match (first, second, next!() & 192) {
+                    match (first, second, next!() & !CONT_MASK) {
                         (0xE0        , 0xA0 .. 0xBF, TAG_CONT_U8) |
                         (0xE1 .. 0xEC, 0x80 .. 0xBF, TAG_CONT_U8) |
                         (0xED        , 0x80 .. 0x9F, TAG_CONT_U8) |
@@ -765,7 +765,7 @@ fn run_utf8_validation_iterator(iter: &mut slice::Items<u8>) -> bool {
                     }
                 }
                 4 => {
-                    match (first, second, next!() & 192, next!() & 192) {
+                    match (first, second, next!() & !CONT_MASK, next!() & !CONT_MASK) {
                         (0xF0        , 0x90 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
                         (0xF1 .. 0xF3, 0x80 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
                         (0xF4        , 0x80 .. 0x8F, TAG_CONT_U8, TAG_CONT_U8) => {}
@@ -962,7 +962,10 @@ pub struct CharRange {
     pub next: uint,
 }
 
-static TAG_CONT_U8: u8 = 128u8;
+/// Mask of the value bits of a continuation byte
+static CONT_MASK: u8 = 0b0011_1111u8;
+/// Value of the tag bits (tag mask is !CONT_MASK) of a continuation byte
+static TAG_CONT_U8: u8 = 0b1000_0000u8;
 
 /// Unsafe operations
 pub mod raw {
@@ -1898,7 +1901,7 @@ impl<'a> StrSlice<'a> for &'a str {
         // Multibyte case is a fn to allow char_range_at_reverse to inline cleanly
         fn multibyte_char_range_at_reverse(s: &str, mut i: uint) -> CharRange {
             // while there is a previous byte == 10......
-            while i > 0 && s.as_bytes()[i] & 192u8 == TAG_CONT_U8 {
+            while i > 0 && s.as_bytes()[i] & !CONT_MASK == TAG_CONT_U8 {
                 i -= 1u;
             }
 
