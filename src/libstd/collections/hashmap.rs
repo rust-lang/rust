@@ -24,6 +24,7 @@ use mem::replace;
 use num;
 use option::{Some, None, Option};
 use result::{Ok, Err};
+use tuple::Tuple2;
 
 mod table {
     use clone::Clone;
@@ -1349,12 +1350,17 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Return the value corresponding to the key in the map, using
     /// equivalence.
     pub fn find_equiv<'a, Q: Hash<S> + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
+        self.search_equiv(k).map(|idx| {
+            self.table.read(&idx).val1()
+        })
+    }
+
+    /// Return the (mutable) value corresponding to the key in the map, using
+    /// equivalence.
+    pub fn find_equiv_mut<'a, Q: Hash<S> + Equiv<K>>(&'a mut self, k: &Q) -> Option<&'a mut V> {
         match self.search_equiv(k) {
-            None      => None,
-            Some(idx) => {
-                let (_, v_ref) = self.table.read(&idx);
-                Some(v_ref)
-            }
+            None => None,
+            Some(idx) => Some(self.table.read_mut(&idx).val1())
         }
     }
 
@@ -2268,6 +2274,23 @@ mod test_map {
         assert_eq!(m.find_equiv(&("baz")), Some(&baz));
 
         assert_eq!(m.find_equiv(&("qux")), None);
+    }
+
+    #[test]
+    fn test_find_equiv_mut() {
+        let mut m = HashMap::new();
+
+        let (mut foo, mut bar, mut baz) = (1i, 2, 3);
+        m.insert("foo".to_string(), foo);
+        m.insert("bar".to_string(), bar);
+        m.insert("baz".to_string(), baz);
+
+
+        assert_eq!(m.find_equiv_mut(&"foo"), Some(&mut foo));
+        assert_eq!(m.find_equiv_mut(&"bar"), Some(&mut bar));
+        assert_eq!(m.find_equiv_mut(&"baz"), Some(&mut baz));
+
+        assert_eq!(m.find_equiv_mut(&"qux"), None);
     }
 
     #[test]
