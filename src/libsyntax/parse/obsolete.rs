@@ -76,7 +76,7 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ),
             ObsoleteManagedExpr => (
                 "`@` notation for a managed pointer allocation",
-                "use the `box(GC)` oeprator instead of `@`"
+                "use the `box(GC)` operator instead of `@`"
             ),
         };
 
