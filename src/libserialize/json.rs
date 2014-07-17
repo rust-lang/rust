@@ -74,51 +74,102 @@ When using `ToJson` the `Encodable` trait implementation is not mandatory.
 
 ## Using Autoserialization
 
-Create a struct called TestStruct1 and serialize and deserialize it to and from JSON
-using the serialization API, using the derived serialization code.
+Create a struct called `TestStruct` and serialize and deserialize it to and from JSON using the
+serialization API, using the derived serialization code.
 
 ```rust
 extern crate serialize;
 use serialize::json;
 
-#[deriving(Decodable, Encodable)] //generate Decodable, Encodable impl.
-pub struct TestStruct1  {
+// Automatically generate `Decodable` and `Encodable` trait implementations
+#[deriving(Decodable, Encodable)]
+pub struct TestStruct  {
     data_int: u8,
     data_str: String,
     data_vector: Vec<u8>,
 }
 
 fn main() {
-    let object = TestStruct1
-         {data_int: 1, data_str:"toto".to_string(), data_vector:vec![2,3,4,5]};
+    let object = TestStruct {
+        data_int: 1,
+        data_str: "toto".to_string(),
+        data_vector: vec![2,3,4,5],
+    };
 
     // Serialize using `json::encode`
     let encoded = json::encode(&object);
 
     // Deserialize using `json::decode`
-    let decoded: TestStruct1 = json::decode(encoded.as_slice()).unwrap();
+    let decoded: TestStruct = json::decode(encoded.as_slice()).unwrap();
 }
 ```
 
-## Using `ToJson`
+## Using the `ToJson` trait
 
-This example uses the `ToJson` trait to generate the JSON string.
+The examples above use the `ToJson` trait to generate the JSON string, which required
+for custom mappings.
+
+### Simple example of `ToJson` usage
 
 ```rust
+extern crate serialize;
+use serialize::json::ToJson;
+use serialize::json;
+
+// A custom data structure
+struct ComplexNum {
+    a: f64,
+    b: f64,
+}
+
+// JSON value representation
+impl ToJson for ComplexNum {
+    fn to_json(&self) -> json::Json {
+        json::String(format!("{}+{}i", self.a, self.b))
+    }
+}
+
+// Only generate `Encodable` trait implementation
+#[deriving(Encodable)]
+pub struct ComplexNumRecord {
+    uid: u8,
+    dsc: String,
+    val: json::Json,
+}
+
+fn main() {
+    let num = ComplexNum { a: 0.0001, b: 12.539 };
+    let data: String = json::encode(&ComplexNumRecord{
+        uid: 1,
+        dsc: "test".to_string(),
+        val: num.to_json(),
+    });
+    println!("data: {}", data);
+    // data: {"uid":1,"dsc":"test","val":"0.0001+12.539j"};
+}
+```
+
+### Verbose example of `ToJson` usage
+
+```rust
+extern crate serialize;
 use std::collections::TreeMap;
 use serialize::json::ToJson;
 use serialize::json;
 
+// Only generate `Decodable` trait implementation
 #[deriving(Decodable)]
-pub struct TestStruct1  {
+pub struct TestStruct {
     data_int: u8,
     data_str: String,
     data_vector: Vec<u8>,
 }
 
-impl ToJson for TestStruct1 {
-    fn to_json( &self ) -> json::Json {
+// Specify encoding method manually
+impl ToJson for TestStruct {
+    fn to_json(&self) -> json::Json {
         let mut d = TreeMap::new();
+        // All standard types implement `to_json()`, so use it
         d.insert("data_int".to_string(), self.data_int.to_json());
         d.insert("data_str".to_string(), self.data_str.to_json());
         d.insert("data_vector".to_string(), self.data_vector.to_json());
@@ -128,12 +179,16 @@ impl ToJson for TestStruct1 {
 
 fn main() {
     // Serialize using `ToJson`
-    let test2 = TestStruct1 {data_int: 1, data_str:"toto".to_string(), data_vector:vec![2,3,4,5]};
-    let tjson: json::Json = test2.to_json();
-    let json_str: String = tjson.to_string();
+    let input_data = TestStruct {
+        data_int: 1,
+        data_str: "toto".to_string(),
+        data_vector: vec![2,3,4,5],
+    };
+    let json_obj: json::Json = input_data.to_json();
+    let json_str: String = json_obj.to_string();
 
     // Deserialize like before
-    let decoded: TestStruct1 = json::decode(json_str.as_slice()).unwrap();
+    let decoded: TestStruct = json::decode(json_str.as_slice()).unwrap();
 }
 ```
 
