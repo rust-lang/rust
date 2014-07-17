@@ -1577,10 +1577,6 @@ fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
 
 // codegen tests (vs. clang)
 
-fn make_o_name(config: &Config, testfile: &Path) -> Path {
-    output_base_name(config, testfile).with_extension("o")
-}
-
 fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
     if suffix.len() == 0 {
         (*p).clone()
@@ -1596,14 +1592,13 @@ fn compile_test_and_save_bitcode(config: &Config, props: &TestProps,
     // FIXME (#9639): This needs to handle non-utf8 paths
     let link_args = vec!("-L".to_string(),
                          aux_dir.as_str().unwrap().to_string());
-    let llvm_args = vec!("--emit=obj".to_string(),
-                         "--crate-type=lib".to_string(),
-                         "-C".to_string(),
-                         "save-temps".to_string());
+    let llvm_args = vec!("--emit=bc,obj".to_string(),
+                         "--crate-type=lib".to_string());
     let args = make_compile_args(config,
                                  props,
                                  link_args.append(llvm_args.as_slice()),
-                                 |a, b| ThisFile(make_o_name(a, b)), testfile);
+                                 |a, b| ThisDirectory(output_base_name(a, b).dir_path()),
+                                 testfile);
     compose_and_run_compiler(config, props, testfile, args, None)
 }
 

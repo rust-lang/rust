@@ -148,6 +148,27 @@ pub struct CrateContext<'a> {
     local: &'a LocalCrateContext,
 }
 
+pub struct CrateContextIterator<'a> {
+    shared: &'a SharedCrateContext,
+    index: uint,
+}
+
+impl<'a> Iterator<CrateContext<'a>> for CrateContextIterator<'a> {
+    fn next(&mut self) -> Option<CrateContext<'a>> {
+        if self.index >= self.shared.local_ccxs.len() {
+            return None;
+        }
+
+        let index = self.index;
+        self.index += 1;
+
+        Some(CrateContext {
+            shared: self.shared,
+            local: &self.shared.local_ccxs[index],
+        })
+    }
+}
+
 unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
     let llmod = mod_name.with_c_str(|buf| {
@@ -224,6 +245,13 @@ impl SharedCrateContext {
         }
 
         shared_ccx
+    }
+
+    pub fn iter<'a>(&'a self) -> CrateContextIterator<'a> {
+        CrateContextIterator {
+            shared: self,
+            index: 0,
+        }
     }
 
     pub fn get_ccx<'a>(&'a self, index: uint) -> CrateContext<'a> {

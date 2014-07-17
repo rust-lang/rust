@@ -303,6 +303,13 @@ macro_rules! cgoptions(
             }
         }
 
+        fn parse_uint(slot: &mut uint, v: Option<&str>) -> bool {
+            use std::from_str::FromStr;
+            match v.and_then(FromStr::from_str) {
+                Some(i) => { *slot = i; true },
+                None => false
+            }
+        }
     }
 ) )
 
@@ -347,6 +354,8 @@ cgoptions!(
          "metadata to mangle symbol names with"),
     extra_filename: String = ("".to_string(), parse_string,
          "extra data to put in each output filename"),
+    codegen_units: uint = (1, parse_uint,
+        "divide crate into N units to optimize in parallel"),
 )
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions

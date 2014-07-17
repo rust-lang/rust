@@ -29,7 +29,7 @@ use back::link::{mangle_exported_name};
 use back::{link, abi};
 use driver::config;
 use driver::config::{NoDebugInfo, FullDebugInfo};
-use driver::driver::{CrateAnalysis, CrateTranslation};
+use driver::driver::{CrateAnalysis, CrateTranslation, ModuleTranslation};
 use driver::session::Session;
 use lint;
 use llvm::{BasicBlockRef, ModuleRef, ValueRef, Vector, get_param};
@@ -47,8 +47,8 @@ use middle::trans::builder::{Builder, noname};
 use middle::trans::callee;
 use middle::trans::cleanup::{CleanupMethods, ScopeId};
 use middle::trans::cleanup;
-use middle::trans::common::{Block, C_bool, C_bytes, C_i32, C_integral, C_nil};
-use middle::trans::common::{C_null, C_struct, C_u64, C_u8, C_uint, C_undef};
+use middle::trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_integral, C_nil};
+use middle::trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_uint, C_undef};
 use middle::trans::common::{CrateContext, ExternMap, FunctionContext};
 use middle::trans::common::{NodeInfo, Result, SubstP, monomorphize_type};
 use middle::trans::common::{node_id_type, param_substs, return_type_is_void};
@@ -2852,8 +2852,8 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
                              cx.sess().fatal("failed to compress metadata")
                          }
                      }.as_slice());
-    let llmeta = C_bytes(cx, compressed.as_slice());
-    let llconst = C_struct(cx, [llmeta], false);
+    let llmeta = C_bytes_in_context(cx.metadata_llcx(), compressed.as_slice());
+    let llconst = C_struct_in_context(cx.metadata_llcx(), [llmeta], false);
     let name = format!("rust_metadata_{}_{}",
                        cx.link_meta().crate_name,
                        cx.link_meta().crate_hash);
@@ -2896,8 +2896,7 @@ pub fn trans_crate(krate: ast::Crate,
 
     let link_meta = link::build_link_meta(&tcx.sess, &krate, name);
 
-    // Multiple compilation units won't be supported until a later commit.
-    let codegen_units = 1;
+    let codegen_units = tcx.sess.opts.cg.codegen_units;
     let shared_ccx = SharedCrateContext::new(link_meta.crate_name.as_slice(),
                                              codegen_units,
                                              tcx,
@@ -2957,8 +2956,9 @@ pub fn trans_crate(krate: ast::Crate,
         }
     }
 
-    let llcx = shared_ccx.get_ccx(0).llcx();
-    let llmod = shared_ccx.get_ccx(0).llmod();
+    let modules = shared_ccx.iter()
+        .map(|ccx| ModuleTranslation { llcx: ccx.llcx(), llmod: ccx.llmod() })
+        .collect();
 
     let mut reachable: Vec<String> = shared_ccx.reachable().iter().filter_map(|id| {
         shared_ccx.item_symbols().borrow().find(id).map(|s| s.to_string())
@@ -2988,20 +2988,22 @@ pub fn trans_crate(krate: ast::Crate,
     // referenced from rt/rust_try.ll
     reachable.push("rust_eh_personality_catch".to_string());
 
-    let metadata_module = shared_ccx.metadata_llmod();
-    let metadata_context = shared_ccx.metadata_llcx();
+    let metadata_module = ModuleTranslation {
+        llcx: shared_ccx.metadata_llcx(),
+        llmod: shared_ccx.metadata_llmod(),
+    };
     let formats = shared_ccx.tcx().dependency_formats.borrow().clone();
     let no_builtins = attr::contains_name(krate.attrs.as_slice(), "no_builtins");
 
-    (shared_ccx.take_tcx(), CrateTranslation {
-        context: llcx,
-        module: llmod,
-        link: link_meta,
+    let translation = CrateTranslation {
+        modules: modules,
         metadata_module: metadata_module,
-        metadata_context: metadata_context,
+        link: link_meta,
         metadata: metadata,
         reachable: reachable,
         crate_formats: formats,
         no_builtins: no_builtins,
-    })
+    };
+
+    (shared_ccx.take_tcx(), translation)
 }
