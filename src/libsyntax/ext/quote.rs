@@ -353,6 +353,16 @@ pub fn expand_quote_ty(cx: &mut ExtCtxt,
     base::MacExpr::new(expanded)
 }
 
+pub fn expand_quote_method(cx: &mut ExtCtxt,
+                           sp: Span,
+                           tts: &[ast::TokenTree])
+                           -> Box<base::MacResult> {
+    let e_param_colons = cx.expr_none(sp);
+    let expanded = expand_parse_call(cx, sp, "parse_method",
+                                     vec!(e_param_colons), tts);
+    base::MacExpr::new(expanded)
+}
+
 pub fn expand_quote_stmt(cx: &mut ExtCtxt,
                          sp: Span,
                          tts: &[ast::TokenTree])
