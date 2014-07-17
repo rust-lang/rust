@@ -14,11 +14,11 @@ struct X {
 }
 
 trait Changer {
-    fn change(mut ~self) -> Box<Self>;
+    fn change(mut self: Box<Self>) -> Box<Self>;
 }
 
 impl Changer for X {
-    fn change(mut ~self) -> Box<X> {
+    fn change(mut self: Box<X>) -> Box<X> {
         self.a = 55;
         self
     }

@@ -314,6 +314,16 @@ impl RegionMaps {
                     self.sub_free_region(sub_fr, super_fr)
                 }
 
+                (ty::ReEarlyBound(param_id_a, param_space_a, index_a, _),
+                 ty::ReEarlyBound(param_id_b, param_space_b, index_b, _)) => {
+                    // This case is used only to make sure that explicitly-
+                    // specified `Self` types match the real self type in
+                    // implementations.
+                    param_id_a == param_id_b &&
+                        param_space_a == param_space_b &&
+                        index_a == index_b
+                }
+
                 _ => {
                     false
                 }

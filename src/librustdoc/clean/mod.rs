@@ -394,7 +394,7 @@ impl Clean<Item> for doctree::Module {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub enum Attribute {
     Word(String),
     List(String, Vec<Attribute> ),
@@ -447,7 +447,7 @@ impl<'a> attr::AttrMetaMethods for &'a Attribute {
     fn meta_item_list<'a>(&'a self) -> Option<&'a [Gc<ast::MetaItem>]> { None }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub struct TyParam {
     pub name: String,
     pub did: ast::DefId,
@@ -479,7 +479,7 @@ impl Clean<TyParam> for ty::TypeParameterDef {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub enum TyParamBound {
     RegionBound,
     TraitBound(Type)
@@ -638,7 +638,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
 }
 
 // maybe use a Generic enum and use ~[Generic]?
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub struct Generics {
     pub lifetimes: Vec<Lifetime>,
     pub type_params: Vec<TyParam>,
@@ -771,6 +771,7 @@ pub enum SelfTy {
     SelfValue,
     SelfBorrowed(Option<Lifetime>, Mutability),
     SelfOwned,
+    SelfExplicit(Type),
 }
 
 impl Clean<SelfTy> for ast::ExplicitSelf_ {
@@ -779,7 +780,10 @@ impl Clean<SelfTy> for ast::ExplicitSelf_ {
             ast::SelfStatic => SelfStatic,
             ast::SelfValue(_) => SelfValue,
             ast::SelfUniq(_) => SelfOwned,
-            ast::SelfRegion(lt, mt, _) => SelfBorrowed(lt.clean(), mt.clean()),
+            ast::SelfRegion(lt, mt, _) => {
+                SelfBorrowed(lt.clean(), mt.clean())
+            }
+            ast::SelfExplicit(typ, _) => SelfExplicit(typ.clean()),
         }
     }
 }
@@ -809,7 +813,7 @@ impl Clean<Item> for doctree::Function {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub struct ClosureDecl {
     pub lifetimes: Vec<Lifetime>,
     pub decl: FnDecl,
@@ -833,7 +837,7 @@ impl Clean<ClosureDecl> for ast::ClosureTy {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub struct FnDecl {
     pub inputs: Arguments,
     pub output: Type,
@@ -841,7 +845,7 @@ pub struct FnDecl {
     pub attrs: Vec<Attribute>,
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub struct Arguments {
     pub values: Vec<Argument>,
 }
@@ -888,7 +892,7 @@ impl<'a> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig) {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub struct Argument {
     pub type_: Type,
     pub name: String,
@@ -905,7 +909,7 @@ impl Clean<Argument> for ast::Arg {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub enum RetStyle {
     NoReturn,
     Return
@@ -991,22 +995,28 @@ impl Clean<Item> for ty::Method {
     fn clean(&self) -> Item {
         let cx = get_cx();
         let (self_, sig) = match self.explicit_self {
-            ast::SelfStatic => (ast::SelfStatic.clean(), self.fty.sig.clone()),
+            ty::StaticExplicitSelfCategory => (ast::SelfStatic.clean(), self.fty.sig.clone()),
             s => {
                 let sig = ty::FnSig {
                     inputs: Vec::from_slice(self.fty.sig.inputs.slice_from(1)),
                     ..self.fty.sig.clone()
                 };
                 let s = match s {
-                    ast::SelfRegion(..) => {
+                    ty::ByReferenceExplicitSelfCategory(..) => {
                         match ty::get(self.fty.sig.inputs[0]).sty {
                             ty::ty_rptr(r, mt) => {
                                 SelfBorrowed(r.clean(), mt.mutbl.clean())
                             }
-                            _ => s.clean(),
+                            _ => {
+                                // FIXME(pcwalton): This is wrong.
+                                SelfStatic
+                            }
                         }
                     }
-                    s => s.clean(),
+                    _ => {
+                        // FIXME(pcwalton): This is wrong.
+                        SelfStatic
+                    }
                 };
                 (s, sig)
             }
@@ -1032,7 +1042,7 @@ impl Clean<Item> for ty::Method {
 /// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
 /// type out of the AST/ty::ctxt given one of these, if more information is needed. Most importantly
 /// it does not preserve mutability or boxes.
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub enum Type {
     /// structs/enums/traits (anything that'd be an ast::TyPath)
     ResolvedPath {
@@ -1550,7 +1560,7 @@ impl Clean<Span> for syntax::codemap::Span {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub struct Path {
     pub global: bool,
     pub segments: Vec<PathSegment>,
@@ -1565,7 +1575,7 @@ impl Clean<Path> for ast::Path {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub struct PathSegment {
     pub name: String,
     pub lifetimes: Vec<Lifetime>,
@@ -1631,7 +1641,7 @@ impl Clean<Item> for doctree::Typedef {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub struct BareFunctionDecl {
     pub fn_style: ast::FnStyle,
     pub generics: Generics,

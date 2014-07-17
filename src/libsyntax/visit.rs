@@ -215,6 +215,7 @@ pub fn walk_explicit_self<E: Clone, V: Visitor<E>>(visitor: &mut V,
         SelfRegion(ref lifetime, _, _) => {
             visitor.visit_opt_lifetime_ref(explicit_self.span, lifetime, env)
         }
+        SelfExplicit(ref typ, _) => visitor.visit_ty(*typ, env.clone()),
     }
 }
 

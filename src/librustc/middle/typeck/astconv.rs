@@ -52,13 +52,13 @@
 use middle::const_eval;
 use middle::def;
 use middle::lang_items::FnMutTraitLangItem;
-use rl = middle::resolve_lifetime;
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::ty;
-use middle::typeck::TypeAndSubsts;
-use middle::typeck::lookup_def_tcx;
+use middle::ty_fold::TypeFolder;
 use middle::typeck::rscope::RegionScope;
-use middle::typeck::rscope;
+use middle::typeck::{TypeAndSubsts, infer, lookup_def_tcx, rscope};
+use middle::typeck;
+use rl = middle::resolve_lifetime;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
@@ -900,58 +900,73 @@ pub fn ty_of_arg<AC: AstConv, RS: RegionScope>(this: &AC, rscope: &RS, a: &ast::
     }
 }
 
-struct SelfInfo {
+struct SelfInfo<'a> {
     untransformed_self_ty: ty::t,
-    explicit_self: ast::ExplicitSelf
+    explicit_self: ast::ExplicitSelf,
 }
 
 pub fn ty_of_method<AC:AstConv>(
-    this: &AC,
-    id: ast::NodeId,
-    fn_style: ast::FnStyle,
-    untransformed_self_ty: ty::t,
-    explicit_self: ast::ExplicitSelf,
-    decl: &ast::FnDecl)
-    -> ty::BareFnTy
-{
-    ty_of_method_or_bare_fn(this, id, fn_style, abi::Rust, Some(SelfInfo {
+                    this: &AC,
+                    id: ast::NodeId,
+                    fn_style: ast::FnStyle,
+                    untransformed_self_ty: ty::t,
+                    explicit_self: ast::ExplicitSelf,
+                    decl: &ast::FnDecl)
+                    -> (ty::BareFnTy, ty::ExplicitSelfCategory) {
+    let self_info = Some(SelfInfo {
         untransformed_self_ty: untransformed_self_ty,
-        explicit_self: explicit_self
-    }), decl)
+        explicit_self: explicit_self,
+    });
+    let (bare_fn_ty, optional_explicit_self_category) =
+        ty_of_method_or_bare_fn(this,
+                                id,
+                                fn_style,
+                                abi::Rust,
+                                self_info,
+                                decl);
+    (bare_fn_ty, optional_explicit_self_category.unwrap())
 }
 
 pub fn ty_of_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
                                  fn_style: ast::FnStyle, abi: abi::Abi,
                                  decl: &ast::FnDecl) -> ty::BareFnTy {
-    ty_of_method_or_bare_fn(this, id, fn_style, abi, None, decl)
+    let (bare_fn_ty, _) =
+        ty_of_method_or_bare_fn(this, id, fn_style, abi, None, decl);
+    bare_fn_ty
 }
 
-fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
-                                       fn_style: ast::FnStyle, abi: abi::Abi,
-                                       opt_self_info: Option<SelfInfo>,
-                                       decl: &ast::FnDecl) -> ty::BareFnTy {
+fn ty_of_method_or_bare_fn<AC:AstConv>(
+                           this: &AC,
+                           id: ast::NodeId,
+                           fn_style: ast::FnStyle,
+                           abi: abi::Abi,
+                           opt_self_info: Option<SelfInfo>,
+                           decl: &ast::FnDecl)
+                           -> (ty::BareFnTy,
+                               Option<ty::ExplicitSelfCategory>) {
     debug!("ty_of_method_or_bare_fn");
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
     let rb = rscope::BindingRscope::new(id);
 
+    let mut explicit_self_category_result = None;
     let self_ty = opt_self_info.and_then(|self_info| {
-        match self_info.explicit_self.node {
-            ast::SelfStatic => None,
-            ast::SelfValue(_) => {
+        // Figure out and record the explicit self category.
+        let explicit_self_category =
+            determine_explicit_self_category(this, &rb, &self_info);
+        explicit_self_category_result = Some(explicit_self_category);
+        match explicit_self_category {
+            ty::StaticExplicitSelfCategory => None,
+            ty::ByValueExplicitSelfCategory => {
                 Some(self_info.untransformed_self_ty)
             }
-            ast::SelfRegion(ref lifetime, mutability, _) => {
-                let region =
-                    opt_ast_region_to_region(this, &rb,
-                                             self_info.explicit_self.span,
-                                             lifetime);
+            ty::ByReferenceExplicitSelfCategory(region, mutability) => {
                 Some(ty::mk_rptr(this.tcx(), region,
                                  ty::mt {ty: self_info.untransformed_self_ty,
                                          mutbl: mutability}))
             }
-            ast::SelfUniq(_) => {
+            ty::ByBoxExplicitSelfCategory => {
                 Some(ty::mk_uniq(this.tcx(), self_info.untransformed_self_ty))
             }
         }
@@ -972,7 +987,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
         _ => ast_ty_to_ty(this, &rb, &*decl.output)
     };
 
-    return ty::BareFnTy {
+    (ty::BareFnTy {
         fn_style: fn_style,
         abi: abi,
         sig: ty::FnSig {
@@ -981,7 +996,83 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
             output: output_ty,
             variadic: decl.variadic
         }
-    };
+    }, explicit_self_category_result)
+}
+
+fn determine_explicit_self_category<AC:AstConv,
+                                    RS:RegionScope>(
+                                    this: &AC,
+                                    rscope: &RS,
+                                    self_info: &SelfInfo)
+                                    -> ty::ExplicitSelfCategory {
+    match self_info.explicit_self.node {
+        ast::SelfStatic => ty::StaticExplicitSelfCategory,
+        ast::SelfValue(_) => ty::ByValueExplicitSelfCategory,
+        ast::SelfRegion(ref lifetime, mutability, _) => {
+            let region =
+                opt_ast_region_to_region(this,
+                                         rscope,
+                                         self_info.explicit_self.span,
+                                         lifetime);
+            ty::ByReferenceExplicitSelfCategory(region, mutability)
+        }
+        ast::SelfUniq(_) => ty::ByBoxExplicitSelfCategory,
+        ast::SelfExplicit(ast_type, _) => {
+            let explicit_type = ast_ty_to_ty(this, rscope, ast_type);
+
+            {
+                let inference_context = infer::new_infer_ctxt(this.tcx());
+                let expected_self = self_info.untransformed_self_ty;
+                let actual_self = explicit_type;
+                let result = infer::mk_eqty(
+                    &inference_context,
+                    false,
+                    infer::Misc(self_info.explicit_self.span),
+                    expected_self,
+                    actual_self);
+                match result {
+                    Ok(_) => {
+                        inference_context.resolve_regions_and_report_errors();
+                        return ty::ByValueExplicitSelfCategory
+                    }
+                    Err(_) => {}
+                }
+            }
+
+            match ty::get(explicit_type).sty {
+                ty::ty_rptr(region, tm) => {
+                    typeck::require_same_types(
+                        this.tcx(),
+                        None,
+                        false,
+                        self_info.explicit_self.span,
+                        self_info.untransformed_self_ty,
+                        tm.ty,
+                        || "not a valid type for `self`".to_owned());
+                    return ty::ByReferenceExplicitSelfCategory(region,
+                                                               tm.mutbl)
+                }
+                ty::ty_uniq(typ) => {
+                    typeck::require_same_types(
+                        this.tcx(),
+                        None,
+                        false,
+                        self_info.explicit_self.span,
+                        self_info.untransformed_self_ty,
+                        typ,
+                        || "not a valid type for `self`".to_owned());
+                    return ty::ByBoxExplicitSelfCategory
+                }
+                _ => {
+                    this.tcx()
+                        .sess
+                        .span_err(self_info.explicit_self.span,
+                                  "not a valid type for `self`");
+                    return ty::ByValueExplicitSelfCategory
+                }
+            }
+        }
+    }
 }
 
 pub fn ty_of_closure<AC:AstConv>(
@@ -1098,3 +1189,4 @@ fn conv_builtin_bounds(tcx: &ty::ctxt,
         (&None, ty::UniqTraitStore) => ty::empty_builtin_bounds(),
     }
 }
+
