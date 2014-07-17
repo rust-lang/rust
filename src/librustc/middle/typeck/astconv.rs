@@ -1018,7 +1018,7 @@ fn determine_explicit_self_category<AC:AstConv,
         }
         ast::SelfUniq(_) => ty::ByBoxExplicitSelfCategory,
         ast::SelfExplicit(ast_type, _) => {
-            let explicit_type = ast_ty_to_ty(this, rscope, ast_type);
+            let explicit_type = ast_ty_to_ty(this, rscope, &*ast_type);
 
             {
                 let inference_context = infer::new_infer_ctxt(this.tcx());

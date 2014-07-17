@@ -552,7 +552,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       }
 
       (&ty::ty_closure(ref a_fty), &ty::ty_closure(ref b_fty)) => {
-        this.closure_tys(*a_fty, *b_fty).and_then(|fty| {
+        this.closure_tys(&**a_fty, &**b_fty).and_then(|fty| {
             Ok(ty::mk_closure(tcx, fty))
         })
       }

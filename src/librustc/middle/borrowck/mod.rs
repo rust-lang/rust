@@ -216,8 +216,13 @@ pub fn build_borrowck_dataflow_data_for_fn<'a>(
 
     let p = input.fn_parts;
 
-    let dataflow_data = build_borrowck_dataflow_data(
-        &mut bccx, &p.kind, p.decl, input.cfg, p.body, p.span, p.id);
+    let dataflow_data = build_borrowck_dataflow_data(&mut bccx,
+                                                     &p.kind,
+                                                     &*p.decl,
+                                                     input.cfg,
+                                                     &*p.body,
+                                                     p.span,
+                                                     p.id);
 
     (bccx, dataflow_data)
 }

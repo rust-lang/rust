@@ -42,7 +42,7 @@ fn make_make_a() -> A {
     let b: Box<B> = box B {
         i: 1,
     };
-    let bb: &B = b; //~ ERROR `*b` does not live long enough
+    let bb: &B = &*b; //~ ERROR `*b` does not live long enough
     make_a(bb)
 }
 

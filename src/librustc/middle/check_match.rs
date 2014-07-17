@@ -47,7 +47,9 @@ impl fmt::Show for Matrix {
 
         let &Matrix(ref m) = self;
         let pretty_printed_matrix: Vec<Vec<String>> = m.iter().map(|row| {
-            row.iter().map(|&pat| pat_to_string(pat)).collect::<Vec<String>>()
+            row.iter()
+               .map(|&pat| pat_to_string(&*pat))
+               .collect::<Vec<String>>()
         }).collect();
 
         let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0u);

@@ -2038,7 +2038,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             }
 
             ty_closure(ref c) => {
-                closure_contents(cx, *c)
+                closure_contents(cx, &**c)
             }
 
             ty_box(typ) => {

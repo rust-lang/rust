@@ -623,7 +623,7 @@ fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<String> {
                 _ => {
                     cx.span_err(entry.span, format!(
                         "expected string literal but got `{}`",
-                        pprust::lit_to_string(lit)).as_slice());
+                        pprust::lit_to_string(&*lit)).as_slice());
                     return None
                 }
             }
@@ -631,7 +631,7 @@ fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<String> {
         _ => {
             cx.span_err(entry.span, format!(
                 "expected string literal but got `{}`",
-                pprust::expr_to_string(entry)).as_slice());
+                pprust::expr_to_string(&*entry)).as_slice());
             return None
         }
     };

@@ -22,7 +22,7 @@ fn x_coord<'r>(p: &'r point) -> &'r int {
 }
 
 fn foo(p: Gc<point>) -> &int {
-    let xc = x_coord(p); //~ ERROR `*p` does not live long enough
+    let xc = x_coord(&*p); //~ ERROR `*p` does not live long enough
     assert_eq!(*xc, 3);
     return xc;
 }

@@ -58,7 +58,7 @@ fn main() {
 
     let closure: proc() = proc() {
         zzz(); // #break
-        do_something(&constant, &a_struct.a, owned);
+        do_something(&constant, &a_struct.a, &*owned);
     };
 
     closure();

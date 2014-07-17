@@ -100,12 +100,12 @@ fn main() {
     let ref_to_unnamed: &SomeStruct = &SomeStruct { x: 11, y: 24.5 };
 
     let managed_val = box(GC) SomeStruct { x: 12, y: 25.5 };
-    let managed_val_ref: &SomeStruct = managed_val;
+    let managed_val_ref: &SomeStruct = &*managed_val;
     let managed_val_interior_ref_1: &int = &managed_val.x;
     let managed_val_interior_ref_2: &f64 = &managed_val.y;
 
     let unique_val = box SomeStruct { x: 13, y: 26.5 };
-    let unique_val_ref: &SomeStruct = unique_val;
+    let unique_val_ref: &SomeStruct = &*unique_val;
     let unique_val_interior_ref_1: &int = &unique_val.x;
     let unique_val_interior_ref_2: &f64 = &unique_val.y;
 
