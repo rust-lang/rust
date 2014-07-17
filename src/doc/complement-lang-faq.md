@@ -31,7 +31,7 @@ You may also be interested in browsing [GitHub's Rust][github-rust] page.
 
 ## Does it run on Windows?
 
-Yes. All development happens in lock-step on all 3 target platforms. Using MinGW, not Cygwin. Note that the windows implementation currently has some limitations: in particular 64-bit build is [not fully supported yet][win64], and all executables created by rustc [depends on libgcc DLL at runtime][libgcc].
+Yes. All development happens in lock-step on all 3 target platforms. Using MinGW, not Cygwin. Note that the windows implementation currently has some limitations: in particular 64-bit build is [not fully supported yet][win64], and all executables created by rustc [depend on libgcc DLL at runtime][libgcc].
 
 [win64]: https://github.com/rust-lang/rust/issues/1237
 [libgcc]: https://github.com/rust-lang/rust/issues/11782
@@ -68,7 +68,7 @@ Cleanup through RAII-style destructors is more likely to work than in catch bloc
 
 ## Why aren't modules type-parametric?
 
-We want to maintain the option to parametrize at runtime. We may make eventually change this limitation, but initially this is how type parameters were implemented.
+We want to maintain the option to parametrize at runtime. We may eventually change this limitation, but initially this is how type parameters were implemented.
 
 ## Why aren't values type-parametric? Why only items?
 
