@@ -207,7 +207,7 @@ impl Regex {
     pub fn find(&self, text: &str) -> Option<(uint, uint)> {
         let caps = exec(self, Location, text);
         if has_match(&caps) {
-            Some((caps.get(0).unwrap(), caps.get(1).unwrap()))
+            Some((caps[0].unwrap(), caps[1].unwrap()))
         } else {
             None
         }
@@ -699,11 +699,11 @@ impl<'t> Captures<'t> {
     /// original string matched.
     pub fn pos(&self, i: uint) -> Option<(uint, uint)> {
         let (s, e) = (i * 2, i * 2 + 1);
-        if e >= self.locs.len() || self.locs.get(s).is_none() {
+        if e >= self.locs.len() || self.locs[s].is_none() {
             // VM guarantees that each pair of locations are both Some or None.
             return None
         }
-        Some((self.locs.get(s).unwrap(), self.locs.get(e).unwrap()))
+        Some((self.locs[s].unwrap(), self.locs[e].unwrap()))
     }
 
     /// Returns the matched string for the capture group `i`.
@@ -851,7 +851,7 @@ impl<'r, 't> Iterator<Captures<'t>> for FindCaptures<'r, 't> {
             if !has_match(&caps) {
                 return None
             } else {
-                (caps.get(0).unwrap(), caps.get(1).unwrap())
+                (caps[0].unwrap(), caps[1].unwrap())
             };
 
         // Don't accept empty matches immediately following a match.
@@ -893,7 +893,7 @@ impl<'r, 't> Iterator<(uint, uint)> for FindMatches<'r, 't> {
             if !has_match(&caps) {
                 return None
             } else {
-                (caps.get(0).unwrap(), caps.get(1).unwrap())
+                (caps[0].unwrap(), caps[1].unwrap())
             };
 
         // Don't accept empty matches immediately following a match.
@@ -922,5 +922,5 @@ fn exec_slice(re: &Regex, which: MatchKind,
 
 #[inline]
 fn has_match(caps: &CaptureLocs) -> bool {
-    caps.len() >= 2 && caps.get(0).is_some() && caps.get(1).is_some()
+    caps.len() >= 2 && caps[0].is_some() && caps[1].is_some()
 }

@@ -243,7 +243,7 @@ impl<'a> Condvar<'a> {
                     }
                     // Create waiter nobe, and enqueue ourself to
                     // be woken up by a signaller.
-                    wait_end = Some(state.blocked.get(condvar_id).wait_end());
+                    wait_end = Some(state.blocked[condvar_id].wait_end());
                 } else {
                     out_of_bounds = Some(state.blocked.len());
                 }
@@ -281,7 +281,7 @@ impl<'a> Condvar<'a> {
             let mut result = false;
             self.sem.with(|state| {
                 if condvar_id < state.blocked.len() {
-                    result = state.blocked.get(condvar_id).signal();
+                    result = state.blocked[condvar_id].signal();
                 } else {
                     out_of_bounds = Some(state.blocked.len());
                 }

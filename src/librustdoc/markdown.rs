@@ -75,7 +75,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
                          "invalid markdown file: expecting initial line with `% ...TITLE...`");
         return 5;
     }
-    let title = metadata.get(0).as_slice();
+    let title = metadata[0].as_slice();
 
     reset_headers();
 
