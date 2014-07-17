@@ -22,7 +22,7 @@ struct Bar<'a> {
 }
 
 fn check(a: Gc<Foo>) {
-    let _ic = Bar{ b: a, a: box None };
+    let _ic = Bar{ b: &*a, a: box None };
 }
 
 pub fn main(){}

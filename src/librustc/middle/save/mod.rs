@@ -356,9 +356,10 @@ impl <'l> DxrVisitor<'l> {
         for arg in method.pe_fn_decl().inputs.iter() {
             self.visit_ty(&*arg.ty, e);
         }
-        self.visit_ty(method.pe_fn_decl().output, e);
+        self.visit_ty(&*method.pe_fn_decl().output, e);
         // walk the fn body
-        self.visit_block(method.pe_body(), DxrVisitorEnv::new_nested(method.id));
+        self.visit_block(&*method.pe_body(),
+                         DxrVisitorEnv::new_nested(method.id));
 
         self.process_generic_params(method.pe_generics(),
                                     method.span,

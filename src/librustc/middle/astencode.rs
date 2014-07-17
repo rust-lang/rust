@@ -1557,7 +1557,7 @@ fn test_simplification() {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
     ).unwrap();
-    let item_in = e::IIItemRef(item);
+    let item_in = e::IIItemRef(&*item);
     let item_out = simplify_ast(item_in);
     let item_exp = ast::IIItem(quote_item!(cx,
         fn new_int_alist<B>() -> alist<int, B> {
@@ -1566,7 +1566,8 @@ fn test_simplification() {
     ).unwrap());
     match (item_out, item_exp) {
       (ast::IIItem(item_out), ast::IIItem(item_exp)) => {
-        assert!(pprust::item_to_string(item_out) == pprust::item_to_string(item_exp));
+        assert!(pprust::item_to_string(&*item_out) ==
+                pprust::item_to_string(&*item_exp));
       }
       _ => fail!()
     }

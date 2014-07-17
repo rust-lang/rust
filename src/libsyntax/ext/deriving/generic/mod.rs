@@ -954,7 +954,9 @@ impl<'a> MethodDef<'a> {
                 // expressions for referencing every field of every
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
-                let substructure = EnumMatching(index, variant, field_tuples);
+                let substructure = EnumMatching(index,
+                                                &*variant,
+                                                field_tuples);
                 let arm_expr = self.call_substructure_method(
                     cx, trait_, type_ident, self_args, nonself_args,
                     &substructure);
