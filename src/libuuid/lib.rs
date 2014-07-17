@@ -398,8 +398,8 @@ impl Uuid {
         match group_lens.len() {
             // Single group, no hyphens
             1 => {
-                if *group_lens.get(0) != 32 {
-                    return Err(ErrorInvalidLength(*group_lens.get(0)));
+                if group_lens[0] != 32 {
+                    return Err(ErrorInvalidLength(group_lens[0]));
                 }
             },
             // Five groups, hyphens in between each

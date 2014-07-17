@@ -51,7 +51,7 @@
 //! fn main() {
 //!     let args: Vec<String> = os::args();
 //!
-//!     let program = args.get(0).clone();
+//!     let program = args[0].clone();
 //!
 //!     let opts = [
 //!         optopt("o", "", "set output file name", "NAME"),
@@ -67,7 +67,7 @@
 //!     }
 //!     let output = matches.opt_str("o");
 //!     let input = if !matches.free.is_empty() {
-//!         (*matches.free.get(0)).clone()
+//!         matches.free[0].clone()
 //!     } else {
 //!         print_usage(program.as_slice(), opts);
 //!         return;
@@ -275,7 +275,7 @@ impl OptGroup {
 impl Matches {
     fn opt_vals(&self, nm: &str) -> Vec<Optval> {
         match find_opt(self.opts.as_slice(), Name::from_str(nm)) {
-            Some(id) => (*self.vals.get(id)).clone(),
+            Some(id) => self.vals[id].clone(),
             None => fail!("No option '{}' defined", nm)
         }
     }
@@ -285,7 +285,7 @@ impl Matches {
         if vals.is_empty() {
             None
         } else {
-            Some((*vals.get(0)).clone())
+            Some(vals[0].clone())
         }
     }
 
@@ -304,7 +304,7 @@ impl Matches {
         for nm in names.iter() {
             match find_opt(self.opts.as_slice(),
                            Name::from_str(nm.as_slice())) {
-                Some(id) if !self.vals.get(id).is_empty() => return true,
+                Some(id) if !self.vals[id].is_empty() => return true,
                 _ => (),
             };
         }
@@ -344,8 +344,8 @@ impl Matches {
         if vals.is_empty() {
             return None::<String>;
         }
-        match vals.get(0) {
-            &Val(ref s) => Some((*s).clone()),
+        match vals[0] {
+            Val(ref s) => Some((*s).clone()),
             _ => None
         }
     }
@@ -361,8 +361,8 @@ impl Matches {
         if vals.is_empty() {
             return None;
         }
-        match vals.get(0) {
-            &Val(ref s) => Some((*s).clone()),
+        match vals[0] {
+            Val(ref s) => Some((*s).clone()),
             _ => Some(def.to_string())
         }
     }
@@ -560,8 +560,8 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                     names = vec!(Long(tail.to_string()));
                 } else {
                     names =
-                        vec!(Long((*tail_eq.get(0)).to_string()));
-                    i_arg = Some((*tail_eq.get(1)).to_string());
+                        vec!(Long(tail_eq[0].to_string()));
+                    i_arg = Some(tail_eq[1].to_string());
                 }
             } else {
                 let mut j = 1;
@@ -583,7 +583,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                       None => {
                         let arg_follows =
                             last_valid_opt_id.is_some() &&
-                            match opts.get(last_valid_opt_id.unwrap())
+                            match opts[last_valid_opt_id.unwrap()]
                               .hasarg {
 
                               Yes | Maybe => true,
@@ -609,7 +609,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                   Some(id) => id,
                   None => return Err(UnrecognizedOption(nm.to_string()))
                 };
-                match opts.get(optid).hasarg {
+                match opts[optid].hasarg {
                   No => {
                     if !i_arg.is_none() {
                         return Err(UnexpectedArgument(nm.to_string()));
@@ -646,16 +646,16 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
     }
     i = 0u;
     while i < n_opts {
-        let n = vals.get(i).len();
-        let occ = opts.get(i).occur;
+        let n = vals[i].len();
+        let occ = opts[i].occur;
         if occ == Req {
             if n == 0 {
-                return Err(OptionMissing(opts.get(i).name.to_string()));
+                return Err(OptionMissing(opts[i].name.to_string()));
             }
         }
         if occ != Multi {
             if n > 1 {
-                return Err(OptionDuplicated(opts.get(i).name.to_string()));
+                return Err(OptionDuplicated(opts[i].name.to_string()));
             }
         }
         i += 1;

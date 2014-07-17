@@ -123,7 +123,7 @@ impl<'r, 't> Nfa<'r, 't> {
         // Make sure multi-line mode isn't enabled for it, otherwise we can't
         // drop the initial .*?
         let prefix_anchor =
-            match *self.prog.insts.get(1) {
+            match self.prog.insts[1] {
                 EmptyBegin(flags) if flags & FLAG_MULTI == 0 => true,
                 _ => false,
             };
@@ -192,7 +192,7 @@ impl<'r, 't> Nfa<'r, 't> {
     fn step(&self, groups: &mut [Option<uint>], nlist: &mut Threads,
             caps: &mut [Option<uint>], pc: uint)
            -> StepState {
-        match *self.prog.insts.get(pc) {
+        match self.prog.insts[pc] {
             Match => {
                 match self.which {
                     Exists => {
@@ -259,7 +259,7 @@ impl<'r, 't> Nfa<'r, 't> {
         //
         // We make a minor optimization by indicating that the state is "empty"
         // so that its capture groups are not filled in.
-        match *self.prog.insts.get(pc) {
+        match self.prog.insts[pc] {
             EmptyBegin(flags) => {
                 let multi = flags & FLAG_MULTI > 0;
                 nlist.add(pc, groups, true);
@@ -481,8 +481,8 @@ impl Threads {
 
     #[inline]
     fn contains(&self, pc: uint) -> bool {
-        let s = *self.sparse.get(pc);
-        s < self.size && self.queue.get(s).pc == pc
+        let s = self.sparse[pc];
+        s < self.size && self.queue[s].pc == pc
     }
 
     #[inline]
@@ -492,7 +492,7 @@ impl Threads {
 
     #[inline]
     fn pc(&self, i: uint) -> uint {
-        self.queue.get(i).pc
+        self.queue[i].pc
     }
 
     #[inline]

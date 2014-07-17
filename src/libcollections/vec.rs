@@ -42,7 +42,7 @@ pub static PTR_MARKER: u8 = 0;
 /// vec.push(2i);
 ///
 /// assert_eq!(vec.len(), 2);
-/// assert_eq!(vec.get(0), &1);
+/// assert_eq!(vec[0], 1);
 ///
 /// assert_eq!(vec.pop(), Some(2));
 /// assert_eq!(vec.len(), 1);
@@ -362,6 +362,21 @@ impl<T:Clone> Clone for Vec<T> {
         self.push_all(slice);
     }
 }
+
+impl<T> Index<uint,T> for Vec<T> {
+    #[inline]
+    fn index<'a>(&'a self, index: &uint) -> &'a T {
+        self.get(*index)
+    }
+}
+
+// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
+/*impl<T> IndexMut<uint,T> for Vec<T> {
+    #[inline]
+    fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut T {
+        self.get_mut(*index)
+    }
+}*/
 
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
@@ -731,9 +746,12 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
+    /// #![allow(deprecated)]
+    ///
     /// let vec = vec!(1i, 2, 3);
     /// assert!(vec.get(1) == &2);
     /// ```
+    #[deprecated="prefer using indexing, e.g., vec[0]"]
     #[inline]
     pub fn get<'a>(&'a self, index: uint) -> &'a T {
         &self.as_slice()[index]
@@ -1845,6 +1863,19 @@ mod tests {
 
         let mut v = vec![BadElem(1), BadElem(2), BadElem(0xbadbeef), BadElem(4)];
         v.truncate(0);
+    }
+
+    #[test]
+    fn test_index() {
+        let vec = vec!(1i, 2, 3);
+        assert!(vec[1] == 2);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_index_out_of_bounds() {
+        let vec = vec!(1i, 2, 3);
+        let _ = vec[3];
     }
 
     #[bench]
