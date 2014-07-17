@@ -129,8 +129,8 @@ pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
             match rscope.anon_regions(default_span, 1) {
                 Err(()) => {
                     debug!("optional region in illegal location");
-                    this.tcx().sess.span_err(
-                        default_span, "missing lifetime specifier");
+                    span_err!(this.tcx().sess, default_span, E0106,
+                        "missing lifetime specifier");
                     ty::ReStatic
                 }
 
@@ -187,12 +187,9 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
             rscope.anon_regions(path.span, expected_num_region_params);
 
         if supplied_num_region_params != 0 || anon_regions.is_err() {
-            tcx.sess.span_err(
-                path.span,
-                format!("wrong number of lifetime parameters: \
-                        expected {} but found {}",
-                        expected_num_region_params,
-                        supplied_num_region_params).as_slice());
+            span_err!(tcx.sess, path.span, E0107,
+                "wrong number of lifetime parameters: expected {} but found {}",
+                expected_num_region_params, supplied_num_region_params);
         }
 
         match anon_regions {
@@ -235,10 +232,10 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
 
     if supplied_ty_param_count > required_ty_param_count
         && !this.tcx().sess.features.default_type_params.get() {
-        this.tcx().sess.span_err(path.span, "default type parameters are \
-                                             experimental and possibly buggy");
-        this.tcx().sess.span_note(path.span, "add #![feature(default_type_params)] \
-                                              to the crate attributes to enable");
+        span_err!(this.tcx().sess, path.span, E0108,
+            "default type parameters are experimental and possibly buggy");
+        span_note!(this.tcx().sess, path.span,
+            "add #![feature(default_type_params)] to the crate attributes to enable");
     }
 
     let tps = path.segments.iter().flat_map(|s| s.types.iter())
@@ -309,16 +306,14 @@ fn check_path_args(tcx: &ty::ctxt,
                    flags: uint) {
     if (flags & NO_TPS) != 0u {
         if !path.segments.iter().all(|s| s.types.is_empty()) {
-            tcx.sess.span_err(
-                path.span,
+            span_err!(tcx.sess, path.span, E0109,
                 "type parameters are not allowed on this type");
         }
     }
 
     if (flags & NO_REGIONS) != 0u {
         if !path.segments.last().unwrap().lifetimes.is_empty() {
-            tcx.sess.span_err(
-                path.span,
+            span_err!(tcx.sess, path.span, E0110,
                 "region parameters are not allowed on this type");
         }
     }
@@ -359,8 +354,8 @@ pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
                             Some(ty::mk_mach_float(ft))
                         }
                         ast::TyStr => {
-                            tcx.sess.span_err(ast_ty.span,
-                                              "bare `str` is not a type");
+                            span_err!(tcx.sess, ast_ty.span, E0037,
+                                      "bare `str` is not a type");
                             // return /something/ so they can at least get more errors
                             Some(ty::mk_uniq(tcx, ty::mk_str(tcx)))
                         }
@@ -408,10 +403,8 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
                            .iter()
                            .flat_map(|s| s.types.iter())
                            .count() > 1 {
-                        this.tcx()
-                            .sess
-                            .span_err(path.span,
-                                      "`Box` has only one type parameter")
+                        span_err!(this.tcx().sess, path.span, E0047,
+                                  "`Box` has only one type parameter");
                     }
 
                     for inner_ast_type in path.segments
@@ -428,16 +421,12 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
                                                |typ| {
                             match ty::get(typ).sty {
                                 ty::ty_str => {
-                                    this.tcx()
-                                        .sess
-                                        .span_err(path.span,
-                                                  "`Box<str>` is not a type");
+                                    span_err!(this.tcx().sess, path.span, E0111,
+                                              "`Box<str>` is not a type");
                                     ty::mk_err()
                                 }
                                 ty::ty_vec(_, None) => {
-                                    this.tcx()
-                                        .sess
-                                        .span_err(path.span,
+                                        span_err!(this.tcx().sess, path.span, E0112,
                                                   "`Box<[T]>` is not a type");
                                     ty::mk_err()
                                 }
@@ -445,9 +434,8 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
                             }
                         }))
                     }
-                    this.tcx().sess.span_err(path.span,
-                                             "not enough type parameters \
-                                              supplied to `Box<T>`");
+                    span_err!(this.tcx().sess, path.span, E0113,
+                              "not enough type parameters supplied to `Box<T>`");
                     Some(ty::mk_err())
                 }
                 def::DefTy(did) | def::DefStruct(did)
@@ -456,10 +444,8 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
                            .iter()
                            .flat_map(|s| s.types.iter())
                            .count() > 1 {
-                        this.tcx()
-                            .sess
-                            .span_err(path.span,
-                                      "`Gc` has only one type parameter")
+                        span_err!(this.tcx().sess, path.span, E0048,
+                                  "`Gc` has only one type parameter");
                     }
 
                     for inner_ast_type in path.segments
@@ -476,17 +462,13 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
                                                |typ| {
                             match ty::get(typ).sty {
                                 ty::ty_str => {
-                                    this.tcx()
-                                        .sess
-                                        .span_err(path.span,
-                                                  "`Gc<str>` is not a type");
+                                    span_err!(this.tcx().sess, path.span, E0114,
+                                              "`Gc<str>` is not a type");
                                     ty::mk_err()
                                 }
                                 ty::ty_vec(_, None) => {
-                                    this.tcx()
-                                        .sess
-                                        .span_err(path.span,
-                                                  "`Gc<[T]>` is not a type");
+                                    span_err!(this.tcx().sess, path.span, E0115,
+                                              "`Gc<[T]>` is not a type");
                                     ty::mk_err()
                                 }
                                 _ => ty::mk_box(this.tcx(), typ),
