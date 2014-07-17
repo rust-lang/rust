@@ -44,24 +44,24 @@ macro_rules! __diagnostic_used(
 
 #[macro_export]
 macro_rules! span_err(
-    ($session:expr, $span:expr, $code:ident, $($arg:expr),*) => ({
+    ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
-        ($session).span_err_with_code($span, format!($($arg),*).as_slice(), stringify!($code))
+        $session.span_err_with_code($span, format!($($message)*).as_slice(), stringify!($code))
     })
 )
 
 #[macro_export]
 macro_rules! span_warn(
-    ($session:expr, $span:expr, $code:ident, $($arg:expr),*) => ({
+    ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
-        ($session).span_warn_with_code($span, format!($($arg),*).as_slice(), stringify!($code))
+        $session.span_warn_with_code($span, format!($($message)*).as_slice(), stringify!($code))
     })
 )
 
 #[macro_export]
 macro_rules! span_note(
-    ($session:expr, $span:expr, $($arg:expr),*) => ({
-        ($session).span_note($span, format!($($arg),*).as_slice())
+    ($session:expr, $span:expr, $($message:tt)*) => ({
+        ($session).span_note($span, format!($($message)*).as_slice())
     })
 )
 

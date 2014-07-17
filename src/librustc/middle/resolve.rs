@@ -4016,14 +4016,17 @@ impl<'a> Resolver<'a> {
                                 this.record_def(path_id, (def, lp));
                             }
                             Some((DefStruct(_), _)) => {
-                                this.session.span_err(t.span,
-                                                      "super-struct is defined \
-                                                       in a different crate")
+                                span_err!(this.session, t.span, E0154,
+                                    "super-struct is defined in a different crate");
                             },
-                            Some(_) => this.session.span_err(t.span,
-                                                             "super-struct is not a struct type"),
-                            None => this.session.span_err(t.span,
-                                                          "super-struct could not be resolved"),
+                            Some(_) => {
+                                span_err!(this.session, t.span, E0155,
+                                    "super-struct is not a struct type");
+                            }
+                            None => {
+                                span_err!(this.session, t.span, E0156,
+                                    "super-struct could not be resolved");
+                            }
                         }
                     },
                     _ => this.session.span_bug(t.span, "path not mapped to a TyPath")
@@ -4297,17 +4300,13 @@ impl<'a> Resolver<'a> {
                             if path.segments
                                    .iter()
                                    .any(|s| !s.lifetimes.is_empty()) {
-                                self.session.span_err(path.span,
-                                                      "lifetime parameters \
-                                                       are not allowed on \
-                                                       this type")
+                                span_err!(self.session, path.span, E0157,
+                                    "lifetime parameters are not allowed on this type");
                             } else if path.segments
                                           .iter()
                                           .any(|s| s.types.len() > 0) {
-                                self.session.span_err(path.span,
-                                                      "type parameters are \
-                                                       not allowed on this \
-                                                       type")
+                                span_err!(self.session, path.span, E0153,
+                                    "type parameters are not allowed on this type");
                             }
                         }
                         None => {
