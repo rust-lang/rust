@@ -18,4 +18,7 @@ use use_from_trait_xc::Trait::foo;
 use use_from_trait_xc::Foo::new;
 //~^ ERROR unresolved import `use_from_trait_xc::Foo::new`. Cannot import from a trait or type imple
 
+use use_from_trait_xc::Bar::new;
+//~^ ERROR unresolved import `use_from_trait_xc::Bar::new`. Cannot import from a trait or type
+
 fn main() {}
