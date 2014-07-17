@@ -1618,8 +1618,8 @@ fn encode_macro_defs(ecx: &EncodeContext,
                      krate: &Crate,
                      ebml_w: &mut Encoder) {
     ebml_w.start_tag(tag_exported_macros);
-    for span in krate.exported_macros.iter() {
-        encode_macro_def(ecx, ebml_w, span);
+    for item in krate.exported_macros.iter() {
+        encode_macro_def(ecx, ebml_w, &item.span);
     }
     ebml_w.end_tag();
 }
