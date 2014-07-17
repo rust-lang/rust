@@ -256,7 +256,7 @@ pub struct Crate {
     pub attrs: Vec<Attribute>,
     pub config: CrateConfig,
     pub span: Span,
-    pub exported_macros: Vec<Span>
+    pub exported_macros: Vec<Gc<Item>>
 }
 
 pub type MetaItem = Spanned<MetaItem_>;

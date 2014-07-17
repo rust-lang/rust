@@ -104,9 +104,9 @@ pub type IdentMacroExpanderFn =
 /// just into the compiler's internal macro table, for `make_def`).
 pub trait MacResult {
     /// Define a new macro.
-    // this should go away; the idea that a macro might expand into
-    // either a macro definition or an expression, depending on what
-    // the context wants, is kind of silly.
+    // this particular flavor should go away; the idea that a macro might
+    // expand into either a macro definition or an expression, depending
+    // on what the context wants, is kind of silly.
     fn make_def(&self) -> Option<MacroDef> {
         None
     }
@@ -431,7 +431,7 @@ pub struct ExtCtxt<'a> {
 
     pub mod_path: Vec<ast::Ident> ,
     pub trace_mac: bool,
-    pub exported_macros: Vec<codemap::Span>
+    pub exported_macros: Vec<Gc<ast::Item>>
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -561,9 +561,6 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
         token::intern(st)
-    }
-    pub fn push_exported_macro(&mut self, span: codemap::Span) {
-        self.exported_macros.push(span);
     }
 }
 
