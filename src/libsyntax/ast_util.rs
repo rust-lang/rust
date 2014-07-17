@@ -405,7 +405,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
                     ViewPathList(_, ref paths, node_id) => {
                         self.operation.visit_id(node_id);
                         for path in paths.iter() {
-                            self.operation.visit_id(path.node.id)
+                            self.operation.visit_id(path.node.id())
                         }
                     }
                 }

@@ -537,12 +537,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_path_list_ident(&mut self) -> ast::PathListIdent {
+    pub fn parse_path_list_item(&mut self) -> ast::PathListItem {
         let lo = self.span.lo;
-        let ident = self.parse_ident();
+        let node = if self.eat_keyword(keywords::Mod) {
+            ast::PathListMod { id: ast::DUMMY_NODE_ID }
+        } else {
+            let ident = self.parse_ident();
+            ast::PathListIdent { name: ident, id: ast::DUMMY_NODE_ID }
+        };
         let hi = self.last_span.hi;
-        spanned(lo, hi, ast::PathListIdent_ { name: ident,
-                                              id: ast::DUMMY_NODE_ID })
+        spanned(lo, hi, node)
     }
 
     /// Consume token 'tok' if it exists. Returns true if the given
@@ -5176,7 +5180,7 @@ impl<'a> Parser<'a> {
             let idents = self.parse_unspanned_seq(
                 &token::LBRACE, &token::RBRACE,
                 seq_sep_trailing_allowed(token::COMMA),
-                |p| p.parse_path_list_ident());
+                |p| p.parse_path_list_item());
             let path = ast::Path {
                 span: mk_sp(lo, self.span.hi),
                 global: false,
@@ -5232,7 +5236,7 @@ impl<'a> Parser<'a> {
                         &token::LBRACE,
                         &token::RBRACE,
                         seq_sep_trailing_allowed(token::COMMA),
-                        |p| p.parse_path_list_ident()
+                        |p| p.parse_path_list_item()
                     );
                     let path = ast::Path {
                         span: mk_sp(lo, self.span.hi),
