@@ -124,7 +124,7 @@ struct Struct {
 trait Trait {
     fn self_by_ref(&self, arg1: int, arg2: int) -> int;
     fn self_by_val(self, arg1: int, arg2: int) -> int;
-    fn self_owned(~self, arg1: int, arg2: int) -> int;
+    fn self_owned(self: Box<Self>, arg1: int, arg2: int) -> int;
 }
 
 impl Trait for Struct {
@@ -139,7 +139,7 @@ impl Trait for Struct {
         self.x + arg1 + arg2
     }
 
-    fn self_owned(~self, arg1: int, arg2: int) -> int {
+    fn self_owned(self: Box<Struct>, arg1: int, arg2: int) -> int {
         zzz(); // #break
         self.x + arg1 + arg2
     }

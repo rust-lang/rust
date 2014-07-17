@@ -19,7 +19,7 @@ trait Changer {
         self
     }
 
-    fn change_again(mut ~self) -> Box<Self> {
+    fn change_again(mut self: Box<Self>) -> Box<Self> {
         self.set_to(45);
         self
     }

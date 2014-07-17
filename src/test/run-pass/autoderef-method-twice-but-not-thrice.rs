@@ -10,11 +10,11 @@
 
 
 trait double {
-    fn double(~self) -> uint;
+    fn double(self: Box<Self>) -> uint;
 }
 
 impl double for Box<uint> {
-    fn double(~self) -> uint { **self * 2u }
+    fn double(self: Box<Box<uint>>) -> uint { **self * 2u }
 }
 
 pub fn main() {

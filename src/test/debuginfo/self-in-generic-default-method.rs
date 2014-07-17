@@ -134,7 +134,7 @@ trait Trait {
         arg1
     }
 
-    fn self_owned<T>(~self, arg1: int, arg2: T) -> int {
+    fn self_owned<T>(self: Box<Self>, arg1: int, arg2: T) -> int {
         zzz(); // #break
         arg1
     }

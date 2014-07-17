@@ -40,11 +40,14 @@ use middle::subst::{Substs};
 use middle::ty::{ImplContainer, MethodContainer, TraitContainer};
 use middle::ty::{Polytype};
 use middle::ty;
+use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::{AstConv, ty_of_arg};
 use middle::typeck::astconv::{ast_ty_to_ty};
 use middle::typeck::astconv;
+use middle::typeck::infer;
 use middle::typeck::rscope::*;
 use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
+use middle::typeck;
 use util::ppaux;
 use util::ppaux::Repr;
 
@@ -218,7 +221,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                             }
                         });
 
-                        if ty_method.explicit_self == ast::SelfStatic {
+                        if ty_method.explicit_self ==
+                                ty::StaticExplicitSelfCategory {
                             make_static_method_ty(ccx, &*ty_method);
                         }
 
@@ -266,18 +270,26 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                                  m_fn_style: &ast::FnStyle,
                                  m_decl: &ast::FnDecl) -> ty::Method
     {
-        let trait_self_ty = ty::mk_self_type(this.tcx, local_def(trait_id));
-        let fty = astconv::ty_of_method(this, *m_id, *m_fn_style, trait_self_ty,
-                                        *m_explicit_self, m_decl);
-        let ty_generics =
-            ty_generics_for_fn_or_method(this,
-                                         m_generics,
-                                         (*trait_generics).clone());
+        let trait_self_ty = ty::mk_param(this.tcx,
+                                         subst::SelfSpace,
+                                         0,
+                                         local_def(trait_id));
+        let ty_generics = ty_generics_for_fn_or_method(
+            this,
+            m_generics,
+            (*trait_generics).clone());
+        let (fty, explicit_self_category) =
+            astconv::ty_of_method(this,
+                                  *m_id,
+                                  *m_fn_style,
+                                  trait_self_ty,
+                                  *m_explicit_self,
+                                  m_decl);
         ty::Method::new(
             *m_ident,
             ty_generics,
             fty,
-            m_explicit_self.node,
+            explicit_self_category,
             // assume public, because this is only invoked on trait methods
             ast::Public,
             local_def(*m_id),
@@ -365,9 +377,13 @@ fn convert_methods(ccx: &CrateCtxt,
                     rcvr_visibility: ast::Visibility)
                     -> ty::Method
     {
-        let fty = astconv::ty_of_method(ccx, m.id, m.pe_fn_style(),
-                                        untransformed_rcvr_ty,
-                                        *m.pe_explicit_self(), m.pe_fn_decl());
+        let (fty, explicit_self_category) =
+            astconv::ty_of_method(ccx,
+                                  m.id,
+                                  m.pe_fn_style(),
+                                  untransformed_rcvr_ty,
+                                  *m.pe_explicit_self(),
+                                  m.pe_fn_decl());
 
         // if the method specifies a visibility, use that, otherwise
         // inherit the visibility from the impl (so `foo` in `pub impl
@@ -381,7 +397,7 @@ fn convert_methods(ccx: &CrateCtxt,
         ty::Method::new(m.pe_ident(),
                         m_ty_generics,
                         fty,
-                        m.pe_explicit_self().node,
+                        explicit_self_category,
                         method_vis,
                         local_def(m.id),
                         container,
@@ -450,6 +466,13 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                 it.vis
             };
 
+            for method in ms.iter() {
+                check_method_self_type(ccx,
+                                       &BindingRscope::new(method.id),
+                                       selfty,
+                                       method.pe_explicit_self())
+            }
+
             convert_methods(ccx,
                             ImplContainer(local_def(it.id)),
                             ms.as_slice(),
@@ -463,6 +486,28 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
         },
         ast::ItemTrait(_, _, _, ref trait_methods) => {
             let trait_def = trait_def_of_item(ccx, it);
+
+            for trait_method in trait_methods.iter() {
+                let self_type = ty::mk_param(ccx.tcx,
+                                             subst::SelfSpace,
+                                             0,
+                                             local_def(it.id));
+                match *trait_method {
+                    ast::Required(ref type_method) => {
+                        let rscope = BindingRscope::new(type_method.id);
+                        check_method_self_type(ccx,
+                                               &rscope,
+                                               self_type,
+                                               &type_method.explicit_self)
+                    }
+                    ast::Provided(ref method) => {
+                        check_method_self_type(ccx,
+                                               &BindingRscope::new(method.id),
+                                               self_type,
+                                               method.pe_explicit_self())
+                    }
+                }
+            }
 
             // Run convert_methods on the provided methods.
             let (_, provided_methods) =
@@ -1240,3 +1285,36 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
 
     subst::Substs::new(types, regions)
 }
+
+/// Verifies that the explicit self type of a method matches the impl or
+/// trait.
+fn check_method_self_type<RS:RegionScope>(
+                          crate_context: &CrateCtxt,
+                          rs: &RS,
+                          required_type: ty::t,
+                          explicit_self: &ast::ExplicitSelf) {
+    match explicit_self.node {
+        ast::SelfExplicit(ref ast_type, _) => {
+            let typ = crate_context.to_ty(rs, *ast_type);
+            let base_type = match ty::get(typ).sty {
+                ty::ty_rptr(_, tm) => tm.ty,
+                ty::ty_uniq(typ) => typ,
+                _ => typ,
+            };
+            let infcx = infer::new_infer_ctxt(crate_context.tcx);
+            drop(typeck::require_same_types(crate_context.tcx,
+                                            Some(&infcx),
+                                            false,
+                                            explicit_self.span,
+                                            base_type,
+                                            required_type,
+                                            || {
+                format!("mismatched self type: expected `{}`",
+                        ppaux::ty_to_string(crate_context.tcx, required_type))
+            }));
+            infcx.resolve_regions_and_report_errors();
+        }
+        _ => {}
+    }
+}
+

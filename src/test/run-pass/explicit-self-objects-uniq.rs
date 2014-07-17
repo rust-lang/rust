@@ -10,7 +10,7 @@
 
 
 trait Foo {
-    fn f(~self);
+    fn f(self: Box<Self>);
 }
 
 struct S {
@@ -18,7 +18,7 @@ struct S {
 }
 
 impl Foo for S {
-    fn f(~self) {
+    fn f(self: Box<S>) {
         assert_eq!(self.x, 3);
     }
 }

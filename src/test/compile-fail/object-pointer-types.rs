@@ -13,7 +13,7 @@ trait Foo {
     fn borrowed(&self);
     fn borrowed_mut(&mut self);
 
-    fn owned(~self);
+    fn owned(self: Box<Self>);
 }
 
 fn borrowed_receiver(x: &Foo) {

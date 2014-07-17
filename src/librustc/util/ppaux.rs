@@ -14,7 +14,7 @@ use middle::subst;
 use middle::subst::{VecPerParamSpace,Subst};
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
-use middle::ty::{BrFresh, ctxt};
+use middle::ty::{ReEarlyBound, BrFresh, ctxt};
 use middle::ty::{mt, t, ParamTy};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ty_bool, ty_char, ty_bot, ty_box, ty_struct, ty_enum};
@@ -130,9 +130,13 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
 
       ReEmpty => { ("the empty lifetime".to_string(), None) }
 
+      ReEarlyBound(_, _, _, name) => {
+        (format!("{}", token::get_name(name)), None)
+      }
+
       // I believe these cases should not occur (except when debugging,
       // perhaps)
-      ty::ReInfer(_) | ty::ReEarlyBound(..) | ty::ReLateBound(..) => {
+      ty::ReInfer(_) | ty::ReLateBound(..) => {
         (format!("lifetime {:?}", region), None)
       }
     };
@@ -418,6 +422,19 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
               None => format!("[{}]", ty_to_string(cx, mt.ty)),
           }
       }
+    }
+}
+
+pub fn explicit_self_category_to_str(category: &ty::ExplicitSelfCategory)
+                                     -> &'static str {
+    match *category {
+        ty::StaticExplicitSelfCategory => "static",
+        ty::ByValueExplicitSelfCategory => "self",
+        ty::ByReferenceExplicitSelfCategory(_, ast::MutMutable) => {
+            "&mut self"
+        }
+        ty::ByReferenceExplicitSelfCategory(_, ast::MutImmutable) => "&self",
+        ty::ByBoxExplicitSelfCategory => "Box<self>",
     }
 }
 
@@ -1083,3 +1100,10 @@ impl Repr for region_inference::VarValue {
         }
     }
 }
+
+impl Repr for ty::ExplicitSelfCategory {
+    fn repr(&self, _: &ctxt) -> String {
+        explicit_self_category_to_str(self).to_string()
+    }
+}
+

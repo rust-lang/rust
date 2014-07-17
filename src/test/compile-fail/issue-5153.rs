@@ -11,11 +11,11 @@
 // error-pattern: type `&Foo` does not implement any method in scope named `foo`
 
 trait Foo {
-    fn foo(~self);
+    fn foo(self: Box<Self>);
 }
 
 impl Foo for int {
-    fn foo(~self) { }
+    fn foo(self: Box<int>) { }
 }
 
 fn main() {

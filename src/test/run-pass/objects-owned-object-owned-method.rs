@@ -14,7 +14,7 @@
 
 
 trait FooTrait {
-    fn foo(~self) -> uint;
+    fn foo(self: Box<Self>) -> uint;
 }
 
 struct BarStruct {
@@ -22,7 +22,7 @@ struct BarStruct {
 }
 
 impl FooTrait for BarStruct {
-    fn foo(~self) -> uint {
+    fn foo(self: Box<BarStruct>) -> uint {
         self.x
     }
 }
