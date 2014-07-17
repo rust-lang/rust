@@ -1470,7 +1470,7 @@ Now we can call `compute_distance()` in various ways:
 # let on_the_stack :     Point  =     Point { x: 3.0, y: 4.0 };
 # let on_the_heap  : Box<Point> = box Point { x: 7.0, y: 9.0 };
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
-compute_distance(&on_the_stack, on_the_heap);
+compute_distance(&on_the_stack, &*on_the_heap);
 ~~~
 
 Here the `&` operator is used to take the address of the variable
@@ -1480,11 +1480,9 @@ reference. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are creating an alias: that is, another
 route to the same data.
 
-In the case of `owned_box`, however, no
-explicit action is necessary. The compiler will automatically convert
-a box `box point` to a reference like
-`&point`. This is another form of borrowing; in this case, the
-contents of the owned box are being lent out.
+Likewise, in the case of `owned_box`,
+the `&` operator is used in conjunction with the `*` operator
+to take a reference to the contents of the box.
 
 Whenever a value is borrowed, there are some limitations on what you
 can do with the original. For example, if the contents of a variable

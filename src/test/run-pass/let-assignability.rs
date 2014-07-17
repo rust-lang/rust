@@ -10,7 +10,7 @@
 
 fn f() {
     let a = box 1;
-    let b: &int = a;
+    let b: &int = &*a;
     println!("{}", b);
 }
 

@@ -25,7 +25,7 @@ fn main() {
         ptr = box Foo { x: ptr.x + 1 };
         println!("access {}", foo.x);
     };
-    test(ptr);
+    test(&*ptr);
     //~^ ERROR: cannot borrow `*ptr` as immutable
 }
 

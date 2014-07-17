@@ -374,7 +374,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
         format!("({})", strs.connect(","))
       }
       ty_closure(ref f) => {
-          closure_to_string(cx, *f)
+          closure_to_string(cx, &**f)
       }
       ty_bare_fn(ref f) => {
           bare_fn_to_string(cx, f.fn_style, f.abi, None, &f.sig)

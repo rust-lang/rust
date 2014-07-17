@@ -491,7 +491,7 @@ fn enter_default<'a, 'b>(
 
     // Collect all of the matches that can match against anything.
     enter_match(bcx, dm, m, col, val, |pats| {
-        if pat_is_binding_or_wild(dm, pats[col]) {
+        if pat_is_binding_or_wild(dm, &*pats[col]) {
             Some(Vec::from_slice(pats.slice_to(col)).append(pats.slice_from(col + 1)))
         } else {
             None
@@ -546,8 +546,10 @@ fn enter_opt<'a, 'b>(
     let _indenter = indenter();
 
     let ctor = match opt {
-        &lit(x) => check_match::ConstantValue(const_eval::eval_const_expr(
-            bcx.tcx(), lit_to_expr(bcx.tcx(), &x))),
+        &lit(x) => {
+            check_match::ConstantValue(const_eval::eval_const_expr(
+                bcx.tcx(), &*lit_to_expr(bcx.tcx(), &x)))
+        }
         &range(ref lo, ref hi) => check_match::ConstantRange(
             const_eval::eval_const_expr(bcx.tcx(), &**lo),
             const_eval::eval_const_expr(bcx.tcx(), &**hi)

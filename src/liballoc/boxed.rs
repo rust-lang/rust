@@ -67,7 +67,7 @@ impl<T:PartialEq> PartialEq for Box<T> {
 impl<T:PartialOrd> PartialOrd for Box<T> {
     #[inline]
     fn partial_cmp(&self, other: &Box<T>) -> Option<Ordering> {
-        (**self).partial_cmp(*other)
+        (**self).partial_cmp(&**other)
     }
     #[inline]
     fn lt(&self, other: &Box<T>) -> bool { *(*self) < *(*other) }
@@ -80,7 +80,9 @@ impl<T:PartialOrd> PartialOrd for Box<T> {
 }
 impl<T: Ord> Ord for Box<T> {
     #[inline]
-    fn cmp(&self, other: &Box<T>) -> Ordering { (**self).cmp(*other) }
+    fn cmp(&self, other: &Box<T>) -> Ordering {
+        (**self).cmp(&**other)
+    }
 }
 impl<T: Eq> Eq for Box<T> {}
 

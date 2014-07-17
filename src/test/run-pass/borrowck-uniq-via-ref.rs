@@ -28,27 +28,27 @@ struct Innermost {
 fn borrow(_v: &int) {}
 
 fn box_mut(v: &mut Box<int>) {
-    borrow(*v); // OK: &mut -> &imm
+    borrow(&**v); // OK: &mut -> &imm
 }
 
 fn box_mut_rec(v: &mut Rec) {
-    borrow(v.f); // OK: &mut -> &imm
+    borrow(&*v.f); // OK: &mut -> &imm
 }
 
 fn box_mut_recs(v: &mut Outer) {
-    borrow(v.f.g.h); // OK: &mut -> &imm
+    borrow(&*v.f.g.h); // OK: &mut -> &imm
 }
 
 fn box_imm(v: &Box<int>) {
-    borrow(*v); // OK
+    borrow(&**v); // OK
 }
 
 fn box_imm_rec(v: &Rec) {
-    borrow(v.f); // OK
+    borrow(&*v.f); // OK
 }
 
 fn box_imm_recs(v: &Outer) {
-    borrow(v.f.g.h); // OK
+    borrow(&*v.f.g.h); // OK
 }
 
 pub fn main() {

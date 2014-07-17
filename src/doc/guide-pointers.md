@@ -279,7 +279,7 @@ fn main() {
     let origin =    &Point { x: 0.0, y: 0.0 };
     let p1     = box Point { x: 5.0, y: 3.0 };
 
-    println!("{}", compute_distance(origin, p1));
+    println!("{}", compute_distance(origin, &*p1));
 }
 ~~~
 

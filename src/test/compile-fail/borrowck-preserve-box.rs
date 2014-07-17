@@ -23,7 +23,7 @@ fn borrow(x: &int, f: |x: &int|) {
 
 pub fn main() {
     let mut x = box(GC) 3;
-    borrow(x, |b_x| {
+    borrow(&*x, |b_x| {
     //~^ ERROR cannot borrow `x` as mutable because `*x` is also borrowed as immutable
         assert_eq!(*b_x, 3);
         assert_eq!(&(*x) as *const int, &(*b_x) as *const int);
