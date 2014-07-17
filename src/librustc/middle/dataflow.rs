@@ -97,15 +97,6 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         assert!(n != ast::DUMMY_NODE_ID);
         self.nodeid_to_index.contains_key(&n)
     }
-    fn has_bitset_for_cfgidx(&self, _cfgidx: CFGIndex) -> bool {
-        true
-    }
-    fn get_bitset_index(&self, cfgidx: CFGIndex) -> uint {
-        cfgidx.node_id()
-    }
-    fn get_or_create_bitset_index(&mut self, cfgidx: CFGIndex) -> uint {
-        cfgidx.node_id()
-    }
 }
 
 impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
@@ -120,8 +111,9 @@ impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
         };
 
         if self.has_bitset_for_nodeid(id) {
+            assert!(self.bits_per_id > 0);
             let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
-            let (start, end) = self.compute_id_range_frozen(cfgidx);
+            let (start, end) = self.compute_id_range(cfgidx);
             let on_entry = self.on_entry.slice(start, end);
             let entry_str = bits_to_string(on_entry);
 
@@ -232,6 +224,8 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         debug!("{:s} add_gen(id={:?}, bit={:?})",
                self.analysis_name, id, bit);
         assert!(self.nodeid_to_index.contains_key(&id));
+        assert!(self.bits_per_id > 0);
+
         let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
         let (start, end) = self.compute_id_range(cfgidx);
         let gens = self.gens.mut_slice(start, end);
@@ -243,16 +237,20 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         debug!("{:s} add_kill(id={:?}, bit={:?})",
                self.analysis_name, id, bit);
         assert!(self.nodeid_to_index.contains_key(&id));
+        assert!(self.bits_per_id > 0);
+
         let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
         let (start, end) = self.compute_id_range(cfgidx);
         let kills = self.kills.mut_slice(start, end);
         set_bit(kills, bit);
     }
 
-    fn apply_gen_kill(&mut self, cfgidx: CFGIndex, bits: &mut [uint]) {
+    fn apply_gen_kill(&self, cfgidx: CFGIndex, bits: &mut [uint]) {
         //! Applies the gen and kill sets for `cfgidx` to `bits`
         debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [before]",
                self.analysis_name, cfgidx, mut_bits_to_string(bits));
+        assert!(self.bits_per_id > 0);
+
         let (start, end) = self.compute_id_range(cfgidx);
         let gens = self.gens.slice(start, end);
         bitwise(bits, gens, &Union);
@@ -263,30 +261,8 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
                self.analysis_name, cfgidx, mut_bits_to_string(bits));
     }
 
-    fn apply_gen_kill_frozen(&self, cfgidx: CFGIndex, bits: &mut [uint]) {
-        //! Applies the gen and kill sets for `cfgidx` to `bits`
-        //! Only useful after `propagate()` has been called.
-        debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [before]",
-               self.analysis_name, cfgidx, mut_bits_to_string(bits));
-        let (start, end) = self.compute_id_range_frozen(cfgidx);
-        let gens = self.gens.slice(start, end);
-        bitwise(bits, gens, &Union);
-        let kills = self.kills.slice(start, end);
-        bitwise(bits, kills, &Subtract);
-
-        debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [after]",
-               self.analysis_name, cfgidx, mut_bits_to_string(bits));
-    }
-
-    fn compute_id_range_frozen(&self, cfgidx: CFGIndex) -> (uint, uint) {
-        let n = self.get_bitset_index(cfgidx);
-        let start = n * self.words_per_id;
-        let end = start + self.words_per_id;
-        (start, end)
-    }
-
-    fn compute_id_range(&mut self, cfgidx: CFGIndex) -> (uint, uint) {
-        let n = self.get_or_create_bitset_index(cfgidx);
+    fn compute_id_range(&self, cfgidx: CFGIndex) -> (uint, uint) {
+        let n = cfgidx.node_id();
         let start = n * self.words_per_id;
         let end = start + self.words_per_id;
 
@@ -299,10 +275,10 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
     }
 
 
-    pub fn each_bit_on_entry_frozen(&self,
-                                    id: ast::NodeId,
-                                    f: |uint| -> bool)
-                                    -> bool {
+    pub fn each_bit_on_entry(&self,
+                             id: ast::NodeId,
+                             f: |uint| -> bool)
+                             -> bool {
         //! Iterates through each bit that is set on entry to `id`.
         //! Only useful after `propagate()` has been called.
         if !self.has_bitset_for_nodeid(id) {
@@ -319,17 +295,21 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
                              -> bool {
         //! Iterates through each bit that is set on entry/exit to `cfgidx`.
         //! Only useful after `propagate()` has been called.
-        if !self.has_bitset_for_cfgidx(cfgidx) {
+
+        if self.bits_per_id == 0 {
+            // Skip the surprisingly common degenerate case.  (Note
+            // compute_id_range requires self.words_per_id > 0.)
             return true;
         }
-        let (start, end) = self.compute_id_range_frozen(cfgidx);
+
+        let (start, end) = self.compute_id_range(cfgidx);
         let on_entry = self.on_entry.slice(start, end);
         let temp_bits;
         let slice = match e {
             Entry => on_entry,
             Exit => {
                 let mut t = on_entry.to_vec();
-                self.apply_gen_kill_frozen(cfgidx, t.as_mut_slice());
+                self.apply_gen_kill(cfgidx, t.as_mut_slice());
                 temp_bits = t;
                 temp_bits.as_slice()
             }
@@ -339,15 +319,21 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         self.each_bit(slice, f)
     }
 
-    pub fn each_gen_bit_frozen(&self, id: ast::NodeId, f: |uint| -> bool)
-                               -> bool {
+    pub fn each_gen_bit(&self, id: ast::NodeId, f: |uint| -> bool)
+                        -> bool {
         //! Iterates through each bit in the gen set for `id`.
-        //! Only useful after `propagate()` has been called.
         if !self.has_bitset_for_nodeid(id) {
             return true;
         }
+
+        if self.bits_per_id == 0 {
+            // Skip the surprisingly common degenerate case.  (Note
+            // compute_id_range requires self.words_per_id > 0.)
+            return true;
+        }
+
         let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
-        let (start, end) = self.compute_id_range_frozen(cfgidx);
+        let (start, end) = self.compute_id_range(cfgidx);
         let gens = self.gens.slice(start, end);
         debug!("{:s} each_gen_bit(id={:?}, gens={})",
                self.analysis_name, id, bits_to_string(gens));
@@ -356,6 +342,8 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
 
     fn each_bit(&self, words: &[uint], f: |uint| -> bool) -> bool {
         //! Helper for iterating over the bits in a bit set.
+        //! Returns false on the first call to `f` that returns false;
+        //! if all calls to `f` return true, then returns true.
 
         for (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
@@ -486,6 +474,8 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
                 in_out: &mut [uint]) {
         debug!("DataFlowContext::walk_cfg(in_out={}) {:s}",
                bits_to_string(in_out), self.dfcx.analysis_name);
+        assert!(self.dfcx.bits_per_id > 0);
+
         cfg.graph.each_node(|node_index, node| {
             debug!("DataFlowContext::walk_cfg idx={} id={} begin in_out={}",
                    node_index, node.data.id, bits_to_string(in_out));
@@ -529,6 +519,8 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
         let cfgidx = edge.target();
         debug!("{:s} propagate_bits_into_entry_set_for(pred_bits={}, {} to {})",
                self.dfcx.analysis_name, bits_to_string(pred_bits), source, cfgidx);
+        assert!(self.dfcx.bits_per_id > 0);
+
         let (start, end) = self.dfcx.compute_id_range(cfgidx);
         let changed = {
             // (scoping mutable borrow of self.dfcx.on_entry)
