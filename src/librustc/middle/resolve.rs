@@ -1455,29 +1455,20 @@ impl<'a> Resolver<'a> {
                 // Extract and intern the module part of the path. For
                 // globs and lists, the path is found directly in the AST;
                 // for simple paths we have to munge the path a little.
-
-                let mut module_path = Vec::new();
-                match view_path.node {
+                let module_path = match view_path.node {
                     ViewPathSimple(_, ref full_path, _) => {
-                        let path_len = full_path.segments.len();
-                        assert!(path_len != 0);
-
-                        for (i, segment) in full_path.segments
-                                                     .iter()
-                                                     .enumerate() {
-                            if i != path_len - 1 {
-                                module_path.push(segment.identifier)
-                            }
-                        }
+                        full_path.segments
+                            .as_slice().init()
+                            .iter().map(|ident| ident.identifier)
+                            .collect()
                     }
 
                     ViewPathGlob(ref module_ident_path, _) |
                     ViewPathList(ref module_ident_path, _, _) => {
-                        for segment in module_ident_path.segments.iter() {
-                            module_path.push(segment.identifier)
-                        }
+                        module_ident_path.segments
+                            .iter().map(|ident| ident.identifier).collect()
                     }
-                }
+                };
 
                 // Build up the import directives.
                 let module_ = parent.module();
@@ -1486,6 +1477,11 @@ impl<'a> Resolver<'a> {
                     ViewPathSimple(binding, ref full_path, id) => {
                         let source_ident =
                             full_path.segments.last().unwrap().identifier;
+                        if token::get_ident(source_ident).get() == "mod" {
+                            self.resolve_error(view_path.span,
+                                "`mod` imports are only allowed within a { } list");
+                        }
+
                         let subclass = SingleImport(binding,
                                                     source_ident);
                         self.build_import_directive(&*module_,
@@ -1495,16 +1491,50 @@ impl<'a> Resolver<'a> {
                                                     id,
                                                     is_public);
                     }
-                    ViewPathList(_, ref source_idents, _) => {
-                        for source_ident in source_idents.iter() {
-                            let name = source_ident.node.name;
+                    ViewPathList(_, ref source_items, _) => {
+                        // Make sure there's at most one `mod` import in the list.
+                        let mod_spans = source_items.iter().filter_map(|item| match item.node {
+                            PathListMod { .. } => Some(item.span),
+                            _ => None
+                        }).collect::<Vec<Span>>();
+                        match mod_spans.as_slice() {
+                            [first, second, ..other] => {
+                                self.resolve_error(first,
+                                    "`mod` import can only appear once in the list");
+                                self.session.span_note(second,
+                                        "another `mod` import appears here");
+                                for &other_span in other.iter() {
+                                    self.session.span_note(other_span,
+                                        "another `mod` import appears here");
+                                }
+                            },
+                            [_] | [] => ()
+                        }
+
+                        for source_item in source_items.iter() {
+                            let (module_path, name) = match source_item.node {
+                                PathListIdent { name, .. } =>
+                                    (module_path.clone(), name),
+                                PathListMod { .. } => {
+                                    let name = match module_path.last() {
+                                        Some(ident) => ident.clone(),
+                                        None => {
+                                            self.resolve_error(source_item.span,
+                                                "`mod` import can only appear in an import list \
+                                                 with a non-empty prefix");
+                                            continue;
+                                        }
+                                    };
+                                    let module_path = module_path.as_slice().init();
+                                    (Vec::from_slice(module_path), name)
+                                }
+                            };
                             self.build_import_directive(
                                 &*module_,
-                                module_path.clone(),
+                                module_path,
                                 SingleImport(name, name),
-                                source_ident.span,
-                                source_ident.node.id,
-                                is_public);
+                                source_item.span,
+                                source_item.node.id(), is_public);
                         }
                     }
                     ViewPathGlob(_, id) => {
@@ -5492,7 +5522,7 @@ impl<'a> Resolver<'a> {
                     ViewPathSimple(_, _, id) => self.finalize_import(id, p.span),
                     ViewPathList(_, ref list, _) => {
                         for i in list.iter() {
-                            self.finalize_import(i.node.id, i.span);
+                            self.finalize_import(i.node.id(), i.span);
                         }
                     },
                     ViewPathGlob(_, id) => {

@@ -2182,7 +2182,14 @@ impl<'a> State<'a> {
                     try!(word(&mut self.s, "::{"));
                 }
                 try!(self.commasep(Inconsistent, idents.as_slice(), |s, w| {
-                    s.print_ident(w.node.name)
+                    match w.node {
+                        ast::PathListIdent { name, .. } => {
+                            s.print_ident(name)
+                        },
+                        ast::PathListMod { .. } => {
+                            word(&mut s.s, "mod")
+                        }
+                    }
                 }));
                 word(&mut self.s, "}")
             }
