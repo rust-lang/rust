@@ -147,6 +147,12 @@ pub mod rt {
     impl_to_source_slice!(ast::Ty, ", ")
     impl_to_source_slice!(Gc<ast::Item>, "\n\n")
 
+    impl ToSource for ast::Attribute_ {
+        fn to_source(&self) -> String {
+            pprust::attribute_to_string(&dummy_spanned(*self))
+        }
+    }
+
     impl<'a> ToSource for &'a str {
         fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitStr(
@@ -238,6 +244,7 @@ pub mod rt {
     impl_to_tokens!(Gc<ast::Expr>)
     impl_to_tokens!(ast::Block)
     impl_to_tokens!(ast::Arg)
+    impl_to_tokens!(ast::Attribute_)
     impl_to_tokens_lifetime!(&'a str)
     impl_to_tokens!(())
     impl_to_tokens!(char)
