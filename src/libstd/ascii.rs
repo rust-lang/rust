@@ -26,6 +26,13 @@ use string::String;
 use to_string::IntoStr;
 use vec::Vec;
 
+#[deprecated="this trait has been renamed to `AsciiExt`"]
+pub use StrAsciiExt = self::AsciiExt;
+
+#[deprecated="this trait has been renamed to `OwnedAsciiExt`"]
+pub use OwnedStrAsciiExt = self::OwnedAsciiExt;
+
+
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
 #[deriving(Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Ascii { chr: u8 }
