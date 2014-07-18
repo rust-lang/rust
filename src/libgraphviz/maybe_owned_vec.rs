@@ -124,15 +124,15 @@ impl<'a,T:fmt::Show> fmt::Show for MaybeOwnedVector<'a,T> {
 
 impl<'a,T:Clone> CloneableVector<T> for MaybeOwnedVector<'a,T> {
     /// Returns a copy of `self`.
-    fn to_owned(&self) -> Vec<T> {
-        self.as_slice().to_owned()
+    fn to_vec(&self) -> Vec<T> {
+        self.as_slice().to_vec()
     }
 
     /// Convert `self` into an owned slice, not making a copy if possible.
-    fn into_owned(self) -> Vec<T> {
+    fn into_vec(self) -> Vec<T> {
         match self {
-            Growable(v) => v.as_slice().to_owned(),
-            Borrowed(v) => v.to_owned(),
+            Growable(v) => v.as_slice().to_vec(),
+            Borrowed(v) => v.to_vec(),
         }
     }
 }
@@ -140,7 +140,7 @@ impl<'a,T:Clone> CloneableVector<T> for MaybeOwnedVector<'a,T> {
 impl<'a, T: Clone> Clone for MaybeOwnedVector<'a, T> {
     fn clone(&self) -> MaybeOwnedVector<'a, T> {
         match *self {
-            Growable(ref v) => Growable(v.to_owned()),
+            Growable(ref v) => Growable(v.to_vec()),
             Borrowed(v) => Borrowed(v)
         }
     }

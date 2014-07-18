@@ -72,7 +72,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
 
 // given a map, search for the frequency of a pattern
 fn find(mm: &HashMap<Vec<u8> , uint>, key: String) -> uint {
-   let key = key.to_owned().into_ascii().as_slice().to_lower().into_string();
+   let key = key.into_ascii().as_slice().to_lower().into_string();
    match mm.find_equiv(&key.as_bytes()) {
       option::None      => { return 0u; }
       option::Some(&num) => { return num; }
@@ -179,7 +179,7 @@ fn main() {
    let mut proc_mode = false;
 
    for line in rdr.lines() {
-       let line = line.unwrap().as_slice().trim().to_owned();
+       let line = line.unwrap().as_slice().trim().to_string();
 
        if line.len() == 0u { continue; }
 

@@ -15,6 +15,6 @@ use std::collections::HashMap;
 
 pub fn main() {
     let mut m = HashMap::new();
-    m.insert("foo".as_bytes().to_owned(), "bar".as_bytes().to_owned());
+    m.insert(b"foo".to_vec(), b"bar".to_vec());
     println!("{:?}", m);
 }

@@ -437,8 +437,8 @@ impl<T> Collection for Vec<T> {
 }
 
 impl<T: Clone> CloneableVector<T> for Vec<T> {
-    fn to_owned(&self) -> Vec<T> { self.clone() }
-    fn into_owned(self) -> Vec<T> { self }
+    fn to_vec(&self) -> Vec<T> { self.clone() }
+    fn into_vec(self) -> Vec<T> { self }
 }
 
 // FIXME: #13996: need a way to mark the return value as `noalias`

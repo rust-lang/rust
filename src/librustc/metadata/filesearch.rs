@@ -46,7 +46,7 @@ impl<'a> FileSearch<'a> {
                 FileMatches => found = true,
                 FileDoesntMatch => ()
             }
-            visited_dirs.insert(path.as_vec().to_owned());
+            visited_dirs.insert(path.as_vec().to_vec());
         }
 
         debug!("filesearch: searching lib path");
@@ -59,7 +59,7 @@ impl<'a> FileSearch<'a> {
             }
         }
 
-        visited_dirs.insert(tlib_path.as_vec().to_owned());
+        visited_dirs.insert(tlib_path.as_vec().to_vec());
         // Try RUST_PATH
         if !found {
             let rustpath = rust_path();
@@ -67,10 +67,10 @@ impl<'a> FileSearch<'a> {
                 let tlib_path = make_rustpkg_lib_path(
                     self.sysroot, path, self.triple);
                 debug!("is {} in visited_dirs? {:?}", tlib_path.display(),
-                        visited_dirs.contains_equiv(&tlib_path.as_vec().to_owned()));
+                        visited_dirs.contains_equiv(&tlib_path.as_vec().to_vec()));
 
                 if !visited_dirs.contains_equiv(&tlib_path.as_vec()) {
-                    visited_dirs.insert(tlib_path.as_vec().to_owned());
+                    visited_dirs.insert(tlib_path.as_vec().to_vec());
                     // Don't keep searching the RUST_PATH if one match turns up --
                     // if we did, we'd get a "multiple matching crates" error
                     match f(&tlib_path) {

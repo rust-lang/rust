@@ -369,7 +369,7 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         let slice = match e {
             Entry => on_entry,
             Exit => {
-                let mut t = on_entry.to_owned();
+                let mut t = on_entry.to_vec();
                 self.apply_gen_kill_frozen(cfgidx, t.as_mut_slice());
                 temp_bits = t;
                 temp_bits.as_slice()
@@ -445,7 +445,7 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         cfg.graph.each_edge(|_edge_index, edge| {
             let flow_exit = edge.source();
             let (start, end) = self.compute_id_range(flow_exit);
-            let mut orig_kills = self.kills.slice(start, end).to_owned();
+            let mut orig_kills = self.kills.slice(start, end).to_vec();
 
             let mut changed = false;
             for &node_id in edge.data.exiting_scopes.iter() {

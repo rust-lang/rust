@@ -109,7 +109,7 @@ fn main() {
     let (mut variant_strs, mut counts) = (vec!(), vec!());
     for variant in variants.move_iter() {
         let seq_arc_copy = seq_arc.clone();
-        variant_strs.push(variant.to_string().to_owned());
+        variant_strs.push(variant.to_string());
         counts.push(Future::spawn(proc() {
             count_matches(seq_arc_copy.as_slice(), &variant)
         }));
