@@ -33,14 +33,14 @@ impl<T> DerefCounter<T> {
 }
 
 impl<T> Deref<T> for DerefCounter<T> {
-    fn deref<'a>(&'a self) -> &'a T {
+    fn deref(&self) -> &T {
         self.count_imm.set(self.count_imm.get() + 1);
         &self.value
     }
 }
 
 impl<T> DerefMut<T> for DerefCounter<T> {
-    fn deref_mut<'a>(&'a mut self) -> &'a mut T {
+    fn deref_mut(&mut self) -> &mut T {
         self.count_mut += 1;
         &mut self.value
     }

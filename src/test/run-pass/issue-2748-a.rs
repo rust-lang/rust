@@ -12,7 +12,7 @@ struct CMap<'a> {
     buf: &'a [u8],
 }
 
-fn CMap<'r>(buf: &'r [u8]) -> CMap<'r> {
+fn CMap(buf: &[u8]) -> CMap {
     CMap {
         buf: buf
     }

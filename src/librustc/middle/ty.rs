@@ -4872,3 +4872,55 @@ pub enum ExplicitSelfCategory {
     ByBoxExplicitSelfCategory,
 }
 
+/// Pushes all the lifetimes in the given type onto the given list. A
+/// "lifetime in a type" is a lifetime specified by a reference or a lifetime
+/// in a list of type substitutions. This does *not* traverse into nominal
+/// types, nor does it resolve fictitious types.
+pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
+                                    typ: t) {
+    walk_ty(typ, |typ| {
+        match get(typ).sty {
+            ty_rptr(region, _) => accumulator.push(region),
+            ty_enum(_, ref substs) |
+            ty_trait(box TyTrait {
+                substs: ref substs,
+                ..
+            }) |
+            ty_struct(_, ref substs) => {
+                match substs.regions {
+                    subst::ErasedRegions => {}
+                    subst::NonerasedRegions(ref regions) => {
+                        for region in regions.iter() {
+                            accumulator.push(*region)
+                        }
+                    }
+                }
+            }
+            ty_closure(ref closure_ty) => {
+                match closure_ty.store {
+                    RegionTraitStore(region, _) => accumulator.push(region),
+                    UniqTraitStore => {}
+                }
+            }
+            ty_nil |
+            ty_bot |
+            ty_bool |
+            ty_char |
+            ty_int(_) |
+            ty_uint(_) |
+            ty_float(_) |
+            ty_box(_) |
+            ty_uniq(_) |
+            ty_str |
+            ty_vec(_, _) |
+            ty_ptr(_) |
+            ty_bare_fn(_) |
+            ty_tup(_) |
+            ty_param(_) |
+            ty_infer(_) |
+            ty_unboxed_closure(_) |
+            ty_err => {}
+        }
+    })
+}
+

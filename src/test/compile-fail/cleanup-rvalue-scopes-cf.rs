@@ -24,12 +24,12 @@ fn AddFlags(bits: u64) -> AddFlags {
     AddFlags { bits: bits }
 }
 
-fn arg<'a>(x: &'a AddFlags) -> &'a AddFlags {
+fn arg(x: &AddFlags) -> &AddFlags {
     x
 }
 
 impl AddFlags {
-    fn get<'a>(&'a self) -> &'a AddFlags {
+    fn get(&self) -> &AddFlags {
         self
     }
 }
