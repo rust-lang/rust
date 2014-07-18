@@ -109,6 +109,8 @@ struct SemGuard<'a, Q> {
 
 impl<Q: Send> Sem<Q> {
     fn new(count: int, q: Q) -> Sem<Q> {
+        assert!(count >= 0,
+                "semaphores cannot be initialized with negative values");
         Sem {
             lock: mutex::Mutex::new(),
             inner: Unsafe::new(SemInner {
@@ -364,6 +366,10 @@ pub struct SemaphoreGuard<'a> {
 
 impl Semaphore {
     /// Create a new semaphore with the specified count.
+    ///
+    /// # Failure
+    ///
+    /// This function will fail if `count` is negative.
     pub fn new(count: int) -> Semaphore {
         Semaphore { sem: Sem::new(count, ()) }
     }
@@ -635,6 +641,11 @@ mod tests {
     fn test_sem_basic() {
         let s = Semaphore::new(1);
         let _g = s.access();
+    }
+    #[test]
+    #[should_fail]
+    fn test_sem_basic2() {
+        Semaphore::new(-1);
     }
     #[test]
     fn test_sem_as_mutex() {
