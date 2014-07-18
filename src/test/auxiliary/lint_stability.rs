@@ -10,6 +10,9 @@
 #![crate_id="lint_stability#0.1"]
 #![crate_type = "lib"]
 
+#![feature(macro_rules)]
+#![macro_escape]
+
 #[deprecated]
 pub fn deprecated() {}
 #[deprecated="text"]
@@ -173,3 +176,8 @@ pub struct StableTupleStruct(pub int);
 pub struct FrozenTupleStruct(pub int);
 #[locked]
 pub struct LockedTupleStruct(pub int);
+
+#[macro_export]
+macro_rules! macro_test(
+    () => (deprecated());
+)

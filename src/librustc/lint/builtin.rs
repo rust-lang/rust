@@ -1433,6 +1433,9 @@ impl LintPass for Stability {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
+        // if the expression was produced by a macro expansion,
+        if e.span.expn_info.is_some() { return }
+
         let id = match e.node {
             ast::ExprPath(..) | ast::ExprStruct(..) => {
                 match cx.tcx.def_map.borrow().find(&e.id) {
