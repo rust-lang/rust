@@ -365,12 +365,12 @@ impl<K: Clone + Ord, V: Clone> Leaf<K, V> {
                 return (Node::new_leaf(self.clone().elts), false);
             }
             //If there is an index, insert at that index.
-            _ => {
-                if index.unwrap() >= self.elts.len() {
+            Some(i) => {
+                if i >= self.elts.len() {
                     self.elts.push(to_insert.clone());
                 }
                 else {
-                    self.elts.insert(index.unwrap(), to_insert.clone());
+                    self.elts.insert(i, to_insert.clone());
                 }
             }
         }
@@ -526,8 +526,8 @@ impl<K: Clone + Ord, V: Clone> Branch<K, V> {
                                          self.clone().rightmost_child),
                         outcome);
             }
-            _ => {
-                if index.unwrap() == self.elts.len() {
+            Some(i) => {
+                if i == self.elts.len() {
                     let new_outcome = self.clone().rightmost_child.insert(k.clone(),
                                                                        v.clone(),
                                                                        ub.clone());
@@ -535,7 +535,7 @@ impl<K: Clone + Ord, V: Clone> Branch<K, V> {
                     outcome = new_outcome.val1();
                 }
                 else {
-                    let new_outcome = self.elts.get(index.unwrap()).left.clone().insert(k.clone(),
+                    let new_outcome = self.elts.get(i).left.clone().insert(k.clone(),
                                                                                  v.clone(),
                                                                                  ub.clone());
                     new_branch = new_outcome.clone().val0();
@@ -547,11 +547,11 @@ impl<K: Clone + Ord, V: Clone> Branch<K, V> {
                     //If we have a leaf, we do not need to resize the tree,
                     //so we can return false.
                     LeafNode(..) => {
-                        if index.unwrap() == self.elts.len() {
+                        if i == self.elts.len() {
                             self.rightmost_child = box new_branch.clone();
                         }
                         else {
-                            self.elts.get_mut(index.unwrap()).left = box new_branch.clone();
+                            self.elts.get_mut(i).left = box new_branch.clone();
                         }
                         return (Node::new_branch(self.clone().elts,
                                                  self.clone().rightmost_child),
@@ -589,13 +589,13 @@ impl<K: Clone + Ord, V: Clone> Branch<K, V> {
                                                      self.clone().rightmost_child),
                                     false);
                             }
-                        _ => {
-                            self.elts.insert(new_elt_index.unwrap(), new_elt);
-                            if new_elt_index.unwrap() + 1 >= self.elts.len() {
+                        Some(i) => {
+                            self.elts.insert(i, new_elt);
+                            if i + 1 >= self.elts.len() {
                                 self.rightmost_child = branch.clone().rightmost_child;
                             }
                             else {
-                                self.elts.get_mut(new_elt_index.unwrap() + 1).left =
+                                self.elts.get_mut(i + 1).left =
                                     branch.clone().rightmost_child;
                             }
                         }
