@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use back::link::mangle_internal_name_by_path_and_seq;
-use llvm;
-use llvm::{ValueRef};
+use llvm::{ValueRef, get_param};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -316,14 +315,10 @@ impl<'a, 'b> Reflector<'a, 'b> {
                                       None, &arena);
                 let bcx = init_function(&fcx, false, ty::mk_u64());
 
-                let arg = unsafe {
-                    //
-                    // we know the return type of llfdecl is an int here, so
-                    // no need for a special check to see if the return type
-                    // is immediate.
-                    //
-                    llvm::LLVMGetParam(llfdecl, fcx.arg_pos(0u) as c_uint)
-                };
+                // we know the return type of llfdecl is an int here, so
+                // no need for a special check to see if the return type
+                // is immediate.
+                let arg = get_param(llfdecl, fcx.arg_pos(0u) as c_uint);
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, &*repr, arg, Some(Type::i64(ccx)));
                 Store(bcx, ret, fcx.llretptr.get().unwrap());
@@ -366,6 +361,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
           // Miscellaneous extra types
           ty::ty_infer(_) => self.leaf("infer"),
           ty::ty_err => self.leaf("err"),
+          ty::ty_unboxed_closure(..) => self.leaf("err"),
           ty::ty_param(ref p) => {
               let extra = vec!(self.c_uint(p.idx));
               self.visit("param", extra.as_slice())

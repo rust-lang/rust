@@ -1451,6 +1451,9 @@ impl LintPass for Stability {
                             typeck::MethodStatic(def_id) => {
                                 def_id
                             }
+                            typeck::MethodStaticUnboxedClosure(def_id) => {
+                                def_id
+                            }
                             typeck::MethodParam(typeck::MethodParam {
                                 trait_id: trait_id,
                                 method_num: index,

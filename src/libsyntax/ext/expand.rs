@@ -910,7 +910,14 @@ impl<'a> Folder for PatIdentRenamer<'a> {
 fn expand_method(m: &ast::Method, fld: &mut MacroExpander) -> SmallVector<Gc<ast::Method>> {
     let id = fld.new_id(m.id);
     match m.node {
-        ast::MethDecl(ident, ref generics, ref explicit_self, fn_style, decl, body, vis) => {
+        ast::MethDecl(ident,
+                      ref generics,
+                      abi,
+                      ref explicit_self,
+                      fn_style,
+                      decl,
+                      body,
+                      vis) => {
             let (rewritten_fn_decl, rewritten_body)
                 = expand_and_rename_fn_decl_and_block(&*decl,body,fld);
             SmallVector::one(box(GC) ast::Method {
@@ -919,6 +926,7 @@ fn expand_method(m: &ast::Method, fld: &mut MacroExpander) -> SmallVector<Gc<ast
                     span: fld.new_span(m.span),
                     node: ast::MethDecl(fld.fold_ident(ident),
                                         fold_generics(generics, fld),
+                                        abi,
                                         fld.fold_explicit_self(explicit_self),
                                         fn_style,
                                         rewritten_fn_decl,

@@ -842,7 +842,8 @@ impl <'l> DxrVisitor<'l> {
         let method_map = self.analysis.ty_cx.method_map.borrow();
         let method_callee = method_map.get(&typeck::MethodCall::expr(ex.id));
         let (def_id, decl_id) = match method_callee.origin {
-            typeck::MethodStatic(def_id) => {
+            typeck::MethodStatic(def_id) |
+            typeck::MethodStaticUnboxedClosure(def_id) => {
                 // method invoked on an object with a concrete type (not a static method)
                 let decl_id = ty::trait_method_of_method(&self.analysis.ty_cx, def_id);
 

@@ -21,7 +21,7 @@ use lint;
 use middle::resolve;
 use middle::ty;
 use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam};
-use middle::typeck::{MethodStatic, MethodObject};
+use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject};
 use util::nodemap::{NodeMap, NodeSet};
 
 use syntax::ast;
@@ -772,6 +772,7 @@ impl<'a> PrivacyVisitor<'a> {
             MethodStatic(method_id) => {
                 self.check_static_method(span, method_id, ident)
             }
+            MethodStaticUnboxedClosure(_) => {}
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
             MethodParam(MethodParam { trait_id: trait_id, .. }) |

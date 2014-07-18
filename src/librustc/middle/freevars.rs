@@ -16,7 +16,7 @@
 use middle::def;
 use middle::resolve;
 use middle::ty;
-use util::nodemap::{NodeMap, NodeSet};
+use util::nodemap::{DefIdSet, NodeMap, NodeSet};
 
 use syntax::codemap::Span;
 use syntax::{ast};
@@ -39,7 +39,10 @@ pub struct freevar_entry {
     pub def: def::Def, //< The variable being accessed free.
     pub span: Span     //< First span where it is accessed (there can be multiple)
 }
+
 pub type freevar_map = NodeMap<Vec<freevar_entry>>;
+
+pub type UnboxedClosureList = DefIdSet;
 
 struct CollectFreevarsVisitor<'a> {
     seen: NodeSet,
@@ -54,7 +57,8 @@ impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
 
     fn visit_expr(&mut self, expr: &ast::Expr, depth: int) {
         match expr.node {
-            ast::ExprFnBlock(..) | ast::ExprProc(..) => {
+            ast::ExprFnBlock(..) | ast::ExprProc(..) |
+            ast::ExprUnboxedFn(..) => {
                 visit::walk_expr(self, expr, depth + 1)
             }
             ast::ExprPath(..) => {
@@ -125,8 +129,8 @@ impl<'a> Visitor<()> for AnnotateFreevarsVisitor<'a> {
 // efficient as it fully recomputes the free variables at every
 // node of interest rather than building up the free variables in
 // one pass. This could be improved upon if it turns out to matter.
-pub fn annotate_freevars(def_map: &resolve::DefMap, krate: &ast::Crate) ->
-   freevar_map {
+pub fn annotate_freevars(def_map: &resolve::DefMap, krate: &ast::Crate)
+                         -> freevar_map {
     let mut visitor = AnnotateFreevarsVisitor {
         def_map: def_map,
         freevars: NodeMap::new(),

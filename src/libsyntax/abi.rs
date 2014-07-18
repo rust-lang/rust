@@ -30,6 +30,7 @@ pub enum Abi {
     C,
     System,
     RustIntrinsic,
+    RustCall,
 }
 
 #[allow(non_camel_case_types)]
@@ -85,6 +86,7 @@ static AbiDatas: &'static [AbiData] = &[
     AbiData {abi: C, name: "C", abi_arch: AllArch},
     AbiData {abi: System, name: "system", abi_arch: AllArch},
     AbiData {abi: RustIntrinsic, name: "rust-intrinsic", abi_arch: RustArch},
+    AbiData {abi: RustCall, name: "rust-call", abi_arch: RustArch},
 ];
 
 /// Returns the ABI with the given name (if any).

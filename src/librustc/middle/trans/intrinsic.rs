@@ -29,6 +29,7 @@ use middle::trans::machine;
 use middle::trans::machine::llsize_of;
 use middle::trans::type_::Type;
 use middle::ty;
+use syntax::abi::RustIntrinsic;
 use syntax::ast;
 use syntax::parse::token;
 use util::ppaux::ty_to_string;
@@ -193,8 +194,13 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
 
     // Push the arguments.
     let mut llargs = Vec::new();
-    bcx = callee::trans_args(bcx, args, callee_ty, &mut llargs,
-                             cleanup::CustomScope(cleanup_scope), false);
+    bcx = callee::trans_args(bcx,
+                             args,
+                             callee_ty,
+                             &mut llargs,
+                             cleanup::CustomScope(cleanup_scope),
+                             false,
+                             RustIntrinsic);
 
     fcx.pop_custom_cleanup_scope(cleanup_scope);
 

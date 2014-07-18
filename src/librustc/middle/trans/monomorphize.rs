@@ -254,6 +254,13 @@ pub fn make_vtable_id(_ccx: &CrateContext,
             }
         }
 
+        &typeck::vtable_unboxed_closure(def_id) => {
+            MonoId {
+                def: def_id,
+                params: subst::VecPerParamSpace::empty(),
+            }
+        }
+
         // can't this be checked at the callee?
         _ => fail!("make_vtable_id needs vtable_static")
     }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overloaded_calls)]
+#![feature(lang_items, overloaded_calls)]
 
 use std::ops::{Fn, FnMut, FnOnce};
 
@@ -18,7 +18,7 @@ struct S1 {
 }
 
 impl FnMut<(int,),int> for S1 {
-    fn call_mut(&mut self, (z,): (int,)) -> int {
+    extern "rust-call" fn call_mut(&mut self, (z,): (int,)) -> int {
         self.x * self.y * z
     }
 }
@@ -29,7 +29,7 @@ struct S2 {
 }
 
 impl Fn<(int,),int> for S2 {
-    fn call(&self, (z,): (int,)) -> int {
+    extern "rust-call" fn call(&self, (z,): (int,)) -> int {
         self.x * self.y * z
     }
 }
@@ -40,7 +40,7 @@ struct S3 {
 }
 
 impl FnOnce<(int,int),int> for S3 {
-    fn call_once(self, (z,zz): (int,int)) -> int {
+    extern "rust-call" fn call_once(self, (z,zz): (int,int)) -> int {
         self.x * self.y * z * zz
     }
 }
@@ -50,21 +50,21 @@ fn main() {
         x: 3,
         y: 3,
     };
-    let ans = s(3);
-    assert_eq!(ans, 27);
+    let ans = s.call_mut((3,));
 
+    assert_eq!(ans, 27);
     let s = S2 {
         x: 3,
         y: 3,
     };
-    let ans = s(3);
+    let ans = s.call((3,));
     assert_eq!(ans, 27);
 
     let s = S3 {
         x: 3,
         y: 3,
     };
-    let ans = s(3, 1);
+    let ans = s.call_once((3, 1));
     assert_eq!(ans, 27);
 }
 

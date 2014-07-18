@@ -20,7 +20,7 @@ use middle::freevars;
 use middle::pat_util;
 use middle::ty;
 use middle::typeck::{MethodCall, MethodObject, MethodOrigin, MethodParam};
-use middle::typeck::{MethodStatic};
+use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure};
 use middle::typeck;
 use util::ppaux::Repr;
 
@@ -158,6 +158,9 @@ impl OverloadedCallType {
                           -> OverloadedCallType {
         match *origin {
             MethodStatic(def_id) => {
+                OverloadedCallType::from_method_id(tcx, def_id)
+            }
+            MethodStaticUnboxedClosure(def_id) => {
                 OverloadedCallType::from_method_id(tcx, def_id)
             }
             MethodParam(ref method_param) => {
@@ -439,6 +442,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
             }
 
             ast::ExprFnBlock(..) |
+            ast::ExprUnboxedFn(..) |
             ast::ExprProc(..) => {
                 self.walk_captures(expr)
             }

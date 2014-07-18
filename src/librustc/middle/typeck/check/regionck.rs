@@ -587,7 +587,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprFnBlock(_, ref body) | ast::ExprProc(_, ref body) => {
+        ast::ExprFnBlock(_, ref body) |
+        ast::ExprProc(_, ref body) |
+        ast::ExprUnboxedFn(_, ref body) => {
             check_expr_fn_block(rcx, expr, &**body);
         }
 

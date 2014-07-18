@@ -320,13 +320,15 @@ impl Map {
             }
             NodeForeignItem(i) => PathName(i.ident.name),
             NodeMethod(m) => match m.node {
-                MethDecl(ident, _, _, _, _, _, _) => PathName(ident.name),
+                MethDecl(ident, _, _, _, _, _, _, _) => PathName(ident.name),
                 MethMac(_) => fail!("no path elem for {:?}", node)
             },
             NodeTraitMethod(tm) => match *tm {
                 Required(ref m) => PathName(m.ident.name),
                 Provided(m) => match m.node {
-                    MethDecl(ident, _, _, _, _, _, _) => PathName(ident.name),
+                    MethDecl(ident, _, _, _, _, _, _, _) => {
+                        PathName(ident.name)
+                    }
                     MethMac(_) => fail!("no path elem for {:?}", node),
                 }
             },
@@ -709,7 +711,7 @@ fn node_id_to_string(map: &Map, id: NodeId) -> String {
             format!("foreign item {} (id={})", path_str, id)
         }
         Some(NodeMethod(m)) => match m.node {
-            MethDecl(ident, _, _, _, _, _, _) =>
+            MethDecl(ident, _, _, _, _, _, _, _) =>
                 format!("method {} in {} (id={})",
                         token::get_ident(ident),
                         map.path_to_string(id), id),

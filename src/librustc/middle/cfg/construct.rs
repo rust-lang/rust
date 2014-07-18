@@ -446,6 +446,7 @@ impl<'a> CFGBuilder<'a> {
             ast::ExprMac(..) |
             ast::ExprFnBlock(..) |
             ast::ExprProc(..) |
+            ast::ExprUnboxedFn(..) |
             ast::ExprLit(..) |
             ast::ExprPath(..) => {
                 self.straightline(expr, pred, [])
