@@ -1137,10 +1137,11 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
                 }
             },
             ast::ViewItemExternCrate(ident, ref s, id) => {
-                let name = get_ident(ident).get().to_owned();
+                let name = get_ident(ident);
+                let name = name.get();
                 let s = match *s {
-                    Some((ref s, _)) => s.get().to_owned(),
-                    None => name.to_owned(),
+                    Some((ref s, _)) => s.get().to_string(),
+                    None => name.to_string(),
                 };
                 let sub_span = self.span.sub_span_after_keyword(i.span, keywords::Crate);
                 let cnum = match self.sess.cstore.find_extern_mod_stmt_cnum(id) {
@@ -1151,7 +1152,7 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
                                           sub_span,
                                           id,
                                           cnum,
-                                          name.as_slice(),
+                                          name,
                                           s.as_slice(),
                                           e.cur_scope);
             },
@@ -1274,9 +1275,9 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
         // process collected paths
         for &(id, ref p, ref immut, ref_kind) in self.collected_paths.iter() {
             let value = if *immut {
-                self.span.snippet(p.span).into_owned()
+                self.span.snippet(p.span).into_string()
             } else {
-                "<mutable>".to_owned()
+                "<mutable>".to_string()
             };
             let sub_span = self.span.span_for_first_ident(p.span);
             let def_map = self.analysis.ty_cx.def_map.borrow();
@@ -1331,7 +1332,7 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
         let value = self.span.snippet(l.span);
 
         for &(id, ref p, ref immut, _) in self.collected_paths.iter() {
-            let value = if *immut { value.to_owned() } else { "<mutable>".to_owned() };
+            let value = if *immut { value.to_string() } else { "<mutable>".to_string() };
             let types = self.analysis.ty_cx.node_types.borrow();
             let typ = ppaux::ty_to_string(&self.analysis.ty_cx, *types.get(&(id as uint)));
             // Get the span only for the name of the variable (I hope the path
