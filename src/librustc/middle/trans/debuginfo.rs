@@ -799,15 +799,16 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                    var_item).as_slice())
     };
 
-    let filename = span_start(cx, span).file.name.clone();
-    let file_metadata = file_metadata(cx, filename.as_slice());
+    let (file_metadata, line_number) = if span != codemap::DUMMY_SP {
+        let loc = span_start(cx, span);
+        (file_metadata(cx, loc.file.name.as_slice()), loc.line as c_uint)
+    } else {
+        (UNKNOWN_FILE_METADATA, UNKNOWN_LINE_NUMBER)
+    };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let loc = span_start(cx, span);
-
     let variable_type = ty::node_id_to_type(cx.tcx(), node_id);
     let type_metadata = type_metadata(cx, variable_type, span);
-
     let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
     let var_name = token::get_ident(ident).get().to_string();
     let linkage_name =
@@ -822,7 +823,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                                         var_name,
                                                         linkage_name,
                                                         file_metadata,
-                                                        loc.line as c_uint,
+                                                        line_number,
                                                         type_metadata,
                                                         is_local_to_unit,
                                                         global,
