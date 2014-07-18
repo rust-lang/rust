@@ -64,7 +64,7 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
     let chunk_size = h / WORKERS;
 
     // Account for remainders in workload division, e.g. 1000 / 16 = 62.5
-    let first_chunk_size = if h % WORKERS != 0 {
+    let last_chunk_size = if h % WORKERS != 0 {
         chunk_size + h % WORKERS
     } else {
         chunk_size
@@ -87,8 +87,8 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
             let mut is = Vec::with_capacity(w / WORKERS);
 
             let start = i * chunk_size;
-            let end = if i == 0 {
-                first_chunk_size
+            let end = if i == (WORKERS - 1) {
+                start + last_chunk_size
             } else {
                 (i + 1) * chunk_size
             };
