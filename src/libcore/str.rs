@@ -133,40 +133,35 @@ impl<'a> Iterator<char> for Chars<'a> {
     #[inline]
     fn next(&mut self) -> Option<char> {
         // Decode UTF-8, using the valid UTF-8 invariant
-        #[inline]
-        fn decode_multibyte<'a>(x: u8, it: &mut slice::Items<'a, u8>) -> char {
-            // NOTE: Performance is very sensitive to the exact formulation here
-            // Decode from a byte combination out of: [[[x y] z] w]
-            let init = utf8_first_byte!(x, 2);
-            let y = unwrap_or_0(it.next());
-            let mut ch = utf8_acc_cont_byte!(init, y);
-            if x >= 0xE0 {
-                /* [[x y z] w] case
-                 * 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid */
-                let z = unwrap_or_0(it.next());
-                let y_z = utf8_acc_cont_byte!((y & CONT_MASK) as u32, z);
-                ch = init << 12 | y_z;
-                if x >= 0xF0 {
-                    /* [x y z w] case
-                     * use only the lower 3 bits of `init` */
-                    let w = unwrap_or_0(it.next());
-                    ch = (init & 7) << 18 | utf8_acc_cont_byte!(y_z, w);
-                }
-            }
-            unsafe {
-                mem::transmute(ch)
+        let x = match self.iter.next() {
+            None => return None,
+            Some(&next_byte) if next_byte < 128 => return Some(next_byte as char),
+            Some(&next_byte) => next_byte,
+        };
+
+        // Multibyte case follows
+        // Decode from a byte combination out of: [[[x y] z] w]
+        // NOTE: Performance is sensitive to the exact formulation here
+        let init = utf8_first_byte!(x, 2);
+        let y = unwrap_or_0(self.iter.next());
+        let mut ch = utf8_acc_cont_byte!(init, y);
+        if x >= 0xE0 {
+            // [[x y z] w] case
+            // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
+            let z = unwrap_or_0(self.iter.next());
+            let y_z = utf8_acc_cont_byte!((y & CONT_MASK) as u32, z);
+            ch = init << 12 | y_z;
+            if x >= 0xF0 {
+                // [x y z w] case
+                // use only the lower 3 bits of `init`
+                let w = unwrap_or_0(self.iter.next());
+                ch = (init & 7) << 18 | utf8_acc_cont_byte!(y_z, w);
             }
         }
 
-        match self.iter.next() {
-            None => None,
-            Some(&next_byte) => {
-                if next_byte < 128 {
-                    Some(next_byte as char)
-                } else {
-                    Some(decode_multibyte(next_byte, &mut self.iter))
-                }
-            }
+        // str invariant says `ch` is a valid Unicode Scalar Value
+        unsafe {
+            Some(mem::transmute(ch))
         }
     }
 
@@ -180,38 +175,32 @@ impl<'a> Iterator<char> for Chars<'a> {
 impl<'a> DoubleEndedIterator<char> for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
-        #[inline]
-        fn decode_multibyte_back<'a>(w: u8, it: &mut slice::Items<'a, u8>) -> char {
-            // Decode from a byte combination out of: [x [y [z w]]]
-            let mut ch;
-            let z = unwrap_or_0(it.next_back());
-            ch = utf8_first_byte!(z, 2);
-            if utf8_is_cont_byte!(z) {
-                let y = unwrap_or_0(it.next_back());
-                ch = utf8_first_byte!(y, 3);
-                if utf8_is_cont_byte!(y) {
-                    let x = unwrap_or_0(it.next_back());
-                    ch = utf8_first_byte!(x, 4);
-                    ch = utf8_acc_cont_byte!(ch, y);
-                }
-                ch = utf8_acc_cont_byte!(ch, z);
-            }
-            ch = utf8_acc_cont_byte!(ch, w);
+        let w = match self.iter.next_back() {
+            None => return None,
+            Some(&back_byte) if back_byte < 128 => return Some(back_byte as char),
+            Some(&back_byte) => back_byte,
+        };
 
-            unsafe {
-                mem::transmute(ch)
+        // Multibyte case follows
+        // Decode from a byte combination out of: [x [y [z w]]]
+        let mut ch;
+        let z = unwrap_or_0(self.iter.next_back());
+        ch = utf8_first_byte!(z, 2);
+        if utf8_is_cont_byte!(z) {
+            let y = unwrap_or_0(self.iter.next_back());
+            ch = utf8_first_byte!(y, 3);
+            if utf8_is_cont_byte!(y) {
+                let x = unwrap_or_0(self.iter.next_back());
+                ch = utf8_first_byte!(x, 4);
+                ch = utf8_acc_cont_byte!(ch, y);
             }
+            ch = utf8_acc_cont_byte!(ch, z);
         }
+        ch = utf8_acc_cont_byte!(ch, w);
 
-        match self.iter.next_back() {
-            None => None,
-            Some(&back_byte) => {
-                if back_byte < 128 {
-                    Some(back_byte as char)
-                } else {
-                    Some(decode_multibyte_back(back_byte, &mut self.iter))
-                }
-            }
+        // str invariant says `ch` is a valid Unicode Scalar Value
+        unsafe {
+            Some(mem::transmute(ch))
         }
     }
 }
