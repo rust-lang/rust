@@ -1551,7 +1551,7 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::new();
     /// ```
     #[inline]
@@ -1565,7 +1565,7 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::with_capacity(10);
     /// ```
     #[inline]
@@ -1583,7 +1583,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
     /// use std::hash::sip::SipHasher;
     ///
     /// let h = SipHasher::new();
@@ -1606,7 +1606,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
     /// use std::hash::sip::SipHasher;
     ///
     /// let h = SipHasher::new();
@@ -1623,7 +1623,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::new();
     /// set.reserve(10);
     /// ```
@@ -1641,7 +1641,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// values hash the same, which is why we implement `Hash`.
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
     /// use std::hash::Hash;
     /// use std::hash::sip::SipState;
     ///
@@ -1682,7 +1682,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
+    ///
     /// let mut set = HashSet::new();
     /// set.insert("a");
     /// set.insert("b");
@@ -1703,7 +1704,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
+    ///
     /// let mut set = HashSet::new();
     /// set.insert("a".to_string());
     /// set.insert("b".to_string());
@@ -1725,7 +1727,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
+    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
@@ -1754,7 +1757,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
+    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
@@ -1779,7 +1783,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
+    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
@@ -1804,7 +1809,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::collections::HashSet;
+    /// use std::collections::HashSet;
+    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
@@ -1823,22 +1829,6 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
-    /// Partial equality between sets.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// let b: HashSet<int> = [1i, 2, 3, 4].iter().map(|&x| x).collect();
-    /// let c: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    ///
-    /// assert!(a.eq(&c));
-    ///
-    /// // eq and ne defines the == and != operators
-    /// assert!(a == c);
-    /// assert!(a != b);
-    /// ```
     fn eq(&self, other: &HashSet<T, H>) -> bool {
         if self.len() != other.len() { return false; }
 
@@ -1849,127 +1839,33 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {}
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Collection for HashSet<T, H> {
-    /// Return the number of elements in the set.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// let set: HashSet<int> = [1i, 2, 3, 2].iter().map(|&x| x).collect();
-    /// assert_eq!(set.len(), 3);
-    /// ```
     fn len(&self) -> uint { self.map.len() }
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Mutable for HashSet<T, H> {
-    /// Clear the set. Keeps the allocated memory for reuse.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// let mut set: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// set.clear();
-    /// assert!(set.is_empty());
-    /// ```
     fn clear(&mut self) { self.map.clear() }
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Set<T> for HashSet<T, H> {
-    /// Return true if `value` is contained by the set.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// let set: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// assert_eq!(set.contains(&1), true);
-    /// assert_eq!(set.contains(&4), false);
-    /// ```
     fn contains(&self, value: &T) -> bool { self.map.contains_key(value) }
 
-    /// Return true if the set is disjoint with `other`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// let mut b: HashSet<int> = HashSet::new();
-    ///
-    /// assert_eq!(a.is_disjoint(&b), true);
-    /// b.insert(4);
-    /// assert_eq!(a.is_disjoint(&b), true);
-    /// b.insert(1);
-    /// assert_eq!(a.is_disjoint(&b), false);
-    /// ```
     fn is_disjoint(&self, other: &HashSet<T, H>) -> bool {
         self.iter().all(|v| !other.contains(v))
     }
 
-    /// Return true if the set is a subset of `other`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// let sup: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// let mut set: HashSet<int> = HashSet::new();
-    ///
-    /// assert_eq!(set.is_subset(&sup), true);
-    /// set.insert(2);
-    /// assert_eq!(set.is_subset(&sup), true);
-    /// set.insert(4);
-    /// assert_eq!(set.is_subset(&sup), false);
-    /// ```
     fn is_subset(&self, other: &HashSet<T, H>) -> bool {
         self.iter().all(|v| other.contains(v))
     }
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> MutableSet<T> for HashSet<T, H> {
-    /// Insert an element.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// let mut set = HashSet::new();
-    /// set.insert(2i);
-    /// set.insert(2i);
-    /// assert_eq!(set.len(), 1);
-    /// ```
     fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
 
-    /// Remove an element.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// let mut set = HashSet::new();
-    /// set.insert(2i);
-    ///
-    /// // Return boolean success flag.
-    /// assert_eq!(set.remove(&2), true);
-    /// assert_eq!(set.remove(&2), false);
-    /// ```
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 }
 
 
 impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
-    /// Implement the `Show` trait for easy output format. The values in the
-    /// set must also implement `Show`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// // Will call .fmt() to print, in some order.
-    /// println!("{}", a);
-    /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
 
@@ -1983,17 +1879,6 @@ impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
-    /// Build a set from an external iterator.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// let values = vec!(1i, 2, 3);
-    /// let set: HashSet<int> = values.move_iter().collect();
-    /// let another_set: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// assert_eq!(set, another_set);
-    /// ```
     fn from_iter<I: Iterator<T>>(iter: I) -> HashSet<T, H> {
         let (lower, _) = iter.size_hint();
         let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
@@ -2003,18 +1888,6 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, 
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H> {
-    /// Extend the set with the values yielded by an iterator.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// let values = vec!(1i, 2, 3);
-    /// let mut set = HashSet::new();
-    /// set.insert(0i);
-    /// set.extend(values.move_iter());
-    /// assert_eq!(set.len(), 4);
-    /// ```
     fn extend<I: Iterator<T>>(&mut self, mut iter: I) {
         for k in iter {
             self.insert(k);
@@ -2023,15 +1896,6 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H>
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
-    /// Create a default set.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// use std::default::Default;
-    /// let mut set: HashSet<int> = Default::default();
-    /// ```
     fn default() -> HashSet<T, H> {
         HashSet::with_hasher(Default::default())
     }
