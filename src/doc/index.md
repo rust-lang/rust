@@ -13,6 +13,7 @@ li {list-style-type: none; }
 
 # Guides
 
+* [Strings](guide-strings.html)
 * [Pointers](guide-pointers.html)
 * [References and Lifetimes](guide-lifetimes.html)
 * [Containers and Iterators](guide-container.html)
