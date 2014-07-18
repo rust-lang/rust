@@ -35,6 +35,7 @@ pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Drop, Deref, DerefMut};
 pub use ops::{Shl, Shr};
 pub use ops::{Index, IndexMut};
+pub use ops::{Fn, FnMut, FnOnce};
 pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 

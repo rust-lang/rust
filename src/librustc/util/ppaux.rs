@@ -21,6 +21,7 @@ use middle::ty::{ty_bool, ty_char, ty_bot, ty_box, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
 use middle::ty::{ty_nil, ty_param, ty_ptr, ty_rptr, ty_tup};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
+use middle::ty::{ty_unboxed_closure};
 use middle::ty;
 use middle::typeck;
 use middle::typeck::infer;
@@ -414,6 +415,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
                   bound_str)
       }
       ty_str => "str".to_string(),
+      ty_unboxed_closure(..) => "closure".to_string(),
       ty_vec(ref mt, sz) => {
           match sz {
               Some(n) => {
@@ -877,6 +879,9 @@ impl Repr for typeck::MethodOrigin {
         match self {
             &typeck::MethodStatic(def_id) => {
                 format!("MethodStatic({})", def_id.repr(tcx))
+            }
+            &typeck::MethodStaticUnboxedClosure(def_id) => {
+                format!("MethodStaticUnboxedClosure({})", def_id.repr(tcx))
             }
             &typeck::MethodParam(ref p) => {
                 p.repr(tcx)

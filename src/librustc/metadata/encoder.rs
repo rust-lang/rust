@@ -209,6 +209,18 @@ fn encode_variant_id(ebml_w: &mut Encoder, vid: DefId) {
     ebml_w.end_tag();
 }
 
+pub fn write_closure_type(ecx: &EncodeContext,
+                          ebml_w: &mut Encoder,
+                          closure_type: &ty::ClosureTy) {
+    let ty_str_ctxt = &tyencode::ctxt {
+        diag: ecx.diag,
+        ds: def_to_string,
+        tcx: ecx.tcx,
+        abbrevs: &ecx.type_abbrevs
+    };
+    tyencode::enc_closure_ty(ebml_w.writer, ty_str_ctxt, closure_type);
+}
+
 pub fn write_type(ecx: &EncodeContext,
                   ebml_w: &mut Encoder,
                   typ: ty::t) {
@@ -1618,6 +1630,26 @@ fn encode_macro_defs(ecx: &EncodeContext,
     ebml_w.end_tag();
 }
 
+fn encode_unboxed_closures<'a>(
+                           ecx: &'a EncodeContext,
+                           ebml_w: &'a mut Encoder) {
+    ebml_w.start_tag(tag_unboxed_closures);
+    for (unboxed_closure_id, unboxed_closure_type) in
+            ecx.tcx.unboxed_closure_types.borrow().iter() {
+        if unboxed_closure_id.krate != LOCAL_CRATE {
+            continue
+        }
+
+        ebml_w.start_tag(tag_unboxed_closure);
+        encode_def_id(ebml_w, *unboxed_closure_id);
+        ebml_w.start_tag(tag_unboxed_closure_type);
+        write_closure_type(ecx, ebml_w, unboxed_closure_type);
+        ebml_w.end_tag();
+        ebml_w.end_tag();
+    }
+    ebml_w.end_tag();
+}
+
 struct ImplVisitor<'a,'b,'c> {
     ecx: &'a EncodeContext<'b>,
     ebml_w: &'a mut Encoder<'c>,
@@ -1787,6 +1819,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         native_lib_bytes: u64,
         plugin_registrar_fn_bytes: u64,
         macro_defs_bytes: u64,
+        unboxed_closure_bytes: u64,
         impl_bytes: u64,
         misc_bytes: u64,
         item_bytes: u64,
@@ -1801,6 +1834,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         native_lib_bytes: 0,
         plugin_registrar_fn_bytes: 0,
         macro_defs_bytes: 0,
+        unboxed_closure_bytes: 0,
         impl_bytes: 0,
         misc_bytes: 0,
         item_bytes: 0,
@@ -1873,6 +1907,11 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
     encode_macro_defs(&ecx, krate, &mut ebml_w);
     stats.macro_defs_bytes = ebml_w.writer.tell().unwrap() - i;
 
+    // Encode the types of all unboxed closures in this crate.
+    i = ebml_w.writer.tell().unwrap();
+    encode_unboxed_closures(&ecx, &mut ebml_w);
+    stats.unboxed_closure_bytes = ebml_w.writer.tell().unwrap() - i;
+
     // Encode the def IDs of impls, for coherence checking.
     i = ebml_w.writer.tell().unwrap();
     encode_impls(&ecx, krate, &mut ebml_w);
@@ -1911,6 +1950,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         println!("          native bytes: {}", stats.native_lib_bytes);
         println!("plugin registrar bytes: {}", stats.plugin_registrar_fn_bytes);
         println!("       macro def bytes: {}", stats.macro_defs_bytes);
+        println!(" unboxed closure bytes: {}", stats.unboxed_closure_bytes);
         println!("            impl bytes: {}", stats.impl_bytes);
         println!("            misc bytes: {}", stats.misc_bytes);
         println!("            item bytes: {}", stats.item_bytes);

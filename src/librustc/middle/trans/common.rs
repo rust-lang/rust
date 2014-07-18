@@ -71,7 +71,8 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     }
     match ty::get(ty).sty {
         ty::ty_bot => true,
-        ty::ty_struct(..) | ty::ty_enum(..) | ty::ty_tup(..) => {
+        ty::ty_struct(..) | ty::ty_enum(..) | ty::ty_tup(..) |
+        ty::ty_unboxed_closure(..) => {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type)
         }
@@ -632,12 +633,6 @@ pub fn C_bytes(ccx: &CrateContext, bytes: &[u8]) -> ValueRef {
     }
 }
 
-pub fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
-    unsafe {
-        llvm::LLVMGetParam(fndecl, param as c_uint)
-    }
-}
-
 pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
                   -> ValueRef {
     unsafe {
@@ -791,6 +786,9 @@ pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
         }
         typeck::vtable_param(n_param, n_bound) => {
             find_vtable(tcx, param_substs, n_param, n_bound)
+        }
+        typeck::vtable_unboxed_closure(def_id) => {
+            typeck::vtable_unboxed_closure(def_id)
         }
         typeck::vtable_error => typeck::vtable_error
     }

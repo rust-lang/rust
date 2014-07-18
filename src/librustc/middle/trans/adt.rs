@@ -163,6 +163,12 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
 
             return Univariant(mk_struct(cx, ftys.as_slice(), packed), dtor)
         }
+        ty::ty_unboxed_closure(def_id) => {
+            let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id);
+            let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
+            return Univariant(mk_struct(cx, upvar_types.as_slice(), false),
+                              false)
+        }
         ty::ty_enum(def_id, ref substs) => {
             let cases = get_cases(cx.tcx(), def_id, substs);
             let hint = ty::lookup_repr_hint(cx.tcx(), def_id);

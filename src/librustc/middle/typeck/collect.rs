@@ -208,9 +208,16 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                         let ty_method = Rc::new(match m {
                             &ast::Required(ref m) => {
                                 ty_method_of_trait_method(
-                                    ccx, trait_id, &trait_def.generics,
-                                    &m.id, &m.ident, &m.explicit_self,
-                                    &m.generics, &m.fn_style, &*m.decl)
+                                    ccx,
+                                    trait_id,
+                                    &trait_def.generics,
+                                    &m.id,
+                                    &m.ident,
+                                    &m.explicit_self,
+                                    m.abi,
+                                    &m.generics,
+                                    &m.fn_style,
+                                    &*m.decl)
                             }
 
                             &ast::Provided(ref m) => {
@@ -221,6 +228,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                                     &m.id,
                                     &m.pe_ident(),
                                     m.pe_explicit_self(),
+                                    m.pe_abi(),
                                     m.pe_generics(),
                                     &m.pe_fn_style(),
                                     &*m.pe_fn_decl())
@@ -272,25 +280,25 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                                  m_id: &ast::NodeId,
                                  m_ident: &ast::Ident,
                                  m_explicit_self: &ast::ExplicitSelf,
+                                 m_abi: abi::Abi,
                                  m_generics: &ast::Generics,
                                  m_fn_style: &ast::FnStyle,
-                                 m_decl: &ast::FnDecl) -> ty::Method
-    {
-        let trait_self_ty = ty::mk_param(this.tcx,
-                                         subst::SelfSpace,
-                                         0,
-                                         local_def(trait_id));
-        let ty_generics = ty_generics_for_fn_or_method(
-            this,
-            m_generics,
-            (*trait_generics).clone());
+                                 m_decl: &ast::FnDecl)
+                                 -> ty::Method {
+        let trait_self_ty = ty::mk_self_type(this.tcx, local_def(trait_id));
+
         let (fty, explicit_self_category) =
             astconv::ty_of_method(this,
                                   *m_id,
                                   *m_fn_style,
                                   trait_self_ty,
                                   *m_explicit_self,
-                                  m_decl);
+                                  m_decl,
+                                  m_abi);
+        let ty_generics =
+            ty_generics_for_fn_or_method(this,
+                                         m_generics,
+                                         (*trait_generics).clone());
         ty::Method::new(
             *m_ident,
             ty_generics,
@@ -381,15 +389,29 @@ fn convert_methods(ccx: &CrateCtxt,
                     untransformed_rcvr_ty: ty::t,
                     rcvr_ty_generics: &ty::Generics,
                     rcvr_visibility: ast::Visibility)
-                    -> ty::Method
-    {
+                    -> ty::Method {
+        // FIXME(pcwalton): Hack until we have syntax in stage0 for snapshots.
+        let real_abi = match container {
+            ty::TraitContainer(trait_id) => {
+                if ccx.tcx.lang_items.fn_trait() == Some(trait_id) ||
+                        ccx.tcx.lang_items.fn_mut_trait() == Some(trait_id) ||
+                        ccx.tcx.lang_items.fn_once_trait() == Some(trait_id) {
+                    abi::RustCall
+                } else {
+                    m.pe_abi()
+                }
+            }
+            _ => m.pe_abi(),
+        };
+
         let (fty, explicit_self_category) =
             astconv::ty_of_method(ccx,
                                   m.id,
                                   m.pe_fn_style(),
                                   untransformed_rcvr_ty,
                                   *m.pe_explicit_self(),
-                                  &*m.pe_fn_decl());
+                                  &*m.pe_fn_decl(),
+                                  real_abi);
 
         // if the method specifies a visibility, use that, otherwise
         // inherit the visibility from the impl (so `foo` in `pub impl

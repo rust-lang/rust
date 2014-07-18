@@ -67,6 +67,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("quad_precision_float", Removed),
 
     ("rustc_diagnostic_macros", Active),
+    ("unboxed_closures", Active),
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
@@ -326,6 +327,12 @@ impl<'a> Visitor<()> for Context<'a> {
         match e.node {
             ast::ExprUnary(ast::UnBox, _) => {
                 self.gate_box(e.span);
+            }
+            ast::ExprUnboxedFn(..) => {
+                self.gate_feature("unboxed_closures",
+                                  e.span,
+                                  "unboxed closures are a work-in-progress \
+                                   feature with known bugs");
             }
             _ => {}
         }

@@ -1944,6 +1944,14 @@ pub fn mk_section_iter(llof: ObjectFileRef) -> SectionIter {
     }
 }
 
+/// Safe wrapper around `LLVMGetParam`, because segfaults are no fun.
+pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
+    unsafe {
+        assert!(index < LLVMCountParams(llfn));
+        LLVMGetParam(llfn, index)
+    }
+}
+
 // FIXME #15460 - create a public function that actually calls our
 // static LLVM symbols. Otherwise the linker will just throw llvm
 // away.  We're just calling lots of stuff until we transitively get

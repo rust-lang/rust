@@ -130,6 +130,16 @@ fn data_log_string(data: &[u8], pos: uint) -> String {
     buf
 }
 
+pub fn parse_ty_closure_data(data: &[u8],
+                             crate_num: ast::CrateNum,
+                             pos: uint,
+                             tcx: &ty::ctxt,
+                             conv: conv_did)
+                             -> ty::ClosureTy {
+    let mut st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_closure_ty(&mut st, conv)
+}
+
 pub fn parse_ty_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
                      conv: conv_did) -> ty::t {
     debug!("parse_ty_data {}", data_log_string(data, pos));
@@ -420,6 +430,10 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
           assert_eq!(next(st), ']');
           return ty::mk_struct(st.tcx, did, substs);
       }
+      'k' => {
+          let did = parse_def(st, NominalType, |x,y| conv(x,y));
+          return ty::mk_unboxed_closure(st.tcx, did);
+      }
       'e' => {
           return ty::mk_err();
       }
@@ -502,12 +516,14 @@ fn parse_closure_ty(st: &mut PState, conv: conv_did) -> ty::ClosureTy {
     let store = parse_trait_store(st, |x,y| conv(x,y));
     let bounds = parse_bounds(st, |x,y| conv(x,y));
     let sig = parse_sig(st, |x,y| conv(x,y));
+    let abi = parse_abi_set(st);
     ty::ClosureTy {
         fn_style: fn_style,
         onceness: onceness,
         store: store,
         bounds: bounds.builtin_bounds,
-        sig: sig
+        sig: sig,
+        abi: abi,
     }
 }
 

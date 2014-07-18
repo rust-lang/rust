@@ -317,6 +317,9 @@ impl<T> VecPerParamSpace<T> {
         VecPerParamSpace::empty().with_vec(TypeSpace, types)
     }
 
+    /// `t` is the type space.
+    /// `s` is the self space.
+    /// `f` is the fn space.
     pub fn new(t: Vec<T>, s: Vec<T>, f: Vec<T>) -> VecPerParamSpace<T> {
         let type_limit = t.len();
         let self_limit = t.len() + s.len();

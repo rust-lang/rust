@@ -609,6 +609,9 @@ impl tr for MethodOrigin {
     fn tr(&self, xcx: &ExtendedDecodeContext) -> MethodOrigin {
         match *self {
             typeck::MethodStatic(did) => typeck::MethodStatic(did.tr(xcx)),
+            typeck::MethodStaticUnboxedClosure(did) => {
+                typeck::MethodStaticUnboxedClosure(did.tr(xcx))
+            }
             typeck::MethodParam(ref mp) => {
                 typeck::MethodParam(
                     typeck::MethodParam {
@@ -696,8 +699,18 @@ pub fn encode_vtable_origin(ecx: &e::EncodeContext,
                 })
             })
           }
+          typeck::vtable_unboxed_closure(def_id) => {
+              ebml_w.emit_enum_variant("vtable_unboxed_closure",
+                                       2u,
+                                       1u,
+                                       |ebml_w| {
+                ebml_w.emit_enum_variant_arg(0u, |ebml_w| {
+                    Ok(ebml_w.emit_def_id(def_id))
+                })
+              })
+          }
           typeck::vtable_error => {
-            ebml_w.emit_enum_variant("vtable_error", 2u, 3u, |_ebml_w| {
+            ebml_w.emit_enum_variant("vtable_error", 3u, 3u, |_ebml_w| {
                 Ok(())
             })
           }
@@ -771,7 +784,8 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
         self.read_enum("vtable_origin", |this| {
             this.read_enum_variant(["vtable_static",
                                     "vtable_param",
-                                    "vtable_error"],
+                                    "vtable_error",
+                                    "vtable_unboxed_closure"],
                                    |this, i| {
                 Ok(match i {
                   0 => {
@@ -798,6 +812,13 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
                     )
                   }
                   2 => {
+                    typeck::vtable_unboxed_closure(
+                        this.read_enum_variant_arg(0u, |this| {
+                            Ok(this.read_def_id_noxcx(cdata))
+                        }).unwrap()
+                    )
+                  }
+                  3 => {
                     typeck::vtable_error
                   }
                   _ => fail!("bad enum variant")
@@ -838,6 +859,9 @@ impl<'a> get_ty_str_ctxt for e::EncodeContext<'a> {
 }
 
 trait ebml_writer_helpers {
+    fn emit_closure_type(&mut self,
+                         ecx: &e::EncodeContext,
+                         closure_type: &ty::ClosureTy);
     fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t);
     fn emit_tys(&mut self, ecx: &e::EncodeContext, tys: &[ty::t]);
     fn emit_type_param_def(&mut self,
@@ -851,6 +875,14 @@ trait ebml_writer_helpers {
 }
 
 impl<'a> ebml_writer_helpers for Encoder<'a> {
+    fn emit_closure_type(&mut self,
+                         ecx: &e::EncodeContext,
+                         closure_type: &ty::ClosureTy) {
+        self.emit_opaque(|this| {
+            Ok(e::write_closure_type(ecx, this, closure_type))
+        });
+    }
+
     fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t) {
         self.emit_opaque(|this| Ok(e::write_type(ecx, this, ty)));
     }
@@ -1127,6 +1159,18 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             })
         })
     }
+
+    for unboxed_closure_type in tcx.unboxed_closure_types
+                                   .borrow()
+                                   .find(&ast_util::local_def(id))
+                                   .iter() {
+        ebml_w.tag(c::tag_table_unboxed_closure_type, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                ebml_w.emit_closure_type(ecx, *unboxed_closure_type)
+            })
+        })
+    }
 }
 
 trait doc_decoder_helpers {
@@ -1150,6 +1194,8 @@ trait ebml_decoder_decoder_helpers {
                      -> ty::Polytype;
     fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> subst::Substs;
     fn read_auto_adjustment(&mut self, xcx: &ExtendedDecodeContext) -> ty::AutoAdjustment;
+    fn read_unboxed_closure_type(&mut self, xcx: &ExtendedDecodeContext)
+                                 -> ty::ClosureTy;
     fn convert_def_id(&mut self,
                       xcx: &ExtendedDecodeContext,
                       source: DefIdSource,
@@ -1322,6 +1368,18 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
         }).unwrap()
     }
 
+    fn read_unboxed_closure_type(&mut self, xcx: &ExtendedDecodeContext)
+                                 -> ty::ClosureTy {
+        self.read_opaque(|this, doc| {
+            Ok(tydecode::parse_ty_closure_data(
+                doc.data,
+                xcx.dcx.cdata.cnum,
+                doc.start,
+                xcx.dcx.tcx,
+                |s, a| this.convert_def_id(xcx, s, a)))
+        }).unwrap()
+    }
+
     fn convert_def_id(&mut self,
                       xcx: &ExtendedDecodeContext,
                       source: tydecode::DefIdSource,
@@ -1441,6 +1499,15 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                     c::tag_table_adjustments => {
                         let adj: ty::AutoAdjustment = val_dsr.read_auto_adjustment(xcx);
                         dcx.tcx.adjustments.borrow_mut().insert(id, adj);
+                    }
+                    c::tag_table_unboxed_closure_type => {
+                        let unboxed_closure_type =
+                            val_dsr.read_unboxed_closure_type(xcx);
+                        dcx.tcx
+                           .unboxed_closure_types
+                           .borrow_mut()
+                           .insert(ast_util::local_def(id),
+                                   unboxed_closure_type);
                     }
                     _ => {
                         xcx.dcx.tcx.sess.bug(

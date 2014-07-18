@@ -220,6 +220,9 @@ impl TypeFoldable for typeck::vtable_origin {
             typeck::vtable_param(n, b) => {
                 typeck::vtable_param(n, b)
             }
+            typeck::vtable_unboxed_closure(def_id) => {
+                typeck::vtable_unboxed_closure(def_id)
+            }
             typeck::vtable_error => {
                 typeck::vtable_error
             }
@@ -326,6 +329,7 @@ pub fn super_fold_closure_ty<T:TypeFolder>(this: &mut T,
         fn_style: fty.fn_style,
         onceness: fty.onceness,
         bounds: fty.bounds,
+        abi: fty.abi,
     }
 }
 
@@ -387,6 +391,9 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         }
         ty::ty_struct(did, ref substs) => {
             ty::ty_struct(did, substs.fold_with(this))
+        }
+        ty::ty_unboxed_closure(did) => {
+            ty::ty_unboxed_closure(did)
         }
         ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_char | ty::ty_str |
         ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |

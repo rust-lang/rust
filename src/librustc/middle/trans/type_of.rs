@@ -39,9 +39,55 @@ pub fn type_of_explicit_arg(ccx: &CrateContext, arg_ty: ty::t) -> Type {
     }
 }
 
-pub fn type_of_rust_fn(cx: &CrateContext, has_env: bool,
-                       inputs: &[ty::t], output: ty::t) -> Type {
+/// Yields the types of the "real" arguments for this function. For most
+/// functions, these are simply the types of the arguments. For functions with
+/// the `RustCall` ABI, however, this untuples the arguments of the function.
+fn untuple_arguments_if_necessary(ccx: &CrateContext,
+                                  inputs: &[ty::t],
+                                  abi: abi::Abi)
+                                  -> Vec<ty::t> {
+    if abi != abi::RustCall {
+        return inputs.iter().map(|x| (*x).clone()).collect()
+    }
+
+    if inputs.len() == 0 {
+        return Vec::new()
+    }
+
+    let mut result = Vec::new();
+    for (i, &arg_prior_to_tuple) in inputs.iter().enumerate() {
+        if i < inputs.len() - 1 {
+            result.push(arg_prior_to_tuple);
+        }
+    }
+
+    match ty::get(inputs[inputs.len() - 1]).sty {
+        ty::ty_tup(ref tupled_arguments) => {
+            debug!("untuple_arguments_if_necessary(): untupling arguments");
+            for &tupled_argument in tupled_arguments.iter() {
+                result.push(tupled_argument);
+            }
+        }
+        ty::ty_nil => {}
+        _ => {
+            ccx.tcx().sess.bug("argument to function with \"rust-call\" ABI \
+                                is neither a tuple nor unit")
+        }
+    }
+
+    result
+}
+
+pub fn type_of_rust_fn(cx: &CrateContext,
+                       llenvironment_type: Option<Type>,
+                       inputs: &[ty::t],
+                       output: ty::t,
+                       abi: abi::Abi)
+                       -> Type {
     let mut atys: Vec<Type> = Vec::new();
+
+    // First, munge the inputs, if this has the `rust-call` ABI.
+    let inputs = untuple_arguments_if_necessary(cx, inputs, abi);
 
     // Arg 0: Output pointer.
     // (if the output type is non-immediate)
@@ -52,8 +98,9 @@ pub fn type_of_rust_fn(cx: &CrateContext, has_env: bool,
     }
 
     // Arg 1: Environment
-    if has_env {
-        atys.push(Type::i8p(cx));
+    match llenvironment_type {
+        None => {}
+        Some(llenvironment_type) => atys.push(llenvironment_type),
     }
 
     // ... then explicit args.
@@ -72,16 +119,19 @@ pub fn type_of_rust_fn(cx: &CrateContext, has_env: bool,
 pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
     match ty::get(fty).sty {
         ty::ty_closure(ref f) => {
-            type_of_rust_fn(cx, true, f.sig.inputs.as_slice(), f.sig.output)
+            type_of_rust_fn(cx,
+                            Some(Type::i8p(cx)),
+                            f.sig.inputs.as_slice(),
+                            f.sig.output,
+                            f.abi)
         }
         ty::ty_bare_fn(ref f) => {
-            if f.abi == abi::Rust {
+            if f.abi == abi::Rust || f.abi == abi::RustCall {
                 type_of_rust_fn(cx,
-                                false,
+                                None,
                                 f.sig.inputs.as_slice(),
-                                f.sig.output)
-            } else if f.abi == abi::RustIntrinsic {
-                cx.sess().bug("type_of_fn_from_ty given intrinsic")
+                                f.sig.output,
+                                f.abi)
             } else {
                 foreign::lltype_for_foreign_fn(cx, fty)
             }
@@ -142,7 +192,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
             Type::array(&sizing_type_of(cx, mt.ty), size as u64)
         }
 
-        ty::ty_tup(..) | ty::ty_enum(..) => {
+        ty::ty_tup(..) | ty::ty_enum(..) | ty::ty_unboxed_closure(..) => {
             let repr = adt::represent_type(cx, t);
             adt::sizing_type_of(cx, &*repr)
         }
@@ -223,6 +273,13 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         let name = llvm_type_name(cx, an_enum, did, tps);
         adt::incomplete_type_of(cx, &*repr, name.as_slice())
       }
+      ty::ty_unboxed_closure(did) => {
+        // Only create the named struct, but don't fill it in. We
+        // fill it in *after* placing it into the type cache.
+        let repr = adt::represent_type(cx, t);
+        let name = llvm_type_name(cx, an_unboxed_closure, did, []);
+        adt::incomplete_type_of(cx, &*repr, name.as_slice())
+      }
       ty::ty_box(typ) => {
           Type::at_box(cx, type_of(cx, typ)).ptr_to()
       }
@@ -299,7 +356,8 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
 
     // If this was an enum or struct, fill in the type now.
     match ty::get(t).sty {
-        ty::ty_enum(..) | ty::ty_struct(..) if !ty::type_is_simd(cx.tcx(), t) => {
+        ty::ty_enum(..) | ty::ty_struct(..) | ty::ty_unboxed_closure(..)
+                if !ty::type_is_simd(cx.tcx(), t) => {
             let repr = adt::represent_type(cx, t);
             adt::finish_type_of(cx, &*repr, &mut llty);
         }
@@ -310,7 +368,11 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
 }
 
 // Want refinements! (Or case classes, I guess
-pub enum named_ty { a_struct, an_enum }
+pub enum named_ty {
+    a_struct,
+    an_enum,
+    an_unboxed_closure,
+}
 
 pub fn llvm_type_name(cx: &CrateContext,
                       what: named_ty,
@@ -319,8 +381,9 @@ pub fn llvm_type_name(cx: &CrateContext,
                       -> String
 {
     let name = match what {
-        a_struct => { "struct" }
-        an_enum => { "enum" }
+        a_struct => "struct",
+        an_enum => "enum",
+        an_unboxed_closure => return "closure".to_string(),
     };
 
     let base = ty::item_path_str(cx.tcx(), did);

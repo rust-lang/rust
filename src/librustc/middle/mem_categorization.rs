@@ -473,7 +473,8 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
 
           ast::ExprAddrOf(..) | ast::ExprCall(..) |
           ast::ExprAssign(..) | ast::ExprAssignOp(..) |
-          ast::ExprFnBlock(..) | ast::ExprProc(..) | ast::ExprRet(..) |
+          ast::ExprFnBlock(..) | ast::ExprProc(..) |
+          ast::ExprUnboxedFn(..) | ast::ExprRet(..) |
           ast::ExprUnary(..) |
           ast::ExprMethodCall(..) | ast::ExprCast(..) | ast::ExprVstore(..) |
           ast::ExprVec(..) | ast::ExprTup(..) | ast::ExprIf(..) |
@@ -577,6 +578,20 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                               ty:expr_ty
                           }))
                       }
+                  }
+                  ty::ty_unboxed_closure(_) => {
+                      // FIXME #2152 allow mutation of moved upvars
+                      Ok(Rc::new(cmt_ {
+                          id: id,
+                          span: span,
+                          cat: cat_copied_upvar(CopiedUpvar {
+                              upvar_id: var_id,
+                              onceness: ast::Many,
+                              capturing_proc: fn_node_id,
+                          }),
+                          mutbl: McImmutable,
+                          ty: expr_ty
+                      }))
                   }
                   _ => {
                       self.tcx().sess.span_bug(

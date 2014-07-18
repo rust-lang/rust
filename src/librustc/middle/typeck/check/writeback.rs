@@ -30,7 +30,7 @@ use util::ppaux::Repr;
 use std::cell::Cell;
 
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::print::pprust::pat_to_string;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -43,6 +43,7 @@ pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) {
     let mut wbcx = WritebackCx::new(fcx);
     wbcx.visit_expr(e, ());
     wbcx.visit_upvar_borrow_map();
+    wbcx.visit_unboxed_closure_types();
 }
 
 pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
@@ -61,6 +62,7 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
         }
     }
     wbcx.visit_upvar_borrow_map();
+    wbcx.visit_unboxed_closure_types();
 }
 
 pub fn resolve_impl_res(infcx: &infer::InferCtxt,
@@ -130,7 +132,9 @@ impl<'cx> Visitor<()> for WritebackCx<'cx> {
                                     MethodCall::expr(e.id));
 
         match e.node {
-            ast::ExprFnBlock(ref decl, _) | ast::ExprProc(ref decl, _) => {
+            ast::ExprFnBlock(ref decl, _) |
+            ast::ExprProc(ref decl, _) |
+            ast::ExprUnboxedFn(ref decl, _) => {
                 for input in decl.inputs.iter() {
                     let _ = self.visit_node_id(ResolvingExpr(e.span),
                                                input.id);
@@ -198,6 +202,26 @@ impl<'cx> WritebackCx<'cx> {
                    new_upvar_borrow.repr(self.tcx()));
             self.fcx.tcx().upvar_borrow_map.borrow_mut().insert(
                 *upvar_id, new_upvar_borrow);
+        }
+    }
+
+    fn visit_unboxed_closure_types(&self) {
+        if self.fcx.writeback_errors.get() {
+            return
+        }
+
+        for (def_id, closure_ty) in self.fcx
+                                        .inh
+                                        .unboxed_closure_types
+                                        .borrow()
+                                        .iter() {
+            let closure_ty = self.resolve(closure_ty,
+                                          ResolvingUnboxedClosure(*def_id));
+            self.fcx
+                .tcx()
+                .unboxed_closure_types
+                .borrow_mut()
+                .insert(*def_id, closure_ty);
         }
     }
 
@@ -332,6 +356,7 @@ enum ResolveReason {
     ResolvingPattern(Span),
     ResolvingUpvar(ty::UpvarId),
     ResolvingImplRes(Span),
+    ResolvingUnboxedClosure(ast::DefId),
 }
 
 impl ResolveReason {
@@ -344,6 +369,13 @@ impl ResolveReason {
                 ty::expr_span(tcx, upvar_id.closure_expr_id)
             }
             ResolvingImplRes(s) => s,
+            ResolvingUnboxedClosure(did) => {
+                if did.krate == ast::LOCAL_CRATE {
+                    ty::expr_span(tcx, did.node)
+                } else {
+                    DUMMY_SP
+                }
+            }
         }
     }
 }
@@ -440,6 +472,13 @@ impl<'cx> Resolver<'cx> {
                         .span_err(span,
                                   "cannot determine a type for impl \
                                    supertrait");
+                }
+
+                ResolvingUnboxedClosure(_) => {
+                    let span = self.reason.span(self.tcx);
+                    self.tcx.sess.span_err(span,
+                                           "cannot determine a type for this \
+                                            unboxed closure")
                 }
             }
         }

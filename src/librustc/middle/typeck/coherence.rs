@@ -25,7 +25,8 @@ use middle::ty::{t, ty_bool, ty_char, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_param, Polytype, ty_ptr};
 use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
-use middle::ty::{ty_uint, ty_uniq, ty_bare_fn, ty_closure};
+use middle::ty::{ty_uint, ty_unboxed_closure, ty_uniq, ty_bare_fn};
+use middle::ty::{ty_closure};
 use middle::ty::type_is_ty_var;
 use middle::subst::Subst;
 use middle::ty;
@@ -75,7 +76,7 @@ fn get_base_type(inference_context: &InferCtxt,
     }
 
     match get(resolved_type).sty {
-        ty_enum(..) | ty_struct(..) => {
+        ty_enum(..) | ty_struct(..) | ty_unboxed_closure(..) => {
             debug!("(getting base type) found base type");
             Some(resolved_type)
         }
@@ -111,7 +112,8 @@ fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
     ty::walk_ty(original_type, |t| {
         match get(t).sty {
             ty_enum(def_id, _) |
-            ty_struct(def_id, _) => {
+            ty_struct(def_id, _) |
+            ty_unboxed_closure(def_id) => {
                 if def_id.krate == ast::LOCAL_CRATE {
                     found_nominal = true;
                 }
@@ -154,7 +156,8 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
         Some(base_type) => {
             match get(base_type).sty {
                 ty_enum(def_id, _) |
-                ty_struct(def_id, _) => {
+                ty_struct(def_id, _) |
+                ty_unboxed_closure(def_id) => {
                     Some(def_id)
                 }
                 ty_rptr(_, ty::mt {ty, ..}) | ty_uniq(ty) => match ty::get(ty).sty {
@@ -691,7 +694,8 @@ impl<'a> CoherenceChecker<'a> {
             let self_type = self.get_self_type_for_implementation(impl_did);
             match ty::get(self_type.ty).sty {
                 ty::ty_enum(type_def_id, _) |
-                ty::ty_struct(type_def_id, _) => {
+                ty::ty_struct(type_def_id, _) |
+                ty::ty_unboxed_closure(type_def_id) => {
                     tcx.destructor_for_type.borrow_mut().insert(type_def_id,
                                                                 method_def_id);
                     tcx.destructors.borrow_mut().insert(method_def_id);

@@ -16,7 +16,7 @@ use std::ops::FnMut;
 struct S;
 
 impl FnMut<(int,),int> for S {
-    fn call_mut(&mut self, (x,): (int,)) -> int {
+    extern "rust-call" fn call_mut(&mut self, (x,): (int,)) -> int {
         x * x
     }
 }
