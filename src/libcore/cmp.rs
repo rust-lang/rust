@@ -37,6 +37,8 @@
 //! assert!(SketchyNum {num: 25} != SketchyNum {num: 57});
 //! ```
 
+#![stable]
+
 use option::{Option, Some};
 
 /// Trait for values that can be compared for equality and inequality.
@@ -53,6 +55,7 @@ use option::{Option, Some};
 /// Eventually, this will be implemented by default for types that implement
 /// `Eq`.
 #[lang="eq"]
+#[unstable = "Definition may change slightly after trait reform"]
 pub trait PartialEq {
     /// This method tests for `self` and `other` values to be equal, and is used by `==`.
     fn eq(&self, other: &Self) -> bool;
@@ -71,6 +74,7 @@ pub trait PartialEq {
 /// - reflexive: `a == a`;
 /// - symmetric: `a == b` implies `b == a`; and
 /// - transitive: `a == b` and `b == c` implies `a == c`.
+#[unstable = "Definition may change slightly after trait reform"]
 pub trait Eq: PartialEq {
     // FIXME #13101: this method is used solely by #[deriving] to
     // assert that every component of a type implements #[deriving]
@@ -86,6 +90,7 @@ pub trait Eq: PartialEq {
 
 /// An ordering is, e.g, a result of a comparison between two values.
 #[deriving(Clone, PartialEq, Show)]
+#[stable]
 pub enum Ordering {
    /// An ordering where a compared value is less [than another].
    Less = -1i,
@@ -104,6 +109,7 @@ pub enum Ordering {
 ///   true; and
 /// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for
 ///   both `==` and `>`.
+#[unstable = "Definition may change slightly after trait reform"]
 pub trait Ord: Eq + PartialOrd {
     /// This method returns an ordering between `self` and `other` values.
     ///
@@ -118,8 +124,10 @@ pub trait Ord: Eq + PartialOrd {
     fn cmp(&self, other: &Self) -> Ordering;
 }
 
+#[unstable = "Trait is unstable."]
 impl Eq for Ordering {}
 
+#[unstable = "Trait is unstable."]
 impl Ord for Ordering {
     #[inline]
     fn cmp(&self, other: &Ordering) -> Ordering {
@@ -127,6 +135,7 @@ impl Ord for Ordering {
     }
 }
 
+#[unstable = "Trait is unstable."]
 impl PartialOrd for Ordering {
     #[inline]
     fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {
@@ -140,6 +149,7 @@ impl PartialOrd for Ordering {
 /// If the first ordering is different, the first ordering is all that must be returned.
 /// If the first ordering is equal, then second ordering is returned.
 #[inline]
+#[deprecated = "Just call .cmp() on an Ordering"]
 pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
     match o1 {
         Equal => o2,
@@ -157,6 +167,7 @@ pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
 /// `NaN < 0 == false` and `NaN >= 0 == false` (cf. IEEE 754-2008 section
 /// 5.11).
 #[lang="ord"]
+#[unstable = "Definition may change slightly after trait reform"]
 pub trait PartialOrd: PartialEq {
     /// This method returns an ordering between `self` and `other` values
     /// if one exists.
@@ -202,6 +213,7 @@ pub trait PartialOrd: PartialEq {
 /// of different types. The most common use case for this relation is
 /// container types; e.g. it is often desirable to be able to use `&str`
 /// values to look up entries in a container with `String` keys.
+#[experimental = "Better solutions may be discovered."]
 pub trait Equiv<T> {
     /// Implement this function to decide equivalent values.
     fn equiv(&self, other: &T) -> bool;
@@ -209,12 +221,14 @@ pub trait Equiv<T> {
 
 /// Compare and return the minimum of two values.
 #[inline]
+#[stable]
 pub fn min<T: Ord>(v1: T, v2: T) -> T {
     if v1 < v2 { v1 } else { v2 }
 }
 
 /// Compare and return the maximum of two values.
 #[inline]
+#[stable]
 pub fn max<T: Ord>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
 }
@@ -227,6 +241,7 @@ mod impls {
 
     macro_rules! eq_impl(
         ($($t:ty)*) => ($(
+            #[unstable = "Trait is unstable."]
             impl PartialEq for $t {
                 #[inline]
                 fn eq(&self, other: &$t) -> bool { (*self) == (*other) }
@@ -236,6 +251,7 @@ mod impls {
         )*)
     )
 
+    #[unstable = "Trait is unstable."]
     impl PartialEq for () {
         #[inline]
         fn eq(&self, _other: &()) -> bool { true }
@@ -247,6 +263,7 @@ mod impls {
 
     macro_rules! totaleq_impl(
         ($($t:ty)*) => ($(
+            #[unstable = "Trait is unstable."]
             impl Eq for $t {}
         )*)
     )
@@ -255,6 +272,7 @@ mod impls {
 
     macro_rules! ord_impl(
         ($($t:ty)*) => ($(
+            #[unstable = "Trait is unstable."]
             impl PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
@@ -277,6 +295,7 @@ mod impls {
         )*)
     )
 
+    #[unstable = "Trait is unstable."]
     impl PartialOrd for () {
         #[inline]
         fn partial_cmp(&self, _: &()) -> Option<Ordering> {
@@ -284,6 +303,7 @@ mod impls {
         }
     }
 
+    #[unstable = "Trait is unstable."]
     impl PartialOrd for bool {
         #[inline]
         fn partial_cmp(&self, other: &bool) -> Option<Ordering> {
@@ -295,6 +315,7 @@ mod impls {
 
     macro_rules! totalord_impl(
         ($($t:ty)*) => ($(
+            #[unstable = "Trait is unstable."]
             impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &$t) -> Ordering {
@@ -306,11 +327,13 @@ mod impls {
         )*)
     )
 
+    #[unstable = "Trait is unstable."]
     impl Ord for () {
         #[inline]
         fn cmp(&self, _other: &()) -> Ordering { Equal }
     }
 
+    #[unstable = "Trait is unstable."]
     impl Ord for bool {
         #[inline]
         fn cmp(&self, other: &bool) -> Ordering {
@@ -321,12 +344,14 @@ mod impls {
     totalord_impl!(char uint u8 u16 u32 u64 int i8 i16 i32 i64)
 
     // & pointers
+    #[unstable = "Trait is unstable."]
     impl<'a, T: PartialEq> PartialEq for &'a T {
         #[inline]
         fn eq(&self, other: & &'a T) -> bool { *(*self) == *(*other) }
         #[inline]
         fn ne(&self, other: & &'a T) -> bool { *(*self) != *(*other) }
     }
+    #[unstable = "Trait is unstable."]
     impl<'a, T: PartialOrd> PartialOrd for &'a T {
         #[inline]
         fn partial_cmp(&self, other: &&'a T) -> Option<Ordering> {
@@ -341,19 +366,23 @@ mod impls {
         #[inline]
         fn gt(&self, other: & &'a T) -> bool { *(*self) > *(*other) }
     }
+    #[unstable = "Trait is unstable."]
     impl<'a, T: Ord> Ord for &'a T {
         #[inline]
         fn cmp(&self, other: & &'a T) -> Ordering { (**self).cmp(*other) }
     }
+    #[unstable = "Trait is unstable."]
     impl<'a, T: Eq> Eq for &'a T {}
 
     // &mut pointers
+    #[unstable = "Trait is unstable."]
     impl<'a, T: PartialEq> PartialEq for &'a mut T {
         #[inline]
         fn eq(&self, other: &&'a mut T) -> bool { **self == *(*other) }
         #[inline]
         fn ne(&self, other: &&'a mut T) -> bool { **self != *(*other) }
     }
+    #[unstable = "Trait is unstable."]
     impl<'a, T: PartialOrd> PartialOrd for &'a mut T {
         #[inline]
         fn partial_cmp(&self, other: &&'a mut T) -> Option<Ordering> {
@@ -368,9 +397,11 @@ mod impls {
         #[inline]
         fn gt(&self, other: &&'a mut T) -> bool { **self > **other }
     }
+    #[unstable = "Trait is unstable."]
     impl<'a, T: Ord> Ord for &'a mut T {
         #[inline]
         fn cmp(&self, other: &&'a mut T) -> Ordering { (**self).cmp(*other) }
     }
+    #[unstable = "Trait is unstable."]
     impl<'a, T: Eq> Eq for &'a mut T {}
 }
