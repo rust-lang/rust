@@ -2795,6 +2795,7 @@ mod tests {
         }
     }
     #[test]
+    #[ignore] // FIXME(#15763)
     fn test_decode_errors_struct() {
         check_err::<DecodeStruct>("[]", ExpectedError("Object".to_string(), "[]".to_string()));
         check_err::<DecodeStruct>("{\"x\": true, \"y\": true, \"z\": \"\", \"w\": []}",
