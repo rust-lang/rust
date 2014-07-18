@@ -400,12 +400,12 @@ pub trait StrAsciiExt {
 impl<'a> StrAsciiExt for &'a str {
     #[inline]
     fn to_ascii_upper(&self) -> String {
-        unsafe { str_copy_map_bytes(*self, ASCII_UPPER_MAP) }
+        unsafe { str_copy_map_bytes(*self, &ASCII_UPPER_MAP) }
     }
 
     #[inline]
     fn to_ascii_lower(&self) -> String {
-        unsafe { str_copy_map_bytes(*self, ASCII_LOWER_MAP) }
+        unsafe { str_copy_map_bytes(*self, &ASCII_LOWER_MAP) }
     }
 
     #[inline]
@@ -422,17 +422,17 @@ impl<'a> StrAsciiExt for &'a str {
 impl OwnedStrAsciiExt for String {
     #[inline]
     fn into_ascii_upper(self) -> String {
-        unsafe { str_map_bytes(self, ASCII_UPPER_MAP) }
+        unsafe { str_map_bytes(self, &ASCII_UPPER_MAP) }
     }
 
     #[inline]
     fn into_ascii_lower(self) -> String {
-        unsafe { str_map_bytes(self, ASCII_LOWER_MAP) }
+        unsafe { str_map_bytes(self, &ASCII_LOWER_MAP) }
     }
 }
 
 #[inline]
-unsafe fn str_map_bytes(string: String, map: &'static [u8]) -> String {
+unsafe fn str_map_bytes(string: String, map: &[u8, ..256]) -> String {
     let mut bytes = string.into_bytes();
 
     for b in bytes.mut_iter() {
@@ -443,7 +443,7 @@ unsafe fn str_map_bytes(string: String, map: &'static [u8]) -> String {
 }
 
 #[inline]
-unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> String {
+unsafe fn str_copy_map_bytes(string: &str, map: &[u8, ..256]) -> String {
     let mut s = String::from_str(string);
     for b in s.as_mut_bytes().mut_iter() {
         *b = map[*b as uint];
@@ -451,7 +451,7 @@ unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> String {
     s.into_string()
 }
 
-static ASCII_LOWER_MAP: &'static [u8] = &[
+pub static ASCII_LOWER_MAP: [u8, ..256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -490,7 +490,7 @@ static ASCII_LOWER_MAP: &'static [u8] = &[
     0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 ];
 
-static ASCII_UPPER_MAP: &'static [u8] = &[
+pub static ASCII_UPPER_MAP: [u8, ..256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
