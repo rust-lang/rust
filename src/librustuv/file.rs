@@ -469,7 +469,7 @@ mod test {
     use super::super::Loop;
     use super::super::local_loop;
 
-    fn l() -> &mut Loop { &mut local_loop().loop_ }
+    fn l() -> &'static mut Loop { &mut local_loop().loop_ }
 
     #[test]
     fn file_test_full_simple_sync() {

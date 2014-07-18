@@ -13,7 +13,7 @@ struct MyVec<T> {
 }
 
 impl<T> Index<uint, T> for MyVec<T> {
-    fn index<'a>(&'a self, &i: &uint) -> &'a T {
+    fn index(&self, &i: &uint) -> &T {
         self.data.get(i)
     }
 }

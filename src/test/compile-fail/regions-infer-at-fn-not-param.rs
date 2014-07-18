@@ -20,7 +20,7 @@ struct not_parameterized2 {
     g: ||: 'static
 }
 
-fn take1(p: parameterized1) -> parameterized1 { p }
+fn take1<'a>(p: parameterized1) -> parameterized1<'a> { p }
 //~^ ERROR mismatched types
 //~^^ ERROR cannot infer
 

@@ -23,17 +23,17 @@ struct Foo { bar: Bar }
 impl FooBar for Bar {}
 
 trait Test {
-    fn get_immut<'r>(&'r self) -> &'r FooBar;
-    fn get_mut<'r>(&'r mut self) -> &'r mut FooBar;
+    fn get_immut(&self) -> &FooBar;
+    fn get_mut(&mut self) -> &mut FooBar;
 }
 
 macro_rules! generate_test(($type_:path, $slf:ident, $field:expr) => (
     impl Test for $type_ {
-        fn get_immut<'r>(&'r $slf) -> &'r FooBar {
+        fn get_immut(&$slf) -> &FooBar {
             &$field as &FooBar
         }
 
-        fn get_mut<'r>(&'r mut $slf) -> &'r mut FooBar {
+        fn get_mut(&mut $slf) -> &mut FooBar {
             &mut $field as &mut FooBar
         }
     }

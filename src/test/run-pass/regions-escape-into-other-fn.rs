@@ -12,7 +12,7 @@
 
 use std::gc::GC;
 
-fn foo<'r>(x: &'r uint) -> &'r uint { x }
+fn foo(x: &uint) -> &uint { x }
 fn bar(x: &uint) -> uint { *x }
 
 pub fn main() {

@@ -156,7 +156,7 @@ impl Table {
         }
     }
 
-    fn iter<'a>(&'a self) -> Items<'a> {
+    fn iter(&self) -> Items {
         Items { cur: None, items: self.items.iter() }
     }
 }

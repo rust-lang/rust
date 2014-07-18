@@ -15,17 +15,17 @@ struct DerefWithHelper<H, T> {
 }
 
 trait Helper<T> {
-    fn helper_borrow<'a>(&'a self) -> &'a T;
+    fn helper_borrow(&self) -> &T;
 }
 
 impl<T> Helper<T> for Option<T> {
-    fn helper_borrow<'a>(&'a self) -> &'a T {
+    fn helper_borrow(&self) -> &T {
         self.as_ref().unwrap()
     }
 }
 
 impl<T, H: Helper<T>> Deref<T> for DerefWithHelper<H, T> {
-    fn deref<'a>(&'a self) -> &'a T {
+    fn deref(&self) -> &T {
         self.helper.helper_borrow()
     }
 }

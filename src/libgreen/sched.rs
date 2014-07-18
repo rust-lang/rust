@@ -959,13 +959,13 @@ impl CleanupJob {
 type UnsafeTaskReceiver = raw::Closure;
 trait ClosureConverter {
     fn from_fn(|&mut Scheduler, Box<GreenTask>|) -> Self;
-    fn to_fn(self) -> |&mut Scheduler, Box<GreenTask>|;
+    fn to_fn(self) -> |&mut Scheduler, Box<GreenTask>|:'static ;
 }
 impl ClosureConverter for UnsafeTaskReceiver {
     fn from_fn(f: |&mut Scheduler, Box<GreenTask>|) -> UnsafeTaskReceiver {
         unsafe { mem::transmute(f) }
     }
-    fn to_fn(self) -> |&mut Scheduler, Box<GreenTask>| {
+    fn to_fn(self) -> |&mut Scheduler, Box<GreenTask>|:'static {
         unsafe { mem::transmute(self) }
     }
 }

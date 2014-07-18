@@ -455,12 +455,12 @@ impl<'a> LabelText<'a> {
     }
 
     /// Puts `prefix` on a line above this label, with a blank line separator.
-    pub fn prefix_line(self, prefix: LabelText) -> LabelText {
+    pub fn prefix_line(self, prefix: LabelText) -> LabelText<'static> {
         prefix.suffix_line(self)
     }
 
     /// Puts `suffix` on a line below this label, with a blank line separator.
-    pub fn suffix_line(self, suffix: LabelText) -> LabelText {
+    pub fn suffix_line(self, suffix: LabelText) -> LabelText<'static> {
         let prefix = self.pre_escaped_content().into_string();
         let suffix = suffix.pre_escaped_content();
         EscStr(str::Owned(prefix.append(r"\n\n").append(suffix.as_slice())))

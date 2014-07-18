@@ -18,7 +18,7 @@ struct Rc<T> {
 }
 
 impl<T> Deref<T> for Rc<T> {
-    fn deref<'a>(&'a self) -> &'a T {
+    fn deref(&self) -> &T {
         unsafe { &*self.value }
     }
 }
@@ -38,11 +38,11 @@ impl Point {
         self.y = y;
     }
 
-    fn x_ref<'a>(&'a self) -> &'a int {
+    fn x_ref(&self) -> &int {
         &self.x
     }
 
-    fn y_mut<'a>(&'a mut self) -> &'a mut int {
+    fn y_mut(&mut self) -> &mut int {
         &mut self.y
     }
 }
@@ -59,15 +59,15 @@ fn deref_mut_field2(mut x: Rc<Point>) {
     let _i = &mut x.y; //~ ERROR cannot borrow
 }
 
-fn deref_extend_field<'a>(x: &'a Rc<Point>) -> &'a int {
+fn deref_extend_field(x: &Rc<Point>) -> &int {
     &x.y
 }
 
-fn deref_extend_mut_field1<'a>(x: &'a Rc<Point>) -> &'a mut int {
+fn deref_extend_mut_field1(x: &Rc<Point>) -> &mut int {
     &mut x.y //~ ERROR cannot borrow
 }
 
-fn deref_extend_mut_field2<'a>(x: &'a mut Rc<Point>) -> &'a mut int {
+fn deref_extend_mut_field2(x: &mut Rc<Point>) -> &mut int {
     &mut x.y //~ ERROR cannot borrow
 }
 
@@ -95,15 +95,15 @@ fn deref_mut_method2(mut x: Rc<Point>) {
     x.set(0, 0); //~ ERROR cannot borrow
 }
 
-fn deref_extend_method<'a>(x: &'a Rc<Point>) -> &'a int {
+fn deref_extend_method(x: &Rc<Point>) -> &int {
     x.x_ref()
 }
 
-fn deref_extend_mut_method1<'a>(x: &'a Rc<Point>) -> &'a mut int {
+fn deref_extend_mut_method1(x: &Rc<Point>) -> &mut int {
     x.y_mut() //~ ERROR cannot borrow
 }
 
-fn deref_extend_mut_method2<'a>(x: &'a mut Rc<Point>) -> &'a mut int {
+fn deref_extend_mut_method2(x: &mut Rc<Point>) -> &mut int {
     x.y_mut() //~ ERROR cannot borrow
 }
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn of<T>() -> |T| { fail!(); }
+fn of<'a,T>() -> |T|:'a { fail!(); }
 fn subtype<T>(x: |T|) { fail!(); }
 
 fn test_fn<'x,'y,'z,T>(_x: &'x T, _y: &'y T, _z: &'z T) {

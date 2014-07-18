@@ -12,7 +12,7 @@ struct thing<'a, Q> {
     x: &'a Q
 }
 
-fn thing<Q>(x: &Q) -> thing<Q> {
+fn thing<'a,Q>(x: &Q) -> thing<'a,Q> {
     thing{ x: x } //~ ERROR cannot infer
 }
 

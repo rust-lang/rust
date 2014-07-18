@@ -19,7 +19,7 @@ impl<'a> font<'a> {
     }
 }
 
-fn font<'r>(fontbuf: &'r Vec<u8> ) -> font<'r> {
+fn font(fontbuf: &Vec<u8> ) -> font {
     font {
         fontbuf: fontbuf
     }

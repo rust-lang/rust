@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn a() -> &[int] {
+fn a<'a>() -> &'a [int] {
     let vec = vec!(1, 2, 3, 4);
     let vec: &[int] = vec.as_slice(); //~ ERROR does not live long enough
     let tail = match vec {
@@ -18,7 +18,7 @@ fn a() -> &[int] {
     tail
 }
 
-fn b() -> &[int] {
+fn b<'a>() -> &'a [int] {
     let vec = vec!(1, 2, 3, 4);
     let vec: &[int] = vec.as_slice(); //~ ERROR does not live long enough
     let init = match vec {
@@ -28,7 +28,7 @@ fn b() -> &[int] {
     init
 }
 
-fn c() -> &[int] {
+fn c<'a>() -> &'a [int] {
     let vec = vec!(1, 2, 3, 4);
     let vec: &[int] = vec.as_slice(); //~ ERROR does not live long enough
     let slice = match vec {

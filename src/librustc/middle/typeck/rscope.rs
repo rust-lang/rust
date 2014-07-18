@@ -64,10 +64,24 @@ impl RegionScope for BindingRscope {
     fn anon_regions(&self,
                     _: Span,
                     count: uint)
-                    -> Result<Vec<ty::Region> , ()> {
+                    -> Result<Vec<ty::Region>, ()> {
         let idx = self.anon_bindings.get();
         self.anon_bindings.set(idx + count);
         Ok(Vec::from_fn(count, |i| ty::ReLateBound(self.binder_id,
                                                    ty::BrAnon(idx + i))))
     }
 }
+
+/// A scope in which we generate one specific region. This occurs after the
+/// `->` (i.e. in the return type) of function signatures.
+pub struct ImpliedSingleRscope {
+    pub region: ty::Region,
+}
+
+impl RegionScope for ImpliedSingleRscope {
+    fn anon_regions(&self, _: Span, count: uint)
+                    -> Result<Vec<ty::Region>,()> {
+        Ok(Vec::from_elem(count, self.region.clone()))
+    }
+}
+
