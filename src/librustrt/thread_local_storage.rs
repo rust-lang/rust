@@ -83,7 +83,7 @@ pub unsafe fn destroy(key: Key) {
 }
 
 #[cfg(windows)]
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 extern "system" {
     fn TlsAlloc() -> DWORD;
     fn TlsFree(dwTlsIndex: DWORD) -> BOOL;

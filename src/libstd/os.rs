@@ -29,7 +29,7 @@
 #![experimental]
 
 #![allow(missing_doc)]
-#![allow(non_snake_case_functions)]
+#![allow(non_snake_case)]
 
 use clone::Clone;
 use collections::{Collection, MutableSeq};

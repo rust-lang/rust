@@ -2118,6 +2118,7 @@ pub struct TypeContents {
 
 macro_rules! def_type_content_sets(
     (mod $mname:ident { $($name:ident = $bits:expr),+ }) => {
+        #[allow(non_snake_case)]
         mod $mname {
             use middle::ty::TypeContents;
             $(pub static $name: TypeContents = TypeContents { bits: $bits };)+

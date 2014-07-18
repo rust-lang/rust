@@ -74,10 +74,10 @@
 */
 
 #![allow(non_camel_case_types)]
-#![allow(non_snake_case_functions)]
+#![allow(non_snake_case)]
 #![allow(non_uppercase_statics)]
 #![allow(missing_doc)]
-#![allow(uppercase_variables)]
+#![allow(non_snake_case)]
 
 #[cfg(test)] extern crate std;
 #[cfg(test)] extern crate test;

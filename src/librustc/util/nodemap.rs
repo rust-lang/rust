@@ -10,6 +10,8 @@
 
 //! An efficient hash map for node IDs
 
+#![allow(non_snake_case)]
+
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hasher, Hash, Writer};
 use syntax::ast;
