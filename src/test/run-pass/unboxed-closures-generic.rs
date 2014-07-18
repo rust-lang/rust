@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,22 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overloaded_calls)]
+#![feature(unboxed_closures)]
 
-trait Foo {}
+use std::ops::FnMut;
 
-struct Bar;
-
-impl<'a> std::ops::Fn<(&'a Foo,), ()> for Bar {
-    extern "rust-call" fn call(&self, _: (&'a Foo,)) {}
+fn call_it<F:FnMut<(int,int),int>>(y: int, mut f: F) -> int {
+    f.call_mut((2, y))
 }
 
-struct Baz;
-
-impl Foo for Baz {}
-
-fn main() {
-    let bar = Bar;
-    let baz = &Baz;
-    bar(baz);
+pub fn main() {
+    let f = |&mut: x: int, y: int| -> int { x + y };
+    let z = call_it(3, f);
+    println!("{}", z);
+    assert_eq!(z, 5);
 }
+

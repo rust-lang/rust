@@ -29,17 +29,16 @@ use back::link::{mangle_exported_name};
 use back::{link, abi};
 use driver::config;
 use driver::config::{NoDebugInfo, FullDebugInfo};
-use driver::session::Session;
 use driver::driver::{CrateAnalysis, CrateTranslation};
-use llvm;
-use llvm::{ModuleRef, ValueRef, BasicBlockRef};
-use llvm::{Vector};
-use metadata::{csearch, encoder, loader};
+use driver::session::Session;
 use lint;
+use llvm::{BasicBlockRef, ModuleRef, ValueRef, Vector, get_param};
+use llvm;
+use metadata::{csearch, encoder, loader};
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
-use middle::weak_lang_items;
 use middle::subst;
+use middle::weak_lang_items;
 use middle::subst::Subst;
 use middle::trans::_match;
 use middle::trans::adt;
@@ -82,7 +81,8 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::{i8, i16, i32, i64};
 use std::gc::Gc;
-use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel, Rust, RustIntrinsic};
+use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel, Rust, RustCall};
+use syntax::abi::{RustIntrinsic, Abi};
 use syntax::ast_util::{local_def, is_local};
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
@@ -254,13 +254,32 @@ fn get_extern_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str, did: ast::De
 }
 
 pub fn decl_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str) -> ValueRef {
-    let (inputs, output, has_env) = match ty::get(fn_ty).sty {
-        ty::ty_bare_fn(ref f) => (f.sig.inputs.clone(), f.sig.output, false),
-        ty::ty_closure(ref f) => (f.sig.inputs.clone(), f.sig.output, true),
+    let (inputs, output, abi, env) = match ty::get(fn_ty).sty {
+        ty::ty_bare_fn(ref f) => {
+            (f.sig.inputs.clone(), f.sig.output, f.abi, None)
+        }
+        ty::ty_closure(ref f) => {
+            (f.sig.inputs.clone(), f.sig.output, f.abi, Some(Type::i8p(ccx)))
+        }
+        ty::ty_unboxed_closure(closure_did) => {
+            let unboxed_closure_types = ccx.tcx
+                                           .unboxed_closure_types
+                                           .borrow();
+            let function_type = unboxed_closure_types.get(&closure_did);
+            let llenvironment_type = type_of(ccx, fn_ty).ptr_to();
+            (function_type.sig.inputs.clone(),
+             function_type.sig.output,
+             RustCall,
+             Some(llenvironment_type))
+        }
         _ => fail!("expected closure or fn")
     };
 
-    let llfty = type_of_rust_fn(ccx, has_env, inputs.as_slice(), output);
+    let llfty = type_of_rust_fn(ccx, env, inputs.as_slice(), output, abi);
+    debug!("decl_rust_fn(input count={},type={})",
+           inputs.len(),
+           ccx.tn.type_to_string(llfty));
+
     let llfn = decl_fn(ccx, name, llvm::CCallConv, llfty, output);
     let attrs = get_fn_llvm_attributes(ccx, fn_ty);
     for &(idx, attr) in attrs.iter() {
@@ -674,6 +693,14 @@ pub fn iter_structural_ty<'r,
               }
           })
       }
+      ty::ty_unboxed_closure(def_id) => {
+          let repr = adt::represent_type(cx.ccx(), t);
+          let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id);
+          for (i, upvar) in upvars.iter().enumerate() {
+              let llupvar = adt::trans_field_ptr(cx, &*repr, av, 0, i);
+              cx = f(cx, llupvar, upvar.ty);
+          }
+      }
       ty::ty_vec(_, Some(n)) => {
         let unit_ty = ty::sequence_element_type(cx.tcx(), t);
         let (base, len) = tvec::get_fixed_base_and_byte_len(cx, av, unit_ty, n);
@@ -870,7 +897,7 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
         ty::ty_bare_fn(ref fn_ty) => {
             match fn_ty.abi.for_target(ccx.sess().targ_cfg.os,
                                        ccx.sess().targ_cfg.arch) {
-                Some(Rust) => {
+                Some(Rust) | Some(RustCall) => {
                     get_extern_rust_fn(ccx, t, name.as_slice(), did)
                 }
                 Some(RustIntrinsic) => {
@@ -1150,13 +1177,11 @@ pub fn arrayalloca(cx: &Block, ty: Type, v: ValueRef) -> ValueRef {
 // slot where the return value of the function must go.
 pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
                            -> ValueRef {
-    unsafe {
-        if type_of::return_uses_outptr(fcx.ccx, output_type) {
-            llvm::LLVMGetParam(fcx.llfn, 0)
-        } else {
-            let lloutputtype = type_of::type_of(fcx.ccx, output_type);
-            AllocaFcx(fcx, lloutputtype, "__make_return_pointer")
-        }
+    if type_of::return_uses_outptr(fcx.ccx, output_type) {
+        get_param(fcx.llfn, 0)
+    } else {
+        let lloutputtype = type_of::type_of(fcx.ccx, output_type);
+        AllocaFcx(fcx, lloutputtype, "__make_return_pointer")
     }
 }
 
@@ -1213,9 +1238,7 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
     };
 
     if has_env {
-        fcx.llenv = Some(unsafe {
-            llvm::LLVMGetParam(fcx.llfn, fcx.env_arg_pos() as c_uint)
-        });
+        fcx.llenv = Some(get_param(fcx.llfn, fcx.env_arg_pos() as c_uint))
     }
 
     fcx
@@ -1280,14 +1303,83 @@ pub fn create_datums_for_fn_args(fcx: &FunctionContext,
                                  -> Vec<RvalueDatum> {
     let _icx = push_ctxt("create_datums_for_fn_args");
 
-    // Return an array wrapping the ValueRefs that we get from
-    // llvm::LLVMGetParam for each argument into datums.
+    // Return an array wrapping the ValueRefs that we get from `get_param` for
+    // each argument into datums.
     arg_tys.iter().enumerate().map(|(i, &arg_ty)| {
-        let llarg = unsafe {
-            llvm::LLVMGetParam(fcx.llfn, fcx.arg_pos(i) as c_uint)
-        };
+        let llarg = get_param(fcx.llfn, fcx.arg_pos(i) as c_uint);
         datum::Datum::new(llarg, arg_ty, arg_kind(fcx, arg_ty))
     }).collect()
+}
+
+/// Creates rvalue datums for each of the incoming function arguments and
+/// tuples the arguments. These will later be stored into appropriate lvalue
+/// datums.
+fn create_datums_for_fn_args_under_call_abi<
+        'a>(
+        mut bcx: &'a Block<'a>,
+        arg_scope: cleanup::CustomScopeIndex,
+        arg_tys: &[ty::t])
+        -> Vec<RvalueDatum> {
+    let mut result = Vec::new();
+    for (i, &arg_ty) in arg_tys.iter().enumerate() {
+        if i < arg_tys.len() - 1 {
+            // Regular argument.
+            let llarg = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(i) as c_uint);
+            result.push(datum::Datum::new(llarg, arg_ty, arg_kind(bcx.fcx,
+                                                                  arg_ty)));
+            continue
+        }
+
+        // This is the last argument. Tuple it.
+        match ty::get(arg_ty).sty {
+            ty::ty_tup(ref tupled_arg_tys) => {
+                let tuple_args_scope_id = cleanup::CustomScope(arg_scope);
+                let tuple =
+                    unpack_datum!(bcx,
+                                  datum::lvalue_scratch_datum(bcx,
+                                                              arg_ty,
+                                                              "tupled_args",
+                                                              false,
+                                                              tuple_args_scope_id,
+                                                              (),
+                                                              |(),
+                                                               mut bcx,
+                                                               llval| {
+                        for (j, &tupled_arg_ty) in
+                                    tupled_arg_tys.iter().enumerate() {
+                            let llarg =
+                                get_param(bcx.fcx.llfn,
+                                          bcx.fcx.arg_pos(i + j) as c_uint);
+                            let lldest = GEPi(bcx, llval, [0, j]);
+                            let datum = datum::Datum::new(
+                                llarg,
+                                tupled_arg_ty,
+                                arg_kind(bcx.fcx, tupled_arg_ty));
+                            bcx = datum.store_to(bcx, lldest);
+                        }
+                        bcx
+                    }));
+                let tuple = unpack_datum!(bcx,
+                                          tuple.to_expr_datum()
+                                               .to_rvalue_datum(bcx,
+                                                                "argtuple"));
+                result.push(tuple);
+            }
+            ty::ty_nil => {
+                let mode = datum::Rvalue::new(datum::ByValue);
+                result.push(datum::Datum::new(C_nil(bcx.ccx()),
+                                              ty::mk_nil(),
+                                              mode))
+            }
+            _ => {
+                bcx.tcx().sess.bug("last argument of a function with \
+                                    `rust-call` ABI isn't a tuple?!")
+            }
+        };
+
+    }
+
+    result
 }
 
 fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
@@ -1316,6 +1408,59 @@ fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
 
         if fcx.ccx.sess().opts.debuginfo == FullDebugInfo {
             debuginfo::create_argument_metadata(bcx, &args[i]);
+        }
+    }
+
+    bcx
+}
+
+fn copy_unboxed_closure_args_to_allocas<'a>(
+                                        mut bcx: &'a Block<'a>,
+                                        arg_scope: cleanup::CustomScopeIndex,
+                                        args: &[ast::Arg],
+                                        arg_datums: Vec<RvalueDatum>,
+                                        monomorphized_arg_types: &[ty::t])
+                                        -> &'a Block<'a> {
+    let _icx = push_ctxt("copy_unboxed_closure_args_to_allocas");
+    let arg_scope_id = cleanup::CustomScope(arg_scope);
+
+    assert_eq!(arg_datums.len(), 1);
+
+    let arg_datum = arg_datums.move_iter().next().unwrap();
+
+    // Untuple the rest of the arguments.
+    let tuple_datum =
+        unpack_datum!(bcx,
+                      arg_datum.to_lvalue_datum_in_scope(bcx,
+                                                         "argtuple",
+                                                         arg_scope_id));
+    let empty = Vec::new();
+    let untupled_arg_types = match ty::get(monomorphized_arg_types[0]).sty {
+        ty::ty_tup(ref types) => types.as_slice(),
+        ty::ty_nil => empty.as_slice(),
+        _ => {
+            bcx.tcx().sess.span_bug(args[0].pat.span,
+                                    "first arg to `rust-call` ABI function \
+                                     wasn't a tuple?!")
+        }
+    };
+    for j in range(0, args.len()) {
+        let tuple_element_type = untupled_arg_types[j];
+        let tuple_element_datum =
+            tuple_datum.get_element(tuple_element_type,
+                                    |llval| GEPi(bcx, llval, [0, j]));
+        let tuple_element_datum = tuple_element_datum.to_expr_datum();
+        let tuple_element_datum =
+            unpack_datum!(bcx,
+                          tuple_element_datum.to_rvalue_datum(bcx,
+                                                              "arg"));
+        bcx = _match::store_arg(bcx,
+                                args[j].pat,
+                                tuple_element_datum,
+                                arg_scope_id);
+
+        if bcx.fcx.ccx.sess().opts.debuginfo == FullDebugInfo {
+            debuginfo::create_argument_metadata(bcx, &args[j]);
         }
     }
 
@@ -1379,6 +1524,12 @@ pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block, retty: ty::t) {
     Ret(ret_cx, retval);
 }
 
+#[deriving(Clone, Eq, PartialEq)]
+pub enum IsUnboxedClosureFlag {
+    NotUnboxedClosure,
+    IsUnboxedClosure,
+}
+
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
@@ -1389,7 +1540,11 @@ pub fn trans_closure(ccx: &CrateContext,
                      param_substs: &param_substs,
                      id: ast::NodeId,
                      _attributes: &[ast::Attribute],
+                     arg_types: Vec<ty::t>,
                      output_type: ty::t,
+                     abi: Abi,
+                     has_env: bool,
+                     is_unboxed_closure: IsUnboxedClosureFlag,
                      maybe_load_env: <'a> |&'a Block<'a>| -> &'a Block<'a>) {
     ccx.stats.n_closures.set(ccx.stats.n_closures.get() + 1);
 
@@ -1398,11 +1553,6 @@ pub fn trans_closure(ccx: &CrateContext,
 
     debug!("trans_closure(..., param_substs={})",
            param_substs.repr(ccx.tcx()));
-
-    let has_env = match ty::get(ty::node_id_to_type(ccx.tcx(), id)).sty {
-        ty::ty_closure(_) => true,
-        _ => false
-    };
 
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx,
@@ -1421,14 +1571,44 @@ pub fn trans_closure(ccx: &CrateContext,
     let block_ty = node_id_type(bcx, body.id);
 
     // Set up arguments to the function.
-    let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
-    let arg_datums = create_datums_for_fn_args(&fcx, arg_tys.as_slice());
+    let monomorphized_arg_types =
+        arg_types.iter()
+                 .map(|at| monomorphize_type(bcx, *at))
+                 .collect::<Vec<_>>();
+    for monomorphized_arg_type in monomorphized_arg_types.iter() {
+        debug!("trans_closure: monomorphized_arg_type: {}",
+               ty_to_string(ccx.tcx(), *monomorphized_arg_type));
+    }
+    debug!("trans_closure: function lltype: {}",
+           bcx.fcx.ccx.tn.val_to_string(bcx.fcx.llfn));
 
-    bcx = copy_args_to_allocas(&fcx,
-                               arg_scope,
-                               bcx,
-                               decl.inputs.as_slice(),
-                               arg_datums);
+    let arg_datums = if abi != RustCall {
+        create_datums_for_fn_args(&fcx,
+                                  monomorphized_arg_types.as_slice())
+    } else {
+        create_datums_for_fn_args_under_call_abi(
+            bcx,
+            arg_scope,
+            monomorphized_arg_types.as_slice())
+    };
+
+    bcx = match is_unboxed_closure {
+        NotUnboxedClosure => {
+            copy_args_to_allocas(&fcx,
+                                 arg_scope,
+                                 bcx,
+                                 decl.inputs.as_slice(),
+                                 arg_datums)
+        }
+        IsUnboxedClosure => {
+            copy_unboxed_closure_args_to_allocas(
+                bcx,
+                arg_scope,
+                decl.inputs.as_slice(),
+                arg_datums,
+                monomorphized_arg_types.as_slice())
+        }
+    };
 
     bcx = maybe_load_env(bcx);
 
@@ -1488,9 +1668,23 @@ pub fn trans_fn(ccx: &CrateContext,
     let _s = StatRecorder::new(ccx, ccx.tcx.map.path_to_string(id).to_string());
     debug!("trans_fn(param_substs={})", param_substs.repr(ccx.tcx()));
     let _icx = push_ctxt("trans_fn");
-    let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx(), id));
-    trans_closure(ccx, decl, body, llfndecl,
-                  param_substs, id, attrs, output_type, |bcx| bcx);
+    let fn_ty = ty::node_id_to_type(ccx.tcx(), id);
+    let arg_types = ty::ty_fn_args(fn_ty);
+    let output_type = ty::ty_fn_ret(fn_ty);
+    let abi = ty::ty_fn_abi(fn_ty);
+    trans_closure(ccx,
+                  decl,
+                  body,
+                  llfndecl,
+                  param_substs,
+                  id,
+                  attrs,
+                  arg_types,
+                  output_type,
+                  abi,
+                  false,
+                  NotUnboxedClosure,
+                  |bcx| bcx);
 }
 
 pub fn trans_enum_variant(ccx: &CrateContext,
@@ -1657,7 +1851,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
     let _icx = push_ctxt("trans_item");
     match item.node {
       ast::ItemFn(ref decl, _fn_style, abi, ref generics, ref body) => {
-        if abi != Rust  {
+        if abi != Rust {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_rust_fn_with_foreign_abi(
                 ccx, &**decl, &**body, item.attrs.as_slice(), llfndecl, item.id);
@@ -1792,7 +1986,7 @@ fn register_fn(ccx: &CrateContext,
                -> ValueRef {
     match ty::get(node_type).sty {
         ty::ty_bare_fn(ref f) => {
-            assert!(f.abi == Rust);
+            assert!(f.abi == Rust || f.abi == RustCall);
         }
         _ => fail!("expected bare rust fn")
     };
@@ -1802,14 +1996,29 @@ fn register_fn(ccx: &CrateContext,
     llfn
 }
 
-pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u64)> {
+pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
+                              -> Vec<(uint, u64)> {
     use middle::ty::{BrAnon, ReLateBound};
 
-    let (fn_sig, has_env) = match ty::get(fn_ty).sty {
-        ty::ty_closure(ref f) => (f.sig.clone(), true),
-        ty::ty_bare_fn(ref f) => (f.sig.clone(), false),
+    let (fn_sig, abi, has_env) = match ty::get(fn_ty).sty {
+        ty::ty_closure(ref f) => (f.sig.clone(), f.abi, true),
+        ty::ty_bare_fn(ref f) => (f.sig.clone(), f.abi, false),
+        ty::ty_unboxed_closure(closure_did) => {
+            let unboxed_closure_types = ccx.tcx
+                                           .unboxed_closure_types
+                                           .borrow();
+            let function_type = unboxed_closure_types.get(&closure_did);
+            (function_type.sig.clone(), RustCall, true)
+        }
         _ => fail!("expected closure or function.")
     };
+
+    // These have an odd calling convention, so we skip them for now.
+    //
+    // FIXME(pcwalton): We don't have to skip them; just untuple the result.
+    if abi == RustCall {
+        return Vec::new()
+    }
 
     // Since index 0 is the return value of the llvm func, we start
     // at either 1 or 2 depending on whether there's an env slot or not
@@ -1986,16 +2195,16 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
 
                     vec!(
                         opaque_rust_main,
-                        llvm::LLVMGetParam(llfn, 0),
-                        llvm::LLVMGetParam(llfn, 1)
+                        get_param(llfn, 0),
+                        get_param(llfn, 1)
                      )
                 };
                 (start_fn, args)
             } else {
                 debug!("using user-defined start fn");
                 let args = vec!(
-                    llvm::LLVMGetParam(llfn, 0 as c_uint),
-                    llvm::LLVMGetParam(llfn, 1 as c_uint)
+                    get_param(llfn, 0 as c_uint),
+                    get_param(llfn, 1 as c_uint)
                 );
 
                 (rust_main, args)

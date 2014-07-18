@@ -188,7 +188,7 @@ pub fn method_to_string(p: &ast::Method) -> String {
 }
 
 pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
-    to_string(|s| s.print_fn_block_args(p))
+    to_string(|s| s.print_fn_block_args(p, false))
 }
 
 pub fn path_to_string(p: &ast::Path) -> String {
@@ -259,7 +259,8 @@ fn needs_parentheses(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprAssign(..) | ast::ExprBinary(..) |
         ast::ExprFnBlock(..) | ast::ExprProc(..) |
-        ast::ExprAssignOp(..) | ast::ExprCast(..) => true,
+        ast::ExprUnboxedFn(..) | ast::ExprAssignOp(..) |
+        ast::ExprCast(..) => true,
         _ => false,
     }
 }
@@ -1004,9 +1005,20 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(meth.span.lo));
         try!(self.print_outer_attributes(meth.attrs.as_slice()));
         match meth.node {
-            ast::MethDecl(ident, ref generics, ref explicit_self, fn_style, decl, body, vis) => {
-                try!(self.print_fn(&*decl, Some(fn_style), abi::Rust,
-                                   ident, generics, Some(explicit_self.node),
+            ast::MethDecl(ident,
+                          ref generics,
+                          abi,
+                          ref explicit_self,
+                          fn_style,
+                          decl,
+                          body,
+                          vis) => {
+                try!(self.print_fn(&*decl,
+                                   Some(fn_style),
+                                   abi,
+                                   ident,
+                                   generics,
+                                   Some(explicit_self.node),
                                    vis));
                 try!(word(&mut self.s, " "));
                 self.print_block_with_attrs(&*body, meth.attrs.as_slice())
@@ -1446,7 +1458,37 @@ impl<'a> State<'a> {
                 // we are inside.
                 //
                 // if !decl.inputs.is_empty() {
-                try!(self.print_fn_block_args(&**decl));
+                try!(self.print_fn_block_args(&**decl, false));
+                try!(space(&mut self.s));
+                // }
+
+                if !body.stmts.is_empty() || !body.expr.is_some() {
+                    try!(self.print_block_unclosed(&**body));
+                } else {
+                    // we extract the block, so as not to create another set of boxes
+                    match body.expr.unwrap().node {
+                        ast::ExprBlock(blk) => {
+                            try!(self.print_block_unclosed(&*blk));
+                        }
+                        _ => {
+                            // this is a bare expression
+                            try!(self.print_expr(&*body.expr.unwrap()));
+                            try!(self.end()); // need to close a box
+                        }
+                    }
+                }
+                // a box will be closed by print_expr, but we didn't want an overall
+                // wrapper so we closed the corresponding opening. so create an
+                // empty box to satisfy the close.
+                try!(self.ibox(0));
+            }
+            ast::ExprUnboxedFn(ref decl, ref body) => {
+                // in do/for blocks we don't want to show an empty
+                // argument list, but at this point we don't know which
+                // we are inside.
+                //
+                // if !decl.inputs.is_empty() {
+                try!(self.print_fn_block_args(&**decl, true));
                 try!(space(&mut self.s));
                 // }
 
@@ -1939,8 +1981,13 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_block_args(&mut self,
-                               decl: &ast::FnDecl) -> IoResult<()> {
+                               decl: &ast::FnDecl,
+                               is_unboxed: bool)
+                               -> IoResult<()> {
         try!(word(&mut self.s, "|"));
+        if is_unboxed {
+            try!(self.word_space("&mut:"));
+        }
         try!(self.print_fn_args(decl, None));
         try!(word(&mut self.s, "|"));
 

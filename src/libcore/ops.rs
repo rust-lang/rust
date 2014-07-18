@@ -749,6 +749,7 @@ pub trait DerefMut<Result>: Deref<Result> {
 #[lang="fn"]
 pub trait Fn<Args,Result> {
     /// This is called when the call operator is used.
+    #[rust_call_abi_hack]
     fn call(&self, args: Args) -> Result;
 }
 
@@ -756,6 +757,7 @@ pub trait Fn<Args,Result> {
 #[lang="fn_mut"]
 pub trait FnMut<Args,Result> {
     /// This is called when the call operator is used.
+    #[rust_call_abi_hack]
     fn call_mut(&mut self, args: Args) -> Result;
 }
 
@@ -763,5 +765,7 @@ pub trait FnMut<Args,Result> {
 #[lang="fn_once"]
 pub trait FnOnce<Args,Result> {
     /// This is called when the call operator is used.
+    #[rust_call_abi_hack]
     fn call_once(self, args: Args) -> Result;
 }
+

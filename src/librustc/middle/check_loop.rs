@@ -42,7 +42,9 @@ impl<'a> Visitor<Context> for CheckLoopVisitor<'a> {
             ast::ExprLoop(ref b, _) => {
                 self.visit_block(&**b, Loop);
             }
-            ast::ExprFnBlock(_, ref b) | ast::ExprProc(_, ref b) => {
+            ast::ExprFnBlock(_, ref b) |
+            ast::ExprProc(_, ref b) |
+            ast::ExprUnboxedFn(_, ref b) => {
                 self.visit_block(&**b, Closure);
             }
             ast::ExprBreak(_) => self.require_loop("break", cx, e.span),

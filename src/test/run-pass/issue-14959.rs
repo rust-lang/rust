@@ -34,7 +34,7 @@ impl Alloy {
 }
 
 impl<'a, 'b> Fn<(&'b mut Response,),()> for SendFile<'a> {
-    fn call(&self, (_res,): (&'b mut Response,)) {}
+    extern "rust-call" fn call(&self, (_res,): (&'b mut Response,)) {}
 }
 
 impl<Rq: Request, Rs: Response> Ingot<Rq, Rs> for HelloWorld {

@@ -5254,7 +5254,8 @@ impl<'a> Resolver<'a> {
             }
 
             ExprFnBlock(fn_decl, block) |
-            ExprProc(fn_decl, block) => {
+            ExprProc(fn_decl, block) |
+            ExprUnboxedFn(fn_decl, block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.id),
                                       Some(fn_decl), NoTypeParameters,
                                       block);

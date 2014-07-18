@@ -832,3 +832,4 @@ impl<'a> CheckLoanCtxt<'a> {
                     self.bccx.loan_path_to_string(loan_path)).as_slice());
     }
 }
+

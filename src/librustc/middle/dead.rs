@@ -104,6 +104,7 @@ impl<'a> MarkSymbolVisitor<'a> {
                             None => self.check_def_id(def_id)
                         }
                     }
+                    typeck::MethodStaticUnboxedClosure(_) => {}
                     typeck::MethodParam(typeck::MethodParam {
                         trait_id: trait_id,
                         method_num: index,
