@@ -172,7 +172,7 @@ impl<'a> CheckLoanCtxt<'a> {
         //! are issued for future scopes and thus they may have been
         //! *issued* but not yet be in effect.
 
-        self.dfcx_loans.each_bit_on_entry_frozen(scope_id, |loan_index| {
+        self.dfcx_loans.each_bit_on_entry(scope_id, |loan_index| {
             let loan = &self.all_loans[loan_index];
             op(loan)
         })
@@ -271,7 +271,7 @@ impl<'a> CheckLoanCtxt<'a> {
         //! we encounter `scope_id`.
 
         let mut result = Vec::new();
-        self.dfcx_loans.each_gen_bit_frozen(scope_id, |loan_index| {
+        self.dfcx_loans.each_gen_bit(scope_id, |loan_index| {
             result.push(loan_index);
             true
         });
