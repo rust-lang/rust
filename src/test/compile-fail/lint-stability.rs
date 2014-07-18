@@ -11,13 +11,14 @@
 // aux-build:lint_stability.rs
 // aux-build:inherited_stability.rs
 
-#![feature(globs)]
+#![feature(globs, phase)]
 #![deny(unstable)]
 #![deny(deprecated)]
 #![deny(experimental)]
 #![allow(dead_code)]
 
 mod cross_crate {
+    #[phase(plugin, link)]
     extern crate lint_stability;
     use self::lint_stability::*;
 
@@ -76,7 +77,6 @@ mod cross_crate {
         foo.method_locked_text();
         foo.trait_locked_text();
 
-
         let _ = DeprecatedStruct { i: 0 }; //~ ERROR use of deprecated item
         let _ = ExperimentalStruct { i: 0 }; //~ ERROR use of experimental item
         let _ = UnstableStruct { i: 0 }; //~ ERROR use of unstable item
@@ -108,6 +108,13 @@ mod cross_crate {
         let _ = StableTupleStruct (1);
         let _ = FrozenTupleStruct (1);
         let _ = LockedTupleStruct (1);
+
+        // At the moment, the following just checks that the stability
+        // level of expanded code does not trigger the
+        // lint. Eventually, we will want to lint the contents of the
+        // macro in the module *defining* it. Also, stability levels
+        // on macros themselves are not yet linted.
+        macro_test!();
     }
 
     fn test_method_param<F: Trait>(foo: F) {
