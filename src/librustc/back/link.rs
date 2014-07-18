@@ -1254,7 +1254,7 @@ fn link_args(cmd: &mut Command,
         abi::OsMacos | abi::OsiOS => {
             let morestack = lib_path.join("libmorestack.a");
 
-            let mut v = "-Wl,-force_load,".as_bytes().to_owned();
+            let mut v = b"-Wl,-force_load,".to_vec();
             v.push_all(morestack.as_vec());
             cmd.arg(v.as_slice());
         }
