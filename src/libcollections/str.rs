@@ -55,10 +55,10 @@ other languages.
 
 # Representation
 
-Rust's string type, `str`, is a sequence of unicode codepoints encoded as a
-stream of UTF-8 bytes. All safely-created strings are guaranteed to be validly
-encoded UTF-8 sequences. Additionally, strings are not null-terminated
-and can contain null codepoints.
+Rust's string type, `str`, is a sequence of unicode scalar values encoded as a
+stream of UTF-8 bytes. All strings are guaranteed to be validly encoded UTF-8
+sequences. Additionally, strings are not null-terminated and can contain null
+bytes.
 
 The actual representation of strings have direct mappings to vectors: `&str`
 is the same as `&[u8]`.
