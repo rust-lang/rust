@@ -14,6 +14,7 @@ encodable.rs for more.
 */
 
 use ast::{MetaItem, Item, Expr, MutMutable, Ident};
+use attr;
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -76,7 +77,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
     let lambdadecode = cx.lambda_expr_1(trait_span, calldecode, blkarg);
 
     return match *substr.fields {
-        StaticStruct(_, ref summary) => {
+        StaticStruct(struct_def, ref summary) => {
             let nfields = match *summary {
                 Unnamed(ref fields) => fields.len(),
                 Named(ref fields) => fields.len()
@@ -88,6 +89,9 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                               substr.type_ident,
                                               summary,
                                               |cx, span, name, field| {
+                let attrs = struct_def.fields[field].node.attrs.as_slice();
+                let name = attr::first_attr_value_str_by_name(attrs, "encoded_name")
+                                .unwrap_or(name);
                 cx.expr_try(span,
                     cx.expr_method_call(span, blkdecoder, read_struct_field,
                                         vec!(cx.expr_str(span, name),
