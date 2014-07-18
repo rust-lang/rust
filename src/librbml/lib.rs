@@ -1132,7 +1132,7 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    #![allow(non_snake_case_functions)]
+    #![allow(non_snake_case)]
     use test::Bencher;
     use super::reader;
 

@@ -1447,7 +1447,7 @@ fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
     !cx.reachable.contains(&node_id)
 }
 
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     return unsafe {
         llvm::LLVMDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32)
@@ -3107,7 +3107,7 @@ fn debug_context<'a>(cx: &'a CrateContext) -> &'a CrateDebugContext {
 }
 
 #[inline]
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 fn DIB(cx: &CrateContext) -> DIBuilderRef {
     cx.dbg_cx.get_ref().builder
 }

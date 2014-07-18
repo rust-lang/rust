@@ -328,7 +328,7 @@ pub mod dl {
         FreeLibrary(handle as *mut libc::c_void); ()
     }
 
-    #[allow(non_snake_case_functions)]
+    #[allow(non_snake_case)]
     extern "system" {
         fn SetLastError(error: libc::size_t);
         fn LoadLibraryW(name: *const libc::c_void) -> *mut libc::c_void;

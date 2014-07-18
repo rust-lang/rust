@@ -29,7 +29,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 // FIXME(eddyb) #10676 use Rc<T> in the future.
 pub type P<T> = Gc<T>;
 
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 /// Construct a P<T> from a T value.
 pub fn P<T: 'static>(value: T) -> P<T> {
     box(GC) value

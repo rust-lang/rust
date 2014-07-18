@@ -2282,7 +2282,7 @@ macro_rules! tuple_impl {
             > ToJson for ( $( $tyvar ),* , ) {
 
             #[inline]
-            #[allow(uppercase_variables)]
+            #[allow(non_snake_case)]
             fn to_json(&self) -> Json {
                 match *self {
                     ($(ref $tyvar),*,) => List(vec![$($tyvar.to_json()),*])

@@ -78,6 +78,7 @@ pub type DoubleBigDigit = u64;
 pub static ZERO_BIG_DIGIT: BigDigit = 0;
 static ZERO_VEC: [BigDigit, ..1] = [ZERO_BIG_DIGIT];
 
+#[allow(non_snake_case)]
 pub mod BigDigit {
     use super::BigDigit;
     use super::DoubleBigDigit;

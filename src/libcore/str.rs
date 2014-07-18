@@ -394,9 +394,9 @@ impl NaiveSearcher {
     fn next(&mut self, haystack: &[u8], needle: &[u8]) -> Option<(uint, uint)> {
         while self.position + needle.len() <= haystack.len() {
             if haystack.slice(self.position, self.position + needle.len()) == needle {
-                let matchPos = self.position;
+                let match_pos = self.position;
                 self.position += needle.len(); // add 1 for all matches
-                return Some((matchPos, matchPos + needle.len()));
+                return Some((match_pos, match_pos + needle.len()));
             } else {
                 self.position += 1;
             }
@@ -410,7 +410,7 @@ impl NaiveSearcher {
 #[deriving(Clone)]
 struct TwoWaySearcher {
     // constants
-    critPos: uint,
+    crit_pos: uint,
     period: uint,
     byteset: u64,
 
@@ -423,32 +423,31 @@ struct TwoWaySearcher {
 // Crochemore, M., Perrin, D., 1991, Two-way string-matching, Journal of the ACM 38(3):651-675.
 impl TwoWaySearcher {
     fn new(needle: &[u8]) -> TwoWaySearcher {
-        let (critPos1, period1) = TwoWaySearcher::maximal_suffix(needle, false);
-        let (critPos2, period2) = TwoWaySearcher::maximal_suffix(needle, true);
+        let (crit_pos1, period1) = TwoWaySearcher::maximal_suffix(needle, false);
+        let (crit_pos2, period2) = TwoWaySearcher::maximal_suffix(needle, true);
 
-        let critPos;
+        let crit_pos;
         let period;
-        if critPos1 > critPos2 {
-            critPos = critPos1;
+        if crit_pos1 > crit_pos2 {
+            crit_pos = crit_pos1;
             period = period1;
         } else {
-            critPos = critPos2;
+            crit_pos = crit_pos2;
             period = period2;
         }
 
         let byteset = needle.iter()
                             .fold(0, |a, &b| (1 << ((b & 0x3f) as uint)) | a);
 
-
-        // The logic here (calculating critPos and period, the final if statement to see which
+        // The logic here (calculating crit_pos and period, the final if statement to see which
         // period to use for the TwoWaySearcher) is essentially an implementation of the
         // "small-period" function from the paper (p. 670)
         //
-        // In the paper they check whether `needle.slice_to(critPos)` is a suffix of
-        // `needle.slice(critPos, critPos + period)`, which is precisely what this does
-        if needle.slice_to(critPos) == needle.slice(period, period + critPos) {
+        // In the paper they check whether `needle.slice_to(crit_pos)` is a suffix of
+        // `needle.slice(crit_pos, crit_pos + period)`, which is precisely what this does
+        if needle.slice_to(crit_pos) == needle.slice(period, period + crit_pos) {
             TwoWaySearcher {
-                critPos: critPos,
+                crit_pos: crit_pos,
                 period: period,
                 byteset: byteset,
 
@@ -457,8 +456,8 @@ impl TwoWaySearcher {
             }
         } else {
             TwoWaySearcher {
-                critPos: critPos,
-                period: cmp::max(critPos, needle.len() - critPos) + 1,
+                crit_pos: crit_pos,
+                period: cmp::max(crit_pos, needle.len() - crit_pos) + 1,
                 byteset: byteset,
 
                 position: 0,
@@ -468,7 +467,7 @@ impl TwoWaySearcher {
     }
 
     #[inline]
-    fn next(&mut self, haystack: &[u8], needle: &[u8], longPeriod: bool) -> Option<(uint, uint)> {
+    fn next(&mut self, haystack: &[u8], needle: &[u8], long_period: bool) -> Option<(uint, uint)> {
         'search: loop {
             // Check that we have room to search in
             if self.position + needle.len() > haystack.len() {
@@ -484,11 +483,12 @@ impl TwoWaySearcher {
             }
 
             // See if the right part of the needle matches
-            let start = if longPeriod { self.critPos } else { cmp::max(self.critPos, self.memory) };
+            let start = if long_period { self.crit_pos }
+                        else { cmp::max(self.crit_pos, self.memory) };
             for i in range(start, needle.len()) {
                 if needle[i] != haystack[self.position + i] {
-                    self.position += i - self.critPos + 1;
-                    if !longPeriod {
+                    self.position += i - self.crit_pos + 1;
+                    if !long_period {
                         self.memory = 0;
                     }
                     continue 'search;
@@ -496,11 +496,11 @@ impl TwoWaySearcher {
             }
 
             // See if the left part of the needle matches
-            let start = if longPeriod { 0 } else { self.memory };
-            for i in range(start, self.critPos).rev() {
+            let start = if long_period { 0 } else { self.memory };
+            for i in range(start, self.crit_pos).rev() {
                 if needle[i] != haystack[self.position + i] {
                     self.position += self.period;
-                    if !longPeriod {
+                    if !long_period {
                         self.memory = needle.len() - self.period;
                     }
                     continue 'search;
@@ -508,12 +508,12 @@ impl TwoWaySearcher {
             }
 
             // We have found a match!
-            let matchPos = self.position;
+            let match_pos = self.position;
             self.position += needle.len(); // add self.period for all matches
-            if !longPeriod {
+            if !long_period {
                 self.memory = 0; // set to needle.len() - self.period for all matches
             }
-            return Some((matchPos, matchPos + needle.len()));
+            return Some((match_pos, match_pos + needle.len()));
         }
     }
 

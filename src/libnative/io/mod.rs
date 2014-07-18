@@ -21,7 +21,7 @@
 //! play. The only dependencies of these modules are the normal system libraries
 //! that you would find on the respective platform.
 
-#![allow(non_snake_case_functions)]
+#![allow(non_snake_case)]
 
 use libc::c_int;
 use libc;

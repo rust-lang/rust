@@ -159,6 +159,7 @@ macro_rules! impl_hash_tuple(
         impl<S: Writer, $($name: Hash<S>),*> Hash<S> for ($($name,)*) {
             #[allow(uppercase_variables)]
             #[inline]
+            #[allow(non_snake_case)]
             fn hash(&self, state: &mut S) {
                 match *self {
                     ($(ref $name,)*) => {

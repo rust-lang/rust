@@ -11,21 +11,21 @@
 // ignore-tidy-linelength
 
 #![allow(dead_code)]
-#![deny(uppercase_variables)]
+#![deny(non_snake_case)]
 
 use std::io::File;
 use std::io::IoError;
 
 struct Something {
-    X: uint //~ ERROR structure field names should start with a lowercase character
+    X: uint //~ ERROR structure field `X` should have a snake case name such as `x`
 }
 
-fn test(Xx: uint) { //~ ERROR variable names should start with a lowercase character
+fn test(Xx: uint) { //~ ERROR variable `Xx` should have a snake case name such as `xx`
     println!("{}", Xx);
 }
 
 fn main() {
-    let Test: uint = 0; //~ ERROR variable names should start with a lowercase character
+    let Test: uint = 0; //~ ERROR variable `Test` should have a snake case name such as `test`
     println!("{}", Test);
 
     let mut f = File::open(&Path::new("something.txt"));
@@ -33,7 +33,7 @@ fn main() {
     match f.read(buff) {
         Ok(cnt) => println!("read this many bytes: {}", cnt),
         Err(IoError{ kind: EndOfFile, .. }) => println!("Got end of file: {}", EndOfFile.to_string()),
-                        //~^ ERROR variable names should start with a lowercase character
+        //~^ ERROR variable `EndOfFile` should have a snake case name such as `end_of_file`
     }
 
     test(1);
