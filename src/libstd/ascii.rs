@@ -20,7 +20,8 @@ use iter::Iterator;
 use mem;
 use option::{Option, Some, None};
 use slice::{ImmutableVector, MutableVector, Vector};
-use str::{Str, StrAllocating, StrSlice};
+use str::{Str, StrSlice};
+use str;
 use string::String;
 use to_string::IntoStr;
 use vec::Vec;
@@ -366,52 +367,86 @@ impl IntoBytes for Vec<Ascii> {
     }
 }
 
+
 /// Extension methods for ASCII-subset only operations on owned strings
-pub trait OwnedStrAsciiExt {
+pub trait OwnedAsciiExt {
     /// Convert the string to ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
-    fn into_ascii_upper(self) -> String;
+    fn into_ascii_upper(self) -> Self;
 
     /// Convert the string to ASCII lower case:
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
-    fn into_ascii_lower(self) -> String;
+    fn into_ascii_lower(self) -> Self;
 }
 
 /// Extension methods for ASCII-subset only operations on string slices
-pub trait StrAsciiExt {
+pub trait AsciiExt<T> {
     /// Makes a copy of the string in ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
-    fn to_ascii_upper(&self) -> String;
+    fn to_ascii_upper(&self) -> T;
 
     /// Makes a copy of the string in ASCII lower case:
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
-    fn to_ascii_lower(&self) -> String;
+    fn to_ascii_lower(&self) -> T;
 
     /// Check that two strings are an ASCII case-insensitive match.
     /// Same as `to_ascii_lower(a) == to_ascii_lower(b)`,
     /// but without allocating and copying temporary strings.
-    fn eq_ignore_ascii_case(&self, other: &str) -> bool;
+    fn eq_ignore_ascii_case(&self, other: Self) -> bool;
 }
 
-impl<'a> StrAsciiExt for &'a str {
+impl<'a> AsciiExt<String> for &'a str {
     #[inline]
     fn to_ascii_upper(&self) -> String {
-        unsafe { str_copy_map_bytes(*self, &ASCII_UPPER_MAP) }
+        // Vec<u8>::to_ascii_upper() preserves the UTF-8 invariant.
+        unsafe { str::raw::from_utf8_owned(self.as_bytes().to_ascii_upper()) }
     }
 
     #[inline]
     fn to_ascii_lower(&self) -> String {
-        unsafe { str_copy_map_bytes(*self, &ASCII_LOWER_MAP) }
+        // Vec<u8>::to_ascii_lower() preserves the UTF-8 invariant.
+        unsafe { str::raw::from_utf8_owned(self.as_bytes().to_ascii_lower()) }
     }
 
     #[inline]
     fn eq_ignore_ascii_case(&self, other: &str) -> bool {
+        self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
+    }
+}
+
+impl OwnedAsciiExt for String {
+    #[inline]
+    fn into_ascii_upper(self) -> String {
+        // Vec<u8>::into_ascii_upper() preserves the UTF-8 invariant.
+        unsafe { str::raw::from_utf8_owned(self.into_bytes().into_ascii_upper()) }
+    }
+
+    #[inline]
+    fn into_ascii_lower(self) -> String {
+        // Vec<u8>::into_ascii_lower() preserves the UTF-8 invariant.
+        unsafe { str::raw::from_utf8_owned(self.into_bytes().into_ascii_lower()) }
+    }
+}
+
+impl<'a> AsciiExt<Vec<u8>> for &'a [u8] {
+    #[inline]
+    fn to_ascii_upper(&self) -> Vec<u8> {
+        self.iter().map(|&byte| ASCII_UPPER_MAP[byte as uint]).collect()
+    }
+
+    #[inline]
+    fn to_ascii_lower(&self) -> Vec<u8> {
+        self.iter().map(|&byte| ASCII_LOWER_MAP[byte as uint]).collect()
+    }
+
+    #[inline]
+    fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
         self.len() == other.len() &&
-            self.as_bytes().iter().zip(other.as_bytes().iter()).all(
+            self.iter().zip(other.iter()).all(
             |(byte_self, byte_other)| {
                 ASCII_LOWER_MAP[*byte_self as uint] ==
                     ASCII_LOWER_MAP[*byte_other as uint]
@@ -419,37 +454,24 @@ impl<'a> StrAsciiExt for &'a str {
     }
 }
 
-impl OwnedStrAsciiExt for String {
+impl OwnedAsciiExt for Vec<u8> {
     #[inline]
-    fn into_ascii_upper(self) -> String {
-        unsafe { str_map_bytes(self, &ASCII_UPPER_MAP) }
+    fn into_ascii_upper(mut self) -> Vec<u8> {
+        for byte in self.mut_iter() {
+            *byte = ASCII_UPPER_MAP[*byte as uint];
+        }
+        self
     }
 
     #[inline]
-    fn into_ascii_lower(self) -> String {
-        unsafe { str_map_bytes(self, &ASCII_LOWER_MAP) }
+    fn into_ascii_lower(mut self) -> Vec<u8> {
+        for byte in self.mut_iter() {
+            *byte = ASCII_LOWER_MAP[*byte as uint];
+        }
+        self
     }
 }
 
-#[inline]
-unsafe fn str_map_bytes(string: String, map: &[u8, ..256]) -> String {
-    let mut bytes = string.into_bytes();
-
-    for b in bytes.mut_iter() {
-        *b = map[*b as uint];
-    }
-
-    String::from_utf8(bytes).unwrap()
-}
-
-#[inline]
-unsafe fn str_copy_map_bytes(string: &str, map: &[u8, ..256]) -> String {
-    let mut s = String::from_str(string);
-    for b in s.as_mut_bytes().mut_iter() {
-        *b = map[*b as uint];
-    }
-    s.into_string()
-}
 
 pub static ASCII_LOWER_MAP: [u8, ..256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
