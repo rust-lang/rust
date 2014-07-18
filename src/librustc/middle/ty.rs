@@ -3665,8 +3665,10 @@ impl VariantInfo {
             ast::StructVariantKind(ref struct_def) => {
 
                 let fields: &[StructField] = struct_def.fields.as_slice();
-
-                assert!(fields.len() > 0);
+                if fields.len() == 0 {
+                    cx.sess.span_fatal(ast_variant.span,
+                        "struct variant must have at least one field")
+                }
 
                 let arg_tys = ty_fn_args(ctor_ty).iter().map(|a| *a).collect();
                 let arg_names = fields.iter().map(|field| {
