@@ -3022,6 +3022,10 @@ pub mod consts {
             pub static MINCORE_MODIFIED_OTHER : c_int = 0x10;
             pub static MINCORE_SUPER : c_int = 0x20;
 
+            pub static INHERIT_SHARE ; c_int = 0x0;
+            pub static INHERIT_COPY ; c_int = 0x1;
+            pub static INHERIT_NONE ; c_int = 0x2;
+
             pub static AF_INET: c_int = 2;
             pub static AF_INET6: c_int = 28;
             pub static AF_UNIX: c_int = 1;
@@ -3408,6 +3412,10 @@ pub mod consts {
             pub static MINCORE_MODIFIED : c_int = 0x4;
             pub static MINCORE_REFERENCED_OTHER : c_int = 0x8;
             pub static MINCORE_MODIFIED_OTHER : c_int = 0x10;
+
+            pub static VM_INHERIT_SHARE ; c_int = 0x0;
+            pub static VM_INHERIT_COPY ; c_int = 0x1;
+            pub static VM_INHERIT_NONE ; c_int = 0x2;
 
             pub static AF_UNIX: c_int = 1;
             pub static AF_INET: c_int = 2;
@@ -4239,6 +4247,8 @@ pub mod funcs {
                            -> c_int;
             pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)
                            -> c_int;
+            pub fn minherit(addr: *mut c_void, len: size_t, inherit: c_int)
+                            -> c_int;
         }
     }
 
