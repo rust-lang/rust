@@ -32,13 +32,17 @@ fn main() {
     // bad number of arguments, see #15780
 
     format!("{0}");
-    //^~ ERROR invalid reference to argument `0` (there are 0 arguments)
+    //~^ ERROR invalid reference to argument `0` (no arguments given)
 
     format!("{0} {1}", 1);
-    //^~ ERROR invalid reference to argument `1` (there is 1 argument)
+    //~^ ERROR invalid reference to argument `1` (there is 1 argument)
 
     format!("{0} {1} {2}", 1, 2);
-    //^~ ERROR invalid reference to argument `2` (there are 2 arguments)
+    //~^ ERROR invalid reference to argument `2` (there are 2 arguments)
+
+    format!("{0} {1}");
+    //~^ ERROR invalid reference to argument `0` (no arguments given)
+    //~^^ ERROR invalid reference to argument `1` (no arguments given)
 
     // bad syntax of the format string
 

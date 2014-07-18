@@ -216,10 +216,10 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 
     fn describe_num_args(&self) -> String {
-        if self.args.len() == 1 {
-            "there is 1 argument".to_string()
-        } else {
-            format!("there are {} arguments", self.args.len())
+        match self.args.len() {
+            0 => "no arguments given".to_string(),
+            1 => "there is 1 argument".to_string(),
+            x => format!("there are {} arguments", x),
         }
     }
 
