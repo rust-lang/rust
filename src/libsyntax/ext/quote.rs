@@ -54,9 +54,10 @@ pub mod rt {
         }
     }
 
-    impl ToTokens for Vec<TokenTree> {
-        fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            (*self).clone()
+    impl<T: ToTokens> ToTokens for Vec<T> {
+        fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
+            let a = self.iter().flat_map(|t| t.to_tokens(cx).move_iter());
+            FromIterator::from_iter(a)
         }
     }
 
@@ -64,6 +65,15 @@ pub mod rt {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
             // FIXME: use the span?
             self.node.to_tokens(cx)
+        }
+    }
+
+    impl<T: ToTokens> ToTokens for Option<T> {
+        fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
+            match self {
+                &Some(ref t) => t.to_tokens(cx),
+                &None => Vec::new(),
+            }
         }
     }
 
@@ -133,10 +143,17 @@ pub mod rt {
     impl_to_source!(ast::Arg, arg_to_string)
     impl_to_source!(Generics, generics_to_string)
     impl_to_source!(Gc<ast::Item>, item_to_string)
+    impl_to_source!(Gc<ast::Method>, method_to_string)
     impl_to_source!(Gc<ast::Expr>, expr_to_string)
     impl_to_source!(Gc<ast::Pat>, pat_to_string)
     impl_to_source_slice!(ast::Ty, ", ")
     impl_to_source_slice!(Gc<ast::Item>, "\n\n")
+
+    impl ToSource for ast::Attribute_ {
+        fn to_source(&self) -> String {
+            pprust::attribute_to_string(&dummy_spanned(*self))
+        }
+    }
 
     impl<'a> ToSource for &'a str {
         fn to_source(&self) -> String {
@@ -222,6 +239,7 @@ pub mod rt {
     impl_to_tokens!(ast::Ident)
     impl_to_tokens!(Gc<ast::Item>)
     impl_to_tokens!(Gc<ast::Pat>)
+    impl_to_tokens!(Gc<ast::Method>)
     impl_to_tokens_lifetime!(&'a [Gc<ast::Item>])
     impl_to_tokens!(ast::Ty)
     impl_to_tokens_lifetime!(&'a [ast::Ty])
@@ -229,6 +247,7 @@ pub mod rt {
     impl_to_tokens!(Gc<ast::Expr>)
     impl_to_tokens!(ast::Block)
     impl_to_tokens!(ast::Arg)
+    impl_to_tokens!(ast::Attribute_)
     impl_to_tokens_lifetime!(&'a str)
     impl_to_tokens!(())
     impl_to_tokens!(char)
@@ -332,6 +351,16 @@ pub fn expand_quote_ty(cx: &mut ExtCtxt,
                        -> Box<base::MacResult> {
     let e_param_colons = cx.expr_lit(sp, ast::LitBool(false));
     let expanded = expand_parse_call(cx, sp, "parse_ty",
+                                     vec!(e_param_colons), tts);
+    base::MacExpr::new(expanded)
+}
+
+pub fn expand_quote_method(cx: &mut ExtCtxt,
+                           sp: Span,
+                           tts: &[ast::TokenTree])
+                           -> Box<base::MacResult> {
+    let e_param_colons = cx.expr_none(sp);
+    let expanded = expand_parse_call(cx, sp, "parse_method",
                                      vec!(e_param_colons), tts);
     base::MacExpr::new(expanded)
 }

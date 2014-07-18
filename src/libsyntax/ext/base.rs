@@ -371,6 +371,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern("quote_ty"),
                        builtin_normal_expander(
                             ext::quote::expand_quote_ty));
+    syntax_expanders.insert(intern("quote_method"),
+                       builtin_normal_expander(
+                            ext::quote::expand_quote_method));
     syntax_expanders.insert(intern("quote_item"),
                        builtin_normal_expander(
                             ext::quote::expand_quote_item));
