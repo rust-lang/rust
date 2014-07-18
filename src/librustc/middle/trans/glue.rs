@@ -178,29 +178,12 @@ pub fn lazily_emit_visit_glue(ccx: &CrateContext, ti: &tydesc_info) -> ValueRef 
 }
 
 // See [Note-arg-mode]
-pub fn call_visit_glue(bcx: &Block, v: ValueRef, tydesc: ValueRef,
-                       static_ti: Option<&tydesc_info>) {
+pub fn call_visit_glue(bcx: &Block, v: ValueRef, tydesc: ValueRef) {
     let _icx = push_ctxt("call_visit_glue");
-    let ccx = bcx.ccx();
-    let static_glue_fn = static_ti.map(|sti| lazily_emit_visit_glue(ccx, sti));
 
-    // When static type info is available, avoid casting to a generic pointer.
-    let llrawptr = if static_glue_fn.is_none() {
-        PointerCast(bcx, v, Type::i8p(ccx))
-    } else {
-        v
-    };
-
-    let llfn = {
-        match static_glue_fn {
-            None => {
-                // Select out the glue function to call from the tydesc
-                let llfnptr = GEPi(bcx, tydesc, [0u, abi::tydesc_field_visit_glue]);
-                Load(bcx, llfnptr)
-            }
-            Some(sgf) => sgf
-        }
-    };
+    // Select the glue function to call from the tydesc
+    let llfn = Load(bcx, GEPi(bcx, tydesc, [0u, abi::tydesc_field_visit_glue]));
+    let llrawptr = PointerCast(bcx, v, Type::i8p(bcx.ccx()));
 
     Call(bcx, llfn, [llrawptr], []);
 }
