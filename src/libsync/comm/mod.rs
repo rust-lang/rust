@@ -2098,4 +2098,23 @@ mod sync_tests {
         });
         assert_eq!(rx.recv(), 1);
     } #[ignore(reason = "flaky on libnative")])
+
+    test!(fn issue_15761() {
+        fn repro() {
+            let (tx1, rx1) = sync_channel::<()>(3);
+            let (tx2, rx2) = sync_channel::<()>(3);
+
+            spawn(proc() {
+                rx1.recv();
+                tx2.try_send(()).unwrap();
+            });
+
+            tx1.try_send(()).unwrap();
+            rx2.recv();
+        }
+
+        for _ in range(0u, 100) {
+            repro()
+        }
+    })
 }

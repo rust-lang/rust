@@ -218,9 +218,15 @@ impl<T: Send> Packet<T> {
             }
         } else {
             // If the buffer has some space and the capacity isn't 0, then we
-            // just enqueue the data for later retrieval.
+            // just enqueue the data for later retrieval, ensuring to wake up
+            // any blocked receiver if there is one.
             assert!(state.buf.size() < state.buf.cap());
             state.buf.enqueue(t);
+            match mem::replace(&mut state.blocker, NoneBlocked) {
+                BlockedReceiver(task) => wakeup(task, guard),
+                NoneBlocked => {}
+                BlockedSender(..) => unreachable!(),
+            }
             Ok(())
         }
     }
