@@ -29,6 +29,17 @@ fn main() {
     format!("{foo}", foo=1, foo=2);    //~ ERROR: duplicate argument
     format!("", foo=1, 2);             //~ ERROR: positional arguments cannot follow
 
+    // bad number of arguments, see #15780
+
+    format!("{0}");
+    //^~ ERROR invalid reference to argument `0` (there are 0 arguments)
+
+    format!("{0} {1}", 1);
+    //^~ ERROR invalid reference to argument `1` (there is 1 argument)
+
+    format!("{0} {1} {2}", 1, 2);
+    //^~ ERROR invalid reference to argument `2` (there are 2 arguments)
+
     // bad syntax of the format string
 
     format!("{"); //~ ERROR: expected `}` but string was terminated
