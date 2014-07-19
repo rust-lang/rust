@@ -278,6 +278,23 @@ impl<T> DList<T> {
     /// Move the last element to the front of the list.
     ///
     /// If the list is empty, do nothing.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::{DList, Deque};
+    ///
+    /// let mut dl = DList::new();
+    /// dl.push_back(1i);
+    /// dl.push_back(2);
+    /// dl.push_back(3);
+    ///
+    /// dl.rotate_forward();
+    ///
+    /// for e in dl.iter() {
+    ///     println!("{}", e); // prints 3, then 1, then 2
+    /// }
+    /// ```
     #[inline]
     pub fn rotate_forward(&mut self) {
         self.pop_back_node().map(|tail| {
@@ -288,6 +305,23 @@ impl<T> DList<T> {
     /// Move the first element to the back of the list.
     ///
     /// If the list is empty, do nothing.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::{DList, Deque};
+    ///
+    /// let mut dl = DList::new();
+    /// dl.push_back(1i);
+    /// dl.push_back(2);
+    /// dl.push_back(3);
+    ///
+    /// dl.rotate_backward();
+    ///
+    /// for e in dl.iter() {
+    ///     println!("{}", e); // prints 2, then 3, then 1
+    /// }
+    /// ```
     #[inline]
     pub fn rotate_backward(&mut self) {
         self.pop_front_node().map(|head| {
@@ -298,6 +332,25 @@ impl<T> DList<T> {
     /// Add all elements from `other` to the end of the list
     ///
     /// O(1)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::{DList, Deque};
+    ///
+    /// let mut a = DList::new();
+    /// let mut b = DList::new();
+    /// a.push_back(1i);
+    /// a.push_back(2);
+    /// b.push_back(3i);
+    /// b.push_back(4);
+    ///
+    /// a.append(b);
+    ///
+    /// for e in a.iter() {
+    ///     println!("{}", e); // prints 1, then 2, then 3, then 4
+    /// }
+    /// ```
     pub fn append(&mut self, mut other: DList<T>) {
         match self.list_tail.resolve() {
             None => *self = other,
@@ -320,6 +373,25 @@ impl<T> DList<T> {
     /// Add all elements from `other` to the beginning of the list
     ///
     /// O(1)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::{DList, Deque};
+    ///
+    /// let mut a = DList::new();
+    /// let mut b = DList::new();
+    /// a.push_back(1i);
+    /// a.push_back(2);
+    /// b.push_back(3i);
+    /// b.push_back(4);
+    ///
+    /// a.prepend(b);
+    ///
+    /// for e in a.iter() {
+    ///     println!("{}", e); // prints 3, then 4, then 1, then 2
+    /// }
+    /// ```
     #[inline]
     pub fn prepend(&mut self, mut other: DList<T>) {
         mem::swap(self, &mut other);
@@ -330,6 +402,25 @@ impl<T> DList<T> {
     /// or at the end.
     ///
     /// O(N)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::{DList, Deque};
+    ///
+    /// let mut a: DList<int> = DList::new();
+    /// a.push_back(2i);
+    /// a.push_back(4);
+    /// a.push_back(7);
+    /// a.push_back(8);
+    ///
+    /// // insert 11 before the first odd number in the list
+    /// a.insert_when(11, |&e, _| e % 2 == 1);
+    ///
+    /// for e in a.iter() {
+    ///     println!("{}", e); // prints 2, then 4, then 11, then 7, then 8
+    /// }
+    /// ```
     pub fn insert_when(&mut self, elt: T, f: |&T, &T| -> bool) {
         {
             let mut it = self.mut_iter();
