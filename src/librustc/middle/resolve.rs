@@ -4397,7 +4397,7 @@ impl<'a> Resolver<'a> {
                     let ident = path1.node;
                     let renamed = mtwt::resolve(ident);
 
-                    match self.resolve_bare_identifier_pattern(ident) {
+                    match self.resolve_bare_identifier_pattern(ident, pattern.span) {
                         FoundStructOrEnumVariant(def, lp)
                                 if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `{}` to \
@@ -4561,7 +4561,7 @@ impl<'a> Resolver<'a> {
         });
     }
 
-    fn resolve_bare_identifier_pattern(&mut self, name: Ident)
+    fn resolve_bare_identifier_pattern(&mut self, name: Ident, span: Span)
                                        -> BareIdentifierPatternResolution {
         let module = self.current_module.clone();
         match self.resolve_item_in_lexical_scope(module,
@@ -4587,6 +4587,11 @@ impl<'a> Resolver<'a> {
                             }
                             def @ DefStatic(_, false) => {
                                 return FoundConst(def, LastMod(AllPublic));
+                            }
+                            DefStatic(_, true) => {
+                                self.resolve_error(span,
+                                    "mutable static variables cannot be referenced in a pattern");
+                                return BareIdentifierPatternUnresolved;
                             }
                             _ => {
                                 return BareIdentifierPatternUnresolved;

@@ -195,6 +195,7 @@ use llvm::{ValueRef, BasicBlockRef};
 use middle::const_eval;
 use middle::def;
 use middle::check_match;
+use middle::check_match::StaticInliner;
 use middle::lang_items::StrEqFnLangItem;
 use middle::pat_util::*;
 use middle::resolve::DefMap;
@@ -225,13 +226,8 @@ use std::gc::{Gc};
 use syntax::ast;
 use syntax::ast::Ident;
 use syntax::codemap::Span;
+use syntax::fold::Folder;
 use syntax::parse::token::InternedString;
-
-// An option identifying a literal: either an expression or a DefId of a static expression.
-enum Lit {
-    ExprLit(Gc<ast::Expr>),
-    ConstLit(ast::DefId),              // the def ID of the constant
-}
 
 #[deriving(PartialEq)]
 pub enum VecLenOpt {
@@ -242,24 +238,15 @@ pub enum VecLenOpt {
 // An option identifying a branch (either a literal, an enum variant or a
 // range)
 enum Opt {
-    lit(Lit),
+    lit(Gc<ast::Expr>),
     var(ty::Disr, Rc<adt::Repr>, ast::DefId),
     range(Gc<ast::Expr>, Gc<ast::Expr>),
     vec_len(/* length */ uint, VecLenOpt, /*range of matches*/(uint, uint))
 }
 
-fn lit_to_expr(tcx: &ty::ctxt, a: &Lit) -> Gc<ast::Expr> {
-    match *a {
-        ExprLit(existing_a_expr) => existing_a_expr,
-        ConstLit(a_const) => const_eval::lookup_const_by_id(tcx, a_const).unwrap()
-    }
-}
-
 fn opt_eq(tcx: &ty::ctxt, a: &Opt, b: &Opt) -> bool {
     match (a, b) {
-        (&lit(a), &lit(b)) => {
-            let a_expr = lit_to_expr(tcx, &a);
-            let b_expr = lit_to_expr(tcx, &b);
+        (&lit(a_expr), &lit(b_expr)) => {
             match const_eval::compare_lit_exprs(tcx, &*a_expr, &*b_expr) {
                 Some(val1) => val1 == 0,
                 None => fail!("compare_list_exprs: type mismatch"),
@@ -286,20 +273,13 @@ pub enum opt_result<'a> {
     range_result(Result<'a>, Result<'a>),
 }
 
-fn trans_opt<'a>(bcx: &'a Block<'a>, o: &Opt) -> opt_result<'a> {
+fn trans_opt<'a>(mut bcx: &'a Block<'a>, o: &Opt) -> opt_result<'a> {
     let _icx = push_ctxt("match::trans_opt");
     let ccx = bcx.ccx();
-    let mut bcx = bcx;
     match *o {
-        lit(ExprLit(ref lit_expr)) => {
-            let lit_datum = unpack_datum!(bcx, expr::trans(bcx, &**lit_expr));
-            let lit_datum = lit_datum.assert_rvalue(bcx); // literals are rvalues
-            let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
-            return single_result(Result::new(bcx, lit_datum.val));
-        }
-        lit(l @ ConstLit(ref def_id)) => {
-            let lit_ty = ty::node_id_to_type(bcx.tcx(), lit_to_expr(bcx.tcx(), &l).id);
-            let (llval, _) = consts::get_const_val(bcx.ccx(), *def_id);
+        lit(lit_expr) => {
+            let lit_ty = ty::node_id_to_type(bcx.tcx(), lit_expr.id);
+            let (llval, _) = consts::const_expr(ccx, &*lit_expr, true);
             let lit_datum = immediate_rvalue(llval, lit_ty);
             let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
             return single_result(Result::new(bcx, lit_datum.val));
@@ -546,13 +526,12 @@ fn enter_opt<'a, 'b>(
     let _indenter = indenter();
 
     let ctor = match opt {
-        &lit(x) => {
-            check_match::ConstantValue(const_eval::eval_const_expr(
-                bcx.tcx(), &*lit_to_expr(bcx.tcx(), &x)))
-        }
-        &range(ref lo, ref hi) => check_match::ConstantRange(
-            const_eval::eval_const_expr(bcx.tcx(), &**lo),
-            const_eval::eval_const_expr(bcx.tcx(), &**hi)
+        &lit(expr) => check_match::ConstantValue(
+            const_eval::eval_const_expr(bcx.tcx(), &*expr)
+        ),
+        &range(lo, hi) => check_match::ConstantRange(
+            const_eval::eval_const_expr(bcx.tcx(), &*lo),
+            const_eval::eval_const_expr(bcx.tcx(), &*hi)
         ),
         &vec_len(len, _, _) => check_match::Slice(len),
         &var(_, _, def_id) => check_match::Variant(def_id)
@@ -649,7 +628,7 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
         let cur = *br.pats.get(col);
         match cur.node {
             ast::PatLit(l) => {
-                add_to_set(ccx.tcx(), &mut found, lit(ExprLit(l)));
+                add_to_set(ccx.tcx(), &mut found, lit(l));
             }
             ast::PatIdent(..) => {
                 // This is either an enum variant or a variable binding.
@@ -658,10 +637,6 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
                     Some(def::DefVariant(..)) => {
                         add_to_set(ccx.tcx(), &mut found,
                                    variant_opt(bcx, cur.id));
-                    }
-                    Some(def::DefStatic(const_did, false)) => {
-                        add_to_set(ccx.tcx(), &mut found,
-                                   lit(ConstLit(const_did)));
                     }
                     _ => {}
                 }
@@ -675,10 +650,6 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
                     Some(def::DefVariant(..)) => {
                         add_to_set(ccx.tcx(), &mut found,
                                    variant_opt(bcx, cur.id));
-                    }
-                    Some(def::DefStatic(const_did, false)) => {
-                        add_to_set(ccx.tcx(), &mut found,
-                                   lit(ConstLit(const_did)));
                     }
                     _ => {}
                 }
@@ -1447,10 +1418,11 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
         bindings_map: create_bindings_map(bcx, *arm.pats.get(0))
     }).collect();
 
+    let mut static_inliner = StaticInliner { tcx: scope_cx.tcx() };
     let mut matches = Vec::new();
     for arm_data in arm_datas.iter() {
-        matches.extend(arm_data.arm.pats.iter().map(|p| Match {
-            pats: vec!(*p),
+        matches.extend(arm_data.arm.pats.iter().map(|&p| Match {
+            pats: vec![static_inliner.fold_pat(p)],
             data: arm_data,
             bound_ptrs: Vec::new(),
         }));
@@ -1753,8 +1725,6 @@ fn bind_irrefutable_pat<'a>(
                             }
                         }
                     }
-                }
-                Some(def::DefStatic(_, false)) => {
                 }
                 _ => {
                     // Nothing to do here.
