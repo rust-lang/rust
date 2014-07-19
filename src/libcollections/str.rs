@@ -559,7 +559,7 @@ pub mod raw {
     use core::raw::Slice;
     use core::ptr::RawPtr;
 
-    use string::String;
+    use string::{mod, String};
     use vec::Vec;
 
     use MutableSeq;
@@ -592,11 +592,10 @@ pub mod raw {
         buf
     }
 
-    /// Converts an owned vector of bytes to a new owned string. This assumes
-    /// that the utf-8-ness of the vector has already been validated
-    #[inline]
+    /// Deprecated. Replaced by `string::raw::from_utf8`
+    #[deprecated = "Use string::raw::from_utf8"]
     pub unsafe fn from_utf8_owned(v: Vec<u8>) -> String {
-        mem::transmute(v)
+        string::raw::from_utf8(v)
     }
 
     /// Converts a byte to a string.

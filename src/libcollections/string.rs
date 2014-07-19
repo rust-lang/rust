@@ -570,6 +570,19 @@ impl<S: Str> Add<S, String> for String {
     }
 }
 
+pub mod raw {
+    use super::String;
+    use vec::Vec;
+
+    /// Converts a vector of bytes to a new `String` without checking if
+    /// it contains valid UTF-8. This is unsafe because it assumes that
+    /// the utf-8-ness of the vector has already been validated.
+    #[inline]
+    pub unsafe fn from_utf8(bytes: Vec<u8>) -> String {
+        String { vec: bytes }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::prelude::*;
