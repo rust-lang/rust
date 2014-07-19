@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::const_eval::{compare_const_vals, const_bool, const_float, const_nil, const_val};
-use middle::const_eval::{eval_const_expr, lookup_const_by_id};
+use middle::const_eval::{const_expr_to_pat, eval_const_expr, lookup_const_by_id};
 use middle::def::*;
 use middle::pat_util::*;
 use middle::ty::*;
@@ -21,8 +21,9 @@ use std::iter::range_inclusive;
 use syntax::ast::*;
 use syntax::ast_util::{is_unguarded, walk_pat};
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
-use syntax::owned_slice::OwnedSlice;
+use syntax::fold::{Folder, noop_fold_pat};
 use syntax::print::pprust::pat_to_string;
+use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
 use util::ppaux::ty_to_string;
@@ -76,6 +77,12 @@ impl fmt::Show for Matrix {
     }
 }
 
+impl FromIterator<Vec<Gc<Pat>>> for Matrix {
+    fn from_iter<T: Iterator<Vec<Gc<Pat>>>>(mut iterator: T) -> Matrix {
+        Matrix(iterator.collect())
+    }
+}
+
 pub struct MatchCheckCtxt<'a> {
     pub tcx: &'a ty::ctxt
 }
@@ -120,10 +127,8 @@ impl<'a> Visitor<()> for MatchCheckCtxt<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt, krate: &Crate) {
-    let mut cx = MatchCheckCtxt { tcx: tcx, };
-
+    let mut cx = MatchCheckCtxt { tcx: tcx };
     visit::walk_crate(&mut cx, krate, ());
-
     tcx.sess.abort_if_errors();
 }
 
@@ -155,48 +160,49 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                 // If the type *is* empty, it's vacuously exhaustive
                 return;
             }
-            let m: Matrix = Matrix(arms
+
+            let mut static_inliner = StaticInliner { tcx: cx.tcx };
+            let matrix: Matrix = arms
                 .iter()
                 .filter(|&arm| is_unguarded(arm))
                 .flat_map(|arm| arm.pats.iter())
-                .map(|pat| vec!(pat.clone()))
-                .collect());
-            check_exhaustive(cx, ex.span, &m);
+                .map(|pat| vec![static_inliner.fold_pat(*pat)])
+                .collect();
+            check_exhaustive(cx, ex.span, &matrix);
         },
         _ => ()
+    }
+}
+
+fn is_expr_const_nan(tcx: &ty::ctxt, expr: &Expr) -> bool {
+    match eval_const_expr(tcx, expr) {
+        const_float(f) => f.is_nan(),
+        _ => false
     }
 }
 
 // Check for unreachable patterns
 fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
     let mut seen = Matrix(vec!());
+    let mut static_inliner = StaticInliner { tcx: cx.tcx };
     for arm in arms.iter() {
         for pat in arm.pats.iter() {
-            // Check that we do not match against a static NaN (#6804)
-            let pat_matches_nan: |&Pat| -> bool = |p| {
-                let opt_def = cx.tcx.def_map.borrow().find_copy(&p.id);
-                match opt_def {
-                    Some(DefStatic(did, false)) => {
-                        let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
-                        match eval_const_expr(cx.tcx, &*const_expr) {
-                            const_float(f) if f.is_nan() => true,
-                            _ => false
-                        }
-                    }
-                    _ => false
-                }
-            };
+            let inlined = static_inliner.fold_pat(*pat);
 
-            walk_pat(&**pat, |p| {
-                if pat_matches_nan(p) {
-                    span_warn!(cx.tcx.sess, p.span, E0003,
-                        "unmatchable NaN in pattern, use the is_nan method in a guard instead"
-                    );
+            // Check that we do not match against a static NaN (#6804)
+            walk_pat(&*inlined, |p| {
+                match p.node {
+                    PatLit(expr) if is_expr_const_nan(cx.tcx, &*expr) => {
+                        span_warn!(cx.tcx.sess, pat.span, E0003,
+                            "unmatchable NaN in pattern, \
+                             use the is_nan method in a guard instead");
+                    }
+                    _ => ()
                 }
                 true
             });
 
-            let v = vec!(*pat);
+            let v = vec![inlined];
             match is_useful(cx, &seen, v.as_slice(), LeaveOutWitness) {
                 NotUseful => span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern"),
                 Useful => (),
@@ -218,8 +224,8 @@ fn raw_pat(p: Gc<Pat>) -> Gc<Pat> {
     }
 }
 
-fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &Matrix) {
-    match is_useful(cx, m, [wild()], ConstructWitness) {
+fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix) {
+    match is_useful(cx, matrix, [wild()], ConstructWitness) {
         UsefulWithWitness(pats) => {
             let witness = match pats.as_slice() {
                 [witness] => witness,
@@ -251,16 +257,26 @@ fn const_val_to_expr(value: &const_val) -> Gc<Expr> {
     }
 }
 
-fn def_to_path(tcx: &ty::ctxt, id: DefId) -> Path {
-    ty::with_path(tcx, id, |mut path| Path {
-        global: false,
-        segments: path.last().map(|elem| PathSegment {
-            identifier: Ident::new(elem.name()),
-            lifetimes: vec!(),
-            types: OwnedSlice::empty()
-        }).move_iter().collect(),
-        span: DUMMY_SP,
-    })
+pub struct StaticInliner<'a> {
+    pub tcx: &'a ty::ctxt
+}
+
+impl<'a> Folder for StaticInliner<'a> {
+    fn fold_pat(&mut self, pat: Gc<Pat>) -> Gc<Pat> {
+        match pat.node {
+            PatIdent(..) | PatEnum(..) => {
+                let def = self.tcx.def_map.borrow().find_copy(&pat.id);
+                match def {
+                    Some(DefStatic(did, _)) => {
+                        let const_expr = lookup_const_by_id(self.tcx, did).unwrap();
+                        const_expr_to_pat(self.tcx, const_expr)
+                    },
+                    _ => noop_fold_pat(pat, self)
+                }
+            }
+            _ => noop_fold_pat(pat, self)
+        }
+    }
 }
 
 /// Constructs a partial witness for a pattern given a list of
@@ -283,9 +299,11 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
 
         ty::ty_enum(cid, _) | ty::ty_struct(cid, _)  => {
             let (vid, is_structure) = match ctor {
-                &Variant(vid) => (vid,
-                    ty::enum_variant_with_id(cx.tcx, cid, vid).arg_names.is_some()),
-                _ => (cid, true)
+                &Variant(vid) =>
+                    (vid, ty::enum_variant_with_id(cx.tcx, cid, vid).arg_names.is_some()),
+                _ =>
+                    (cid, ty::lookup_struct_fields(cx.tcx, cid).iter()
+                        .any(|field| field.name != token::special_idents::unnamed_field.name))
             };
             if is_structure {
                 let fields = ty::lookup_struct_fields(cx.tcx, vid);
@@ -459,8 +477,7 @@ fn is_useful(cx: &MatchCheckCtxt, matrix @ &Matrix(ref rows): &Matrix,
             },
 
             Some(constructor) => {
-                let matrix = Matrix(rows.iter().filter_map(|r|
-                    default(cx, r.as_slice())).collect());
+                let matrix = rows.iter().filter_map(|r| default(cx, r.as_slice())).collect();
                 match is_useful(cx, &matrix, v.tail(), witness) {
                     UsefulWithWitness(pats) => {
                         let arity = constructor_arity(cx, &constructor, left_ty);
@@ -506,25 +523,23 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: Gc<Pat>,
     match pat.node {
         PatIdent(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
-                Some(&DefStatic(did, false)) => {
-                    let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
-                    vec!(ConstantValue(eval_const_expr(cx.tcx, &*const_expr)))
-                },
+                Some(&DefStatic(..)) =>
+                    cx.tcx.sess.span_bug(pat.span, "static pattern should've been rewritten"),
                 Some(&DefStruct(_)) => vec!(Single),
                 Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!()
             },
         PatEnum(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
-                Some(&DefStatic(did, false)) => {
-                    let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
-                    vec!(ConstantValue(eval_const_expr(cx.tcx, &*const_expr)))
-                },
+                Some(&DefStatic(..)) =>
+                    cx.tcx.sess.span_bug(pat.span, "static pattern should've been rewritten"),
                 Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
         PatStruct(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
+                Some(&DefStatic(..)) =>
+                    cx.tcx.sess.span_bug(pat.span, "static pattern should've been rewritten"),
                 Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
@@ -583,7 +598,7 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: ty::t) -> 
 }
 
 fn range_covered_by_constructor(ctor: &Constructor,
-                                from: &const_val,to: &const_val) -> Option<bool> {
+                                from: &const_val, to: &const_val) -> Option<bool> {
     let (c_from, c_to) = match *ctor {
         ConstantValue(ref value)        => (value, value),
         ConstantRange(ref from, ref to) => (from, to),
@@ -621,44 +636,22 @@ pub fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
         &PatIdent(_, _, _) => {
             let opt_def = cx.tcx.def_map.borrow().find_copy(&pat_id);
             match opt_def {
+                Some(DefStatic(..)) =>
+                    cx.tcx.sess.span_bug(pat_span, "static pattern should've been rewritten"),
                 Some(DefVariant(_, id, _)) => if *constructor == Variant(id) {
                     Some(vec!())
                 } else {
                     None
                 },
-                Some(DefStatic(did, _)) => {
-                    let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
-                    let e_v = eval_const_expr(cx.tcx, &*const_expr);
-                    match range_covered_by_constructor(constructor, &e_v, &e_v) {
-                        Some(true) => Some(vec!()),
-                        Some(false) => None,
-                        None => {
-                            cx.tcx.sess.span_err(pat_span, "mismatched types between arms");
-                            None
-                        }
-                    }
-                }
-                _ => {
-                    Some(Vec::from_elem(arity, wild()))
-                }
+                _ => Some(Vec::from_elem(arity, wild()))
             }
         }
 
         &PatEnum(_, ref args) => {
             let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
             match def {
-                DefStatic(did, _) => {
-                    let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
-                    let e_v = eval_const_expr(cx.tcx, &*const_expr);
-                    match range_covered_by_constructor(constructor, &e_v, &e_v) {
-                        Some(true) => Some(vec!()),
-                        Some(false) => None,
-                        None => {
-                            cx.tcx.sess.span_err(pat_span, "mismatched types between arms");
-                            None
-                        }
-                    }
-                }
+                DefStatic(..) =>
+                    cx.tcx.sess.span_bug(pat_span, "static pattern should've been rewritten"),
                 DefVariant(_, id, _) if *constructor != Variant(id) => None,
                 DefVariant(..) | DefFn(..) | DefStruct(..) => {
                     Some(match args {
@@ -674,6 +667,8 @@ pub fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
             // Is this a struct or an enum variant?
             let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
             let class_id = match def {
+                DefStatic(..) =>
+                    cx.tcx.sess.span_bug(pat_span, "static pattern should've been rewritten"),
                 DefVariant(_, variant_id, _) => if *constructor == Variant(variant_id) {
                     Some(variant_id)
                 } else {
@@ -782,7 +777,8 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
         LocalFor => "`for` loop"
     };
 
-    match is_refutable(cx, loc.pat) {
+    let mut static_inliner = StaticInliner { tcx: cx.tcx };
+    match is_refutable(cx, static_inliner.fold_pat(loc.pat)) {
         Some(pat) => {
             span_err!(cx.tcx.sess, loc.pat.span, E0005,
                 "refutable pattern in {} binding: `{}` not covered",

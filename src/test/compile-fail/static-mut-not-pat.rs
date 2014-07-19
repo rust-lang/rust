@@ -20,7 +20,34 @@ fn main() {
     // instead of spitting out a custom error about some identifier collisions
     // (we should allow shadowing)
     match 4i {
-        a => {}
-        _ => {} //~ ERROR: unreachable pattern
+        a => {} //~ ERROR mutable static variables cannot be referenced in a pattern
+        _ => {}
+    }
+}
+
+struct NewBool(bool);
+enum Direction {
+    North,
+    East,
+    South,
+    West
+}
+static NEW_FALSE: NewBool = NewBool(false);
+struct Foo {
+    bar: Option<Direction>,
+    baz: NewBool
+}
+
+static mut STATIC_MUT_FOO: Foo = Foo { bar: Some(West), baz: NEW_FALSE };
+
+fn mutable_statics() {
+    match (Foo { bar: Some(North), baz: NewBool(true) }) {
+        Foo { bar: None, baz: NewBool(true) } => (),
+        STATIC_MUT_FOO => (),
+        //~^ ERROR mutable static variables cannot be referenced in a pattern
+        Foo { bar: Some(South), .. } => (),
+        Foo { bar: Some(EAST), .. } => (),
+        Foo { bar: Some(North), baz: NewBool(true) } => (),
+        Foo { bar: Some(EAST), baz: NewBool(false) } => ()
     }
 }
