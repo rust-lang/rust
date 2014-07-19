@@ -97,47 +97,110 @@ impl<'a> CharEq for &'a [char] {
 Section: Iterators
 */
 
-/// External iterator for a string's characters.
-/// Use with the `std::iter` module.
+/// Iterator for the char (representing *Unicode Scalar Values*) of a string
+///
+/// Created with the method `.chars()`.
 #[deriving(Clone)]
 pub struct Chars<'a> {
-    /// The slice remaining to be iterated
-    string: &'a str,
+    iter: slice::Items<'a, u8>
+}
+
+// Return the initial codepoint accumulator for the first byte.
+// The first byte is special, only want bottom 5 bits for width 2, 4 bits
+// for width 3, and 3 bits for width 4
+macro_rules! utf8_first_byte(
+    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as u32)
+)
+
+// return the value of $ch updated with continuation byte $byte
+macro_rules! utf8_acc_cont_byte(
+    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & CONT_MASK) as u32)
+)
+
+macro_rules! utf8_is_cont_byte(
+    ($byte:expr) => (($byte & !CONT_MASK) == TAG_CONT_U8)
+)
+
+#[inline]
+fn unwrap_or_0(opt: Option<&u8>) -> u8 {
+    match opt {
+        Some(&byte) => byte,
+        None => 0,
+    }
 }
 
 impl<'a> Iterator<char> for Chars<'a> {
     #[inline]
     fn next(&mut self) -> Option<char> {
-        // Decode the next codepoint, then update
-        // the slice to be just the remaining part
-        if self.string.len() != 0 {
-            let CharRange {ch, next} = self.string.char_range_at(0);
-            unsafe {
-                self.string = raw::slice_unchecked(self.string, next, self.string.len());
+        // Decode UTF-8, using the valid UTF-8 invariant
+        let x = match self.iter.next() {
+            None => return None,
+            Some(&next_byte) if next_byte < 128 => return Some(next_byte as char),
+            Some(&next_byte) => next_byte,
+        };
+
+        // Multibyte case follows
+        // Decode from a byte combination out of: [[[x y] z] w]
+        // NOTE: Performance is sensitive to the exact formulation here
+        let init = utf8_first_byte!(x, 2);
+        let y = unwrap_or_0(self.iter.next());
+        let mut ch = utf8_acc_cont_byte!(init, y);
+        if x >= 0xE0 {
+            // [[x y z] w] case
+            // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
+            let z = unwrap_or_0(self.iter.next());
+            let y_z = utf8_acc_cont_byte!((y & CONT_MASK) as u32, z);
+            ch = init << 12 | y_z;
+            if x >= 0xF0 {
+                // [x y z w] case
+                // use only the lower 3 bits of `init`
+                let w = unwrap_or_0(self.iter.next());
+                ch = (init & 7) << 18 | utf8_acc_cont_byte!(y_z, w);
             }
-            Some(ch)
-        } else {
-            None
+        }
+
+        // str invariant says `ch` is a valid Unicode Scalar Value
+        unsafe {
+            Some(mem::transmute(ch))
         }
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.string.len().saturating_add(3)/4, Some(self.string.len()))
+        let (len, _) = self.iter.size_hint();
+        (len.saturating_add(3) / 4, Some(len))
     }
 }
 
 impl<'a> DoubleEndedIterator<char> for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
-        if self.string.len() != 0 {
-            let CharRange {ch, next} = self.string.char_range_at_reverse(self.string.len());
-            unsafe {
-                self.string = raw::slice_unchecked(self.string, 0, next);
+        let w = match self.iter.next_back() {
+            None => return None,
+            Some(&back_byte) if back_byte < 128 => return Some(back_byte as char),
+            Some(&back_byte) => back_byte,
+        };
+
+        // Multibyte case follows
+        // Decode from a byte combination out of: [x [y [z w]]]
+        let mut ch;
+        let z = unwrap_or_0(self.iter.next_back());
+        ch = utf8_first_byte!(z, 2);
+        if utf8_is_cont_byte!(z) {
+            let y = unwrap_or_0(self.iter.next_back());
+            ch = utf8_first_byte!(y, 3);
+            if utf8_is_cont_byte!(y) {
+                let x = unwrap_or_0(self.iter.next_back());
+                ch = utf8_first_byte!(x, 4);
+                ch = utf8_acc_cont_byte!(ch, y);
             }
-            Some(ch)
-        } else {
-            None
+            ch = utf8_acc_cont_byte!(ch, z);
+        }
+        ch = utf8_acc_cont_byte!(ch, w);
+
+        // str invariant says `ch` is a valid Unicode Scalar Value
+        unsafe {
+            Some(mem::transmute(ch))
         }
     }
 }
@@ -146,18 +209,23 @@ impl<'a> DoubleEndedIterator<char> for Chars<'a> {
 /// Use with the `std::iter` module.
 #[deriving(Clone)]
 pub struct CharOffsets<'a> {
-    /// The original string to be iterated
-    string: &'a str,
+    front_offset: uint,
     iter: Chars<'a>,
 }
 
 impl<'a> Iterator<(uint, char)> for CharOffsets<'a> {
     #[inline]
     fn next(&mut self) -> Option<(uint, char)> {
-        // Compute the byte offset by using the pointer offset between
-        // the original string slice and the iterator's remaining part
-        let offset = self.iter.string.as_ptr() as uint - self.string.as_ptr() as uint;
-        self.iter.next().map(|ch| (offset, ch))
+        let (pre_len, _) = self.iter.iter.size_hint();
+        match self.iter.next() {
+            None => None,
+            Some(ch) => {
+                let index = self.front_offset;
+                let (len, _) = self.iter.iter.size_hint();
+                self.front_offset += pre_len - len;
+                Some((index, ch))
+            }
+        }
     }
 
     #[inline]
@@ -169,11 +237,14 @@ impl<'a> Iterator<(uint, char)> for CharOffsets<'a> {
 impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsets<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, char)> {
-        self.iter.next_back().map(|ch| {
-            let offset = self.iter.string.len() +
-                    self.iter.string.as_ptr() as uint - self.string.as_ptr() as uint;
-            (offset, ch)
-        })
+        match self.iter.next_back() {
+            None => None,
+            Some(ch) => {
+                let (len, _) = self.iter.iter.size_hint();
+                let index = self.front_offset + len;
+                Some((index, ch))
+            }
+        }
     }
 }
 
@@ -672,9 +743,9 @@ fn run_utf8_validation_iterator(iter: &mut slice::Items<u8>) -> bool {
             // UTF8-4      = %xF0 %x90-BF 2( UTF8-tail ) / %xF1-F3 3( UTF8-tail ) /
             //               %xF4 %x80-8F 2( UTF8-tail )
             match w {
-                2 => if second & 192 != TAG_CONT_U8 {err!()},
+                2 => if second & !CONT_MASK != TAG_CONT_U8 {err!()},
                 3 => {
-                    match (first, second, next!() & 192) {
+                    match (first, second, next!() & !CONT_MASK) {
                         (0xE0        , 0xA0 .. 0xBF, TAG_CONT_U8) |
                         (0xE1 .. 0xEC, 0x80 .. 0xBF, TAG_CONT_U8) |
                         (0xED        , 0x80 .. 0x9F, TAG_CONT_U8) |
@@ -683,7 +754,7 @@ fn run_utf8_validation_iterator(iter: &mut slice::Items<u8>) -> bool {
                     }
                 }
                 4 => {
-                    match (first, second, next!() & 192, next!() & 192) {
+                    match (first, second, next!() & !CONT_MASK, next!() & !CONT_MASK) {
                         (0xF0        , 0x90 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
                         (0xF1 .. 0xF3, 0x80 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
                         (0xF4        , 0x80 .. 0x8F, TAG_CONT_U8, TAG_CONT_U8) => {}
@@ -880,19 +951,10 @@ pub struct CharRange {
     pub next: uint,
 }
 
-// Return the initial codepoint accumulator for the first byte.
-// The first byte is special, only want bottom 5 bits for width 2, 4 bits
-// for width 3, and 3 bits for width 4
-macro_rules! utf8_first_byte(
-    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as u32)
-)
-
-// return the value of $ch updated with continuation byte $byte
-macro_rules! utf8_acc_cont_byte(
-    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
-)
-
-static TAG_CONT_U8: u8 = 128u8;
+/// Mask of the value bits of a continuation byte
+static CONT_MASK: u8 = 0b0011_1111u8;
+/// Value of the tag bits (tag mask is !CONT_MASK) of a continuation byte
+static TAG_CONT_U8: u8 = 0b1000_0000u8;
 
 /// Unsafe operations
 pub mod raw {
@@ -1608,7 +1670,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn chars(&self) -> Chars<'a> {
-        Chars{string: *self}
+        Chars{iter: self.as_bytes().iter()}
     }
 
     #[inline]
@@ -1618,7 +1680,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn char_indices(&self) -> CharOffsets<'a> {
-        CharOffsets{string: *self, iter: self.chars()}
+        CharOffsets{front_offset: 0, iter: self.chars()}
     }
 
     #[inline]
@@ -1828,7 +1890,7 @@ impl<'a> StrSlice<'a> for &'a str {
         // Multibyte case is a fn to allow char_range_at_reverse to inline cleanly
         fn multibyte_char_range_at_reverse(s: &str, mut i: uint) -> CharRange {
             // while there is a previous byte == 10......
-            while i > 0 && s.as_bytes()[i] & 192u8 == TAG_CONT_U8 {
+            while i > 0 && s.as_bytes()[i] & !CONT_MASK == TAG_CONT_U8 {
                 i -= 1u;
             }
 
