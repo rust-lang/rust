@@ -603,11 +603,6 @@ pub mod raw {
         from_utf8_owned(vec![u])
     }
 
-    /// Sets the length of a string
-    ///
-    /// This will explicitly set the size of the string, without actually
-    /// modifying its buffers, so it is up to the caller to ensure that
-    /// the string is actually the specified size.
     #[test]
     fn test_from_buf_len() {
         use slice::ImmutableVector;
@@ -782,30 +777,6 @@ impl<'a> StrAllocating for &'a str {
     #[inline]
     fn into_string(self) -> String {
         String::from_str(self)
-    }
-}
-
-/// Methods for owned strings
-pub trait OwnedStr {
-    /// Consumes the string, returning the underlying byte buffer.
-    ///
-    /// The buffer does not have a null terminator.
-    fn into_bytes(self) -> Vec<u8>;
-
-    /// Pushes the given string onto this string, returning the concatenation of the two strings.
-    fn append(self, rhs: &str) -> String;
-}
-
-impl OwnedStr for String {
-    #[inline]
-    fn into_bytes(self) -> Vec<u8> {
-        unsafe { mem::transmute(self) }
-    }
-
-    #[inline]
-    fn append(mut self, rhs: &str) -> String {
-        self.push_str(rhs);
-        self
     }
 }
 
