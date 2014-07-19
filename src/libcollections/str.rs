@@ -598,9 +598,10 @@ pub mod raw {
         string::raw::from_utf8(v)
     }
 
-    /// Converts a byte to a string.
+    /// Deprecated. Use `String::from_bytes`
+    #[deprecated = "Use String::from_bytes"]
     pub unsafe fn from_byte(u: u8) -> String {
-        from_utf8_owned(vec![u])
+        String::from_bytes(vec![u])
     }
 
     #[test]
