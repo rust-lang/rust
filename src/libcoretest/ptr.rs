@@ -11,8 +11,8 @@
 use core::ptr::*;
 use libc::c_char;
 use core::mem;
-use std::str;
 use libc;
+use std::c_str::CString;
 
 #[test]
 fn test() {
@@ -186,9 +186,8 @@ fn test_ptr_array_each_with_len() {
         let mut ctr = 0;
         let mut iteration_count = 0;
         array_each_with_len(arr.as_ptr(), arr.len(), |e| {
-                let actual = str::raw::from_c_str(e);
-                let expected = str::raw::from_c_str(expected_arr[ctr].as_ptr());
-                assert_eq!(actual.as_slice(), expected.as_slice());
+                let actual = CString::new(e, false);
+                assert_eq!(actual.as_str(), expected_arr[ctr].as_str());
                 ctr += 1;
                 iteration_count += 1;
             });
@@ -217,9 +216,8 @@ fn test_ptr_array_each() {
         let mut ctr = 0u;
         let mut iteration_count = 0u;
         array_each(arr_ptr, |e| {
-                let actual = str::raw::from_c_str(e);
-                let expected = str::raw::from_c_str(expected_arr[ctr].as_ptr());
-                assert_eq!(actual.as_slice(), expected.as_slice());
+                let actual = CString::new(e, false);
+                assert_eq!(actual.as_str(), expected_arr[ctr].as_str());
                 ctr += 1;
                 iteration_count += 1;
             });
@@ -232,7 +230,7 @@ fn test_ptr_array_each() {
 fn test_ptr_array_each_with_len_null_ptr() {
     unsafe {
         array_each_with_len(0 as *const *const libc::c_char, 1, |e| {
-            str::raw::from_c_str(e);
+            CString::new(e, false).as_str().unwrap();
         });
     }
 }
@@ -241,7 +239,7 @@ fn test_ptr_array_each_with_len_null_ptr() {
 fn test_ptr_array_each_null_ptr() {
     unsafe {
         array_each(0 as *const *const libc::c_char, |e| {
-            str::raw::from_c_str(e);
+            CString::new(e, false).as_str().unwrap();
         });
     }
 }
