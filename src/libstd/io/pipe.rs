@@ -97,6 +97,8 @@ impl PipeStream {
             }
         }
     }
+
+    pub fn get_fd(&self) -> int { self.fd as int }
 }
 
 impl Clone for PipeStream {

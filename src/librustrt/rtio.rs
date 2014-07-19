@@ -235,6 +235,7 @@ pub trait IoFactory {
             -> IoResult<Box<RtioTTY + Send>>;
     fn signal(&mut self, signal: int, cb: Box<Callback + Send>)
         -> IoResult<Box<RtioSignal + Send>>;
+    fn get_fd(&self) -> int;
 }
 
 pub trait RtioTcpListener : RtioSocket {
@@ -262,6 +263,7 @@ pub trait RtioTcpStream : RtioSocket {
     fn set_timeout(&mut self, timeout_ms: Option<u64>);
     fn set_read_timeout(&mut self, timeout_ms: Option<u64>);
     fn set_write_timeout(&mut self, timeout_ms: Option<u64>);
+    fn get_fd(&self) -> int;
 }
 
 pub trait RtioSocket {
@@ -307,7 +309,7 @@ pub trait RtioFileStream {
     fn datasync(&mut self) -> IoResult<()>;
     fn truncate(&mut self, offset: i64) -> IoResult<()>;
     fn fstat(&mut self) -> IoResult<FileStat>;
-    fn get_fd(&self) -> c_int;
+    fn get_fd(&self) -> int;
 }
 
 pub trait RtioProcess {
@@ -327,6 +329,7 @@ pub trait RtioPipe {
     fn set_timeout(&mut self, timeout_ms: Option<u64>);
     fn set_read_timeout(&mut self, timeout_ms: Option<u64>);
     fn set_write_timeout(&mut self, timeout_ms: Option<u64>);
+    fn get_fd(&self) -> int;
 }
 
 pub trait RtioUnixListener {
@@ -344,6 +347,7 @@ pub trait RtioTTY {
     fn set_raw(&mut self, raw: bool) -> IoResult<()>;
     fn get_winsize(&mut self) -> IoResult<(int, int)>;
     fn isatty(&self) -> bool;
+    fn get_fd(&self) -> int;
 }
 
 pub trait PausableIdleCallback {
