@@ -536,13 +536,16 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                 } => {
                     // take it apart:
                     let Local {
-                        ty: _,
+                        ty: ty,
                         pat: pat,
                         init: init,
                         id: id,
                         span: span,
                         source: source,
                     } = **local;
+                    // expand the ty since TyFixedLengthVec contains an Expr
+                    // and thus may have a macro use
+                    let expanded_ty = fld.fold_ty(ty);
                     // expand the pat (it might contain macro uses):
                     let expanded_pat = fld.fold_pat(pat);
                     // find the PatIdents in the pattern:
@@ -566,7 +569,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                     let new_init_opt = init.map(|e| fld.fold_expr(e));
                     let rewritten_local =
                         box(GC) Local {
-                            ty: local.ty,
+                            ty: expanded_ty,
                             pat: rewritten_pat,
                             init: new_init_opt,
                             id: id,
