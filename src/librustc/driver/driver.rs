@@ -936,6 +936,7 @@ pub struct OutputFilenames {
     pub out_directory: Path,
     pub out_filestem: String,
     pub single_output_file: Option<Path>,
+    extra: String,
 }
 
 impl OutputFilenames {
@@ -948,7 +949,7 @@ impl OutputFilenames {
     }
 
     pub fn temp_path(&self, flavor: link::OutputType) -> Path {
-        let base = self.out_directory.join(self.out_filestem.as_slice());
+        let base = self.out_directory.join(self.filestem());
         match flavor {
             link::OutputTypeBitcode => base.with_extension("bc"),
             link::OutputTypeAssembly => base.with_extension("s"),
@@ -959,8 +960,11 @@ impl OutputFilenames {
     }
 
     pub fn with_extension(&self, extension: &str) -> Path {
-        let stem = self.out_filestem.as_slice();
-        self.out_directory.join(stem).with_extension(extension)
+        self.out_directory.join(self.filestem()).with_extension(extension)
+    }
+
+    fn filestem(&self) -> String {
+        format!("{}{}", self.out_filestem, self.extra)
     }
 }
 
@@ -1000,6 +1004,7 @@ pub fn build_output_filenames(input: &Input,
                 out_directory: dirpath,
                 out_filestem: stem,
                 single_output_file: None,
+                extra: sess.opts.cg.extra_filename.clone(),
             }
         }
 
@@ -1018,6 +1023,7 @@ pub fn build_output_filenames(input: &Input,
                 out_directory: out_file.dir_path(),
                 out_filestem: out_file.filestem_str().unwrap().to_string(),
                 single_output_file: ofile,
+                extra: sess.opts.cg.extra_filename.clone(),
             }
         }
     }
