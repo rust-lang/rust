@@ -140,9 +140,8 @@ impl<'a> AstConv for CrateCtxt<'a> {
     }
 
     fn ty_infer(&self, span: Span) -> ty::t {
-        self.tcx.sess.span_err(span, "the type placeholder `_` is not \
-                                      allowed within types on item \
-                                      signatures.");
+        span_err!(self.tcx.sess, span, E0121,
+                  "the type placeholder `_` is not allowed within types on item signatures.");
         ty::mk_err()
     }
 }
@@ -439,10 +438,8 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
                                  thing: &'static str) {
     for ty_param in generics.ty_params.iter() {
         if ty_param.bounds.len() > 0 {
-            ccx.tcx.sess.span_err(
-                span,
-                format!("trait bounds are not allowed in {} definitions",
-                        thing).as_slice());
+            span_err!(ccx.tcx.sess, span, E0122,
+                      "trait bounds are not allowed in {} definitions", thing);
         }
     }
 }
@@ -453,8 +450,8 @@ fn ensure_generics_abi(ccx: &CrateCtxt,
                        generics: &ast::Generics) {
     if generics.ty_params.len() > 0 &&
        !(abi == abi::Rust || abi == abi::RustIntrinsic) {
-        ccx.tcx.sess.span_err(span,
-                              "foreign functions may not use type parameters");
+        span_err!(ccx.tcx.sess, span, E0123,
+                  "foreign functions may not use type parameters");
     }
 }
 
@@ -607,12 +604,10 @@ pub fn convert_struct(ccx: &CrateCtxt,
         if result.name != special_idents::unnamed_field.name {
             let dup = match seen_fields.find(&result.name) {
                 Some(prev_span) => {
-                    tcx.sess.span_err(
-                        f.span,
-                        format!("field `{}` is already declared",
-                                token::get_name(result.name)).as_slice());
-                    tcx.sess.span_note(*prev_span,
-                                       "previously declared here");
+                    span_err!(tcx.sess, f.span, E0124,
+                              "field `{}` is already declared",
+                              token::get_name(result.name));
+                    span_note!(tcx.sess, *prev_span, "previously declared here");
                     true
                 },
                 None => false,
@@ -641,9 +636,9 @@ pub fn convert_struct(ccx: &CrateCtxt,
                             Some(ast_map::NodeItem(i)) => match i.node {
                                 ast::ItemStruct(struct_def, _) => {
                                     if !struct_def.is_virtual {
-                                        tcx.sess.span_err(t.span,
-                                            "struct inheritance is only \
-                                             allowed from virtual structs");
+                                        span_err!(tcx.sess, t.span, E0126,
+                                                  "struct inheritance is only \
+                                                   allowed from virtual structs");
                                     }
                                 },
                                 _ => {},
@@ -862,8 +857,8 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
                 {
                     // This means a trait inherited from the same
                     // supertrait more than once.
-                    tcx.sess.span_err(sp, "duplicate supertrait in \
-                                           trait declaration");
+                    span_err!(tcx.sess, sp, E0127,
+                              "duplicate supertrait in trait declaration");
                     break;
                 } else {
                     ty_trait_refs.push(trait_ref);
@@ -1129,10 +1124,9 @@ fn ty_generics(ccx: &CrateCtxt,
             ty::walk_ty(ty, |t| {
                 match ty::get(t).sty {
                     ty::ty_param(p) => if p.idx > cur_idx {
-                        ccx.tcx.sess.span_err(
-                            path.span,
-                            "type parameters with a default cannot use \
-                             forward declared identifiers")
+                    span_err!(ccx.tcx.sess, path.span, E0128,
+                              "type parameters with a default cannot use \
+                               forward declared identifiers");
                     },
                     _ => {}
                 }
@@ -1239,12 +1233,11 @@ fn ty_generics(ccx: &CrateCtxt,
                                                  |trait_ref| {
                 let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id);
                 if trait_def.bounds.contains_elem(ty::BoundSized) {
-                    tcx.sess.span_err(span,
-                        format!("incompatible bounds on type parameter {}, \
-                                 bound {} does not allow unsized type",
-                        token::get_ident(ident),
-                        ppaux::trait_ref_to_string(tcx,
-                                                &*trait_ref)).as_slice());
+                    span_err!(tcx.sess, span, E0129,
+                              "incompatible bounds on type parameter {}, \
+                               bound {} does not allow unsized type",
+                              token::get_ident(ident),
+                              ppaux::trait_ref_to_string(tcx, &*trait_ref));
                 }
                 true
             });
@@ -1263,8 +1256,10 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
         match (*i).pat.node {
             ast::PatIdent(_, _, _) => (),
             ast::PatWild => (),
-            _ => ccx.tcx.sess.span_err((*i).pat.span,
-                    "patterns aren't allowed in foreign function declarations")
+            _ => {
+                span_err!(ccx.tcx.sess, (*i).pat.span, E0130,
+                          "patterns aren't allowed in foreign function declarations");
+            }
         }
     }
 
