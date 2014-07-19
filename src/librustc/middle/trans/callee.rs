@@ -19,6 +19,7 @@
 use arena::TypedArena;
 use back::abi;
 use back::link;
+use driver::session;
 use llvm::{ValueRef, get_param};
 use llvm;
 use metadata::csearch;
@@ -54,6 +55,7 @@ use util::ppaux::Repr;
 
 use std::gc::Gc;
 use syntax::ast;
+use syntax::ast_map;
 use synabi = syntax::abi;
 
 pub struct MethodData {
@@ -63,6 +65,10 @@ pub struct MethodData {
 
 pub enum CalleeData {
     Closure(Datum<Lvalue>),
+
+    // Constructor for enum variant/tuple-like-struct
+    // i.e. Some, Ok
+    NamedTupleConstructor(subst::Substs, ty::Disr),
 
     // Represents a (possibly monomorphized) top-level fn item or method
     // item. Note that this is just the fn-ptr and is not a Rust closure
@@ -134,6 +140,23 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
         debug!("trans_def(def={}, ref_expr={})", def.repr(bcx.tcx()), ref_expr.repr(bcx.tcx()));
         let expr_ty = node_id_type(bcx, ref_expr.id);
         match def {
+            def::DefFn(did, _) if {
+                let def_id = if did.krate != ast::LOCAL_CRATE {
+                    inline::maybe_instantiate_inline(bcx.ccx(), did)
+                } else {
+                    did
+                };
+                match bcx.tcx().map.find(def_id.node) {
+                    Some(ast_map::NodeStructCtor(_)) => true,
+                    _ => false
+                }
+            } => {
+                let substs = node_id_substs(bcx, ExprId(ref_expr.id));
+                Callee {
+                    bcx: bcx,
+                    data: NamedTupleConstructor(substs, 0)
+                }
+            }
             def::DefFn(did, _) if match ty::get(expr_ty).sty {
                 ty::ty_bare_fn(ref f) => f.abi == synabi::RustIntrinsic,
                 _ => false
@@ -158,14 +181,23 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
                                                                 ref_expr.id))
             }
             def::DefVariant(tid, vid, _) => {
-                // nullary variants are not callable
-                assert!(ty::enum_variant_with_id(bcx.tcx(),
-                                                      tid,
-                                                      vid).args.len() > 0u);
-                fn_callee(bcx, trans_fn_ref(bcx, vid, ExprId(ref_expr.id)))
+                let vinfo = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
+                let substs = node_id_substs(bcx, ExprId(ref_expr.id));
+
+                // Nullary variants are not callable
+                assert!(vinfo.args.len() > 0u);
+
+                Callee {
+                    bcx: bcx,
+                    data: NamedTupleConstructor(substs, vinfo.disr_val)
+                }
             }
-            def::DefStruct(def_id) => {
-                fn_callee(bcx, trans_fn_ref(bcx, def_id, ExprId(ref_expr.id)))
+            def::DefStruct(_) => {
+                let substs = node_id_substs(bcx, ExprId(ref_expr.id));
+                Callee {
+                    bcx: bcx,
+                    data: NamedTupleConstructor(substs, 0)
+                }
             }
             def::DefStatic(..) |
             def::DefArg(..) |
@@ -490,8 +522,27 @@ pub fn trans_fn_ref_with_vtables(
         }
     };
 
-    // We must monomorphise if the fn has type parameters or is a default method.
-    let must_monomorphise = !substs.types.is_empty() || is_default;
+    // We must monomorphise if the fn has type parameters, is a default method,
+    // or is a named tuple constructor.
+    let must_monomorphise = if !substs.types.is_empty() || is_default {
+        true
+    } else if def_id.krate == ast::LOCAL_CRATE {
+        let map_node = session::expect(
+            ccx.sess(),
+            tcx.map.find(def_id.node),
+            || "local item should be in ast map".to_string());
+
+        match map_node {
+            ast_map::NodeVariant(v) => match v.node.kind {
+                ast::TupleVariantKind(ref args) => args.len() > 0,
+                _ => false
+            },
+            ast_map::NodeStructCtor(_) => true,
+            _ => false
+        }
+    } else {
+        false
+    };
 
     // Create a monomorphic version of generic functions
     if must_monomorphise {
@@ -709,6 +760,14 @@ pub fn trans_call_inner<'a>(
             return intrinsic::trans_intrinsic_call(bcx, node, callee_ty,
                                                    arg_cleanup_scope, args,
                                                    dest.unwrap(), substs);
+        }
+        NamedTupleConstructor(substs, disr) => {
+            assert!(dest.is_some());
+            fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
+
+            let ctor_ty = callee_ty.subst(bcx.tcx(), &substs);
+            return base::trans_named_tuple_constructor(bcx, ctor_ty, disr,
+                                                       args, dest.unwrap());
         }
     };
 
