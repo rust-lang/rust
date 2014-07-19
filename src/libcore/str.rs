@@ -209,20 +209,20 @@ impl<'a> DoubleEndedIterator<char> for Chars<'a> {
 /// Use with the `std::iter` module.
 #[deriving(Clone)]
 pub struct CharOffsets<'a> {
-    front: uint,
-    back: uint,
+    front_offset: uint,
     iter: Chars<'a>,
 }
 
 impl<'a> Iterator<(uint, char)> for CharOffsets<'a> {
     #[inline]
     fn next(&mut self) -> Option<(uint, char)> {
+        let (pre_len, _) = self.iter.iter.size_hint();
         match self.iter.next() {
             None => None,
             Some(ch) => {
-                let index = self.front;
+                let index = self.front_offset;
                 let (len, _) = self.iter.iter.size_hint();
-                self.front += self.back - self.front - len;
+                self.front_offset += pre_len - len;
                 Some((index, ch))
             }
         }
@@ -241,8 +241,8 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsets<'a> {
             None => None,
             Some(ch) => {
                 let (len, _) = self.iter.iter.size_hint();
-                self.back -= self.back - self.front - len;
-                Some((self.back, ch))
+                let index = self.front_offset + len;
+                Some((index, ch))
             }
         }
     }
@@ -1680,7 +1680,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn char_indices(&self) -> CharOffsets<'a> {
-        CharOffsets{front: 0, back: self.len(), iter: self.chars()}
+        CharOffsets{front_offset: 0, iter: self.chars()}
     }
 
     #[inline]
