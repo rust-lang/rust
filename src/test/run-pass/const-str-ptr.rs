@@ -24,6 +24,6 @@ pub fn main() {
         assert!(*(&B[0] as *const u8) == A[0]);
 
         let bar = str::raw::from_utf8(A).to_c_str();
-        assert_eq!(str::raw::from_c_str(bar.as_ptr()), "hi".to_string());
+        assert_eq!(bar.as_str(), "hi".to_c_str().as_str());
     }
 }

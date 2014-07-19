@@ -998,7 +998,7 @@ pub fn error_string(errnum: uint) -> String {
                 fail!("strerror_r failure");
             }
 
-            str::raw::from_c_str(p as *const c_char).into_string()
+            ::c_str::CString::new(p as *const c_char, false).as_str().unwrap().to_string()
         }
     }
 

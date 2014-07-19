@@ -555,9 +555,9 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 
 /// Unsafe operations
 pub mod raw {
-    use core::prelude::*;
     use core::mem;
     use core::raw::Slice;
+    use core::ptr::RawPtr;
 
     use string::String;
     use vec::Vec;
@@ -577,7 +577,8 @@ pub mod raw {
         result
     }
 
-    /// Create a Rust string from a null-terminated C string
+    /// Deprecated. Use `CString::as_str().unwrap().to_string()`
+    #[deprecated = "Use CString::as_str().unwrap().to_string()"]
     pub unsafe fn from_c_str(c_string: *const i8) -> String {
         let mut buf = String::new();
         let mut len = 0;
@@ -1346,16 +1347,6 @@ mod tests {
              [0xd640, 0x71f1, 0xdd7d, 0x77eb, 0x1cd8],
              [0x348b, 0xaef0, 0xdb2c, 0xebf1, 0x1282],
              [0x50d7, 0xd824, 0x5010, 0xb369, 0x22ea]);
-    }
-
-    #[test]
-    fn test_raw_from_c_str() {
-        unsafe {
-            let a = vec![65, 65, 65, 65, 65, 65, 65, 0];
-            let b = a.as_ptr();
-            let c = raw::from_c_str(b);
-            assert_eq!(c, String::from_str("AAAAAAA"));
-        }
     }
 
     #[test]
