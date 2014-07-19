@@ -693,7 +693,7 @@ impl DefaultResizePolicy {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
 /// use std::collections::HashMap;
 ///
 /// // type inference lets us omit an explicit type signature (which
@@ -731,9 +731,9 @@ impl DefaultResizePolicy {
 /// ```
 ///
 /// The easiest way to use `HashMap` with a custom type is to derive `Eq` and `Hash`.
-/// We must also derive `PartialEq`, this will in the future be implied by `Eq`.
+/// We must also derive `PartialEq`, but this will in the future be implied by `Eq`.
 ///
-/// ```rust
+/// ```
 /// use std::collections::HashMap;
 ///
 /// #[deriving(Hash, Eq, PartialEq, Show)]
@@ -1041,8 +1041,8 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
     /// let mut map: HashMap<&str, int> = HashMap::new();
     /// ```
     #[inline]
@@ -1054,8 +1054,8 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
     /// let mut map: HashMap<&str, int> = HashMap::with_capacity(10u);
     /// ```
     #[inline]
@@ -1072,8 +1072,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
     /// use std::hash::sip::SipHasher;
     ///
     /// let h = SipHasher::new();
@@ -1095,8 +1095,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
     /// use std::hash::sip::SipHasher;
     ///
     /// let h = SipHasher::new();
@@ -1120,8 +1120,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// This function has no effect on the operational semantics of the
     /// hashtable, only on performance.
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
     /// let mut map: HashMap<&str, int> = HashMap::new();
     /// map.reserve(10u);
     /// ```
@@ -1292,8 +1292,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// // Insert 1i with key "a"
@@ -1311,8 +1311,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// // Insert 10u with key 2i
@@ -1332,8 +1332,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
     /// // Insert 2u with key "a"
@@ -1362,7 +1362,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashMap;
     ///
     /// // map some strings to vectors of strings
@@ -1419,8 +1419,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
+    ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
     /// assert_eq!(map.get(&"a"), &1i);
@@ -1437,8 +1438,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
+    ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
     /// {
@@ -1489,8 +1491,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// the equivilance class. It is important that the values hash the same,
     /// which is why we override `Hash`.
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
     /// use std::hash::Hash;
     /// use std::hash::sip::SipState;
     ///
@@ -1547,8 +1549,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
+    ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
     /// map.insert("b", 2i);
@@ -1567,8 +1570,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
+    ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
     /// map.insert("b", 2i);
@@ -1587,8 +1591,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
+    ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
     /// map.insert("b", 2i);
@@ -1608,8 +1613,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
+    ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
     /// map.insert("b", 2i);
@@ -1634,8 +1640,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
+    ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
     /// map.insert("b", 2i);
@@ -1654,8 +1661,9 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
+    ///
     /// let mut map: HashMap<uint, String> = HashMap::new();
     /// map.insert(1u, "foo".to_string());
     /// let s: String = map.find_copy(&1u).unwrap();
@@ -1668,8 +1676,9 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::collections::HashMap;
+    /// ```
+    /// use std::collections::HashMap;
+    ///
     /// let mut map: HashMap<uint, String> = HashMap::new();
     /// map.insert(1u, "foo".to_string());
     /// let s: String = map.get_copy(&1u);
@@ -1763,7 +1772,7 @@ pub type SetMoveItems<K> =
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
 /// use std::collections::HashSet;
 ///
 /// // Type inference lets us omit an explicit type signature (which
@@ -1826,7 +1835,6 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     ///
     /// # Example
     ///
-    /// ```rust
     /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::new();
     /// ```
@@ -1840,7 +1848,6 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     ///
     /// # Example
     ///
-    /// ```rust
     /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::with_capacity(10);
     /// ```
@@ -1898,7 +1905,6 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
     /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::new();
     /// set.reserve(10);
@@ -1957,9 +1963,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let mut set = HashSet::new();
     /// set.insert("a");
     /// set.insert("b");
@@ -1979,9 +1984,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let mut set = HashSet::new();
     /// set.insert("a".to_string());
     /// set.insert("b".to_string());
@@ -2002,9 +2006,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
@@ -2032,9 +2035,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
@@ -2058,9 +2060,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
@@ -2084,9 +2085,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
