@@ -14,9 +14,23 @@
 /// knowledge known is the number of elements contained within.
 pub trait Collection {
     /// Return the number of elements in the container
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let a = [1i, 2, 3];
+    /// assert_eq!(a.len(), 3);
+    /// ```
     fn len(&self) -> uint;
 
     /// Return true if the container contains no elements
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let s = String::new();
+    /// assert!(s.is_empty());
+    /// ```
     #[inline]
     fn is_empty(&self) -> bool {
         self.len() == 0
