@@ -877,6 +877,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 }
             }
             ast::TyFixedLengthVec(ty, e) => {
+                typeck::write_ty_to_tcx(tcx, e.id, ty::mk_uint());
                 match const_eval::eval_const_expr_partial(tcx, &*e) {
                     Ok(ref r) => {
                         match *r {
