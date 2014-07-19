@@ -23,6 +23,7 @@ use ext::mtwt;
 
 use std::collections::HashMap;
 use std::gc::{Gc, GC};
+use std::rc::Rc;
 
 // new-style macro! tt code:
 //
@@ -104,9 +105,9 @@ pub type IdentMacroExpanderFn =
 /// just into the compiler's internal macro table, for `make_def`).
 pub trait MacResult {
     /// Define a new macro.
-    // this particular flavor should go away; the idea that a macro might
-    // expand into either a macro definition or an expression, depending
-    // on what the context wants, is kind of silly.
+    // this should go away; the idea that a macro might expand into
+    // either a macro definition or an expression, depending on what
+    // the context wants, is kind of silly.
     fn make_def(&self) -> Option<MacroDef> {
         None
     }
@@ -314,7 +315,7 @@ impl BlockInfo {
 
 /// The base map of methods for expanding syntax extension
 /// AST nodes into full ASTs
-pub fn syntax_expander_table() -> SyntaxEnv {
+fn initial_syntax_expander_table() -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_expander(f: MacroExpanderFn) -> SyntaxExtension {
         NormalTT(box BasicMacroExpander {
@@ -431,7 +432,9 @@ pub struct ExtCtxt<'a> {
 
     pub mod_path: Vec<ast::Ident> ,
     pub trace_mac: bool,
-    pub exported_macros: Vec<Gc<ast::Item>>
+    pub exported_macros: Vec<Gc<ast::Item>>,
+
+	pub syntax_env: SyntaxEnv,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -445,6 +448,7 @@ impl<'a> ExtCtxt<'a> {
             ecfg: ecfg,
             trace_mac: false,
             exported_macros: Vec::new(),
+            syntax_env: initial_syntax_expander_table(),
         }
     }
 
@@ -453,7 +457,6 @@ impl<'a> ExtCtxt<'a> {
             match e.node {
                 ast::ExprMac(..) => {
                     let mut expander = expand::MacroExpander {
-                        extsbox: syntax_expander_table(),
                         cx: self,
                     };
                     e = expand::expand_expr(e, &mut expander);
@@ -642,10 +645,13 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
 /// In order to have some notion of scoping for macros,
 /// we want to implement the notion of a transformation
 /// environment.
-
+///
 /// This environment maps Names to SyntaxExtensions.
+pub struct SyntaxEnv {
+    chain: Vec<MapChainFrame> ,
+}
 
-//impl question: how to implement it? Initially, the
+// impl question: how to implement it? Initially, the
 // env will contain only macros, so it might be painful
 // to add an empty frame for every context. Let's just
 // get it working, first....
@@ -657,15 +663,11 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
 
 struct MapChainFrame {
     info: BlockInfo,
-    map: HashMap<Name, SyntaxExtension>,
-}
-
-pub struct SyntaxEnv {
-    chain: Vec<MapChainFrame> ,
+    map: HashMap<Name, Rc<SyntaxExtension>>,
 }
 
 impl SyntaxEnv {
-    pub fn new() -> SyntaxEnv {
+    fn new() -> SyntaxEnv {
         let mut map = SyntaxEnv { chain: Vec::new() };
         map.push_frame();
         map
@@ -692,10 +694,10 @@ impl SyntaxEnv {
         unreachable!()
     }
 
-    pub fn find<'a>(&'a self, k: &Name) -> Option<&'a SyntaxExtension> {
+    pub fn find(&self, k: &Name) -> Option<Rc<SyntaxExtension>> {
         for frame in self.chain.iter().rev() {
             match frame.map.find(k) {
-                Some(v) => return Some(v),
+                Some(v) => return Some(v.clone()),
                 None => {}
             }
         }
@@ -703,7 +705,7 @@ impl SyntaxEnv {
     }
 
     pub fn insert(&mut self, k: Name, v: SyntaxExtension) {
-        self.find_escape_frame().map.insert(k, v);
+        self.find_escape_frame().map.insert(k, Rc::new(v));
     }
 
     pub fn info<'a>(&'a mut self) -> &'a mut BlockInfo {
