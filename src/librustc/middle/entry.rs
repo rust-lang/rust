@@ -87,9 +87,8 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
                             if ctxt.main_fn.is_none() {
                                 ctxt.main_fn = Some((item.id, item.span));
                             } else {
-                                ctxt.session.span_err(
-                                    item.span,
-                                    "multiple 'main' functions");
+                                span_err!(ctxt.session, item.span, E0136,
+                                          "multiple 'main' functions");
                             }
                         } else {
                             // This isn't main
@@ -102,9 +101,8 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
                 if ctxt.attr_main_fn.is_none() {
                     ctxt.attr_main_fn = Some((item.id, item.span));
                 } else {
-                    ctxt.session.span_err(
-                        item.span,
-                        "multiple 'main' functions");
+                    span_err!(ctxt.session, item.span, E0137,
+                              "multiple functions with a #[main] attribute");
                 }
             }
 
@@ -112,9 +110,8 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
                 if ctxt.start_fn.is_none() {
                     ctxt.start_fn = Some((item.id, item.span));
                 } else {
-                    ctxt.session.span_err(
-                        item.span,
-                        "multiple 'start' functions");
+                    span_err!(ctxt.session, item.span, E0138,
+                              "multiple 'start' functions");
                 }
             }
         }

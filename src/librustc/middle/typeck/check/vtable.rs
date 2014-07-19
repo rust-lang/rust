@@ -206,11 +206,10 @@ fn relate_trait_refs(vcx: &VtableContext,
                 !ty::trait_ref_contains_error(&r_exp_trait_ref)
             {
                 let tcx = vcx.tcx();
-                tcx.sess.span_err(span,
-                    format!("expected {}, but found {} ({})",
-                            ppaux::trait_ref_to_string(tcx, &r_exp_trait_ref),
-                            ppaux::trait_ref_to_string(tcx, &r_act_trait_ref),
-                            ty::type_err_to_str(tcx, err)).as_slice());
+                span_err!(tcx.sess, span, E0095, "expected {}, but found {} ({})",
+                          ppaux::trait_ref_to_string(tcx, &r_exp_trait_ref),
+                          ppaux::trait_ref_to_string(tcx, &r_act_trait_ref),
+                          ty::type_err_to_str(tcx, err));
             }
         }
     }
@@ -536,7 +535,8 @@ fn search_for_vtable(vcx: &VtableContext,
         1 => return Some(found.get(0).clone()),
         _ => {
             if !is_early {
-                vcx.tcx().sess.span_err(span, "multiple applicable methods in scope");
+                span_err!(vcx.tcx().sess, span, E0096,
+                          "multiple applicable methods in scope");
             }
             return Some(found.get(0).clone());
         }
@@ -631,9 +631,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
             if !mutability_allowed(mt.mutbl, mutbl) => {
               match ty::get(ty).sty {
                   ty::ty_trait(..) => {
-                      fcx.tcx()
-                         .sess
-                         .span_err(ex.span, "types differ in mutability");
+                      span_err!(fcx.tcx().sess, ex.span, E0097, "types differ in mutability");
                   }
                   _ => {}
               }
@@ -709,11 +707,9 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
           (&ty::ty_uniq(ty), _) => {
               match ty::get(ty).sty {
                   ty::ty_trait(..) => {
-                      fcx.ccx.tcx.sess.span_err(
-                          ex.span,
-                          format!("can only cast an boxed pointer \
-                                   to a boxed object, not a {}",
-                               ty::ty_sort_string(fcx.tcx(), src_ty)).as_slice());
+                      span_err!(fcx.ccx.tcx.sess, ex.span, E0098,
+                                "can only cast an boxed pointer to a boxed object, not a {}",
+                                ty::ty_sort_string(fcx.tcx(), src_ty));
                   }
                   _ => {}
               }
@@ -722,11 +718,9 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
           (&ty::ty_rptr(_, ty::mt{ty, ..}), _) => {
               match ty::get(ty).sty {
                   ty::ty_trait(..) => {
-                      fcx.ccx.tcx.sess.span_err(
-                          ex.span,
-                          format!("can only cast an &-pointer \
-                                   to an &-object, not a {}",
-                                  ty::ty_sort_string(fcx.tcx(), src_ty)).as_slice());
+                      span_err!(fcx.ccx.tcx.sess, ex.span, E0099,
+                                "can only cast an &-pointer to an &-object, not a {}",
+                                ty::ty_sort_string(fcx.tcx(), src_ty));
                   }
                   _ => {}
               }

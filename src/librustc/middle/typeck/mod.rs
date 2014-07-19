@@ -372,9 +372,8 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     match it.node {
                         ast::ItemFn(_, _, _, ref ps, _)
                         if ps.is_parameterized() => {
-                            tcx.sess.span_err(
-                                main_span,
-                                "main function is not allowed to have type parameters");
+                            span_err!(ccx.tcx.sess, main_span, E0131,
+                                      "main function is not allowed to have type parameters");
                             return;
                         }
                         _ => ()
@@ -421,9 +420,8 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                     match it.node {
                         ast::ItemFn(_,_,_,ref ps,_)
                         if ps.is_parameterized() => {
-                            tcx.sess.span_err(
-                                start_span,
-                                "start function is not allowed to have type parameters");
+                            span_err!(tcx.sess, start_span, E0132,
+                                      "start function is not allowed to have type parameters");
                             return;
                         }
                         _ => ()

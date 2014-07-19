@@ -224,10 +224,10 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
                 if !self.cc.ast_type_is_defined_in_local_crate(&**ast_ty) {
                     // This is an error.
                     let session = &self.cc.crate_context.tcx.sess;
-                    session.span_err(item.span,
-                                     "cannot associate methods with a type outside the \
-                                     crate the type is defined in; define and implement \
-                                     a trait or new type instead");
+                    span_err!(session, item.span, E0116,
+                              "cannot associate methods with a type outside the \
+                               crate the type is defined in; define and implement \
+                               a trait or new type instead");
                 }
             }
             ItemImpl(_, Some(ref trait_ref), _, _) => {
@@ -244,9 +244,9 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
 
                     if trait_def_id.krate != LOCAL_CRATE {
                         let session = &self.cc.crate_context.tcx.sess;
-                        session.span_err(item.span,
-                                "cannot provide an extension implementation \
-                                where both trait and type are not defined in this crate");
+                        span_err!(session, item.span, E0117,
+                                  "cannot provide an extension implementation \
+                                   where both trait and type are not defined in this crate");
                     }
                 }
 
@@ -302,9 +302,9 @@ impl<'a> CoherenceChecker<'a> {
                                        self_type.ty) {
                 None => {
                     let session = &self.crate_context.tcx.sess;
-                    session.span_err(item.span,
-                                     "no base type found for inherent implementation; \
-                                      implement a trait or new type instead");
+                    span_err!(session, item.span, E0118,
+                              "no base type found for inherent implementation; \
+                               implement a trait or new type instead");
                 }
                 Some(_) => {
                     // Nothing to do.
@@ -441,22 +441,18 @@ impl<'a> CoherenceChecker<'a> {
 
                     if self.polytypes_unify(polytype_a.clone(), polytype_b) {
                         let session = &self.crate_context.tcx.sess;
-                        session.span_err(
-                            self.span_of_impl(impl_a),
-                            format!("conflicting implementations for trait `{}`",
-                                    ty::item_path_str(
-                                        self.crate_context.tcx,
-                                        trait_def_id)).as_slice());
+                        span_err!(session, self.span_of_impl(impl_a), E0119,
+                                  "conflicting implementations for trait `{}`",
+                                  ty::item_path_str(self.crate_context.tcx, trait_def_id));
                         if impl_b.krate == LOCAL_CRATE {
-                            session.span_note(self.span_of_impl(impl_b),
-                                              "note conflicting implementation here");
+                            span_note!(session, self.span_of_impl(impl_b),
+                                       "note conflicting implementation here");
                         } else {
                             let crate_store = &self.crate_context.tcx.sess.cstore;
                             let cdata = crate_store.get_crate_data(impl_b.krate);
-                            session.note(
-                                format!("conflicting implementation in crate \
-                                         `{}`",
-                                        cdata.name).as_slice());
+                            span_note!(session, self.span_of_impl(impl_a),
+                                       "conflicting implementation in crate `{}`",
+                                       cdata.name);
                         }
                     }
                 }
@@ -706,10 +702,8 @@ impl<'a> CoherenceChecker<'a> {
                         {
                             match tcx.map.find(impl_did.node) {
                                 Some(ast_map::NodeItem(item)) => {
-                                    tcx.sess.span_err((*item).span,
-                                                      "the Drop trait may \
-                                                       only be implemented \
-                                                       on structures");
+                                    span_err!(tcx.sess, item.span, E0120,
+                                        "the Drop trait may only be implemented on structures");
                                 }
                                 _ => {
                                     tcx.sess.bug("didn't find impl in ast \

@@ -14,6 +14,6 @@ fn main1() {
 
 mod foo {
     #[main]
-    fn main2() { //~ ERROR multiple 'main' functions
+    fn main2() { //~ ERROR multiple functions with a #[main] attribute
     }
 }

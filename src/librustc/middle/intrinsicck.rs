@@ -94,14 +94,12 @@ impl<'a> IntrinsicCheckingVisitor<'a> {
 
     fn check_transmute(&self, span: Span, from: ty::t, to: ty::t) {
         if type_size_is_affected_by_type_parameters(self.tcx, from) {
-            self.tcx.sess.span_err(span,
-                                   "cannot transmute from a type that \
-                                    contains type parameters");
+            span_err!(self.tcx.sess, span, E0139,
+                      "cannot transmute from a type that contains type parameters");
         }
         if type_size_is_affected_by_type_parameters(self.tcx, to) {
-            self.tcx.sess.span_err(span,
-                                   "cannot transmute to a type that contains \
-                                    type parameters");
+            span_err!(self.tcx.sess, span, E0140,
+                      "cannot transmute to a type that contains type parameters");
         }
 
         let restriction = TransmuteRestriction {
