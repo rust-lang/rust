@@ -76,7 +76,7 @@
 #[doc(no_inline)] pub use path::{GenericPath, Path, PosixPath, WindowsPath};
 #[doc(no_inline)] pub use ptr::RawPtr;
 #[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek};
-#[doc(no_inline)] pub use str::{Str, StrVector, StrSlice, OwnedStr};
+#[doc(no_inline)] pub use str::{Str, StrVector, StrSlice};
 #[doc(no_inline)] pub use str::{IntoMaybeOwned, StrAllocating, UnicodeStrSlice};
 #[doc(no_inline)] pub use to_string::{ToString, IntoStr};
 #[doc(no_inline)] pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};

@@ -56,8 +56,6 @@ use vec::Vec;
 use c_str::ToCStr;
 #[cfg(unix)]
 use libc::c_char;
-#[cfg(windows)]
-use str::OwnedStr;
 
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
@@ -708,8 +706,6 @@ pub fn self_exe_name() -> Option<Path> {
 
     #[cfg(windows)]
     fn load_self() -> Option<Vec<u8>> {
-        use str::OwnedStr;
-
         unsafe {
             use os::win32::fill_utf16_buf_and_decode;
             fill_utf16_buf_and_decode(|buf, sz| {
