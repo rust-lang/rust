@@ -502,7 +502,6 @@ pub fn trans_unboxed_closure<'a>(
     let repr = adt::represent_type(bcx.ccx(), node_id_type(bcx, id));
 
     // Create the closure.
-    adt::trans_start_init(bcx, &*repr, dest_addr, 0);
     for freevar in freevars_ptr.iter() {
         let datum = expr::trans_local_var(bcx, freevar.def);
         let upvar_slot_dest = adt::trans_field_ptr(bcx,
@@ -512,6 +511,7 @@ pub fn trans_unboxed_closure<'a>(
                                                    0);
         bcx = datum.store_to(bcx, upvar_slot_dest);
     }
+    adt::trans_set_discr(bcx, &*repr, dest_addr, 0);
 
     bcx
 }
