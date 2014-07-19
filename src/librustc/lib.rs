@@ -68,42 +68,42 @@ pub mod back {
 }
 
 pub mod middle {
+    pub mod astencode;
+    pub mod borrowck;
+    pub mod cfg;
+    pub mod check_const;
+    pub mod check_loop;
+    pub mod check_match;
+    pub mod check_static;
+    pub mod const_eval;
+    pub mod dataflow;
+    pub mod dead;
     pub mod def;
+    pub mod dependency_format;
+    pub mod effect;
+    pub mod entry;
+    pub mod expr_use_visitor;
+    pub mod freevars;
+    pub mod graph;
+    pub mod intrinsicck;
+    pub mod kind;
+    pub mod lang_items;
+    pub mod liveness;
+    pub mod mem_categorization;
+    pub mod pat_util;
+    pub mod privacy;
+    pub mod reachable;
+    pub mod region;
+    pub mod resolve;
+    pub mod resolve_lifetime;
+    pub mod save;
+    pub mod stability;
+    pub mod subst;
     pub mod trans;
     pub mod ty;
     pub mod ty_fold;
-    pub mod subst;
-    pub mod resolve;
-    pub mod resolve_lifetime;
     pub mod typeck;
-    pub mod check_loop;
-    pub mod check_match;
-    pub mod check_const;
-    pub mod check_static;
-    pub mod borrowck;
-    pub mod dataflow;
-    pub mod mem_categorization;
-    pub mod liveness;
-    pub mod kind;
-    pub mod freevars;
-    pub mod pat_util;
-    pub mod region;
-    pub mod const_eval;
-    pub mod astencode;
-    pub mod lang_items;
-    pub mod privacy;
-    pub mod entry;
-    pub mod effect;
-    pub mod reachable;
-    pub mod graph;
-    pub mod cfg;
-    pub mod dead;
-    pub mod expr_use_visitor;
-    pub mod dependency_format;
     pub mod weak_lang_items;
-    pub mod save;
-    pub mod intrinsicck;
-    pub mod stability;
 }
 
 pub mod front {
