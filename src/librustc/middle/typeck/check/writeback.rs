@@ -261,9 +261,8 @@ impl<'cx> WritebackCx<'cx> {
                             Some(&def::DefStruct(_)) => {
                             }
                             _ => {
-                                self.tcx().sess.span_err(
-                                    reason.span(self.tcx()),
-                                    "cannot coerce non-statically resolved bare fn")
+                                span_err!(self.tcx().sess, reason.span(self.tcx()), E0100,
+                                    "cannot coerce non-statically resolved bare fn");
                             }
                         }
 
@@ -431,47 +430,34 @@ impl<'cx> Resolver<'cx> {
         if !self.tcx.sess.has_errors() {
             match self.reason {
                 ResolvingExpr(span) => {
-                    self.tcx.sess.span_err(
-                        span,
-                        format!("cannot determine a type for \
-                                 this expression: {}",
-                                infer::fixup_err_to_string(e)).as_slice())
+                    span_err!(self.tcx.sess, span, E0101,
+                        "cannot determine a type for this expression: {}",
+                        infer::fixup_err_to_string(e));
                 }
 
                 ResolvingLocal(span) => {
-                    self.tcx.sess.span_err(
-                        span,
-                        format!("cannot determine a type for \
-                                 this local variable: {}",
-                                infer::fixup_err_to_string(e)).as_slice())
+                    span_err!(self.tcx.sess, span, E0102,
+                        "cannot determine a type for this local variable: {}",
+                        infer::fixup_err_to_string(e));
                 }
 
                 ResolvingPattern(span) => {
-                    self.tcx.sess.span_err(
-                        span,
-                        format!("cannot determine a type for \
-                                 this pattern binding: {}",
-                                infer::fixup_err_to_string(e)).as_slice())
+                    span_err!(self.tcx.sess, span, E0103,
+                        "cannot determine a type for this pattern binding: {}",
+                        infer::fixup_err_to_string(e));
                 }
 
                 ResolvingUpvar(upvar_id) => {
                     let span = self.reason.span(self.tcx);
-                    self.tcx.sess.span_err(
-                        span,
-                        format!("cannot resolve lifetime for \
-                                 captured variable `{}`: {}",
-                                ty::local_var_name_str(
-                                    self.tcx,
-                                    upvar_id.var_id).get().to_string(),
-                                infer::fixup_err_to_string(e)).as_slice());
+                    span_err!(self.tcx.sess, span, E0104,
+                        "cannot resolve lifetime for captured variable `{}`: {}",
+                        ty::local_var_name_str(self.tcx, upvar_id.var_id).get().to_string(),
+                        infer::fixup_err_to_string(e));
                 }
 
                 ResolvingImplRes(span) => {
-                    self.tcx
-                        .sess
-                        .span_err(span,
-                                  "cannot determine a type for impl \
-                                   supertrait");
+                    span_err!(self.tcx.sess, span, E0105,
+                        "cannot determine a type for impl supertrait");
                 }
 
                 ResolvingUnboxedClosure(_) => {

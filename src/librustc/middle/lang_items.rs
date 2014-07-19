@@ -27,6 +27,7 @@ use middle::weak_lang_items;
 use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
 use syntax::visit;
@@ -122,7 +123,7 @@ impl<'a> Visitor<()> for LanguageItemCollector<'a> {
 
                 match item_index {
                     Some(item_index) => {
-                        self.collect_item(item_index, local_def(item.id))
+                        self.collect_item(item_index, local_def(item.id), item.span)
                     }
                     None => {}
                 }
@@ -147,13 +148,13 @@ impl<'a> LanguageItemCollector<'a> {
         }
     }
 
-    pub fn collect_item(&mut self, item_index: uint, item_def_id: ast::DefId) {
+    pub fn collect_item(&mut self, item_index: uint,
+                        item_def_id: ast::DefId, span: Span) {
         // Check for duplicates.
         match self.items.items.get(item_index) {
             &Some(original_def_id) if original_def_id != item_def_id => {
-                self.session.err(format!("duplicate entry for `{}`",
-                                         LanguageItems::item_name(
-                                             item_index)).as_slice());
+                span_err!(self.session, span, E0152,
+                    "duplicate entry for `{}`", LanguageItems::item_name(item_index));
             }
             &Some(_) | &None => {
                 // OK.
@@ -173,7 +174,7 @@ impl<'a> LanguageItemCollector<'a> {
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
             each_lang_item(crate_store, crate_number, |node_id, item_index| {
                 let def_id = ast::DefId { krate: crate_number, node: node_id };
-                self.collect_item(item_index, def_id);
+                self.collect_item(item_index, def_id, DUMMY_SP);
                 true
             });
         })

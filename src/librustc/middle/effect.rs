@@ -49,10 +49,9 @@ impl<'a> EffectCheckVisitor<'a> {
         match self.unsafe_context {
             SafeContext => {
                 // Report an error.
-                self.tcx.sess.span_err(span,
-                                  format!("{} requires unsafe function or \
-                                           block",
-                                          description).as_slice())
+                span_err!(self.tcx.sess, span, E0133,
+                          "{} requires unsafe function or block",
+                          description);
             }
             UnsafeBlock(block_id) => {
                 // OK, but record this.
@@ -73,14 +72,14 @@ impl<'a> EffectCheckVisitor<'a> {
         match ty::get(base_type).sty {
             ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
                 ty::ty_str => {
-                    self.tcx.sess.span_err(e.span,
-                        "modification of string types is not allowed");
+                    span_err!(self.tcx.sess, e.span, E0134,
+                              "modification of string types is not allowed");
                 }
                 _ => {}
             },
             ty::ty_str => {
-                self.tcx.sess.span_err(e.span,
-                    "modification of string types is not allowed");
+                span_err!(self.tcx.sess, e.span, E0135,
+                          "modification of string types is not allowed");
             }
             _ => {}
         }
