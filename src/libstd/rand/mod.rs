@@ -226,19 +226,24 @@ impl Rng for TaskRng {
     }
 }
 
-/// Generate a random value using the task-local random number
-/// generator.
+/// Generates a random value using the task-local random number generator.
 ///
-/// # Example
+/// `random()` can generate various types of random things, and so may require
+/// type hinting to generate the specific type you want.
+///
+/// # Examples
 ///
 /// ```rust
-/// use std::rand::random;
+/// use std::rand;
 ///
-/// if random() {
-///     let x = random();
-///     println!("{}", 2u * x);
-/// } else {
-///     println!("{}", random::<f64>());
+/// let x = rand::random();
+/// println!("{}", 2u * x);
+///
+/// let y = rand::random::<f64>();
+/// println!("{}", y);
+///
+/// if rand::random() { // generates a boolean
+///     println!("Better lucky than good!");
 /// }
 /// ```
 #[inline]
