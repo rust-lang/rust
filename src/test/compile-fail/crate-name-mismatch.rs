@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:--crate-name crate-name-attr-used -F unused-attribute
+// compile-flags: --crate-name foo
 
-#![crate_name = "crate-name-attr-used"]
+#![crate_name = "bar"]
+//~^ ERROR: --crate-name and #[crate_name] are required to match, but `foo` != `bar`
 
 fn main() {}
