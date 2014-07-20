@@ -30,6 +30,7 @@ extern crate time;
 use std::io;
 use std::io::{File, MemWriter};
 use std::gc::Gc;
+use std::collections::HashMap;
 use serialize::{json, Decodable, Encodable};
 use externalfiles::ExternalHtml;
 
@@ -104,6 +105,7 @@ pub fn opts() -> Vec<getopts::OptGroup> {
         optmulti("L", "library-path", "directory to add to crate search path",
                  "DIR"),
         optmulti("", "cfg", "pass a --cfg to rustc", ""),
+        optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH"),
         optmulti("", "plugin-path", "directory to load plugins from", "DIR"),
         optmulti("", "passes", "space separated list of passes to also run, a \
                                 value of `list` will print available passes",
@@ -170,6 +172,13 @@ pub fn main_args(args: &[String]) -> int {
     let input = matches.free[0].as_slice();
 
     let libs = matches.opt_strs("L").iter().map(|s| Path::new(s.as_slice())).collect();
+    let externs = match parse_externs(&matches) {
+        Ok(ex) => ex,
+        Err(err) => {
+            println!("{}", err);
+            return 1;
+        }
+    };
 
     let test_args = matches.opt_strs("test-args");
     let test_args: Vec<String> = test_args.iter()
@@ -193,10 +202,10 @@ pub fn main_args(args: &[String]) -> int {
 
     match (should_test, markdown_input) {
         (true, true) => {
-            return markdown::test(input, libs, test_args)
+            return markdown::test(input, libs, externs, test_args)
         }
         (true, false) => {
-            return test::run(input, cfgs, libs, test_args)
+            return test::run(input, cfgs, libs, externs, test_args)
         }
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
                                                  &matches, &external_html),
@@ -215,7 +224,7 @@ pub fn main_args(args: &[String]) -> int {
         return 0;
     }
 
-    let (krate, res) = match acquire_input(input, &matches) {
+    let (krate, res) = match acquire_input(input, externs, &matches) {
         Ok(pair) => pair,
         Err(s) => {
             println!("input error: {}", s);
@@ -252,19 +261,45 @@ pub fn main_args(args: &[String]) -> int {
 /// Looks inside the command line arguments to extract the relevant input format
 /// and files and then generates the necessary rustdoc output for formatting.
 fn acquire_input(input: &str,
+                 externs: core::Externs,
                  matches: &getopts::Matches) -> Result<Output, String> {
     match matches.opt_str("r").as_ref().map(|s| s.as_slice()) {
-        Some("rust") => Ok(rust_input(input, matches)),
+        Some("rust") => Ok(rust_input(input, externs, matches)),
         Some("json") => json_input(input),
         Some(s) => Err(format!("unknown input format: {}", s)),
         None => {
             if input.ends_with(".json") {
                 json_input(input)
             } else {
-                Ok(rust_input(input, matches))
+                Ok(rust_input(input, externs, matches))
             }
         }
     }
+}
+
+/// Extracts `--extern CRATE=PATH` arguments from `matches` and
+/// returns a `HashMap` mapping crate names to their paths or else an
+/// error message.
+fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
+    let mut externs = HashMap::new();
+    for arg in matches.opt_strs("extern").iter() {
+        let mut parts = arg.as_slice().splitn('=', 1);
+        let name = match parts.next() {
+            Some(s) => s,
+            None => {
+                return Err("--extern value must not be empty".to_string());
+            }
+        };
+        let location = match parts.next() {
+            Some(s) => s,
+            None => {
+                return Err("--extern value must be of the format `foo=bar`".to_string());
+            }
+        };
+        let locs = externs.find_or_insert(name.to_string(), Vec::new());
+        locs.push(location.to_string());
+    }
+    Ok(externs)
 }
 
 /// Interprets the input file as a rust source file, passing it through the
@@ -272,7 +307,7 @@ fn acquire_input(input: &str,
 /// generated from the cleaned AST of the crate.
 ///
 /// This form of input will run all of the plug/cleaning passes
-fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
+fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matches) -> Output {
     let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");
     let mut plugins = matches.opt_strs("plugins");
@@ -283,12 +318,14 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
                                  .map(|s| Path::new(s.as_slice()))
                                  .collect();
     let cfgs = matches.opt_strs("cfg");
+
     let cr = Path::new(cratefile);
     info!("starting to run rustc");
     let (krate, analysis) = std::task::try(proc() {
         let cr = cr;
-        core::run_core(libs.move_iter().map(|x| x.clone()).collect(),
+        core::run_core(libs.move_iter().collect(),
                        cfgs,
+                       externs,
                        &cr)
     }).map_err(|boxed_any|format!("{:?}", boxed_any)).unwrap();
     info!("finished with rustc");
