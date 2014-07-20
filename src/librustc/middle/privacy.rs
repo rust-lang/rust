@@ -901,21 +901,29 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
             ast::ViewItemUse(ref vpath) => {
                 match vpath.node {
                     ast::ViewPathSimple(..) | ast::ViewPathGlob(..) => {}
-                    ast::ViewPathList(_, ref list, _) => {
+                    ast::ViewPathList(ref prefix, ref list, _) => {
                         for pid in list.iter() {
-                            debug!("privacy - list {}", pid.node.id);
-                            let seg = ast::PathSegment {
-                                identifier: pid.node.name,
-                                lifetimes: Vec::new(),
-                                types: OwnedSlice::empty(),
-                            };
-                            let segs = vec!(seg);
-                            let path = ast::Path {
-                                global: false,
-                                span: pid.span,
-                                segments: segs,
-                            };
-                            self.check_path(pid.span, pid.node.id, &path);
+                            match pid.node {
+                                ast::PathListIdent { id, name } => {
+                                    debug!("privacy - ident item {}", id);
+                                    let seg = ast::PathSegment {
+                                        identifier: name,
+                                        lifetimes: Vec::new(),
+                                        types: OwnedSlice::empty(),
+                                    };
+                                    let segs = vec![seg];
+                                    let path = ast::Path {
+                                        global: false,
+                                        span: pid.span,
+                                        segments: segs,
+                                    };
+                                    self.check_path(pid.span, id, &path);
+                                }
+                                ast::PathListMod { id } => {
+                                    debug!("privacy - mod item {}", id);
+                                    self.check_path(pid.span, id, prefix);
+                                }
+                            }
                         }
                     }
                 }

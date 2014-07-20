@@ -1045,7 +1045,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn view_use_list(&self, sp: Span, vis: ast::Visibility,
                      path: Vec<ast::Ident> , imports: &[ast::Ident]) -> ast::ViewItem {
         let imports = imports.iter().map(|id| {
-            respan(sp, ast::PathListIdent_ { name: *id, id: ast::DUMMY_NODE_ID })
+            respan(sp, ast::PathListIdent { name: *id, id: ast::DUMMY_NODE_ID })
         }).collect();
 
         self.view_use(sp, vis,

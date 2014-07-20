@@ -187,7 +187,7 @@ impl<'a> RustdocVisitor<'a> {
             ast::ViewPathList(ref p, ref paths, ref b) => {
                 let mut mine = Vec::new();
                 for path in paths.iter() {
-                    if !self.resolve_id(path.node.id, false, om, please_inline) {
+                    if !self.resolve_id(path.node.id(), false, om, please_inline) {
                         mine.push(path.clone());
                     }
                 }
