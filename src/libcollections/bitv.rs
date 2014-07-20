@@ -1124,6 +1124,35 @@ impl BitvSet {
         }
     }
 
+    /// Iterator over each uint stored in `self` intersect `other`.
+    /// See [intersect_with](#method.intersect_with) for an efficient in-place version.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// use std::collections::bitv::from_bytes;
+    ///
+    /// let a = BitvSet::from_bitv(from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    ///
+    /// // Print 2
+    /// for x in a.intersection(&b) {
+    ///     println!("{}", x);
+    /// }
+    /// ```
+    #[inline]
+    pub fn intersection<'a>(&'a self, other: &'a BitvSet) -> Take<TwoBitPositions<'a>> {
+        let min = cmp::min(self.capacity(), other.capacity());
+        TwoBitPositions {
+            set: self,
+            other: other,
+            merge: |w1, w2| w1 & w2,
+            current_word: 0,
+            next_idx: 0
+        }.take(min)
+    }
+
     /// Iterator over each uint stored in the `self` setminus `other`.
     /// See [difference_with](#method.difference_with) for an efficient in-place version.
     ///
@@ -1186,35 +1215,6 @@ impl BitvSet {
             current_word: 0,
             next_idx: 0
         }
-    }
-
-    /// Iterator over each uint stored in `self` intersect `other`.
-    /// See [intersect_with](#method.intersect_with) for an efficient in-place version.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BitvSet;
-    /// use std::collections::bitv::from_bytes;
-    ///
-    /// let a = BitvSet::from_bitv(from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
-    ///
-    /// // Print 2
-    /// for x in a.intersection(&b) {
-    ///     println!("{}", x);
-    /// }
-    /// ```
-    #[inline]
-    pub fn intersection<'a>(&'a self, other: &'a BitvSet) -> Take<TwoBitPositions<'a>> {
-        let min = cmp::min(self.capacity(), other.capacity());
-        TwoBitPositions {
-            set: self,
-            other: other,
-            merge: |w1, w2| w1 & w2,
-            current_word: 0,
-            next_idx: 0
-        }.take(min)
     }
 
     /// Union in-place with the specified other bit vector.
