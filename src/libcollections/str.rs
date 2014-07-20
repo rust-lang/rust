@@ -558,7 +558,6 @@ pub mod raw {
     use core::mem;
     use core::raw::Slice;
     use core::ptr::RawPtr;
-
     use string::{mod, String};
     use vec::Vec;
 
@@ -567,14 +566,10 @@ pub mod raw {
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
     pub use core::str::raw::{slice_unchecked};
 
-    /// Create a Rust string from a *u8 buffer of the given length
+    /// Deprecated. Replaced by `string::raw::from_buf_len`
+    #[deprecated = "Use string::raw::from_buf_len"]
     pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> String {
-        let mut result = String::new();
-        result.push_bytes(mem::transmute(Slice {
-            data: buf,
-            len: len,
-        }));
-        result
+        string::raw::from_buf_len(buf, len)
     }
 
     /// Deprecated. Use `CString::as_str().unwrap().to_string()`
@@ -598,22 +593,10 @@ pub mod raw {
         string::raw::from_utf8(v)
     }
 
-    /// Deprecated. Use `String::from_bytes`
-    #[deprecated = "Use String::from_bytes"]
+    /// Deprecated. Use `string::raw::from_utf8`
+    #[deprecated = "Use string::raw::from_utf8"]
     pub unsafe fn from_byte(u: u8) -> String {
-        String::from_bytes(vec![u])
-    }
-
-    #[test]
-    fn test_from_buf_len() {
-        use slice::ImmutableVector;
-
-        unsafe {
-            let a = vec![65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-            let b = a.as_ptr();
-            let c = from_buf_len(b, 3u);
-            assert_eq!(c, String::from_str("AAA"));
-        }
+        string::raw::from_utf8(vec![u])
     }
 }
 
