@@ -170,28 +170,6 @@ impl Bitv {
         }
     }
 
-    /**
-     * Calculates the union of two bitvectors
-     *
-     * Sets `self` to the union of `self` and `v1`. Both bitvectors must be
-     * the same length. Returns `true` if `self` changed.
-    */
-    #[inline]
-    pub fn union(&mut self, other: &Bitv) -> bool {
-        self.process(other, |w1, w2| w1 | w2)
-    }
-
-    /**
-     * Calculates the intersection of two bitvectors
-     *
-     * Sets `self` to the intersection of `self` and `v1`. Both bitvectors
-     * must be the same length. Returns `true` if `self` changed.
-    */
-    #[inline]
-    pub fn intersect(&mut self, other: &Bitv) -> bool {
-        self.process(other, |w1, w2| w1 & w2)
-    }
-
     /// Retrieve the value at index `i`
     #[inline]
     pub fn get(&self, i: uint) -> bool {
@@ -227,6 +205,28 @@ impl Bitv {
     #[inline]
     pub fn negate(&mut self) {
         for w in self.storage.mut_iter() { *w = !*w; }
+    }
+
+    /**
+     * Calculates the union of two bitvectors
+     *
+     * Sets `self` to the union of `self` and `v1`. Both bitvectors must be
+     * the same length. Returns `true` if `self` changed.
+    */
+    #[inline]
+    pub fn union(&mut self, other: &Bitv) -> bool {
+        self.process(other, |w1, w2| w1 | w2)
+    }
+
+    /**
+     * Calculates the intersection of two bitvectors
+     *
+     * Sets `self` to the intersection of `self` and `v1`. Both bitvectors
+     * must be the same length. Returns `true` if `self` changed.
+    */
+    #[inline]
+    pub fn intersect(&mut self, other: &Bitv) -> bool {
+        self.process(other, |w1, w2| w1 & w2)
     }
 
     /**
