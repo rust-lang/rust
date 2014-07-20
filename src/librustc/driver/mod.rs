@@ -124,7 +124,7 @@ fn run_compiler(args: &[String]) {
         return;
     }
 
-    driver::compile_input(sess, cfg, &input, &odir, &ofile);
+    driver::compile_input(sess, cfg, &input, &odir, &ofile, None);
 }
 
 /// Prints version information and returns None on success or an error
