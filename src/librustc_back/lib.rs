@@ -21,7 +21,6 @@
 //! one that doesn't; the one that doesn't might get decent parallel
 //! build speedups.
 
-#![crate_id = "rustc_back#0.11.0-pre"]
 #![crate_name = "rustc_back"]
 #![experimental]
 #![comment = "The Rust compiler minimal-dependency dumping-ground"]
@@ -33,7 +32,6 @@
       html_root_url = "http://doc.rust-lang.org/")]
 
 #![feature(globs, phase, macro_rules)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #[phase(plugin, link)]
 extern crate log;

@@ -13,7 +13,6 @@
 #![allow(non_snake_case_functions)]
 #![allow(dead_code)]
 
-#![crate_id = "rustc_llvm#0.11.0"]
 #![crate_name = "rustc_llvm"]
 #![experimental]
 #![license = "MIT/ASL2"]
@@ -25,7 +24,6 @@
 
 #![feature(globs)]
 #![feature(link_args)]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 extern crate libc;
 

@@ -29,7 +29,6 @@
        html_root_url = "http://doc.rust-lang.org/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![no_std]
-#![allow(unused_attribute)] // NOTE: remove after stage0
 
 extern crate core;
 
