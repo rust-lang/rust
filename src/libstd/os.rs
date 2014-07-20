@@ -47,9 +47,9 @@ use ptr;
 use result::{Err, Ok, Result};
 use slice::{Vector, ImmutableVector, MutableVector, ImmutableEqVector};
 use str::{Str, StrSlice, StrAllocating};
-use str;
 use string::String;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
+use to_str::ToString;
 use vec::Vec;
 
 #[cfg(unix)]
@@ -135,7 +135,7 @@ pub fn getcwd() -> Path {
             fail!();
         }
     }
-    Path::new(String::from_utf16(str::truncate_utf16_at_nul(buf))
+    Path::new(String::from_utf16(::str::truncate_utf16_at_nul(buf))
               .expect("GetCurrentDirectoryW returned invalid UTF-16"))
 }
 
@@ -413,7 +413,7 @@ pub fn setenv<T: BytesContainer>(n: &str, v: T) {
     fn _setenv(n: &str, v: &[u8]) {
         let n: Vec<u16> = n.utf16_units().collect();
         let n = n.append_one(0);
-        let v: Vec<u16> = str::from_utf8(v).unwrap().utf16_units().collect();
+        let v: Vec<u16> = ::str::from_utf8(v).unwrap().utf16_units().collect();
         let v = v.append_one(0);
 
         unsafe {
@@ -1045,7 +1045,7 @@ pub fn error_string(errnum: uint) -> String {
                 return format!("OS Error {} (FormatMessageW() returned error {})", errnum, fm_err);
             }
 
-            let msg = String::from_utf16(str::truncate_utf16_at_nul(buf));
+            let msg = String::from_utf16(::str::truncate_utf16_at_nul(buf));
             match msg {
                 Some(msg) => format!("OS Error {}: {}", errnum, msg),
                 None => format!("OS Error {} (FormatMessageW() returned invalid UTF-16)", errnum),
@@ -1202,7 +1202,7 @@ fn real_args() -> Vec<String> {
 
         // Push it onto the list.
         let opt_s = slice::raw::buf_as_slice(ptr as *const _, len, |buf| {
-            String::from_utf16(str::truncate_utf16_at_nul(buf))
+            String::from_utf16(::str::truncate_utf16_at_nul(buf))
         });
         opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
     });

@@ -233,7 +233,7 @@ use std::io;
 use std::mem;
 use std::ptr;
 use std::slice;
-use std::str;
+use std::string;
 
 use std::collections::{HashMap, HashSet};
 use flate;
@@ -772,7 +772,7 @@ fn get_metadata_section_imp(os: abi::Os, filename: &Path) -> Result<MetadataBlob
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
             let mut name_buf = ptr::null();
             let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
-            let name = str::raw::from_buf_len(name_buf as *const u8,
+            let name = string::raw::from_buf_len(name_buf as *const u8,
                                               name_len as uint);
             debug!("get_metadata_section: name {}", name);
             if read_meta_section_name(os).as_slice() == name.as_slice() {
