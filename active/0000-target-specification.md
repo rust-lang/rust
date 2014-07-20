@@ -38,7 +38,7 @@ Rather than listing specific targets for special treatment, introduce a
 general mechanism for specifying certain characteristics of a target triple.
 Redesign how targets are handled around this specification, including for the
 built-in targets. Extend the `--target` flag to accept a file name of a target
-specificatoin. A table of the target specification flags and their meaning:
+specification. A table of the target specification flags and their meaning:
 
 * `data-layout`: The [LLVM data
 layout](http://llvm.org/docs/LangRef.html#data-layout) to use. Mostly included
@@ -50,9 +50,13 @@ for completeness; changing this is unlikely to be used.
 * `dynamic-linking-available`: Whether the `dylib` crate type is allowed.
 * `split-stacks-supported`: Whether there is runtime support that will allow
   LLVM's split stack prologue to function as intended.
-* `target-name`: What name to use for `targ_os` for use in `cfg` and for
-  passing to LLVM.
+* `llvm-target`: What target to pass to LLVM.
 * `relocation-model`: What relocation model to use by default.
+* `target_endian`, `target_word_size`: Specify the strings used for the
+  corresponding `cfg` variables.
+* `code-model`: Code model to pass to LLVM, overridable with `-C code-model`.
+* `no-redzone`: Disable use of any stack redzone, overridable with `-C
+  no-redzone`
 
 Rather than hardcoding a specific set of behaviors per-target, with no
 recourse for escaping them, the compiler would also use this mechanism when
@@ -71,13 +75,14 @@ deciding how to build for a given target. The process would look like:
    target.
 6. If `-C relocation-model` is specified, replace the target
    `relocation-model` with it.
+7. If `-C code-model` is specified, replace the target `code-model` with it.
+8. If `-C no-redzone` is specified, replace the target `no-redzone` with true.
 
 
 Then during compilation, this information is used at the proper places rather
-than matching against an enum listing the OSes we recognize.
-
-The complete set of target configuration flags would be mixed into the SVH
-for that crate, but would not include modifications given with `-C`.
+than matching against an enum listing the OSes we recognize. The `target_os`,
+`target_family`, and `target_arch` `cfg` variables would be extracted from the
+`--target` passed to rustc.
 
 # Drawbacks
 
@@ -90,5 +95,4 @@ compiler. rustc is the only compiler I know of that would allow that.
 A less holistic approach would be to just allow disabling split stacks on a
 per-crate basis. Another solution could be adding a family of targets,
 `<arch>-unknown-unknown`, which omits all of the above complexity but does not
-allow extending to new targets easily. `-T` can easily be extended for the
-future needs of other targets.
+allow extending to new targets easily.
