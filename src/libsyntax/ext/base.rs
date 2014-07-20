@@ -20,6 +20,7 @@ use parse::token;
 use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
 use ext::mtwt;
+use fold::Folder;
 
 use std::collections::HashMap;
 use std::gc::{Gc, GC};
@@ -434,7 +435,7 @@ pub struct ExtCtxt<'a> {
     pub trace_mac: bool,
     pub exported_macros: Vec<Gc<ast::Item>>,
 
-	pub syntax_env: SyntaxEnv,
+    pub syntax_env: SyntaxEnv,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -452,18 +453,14 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn expand_expr(&mut self, mut e: Gc<ast::Expr>) -> Gc<ast::Expr> {
-        loop {
-            match e.node {
-                ast::ExprMac(..) => {
-                    let mut expander = expand::MacroExpander {
-                        cx: self,
-                    };
-                    e = expand::expand_expr(e, &mut expander);
-                }
-                _ => return e
-            }
-        }
+    #[deprecated = "Replaced with `expander().fold_expr()`"]
+    pub fn expand_expr(&mut self, e: Gc<ast::Expr>) -> Gc<ast::Expr> {
+        self.expander().fold_expr(e)
+    }
+
+    /// Returns a `Folder` for deeply expanding all macros in a AST node.
+    pub fn expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
+        expand::MacroExpander { cx: self }
     }
 
     pub fn new_parser_from_tts(&self, tts: &[ast::TokenTree])
@@ -573,7 +570,7 @@ impl<'a> ExtCtxt<'a> {
 pub fn expr_to_string(cx: &mut ExtCtxt, expr: Gc<ast::Expr>, err_msg: &str)
                    -> Option<(InternedString, ast::StrStyle)> {
     // we want to be able to handle e.g. concat("foo", "bar")
-    let expr = cx.expand_expr(expr);
+    let expr = cx.expander().fold_expr(expr);
     match expr.node {
         ast::ExprLit(l) => match l.node {
             ast::LitStr(ref s, style) => return Some(((*s).clone(), style)),
@@ -630,7 +627,7 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::EOF {
-        es.push(cx.expand_expr(p.parse_expr()));
+        es.push(cx.expander().fold_expr(p.parse_expr()));
         if p.eat(&token::COMMA) {
             continue;
         }
