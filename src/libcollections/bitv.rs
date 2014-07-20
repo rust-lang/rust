@@ -155,13 +155,32 @@ impl Bitv {
         }
     }
 
-    /// Creates an empty Bitv
+    /// Create an empty Bitv.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    /// let mut bv = Bitv::new();
+    /// ```
     pub fn new() -> Bitv {
         Bitv { storage: Vec::new(), nbits: 0 }
     }
 
-    /// Creates a Bitv that holds `nbits` elements, setting each element
+    /// Create a Bitv that holds `nbits` elements, setting each element
     /// to `init`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    ///
+    /// let mut bv = Bitv::with_capacity(10u, false);
+    /// assert_eq!(bv.len(), 10u);
+    /// for x in bv.iter() {
+    ///     assert_eq!(x, false);
+    /// }
+    /// ```
     pub fn with_capacity(nbits: uint, init: bool) -> Bitv {
         Bitv {
             storage: Vec::from_elem((nbits + uint::BITS - 1) / uint::BITS,
@@ -170,7 +189,21 @@ impl Bitv {
         }
     }
 
-    /// Retrieve the value at index `i`
+    /// Retrieve the value at index `i`.
+    ///
+    /// # Failure
+    ///
+    /// Assert if `i` out of bounds.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    ///
+    /// let bv: Bitv = [false, true].iter().map(|n| *n).collect();
+    /// assert_eq!(bv.get(0), false);
+    /// assert_eq!(bv.get(1), true);
+    /// ```
     #[inline]
     pub fn get(&self, i: uint) -> bool {
         assert!(i < self.nbits);
@@ -180,11 +213,21 @@ impl Bitv {
         x != 0
     }
 
-    /**
-     * Set the value of a bit at a given index
-     *
-     * `i` must be less than the length of the bitvector.
-     */
+    /// Set the value of a bit at a index `i`.
+    ///
+    /// # Failure
+    ///
+    /// Assert if `i` out of bounds.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    ///
+    /// let mut bv = Bitv::with_capacity(5, false);
+    /// bv.set(3, true);
+    /// assert_eq!(bv.get(3), true);
+    /// ```
     #[inline]
     pub fn set(&mut self, i: uint, x: bool) {
         assert!(i < self.nbits);
@@ -195,55 +238,128 @@ impl Bitv {
                           else { *self.storage.get(w) & !flag };
     }
 
-    /// Set all bits to 1
+    /// Set all bits to 1.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    ///
+    /// let mut bv: Bitv = [false, true, false].iter().map(|n| *n).collect();
+    /// bv.set_all();
+    /// assert!(bv.eq_vec([true, true, true]));
     #[inline]
     pub fn set_all(&mut self) {
         for w in self.storage.mut_iter() { *w = !0u; }
     }
 
-    /// Flip all bits
+    /// Flip all bits.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    ///
+    /// let mut bv: Bitv = [false, true, false].iter().map(|n| *n).collect();
+    /// bv.negate();
+    /// assert!(bv.eq_vec([true, false, true]));
     #[inline]
     pub fn negate(&mut self) {
         for w in self.storage.mut_iter() { *w = !*w; }
     }
 
-    /**
-     * Calculates the union of two bitvectors
-     *
-     * Sets `self` to the union of `self` and `v1`. Both bitvectors must be
-     * the same length. Returns `true` if `self` changed.
-    */
+    /// Calculate the union of two bitvectors, acts like bitwise or.
+    ///
+    /// Set `self` to the union of `self` and `other`. Both bitvectors must be
+    /// the same length. Return `true` if `self` changed.
+    ///
+    /// # Failure
+    ///
+    /// Assert if the bitvectors are of different length.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    ///
+    /// let mut bv1: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
+    /// let bv2: Bitv = [false, true, false, true].iter().map(|n| *n).collect();
+    /// let res: Bitv = [false, true, true, true].iter().map(|n| *n).collect();
+    ///
+    /// assert!(bv1.union(&bv2));
+    /// assert_eq!(bv1, res);
+    /// ```
     #[inline]
     pub fn union(&mut self, other: &Bitv) -> bool {
         self.process(other, |w1, w2| w1 | w2)
     }
 
-    /**
-     * Calculates the intersection of two bitvectors
-     *
-     * Sets `self` to the intersection of `self` and `v1`. Both bitvectors
-     * must be the same length. Returns `true` if `self` changed.
-    */
+    /// Calculate the intersection of two bitvectors, acts like bitwise and.
+    ///
+    /// Set `self` to the intersection of `self` and `other`. Both bitvectors
+    /// must be the same length. Return `true` if `self` changed.
+    ///
+    /// # Failure
+    ///
+    /// Assert if the bitvectors are of different length.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    ///
+    /// let mut bv1: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
+    /// let bv2: Bitv = [false, true, false, true].iter().map(|n| *n).collect();
+    /// let res: Bitv = [false, true, false, false].iter().map(|n| *n).collect();
+    ///
+    /// assert!(bv1.intersect(&bv2));
+    /// assert_eq!(bv1, res);
+    /// ```
     #[inline]
     pub fn intersect(&mut self, other: &Bitv) -> bool {
         self.process(other, |w1, w2| w1 & w2)
     }
 
-    /**
-     * Calculate the difference between two bitvectors
-     *
-     * Sets each element of `v0` to the value of that element minus the
-     * element of `v1` at the same index. Both bitvectors must be the same
-     * length.
-     *
-     * Returns `true` if `v0` was changed.
-     */
+    /// Calculate the difference between two bitvectors.
+    ///
+    /// Set each element of `self` to the value of that element minus the
+    /// element of `other` at the same index. Both bitvectors must be the same
+    /// length. Return `true` if `self` changed.
+    ///
+    /// # Failure
+    ///
+    /// Assert if the bitvectors are of different length.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    ///
+    /// let mut bv1: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
+    /// let bv2: Bitv = [false, true, false, true].iter().map(|n| *n).collect();
+    /// let res: Bitv = [false, false, true, false].iter().map(|n| *n).collect();
+    ///
+    /// assert!(bv1.difference(&bv2));
+    /// assert_eq!(bv1, res);
+    /// ```
     #[inline]
     pub fn difference(&mut self, other: &Bitv) -> bool {
         self.process(other, |w1, w2| w1 & !w2)
     }
 
-    /// Returns `true` if all bits are 1
+    /// Returns `true` if all bits are 1.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
+    /// let mut bv = Bitv::with_capacity(5, true);
+    /// assert_eq!(bv.all(), true);
+    ///
+    /// bv.set(1, false);
+    /// assert_eq!(bv.all(), false);
+    /// ```
     #[inline]
     pub fn all(&self) -> bool {
         let mut last_word = !0u;
@@ -254,43 +370,83 @@ impl Bitv {
         (last_word == ((1 << self.nbits % uint::BITS) - 1) || last_word == !0u)
     }
 
-    /// Returns an iterator over the elements of the vector in order.
+    /// Return an iterator over the elements of the vector in order.
     ///
     /// # Example
     ///
-    /// ```rust
-    /// use collections::bitv::Bitv;
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
     /// let mut bv = Bitv::with_capacity(10, false);
     /// bv.set(1, true);
     /// bv.set(2, true);
     /// bv.set(3, true);
     /// bv.set(5, true);
     /// bv.set(8, true);
-    /// // Count bits set to 1; result should be 5
-    /// println!("{}", bv.iter().filter(|x| *x).count());
+    ///
+    /// assert_eq!(bv.iter().filter(|x| *x).count(), 5);
     /// ```
     #[inline]
     pub fn iter<'a>(&'a self) -> Bits<'a> {
         Bits {bitv: self, next_idx: 0, end_idx: self.nbits}
     }
 
-    /// Returns `true` if all bits are 0
+    /// Return `true` if all bits are 0.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
+    /// let mut bv = Bitv::with_capacity(10, false);
+    /// assert_eq!(bv.none(), true);
+    ///
+    /// bv.set(3, true);
+    /// assert_eq!(bv.none(), false);
+    /// ```
     pub fn none(&self) -> bool {
         self.mask_words(0).all(|(_, w)| w == 0)
     }
 
+    /// Return `true` if any bit is 1.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
+    /// let mut bv = Bitv::with_capacity(10, false);
+    /// assert_eq!(bv.any(), false);
+    ///
+    /// bv.set(3, true);
+    /// assert_eq!(bv.any(), true);
+    /// ```
     #[inline]
-    /// Returns `true` if any bit is 1
     pub fn any(&self) -> bool {
         !self.none()
     }
 
-    /**
-     * Organise the bits into bytes, such that the first bit in the
-     * `Bitv` becomes the high-order bit of the first byte. If the
-     * size of the `Bitv` is not a multiple of 8 then trailing bits
-     * will be filled-in with false/0
-     */
+    /// Organise the bits into bytes, such that the first bit in the
+    /// `Bitv` becomes the high-order bit of the first byte. If the
+    /// size of the `Bitv` is not a multiple of 8 then trailing bits
+    /// will be filled-in with false/0.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
+    /// let mut bv = Bitv::with_capacity(3, true);
+    /// bv.set(1, false);
+    ///
+    /// assert_eq!(bv.to_bytes(), vec!(0b10100000));
+    ///
+    /// let mut bv = Bitv::with_capacity(9, false);
+    /// bv.set(2, true);
+    /// bv.set(8, true);
+    ///
+    /// assert_eq!(bv.to_bytes(), vec!(0b00100000, 0b10000000));
+    /// ```
     pub fn to_bytes(&self) -> Vec<u8> {
         fn bit (bitv: &Bitv, byte: uint, bit: uint) -> u8 {
             let offset = byte * 8 + bit;
@@ -315,18 +471,35 @@ impl Bitv {
         )
     }
 
-    /**
-     * Transform `self` into a `Vec<bool>` by turning each bit into a `bool`.
-     */
+    /// Transform `self` into a `Vec<bool>` by turning each bit into a `bool`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
+    /// let bv: Bitv = [true, false, true].iter().map(|n| *n).collect();
+    /// assert_eq!(bv.to_bools(), vec!(true, false, true));
+    /// ```
     pub fn to_bools(&self) -> Vec<bool> {
         Vec::from_fn(self.nbits, |i| self.get(i))
     }
 
-    /**
-     * Compare a bitvector to a vector of `bool`.
-     *
-     * Both the bitvector and vector must have the same length.
-     */
+    /// Compare a bitvector to a vector of `bool`.
+    /// Both the bitvector and vector must have the same length.
+    /// # Failure
+    ///
+    /// Assert if the bitvectors are of different length.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    ///
+    /// let bv: Bitv = [false, true, true].iter().map(|n| *n).collect();
+    ///
+    /// assert!(bv.eq_vec([false, true, true]));
+    /// ```
     pub fn eq_vec(&self, v: &[bool]) -> bool {
         assert_eq!(self.nbits, v.len());
         let mut i = 0;
@@ -344,12 +517,12 @@ impl Bitv {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// use collections::bitv::Bitv;
-    /// let mut bvec: Bitv = vec![false, true, true, false].iter().map(|n| *n).collect();
-    /// let expected: Bitv = vec![false, true].iter().map(|n| *n).collect();
-    /// bvec.truncate(2);
-    /// assert_eq!(bvec, expected);
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
+    /// let mut bv: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
+    /// bv.truncate(2);
+    /// assert!(bv.eq_vec([false, true]));
     /// ```
     pub fn truncate(&mut self, len: uint) {
         if len < self.len() {
@@ -363,7 +536,18 @@ impl Bitv {
         }
     }
 
-    /// Grows the vector to be able to store `size` bits without resizing
+    /// Grow the vector to be able to store `size` bits without resizing.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
+    /// let mut bv = Bitv::with_capacity(3, false);
+    /// bv.reserve(10);
+    /// assert_eq!(bv.len(), 3);
+    /// assert!(bv.capacity() >= 10);
+    /// ```
     pub fn reserve(&mut self, size: uint) {
         let old_size = self.storage.len();
         let size = (size + uint::BITS - 1) / uint::BITS;
@@ -372,24 +556,33 @@ impl Bitv {
         }
     }
 
-    /// Returns the capacity in bits for this bit vector. Inserting any
+    /// Return the capacity in bits for this bit vector. Inserting any
     /// element less than this amount will not trigger a resizing.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
+    /// let mut bv = Bitv::new();
+    /// bv.reserve(10);
+    /// assert!(bv.capacity() >= 10);
+    /// ```
     #[inline]
     pub fn capacity(&self) -> uint {
         self.storage.len() * uint::BITS
     }
 
-    /// Grows the `Bitv` in-place.
-    ///
-    /// Adds `n` copies of `value` to the `Bitv`.
+    /// Grow the `Bitv` in-place. Add `n` copies of `value` to the `Bitv`.
     ///
     /// # Example
     ///
-    /// ```rust
-    /// use collections::bitv::Bitv;
-    /// let mut bvec: Bitv = vec![false, true, true, false].iter().map(|n| *n).collect();
-    /// bvec.grow(2, true);
-    /// assert_eq!(bvec, vec![false, true, true, false, true, true].iter().map(|n| *n).collect());
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
+    /// let mut bv: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
+    /// bv.grow(2, true);
+    /// assert!(bv.eq_vec([false, true, true, false, true, true]));
     /// ```
     pub fn grow(&mut self, n: uint, value: bool) {
         let new_nbits = self.nbits + n;
@@ -420,17 +613,20 @@ impl Bitv {
         self.nbits = new_nbits;
     }
 
-    /// Shorten a `Bitv` by one, returning the removed element
+    /// Shorten by one and return the removed element.
+    ///
+    /// # Failure
+    ///
+    /// Assert if empty.
     ///
     /// # Example
     ///
-    /// ```rust
-    /// use collections::bitv::Bitv;
-    /// let mut bvec: Bitv = vec![false, true, true, false].iter().map(|n| *n).collect();
-    /// let expected: Bitv = vec![false, true, true].iter().map(|n| *n).collect();
-    /// let popped = bvec.pop();
-    /// assert_eq!(popped, false);
-    /// assert_eq!(bvec, expected);
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
+    /// let mut bv: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
+    /// assert_eq!(bv.pop(), false);
+    /// assert!(bv.eq_vec([false, true, true]));
     /// ```
     pub fn pop(&mut self) -> bool {
         let ret = self.get(self.nbits - 1);
@@ -442,17 +638,17 @@ impl Bitv {
         ret
     }
 
-    /// Pushes a `bool` onto the `Bitv`
+    /// Push a `bool` onto the end.
     ///
     /// # Example
     ///
-    /// ```rust
-    /// use collections::bitv::Bitv;
-    /// let prototype: Bitv = vec![false, true, true, false].iter().map(|n| *n).collect();
-    /// let mut bvec: Bitv = vec![false, true].iter().map(|n| *n).collect();
-    /// bvec.push(true);
-    /// bvec.push(false);
-    /// assert_eq!(prototype, bvec);
+    /// ```
+    /// use std::collections::bitv::Bitv;
+    ///
+    /// let mut bv: Bitv = [false, true].iter().map(|n| *n).collect();
+    /// bv.push(true);
+    /// bv.push(false);
+    /// assert!(bv.eq_vec([false, true, true, false]));
     /// ```
     pub fn push(&mut self, elem: bool) {
         let insert_pos = self.nbits;
@@ -464,11 +660,21 @@ impl Bitv {
     }
 }
 
-/**
- * Transform a byte-vector into a `Bitv`. Each byte becomes 8 bits,
- * with the most significant bits of each byte coming first. Each
- * bit becomes `true` if equal to 1 or `false` if equal to 0.
- */
+/// Transform a byte-vector into a `Bitv`. Each byte becomes 8 bits,
+/// with the most significant bits of each byte coming first. Each
+/// bit becomes `true` if equal to 1 or `false` if equal to 0.
+///
+/// # Example
+///
+/// ```
+/// use std::collections::bitv::from_bytes;
+///
+/// let bv = from_bytes([0b10100000, 0b00010010]);
+/// assert!(bv.eq_vec([true, false, true, false,
+///                    false, false, false, false,
+///                    false, false, false, true,
+///                    false, false, true, false]));
+/// ```
 pub fn from_bytes(bytes: &[u8]) -> Bitv {
     from_fn(bytes.len() * 8, |i| {
         let b = bytes[i / 8] as uint;
@@ -477,10 +683,17 @@ pub fn from_bytes(bytes: &[u8]) -> Bitv {
     })
 }
 
-/**
- * Create a `Bitv` of the specified length where the value at each
- * index is `f(index)`.
- */
+/// Create a `Bitv` of the specified length where the value at each
+/// index is `f(index)`.
+///
+/// # Example
+///
+/// ```
+/// use std::collections::bitv::from_fn;
+///
+/// let bv = from_fn(5, |i| { i % 2 == 0 });
+/// assert!(bv.eq_vec([true, false, true, false, true]));
+/// ```
 pub fn from_fn(len: uint, f: |index: uint| -> bool) -> Bitv {
     let mut bitv = Bitv::with_capacity(len, false);
     for i in range(0u, len) {
