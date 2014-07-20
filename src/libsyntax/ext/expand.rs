@@ -32,7 +32,7 @@ use util::small_vector::SmallVector;
 use std::gc::{Gc, GC};
 
 
-pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
+fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
     match e.node {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
@@ -1346,16 +1346,6 @@ mod test {
         visit::walk_crate(&mut name_finder, the_crate, ());
         name_finder.ident_accumulator
     }
-
-    //fn expand_and_resolve(crate_str: @str) -> ast::crate {
-        //let expanded_ast = expand_crate_str(crate_str);
-        // println!("expanded: {:?}\n",expanded_ast);
-        //mtwt_resolve_crate(expanded_ast)
-    //}
-    //fn expand_and_resolve_and_pretty_print (crate_str: @str) -> String {
-        //let resolved_ast = expand_and_resolve(crate_str);
-        //pprust::to_string(&resolved_ast,fake_print_crate,get_ident_interner())
-    //}
 
     #[test] fn macro_tokens_should_match(){
         expand_crate_str(
