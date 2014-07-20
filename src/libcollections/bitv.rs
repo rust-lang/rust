@@ -723,30 +723,6 @@ impl BitvSet {
         bitv.nbits = trunc_len * uint::BITS;
     }
 
-    /// Union in-place with the specified other bit vector
-    #[inline]
-    pub fn union_with(&mut self, other: &BitvSet) {
-        self.other_op(other, |w1, w2| w1 | w2);
-    }
-
-    /// Intersect in-place with the specified other bit vector
-    #[inline]
-    pub fn intersect_with(&mut self, other: &BitvSet) {
-        self.other_op(other, |w1, w2| w1 & w2);
-    }
-
-    /// Difference in-place with the specified other bit vector
-    #[inline]
-    pub fn difference_with(&mut self, other: &BitvSet) {
-        self.other_op(other, |w1, w2| w1 & !w2);
-    }
-
-    /// Symmetric difference in-place with the specified other bit vector
-    #[inline]
-    pub fn symmetric_difference_with(&mut self, other: &BitvSet) {
-        self.other_op(other, |w1, w2| w1 ^ w2);
-    }
-
     /// Iterator over each uint stored in the BitvSet
     #[inline]
     pub fn iter<'a>(&'a self) -> BitPositions<'a> {
@@ -800,6 +776,30 @@ impl BitvSet {
             current_word: 0,
             next_idx: 0
         }
+    }
+
+    /// Union in-place with the specified other bit vector
+    #[inline]
+    pub fn union_with(&mut self, other: &BitvSet) {
+        self.other_op(other, |w1, w2| w1 | w2);
+    }
+
+    /// Intersect in-place with the specified other bit vector
+    #[inline]
+    pub fn intersect_with(&mut self, other: &BitvSet) {
+        self.other_op(other, |w1, w2| w1 & w2);
+    }
+
+    /// Difference in-place with the specified other bit vector
+    #[inline]
+    pub fn difference_with(&mut self, other: &BitvSet) {
+        self.other_op(other, |w1, w2| w1 & !w2);
+    }
+
+    /// Symmetric difference in-place with the specified other bit vector
+    #[inline]
+    pub fn symmetric_difference_with(&mut self, other: &BitvSet) {
+        self.other_op(other, |w1, w2| w1 ^ w2);
     }
 }
 
