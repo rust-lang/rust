@@ -577,7 +577,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
             always = always colorize output;
             never  = never colorize output", "auto|always|never"),
         optmulti("", "extern", "Specify where an external rust library is located",
-                 "PATH"),
+                 "NAME=PATH"),
     )
 }
 
