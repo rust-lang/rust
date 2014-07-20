@@ -22,7 +22,7 @@ struct Foo<'a> {
     x: &'a int,
 }
 
-// Lifetime annotation needed because we have two lifetime: one as a parameter
+// Lifetime annotation needed because we have two lifetimes: one as a parameter
 // and one on the reference.
 fn h(_: &Foo) -> &int { //~ ERROR missing lifetime specifier
     fail!()
