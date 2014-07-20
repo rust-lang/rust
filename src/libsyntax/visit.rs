@@ -186,7 +186,12 @@ pub fn walk_view_item<E: Clone, V: Visitor<E>>(visitor: &mut V, vi: &ViewItem, e
                 }
                 ViewPathList(ref path, ref list, _) => {
                     for id in list.iter() {
-                        visitor.visit_ident(id.span, id.node.name, env.clone())
+                        match id.node {
+                            PathListIdent { name, .. } => {
+                                visitor.visit_ident(id.span, name, env.clone());
+                            }
+                            PathListMod { .. } => ()
+                        }
                     }
                     walk_path(visitor, path, env.clone());
                 }
