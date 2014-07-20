@@ -32,6 +32,7 @@ use std::cell::{RefCell, Cell};
 use std::fmt;
 use std::slice;
 use std::str;
+use std::string;
 use std::collections::HashMap;
 
 use html::toc::TocBuilder;
@@ -222,7 +223,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             "".to_string()
         } else {
             unsafe {
-                str::raw::from_buf_len((*text).data, (*text).size as uint)
+                string::raw::from_buf_len((*text).data, (*text).size as uint)
             }
         };
 

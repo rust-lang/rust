@@ -571,6 +571,9 @@ impl<S: Str> Add<S, String> for String {
 }
 
 pub mod raw {
+    use core::mem;
+    use core::raw::Slice;
+
     use super::String;
     use vec::Vec;
 
@@ -580,6 +583,20 @@ pub mod raw {
     #[inline]
     pub unsafe fn from_utf8(bytes: Vec<u8>) -> String {
         String { vec: bytes }
+    }
+
+    /// Create a Rust string from a *u8 buffer of the given length
+    ///
+    /// This function is unsafe because of two reasons:
+    /// * A raw pointer is dereferenced and transmuted to `&[u8]`
+    /// * The slice is not checked to see whether it contains valid UTF-8
+    pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> String {
+        use slice::CloneableVector;
+        let slice: &[u8] = mem::transmute(Slice {
+            data: buf,
+            len: len,
+        });
+        self::from_utf8(slice.to_vec())
     }
 }
 
@@ -738,6 +755,14 @@ mod tests {
         // general
         assert_eq!(String::from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]),
                    String::from_str("\uFFFD𐒋\uFFFD"));
+    }
+
+    #[test]
+    fn test_from_buf_len() {
+        unsafe {
+            let a = vec![65u8, 65, 65, 65, 65, 65, 65, 0];
+            assert_eq!(super::raw::from_buf_len(a.as_ptr(), 3), String::from_str("AAA"));
+        }
     }
 
     #[test]
