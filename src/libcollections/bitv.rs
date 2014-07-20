@@ -8,6 +8,55 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Collections implemented with bit vectors.
+//!
+//! # Example
+//!
+//! This is a simple example of the [Sieve of Eratosthenes][sieve]
+//! which calculates prime numbers up to a given limit.
+//!
+//! [sieve]: http://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
+//!
+//! ```
+//! use std::collections::{BitvSet, Bitv};
+//! use std::iter;
+//!
+//! let max_prime = 10000;
+//!
+//! // Store the primes as a BitvSet
+//! let primes = {
+//!     let mut bv = Bitv::with_capacity(max_prime, true);
+//!
+//!     // Neither 0 nor 1 are prime
+//!     bv.set(0, false);
+//!     bv.set(1, false);
+//!
+//!     for i in range(2, max_prime) {
+//!         // if i is a prime
+//!         if bv.get(i) {
+//!             // mark all multiples of i as non-prime (any multiples below i * i
+//!             // will have been marked as non-prime previously)
+//!             for j in iter::range_step(i * i, max_prime, i) { bv.set(j, false) }
+//!         }
+//!     }
+//!     BitvSet::from_bitv(bv)
+//! };
+//!
+//! // Simple primality tests below our max bound
+//! let print_primes = 20;
+//! print!("The primes below {} are: ", print_primes);
+//! for x in range(0, print_primes) {
+//!     if primes.contains(&x) {
+//!         print!("{} ", x);
+//!     }
+//! }
+//! println!("");
+//!
+//! // We can manipulate the internal Bitv
+//! let num_primes = primes.get_ref().iter().filter(|x| *x).count();
+//! println!("There are {} primes below {}", num_primes, max_prime);
+//! ```
+
 #![allow(missing_doc)]
 
 use core::prelude::*;
