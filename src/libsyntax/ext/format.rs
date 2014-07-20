@@ -215,12 +215,21 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
+    fn describe_num_args(&self) -> String {
+        match self.args.len() {
+            0 => "no arguments given".to_string(),
+            1 => "there is 1 argument".to_string(),
+            x => format!("there are {} arguments", x),
+        }
+    }
+
     fn verify_arg_type(&mut self, arg: Position, ty: ArgumentType) {
         match arg {
             Exact(arg) => {
                 if self.args.len() <= arg {
-                    let msg = format!("invalid reference to argument `{}` (there \
-                                    are {} arguments)", arg, self.args.len());
+                    let msg = format!("invalid reference to argument `{}` ({:s})",
+                                      arg, self.describe_num_args());
+
                     self.ecx.span_err(self.fmtsp, msg.as_slice());
                     return;
                 }
