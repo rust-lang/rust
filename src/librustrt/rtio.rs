@@ -134,7 +134,7 @@ impl<'a> Drop for LocalIo<'a> {
 impl<'a> LocalIo<'a> {
     /// Returns the local I/O: either the local scheduler's I/O services or
     /// the native I/O services.
-    pub fn borrow() -> Option<LocalIo> {
+    pub fn borrow() -> Option<LocalIo<'a>> {
         // FIXME(#11053): bad
         //
         // This is currently very unsafely implemented. We don't actually

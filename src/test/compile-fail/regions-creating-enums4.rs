@@ -13,7 +13,7 @@ enum ast<'a> {
     add(&'a ast<'a>, &'a ast<'a>)
 }
 
-fn mk_add_bad2<'a>(x: &'a ast<'a>, y: &'a ast<'a>, z: &ast) -> ast {
+fn mk_add_bad2<'a,'b>(x: &'a ast<'a>, y: &'a ast<'a>, z: &ast) -> ast<'b> {
     add(x, y) //~ ERROR cannot infer
 }
 

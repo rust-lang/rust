@@ -94,7 +94,7 @@ pub type Map = Vec<Option<(*const u8, TLSValue, uint)>>;
 type TLSValue = Box<LocalData + Send>;
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
-unsafe fn get_local_map() -> Option<&mut Map> {
+unsafe fn get_local_map<'a>() -> Option<&'a mut Map> {
     if !Local::exists(None::<Task>) { return None }
 
     let task: *mut Task = Local::unsafe_borrow();

@@ -29,7 +29,7 @@ impl<T> E<T> {
             Nothing(..) => true
         }
     }
-    fn get_ref<'r>(&'r self) -> (int, &'r T) {
+    fn get_ref(&self) -> (int, &T) {
         match *self {
             Nothing(..) => fail!("E::get_ref(Nothing::<{}>)",  stringify!(T)),
             Thing(x, ref y) => (x, y)

@@ -15,7 +15,7 @@ use std::ops::Deref;
 struct Foo;
 
 impl Deref<Foo> for Foo {
-    fn deref<'a>(&'a self) -> &'a Foo {
+    fn deref(&self) -> &Foo {
         self
     }
 }

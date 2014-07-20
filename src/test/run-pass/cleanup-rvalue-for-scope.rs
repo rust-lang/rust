@@ -42,7 +42,7 @@ fn check_flags(exp: u64) {
 }
 
 impl AddFlags {
-    fn check_flags<'a>(&'a self, exp: u64) -> &'a AddFlags {
+    fn check_flags(&self, exp: u64) -> &AddFlags {
         check_flags(exp);
         self
     }

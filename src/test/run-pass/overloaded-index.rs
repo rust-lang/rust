@@ -14,7 +14,7 @@ struct Foo {
 }
 
 impl Index<int,int> for Foo {
-    fn index<'a>(&'a self, z: &int) -> &'a int {
+    fn index(&self, z: &int) -> &int {
         if *z == 0 {
             &self.x
         } else {
@@ -24,7 +24,7 @@ impl Index<int,int> for Foo {
 }
 
 impl IndexMut<int,int> for Foo {
-    fn index_mut<'a>(&'a mut self, z: &int) -> &'a mut int {
+    fn index_mut(&mut self, z: &int) -> &mut int {
         if *z == 0 {
             &mut self.x
         } else {

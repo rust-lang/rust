@@ -18,13 +18,13 @@ struct Own<T> {
 }
 
 impl<T> Deref<T> for Own<T> {
-    fn deref<'a>(&'a self) -> &'a T {
+    fn deref(&self) -> &T {
         unsafe { &*self.value }
     }
 }
 
 impl<T> DerefMut<T> for Own<T> {
-    fn deref_mut<'a>(&'a mut self) -> &'a mut T {
+    fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.value }
     }
 }
@@ -44,11 +44,11 @@ impl Point {
         self.y = y;
     }
 
-    fn x_ref<'a>(&'a self) -> &'a int {
+    fn x_ref(&self) -> &int {
         &self.x
     }
 
-    fn y_mut<'a>(&'a mut self) -> &'a mut int {
+    fn y_mut(&mut self) -> &mut int {
         &mut self.y
     }
 }
@@ -65,19 +65,19 @@ fn deref_mut_field2(mut x: Own<Point>) {
     let _i = &mut x.y;
 }
 
-fn deref_extend_field<'a>(x: &'a Own<Point>) -> &'a int {
+fn deref_extend_field(x: &Own<Point>) -> &int {
     &x.y
 }
 
-fn deref_extend_mut_field1<'a>(x: &'a Own<Point>) -> &'a mut int {
+fn deref_extend_mut_field1(x: &Own<Point>) -> &mut int {
     &mut x.y //~ ERROR cannot borrow
 }
 
-fn deref_extend_mut_field2<'a>(x: &'a mut Own<Point>) -> &'a mut int {
+fn deref_extend_mut_field2(x: &mut Own<Point>) -> &mut int {
     &mut x.y
 }
 
-fn deref_extend_mut_field3<'a>(x: &'a mut Own<Point>) {
+fn deref_extend_mut_field3(x: &mut Own<Point>) {
     // Hmm, this is unfortunate, because with box it would work,
     // but it's presently the expected outcome. See `deref_extend_mut_field4`
     // for the workaround.
@@ -124,15 +124,15 @@ fn deref_mut_method2(mut x: Own<Point>) {
     x.set(0, 0);
 }
 
-fn deref_extend_method<'a>(x: &'a Own<Point>) -> &'a int {
+fn deref_extend_method(x: &Own<Point>) -> &int {
     x.x_ref()
 }
 
-fn deref_extend_mut_method1<'a>(x: &'a Own<Point>) -> &'a mut int {
+fn deref_extend_mut_method1(x: &Own<Point>) -> &mut int {
     x.y_mut() //~ ERROR cannot borrow
 }
 
-fn deref_extend_mut_method2<'a>(x: &'a mut Own<Point>) -> &'a mut int {
+fn deref_extend_mut_method2(x: &mut Own<Point>) -> &mut int {
     x.y_mut()
 }
 

@@ -40,7 +40,7 @@ fn bar<'a,'b>(x: &'a S) -> &'b S {
 }
 
 // Meets F, but not G.
-fn baz<'a>(x: &'a S) -> &'a S {
+fn baz(x: &S) -> &S {
     fail!()
 }
 

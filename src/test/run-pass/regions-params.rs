@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn region_identity<'r>(x: &'r uint) -> &'r uint { x }
+fn region_identity(x: &uint) -> &uint { x }
 
 fn apply<T>(t: T, f: |T| -> T) -> T { f(t) }
 

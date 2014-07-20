@@ -18,7 +18,7 @@ impl Drop for Test {
     fn drop (&mut self) {}
 }
 
-fn createTest() -> &Test {
+fn createTest<'a>() -> &'a Test {
   let testValue = &Test; //~ ERROR borrowed value does not live long enough
   return testValue;
 }
