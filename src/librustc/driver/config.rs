@@ -97,6 +97,7 @@ pub struct Options {
     pub color: ColorConfig,
     pub externs: HashMap<String, Vec<String>>,
     pub crate_name: Option<String>,
+    pub alt_std_name: Option<String>
 }
 
 /// Some reasonable defaults
@@ -124,6 +125,7 @@ pub fn basic_options() -> Options {
         color: Auto,
         externs: HashMap::new(),
         crate_name: None,
+        alt_std_name: None,
     }
 }
 
@@ -787,6 +789,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         color: color,
         externs: externs,
         crate_name: crate_name,
+        alt_std_name: None
     }
 }
 
