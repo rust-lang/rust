@@ -729,6 +729,18 @@ impl BitvSet {
         BitPositions {set: self, next_idx: 0}
     }
 
+    /// Iterator over each uint stored in `self` union `other`
+    #[inline]
+    pub fn union<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
+        TwoBitPositions {
+            set: self,
+            other: other,
+            merge: |w1, w2| w1 | w2,
+            current_word: 0,
+            next_idx: 0
+        }
+    }
+
     /// Iterator over each uint stored in the `self` setminus `other`
     #[inline]
     pub fn difference<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
@@ -764,18 +776,6 @@ impl BitvSet {
             current_word: 0,
             next_idx: 0
         }.take(min)
-    }
-
-    /// Iterator over each uint stored in `self` union `other`
-    #[inline]
-    pub fn union<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
-        TwoBitPositions {
-            set: self,
-            other: other,
-            merge: |w1, w2| w1 | w2,
-            current_word: 0,
-            next_idx: 0
-        }
     }
 
     /// Union in-place with the specified other bit vector
