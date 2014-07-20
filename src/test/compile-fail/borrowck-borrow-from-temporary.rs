@@ -13,7 +13,7 @@
 
 struct Foo(int);
 
-fn foo() -> &int {
+fn foo<'a>() -> &'a int {
     let &Foo(ref x) = &Foo(3); //~ ERROR borrowed value does not live long enough
     x
 }

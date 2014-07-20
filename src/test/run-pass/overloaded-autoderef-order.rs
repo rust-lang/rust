@@ -22,7 +22,7 @@ impl<X, Y> DerefWrapper<X, Y> {
 }
 
 impl<X, Y> Deref<Y> for DerefWrapper<X, Y> {
-    fn deref<'a>(&'a self) -> &'a Y {
+    fn deref(&self) -> &Y {
         &self.y
     }
 }
@@ -43,7 +43,7 @@ mod priv_test {
     }
 
     impl<X, Y> Deref<Y> for DerefWrapperHideX<X, Y> {
-        fn deref<'a>(&'a self) -> &'a Y {
+        fn deref(&self) -> &Y {
             &self.y
         }
     }

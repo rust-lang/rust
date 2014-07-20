@@ -31,7 +31,7 @@ fn make_a<'a>(p: &'a X) -> A<'a> {
     A { p: p }
 }
 
-fn make_make_a() -> A {
+fn make_make_a<'a>() -> A<'a> {
     let b: Box<B> = box B {i:1};
     let bb: &B = &*b;    //~ ERROR does not live long enough
     make_a(bb)

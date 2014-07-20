@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn a() -> &int {
+fn a<'a>() -> &'a int {
     let vec = vec!(1, 2, 3, 4);
     let vec: &[int] = vec.as_slice(); //~ ERROR `vec` does not live long enough
     let tail = match vec {

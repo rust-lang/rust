@@ -18,12 +18,12 @@ enum MyEnum {
     Variant1
 }
 
-fn structLifetime() -> &Test {
+fn structLifetime<'a>() -> &'a Test {
   let testValue = &Test; //~ ERROR borrowed value does not live long enough
   testValue
 }
 
-fn variantLifetime() -> &MyEnum {
+fn variantLifetime<'a>() -> &'a MyEnum {
   let testValue = &Variant1; //~ ERROR borrowed value does not live long enough
   testValue
 }

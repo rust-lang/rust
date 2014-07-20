@@ -10,14 +10,14 @@
 
 
 trait Foo {
-    fn borrowed<'a>(&'a self) -> &'a ();
+    fn borrowed(&self) -> &();
 }
 
-fn borrowed_receiver<'a>(x: &'a Foo) -> &'a () {
+fn borrowed_receiver(x: &Foo) -> &() {
     x.borrowed()
 }
 
-fn owned_receiver(x: Box<Foo>) -> &() {
+fn owned_receiver(x: Box<Foo>) -> &'static () {
     x.borrowed() //~ ERROR `*x` does not live long enough
 }
 

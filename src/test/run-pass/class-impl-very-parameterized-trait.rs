@@ -60,7 +60,7 @@ impl<T> Mutable for cat<T> {
 impl<T> Map<int, T> for cat<T> {
     fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
 
-    fn find<'a>(&'a self, k: &int) -> Option<&'a T> {
+    fn find(&self, k: &int) -> Option<&T> {
         if *k <= self.meows {
             Some(&self.name)
         } else {
@@ -75,7 +75,7 @@ impl<T> MutableMap<int, T> for cat<T> {
         true
     }
 
-    fn find_mut<'a>(&'a mut self, _k: &int) -> Option<&'a mut T> { fail!() }
+    fn find_mut(&mut self, _k: &int) -> Option<&mut T> { fail!() }
 
     fn remove(&mut self, k: &int) -> bool {
         if self.find(k).is_some() {
@@ -91,7 +91,7 @@ impl<T> MutableMap<int, T> for cat<T> {
 }
 
 impl<T> cat<T> {
-    pub fn get<'a>(&'a self, k: &int) -> &'a T {
+    pub fn get(&self, k: &int) -> &T {
         match self.find(k) {
           Some(v) => { v }
           None    => { fail!("epic fail"); }
