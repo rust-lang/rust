@@ -66,10 +66,24 @@ impl<'a> PluginLoader<'a> {
 }
 
 /// Read plugin metadata and dynamically load registrar functions.
-pub fn load_plugins(sess: &Session, krate: &ast::Crate) -> Plugins {
+pub fn load_plugins(sess: &Session, krate: &ast::Crate,
+                    addl_plugins: Option<Plugins>) -> Plugins {
     let mut loader = PluginLoader::new(sess);
     visit::walk_crate(&mut loader, krate, ());
-    loader.plugins
+
+    let mut plugins = loader.plugins;
+
+    match addl_plugins {
+        Some(addl_plugins) => {
+            // Add in the additional plugins requested by the frontend
+            let Plugins { macros: addl_macros, registrars: addl_registrars } = addl_plugins;
+            plugins.macros.push_all_move(addl_macros);
+            plugins.registrars.push_all_move(addl_registrars);
+        }
+        None => ()
+    }
+
+    return plugins;
 }
 
 // note that macros aren't expanded yet, and therefore macros can't add plugins.

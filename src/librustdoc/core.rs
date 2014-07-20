@@ -121,7 +121,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
                                      &input);
 
     let (krate, ast_map)
-        = phase_2_configure_and_expand(&sess, krate, name.as_slice())
+        = phase_2_configure_and_expand(&sess, krate, name.as_slice(), None)
             .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let driver::driver::CrateAnalysis {

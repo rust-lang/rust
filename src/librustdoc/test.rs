@@ -69,7 +69,7 @@ pub fn run(input: &str,
     }));
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
     let (krate, _) = driver::phase_2_configure_and_expand(&sess, krate,
-                                                          "rustdoc-test")
+                                                          "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let ctx = box(GC) core::DocContext {
@@ -166,7 +166,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     let out = Some(outdir.path().clone());
     let cfg = config::build_configuration(&sess);
     let libdir = sess.target_filesearch().get_lib_path();
-    driver::compile_input(sess, cfg, &input, &out, &None);
+    driver::compile_input(sess, cfg, &input, &out, &None, None);
 
     if no_run { return }
 
