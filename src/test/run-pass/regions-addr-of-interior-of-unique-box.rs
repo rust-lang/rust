@@ -18,7 +18,7 @@ struct Character {
     pos: Box<Point>,
 }
 
-fn get_x<'r>(x: &'r Character) -> &'r int {
+fn get_x(x: &Character) -> &int {
     // interesting case because the scope of this
     // borrow of the unique pointer is in fact
     // larger than the fn itself

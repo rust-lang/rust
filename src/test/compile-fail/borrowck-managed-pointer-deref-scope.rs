@@ -15,7 +15,7 @@
 
 use std::gc::{GC, Gc};
 
-fn foo<'a>(x: &'a Gc<int>) -> &'a int {
+fn foo(x: &Gc<int>) -> &int {
     match x {
         &ref y => {
             &**y // Do not expect an error here

@@ -33,7 +33,7 @@ struct Outer<'a> {
 }
 
 impl<'a> Outer<'a> {
-    fn new<'r>(inner: &'r Inner) -> Outer<'r> {
+    fn new(inner: &Inner) -> Outer {
         Outer {
             inner: inner
         }

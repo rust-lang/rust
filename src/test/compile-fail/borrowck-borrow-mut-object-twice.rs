@@ -12,7 +12,7 @@
 // other `&mut` pointers.
 
 trait Foo {
-    fn f1<'a>(&'a mut self) -> &'a ();
+    fn f1(&mut self) -> &();
     fn f2(&mut self);
 }
 

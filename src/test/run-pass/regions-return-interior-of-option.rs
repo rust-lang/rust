@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn get<'r, T>(opt: &'r Option<T>) -> &'r T {
+fn get<T>(opt: &Option<T>) -> &T {
     match *opt {
       Some(ref v) => v,
       None => fail!("none")

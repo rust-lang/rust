@@ -27,7 +27,7 @@ fn compute(x: &ast) -> uint {
     }
 }
 
-fn map_nums(x: &ast, f: |uint| -> uint) -> &ast {
+fn map_nums<'a,'b>(x: &ast, f: |uint| -> uint) -> &'a ast<'b> {
     match *x {
       num(x) => {
         return &num(f(x)); //~ ERROR borrowed value does not live long enough

@@ -10,7 +10,7 @@
 
 use std::gc::GC;
 
-fn borrow<'r, T>(x: &'r T) -> &'r T {x}
+fn borrow<T>(x: &T) -> &T {x}
 
 pub fn main() {
     let x = box(GC) 3i;

@@ -17,7 +17,7 @@ struct Box {
 }
 
 impl Box {
-    fn get<'a>(&'a self) -> &'a uint {
+    fn get(&self) -> &uint {
         &self.x
     }
     fn set(&mut self, x: uint) {

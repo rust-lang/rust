@@ -12,7 +12,7 @@
 
 use std::gc::Gc;
 
-fn borrow<'r, T>(x: &'r T) -> &'r T {x}
+fn borrow<T>(x: &T) -> &T {x}
 
 fn foo(cond: || -> bool, make_box: || -> Gc<int>) {
     let mut y: &int;

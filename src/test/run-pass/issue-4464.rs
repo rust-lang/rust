@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn broken<'r>(v: &'r [u8], i: uint, j: uint) -> &'r [u8] { v.slice(i, j) }
+fn broken(v: &[u8], i: uint, j: uint) -> &[u8] { v.slice(i, j) }
 
 pub fn main() {}
