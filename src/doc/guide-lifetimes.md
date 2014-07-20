@@ -111,8 +111,8 @@ let on_the_stack2: &Point = &Point {x: 3.0, y: 4.0};
 ~~~
 
 Applying `&` to an rvalue (non-assignable location) is just a convenient
-shorthand for creating a temporary and taking its address. A more verbose
-way to write the same code is:
+shorthand for creating a temporary struct and taking its address. A more
+verbose way to write the same code is:
 
 ~~~
 # struct Point {x: f64, y: f64}
