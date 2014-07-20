@@ -98,7 +98,7 @@ enum BitvVariant { Big(BigBitv), Small(SmallBitv) }
 /// # Example
 ///
 /// ```rust
-/// use collections::bitv::Bitv;
+/// use collections::Bitv;
 ///
 /// let mut bv = Bitv::with_capacity(10, false);
 ///
@@ -249,9 +249,9 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let bv: Bitv = [false, true].iter().map(|n| *n).collect();
+    /// let bv = bitv::from_bytes([0b01100000]);
     /// assert_eq!(bv.get(0), false);
     /// assert_eq!(bv.get(1), true);
     ///
@@ -297,11 +297,15 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let mut bv: Bitv = [false, true, false].iter().map(|n| *n).collect();
+    /// let before = 0b01100000;
+    /// let after  = 0b11111111;
+    ///
+    /// let mut bv = bitv::from_bytes([before]);
     /// bv.set_all();
-    /// assert!(bv.eq_vec([true, true, true]));
+    /// assert_eq!(bv, bitv::from_bytes([after]));
+    /// ```
     #[inline]
     pub fn set_all(&mut self) {
         for w in self.storage.mut_iter() { *w = !0u; }
@@ -312,11 +316,15 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let mut bv: Bitv = [false, true, false].iter().map(|n| *n).collect();
+    /// let before = 0b01100000;
+    /// let after  = 0b10011111;
+    ///
+    /// let mut bv = bitv::from_bytes([before]);
     /// bv.negate();
-    /// assert!(bv.eq_vec([true, false, true]));
+    /// assert_eq!(bv, bitv::from_bytes([after]));
+    /// ```
     #[inline]
     pub fn negate(&mut self) {
         for w in self.storage.mut_iter() { *w = !*w; }
@@ -334,14 +342,17 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let mut bv1: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
-    /// let bv2: Bitv = [false, true, false, true].iter().map(|n| *n).collect();
-    /// let res: Bitv = [false, true, true, true].iter().map(|n| *n).collect();
+    /// let a   = 0b01100100;
+    /// let b   = 0b01011010;
+    /// let res = 0b01111110;
     ///
-    /// assert!(bv1.union(&bv2));
-    /// assert_eq!(bv1, res);
+    /// let mut a = bitv::from_bytes([a]);
+    /// let b = bitv::from_bytes([b]);
+    ///
+    /// assert!(a.union(&b));
+    /// assert_eq!(a, bitv::from_bytes([res]));
     /// ```
     #[inline]
     pub fn union(&mut self, other: &Bitv) -> bool {
@@ -360,14 +371,17 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let mut bv1: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
-    /// let bv2: Bitv = [false, true, false, true].iter().map(|n| *n).collect();
-    /// let res: Bitv = [false, true, false, false].iter().map(|n| *n).collect();
+    /// let a   = 0b01100100;
+    /// let b   = 0b01011010;
+    /// let res = 0b01000000;
     ///
-    /// assert!(bv1.intersect(&bv2));
-    /// assert_eq!(bv1, res);
+    /// let mut a = bitv::from_bytes([a]);
+    /// let b = bitv::from_bytes([b]);
+    ///
+    /// assert!(a.intersect(&b));
+    /// assert_eq!(a, bitv::from_bytes([res]));
     /// ```
     #[inline]
     pub fn intersect(&mut self, other: &Bitv) -> bool {
@@ -387,14 +401,24 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let mut bv1: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
-    /// let bv2: Bitv = [false, true, false, true].iter().map(|n| *n).collect();
-    /// let res: Bitv = [false, false, true, false].iter().map(|n| *n).collect();
+    /// let a   = 0b01100100;
+    /// let b   = 0b01011010;
+    /// let a_b = 0b00100100; // a - b
+    /// let b_a = 0b00011010; // b - a
     ///
-    /// assert!(bv1.difference(&bv2));
-    /// assert_eq!(bv1, res);
+    /// let mut bva = bitv::from_bytes([a]);
+    /// let bvb = bitv::from_bytes([b]);
+    ///
+    /// assert!(bva.difference(&bvb));
+    /// assert_eq!(bva, bitv::from_bytes([a_b]));
+    ///
+    /// let bva = bitv::from_bytes([a]);
+    /// let mut bvb = bitv::from_bytes([b]);
+    ///
+    /// assert!(bvb.difference(&bva));
+    /// assert_eq!(bvb, bitv::from_bytes([b_a]));
     /// ```
     #[inline]
     pub fn difference(&mut self, other: &Bitv) -> bool {
@@ -406,7 +430,7 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::Bitv;
     ///
     /// let mut bv = Bitv::with_capacity(5, true);
     /// assert_eq!(bv.all(), true);
@@ -429,16 +453,10 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let mut bv = Bitv::with_capacity(10, false);
-    /// bv.set(1, true);
-    /// bv.set(2, true);
-    /// bv.set(3, true);
-    /// bv.set(5, true);
-    /// bv.set(8, true);
-    ///
-    /// assert_eq!(bv.iter().filter(|x| *x).count(), 5);
+    /// let bv = bitv::from_bytes([0b01110100, 0b10010010]);
+    /// assert_eq!(bv.iter().filter(|x| *x).count(), 7);
     /// ```
     #[inline]
     pub fn iter<'a>(&'a self) -> Bits<'a> {
@@ -450,7 +468,7 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::Bitv;
     ///
     /// let mut bv = Bitv::with_capacity(10, false);
     /// assert_eq!(bv.none(), true);
@@ -467,7 +485,7 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::Bitv;
     ///
     /// let mut bv = Bitv::with_capacity(10, false);
     /// assert_eq!(bv.any(), false);
@@ -488,7 +506,7 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::Bitv;
     ///
     /// let mut bv = Bitv::with_capacity(3, true);
     /// bv.set(1, false);
@@ -530,10 +548,11 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let bv: Bitv = [true, false, true].iter().map(|n| *n).collect();
-    /// assert_eq!(bv.to_bools(), vec!(true, false, true));
+    /// let bv = bitv::from_bytes([0b10100000]);
+    /// assert_eq!(bv.to_bools(), vec!(true, false, true, false,
+    ///                                false, false, false, false));
     /// ```
     pub fn to_bools(&self) -> Vec<bool> {
         Vec::from_fn(self.nbits, |i| self.get(i))
@@ -548,11 +567,12 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let bv: Bitv = [false, true, true].iter().map(|n| *n).collect();
+    /// let bv = bitv::from_bytes([0b10100000]);
     ///
-    /// assert!(bv.eq_vec([false, true, true]));
+    /// assert!(bv.eq_vec([true, false, true, false,
+    ///                    false, false, false, false]));
     /// ```
     pub fn eq_vec(&self, v: &[bool]) -> bool {
         assert_eq!(self.nbits, v.len());
@@ -572,9 +592,9 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let mut bv: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
+    /// let mut bv = bitv::from_bytes([0b01001011]);
     /// bv.truncate(2);
     /// assert!(bv.eq_vec([false, true]));
     /// ```
@@ -595,7 +615,7 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::Bitv;
     ///
     /// let mut bv = Bitv::with_capacity(3, false);
     /// bv.reserve(10);
@@ -616,7 +636,7 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::Bitv;
     ///
     /// let mut bv = Bitv::new();
     /// bv.reserve(10);
@@ -632,11 +652,12 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let mut bv: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
+    /// let mut bv = bitv::from_bytes([0b01001011]);
     /// bv.grow(2, true);
-    /// assert!(bv.eq_vec([false, true, true, false, true, true]));
+    /// assert_eq!(bv.len(), 10);
+    /// assert_eq!(bv.to_bytes(), vec!(0b01001011, 0b11000000));
     /// ```
     pub fn grow(&mut self, n: uint, value: bool) {
         let new_nbits = self.nbits + n;
@@ -676,11 +697,13 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::bitv;
     ///
-    /// let mut bv: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
+    /// let mut bv = bitv::from_bytes([0b01001001]);
+    /// assert_eq!(bv.pop(), true);
     /// assert_eq!(bv.pop(), false);
-    /// assert!(bv.eq_vec([false, true, true]));
+    /// assert_eq!(bv.len(), 6);
+    /// assert_eq!(bv.to_bytes(), vec!(0b01001000));
     /// ```
     pub fn pop(&mut self) -> bool {
         let ret = self.get(self.nbits - 1);
@@ -697,12 +720,12 @@ impl Bitv {
     /// # Example
     ///
     /// ```
-    /// use std::collections::bitv::Bitv;
+    /// use std::collections::Bitv;
     ///
-    /// let mut bv: Bitv = [false, true].iter().map(|n| *n).collect();
+    /// let mut bv = Bitv::new();
     /// bv.push(true);
     /// bv.push(false);
-    /// assert!(bv.eq_vec([false, true, true, false]));
+    /// assert!(bv.eq_vec([true, false]));
     /// ```
     pub fn push(&mut self, elem: bool) {
         let insert_pos = self.nbits;
@@ -974,9 +997,9 @@ impl BitvSet {
     /// # Example
     ///
     /// ```
-    /// use std::collections::{Bitv, BitvSet};
+    /// use std::collections::{bitv, BitvSet};
     ///
-    /// let bv: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
+    /// let bv = bitv::from_bytes([0b01100000]);
     /// let s = BitvSet::from_bitv(bv);
     ///
     /// // Print 1, 2 in arbitrary order
@@ -1279,11 +1302,15 @@ impl BitvSet {
     /// use std::collections::BitvSet;
     /// use std::collections::bitv;
     ///
-    /// let mut a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
+    /// let a   = 0b01101000;
+    /// let b   = 0b10100000;
+    /// let res = 0b11101000;
+    ///
+    /// let mut a = BitvSet::from_bitv(bitv::from_bytes([a]));
+    /// let b = BitvSet::from_bitv(bitv::from_bytes([b]));
     ///
     /// a.union_with(&b);
-    /// assert_eq!(a.unwrap(), bitv::from_bytes([0b11101000]));
+    /// assert_eq!(a.unwrap(), bitv::from_bytes([res]));
     /// ```
     #[inline]
     pub fn union_with(&mut self, other: &BitvSet) {
@@ -1298,11 +1325,15 @@ impl BitvSet {
     /// use std::collections::BitvSet;
     /// use std::collections::bitv;
     ///
-    /// let mut a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
+    /// let a   = 0b01101000;
+    /// let b   = 0b10100000;
+    /// let res = 0b00100000;
+    ///
+    /// let mut a = BitvSet::from_bitv(bitv::from_bytes([a]));
+    /// let b = BitvSet::from_bitv(bitv::from_bytes([b]));
     ///
     /// a.intersect_with(&b);
-    /// assert_eq!(a.unwrap(), bitv::from_bytes([0b00100000]));
+    /// assert_eq!(a.unwrap(), bitv::from_bytes([res]));
     /// ```
     #[inline]
     pub fn intersect_with(&mut self, other: &BitvSet) {
@@ -1317,11 +1348,22 @@ impl BitvSet {
     /// use std::collections::BitvSet;
     /// use std::collections::bitv;
     ///
-    /// let mut a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
+    /// let a   = 0b01101000;
+    /// let b   = 0b10100000;
+    /// let a_b = 0b01001000; // a - b
+    /// let b_a = 0b10000000; // b - a
     ///
-    /// a.difference_with(&b);
-    /// assert_eq!(a.unwrap(), bitv::from_bytes([0b01001000]));
+    /// let mut bva = BitvSet::from_bitv(bitv::from_bytes([a]));
+    /// let bvb = BitvSet::from_bitv(bitv::from_bytes([b]));
+    ///
+    /// bva.difference_with(&bvb);
+    /// assert_eq!(bva.unwrap(), bitv::from_bytes([a_b]));
+    ///
+    /// let bva = BitvSet::from_bitv(bitv::from_bytes([a]));
+    /// let mut bvb = BitvSet::from_bitv(bitv::from_bytes([b]));
+    ///
+    /// bvb.difference_with(&bva);
+    /// assert_eq!(bvb.unwrap(), bitv::from_bytes([b_a]));
     /// ```
     #[inline]
     pub fn difference_with(&mut self, other: &BitvSet) {
@@ -1336,11 +1378,15 @@ impl BitvSet {
     /// use std::collections::BitvSet;
     /// use std::collections::bitv;
     ///
-    /// let mut a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
+    /// let a   = 0b01101000;
+    /// let b   = 0b10100000;
+    /// let res = 0b11001000;
+    ///
+    /// let mut a = BitvSet::from_bitv(bitv::from_bytes([a]));
+    /// let b = BitvSet::from_bitv(bitv::from_bytes([b]));
     ///
     /// a.symmetric_difference_with(&b);
-    /// assert_eq!(a.unwrap(), bitv::from_bytes([0b11001000]));
+    /// assert_eq!(a.unwrap(), bitv::from_bytes([res]));
     /// ```
     #[inline]
     pub fn symmetric_difference_with(&mut self, other: &BitvSet) {
