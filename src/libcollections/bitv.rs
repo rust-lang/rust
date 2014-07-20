@@ -1450,11 +1450,13 @@ impl MutableSet<uint> for BitvSet {
     }
 }
 
+/// An iterator for `BitvSet`.
 pub struct BitPositions<'a> {
     set: &'a BitvSet,
     next_idx: uint
 }
 
+/// An iterator combining wo `BitvSet` iterators.
 pub struct TwoBitPositions<'a> {
     set: &'a BitvSet,
     other: &'a BitvSet,
