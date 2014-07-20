@@ -95,7 +95,7 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: uint) -> i32 {
         let a = *offset(s1, i as int);
         let b = *offset(s2, i as int);
         if a != b {
-            return (a - b) as i32
+            return a as i32 - b as i32
         }
         i += 1;
     }
