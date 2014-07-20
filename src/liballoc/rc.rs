@@ -148,6 +148,8 @@ fn main() {
 
 */
 
+#![stable]
+
 use core::mem::transmute;
 use core::cell::Cell;
 use core::clone::Clone;
@@ -171,6 +173,7 @@ struct RcBox<T> {
 
 /// Immutable reference counted pointer type
 #[unsafe_no_drop_flag]
+#[stable]
 pub struct Rc<T> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -179,6 +182,7 @@ pub struct Rc<T> {
     _noshare: marker::NoShare
 }
 
+#[stable]
 impl<T> Rc<T> {
     /// Construct a new reference-counted box
     pub fn new(value: T) -> Rc<T> {
@@ -203,6 +207,7 @@ impl<T> Rc<T> {
 
 impl<T> Rc<T> {
     /// Downgrade the reference-counted pointer to a weak reference
+    #[experimental = "Weak pointers may not belong in this module."]
     pub fn downgrade(&self) -> Weak<T> {
         self.inc_weak();
         Weak {
@@ -238,6 +243,7 @@ impl<T: Clone> Rc<T> {
     }
 }
 
+#[experimental = "Deref is experimental."]
 impl<T> Deref<T> for Rc<T> {
     /// Borrow the value contained in the reference-counted box
     #[inline(always)]
@@ -247,6 +253,7 @@ impl<T> Deref<T> for Rc<T> {
 }
 
 #[unsafe_destructor]
+#[experimental = "Drop is experimental."]
 impl<T> Drop for Rc<T> {
     fn drop(&mut self) {
         unsafe {
@@ -269,7 +276,7 @@ impl<T> Drop for Rc<T> {
     }
 }
 
-#[unstable]
+#[unstable = "Clone is unstable."]
 impl<T> Clone for Rc<T> {
     #[inline]
     fn clone(&self) -> Rc<T> {
@@ -278,6 +285,7 @@ impl<T> Clone for Rc<T> {
     }
 }
 
+#[stable]
 impl<T: Default> Default for Rc<T> {
     #[inline]
     fn default() -> Rc<T> {
@@ -285,6 +293,7 @@ impl<T: Default> Default for Rc<T> {
     }
 }
 
+#[unstable = "PartialEq is unstable."]
 impl<T: PartialEq> PartialEq for Rc<T> {
     #[inline(always)]
     fn eq(&self, other: &Rc<T>) -> bool { **self == **other }
@@ -292,8 +301,10 @@ impl<T: PartialEq> PartialEq for Rc<T> {
     fn ne(&self, other: &Rc<T>) -> bool { **self != **other }
 }
 
+#[unstable = "Eq is unstable."]
 impl<T: Eq> Eq for Rc<T> {}
 
+#[unstable = "PartialOrd is unstable."]
 impl<T: PartialOrd> PartialOrd for Rc<T> {
     #[inline(always)]
     fn partial_cmp(&self, other: &Rc<T>) -> Option<Ordering> {
@@ -313,11 +324,13 @@ impl<T: PartialOrd> PartialOrd for Rc<T> {
     fn ge(&self, other: &Rc<T>) -> bool { **self >= **other }
 }
 
+#[unstable = "Ord is unstable."]
 impl<T: Ord> Ord for Rc<T> {
     #[inline]
     fn cmp(&self, other: &Rc<T>) -> Ordering { (**self).cmp(&**other) }
 }
 
+#[experimental = "Show is experimental."]
 impl<T: fmt::Show> fmt::Show for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
@@ -326,6 +339,7 @@ impl<T: fmt::Show> fmt::Show for Rc<T> {
 
 /// Weak reference to a reference-counted box
 #[unsafe_no_drop_flag]
+#[experimental = "Weak pointers may not belong in this module."]
 pub struct Weak<T> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -334,6 +348,7 @@ pub struct Weak<T> {
     _noshare: marker::NoShare
 }
 
+#[experimental = "Weak pointers may not belong in this module."]
 impl<T> Weak<T> {
     /// Upgrade a weak reference to a strong reference
     pub fn upgrade(&self) -> Option<Rc<T>> {
@@ -347,6 +362,7 @@ impl<T> Weak<T> {
 }
 
 #[unsafe_destructor]
+#[experimental = "Weak pointers may not belong in this module."]
 impl<T> Drop for Weak<T> {
     fn drop(&mut self) {
         unsafe {
@@ -364,6 +380,7 @@ impl<T> Drop for Weak<T> {
 }
 
 #[unstable]
+#[experimental = "Weak pointers may not belong in this module."]
 impl<T> Clone for Weak<T> {
     #[inline]
     fn clone(&self) -> Weak<T> {
