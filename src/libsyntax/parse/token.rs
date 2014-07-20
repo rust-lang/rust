@@ -249,6 +249,8 @@ pub fn to_string(t: &Token) -> String {
         match nt {
             &NtExpr(ref e) => ::print::pprust::expr_to_string(&**e),
             &NtMeta(ref e) => ::print::pprust::meta_item_to_string(&**e),
+            &NtTy(ref e) => ::print::pprust::ty_to_string(&**e),
+            &NtPath(ref e) => ::print::pprust::path_to_string(&**e),
             _ => {
                 let mut s = "an interpolated ".to_string();
                 match *nt {
@@ -257,10 +259,10 @@ pub fn to_string(t: &Token) -> String {
                     NtStmt(..) => s.push_str("statement"),
                     NtPat(..) => s.push_str("pattern"),
                     NtMeta(..) => fail!("should have been handled"),
-                    NtExpr(..) => fail!("should have been handled above"),
-                    NtTy(..) => s.push_str("type"),
+                    NtExpr(..) => fail!("should have been handled"),
+                    NtTy(..) => fail!("should have been handled"),
                     NtIdent(..) => s.push_str("identifier"),
-                    NtPath(..) => s.push_str("path"),
+                    NtPath(..) => fail!("should have been handled"),
                     NtTT(..) => s.push_str("tt"),
                     NtMatchers(..) => s.push_str("matcher sequence")
                 };
