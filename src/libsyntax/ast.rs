@@ -17,6 +17,7 @@ use owned_slice::OwnedSlice;
 use parse::token::{InternedString, str_to_ident};
 use parse::token;
 
+use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Show;
 use std::option::Option;
@@ -182,6 +183,15 @@ pub struct PathSegment {
     pub lifetimes: Vec<Lifetime>,
     /// The type parameters for this path segment, if present.
     pub types: OwnedSlice<P<Ty>>,
+}
+
+/// A record of spans for path segments. The span is the span of the ident in
+/// the path segment (the lifetimes and types store their own spans).
+pub type PathSpanTable = HashMap<Path, Vec<Span>>;
+
+pub enum RecordPathSpans {
+    RecordNoPathSpans,
+    RecordAllPathSpans,
 }
 
 pub type CrateNum = u32;

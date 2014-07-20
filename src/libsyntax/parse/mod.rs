@@ -36,12 +36,15 @@ pub struct ParseSess {
     pub span_diagnostic: SpanHandler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<Path>>,
+    // If we should record spans for every part of a path.
+    record_span_paths: ast::RecordPathSpans,
 }
 
 pub fn new_parse_sess() -> ParseSess {
     ParseSess {
         span_diagnostic: mk_span_handler(default_handler(Auto, None), CodeMap::new()),
         included_mod_stack: RefCell::new(Vec::new()),
+        record_span_paths: ast::RecordNoPathSpans,
     }
 }
 
@@ -49,6 +52,7 @@ pub fn new_parse_sess_special_handler(sh: SpanHandler) -> ParseSess {
     ParseSess {
         span_diagnostic: sh,
         included_mod_stack: RefCell::new(Vec::new()),
+        record_span_paths: ast::RecordNoPathSpans,
     }
 }
 
@@ -1056,5 +1060,37 @@ mod test {
         let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();
         let doc = attr::first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
         assert_eq!(doc.get(), "/** doc comment\n *  with CRLF */");
+    }
+
+    #[test]
+    fn path_segment_spans() {
+        use codemap::Pos;
+
+        let mut sess = new_parse_sess();
+        sess.record_span_paths = ast::RecordAllPathSpans;
+        let name = "<source>".to_string();
+        let source = "some::path::to::Foo".to_string();
+        let mut parser = new_parser_from_source_str(&sess, Vec::new(), name, source);
+
+        let path = parser.parse_path(parser::LifetimeAndTypesWithColons).path;
+        match parser.path_span_table {
+            None => fail!("Should have created path segment span table for parser"),
+            Some(table) => {
+                match table.find(&path) {
+                    None => fail!("No entry in span table for path"),
+                    Some(spans) => {
+                        assert!(spans.len() == 4, "wrong number of spans");
+                        assert!(spans[0].lo.to_uint() == 0);
+                        assert!(spans[0].hi.to_uint() == 4);
+                        assert!(spans[1].lo.to_uint() == 6);
+                        assert!(spans[1].hi.to_uint() == 10);
+                        assert!(spans[2].lo.to_uint() == 12);
+                        assert!(spans[2].hi.to_uint() == 14);
+                        assert!(spans[3].lo.to_uint() == 16);
+                        assert!(spans[3].hi.to_uint() == 19);
+                    }
+                }
+            }
+        }
     }
 }

@@ -77,7 +77,7 @@ use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
 use owned_slice::OwnedSlice;
 
-use std::collections::HashSet;
+use std::collections::{HashMap,HashSet};
 use std::mem::replace;
 use std::rc::Rc;
 use std::gc::{Gc, GC};
@@ -320,6 +320,8 @@ pub struct Parser<'a> {
     /// name is not known. This does not change while the parser is descending
     /// into modules, and sub-parsers have new values for this name.
     pub root_module_name: Option<String>,
+    /// Optionally keep track of spans for every segment of every path.
+    pub path_span_table: Option<ast::PathSpanTable>,
 }
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
@@ -375,6 +377,10 @@ impl<'a> Parser<'a> {
             open_braces: Vec::new(),
             owns_directory: true,
             root_module_name: None,
+            path_span_table: match sess.record_span_paths {
+                ast::RecordNoPathSpans => None,
+                ast::RecordAllPathSpans => Some(HashMap::new()),
+            },
         }
     }
 
@@ -1660,9 +1666,13 @@ impl<'a> Parser<'a> {
         // identifier followed by an optional lifetime and a set of types.
         // A bound set is a set of type parameter bounds.
         let mut segments = Vec::new();
+        let mut spans = Vec::new();
         loop {
             // First, parse an identifier.
+            let lo = self.span.lo;
             let identifier = self.parse_ident();
+            let hi = self.last_span.hi;
+            let id_span = mk_sp(lo, hi);
 
             // Parse the '::' before type parameters if it's required. If
             // it is required and wasn't present, then we're done.
@@ -1673,6 +1683,7 @@ impl<'a> Parser<'a> {
                     lifetimes: Vec::new(),
                     types: OwnedSlice::empty(),
                 });
+                spans.push(id_span);
                 break
             }
 
@@ -1693,6 +1704,7 @@ impl<'a> Parser<'a> {
                 lifetimes: lifetimes,
                 types: types,
             });
+            spans.push(id_span);
 
             // We're done if we don't see a '::', unless the mode required
             // a double colon to get here in the first place.
@@ -1729,12 +1741,22 @@ impl<'a> Parser<'a> {
         let span = mk_sp(lo, self.last_span.hi);
 
         // Assemble the result.
+        let path = ast::Path {
+            span: span,
+            global: is_global,
+            segments: segments,
+        };
+
+        // If required, save the segment spans.
+        match self.path_span_table {
+            Some(ref mut span_table) => {
+                span_table.insert(path.clone(), spans);
+            }
+            None => {}
+        }
+
         PathAndBounds {
-            path: ast::Path {
-                span: span,
-                global: is_global,
-                segments: segments,
-            },
+            path: path,
             bounds: bounds,
         }
     }
