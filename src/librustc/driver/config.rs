@@ -97,6 +97,9 @@ pub struct Options {
     pub color: ColorConfig,
     pub externs: HashMap<String, Vec<String>>,
     pub crate_name: Option<String>,
+    /// An optional name to use as the crate for std during std injection,
+    /// written `extern crate std = "name"`. Default to "std". Used by
+    /// out-of-tree drivers.
     pub alt_std_name: Option<String>
 }
 
@@ -793,10 +796,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 }
 
-pub fn parse_crate_types_from_list(crate_types_list_list: Vec<String>) -> Result<Vec<CrateType>, String> {
+pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateType>, String> {
 
     let mut crate_types: Vec<CrateType> = Vec::new();
-    for unparsed_crate_type in crate_types_list_list.iter() {
+    for unparsed_crate_type in list_list.iter() {
         for part in unparsed_crate_type.as_slice().split(',') {
             let new_part = match part {
                 "lib"       => default_lib_output(),
