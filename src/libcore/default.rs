@@ -15,6 +15,16 @@
 /// A trait that types which have a useful default value should implement.
 pub trait Default {
     /// Return the "default value" for a type.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::default::Default;
+    ///
+    /// let i: i8 = Default::default();
+    /// let (x, y): (Option<String>, f64) = Default::default();
+    /// let (a, b, (c, d)): (int, uint, (bool, bool)) = Default::default();
+    /// ```
     fn default() -> Self;
 }
 
