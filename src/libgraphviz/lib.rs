@@ -548,7 +548,7 @@ mod tests {
         from: uint, to: uint, label: &'static str
     }
 
-    fn Edge(from: uint, to: uint, label: &'static str) -> Edge {
+    fn edge(from: uint, to: uint, label: &'static str) -> Edge {
         Edge { from: from, to: to, label: label }
     }
 
@@ -723,7 +723,7 @@ r#"digraph single_node {
     fn single_edge() {
         let labels : Trivial = UnlabelledNodes(2);
         let result = test_input(LabelledGraph::new("single_edge", labels,
-                                                   vec!(Edge(0, 1, "E"))));
+                                                   vec!(edge(0, 1, "E"))));
         assert_eq!(result.unwrap().as_slice(),
 r#"digraph single_edge {
     N0[label="N0"];
@@ -737,7 +737,7 @@ r#"digraph single_edge {
     fn single_cyclic_node() {
         let labels : Trivial = UnlabelledNodes(1);
         let r = test_input(LabelledGraph::new("single_cyclic_node", labels,
-                                              vec!(Edge(0, 0, "E"))));
+                                              vec!(edge(0, 0, "E"))));
         assert_eq!(r.unwrap().as_slice(),
 r#"digraph single_cyclic_node {
     N0[label="N0"];
@@ -751,8 +751,8 @@ r#"digraph single_cyclic_node {
         let labels = AllNodesLabelled(vec!("{x,y}", "{x}", "{y}", "{}"));
         let r = test_input(LabelledGraph::new(
             "hasse_diagram", labels,
-            vec!(Edge(0, 1, ""), Edge(0, 2, ""),
-                 Edge(1, 3, ""), Edge(2, 3, ""))));
+            vec!(edge(0, 1, ""), edge(0, 2, ""),
+                 edge(1, 3, ""), edge(2, 3, ""))));
         assert_eq!(r.unwrap().as_slice(),
 r#"digraph hasse_diagram {
     N0[label="{x,y}"];
@@ -785,8 +785,8 @@ r#"digraph hasse_diagram {
 
         let g = LabelledGraphWithEscStrs::new(
             "syntax_tree", labels,
-            vec!(Edge(0, 1, "then"), Edge(0, 2, "else"),
-                 Edge(1, 3, ";"),    Edge(2, 3, ";"   )));
+            vec!(edge(0, 1, "then"), edge(0, 2, "else"),
+                 edge(1, 3, ";"),    edge(2, 3, ";"   )));
 
         render(&g, &mut writer).unwrap();
         let mut r = BufReader::new(writer.get_ref());
