@@ -296,7 +296,7 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
             let td = *llargs.get(0);
             let visitor = *llargs.get(1);
             let td = PointerCast(bcx, td, ccx.tydesc_type().ptr_to());
-            glue::call_visit_glue(bcx, visitor, td, None);
+            glue::call_visit_glue(bcx, visitor, td);
             C_nil(ccx)
         }
         (_, "offset") => {
