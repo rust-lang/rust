@@ -423,7 +423,7 @@ pub trait Deque<T> : Mutable {
     /// ```
     fn front_mut<'a>(&'a mut self) -> Option<&'a mut T>;
 
-    /// Provide a reference to the back element, or None if the sequence is
+    /// Provide a reference to the back element, or `None` if the sequence is
     /// empty.
     ///
     /// # Example
@@ -440,7 +440,7 @@ pub trait Deque<T> : Mutable {
     /// ```
     fn back<'a>(&'a self) -> Option<&'a T>;
 
-    /// Provide a mutable reference to the back element, or None if the sequence
+    /// Provide a mutable reference to the back element, or `None` if the sequence
     /// is empty.
     ///
     /// # Example
@@ -487,7 +487,7 @@ pub trait Deque<T> : Mutable {
     /// assert_eq!(d.front(), Some(&1i));
     fn push_back(&mut self, elt: T);
 
-    /// Remove the last element and return it, or None if the sequence is empty.
+    /// Remove the last element and return it, or `None` if the sequence is empty.
     ///
     /// # Example
     ///
@@ -503,7 +503,7 @@ pub trait Deque<T> : Mutable {
     /// assert_eq!(d.pop_back(), None);
     fn pop_back(&mut self) -> Option<T>;
 
-    /// Remove the first element and return it, or None if the sequence is empty.
+    /// Remove the first element and return it, or `None` if the sequence is empty.
     ///
     /// # Example
     ///
