@@ -1033,12 +1033,20 @@ pub struct Variant_ {
 pub type Variant = Spanned<Variant_>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub struct PathListIdent_ {
-    pub name: Ident,
-    pub id: NodeId,
+pub enum PathListItem_ {
+    PathListIdent { pub name: Ident, pub id: NodeId },
+    PathListMod { pub id: NodeId }
 }
 
-pub type PathListIdent = Spanned<PathListIdent_>;
+impl PathListItem_ {
+    pub fn id(&self) -> NodeId {
+        match *self {
+            PathListIdent { id, .. } | PathListMod { id } => id
+        }
+    }
+}
+
+pub type PathListItem = Spanned<PathListItem_>;
 
 pub type ViewPath = Spanned<ViewPath_>;
 
@@ -1056,7 +1064,7 @@ pub enum ViewPath_ {
     ViewPathGlob(Path, NodeId),
 
     /// `foo::bar::{a,b,c}`
-    ViewPathList(Path, Vec<PathListIdent> , NodeId)
+    ViewPathList(Path, Vec<PathListItem> , NodeId)
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]

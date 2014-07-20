@@ -55,17 +55,17 @@ pub trait Folder {
                 let id = self.new_id(node_id);
                 ViewPathList(self.fold_path(path),
                              path_list_idents.iter().map(|path_list_ident| {
-                                let id = self.new_id(path_list_ident.node
-                                                                    .id);
                                 Spanned {
-                                    node: PathListIdent_ {
-                                        name: path_list_ident.node
-                                                             .name
-                                                             .clone(),
-                                        id: id,
+                                    node: match path_list_ident.node {
+                                        PathListIdent { id, name } =>
+                                            PathListIdent {
+                                                id: self.new_id(id),
+                                                name: name.clone()
+                                            },
+                                        PathListMod { id } =>
+                                            PathListMod { id: self.new_id(id) }
                                     },
-                                    span: self.new_span(
-                                        path_list_ident.span)
+                                    span: self.new_span(path_list_ident.span)
                                 }
                              }).collect(),
                              id)
