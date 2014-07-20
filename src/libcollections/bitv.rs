@@ -839,11 +839,45 @@ impl<'a> RandomAccessIterator<bool> for Bits<'a> {
 }
 
 /// An implementation of a set using a bit vector as an underlying
-/// representation for holding numerical elements.
+/// representation for holding unsigned numerical elements.
 ///
 /// It should also be noted that the amount of storage necessary for holding a
 /// set of objects is proportional to the maximum of the objects when viewed
 /// as a `uint`.
+///
+/// # Example
+///
+/// ```
+/// use std::collections::{BitvSet, Bitv};
+/// use std::collections::bitv::from_bytes;
+///
+/// // It's a regular set
+/// let mut s = BitvSet::new();
+/// s.insert(0);
+/// s.insert(3);
+/// s.insert(7);
+///
+/// s.remove(&7);
+///
+/// if !s.contains(&7) {
+///     println!("There is no 7");
+/// }
+///
+/// // Can initialize from a `Bitv`
+/// let other = BitvSet::from_bitv(from_bytes([0b11010000]));
+///
+/// s.union_with(&other);
+///
+/// // Print 0, 1, 3 in some order
+/// for x in s.iter() {
+///     println!("{}", x);
+/// }
+///
+/// // Can convert back to a `Bitv`
+/// let bv: Bitv = s.unwrap();
+/// assert!(bv.eq_vec([true, true, false, true,
+///                    false, false, false, false]));
+/// ```
 #[deriving(Clone, PartialEq, Eq)]
 pub struct BitvSet(Bitv);
 
@@ -853,20 +887,49 @@ impl Default for BitvSet {
 }
 
 impl BitvSet {
-    /// Creates a new bit vector set with initially no contents
+    /// Create a new bit vector set with initially no contents.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// let mut s = BitvSet::new();
+    /// ```
     #[inline]
     pub fn new() -> BitvSet {
         BitvSet(Bitv::new())
     }
 
-    /// Creates a new bit vector set with initially no contents, able to
-    /// hold `nbits` elements without resizing
+    /// Create a new bit vector set with initially no contents, able to
+    /// hold `nbits` elements without resizing.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// let mut s = BitvSet::with_capacity(100);
+    /// assert!(s.capacity() >= 100);
+    /// ```
     #[inline]
     pub fn with_capacity(nbits: uint) -> BitvSet {
         BitvSet(Bitv::with_capacity(nbits, false))
     }
 
-    /// Creates a new bit vector set from the given bit vector
+    /// Create a new bit vector set from the given bit vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::{Bitv, BitvSet};
+    ///
+    /// let bv: Bitv = [false, true, true, false].iter().map(|n| *n).collect();
+    /// let s = BitvSet::from_bitv(bv);
+    ///
+    /// // Print 1, 2 in arbitrary order
+    /// for x in s.iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     #[inline]
     pub fn from_bitv(bitv: Bitv) -> BitvSet {
         BitvSet(bitv)
@@ -874,33 +937,93 @@ impl BitvSet {
 
     /// Returns the capacity in bits for this bit vector. Inserting any
     /// element less than this amount will not trigger a resizing.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    ///
+    /// let mut s = BitvSet::with_capacity(100);
+    /// assert!(s.capacity() >= 100);
+    /// ```
     #[inline]
     pub fn capacity(&self) -> uint {
         let &BitvSet(ref bitv) = self;
         bitv.capacity()
     }
 
-    /// Grows the underlying vector to be able to store `size` bits
+    /// Grows the underlying vector to be able to store `size` bits.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    ///
+    /// let mut s = BitvSet::new();
+    /// s.reserve(10);
+    /// assert!(s.capacity() >= 10);
+    /// ```
     pub fn reserve(&mut self, size: uint) {
         let &BitvSet(ref mut bitv) = self;
         bitv.reserve(size)
     }
 
-    /// Consumes this set to return the underlying bit vector
+    /// Consume this set to return the underlying bit vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    ///
+    /// let mut s = BitvSet::new();
+    /// s.insert(0);
+    /// s.insert(3);
+    ///
+    /// let bv = s.unwrap();
+    /// assert!(bv.eq_vec([true, false, false, true]));
+    /// ```
     #[inline]
     pub fn unwrap(self) -> Bitv {
         let BitvSet(bitv) = self;
         bitv
     }
 
-    /// Returns a reference to the underlying bit vector
+    /// Return a reference to the underlying bit vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    ///
+    /// let mut s = BitvSet::new();
+    /// s.insert(0);
+    ///
+    /// let bv = s.get_ref();
+    /// assert_eq!(bv.get(0), true);
+    /// ```
     #[inline]
     pub fn get_ref<'a>(&'a self) -> &'a Bitv {
         let &BitvSet(ref bitv) = self;
         bitv
     }
 
-    /// Returns a mutable reference to the underlying bit vector
+    /// Return a mutable reference to the underlying bit vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    ///
+    /// let mut s = BitvSet::new();
+    /// s.insert(0);
+    /// assert_eq!(s.contains(&0), true);
+    /// {
+    ///     // Will free the set during bv's lifetime
+    ///     let bv = s.get_mut_ref();
+    ///     bv.set(0, false);
+    /// }
+    /// assert_eq!(s.contains(&0), false);
+    /// ```
     #[inline]
     pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut Bitv {
         let &BitvSet(ref mut bitv) = self;
@@ -922,8 +1045,25 @@ impl BitvSet {
         }
     }
 
+    /// Truncate the underlying vector to the least length required.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    ///
+    /// let mut s = BitvSet::new();
+    /// s.insert(32183231);
+    /// s.remove(&32183231);
+    ///
+    /// // Internal storage will probably be bigger than necessary
+    /// println!("old capacity: {}", s.capacity());
+    ///
+    /// // Now should be smaller
+    /// s.shrink_to_fit();
+    /// println!("new capacity: {}", s.capacity());
+    /// ```
     #[inline]
-    /// Truncate the underlying vector to the least length required
     pub fn shrink_to_fit(&mut self) {
         let &BitvSet(ref mut bitv) = self;
         // Obtain original length
@@ -936,13 +1076,43 @@ impl BitvSet {
         bitv.nbits = trunc_len * uint::BITS;
     }
 
-    /// Iterator over each uint stored in the BitvSet
+    /// Iterator over each uint stored in the BitvSet.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// use std::collections::bitv::from_bytes;
+    ///
+    /// let s = BitvSet::from_bitv(from_bytes([0b01001010]));
+    ///
+    /// // Print 1, 4, 6 in arbitrary order
+    /// for x in s.iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     #[inline]
     pub fn iter<'a>(&'a self) -> BitPositions<'a> {
         BitPositions {set: self, next_idx: 0}
     }
 
-    /// Iterator over each uint stored in `self` union `other`
+    /// Iterator over each uint stored in `self` union `other`.
+    /// See [union_with](#method.union_with) for an efficient in-place version.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// use std::collections::bitv::from_bytes;
+    ///
+    /// let a = BitvSet::from_bitv(from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    ///
+    /// // Print 0, 1, 2, 4 in arbitrary order
+    /// for x in a.union(&b) {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     #[inline]
     pub fn union<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
         TwoBitPositions {
@@ -954,7 +1124,30 @@ impl BitvSet {
         }
     }
 
-    /// Iterator over each uint stored in the `self` setminus `other`
+    /// Iterator over each uint stored in the `self` setminus `other`.
+    /// See [difference_with](#method.difference_with) for an efficient in-place version.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// use std::collections::bitv::from_bytes;
+    ///
+    /// let a = BitvSet::from_bitv(from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    ///
+    /// // Print 2, 4 in arbitrary order
+    /// for x in a.difference(&b) {
+    ///     println!("{}", x);
+    /// }
+    ///
+    /// // Note that difference is not symmetric,
+    /// // and `b - a` means something else.
+    /// // This prints 0
+    /// for x in b.difference(&a) {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     #[inline]
     pub fn difference<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
         TwoBitPositions {
@@ -966,7 +1159,24 @@ impl BitvSet {
         }
     }
 
-    /// Iterator over each uint stored in the symmetric difference of `self` and `other`
+    /// Iterator over each uint stored in the symmetric difference of `self` and `other`.
+    /// See [symmetric_difference_with](#method.symmetric_difference_with) for
+    /// an efficient in-place version.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// use std::collections::bitv::from_bytes;
+    ///
+    /// let a = BitvSet::from_bitv(from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    ///
+    /// // Print 0, 1, 4 in arbitrary order
+    /// for x in a.symmetric_difference(&b) {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     #[inline]
     pub fn symmetric_difference<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
         TwoBitPositions {
@@ -978,7 +1188,23 @@ impl BitvSet {
         }
     }
 
-    /// Iterator over each uint stored in `self` intersect `other`
+    /// Iterator over each uint stored in `self` intersect `other`.
+    /// See [intersect_with](#method.intersect_with) for an efficient in-place version.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// use std::collections::bitv::from_bytes;
+    ///
+    /// let a = BitvSet::from_bitv(from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    ///
+    /// // Print 2
+    /// for x in a.intersection(&b) {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     #[inline]
     pub fn intersection<'a>(&'a self, other: &'a BitvSet) -> Take<TwoBitPositions<'a>> {
         let min = cmp::min(self.capacity(), other.capacity());
@@ -991,25 +1217,77 @@ impl BitvSet {
         }.take(min)
     }
 
-    /// Union in-place with the specified other bit vector
+    /// Union in-place with the specified other bit vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// use std::collections::bitv::from_bytes;
+    ///
+    /// let mut a = BitvSet::from_bitv(from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    ///
+    /// a.union_with(&b);
+    /// assert_eq!(a.unwrap(), from_bytes([0b11101000]));
+    /// ```
     #[inline]
     pub fn union_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 | w2);
     }
 
-    /// Intersect in-place with the specified other bit vector
+    /// Intersect in-place with the specified other bit vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// use std::collections::bitv::from_bytes;
+    ///
+    /// let mut a = BitvSet::from_bitv(from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    ///
+    /// a.intersect_with(&b);
+    /// assert_eq!(a.unwrap(), from_bytes([0b00100000]));
+    /// ```
     #[inline]
     pub fn intersect_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 & w2);
     }
 
-    /// Difference in-place with the specified other bit vector
+    /// Difference in-place with the specified other bit vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// use std::collections::bitv::from_bytes;
+    ///
+    /// let mut a = BitvSet::from_bitv(from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    ///
+    /// a.difference_with(&b);
+    /// assert_eq!(a.unwrap(), from_bytes([0b01001000]));
+    /// ```
     #[inline]
     pub fn difference_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 & !w2);
     }
 
-    /// Symmetric difference in-place with the specified other bit vector
+    /// Symmetric difference in-place with the specified other bit vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    /// use std::collections::bitv::from_bytes;
+    ///
+    /// let mut a = BitvSet::from_bitv(from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    ///
+    /// a.symmetric_difference_with(&b);
+    /// assert_eq!(a.unwrap(), from_bytes([0b11001000]));
+    /// ```
     #[inline]
     pub fn symmetric_difference_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 ^ w2);
