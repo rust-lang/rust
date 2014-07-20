@@ -24,6 +24,7 @@ use parse::token::special_idents;
 use std::gc::Gc;
 
 /// The types of pointers
+#[deriving(Clone)]
 pub enum PtrTy<'a> {
     /// &'lifetime mut
     Borrowed(Option<&'a str>, ast::Mutability),
@@ -31,6 +32,7 @@ pub enum PtrTy<'a> {
 
 /// A path, e.g. `::std::option::Option::<int>` (global). Has support
 /// for type parameters and a lifetime.
+#[deriving(Clone)]
 pub struct Path<'a> {
     pub path: Vec<&'a str> ,
     pub lifetime: Option<&'a str>,
@@ -81,6 +83,7 @@ impl<'a> Path<'a> {
 }
 
 /// A type. Supports pointers (except for *), Self, and literals
+#[deriving(Clone)]
 pub enum Ty<'a> {
     Self,
     /// &/Box/ Ty
@@ -107,7 +110,7 @@ pub fn borrowed_self<'r>() -> Ty<'r> {
     borrowed(box Self)
 }
 
-pub fn nil_ty() -> Ty<'static> {
+pub fn nil_ty<'r>() -> Ty<'r> {
     Tuple(Vec::new())
 }
 
@@ -205,13 +208,14 @@ fn mk_generics(lifetimes: Vec<ast::Lifetime>, ty_params: Vec<ast::TyParam> ) -> 
 }
 
 /// Lifetimes and bounds on type parameters
+#[deriving(Clone)]
 pub struct LifetimeBounds<'a> {
     pub lifetimes: Vec<&'a str>,
     pub bounds: Vec<(&'a str, Option<ast::TyParamBound>, Vec<Path<'a>>)>,
 }
 
 impl<'a> LifetimeBounds<'a> {
-    pub fn empty() -> LifetimeBounds<'static> {
+    pub fn empty() -> LifetimeBounds<'a> {
         LifetimeBounds {
             lifetimes: Vec::new(), bounds: Vec::new()
         }
