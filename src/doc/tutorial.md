@@ -716,8 +716,8 @@ When an enum has simple integer discriminators, you can apply the `as` cast
 operator to convert a variant to its discriminator value as an `int`:
 
 ~~~~
-# #[deriving(Show)] enum Direction { North }
-println!( "{} => {}", North, North as int );
+# enum Direction { North, East, South, West }
+println!( "North => {}", North as int );
 ~~~~
 
 It is possible to set the discriminator values to chosen constant values:
@@ -748,8 +748,15 @@ includes an identifier of the actual form that it holds, much like the
 
 This declaration defines a type `Shape` that can refer to such shapes, and two
 functions, `Circle` and `Rectangle`, which can be used to construct values of
-the type. To create a new Circle, write `Circle(Point { x: 0.0, y: 0.0 },
-10.0)`.
+the type.
+
+To create a new `Circle`, write:
+
+~~~~
+# struct Point { x: f64, y: f64 }
+# enum Shape { Circle(Point, f64), Rectangle(Point, Point) }
+let circle = Circle(Point { x: 0.0, y: 0.0 }, 10.0);
+~~~~
 
 All of these variant constructors may be used as patterns. The only way to
 access the contents of an enum instance is the destructuring of a match. For
@@ -757,6 +764,7 @@ example:
 
 ~~~~
 use std::f64;
+
 # struct Point {x: f64, y: f64}
 # enum Shape { Circle(Point, f64), Rectangle(Point, Point) }
 fn area(sh: Shape) -> f64 {
@@ -765,6 +773,9 @@ fn area(sh: Shape) -> f64 {
         Rectangle(Point { x, y }, Point { x: x2, y: y2 }) => (x2 - x) * (y2 - y)
     }
 }
+
+let rect = Rectangle(Point { x: 0.0, y: 0.0 }, Point { x: 2.0, y: 2.0 });
+println!("area: {}", area(rect));
 ~~~~
 
 Use a lone `_` to ignore an individual field. Ignore all fields of a variant
@@ -786,8 +797,9 @@ fn point_from_direction(dir: Direction) -> Point {
 Enum variants may also be structs. For example:
 
 ~~~~
-# #![feature(struct_variant)]
+#![feature(struct_variant)]
 use std::f64;
+
 # struct Point { x: f64, y: f64 }
 # fn square(x: f64) -> f64 { x * x }
 enum Shape {
@@ -802,7 +814,14 @@ fn area(sh: Shape) -> f64 {
         }
     }
 }
-# fn main() {}
+
+fn main() {
+    let rect = Rectangle {
+        top_left: Point { x: 0.0, y: 0.0 },
+        bottom_right: Point { x: 2.0, y: -2.0 }
+    };
+    println!("area: {}", area(rect));
+}
 ~~~~
 
 > *Note:* This feature of the compiler is currently gated behind the
@@ -985,6 +1004,10 @@ between tasks. Custom destructors can only be implemented directly on types
 that are `Send`, but non-`Send` types can still *contain* types with custom
 destructors. Example of types which are not `Send` are [`Gc<T>`][gc] and
 [`Rc<T>`][rc], the shared-ownership types.
+
+> *Note:* See a [later chapter](#ownership-escape-hatches) for a discussion about
+> [`Gc<T>`][gc] and [`Rc<T>`][rc], and the [chapter about traits](#traits) for
+> a discussion about `Send`.
 
 [gc]: http://doc.rust-lang.org/std/gc/struct.Gc.html
 [rc]: http://doc.rust-lang.org/std/rc/struct.Rc.html
@@ -1645,6 +1668,13 @@ let string = "foobar";
 let view: &str = string.slice(0, 3);
 ~~~
 
+Square brackets denote indexing into a slice or fixed-size vector:
+
+~~~~
+let crayons: [&str, ..3] = ["BananaMania", "Beaver", "Bittersweet"];
+println!("Crayon 2 is '{}'", crayons[2]);
+~~~~
+
 Mutable slices also exist, just as there are mutable references. However, there
 are no mutable string slices. Strings are a multi-byte encoding (UTF-8) of
 Unicode code points, so they cannot be freely mutated without the ability to
@@ -1658,20 +1688,6 @@ view[0] = 5;
 // The type of a mutable slice is written as `&mut [T]`
 let ys: &mut [int] = &mut [1i, 2i, 3i];
 ~~~
-
-Square brackets denote indexing into a slice or fixed-size vector:
-
-~~~~
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-# fn draw_scene(c: Crayon) { }
-let crayons: [Crayon, ..3] = [BananaMania, Beaver, Bittersweet];
-match crayons[0] {
-    Bittersweet => draw_scene(crayons[0]),
-    _ => ()
-}
-~~~~
 
 A slice or fixed-size vector can be destructured using pattern matching:
 
@@ -1737,6 +1753,8 @@ via dynamic checks and can fail at runtime.
 
 The `Rc` and `Gc` types are not sendable, so they cannot be used to share memory between tasks. Safe
 immutable and mutable shared memory is provided by the `sync::arc` module.
+
+> *Note:* See a [later chapter](#traits) for a discussion about `Send` and sendable types.
 
 # Closures
 
@@ -2609,7 +2627,7 @@ let nonsense = mycircle.radius() * mycircle.area();
 
 ## Deriving implementations for traits
 
-A small number of traits in `std` and `extra` can have implementations
+A small number of traits in can have implementations
 that can be automatically derived. These instances are specified by
 placing the `deriving` attribute on a data type declaration. For
 example, the following will mean that `Circle` has an implementation
@@ -2618,6 +2636,7 @@ of type `ABC` can be randomly generated and converted to a string:
 
 ~~~
 extern crate rand;
+use std::rand::{task_rng, Rng};
 
 #[deriving(PartialEq)]
 struct Circle { radius: f64 }
@@ -2628,6 +2647,13 @@ enum ABC { A, B, C }
 fn main() {
     // Use the Show trait to print "A, B, C."
     println!("{}, {}, {}", A, B, C);
+
+    let mut rng = task_rng();
+
+    // Use the Rand trait to generate a random variants.
+    for _ in range(0i, 10) {
+        println!("{}", rng.gen::<ABC>());
+    }
 }
 ~~~
 
@@ -3136,8 +3162,8 @@ In Rust terminology, we need a way to refer to other crates.
 For that, Rust offers you the `extern crate` declaration:
 
 ~~~
+// `num` ships with Rust.
 extern crate num;
-// `num` ships with Rust (much like `extra`; more details further down).
 
 fn main() {
     // The rational number '1/2':
