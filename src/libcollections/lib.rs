@@ -330,24 +330,7 @@ pub trait MutableSet<T>: Set<T> + Mutable {
 ///
 /// # Example
 ///
-/// With a `Deque` we can simulate a stack:
-///
-/// ```
-/// use std::collections::{RingBuf, Deque};
-///
-/// let mut stack = RingBuf::new();
-/// stack.push_front(1i);
-/// stack.push_front(2i);
-/// stack.push_front(3i);
-///
-/// // Will print 3, 2, 1
-/// while !stack.is_empty() {
-///     let x = stack.pop_front().unwrap();
-///     println!("{}", x);
-/// }
-/// ```
-///
-/// We can simulate a queue:
+/// With a `Deque` we can simulate a queue efficiently:
 ///
 /// ```
 /// use std::collections::{RingBuf, Deque};
@@ -360,6 +343,23 @@ pub trait MutableSet<T>: Set<T> + Mutable {
 /// // Will print 1, 2, 3
 /// while !queue.is_empty() {
 ///     let x = queue.pop_front().unwrap();
+///     println!("{}", x);
+/// }
+/// ```
+///
+/// We can also simulate a stack:
+///
+/// ```
+/// use std::collections::{RingBuf, Deque};
+///
+/// let mut stack = RingBuf::new();
+/// stack.push_front(1i);
+/// stack.push_front(2i);
+/// stack.push_front(3i);
+///
+/// // Will print 3, 2, 1
+/// while !stack.is_empty() {
+///     let x = stack.pop_front().unwrap();
 ///     println!("{}", x);
 /// }
 /// ```
@@ -385,7 +385,7 @@ pub trait MutableSet<T>: Set<T> + Mutable {
 /// }
 /// ```
 pub trait Deque<T> : Mutable {
-    /// Provide a reference to the front element, or `None` if the sequence is.
+    /// Provide a reference to the front element, or `None` if the sequence is
     /// empty.
     ///
     /// # Example
@@ -472,6 +472,7 @@ pub trait Deque<T> : Mutable {
     /// d.push_front(1i);
     /// d.push_front(2i);
     /// assert_eq!(d.front(), Some(&2i));
+    /// ```
     fn push_front(&mut self, elt: T);
 
     /// Insert an element last in the sequence.
@@ -485,6 +486,7 @@ pub trait Deque<T> : Mutable {
     /// d.push_back(1i);
     /// d.push_back(2i);
     /// assert_eq!(d.front(), Some(&1i));
+    /// ```
     fn push_back(&mut self, elt: T);
 
     /// Remove the last element and return it, or `None` if the sequence is empty.
@@ -501,6 +503,7 @@ pub trait Deque<T> : Mutable {
     /// assert_eq!(d.pop_back(), Some(2i));
     /// assert_eq!(d.pop_back(), Some(1i));
     /// assert_eq!(d.pop_back(), None);
+    /// ```
     fn pop_back(&mut self) -> Option<T>;
 
     /// Remove the first element and return it, or `None` if the sequence is empty.
@@ -517,6 +520,7 @@ pub trait Deque<T> : Mutable {
     /// assert_eq!(d.pop_front(), Some(1i));
     /// assert_eq!(d.pop_front(), Some(2i));
     /// assert_eq!(d.pop_front(), None);
+    /// ```
     fn pop_front(&mut self) -> Option<T>;
 }
 

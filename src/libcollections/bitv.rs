@@ -25,6 +25,8 @@
 //!
 //! // Store the primes as a BitvSet
 //! let primes = {
+//!     // Assume all numbers are prime to begin, and then we
+//!     // cross off non-primes progressively
 //!     let mut bv = Bitv::with_capacity(max_prime, true);
 //!
 //!     // Neither 0 nor 1 are prime
@@ -33,8 +35,8 @@
 //!
 //!     for i in range(2, max_prime) {
 //!         // if i is a prime
-//!         if bv.get(i) {
-//!             // mark all multiples of i as non-prime (any multiples below i * i
+//!         if bv[i] {
+//!             // Mark all multiples of i as non-prime (any multiples below i * i
 //!             // will have been marked as non-prime previously)
 //!             for j in iter::range_step(i * i, max_prime, i) { bv.set(j, false) }
 //!         }
@@ -252,6 +254,9 @@ impl Bitv {
     /// let bv: Bitv = [false, true].iter().map(|n| *n).collect();
     /// assert_eq!(bv.get(0), false);
     /// assert_eq!(bv.get(1), true);
+    ///
+    /// // Can also use array indexing
+    /// assert_eq!(bv[1], true);
     /// ```
     #[inline]
     pub fn get(&self, i: uint) -> bool {
@@ -275,7 +280,7 @@ impl Bitv {
     ///
     /// let mut bv = Bitv::with_capacity(5, false);
     /// bv.set(3, true);
-    /// assert_eq!(bv.get(3), true);
+    /// assert_eq!(bv[3], true);
     /// ```
     #[inline]
     pub fn set(&mut self, i: uint, x: bool) {
@@ -478,7 +483,7 @@ impl Bitv {
     /// Organise the bits into bytes, such that the first bit in the
     /// `Bitv` becomes the high-order bit of the first byte. If the
     /// size of the `Bitv` is not a multiple of 8 then trailing bits
-    /// will be filled-in with false/0.
+    /// will be filled-in with `false`.
     ///
     /// # Example
     ///
@@ -716,9 +721,9 @@ impl Bitv {
 /// # Example
 ///
 /// ```
-/// use std::collections::bitv::from_bytes;
+/// use std::collections::bitv;
 ///
-/// let bv = from_bytes([0b10100000, 0b00010010]);
+/// let bv = bitv::from_bytes([0b10100000, 0b00010010]);
 /// assert!(bv.eq_vec([true, false, true, false,
 ///                    false, false, false, false,
 ///                    false, false, false, true,
@@ -898,7 +903,7 @@ impl<'a> RandomAccessIterator<bool> for Bits<'a> {
 ///
 /// ```
 /// use std::collections::{BitvSet, Bitv};
-/// use std::collections::bitv::from_bytes;
+/// use std::collections::bitv;
 ///
 /// // It's a regular set
 /// let mut s = BitvSet::new();
@@ -913,7 +918,7 @@ impl<'a> RandomAccessIterator<bool> for Bits<'a> {
 /// }
 ///
 /// // Can initialize from a `Bitv`
-/// let other = BitvSet::from_bitv(from_bytes([0b11010000]));
+/// let other = BitvSet::from_bitv(bitv::from_bytes([0b11010000]));
 ///
 /// s.union_with(&other);
 ///
@@ -1048,7 +1053,7 @@ impl BitvSet {
     /// s.insert(0);
     ///
     /// let bv = s.get_ref();
-    /// assert_eq!(bv.get(0), true);
+    /// assert_eq!(bv[0], true);
     /// ```
     #[inline]
     pub fn get_ref<'a>(&'a self) -> &'a Bitv {
@@ -1131,9 +1136,9 @@ impl BitvSet {
     ///
     /// ```
     /// use std::collections::BitvSet;
-    /// use std::collections::bitv::from_bytes;
+    /// use std::collections::bitv;
     ///
-    /// let s = BitvSet::from_bitv(from_bytes([0b01001010]));
+    /// let s = BitvSet::from_bitv(bitv::from_bytes([0b01001010]));
     ///
     /// // Print 1, 4, 6 in arbitrary order
     /// for x in s.iter() {
@@ -1152,10 +1157,10 @@ impl BitvSet {
     ///
     /// ```
     /// use std::collections::BitvSet;
-    /// use std::collections::bitv::from_bytes;
+    /// use std::collections::bitv;
     ///
-    /// let a = BitvSet::from_bitv(from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    /// let a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
     ///
     /// // Print 0, 1, 2, 4 in arbitrary order
     /// for x in a.union(&b) {
@@ -1180,10 +1185,10 @@ impl BitvSet {
     ///
     /// ```
     /// use std::collections::BitvSet;
-    /// use std::collections::bitv::from_bytes;
+    /// use std::collections::bitv;
     ///
-    /// let a = BitvSet::from_bitv(from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    /// let a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
     ///
     /// // Print 2
     /// for x in a.intersection(&b) {
@@ -1209,10 +1214,10 @@ impl BitvSet {
     ///
     /// ```
     /// use std::collections::BitvSet;
-    /// use std::collections::bitv::from_bytes;
+    /// use std::collections::bitv;
     ///
-    /// let a = BitvSet::from_bitv(from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    /// let a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
     ///
     /// // Print 2, 4 in arbitrary order
     /// for x in a.difference(&b) {
@@ -1245,10 +1250,10 @@ impl BitvSet {
     ///
     /// ```
     /// use std::collections::BitvSet;
-    /// use std::collections::bitv::from_bytes;
+    /// use std::collections::bitv;
     ///
-    /// let a = BitvSet::from_bitv(from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    /// let a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
     ///
     /// // Print 0, 1, 4 in arbitrary order
     /// for x in a.symmetric_difference(&b) {
@@ -1272,13 +1277,13 @@ impl BitvSet {
     ///
     /// ```
     /// use std::collections::BitvSet;
-    /// use std::collections::bitv::from_bytes;
+    /// use std::collections::bitv;
     ///
-    /// let mut a = BitvSet::from_bitv(from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    /// let mut a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
     ///
     /// a.union_with(&b);
-    /// assert_eq!(a.unwrap(), from_bytes([0b11101000]));
+    /// assert_eq!(a.unwrap(), bitv::from_bytes([0b11101000]));
     /// ```
     #[inline]
     pub fn union_with(&mut self, other: &BitvSet) {
@@ -1291,13 +1296,13 @@ impl BitvSet {
     ///
     /// ```
     /// use std::collections::BitvSet;
-    /// use std::collections::bitv::from_bytes;
+    /// use std::collections::bitv;
     ///
-    /// let mut a = BitvSet::from_bitv(from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    /// let mut a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
     ///
     /// a.intersect_with(&b);
-    /// assert_eq!(a.unwrap(), from_bytes([0b00100000]));
+    /// assert_eq!(a.unwrap(), bitv::from_bytes([0b00100000]));
     /// ```
     #[inline]
     pub fn intersect_with(&mut self, other: &BitvSet) {
@@ -1310,13 +1315,13 @@ impl BitvSet {
     ///
     /// ```
     /// use std::collections::BitvSet;
-    /// use std::collections::bitv::from_bytes;
+    /// use std::collections::bitv;
     ///
-    /// let mut a = BitvSet::from_bitv(from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    /// let mut a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
     ///
     /// a.difference_with(&b);
-    /// assert_eq!(a.unwrap(), from_bytes([0b01001000]));
+    /// assert_eq!(a.unwrap(), bitv::from_bytes([0b01001000]));
     /// ```
     #[inline]
     pub fn difference_with(&mut self, other: &BitvSet) {
@@ -1329,13 +1334,13 @@ impl BitvSet {
     ///
     /// ```
     /// use std::collections::BitvSet;
-    /// use std::collections::bitv::from_bytes;
+    /// use std::collections::bitv;
     ///
-    /// let mut a = BitvSet::from_bitv(from_bytes([0b01101000]));
-    /// let b = BitvSet::from_bitv(from_bytes([0b10100000]));
+    /// let mut a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
+    /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
     ///
     /// a.symmetric_difference_with(&b);
-    /// assert_eq!(a.unwrap(), from_bytes([0b11001000]));
+    /// assert_eq!(a.unwrap(), bitv::from_bytes([0b11001000]));
     /// ```
     #[inline]
     pub fn symmetric_difference_with(&mut self, other: &BitvSet) {
