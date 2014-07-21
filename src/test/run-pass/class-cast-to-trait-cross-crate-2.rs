@@ -11,7 +11,7 @@
 // aux-build:cci_class_cast.rs
 extern crate cci_class_cast;
 
-use std::to_str::ToString;
+use std::to_string::ToString;
 use cci_class_cast::kitty::cat;
 
 fn print_out(thing: Box<ToString>, expected: String) {
