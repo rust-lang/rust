@@ -1291,7 +1291,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///         // new value based on the first letter of the key.
     ///         |key, already, new| {
     ///             if key.as_slice().starts_with("z") {
-    ///                 already.unshift(new);
+    ///                 already.insert(0, new);
     ///             } else {
     ///                 already.push(new);
     ///             }

@@ -575,7 +575,7 @@ mod tests {
     use std::prelude::*;
     use test::Bencher;
 
-    use Mutable;
+    use {Mutable, MutableSeq};
     use str;
     use str::{Str, StrSlice, Owned, Slice};
     use super::String;

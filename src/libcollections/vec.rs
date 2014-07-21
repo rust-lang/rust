@@ -981,7 +981,7 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```ignore
     /// let mut vec = vec![1i, 2, 3];
     /// vec.unshift(4);
     /// assert_eq!(vec, vec![4, 1, 2, 3]);
