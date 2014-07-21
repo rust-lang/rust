@@ -40,6 +40,7 @@ use visit_ast::RustdocVisitor;
 pub fn run(input: &str,
            cfgs: Vec<String>,
            libs: HashSet<Path>,
+           externs: core::Externs,
            mut test_args: Vec<String>)
            -> int {
     let input_path = Path::new(input);
@@ -49,9 +50,9 @@ pub fn run(input: &str,
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs.clone()),
         crate_types: vec!(config::CrateTypeDylib),
+        externs: externs.clone(),
         ..config::basic_options().clone()
     };
-
 
     let codemap = CodeMap::new();
     let diagnostic_handler = diagnostic::default_handler(diagnostic::Auto, None);
@@ -69,7 +70,7 @@ pub fn run(input: &str,
     }));
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
     let (krate, _) = driver::phase_2_configure_and_expand(&sess, krate,
-                                                          "rustdoc-test")
+                                                          "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let ctx = box(GC) core::DocContext {
@@ -92,6 +93,7 @@ pub fn run(input: &str,
 
     let mut collector = Collector::new(krate.name.to_string(),
                                        libs,
+                                       externs,
                                        false);
     collector.fold_crate(krate);
 
@@ -102,8 +104,8 @@ pub fn run(input: &str,
     0
 }
 
-fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
-           no_run: bool, as_test_harness: bool) {
+fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, externs: core::Externs,
+           should_fail: bool, no_run: bool, as_test_harness: bool) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = maketest(test, Some(cratename), true, as_test_harness);
@@ -115,6 +117,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
         crate_types: vec!(config::CrateTypeExecutable),
         output_types: vec!(link::OutputTypeExe),
         no_trans: no_run,
+        externs: externs,
         cg: config::CodegenOptions {
             prefer_dynamic: true,
             .. config::basic_codegen_options()
@@ -166,7 +169,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     let out = Some(outdir.path().clone());
     let cfg = config::build_configuration(&sess);
     let libdir = sess.target_filesearch().get_lib_path();
-    driver::compile_input(sess, cfg, &input, &out, &None);
+    driver::compile_input(sess, cfg, &input, &out, &None, None);
 
     if no_run { return }
 
@@ -237,6 +240,7 @@ pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
     names: Vec<String>,
     libs: HashSet<Path>,
+    externs: core::Externs,
     cnt: uint,
     use_headers: bool,
     current_header: Option<String>,
@@ -244,12 +248,13 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn new(cratename: String, libs: HashSet<Path>,
+    pub fn new(cratename: String, libs: HashSet<Path>, externs: core::Externs,
                use_headers: bool) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
             libs: libs,
+            externs: externs,
             cnt: 0,
             use_headers: use_headers,
             current_header: None,
@@ -267,6 +272,7 @@ impl Collector {
         };
         self.cnt += 1;
         let libs = self.libs.clone();
+        let externs = self.externs.clone();
         let cratename = self.cratename.to_string();
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
@@ -279,6 +285,7 @@ impl Collector {
                 runtest(test.as_slice(),
                         cratename.as_slice(),
                         libs,
+                        externs,
                         should_fail,
                         no_run,
                         as_test_harness);

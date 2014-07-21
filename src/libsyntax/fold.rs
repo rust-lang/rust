@@ -752,7 +752,7 @@ pub fn noop_fold_crate<T: Folder>(c: Crate, folder: &mut T) -> Crate {
         attrs: c.attrs.iter().map(|x| folder.fold_attribute(*x)).collect(),
         config: c.config.iter().map(|x| fold_meta_item_(*x, folder)).collect(),
         span: folder.new_span(c.span),
-        exported_macros: c.exported_macros.iter().map(|sp| folder.new_span(*sp)).collect(),
+        exported_macros: c.exported_macros
     }
 }
 

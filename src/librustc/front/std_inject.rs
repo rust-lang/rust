@@ -60,9 +60,16 @@ struct StandardLibraryInjector<'a> {
 
 impl<'a> fold::Folder for StandardLibraryInjector<'a> {
     fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
+
+        // The name to use in `extern crate std = "name";`
+        let actual_crate_name = match self.sess.opts.alt_std_name {
+            Some(ref s) => token::intern_and_get_ident(s.as_slice()),
+            None => token::intern_and_get_ident("std"),
+        };
+
         let mut vis = vec!(ast::ViewItem {
             node: ast::ViewItemExternCrate(token::str_to_ident("std"),
-                                           None,
+                                           Some((actual_crate_name, ast::CookedStr)),
                                            ast::DUMMY_NODE_ID),
             attrs: vec!(
                 attr::mk_attr_outer(attr::mk_attr_id(), attr::mk_list_item(

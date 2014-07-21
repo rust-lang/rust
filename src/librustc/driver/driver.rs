@@ -69,7 +69,8 @@ pub fn compile_input(sess: Session,
                      cfg: ast::CrateConfig,
                      input: &Input,
                      outdir: &Option<Path>,
-                     output: &Option<Path>) {
+                     output: &Option<Path>,
+                     addl_plugins: Option<Plugins>) {
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
@@ -85,7 +86,8 @@ pub fn compile_input(sess: Session,
             let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(),
                                            input);
             let (expanded_crate, ast_map)
-                = match phase_2_configure_and_expand(&sess, krate, id.as_slice()) {
+                = match phase_2_configure_and_expand(&sess, krate, id.as_slice(),
+                                                     addl_plugins) {
                     None => return,
                     Some(p) => p,
                 };
@@ -179,6 +181,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
 // modified
 
 /// Run the "early phases" of the compiler: initial `cfg` processing,
+/// loading compiler plugins (including those from `addl_plugins`),
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided and injection of a dependency on the
 /// standard library and prelude.
@@ -186,7 +189,8 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
 /// Returns `None` if we're aborting after handling -W help.
 pub fn phase_2_configure_and_expand(sess: &Session,
                                     mut krate: ast::Crate,
-                                    crate_name: &str)
+                                    crate_name: &str,
+                                    addl_plugins: Option<Plugins>)
                                     -> Option<(ast::Crate, syntax::ast_map::Map)> {
     let time_passes = sess.time_passes();
 
@@ -212,9 +216,10 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     krate = time(time_passes, "configuration 1", krate, |krate|
                  front::config::strip_unconfigured_items(krate));
 
+    let mut addl_plugins = Some(addl_plugins);
     let Plugins { macros, registrars }
         = time(time_passes, "plugin loading", (), |_|
-               plugin::load::load_plugins(sess, &krate));
+               plugin::load::load_plugins(sess, &krate, addl_plugins.take_unwrap()));
 
     let mut registry = Registry::new(&krate);
 
@@ -697,7 +702,7 @@ pub fn pretty_print_input(sess: Session,
         PpmExpanded | PpmExpandedIdentified | PpmTyped | PpmFlowGraph(_) => {
             let (krate, ast_map)
                 = match phase_2_configure_and_expand(&sess, krate,
-                                                     id.as_slice()) {
+                                                     id.as_slice(), None) {
                     None => return,
                     Some(p) => p,
                 };

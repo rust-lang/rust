@@ -124,7 +124,7 @@ fn run_compiler(args: &[String]) {
         return;
     }
 
-    driver::compile_input(sess, cfg, &input, &odir, &ofile);
+    driver::compile_input(sess, cfg, &input, &odir, &ofile, None);
 }
 
 /// Prints version information and returns None on success or an error
@@ -418,7 +418,7 @@ pub fn list_metadata(sess: &Session, path: &Path,
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
-fn monitor(f: proc():Send) {
+pub fn monitor(f: proc():Send) {
     // FIXME: This is a hack for newsched since it doesn't support split stacks.
     // rustc needs a lot of stack! When optimizations are disabled, it needs
     // even *more* stack than usual as well.
