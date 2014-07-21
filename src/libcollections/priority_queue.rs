@@ -180,6 +180,25 @@ impl<T: Ord> Default for PriorityQueue<T> {
 }
 
 impl<T: Ord> PriorityQueue<T> {
+    /// Create an empty PriorityQueue
+    pub fn new() -> PriorityQueue<T> { PriorityQueue{data: vec!(),} }
+
+    /// Create an empty PriorityQueue with capacity `capacity`
+    pub fn with_capacity(capacity: uint) -> PriorityQueue<T> {
+        PriorityQueue { data: Vec::with_capacity(capacity) }
+    }
+
+    /// Create a PriorityQueue from a vector (heapify)
+    pub fn from_vec(xs: Vec<T>) -> PriorityQueue<T> {
+        let mut q = PriorityQueue{data: xs,};
+        let mut n = q.len() / 2;
+        while n > 0 {
+            n -= 1;
+            q.siftdown(n)
+        }
+        q
+    }
+
     /// An iterator visiting all values in underlying vector, in
     /// arbitrary order.
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
@@ -276,25 +295,6 @@ impl<T: Ord> PriorityQueue<T> {
             q.siftdown_range(0, end)
         }
         q.into_vec()
-    }
-
-    /// Create an empty PriorityQueue
-    pub fn new() -> PriorityQueue<T> { PriorityQueue{data: vec!(),} }
-
-    /// Create an empty PriorityQueue with capacity `capacity`
-    pub fn with_capacity(capacity: uint) -> PriorityQueue<T> {
-        PriorityQueue { data: Vec::with_capacity(capacity) }
-    }
-
-    /// Create a PriorityQueue from a vector (heapify)
-    pub fn from_vec(xs: Vec<T>) -> PriorityQueue<T> {
-        let mut q = PriorityQueue{data: xs,};
-        let mut n = q.len() / 2;
-        while n > 0 {
-            n -= 1;
-            q.siftdown(n)
-        }
-        q
     }
 
     // The implementations of siftup and siftdown use unsafe blocks in
