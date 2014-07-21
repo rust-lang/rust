@@ -412,6 +412,9 @@ pub fn walk_ty<E: Clone, V: Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
                 walk_ty_param_bounds(visitor, bounds, env.clone())
             }
         }
+        TyMac(ref macro) => {
+            visitor.visit_mac(macro, env.clone());
+        }
         TyFixedLengthVec(ref ty, ref expression) => {
             visitor.visit_ty(&**ty, env.clone());
             visitor.visit_expr(&**expression, env)

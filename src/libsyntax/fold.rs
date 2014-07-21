@@ -160,65 +160,7 @@ pub trait Folder {
     }
 
     fn fold_ty(&mut self, t: P<Ty>) -> P<Ty> {
-        let id = self.new_id(t.id);
-        let node = match t.node {
-            TyNil | TyBot | TyInfer => t.node.clone(),
-            TyBox(ty) => TyBox(self.fold_ty(ty)),
-            TyUniq(ty) => TyUniq(self.fold_ty(ty)),
-            TyVec(ty) => TyVec(self.fold_ty(ty)),
-            TyPtr(ref mt) => TyPtr(fold_mt(mt, self)),
-            TyRptr(ref region, ref mt) => {
-                TyRptr(fold_opt_lifetime(region, self), fold_mt(mt, self))
-            }
-            TyClosure(ref f, ref region) => {
-                TyClosure(box(GC) ClosureTy {
-                    fn_style: f.fn_style,
-                    onceness: f.onceness,
-                    bounds: fold_opt_bounds(&f.bounds, self),
-                    decl: self.fold_fn_decl(&*f.decl),
-                    lifetimes: f.lifetimes.iter().map(|l| self.fold_lifetime(l)).collect(),
-                }, fold_opt_lifetime(region, self))
-            }
-            TyProc(ref f) => {
-                TyProc(box(GC) ClosureTy {
-                    fn_style: f.fn_style,
-                    onceness: f.onceness,
-                    bounds: fold_opt_bounds(&f.bounds, self),
-                    decl: self.fold_fn_decl(&*f.decl),
-                    lifetimes: f.lifetimes.iter().map(|l| self.fold_lifetime(l)).collect(),
-                })
-            }
-            TyBareFn(ref f) => {
-                TyBareFn(box(GC) BareFnTy {
-                    lifetimes: f.lifetimes.iter().map(|l| self.fold_lifetime(l)).collect(),
-                    fn_style: f.fn_style,
-                    abi: f.abi,
-                    decl: self.fold_fn_decl(&*f.decl)
-                })
-            }
-            TyUnboxedFn(ref f) => {
-                TyUnboxedFn(box(GC) UnboxedFnTy {
-                    decl: self.fold_fn_decl(&*f.decl),
-                })
-            }
-            TyTup(ref tys) => TyTup(tys.iter().map(|&ty| self.fold_ty(ty)).collect()),
-            TyParen(ref ty) => TyParen(self.fold_ty(*ty)),
-            TyPath(ref path, ref bounds, id) => {
-                let id = self.new_id(id);
-                TyPath(self.fold_path(path),
-                       fold_opt_bounds(bounds, self),
-                       id)
-            }
-            TyFixedLengthVec(ty, e) => {
-                TyFixedLengthVec(self.fold_ty(ty), self.fold_expr(e))
-            }
-            TyTypeof(expr) => TyTypeof(self.fold_expr(expr)),
-        };
-        P(Ty {
-            id: id,
-            span: self.new_span(t.span),
-            node: node,
-        })
+        noop_fold_ty(t, self)
     }
 
     fn fold_mod(&mut self, m: &Mod) -> Mod {
@@ -1009,6 +951,69 @@ pub fn noop_fold_expr<T: Folder>(e: Gc<Expr>, folder: &mut T) -> Gc<Expr> {
         node: node,
         span: folder.new_span(e.span),
     }
+}
+
+pub fn noop_fold_ty<T: Folder>(t: P<Ty>, folder: &mut T) -> P<Ty> {
+    let id = folder.new_id(t.id);
+    let node = match t.node {
+        TyNil | TyBot | TyInfer => t.node.clone(),
+        TyBox(ty) => TyBox(folder.fold_ty(ty)),
+        TyUniq(ty) => TyUniq(folder.fold_ty(ty)),
+        TyVec(ty) => TyVec(folder.fold_ty(ty)),
+        TyPtr(ref mt) => TyPtr(fold_mt(mt, folder)),
+        TyRptr(ref region, ref mt) => {
+            TyRptr(fold_opt_lifetime(region, folder), fold_mt(mt, folder))
+        }
+        TyClosure(ref f, ref region) => {
+            TyClosure(box(GC) ClosureTy {
+                fn_style: f.fn_style,
+                onceness: f.onceness,
+                bounds: fold_opt_bounds(&f.bounds, folder),
+                decl: folder.fold_fn_decl(&*f.decl),
+                lifetimes: f.lifetimes.iter().map(|l| folder.fold_lifetime(l)).collect(),
+            }, fold_opt_lifetime(region, folder))
+        }
+        TyProc(ref f) => {
+            TyProc(box(GC) ClosureTy {
+                fn_style: f.fn_style,
+                onceness: f.onceness,
+                bounds: fold_opt_bounds(&f.bounds, folder),
+                decl: folder.fold_fn_decl(&*f.decl),
+                lifetimes: f.lifetimes.iter().map(|l| folder.fold_lifetime(l)).collect(),
+            })
+        }
+        TyBareFn(ref f) => {
+            TyBareFn(box(GC) BareFnTy {
+                lifetimes: f.lifetimes.iter().map(|l| folder.fold_lifetime(l)).collect(),
+                fn_style: f.fn_style,
+                abi: f.abi,
+                decl: folder.fold_fn_decl(&*f.decl)
+            })
+        }
+        TyUnboxedFn(ref f) => {
+            TyUnboxedFn(box(GC) UnboxedFnTy {
+                decl: folder.fold_fn_decl(&*f.decl),
+            })
+        }
+        TyTup(ref tys) => TyTup(tys.iter().map(|&ty| folder.fold_ty(ty)).collect()),
+        TyParen(ref ty) => TyParen(folder.fold_ty(*ty)),
+        TyMac(ref mac) => TyMac(folder.fold_mac(mac)),
+        TyPath(ref path, ref bounds, id) => {
+            let id = folder.new_id(id);
+            TyPath(folder.fold_path(path),
+                   fold_opt_bounds(bounds, folder),
+                   id)
+        }
+        TyFixedLengthVec(ty, e) => {
+            TyFixedLengthVec(folder.fold_ty(ty), folder.fold_expr(e))
+        }
+        TyTypeof(expr) => TyTypeof(folder.fold_expr(expr)),
+    };
+    P(Ty {
+        id: id,
+        span: folder.new_span(t.span),
+        node: node,
+    })
 }
 
 pub fn noop_fold_stmt<T: Folder>(s: &Stmt,

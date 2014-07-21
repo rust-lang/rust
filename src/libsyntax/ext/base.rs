@@ -114,6 +114,10 @@ pub trait MacResult {
     fn make_expr(&self) -> Option<Gc<ast::Expr>> {
         None
     }
+    /// Create an type.
+    fn make_ty(&self) -> Option<Gc<ast::Ty>> {
+        None
+    }
     /// Create zero or more items.
     fn make_items(&self) -> Option<SmallVector<Gc<ast::Item>>> {
         None
@@ -151,6 +155,20 @@ impl MacExpr {
 impl MacResult for MacExpr {
     fn make_expr(&self) -> Option<Gc<ast::Expr>> {
         Some(self.e)
+    }
+}
+/// A convenience type for macros that return a single type.
+pub struct MacTy {
+    t: Gc<ast::Ty>,
+}
+impl MacTy {
+    pub fn new(t: Gc<ast::Ty>) -> Box<MacResult> {
+        box MacTy { t: t } as Box<MacResult>
+    }
+}
+impl MacResult for MacTy {
+    fn make_ty(&self) -> Option<Gc<ast::Ty>> {
+        Some(self.t)
     }
 }
 /// A convenience type for macros that return a single pattern.
@@ -223,6 +241,15 @@ impl DummyResult {
         }
     }
 
+    /// A plain dummy type.
+    pub fn raw_ty(sp: Span) -> Gc<ast::Ty> {
+        box(GC) ast::Ty {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::TyNil, // FIXME: Is this suitable?
+            span: sp,
+        }
+    }
+
     /// A plain dummy pattern.
     pub fn raw_pat(sp: Span) -> Gc<ast::Pat> {
         box(GC) ast::Pat {
@@ -237,6 +264,9 @@ impl DummyResult {
 impl MacResult for DummyResult {
     fn make_expr(&self) -> Option<Gc<ast::Expr>> {
         Some(DummyResult::raw_expr(self.span))
+    }
+    fn make_ty(&self) -> Option<Gc<ast::Ty>> {
+        Some(DummyResult::raw_ty(self.span))
     }
     fn make_pat(&self) -> Option<Gc<ast::Pat>> {
         Some(DummyResult::raw_pat(self.span))

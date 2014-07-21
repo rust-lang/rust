@@ -859,6 +859,9 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                     }
                 }
             }
+            ast::TyMac(ref _mac) => {
+                tcx.sess.span_bug(ast_ty.span, "type macro not expanded");
+            }
             ast::TyTypeof(_e) => {
                 tcx.sess.span_bug(ast_ty.span, "typeof is reserved but unimplemented");
             }

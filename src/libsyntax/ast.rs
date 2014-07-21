@@ -859,6 +859,7 @@ pub enum Ty_ {
     TyPath(Path, Option<OwnedSlice<TyParamBound>>, NodeId), // for #7264; see above
     /// No-op; kept solely so that we can pretty-print faithfully
     TyParen(P<Ty>),
+    TyMac(Mac),
     TyTypeof(Gc<Expr>),
     /// TyInfer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
