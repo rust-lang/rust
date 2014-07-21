@@ -842,7 +842,6 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
 #[test]
 fn should_sort_failures_before_printing_them() {
     use std::io::MemWriter;
-    use std::str;
 
     let test_a = TestDesc {
         name: StaticTestName("a"),

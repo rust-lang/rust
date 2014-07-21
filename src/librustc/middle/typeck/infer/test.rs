@@ -117,7 +117,7 @@ fn test_env(_test_name: &str,
     let input = driver::StrInput(source_string.to_string());
     let krate = driver::phase_1_parse_input(&sess, krate_config, &input);
     let (krate, ast_map) =
-        driver::phase_2_configure_and_expand(&sess, krate, "test")
+        driver::phase_2_configure_and_expand(&sess, krate, "test", None)
             .expect("phase 2 aborted");
 
     // run just enough stuff to build a tcx:

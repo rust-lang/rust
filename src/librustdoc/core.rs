@@ -77,8 +77,10 @@ pub struct CrateAnalysis {
     pub inlined: RefCell<Option<HashSet<ast::DefId>>>,
 }
 
+pub type Externs = HashMap<String, Vec<String>>;
+
 /// Parses, resolves, and typechecks the given crate
-fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
+fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>, externs: Externs)
                        -> (DocContext, CrateAnalysis) {
     use syntax::codemap::dummy_spanned;
     use rustc::driver::driver::{FileInput,
@@ -96,6 +98,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(driver::config::CrateTypeRlib),
         lint_opts: vec!((warning_lint, lint::Allow)),
+        externs: externs,
         ..rustc::driver::config::basic_options().clone()
     };
 
@@ -121,7 +124,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
                                      &input);
 
     let (krate, ast_map)
-        = phase_2_configure_and_expand(&sess, krate, name.as_slice())
+        = phase_2_configure_and_expand(&sess, krate, name.as_slice(), None)
             .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let driver::driver::CrateAnalysis {
@@ -148,9 +151,9 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
     })
 }
 
-pub fn run_core(libs: HashSet<Path>, cfgs: Vec<String>, path: &Path)
+pub fn run_core(libs: HashSet<Path>, cfgs: Vec<String>, externs: Externs, path: &Path)
                 -> (clean::Crate, CrateAnalysis) {
-    let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs);
+    let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs, externs);
     let ctxt = box(GC) ctxt;
     super::ctxtkey.replace(Some(ctxt));
 

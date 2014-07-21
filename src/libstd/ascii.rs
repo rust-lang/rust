@@ -20,7 +20,7 @@ use option::{Option, Some, None};
 use slice::{ImmutableVector, MutableVector, Vector};
 use str::{OwnedStr, Str, StrAllocating, StrSlice};
 use string::String;
-use to_str::{IntoStr};
+use to_string::IntoStr;
 use vec::Vec;
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.

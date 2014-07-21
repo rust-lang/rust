@@ -49,6 +49,9 @@ struct Context<'a, 'b> {
     name_types: HashMap<String, ArgumentType>,
     name_ordering: Vec<String>,
 
+    /// The latest consecutive literal strings
+    literal: Option<String>,
+
     /// Collection of the compiled `rt::Piece` structures
     pieces: Vec<Gc<ast::Expr>>,
     name_positions: HashMap<String, uint>,
@@ -362,17 +365,29 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
+    /// Translate the accumulated string literals to a static `rt::Piece`
+    fn trans_literal_string(&mut self) -> Option<Gc<ast::Expr>> {
+        let sp = self.fmtsp;
+        self.literal.take().map(|s| {
+            let s = token::intern_and_get_ident(s.as_slice());
+            self.ecx.expr_call_global(sp,
+                                      self.rtpath("String"),
+                                      vec!(
+                self.ecx.expr_str(sp, s)
+            ))
+        })
+    }
+
     /// Translate a `parse::Piece` to a static `rt::Piece`
-    fn trans_piece(&mut self, piece: &parse::Piece) -> Gc<ast::Expr> {
+    fn trans_piece(&mut self, piece: &parse::Piece) -> Option<Gc<ast::Expr>> {
         let sp = self.fmtsp;
         match *piece {
             parse::String(s) => {
-                let s = token::intern_and_get_ident(s);
-                self.ecx.expr_call_global(sp,
-                                          self.rtpath("String"),
-                                          vec!(
-                    self.ecx.expr_str(sp, s)
-                ))
+                match self.literal {
+                    Some(ref mut sb) => sb.push_str(s),
+                    ref mut empty => *empty = Some(String::from_str(s)),
+                }
+                None
             }
             parse::Argument(ref arg) => {
                 // Translate the position
@@ -430,7 +445,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 let s = self.ecx.expr_struct(sp, path, vec!(
                     self.ecx.field_imm(sp, self.ecx.ident_of("position"), pos),
                     self.ecx.field_imm(sp, self.ecx.ident_of("format"), fmt)));
-                self.ecx.expr_call_global(sp, self.rtpath("Argument"), vec!(s))
+                Some(self.ecx.expr_call_global(sp, self.rtpath("Argument"), vec!(s)))
             }
         }
     }
@@ -694,6 +709,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         name_ordering: name_ordering,
         nest_level: 0,
         next_arg: 0,
+        literal: None,
         pieces: Vec::new(),
         method_statics: Vec::new(),
         fmtsp: sp,
@@ -712,8 +728,14 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
             Some(piece) => {
                 if parser.errors.len() > 0 { break }
                 cx.verify_piece(&piece);
-                let piece = cx.trans_piece(&piece);
-                cx.pieces.push(piece);
+                match cx.trans_piece(&piece) {
+                    Some(piece) => {
+                        cx.trans_literal_string().map(|piece|
+                                                      cx.pieces.push(piece));
+                        cx.pieces.push(piece);
+                    }
+                    None => {}
+                }
             }
             None => break
         }
@@ -727,6 +749,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         }
         None => {}
     }
+    cx.trans_literal_string().map(|piece| cx.pieces.push(piece));
 
     // Make sure that all arguments were used and all arguments have types.
     for (i, ty) in cx.arg_types.iter().enumerate() {

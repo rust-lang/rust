@@ -51,10 +51,27 @@ pub static PTR_MARKER: u8 = 0;
 /// The `vec!` macro is provided to make initialization more convenient:
 ///
 /// ```rust
-/// let mut vec = vec!(1i, 2i, 3i);
+/// let mut vec = vec![1i, 2i, 3i];
 /// vec.push(4);
-/// assert_eq!(vec, vec!(1, 2, 3, 4));
+/// assert_eq!(vec, vec![1, 2, 3, 4]);
 /// ```
+///
+/// # Capacity and reallocation
+///
+/// The capacity of a vector is the amount of space allocated for any future
+/// elements that will be added onto the vector. This is not to be confused
+/// with the *length* of a vector, which specifies the number of actual
+/// elements within the vector. If a vector's length exceeds its capacity,
+/// its capacity will automatically be increased, but its elements will
+/// have to be reallocated.
+///
+/// For example, a vector with capacity 10 and length 0 would be an empty
+/// vector with space for 10 more elements. Pushing 10 or fewer elements onto
+/// the vector will not change its capacity or cause reallocation to occur.
+/// However, if the vector's length is increased to 11, it will have to
+/// reallocate, which can be slow. For this reason, it is recommended
+/// to use `Vec::with_capacity` whenever possible to specify how big the vector
+/// is expected to get.
 #[unsafe_no_drop_flag]
 pub struct Vec<T> {
     len: uint,
@@ -87,11 +104,28 @@ impl<T> Vec<T> {
     /// The vector will be able to hold exactly `capacity` elements without
     /// reallocating. If `capacity` is 0, the vector will not allocate.
     ///
+    /// It is important to note that this function does not specify the
+    /// *length* of the returned vector, but only the *capacity*. (For an
+    /// explanation of the difference between length and capacity, see
+    /// the main `Vec` docs above, 'Capacity and reallocation'.) To create
+    /// a vector of a given length, use `Vec::from_elem` or `Vec::from_fn`.
+    ///
     /// # Example
     ///
     /// ```rust
     /// # use std::vec::Vec;
-    /// let vec: Vec<int> = Vec::with_capacity(10);
+    /// let mut vec: Vec<int> = Vec::with_capacity(10);
+    ///
+    /// // The vector contains no items, even though it has capacity for more
+    /// assert_eq!(vec.len(), 0);
+    ///
+    /// // These are all done without reallocating...
+    /// for i in range(0i, 10) {
+    ///     vec.push(i);
+    /// }
+    ///
+    /// // ...but this may make the vector reallocate
+    /// vec.push(11);
     /// ```
     #[inline]
     pub fn with_capacity(capacity: uint) -> Vec<T> {
