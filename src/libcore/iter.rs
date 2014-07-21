@@ -68,7 +68,7 @@ use clone::Clone;
 use cmp;
 use cmp::{PartialEq, PartialOrd, Ord};
 use mem;
-use num::{Zero, One, CheckedAdd, CheckedSub, Saturating, ToPrimitive, Int};
+use num::{Zero, One, CheckedAdd, CheckedSub, CheckedMul, Saturating, ToPrimitive, Int};
 use ops::{Add, Mul, Sub};
 use option::{Option, Some, None};
 use uint;
@@ -142,6 +142,25 @@ pub trait Iterator<A> {
     #[inline]
     fn zip<B, U: Iterator<B>>(self, other: U) -> Zip<Self, U> {
         Zip{a: self, b: other}
+    }
+
+    /// Creates an iterator which interleaves the contents of this and the specified
+    /// iterator.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let a = [0i, 2i];
+    /// let b = [1i];
+    /// let mut it = a.iter().interleave(b.iter());
+    /// assert_eq!(it.next().unwrap(), &0i);
+    /// assert_eq!(it.next().unwrap(), &1i);
+    /// assert_eq!(it.next().unwrap(), &1i);
+    /// assert!(it.next().is_none());
+    /// ```
+    #[inline]
+    fn interleave<U: Iterator<A>>(self, other: U) -> Interleave<Self, U> {
+        Interleave{a: self, b: other, using_first: true}
     }
 
     /// Creates a new iterator which will apply the specified function to each
@@ -1237,6 +1256,112 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
                 None => None,
                 Some(y) => Some((x, y))
             }
+        }
+    }
+}
+
+/// An iterator which interleaves the contents of two other iterators
+#[deriving(Clone)]
+pub struct Interleave<T, U> {
+    a: T,
+    b: U,
+    using_first: bool
+}
+
+fn interleave_len(a_len: uint, b_len: uint, using_first: bool) -> Option<uint> {
+    let off_by_one = using_first as uint;
+    if a_len < b_len {
+        a_len.checked_mul(&2).and_then(|x| x.checked_add(&(1 - off_by_one)))
+    } else if b_len < a_len {
+        b_len.checked_mul(&2).and_then(|x| x.checked_add(&off_by_one))
+    } else {
+        a_len.checked_mul(&2)
+    }
+}
+
+// Note to developers: sequence will always look like a,b,a,b,a,... but the last element
+// to be yielded will be *either* an a or b. Thus we may yield one more a than b.
+// This is a key fact to the design of Interleave.
+impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for Interleave<T, U> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        let use_a = self.using_first;
+        self.using_first = !use_a;
+
+        if use_a {
+            self.a.next()
+        } else {
+            self.b.next()
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (a_lower, a_upper) = self.a.size_hint();
+        let (b_lower, b_upper) = self.b.size_hint();
+
+        let lower = interleave_len(a_lower, b_lower, self.using_first).unwrap_or(uint::MAX);
+
+        let upper = match (a_upper, b_upper) {
+            (Some(x), Some(y)) => interleave_len(x, y, self.using_first),
+            // If one is missing, best we can do is assume it's huge
+            (Some(x), None) => interleave_len(x, uint::MAX, self.using_first),
+            (None, Some(y)) => interleave_len(uint::MAX, y, self.using_first),
+            (None, None) => None
+        };
+
+        (lower, upper)
+    }
+}
+
+impl<A, T: ExactSize<A>, U: ExactSize<A>> DoubleEndedIterator<A>
+for Interleave<T, U> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        let (a_sz, a_upper) = self.a.size_hint();
+        let (b_sz, b_upper) = self.b.size_hint();
+        assert!(a_upper == Some(a_sz));
+        assert!(b_upper == Some(b_sz));
+
+        let off_by_one = self.using_first as uint;
+
+        if a_sz < b_sz {
+            for _ in range(1 - off_by_one, b_sz - a_sz) { self.b.next_back(); }
+        } else if a_sz > b_sz {
+            for _ in range(off_by_one, a_sz - b_sz) { self.a.next_back(); }
+        }
+        let (a_sz, _) = self.a.size_hint();
+        let (b_sz, _) = self.b.size_hint();
+        assert!(a_sz == b_sz || a_sz + (1 - off_by_one) == b_sz + off_by_one);
+
+        if (self.using_first && a_sz > b_sz) || (!self.using_first && a_sz == b_sz) {
+            self.a.next_back()
+        } else {
+            self.b.next_back()
+        }
+    }
+}
+
+impl<A, T: RandomAccessIterator<A>, U: RandomAccessIterator<A>>
+RandomAccessIterator<A> for Interleave<T, U> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        interleave_len(self.a.indexable(), self.b.indexable(), self.using_first)
+            .unwrap_or(uint::MAX)
+    }
+
+    #[inline]
+    fn idx(&mut self, index: uint) -> Option<A> {
+        let off_by_one = self.using_first as uint;
+
+        if index < self.indexable() {
+            if index % 2 == (1 - off_by_one) {
+                self.a.idx((index - (1 - off_by_one)) / 2)
+            } else {
+                self.b.idx((index - off_by_one) / 2)
+            }
+        } else {
+            None
         }
     }
 }
