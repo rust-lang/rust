@@ -50,6 +50,7 @@ impl<'a> Builder<'a> {
                                                 .n_llvm_insns
                                                 .get() + 1);
         }
+        self.ccx.count_llvm_insn();
         if self.ccx.sess().count_llvm_insns() {
             base::with_insn_ctxt(|v| {
                 let mut h = self.ccx.stats().llvm_insns.borrow_mut();

@@ -159,11 +159,18 @@ pub fn register_static(ccx: &CrateContext,
                 }
             };
             unsafe {
+                // Declare a symbol `foo` with the desired linkage.
                 let g1 = ident.get().with_c_str(|buf| {
                     llvm::LLVMAddGlobal(ccx.llmod(), llty2.to_ref(), buf)
                 });
                 llvm::SetLinkage(g1, linkage);
 
+                // Declare an internal global `extern_with_linkage_foo` which
+                // is initialized with the address of `foo`.  If `foo` is
+                // discarded during linking (for example, if `foo` has weak
+                // linkage and there are no definitions), then
+                // `extern_with_linkage_foo` will instead be initialized to
+                // zero.
                 let mut real_name = "_rust_extern_with_linkage_".to_string();
                 real_name.push_str(ident.get());
                 let g2 = real_name.with_c_str(|buf| {
@@ -175,6 +182,7 @@ pub fn register_static(ccx: &CrateContext,
             }
         }
         None => unsafe {
+            // Generate an external declaration.
             ident.get().with_c_str(|buf| {
                 llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(), buf)
             })
@@ -490,6 +498,10 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
                         register_foreign_item_fn(ccx, abi, ty,
                                                  lname.get().as_slice(),
                                                  Some(foreign_item.span));
+                        // Unlike for other items, we shouldn't call
+                        // `base::update_linkage` here.  Foreign items have
+                        // special linkage requirements, which are handled
+                        // inside `foreign::register_*`.
                     }
                 }
             }

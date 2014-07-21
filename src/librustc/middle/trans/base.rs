@@ -2124,8 +2124,17 @@ impl<'a> Visitor<()> for TransItemVisitor<'a> {
     }
 }
 
+pub fn update_linkage(ccx: &CrateContext, llval: ValueRef, id: ast::NodeId) {
+    if ccx.reachable().contains(&id) || ccx.sess().opts.cg.codegen_units > 1 {
+        llvm::SetLinkage(llval, llvm::ExternalLinkage);
+    } else {
+        llvm::SetLinkage(llval, llvm::InternalLinkage);
+    }
+}
+
 pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
     let _icx = push_ctxt("trans_item");
+
     match item.node {
       ast::ItemFn(ref decl, _fn_style, abi, ref generics, ref body) => {
         if !generics.is_type_parameterized() {
@@ -2148,6 +2157,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                          item.id,
                          item.attrs.as_slice());
             }
+            update_linkage(ccx, llfn, item.id);
         }
 
         // Be sure to travel more than just one layer deep to catch nested
@@ -2163,7 +2173,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                          item.id);
       }
       ast::ItemMod(ref m) => {
-        trans_mod(ccx, m);
+        trans_mod(&ccx.rotate(), m);
       }
       ast::ItemEnum(ref enum_definition, _) => {
         enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
@@ -2173,6 +2183,10 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
           let mut v = TransItemVisitor{ ccx: ccx };
           v.visit_expr(&**expr, ());
           consts::trans_const(ccx, m, item.id);
+
+          let g = get_item_val(ccx, item.id);
+          update_linkage(ccx, g, item.id);
+
           // Do static_assert checking. It can't really be done much earlier
           // because we need to get the value of the bool out of LLVM
           if attr::contains_name(item.attrs.as_slice(), "static_assert") {
@@ -2220,10 +2234,6 @@ pub fn trans_mod(ccx: &CrateContext, m: &ast::Mod) {
 fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: String, node_id: ast::NodeId,
                       llfn: ValueRef) {
     ccx.item_symbols().borrow_mut().insert(node_id, sym);
-
-    if !ccx.reachable().contains(&node_id) {
-        llvm::SetLinkage(llfn, llvm::InternalLinkage);
-    }
 
     // The stack exhaustion lang item shouldn't have a split stack because
     // otherwise it would continue to be exhausted (bad), and both it and the
@@ -2592,7 +2602,6 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
         None => {}
     }
 
-    let mut foreign = false;
     let item = ccx.tcx().map.get(id);
     let val = match item {
         ast_map::NodeItem(i) => {
@@ -2619,10 +2628,6 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                         let g = sym.as_slice().with_c_str(|buf| {
                             llvm::LLVMAddGlobal(ccx.llmod(), llty, buf)
                         });
-
-                        if !ccx.reachable().contains(&id) {
-                            llvm::SetLinkage(g, llvm::InternalLinkage);
-                        }
 
                         // Apply the `unnamed_addr` attribute if
                         // requested
@@ -2714,8 +2719,6 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
         }
 
         ast_map::NodeForeignItem(ni) => {
-            foreign = true;
-
             match ni.node {
                 ast::ForeignItemFn(..) => {
                     let abi = ccx.tcx().map.get_foreign_abi(id);
@@ -2787,12 +2790,14 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
         }
     };
 
-    // foreign items (extern fns and extern statics) don't have internal
-    // linkage b/c that doesn't quite make sense. Otherwise items can
-    // have internal linkage if they're not reachable.
-    if !foreign && !ccx.reachable().contains(&id) {
-        llvm::SetLinkage(val, llvm::InternalLinkage);
-    }
+    // All LLVM globals and functions are initially created as external-linkage
+    // declarations.  If `trans_item`/`trans_fn` later turns the declaration
+    // into a definition, it adjusts the linkage then (using `update_linkage`).
+    //
+    // The exception is foreign items, which have their linkage set inside the
+    // call to `foreign::register_*` above.  We don't touch the linkage after
+    // that (`foreign::trans_foreign_mod` doesn't adjust the linkage like the
+    // other item translation functions do).
 
     ccx.item_vals().borrow_mut().insert(id, val);
     val
@@ -2815,7 +2820,8 @@ pub fn p2i(ccx: &CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeInlinedItem<'r>)
+pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r SharedCrateContext,
+                                      ie: encoder::EncodeInlinedItem<'r>)
     -> encoder::EncodeParams<'r> {
         encoder::EncodeParams {
             diag: cx.sess().diagnostic(),
@@ -2830,7 +2836,7 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeI
         }
 }
 
-pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
+pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
     use flate;
 
     let any_library = cx.sess().crate_types.borrow().iter().any(|ty| {
@@ -2905,7 +2911,7 @@ pub fn trans_crate(krate: ast::Crate,
                                              link_meta.clone(),
                                              reachable);
 
-    let metadata = {
+    {
         let ccx = shared_ccx.get_ccx(0);
 
         // First, verify intrinsics.
@@ -2916,15 +2922,17 @@ pub fn trans_crate(krate: ast::Crate,
             let _icx = push_ctxt("text");
             trans_mod(&ccx, &krate.module);
         }
+    }
 
+    for ccx in shared_ccx.iter() {
         glue::emit_tydescs(&ccx);
         if ccx.sess().opts.debuginfo != NoDebugInfo {
             debuginfo::finalize(&ccx);
         }
+    }
 
-        // Translate the metadata.
-        write_metadata(&ccx, &krate)
-    };
+    // Translate the metadata.
+    let metadata = write_metadata(&shared_ccx, &krate);
 
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();

@@ -817,13 +817,28 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
             trans_def_fn_unadjusted(bcx, ref_expr, def)
         }
         def::DefStatic(did, _) => {
+            // There are three things that may happen here:
+            //  1) If the static item is defined in this crate, it will be
+            //     translated using `get_item_val`, and we return a pointer to
+            //     the result.
+            //  2) If the static item is defined in another crate, but is
+            //     marked inlineable, then it will be inlined into this crate
+            //     and then translated with `get_item_val`.  Again, we return a
+            //     pointer to the result.
+            //  3) If the static item is defined in another crate and is not
+            //     marked inlineable, then we add (or reuse) a declaration of
+            //     an external global, and return a pointer to that.
             let const_ty = expr_ty(bcx, ref_expr);
 
             fn get_did(ccx: &CrateContext, did: ast::DefId)
                        -> ast::DefId {
                 if did.krate != ast::LOCAL_CRATE {
+                    // Case 2 or 3.  Which one we're in is determined by
+                    // whether the DefId produced by `maybe_instantiate_inline`
+                    // is in the LOCAL_CRATE or not.
                     inline::maybe_instantiate_inline(ccx, did)
                 } else {
+                    // Case 1.
                     did
                 }
             }
@@ -832,6 +847,9 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                        -> ValueRef {
                 // For external constants, we don't inline.
                 if did.krate == ast::LOCAL_CRATE {
+                    // Case 1 or 2.  (The inlining in case 2 produces a new
+                    // DefId in LOCAL_CRATE.)
+
                     // The LLVM global has the type of its initializer,
                     // which may not be equal to the enum's type for
                     // non-C-like enums.
@@ -839,6 +857,7 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                     let pty = type_of::type_of(bcx.ccx(), const_ty).ptr_to();
                     PointerCast(bcx, val, pty)
                 } else {
+                    // Case 3.
                     match bcx.ccx().extern_const_values().borrow().find(&did) {
                         None => {}  // Continue.
                         Some(llval) => {

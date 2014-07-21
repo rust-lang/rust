@@ -141,6 +141,11 @@ pub struct LocalCrateContext {
     eh_personality: RefCell<Option<ValueRef>>,
 
     intrinsics: RefCell<HashMap<&'static str, ValueRef>>,
+
+    /// Number of LLVM instructions translated into this `LocalCrateContext`.
+    /// This is used to perform some basic load-balancing to keep all LLVM
+    /// contexts around the same size.
+    n_llvm_insns: Cell<uint>,
 }
 
 pub struct CrateContext<'a> {
@@ -261,6 +266,18 @@ impl SharedCrateContext {
         }
     }
 
+    fn get_smallest_ccx<'a>(&'a self) -> CrateContext<'a> {
+        let local_ccx =
+            self.local_ccxs
+                .iter()
+                .min_by(|&local_ccx| local_ccx.n_llvm_insns.get())
+                .unwrap();
+        CrateContext {
+            shared: self,
+            local: local_ccx,
+        }
+    }
+
 
     pub fn metadata_llmod(&self) -> ModuleRef {
         self.metadata_llmod
@@ -364,6 +381,7 @@ impl LocalCrateContext {
                 dbg_cx: dbg_cx,
                 eh_personality: RefCell::new(None),
                 intrinsics: RefCell::new(HashMap::new()),
+                n_llvm_insns: Cell::new(0u),
             };
 
             local_ccx.int_type = Type::int(&local_ccx.dummy_ccx(shared));
@@ -415,6 +433,12 @@ impl<'b> CrateContext<'b> {
     }
 
 
+    /// Get a (possibly) different `CrateContext` from the same
+    /// `SharedCrateContext`.
+    pub fn rotate(&self) -> CrateContext<'b> {
+        self.shared.get_smallest_ccx()
+    }
+
     pub fn tcx<'a>(&'a self) -> &'a ty::ctxt {
         &self.shared.tcx
     }
@@ -465,14 +489,6 @@ impl<'b> CrateContext<'b> {
 
     pub fn llcx(&self) -> ContextRef {
         self.local.llcx
-    }
-
-    pub fn metadata_llmod(&self) -> ModuleRef {
-        self.shared.metadata_llmod
-    }
-
-    pub fn metadata_llcx(&self) -> ContextRef {
-        self.shared.metadata_llcx
     }
 
     pub fn td<'a>(&'a self) -> &'a TargetData {
@@ -618,6 +634,10 @@ impl<'b> CrateContext<'b> {
 
     fn intrinsics<'a>(&'a self) -> &'a RefCell<HashMap<&'static str, ValueRef>> {
         &self.local.intrinsics
+    }
+
+    pub fn count_llvm_insn(&self) {
+        self.local.n_llvm_insns.set(self.local.n_llvm_insns.get() + 1);
     }
 }
 

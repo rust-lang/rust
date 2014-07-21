@@ -692,6 +692,15 @@ pub fn trans_const(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
         // constant's initializer to determine its LLVM type.
         let v = ccx.const_values().borrow().get_copy(&id);
         llvm::LLVMSetInitializer(g, v);
+
+        // `get_item_val` left `g` with external linkage, but we just set an
+        // initializer for it.  But we don't know yet if `g` should really be
+        // defined in this compilation unit, so we set its linkage to
+        // `AvailableExternallyLinkage`.  (It's still a definition, but acts
+        // like a declaration for most purposes.)  If `g` really should be
+        // declared here, then `trans_item` will fix up the linkage later on.
+        llvm::SetLinkage(g, llvm::AvailableExternallyLinkage);
+
         if m != ast::MutMutable {
             llvm::LLVMSetGlobalConstant(g, True);
         }
