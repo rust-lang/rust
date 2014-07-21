@@ -49,20 +49,19 @@ impl String {
         }
     }
 
-    /// Creates a new string buffer from length, capacity, and a pointer.
-    #[inline]
-    pub unsafe fn from_raw_parts(length: uint, capacity: uint, ptr: *mut u8) -> String {
-        String {
-            vec: Vec::from_raw_parts(length, capacity, ptr),
-        }
-    }
-
     /// Creates a new string buffer from the given string.
     #[inline]
     pub fn from_str(string: &str) -> String {
         String {
             vec: Vec::from_slice(string.as_bytes())
         }
+    }
+
+    /// Deprecated. Replaced by `string::raw::from_parts`
+    #[inline]
+    #[deprecated = "Replaced by string::raw::from_parts"]
+    pub unsafe fn from_raw_parts(length: uint, capacity: uint, ptr: *mut u8) -> String {
+        raw::from_parts(length, capacity, ptr)
     }
 
     #[allow(missing_doc)]
@@ -576,6 +575,18 @@ pub mod raw {
 
     use super::String;
     use vec::Vec;
+
+    /// Creates a new `String` from length, capacity, and a pointer.
+    ///
+    /// This is unsafe because:
+    /// * We call `Vec::from_raw_parts` to get a `Vec<u8>`
+    /// * We assume that the `Vec` contains valid UTF-8
+    #[inline]
+    pub unsafe fn from_parts(length: uint, capacity: uint, ptr: *mut u8) -> String {
+        String {
+            vec: Vec::from_raw_parts(length, capacity, ptr),
+        }
+    }
 
     /// Converts a vector of bytes to a new `String` without checking if
     /// it contains valid UTF-8. This is unsafe because it assumes that
