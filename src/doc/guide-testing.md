@@ -198,7 +198,7 @@ per-iteration speed of.
 
 For benchmarks relating to processing/generating data, one can set the
 `bytes` field to the number of bytes consumed/produced in each
-iteration; this will used to show the throughput of the benchmark.
+iteration; this will be used to show the throughput of the benchmark.
 This must be the amount used in each iteration, *not* the total
 amount.
 
