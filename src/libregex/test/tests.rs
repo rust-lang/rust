@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
+// ignore-lexer-test FIXME #15679
 
 use regex::{Regex, NoExpand};
 

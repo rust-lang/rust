@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-test
+// ignore-lexer-test FIXME #15881
 
 // notes on this test case:
 // On Thu, Apr 18, 2013-2014 at 6:30 PM, John Clements <clements@brinckerhoff.org> wrote:
