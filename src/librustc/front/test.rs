@@ -18,6 +18,7 @@ use front::config;
 
 use std::gc::{Gc, GC};
 use std::slice;
+use std::mem;
 use std::vec;
 use syntax::ast_util::*;
 use syntax::attr::AttrMetaMethods;
@@ -25,6 +26,7 @@ use syntax::attr;
 use syntax::codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
+use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::fold::Folder;
 use syntax::fold;
@@ -46,8 +48,10 @@ struct Test {
 struct TestCtxt<'a> {
     sess: &'a Session,
     path: Vec<ast::Ident>,
+    reexports: Vec<Vec<ast::Ident>>,
     ext_cx: ExtCtxt<'a>,
     testfns: Vec<Test>,
+    reexport_mod_ident: ast::Ident,
     is_test_crate: bool,
     config: ast::CrateConfig,
 }
@@ -107,25 +111,35 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                         should_fail: should_fail(i)
                     };
                     self.cx.testfns.push(test);
+                    self.cx.reexports.push(self.cx.path.clone());
                     // debug!("have {} test/bench functions",
                     //        cx.testfns.len());
                 }
             }
         }
 
-        let res = fold::noop_fold_item(&*i, self);
+        // We don't want to recurse into anything other than mods, since
+        // mods or tests inside of functions will break things
+        let res = match i.node {
+            ast::ItemMod(..) => fold::noop_fold_item(&*i, self),
+            _ => SmallVector::one(i),
+        };
         self.cx.path.pop();
         res
     }
 
     fn fold_mod(&mut self, m: &ast::Mod) -> ast::Mod {
+        let reexports = mem::replace(&mut self.cx.reexports, Vec::new());
+        let mut mod_folded = fold::noop_fold_mod(m, self);
+        let reexports = mem::replace(&mut self.cx.reexports, reexports);
+
         // Remove any #[main] from the AST so it doesn't clash with
         // the one we're going to add. Only if compiling an executable.
 
         fn nomain(item: Gc<ast::Item>) -> Gc<ast::Item> {
             box(GC) ast::Item {
                 attrs: item.attrs.iter().filter_map(|attr| {
-                    if !attr.name().equiv(&("main")) {
+                    if !attr.check_name("main") {
                         Some(*attr)
                     } else {
                         None
@@ -135,18 +149,37 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             }
         }
 
-        let mod_nomain = ast::Mod {
-            inner: m.inner,
-            view_items: m.view_items.clone(),
-            items: m.items.iter().map(|i| nomain(*i)).collect(),
-        };
+        for i in mod_folded.items.mut_iter() {
+            *i = nomain(*i);
+        }
+        mod_folded.items.push(mk_reexport_mod(&mut self.cx, reexports));
+        self.cx.reexports.push(self.cx.path.clone());
 
-        fold::noop_fold_mod(&mod_nomain, self)
+        mod_folded
     }
 }
 
-fn generate_test_harness(sess: &Session, krate: ast::Crate)
-                         -> ast::Crate {
+fn mk_reexport_mod(cx: &mut TestCtxt, reexports: Vec<Vec<ast::Ident>>)
+                   -> Gc<ast::Item> {
+    let view_items = reexports.move_iter().map(|r| {
+        cx.ext_cx.view_use_simple(DUMMY_SP, ast::Public, cx.ext_cx.path(DUMMY_SP, r))
+    }).collect();
+    let reexport_mod = ast::Mod {
+        inner: DUMMY_SP,
+        view_items: view_items,
+        items: Vec::new(),
+    };
+    box(GC) ast::Item {
+        ident: cx.reexport_mod_ident.clone(),
+        attrs: Vec::new(),
+        id: ast::DUMMY_NODE_ID,
+        node: ast::ItemMod(reexport_mod),
+        vis: ast::Public,
+        span: DUMMY_SP,
+    }
+}
+
+fn generate_test_harness(sess: &Session, krate: ast::Crate) -> ast::Crate {
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         ext_cx: ExtCtxt::new(&sess.parse_sess, sess.opts.cfg.clone(),
@@ -155,7 +188,9 @@ fn generate_test_harness(sess: &Session, krate: ast::Crate)
                                  crate_name: "test".to_string(),
                              }),
         path: Vec::new(),
+        reexports: Vec::new(),
         testfns: Vec::new(),
+        reexport_mod_ident: token::str_to_ident("__test_reexports"),
         is_test_crate: is_test_crate(&krate),
         config: krate.config.clone(),
     };
@@ -170,7 +205,7 @@ fn generate_test_harness(sess: &Session, krate: ast::Crate)
     });
 
     let mut fold = TestHarnessGenerator {
-        cx: cx
+        cx: cx,
     };
     let res = fold.fold_crate(krate);
     fold.cx.ext_cx.bt_pop();
@@ -274,7 +309,6 @@ fn add_test_module(cx: &TestCtxt, m: &ast::Mod) -> ast::Mod {
 We're going to be building a module that looks more or less like:
 
 mod __test {
-  #![!resolve_unexported]
   extern crate test (name = "test", vers = "...");
   fn main() {
     test::test_main_static(::os::args().as_slice(), tests)
@@ -331,15 +365,9 @@ fn mk_test_module(cx: &TestCtxt) -> Gc<ast::Item> {
     };
     let item_ = ast::ItemMod(testmod);
 
-    // This attribute tells resolve to let us call unexported functions
-    let resolve_unexported_str = InternedString::new("!resolve_unexported");
-    let resolve_unexported_attr =
-        attr::mk_attr_inner(attr::mk_attr_id(),
-                            attr::mk_word_item(resolve_unexported_str));
-
     let item = ast::Item {
         ident: token::str_to_ident("__test"),
-        attrs: vec!(resolve_unexported_attr),
+        attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: item_,
         vis: ast::Public,
@@ -359,18 +387,6 @@ fn path_node(ids: Vec<ast::Ident> ) -> ast::Path {
     ast::Path {
         span: DUMMY_SP,
         global: false,
-        segments: ids.move_iter().map(|identifier| ast::PathSegment {
-            identifier: identifier,
-            lifetimes: Vec::new(),
-            types: OwnedSlice::empty(),
-        }).collect()
-    }
-}
-
-fn path_node_global(ids: Vec<ast::Ident> ) -> ast::Path {
-    ast::Path {
-        span: DUMMY_SP,
-        global: true,
         segments: ids.move_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
             lifetimes: Vec::new(),
@@ -430,7 +446,12 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> Gc<ast::Expr> {
           span: span
     };
 
-    let fn_path = path_node_global(path);
+    let mut visible_path = Vec::new();
+    for ident in path.move_iter() {
+        visible_path.push(cx.reexport_mod_ident.clone());
+        visible_path.push(ident);
+    }
+    let fn_path = cx.ext_cx.path_global(DUMMY_SP, visible_path);
 
     let fn_expr = box(GC) ast::Expr {
         id: ast::DUMMY_NODE_ID,
