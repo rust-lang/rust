@@ -10,7 +10,7 @@
 
 //! Used by plugin crates to tell `rustc` about the plugins they provide.
 
-use lint::LintPassObject;
+use lint::{LintPassObject, LintId, Lint};
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
 use syntax::ext::base::{IdentTT, LetSyntaxTT, ItemDecorator, ItemModifier, BasicMacroExpander};
@@ -18,6 +18,8 @@ use syntax::ext::base::{MacroExpanderFn};
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ast;
+
+use std::collections::HashMap;
 
 /// Structure used to register plugins.
 ///
@@ -36,6 +38,9 @@ pub struct Registry {
 
     #[doc(hidden)]
     pub lint_passes: Vec<LintPassObject>,
+
+    #[doc(hidden)]
+    pub lint_groups: HashMap<&'static str, Vec<LintId>>,
 }
 
 impl Registry {
@@ -45,6 +50,7 @@ impl Registry {
             krate_span: krate.span,
             syntax_exts: vec!(),
             lint_passes: vec!(),
+            lint_groups: HashMap::new(),
         }
     }
 
@@ -79,5 +85,10 @@ impl Registry {
     /// Register a compiler lint pass.
     pub fn register_lint_pass(&mut self, lint_pass: LintPassObject) {
         self.lint_passes.push(lint_pass);
+    }
+
+    /// Register a lint group.
+    pub fn register_lint_group(&mut self, name: &'static str, to: Vec<&'static Lint>) {
+        self.lint_groups.insert(name, to.move_iter().map(|x| LintId::of(x)).collect());
     }
 }

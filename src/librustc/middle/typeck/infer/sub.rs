@@ -32,7 +32,7 @@ pub struct Sub<'f> {
     fields: CombineFields<'f>
 }
 
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 pub fn Sub<'f>(cf: CombineFields<'f>) -> Sub<'f> {
     Sub { fields: cf }
 }
