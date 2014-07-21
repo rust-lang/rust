@@ -325,7 +325,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
     }
 
     fn visit_foreign_item(&mut self, a: &ast::ForeignItem, _: ()) {
-        if self.prev_exported && a.vis == ast::Public {
+        if (self.prev_exported && a.vis == ast::Public) || self.reexports.contains(&a.id) {
             self.exported_items.insert(a.id);
         }
     }
