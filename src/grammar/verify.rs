@@ -225,7 +225,9 @@ fn main() {
 
     let args = std::os::args();
 
-    let token_map = parse_token_list(File::open(&Path::new(args.get(2).as_slice())).unwrap().read_to_string().unwrap().as_slice());
+    let mut token_file = File::open(&Path::new(args.get(2).as_slice()));
+    let token_map = parse_token_list(token_file.read_to_string().unwrap().as_slice());
+
     let mut stdin = std::io::stdin();
     let mut antlr_tokens = stdin.lines().map(|l| parse_antlr_token(l.unwrap().as_slice().trim(), &token_map));
 
