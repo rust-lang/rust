@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{AvailableExternallyLinkage, SetLinkage};
+use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
 use metadata::csearch;
 use middle::astencode;
 use middle::trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
@@ -53,26 +53,52 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
             trans_item(ccx, &*item);
 
-            // We're bringing an external global into this crate, but we don't
-            // want to create two copies of the global. If we do this, then if
-            // you take the address of the global in two separate crates you get
-            // two different addresses. This is bad for things like conditions,
-            // but it could possibly have other adverse side effects. We still
-            // want to achieve the optimizations related to this global,
-            // however, so we use the available_externally linkage which llvm
-            // provides
-            match item.node {
-                ast::ItemStatic(_, mutbl, _) => {
-                    let g = get_item_val(ccx, item.id);
-                    // see the comment in get_item_val() as to why this check is
-                    // performed here.
-                    if ast_util::static_has_significant_address(
-                            mutbl,
-                            item.attrs.as_slice()) {
-                        SetLinkage(g, AvailableExternallyLinkage);
+            let linkage = match item.node {
+                ast::ItemFn(_, _, _, ref generics, _) => {
+                    if generics.is_type_parameterized() {
+                        // Generics have no symbol, so they can't be given any
+                        // linkage.
+                        None
+                    } else {
+                        if ccx.sess().opts.cg.codegen_units == 1 {
+                            // We could use AvailableExternallyLinkage here,
+                            // but InternalLinkage allows LLVM to optimize more
+                            // aggressively (at the cost of sometimes
+                            // duplicating code).
+                            Some(InternalLinkage)
+                        } else {
+                            // With multiple compilation units, duplicated code
+                            // is more of a problem.  Also, `codegen_units > 1`
+                            // means the user is okay with losing some
+                            // performance.
+                            Some(AvailableExternallyLinkage)
+                        }
                     }
                 }
-                _ => {}
+                ast::ItemStatic(_, mutbl, _) => {
+                    if !ast_util::static_has_significant_address(mutbl, item.attrs.as_slice()) {
+                        // Inlined static items use internal linkage when
+                        // possible, so that LLVM will coalesce globals with
+                        // identical initializers.  (It only does this for
+                        // globals with unnamed_addr and either internal or
+                        // private linkage.)
+                        Some(InternalLinkage)
+                    } else {
+                        // The address is significant, so we can't create an
+                        // internal copy of the static.  (The copy would have a
+                        // different address from the original.)
+                        Some(AvailableExternallyLinkage)
+                    }
+                }
+                _ => unreachable!(),
+            };
+
+            match linkage {
+                Some(linkage) => {
+                    let g = get_item_val(ccx, item.id);
+                    SetLinkage(g, linkage);
+                }
+                None => {}
             }
 
             local_def(item.id)
@@ -147,6 +173,9 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                                  &param_substs::empty(),
                                  mth.id,
                                  []);
+                        // Use InternalLinkage so LLVM can optimize more
+                        // aggressively.
+                        SetLinkage(llfn, InternalLinkage);
                     }
                     local_def(mth.id)
                 }
