@@ -26,6 +26,14 @@ use std::gc::{Gc, GC};
 use core;
 use doctree::*;
 
+// looks to me like the first two of these are actually
+// output parameters, maybe only mutated once; perhaps
+// better simply to have the visit method return a tuple
+// containing them?
+
+// also, is there some reason that this doesn't use the 'visit'
+// framework from syntax?
+
 pub struct RustdocVisitor<'a> {
     pub module: Module,
     pub attrs: Vec<ast::Attribute>,
@@ -64,6 +72,9 @@ impl<'a> RustdocVisitor<'a> {
                                               ast::CRATE_NODE_ID,
                                               &krate.module,
                                               None);
+        // attach the crate's exported macros to the top-level module:
+        self.module.macros = krate.exported_macros.iter()
+            .map(|it| self.visit_macro(&**it)).collect();
         self.module.is_crate = true;
     }
 
@@ -323,15 +334,20 @@ impl<'a> RustdocVisitor<'a> {
             ast::ItemForeignMod(ref fm) => {
                 om.foreigns.push(fm.clone());
             }
-            ast::ItemMac(ref _m) => {
-                om.macros.push(Macro {
-                    id: item.id,
-                    attrs: item.attrs.iter().map(|x| *x).collect(),
-                    name: item.ident,
-                    where: item.span,
-                    stab: self.stability(item.id),
-                })
+            ast::ItemMac(_) => {
+                fail!("rustdoc: macros should be gone, after expansion");
             }
+        }
+    }
+
+    // convert each exported_macro into a doc item
+    fn visit_macro(&self, item: &ast::Item) -> Macro {
+        Macro {
+            id: item.id,
+            attrs: item.attrs.iter().map(|x| *x).collect(),
+            name: item.ident,
+            where: item.span,
+            stab: self.stability(item.id),
         }
     }
 }
