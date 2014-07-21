@@ -73,6 +73,7 @@ use collections::hash;
 use core::kinds::marker;
 use core::mem;
 use core::ptr;
+use core::fmt;
 use core::raw::Slice;
 use core::slice;
 use core::str;
@@ -341,6 +342,12 @@ impl Collection for CString {
             }
         }
         return len;
+    }
+}
+
+impl fmt::Show for CString {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        String::from_utf8_lossy(self.as_bytes_no_nul()).fmt(f)
     }
 }
 
