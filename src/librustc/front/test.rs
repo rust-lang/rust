@@ -16,7 +16,6 @@
 use driver::session::Session;
 use front::config;
 
-use std::cell::RefCell;
 use std::gc::{Gc, GC};
 use std::slice;
 use std::vec;
@@ -46,9 +45,9 @@ struct Test {
 
 struct TestCtxt<'a> {
     sess: &'a Session,
-    path: RefCell<Vec<ast::Ident>>,
+    path: Vec<ast::Ident>,
     ext_cx: ExtCtxt<'a>,
-    testfns: RefCell<Vec<Test> >,
+    testfns: Vec<Test>,
     is_test_crate: bool,
     config: ast::CrateConfig,
 }
@@ -86,9 +85,9 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
     }
 
     fn fold_item(&mut self, i: Gc<ast::Item>) -> SmallVector<Gc<ast::Item>> {
-        self.cx.path.borrow_mut().push(i.ident);
+        self.cx.path.push(i.ident);
         debug!("current path: {}",
-               ast_util::path_name_i(self.cx.path.borrow().as_slice()));
+               ast_util::path_name_i(self.cx.path.as_slice()));
 
         if is_test_fn(&self.cx, i) || is_bench_fn(&self.cx, i) {
             match i.node {
@@ -102,12 +101,12 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     debug!("this is a test function");
                     let test = Test {
                         span: i.span,
-                        path: self.cx.path.borrow().clone(),
+                        path: self.cx.path.clone(),
                         bench: is_bench_fn(&self.cx, i),
                         ignore: is_ignored(&self.cx, i),
                         should_fail: should_fail(i)
                     };
-                    self.cx.testfns.borrow_mut().push(test);
+                    self.cx.testfns.push(test);
                     // debug!("have {} test/bench functions",
                     //        cx.testfns.len());
                 }
@@ -115,7 +114,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         }
 
         let res = fold::noop_fold_item(&*i, self);
-        self.cx.path.borrow_mut().pop();
+        self.cx.path.pop();
         res
     }
 
@@ -155,8 +154,8 @@ fn generate_test_harness(sess: &Session, krate: ast::Crate)
                                  deriving_hash_type_parameter: false,
                                  crate_name: "test".to_string(),
                              }),
-        path: RefCell::new(Vec::new()),
-        testfns: RefCell::new(Vec::new()),
+        path: Vec::new(),
+        testfns: Vec::new(),
         is_test_crate: is_test_crate(&krate),
         config: krate.config.clone(),
     };
@@ -399,13 +398,13 @@ fn is_test_crate(krate: &ast::Crate) -> bool {
 }
 
 fn mk_test_descs(cx: &TestCtxt) -> Gc<ast::Expr> {
-    debug!("building test vector from {} tests", cx.testfns.borrow().len());
+    debug!("building test vector from {} tests", cx.testfns.len());
 
     box(GC) ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprVstore(box(GC) ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprVec(cx.testfns.borrow().iter().map(|test| {
+            node: ast::ExprVec(cx.testfns.iter().map(|test| {
                 mk_test_desc_and_fn_rec(cx, test)
             }).collect()),
             span: DUMMY_SP,
