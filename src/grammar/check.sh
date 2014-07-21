@@ -29,6 +29,6 @@ check() {
     fi
 }
 
-for file in $(find $1 -iname '*.rs' ! -path '*/test/compile-fail/*' ); do
+for file in $(find $1 -iname '*.rs' ! -path '*/test/compile-fail*'); do
     check $file $2 $3 $4 $5
 done

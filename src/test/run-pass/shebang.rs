@@ -10,5 +10,7 @@
 // except according to those terms.
 
 // ignore-pretty: `expand` addes some preludes before shebang
+//
+// ignore-lexer-test FIXME #15878
 
 pub fn main() { println!("Hello World"); }

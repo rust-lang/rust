@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-lexer-test FIXME #15679
 // Microbenchmarks for various functions in std and extra
 
 #![feature(macro_rules)]
