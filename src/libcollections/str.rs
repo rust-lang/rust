@@ -558,7 +558,8 @@ pub mod raw {
     use core::mem;
     use core::raw::Slice;
     use core::ptr::RawPtr;
-    use string::{mod, String};
+    use string;
+    use string::String;
     use vec::Vec;
 
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
