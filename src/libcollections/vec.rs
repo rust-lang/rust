@@ -120,7 +120,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.len(), 0);
     ///
     /// // These are all done without reallocating...
-    /// for i in range(0u, 10) {
+    /// for i in range(0i, 10) {
     ///     vec.push(i);
     /// }
     ///
