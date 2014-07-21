@@ -432,6 +432,11 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
     begin_unwind_inner(box msg, file, line)
 }
 
+/// Unwinding for `fail!()`. Saves passing a string.
+#[inline(never)] #[cold] #[experimental]
+pub fn begin_unwind_no_time_to_explain(file: &'static str, line: uint) -> ! {
+    begin_unwind_inner(box () ("explicit failure"), file, line)
+}
 
 /// The core of the unwinding.
 ///
