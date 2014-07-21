@@ -152,8 +152,10 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         for i in mod_folded.items.mut_iter() {
             *i = nomain(*i);
         }
-        mod_folded.items.push(mk_reexport_mod(&mut self.cx, reexports));
-        self.cx.reexports.push(self.cx.path.clone());
+        if !reexports.is_empty() {
+            mod_folded.items.push(mk_reexport_mod(&mut self.cx, reexports));
+            self.cx.reexports.push(self.cx.path.clone());
+        }
 
         mod_folded
     }
