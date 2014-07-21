@@ -327,33 +327,200 @@ pub trait MutableSet<T>: Set<T> + Mutable {
 
 /// A double-ended sequence that allows querying, insertion and deletion at both
 /// ends.
+///
+/// # Example
+///
+/// With a `Deque` we can simulate a queue efficiently:
+///
+/// ```
+/// use std::collections::{RingBuf, Deque};
+///
+/// let mut queue = RingBuf::new();
+/// queue.push_back(1i);
+/// queue.push_back(2i);
+/// queue.push_back(3i);
+///
+/// // Will print 1, 2, 3
+/// while !queue.is_empty() {
+///     let x = queue.pop_front().unwrap();
+///     println!("{}", x);
+/// }
+/// ```
+///
+/// We can also simulate a stack:
+///
+/// ```
+/// use std::collections::{RingBuf, Deque};
+///
+/// let mut stack = RingBuf::new();
+/// stack.push_front(1i);
+/// stack.push_front(2i);
+/// stack.push_front(3i);
+///
+/// // Will print 3, 2, 1
+/// while !stack.is_empty() {
+///     let x = stack.pop_front().unwrap();
+///     println!("{}", x);
+/// }
+/// ```
+///
+/// And of course we can mix and match:
+///
+/// ```
+/// use std::collections::{DList, Deque};
+///
+/// let mut deque = DList::new();
+///
+/// // Init deque with 1, 2, 3, 4
+/// deque.push_front(2i);
+/// deque.push_front(1i);
+/// deque.push_back(3i);
+/// deque.push_back(4i);
+///
+/// // Will print (1, 4) and (2, 3)
+/// while !deque.is_empty() {
+///     let f = deque.pop_front().unwrap();
+///     let b = deque.pop_back().unwrap();
+///     println!("{}", (f, b));
+/// }
+/// ```
 pub trait Deque<T> : Mutable {
-    /// Provide a reference to the front element, or None if the sequence is
-    /// empty
+    /// Provide a reference to the front element, or `None` if the sequence is
+    /// empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::{RingBuf, Deque};
+    ///
+    /// let mut d = RingBuf::new();
+    /// assert_eq!(d.front(), None);
+    ///
+    /// d.push_back(1i);
+    /// d.push_back(2i);
+    /// assert_eq!(d.front(), Some(&1i));
+    /// ```
     fn front<'a>(&'a self) -> Option<&'a T>;
 
-    /// Provide a mutable reference to the front element, or None if the
-    /// sequence is empty
+    /// Provide a mutable reference to the front element, or `None` if the
+    /// sequence is empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::{RingBuf, Deque};
+    ///
+    /// let mut d = RingBuf::new();
+    /// assert_eq!(d.front_mut(), None);
+    ///
+    /// d.push_back(1i);
+    /// d.push_back(2i);
+    /// match d.front_mut() {
+    ///     Some(x) => *x = 9i,
+    ///     None => (),
+    /// }
+    /// assert_eq!(d.front(), Some(&9i));
+    /// ```
     fn front_mut<'a>(&'a mut self) -> Option<&'a mut T>;
 
-    /// Provide a reference to the back element, or None if the sequence is
-    /// empty
+    /// Provide a reference to the back element, or `None` if the sequence is
+    /// empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::{DList, Deque};
+    ///
+    /// let mut d = DList::new();
+    /// assert_eq!(d.back(), None);
+    ///
+    /// d.push_back(1i);
+    /// d.push_back(2i);
+    /// assert_eq!(d.back(), Some(&2i));
+    /// ```
     fn back<'a>(&'a self) -> Option<&'a T>;
 
-    /// Provide a mutable reference to the back element, or None if the sequence
-    /// is empty
+    /// Provide a mutable reference to the back element, or `None` if the sequence
+    /// is empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::{DList, Deque};
+    ///
+    /// let mut d = DList::new();
+    /// assert_eq!(d.back(), None);
+    ///
+    /// d.push_back(1i);
+    /// d.push_back(2i);
+    /// match d.back_mut() {
+    ///     Some(x) => *x = 9i,
+    ///     None => (),
+    /// }
+    /// assert_eq!(d.back(), Some(&9i));
+    /// ```
     fn back_mut<'a>(&'a mut self) -> Option<&'a mut T>;
 
-    /// Insert an element first in the sequence
+    /// Insert an element first in the sequence.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::{DList, Deque};
+    ///
+    /// let mut d = DList::new();
+    /// d.push_front(1i);
+    /// d.push_front(2i);
+    /// assert_eq!(d.front(), Some(&2i));
+    /// ```
     fn push_front(&mut self, elt: T);
 
-    /// Insert an element last in the sequence
+    /// Insert an element last in the sequence.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::{DList, Deque};
+    ///
+    /// let mut d = DList::new();
+    /// d.push_back(1i);
+    /// d.push_back(2i);
+    /// assert_eq!(d.front(), Some(&1i));
+    /// ```
     fn push_back(&mut self, elt: T);
 
-    /// Remove the last element and return it, or None if the sequence is empty
+    /// Remove the last element and return it, or `None` if the sequence is empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::{RingBuf, Deque};
+    ///
+    /// let mut d = RingBuf::new();
+    /// d.push_back(1i);
+    /// d.push_back(2i);
+    ///
+    /// assert_eq!(d.pop_back(), Some(2i));
+    /// assert_eq!(d.pop_back(), Some(1i));
+    /// assert_eq!(d.pop_back(), None);
+    /// ```
     fn pop_back(&mut self) -> Option<T>;
 
-    /// Remove the first element and return it, or None if the sequence is empty
+    /// Remove the first element and return it, or `None` if the sequence is empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::{RingBuf, Deque};
+    ///
+    /// let mut d = RingBuf::new();
+    /// d.push_back(1i);
+    /// d.push_back(2i);
+    ///
+    /// assert_eq!(d.pop_front(), Some(1i));
+    /// assert_eq!(d.pop_front(), Some(2i));
+    /// assert_eq!(d.pop_front(), None);
+    /// ```
     fn pop_front(&mut self) -> Option<T>;
 }
 

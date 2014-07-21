@@ -97,6 +97,10 @@ pub struct Options {
     pub color: ColorConfig,
     pub externs: HashMap<String, Vec<String>>,
     pub crate_name: Option<String>,
+    /// An optional name to use as the crate for std during std injection,
+    /// written `extern crate std = "name"`. Default to "std". Used by
+    /// out-of-tree drivers.
+    pub alt_std_name: Option<String>
 }
 
 /// Some reasonable defaults
@@ -124,6 +128,7 @@ pub fn basic_options() -> Options {
         color: Auto,
         externs: HashMap::new(),
         crate_name: None,
+        alt_std_name: None,
     }
 }
 
@@ -577,7 +582,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
             always = always colorize output;
             never  = never colorize output", "auto|always|never"),
         optmulti("", "extern", "Specify where an external rust library is located",
-                 "PATH"),
+                 "NAME=PATH"),
     )
 }
 
@@ -593,24 +598,10 @@ fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
 }
 
 pub fn build_session_options(matches: &getopts::Matches) -> Options {
-    let mut crate_types: Vec<CrateType> = Vec::new();
+
     let unparsed_crate_types = matches.opt_strs("crate-type");
-    for unparsed_crate_type in unparsed_crate_types.iter() {
-        for part in unparsed_crate_type.as_slice().split(',') {
-            let new_part = match part {
-                "lib"       => default_lib_output(),
-                "rlib"      => CrateTypeRlib,
-                "staticlib" => CrateTypeStaticlib,
-                "dylib"     => CrateTypeDylib,
-                "bin"       => CrateTypeExecutable,
-                _ => {
-                    early_error(format!("unknown crate type: `{}`",
-                                        part).as_slice())
-                }
-            };
-            crate_types.push(new_part)
-        }
-    }
+    let crate_types = parse_crate_types_from_list(unparsed_crate_types)
+        .unwrap_or_else(|e| early_error(e.as_slice()));
 
     let parse_only = matches.opt_present("parse-only");
     let no_trans = matches.opt_present("no-trans");
@@ -801,7 +792,31 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         color: color,
         externs: externs,
         crate_name: crate_name,
+        alt_std_name: None
     }
+}
+
+pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateType>, String> {
+
+    let mut crate_types: Vec<CrateType> = Vec::new();
+    for unparsed_crate_type in list_list.iter() {
+        for part in unparsed_crate_type.as_slice().split(',') {
+            let new_part = match part {
+                "lib"       => default_lib_output(),
+                "rlib"      => CrateTypeRlib,
+                "staticlib" => CrateTypeStaticlib,
+                "dylib"     => CrateTypeDylib,
+                "bin"       => CrateTypeExecutable,
+                _ => {
+                    return Err(format!("unknown crate type: `{}`",
+                                       part));
+                }
+            };
+            crate_types.push(new_part)
+        }
+    }
+
+    return Ok(crate_types);
 }
 
 impl fmt::Show for CrateType {

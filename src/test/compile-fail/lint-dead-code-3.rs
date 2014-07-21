@@ -16,6 +16,11 @@
 
 extern crate libc;
 
+pub use x = extern_foo;
+extern {
+    fn extern_foo();
+}
+
 struct Foo; //~ ERROR: code is never used
 impl Foo {
     fn foo(&self) { //~ ERROR: code is never used

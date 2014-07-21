@@ -27,7 +27,6 @@ use util::nodemap::{NodeMap, NodeSet};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{is_local, local_def, PostExpansionMethod};
-use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::owned_slice::OwnedSlice;
@@ -326,7 +325,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
     }
 
     fn visit_foreign_item(&mut self, a: &ast::ForeignItem, _: ()) {
-        if self.prev_exported && a.vis == ast::Public {
+        if (self.prev_exported && a.vis == ast::Public) || self.reexports.contains(&a.id) {
             self.exported_items.insert(a.id);
         }
     }
@@ -786,12 +785,6 @@ impl<'a> PrivacyVisitor<'a> {
 
 impl<'a> Visitor<()> for PrivacyVisitor<'a> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
-        // Do not check privacy inside items with the resolve_unexported
-        // attribute. This is used for the test runner.
-        if attr::contains_name(item.attrs.as_slice(), "!resolve_unexported") {
-            return;
-        }
-
         let orig_curitem = replace(&mut self.curitem, item.id);
         visit::walk_item(self, item, ());
         self.curitem = orig_curitem;

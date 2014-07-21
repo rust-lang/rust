@@ -12,6 +12,7 @@ use std::collections::HashSet;
 use std::io;
 use std::string::String;
 
+use core;
 use getopts;
 use testing;
 
@@ -129,10 +130,11 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
 }
 
 /// Run any tests/code examples in the markdown file `input`.
-pub fn test(input: &str, libs: HashSet<Path>, mut test_args: Vec<String>) -> int {
+pub fn test(input: &str, libs: HashSet<Path>, externs: core::Externs,
+            mut test_args: Vec<String>) -> int {
     let input_str = load_or_return!(input, 1, 2);
 
-    let mut collector = Collector::new(input.to_string(), libs, true);
+    let mut collector = Collector::new(input.to_string(), libs, externs, true);
     find_testable_code(input_str.as_slice(), &mut collector);
     test_args.unshift("rustdoctest".to_string());
     testing::test_main(test_args.as_slice(), collector.tests);
