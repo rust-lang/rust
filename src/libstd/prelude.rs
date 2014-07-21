@@ -78,7 +78,7 @@
 #[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek};
 #[doc(no_inline)] pub use str::{Str, StrVector, StrSlice, OwnedStr};
 #[doc(no_inline)] pub use str::{IntoMaybeOwned, StrAllocating, UnicodeStrSlice};
-#[doc(no_inline)] pub use to_str::{ToString, IntoStr};
+#[doc(no_inline)] pub use to_string::{ToString, IntoStr};
 #[doc(no_inline)] pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
 #[doc(no_inline)] pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 #[doc(no_inline)] pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};

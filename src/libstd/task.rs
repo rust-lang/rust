@@ -106,7 +106,7 @@ use rt::task::Task;
 use str::{Str, SendStr, IntoMaybeOwned};
 use string::String;
 use sync::Future;
-use to_str::ToString;
+use to_string::ToString;
 
 /// A means of spawning a task
 pub trait Spawner {
