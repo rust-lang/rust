@@ -7,7 +7,7 @@ displayed here in line with Rust's open development policy. Please open any
 issues you find as usual.
 </div>
 
-## Welcome!
+# Welcome!
 
 Hey there! Welcome to the Rust guide. This is the place to be if you'd like to
 learn how to program in Rust. Rust is a systems programming language with a
@@ -24,7 +24,7 @@ more advanced things.
 
 Sound good? Let's go!
 
-## Installing Rust
+# Installing Rust
 
 The first step to using Rust is to install it! There are a number of ways to
 install Rust, but the easiest is to use the the `rustup` script. If you're on
@@ -106,7 +106,7 @@ mailing list](https://mail.mozilla.org/listinfo/rust-dev), [the /r/rust
 subreddit](http://www.reddit.com/r/rust), and [Stack
 Overflow](http://stackoverflow.com/questions/tagged/rust).
 
-## Hello, world!
+# Hello, world!
 
 Now that you have Rust installed, let's write your first Rust program. It's
 traditional to make your first program in any new language one that prints the
@@ -266,7 +266,7 @@ your project grows, you'll want something to help you manage all of the options
 that it has, and to make it easy to share your code with other people and
 projects.
 
-## Hello, Cargo!
+# Hello, Cargo!
 
 [Cargo](http://crates.io) is a tool that Rustaceans use to help manage their
 Rust projects. Cargo is currently in an alpha state, just like Rust, and so it
@@ -362,7 +362,7 @@ Now that you've got the tools down, let's actually learn more about the Rust
 language itself. These are the basics that will serve you well through the rest
 of your time with Rust.
 
-## Variable bindings
+# Variable bindings
 
 The first thing we'll learn about are 'variable bindings.' They look like this:
 
@@ -532,7 +532,7 @@ must initialize the binding before we use it? And how does it know that we have
 or have not initialized the binding? For that, we need to learn our next
 concept: `if`.
 
-## If
+# If
 
 Rust's take on `if` is not particularly complex, but it's much more like the
 `if` you'll find in a dynamically typed language than in a more traditional
@@ -593,7 +593,7 @@ This reveals two interesting things about Rust: it is an expression-based
 language, and semicolons are different than in other 'curly brace and
 semicolon'-based languages. These two things are related.
 
-### Expressions vs. Statements
+## Expressions vs. Statements
 
 Rust is primarily an expression based language. There are only two kinds of
 statements, and everything else is an expression.
@@ -681,7 +681,7 @@ unit instead.
 There's one more time in which you won't see a semicolon at the end of a line
 of Rust code. For that, we'll need our next concept: functions.
 
-## Functions
+# Functions
 
 You've already seen one function so far, the `main` function:
 
@@ -829,7 +829,7 @@ There are some additional ways to define functions, but they involve features
 that we haven't learned about yet, so let's just leave it at that for now.
 
 
-## Comments
+# Comments
 
 Now that we have some functions, it's a good idea to learn about comments.
 Comments are notes that you leave to other programmers to help explain things
@@ -877,13 +877,13 @@ You can use the `rustdoc` tool to generate HTML documentation from these doc
 comments. We will talk more about `rustdoc` when we get to modules, as
 generally, you want to export documentation for a full module.
 
-## Compound Data Types
+# Compound Data Types
 
 Rust, like many programming languages, has a number of different data types
 that are built-in. You've already done some simple work with integers and
 strings, but next, let's talk about some more complicated ways of storing data.
 
-### Tuples
+## Tuples
 
 The first compound data type we're going to talk about are called **tuple**s.
 Tuples are an ordered list of a fixed size. Like this:
@@ -958,7 +958,7 @@ can destructure a pattern returned by a function, as well.
 Tuples are a very simple data structure, and so are not often what you want.
 Let's move on to their bigger sibling, structs.
 
-### Structs
+## Structs
 
 A struct is another form of a 'record type,' just like a tuple. There's a
 difference: structs give each element that they contain a name, called a
@@ -1008,7 +1008,7 @@ fn main() {
 
 This will print `The point is at (5, 0)`.
 
-### Tuple Structs and Newtypes
+## Tuple Structs and Newtypes
 
 Rust has another data type that's like a hybrid between a tuple and a struct,
 called a **tuple struct**. Tuple structs do have a name, but their fields
@@ -1064,7 +1064,7 @@ println!("length is {} inches", integer_length);
 As you can see here, you can extract the inner integer type through a
 destructuring `let`.
 
-### Enums
+## Enums
 
 Finally, Rust has a "sum type", an **enum**. Enums are an incredibly useful
 feature of Rust, and are used throughout the standard library. Enums look
@@ -1161,7 +1161,7 @@ useful when they're generic across types. But before we get to generics, let's
 talk about how to fix this big `if`/`else` statements we've been writing. We'll
 do that with `match`.
 
-## Match
+# Match
 
 Often, a simple `if`/`else` isn't enough, because you have more than two
 possible options. And `else` conditions can get incredibly complicated. So
@@ -1283,12 +1283,12 @@ fn main() {
 In this case, it doesn't make a lot of sense, as we are just making a temporary
 string where we don't need to, but sometimes, it's a nice pattern.
 
-## Looping
+# Looping
 
 Looping is the last basic construct that we haven't learned yet in Rust. Rust has
 two main looping constructs: `for` and `while`.
 
-### `for`
+## `for`
 
 The `for` loop is used to loop a particular number of times. Rust's `for` loops
 work a bit differently than in other systems languages, however. Rust's `for`
@@ -1337,7 +1337,7 @@ lists three things. This happens quite a bit with "C style" `for` loops.
 
 We'll talk more about `for` when we cover **vector**s, later in the Guide.
 
-### `while`
+## `while`
 
 The other kind of looping construct in Rust is the `while` loop. It looks like
 this:
@@ -1375,7 +1375,7 @@ general, the more information we can give to the compiler, the better it
 can do with safety and code generation. So you should always prefer
 `loop` when you plan to loop infinitely.
 
-### Ending iteration early
+## Ending iteration early
 
 Let's take a look at that `while` loop we had earlier:
 
@@ -1426,7 +1426,7 @@ building our guessing game, but we need to know how to do one last thing first:
 get input from the keyboard. You can't have a guessing game without the ability
 to guess!
 
-## Standard Input
+# Standard Input
 
 Getting input from the keyboard is pretty easy, but uses some things
 we haven't seen before. Here's a simple program that reads some input,
@@ -1586,7 +1586,7 @@ here.
 That's all you need to get basic input from the standard input! It's not too
 complicated, but there are a number of small parts.
 
-## Guessing Game
+# Guessing Game
 
 Okay! We've got the basics of Rust down. Let's write a bigger program.
 
@@ -1597,7 +1597,7 @@ Upon entering our guess, it will tell us if we're too low or too high. Once we
 guess correctly, it will congratulate us, and print the number of guesses we've
 taken to the screen. Sound good?
 
-### Set up
+## Set up
 
 Let's set up a new project. Go to your projects directory, and make a new
 directory for the project, as well as a `src` directory for our code:
@@ -1645,7 +1645,7 @@ Excellent! Open up your `src/guessing_game.rs` again. We'll be writing all of
 our code in this file. We'll talk about multiple-file projects later on in the
 guide.
 
-### Processing a Guess
+## Processing a Guess
 
 Let's get to it! The first thing we need to do for our guessing game is
 allow our player to input a guess. Put this in your `src/guessing_game.rs`:
@@ -1674,7 +1674,7 @@ user to input a guess, get their input, and then print it out.
 Because we talked about this in the section on standard I/O, I won't go into
 more details here. If you need a refresher, go re-read that section.
 
-### Generating a secret number
+## Generating a secret number
 
 Next, we need to generate a secret number. To do that, we need to use Rust's
 random number generation, which we haven't talked about yet. Rust includes a
@@ -1845,7 +1845,7 @@ You guessed: 3
 
 Great! Next up: let's compare our guess to the secret guess.
 
-### Comparing guesses
+## Comparing guesses
 
 If you remember, earlier in the tutorial, we made a `cmp` function that compared
 two numbers. Let's add that in, along with a `match` statement to compare the
@@ -2194,7 +2194,7 @@ the error messages help guide you towards the correct types.
 Now we've got most of the game working, but we can only make one guess. Let's
 change that by adding loops!
 
-### Looping
+## Looping
 
 As we already discussed, the `loop` key word gives us an infinite loop. So
 let's add that in:
@@ -2455,7 +2455,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 }
 ```
 
-### Complete!
+## Complete!
 
 At this point, you have successfully built the Guessing Game! Congratulations!
 
@@ -2467,36 +2467,36 @@ rest of your Rust education.
 Now that you're an expert at the basics, it's time to learn about some of
 Rust's more unique features.
 
-## iterators
+# iterators
 
-## Lambdas
+# Lambdas
 
-## Testing
+# Testing
 
 attributes
 
 stability markers
 
-## Crates and Modules
+# Crates and Modules
 
 visibility
 
 
-## Generics
+# Generics
 
-## Traits
+# Traits
 
-## Operators and built-in Traits
+# Operators and built-in Traits
 
-## Ownership and Lifetimes
+# Ownership and Lifetimes
 
 Move vs. Copy
 
 Allocation
 
-## Tasks
+# Tasks
 
-## Macros
+# Macros
 
-## Unsafe
+# Unsafe
 
