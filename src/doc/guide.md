@@ -1143,25 +1143,31 @@ can only be _one_ of `Less`, `Equal`, or `Greater` at any given time. Here's
 an example:
 
 ```rust
-let x = 5i;
-let y = 10i;
+fn cmp(a: int, b: int) -> Ordering {
+    if a < b { Less }
+    else if a > b { Greater }
+    else { Equal }
+}
 
-let ordering = x.cmp(&y);
+fn main() {
+    let x = 5i;
+    let y = 10i;
 
-if ordering == Less {
-    println!("less");
-} else if ordering == Greater {
-    println!("greater");
-} else if ordering == Equal {
-    println!("equal");
+    let ordering = cmp(x, y);
+
+    if ordering == Less {
+        println!("less");
+    } else if ordering == Greater {
+        println!("greater");
+    } else if ordering == Equal {
+        println!("equal");
+    }
 }
 ```
 
-`cmp` is a function that compares two things, and returns an `Ordering`. The
-call looks a little bit strange: rather than `cmp(x, y)`, we say `x.cmp(&y)`.
-We haven't covered methods and references yet, so it should look a little bit
-foreign. Right now, just pretend it says `cmp(x, y)`, and we'll get to those
-details soon.
+`cmp` is a function that compares two things, and returns an `Ordering`. We
+return either `Less`, `Greater`, or `Equal`, depending on if the two values
+are greater, less, or equal.
 
 The `ordering` variable has the type `Ordering`, and so contains one of the
 three values. We can then do a bunch of `if`/`else` comparisons to check
@@ -1172,12 +1178,12 @@ that not only makes them nicer to read, but also makes sure that you never
 miss a case. Before we get to that, though, let's talk about another kind of
 enum: one with values.
 
-This enum has two variants, one of which has a value.:
+This enum has two variants, one of which has a value:
 
-```
+```{rust}
 enum OptionalInt {
     Value(int),
-    Missing
+    Missing,
 }
 
 fn main() {
@@ -1261,30 +1267,46 @@ for every possible value of `x`, and so our program will now compile.
 section on enums?
 
 ```{rust}
-let x = 5i;
-let y = 10i;
+fn cmp(a: int, b: int) -> Ordering {
+    if a < b { Less }
+    else if a > b { Greater }
+    else { Equal }
+}
 
-let ordering = x.cmp(&y);
+fn main() {
+    let x = 5i;
+    let y = 10i;
 
-if ordering == Less {
-    println!("less");
-} else if ordering == Greater {
-    println!("greater");
-} else if ordering == Equal {
-    println!("equal");
+    let ordering = cmp(x, y);
+
+    if ordering == Less {
+        println!("less");
+    } else if ordering == Greater {
+        println!("greater");
+    } else if ordering == Equal {
+        println!("equal");
+    }
 }
 ```
 
 We can re-write this as a `match`:
 
 ```{rust}
-let x = 5i;
-let y = 10i;
+fn cmp(a: int, b: int) -> Ordering {
+    if a < b { Less }
+    else if a > b { Greater }
+    else { Equal }
+}
 
-match x.cmp(&y) {
-    Less    => println!("less"),
-    Greater => println!("greater"),
-    Equal   => println!("equal"),
+fn main() {
+    let x = 5i;
+    let y = 10i;
+
+    match cmp(x, y) {
+        Less    => println!("less"),
+        Greater => println!("greater"),
+        Equal   => println!("equal"),
+    }
 }
 ```
 
@@ -1297,17 +1319,25 @@ make sure to cover all of our bases.
 `match` is also an expression, which means we can use it on the right hand side
 of a `let` binding. We could also implement the previous line like this:
 
-```
-let x = 5i;
-let y = 10i;
+```{rust}
+fn cmp(a: int, b: int) -> Ordering {
+    if a < b { Less }
+    else if a > b { Greater }
+    else { Equal }
+}
 
-let result = match x.cmp(&y) {
-    Less    => "less",
-    Greater => "greater",
-    Equal   => "equal",
-};
+fn main() {
+    let x = 5i;
+    let y = 10i;
 
-println!("{}", result);
+    let result = match cmp(x, y) {
+        Less    => "less",
+        Greater => "greater",
+        Equal   => "equal",
+    };
+
+    println!("{}", result);
+}
 ```
 
 In this case, it doesn't make a lot of sense, as we are just making a temporary
@@ -1527,16 +1557,68 @@ a full line of input. Nice and easy.
 .ok().expect("Failed to read line");
 ```
 
-Here's the thing: reading a line from standard input could fail. For example,
-if this program isn't running in a terminal, but is running as part of a cron
-job, or some other context where there's no standard input. So Rust expects us
-to handle this case. Given that we plan on always running this program in a
-terminal, we use the `ok()` method to tell Rust that we're expecting everything
-to be just peachy, and the `expect()` method on that result to give an error
-message if our expectation goes wrong.
+Do you remember this code? 
+
+```
+enum OptionalInt {
+    Value(int),
+    Missing,
+}
+
+fn main() {
+    let x = Value(5);
+    let y = Missing;
+
+    match x {
+        Value(n) => println!("x is {:d}", n),
+        Missing  => println!("x is missing!"),
+    }
+
+    match y {
+        Value(n) => println!("y is {:d}", n),
+        Missing  => println!("y is missing!"),
+    }
+}
+```
+
+We had to match each time, to see if we had a value or not. In this case,
+though, we _know_ that `x` has a `Value`. But `match` forces us to handle
+the `missing` case. This is what we want 99% of the time, but sometimes, we
+know better than the compiler.
+
+Likewise, `read_line()` does not return a line of input. It _might_ return a
+line of input. It might also fail to do so. This could happen if our program
+isn't running in a terminal, but as part of a cron job, or some other context
+where there's no standard input. Because of this, `read_line` returns a type
+very similar to our `OptionalInt`: an `IoResult<T>`. We haven't talked about
+`IoResult<T>` yet because it is the **generic** form of our `OptionalInt`.
+Until then, you can think of it as being the same thing, just for any type, not
+just `int`s.
+
+Rust provides a method on these `IoResult<T>`s called `ok()`, which does the
+same thing as our `match` statement, but assuming that we have a valid value.
+If we don't, it will terminate our program. In this case, if we can't get
+input, our program doesn't work, so we're okay with that. In most cases, we
+would want to handle the error case explicitly. The result of `ok()` has a
+method, `expect()`, which allows us to give an error message if this crash
+happens.
 
 We will cover the exact details of how all of this works later in the Guide.
-For now, this is all you need.
+For now, this gives you enough of a basic understanding to work with.
+
+Back to the code we were working on! Here's a refresher:
+
+```{rust,ignore}
+use std::io;
+
+fn main() {
+    println!("Type something!");
+
+    let input = io::stdin().read_line().ok().expect("Failed to read line");
+
+    println!("{}", input);
+}
+```
 
 With long lines like this, Rust gives you some flexibility with the whitespace.
 We _could_ write the example like this:
