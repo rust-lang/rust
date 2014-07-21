@@ -360,9 +360,9 @@ pub trait MutableSeq<T>: Mutable {
 /// use std::collections::{RingBuf, Deque};
 ///
 /// let mut queue = RingBuf::new();
-/// queue.push_back(1i);
-/// queue.push_back(2i);
-/// queue.push_back(3i);
+/// queue.push(1i);
+/// queue.push(2i);
+/// queue.push(3i);
 ///
 /// // Will print 1, 2, 3
 /// while !queue.is_empty() {
@@ -398,13 +398,13 @@ pub trait MutableSeq<T>: Mutable {
 /// // Init deque with 1, 2, 3, 4
 /// deque.push_front(2i);
 /// deque.push_front(1i);
-/// deque.push_back(3i);
-/// deque.push_back(4i);
+/// deque.push(3i);
+/// deque.push(4i);
 ///
 /// // Will print (1, 4) and (2, 3)
 /// while !deque.is_empty() {
 ///     let f = deque.pop_front().unwrap();
-///     let b = deque.pop_back().unwrap();
+///     let b = deque.pop().unwrap();
 ///     println!("{}", (f, b));
 /// }
 /// ```
@@ -420,8 +420,8 @@ pub trait Deque<T> : MutableSeq<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.front(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push(1i);
+    /// d.push(2i);
     /// assert_eq!(d.front(), Some(&1i));
     /// ```
     fn front<'a>(&'a self) -> Option<&'a T>;
@@ -437,8 +437,8 @@ pub trait Deque<T> : MutableSeq<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.front_mut(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push(1i);
+    /// d.push(2i);
     /// match d.front_mut() {
     ///     Some(x) => *x = 9i,
     ///     None => (),
@@ -458,8 +458,8 @@ pub trait Deque<T> : MutableSeq<T> {
     /// let mut d = DList::new();
     /// assert_eq!(d.back(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push(1i);
+    /// d.push(2i);
     /// assert_eq!(d.back(), Some(&2i));
     /// ```
     fn back<'a>(&'a self) -> Option<&'a T>;
@@ -475,8 +475,8 @@ pub trait Deque<T> : MutableSeq<T> {
     /// let mut d = DList::new();
     /// assert_eq!(d.back(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push(1i);
+    /// d.push(2i);
     /// match d.back_mut() {
     ///     Some(x) => *x = 9i,
     ///     None => (),
@@ -503,7 +503,7 @@ pub trait Deque<T> : MutableSeq<T> {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```ignore
     /// use std::collections::{DList, Deque};
     ///
     /// let mut d = DList::new();
@@ -518,7 +518,7 @@ pub trait Deque<T> : MutableSeq<T> {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```ignore
     /// use std::collections::{RingBuf, Deque};
     ///
     /// let mut d = RingBuf::new();
@@ -540,8 +540,8 @@ pub trait Deque<T> : MutableSeq<T> {
     /// use std::collections::{RingBuf, Deque};
     ///
     /// let mut d = RingBuf::new();
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push(1i);
+    /// d.push(2i);
     ///
     /// assert_eq!(d.pop_front(), Some(1i));
     /// assert_eq!(d.pop_front(), Some(2i));
