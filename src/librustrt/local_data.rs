@@ -218,10 +218,10 @@ impl<T: 'static> KeyValue<T> {
                         // Do nothing.
                         None
                     }
-                    (0, Some(newValue)) => {
+                    (0, Some(new_value)) => {
                         // The current value is uninitialized and we're storing a new value.
                         unsafe {
-                            ptr::write(&mut (*value_box).value, newValue);
+                            ptr::write(&mut (*value_box).value, new_value);
                             *(*value_box).refcount.get() = 1;
                             None
                         }
@@ -234,10 +234,10 @@ impl<T: 'static> KeyValue<T> {
                             Some(ret)
                         }
                     }
-                    (1, Some(newValue)) => {
+                    (1, Some(new_value)) => {
                         // We have an initialized value and we're replacing it.
                         let value_ref = unsafe { &mut (*value_box).value };
-                        let ret = mem::replace(value_ref, newValue);
+                        let ret = mem::replace(value_ref, new_value);
                         // Refcount is already 1, leave it as that.
                         Some(ret)
                     }

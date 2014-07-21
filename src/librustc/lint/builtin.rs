@@ -736,7 +736,7 @@ impl LintPass for UnusedResult {
     }
 }
 
-declare_lint!(NON_CAMEL_CASE_TYPES, Warn,
+declare_lint!(pub NON_CAMEL_CASE_TYPES, Warn,
               "types, variants, traits and type parameters should have camel case names")
 
 pub struct NonCamelCaseTypes;
@@ -844,7 +844,7 @@ fn method_context(cx: &Context, m: &ast::Method) -> MethodContext {
     }
 }
 
-declare_lint!(NON_SNAKE_CASE, Warn,
+declare_lint!(pub NON_SNAKE_CASE, Warn,
               "methods, functions, lifetime parameters and modules should have snake case names")
 
 pub struct NonSnakeCase;
@@ -930,8 +930,8 @@ impl LintPass for NonSnakeCase {
         self.check_snake_case(cx, "trait method", t.ident, t.span);
     }
 
-    fn check_lifetime_decl(&mut self, cx: &Context, t: &ast::Lifetime) {
-        self.check_snake_case(cx, "lifetime", t.name.ident(), t.span);
+    fn check_lifetime_decl(&mut self, cx: &Context, t: &ast::LifetimeDef) {
+        self.check_snake_case(cx, "lifetime", t.lifetime.name.ident(), t.lifetime.span);
     }
 
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
@@ -962,7 +962,7 @@ impl LintPass for NonSnakeCase {
     }
 }
 
-declare_lint!(NON_UPPERCASE_STATICS, Allow,
+declare_lint!(pub NON_UPPERCASE_STATICS, Allow,
               "static constants should have uppercase identifiers")
 
 pub struct NonUppercaseStatics;
@@ -1143,7 +1143,7 @@ impl LintPass for UnsafeBlock {
     }
 }
 
-declare_lint!(UNUSED_MUT, Warn,
+declare_lint!(pub UNUSED_MUT, Warn,
               "detect mut variables which don't need to be mutable")
 
 pub struct UnusedMut;
