@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{P, Block, Crate, DeclLocal, ExprMac, PatMac};
+use ast::{P, Block, Crate, DeclLocal, ExprMac, PatMac, TyMac};
 use ast::{Local, Ident, MacInvocTT};
 use ast::{ItemMac, Mrk, Stmt, StmtDecl, StmtMac, StmtExpr, StmtSemi};
 use ast::TokenTree;
@@ -31,6 +31,36 @@ use util::small_vector::SmallVector;
 
 use std::gc::{Gc, GC};
 
+pub fn expand_ty(ty: Gc<ast::Ty>, fld: &mut MacroExpander) -> Gc<ast::Ty> {
+        match ty.node {
+        TyMac(ref mac) => {
+            let expanded_ty = match expand_mac_invoc(mac,&ty.span,
+                                                       |r|{r.make_ty()},
+                                                       |ty,fm|{mark_ty(ty,fm)},
+                                                       fld) {
+                Some(ty) => ty,
+                None => {
+                    return DummyResult::raw_ty(ty.span);
+                }
+            };
+
+            // Keep going, outside-in.
+            //
+            // FIXME(pcwalton): Is it necessary to clone the
+            // node here?
+            let fully_expanded =
+                fld.fold_ty(expanded_ty).node.clone();
+            fld.cx.bt_pop();
+
+            box(GC) ast::Ty {
+                id: ast::DUMMY_NODE_ID,
+                node: fully_expanded,
+                span: ty.span,
+            }
+        }
+        _ => noop_fold_ty(ty, fld)
+    }
+}
 
 pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
     match e.node {
@@ -616,13 +646,15 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                 } => {
                     // take it apart:
                     let Local {
-                        ty: _,
+                        ty: ty,
                         pat: pat,
                         init: init,
                         id: id,
                         span: span,
                         source: source,
                     } = **local;
+                    // expand the ty (it might contain macro uses):
+                    let expanded_ty = fld.fold_ty(ty);
                     // expand the pat (it might contain macro uses):
                     let expanded_pat = fld.fold_pat(pat);
                     // find the PatIdents in the pattern:
@@ -646,7 +678,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                     let new_init_opt = init.map(|e| fld.fold_expr(e));
                     let rewritten_local =
                         box(GC) Local {
-                            ty: local.ty,
+                            ty: expanded_ty,
                             pat: rewritten_pat,
                             init: new_init_opt,
                             id: id,
@@ -988,6 +1020,10 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         expand_pat(pat, self)
     }
 
+    fn fold_ty(&mut self, ty: Gc<ast::Ty>) -> Gc<ast::Ty> {
+        expand_ty(ty, self)
+    }
+
     fn fold_item(&mut self, item: Gc<ast::Item>) -> SmallVector<Gc<ast::Item>> {
         expand_item(item, self)
     }
@@ -1113,6 +1149,11 @@ fn mark_tts(tts: &[TokenTree], m: Mrk) -> Vec<TokenTree> {
 // apply a given mark to the given expr. Used following the expansion of a macro.
 fn mark_expr(expr: Gc<ast::Expr>, m: Mrk) -> Gc<ast::Expr> {
     Marker{mark:m}.fold_expr(expr)
+}
+
+// apply a given mark to the given type. Used following the expansion of a macro.
+fn mark_ty(ty: Gc<ast::Ty>, m: Mrk) -> Gc<ast::Ty> {
+    Marker{mark:m}.fold_ty(ty)
 }
 
 // apply a given mark to the given pattern. Used following the expansion of a macro.
@@ -1526,6 +1567,13 @@ mod test {
               vec!(vec!(1)),
               true),
             0)
+    }
+
+    // macro_rules in type
+    #[test] fn macro_in_type_posn(){
+        expand_crate_str(
+            "macro_rules! type_macro (()=>(int))
+            fn f(x: type_macro!()){}".to_string());
     }
 
     // macro_rules in method position. Sadly, unimplemented.

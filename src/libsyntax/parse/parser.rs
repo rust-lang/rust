@@ -50,7 +50,7 @@ use ast::{TokenTree, TraitMethod, TraitRef, TTDelim, TTSeq, TTTok};
 use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot, TyBox};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
-use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyPtr, TyRptr};
+use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyMac, TyPtr, TyRptr};
 use ast::{TyTup, TyU32, TyUnboxedFn, TyUniq, TyVec, UnUniq};
 use ast::{UnboxedFnTy, UnboxedFnTyParamBound, UnnamedField, UnsafeBlock};
 use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
@@ -1456,7 +1456,26 @@ impl<'a> Parser<'a> {
                 path,
                 bounds
             } = self.parse_path(mode);
-            TyPath(path, bounds, ast::DUMMY_NODE_ID)
+
+
+            if self.token == token::NOT {
+                // MACRO INVOCATION type
+                self.bump();
+
+                let ket = token::close_delimiter_for(&self.token)
+                    .unwrap_or_else(|| self.fatal("expected open delimiter"));
+                self.bump();
+
+                let tts = self.parse_seq_to_end(&ket,
+                                                seq_sep_none(),
+                                                |p| p.parse_token_tree());
+                let hi = self.span.hi;
+
+                TyMac(codemap::Spanned {node: MacInvocTT(path, tts, EMPTY_CTXT),
+                                        span: mk_sp(lo, hi)})
+            } else {
+                TyPath(path, bounds, ast::DUMMY_NODE_ID)
+            }
         } else if self.eat(&token::UNDERSCORE) {
             // TYPE TO BE INFERRED
             TyInfer

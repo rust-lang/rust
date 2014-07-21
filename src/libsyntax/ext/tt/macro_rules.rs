@@ -59,6 +59,11 @@ impl<'a> ParserAnyMacro<'a> {
 }
 
 impl<'a> MacResult for ParserAnyMacro<'a> {
+    fn make_ty(&self) -> Option<Gc<ast::Ty>> {
+        let ret = self.parser.borrow_mut().parse_ty(true); // Allow plus in types?
+        self.ensure_complete_parse(true);
+        Some(ret)
+    }
     fn make_expr(&self) -> Option<Gc<ast::Expr>> {
         let ret = self.parser.borrow_mut().parse_expr();
         self.ensure_complete_parse(true);
