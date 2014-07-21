@@ -216,6 +216,7 @@ ifneq ($(strip $(findstring check,$(MAKECMDGOALS)) \
                $(findstring tidy,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including test rules)
   include $(CFG_SRC_DIR)mk/tests.mk
+  include $(CFG_SRC_DIR)mk/grammar.mk
 endif
 
 # Performance and benchmarking
@@ -250,19 +251,6 @@ endif
 ifneq ($(findstring clean,$(MAKECMDGOALS)),)
   CFG_INFO := $(info cfg: including clean rules)
   include $(CFG_SRC_DIR)mk/clean.mk
-endif
-
-# Grammar tests
-
-ifneq ($(findstring lexer,$(MAKECMDGOALS)),)
-  ifdef CFG_JAVAC
-	ifdef CFG_ANTLR4
-	  ifdef CFG_GRUN
-	    CFG_INFO := $(info cfg: including grammar tests)
-	    include $(CFG_SRC_DIR)mk/grammar.mk
-	  endif
-	endif
-  endif
 endif
 
 # CTAGS building

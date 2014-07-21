@@ -38,6 +38,18 @@ $(BG)verify: $(SG)verify.rs rustc-stage2-H-$(CFG_BUILD) $(LD)stamp.regex_macros 
 	$(Q)$(RUSTC) -O --out-dir $(BG) -L $(L) $(SG)verify.rs
 
 check-lexer: $(BG) $(BG)RustLexer.class $(BG)verify
+ifdef CFG_JAVAC
+ifdef CFG_ANTLR4
+ifdef CFG_GRUN
 	$(info Verifying libsyntax against the reference lexer ...)
-	$(Q)find $(S) -iname '*.rs' -exec "$(SG)check.sh" {} "$(BG)" \
-      "$(CFG_GRUN)" "$(BG)verify" "$(BG)RustLexer.tokens" "$(VERBOSE)" \;
+	$(Q)$(SG)check.sh $(S) "$(BG)" \
+		"$(CFG_GRUN)" "$(BG)verify" "$(BG)RustLexer.tokens"
+else
+$(info grun not available, skipping lexer test...)
+endif
+else
+$(info antlr4 not available, skipping lexer test...)
+endif
+else
+$(info javac not available, skipping lexer test...)
+endif

@@ -171,7 +171,7 @@ endif
 # Main test targets
 ######################################################################
 
-check: cleantmptestlogs cleantestlibs check-notidy tidy
+check: cleantmptestlogs cleantestlibs check-notidy tidy check-syntax
 
 check-notidy: cleantmptestlogs cleantestlibs all check-stage2
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
@@ -191,6 +191,8 @@ check-docs: cleantestlibs cleantmptestlogs check-stage2-docs
 
 # NOTE: Remove after reprogramming windows bots
 check-fast: check-lite
+
+check-syntax: check-lexer
 
 .PHONY: cleantmptestlogs cleantestlibs
 
