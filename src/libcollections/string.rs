@@ -858,7 +858,7 @@ mod tests {
     fn from_utf8_lossy_100_multibyte(b: &mut Bencher) {
         let s = "ðŒ€ðŒ–ðŒ‹ðŒ„ðŒ‘ðŒ‰à¸›à¸£Ø¯ÙˆÙ„Ø©\
             Ø§Ù„ÙƒÙˆÙŠØªà¸—à¸¨à¹„à¸—à¸¢ä¸­åŽð…ðŒ¿ðŒ»ð†ðŒ¹ðŒ»ðŒ°".as_bytes();
-        assert_eq!(100, s.len());
+        assert_eq!(212, s.len());
         b.iter(|| {
             let _ = String::from_utf8_lossy(s);
         });
