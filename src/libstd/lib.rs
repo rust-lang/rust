@@ -239,7 +239,7 @@ pub mod gc;
 
 pub mod from_str;
 pub mod num;
-pub mod to_str;
+pub mod to_string;
 
 /* Common data structures */
 
