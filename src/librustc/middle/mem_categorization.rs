@@ -63,6 +63,7 @@
 #![allow(non_camel_case_types)]
 
 use middle::def;
+use middle::subst::Substs;
 use middle::ty;
 use middle::typeck;
 use util::nodemap::NodeMap;
@@ -265,7 +266,10 @@ pub type McResult<T> = Result<T, ()>;
 pub trait Typer {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt;
     fn node_ty(&self, id: ast::NodeId) -> McResult<ty::t>;
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t>;
+    fn node_method_return_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t>;
+    fn node_method_callee(&self, method_call: typeck::MethodCall)
+                          -> Option<typeck::MethodCallee>;
+    fn node_substs(&self, expr_id: ast::NodeId) -> Option<Substs>;
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>>;
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
@@ -361,9 +365,10 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
 
     fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<ty::t> {
         let unadjusted_ty = if_ok!(self.expr_ty(expr));
-        Ok(ty::adjust_ty(self.tcx(), expr.span, expr.id, unadjusted_ty,
-                         self.typer.adjustments().borrow().find(&expr.id),
-                         |method_call| self.typer.node_method_ty(method_call)))
+        Ok(ty::adjust_ty(
+            self.tcx(), expr.span, expr.id, unadjusted_ty,
+            self.typer.adjustments().borrow().find(&expr.id),
+            |method_call| self.typer.node_method_return_ty(method_call)))
     }
 
     fn node_ty(&self, id: ast::NodeId) -> McResult<ty::t> {
@@ -445,7 +450,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
 
           ast::ExprIndex(ref base, _) => {
             let method_call = typeck::MethodCall::expr(expr.id());
-            match self.typer.node_method_ty(method_call) {
+            match self.typer.node_method_return_ty(method_call) {
                 Some(method_ty) => {
                     // If this is an index implemented by a method call, then it will
                     // include an implicit deref of the result.
@@ -734,10 +739,10 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
             expr_id: node.id(),
             adjustment: adjustment
         };
-        let method_ty = self.typer.node_method_ty(method_call);
+        let method_ty = self.typer.node_method_return_ty(method_call);
 
         debug!("cat_deref: method_call={:?} method_ty={}",
-            method_call, method_ty.map(|ty| ty.repr(self.tcx())));
+               method_call, method_ty.repr(self.tcx()));
 
         let base_cmt = match method_ty {
             Some(method_ty) => {
@@ -830,7 +835,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
         //!   the implicit index deref, if any (see above)
 
         let method_call = typeck::MethodCall::expr(elt.id());
-        let method_ty = self.typer.node_method_ty(method_call);
+        let method_ty = self.typer.node_method_return_ty(method_call);
 
         let element_ty = match method_ty {
             Some(method_ty) => {
@@ -1378,5 +1383,98 @@ fn element_kind(t: ty::t) -> ElementKind {
         },
         ty::ty_vec(..) => VecElement,
         _ => OtherElement
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+
+pub fn each_type_parameters_and_def<TYPER:Typer>(typer: &TYPER,
+                                                 expr: &ast::Expr,
+                                                 op: |ty::t, &ty::TypeParameterDef|)
+{
+    /*!
+     * Given an expression `expr`, identifies any type parameters whose
+     * values are supplied as part of this expression and walks over them,
+     * passing a reference to the type which was used to instantiate the
+     * parameter as well as the definition of the parameter itself.
+     *
+     * For example:
+     *
+     *     fn foo<T:Bound1>(t: T) { }
+     *     foo(22_u)
+     *     ^~~ <-- expr
+     *
+     * If invoked on the path node referencing `foo` as part of the
+     * call, it would call back with `(uint, T:Bound1)`.
+     */
+
+    debug!("each_type_parameters_and_def(expr={})",
+           expr.repr(typer.tcx()));
+
+    // If this is a path, it (could be) a reference to a generic item.
+    // We must check extract the types provided and match them against
+    // the type parameter definitions from the item.
+    //
+    // Otherwise, check if this node is a method call (either
+    // overloaded or explicit). If so, extract type parameters defined
+    // on method (including those inherited from impl) and match them
+    // to those values provided in the method call.
+    let tcx = typer.tcx();
+    let method_callee =
+        typer.node_method_callee(typeck::MethodCall::expr(expr.id));
+    let (substs, type_param_defs) = match method_callee {
+        Some(typeck::MethodCallee { substs, origin, ty: _ }) => {
+            // Method call:
+            let defs = ty::method_call_type_param_defs(tcx, origin);
+            (substs, defs)
+        }
+
+        None => {
+            debug!("each_type_parameters_and_def(expr.id={}) -- not method call",
+                   expr.id);
+
+            // Reference to generic item?
+            match expr.node {
+                ast::ExprPath(_) => { } // Yes, continue.
+                _ => { return; }        // No, done.
+            }
+
+            debug!("each_type_parameters_and_def(expr.id={}) -- is path",
+                   expr.id);
+
+            let substs = match typer.node_substs(expr.id) {
+                Some(s) => s,
+                None => { return; } // No parameters supplied, not generic item.
+            };
+
+            let did = tcx.def_map.borrow().get_copy(&expr.id).def_id();
+            let defs = ty::lookup_item_type(tcx, did).generics.types.clone();
+            (substs, defs)
+        }
+    };
+
+    debug!("each_type_parameters_and_def(expr={},substs={})",
+           expr.repr(typer.tcx()),
+           substs.repr(typer.tcx()));
+
+    // Check that the value provided for each definition meets the
+    // kind requirements
+    for type_param_def in type_param_defs.iter() {
+        let ty = *substs.types.get(type_param_def.space, type_param_def.index);
+
+        // Note: during type checking, error types can normally occur.
+        // Even afterwards, if this is a call to an object method
+        // (`foo.bar()` where `foo` has a type like `Trait`), then the
+        // self type is unknown (after all, this is a virtual
+        // call). In that case, we will have put a ty_err in the
+        // substitutions and we can just skip over validating the
+        // bounds (because the bounds would have been enforced when
+        // the object instance was created). So either way, ignore
+        // ty_err.
+        if !ty::type_is_error(ty) {
+            debug!("type_param_def space={} index={} ty={}",
+                   type_param_def.space, type_param_def.index, ty.repr(tcx));
+            op(ty, type_param_def)
+        }
     }
 }

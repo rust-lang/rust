@@ -122,6 +122,7 @@ use middle::def;
 use middle::def::{DefArg, DefBinding, DefLocal, DefUpvar};
 use middle::freevars;
 use mc = middle::mem_categorization;
+use middle::subst::Substs;
 use middle::ty::{ReScope};
 use middle::ty;
 use middle::typeck::astconv::AstConv;
@@ -130,7 +131,7 @@ use middle::typeck::check::regionmanip::relate_nested_regions;
 use middle::typeck::infer::resolve_and_force_all_but_regions;
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
-use middle::typeck::MethodCall;
+use middle::typeck::{MethodCall, MethodCallee};
 use middle::pat_util;
 use util::nodemap::NodeMap;
 use util::ppaux::{ty_to_string, region_to_string, Repr};
@@ -241,6 +242,12 @@ impl<'a> Rcx<'a> {
         self.resolve_type(t)
     }
 
+    /// Try to resolve the type for the given node.
+    fn resolve_substs(&self, substs: &Substs) -> Substs {
+        let types = substs.types.map(|&t| self.resolve_type(t));
+        Substs::new(types, substs.regions().clone())
+    }
+
     fn resolve_method_type(&self, method_call: MethodCall) -> Option<ty::t> {
         let method_ty = self.fcx.inh.method_map.borrow()
                             .find(&method_call).map(|method| method.ty);
@@ -248,7 +255,7 @@ impl<'a> Rcx<'a> {
     }
 
     /// Try to resolve the type for the given node.
-    pub fn resolve_expr_type_adjusted(&mut self, expr: &ast::Expr) -> ty::t {
+    pub fn resolve_expr_type_adjusted(&self, expr: &ast::Expr) -> ty::t {
         let ty_unadjusted = self.resolve_node_type(expr.id);
         if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {
             ty_unadjusted
@@ -271,8 +278,28 @@ impl<'fcx> mc::Typer for Rcx<'fcx> {
         if ty::type_is_error(t) {Err(())} else {Ok(t)}
     }
 
-    fn node_method_ty(&self, method_call: MethodCall) -> Option<ty::t> {
+    fn node_method_return_ty(&self, method_call: MethodCall) -> Option<ty::t> {
         self.resolve_method_type(method_call)
+    }
+
+    fn node_method_callee(&self, method_call: MethodCall) -> Option<MethodCallee> {
+        self.fcx.inh.method_map
+            .borrow()
+            .find(&method_call)
+            .map(|method| {
+                MethodCallee {
+                    origin: method.origin.clone(),
+                    ty: self.resolve_type(method.ty),
+                    substs: self.resolve_substs(&method.substs)
+                }
+            })
+    }
+
+    fn node_substs(&self, node_id: ast::NodeId) -> Option<Substs> {
+        self.fcx.inh.item_substs
+            .borrow()
+            .find(&node_id)
+            .map(|item_substs| self.resolve_substs(&item_substs.substs))
     }
 
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
@@ -440,6 +467,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             _ => {}
         }
     }
+
+    constrain_regions_in_type_params(rcx, expr);
 
     match expr.node {
         ast::ExprCall(ref callee, ref args) => {
@@ -1008,10 +1037,11 @@ fn constrain_regions_in_type_of_node(
 }
 
 fn constrain_regions_in_type(
-    rcx: &mut Rcx,
+    rcx: &Rcx,
     minimum_lifetime: ty::Region,
     origin: infer::SubregionOrigin,
-    ty: ty::t) {
+    ty: ty::t)
+{
     /*!
      * Requires that any regions which appear in `ty` must be
      * superregions of `minimum_lifetime`.  Also enforces the constraint
@@ -1051,6 +1081,38 @@ fn constrain_regions_in_type(
                 true, infer::ReferenceOutlivesReferent(ty, origin.span()),
                 r_sub, r_sup);
         }
+    });
+}
+
+fn constrain_regions_in_type_params(
+    rcx: &Rcx,
+    expr: &ast::Expr)
+{
+    mc::each_type_parameters_and_def(rcx, expr, |type_param_ty, type_param_def| {
+        let mut constrained = false;
+        debug!("type_param_ty={} type_param_def={}",
+               type_param_ty.repr(rcx.tcx()),
+               type_param_def.repr(rcx.tcx()));
+        ty::each_inherited_builtin_bound(
+            rcx.tcx(),
+            type_param_def.bounds.builtin_bounds,
+            type_param_def.bounds.trait_bounds.as_slice(),
+            |bound| {
+                match bound {
+                    ty::BoundStatic | ty::BoundSend => {
+                        if !constrained {
+                            let origin =
+                                infer::TypeParameterBound(
+                                    type_param_def.ident,
+                                    expr.span);
+                            constrain_regions_in_type(rcx, ty::ReStatic,
+                                                      origin, type_param_ty);
+                            constrained = true;
+                        }
+                    }
+                    ty::BoundCopy | ty::BoundShare | ty::BoundSized => { }
+                }
+            });
     });
 }
 

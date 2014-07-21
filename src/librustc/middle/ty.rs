@@ -2241,25 +2241,6 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             };
         });
         return tc;
-
-        // Iterates over all builtin bounds on the type parameter def, including
-        // those inherited from traits with builtin-kind-supertraits.
-        fn each_inherited_builtin_bound(cx: &ctxt,
-                                        bounds: BuiltinBounds,
-                                        traits: &[Rc<TraitRef>],
-                                        f: |BuiltinBound|) {
-            for bound in bounds.iter() {
-                f(bound);
-            }
-
-            each_bound_trait_and_supertraits(cx, traits, |trait_ref| {
-                let trait_def = lookup_trait_def(cx, trait_ref.def_id);
-                for bound in trait_def.bounds.iter() {
-                    f(bound);
-                }
-                true
-            });
-        }
     }
 }
 
@@ -4370,6 +4351,25 @@ pub fn each_bound_trait_and_supertraits(tcx: &ctxt,
     return true;
 }
 
+// Iterates over all builtin bounds on the type parameter def, including
+// those inherited from traits with builtin-kind-supertraits.
+pub fn each_inherited_builtin_bound(cx: &ctxt,
+                                    bounds: BuiltinBounds,
+                                    traits: &[Rc<TraitRef>],
+                                    f: |BuiltinBound|) {
+    for bound in bounds.iter() {
+        f(bound);
+    }
+
+    each_bound_trait_and_supertraits(cx, traits, |trait_ref| {
+        let trait_def = lookup_trait_def(cx, trait_ref.def_id);
+        for bound in trait_def.bounds.iter() {
+            f(bound);
+        }
+        true
+    });
+}
+
 pub fn get_tydesc_ty(tcx: &ctxt) -> Result<t, String> {
     tcx.lang_items.require(TyDescStructLangItem).map(|tydesc_lang_item| {
         tcx.intrinsic_defs.borrow().find_copy(&tydesc_lang_item)
@@ -4843,8 +4843,27 @@ impl mc::Typer for ty::ctxt {
         Ok(ty::node_id_to_type(self, id))
     }
 
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t> {
-        self.method_map.borrow().find(&method_call).map(|method| method.ty)
+    fn node_method_return_ty(&self, method_call: typeck::MethodCall)
+                             -> Option<ty::t> {
+        self.method_map
+            .borrow()
+            .find(&method_call)
+            .map(|method| method.ty)
+    }
+
+    fn node_method_callee(&self, method_call: typeck::MethodCall)
+                          -> Option<typeck::MethodCallee> {
+        self.method_map
+            .borrow()
+            .find(&method_call)
+            .map(|method| (*method).clone())
+    }
+
+    fn node_substs(&self, node_id: ast::NodeId) -> Option<Substs> {
+        self.item_substs
+            .borrow()
+            .find(&node_id)
+            .map(|item_substs| item_substs.substs.clone())
     }
 
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {

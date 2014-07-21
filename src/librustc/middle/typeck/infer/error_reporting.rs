@@ -619,6 +619,23 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     sup,
                     "");
             }
+            infer::TypeParameterBound(ident, span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!("type parameter `{}` instantiated \
+                             with a type whose lifetime is too short",
+                            ident.user_string(self.tcx)).as_slice());
+                note_and_explain_region(
+                    self.tcx,
+                    "the type parameter requires ",
+                    sub,
+                    "...");
+                note_and_explain_region(
+                    self.tcx,
+                    "...but the type is only valid for ",
+                    sup,
+                    "");
+            }
         }
     }
 
@@ -1409,6 +1426,13 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                     span,
                     "...so that the pointer does not outlive the \
                     data it points at");
+            }
+            infer::TypeParameterBound(ident, span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    format!("...so that the type parameter `{}` meets its \
+                             declared bounds",
+                            ident.user_string(self.tcx)).as_slice());
             }
         }
     }

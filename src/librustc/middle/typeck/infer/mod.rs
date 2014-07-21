@@ -194,6 +194,10 @@ pub enum SubregionOrigin {
 
     // An auto-borrow that does not enclose the expr where it occurs
     AutoBorrow(Span),
+
+    // Type parameter requires type to have certain lifetime
+    // (typically 'static).
+    TypeParameterBound(ast::Ident, Span),
 }
 
 /// Reasons to create a region inference variable
@@ -905,6 +909,7 @@ impl SubregionOrigin {
             CallReturn(a) => a,
             AddrOf(a) => a,
             AutoBorrow(a) => a,
+            TypeParameterBound(_, a) => a,
         }
     }
 }
@@ -948,6 +953,8 @@ impl Repr for SubregionOrigin {
             CallReturn(a) => format!("CallReturn({})", a.repr(tcx)),
             AddrOf(a) => format!("AddrOf({})", a.repr(tcx)),
             AutoBorrow(a) => format!("AutoBorrow({})", a.repr(tcx)),
+            TypeParameterBound(a,b) => format!("TypeParameterBound({},{})",
+                                               a.repr(tcx), b.repr(tcx)),
         }
     }
 }

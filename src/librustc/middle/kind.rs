@@ -11,13 +11,14 @@
 
 use middle::freevars::freevar_entry;
 use middle::freevars;
+use mc = middle::mem_categorization;
 use middle::subst;
 use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
 use middle::typeck;
 use middle::typeck::{MethodCall, NoAdjustment};
-use util::ppaux::{Repr, ty_to_string};
+use util::ppaux::{ty_to_string};
 use util::ppaux::UserString;
 
 use syntax::ast::*;
@@ -261,7 +262,20 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     debug!("kind::check_expr({})", expr_to_string(e));
 
     // Handle any kind bounds on type parameters
-    check_bounds_on_type_parameters(cx, e);
+    mc::each_type_parameters_and_def(cx.tcx, e, |type_param_ty, type_param_def| {
+        check_typaram_bounds(cx, e.span, type_param_ty, type_param_def)
+    });
+
+    // If this node is a method call (or overloaded op), check the
+    // vtable.
+    {
+        let vtable_map = cx.tcx.vtable_map.borrow();
+        let vtable_res = match vtable_map.find(&MethodCall::expr(e.id)) {
+            None => return,
+            Some(vtable_res) => vtable_res,
+        };
+        check_type_parameter_bounds_in_vtable_result(cx, e.span, vtable_res);
+    }
 
     match e.node {
         ExprBox(ref loc, ref interior) => {
@@ -320,88 +334,6 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     }
 
     visit::walk_expr(cx, e, ());
-}
-
-fn check_bounds_on_type_parameters(cx: &mut Context, e: &Expr) {
-    let method_map = cx.tcx.method_map.borrow();
-    let method_call = typeck::MethodCall::expr(e.id);
-    let method = method_map.find(&method_call);
-
-    // Find the values that were provided (if any)
-    let item_substs = cx.tcx.item_substs.borrow();
-    let (types, is_object_call) = match method {
-        Some(method) => {
-            let is_object_call = match method.origin {
-                typeck::MethodObject(..) => true,
-                typeck::MethodStatic(..) |
-                typeck::MethodStaticUnboxedClosure(..) |
-                typeck::MethodParam(..) => false
-            };
-            (&method.substs.types, is_object_call)
-        }
-        None => {
-            match item_substs.find(&e.id) {
-                None => { return; }
-                Some(s) => { (&s.substs.types, false) }
-            }
-        }
-    };
-
-    // Find the relevant type parameter definitions
-    let def_map = cx.tcx.def_map.borrow();
-    let type_param_defs = match e.node {
-        ExprPath(_) => {
-            let did = def_map.get_copy(&e.id).def_id();
-            ty::lookup_item_type(cx.tcx, did).generics.types.clone()
-        }
-        _ => {
-            // Type substitutions should only occur on paths and
-            // method calls, so this needs to be a method call.
-
-            // Even though the callee_id may have been the id with
-            // node_type_substs, e.id is correct here.
-            match method {
-                Some(method) => {
-                    ty::method_call_type_param_defs(cx.tcx, method.origin)
-                }
-                None => {
-                    cx.tcx.sess.span_bug(e.span,
-                                         "non path/method call expr has type substs??");
-                }
-            }
-        }
-    };
-
-    // Check that the value provided for each definition meets the
-    // kind requirements
-    for type_param_def in type_param_defs.iter() {
-        let ty = *types.get(type_param_def.space, type_param_def.index);
-
-        // If this is a call to an object method (`foo.bar()` where
-        // `foo` has a type like `Trait`), then the self type is
-        // unknown (after all, this is a virtual call). In that case,
-        // we will have put a ty_err in the substitutions, and we can
-        // just skip over validating the bounds (because the bounds
-        // would have been enforced when the object instance was
-        // created).
-        if is_object_call && type_param_def.space == subst::SelfSpace {
-            assert_eq!(type_param_def.index, 0);
-            assert!(ty::type_is_error(ty));
-            continue;
-        }
-
-        debug!("type_param_def space={} index={} ty={}",
-               type_param_def.space, type_param_def.index, ty.repr(cx.tcx));
-        check_typaram_bounds(cx, e.span, ty, type_param_def)
-    }
-
-    // Check the vtable.
-    let vtable_map = cx.tcx.vtable_map.borrow();
-    let vtable_res = match vtable_map.find(&method_call) {
-        None => return,
-        Some(vtable_res) => vtable_res,
-    };
-    check_type_parameter_bounds_in_vtable_result(cx, e.span, vtable_res);
 }
 
 fn check_type_parameter_bounds_in_vtable_result(

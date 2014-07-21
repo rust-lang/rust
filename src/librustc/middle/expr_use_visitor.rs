@@ -692,11 +692,12 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
          * `x.deref()`. Since `deref()` is declared with `&self`, this
          * is an autoref of `x`.
          */
-        debug!("walk_autoderefs expr={} autoderefs={}", expr.repr(self.tcx()), autoderefs);
+        debug!("walk_autoderefs expr={} autoderefs={}",
+               expr.repr(self.tcx()), autoderefs);
 
         for i in range(0, autoderefs) {
             let deref_id = typeck::MethodCall::autoderef(expr.id, i);
-            match self.typer.node_method_ty(deref_id) {
+            match self.typer.node_method_return_ty(deref_id) {
                 None => {}
                 Some(method_ty) => {
                     let cmt = return_if_err!(self.mc.cat_expr_autoderefd(expr, i));
@@ -705,7 +706,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                         ty::ty_rptr(r, ref m) => (m.mutbl, r),
                         _ => self.tcx().sess.span_bug(expr.span,
                                 format!("bad overloaded deref type {}",
-                                    method_ty.repr(self.tcx())).as_slice())
+                                        method_ty.repr(self.tcx())).as_slice())
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.delegate.borrow(expr.id, expr.span, cmt,
