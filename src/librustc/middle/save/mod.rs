@@ -1379,6 +1379,7 @@ impl DxrVisitorEnv {
 pub fn process_crate(sess: &Session,
                      krate: &ast::Crate,
                      analysis: &CrateAnalysis,
+                     _path_spans: &ast::PathSpanTable,
                      odir: &Option<Path>) {
     if generated_code(krate.span) {
         return;

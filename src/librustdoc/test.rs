@@ -68,7 +68,7 @@ pub fn run(input: &str,
         let cfg_ = token::intern_and_get_ident(cfg_.as_slice());
         box(GC) dummy_spanned(ast::MetaWord(cfg_))
     }));
-    let krate = driver::phase_1_parse_input(&sess, cfg, &input);
+    let (krate, _) = driver::phase_1_parse_input(&sess, cfg, &input);
     let (krate, _) = driver::phase_2_configure_and_expand(&sess, krate,
                                                           "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");

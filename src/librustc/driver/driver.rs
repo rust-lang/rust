@@ -75,8 +75,8 @@ pub fn compile_input(sess: Session,
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
     let (outputs, trans, sess) = {
-        let (outputs, expanded_crate, ast_map, id) = {
-            let krate = phase_1_parse_input(&sess, cfg, input);
+        let (outputs, expanded_crate, ast_map, id, parse_info) = {
+            let (krate, parse_info) = phase_1_parse_input(&sess, cfg, input);
             if stop_after_phase_1(&sess) { return; }
             let outputs = build_output_filenames(input,
                                                  outdir,
@@ -92,7 +92,7 @@ pub fn compile_input(sess: Session,
                     Some(p) => p,
                 };
 
-            (outputs, expanded_crate, ast_map, id)
+            (outputs, expanded_crate, ast_map, id, parse_info)
         };
         write_out_deps(&sess, input, &outputs, id.as_slice());
 
@@ -100,7 +100,7 @@ pub fn compile_input(sess: Session,
 
         let analysis = phase_3_run_analysis_passes(sess, &expanded_crate,
                                                    ast_map, id);
-        phase_save_analysis(&analysis.ty_cx.sess, &expanded_crate, &analysis, outdir);
+        phase_save_analysis(&analysis.ty_cx.sess, &expanded_crate, &analysis, &*parse_info, outdir);
         if stop_after_phase_3(&analysis.ty_cx.sess) { return; }
         let (tcx, trans) = phase_4_translate_to_llvm(expanded_crate, analysis);
 
@@ -148,8 +148,8 @@ impl Input {
 
 
 pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
-    -> ast::Crate {
-    let krate = time(sess.time_passes(), "parsing", (), |_| {
+    -> (ast::Crate, Box<parse::ParseMetaInfo>) {
+    let (krate, info) = time(sess.time_passes(), "parsing", (), |_| {
         match *input {
             FileInput(ref file) => {
                 parse::parse_crate_from_file(&(*file), cfg.clone(), &sess.parse_sess)
@@ -174,7 +174,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
         front::show_span::run(sess, &krate);
     }
 
-    krate
+    (krate, info)
 }
 
 // For continuing compilation after a parsed crate has been
@@ -434,12 +434,16 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 pub fn phase_save_analysis(sess: &Session,
                            krate: &ast::Crate,
                            analysis: &CrateAnalysis,
+                           parse_info: &parse::ParseMetaInfo,
                            odir: &Option<Path>) {
     if (sess.opts.debugging_opts & config::SAVE_ANALYSIS) == 0 {
         return;
     }
-    time(sess.time_passes(), "save analysis", krate, |krate|
-         middle::save::process_crate(sess, krate, analysis, odir));
+    match parse_info.path_span_table {
+        Some(ref spans) => time(sess.time_passes(), "save analysis", krate, |krate|
+                            middle::save::process_crate(sess, krate, analysis, spans, odir)),
+        None => sess.bug("save-analysis expects parser to export path segment spans")
+    }
 }
 
 pub struct CrateTranslation {
@@ -695,7 +699,7 @@ pub fn pretty_print_input(sess: Session,
                           input: &Input,
                           ppm: PpMode,
                           ofile: Option<Path>) {
-    let krate = phase_1_parse_input(&sess, cfg, input);
+    let (krate, _) = phase_1_parse_input(&sess, cfg, input);
     let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(), input);
 
     let (krate, ast_map, is_expanded) = match ppm {

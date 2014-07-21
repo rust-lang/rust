@@ -37,7 +37,7 @@ pub struct ParseSess {
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<Path>>,
     // If we should record spans for every part of a path.
-    record_span_paths: ast::RecordPathSpans,
+    pub record_span_paths: ast::RecordPathSpans,
 }
 
 pub fn new_parse_sess() -> ParseSess {
@@ -56,6 +56,19 @@ pub fn new_parse_sess_special_handler(sh: SpanHandler) -> ParseSess {
     }
 }
 
+/// Any information about a crate which the parser collects and we might want
+/// to return to the user of the parser.
+pub struct ParseMetaInfo {
+    /// Optionally keep track of spans for every segment of every path.
+    pub path_span_table: Option<ast::PathSpanTable>,
+}
+
+fn make_meta_info(parser: Parser) -> Box<ParseMetaInfo> {
+    box ParseMetaInfo {
+        path_span_table: parser.path_span_table,
+    }
+}
+
 // a bunch of utility functions of the form parse_<thing>_from_<source>
 // where <thing> includes crate, expr, item, stmt, tts, and one that
 // uses a HOF to parse anything, and <source> includes file and
@@ -65,9 +78,10 @@ pub fn parse_crate_from_file(
     input: &Path,
     cfg: ast::CrateConfig,
     sess: &ParseSess
-) -> ast::Crate {
-    new_parser_from_file(sess, cfg, input).parse_crate_mod()
+) -> (ast::Crate, Box<ParseMetaInfo>) {
+    let mut p = new_parser_from_file(sess, cfg, input);
     // why is there no p.abort_if_errors here?
+    (p.parse_crate_mod(), make_meta_info(p))
 }
 
 pub fn parse_crate_attrs_from_file(
@@ -84,12 +98,13 @@ pub fn parse_crate_from_source_str(name: String,
                                    source: String,
                                    cfg: ast::CrateConfig,
                                    sess: &ParseSess)
-                                   -> ast::Crate {
+                                   -> (ast::Crate, Box<ParseMetaInfo>) {
     let mut p = new_parser_from_source_str(sess,
                                            cfg,
                                            name,
                                            source);
-    maybe_aborted(p.parse_crate_mod(),p)
+    let result = maybe_aborted(p.parse_crate_mod(), &mut p);
+    (result, make_meta_info(p))
 }
 
 pub fn parse_crate_attrs_from_source_str(name: String,
@@ -101,7 +116,7 @@ pub fn parse_crate_attrs_from_source_str(name: String,
                                            cfg,
                                            name,
                                            source);
-    let (inner, _) = maybe_aborted(p.parse_inner_attrs_and_next(),p);
+    let (inner, _) = maybe_aborted(p.parse_inner_attrs_and_next(), &mut p);
     inner
 }
 
@@ -111,7 +126,7 @@ pub fn parse_expr_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> Gc<ast::Expr> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(p.parse_expr(), p)
+    maybe_aborted(p.parse_expr(), &mut p)
 }
 
 pub fn parse_item_from_source_str(name: String,
@@ -120,7 +135,7 @@ pub fn parse_item_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> Option<Gc<ast::Item>> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(p.parse_item_with_outer_attributes(),p)
+    maybe_aborted(p.parse_item_with_outer_attributes(), &mut p)
 }
 
 pub fn parse_meta_from_source_str(name: String,
@@ -129,7 +144,7 @@ pub fn parse_meta_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> Gc<ast::MetaItem> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(p.parse_meta_item(),p)
+    maybe_aborted(p.parse_meta_item(), &mut p)
 }
 
 pub fn parse_stmt_from_source_str(name: String,
@@ -144,7 +159,7 @@ pub fn parse_stmt_from_source_str(name: String,
         name,
         source
     );
-    maybe_aborted(p.parse_stmt(attrs),p)
+    maybe_aborted(p.parse_stmt(attrs), &mut p)
 }
 
 pub fn parse_tts_from_source_str(name: String,
@@ -160,7 +175,7 @@ pub fn parse_tts_from_source_str(name: String,
     );
     p.quote_depth += 1u;
     // right now this is re-creating the token trees from ... token trees.
-    maybe_aborted(p.parse_all_token_trees(),p)
+    maybe_aborted(p.parse_all_token_trees(), &mut p)
 }
 
 // Create a new parser from a source string
@@ -271,7 +286,7 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
 }
 
 /// Abort if necessary
-pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
+pub fn maybe_aborted<T>(result: T, p: &mut Parser) -> T {
     p.abort_if_errors();
     result
 }

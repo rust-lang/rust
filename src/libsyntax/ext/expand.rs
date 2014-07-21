@@ -1258,7 +1258,7 @@ mod test {
         let src = "fn bogus() {macro_rules! z (() => (3+4))}\
                    fn inty() -> int { z!() }".to_string();
         let sess = parse::new_parse_sess();
-        let crate_ast = parse::parse_crate_from_source_str(
+        let (crate_ast, _) = parse::parse_crate_from_source_str(
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
@@ -1276,7 +1276,7 @@ mod test {
         let src = "mod foo {macro_rules! z (() => (3+4))}\
                    fn inty() -> int { z!() }".to_string();
         let sess = parse::new_parse_sess();
-        let crate_ast = parse::parse_crate_from_source_str(
+        let (crate_ast, _) = parse::parse_crate_from_source_str(
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
@@ -1292,7 +1292,7 @@ mod test {
         let src = "#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
                    fn inty() -> int { z!() }".to_string();
         let sess = parse::new_parse_sess();
-        let crate_ast = parse::parse_crate_from_source_str(
+        let (crate_ast, _) = parse::parse_crate_from_source_str(
             "<test>".to_string(),
             src,
             Vec::new(), &sess);

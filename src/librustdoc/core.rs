@@ -118,7 +118,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>, ext
         cfg.push(box(GC) dummy_spanned(ast::MetaWord(cfg_)));
     }
 
-    let krate = phase_1_parse_input(&sess, cfg, &input);
+    let (krate, _) = phase_1_parse_input(&sess, cfg, &input);
 
     let name = link::find_crate_name(Some(&sess), krate.attrs.as_slice(),
                                      &input);

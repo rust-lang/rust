@@ -17,7 +17,7 @@ use metadata::filesearch;
 use lint;
 use util::nodemap::NodeMap;
 
-use syntax::ast::NodeId;
+use syntax::ast::{NodeId, RecordAllPathSpans};
 use syntax::codemap::Span;
 use syntax::diagnostic;
 use syntax::diagnostics;
@@ -222,7 +222,12 @@ pub fn build_session_(sopts: config::Options,
                       span_diagnostic: diagnostic::SpanHandler)
                       -> Session {
     let target_cfg = config::build_target_config(&sopts);
-    let p_s = parse::new_parse_sess_special_handler(span_diagnostic);
+    let mut p_s = parse::new_parse_sess_special_handler(span_diagnostic);
+
+    if (sopts.debugging_opts & config::SAVE_ANALYSIS) != 0 {
+        p_s.record_span_paths = RecordAllPathSpans;
+    }
+
     let default_sysroot = match sopts.maybe_sysroot {
         Some(_) => None,
         None => Some(filesearch::get_or_default_sysroot())
