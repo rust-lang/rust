@@ -1,3 +1,13 @@
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 #![feature(globs, phase, macro_rules)]
 
 extern crate syntax;
@@ -158,7 +168,9 @@ fn count(lit: &str) -> uint {
 }
 
 fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
-    let re = regex!(r"\[@(?P<seq>\d+),(?P<start>\d+):(?P<end>\d+)='(?P<content>.+?)',<(?P<toknum>-?\d+)>,\d+:\d+]");
+    let re = regex!(
+      r"\[@(?P<seq>\d+),(?P<start>\d+):(?P<end>\d+)='(?P<content>.+?)',<(?P<toknum>-?\d+)>,\d+:\d+]"
+    );
 
     let m = re.captures(s).expect(format!("The regex didn't match {}", s).as_slice());
     let start = m.name("start");
@@ -166,7 +178,8 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
     let toknum = m.name("toknum");
     let content = m.name("content");
 
-    let proto_tok = tokens.find_equiv(&toknum).expect(format!("didn't find token {} in the map", toknum).as_slice());
+    let proto_tok = tokens.find_equiv(&toknum).expect(format!("didn't find token {} in the map",
+                                                              toknum).as_slice());
 
     let nm = parse::token::intern(content);
 
@@ -229,7 +242,8 @@ fn main() {
     let token_map = parse_token_list(token_file.read_to_string().unwrap().as_slice());
 
     let mut stdin = std::io::stdin();
-    let mut antlr_tokens = stdin.lines().map(|l| parse_antlr_token(l.unwrap().as_slice().trim(), &token_map));
+    let mut antlr_tokens = stdin.lines().map(|l| parse_antlr_token(l.unwrap().as_slice().trim(),
+                                                                   &token_map));
 
     let code = File::open(&Path::new(args.get(1).as_slice())).unwrap().read_to_string().unwrap();
     let options = config::basic_options();
@@ -246,7 +260,8 @@ fn main() {
             continue
         }
 
-        assert!(rustc_tok.sp == antlr_tok.sp, "{} and {} have different spans", rustc_tok, antlr_tok);
+        assert!(rustc_tok.sp == antlr_tok.sp, "{} and {} have different spans", rustc_tok,
+                antlr_tok);
 
         macro_rules! matches (
             ( $($x:pat),+ ) => (
