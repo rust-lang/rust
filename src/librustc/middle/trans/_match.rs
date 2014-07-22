@@ -1542,6 +1542,7 @@ fn mk_binding_alloca<'a,A>(bcx: &'a Block<'a>,
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
     let bcx = populate(arg, bcx, llval, var_ty);
+    bcx.fcx.schedule_lifetime_end(cleanup_scope, llval);
     bcx.fcx.schedule_drop_mem(cleanup_scope, llval, var_ty);
 
     // Now that memory is initialized and has cleanup scheduled,
