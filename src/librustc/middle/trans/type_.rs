@@ -19,8 +19,9 @@ use middle::trans::context::CrateContext;
 use syntax::ast;
 use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel};
 
-use std::c_str::{CString, ToCStr};
+use std::c_str::ToCStr;
 use std::mem;
+use std::string;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -333,7 +334,7 @@ impl TypeNames {
     pub fn type_to_string(&self, ty: Type) -> String {
         unsafe {
             let s = llvm::LLVMTypeToString(ty.to_ref());
-            let ret = CString::new(s, false).as_str().unwrap().to_string();
+            let ret = string::raw::from_buf(s as *const u8);
             free(s as *mut c_void);
             ret
         }
@@ -347,7 +348,7 @@ impl TypeNames {
     pub fn val_to_string(&self, val: ValueRef) -> String {
         unsafe {
             let s = llvm::LLVMValueToString(val);
-            let ret = CString::new(s, false).as_str().unwrap().to_string();
+            let ret = string::raw::from_buf(s as *const u8);
             free(s as *mut c_void);
             ret
         }
