@@ -297,10 +297,10 @@ fn search(
     // for every unused piece
     for id in range(0u, 10).filter(|id| board & (1 << (id + 50)) == 0) {
         // for each mask that fits on the board
-        for &m in masks_at.get(id).iter().filter(|&m| board & *m == 0) {
+        for m in masks_at.get(id).iter().filter(|&m| board & *m == 0) {
             // This check is too costy.
             //if is_board_unfeasible(board | m, masks) {continue;}
-            search(masks, board | m, i + 1, Cons(m, &cur), data);
+            search(masks, board | *m, i + 1, Cons(*m, &cur), data);
         }
     }
 }
@@ -311,9 +311,10 @@ fn par_search(masks: Vec<Vec<Vec<u64>>>) -> Data {
 
     // launching the search in parallel on every masks at minimum
     // coordinate (0,0)
-    for &m in masks.get(0).iter().flat_map(|masks_pos| masks_pos.iter()) {
+    for m in masks.get(0).iter().flat_map(|masks_pos| masks_pos.iter()) {
         let masks = masks.clone();
         let tx = tx.clone();
+        let m = *m;
         spawn(proc() {
             let mut data = Data::new();
             search(&*masks, m, 1, Cons(m, &Nil), &mut data);

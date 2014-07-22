@@ -79,6 +79,7 @@ type parameter).
 
 use middle::const_eval;
 use middle::def;
+use middle::lang_items::IteratorItem;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::subst;
@@ -1708,6 +1709,80 @@ fn try_overloaded_index(fcx: &FnCtxt,
     }
 }
 
+/// Given the head of a `for` expression, looks up the `next` method in the
+/// `Iterator` trait. Fails if the expression does not implement `next`.
+///
+/// The return type of this function represents the concrete element type
+/// `A` in the type `Iterator<A>` that the method returns.
+fn lookup_method_for_for_loop(fcx: &FnCtxt,
+                              iterator_expr: Gc<ast::Expr>,
+                              loop_id: ast::NodeId)
+                              -> ty::t {
+    let trait_did = match fcx.tcx().lang_items.require(IteratorItem) {
+        Ok(trait_did) => trait_did,
+        Err(ref err_string) => {
+            fcx.tcx().sess.span_err(iterator_expr.span,
+                                    err_string.as_slice());
+            return ty::mk_err()
+        }
+    };
+
+    let method = method::lookup_in_trait(fcx,
+                                         iterator_expr.span,
+                                         Some(&*iterator_expr),
+                                         token::intern("next"),
+                                         trait_did,
+                                         fcx.expr_ty(&*iterator_expr),
+                                         [],
+                                         DontAutoderefReceiver,
+                                         IgnoreStaticMethods);
+
+    // Regardless of whether the lookup succeeds, check the method arguments
+    // so that we have *some* type for each argument.
+    let method_type = match method {
+        Some(ref method) => method.ty,
+        None => {
+            fcx.tcx().sess.span_err(iterator_expr.span,
+                                    "`for` loop expression does not \
+                                     implement the `Iterator` trait");
+            ty::mk_err()
+        }
+    };
+    let return_type = check_method_argument_types(fcx,
+                                                  iterator_expr.span,
+                                                  method_type,
+                                                  &*iterator_expr,
+                                                  [iterator_expr],
+                                                  DontDerefArgs,
+                                                  DontTupleArguments);
+
+    match method {
+        Some(method) => {
+            fcx.inh.method_map.borrow_mut().insert(MethodCall::expr(loop_id),
+                                                   method);
+
+            // We expect the return type to be `Option` or something like it.
+            // Grab the first parameter of its type substitution.
+            let return_type = structurally_resolved_type(fcx,
+                                                         iterator_expr.span,
+                                                         return_type);
+            match ty::get(return_type).sty {
+                ty::ty_enum(_, ref substs)
+                        if !substs.types.is_empty_in(subst::TypeSpace) => {
+                    *substs.types.get(subst::TypeSpace, 0)
+                }
+                _ => {
+                    fcx.tcx().sess.span_err(iterator_expr.span,
+                                            "`next` method of the `Iterator` \
+                                             trait has an unexpected type");
+                    ty::mk_err()
+                }
+            }
+        }
+        None => ty::mk_err()
+    }
+}
+
 fn check_method_argument_types(fcx: &FnCtxt,
                                sp: Span,
                                method_fn_ty: ty::t,
@@ -3273,8 +3348,20 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             fcx.write_nil(id);
         }
       }
-      ast::ExprForLoop(..) =>
-          fail!("non-desugared expr_for_loop"),
+      ast::ExprForLoop(ref pat, ref head, ref block, _) => {
+        check_expr(fcx, &**head);
+        let typ = lookup_method_for_for_loop(fcx, *head, expr.id);
+        vtable::early_resolve_expr(expr, fcx, true);
+
+        let pcx = pat_ctxt {
+            fcx: fcx,
+            map: pat_id_map(&tcx.def_map, &**pat),
+        };
+        _match::check_pat(&pcx, &**pat, typ);
+
+        check_block_no_value(fcx, &**block);
+        fcx.write_nil(id);
+      }
       ast::ExprLoop(ref body, _) => {
         check_block_no_value(fcx, &**body);
         if !may_break(tcx, expr.id, body.clone()) {

@@ -39,6 +39,7 @@ pub fn decompose_canonical(c: char, i: |char|) { d(c, i, false); }
 pub fn decompose_compatible(c: char, i: |char|) { d(c, i, true); }
 
 fn d(c: char, i: |char|, k: bool) {
+    #[cfg(stage0)]
     use core::iter::Iterator;
 
     // 7-bit ASCII never decomposes

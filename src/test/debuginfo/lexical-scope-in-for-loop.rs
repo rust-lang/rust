@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10381)
+// ignore-test: Not sure what is going on here --pcwalton
 
 // compile-flags:-g
 

@@ -665,6 +665,13 @@ fn trans_rvalue_stmt_unadjusted<'a>(bcx: &'a Block<'a>,
         ast::ExprWhile(ref cond, ref body) => {
             controlflow::trans_while(bcx, expr.id, &**cond, &**body)
         }
+        ast::ExprForLoop(ref pat, ref head, ref body, _) => {
+            controlflow::trans_for(bcx,
+                                   expr_info(expr),
+                                   *pat,
+                                   &**head,
+                                   &**body)
+        }
         ast::ExprLoop(ref body, _) => {
             controlflow::trans_loop(bcx, expr.id, &**body)
         }

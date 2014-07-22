@@ -79,7 +79,8 @@ pub enum LoanCause {
     AutoRef,
     RefBinding,
     OverloadedOperator,
-    ClosureInvocation
+    ClosureInvocation,
+    ForLoop,
 }
 
 #[deriving(PartialEq,Show)]
@@ -395,7 +396,16 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 self.walk_block(&**blk);
             }
 
-            ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
+            ast::ExprForLoop(ref pat, ref head, ref blk, _) => {
+                // The pattern lives as long as the block.
+                debug!("walk_expr for loop case: blk id={}", blk.id);
+                self.walk_expr(&**head);
+
+                let head_cmt = return_if_err!(self.mc.cat_expr(&**head));
+                self.walk_pat(head_cmt, pat.clone());
+
+                self.walk_block(&**blk);
+            }
 
             ast::ExprUnary(_, ref lhs) => {
                 if !self.walk_overloaded_operator(expr, &**lhs, []) {
