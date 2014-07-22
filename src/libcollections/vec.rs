@@ -35,8 +35,7 @@ pub static PTR_MARKER: u8 = 0;
 ///
 /// # Examples
 ///
-/// ```rust
-/// # use std::vec::Vec;
+/// ```
 /// let mut vec = Vec::new();
 /// vec.push(1i);
 /// vec.push(2i);
@@ -46,14 +45,43 @@ pub static PTR_MARKER: u8 = 0;
 ///
 /// assert_eq!(vec.pop(), Some(2));
 /// assert_eq!(vec.len(), 1);
+///
+/// *vec.get_mut(0) = 7i;
+/// assert_eq!(vec[0], 7);
+///
+/// vec.push_all([1, 2, 3]);
+///
+/// for x in vec.iter() {
+///     println!("{}", x);
+/// }
+/// assert_eq!(vec, vec![7i, 1, 2, 3]);
 /// ```
 ///
 /// The `vec!` macro is provided to make initialization more convenient:
 ///
-/// ```rust
+/// ```
 /// let mut vec = vec![1i, 2i, 3i];
 /// vec.push(4);
 /// assert_eq!(vec, vec![1, 2, 3, 4]);
+/// ```
+///
+/// Use a `Vec` as an efficient stack:
+///
+/// ```
+/// let mut stack = Vec::new();
+///
+/// stack.push(1i);
+/// stack.push(2i);
+/// stack.push(3i);
+///
+/// loop {
+///     let top = match stack.pop() {
+///         None => break, // empty
+///         Some(x) => x,
+///     };
+///     // Prints 3, 2, 1
+///     println!("{}", top);
+/// }
 /// ```
 ///
 /// # Capacity and reallocation
@@ -86,8 +114,7 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::vec::Vec;
+    /// ```
     /// let mut vec: Vec<int> = Vec::new();
     /// ```
     #[inline]
@@ -112,8 +139,7 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::vec::Vec;
+    /// ```
     /// let mut vec: Vec<int> = Vec::with_capacity(10);
     ///
     /// // The vector contains no items, even though it has capacity for more
@@ -148,10 +174,9 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::vec::Vec;
+    /// ```
     /// let vec = Vec::from_fn(3, |idx| idx * 2);
-    /// assert_eq!(vec, vec!(0, 2, 4));
+    /// assert_eq!(vec, vec![0, 2, 4]);
     /// ```
     #[inline]
     pub fn from_fn(length: uint, op: |uint| -> T) -> Vec<T> {
@@ -175,6 +200,37 @@ impl<T> Vec<T> {
     /// - there must be `length` valid instances of type `T` at the
     ///   beginning of that allocation
     /// - `ptr` must be allocated by the default `Vec` allocator
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::ptr;
+    /// use std::mem;
+    ///
+    /// fn main() {
+    ///     let mut v = vec![1i, 2, 3];
+    ///
+    ///     // Pull out the various important pieces of information about `v`
+    ///     let p = v.as_mut_ptr();
+    ///     let len = v.len();
+    ///     let cap = v.capacity();
+    ///
+    ///     unsafe {
+    ///         // Cast `v` into the void: no destructor run, so we are in
+    ///         // complete control of the allocation to which `p` points.
+    ///         mem::forget(v);
+    ///
+    ///         // Overwrite memory with 4, 5, 6
+    ///         for i in range(0, len as int) {
+    ///             ptr::write(p.offset(i), 4 + i);
+    ///         }
+    ///
+    ///         // Put everything back together into a Vec
+    ///         let rebuilt = Vec::from_raw_parts(len, cap, p);
+    ///         assert_eq!(rebuilt, vec![4i, 5i, 6i]);
+    ///     }
+    /// }
+    /// ```
     pub unsafe fn from_raw_parts(length: uint, capacity: uint,
                                  ptr: *mut T) -> Vec<T> {
         Vec { len: length, cap: capacity, ptr: ptr }
@@ -188,11 +244,11 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2i, 3i, 4i);
+    /// ```
+    /// let vec = vec![1i, 2i, 3i, 4i];
     /// let (even, odd) = vec.partition(|&n| n % 2 == 0);
-    /// assert_eq!(even, vec!(2, 4));
-    /// assert_eq!(odd, vec!(1, 3));
+    /// assert_eq!(even, vec![2, 4]);
+    /// assert_eq!(odd, vec![1, 3]);
     /// ```
     #[inline]
     pub fn partition(self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
@@ -217,10 +273,10 @@ impl<T: Clone> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2i);
+    /// ```
+    /// let vec = vec![1i, 2i];
     /// let vec = vec.append([3i, 4i]);
-    /// assert_eq!(vec, vec!(1, 2, 3, 4));
+    /// assert_eq!(vec, vec![1, 2, 3, 4]);
     /// ```
     #[inline]
     pub fn append(mut self, second: &[T]) -> Vec<T> {
@@ -232,8 +288,7 @@ impl<T: Clone> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::vec::Vec;
+    /// ```
     /// let slice = [1i, 2, 3];
     /// let vec = Vec::from_slice(slice);
     /// ```
@@ -249,8 +304,7 @@ impl<T: Clone> Vec<T> {
     /// Creates a `Vec` with `length` copies of `value`.
     ///
     /// # Example
-    /// ```rust
-    /// # use std::vec::Vec;
+    /// ```
     /// let vec = Vec::from_elem(3, "hi");
     /// println!("{}", vec); // prints [hi, hi, hi]
     /// ```
@@ -275,10 +329,10 @@ impl<T: Clone> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i);
+    /// ```
+    /// let mut vec = vec![1i];
     /// vec.push_all([2i, 3, 4]);
-    /// assert_eq!(vec, vec!(1, 2, 3, 4));
+    /// assert_eq!(vec, vec![1, 2, 3, 4]);
     /// ```
     #[inline]
     pub fn push_all(&mut self, other: &[T]) {
@@ -305,10 +359,10 @@ impl<T: Clone> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!("hello");
+    /// ```
+    /// let mut vec = vec!["hello"];
     /// vec.grow(2, &("world"));
-    /// assert_eq!(vec, vec!("hello", "world", "world"));
+    /// assert_eq!(vec, vec!["hello", "world", "world"]);
     /// ```
     pub fn grow(&mut self, n: uint, value: &T) {
         self.reserve_additional(n);
@@ -329,11 +383,11 @@ impl<T: Clone> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!("a", "b", "c");
+    /// ```
+    /// let mut vec = vec!["a", "b", "c"];
     /// vec.grow_set(1, &("fill"), "d");
     /// vec.grow_set(4, &("fill"), "e");
-    /// assert_eq!(vec, vec!("a", "d", "c", "fill", "e"));
+    /// assert_eq!(vec, vec!["a", "d", "c", "fill", "e"]);
     /// ```
     pub fn grow_set(&mut self, index: uint, initval: &T, value: T) {
         let l = self.len();
@@ -351,11 +405,11 @@ impl<T: Clone> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2, 3, 4);
+    /// ```
+    /// let vec = vec![1i, 2, 3, 4];
     /// let (even, odd) = vec.partitioned(|&n| n % 2 == 0);
-    /// assert_eq!(even, vec!(2i, 4));
-    /// assert_eq!(odd, vec!(1i, 3));
+    /// assert_eq!(even, vec![2i, 4]);
+    /// assert_eq!(odd, vec![1i, 3]);
     /// ```
     pub fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
         let mut lefts = Vec::new();
@@ -501,8 +555,7 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::vec::Vec;
+    /// ```
     /// let vec: Vec<int> = Vec::with_capacity(10);
     /// assert_eq!(vec.capacity(), 10);
     /// ```
@@ -520,9 +573,8 @@ impl<T> Vec<T> {
      ///
      /// # Example
      ///
-     /// ```rust
-     /// # use std::vec::Vec;
-     /// let mut vec: Vec<int> = vec!(1i);
+     /// ```
+     /// let mut vec: Vec<int> = vec![1i];
      /// vec.reserve_additional(10);
      /// assert!(vec.capacity() >= 11);
      /// ```
@@ -546,8 +598,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3];
     /// vec.reserve(10);
     /// assert!(vec.capacity() >= 10);
     /// ```
@@ -564,8 +616,7 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// # use std::vec::Vec;
+    /// ```
     /// let mut vec: Vec<int> = Vec::with_capacity(10);
     /// vec.reserve_exact(11);
     /// assert_eq!(vec.capacity(), 11);
@@ -588,8 +639,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3];
     /// vec.shrink_to_fit();
     /// ```
     pub fn shrink_to_fit(&mut self) {
@@ -620,10 +671,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3];
     /// assert_eq!(vec.pop(), Some(3));
-    /// assert_eq!(vec, vec!(1, 2));
+    /// assert_eq!(vec, vec![1, 2]);
     /// ```
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
@@ -645,10 +696,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2);
+    /// ```
+    /// let mut vec = vec![1i, 2];
     /// vec.push(3);
-    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// assert_eq!(vec, vec![1, 2, 3]);
     /// ```
     #[inline]
     pub fn push(&mut self, value: T) {
@@ -681,10 +732,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2);
+    /// ```
+    /// let vec = vec![1i, 2];
     /// let vec = vec.append_one(3);
-    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// assert_eq!(vec, vec![1, 2, 3]);
     /// ```
     #[inline]
     pub fn append_one(mut self, x: T) -> Vec<T> {
@@ -699,10 +750,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3, 4);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3, 4];
     /// vec.truncate(2);
-    /// assert_eq!(vec, vec!(1, 2));
+    /// assert_eq!(vec, vec![1, 2]);
     /// ```
     pub fn truncate(&mut self, len: uint) {
         unsafe {
@@ -720,10 +771,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// fn foo(slice: &mut [int]) {}
     ///
-    /// let mut vec = vec!(1i, 2);
+    /// let mut vec = vec![1i, 2];
     /// foo(vec.as_mut_slice());
     /// ```
     #[inline]
@@ -742,8 +793,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let v = vec!("a".to_string(), "b".to_string());
+    /// ```
+    /// let v = vec!["a".to_string(), "b".to_string()];
     /// for s in v.move_iter() {
     ///     // s has type String, not &String
     ///     println!("{}", s);
@@ -766,6 +817,15 @@ impl<T> Vec<T> {
     /// This will explicitly set the size of the vector, without actually
     /// modifying its buffers, so it is up to the caller to ensure that the
     /// vector is actually the specified size.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut v = vec![1u, 2, 3, 4];
+    /// unsafe {
+    ///     v.set_len(1);
+    /// }
+    /// ```
     #[inline]
     pub unsafe fn set_len(&mut self, len: uint) {
         self.len = len;
@@ -779,10 +839,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// #![allow(deprecated)]
     ///
-    /// let vec = vec!(1i, 2, 3);
+    /// let vec = vec![1i, 2, 3];
     /// assert!(vec.get(1) == &2);
     /// ```
     #[deprecated="prefer using indexing, e.g., vec[0]"]
@@ -799,10 +859,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3];
     /// *vec.get_mut(1) = 4;
-    /// assert_eq!(vec, vec!(1i, 4, 3));
+    /// assert_eq!(vec, vec![1i, 4, 3]);
     /// ```
     #[inline]
     pub fn get_mut<'a>(&'a mut self, index: uint) -> &'a mut T {
@@ -814,8 +874,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2, 3);
+    /// ```
+    /// let vec = vec![1i, 2, 3];
     /// for num in vec.iter() {
     ///     println!("{}", *num);
     /// }
@@ -831,8 +891,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3];
     /// for num in vec.mut_iter() {
     ///     *num = 0;
     /// }
@@ -849,14 +909,14 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut v = vec!(5i, 4, 1, 3, 2);
+    /// ```
+    /// let mut v = vec![5i, 4, 1, 3, 2];
     /// v.sort_by(|a, b| a.cmp(b));
-    /// assert_eq!(v, vec!(1i, 2, 3, 4, 5));
+    /// assert_eq!(v, vec![1i, 2, 3, 4, 5]);
     ///
     /// // reverse sorting
     /// v.sort_by(|a, b| b.cmp(a));
-    /// assert_eq!(v, vec!(5i, 4, 3, 2, 1));
+    /// assert_eq!(v, vec![5i, 4, 3, 2, 1]);
     /// ```
     #[inline]
     pub fn sort_by(&mut self, compare: |&T, &T| -> Ordering) {
@@ -872,8 +932,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2, 3, 4);
+    /// ```
+    /// let vec = vec![1i, 2, 3, 4];
     /// assert!(vec.slice(0, 2) == [1, 2]);
     /// ```
     #[inline]
@@ -889,8 +949,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2, 3);
+    /// ```
+    /// let vec = vec![1i, 2, 3];
     /// assert!(vec.tail() == [2, 3]);
     /// ```
     #[inline]
@@ -906,8 +966,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2, 3, 4);
+    /// ```
+    /// let vec = vec![1i, 2, 3, 4];
     /// assert!(vec.tailn(2) == [3, 4]);
     /// ```
     #[inline]
@@ -920,8 +980,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2, 3);
+    /// ```
+    /// let vec = vec![1i, 2, 3];
     /// assert!(vec.last() == Some(&3));
     /// ```
     #[inline]
@@ -934,10 +994,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3];
     /// *vec.mut_last().unwrap() = 4;
-    /// assert_eq!(vec, vec!(1i, 2, 4));
+    /// assert_eq!(vec, vec![1i, 2, 4]);
     /// ```
     #[inline]
     pub fn mut_last<'a>(&'a mut self) -> Option<&'a mut T> {
@@ -950,15 +1010,15 @@ impl<T> Vec<T> {
     /// Returns `None` if `index` is out of bounds.
     ///
     /// # Example
-    /// ```rust
-    /// let mut v = vec!("foo".to_string(), "bar".to_string(),
-    ///                  "baz".to_string(), "qux".to_string());
+    /// ```
+    /// let mut v = vec!["foo".to_string(), "bar".to_string(),
+    ///                  "baz".to_string(), "qux".to_string()];
     ///
     /// assert_eq!(v.swap_remove(1), Some("bar".to_string()));
-    /// assert_eq!(v, vec!("foo".to_string(), "qux".to_string(), "baz".to_string()));
+    /// assert_eq!(v, vec!["foo".to_string(), "qux".to_string(), "baz".to_string()]);
     ///
     /// assert_eq!(v.swap_remove(0), Some("foo".to_string()));
-    /// assert_eq!(v, vec!("baz".to_string(), "qux".to_string()));
+    /// assert_eq!(v, vec!["baz".to_string(), "qux".to_string()]);
     ///
     /// assert_eq!(v.swap_remove(2), None);
     /// ```
@@ -982,10 +1042,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3];
     /// vec.unshift(4);
-    /// assert_eq!(vec, vec!(4, 1, 2, 3));
+    /// assert_eq!(vec, vec![4, 1, 2, 3]);
     /// ```
     #[inline]
     pub fn unshift(&mut self, element: T) {
@@ -1002,10 +1062,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3];
     /// assert!(vec.shift() == Some(1));
-    /// assert_eq!(vec, vec!(2, 3));
+    /// assert_eq!(vec, vec![2, 3]);
     /// ```
     #[inline]
     pub fn shift(&mut self) -> Option<T> {
@@ -1022,12 +1082,12 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3];
     /// vec.insert(1, 4);
-    /// assert_eq!(vec, vec!(1, 4, 2, 3));
+    /// assert_eq!(vec, vec![1, 4, 2, 3]);
     /// vec.insert(4, 5);
-    /// assert_eq!(vec, vec!(1, 4, 2, 3, 5));
+    /// assert_eq!(vec, vec![1, 4, 2, 3, 5]);
     /// ```
     pub fn insert(&mut self, index: uint, element: T) {
         let len = self.len();
@@ -1056,14 +1116,14 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut v = vec!(1i, 2, 3);
+    /// ```
+    /// let mut v = vec![1i, 2, 3];
     /// assert_eq!(v.remove(1), Some(2));
-    /// assert_eq!(v, vec!(1, 3));
+    /// assert_eq!(v, vec![1, 3]);
     ///
     /// assert_eq!(v.remove(4), None);
     /// // v is unchanged:
-    /// assert_eq!(v, vec!(1, 3));
+    /// assert_eq!(v, vec![1, 3]);
     /// ```
     pub fn remove(&mut self, index: uint) -> Option<T> {
         let len = self.len();
@@ -1095,10 +1155,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(box 1i);
-    /// vec.push_all_move(vec!(box 2, box 3, box 4));
-    /// assert_eq!(vec, vec!(box 1, box 2, box 3, box 4));
+    /// ```
+    /// let mut vec = vec![box 1i];
+    /// vec.push_all_move(vec![box 2, box 3, box 4]);
+    /// assert_eq!(vec, vec![box 1, box 2, box 3, box 4]);
     /// ```
     #[inline]
     pub fn push_all_move(&mut self, other: Vec<T>) {
@@ -1114,8 +1174,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3, 4);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3, 4];
     /// assert!(vec.mut_slice(0, 2) == [1, 2]);
     /// ```
     #[inline]
@@ -1132,8 +1192,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3, 4);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3, 4];
     /// assert!(vec.mut_slice_from(2) == [3, 4]);
     /// ```
     #[inline]
@@ -1149,8 +1209,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3, 4);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3, 4];
     /// assert!(vec.mut_slice_to(2) == [1, 2]);
     /// ```
     #[inline]
@@ -1170,8 +1230,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3, 4, 5, 6);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3, 4, 5, 6];
     ///
     /// // scoped to restrict the lifetime of the borrows
     /// {
@@ -1201,10 +1261,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut v = vec!(1i, 2, 3);
+    /// ```
+    /// let mut v = vec![1i, 2, 3];
     /// v.reverse();
-    /// assert_eq!(v, vec!(3i, 2, 1));
+    /// assert_eq!(v, vec![3i, 2, 1]);
     /// ```
     #[inline]
     pub fn reverse(&mut self) {
@@ -1219,8 +1279,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2, 3);
+    /// ```
+    /// let vec = vec![1i, 2, 3];
     /// assert!(vec.slice_from(1) == [2, 3]);
     /// ```
     #[inline]
@@ -1236,8 +1296,8 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2, 3);
+    /// ```
+    /// let vec = vec![1i, 2, 3, 4];
     /// assert!(vec.slice_to(2) == [1, 2]);
     /// ```
     #[inline]
@@ -1250,6 +1310,13 @@ impl<T> Vec<T> {
     /// # Failure
     ///
     /// Fails if the vector is empty
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let vec = vec![1i, 2, 3];
+    /// assert!(vec.init() == [1, 2]);
+    /// ```
     #[inline]
     pub fn init<'a>(&'a self) -> &'a [T] {
         self.slice(0, self.len() - 1)
@@ -1263,6 +1330,19 @@ impl<T> Vec<T> {
     ///
     /// Modifying the vector may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let v = vec![1i, 2, 3];
+    /// let p = v.as_ptr();
+    /// unsafe {
+    ///     // Examine each element manually
+    ///     assert_eq!(*p, 1i);
+    ///     assert_eq!(*p.offset(1), 2i);
+    ///     assert_eq!(*p.offset(2), 3i);
+    /// }
+    /// ```
     #[inline]
     pub fn as_ptr(&self) -> *const T {
         self.ptr as *const T
@@ -1275,6 +1355,20 @@ impl<T> Vec<T> {
     ///
     /// Modifying the vector may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::ptr;
+    ///
+    /// let mut v = vec![1i, 2, 3];
+    /// let p = v.as_mut_ptr();
+    /// unsafe {
+    ///     ptr::write(p, 9i);
+    ///     ptr::write(p.offset(2), 5i);
+    /// }
+    /// assert_eq!(v, vec![9i, 2, 5]);
+    /// ```
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self.ptr
@@ -1287,10 +1381,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 3, 4);
+    /// ```
+    /// let mut vec = vec![1i, 2, 3, 4];
     /// vec.retain(|x| x%2 == 0);
-    /// assert_eq!(vec, vec!(2, 4));
+    /// assert_eq!(vec, vec![2, 4]);
     /// ```
     pub fn retain(&mut self, f: |&T| -> bool) {
         let len = self.len();
@@ -1318,10 +1412,10 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(0u, 1);
+    /// ```
+    /// let mut vec = vec![0u, 1];
     /// vec.grow_fn(3, |i| i);
-    /// assert_eq!(vec, vec!(0, 1, 0, 1, 2));
+    /// assert_eq!(vec, vec![0, 1, 0, 1, 2]);
     /// ```
     pub fn grow_fn(&mut self, n: uint, f: |uint| -> T) {
         self.reserve_additional(n);
@@ -1339,10 +1433,10 @@ impl<T:Ord> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(3i, 1, 2);
+    /// ```
+    /// let mut vec = vec![3i, 1, 2];
     /// vec.sort();
-    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// assert_eq!(vec, vec![1, 2, 3]);
     /// ```
     pub fn sort(&mut self) {
         self.as_mut_slice().sort()
@@ -1361,8 +1455,8 @@ impl<T:PartialEq> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let vec = vec!(1i, 2, 3);
+    /// ```
+    /// let vec = vec![1i, 2, 3];
     /// assert!(vec.contains(&1));
     /// ```
     #[inline]
@@ -1376,10 +1470,10 @@ impl<T:PartialEq> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2, 2, 3, 2);
+    /// ```
+    /// let mut vec = vec![1i, 2, 2, 3, 2];
     /// vec.dedup();
-    /// assert_eq!(vec, vec!(1i, 2, 3, 2));
+    /// assert_eq!(vec, vec![1i, 2, 3, 2]);
     /// ```
     pub fn dedup(&mut self) {
         unsafe {
@@ -1471,10 +1565,10 @@ impl<T> Vector<T> for Vec<T> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// fn foo(slice: &[int]) {}
     ///
-    /// let vec = vec!(1i, 2);
+    /// let vec = vec![1i, 2];
     /// foo(vec.as_slice());
     /// ```
     #[inline]
