@@ -16,6 +16,7 @@
 // This also serves as a pipes test, because Arcs are implemented with pipes.
 
 // no-pretty-expanded FIXME #15189
+// ignore-lexer-test FIXME #15679
 
 extern crate time;
 

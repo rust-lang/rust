@@ -192,6 +192,8 @@ check-docs: cleantestlibs cleantmptestlogs check-stage2-docs
 # NOTE: Remove after reprogramming windows bots
 check-fast: check-lite
 
+check-syntax: check-lexer
+
 .PHONY: cleantmptestlogs cleantestlibs
 
 cleantmptestlogs:

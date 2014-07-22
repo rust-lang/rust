@@ -216,6 +216,7 @@ ifneq ($(strip $(findstring check,$(MAKECMDGOALS)) \
                $(findstring tidy,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including test rules)
   include $(CFG_SRC_DIR)mk/tests.mk
+  include $(CFG_SRC_DIR)mk/grammar.mk
 endif
 
 # Performance and benchmarking

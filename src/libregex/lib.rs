@@ -7,6 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
+// ignore-lexer-test FIXME #15679
 
 //! This crate provides a native implementation of regular expressions that is
 //! heavily based on RE2 both in syntax and in implementation. Notably,

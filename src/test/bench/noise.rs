@@ -10,6 +10,7 @@
 
 // Multi-language Perlin noise benchmark.
 // See https://github.com/nsf/pnoise for timings and alternative implementations.
+// ignore-lexer-test FIXME #15679
 
 use std::f32::consts::PI;
 use std::rand::{Rng, StdRng};
