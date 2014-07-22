@@ -39,7 +39,7 @@
 #[macro_export]
 macro_rules! fail(
     () => (
-        fail!("explicit failure")
+        ::std::rt::begin_unwind_no_time_to_explain(file!(), line!())
     );
     ($msg:expr) => (
         ::std::rt::begin_unwind($msg, file!(), line!())
