@@ -14,6 +14,7 @@
 // ignore-tidy-cr
 // ignore-tidy-tab
 // pp-exact:block-comment-wchar.pp
+// ignore-lexer-test FIXME #15679
 fn f() {
     fn nested() {
         /*

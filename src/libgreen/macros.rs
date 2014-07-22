@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // FIXME: this file probably shouldn't exist
+// ignore-lexer-test FIXME #15677
 
 #![macro_escape]
 

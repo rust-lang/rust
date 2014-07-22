@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // no-pretty-expanded unnecessary unsafe block generated
+// ignore-lexer-test FIXME #15679
 
 #![feature(macro_rules, managed_boxes)]
 #![deny(warnings)]
