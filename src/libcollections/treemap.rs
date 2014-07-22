@@ -859,7 +859,7 @@ impl<'a, T: Ord, I: Iterator<&'a T>> Iterator<&'a T> for UnionItems<'a, T, I> {
 
 
 /// A implementation of a multiset on top of the `TreeMap` container. The only
-/// requirement is that the type of the elements contained ascribes to the 
+/// requirement is that the type of the elements contained ascribes to the
 /// `Ord` trait.
 #[deriving(Clone)]
 pub struct TreeMultiset<T> {
@@ -1106,16 +1106,6 @@ impl<T: Ord> TreeMultiset<T> {
     /// value was present in the multiset.
     pub fn remove(&mut self, value: &T) -> bool {
         self.remove_many(value, 1) > 0u
-    }
-}
-
-impl<T: Ord + Clone> TreeMultiset<T> {
-    pub fn to_set(&self) -> TreeSet<T> {
-        let mut set = TreeSet::new();
-        for (k, _) in self.map.clone().move_iter() {
-            set.insert(k);
-        }
-        set
     }
 }
 
