@@ -15,12 +15,12 @@ use middle::ty::TyVar;
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::{cres, CresCompare};
+use middle::typeck::infer::equate::Equate;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::InferCtxt;
-use middle::typeck::infer::lattice::CombineFieldsLatticeMethods;
 use middle::typeck::infer::lub::Lub;
-use middle::typeck::infer::then;
 use middle::typeck::infer::{TypeTrace, Subtype};
+use middle::typeck::infer::type_variable::{SubtypeOf, SupertypeOf};
 use util::common::{indenter};
 use util::ppaux::{bound_region_to_string, Repr};
 
@@ -43,27 +43,23 @@ impl<'f> Combine for Sub<'f> {
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
     fn trace(&self) -> TypeTrace { self.fields.trace.clone() }
 
+    fn equate<'a>(&'a self) -> Equate<'a> { Equate(self.fields.clone()) }
     fn sub<'a>(&'a self) -> Sub<'a> { Sub(self.fields.clone()) }
     fn lub<'a>(&'a self) -> Lub<'a> { Lub(self.fields.clone()) }
     fn glb<'a>(&'a self) -> Glb<'a> { Glb(self.fields.clone()) }
 
     fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
-        let opp = CombineFields {
-            a_is_expected: !self.fields.a_is_expected,
-            ..self.fields.clone()
-        };
-        Sub(opp).tys(b, a)
+        Sub(self.fields.switch_expected()).tys(b, a)
     }
 
     fn contraregions(&self, a: ty::Region, b: ty::Region)
-                     -> cres<ty::Region>
-    {
-        let opp = CombineFields {
-            a_is_expected: !self.fields.a_is_expected,
-            ..self.fields.clone()
-        };
-        Sub(opp).regions(b, a)
-    }
+                     -> cres<ty::Region> {
+                         let opp = CombineFields {
+                             a_is_expected: !self.fields.a_is_expected,
+                             ..self.fields.clone()
+                         };
+                         Sub(opp).regions(b, a)
+                     }
 
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("{}.regions({}, {})",
@@ -84,16 +80,18 @@ impl<'f> Combine for Sub<'f> {
         }
 
         match b.mutbl {
-          MutMutable => {
-            // If supertype is mut, subtype must match exactly
-            // (i.e., invariant if mut):
-            eq_tys(self, a.ty, b.ty).then(|| Ok(*a))
-          }
-          MutImmutable => {
-            // Otherwise we can be covariant:
-            self.tys(a.ty, b.ty).and_then(|_t| Ok(*a) )
-          }
+            MutMutable => {
+                // If supertype is mut, subtype must match exactly
+                // (i.e., invariant if mut):
+                try!(self.equate().tys(a.ty, b.ty));
+            }
+            MutImmutable => {
+                // Otherwise we can be covariant:
+                try!(self.tys(a.ty, b.ty));
+            }
         }
+
+        Ok(*a) // return is meaningless in sub, just return *a
     }
 
     fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<FnStyle> {
@@ -126,14 +124,19 @@ impl<'f> Combine for Sub<'f> {
         debug!("{}.tys({}, {})", self.tag(),
                a.repr(self.fields.infcx.tcx), b.repr(self.fields.infcx.tcx));
         if a == b { return Ok(a); }
-        let _indenter = indenter();
+
+        let infcx = self.fields.infcx;
+        let a = infcx.type_variables.borrow().replace_if_possible(a);
+        let b = infcx.type_variables.borrow().replace_if_possible(b);
         match (&ty::get(a).sty, &ty::get(b).sty) {
             (&ty::ty_bot, _) => {
                 Ok(a)
             }
 
             (&ty::ty_infer(TyVar(a_id)), &ty::ty_infer(TyVar(b_id))) => {
-                if_ok!(self.fields.var_sub_var(a_id, b_id));
+                infcx.type_variables
+                    .borrow_mut()
+                    .relate_vars(a_id, SubtypeOf, b_id);
                 Ok(a)
             }
             // The vec/str check here and below is so that we don't unify
@@ -145,7 +148,9 @@ impl<'f> Combine for Sub<'f> {
                 Err(ty::terr_sorts(expected_found(self, a, b)))
             }
             (&ty::ty_infer(TyVar(a_id)), _) => {
-                if_ok!(self.fields.var_sub_t(a_id, b));
+                try!(self.fields
+                       .switch_expected()
+                       .instantiate(b, SupertypeOf, a_id));
                 Ok(a)
             }
 
@@ -154,7 +159,7 @@ impl<'f> Combine for Sub<'f> {
                 Err(ty::terr_sorts(expected_found(self, a, b)))
             }
             (_, &ty::ty_infer(TyVar(b_id))) => {
-                if_ok!(self.fields.t_sub_var(a, b_id));
+                try!(self.fields.instantiate(a, SubtypeOf, b_id));
                 Ok(a)
             }
 

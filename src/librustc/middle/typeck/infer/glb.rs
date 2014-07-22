@@ -12,9 +12,9 @@
 use middle::ty::{BuiltinBounds};
 use middle::ty::RegionVid;
 use middle::ty;
-use middle::typeck::infer::then;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::lattice::*;
+use middle::typeck::infer::equate::Equate;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::{cres, InferCtxt};
@@ -31,7 +31,7 @@ use util::ppaux::Repr;
 
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'f> {
-    pub fields: CombineFields<'f>
+    fields: CombineFields<'f>
 }
 
 #[allow(non_snake_case_functions)]
@@ -45,6 +45,7 @@ impl<'f> Combine for Glb<'f> {
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
     fn trace(&self) -> TypeTrace { self.fields.trace.clone() }
 
+    fn equate<'a>(&'a self) -> Equate<'a> { Equate(self.fields.clone()) }
     fn sub<'a>(&'a self) -> Sub<'a> { Sub(self.fields.clone()) }
     fn lub<'a>(&'a self) -> Lub<'a> { Lub(self.fields.clone()) }
     fn glb<'a>(&'a self) -> Glb<'a> { Glb(self.fields.clone()) }
@@ -58,27 +59,25 @@ impl<'f> Combine for Glb<'f> {
                mt_to_string(tcx, b));
 
         match (a.mutbl, b.mutbl) {
-          // If one side or both is mut, then the GLB must use
-          // the precise type from the mut side.
-          (MutMutable, MutMutable) => {
-            eq_tys(self, a.ty, b.ty).then(|| {
-                Ok(ty::mt {ty: a.ty, mutbl: MutMutable})
-            })
-          }
+            // If one side or both is mut, then the GLB must use
+            // the precise type from the mut side.
+            (MutMutable, MutMutable) => {
+                let t = try!(self.equate().tys(a.ty, b.ty));
+                Ok(ty::mt {ty: t, mutbl: MutMutable})
+            }
 
-          // If one side or both is immutable, we can use the GLB of
-          // both sides but mutbl must be `MutImmutable`.
-          (MutImmutable, MutImmutable) => {
-            self.tys(a.ty, b.ty).and_then(|t| {
+            // If one side or both is immutable, we can use the GLB of
+            // both sides but mutbl must be `MutImmutable`.
+            (MutImmutable, MutImmutable) => {
+                let t = try!(self.tys(a.ty, b.ty));
                 Ok(ty::mt {ty: t, mutbl: MutImmutable})
-            })
-          }
+            }
 
-          // There is no mutual subtype of these combinations.
-          (MutMutable, MutImmutable) |
-          (MutImmutable, MutMutable) => {
-              Err(ty::terr_mutability)
-          }
+            // There is no mutual subtype of these combinations.
+            (MutMutable, MutImmutable) |
+            (MutImmutable, MutMutable) => {
+                Err(ty::terr_mutability)
+            }
         }
     }
 

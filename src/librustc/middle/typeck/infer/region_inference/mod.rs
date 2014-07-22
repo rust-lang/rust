@@ -234,7 +234,7 @@ impl<'a> RegionVarBindings<'a> {
         }
     }
 
-    pub fn in_snapshot(&self) -> bool {
+    fn in_snapshot(&self) -> bool {
         self.undo_log.borrow().len() > 0
     }
 
@@ -403,6 +403,18 @@ impl<'a> RegionVarBindings<'a> {
                    sup);
 
             self.undo_log.borrow_mut().push(AddGiven(sub, sup));
+        }
+    }
+
+    pub fn make_eqregion(&self,
+                         origin: SubregionOrigin,
+                         sub: Region,
+                         sup: Region) {
+        if sub != sup {
+            // Eventually, it would be nice to add direct support for
+            // equating regions.
+            self.make_subregion(origin.clone(), sub, sup);
+            self.make_subregion(origin, sup, sub);
         }
     }
 

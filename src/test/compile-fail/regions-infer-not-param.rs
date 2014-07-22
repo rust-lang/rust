@@ -23,11 +23,9 @@ struct indirect2<'a> {
 }
 
 fn take_direct<'a,'b>(p: direct<'a>) -> direct<'b> { p } //~ ERROR mismatched types
-//~^ ERROR cannot infer
 
 fn take_indirect1(p: indirect1) -> indirect1 { p }
 
 fn take_indirect2<'a,'b>(p: indirect2<'a>) -> indirect2<'b> { p } //~ ERROR mismatched types
-//~^ ERROR cannot infer
 
 fn main() {}

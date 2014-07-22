@@ -11,8 +11,8 @@
 use middle::ty::{BuiltinBounds};
 use middle::ty::RegionVid;
 use middle::ty;
-use middle::typeck::infer::then;
 use middle::typeck::infer::combine::*;
+use middle::typeck::infer::equate::Equate;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::sub::Sub;
@@ -30,7 +30,7 @@ use util::ppaux::Repr;
 
 /// "Least upper bound" (common supertype)
 pub struct Lub<'f> {
-    pub fields: CombineFields<'f>
+    fields: CombineFields<'f>
 }
 
 #[allow(non_snake_case_functions)]
@@ -44,6 +44,7 @@ impl<'f> Combine for Lub<'f> {
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
     fn trace(&self) -> TypeTrace { self.fields.trace.clone() }
 
+    fn equate<'a>(&'a self) -> Equate<'a> { Equate(self.fields.clone()) }
     fn sub<'a>(&'a self) -> Sub<'a> { Sub(self.fields.clone()) }
     fn lub<'a>(&'a self) -> Lub<'a> { Lub(self.fields.clone()) }
     fn glb<'a>(&'a self) -> Glb<'a> { Glb(self.fields.clone()) }
@@ -62,17 +63,15 @@ impl<'f> Combine for Lub<'f> {
 
         let m = a.mutbl;
         match m {
-          MutImmutable => {
-            self.tys(a.ty, b.ty).and_then(|t| Ok(ty::mt {ty: t, mutbl: m}) )
-          }
+            MutImmutable => {
+                let t = try!(self.tys(a.ty, b.ty));
+                Ok(ty::mt {ty: t, mutbl: m})
+            }
 
-          MutMutable => {
-            self.fields.infcx.try(|| {
-                eq_tys(self, a.ty, b.ty).then(|| {
-                    Ok(ty::mt {ty: a.ty, mutbl: m})
-                })
-            }).or_else(|e| Err(e))
-          }
+            MutMutable => {
+                let t = try!(self.equate().tys(a.ty, b.ty));
+                Ok(ty::mt {ty: t, mutbl: m})
+            }
         }
     }
 

@@ -8,43 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ______________________________________________________________________
-// Type combining
+///////////////////////////////////////////////////////////////////////////
+// # Type combining
 //
-// There are three type combiners: sub, lub, and glb.  Each implements
-// the trait `Combine` and contains methods for combining two
-// instances of various things and yielding a new instance.  These
-// combiner methods always yield a `result<T>`---failure is propagated
-// upward using `and_then()` methods.  There is a lot of common code for
-// these operations, implemented as default methods on the `Combine`
-// trait.
+// There are four type combiners: equate, sub, lub, and glb.  Each
+// implements the trait `Combine` and contains methods for combining
+// two instances of various things and yielding a new instance.  These
+// combiner methods always yield a `Result<T>`.  There is a lot of
+// common code for these operations, implemented as default methods on
+// the `Combine` trait.
 //
-// In reality, the sub operation is rather different from lub/glb, but
-// they are combined into one trait to avoid duplication (they used to
-// be separate but there were many bugs because there were two copies
-// of most routines).
+// Each operation may have side-effects on the inference context,
+// though these can be unrolled using snapshots. On success, the
+// LUB/GLB operations return the appropriate bound. The Eq and Sub
+// operations generally return the first operand.
 //
-// The differences are:
-//
-// - when making two things have a sub relationship, the order of the
-//   arguments is significant (a <: b) and the return value of the
-//   combine functions is largely irrelevant.  The important thing is
-//   whether the action succeeds or fails.  If it succeeds, then side
-//   effects have been committed into the type variables.
-//
-// - for GLB/LUB, the order of arguments is not significant (GLB(a,b) ==
-//   GLB(b,a)) and the return value is important (it is the GLB).  Of
-//   course GLB/LUB may also have side effects.
-//
-// Contravariance
+// ## Contravariance
 //
 // When you are relating two things which have a contravariant
 // relationship, you should use `contratys()` or `contraregions()`,
 // rather than inversing the order of arguments!  This is necessary
 // because the order of arguments is not relevant for LUB and GLB.  It
 // is also useful to track which value is the "expected" value in
-// terms of error reporting, although we do not do that properly right
-// now.
+// terms of error reporting.
 
 
 use middle::subst;
@@ -53,14 +39,16 @@ use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType};
 use middle::ty::{BuiltinBounds};
 use middle::ty;
-use middle::typeck::infer::{ToUres};
+use middle::typeck::infer::equate::Equate;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::unify::InferCtxtMethodsForSimplyUnifiableTypes;
-use middle::typeck::infer::{InferCtxt, cres, ures};
-use middle::typeck::infer::{TypeTrace};
-use util::common::indent;
+use middle::typeck::infer::{InferCtxt, cres};
+use middle::typeck::infer::{MiscVariable, TypeTrace};
+use middle::typeck::infer::type_variable::{RelationDir, EqTo,
+                                           SubtypeOf, SupertypeOf};
+use middle::ty_fold::{RegionFolder, TypeFoldable};
 use util::ppaux::Repr;
 
 use std::result;
@@ -75,6 +63,7 @@ pub trait Combine {
     fn a_is_expected(&self) -> bool;
     fn trace(&self) -> TypeTrace;
 
+    fn equate<'a>(&'a self) -> Equate<'a>;
     fn sub<'a>(&'a self) -> Sub<'a>;
     fn lub<'a>(&'a self) -> Lub<'a>;
     fn glb<'a>(&'a self) -> Glb<'a>;
@@ -101,7 +90,7 @@ pub trait Combine {
         try!(result::fold_(as_
                           .iter()
                           .zip(bs.iter())
-                          .map(|(a, b)| eq_tys(self, *a, *b))));
+                          .map(|(a, b)| self.equate().tys(*a, *b))));
         Ok(Vec::from_slice(as_))
     }
 
@@ -177,10 +166,7 @@ pub trait Combine {
                 let b_r = b_rs[i];
                 let variance = variances[i];
                 let r = match variance {
-                    ty::Invariant => {
-                        eq_regions(this, a_r, b_r)
-                            .and_then(|()| Ok(a_r))
-                    }
+                    ty::Invariant => this.equate().regions(a_r, b_r),
                     ty::Covariant => this.regions(a_r, b_r),
                     ty::Contravariant => this.contraregions(a_r, b_r),
                     ty::Bivariant => Ok(a_r),
@@ -334,34 +320,6 @@ pub fn expected_found<C:Combine,T>(
     }
 }
 
-pub fn eq_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> ures {
-    let suber = this.sub();
-    this.infcx().try(|| {
-        suber.tys(a, b).and_then(|_ok| suber.contratys(a, b)).to_ures()
-    })
-}
-
-pub fn eq_regions<C:Combine>(this: &C, a: ty::Region, b: ty::Region)
-                          -> ures {
-    debug!("eq_regions({}, {})",
-            a.repr(this.infcx().tcx),
-            b.repr(this.infcx().tcx));
-    let sub = this.sub();
-    indent(|| {
-        this.infcx().try(|| {
-            sub.regions(a, b).and_then(|_r| sub.contraregions(a, b))
-        }).or_else(|e| {
-            // substitute a better error, but use the regions
-            // found in the original error
-            match e {
-              ty::terr_regions_does_not_outlive(a1, b1) =>
-                Err(ty::terr_regions_not_same(a1, b1)),
-              _ => Err(e)
-            }
-        }).to_ures()
-    })
-}
-
 pub fn super_fn_sigs<C:Combine>(this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
 
     fn argvecs<C:Combine>(this: &C, a_args: &[ty::t], b_args: &[ty::t]) -> cres<Vec<ty::t> > {
@@ -453,8 +411,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
         // Relate floating-point variables to other types
         (&ty::ty_infer(FloatVar(a_id)), &ty::ty_infer(FloatVar(b_id))) => {
-            try!(this.infcx().simple_vars(this.a_is_expected(),
-                                            a_id, b_id));
+            try!(this.infcx().simple_vars(this.a_is_expected(), a_id, b_id));
             Ok(a)
         }
         (&ty::ty_infer(FloatVar(v_id)), &ty::ty_float(v)) => {
@@ -469,7 +426,8 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       (&ty::ty_bool, _) |
       (&ty::ty_int(_), _) |
       (&ty::ty_uint(_), _) |
-      (&ty::ty_float(_), _) => {
+      (&ty::ty_float(_), _) |
+      (&ty::ty_err, _) => {
         if ty::get(a).sty == ty::get(b).sty {
             Ok(a)
         } else {
@@ -512,7 +470,10 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       (&ty::ty_unboxed_closure(a_id, a_region),
        &ty::ty_unboxed_closure(b_id, b_region))
       if a_id == b_id => {
-          let region = if_ok!(this.regions(a_region, b_region));
+          // All ty_unboxed_closure types with the same id represent
+          // the (anonymous) type of the same closure expression. So
+          // all of their regions should be equated.
+          let region = try!(this.equate().regions(a_region, b_region));
           Ok(ty::mk_unboxed_closure(tcx, a_id, region))
       }
 
@@ -607,5 +568,120 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
     {
         try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
         Ok(ty::mk_mach_float(val))
+    }
+}
+
+impl<'f> CombineFields<'f> {
+    pub fn switch_expected(&self) -> CombineFields<'f> {
+        CombineFields {
+            a_is_expected: !self.a_is_expected,
+            ..(*self).clone()
+        }
+    }
+
+    fn equate(&self) -> Equate<'f> {
+        Equate((*self).clone())
+    }
+
+    fn sub(&self) -> Sub<'f> {
+        Sub((*self).clone())
+    }
+
+    pub fn instantiate(&self,
+                       a_ty: ty::t,
+                       dir: RelationDir,
+                       b_vid: ty::TyVid)
+                       -> cres<()>
+    {
+        let tcx = self.infcx.tcx;
+        let mut stack = Vec::new();
+        stack.push((a_ty, dir, b_vid));
+        loop {
+            // For each turn of the loop, we extract a tuple
+            //
+            //     (a_ty, dir, b_vid)
+            //
+            // to relate. Here dir is either SubtypeOf or
+            // SupertypeOf. The idea is that we should ensure that
+            // the type `a_ty` is a subtype or supertype (respectively) of the
+            // type to which `b_vid` is bound.
+            //
+            // If `b_vid` has not yet been instantiated with a type
+            // (which is always true on the first iteration, but not
+            // necessarily true on later iterations), we will first
+            // instantiate `b_vid` with a *generalized* version of
+            // `a_ty`. Generalization introduces other inference
+            // variables wherever subtyping could occur (at time of
+            // this writing, this means replacing free regions with
+            // region variables).
+            let (a_ty, dir, b_vid) = match stack.pop() {
+                None => break,
+                Some(e) => e,
+            };
+
+            debug!("instantiate(a_ty={} dir={} b_vid={})",
+                   a_ty.repr(tcx),
+                   dir,
+                   b_vid.repr(tcx));
+
+            // Check whether `vid` has been instantiated yet.  If not,
+            // make a generalized form of `ty` and instantiate with
+            // that.
+            let b_ty = self.infcx.type_variables.borrow().probe(b_vid);
+            let b_ty = match b_ty {
+                Some(t) => t, // ...already instantiated.
+                None => {     // ...not yet instantiated:
+                    // Generalize type if necessary.
+                    let generalized_ty = match dir {
+                        EqTo => a_ty,
+                        SupertypeOf | SubtypeOf => self.generalize(a_ty)
+                    };
+                    debug!("instantiate(a_ty={}, dir={}, \
+                                        b_vid={}, generalized_ty={})",
+                           a_ty.repr(tcx), dir, b_vid.repr(tcx),
+                           generalized_ty.repr(tcx));
+                    self.infcx.type_variables
+                        .borrow_mut()
+                        .instantiate_and_push(
+                            b_vid, generalized_ty, &mut stack);
+                    generalized_ty
+                }
+            };
+
+            // The original triple was `(a_ty, dir, b_vid)` -- now we have
+            // resolved `b_vid` to `b_ty`, so apply `(a_ty, dir, b_ty)`:
+            //
+            // FIXME: This code is non-ideal because all these subtype
+            // relations wind up attributed to the same spans. We need
+            // to associate causes/spans with each of the relations in
+            // the stack to get this right.
+            match dir {
+                EqTo => {
+                    try!(self.equate().tys(a_ty, b_ty));
+                }
+
+                SubtypeOf => {
+                    try!(self.sub().tys(a_ty, b_ty));
+                }
+
+                SupertypeOf => {
+                    try!(self.sub().contratys(a_ty, b_ty));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn generalize(&self, t: ty::t) -> ty::t {
+        // FIXME: This is non-ideal because we don't give a very descriptive
+        // origin for this region variable.
+
+        let infcx = self.infcx;
+        let span = self.trace.origin.span();
+        t.fold_with(
+            &mut RegionFolder::regions(
+                self.infcx.tcx,
+                |_| infcx.next_region_var(MiscVariable(span))))
     }
 }
