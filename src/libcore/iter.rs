@@ -99,9 +99,10 @@ pub trait Iterator<A> {
     /// Advance the iterator and return the next value. Return `None` when the end is reached.
     fn next(&mut self) -> Option<A>;
 
-    /// Return a lower bound and upper bound on the remaining length of the iterator.
+    /// Returns a lower and upper bound on the remaining length of the iterator.
     ///
-    /// The common use case for the estimate is pre-allocating space to store the results.
+    /// An upper bound of `None` means either there is no known upper bound, or the upper bound
+    /// does not fit within a `uint`.
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
 
@@ -644,6 +645,9 @@ pub trait Iterator<A> {
 }
 
 /// A range iterator able to yield elements from both ends
+///
+/// A `DoubleEndedIterator` can be thought of as a deque in that `next()` and `next_back()` exhaust
+/// elements from the *same* range, and do not work independently of each other.
 pub trait DoubleEndedIterator<A>: Iterator<A> {
     /// Yield an element from the end of the range, returning `None` if the range is empty.
     fn next_back(&mut self) -> Option<A>;
@@ -690,12 +694,15 @@ impl<'a, A, T: DoubleEndedIterator<&'a mut A>> MutableDoubleEndedIterator for T 
 /// An object implementing random access indexing by `uint`
 ///
 /// A `RandomAccessIterator` should be either infinite or a `DoubleEndedIterator`.
+/// Calling `next()` or `next_back()` on a `RandomAccessIterator`
+/// reduces the indexable range accordingly. That is, `it.idx(1)` will become `it.idx(0)`
+/// after `it.next()` is called.
 pub trait RandomAccessIterator<A>: Iterator<A> {
     /// Return the number of indexable elements. At most `std::uint::MAX`
     /// elements are indexable, even if the iterator represents a longer range.
     fn indexable(&self) -> uint;
 
-    /// Return an element at an index
+    /// Return an element at an index, or `None` if the index is out of bounds
     fn idx(&mut self, index: uint) -> Option<A>;
 }
 
