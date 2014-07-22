@@ -1,9 +1,10 @@
 Reference grammar.
 
 Uses [antlr4](http://www.antlr.org/) and a custom Rust tool to compare
-ASTs/token streams generated.
+ASTs/token streams generated. You can use the `check-syntax` make target to
+run all of the available tests.
 
-To use:
+To use manually:
 
 ```
 antlr4 RustLexer.g4
