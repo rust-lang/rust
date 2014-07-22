@@ -208,7 +208,9 @@ impl RegionMaps {
     pub fn var_region(&self, id: ast::NodeId) -> ty::Region {
         //! Returns the lifetime of the variable `id`.
 
-        ty::ReScope(self.var_scope(id))
+        let scope = ty::ReScope(self.var_scope(id));
+        debug!("var_region({}) = {:?}", id, scope);
+        scope
     }
 
     pub fn scopes_intersect(&self, scope1: ast::NodeId, scope2: ast::NodeId)
@@ -522,6 +524,14 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
         ast::ExprWhile(expr, body) => {
             visitor.region_maps.mark_as_terminating_scope(expr.id);
             visitor.region_maps.mark_as_terminating_scope(body.id);
+        }
+
+        ast::ExprForLoop(ref _pat, ref _head, ref body, _) => {
+            visitor.region_maps.mark_as_terminating_scope(body.id);
+
+            // The variable parent of everything inside (most importantly, the
+            // pattern) is the body.
+            new_cx.var_parent = Some(body.id);
         }
 
         ast::ExprMatch(..) => {

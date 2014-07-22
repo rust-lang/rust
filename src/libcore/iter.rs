@@ -95,6 +95,7 @@ pub trait Extendable<A>: FromIterator<A> {
 /// is returned. A concrete Iterator implementation may choose to behave however
 /// it wishes, either by returning `None` infinitely, or by doing something
 /// else.
+#[lang="iterator"]
 pub trait Iterator<A> {
     /// Advance the iterator and return the next value. Return `None` when the end is reached.
     fn next(&mut self) -> Option<A>;

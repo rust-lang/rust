@@ -28,7 +28,7 @@ use iter::{Map, Iterator};
 use iter::{DoubleEndedIterator, ExactSize};
 use iter::range;
 use num::{CheckedMul, Saturating};
-use option::{None, Option, Some};
+use option::{Option, None, Some};
 use raw::Repr;
 use slice::ImmutableVector;
 use slice;
@@ -1027,8 +1027,11 @@ pub mod traits {
     use cmp::{Ord, Ordering, Less, Equal, Greater, PartialEq, PartialOrd, Equiv, Eq};
     use collections::Collection;
     use iter::Iterator;
-    use option::{Option, Some, None};
+    use option::{Option, Some};
     use str::{Str, StrSlice, eq_slice};
+
+    #[cfg(stage0)]
+    use option::None;   // NOTE(stage0): Remove after snapshot.
 
     impl<'a> Ord for &'a str {
         #[inline]

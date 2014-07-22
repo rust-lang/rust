@@ -651,7 +651,8 @@ impl<'a> BorrowckCtxt<'a> {
                     euv::OverloadedOperator |
                     euv::AddrOf |
                     euv::RefBinding |
-                    euv::AutoRef => {
+                    euv::AutoRef |
+                    euv::ForLoop => {
                         format!("cannot borrow {} as mutable", descr)
                     }
                     euv::ClosureInvocation => {
@@ -711,6 +712,10 @@ impl<'a> BorrowckCtxt<'a> {
 
             BorrowViolation(euv::ClosureInvocation) => {
                 "closure invocation"
+            }
+
+            BorrowViolation(euv::ForLoop) => {
+                "`for` loop"
             }
         };
 
