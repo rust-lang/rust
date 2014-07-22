@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![macro_escape]
+fn assert_send<T:Send>() { }
 
-macro_rules! if_ok(
-    ($inp: expr) => (
-        match $inp {
-            Ok(v) => { v }
-            Err(e) => { return Err(e); }
-        }
-    )
-)
+// unsafe ptrs are ok unless they point at unsendable things
+fn test70() {
+    assert_send::<*mut int>();
+}
+fn test71<'a>() {
+    assert_send::<*mut &'a int>(); //~ ERROR does not fulfill the required lifetime
+}
+
+fn main() {
+}

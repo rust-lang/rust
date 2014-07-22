@@ -22,7 +22,6 @@ struct not_parameterized2 {
 
 fn take1<'a>(p: parameterized1) -> parameterized1<'a> { p }
 //~^ ERROR mismatched types
-//~^^ ERROR cannot infer
 
 fn take3(p: not_parameterized1) -> not_parameterized1 { p }
 fn take4(p: not_parameterized2) -> not_parameterized2 { p }

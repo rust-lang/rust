@@ -8,11 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-  let x = [1,2];
-  let y = match x {
-    [] => None,
-//~^ ERROR expected `[<generic integer #0>, .. 2]`, found a fixed vector pattern of size 0
-    [a,_] => Some(a)
-  };
+// Continue kindck-send-object1.rs.
+
+fn assert_send<T:Send>() { }
+trait Dummy { }
+
+fn test50() {
+    assert_send::<&'static Dummy>(); //~ ERROR does not fulfill `Send`
 }
+
+fn test53() {
+    assert_send::<Box<Dummy>>(); //~ ERROR does not fulfill `Send`
+}
+
+// ...unless they are properly bounded
+fn test60() {
+    assert_send::<&'static Dummy+Send>();
+}
+fn test61() {
+    assert_send::<Box<Dummy+Send>>();
+}
+
+fn main() { }

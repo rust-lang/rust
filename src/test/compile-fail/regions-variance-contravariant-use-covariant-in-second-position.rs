@@ -33,7 +33,6 @@ fn use_<'short,'long>(c: S<'long, 'short>,
     // covariant with respect to its parameter 'a.
 
     let _: S<'long, 'long> = c; //~ ERROR mismatched types
-    //~^ ERROR  cannot infer an appropriate lifetime
 }
 
 fn main() {}
