@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(managed_boxes)]
-
-use std::gc::Gc;
-
-struct Foo {
-    f: Gc<int>,
-}
+enum Foo { }
 
 impl Drop for Foo {
-//~^ ERROR cannot implement a destructor on a structure or enumeration that does not satisfy Send
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) { }
 }
+
+fn foo(x: Foo) { }
 
 fn main() { }

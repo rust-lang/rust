@@ -2106,13 +2106,16 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
 
             ty_enum(did, ref substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
-                let res =
+                let mut res =
                     TypeContents::union(variants.as_slice(), |variant| {
                         TypeContents::union(variant.args.as_slice(),
                                             |arg_ty| {
                             tc_ty(cx, *arg_ty, cache)
                         })
                     });
+                if ty::has_dtor(cx, did) {
+                    res = res | TC::OwnsDtor;
+                }
                 apply_lang_items(cx, did, res)
             }
 
@@ -3778,15 +3781,11 @@ pub enum DtorKind {
 }
 
 impl DtorKind {
-    pub fn is_not_present(&self) -> bool {
+    pub fn is_present(&self) -> bool {
         match *self {
-            NoDtor => true,
+            TraitDtor(..) => true,
             _ => false
         }
-    }
-
-    pub fn is_present(&self) -> bool {
-        !self.is_not_present()
     }
 
     pub fn has_drop_flag(&self) -> bool {

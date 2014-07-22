@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 struct DroppableStruct;
+enum DroppableEnum {
+    DroppableVariant1, DroppableVariant2
+}
 
 static mut DROPPED: bool = false;
 
@@ -18,9 +20,15 @@ impl Drop for DroppableStruct {
         unsafe { DROPPED = true; }
     }
 }
+impl Drop for DroppableEnum {
+    fn drop(&mut self) {
+        unsafe { DROPPED = true; }
+    }
+}
 
 trait MyTrait { }
 impl MyTrait for Box<DroppableStruct> {}
+impl MyTrait for Box<DroppableEnum> {}
 
 struct Whatever { w: Box<MyTrait> }
 impl  Whatever {
@@ -32,6 +40,12 @@ impl  Whatever {
 fn main() {
     {
         let f = box DroppableStruct;
+        let _a = Whatever::new(box f as Box<MyTrait>);
+    }
+    assert!(unsafe { DROPPED });
+    unsafe { DROPPED = false; }
+    {
+        let f = box DroppableVariant1;
         let _a = Whatever::new(box f as Box<MyTrait>);
     }
     assert!(unsafe { DROPPED });
