@@ -36,6 +36,10 @@ pub struct TestProps {
     pub no_prefer_dynamic: bool,
     // Don't run --pretty expanded when running pretty printing tests
     pub no_pretty_expanded: bool,
+    // Which pretty mode are we testing with, default to 'normal'
+    pub pretty_mode: String,
+    // Only compare pretty output and don't try compiling
+    pub pretty_compare_only: bool,
 }
 
 // Load any test directives embedded in the file
@@ -51,6 +55,8 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut check_stdout = false;
     let mut no_prefer_dynamic = false;
     let mut no_pretty_expanded = false;
+    let mut pretty_mode = None;
+    let mut pretty_compare_only = false;
     iter_header(testfile, |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
@@ -85,6 +91,14 @@ pub fn load_props(testfile: &Path) -> TestProps {
             no_pretty_expanded = parse_no_pretty_expanded(ln);
         }
 
+        if pretty_mode.is_none() {
+            pretty_mode = parse_pretty_mode(ln);
+        }
+
+        if !pretty_compare_only {
+            pretty_compare_only = parse_pretty_compare_only(ln);
+        }
+
         match parse_aux_build(ln) {
             Some(ab) => { aux_builds.push(ab); }
             None => {}
@@ -115,6 +129,8 @@ pub fn load_props(testfile: &Path) -> TestProps {
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
         no_pretty_expanded: no_pretty_expanded,
+        pretty_mode: pretty_mode.unwrap_or("normal".to_string()),
+        pretty_compare_only: pretty_compare_only
     }
 }
 
@@ -203,6 +219,14 @@ fn parse_no_prefer_dynamic(line: &str) -> bool {
 
 fn parse_no_pretty_expanded(line: &str) -> bool {
     parse_name_directive(line, "no-pretty-expanded")
+}
+
+fn parse_pretty_mode(line: &str) -> Option<String> {
+    parse_name_value_directive(line, "pretty-mode")
+}
+
+fn parse_pretty_compare_only(line: &str) -> bool {
+    parse_name_directive(line, "pretty-compare-only")
 }
 
 fn parse_exec_env(line: &str) -> Option<(String, String)> {
