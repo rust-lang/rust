@@ -204,6 +204,37 @@ impl<T> Vec<T> {
     /// - there must be `length` valid instances of type `T` at the
     ///   beginning of that allocation
     /// - `ptr` must be allocated by the default `Vec` allocator
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::ptr;
+    /// use std::mem;
+    ///
+    /// fn main() {
+    ///     let mut v = vec![1i, 2, 3];
+    ///
+    ///     // Pull out the various important pieces of information about `v`
+    ///     let p = v.as_mut_ptr();
+    ///     let len = v.len();
+    ///     let cap = v.capacity();
+    ///
+    ///     unsafe {
+    ///         // Cast `v` into the void: no destructor run, so we are in
+    ///         // complete control of the allocation to which `p` points.
+    ///         mem::forget(v);
+    ///
+    ///         // Overwrite memory with 4, 5, 6
+    ///         for i in range(0, len as int) {
+    ///             ptr::write(p.offset(i), 4 + i);
+    ///         }
+    ///
+    ///         // Put everything back together into a Vec
+    ///         let rebuilt = Vec::from_raw_parts(len, cap, p);
+    ///         assert_eq!(rebuilt, vec![4i, 5i, 6i]);
+    ///     }
+    /// }
+    /// ```
     pub unsafe fn from_raw_parts(length: uint, capacity: uint,
                                  ptr: *mut T) -> Vec<T> {
         Vec { len: length, cap: capacity, ptr: ptr }
@@ -1312,13 +1343,13 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
-    /// use std::vec::raw;
-    ///
     /// let v = vec![1i, 2, 3];
     /// let p = v.as_ptr();
     /// unsafe {
-    ///     let b = raw::from_buf(p, 3u);
-    ///     assert_eq!(b, vec![1i, 2, 3]);
+    ///     // Examine each element manually
+    ///     assert_eq!(*p, 1i);
+    ///     assert_eq!(*p.offset(1), 2i);
+    ///     assert_eq!(*p.offset(2), 3i);
     /// }
     /// ```
     #[inline]
@@ -1343,8 +1374,9 @@ impl<T> Vec<T> {
     /// let p = v.as_mut_ptr();
     /// unsafe {
     ///     ptr::write(p, 9i);
+    ///     ptr::write(p.offset(2), 5i);
     /// }
-    /// assert_eq!(v, vec![9i, 2, 3]);
+    /// assert_eq!(v, vec![9i, 2, 5]);
     /// ```
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
