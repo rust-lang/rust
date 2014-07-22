@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-lexer-test FIXME #15877
+
 //! Windows specific console TTY implementation
 //!
 //! This module contains the implementation of a Windows specific console TTY.

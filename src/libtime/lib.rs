@@ -205,28 +205,28 @@ pub fn tzset() {
 /// also called a broken-down time value.
 #[deriving(Clone, PartialEq, Show)]
 pub struct Tm {
-    /// Seconds after the minute – [0, 60]
+    /// Seconds after the minute - [0, 60]
     pub tm_sec: i32,
 
-    /// Minutes after the hour – [0, 59]
+    /// Minutes after the hour - [0, 59]
     pub tm_min: i32,
 
-    /// Hours after midnight – [0, 23]
+    /// Hours after midnight - [0, 23]
     pub tm_hour: i32,
 
-    /// Day of the month – [1, 31]
+    /// Day of the month - [1, 31]
     pub tm_mday: i32,
 
-    /// Months since January – [0, 11]
+    /// Months since January - [0, 11]
     pub tm_mon: i32,
 
     /// Years since 1900
     pub tm_year: i32,
 
-    /// Days since Sunday – [0, 6]. 0 = Sunday, 1 = Monday, …, 6 = Saturday.
+    /// Days since Sunday - [0, 6]. 0 = Sunday, 1 = Monday, ..., 6 = Saturday.
     pub tm_wday: i32,
 
-    /// Days since January 1 – [0, 365]
+    /// Days since January 1 - [0, 365]
     pub tm_yday: i32,
 
     /// Daylight Saving Time flag.
@@ -240,7 +240,7 @@ pub struct Tm {
     /// for U.S. Pacific Daylight Time, the value is -7*60*60 = -25200.
     pub tm_gmtoff: i32,
 
-    /// Nanoseconds after the second – [0, 10<sup>9</sup> - 1]
+    /// Nanoseconds after the second - [0, 10<sup>9</sup> - 1]
     pub tm_nsec: i32,
 }
 
