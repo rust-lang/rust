@@ -4,7 +4,7 @@
 
 # Summary
 
-Rename the `Share` trait to `Threadsafe`.
+Rename the `Share` trait to `Sync`
 
 # Motivation
 
@@ -16,20 +16,16 @@ concurrently with a shared reference.
 
 # Detailed design
 
-Rename the `Share` trait in `std::kinds` to `Threadsafe`. Documentation would
+Rename the `Share` trait in `std::kinds` to `Sync`. Documentation would
 refer to `&T` as a shared reference and the notion of "shared" would simply mean
-"many references" while `Threadsafe` implies that it is safe to share among many
+"many references" while `Sync` implies that it is safe to share among many
 threads.
 
 # Drawbacks
 
-The name `Threadsafe` may imply that a type is itself always safe to use
-concurrently. While it is impossible to safely have *data races*, it is possible
-to safely have *race conditions*. The name `Threadsafe` may imply that a type
-has no race conditions, which is not quite accurate.
-
-Additionally, the name `Threadsafe` is 5 letters longer than `Share`, which is a
-little unfortunate.
+The name `Sync` may invoke conceptions of "synchronized" from languages such as
+Java where locks are used, rather than meaning "safe to access in a shared
+fashion across tasks".
 
 # Alternatives
 
@@ -38,6 +34,7 @@ this trait:
 
 * `Concurrent`
 * `Synchronized`
+* `Threadsafe`
 * `Parallel`
 * `Threaded`
 * `Atomic`
