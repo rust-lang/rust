@@ -27,6 +27,7 @@ use syntax::codemap::Span;
 use syntax::print::pprust::{expr_to_string, ident_to_string};
 use syntax::{visit};
 use syntax::visit::Visitor;
+use std::rc::Rc;
 
 // Kind analysis pass.
 //
@@ -135,10 +136,11 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
     debug!("checking impl with self type {}", ty::get(self_ty).sty);
-    check_builtin_bounds(cx, self_ty, trait_def.bounds, |missing| {
+    check_builtin_bounds(cx, self_ty, trait_def.bounds, [], |missing| {
         span_err!(cx.tcx.sess, self_type.span, E0142,
                   "the type `{}', which does not fulfill `{}`, cannot implement this trait",
-                  ty_to_string(cx.tcx, self_ty), missing.user_string(cx.tcx));
+                  ty_to_string(cx.tcx, self_ty),
+                  missing.user_string(cx.tcx));
         span_note!(cx.tcx.sess, self_type.span,
                    "types implementing this trait must fulfill `{}`",
                    trait_def.bounds.user_string(cx.tcx));
@@ -422,14 +424,15 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
 pub fn check_builtin_bounds(cx: &Context,
                             ty: ty::t,
                             bounds: ty::BuiltinBounds,
+                            traits: &[Rc<ty::TraitRef>],
                             any_missing: |ty::BuiltinBounds|) {
     let kind = ty::type_contents(cx.tcx, ty);
     let mut missing = ty::empty_builtin_bounds();
-    for bound in bounds.iter() {
+    ty::each_inherited_builtin_bound(cx.tcx, bounds, traits, |bound| {
         if !kind.meets_bound(cx.tcx, bound) {
             missing.add(bound);
         }
-    }
+    });
     if !missing.is_empty() {
         any_missing(missing);
     }
@@ -439,9 +442,12 @@ pub fn check_typaram_bounds(cx: &Context,
                             sp: Span,
                             ty: ty::t,
                             type_param_def: &ty::TypeParameterDef) {
+    debug!("check_typaram_bounds(ty={}, type_param_def={}, sp={})",
+           ty.repr(cx.tcx), type_param_def.repr(cx.tcx), sp.repr(cx.tcx));
     check_builtin_bounds(cx,
                          ty,
                          type_param_def.bounds.builtin_bounds,
+                         type_param_def.bounds.trait_bounds.as_slice(),
                          |missing| {
         span_err!(cx.tcx.sess, sp, E0144,
                   "instantiating a type parameter with an incompatible type \
@@ -454,7 +460,7 @@ pub fn check_typaram_bounds(cx: &Context,
 pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
                             bounds: ty::BuiltinBounds, referenced_ty: Option<ty::t>)
 {
-    check_builtin_bounds(cx, ty, bounds, |missing| {
+    check_builtin_bounds(cx, ty, bounds, [], |missing| {
         // Will be Some if the freevar is implicitly borrowed (stack closure).
         // Emit a less mysterious error message in this case.
         match referenced_ty {
@@ -479,7 +485,7 @@ pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
 
 pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
                                bounds: ty::BuiltinBounds) {
-    check_builtin_bounds(cx, ty, bounds, |missing| {
+    check_builtin_bounds(cx, ty, bounds, [], |missing| {
         span_err!(cx.tcx.sess, sp, E0147,
             "cannot pack type `{}`, which does not fulfill `{}`, as a trait bounded by {}",
             ty_to_string(cx.tcx, ty),
