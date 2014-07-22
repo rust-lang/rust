@@ -1856,7 +1856,7 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
 
     let avar = adt::represent_type(ccx, ty::node_id_to_type(ccx.tcx(), id));
     match *avar {
-        adt::General(_, ref variants) => {
+        adt::General(_, ref variants, _) => {
             for var in variants.iter() {
                 let mut size = 0;
                 for field in var.fields.iter().skip(1) {

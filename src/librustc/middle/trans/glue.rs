@@ -204,7 +204,7 @@ fn make_visit_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
     bcx
 }
 
-fn trans_struct_drop_flag<'a>(bcx: &'a Block<'a>,
+fn trans_struct_drop_flag<'a>(mut bcx: &'a Block<'a>,
                               t: ty::t,
                               v0: ValueRef,
                               dtor_did: ast::DefId,
@@ -212,8 +212,8 @@ fn trans_struct_drop_flag<'a>(bcx: &'a Block<'a>,
                               substs: &subst::Substs)
                               -> &'a Block<'a> {
     let repr = adt::represent_type(bcx.ccx(), t);
-    let drop_flag = adt::trans_drop_flag_ptr(bcx, &*repr, v0);
-    with_cond(bcx, load_ty(bcx, drop_flag, ty::mk_bool()), |cx| {
+    let drop_flag = unpack_datum!(bcx, adt::trans_drop_flag_ptr(bcx, &*repr, v0));
+    with_cond(bcx, load_ty(bcx, drop_flag.val, ty::mk_bool()), |cx| {
         trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
     })
 }
@@ -237,33 +237,33 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
         ty.element_type().func_params()
     };
 
-    // Class dtors have no explicit args, so the params should
-    // just consist of the environment (self)
-    assert_eq!(params.len(), 1);
+    adt::fold_variants(bcx, &*repr, v0, |variant_cx, st, value| {
+        // Be sure to put all of the fields into a scope so we can use an invoke
+        // instruction to call the user destructor but still call the field
+        // destructors if the user destructor fails.
+        let field_scope = variant_cx.fcx.push_custom_cleanup_scope();
 
-    // Be sure to put all of the fields into a scope so we can use an invoke
-    // instruction to call the user destructor but still call the field
-    // destructors if the user destructor fails.
-    let field_scope = bcx.fcx.push_custom_cleanup_scope();
+        // Class dtors have no explicit args, so the params should
+        // just consist of the environment (self).
+        assert_eq!(params.len(), 1);
+        let self_arg = PointerCast(variant_cx, value, *params.get(0));
+        let args = vec!(self_arg);
 
-    let self_arg = PointerCast(bcx, v0, *params.get(0));
-    let args = vec!(self_arg);
+        // Add all the fields as a value which needs to be cleaned at the end of
+        // this scope.
+        for (i, ty) in st.fields.iter().enumerate() {
+            let llfld_a = adt::struct_field_ptr(variant_cx, &*st, value, i, false);
+            variant_cx.fcx.schedule_drop_mem(cleanup::CustomScope(field_scope),
+                                             llfld_a, *ty);
+        }
 
-    // Add all the fields as a value which needs to be cleaned at the end of
-    // this scope.
-    let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
-    for (i, fld) in field_tys.iter().enumerate() {
-        let llfld_a = adt::trans_field_ptr(bcx, &*repr, v0, 0, i);
-        bcx.fcx.schedule_drop_mem(cleanup::CustomScope(field_scope),
-                                  llfld_a,
-                                  fld.mt.ty);
-    }
+        let dtor_ty = ty::mk_ctor_fn(variant_cx.tcx(), ast::DUMMY_NODE_ID,
+                                     [get_drop_glue_type(bcx.ccx(), t)], ty::mk_nil());
+        let (_, variant_cx) = invoke(variant_cx, dtor_addr, args, dtor_ty, None);
 
-    let dtor_ty = ty::mk_ctor_fn(bcx.tcx(), ast::DUMMY_NODE_ID,
-                                 [get_drop_glue_type(bcx.ccx(), t)], ty::mk_nil());
-    let (_, bcx) = invoke(bcx, dtor_addr, args, dtor_ty, None);
-
-    bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, field_scope)
+        variant_cx.fcx.pop_and_trans_custom_cleanup_scope(variant_cx, field_scope);
+        variant_cx
+    })
 }
 
 fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'a> {
@@ -317,7 +317,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                 }
             }
         }
-        ty::ty_struct(did, ref substs) => {
+        ty::ty_struct(did, ref substs) | ty::ty_enum(did, ref substs) => {
             let tcx = bcx.tcx();
             match ty::ty_dtor(tcx, did) {
                 ty::TraitDtor(dtor, true) => {
