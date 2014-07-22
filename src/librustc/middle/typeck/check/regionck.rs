@@ -666,8 +666,8 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     let tcx = rcx.fcx.tcx();
     let function_type = rcx.resolve_node_type(expr.id);
     match ty::get(function_type).sty {
-        ty::ty_closure(box ty::ClosureTy {
-                store: ty::RegionTraitStore(region, _), ..}) => {
+        ty::ty_closure(box ty::ClosureTy {store: ty::RegionTraitStore(region, _),
+                                          ..}) => {
             freevars::with_freevars(tcx, expr.id, |freevars| {
                 if freevars.is_empty() {
                     // No free variables means that the environment
@@ -684,6 +684,14 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 }
             });
         }
+
+        ty::ty_closure(box ty::ClosureTy {store: ty::UniqTraitStore,
+                                          ..}) => {
+            freevars::with_freevars(tcx, expr.id, |freevars| {
+                constrain_free_variables_in_proc(rcx, expr, freevars);
+            });
+        }
+
         _ => ()
     }
 
@@ -701,6 +709,25 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             })
         }
         _ => ()
+    }
+
+    fn constrain_free_variables_in_proc(rcx: &mut Rcx,
+                                        expr: &ast::Expr,
+                                        freevars: &[freevars::freevar_entry]) {
+        /*!
+         * There is currently a rule that procs that they can only
+         * close over static things.
+         */
+
+        let tcx = rcx.fcx.ccx.tcx;
+        debug!("constrain_free_variables_in_proc({})", expr.repr(tcx));
+        for freevar in freevars.iter() {
+            let var_def_id = freevar.def.def_id();
+            assert!(var_def_id.krate == ast::LOCAL_CRATE);
+            constrain_regions_in_type_of_node(
+                rcx, var_def_id.node, ty::ReStatic,
+                infer::ProcCapture(expr.span, var_def_id.node));
+        }
     }
 
     fn constrain_free_variables(rcx: &mut Rcx,
@@ -1405,6 +1432,12 @@ fn adjust_borrow_kind_for_assignment_lhs(rcx: &Rcx,
 
 fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
                                     cmt: mc::cmt) {
+    /*!
+     * Indicates that `cmt` is being directly mutated (e.g., assigned
+     * to).  If cmt contains any by-ref upvars, this implies that
+     * those upvars must be borrowed using an `&mut` borow.
+     */
+
     let mut cmt = cmt;
     loop {
         debug!("adjust_upvar_borrow_kind_for_mut(cmt={})",

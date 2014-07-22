@@ -161,6 +161,9 @@ pub enum SubregionOrigin {
     // Closure bound must not outlive captured free variables
     FreeVariable(Span, ast::NodeId),
 
+    // Proc upvars must be 'static
+    ProcCapture(Span, ast::NodeId),
+
     // Index into slice must be within its lifetime
     IndexSlice(Span),
 
@@ -898,6 +901,7 @@ impl SubregionOrigin {
             InvokeClosure(a) => a,
             DerefPointer(a) => a,
             FreeVariable(a, _) => a,
+            ProcCapture(a, _) => a,
             IndexSlice(a) => a,
             RelateObjectBound(a) => a,
             Reborrow(a) => a,
@@ -931,6 +935,9 @@ impl Repr for SubregionOrigin {
             }
             FreeVariable(a, b) => {
                 format!("FreeVariable({}, {})", a.repr(tcx), b)
+            }
+            ProcCapture(a, b) => {
+                format!("ProcCapture({}, {})", a.repr(tcx), b)
             }
             IndexSlice(a) => {
                 format!("IndexSlice({})", a.repr(tcx))
