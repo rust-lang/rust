@@ -46,6 +46,16 @@ pub static PTR_MARKER: u8 = 0;
 ///
 /// assert_eq!(vec.pop(), Some(2));
 /// assert_eq!(vec.len(), 1);
+///
+/// *vec.get_mut(0) = 7i;
+/// assert_eq!(vec[0], 7);
+///
+/// vec.push_all([1, 2, 3]);
+///
+/// for x in vec.iter() {
+///     println!("{}", x);
+/// }
+/// assert_eq!(vec, vec![7i, 1, 2, 3]);
 /// ```
 ///
 /// The `vec!` macro is provided to make initialization more convenient:
@@ -54,6 +64,25 @@ pub static PTR_MARKER: u8 = 0;
 /// let mut vec = vec![1i, 2i, 3i];
 /// vec.push(4);
 /// assert_eq!(vec, vec![1, 2, 3, 4]);
+/// ```
+///
+/// Use a `Vec` as an efficient stack:
+///
+/// ```
+/// let mut stack = Vec::new();
+///
+/// stack.push(1i);
+/// stack.push(2i);
+/// stack.push(3i);
+///
+/// loop {
+///     let top = match stack.pop() {
+///         None => break, // empty
+///         Some(x) => x,
+///     };
+///     // Prints 3, 2, 1
+///     println!("{}", top);
+/// }
 /// ```
 ///
 /// # Capacity and reallocation
@@ -766,6 +795,15 @@ impl<T> Vec<T> {
     /// This will explicitly set the size of the vector, without actually
     /// modifying its buffers, so it is up to the caller to ensure that the
     /// vector is actually the specified size.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut v = vec![1u, 2, 3, 4];
+    /// unsafe {
+    ///     v.set_len(1);
+    /// }
+    /// ```
     #[inline]
     pub unsafe fn set_len(&mut self, len: uint) {
         self.len = len;
@@ -1237,7 +1275,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
-    /// let vec = vec![1i, 2, 3];
+    /// let vec = vec![1i, 2, 3, 4];
     /// assert!(vec.slice_to(2) == [1, 2]);
     /// ```
     #[inline]
@@ -1250,6 +1288,13 @@ impl<T> Vec<T> {
     /// # Failure
     ///
     /// Fails if the vector is empty
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let vec = vec![1i, 2, 3];
+    /// assert!(vec.init() == [1, 2]);
+    /// ```
     #[inline]
     pub fn init<'a>(&'a self) -> &'a [T] {
         self.slice(0, self.len() - 1)
@@ -1263,6 +1308,19 @@ impl<T> Vec<T> {
     ///
     /// Modifying the vector may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::vec::raw;
+    ///
+    /// let v = vec![1i, 2, 3];
+    /// let p = v.as_ptr();
+    /// unsafe {
+    ///     let b = raw::from_buf(p, 3u);
+    ///     assert_eq!(b, vec![1i, 2, 3]);
+    /// }
+    /// ```
     #[inline]
     pub fn as_ptr(&self) -> *const T {
         self.ptr as *const T
@@ -1275,6 +1333,19 @@ impl<T> Vec<T> {
     ///
     /// Modifying the vector may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::ptr;
+    ///
+    /// let mut v = vec![1i, 2, 3];
+    /// let p = v.as_mut_ptr();
+    /// unsafe {
+    ///     ptr::write(p, 9i);
+    /// }
+    /// assert_eq!(v, vec![9i, 2, 3]);
+    /// ```
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self.ptr
