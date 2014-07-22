@@ -191,7 +191,7 @@ impl<'a> RegionVarBindings<'a> {
     }
 
     pub fn commit(&self, snapshot: RegionSnapshot) {
-        debug!("RegionVarBindings: commit()");
+        debug!("RegionVarBindings: commit({})", snapshot.length);
         assert!(self.undo_log.borrow().len() > snapshot.length);
         assert!(*self.undo_log.borrow().get(snapshot.length) == OpenSnapshot);
 

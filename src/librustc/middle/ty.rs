@@ -28,7 +28,6 @@ use middle::subst::{Subst, Substs, VecPerParamSpace};
 use middle::stability;
 use middle::ty;
 use middle::typeck;
-use middle::typeck::MethodCall;
 use middle::ty_fold;
 use middle::ty_fold::{TypeFoldable,TypeFolder};
 use middle;

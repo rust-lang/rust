@@ -121,7 +121,7 @@ pub trait Combine {
         for &space in subst::ParamSpace::all().iter() {
             let a_tps = a_subst.types.get_slice(space);
             let b_tps = b_subst.types.get_slice(space);
-            let tps = if_ok!(self.tps(space, a_tps, b_tps));
+            let tps = try!(self.tps(space, a_tps, b_tps));
 
             let a_regions = a_subst.regions().get_slice(space);
             let b_regions = b_subst.regions().get_slice(space);
@@ -137,11 +137,11 @@ pub trait Combine {
                 }
             };
 
-            let regions = if_ok!(relate_region_params(self,
-                                                      item_def_id,
-                                                      r_variances,
-                                                      a_regions,
-                                                      b_regions));
+            let regions = try!(relate_region_params(self,
+                                                    item_def_id,
+                                                    r_variances,
+                                                    a_regions,
+                                                    b_regions));
 
             substs.types.replace(space, tps);
             substs.mut_regions().replace(space, regions);
@@ -185,7 +185,7 @@ pub trait Combine {
                     ty::Contravariant => this.contraregions(a_r, b_r),
                     ty::Bivariant => Ok(a_r),
                 };
-                rs.push(if_ok!(r));
+                rs.push(try!(r));
             }
             Ok(rs)
         }
@@ -193,9 +193,9 @@ pub trait Combine {
 
     fn bare_fn_tys(&self, a: &ty::BareFnTy,
                    b: &ty::BareFnTy) -> cres<ty::BareFnTy> {
-        let fn_style = if_ok!(self.fn_styles(a.fn_style, b.fn_style));
-        let abi = if_ok!(self.abi(a.abi, b.abi));
-        let sig = if_ok!(self.fn_sigs(&a.sig, &b.sig));
+        let fn_style = try!(self.fn_styles(a.fn_style, b.fn_style));
+        let abi = try!(self.abi(a.abi, b.abi));
+        let sig = try!(self.fn_sigs(&a.sig, &b.sig));
         Ok(ty::BareFnTy {fn_style: fn_style,
                 abi: abi,
                 sig: sig})
@@ -207,7 +207,7 @@ pub trait Combine {
         let store = match (a.store, b.store) {
             (ty::RegionTraitStore(a_r, a_m),
              ty::RegionTraitStore(b_r, b_m)) if a_m == b_m => {
-                let r = if_ok!(self.contraregions(a_r, b_r));
+                let r = try!(self.contraregions(a_r, b_r));
                 ty::RegionTraitStore(r, a_m)
             }
 
@@ -219,11 +219,11 @@ pub trait Combine {
                 return Err(ty::terr_sigil_mismatch(expected_found(self, a.store, b.store)))
             }
         };
-        let fn_style = if_ok!(self.fn_styles(a.fn_style, b.fn_style));
-        let onceness = if_ok!(self.oncenesses(a.onceness, b.onceness));
-        let bounds = if_ok!(self.bounds(a.bounds, b.bounds));
-        let sig = if_ok!(self.fn_sigs(&a.sig, &b.sig));
-        let abi = if_ok!(self.abi(a.abi, b.abi));
+        let fn_style = try!(self.fn_styles(a.fn_style, b.fn_style));
+        let onceness = try!(self.oncenesses(a.onceness, b.onceness));
+        let bounds = try!(self.bounds(a.bounds, b.bounds));
+        let sig = try!(self.fn_sigs(&a.sig, &b.sig));
+        let abi = try!(self.abi(a.abi, b.abi));
         Ok(ty::ClosureTy {
             fn_style: fn_style,
             onceness: onceness,
@@ -294,7 +294,7 @@ pub trait Combine {
             Err(ty::terr_traits(
                                 expected_found(self, a.def_id, b.def_id)))
         } else {
-            let substs = if_ok!(self.substs(a.def_id, &a.substs, &b.substs));
+            let substs = try!(self.substs(a.def_id, &a.substs, &b.substs));
             Ok(ty::TraitRef { def_id: a.def_id,
                               substs: substs })
         }
@@ -360,10 +360,10 @@ pub fn super_fn_sigs<C:Combine>(this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<
         return Err(ty::terr_variadic_mismatch(expected_found(this, a.variadic, b.variadic)));
     }
 
-    let inputs = if_ok!(argvecs(this,
+    let inputs = try!(argvecs(this,
                                 a.inputs.as_slice(),
                                 b.inputs.as_slice()));
-    let output = if_ok!(this.tys(a.output, b.output));
+    let output = try!(this.tys(a.output, b.output));
     Ok(FnSig {binder_id: a.binder_id,
               inputs: inputs,
               output: output,
@@ -413,7 +413,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
         // Relate integral variables to other types
         (&ty::ty_infer(IntVar(a_id)), &ty::ty_infer(IntVar(b_id))) => {
-            if_ok!(this.infcx().simple_vars(this.a_is_expected(),
+            try!(this.infcx().simple_vars(this.a_is_expected(),
                                             a_id, b_id));
             Ok(a)
         }
@@ -436,7 +436,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
         // Relate floating-point variables to other types
         (&ty::ty_infer(FloatVar(a_id)), &ty::ty_infer(FloatVar(b_id))) => {
-            if_ok!(this.infcx().simple_vars(this.a_is_expected(),
+            try!(this.infcx().simple_vars(this.a_is_expected(),
                                             a_id, b_id));
             Ok(a)
         }
@@ -468,7 +468,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       (&ty::ty_enum(a_id, ref a_substs),
        &ty::ty_enum(b_id, ref b_substs))
       if a_id == b_id => {
-          let substs = if_ok!(this.substs(a_id,
+          let substs = try!(this.substs(a_id,
                                           a_substs,
                                           b_substs));
           Ok(ty::mk_enum(tcx, a_id, substs))
@@ -478,8 +478,8 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
        &ty::ty_trait(ref b_))
       if a_.def_id == b_.def_id => {
           debug!("Trying to match traits {:?} and {:?}", a, b);
-          let substs = if_ok!(this.substs(a_.def_id, &a_.substs, &b_.substs));
-          let bounds = if_ok!(this.bounds(a_.bounds, b_.bounds));
+          let substs = try!(this.substs(a_.def_id, &a_.substs, &b_.substs));
+          let bounds = try!(this.bounds(a_.bounds, b_.bounds));
           Ok(ty::mk_trait(tcx,
                           a_.def_id,
                           substs.clone(),
@@ -488,7 +488,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
       (&ty::ty_struct(a_id, ref a_substs), &ty::ty_struct(b_id, ref b_substs))
       if a_id == b_id => {
-            let substs = if_ok!(this.substs(a_id, a_substs, b_substs));
+            let substs = try!(this.substs(a_id, a_substs, b_substs));
             Ok(ty::mk_struct(tcx, a_id, substs))
       }
 
@@ -502,27 +502,27 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       }
 
       (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {
-            let typ = if_ok!(this.tys(a_inner, b_inner));
+            let typ = try!(this.tys(a_inner, b_inner));
             check_ptr_to_unsized(this, a, b, a_inner, b_inner, ty::mk_uniq(tcx, typ))
       }
 
       (&ty::ty_ptr(ref a_mt), &ty::ty_ptr(ref b_mt)) => {
-            let mt = if_ok!(this.mts(a_mt, b_mt));
+            let mt = try!(this.mts(a_mt, b_mt));
             check_ptr_to_unsized(this, a, b, a_mt.ty, b_mt.ty, ty::mk_ptr(tcx, mt))
       }
 
       (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
-            let r = if_ok!(this.contraregions(a_r, b_r));
+            let r = try!(this.contraregions(a_r, b_r));
             // FIXME(14985)  If we have mutable references to trait objects, we
             // used to use covariant subtyping. I have preserved this behaviour,
             // even though it is probably incorrect. So don't go down the usual
             // path which would require invariance.
             let mt = match (&ty::get(a_mt.ty).sty, &ty::get(b_mt.ty).sty) {
                 (&ty::ty_trait(..), &ty::ty_trait(..)) if a_mt.mutbl == b_mt.mutbl => {
-                    let ty = if_ok!(this.tys(a_mt.ty, b_mt.ty));
+                    let ty = try!(this.tys(a_mt.ty, b_mt.ty));
                     ty::mt { ty: ty, mutbl: a_mt.mutbl }
                 }
-                _ => if_ok!(this.mts(a_mt, b_mt))
+                _ => try!(this.mts(a_mt, b_mt))
             };
             check_ptr_to_unsized(this, a, b, a_mt.ty, b_mt.ty, ty::mk_rptr(tcx, r, mt))
       }
@@ -573,7 +573,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
         vid: ty::IntVid,
         val: ty::IntVarValue) -> cres<ty::t>
     {
-        if_ok!(this.infcx().simple_var_t(vid_is_expected, vid, val));
+        try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
         match val {
             IntType(v) => Ok(ty::mk_mach_int(v)),
             UintType(v) => Ok(ty::mk_mach_uint(v))
