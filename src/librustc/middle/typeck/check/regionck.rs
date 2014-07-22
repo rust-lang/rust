@@ -1534,6 +1534,12 @@ fn adjust_borrow_kind_for_assignment_lhs(rcx: &Rcx,
 
 fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
                                     cmt: mc::cmt) {
+    /*!
+     * Indicates that `cmt` is being directly mutated (e.g., assigned
+     * to).  If cmt contains any by-ref upvars, this implies that
+     * those upvars must be borrowed using an `&mut` borow.
+     */
+
     let mut cmt = cmt;
     loop {
         debug!("adjust_upvar_borrow_kind_for_mut(cmt={})",
