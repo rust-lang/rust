@@ -1145,8 +1145,9 @@ pub fn trans_adt<'a>(bcx: &'a Block<'a>,
         let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
         let e_ty = expr_ty_adjusted(bcx, &**e);
         bcx = trans_into(bcx, &**e, SaveIn(dest));
-        fcx.schedule_drop_mem(cleanup::CustomScope(custom_cleanup_scope),
-                              dest, e_ty);
+        let scope = cleanup::CustomScope(custom_cleanup_scope);
+        fcx.schedule_lifetime_end(scope, dest);
+        fcx.schedule_drop_mem(scope, dest, e_ty);
     }
 
     for base in optbase.iter() {

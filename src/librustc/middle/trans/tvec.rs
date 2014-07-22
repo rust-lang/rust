@@ -170,6 +170,7 @@ pub fn trans_slice_vstore<'a>(
         let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty).ptr_to();
         let llfixed_casted = BitCast(bcx, llfixed, llfixed_ty);
         let cleanup_scope = cleanup::temporary_scope(bcx.tcx(), content_expr.id);
+        fcx.schedule_lifetime_end(cleanup_scope, llfixed_casted);
         fcx.schedule_drop_mem(cleanup_scope, llfixed_casted, fixed_ty);
 
         // Generate the content into the backing array.
@@ -364,10 +365,9 @@ pub fn write_content<'a>(
                                i, bcx.val_to_string(lleltptr));
                         bcx = expr::trans_into(bcx, &**element,
                                                SaveIn(lleltptr));
-                        fcx.schedule_drop_mem(
-                            cleanup::CustomScope(temp_scope),
-                            lleltptr,
-                            vt.unit_ty);
+                        let scope = cleanup::CustomScope(temp_scope);
+                        fcx.schedule_lifetime_end(scope, lleltptr);
+                        fcx.schedule_drop_mem(scope, lleltptr, vt.unit_ty);
                     }
                     fcx.pop_custom_cleanup_scope(temp_scope);
                 }
