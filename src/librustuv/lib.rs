@@ -55,10 +55,10 @@ extern crate libc;
 extern crate alloc;
 
 use libc::{c_int, c_void};
-use std::c_str::CString;
 use std::fmt;
 use std::mem;
 use std::ptr;
+use std::string;
 use std::rt::local::Local;
 use std::rt::rtio;
 use std::rt::rtio::{IoResult, IoError};
@@ -363,7 +363,7 @@ impl UvError {
             let inner = match self { &UvError(a) => a };
             let name_str = uvll::uv_err_name(inner);
             assert!(name_str.is_not_null());
-            CString::new(name_str, false).as_str().unwrap().to_string()
+            string::raw::from_buf(name_str as *const u8)
         }
     }
 
@@ -372,7 +372,7 @@ impl UvError {
             let inner = match self { &UvError(a) => a };
             let desc_str = uvll::uv_strerror(inner);
             assert!(desc_str.is_not_null());
-            CString::new(desc_str, false).as_str().unwrap().to_string()
+            string::raw::from_buf(desc_str as *const u8)
         }
     }
 
