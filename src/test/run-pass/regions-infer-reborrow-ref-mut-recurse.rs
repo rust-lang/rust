@@ -8,23 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that two closures cannot simultaneously have mutable
-// and immutable access to the variable. Issue #6801.
+// Test an edge case in region inference: the lifetime of the borrow
+// of `*x` must be extended to at least 'a.
 
-fn get(x: &int) -> int {
-    *x
+fn foo<'a,'b>(x: &'a &'b mut int) -> &'a int {
+    let y = &*x; // should be inferred to have type &'a &'b mut int...
+
+    // ...because if we inferred, say, &'x &'b mut int where 'x <= 'a,
+    // this reborrow would be illegal:
+    &**y
 }
 
-fn set(x: &mut int) {
-    *x = 4;
-}
-
-fn a(x: &int) {
-    let c1 = || set(&mut *x);
-    //~^ ERROR cannot borrow
-    let c2 = || set(&mut *x);
-    //~^ ERROR cannot borrow
-}
-
-fn main() {
+pub fn main() {
+    /* Just want to know that it compiles. */
 }

@@ -13,7 +13,7 @@
 // for `'a` (which must be a sublifetime of `'b`).
 
 fn copy_borrowed_ptr<'a, 'b>(p: &'a mut &'b mut int) -> &'b mut int {
-    &mut **p //~ ERROR lifetime of `p` is too short
+    &mut **p //~ ERROR cannot infer
 }
 
 fn main() {
