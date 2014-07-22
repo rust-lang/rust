@@ -49,7 +49,6 @@ use slice::{Vector, ImmutableVector, MutableVector, ImmutableEqVector};
 use str::{Str, StrSlice, StrAllocating};
 use string::String;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
-use to_string::ToString;
 use vec::Vec;
 
 #[cfg(unix)]
@@ -998,7 +997,7 @@ pub fn error_string(errnum: uint) -> String {
                 fail!("strerror_r failure");
             }
 
-            ::c_str::CString::new(p as *const c_char, false).as_str().unwrap().to_string()
+            ::string::raw::from_buf(p as *const u8)
         }
     }
 

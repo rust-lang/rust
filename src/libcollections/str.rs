@@ -555,9 +555,6 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 
 /// Unsafe operations
 pub mod raw {
-    use core::mem;
-    use core::raw::Slice;
-    use core::ptr::RawPtr;
     use string;
     use string::String;
     use vec::Vec;
@@ -573,19 +570,10 @@ pub mod raw {
         string::raw::from_buf_len(buf, len)
     }
 
-    /// Deprecated. Use `CString::as_str().unwrap().to_string()`
-    #[deprecated = "Use CString::as_str().unwrap().to_string()"]
+    /// Deprecated. Use `string::raw::from_buf`
+    #[deprecated = "Use string::raw::from_buf"]
     pub unsafe fn from_c_str(c_string: *const i8) -> String {
-        let mut buf = String::new();
-        let mut len = 0;
-        while *c_string.offset(len) != 0 {
-            len += 1;
-        }
-        buf.push_bytes(mem::transmute(Slice {
-            data: c_string,
-            len: len as uint,
-        }));
-        buf
+        string::raw::from_buf(c_string as *const u8)
     }
 
     /// Deprecated. Replaced by `string::raw::from_utf8`
