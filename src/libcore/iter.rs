@@ -1962,7 +1962,19 @@ pub struct Range<A> {
     one: A
 }
 
-/// Return an iterator over the range [start, stop)
+/// Returns an iterator over the given range [start, stop) (that is, starting
+/// at start (inclusive), and ending at stop (exclusive)).
+///
+/// # Example
+///
+/// ```rust
+/// let array = [0, 1, 2, 3, 4];
+///
+/// for i in range(0, 5u) {
+///     println!("{}", i);
+///     assert_eq!(i,  array[i]);
+/// }
+/// ```
 #[inline]
 pub fn range<A: Add<A, A> + PartialOrd + Clone + One>(start: A, stop: A) -> Range<A> {
     Range{state: start, stop: stop, one: One::one()}
