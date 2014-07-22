@@ -17,6 +17,7 @@ use core::default::Default;
 use core::mem::zeroed;
 use core::mem;
 use core::uint;
+use std::hash::{Writer, Hash};
 
 use {Collection, Mutable, Map, MutableMap, Set, MutableSet};
 use slice::{Items, MutItems};
@@ -292,7 +293,16 @@ impl<T> Extendable<(uint, T)> for TrieMap<T> {
     }
 }
 
+impl<S: Writer, T: Hash<S>> Hash<S> for TrieMap<T> {
+    fn hash(&self, state: &mut S) {
+        for elt in self.iter() {
+            elt.hash(state);
+        }
+    }
+}
+
 #[allow(missing_doc)]
+#[deriving(Hash)]
 pub struct TrieSet {
     map: TrieMap<()>
 }
@@ -1049,6 +1059,7 @@ mod bench_map {
 mod test_set {
     use std::prelude::*;
     use std::uint;
+    use std::hash;
 
     use {MutableSet, Set};
     use super::TrieSet;
@@ -1081,5 +1092,21 @@ mod test_set {
         for x in xs.iter() {
             assert!(set.contains(x));
         }
+    }
+
+    #[test]
+    fn test_hash() {
+      let mut x = TrieSet::new();
+      let mut y = TrieSet::new();
+
+      x.insert(1);
+      x.insert(2);
+      x.insert(3);
+
+      y.insert(3);
+      y.insert(2);
+      y.insert(1);
+
+      assert!(hash::hash(&x) == hash::hash(&y));
     }
 }
