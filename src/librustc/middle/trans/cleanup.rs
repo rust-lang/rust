@@ -226,6 +226,20 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         self.trans_cleanups_to_exit_scope(ReturnExit)
     }
 
+    fn schedule_lifetime_end(&self,
+                             cleanup_scope: ScopeId,
+                             val: ValueRef) {
+        let drop = box LifetimeEnd {
+            ptr: val,
+        };
+
+        debug!("schedule_lifetime_end({:?}, val={})",
+               cleanup_scope,
+               self.ccx.tn.val_to_string(val));
+
+        self.schedule_clean(cleanup_scope, drop as Box<Cleanup>);
+    }
+
     fn schedule_drop_mem(&self,
                          cleanup_scope: ScopeId,
                          val: ValueRef,
@@ -902,6 +916,21 @@ impl Cleanup for FreeValue {
     }
 }
 
+pub struct LifetimeEnd {
+    ptr: ValueRef,
+}
+
+impl Cleanup for LifetimeEnd {
+    fn clean_on_unwind(&self) -> bool {
+        false
+    }
+
+    fn trans<'a>(&self, bcx: &'a Block<'a>) -> &'a Block<'a> {
+        base::call_lifetime_end(bcx, self.ptr);
+        bcx
+    }
+}
+
 pub fn temporary_scope(tcx: &ty::ctxt,
                        id: ast::NodeId)
                        -> ScopeId {
@@ -957,6 +986,9 @@ pub trait CleanupMethods<'a> {
                          cleanup_scope: ast::NodeId,
                          exit: uint) -> BasicBlockRef;
     fn return_exit_block(&'a self) -> BasicBlockRef;
+    fn schedule_lifetime_end(&self,
+                         cleanup_scope: ScopeId,
+                         val: ValueRef);
     fn schedule_drop_mem(&self,
                          cleanup_scope: ScopeId,
                          val: ValueRef,
