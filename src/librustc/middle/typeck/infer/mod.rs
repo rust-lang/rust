@@ -526,13 +526,13 @@ impl<'a> InferCtxt<'a> {
 
         self.type_unification_table
             .borrow_mut()
-            .rollback_to(self.tcx, type_snapshot);
+            .rollback_to(type_snapshot);
         self.int_unification_table
             .borrow_mut()
-            .rollback_to(self.tcx, int_snapshot);
+            .rollback_to(int_snapshot);
         self.float_unification_table
             .borrow_mut()
-            .rollback_to(self.tcx, float_snapshot);
+            .rollback_to(float_snapshot);
         self.region_vars
             .rollback_to(region_vars_snapshot);
     }
