@@ -162,6 +162,18 @@ pub fn main_args(args: &[String]) -> int {
         }
     }
 
+    if matches.opt_strs("passes").as_slice() == &["list".to_string()] {
+        println!("Available passes for running rustdoc:");
+        for &(name, _, description) in PASSES.iter() {
+            println!("{:>20s} - {}", name, description);
+        }
+        println!("{}", "\nDefault passes for rustdoc:"); // FIXME: #9970
+        for &name in DEFAULT_PASSES.iter() {
+            println!("{:>20s}", name);
+        }
+        return 0;
+    }
+
     if matches.free.len() == 0 {
         println!("expected an input file to act on");
         return 1;
@@ -210,18 +222,6 @@ pub fn main_args(args: &[String]) -> int {
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
                                                  &matches, &external_html),
         (false, false) => {}
-    }
-
-    if matches.opt_strs("passes").as_slice() == &["list".to_string()] {
-        println!("Available passes for running rustdoc:");
-        for &(name, _, description) in PASSES.iter() {
-            println!("{:>20s} - {}", name, description);
-        }
-        println!("{}", "\nDefault passes for rustdoc:"); // FIXME: #9970
-        for &name in DEFAULT_PASSES.iter() {
-            println!("{:>20s}", name);
-        }
-        return 0;
     }
 
     let (krate, res) = match acquire_input(input, externs, &matches) {
