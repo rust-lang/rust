@@ -34,6 +34,7 @@ use syntax::ext::build::AstBuilder;
 use syntax::ext::base::{ExtCtxt, MacResult, MacExpr, DummyResult};
 use syntax::parse::token;
 use syntax::print::pprust;
+use syntax::fold::Folder;
 
 use rustc::plugin::Registry;
 
@@ -615,7 +616,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 /// Otherwise, logs an error with cx.span_err and returns None.
 fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<String> {
     let mut parser = cx.new_parser_from_tts(tts);
-    let entry = cx.expand_expr(parser.parse_expr());
+    let entry = cx.expander().fold_expr(parser.parse_expr());
     let regex = match entry.node {
         ast::ExprLit(lit) => {
             match lit.node {
