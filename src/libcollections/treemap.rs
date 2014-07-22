@@ -957,6 +957,21 @@ impl<T: Ord> TreeMultiset<T> {
         RevMultisetItems{iter: self.map.rev_iter(), current: None, count: 0}
     }
 
+    /// Get a lazy iterator pointing to the first value greater than or equal to `v`.
+    /// If all elements in the multiset are less than `v`, an empty iterator is returned.
+    #[inline]
+    pub fn lower_bound<'a>(&'a self, v: &T) -> MultisetItems<'a, T> {
+        MultisetItems{iter: self.map.lower_bound(v), current: None, count: 0}
+    }
+
+    /// Get a lazy iterator pointing to the first value greater than `v`.
+    /// If all elements in the multiset are not greater than `v`, an empty iterator
+    /// is returned.
+    #[inline]
+    pub fn upper_bound<'a>(&'a self, v: &T) -> MultisetItems<'a, T> {
+        MultisetItems{iter: self.map.upper_bound(v), current: None, count: 0}
+    }
+
     /// Visit the values (in-order) representing the difference
     pub fn difference<'a>(&'a self, other: &'a TreeMultiset<T>)
         -> DifferenceItems<'a, T, MultisetItems<'a, T>> {
