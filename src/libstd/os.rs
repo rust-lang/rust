@@ -49,7 +49,7 @@ use slice::{Vector, ImmutableVector, MutableVector, ImmutableEqVector};
 use str::{Str, StrSlice, StrAllocating};
 use string::String;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
-use to_str::ToString;
+use to_string::ToString;
 use vec::Vec;
 
 #[cfg(unix)]
