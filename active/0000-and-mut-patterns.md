@@ -32,8 +32,8 @@ and-mut-pat.rs:2     let &mut (ref mut x, _);
 
 Another (rarer) way it can be confusing is the pattern `&mut x`. It is
 expected that this binds `x` to the contents of `&mut T`
-pointer... which it does, but as a mutable binding, meaning something
-like
+pointer... which it does, but as a mutable binding (it is parsed as
+`&(mut x)`), meaning something like
 
 ```rust
 for &mut x in some_iterator_over_and_mut {
@@ -63,6 +63,12 @@ v.mut_iter()`.
 It is also more verbose if someone does actually want the current
 `&mut x` behaviour (of binding the contents to a mutable local): `&mut
 mut x`. However, this seems like a very rare edgecase.
+
+Macros wishing to pattern match on either `&` or `&mut` need to handle
+each case, rather than performing both with a single `&`. However,
+macros handling these types already need special `mut` vs. not
+handling if they ever name the types, or if they use `ref` vs. `ref
+mut` subpatterns.
 
 # Alternatives
 
