@@ -17,6 +17,7 @@ use core::default::Default;
 use core::mem::zeroed;
 use core::mem;
 use core::uint;
+use std::hash::{Writer, Hash};
 
 use {Collection, Mutable, Map, MutableMap, Set, MutableSet};
 use slice::{Items, MutItems};
@@ -39,6 +40,15 @@ pub struct TrieMap<T> {
     root: TrieNode<T>,
     length: uint
 }
+
+impl<T: PartialEq> PartialEq for TrieMap<T> {
+    fn eq(&self, other: &TrieMap<T>) -> bool {
+        self.len() == other.len() &&
+            self.iter().zip(other.iter()).all(|(a, b)| a == b)
+    }
+}
+
+impl<T: Eq> Eq for TrieMap<T> {}
 
 impl<T> Collection for TrieMap<T> {
     /// Return the number of elements in the map
@@ -292,7 +302,16 @@ impl<T> Extendable<(uint, T)> for TrieMap<T> {
     }
 }
 
+impl<S: Writer, T: Hash<S>> Hash<S> for TrieMap<T> {
+    fn hash(&self, state: &mut S) {
+        for elt in self.iter() {
+            elt.hash(state);
+        }
+    }
+}
+
 #[allow(missing_doc)]
+#[deriving(Hash, PartialEq, Eq)]
 pub struct TrieSet {
     map: TrieMap<()>
 }
@@ -661,6 +680,7 @@ mod test_map {
     use std::prelude::*;
     use std::iter::range_step;
     use std::uint;
+    use std::hash;
 
     use {MutableMap, Map};
     use super::{TrieMap, TrieNode, Internal, External, Nothing};
@@ -932,6 +952,41 @@ mod test_map {
 
         assert!(m_lower.iter().all(|(_, &x)| x == 0));
         assert!(m_upper.iter().all(|(_, &x)| x == 0));
+    }
+
+    #[test]
+    fn test_eq() {
+        let mut a = TrieMap::new();
+        let mut b = TrieMap::new();
+
+        assert!(a == b);
+        assert!(a.insert(0, 5i));
+        assert!(a != b);
+        assert!(b.insert(0, 4i));
+        assert!(a != b);
+        assert!(a.insert(5, 19));
+        assert!(a != b);
+        assert!(!b.insert(0, 5));
+        assert!(a != b);
+        assert!(b.insert(5, 19));
+        assert!(a == b);
+    }
+
+    #[test]
+    fn test_hash() {
+      let mut x = TrieMap::new();
+      let mut y = TrieMap::new();
+
+      assert!(hash::hash(&x) == hash::hash(&y));
+      x.insert(1, 'a');
+      x.insert(2, 'b');
+      x.insert(3, 'c');
+
+      y.insert(3, 'c');
+      y.insert(2, 'b');
+      y.insert(1, 'a');
+
+      assert!(hash::hash(&x) == hash::hash(&y));
     }
 }
 
