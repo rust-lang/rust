@@ -75,6 +75,7 @@ pub trait Zero: Add<Self, Self> {
     fn zero() -> Self;
 
     /// Returns `true` if `self` is equal to the additive identity.
+    #[inline]
     fn is_zero(&self) -> bool;
 }
 
@@ -89,23 +90,11 @@ macro_rules! zero_impl(
     }
 )
 
-macro_rules! zero_float_impl(
-    ($t:ty, $v:expr) => {
-        impl Zero for $t {
-            #[inline]
-            fn zero() -> $t { $v }
-
-            #[inline]
-            fn is_zero(&self) -> bool { *self == $v || *self == -$v }
-        }
-    }
-)
-
 zero_impl!(uint, 0u)
-zero_impl!(u8,  0u8)
-zero_impl!(u16, 0u16)
-zero_impl!(u32, 0u32)
-zero_impl!(u64, 0u64)
+zero_impl!(u8,   0u8)
+zero_impl!(u16,  0u16)
+zero_impl!(u32,  0u32)
+zero_impl!(u64,  0u64)
 
 zero_impl!(int, 0i)
 zero_impl!(i8,  0i8)
@@ -113,8 +102,8 @@ zero_impl!(i16, 0i16)
 zero_impl!(i32, 0i32)
 zero_impl!(i64, 0i64)
 
-zero_float_impl!(f32, 0.0f32)
-zero_float_impl!(f64, 0.0f64)
+zero_impl!(f32, 0.0f32)
+zero_impl!(f64, 0.0f64)
 
 /// Returns the additive identity, `0`.
 #[inline(always)] pub fn zero<T: Zero>() -> T { Zero::zero() }
