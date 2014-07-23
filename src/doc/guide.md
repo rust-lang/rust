@@ -624,15 +624,10 @@ let x = (let y = 5i); // found `let` in ident position
 The compiler is telling us here that it was expecting to see the beginning of
 an expression, and a `let` can only begin a statement, not an expression.
 
-However, assigning to a variable binding is an expression:
-
-```{rust}
-let x;
-let y = x = 5i;
-```
-
-In this case, we have an assignment expression (`x = 5`) whose value is
-being used as part of a `let` declaration statement (`let y = ...`).
+Note that assigning to an already-bound variable (e.g. `y = 5i`) is still an
+expression, although its value is not particularly useful. Unlike C, where an
+assignment evaluates to the assigned value (e.g. `5i` in the previous example),
+in Rust the value of an assignment is the unit type `()` (which we'll cover later).
 
 The second kind of statement in Rust is the **expression statement**. Its
 purpose is to turn any expression into a statement. In practical terms, Rust's
