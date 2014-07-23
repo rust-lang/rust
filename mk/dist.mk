@@ -156,7 +156,7 @@ define DEF_OSX_PKG
 $$(eval $$(call DEF_PREPARE,osx-$(1)))
 
 dist-prepare-osx-$(1): PREPARE_HOST=$(1)
-dist-prepare-osx-$(1): PREPARE_TARGETS=$(1)
+dist-prepare-osx-$(1): PREPARE_TARGETS=$(2)
 dist-prepare-osx-$(1): PREPARE_DEST_DIR=tmp/dist/pkgroot-$(1)
 dist-prepare-osx-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-prepare-osx-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
@@ -187,7 +187,11 @@ tmp/dist/pkgres-$(1)/%: $(S)src/etc/pkg/%
 
 endef
 
-$(foreach host,$(CFG_HOST),$(eval $(call DEF_OSX_PKG,$(host))))
+ifneq ($(CFG_ENABLE_DIST_HOST_ONLY),)
+$(foreach host,$(CFG_HOST),$(eval $(call DEF_OSX_PKG,$(host),$(host))))
+else
+$(foreach host,$(CFG_HOST),$(eval $(call DEF_OSX_PKG,$(host),$(TARGET))))
+endif
 
 dist-osx: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).pkg)
 
@@ -205,17 +209,19 @@ distcheck-osx: dist-osx
 # Unix binary installer tarballs
 ######################################################################
 
-define DEF_PREPARE_DIST_DIR
+define DEF_INSTALLER
 
-dist-install-dir-$(1)$(3): PREPARE_HOST=$(1)
-dist-install-dir-$(1)$(3): PREPARE_TARGETS=$(2)
-dist-install-dir-$(1)$(3): PREPARE_DEST_DIR=tmp/dist/$$(PKG_NAME)-$(1)
-dist-install-dir-$(1)$(3): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
-dist-install-dir-$(1)$(3): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
-dist-install-dir-$(1)$(3): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
-dist-install-dir-$(1)$(3): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
-dist-install-dir-$(1)$(3): PREPARE_CLEAN=true
-dist-install-dir-$(1)$(3): prepare-base-dir-$(1) docs compiler-docs
+$$(eval $$(call DEF_PREPARE,dir-$(1)))
+
+dist-install-dir-$(1): PREPARE_HOST=$(1)
+dist-install-dir-$(1): PREPARE_TARGETS=$(2)
+dist-install-dir-$(1): PREPARE_DEST_DIR=tmp/dist/$$(PKG_NAME)-$(1)
+dist-install-dir-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
+dist-install-dir-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
+dist-install-dir-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
+dist-install-dir-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
+dist-install-dir-$(1): PREPARE_CLEAN=true
+dist-install-dir-$(1): prepare-base-dir-$(1) docs compiler-docs
 	$$(Q)(cd $$(PREPARE_DEST_DIR)/ && find . -type f | sed 's/^\.\///') \
       > tmp/dist/manifest-$(1).in
 	$$(Q)mv tmp/dist/manifest-$(1).in $$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)/rustlib/manifest.in
@@ -227,24 +233,19 @@ dist-install-dir-$(1)$(3): prepare-base-dir-$(1) docs compiler-docs
 	$$(Q)cp -r doc $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_BIN_CMD) $$(S)src/etc/install.sh $$(PREPARE_DEST_DIR)
 
-endef
-
-define DEF_INSTALLER
-
-$$(eval $$(call DEF_PREPARE,dir-$(1)))
-
-$$(eval $$(call DEF_PREPARE_DIST_DIR,$(1),$(1),))
-
-$$(eval $$(call DEF_PREPARE_DIST_DIR,$(1),$(CFG_TARGET),-with-target-libs))
-
 dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
 	@$(call E, build: $$@)
 	$$(Q)tar -czf dist/$$(PKG_NAME)-$(1).tar.gz -C tmp/dist $$(PKG_NAME)-$(1)
 
 endef
 
+ifneq ($(CFG_ENABLE_DIST_HOST_ONLY),)
 $(foreach host,$(CFG_HOST),\
-  $(eval $(call DEF_INSTALLER,$(host))))
+  $(eval $(call DEF_INSTALLER,$(host),$(host))))
+else
+$(foreach host,$(CFG_HOST),\
+  $(eval $(call DEF_INSTALLER,$(host),$(CFG_TARGET))))
+endif
 
 dist-install-dirs: $(foreach host,$(CFG_HOST),dist-install-dir-$(host))
 
