@@ -658,13 +658,14 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
 #if LLVM_VERSION_MINOR >= 5
 extern "C" void*
 LLVMRustOpenArchive(char *path) {
-    std::unique_ptr<MemoryBuffer> buf;
-    std::error_code err = MemoryBuffer::getFile(path, buf);
-    if (err) {
-        LLVMRustSetLastError(err.message().c_str());
+    ErrorOr<std::unique_ptr<MemoryBuffer>> buf_or = MemoryBuffer::getFile(path);
+    if (!buf_or) {
+        LLVMRustSetLastError(buf_or.getError().message().c_str());
         return NULL;
     }
-    Archive *ret = new Archive(buf.release(), err);
+
+    std::error_code err;
+    Archive *ret = new Archive(std::move(buf_or.get()), err);
     if (err) {
         LLVMRustSetLastError(err.message().c_str());
         return NULL;
