@@ -23,7 +23,7 @@ use core::num;
 use core::ptr;
 use core::uint;
 
-use {Collection, Mutable};
+use {Collection, Mutable, MutableSeq};
 use slice::{MutableOrdVector, MutableVectorAllocating, CloneableVector};
 use slice::{Items, MutItems};
 
@@ -666,67 +666,6 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Remove the last element from a vector and return it, or `None` if it is
-    /// empty.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2, 3];
-    /// assert_eq!(vec.pop(), Some(3));
-    /// assert_eq!(vec, vec![1, 2]);
-    /// ```
-    #[inline]
-    pub fn pop(&mut self) -> Option<T> {
-        if self.len == 0 {
-            None
-        } else {
-            unsafe {
-                self.len -= 1;
-                Some(ptr::read(self.as_slice().unsafe_ref(self.len())))
-            }
-        }
-    }
-
-    /// Append an element to a vector.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the number of elements in the vector overflows a `uint`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2];
-    /// vec.push(3);
-    /// assert_eq!(vec, vec![1, 2, 3]);
-    /// ```
-    #[inline]
-    pub fn push(&mut self, value: T) {
-        if mem::size_of::<T>() == 0 {
-            // zero-size types consume no memory, so we can't rely on the address space running out
-            self.len = self.len.checked_add(&1).expect("length overflow");
-            unsafe { mem::forget(value); }
-            return
-        }
-        if self.len == self.cap {
-            let old_size = self.cap * mem::size_of::<T>();
-            let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
-            if old_size > size { fail!("capacity overflow") }
-            unsafe {
-                self.ptr = alloc_or_realloc(self.ptr, size,
-                                            self.cap * mem::size_of::<T>());
-            }
-            self.cap = max(self.cap, 2) * 2;
-        }
-
-        unsafe {
-            let end = (self.ptr as *const T).offset(self.len as int) as *mut T;
-            ptr::write(&mut *end, value);
-            self.len += 1;
-        }
-    }
-
     /// Appends one element to the vector provided. The vector itself is then
     /// returned for use again.
     ///
@@ -1042,12 +981,13 @@ impl<T> Vec<T> {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```ignore
     /// let mut vec = vec![1i, 2, 3];
     /// vec.unshift(4);
     /// assert_eq!(vec, vec![4, 1, 2, 3]);
     /// ```
     #[inline]
+    #[deprecated = "use insert(0, ...)"]
     pub fn unshift(&mut self, element: T) {
         self.insert(0, element)
     }
@@ -1068,6 +1008,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![2, 3]);
     /// ```
     #[inline]
+    #[deprecated = "use remove(0)"]
     pub fn shift(&mut self) -> Option<T> {
         self.remove(0)
     }
@@ -1615,6 +1556,60 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
     }
 }
 
+impl<T> MutableSeq<T> for Vec<T> {
+    /// Append an element to the back of a collection.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the number of elements in the vector overflows a `uint`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1i, 2);
+    /// vec.push(3);
+    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// ```
+    #[inline]
+    fn push(&mut self, value: T) {
+        if mem::size_of::<T>() == 0 {
+            // zero-size types consume no memory, so we can't rely on the address space running out
+            self.len = self.len.checked_add(&1).expect("length overflow");
+            unsafe { mem::forget(value); }
+            return
+        }
+        if self.len == self.cap {
+            let old_size = self.cap * mem::size_of::<T>();
+            let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
+            if old_size > size { fail!("capacity overflow") }
+            unsafe {
+                self.ptr = alloc_or_realloc(self.ptr, size,
+                                            self.cap * mem::size_of::<T>());
+            }
+            self.cap = max(self.cap, 2) * 2;
+        }
+
+        unsafe {
+            let end = (self.ptr as *const T).offset(self.len as int) as *mut T;
+            ptr::write(&mut *end, value);
+            self.len += 1;
+        }
+    }
+
+    #[inline]
+    fn pop(&mut self) -> Option<T> {
+        if self.len == 0 {
+            None
+        } else {
+            unsafe {
+                self.len -= 1;
+                Some(ptr::read(self.as_slice().unsafe_ref(self.len())))
+            }
+        }
+    }
+
+}
+
 /// An iterator that moves out of a vector.
 pub struct MoveItems<T> {
     allocation: *mut T, // the block of memory allocated for the vector
@@ -1703,6 +1698,8 @@ mod tests {
     use std::mem::size_of;
     use test::Bencher;
     use super::{unzip, raw, Vec};
+
+    use MutableSeq;
 
     #[test]
     fn test_small_vec_struct() {

@@ -53,7 +53,7 @@ fs::unlink(&path);
 
 use c_str::ToCStr;
 use clone::Clone;
-use collections::Collection;
+use collections::{Collection, MutableSeq};
 use io::standard_error;
 use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
 use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};

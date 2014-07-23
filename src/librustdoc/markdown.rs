@@ -136,7 +136,7 @@ pub fn test(input: &str, libs: HashSet<Path>, externs: core::Externs,
 
     let mut collector = Collector::new(input.to_string(), libs, externs, true);
     find_testable_code(input_str.as_slice(), &mut collector);
-    test_args.unshift("rustdoctest".to_string());
+    test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(test_args.as_slice(), collector.tests);
     0
 }

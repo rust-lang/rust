@@ -55,7 +55,7 @@ use core::prelude::*;
 use alloc::arc::Arc;
 use alloc::heap::{allocate, deallocate};
 use alloc::boxed::Box;
-use collections::Vec;
+use collections::{Vec, MutableSeq};
 use core::kinds::marker;
 use core::mem::{forget, min_align_of, size_of, transmute};
 use core::ptr;

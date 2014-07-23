@@ -154,7 +154,7 @@ use core::default::Default;
 use core::mem::{zeroed, replace, swap};
 use core::ptr;
 
-use {Collection, Mutable};
+use {Collection, Mutable, MutableSeq};
 use slice;
 use vec::Vec;
 
@@ -388,6 +388,7 @@ mod tests {
 
     use priority_queue::PriorityQueue;
     use vec::Vec;
+    use MutableSeq;
 
     #[test]
     fn test_iterator() {

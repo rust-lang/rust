@@ -30,7 +30,7 @@ use core::iter;
 use core::mem;
 use core::ptr;
 
-use {Collection, Mutable, Deque};
+use {Collection, Mutable, Deque, MutableSeq};
 
 /// A doubly-linked list.
 pub struct DList<T> {
@@ -249,18 +249,13 @@ impl<T> Deque<T> for DList<T> {
     fn pop_front(&mut self) -> Option<T> {
         self.pop_front_node().map(|box Node{value, ..}| value)
     }
+}
 
-    /// Add an element last in the list
-    ///
-    /// O(1)
-    fn push_back(&mut self, elt: T) {
+impl<T> MutableSeq<T> for DList<T> {
+    fn push(&mut self, elt: T) {
         self.push_back_node(box Node::new(elt))
     }
-
-    /// Remove the last element and return it, or None if the list is empty
-    ///
-    /// O(1)
-    fn pop_back(&mut self) -> Option<T> {
+    fn pop(&mut self) -> Option<T> {
         self.pop_back_node().map(|box Node{value, ..}| value)
     }
 }
@@ -284,12 +279,12 @@ impl<T> DList<T> {
     /// # Example
     ///
     /// ```rust
-    /// use std::collections::{DList, Deque};
+    /// use std::collections::DList;
     ///
     /// let mut dl = DList::new();
-    /// dl.push_back(1i);
-    /// dl.push_back(2);
-    /// dl.push_back(3);
+    /// dl.push(1i);
+    /// dl.push(2);
+    /// dl.push(3);
     ///
     /// dl.rotate_forward();
     ///
@@ -311,12 +306,12 @@ impl<T> DList<T> {
     /// # Example
     ///
     /// ```rust
-    /// use std::collections::{DList, Deque};
+    /// use std::collections::DList;
     ///
     /// let mut dl = DList::new();
-    /// dl.push_back(1i);
-    /// dl.push_back(2);
-    /// dl.push_back(3);
+    /// dl.push(1i);
+    /// dl.push(2);
+    /// dl.push(3);
     ///
     /// dl.rotate_backward();
     ///
@@ -338,14 +333,14 @@ impl<T> DList<T> {
     /// # Example
     ///
     /// ```rust
-    /// use std::collections::{DList, Deque};
+    /// use std::collections::DList;
     ///
     /// let mut a = DList::new();
     /// let mut b = DList::new();
-    /// a.push_back(1i);
-    /// a.push_back(2);
-    /// b.push_back(3i);
-    /// b.push_back(4);
+    /// a.push(1i);
+    /// a.push(2);
+    /// b.push(3i);
+    /// b.push(4);
     ///
     /// a.append(b);
     ///
@@ -379,14 +374,14 @@ impl<T> DList<T> {
     /// # Example
     ///
     /// ```rust
-    /// use std::collections::{DList, Deque};
+    /// use std::collections::DList;
     ///
     /// let mut a = DList::new();
     /// let mut b = DList::new();
-    /// a.push_back(1i);
-    /// a.push_back(2);
-    /// b.push_back(3i);
-    /// b.push_back(4);
+    /// a.push(1i);
+    /// a.push(2);
+    /// b.push(3i);
+    /// b.push(4);
     ///
     /// a.prepend(b);
     ///
@@ -408,13 +403,13 @@ impl<T> DList<T> {
     /// # Example
     ///
     /// ```rust
-    /// use std::collections::{DList, Deque};
+    /// use std::collections::DList;
     ///
     /// let mut a: DList<int> = DList::new();
-    /// a.push_back(2i);
-    /// a.push_back(4);
-    /// a.push_back(7);
-    /// a.push_back(8);
+    /// a.push(2i);
+    /// a.push(4);
+    /// a.push(7);
+    /// a.push(8);
     ///
     /// // insert 11 before the first odd number in the list
     /// a.insert_when(11, |&e, _| e % 2 == 1);
@@ -719,7 +714,7 @@ mod tests {
     use test::Bencher;
     use test;
 
-    use Deque;
+    use {Deque, MutableSeq};
     use super::{DList, Node, ListInsertion};
     use vec::Vec;
 

@@ -16,7 +16,7 @@ use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
-use collections::Collection;
+use collections::{Collection, MutableSeq};
 use from_str::FromStr;
 use hash;
 use io::Writer;

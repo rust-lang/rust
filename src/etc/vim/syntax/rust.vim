@@ -100,7 +100,7 @@ syn keyword rustTrait Clone
 syn keyword rustTrait PartialEq PartialOrd Eq Ord Equiv
 syn keyword rustEnum Ordering
 syn keyword rustEnumVariant Less Equal Greater
-syn keyword rustTrait Collection Mutable Map MutableMap
+syn keyword rustTrait Collection Mutable Map MutableMap MutableSeq
 syn keyword rustTrait Set MutableSet
 syn keyword rustTrait FromIterator Extendable ExactSize
 syn keyword rustTrait Iterator DoubleEndedIterator
