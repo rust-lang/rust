@@ -54,11 +54,11 @@ define PREPARE_LIB
 	$(Q)LIB_NAME="$(notdir $(lastword $(wildcard $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1))))"; \
 	MATCHES="$(filter-out %$(notdir $(lastword $(wildcard $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1)))),\
                         $(wildcard $(PREPARE_WORKING_DEST_LIB_DIR)/$(1)))"; \
-	if [ -n "$$MATCHES" ]; then                                              \
-	  echo "warning: one or libraries matching Rust library '$(1)'" &&       \
-	  echo "  (other than '$$LIB_NAME' itself) already present"     &&       \
-	  echo "  at destination $(PREPARE_WORKING_DEST_LIB_DIR):"                    &&       \
-	  echo $$MATCHES ;                                                       \
+	if [ -n "$$MATCHES" ]; then \
+	  echo "warning: one or libraries matching Rust library '$(1)'" && \
+	  echo "  (other than '$$LIB_NAME' itself) already present"     && \
+	  echo "  at destination $(PREPARE_WORKING_DEST_LIB_DIR):"      && \
+	  echo $$MATCHES ; \
 	fi
 	$(Q)$(PREPARE_LIB_CMD) `ls -drt1 $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1) | tail -1` $(PREPARE_WORKING_DEST_LIB_DIR)/
 endef

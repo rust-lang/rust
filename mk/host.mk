@@ -19,9 +19,9 @@
 define CP_HOST_STAGE_N_CRATE
 
 ifeq ($$(ONLY_RLIB_$(5)),)
-$$(HLIB$(2)_H_$(4))/stamp.$(5):					\
-	$$(TLIB$(1)_T_$(3)_H_$(4))/stamp.$(5)			\
-	$$(RUST_DEPS_$(5):%=$$(HLIB$(2)_H_$(4))/stamp.%)	\
+$$(HLIB$(2)_H_$(4))/stamp.$(5): \
+	$$(TLIB$(1)_T_$(3)_H_$(4))/stamp.$(5) \
+	$$(RUST_DEPS_$(5):%=$$(HLIB$(2)_H_$(4))/stamp.%) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$(@D)/lib$(5))
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES,\
@@ -66,19 +66,19 @@ endif
 
 endef
 
-$(foreach t,$(CFG_HOST),						    \
-	$(eval $(call CP_HOST_STAGE_N,0,1,$(t),$(t)))			    \
-	$(eval $(call CP_HOST_STAGE_N,1,2,$(t),$(t)))			    \
+$(foreach t,$(CFG_HOST), \
+	$(eval $(call CP_HOST_STAGE_N,0,1,$(t),$(t))) \
+	$(eval $(call CP_HOST_STAGE_N,1,2,$(t),$(t))) \
 	$(eval $(call CP_HOST_STAGE_N,2,3,$(t),$(t))))
 
-$(foreach crate,$(CRATES),						    \
- $(foreach t,$(CFG_HOST),						    \
-  $(eval $(call CP_HOST_STAGE_N_CRATE,0,1,$(t),$(t),$(crate)))		    \
-  $(eval $(call CP_HOST_STAGE_N_CRATE,1,2,$(t),$(t),$(crate)))		    \
+$(foreach crate,$(CRATES), \
+ $(foreach t,$(CFG_HOST), \
+  $(eval $(call CP_HOST_STAGE_N_CRATE,0,1,$(t),$(t),$(crate))) \
+  $(eval $(call CP_HOST_STAGE_N_CRATE,1,2,$(t),$(t),$(crate))) \
   $(eval $(call CP_HOST_STAGE_N_CRATE,2,3,$(t),$(t),$(crate)))))
 
-$(foreach tool,$(TOOLS),						    \
- $(foreach t,$(CFG_HOST),						    \
-  $(eval $(call CP_HOST_STAGE_N_TOOL,0,1,$(t),$(t),$(tool)))		    \
-  $(eval $(call CP_HOST_STAGE_N_TOOL,1,2,$(t),$(t),$(tool)))		    \
+$(foreach tool,$(TOOLS), \
+ $(foreach t,$(CFG_HOST), \
+  $(eval $(call CP_HOST_STAGE_N_TOOL,0,1,$(t),$(t),$(tool))) \
+  $(eval $(call CP_HOST_STAGE_N_TOOL,1,2,$(t),$(t),$(tool))) \
   $(eval $(call CP_HOST_STAGE_N_TOOL,2,3,$(t),$(t),$(tool)))))
