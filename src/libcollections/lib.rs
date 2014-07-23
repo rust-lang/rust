@@ -325,6 +325,30 @@ pub trait MutableSet<T>: Set<T> + Mutable {
     fn remove(&mut self, value: &T) -> bool;
 }
 
+pub trait MutableSeq<T>: Mutable {
+    /// Append an element to the back of a collection.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1i, 2);
+    /// vec.push(3);
+    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// ```
+    fn push(&mut self, t: T);
+    /// Remove the last element from a collection and return it, or `None` if it is
+    /// empty.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1i, 2, 3);
+    /// assert_eq!(vec.pop(), Some(3));
+    /// assert_eq!(vec, vec!(1, 2));
+    /// ```
+    fn pop(&mut self) -> Option<T>;
+}
+
 /// A double-ended sequence that allows querying, insertion and deletion at both
 /// ends.
 ///
@@ -336,9 +360,9 @@ pub trait MutableSet<T>: Set<T> + Mutable {
 /// use std::collections::{RingBuf, Deque};
 ///
 /// let mut queue = RingBuf::new();
-/// queue.push_back(1i);
-/// queue.push_back(2i);
-/// queue.push_back(3i);
+/// queue.push(1i);
+/// queue.push(2i);
+/// queue.push(3i);
 ///
 /// // Will print 1, 2, 3
 /// while !queue.is_empty() {
@@ -374,17 +398,17 @@ pub trait MutableSet<T>: Set<T> + Mutable {
 /// // Init deque with 1, 2, 3, 4
 /// deque.push_front(2i);
 /// deque.push_front(1i);
-/// deque.push_back(3i);
-/// deque.push_back(4i);
+/// deque.push(3i);
+/// deque.push(4i);
 ///
 /// // Will print (1, 4) and (2, 3)
 /// while !deque.is_empty() {
 ///     let f = deque.pop_front().unwrap();
-///     let b = deque.pop_back().unwrap();
+///     let b = deque.pop().unwrap();
 ///     println!("{}", (f, b));
 /// }
 /// ```
-pub trait Deque<T> : Mutable {
+pub trait Deque<T> : MutableSeq<T> {
     /// Provide a reference to the front element, or `None` if the sequence is
     /// empty.
     ///
@@ -396,8 +420,8 @@ pub trait Deque<T> : Mutable {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.front(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push(1i);
+    /// d.push(2i);
     /// assert_eq!(d.front(), Some(&1i));
     /// ```
     fn front<'a>(&'a self) -> Option<&'a T>;
@@ -413,8 +437,8 @@ pub trait Deque<T> : Mutable {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.front_mut(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push(1i);
+    /// d.push(2i);
     /// match d.front_mut() {
     ///     Some(x) => *x = 9i,
     ///     None => (),
@@ -434,8 +458,8 @@ pub trait Deque<T> : Mutable {
     /// let mut d = DList::new();
     /// assert_eq!(d.back(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push(1i);
+    /// d.push(2i);
     /// assert_eq!(d.back(), Some(&2i));
     /// ```
     fn back<'a>(&'a self) -> Option<&'a T>;
@@ -451,8 +475,8 @@ pub trait Deque<T> : Mutable {
     /// let mut d = DList::new();
     /// assert_eq!(d.back(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push(1i);
+    /// d.push(2i);
     /// match d.back_mut() {
     ///     Some(x) => *x = 9i,
     ///     None => (),
@@ -479,7 +503,7 @@ pub trait Deque<T> : Mutable {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```ignore
     /// use std::collections::{DList, Deque};
     ///
     /// let mut d = DList::new();
@@ -487,13 +511,14 @@ pub trait Deque<T> : Mutable {
     /// d.push_back(2i);
     /// assert_eq!(d.front(), Some(&1i));
     /// ```
-    fn push_back(&mut self, elt: T);
+    #[deprecated = "use the `push` method"]
+    fn push_back(&mut self, elt: T) { self.push(elt) }
 
     /// Remove the last element and return it, or `None` if the sequence is empty.
     ///
     /// # Example
     ///
-    /// ```
+    /// ```ignore
     /// use std::collections::{RingBuf, Deque};
     ///
     /// let mut d = RingBuf::new();
@@ -504,7 +529,8 @@ pub trait Deque<T> : Mutable {
     /// assert_eq!(d.pop_back(), Some(1i));
     /// assert_eq!(d.pop_back(), None);
     /// ```
-    fn pop_back(&mut self) -> Option<T>;
+    #[deprecated = "use the `pop` method"]
+    fn pop_back(&mut self) -> Option<T> { self.pop() }
 
     /// Remove the first element and return it, or `None` if the sequence is empty.
     ///
@@ -514,8 +540,8 @@ pub trait Deque<T> : Mutable {
     /// use std::collections::{RingBuf, Deque};
     ///
     /// let mut d = RingBuf::new();
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push(1i);
+    /// d.push(2i);
     ///
     /// assert_eq!(d.pop_front(), Some(1i));
     /// assert_eq!(d.pop_front(), Some(2i));
@@ -535,4 +561,8 @@ mod std {
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
     pub use hash;           // deriving(Hash)
+
+    pub mod collections {
+        pub use MutableSeq;
+    }
 }

@@ -40,7 +40,7 @@ use core::mem::{replace, swap};
 use core::ptr;
 use std::hash::{Writer, Hash};
 
-use {Collection, Mutable, Set, MutableSet, MutableMap, Map};
+use {Collection, Mutable, Set, MutableSet, MutableMap, Map, MutableSeq};
 use vec::Vec;
 
 // This is implemented as an AA tree, which is a simplified variation of
@@ -1127,7 +1127,7 @@ mod test_treemap {
     use std::rand::Rng;
     use std::rand;
 
-    use {Map, MutableMap, Mutable};
+    use {Map, MutableMap, Mutable, MutableSeq};
     use super::{TreeMap, TreeNode};
 
     #[test]
@@ -1659,7 +1659,7 @@ mod test_set {
     use std::prelude::*;
     use std::hash;
 
-    use {Set, MutableSet, Mutable, MutableMap};
+    use {Set, MutableSet, Mutable, MutableMap, MutableSeq};
     use super::{TreeMap, TreeSet};
 
     #[test]

@@ -15,7 +15,7 @@ use std::default::Default;
 use std::hash::{Hash, Hasher};
 
 use {Decodable, Encodable, Decoder, Encoder};
-use std::collections::{DList, RingBuf, TreeMap, TreeSet, Deque, HashMap, HashSet,
+use std::collections::{DList, RingBuf, TreeMap, TreeSet, HashMap, HashSet,
                        TrieMap, TrieSet};
 use std::collections::enum_set::{EnumSet, CLike};
 
@@ -39,7 +39,7 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for DList<T> {
         d.read_seq(|d, len| {
             let mut list = DList::new();
             for i in range(0u, len) {
-                list.push_back(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
+                list.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
             Ok(list)
         })
@@ -66,7 +66,7 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for RingBuf<T> {
         d.read_seq(|d, len| {
             let mut deque: RingBuf<T> = RingBuf::new();
             for i in range(0u, len) {
-                deque.push_back(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
+                deque.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
             Ok(deque)
         })

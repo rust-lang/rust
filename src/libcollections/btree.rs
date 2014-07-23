@@ -24,7 +24,7 @@ use alloc::boxed::Box;
 use core::fmt;
 use core::fmt::Show;
 
-use Collection;
+use {Collection, MutableSeq};
 use vec::Vec;
 
 #[allow(missing_doc)]
@@ -781,6 +781,8 @@ mod test_btree {
     use std::prelude::*;
 
     use super::{BTree, Node, LeafElt};
+
+    use MutableSeq;
 
     //Tests the functionality of the insert methods (which are unfinished).
     #[test]

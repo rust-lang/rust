@@ -268,6 +268,7 @@ impl<T: Share + Send> Drop for Weak<T> {
 #[allow(experimental)]
 mod tests {
     use std::clone::Clone;
+    use std::collections::MutableSeq;
     use std::comm::channel;
     use std::mem::drop;
     use std::ops::Drop;
