@@ -2071,8 +2071,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter, parms: EncodeParams, krate:
     encode_crate_name(&mut rbml_w, ecx.link_meta.crate_name.as_slice());
     encode_crate_triple(&mut rbml_w,
                         tcx.sess
-                           .targ_cfg
-                           .target_strs
+                           .opts
                            .target_triple
                            .as_slice());
     encode_hash(&mut rbml_w, &ecx.link_meta.crate_hash);

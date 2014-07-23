@@ -435,7 +435,7 @@ pub fn early_warn(msg: &str) {
 
 pub fn list_metadata(sess: &Session, path: &Path,
                      out: &mut io::Writer) -> io::IoResult<()> {
-    metadata::loader::list_file_metadata(sess.targ_cfg.os, path, out)
+    metadata::loader::list_file_metadata(sess.target.target.options.is_like_osx, path, out)
 }
 
 /// Run a procedure which will detect failures in the compiler and print nicer

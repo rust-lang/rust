@@ -18,7 +18,6 @@ use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, ContextRef};
 use llvm::SMDiagnosticRef;
 use util::common::time;
-use syntax::abi;
 use syntax::codemap;
 use syntax::diagnostic;
 use syntax::diagnostic::{Emitter, Handler, Level, mk_handler};
@@ -150,20 +149,8 @@ impl Emitter for SharedEmitter {
 // Note that without those flags various linking errors might
 // arise as some of intrinsics are converted into function calls
 // and nobody provides implementations those functions
-fn target_feature<'a>(sess: &'a Session) -> &'a str {
-    match sess.targ_cfg.os {
-        abi::OsAndroid => {
-            if "" == sess.opts.cg.target_feature.as_slice() {
-                "+v7"
-            } else {
-                sess.opts.cg.target_feature.as_slice()
-            }
-        },
-        abi::OsiOS if sess.targ_cfg.arch == abi::Arm => {
-            "+v7,+thumb2,+vfp3,+neon"
-        },
-        _ => sess.opts.cg.target_feature.as_slice()
-    }
+fn target_feature(sess: &Session) -> String {
+    format!("{},{}", sess.target.target.options.features, sess.opts.cg.target_feature)
 }
 
 fn get_llvm_opt_level(optimize: config::OptLevel) -> llvm::CodeGenOptLevel {
@@ -176,7 +163,11 @@ fn get_llvm_opt_level(optimize: config::OptLevel) -> llvm::CodeGenOptLevel {
 }
 
 fn create_target_machine(sess: &Session) -> TargetMachineRef {
-    let reloc_model = match sess.opts.cg.relocation_model.as_slice() {
+    let reloc_model_arg = match sess.opts.cg.relocation_model {
+        Some(ref s) => s.as_slice(),
+        None => sess.target.target.options.relocation_model.as_slice()
+    };
+    let reloc_model = match reloc_model_arg {
         "pic" => llvm::RelocPIC,
         "static" => llvm::RelocStatic,
         "default" => llvm::RelocDefault,
@@ -195,22 +186,22 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
     let use_softfp = sess.opts.cg.soft_float;
 
     // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a parameter.
-    // FIXME: #11954: mac64 unwinding may not work with fp elim
     let no_fp_elim = (sess.opts.debuginfo != NoDebugInfo) ||
-                     (sess.targ_cfg.os == abi::OsMacos &&
-                      sess.targ_cfg.arch == abi::X86_64);
+                     !sess.target.target.options.eliminate_frame_pointer;
 
     let any_library = sess.crate_types.borrow().iter().any(|ty| {
         *ty != config::CrateTypeExecutable
     });
 
-    // OSX has -dead_strip, which doesn't rely on ffunction_sections
-    // FIXME(#13846) this should be enabled for windows
-    let ffunction_sections = sess.targ_cfg.os != abi::OsMacos &&
-                             sess.targ_cfg.os != abi::OsWindows;
+    let ffunction_sections = sess.target.target.options.function_sections;
     let fdata_sections = ffunction_sections;
 
-    let code_model = match sess.opts.cg.code_model.as_slice() {
+    let code_model_arg = match sess.opts.cg.code_model {
+        Some(ref s) => s.as_slice(),
+        None => sess.target.target.options.code_model.as_slice()
+    };
+
+    let code_model = match code_model_arg {
         "default" => llvm::CodeModelDefault,
         "small" => llvm::CodeModelSmall,
         "kernel" => llvm::CodeModelKernel,
@@ -226,11 +217,15 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
         }
     };
 
-    let triple = sess.targ_cfg.target_strs.target_triple.as_slice();
+    let triple = sess.target.target.llvm_target.as_slice();
 
     let tm = unsafe {
-            triple.with_c_str(|t| {
-            sess.opts.cg.target_cpu.as_slice().with_c_str(|cpu| {
+        triple.with_c_str(|t| {
+            let cpu = match sess.opts.cg.target_cpu {
+                Some(ref s) => s.as_slice(),
+                None => sess.target.target.options.cpu.as_slice()
+            };
+            cpu.with_c_str(|cpu| {
                 target_feature(sess).with_c_str(|features| {
                     llvm::LLVMRustCreateTargetMachine(
                         t, cpu, features,
@@ -692,7 +687,7 @@ pub fn run_passes(sess: &Session,
         // the desired path.  This will give the correct behavior whether or
         // not GCC adds --force-exe-suffix.
         let windows_output_path =
-            if sess.targ_cfg.os == abi::OsWindows {
+            if sess.target.target.options.is_like_windows {
                 Some(output_path.with_extension("o.exe"))
             } else {
                 None
@@ -701,7 +696,7 @@ pub fn run_passes(sess: &Session,
         let pname = get_cc_prog(sess);
         let mut cmd = Command::new(pname.as_slice());
 
-        cmd.args(sess.targ_cfg.target_strs.cc_args.as_slice());
+        cmd.args(sess.target.target.options.pre_link_args.as_slice());
         cmd.arg("-nostdlib");
 
         for index in range(0, trans.modules.len()) {
@@ -711,6 +706,8 @@ pub fn run_passes(sess: &Session,
         cmd.arg("-r")
            .arg("-o")
            .arg(windows_output_path.as_ref().unwrap_or(output_path));
+
+        cmd.args(sess.target.target.options.post_link_args.as_slice());
 
         if (sess.opts.debugging_opts & config::PRINT_LINK_ARGS) != 0 {
             println!("{}", &cmd);

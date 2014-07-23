@@ -17,7 +17,6 @@ use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 use middle::trans::context::CrateContext;
 
 use syntax::ast;
-use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel};
 
 use std::c_str::ToCStr;
 use std::mem;
@@ -105,9 +104,10 @@ impl Type {
     }
 
     pub fn int(ccx: &CrateContext) -> Type {
-        match ccx.tcx().sess.targ_cfg.arch {
-            X86 | Arm | Mips | Mipsel => Type::i32(ccx),
-            X86_64 => Type::i64(ccx)
+        match ccx.tcx().sess.target.target.target_word_size.as_slice() {
+            "32" => Type::i32(ccx),
+            "64" => Type::i64(ccx),
+            tws => panic!("Unsupported target word size for int: {}", tws),
         }
     }
 

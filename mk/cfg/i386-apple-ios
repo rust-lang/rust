@@ -31,3 +31,4 @@ CFG_LDPATH_i386-apple-ios =
 CFG_RUN_i386-apple-ios = $(2)
 CFG_RUN_TARG_i386-apple-ios = $(call CFG_RUN_i386-apple-ios,,$(2))
 CFG_JEMALLOC_CFLAGS_i386-apple-ios = -target i386-apple-ios -Wl,-syslibroot $(CFG_IOSSIM_SDK) -Wl,-no_compact_unwind
+CFG_GNU_TRIPLE_i386-apple-ios := i386-apple-ios

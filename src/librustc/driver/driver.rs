@@ -749,8 +749,8 @@ pub fn collect_crate_types(session: &Session,
 
         if !res {
             session.warn(format!("dropping unsupported crate type `{}` \
-                                   for target os `{}`",
-                                 *crate_type, session.targ_cfg.os).as_slice());
+                                   for target `{}`",
+                                 *crate_type, session.opts.target_triple).as_slice());
         }
 
         res

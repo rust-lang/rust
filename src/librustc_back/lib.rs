@@ -51,3 +51,4 @@ pub mod svh;
 pub mod target_strs;
 pub mod x86;
 pub mod x86_64;
+pub mod target;

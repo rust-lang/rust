@@ -176,7 +176,7 @@ $$(JEMALLOC_LOCAL_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
 	@$$(call E, make: jemalloc)
 	cd "$$(JEMALLOC_BUILD_DIR_$(1))"; "$(S)src/jemalloc/configure" \
 		$$(JEMALLOC_ARGS_$(1)) --with-jemalloc-prefix=je_ $(CFG_JEMALLOC_FLAGS) \
-		--build=$(CFG_BUILD) --host=$(1) \
+		--build=$$(CFG_GNU_TRIPLE_$(CFG_BUILD)) --host=$$(CFG_GNU_TRIPLE_$(1)) \
 		CC="$$(CC_$(1))" \
 		AR="$$(AR_$(1))" \
 		RANLIB="$$(AR_$(1)) s" \

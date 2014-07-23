@@ -24,4 +24,4 @@ CFG_PATH_MUNGE_i686-unknown-linux-gnu := true
 CFG_LDPATH_i686-unknown-linux-gnu :=
 CFG_RUN_i686-unknown-linux-gnu=$(2)
 CFG_RUN_TARG_i686-unknown-linux-gnu=$(call CFG_RUN_i686-unknown-linux-gnu,,$(2))
-
+CFG_GNU_TRIPLE_i686-unknown-linux-gnu := i686-unknown-linux-gnu
