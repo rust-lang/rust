@@ -190,33 +190,38 @@ impl<K: Ord, V> TreeMap<K, V> {
 }
 
 impl<K, V> TreeMap<K, V> {
-    /// Return the value for which f(key) returns Equal. f is invoked
-    /// with current key and helps to navigate the tree
+    /// Return the value for which `f(key)` returns `Equal`. `f` is invoked
+    /// with current key and guides tree navigation. That means `f` should
+    /// be aware of natural ordering of the tree.
     ///
     /// # Example
     ///
     /// ```
-    /// use std::ascii::StrAsciiExt;
+    /// use collections::treemap::TreeMap;
     ///
-    /// let mut t = collections::treemap::TreeMap::new();
-    /// t.insert("Content-Type", "application/xml");
-    /// t.insert("User-Agent", "Curl-Rust/0.1");
+    /// fn get_headers() -> TreeMap<String, String> {
+    ///     let mut result = TreeMap::new();
+    ///     result.insert("Content-Type".to_string(), "application/xml".to_string());
+    ///     result.insert("User-Agent".to_string(), "Curl-Rust/0.1".to_string());
+    ///     result
+    /// }
     ///
-    /// let ua_key = "user-agent";
-    /// let ua = t.find_with(|&k| {
-    ///    ua_key.cmp(&k.to_ascii_lower().as_slice())
+    /// let headers = get_headers();
+    /// let ua_key = "User-Agent";
+    /// let ua = headers.find_with(|k| {
+    ///    ua_key.cmp(&k.as_slice())
     /// });
     ///
-    /// assert_eq!(*ua.unwrap(), "Curl-Rust/0.1");
+    /// assert_eq!((*ua.unwrap()).as_slice(), "Curl-Rust/0.1");
     /// ```
     #[inline]
     pub fn find_with<'a>(&'a self, f:|&K| -> Ordering) -> Option<&'a V> {
         tree_find_with(&self.root, f)
     }
 
-    /// Return the value for which f(key) returns Equal. f is invoked
-    /// with current key and helps to navigate the tree
-    ///
+    /// Return the value for which `f(key)` returns `Equal`. `f` is invoked
+    /// with current key and guides tree navigation. That means `f` should
+    /// be aware of natural ordering of the tree.
     /// # Example
     ///
     /// ```
@@ -913,14 +918,9 @@ fn split<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
     }
 }
 
-// Next 2 functions have the same conventions
-//
-// The only difference is that non-mutable version uses loop instead
-// of recursion (performance considerations)
-// It seems to be impossible to avoid recursion with mutability
-//
-// So convention is that comparator is gets at input current key
-// and returns search_key cmp cur_key (i.e. search_key.cmp(cur_key))
+// Next 2 functions have the same convention: comparator gets
+// at input current key and returns search_key cmp cur_key
+// (i.e. search_key.cmp(&cur_key))
 fn tree_find_with<'r, K, V>(node: &'r Option<Box<TreeNode<K, V>>>,
                             f: |&K| -> Ordering) -> Option<&'r V> {
     let mut current: &'r Option<Box<TreeNode<K, V>>> = node;
