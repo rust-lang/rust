@@ -192,7 +192,13 @@ check-docs: cleantestlibs cleantmptestlogs check-stage2-docs
 # NOTE: Remove after reprogramming windows bots
 check-fast: check-lite
 
+check-all: check check-secondary
+
+check-secondary: check-syntax check-pretty
+
 check-syntax: check-lexer
+
+check-pretty: check-stage2-T-$(CFG_BUILD)-H-$(CFG_BUILD)-pretty-exec
 
 .PHONY: cleantmptestlogs cleantestlibs
 
