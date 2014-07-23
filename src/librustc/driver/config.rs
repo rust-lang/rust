@@ -441,12 +441,6 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
     if sess.opts.test {
         append_configuration(&mut user_cfg, InternedString::new("test"))
     }
-    // If the user requested GC, then add the GC cfg
-    append_configuration(&mut user_cfg, if sess.opts.gc {
-        InternedString::new("gc")
-    } else {
-        InternedString::new("nogc")
-    });
     user_cfg.move_iter().collect::<Vec<_>>().append(default_cfg.as_slice())
 }
 
