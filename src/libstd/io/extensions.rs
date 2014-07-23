@@ -15,7 +15,7 @@
 // FIXME: Not sure how this should be structured
 // FIXME: Iteration should probably be considered separately
 
-use collections::Collection;
+use collections::{Collection, MutableSeq};
 use iter::Iterator;
 use option::{Option, Some, None};
 use result::{Ok, Err};

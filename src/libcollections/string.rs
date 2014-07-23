@@ -20,7 +20,7 @@ use core::mem;
 use core::ptr;
 use core::raw::Slice;
 
-use {Collection, Mutable};
+use {Collection, Mutable, MutableSeq};
 use hash;
 use str;
 use str::{CharRange, StrAllocating, MaybeOwned, Owned, Slice};
@@ -575,7 +575,7 @@ mod tests {
     use std::prelude::*;
     use test::Bencher;
 
-    use Mutable;
+    use {Mutable, MutableSeq};
     use str;
     use str::{Str, StrSlice, Owned, Slice};
     use super::String;

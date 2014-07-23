@@ -1178,7 +1178,7 @@ fn make_run_args(config: &Config, props: &TestProps, testfile: &Path) ->
     // Add the arguments in the run_flags directive
     args.push_all_move(split_maybe_args(&props.run_flags));
 
-    let prog = args.shift().unwrap();
+    let prog = args.remove(0).unwrap();
     return ProcArgs {
         prog: prog,
         args: args,
