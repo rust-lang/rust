@@ -203,7 +203,7 @@ impl Task {
     /// }).destroy();
     /// # }
     /// ```
-    pub fn run(~self, f: ||) -> Box<Task> {
+    pub fn run(self: Box<Task>, f: ||) -> Box<Task> {
         assert!(!self.is_destroyed(), "cannot re-use a destroyed task");
 
         // First, make sure that no one else is in TLS. This does not allow
@@ -239,7 +239,7 @@ impl Task {
     ///
     /// The returned task cannot be used for running any more code, but it may
     /// be used to extract the runtime as necessary.
-    pub fn destroy(~self) -> Box<Task> {
+    pub fn destroy(self: Box<Task>) -> Box<Task> {
         if self.is_destroyed() {
             self
         } else {
@@ -252,7 +252,7 @@ impl Task {
     /// This function consumes ownership of the task, deallocating it once it's
     /// done being processed. It is assumed that TLD and the local heap have
     /// already been destroyed and/or annihilated.
-    fn cleanup(~self, result: Result) -> Box<Task> {
+    fn cleanup(self: Box<Task>, result: Result) -> Box<Task> {
         // The first thing to do when cleaning up is to deallocate our local
         // resources, such as TLD and GC data.
         //
@@ -394,7 +394,9 @@ impl Task {
 
     /// Spawns a sibling to this task. The newly spawned task is configured with
     /// the `opts` structure and will run `f` as the body of its code.
-    pub fn spawn_sibling(mut ~self, opts: TaskOpts, f: proc(): Send) {
+    pub fn spawn_sibling(mut self: Box<Task>,
+                         opts: TaskOpts,
+                         f: proc(): Send) {
         let ops = self.imp.take_unwrap();
         ops.spawn_sibling(self, opts, f)
     }
@@ -402,7 +404,8 @@ impl Task {
     /// Deschedules the current task, invoking `f` `amt` times. It is not
     /// recommended to use this function directly, but rather communication
     /// primitives in `std::comm` should be used.
-    pub fn deschedule(mut ~self, amt: uint,
+    pub fn deschedule(mut self: Box<Task>,
+                      amt: uint,
                       f: |BlockedTask| -> ::core::result::Result<(), BlockedTask>) {
         let ops = self.imp.take_unwrap();
         ops.deschedule(amt, self, f)
@@ -411,7 +414,7 @@ impl Task {
     /// Wakes up a previously blocked task, optionally specifying whether the
     /// current task can accept a change in scheduling. This function can only
     /// be called on tasks that were previously blocked in `deschedule`.
-    pub fn reawaken(mut ~self) {
+    pub fn reawaken(mut self: Box<Task>) {
         let ops = self.imp.take_unwrap();
         ops.reawaken(self);
     }
@@ -419,14 +422,14 @@ impl Task {
     /// Yields control of this task to another task. This function will
     /// eventually return, but possibly not immediately. This is used as an
     /// opportunity to allow other tasks a chance to run.
-    pub fn yield_now(mut ~self) {
+    pub fn yield_now(mut self: Box<Task>) {
         let ops = self.imp.take_unwrap();
         ops.yield_now(self);
     }
 
     /// Similar to `yield_now`, except that this function may immediately return
     /// without yielding (depending on what the runtime decides to do).
-    pub fn maybe_yield(mut ~self) {
+    pub fn maybe_yield(mut self: Box<Task>) {
         let ops = self.imp.take_unwrap();
         ops.maybe_yield(self);
     }

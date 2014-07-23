@@ -779,7 +779,6 @@ impl Clean<SelfTy> for ast::ExplicitSelf_ {
         match *self {
             ast::SelfStatic => SelfStatic,
             ast::SelfValue(_) => SelfValue,
-            ast::SelfUniq(_) => SelfOwned,
             ast::SelfRegion(lt, mt, _) => {
                 SelfBorrowed(lt.clean(), mt.clean())
             }

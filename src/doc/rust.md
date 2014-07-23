@@ -3864,13 +3864,13 @@ Function parameters are immutable unless declared with `mut`. The
 and `fn f(mut x: Box<int>, y: Box<int>)` declare one mutable variable `x` and
 one immutable variable `y`).
 
-Methods that take either `self` or `~self` can optionally place them in a
+Methods that take either `self` or `Box<Self>` can optionally place them in a
 mutable slot by prefixing them with `mut` (similar to regular arguments):
 
 ~~~
 trait Changer {
     fn change(mut self) -> Self;
-    fn modify(mut ~self) -> Box<Self>;
+    fn modify(mut self: Box<Self>) -> Box<Self>;
 }
 ~~~
 

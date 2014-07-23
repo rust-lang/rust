@@ -238,7 +238,7 @@ pub trait IoFactory {
 }
 
 pub trait RtioTcpListener : RtioSocket {
-    fn listen(~self) -> IoResult<Box<RtioTcpAcceptor + Send>>;
+    fn listen(self: Box<Self>) -> IoResult<Box<RtioTcpAcceptor + Send>>;
 }
 
 pub trait RtioTcpAcceptor : RtioSocket {
@@ -329,7 +329,7 @@ pub trait RtioPipe {
 }
 
 pub trait RtioUnixListener {
-    fn listen(~self) -> IoResult<Box<RtioUnixAcceptor + Send>>;
+    fn listen(self: Box<Self>) -> IoResult<Box<RtioUnixAcceptor + Send>>;
 }
 
 pub trait RtioUnixAcceptor {

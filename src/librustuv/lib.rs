@@ -154,7 +154,7 @@ pub trait UvHandle<T> {
         mem::transmute(uvll::get_data_for_uv_handle(*h))
     }
 
-    fn install(~self) -> Box<Self> {
+    fn install(self: Box<Self>) -> Box<Self> {
         unsafe {
             let myptr = mem::transmute::<&Box<Self>, &*mut u8>(&self);
             uvll::set_data_for_uv_handle(self.uv_handle(), *myptr);

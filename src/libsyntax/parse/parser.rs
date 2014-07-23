@@ -45,7 +45,7 @@ use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
-use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfUniq, SelfValue};
+use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{TokenTree, TraitMethod, TraitRef, TTDelim, TTSeq, TTTok};
 use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot, TyBox};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
@@ -3826,10 +3826,11 @@ impl<'a> Parser<'a> {
                 // We need to make sure it isn't a type
                 if self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
                     self.bump();
-                    SelfUniq(self.expect_self_ident())
-                } else {
-                    SelfStatic
+                    drop(self.expect_self_ident());
+                    let last_span = self.last_span;
+                    self.obsolete(last_span, ObsoleteOwnedSelf)
                 }
+                SelfStatic
             }
             token::IDENT(..) if self.is_self_ident() => {
                 let self_ident = self.expect_self_ident();
@@ -3877,7 +3878,10 @@ impl<'a> Parser<'a> {
                     self.look_ahead(2, |t| token::is_keyword(keywords::Self, t)) => {
                 mutbl_self = self.parse_mutability();
                 self.bump();
-                SelfUniq(self.expect_self_ident())
+                drop(self.expect_self_ident());
+                let last_span = self.last_span;
+                self.obsolete(last_span, ObsoleteOwnedSelf);
+                SelfStatic
             }
             _ => SelfStatic
         };
@@ -3921,7 +3925,6 @@ impl<'a> Parser<'a> {
             }
             SelfValue(id) => parse_remaining_arguments!(id),
             SelfRegion(_,_,id) => parse_remaining_arguments!(id),
-            SelfUniq(id) => parse_remaining_arguments!(id),
             SelfExplicit(_,id) => parse_remaining_arguments!(id),
         };
 
