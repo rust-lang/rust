@@ -17,6 +17,7 @@ use ast::{Provided, Public, FnStyle};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, Block};
 use ast::{BlockCheckMode, UnBox};
+use ast::{CaptureByRef, CaptureByValue, CaptureClause};
 use ast::{Crate, CrateConfig, Decl, DeclItem};
 use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
@@ -1985,7 +1986,7 @@ impl<'a> Parser<'a> {
                                     ExprBlock(blk));
             },
             token::BINOP(token::OR) |  token::OROR => {
-                return self.parse_lambda_expr();
+                return self.parse_lambda_expr(CaptureByValue);
             },
             // FIXME #13626: Should be able to stick in
             // token::SELF_KEYWORD_NAME
@@ -2036,6 +2037,9 @@ impl<'a> Parser<'a> {
                 hi = self.last_span.hi;
             },
             _ => {
+                if self.eat_keyword(keywords::Ref) {
+                    return self.parse_lambda_expr(CaptureByRef);
+                }
                 if self.eat_keyword(keywords::Proc) {
                     let decl = self.parse_proc_decl();
                     let body = self.parse_expr();
@@ -2696,7 +2700,8 @@ impl<'a> Parser<'a> {
     }
 
     // `|args| expr`
-    pub fn parse_lambda_expr(&mut self) -> Gc<Expr> {
+    pub fn parse_lambda_expr(&mut self, capture_clause: CaptureClause)
+                             -> Gc<Expr> {
         let lo = self.span.lo;
         let (decl, is_unboxed) = self.parse_fn_block_decl();
         let body = self.parse_expr();
@@ -2710,9 +2715,13 @@ impl<'a> Parser<'a> {
         });
 
         if is_unboxed {
-            self.mk_expr(lo, body.span.hi, ExprUnboxedFn(decl, fakeblock))
+            self.mk_expr(lo,
+                         body.span.hi,
+                         ExprUnboxedFn(capture_clause, decl, fakeblock))
         } else {
-            self.mk_expr(lo, body.span.hi, ExprFnBlock(decl, fakeblock))
+            self.mk_expr(lo,
+                         body.span.hi,
+                         ExprFnBlock(capture_clause, decl, fakeblock))
         }
     }
 
