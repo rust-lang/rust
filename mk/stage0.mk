@@ -6,9 +6,9 @@ $(HBIN0_H_$(CFG_BUILD))/:
 $(HLIB0_H_$(CFG_BUILD))/:
 	mkdir -p $@
 
-$(SNAPSHOT_RUSTC_POST_CLEANUP):						\
-		$(S)src/snapshots.txt					\
-		$(S)src/etc/get-snapshot.py $(MKFILE_DEPS)		\
+$(SNAPSHOT_RUSTC_POST_CLEANUP): \
+		$(S)src/snapshots.txt \
+		$(S)src/etc/get-snapshot.py $(MKFILE_DEPS) \
 		| $(HBIN0_H_$(CFG_BUILD))/
 
 	@$(call E, fetch: $@)
@@ -44,5 +44,5 @@ endef
 
 # Use stage1 to build other architectures: then you don't have to wait
 # for stage2, but you get the latest updates to the compiler source.
-$(foreach t,$(NON_BUILD_HOST),								\
+$(foreach t,$(NON_BUILD_HOST), \
  $(eval $(call BOOTSTRAP_STAGE0,$(t),1,$(CFG_BUILD))))

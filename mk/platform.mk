@@ -486,8 +486,8 @@ CFG_LIBUV_LINK_FLAGS_i586-mingw32msvc := -L$(CFG_MINGW32_CROSS_PATH)/i586-mingw3
 CFG_EXE_SUFFIX_i586-mingw32msvc := .exe
 CFG_WINDOWSY_i586-mingw32msvc := 1
 CFG_UNIXY_i586-mingw32msvc :=
-CFG_PATH_MUNGE_i586-mingw32msvc := $(strip perl -i.bak -p   \
-                             -e 's@\\(\S)@/\1@go;'       \
+CFG_PATH_MUNGE_i586-mingw32msvc := $(strip perl -i.bak -p \
+                             -e 's@\\(\S)@/\1@go;' \
                              -e 's@^/([a-zA-Z])/@\1:/@o;')
 CFG_LDPATH_i586-mingw32msvc :=
 CFG_RUN_i586-mingw32msvc=
@@ -620,27 +620,27 @@ define CFG_MAKE_TOOLCHAIN
 	RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
   endif
 
-  CFG_COMPILE_C_$(1) = $$(CC_$(1))  \
-        $$(CFG_GCCISH_CFLAGS)      \
+  CFG_COMPILE_C_$(1) = $$(CC_$(1)) \
+        $$(CFG_GCCISH_CFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
-        $$(CFG_DEPEND_FLAGS)       \
+        $$(CFG_DEPEND_FLAGS) \
         -c -o $$(1) $$(2)
   CFG_LINK_C_$(1) = $$(CC_$(1)) \
-        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)          \
-        $$(CFG_GCCISH_LINK_FLAGS_$(1))              \
-        $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)     \
+        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
+        $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
+        $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2) \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
   CFG_COMPILE_CXX_$(1) = $$(CXX_$(1)) \
-        $$(CFG_GCCISH_CFLAGS)      \
-        $$(CFG_GCCISH_CXXFLAGS)    \
+        $$(CFG_GCCISH_CFLAGS) \
+        $$(CFG_GCCISH_CXXFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
-        $$(CFG_GCCISH_CXXFLAGS_$(1))    \
-        $$(CFG_DEPEND_FLAGS)       \
+        $$(CFG_GCCISH_CXXFLAGS_$(1)) \
+        $$(CFG_DEPEND_FLAGS) \
         -c -o $$(1) $$(2)
   CFG_LINK_CXX_$(1) = $$(CXX_$(1)) \
-        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)             \
-        $$(CFG_GCCISH_LINK_FLAGS_$(1))                 \
-        $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)        \
+        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
+        $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
+        $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2) \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
 
   ifeq ($$(findstring $(HOST_$(1)),arm mips mipsel),)
