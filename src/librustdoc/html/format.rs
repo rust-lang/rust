@@ -491,7 +491,7 @@ impl<'a> fmt::Show for Method<'a> {
         match *selfty {
             clean::SelfStatic => {},
             clean::SelfValue => args.push_str("self"),
-            clean::SelfOwned => args.push_str("~self"),
+            clean::SelfOwned => args.push_str("self: Box<Self>"),
             clean::SelfBorrowed(Some(ref lt), mtbl) => {
                 args.push_str(format!("&amp;{} {}self", *lt,
                                       MutableSpace(mtbl)).as_slice());

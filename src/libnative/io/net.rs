@@ -484,7 +484,8 @@ impl TcpListener {
 }
 
 impl rtio::RtioTcpListener for TcpListener {
-    fn listen(~self) -> IoResult<Box<rtio::RtioTcpAcceptor + Send>> {
+    fn listen(self: Box<TcpListener>)
+              -> IoResult<Box<rtio::RtioTcpAcceptor + Send>> {
         self.native_listen(128).map(|a| {
             box a as Box<rtio::RtioTcpAcceptor + Send>
         })

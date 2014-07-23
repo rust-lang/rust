@@ -27,7 +27,9 @@ struct SimpleTask {
 impl Runtime for SimpleTask {
     // Implement the simple tasks of descheduling and rescheduling, but only in
     // a simple number of cases.
-    fn deschedule(mut ~self, times: uint, mut cur_task: Box<Task>,
+    fn deschedule(mut self: Box<SimpleTask>,
+                  times: uint,
+                  mut cur_task: Box<Task>,
                   f: |BlockedTask| -> Result<(), BlockedTask>) {
         assert!(times == 1);
 
@@ -54,7 +56,7 @@ impl Runtime for SimpleTask {
         }
         Local::put(cur_task);
     }
-    fn reawaken(mut ~self, mut to_wake: Box<Task>) {
+    fn reawaken(mut self: Box<SimpleTask>, mut to_wake: Box<Task>) {
         let me = &mut *self as *mut SimpleTask;
         to_wake.put_runtime(self);
         unsafe {
@@ -69,9 +71,9 @@ impl Runtime for SimpleTask {
     // purpose. A "simple task" is just that, a very simple task that can't
     // really do a whole lot. The only purpose of the task is to get us off our
     // feet and running.
-    fn yield_now(~self, _cur_task: Box<Task>) { fail!() }
-    fn maybe_yield(~self, _cur_task: Box<Task>) { fail!() }
-    fn spawn_sibling(~self,
+    fn yield_now(self: Box<SimpleTask>, _cur_task: Box<Task>) { fail!() }
+    fn maybe_yield(self: Box<SimpleTask>, _cur_task: Box<Task>) { fail!() }
+    fn spawn_sibling(self: Box<SimpleTask>,
                      _cur_task: Box<Task>,
                      _opts: TaskOpts,
                      _f: proc():Send) {
@@ -80,7 +82,7 @@ impl Runtime for SimpleTask {
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> { None }
     fn stack_bounds(&self) -> (uint, uint) { fail!() }
     fn can_block(&self) -> bool { true }
-    fn wrap(~self) -> Box<Any> { fail!() }
+    fn wrap(self: Box<SimpleTask>) -> Box<Any> { fail!() }
 }
 
 pub fn task() -> Box<Task> {
