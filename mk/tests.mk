@@ -75,12 +75,12 @@ TEST_RATCHET_NOISE_PERCENT=10.0
 
 # Whether to ratchet or merely save benchmarks
 ifdef CFG_RATCHET_BENCH
-CRATE_TEST_EXTRA_ARGS=\
+CRATE_TEST_EXTRA_ARGS= \
   --test $(TEST_BENCH) \
   --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
   --ratchet-noise-percent $(TEST_RATCHET_NOISE_PERCENT)
 else
-CRATE_TEST_EXTRA_ARGS=\
+CRATE_TEST_EXTRA_ARGS= \
   --test $(TEST_BENCH) \
   --save-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4))
 endif
@@ -158,9 +158,9 @@ $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
  $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)) \
  $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)/tmp) \
  $(shell $(CFG_ADB) push $(S)src/etc/adb_run_wrapper.sh $(CFG_ADB_TEST_DIR) 1>/dev/null) \
- $(foreach crate,$(TARGET_CRATES),\
+ $(foreach crate,$(TARGET_CRATES), \
     $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(call CFG_LIB_GLOB_arm-linux-androideabi,$(crate)) \
-                    $(CFG_ADB_TEST_DIR)))\
+                    $(CFG_ADB_TEST_DIR))) \
  )
 else
 CFG_ADB_TEST_DIR=
@@ -359,7 +359,7 @@ define TEST_RUNNER
 # parent crates.
 ifeq ($(NO_REBUILD),)
 TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
-			    $$(foreach crate,$$(TARGET_CRATES),\
+			    $$(foreach crate,$$(TARGET_CRATES), \
 				$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
 				$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))
 
@@ -930,9 +930,9 @@ $(foreach stage,$(STAGES), \
    $(eval $(call DEF_CHECK_FOR_STAGE_AND_HOSTS_AND_GROUP,$(stage),$(host),$(group))))))
 
 define DEF_CHECK_DOC_FOR_STAGE
-check-stage$(1)-docs: $$(foreach docname,$$(DOCS),\
+check-stage$(1)-docs: $$(foreach docname,$$(DOCS), \
                        check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(docname)) \
-                     $$(foreach crate,$$(TEST_DOC_CRATES),\
+                     $$(foreach crate,$$(TEST_DOC_CRATES), \
                        check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-crate-$$(crate))
 endef
 

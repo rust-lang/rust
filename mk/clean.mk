@@ -66,7 +66,7 @@ clean-generic-$(2)-$(1):
          -name '*.bc' \
          \) \
          | xargs rm -f
-	$(Q)find $(1)\
+	$(Q)find $(1) \
          -name '*.dSYM' \
          | xargs rm -Rf
 endef

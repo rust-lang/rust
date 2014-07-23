@@ -167,7 +167,7 @@ endif
 define DEF_X
 X_$(1) := $(CFG_EXE_SUFFIX_$(1))
 endef
-$(foreach target,$(CFG_TARGET),\
+$(foreach target,$(CFG_TARGET), \
   $(eval $(call DEF_X,$(target))))
 
 # "Source" files we generate in builddir along the way.
@@ -333,7 +333,7 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 # target
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
-	$$(foreach dep,$$(TARGET_CRATES),\
+	$$(foreach dep,$$(TARGET_CRATES), \
 	    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep))
 
 # Prerequisites for a working stageN compiler and complete set of target
