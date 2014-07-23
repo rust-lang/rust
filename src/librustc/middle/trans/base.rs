@@ -1306,7 +1306,9 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
         }
         Some(ast_map::NodeExpr(e)) => {
             match e.node {
-                ast::ExprFnBlock(_, blk) | ast::ExprProc(_, blk) | ast::ExprUnboxedFn(_, blk) => {
+                ast::ExprFnBlock(_, _, blk) |
+                ast::ExprProc(_, blk) |
+                ast::ExprUnboxedFn(_, _, blk) => {
                     let mut explicit = CheckForNestedReturnsVisitor { found: false };
                     let mut implicit = CheckForNestedReturnsVisitor { found: false };
                     visit::walk_expr(&mut explicit, &*e, false);

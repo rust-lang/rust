@@ -63,6 +63,7 @@
 #![allow(non_camel_case_types)]
 
 use middle::def;
+use middle::freevars;
 use middle::ty;
 use middle::typeck;
 use util::nodemap::NodeMap;
@@ -270,6 +271,8 @@ pub trait Typer {
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
+    fn capture_mode(&self, closure_expr_id: ast::NodeId)
+                    -> freevars::CaptureMode;
 }
 
 impl MutabilityCategory {

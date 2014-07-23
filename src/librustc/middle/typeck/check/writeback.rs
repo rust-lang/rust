@@ -132,9 +132,9 @@ impl<'cx> Visitor<()> for WritebackCx<'cx> {
                                     MethodCall::expr(e.id));
 
         match e.node {
-            ast::ExprFnBlock(ref decl, _) |
+            ast::ExprFnBlock(_, ref decl, _) |
             ast::ExprProc(ref decl, _) |
-            ast::ExprUnboxedFn(ref decl, _) => {
+            ast::ExprUnboxedFn(_, ref decl, _) => {
                 for input in decl.inputs.iter() {
                     let _ = self.visit_node_id(ResolvingExpr(e.span),
                                                input.id);

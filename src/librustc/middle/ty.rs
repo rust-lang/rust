@@ -18,14 +18,15 @@ use lint;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
+use middle::freevars::CaptureModeMap;
+use middle::freevars;
 use middle::lang_items::{FnMutTraitLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
-use middle::freevars;
 use middle::resolve;
 use middle::resolve_lifetime;
-use middle::subst;
-use middle::subst::{Subst, Substs, VecPerParamSpace};
 use middle::stability;
+use middle::subst::{Subst, Substs, VecPerParamSpace};
+use middle::subst;
 use middle::ty;
 use middle::typeck;
 use middle::typeck::MethodCall;
@@ -384,6 +385,9 @@ pub struct ctxt {
 
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index>,
+
+    /// Maps closures to their capture clauses.
+    pub capture_modes: RefCell<CaptureModeMap>,
 }
 
 pub enum tbox_flag {
@@ -1057,6 +1061,7 @@ pub fn mk_ctxt(s: Session,
                named_region_map: resolve_lifetime::NamedRegionMap,
                map: ast_map::Map,
                freevars: freevars::freevar_map,
+               capture_modes: freevars::CaptureModeMap,
                region_maps: middle::region::RegionMaps,
                lang_items: middle::lang_items::LanguageItems,
                stability: stability::Index)
@@ -1115,7 +1120,8 @@ pub fn mk_ctxt(s: Session,
         unboxed_closure_types: RefCell::new(DefIdMap::new()),
         node_lint_levels: RefCell::new(HashMap::new()),
         transmute_restrictions: RefCell::new(Vec::new()),
-        stability: RefCell::new(stability)
+        stability: RefCell::new(stability),
+        capture_modes: RefCell::new(capture_modes),
     }
 }
 
@@ -4861,6 +4867,11 @@ impl mc::Typer for ty::ctxt {
 
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
         self.upvar_borrow_map.borrow().get_copy(&upvar_id)
+    }
+
+    fn capture_mode(&self, closure_expr_id: ast::NodeId)
+                    -> freevars::CaptureMode {
+        self.capture_modes.borrow().get_copy(&closure_expr_id)
     }
 }
 

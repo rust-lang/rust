@@ -141,9 +141,10 @@ pub enum astencode_tag { // Reserves 0x40 -- 0x5f
     tag_table_capture_map = 0x53,
     tag_table_unboxed_closure_type = 0x54,
     tag_table_upvar_borrow_map = 0x55,
+    tag_table_capture_modes = 0x56,
 }
 static first_astencode_tag: uint = tag_ast as uint;
-static last_astencode_tag: uint = tag_table_upvar_borrow_map as uint;
+static last_astencode_tag: uint = tag_table_capture_modes as uint;
 impl astencode_tag {
     pub fn from_uint(value : uint) -> Option<astencode_tag> {
         let is_a_tag = first_astencode_tag <= value && value <= last_astencode_tag;
