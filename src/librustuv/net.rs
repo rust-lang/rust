@@ -389,7 +389,8 @@ impl rtio::RtioSocket for TcpListener {
 }
 
 impl rtio::RtioTcpListener for TcpListener {
-    fn listen(~self) -> Result<Box<rtio::RtioTcpAcceptor + Send>, IoError> {
+    fn listen(self: Box<TcpListener>)
+              -> Result<Box<rtio::RtioTcpAcceptor + Send>, IoError> {
         // create the acceptor object from ourselves
         let mut acceptor = box TcpAcceptor {
             listener: self,

@@ -1892,9 +1892,6 @@ impl<'a> State<'a> {
             ast::SelfValue(_) => {
                 try!(word(&mut self.s, "self"));
             }
-            ast::SelfUniq(_) => {
-                try!(word(&mut self.s, "~self"));
-            }
             ast::SelfRegion(ref lt, m, _) => {
                 try!(word(&mut self.s, "&"));
                 try!(self.print_opt_lifetime(lt));

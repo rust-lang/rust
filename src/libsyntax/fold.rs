@@ -340,7 +340,7 @@ pub trait Folder {
 
     fn fold_explicit_self_(&mut self, es: &ExplicitSelf_) -> ExplicitSelf_ {
         match *es {
-            SelfStatic | SelfValue(_) | SelfUniq(_) => *es,
+            SelfStatic | SelfValue(_) => *es,
             SelfRegion(ref lifetime, m, id) => {
                 SelfRegion(fold_opt_lifetime(lifetime, self), m, id)
             }

@@ -229,7 +229,8 @@ impl UnixListener {
 }
 
 impl rtio::RtioUnixListener for UnixListener {
-    fn listen(~self) -> IoResult<Box<rtio::RtioUnixAcceptor + Send>> {
+    fn listen(self: Box<UnixListener>)
+              -> IoResult<Box<rtio::RtioUnixAcceptor + Send>> {
         self.native_listen(128).map(|a| {
             box a as Box<rtio::RtioUnixAcceptor + Send>
         })
