@@ -1186,9 +1186,18 @@ pub trait Saturating {
     /// Saturating subtraction operator.
     /// Returns a-b, saturating at the numeric bounds instead of overflowing.
     fn saturating_sub(self, v: Self) -> Self;
+
+    /// Saturating multiplication operator.
+    /// Returns a\*b, saturating at the numeric bounds instead of overflowing.
+    fn saturating_mul(self, v: Self) -> Self;
+
+    /// Saturating division operator.
+    /// Returns a/b, saturating at the numeric bounds instead of overflowing.
+    fn saturating_div(self, v: Self) -> Self;
 }
 
-impl<T: CheckedAdd + CheckedSub + Zero + PartialOrd + Bounded> Saturating for T {
+impl<T: CheckedAdd + CheckedSub + CheckedDiv + CheckedMul + Zero + PartialOrd + Bounded>
+Saturating for T {
     #[inline]
     fn saturating_add(self, v: T) -> T {
         match self.checked_add(&v) {
@@ -1209,6 +1218,32 @@ impl<T: CheckedAdd + CheckedSub + Zero + PartialOrd + Bounded> Saturating for T 
                 Bounded::min_value()
             } else {
                 Bounded::max_value()
+            }
+        }
+    }
+
+    #[inline]
+    fn saturating_mul(self, v: T) -> T {
+        match self.checked_mul(&v) {
+            Some(x) => x,
+            None => if (self < Zero::zero()) == (v < Zero::zero()) {
+                Bounded::max_value()
+            } else {
+                Bounded::min_value()
+            }
+        }
+    }
+
+    #[inline]
+    fn saturating_div(self, v: T) -> T {
+        match self.checked_div(&v) {
+            Some(x) => x,
+            None => if v == Zero::zero() {
+                fail!("div by zero cannot be saturated")
+            } else if (self < Zero::zero()) == (v < Zero::zero()) {
+                Bounded::max_value()
+            } else {
+                Bounded::min_value()
             }
         }
     }
