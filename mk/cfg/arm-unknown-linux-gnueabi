@@ -27,3 +27,4 @@ CFG_RUN_arm-unknown-linux-gnueabi=$(2)
 CFG_RUN_TARG_arm-unknown-linux-gnueabi=$(call CFG_RUN_arm-unknown-linux-gnueabi,,$(2))
 RUSTC_FLAGS_arm-unknown-linux-gnueabi :=
 RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabi :=
+CFG_GNU_TRIPLE_arm-unknown-linux-gnueabi := arm-unknown-linux-gnueabi

@@ -24,4 +24,4 @@ CFG_PATH_MUNGE_i686-apple-darwin := true
 CFG_LDPATH_i686-apple-darwin :=
 CFG_RUN_i686-apple-darwin=$(2)
 CFG_RUN_TARG_i686-apple-darwin=$(call CFG_RUN_i686-apple-darwin,,$(2))
-
+CFG_GNU_TRIPLE_i686-apple-darwin := i686-apple-darwin

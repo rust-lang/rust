@@ -23,3 +23,4 @@ CFG_PATH_MUNGE_x86_64-unknown-freebsd :=
 CFG_LDPATH_x86_64-unknown-freebsd :=
 CFG_RUN_x86_64-unknown-freebsd=$(2)
 CFG_RUN_TARG_x86_64-unknown-freebsd=$(call CFG_RUN_x86_64-unknown-freebsd,,$(2))
+CFG_GNU_TRIPLE_x86_64-unknown-freebsd := x86_64-unknown-freebsd

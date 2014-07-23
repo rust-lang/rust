@@ -3,7 +3,7 @@ CFG_SDK_NAME_arm-apple-ios = iphoneos
 CFG_SDK_ARCHS_arm-apple-ios = armv7
 ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
 CFG_IOS_SDK = $(shell xcrun --show-sdk-path -sdk iphoneos 2>/dev/null)
-CFG_IOS_FLAGS = -target armv7-apple-darwin -isysroot $(CFG_IOS_SDK) -mios-version-min=7.0
+CFG_IOS_FLAGS = -target armv7-apple-ios -isysroot $(CFG_IOS_SDK) -mios-version-min=7.0
 CC_arm-apple-ios = $(shell xcrun -find -sdk iphoneos clang)
 CXX_arm-apple-ios = $(shell xcrun -find -sdk iphoneos clang++)
 CPP_arm-apple-ios = $(shell xcrun -find -sdk iphoneos clang++)
@@ -32,3 +32,4 @@ CFG_RUN_arm-apple-ios = $(2)
 CFG_RUN_TARG_arm-apple-ios = $(call CFG_RUN_arm-apple-ios,,$(2))
 RUSTC_FLAGS_arm-apple-ios := -C relocation_model=pic
 RUSTC_CROSS_FLAGS_arm-apple-ios :=-C relocation_model=pic
+CFG_GNU_TRIPLE_arm-apple-ios := arm-apple-ios

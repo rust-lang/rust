@@ -183,7 +183,7 @@ fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
     // environment to ensure that the target loads the right libraries at
     // runtime. It would be a sad day if the *host* libraries were loaded as a
     // mistake.
-    let mut cmd = Command::new(outdir.path().join("rust_out"));
+    let mut cmd = Command::new(outdir.path().join("rust-out"));
     let newpath = {
         let mut path = DynamicLibrary::search_path();
         path.insert(0, libdir.clone());
