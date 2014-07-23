@@ -892,7 +892,12 @@ fn insert_lllocals<'a>(mut bcx: &'a Block<'a>, bindings_map: &BindingsMap,
             TrByCopy(llbinding) => {
                 let llval = Load(bcx, binding_info.llmatch);
                 let datum = Datum::new(llval, binding_info.ty, Lvalue);
+                call_lifetime_start(bcx, llbinding);
                 bcx = datum.store_to(bcx, llbinding);
+                match cs {
+                    Some(cs) => bcx.fcx.schedule_lifetime_end(cs, llbinding),
+                    _ => {}
+                }
 
                 llbinding
             },
@@ -906,7 +911,10 @@ fn insert_lllocals<'a>(mut bcx: &'a Block<'a>, bindings_map: &BindingsMap,
 
         let datum = Datum::new(llval, binding_info.ty, Lvalue);
         match cs {
-            Some(cs) => bcx.fcx.schedule_drop_and_zero_mem(cs, llval, binding_info.ty),
+            Some(cs) => {
+                bcx.fcx.schedule_drop_and_zero_mem(cs, llval, binding_info.ty);
+                bcx.fcx.schedule_lifetime_end(cs, binding_info.llmatch);
+            }
             _ => {}
         }
 
@@ -945,9 +953,17 @@ fn compile_guard<'a, 'b>(
     let val = unpack_datum!(bcx, expr::trans(bcx, guard_expr));
     let val = val.to_llbool(bcx);
 
+    for (_, &binding_info) in data.bindings_map.iter() {
+        match binding_info.trmode {
+            TrByCopy(llbinding) => call_lifetime_end(bcx, llbinding),
+            _ => {}
+        }
+    }
+
     return with_cond(bcx, Not(bcx, val), |bcx| {
         // Guard does not match: remove all bindings from the lllocals table
         for (_, &binding_info) in data.bindings_map.iter() {
+            call_lifetime_end(bcx, binding_info.llmatch);
             bcx.fcx.lllocals.borrow_mut().remove(&binding_info.id);
         }
         match chk {
@@ -988,6 +1004,7 @@ fn compile_submatch<'a, 'b>(
         let data = &m[0].data;
         for &(ref ident, ref value_ptr) in m[0].bound_ptrs.iter() {
             let llmatch = data.bindings_map.get(ident).llmatch;
+            call_lifetime_start(bcx, llmatch);
             Store(bcx, *value_ptr, llmatch);
         }
         match data.arm.guard {
@@ -1294,10 +1311,10 @@ fn create_bindings_map(bcx: &Block, pat: Gc<ast::Pat>) -> BindingsMap {
         match bm {
             ast::BindByValue(_)
                 if !ty::type_moves_by_default(tcx, variable_ty) => {
-                llmatch = alloca(bcx,
+                llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),
                                  "__llmatch");
-                trmode = TrByCopy(alloca(bcx,
+                trmode = TrByCopy(alloca_no_lifetime(bcx,
                                          llvariable_ty,
                                          bcx.ident(ident).as_slice()));
             }
@@ -1305,13 +1322,13 @@ fn create_bindings_map(bcx: &Block, pat: Gc<ast::Pat>) -> BindingsMap {
                 // in this case, the final type of the variable will be T,
                 // but during matching we need to store a *T as explained
                 // above
-                llmatch = alloca(bcx,
+                llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),
                                  bcx.ident(ident).as_slice());
                 trmode = TrByMove;
             }
             ast::BindByRef(_) => {
-                llmatch = alloca(bcx,
+                llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty,
                                  bcx.ident(ident).as_slice());
                 trmode = TrByRef;
