@@ -131,7 +131,8 @@ pub fn opts() -> Vec<getopts::OptGroup> {
                  Markdown file or generated documentation",
                  "FILES"),
         optopt("", "markdown-playground-url",
-               "URL to send code snippets to", "URL")
+               "URL to send code snippets to", "URL"),
+        optflag("", "markdown-no-toc", "don't include table of contents")
     )
 }
 
@@ -220,7 +221,8 @@ pub fn main_args(args: &[String]) -> int {
             return test::run(input, cfgs, libs, externs, test_args)
         }
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
-                                                 &matches, &external_html),
+                                                 &matches, &external_html,
+                                                 !matches.opt_present("markdown-no-toc")),
         (false, false) => {}
     }
 

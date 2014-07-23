@@ -20,7 +20,7 @@ use externalfiles::ExternalHtml;
 
 use html::escape::Escape;
 use html::markdown;
-use html::markdown::{MarkdownWithToc, find_testable_code, reset_headers};
+use html::markdown::{Markdown, MarkdownWithToc, find_testable_code, reset_headers};
 use test::Collector;
 
 /// Separate any lines at the start of the file that begin with `%`.
@@ -42,7 +42,7 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 /// Render `input` (e.g. "foo.md") into an HTML file in `output`
 /// (e.g. output = "bar" => "bar/foo.html").
 pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
-              external_html: &ExternalHtml) -> int {
+              external_html: &ExternalHtml, include_toc: bool) -> int {
     let input_p = Path::new(input);
     output.push(input_p.filestem().unwrap());
     output.set_extension("html");
@@ -80,6 +80,12 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
 
     reset_headers();
 
+    let rendered = if include_toc {
+        format!("{}", MarkdownWithToc(text))
+    } else {
+        format!("{}", Markdown(text))
+    };
+
     let err = write!(
         &mut out,
         r#"<!DOCTYPE html>
@@ -113,7 +119,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
         css = css,
         in_header = external_html.in_header,
         before_content = external_html.before_content,
-        text = MarkdownWithToc(text),
+        text = rendered,
         after_content = external_html.after_content,
         playground = playground,
         );
