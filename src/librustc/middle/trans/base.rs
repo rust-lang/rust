@@ -1169,10 +1169,12 @@ pub fn alloc_ty(bcx: &Block, t: ty::t, name: &str) -> ValueRef {
 }
 
 pub fn alloca(cx: &Block, ty: Type, name: &str) -> ValueRef {
-    alloca_maybe_zeroed(cx, ty, name, false)
+    let p = alloca_no_lifetime(cx, ty, name);
+    call_lifetime_start(cx, p);
+    p
 }
 
-pub fn alloca_maybe_zeroed(cx: &Block, ty: Type, name: &str, zero: bool) -> ValueRef {
+pub fn alloca_no_lifetime(cx: &Block, ty: Type, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloca");
     if cx.unreachable.get() {
         unsafe {
@@ -1180,14 +1182,19 @@ pub fn alloca_maybe_zeroed(cx: &Block, ty: Type, name: &str, zero: bool) -> Valu
         }
     }
     debuginfo::clear_source_location(cx.fcx);
-    let p = Alloca(cx, ty, name);
-    if zero {
-        let b = cx.fcx.ccx.builder();
-        b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
-        memzero(&b, p, ty);
-    } else {
-        call_lifetime_start(cx, p);
+    Alloca(cx, ty, name)
+}
+
+pub fn alloca_zeroed(cx: &Block, ty: Type, name: &str) -> ValueRef {
+    if cx.unreachable.get() {
+        unsafe {
+            return llvm::LLVMGetUndef(ty.ptr_to().to_ref());
+        }
     }
+    let p = alloca_no_lifetime(cx, ty, name);
+    let b = cx.fcx.ccx.builder();
+    b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
+    memzero(&b, p, ty);
     p
 }
 
