@@ -75,9 +75,9 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, rustc: $$(@D)/lib$(4))
-	$$(call REMOVE_ALL_OLD_GLOB_MATCHES,\
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_LIB_GLOB_$(2),$(4)))
-	$$(call REMOVE_ALL_OLD_GLOB_MATCHES,\
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_RLIB_GLOB,$(4)))
 	$$(STAGE$(1)_T_$(2)_H_$(3)) \
 		$$(WFLAGS_ST$(1)) \
@@ -89,9 +89,9 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 		-C extra-filename=-$$(CFG_FILENAME_EXTRA) \
 		$$<
 	@touch $$@
-	$$(call LIST_ALL_OLD_GLOB_MATCHES,\
+	$$(call LIST_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_LIB_GLOB_$(2),$(4)))
-	$$(call LIST_ALL_OLD_GLOB_MATCHES,\
+	$$(call LIST_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_RLIB_GLOB,$(4)))
 
 endef

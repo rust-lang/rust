@@ -32,7 +32,7 @@ $(foreach t,$(CFG_TARGET),$(info cfg: os for $(t) is $(OSTYPE_$(t))))
 CFG_DSYMUTIL := true
 
 # Hack: not sure how to test if a file exists in make other than this
-OS_SUPP = $(patsubst %,--suppressions=%,\
+OS_SUPP = $(patsubst %,--suppressions=%, \
       $(wildcard $(CFG_SRC_DIR)src/etc/$(CFG_OSTYPE).supp*))
 
 ifdef CFG_DISABLE_OPTIMIZE_CXX
@@ -67,7 +67,7 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
     endif
   else
     ifdef CFG_VALGRIND
-      CFG_PERF_TOOL :=\
+      CFG_PERF_TOOL := \
         $(CFG_VALGRIND) --tool=cachegrind --cache-sim=yes --branch-sim=yes
     else
       CFG_PERF_TOOL := /usr/bin/time --verbose
@@ -94,7 +94,7 @@ define SET_FROM_CFG
   endif
 endef
 
-$(foreach cvar,CC CXX CPP CFLAGS CXXFLAGS CPPFLAGS,\
+$(foreach cvar,CC CXX CPP CFLAGS CXXFLAGS CPPFLAGS, \
   $(eval $(call SET_FROM_CFG,$(cvar))))
 
 CFG_RLIB_GLOB=lib$(1)-*.rlib
@@ -591,7 +591,7 @@ define FILTER_FLAGS
   endif
 endef
 
-$(foreach target,$(CFG_TARGET),\
+$(foreach target,$(CFG_TARGET), \
   $(eval $(call FILTER_FLAGS,$(target))))
 
 
@@ -664,5 +664,5 @@ define CFG_MAKE_TOOLCHAIN
 
 endef
 
-$(foreach target,$(CFG_TARGET),\
+$(foreach target,$(CFG_TARGET), \
   $(eval $(call CFG_MAKE_TOOLCHAIN,$(target))))

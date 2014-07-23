@@ -24,12 +24,12 @@ $$(HLIB$(2)_H_$(4))/stamp.$(5): \
 	$$(RUST_DEPS_$(5):%=$$(HLIB$(2)_H_$(4))/stamp.%) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$(@D)/lib$(5))
-	$$(call REMOVE_ALL_OLD_GLOB_MATCHES,\
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_LIB_GLOB_$(3),$(5)))
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(3)_H_$(4))/$$(call CFG_LIB_GLOB_$(3),$(5)) \
 	        $$(HLIB$(2)_H_$(4))
-	$$(call LIST_ALL_OLD_GLOB_MATCHES,\
+	$$(call LIST_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_LIB_GLOB_$(3),$(5)))
 else
 $$(HLIB$(2)_H_$(4))/stamp.$(5):
