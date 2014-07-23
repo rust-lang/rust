@@ -422,6 +422,8 @@ opt rpath 0 "build rpaths into rustc itself"
 opt nightly 0 "build nightly packages"
 opt verify-install 1 "verify installed binaries work"
 opt jemalloc 1 "build liballoc with jemalloc"
+# This is used by the automation to produce single-target nightlies
+opt dist-host-only 0 "only install bins for the host architecture"
 valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
