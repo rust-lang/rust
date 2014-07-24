@@ -3101,7 +3101,7 @@ impl<'a> Parser<'a> {
                             }
                           },
                           _ => {
-                              if enum_path.segments.len() == 1 {
+                              if !enum_path.global && enum_path.segments.len() == 1 {
                                   // it could still be either an enum
                                   // or an identifier pattern, resolve
                                   // will sort it out:
