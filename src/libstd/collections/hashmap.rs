@@ -731,7 +731,7 @@ impl DefaultResizePolicy {
 /// ```
 ///
 /// The easiest way to use `HashMap` with a custom type is to derive `Eq` and `Hash`.
-/// We must also derive `PartialEq`, but this will in the future be implied by `Eq`.
+/// We must also derive `PartialEq`.
 ///
 /// ```
 /// use std::collections::HashMap;
@@ -1056,7 +1056,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, int> = HashMap::with_capacity(10u);
+    /// let mut map: HashMap<&str, int> = HashMap::with_capacity(10);
     /// ```
     #[inline]
     pub fn with_capacity(capacity: uint) -> HashMap<K, V, RandomSipHasher> {
@@ -1100,7 +1100,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// use std::hash::sip::SipHasher;
     ///
     /// let h = SipHasher::new();
-    /// let mut map = HashMap::with_capacity_and_hasher(10u, h);
+    /// let mut map = HashMap::with_capacity_and_hasher(10, h);
     /// map.insert(1i, 2u);
     /// ```
     #[inline]
@@ -1123,7 +1123,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     /// use std::collections::HashMap;
     /// let mut map: HashMap<&str, int> = HashMap::new();
-    /// map.reserve(10u);
+    /// map.reserve(10);
     /// ```
     pub fn reserve(&mut self, new_minimum_capacity: uint) {
         let cap = num::next_power_of_two(
@@ -1297,10 +1297,10 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// let mut map = HashMap::new();
     ///
     /// // Insert 1i with key "a"
-    /// assert_eq!(*map.find_or_insert("a", 1i), 1i);
+    /// assert_eq!(*map.find_or_insert("a", 1i), 1);
     ///
     /// // Find the existing key
-    /// assert_eq!(*map.find_or_insert("a", -2i), 1i);
+    /// assert_eq!(*map.find_or_insert("a", -2), 1);
     /// ```
     pub fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a mut V {
         self.find_with_or_insert_with(k, v, |_k, _v, _a| (), |_k, a| a)
@@ -1315,11 +1315,11 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// use std::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
-    /// // Insert 10u with key 2i
-    /// assert_eq!(*map.find_or_insert_with(2i, |&key| { 5 * key as uint }), 10u);
+    /// // Insert 10 with key 2
+    /// assert_eq!(*map.find_or_insert_with(2i, |&key| 5 * key as uint), 10u);
     ///
     /// // Find the existing key
-    /// assert_eq!(*map.find_or_insert_with(2i, |&key| { key as uint }), 10u);
+    /// assert_eq!(*map.find_or_insert_with(2, |&key| key as uint), 10);
     /// ```
     pub fn find_or_insert_with<'a>(&'a mut self, k: K, f: |&K| -> V)
                                -> &'a mut V {
@@ -1336,12 +1336,12 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// use std::collections::HashMap;
     /// let mut map = HashMap::new();
     ///
-    /// // Insert 2u with key "a"
-    /// assert_eq!(*map.insert_or_update_with("a", 2u, |key, val| { *val = 3u; }), 2u);
+    /// // Insert 2 with key "a"
+    /// assert_eq!(*map.insert_or_update_with("a", 2u, |_key, val| *val = 3), 2);
     ///
     /// // Update and return the existing value
-    /// assert_eq!(*map.insert_or_update_with("a", 9u, |key, val| { *val = 7u; }), 7u);
-    /// assert_eq!(map.get(&"a"), &7u);
+    /// assert_eq!(*map.insert_or_update_with("a", 9, |_key, val| *val = 7), 7);
+    /// assert_eq!(map.get(&"a"), &7);
     /// ```
     pub fn insert_or_update_with<'a>(
                                  &'a mut self,
@@ -1356,9 +1356,11 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// insert and return a new value if it doesn't exist.
     ///
     /// This method allows for all insertion behaviours of a hashmap;
-    /// see methods like `insert`, `find_or_insert` and
-    /// `insert_or_update_with` for less general and more friendly
-    /// variations of this.
+    /// see methods like
+    /// [`insert`](../trait.MutableMap.html#tymethod.insert),
+    /// [`find_or_insert`](#method.find_or_insert) and
+    /// [`insert_or_update_with`](#method.insert_or_update_with)
+    /// for less general and more friendly variations of this.
     ///
     /// # Example
     ///
@@ -1414,8 +1416,12 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
-    /// Retrieves a value for the given key, failing if the key is not present.
-    /// See `find` for a non-failing alternative.
+    /// Retrieves a value for the given key.
+    /// See [`find`](../trait.Map.html#tymethod.find) for a non-failing alternative.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the key is not present.
     ///
     /// # Example
     ///
@@ -1424,7 +1430,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
-    /// assert_eq!(map.get(&"a"), &1i);
+    /// assert_eq!(map.get(&"a"), &1);
     /// ```
     pub fn get<'a>(&'a self, k: &K) -> &'a V {
         match self.find(k) {
@@ -1433,8 +1439,12 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
-    /// Retrieves a (mutable) value for the given key, failing if the key is not present.
-    /// See `find_mut` for a non-failing alternative.
+    /// Retrieves a mutable value for the given key.
+    /// See [`find_mut`](../trait.MutableMap.html#tymethod.find_mut) for a non-failing alternative.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the key is not present.
     ///
     /// # Example
     ///
@@ -1444,15 +1454,15 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
     /// {
-    ///     // val will freeze map to prevent usage during it's lifetime
+    ///     // val will freeze map to prevent usage during its lifetime
     ///     let val = map.get_mut(&"a");
-    ///     *val = 40i;
+    ///     *val = 40;
     /// }
-    /// assert_eq!(map.get(&"a"), &40i);
+    /// assert_eq!(map.get(&"a"), &40);
     ///
     /// // A more direct way could be:
-    /// *map.get_mut(&"a") = -2i;
-    /// assert_eq!(map.get(&"a"), &-2i);
+    /// *map.get_mut(&"a") = -2;
+    /// assert_eq!(map.get(&"a"), &-2);
     /// ```
     pub fn get_mut<'a>(&'a mut self, k: &K) -> &'a mut V {
         match self.find_mut(k) {
@@ -1483,12 +1493,13 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
-    /// Like `pop`, but can operate on any type that is equivalent to a key.
+    /// Remove an equivalent key from the map, returning the value at the
+    /// key if the key was previously in the map.
     ///
     /// # Example
     ///
     /// This is a slightly silly example where we define the number's parity as
-    /// the equivilance class. It is important that the values hash the same,
+    /// the equivalence class. It is important that the values hash the same,
     /// which is why we override `Hash`.
     ///
     /// ```
@@ -1515,16 +1526,16 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     ///
     /// let mut map = HashMap::new();
-    /// map.insert(EvenOrOdd { num: 3u }, "foo");
+    /// map.insert(EvenOrOdd { num: 3 }, "foo");
     ///
-    /// assert!(map.contains_key_equiv(&EvenOrOdd { num: 1u }));
-    /// assert!(!map.contains_key_equiv(&EvenOrOdd { num: 4u }));
+    /// assert!(map.contains_key_equiv(&EvenOrOdd { num: 1 }));
+    /// assert!(!map.contains_key_equiv(&EvenOrOdd { num: 4 }));
     ///
-    /// assert_eq!(map.find_equiv(&EvenOrOdd { num: 5u }), Some(&"foo"));
-    /// assert_eq!(map.find_equiv(&EvenOrOdd { num: 2u }), None);
+    /// assert_eq!(map.find_equiv(&EvenOrOdd { num: 5 }), Some(&"foo"));
+    /// assert_eq!(map.find_equiv(&EvenOrOdd { num: 2 }), None);
     ///
-    /// assert_eq!(map.pop_equiv(&EvenOrOdd { num: 1u }), Some("foo"));
-    /// assert_eq!(map.pop_equiv(&EvenOrOdd { num: 2u }), None);
+    /// assert_eq!(map.pop_equiv(&EvenOrOdd { num: 1 }), Some("foo"));
+    /// assert_eq!(map.pop_equiv(&EvenOrOdd { num: 2 }), None);
     ///
     /// ```
     #[experimental]
@@ -1545,7 +1556,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 
     /// An iterator visiting all keys in arbitrary order.
-    /// Iterator element type is &'a K.
+    /// Iterator element type is `&'a K`.
     ///
     /// # Example
     ///
@@ -1554,8 +1565,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
-    /// map.insert("b", 2i);
-    /// map.insert("c", 3i);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
     ///
     /// for key in map.keys() {
     ///     println!("{}", key);
@@ -1566,7 +1577,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 
     /// An iterator visiting all values in arbitrary order.
-    /// Iterator element type is &'a V.
+    /// Iterator element type is `&'a V`.
     ///
     /// # Example
     ///
@@ -1575,8 +1586,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
-    /// map.insert("b", 2i);
-    /// map.insert("c", 3i);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
     ///
     /// for key in map.values() {
     ///     println!("{}", key);
@@ -1587,7 +1598,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
-    /// Iterator element type is (&'a K, &'a V).
+    /// Iterator element type is `(&'a K, &'a V)`.
     ///
     /// # Example
     ///
@@ -1596,8 +1607,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
-    /// map.insert("b", 2i);
-    /// map.insert("c", 3i);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
     ///
     /// for (key, val) in map.iter() {
     ///     println!("key: {} val: {}", key, val);
@@ -1609,7 +1620,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
 
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
-    /// Iterator element type is (&'a K, &'a mut V).
+    /// Iterator element type is `(&'a K, &'a mut V)`.
     ///
     /// # Example
     ///
@@ -1618,8 +1629,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
-    /// map.insert("b", 2i);
-    /// map.insert("c", 3i);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
     ///
     /// // Update all values
     /// for (_, val) in map.mut_iter() {
@@ -1645,8 +1656,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
-    /// map.insert("b", 2i);
-    /// map.insert("c", 3i);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
     ///
     /// // Not possible with .iter()
     /// let vec: Vec<(&str, int)> = map.move_iter().collect();
@@ -1657,7 +1668,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
 }
 
 impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
-    /// Like `find`, but returns a copy of the value.
+    /// Return a copy of the value corresponding to the key.
     ///
     /// # Example
     ///
@@ -1666,13 +1677,17 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// let mut map: HashMap<uint, String> = HashMap::new();
     /// map.insert(1u, "foo".to_string());
-    /// let s: String = map.find_copy(&1u).unwrap();
+    /// let s: String = map.find_copy(&1).unwrap();
     /// ```
     pub fn find_copy(&self, k: &K) -> Option<V> {
         self.find(k).map(|v| (*v).clone())
     }
 
-    /// Like `get`, but returns a copy of the value.
+    /// Return a copy of the value corresponding to the key.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the key is not present.
     ///
     /// # Example
     ///
@@ -1681,7 +1696,7 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// let mut map: HashMap<uint, String> = HashMap::new();
     /// map.insert(1u, "foo".to_string());
-    /// let s: String = map.get_copy(&1u);
+    /// let s: String = map.get_copy(&1);
     /// ```
     pub fn get_copy(&self, k: &K) -> V {
         (*self.get(k)).clone()
