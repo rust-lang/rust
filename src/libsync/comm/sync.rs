@@ -39,7 +39,7 @@ use alloc::boxed::Box;
 use collections::Vec;
 use collections::Collection;
 use core::mem;
-use core::ty::Unsafe;
+use core::cell::UnsafeCell;
 use rustrt::local::Local;
 use rustrt::mutex::{NativeMutex, LockGuard};
 use rustrt::task::{Task, BlockedTask};
@@ -53,7 +53,7 @@ pub struct Packet<T> {
 
     /// The state field is protected by this mutex
     lock: NativeMutex,
-    state: Unsafe<State<T>>,
+    state: UnsafeCell<State<T>>,
 }
 
 struct State<T> {
@@ -133,7 +133,7 @@ impl<T: Send> Packet<T> {
         Packet {
             channels: atomics::AtomicUint::new(1),
             lock: unsafe { NativeMutex::new() },
-            state: Unsafe::new(State {
+            state: UnsafeCell::new(State {
                 disconnected: false,
                 blocker: NoneBlocked,
                 cap: cap,

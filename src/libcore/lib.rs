@@ -98,11 +98,17 @@ pub mod ptr;
 
 pub mod kinds;
 pub mod ops;
-pub mod ty;
 pub mod cmp;
 pub mod clone;
 pub mod default;
 pub mod collections;
+
+#[deprecated = "all functionality now lives in `std::cell`"]
+/// Deprecated module in favor of `std::cell`
+pub mod ty {
+    #[deprecated = "this type has been renamed to `UnsafeCell`"]
+    pub use Unsafe = cell::UnsafeCell;
+}
 
 /* Core types and methods on primitives */
 

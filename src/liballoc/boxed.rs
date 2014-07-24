@@ -87,10 +87,12 @@ impl<T: Ord> Ord for Box<T> {
 impl<T: Eq> Eq for Box<T> {}
 
 /// Extension methods for an owning `Any` trait object
-#[unstable = "post-DST, the signature of `downcast` will change to take `Box<Self>`"]
+#[unstable = "post-DST and coherence changes, this will not be a trait but \
+              rather a direct `impl` on `Box<Any>`"]
 pub trait BoxAny {
     /// Returns the boxed value if it is of type `T`, or
     /// `Err(Self)` if it isn't.
+    #[unstable = "naming conventions around accessing innards may change"]
     fn downcast<T: 'static>(self) -> Result<Box<T>, Self>;
 
     /// Deprecated; this method has been renamed to `downcast`.
@@ -100,6 +102,7 @@ pub trait BoxAny {
     }
 }
 
+#[stable]
 impl BoxAny for Box<Any> {
     #[inline]
     fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {

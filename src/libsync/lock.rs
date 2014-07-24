@@ -21,7 +21,7 @@
 
 use core::prelude::*;
 
-use core::ty::Unsafe;
+use core::cell::UnsafeCell;
 use rustrt::local::Local;
 use rustrt::task::Task;
 
@@ -174,8 +174,8 @@ impl<'a> Condvar<'a> {
 /// ```
 pub struct Mutex<T> {
     lock: raw::Mutex,
-    failed: Unsafe<bool>,
-    data: Unsafe<T>,
+    failed: UnsafeCell<bool>,
+    data: UnsafeCell<T>,
 }
 
 /// An guard which is created by locking a mutex. Through this guard the
@@ -203,8 +203,8 @@ impl<T: Send> Mutex<T> {
     pub fn new_with_condvars(user_data: T, num_condvars: uint) -> Mutex<T> {
         Mutex {
             lock: raw::Mutex::new_with_condvars(num_condvars),
-            failed: Unsafe::new(false),
-            data: Unsafe::new(user_data),
+            failed: UnsafeCell::new(false),
+            data: UnsafeCell::new(user_data),
         }
     }
 
@@ -274,8 +274,8 @@ impl<'a, T: Send> DerefMut<T> for MutexGuard<'a, T> {
 /// ```
 pub struct RWLock<T> {
     lock: raw::RWLock,
-    failed: Unsafe<bool>,
-    data: Unsafe<T>,
+    failed: UnsafeCell<bool>,
+    data: UnsafeCell<T>,
 }
 
 /// A guard which is created by locking an rwlock in write mode. Through this
@@ -309,8 +309,8 @@ impl<T: Send + Share> RWLock<T> {
     pub fn new_with_condvars(user_data: T, num_condvars: uint) -> RWLock<T> {
         RWLock {
             lock: raw::RWLock::new_with_condvars(num_condvars),
-            failed: Unsafe::new(false),
-            data: Unsafe::new(user_data),
+            failed: UnsafeCell::new(false),
+            data: UnsafeCell::new(user_data),
         }
     }
 

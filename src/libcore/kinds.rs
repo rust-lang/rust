@@ -79,7 +79,7 @@ pub trait Copy {
 /// else that is not thread-safe) should use the `NoShare` marker type
 /// (from `std::kinds::marker`) to ensure that the compiler doesn't
 /// consider the user-defined type to be `Share`.  Any types with
-/// interior mutability must also use the `std::ty::Unsafe` wrapper
+/// interior mutability must also use the `std::cell::UnsafeCell` wrapper
 /// around the value(s) which can be mutated when behind a `&`
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).

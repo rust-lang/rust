@@ -39,7 +39,7 @@ use core::prelude::*;
 
 use core::atomics;
 use core::mem;
-use core::ty::Unsafe;
+use core::cell::UnsafeCell;
 
 // NB: all links are done as AtomicUint instead of AtomicPtr to allow for static
 // initialization.
@@ -55,7 +55,7 @@ pub struct DummyNode {
 
 pub struct Queue<T> {
     pub head: atomics::AtomicUint,
-    pub tail: Unsafe<*mut Node<T>>,
+    pub tail: UnsafeCell<*mut Node<T>>,
     pub stub: DummyNode,
 }
 
@@ -63,7 +63,7 @@ impl<T: Send> Queue<T> {
     pub fn new() -> Queue<T> {
         Queue {
             head: atomics::AtomicUint::new(0),
-            tail: Unsafe::new(0 as *mut Node<T>),
+            tail: UnsafeCell::new(0 as *mut Node<T>),
             stub: DummyNode {
                 next: atomics::AtomicUint::new(0),
             },

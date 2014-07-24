@@ -60,7 +60,10 @@
 //! ```
 
 #![doc(primitive = "tuple")]
+#![stable]
 
+#[unstable = "this is just a documentation module and should not be part \
+              of the public api"]
 pub use unit;
 
 use clone::Clone;
@@ -79,41 +82,51 @@ macro_rules! tuple_impls {
     )+) => {
         $(
             #[allow(missing_doc)]
+            #[stable]
             pub trait $Tuple<$($T),+> {
-                $(fn $valN(self) -> $T;)+
-                $(fn $refN<'a>(&'a self) -> &'a $T;)+
-                $(fn $mutN<'a>(&'a mut self) -> &'a mut $T;)+
+                $(
+                    #[unstable = "may rename pending accessor naming conventions"]
+                    fn $valN(self) -> $T;
+                    #[unstable = "may rename pending accessor naming conventions"]
+                    fn $refN<'a>(&'a self) -> &'a $T;
+                    #[unstable = "may rename pending accessor naming conventions"]
+                    fn $mutN<'a>(&'a mut self) -> &'a mut $T;
+                 )+
             }
 
             impl<$($T),+> $Tuple<$($T),+> for ($($T,)+) {
                 $(
                     #[inline]
                     #[allow(unused_variable)]
+                    #[unstable = "may rename pending accessor naming conventions"]
                     fn $valN(self) -> $T {
                         let ($($x,)+) = self; $ret
                     }
 
                     #[inline]
                     #[allow(unused_variable)]
+                    #[unstable = "may rename pending accessor naming conventions"]
                     fn $refN<'a>(&'a self) -> &'a $T {
                         let ($(ref $x,)+) = *self; $ret
                     }
 
                     #[inline]
                     #[allow(unused_variable)]
+                    #[unstable = "may rename pending accessor naming conventions"]
                     fn $mutN<'a>(&'a mut self) -> &'a mut $T {
                         let ($(ref mut $x,)+) = *self; $ret
                     }
                 )+
             }
 
-            #[unstable]
+            #[unstable = "waiting for Clone to stabilize"]
             impl<$($T:Clone),+> Clone for ($($T,)+) {
                 fn clone(&self) -> ($($T,)+) {
                     ($(self.$refN().clone(),)+)
                 }
             }
 
+            #[unstable = "waiting for PartialEq to stabilize"]
             impl<$($T:PartialEq),+> PartialEq for ($($T,)+) {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
@@ -125,8 +138,10 @@ macro_rules! tuple_impls {
                 }
             }
 
+            #[unstable = "waiting for Eq to stabilize"]
             impl<$($T:Eq),+> Eq for ($($T,)+) {}
 
+            #[unstable = "waiting for PartialOrd to stabilize"]
             impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+) {
                 #[inline]
                 fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
@@ -150,6 +165,7 @@ macro_rules! tuple_impls {
                 }
             }
 
+            #[unstable = "waiting for Ord to stabilize"]
             impl<$($T:Ord),+> Ord for ($($T,)+) {
                 #[inline]
                 fn cmp(&self, other: &($($T,)+)) -> Ordering {
@@ -157,6 +173,7 @@ macro_rules! tuple_impls {
                 }
             }
 
+            #[stable]
             impl<$($T:Default),+> Default for ($($T,)+) {
                 #[inline]
                 fn default() -> ($($T,)+) {
