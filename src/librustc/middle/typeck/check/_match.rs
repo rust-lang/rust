@@ -390,7 +390,9 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
             check_struct_pat_fields(pcx, span, fields, class_fields,
                                     variant_id, substitutions, etc);
         }
-        Some(&def::DefStruct(..)) | Some(&def::DefVariant(..)) => {
+        Some(&def::DefStruct(..)) |
+        Some(&def::DefVariant(..)) |
+        Some(&def::DefTy(..)) => {
             let name = pprust::path_to_string(path);
             span_err!(tcx.sess, span, E0028,
                 "mismatched types: expected `{}` but found `{}`",
