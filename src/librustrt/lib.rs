@@ -74,15 +74,17 @@ pub mod unwind;
 pub trait Runtime {
     // Necessary scheduling functions, used for channels and blocking I/O
     // (sometimes).
-    fn yield_now(~self, cur_task: Box<Task>);
-    fn maybe_yield(~self, cur_task: Box<Task>);
-    fn deschedule(~self, times: uint, cur_task: Box<Task>,
+    fn yield_now(self: Box<Self>, cur_task: Box<Task>);
+    fn maybe_yield(self: Box<Self>, cur_task: Box<Task>);
+    fn deschedule(self: Box<Self>,
+                  times: uint,
+                  cur_task: Box<Task>,
                   f: |BlockedTask| -> Result<(), BlockedTask>);
-    fn reawaken(~self, to_wake: Box<Task>);
+    fn reawaken(self: Box<Self>, to_wake: Box<Task>);
 
     // Miscellaneous calls which are very different depending on what context
     // you're in.
-    fn spawn_sibling(~self,
+    fn spawn_sibling(self: Box<Self>,
                      cur_task: Box<Task>,
                      opts: TaskOpts,
                      f: proc():Send);
@@ -92,7 +94,7 @@ pub trait Runtime {
     fn can_block(&self) -> bool;
 
     // FIXME: This is a serious code smell and this should not exist at all.
-    fn wrap(~self) -> Box<Any>;
+    fn wrap(self: Box<Self>) -> Box<Any>;
 }
 
 /// The default error code of the rust runtime if the main task fails instead

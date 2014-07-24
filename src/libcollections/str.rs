@@ -555,10 +555,7 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 
 /// Unsafe operations
 pub mod raw {
-    use core::prelude::*;
-    use core::mem;
-    use core::raw::Slice;
-
+    use string;
     use string::String;
     use vec::Vec;
 
@@ -567,57 +564,28 @@ pub mod raw {
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
     pub use core::str::raw::{slice_unchecked};
 
-    /// Create a Rust string from a *u8 buffer of the given length
+    /// Deprecated. Replaced by `string::raw::from_buf_len`
+    #[deprecated = "Use string::raw::from_buf_len"]
     pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> String {
-        let mut result = String::new();
-        result.push_bytes(mem::transmute(Slice {
-            data: buf,
-            len: len,
-        }));
-        result
+        string::raw::from_buf_len(buf, len)
     }
 
-    /// Create a Rust string from a null-terminated C string
+    /// Deprecated. Use `string::raw::from_buf`
+    #[deprecated = "Use string::raw::from_buf"]
     pub unsafe fn from_c_str(c_string: *const i8) -> String {
-        let mut buf = String::new();
-        let mut len = 0;
-        while *c_string.offset(len) != 0 {
-            len += 1;
-        }
-        buf.push_bytes(mem::transmute(Slice {
-            data: c_string,
-            len: len as uint,
-        }));
-        buf
+        string::raw::from_buf(c_string as *const u8)
     }
 
-    /// Converts an owned vector of bytes to a new owned string. This assumes
-    /// that the utf-8-ness of the vector has already been validated
-    #[inline]
+    /// Deprecated. Replaced by `string::raw::from_utf8`
+    #[deprecated = "Use string::raw::from_utf8"]
     pub unsafe fn from_utf8_owned(v: Vec<u8>) -> String {
-        mem::transmute(v)
+        string::raw::from_utf8(v)
     }
 
-    /// Converts a byte to a string.
+    /// Deprecated. Use `string::raw::from_utf8`
+    #[deprecated = "Use string::raw::from_utf8"]
     pub unsafe fn from_byte(u: u8) -> String {
-        from_utf8_owned(vec![u])
-    }
-
-    /// Sets the length of a string
-    ///
-    /// This will explicitly set the size of the string, without actually
-    /// modifying its buffers, so it is up to the caller to ensure that
-    /// the string is actually the specified size.
-    #[test]
-    fn test_from_buf_len() {
-        use slice::ImmutableVector;
-
-        unsafe {
-            let a = vec![65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-            let b = a.as_ptr();
-            let c = from_buf_len(b, 3u);
-            assert_eq!(c, String::from_str("AAA"));
-        }
+        string::raw::from_utf8(vec![u])
     }
 }
 
@@ -782,30 +750,6 @@ impl<'a> StrAllocating for &'a str {
     #[inline]
     fn into_string(self) -> String {
         String::from_str(self)
-    }
-}
-
-/// Methods for owned strings
-pub trait OwnedStr {
-    /// Consumes the string, returning the underlying byte buffer.
-    ///
-    /// The buffer does not have a null terminator.
-    fn into_bytes(self) -> Vec<u8>;
-
-    /// Pushes the given string onto this string, returning the concatenation of the two strings.
-    fn append(self, rhs: &str) -> String;
-}
-
-impl OwnedStr for String {
-    #[inline]
-    fn into_bytes(self) -> Vec<u8> {
-        unsafe { mem::transmute(self) }
-    }
-
-    #[inline]
-    fn append(mut self, rhs: &str) -> String {
-        self.push_str(rhs);
-        self
     }
 }
 
@@ -1375,16 +1319,6 @@ mod tests {
              [0xd640, 0x71f1, 0xdd7d, 0x77eb, 0x1cd8],
              [0x348b, 0xaef0, 0xdb2c, 0xebf1, 0x1282],
              [0x50d7, 0xd824, 0x5010, 0xb369, 0x22ea]);
-    }
-
-    #[test]
-    fn test_raw_from_c_str() {
-        unsafe {
-            let a = vec![65, 65, 65, 65, 65, 65, 65, 0];
-            let b = a.as_ptr();
-            let c = raw::from_c_str(b);
-            assert_eq!(c, String::from_str("AAAAAAA"));
-        }
     }
 
     #[test]

@@ -1971,7 +1971,7 @@ like any other function, except for the name `self`.
 
 The type of `self` is the type on which the method is implemented,
 or a pointer thereof. As an argument it is written either `self`,
-`&self`, or `~self`.
+`&self`, or `self: TYPE`.
 A caller must in turn have a compatible pointer type to call the method.
 
 ~~~
@@ -1984,7 +1984,7 @@ A caller must in turn have a compatible pointer type to call the method.
 # }
 impl Shape {
     fn draw_reference(&self) { /* ... */ }
-    fn draw_owned(~self) { /* ... */ }
+    fn draw_owned(self: Box<Shape>) { /* ... */ }
     fn draw_value(self) { /* ... */ }
 }
 
@@ -2009,7 +2009,7 @@ to a reference.
 # }
 # impl Shape {
 #    fn draw_reference(&self) { /* ... */ }
-#    fn draw_owned(~self) { /* ... */ }
+#    fn draw_owned(self: Box<Shape>) { /* ... */ }
 #    fn draw_value(self) { /* ... */ }
 # }
 # let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
