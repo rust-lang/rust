@@ -238,8 +238,10 @@ impl<T> RefCell<T> {
     /// Consumes the `RefCell`, returning the wrapped value.
     #[unstable = "may be renamed, depending on global conventions"]
     pub fn unwrap(self) -> T {
-        debug_assert!(self.borrow.get() == UNUSED);
-        unsafe{self.value.unwrap()}
+        match self.borrow.get() {
+            UNUSED => unsafe { self.value.unwrap() },
+            _ => fail!("cannot unwrap RefCell<T> because it is already borrowed")
+        }
     }
 
     /// Attempts to immutably borrow the wrapped value.
