@@ -71,7 +71,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc():Send) {
     // Note that this increment must happen *before* the spawn in order to
     // guarantee that if this task exits it will always end up waiting for the
     // spawned task to exit.
-    bookkeeping::increment();
+    let token = bookkeeping::increment();
 
     // Spawning a new OS thread guarantees that __morestack will never get
     // triggered, but we must manually set up the actual stack bounds once this
@@ -93,7 +93,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc():Send) {
         let mut task = task;
         task.put_runtime(ops);
         drop(task.run(|| { f.take_unwrap()() }).destroy());
-        bookkeeping::decrement();
+        drop(token);
     })
 }
 
