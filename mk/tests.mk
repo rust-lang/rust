@@ -75,12 +75,12 @@ TEST_RATCHET_NOISE_PERCENT=10.0
 
 # Whether to ratchet or merely save benchmarks
 ifdef CFG_RATCHET_BENCH
-CRATE_TEST_EXTRA_ARGS=\
+CRATE_TEST_EXTRA_ARGS= \
   --test $(TEST_BENCH) \
   --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
   --ratchet-noise-percent $(TEST_RATCHET_NOISE_PERCENT)
 else
-CRATE_TEST_EXTRA_ARGS=\
+CRATE_TEST_EXTRA_ARGS= \
   --test $(TEST_BENCH) \
   --save-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4))
 endif
@@ -158,9 +158,9 @@ $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
  $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)) \
  $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)/tmp) \
  $(shell $(CFG_ADB) push $(S)src/etc/adb_run_wrapper.sh $(CFG_ADB_TEST_DIR) 1>/dev/null) \
- $(foreach crate,$(TARGET_CRATES),\
+ $(foreach crate,$(TARGET_CRATES), \
     $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(call CFG_LIB_GLOB_arm-linux-androideabi,$(crate)) \
-                    $(CFG_ADB_TEST_DIR)))\
+                    $(CFG_ADB_TEST_DIR))) \
  )
 else
 CFG_ADB_TEST_DIR=
@@ -202,15 +202,15 @@ cleantmptestlogs:
 cleantestlibs:
 	$(Q)find $(CFG_BUILD)/test \
          -name '*.[odasS]' -o \
-         -name '*.so' -o      \
-         -name '*.dylib' -o   \
-         -name '*.dll' -o     \
-         -name '*.def' -o     \
-         -name '*.bc' -o      \
-         -name '*.dSYM' -o    \
-         -name '*.libaux' -o      \
-         -name '*.out' -o     \
-         -name '*.err' -o     \
+         -name '*.so' -o \
+         -name '*.dylib' -o \
+         -name '*.dll' -o \
+         -name '*.def' -o \
+         -name '*.bc' -o \
+         -name '*.dSYM' -o \
+         -name '*.libaux' -o \
+         -name '*.out' -o \
+         -name '*.err' -o \
 	 -name '*.debugger.script' \
          | xargs rm -rf
 
@@ -293,16 +293,16 @@ endif
 
 define DEF_TEST_SETS
 
-check-stage$(1)-T-$(2)-H-$(3)-exec:     				\
-	check-stage$(1)-T-$(2)-H-$(3)-rpass-exec			\
-	check-stage$(1)-T-$(2)-H-$(3)-rfail-exec			\
-	check-stage$(1)-T-$(2)-H-$(3)-cfail-exec			\
-	check-stage$(1)-T-$(2)-H-$(3)-rpass-full-exec			\
-	check-stage$(1)-T-$(2)-H-$(3)-cfail-full-exec			\
-	check-stage$(1)-T-$(2)-H-$(3)-rmake-exec			\
-        check-stage$(1)-T-$(2)-H-$(3)-crates-exec                       \
-        check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec                   \
-	check-stage$(1)-T-$(2)-H-$(3)-bench-exec			\
+check-stage$(1)-T-$(2)-H-$(3)-exec: \
+	check-stage$(1)-T-$(2)-H-$(3)-rpass-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-rfail-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-cfail-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-rpass-full-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-cfail-full-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-rmake-exec \
+        check-stage$(1)-T-$(2)-H-$(3)-crates-exec \
+        check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-bench-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-gdb-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-lldb-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-codegen-exec \
@@ -334,10 +334,10 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-exec: \
            check-stage$(1)-T-$(2)-H-$(3)-doc-$$(docname)-exec)
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-exec: \
-	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-exec	\
-	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-full-exec	\
-	check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-exec	\
-	check-stage$(1)-T-$(2)-H-$(3)-pretty-bench-exec	\
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-full-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-bench-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-exec
 
 endef
@@ -359,7 +359,7 @@ define TEST_RUNNER
 # parent crates.
 ifeq ($(NO_REBUILD),)
 TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
-			    $$(foreach crate,$$(TARGET_CRATES),\
+			    $$(foreach crate,$$(TARGET_CRATES), \
 				$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
 				$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))
 
@@ -377,13 +377,13 @@ TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
 endif
 
 $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)): CFG_COMPILER_HOST_TRIPLE = $(2)
-$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)):				\
+$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)): \
 		$$(CRATEFILE_$(4)) \
 		$$(TESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, rustc: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test	\
-		-L "$$(RT_OUTPUT_DIR_$(2))"		\
-		-L "$$(LLVM_LIBDIR_$(2))"		\
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test \
+		-L "$$(RT_OUTPUT_DIR_$(2))" \
+		-L "$$(LLVM_LIBDIR_$(2))" \
 		$$(RUSTFLAGS_$(4))
 
 endef
@@ -600,19 +600,19 @@ ifndef CFG_DISABLE_OPTIMIZE_TESTS
 CTEST_RUSTC_FLAGS += -O
 endif
 
-CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
-		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
-        --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3))			\
-        --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
+CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
+		--compile-lib-path $$(HLIB$(1)_H_$(3)) \
+        --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3)) \
+        --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
         --clang-path $(if $(CFG_CLANG),$(CFG_CLANG),clang) \
         --llvm-bin-path $(CFG_LLVM_INST_DIR_$(CFG_BUILD))/bin \
-        --aux-base $$(S)src/test/auxiliary/                 \
-        --stage-id stage$(1)-$(2)							\
-        --target $(2)                                       \
-        --host $(3)                                       \
-        --android-cross-path=$(CFG_ANDROID_CROSS_PATH)    \
-        --adb-path=$(CFG_ADB)                          \
-        --adb-test-dir=$(CFG_ADB_TEST_DIR)                  \
+        --aux-base $$(S)src/test/auxiliary/ \
+        --stage-id stage$(1)-$(2) \
+        --target $(2) \
+        --host $(3) \
+        --android-cross-path=$(CFG_ANDROID_CROSS_PATH) \
+        --adb-path=$(CFG_ADB) \
+        --adb-test-dir=$(CFG_ADB_TEST_DIR) \
         --host-rustcflags "$(RUSTC_FLAGS_$(3)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(3))" \
         --lldb-python-dir=$(CFG_LLDB_PYTHON_DIR) \
         --target-rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
@@ -639,7 +639,7 @@ $(foreach host,$(CFG_HOST), \
 define DEF_RUN_COMPILETEST
 
 CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
-        $$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        $$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3)) \
         --src-base $$(S)src/test/$$(CTEST_SRC_BASE_$(4))/ \
         --build-base $(3)/test/$$(CTEST_BUILD_BASE_$(4))/ \
         --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
@@ -712,8 +712,8 @@ PRETTY_DIRNAME_pretty-pretty = pretty
 
 define DEF_RUN_PRETTY_TEST
 
-PRETTY_ARGS$(1)-T-$(2)-H-$(3)-$(4) :=			\
-		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+PRETTY_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3)) \
         --src-base $$(S)src/test/$$(PRETTY_DIRNAME_$(4))/ \
         --build-base $(3)/test/$$(PRETTY_DIRNAME_$(4))/ \
         --mode pretty
@@ -721,7 +721,7 @@ PRETTY_ARGS$(1)-T-$(2)-H-$(3)-$(4) :=			\
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
-	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
 	        $$(PRETTY_DEPS_$(4))
 	@$$(call E, run pretty-rpass [$(2)]: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST_$(2),$(1),$$<,$(3)) \
@@ -764,7 +764,7 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3)
 ifeq ($(NO_REBUILD),)
 DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = \
 	$$(D)/$(4).md \
-	$$(TEST_SREQ$(1)_T_$(2)_H_$(3))				\
+	$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
 	$$(RUSTDOC_EXE_$(1)_T_$(2)_H_$(3))
 else
 DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(D)/$(4).md
@@ -795,8 +795,8 @@ define DEF_CRATE_DOC_TEST
 # rebuilding any of the parent crates.
 ifeq ($(NO_REBUILD),)
 CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4) = \
-	$$(TEST_SREQ$(1)_T_$(2)_H_$(3))				\
-	$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
+	$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
+	$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4)) \
 	$$(RUSTDOC_EXE_$(1)_T_$(2)_H_$(3))
 else
 CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
@@ -930,9 +930,9 @@ $(foreach stage,$(STAGES), \
    $(eval $(call DEF_CHECK_FOR_STAGE_AND_HOSTS_AND_GROUP,$(stage),$(host),$(group))))))
 
 define DEF_CHECK_DOC_FOR_STAGE
-check-stage$(1)-docs: $$(foreach docname,$$(DOCS),\
+check-stage$(1)-docs: $$(foreach docname,$$(DOCS), \
                        check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(docname)) \
-                     $$(foreach crate,$$(TEST_DOC_CRATES),\
+                     $$(foreach crate,$$(TEST_DOC_CRATES), \
                        check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-crate-$$(crate))
 endef
 

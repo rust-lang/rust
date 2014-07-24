@@ -167,7 +167,7 @@ endif
 define DEF_X
 X_$(1) := $(CFG_EXE_SUFFIX_$(1))
 endef
-$(foreach target,$(CFG_TARGET),\
+$(foreach target,$(CFG_TARGET), \
   $(eval $(call DEF_X,$(target))))
 
 # "Source" files we generate in builddir along the way.
@@ -333,7 +333,7 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 # target
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
-	$$(foreach dep,$$(TARGET_CRATES),\
+	$$(foreach dep,$$(TARGET_CRATES), \
 	    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep))
 
 # Prerequisites for a working stageN compiler and complete set of target
@@ -416,20 +416,20 @@ RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(TARGET_RPATH_VAR$(1)_T_$(2)_H_$(3))
 endif
 endif
 
-STAGE$(1)_T_$(2)_H_$(3) := 						\
-	$$(Q)$$(RPATH_VAR$(1)_T_$(2)_H_$(3))                            \
-		$$(call CFG_RUN_TARG_$(3),$(1),				\
-		$$(CFG_VALGRIND_COMPILE$(1))				\
-		$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
-		--cfg $$(CFGFLAG$(1)_T_$(2)_H_$(3))			\
+STAGE$(1)_T_$(2)_H_$(3) := \
+	$$(Q)$$(RPATH_VAR$(1)_T_$(2)_H_$(3)) \
+		$$(call CFG_RUN_TARG_$(3),$(1), \
+		$$(CFG_VALGRIND_COMPILE$(1)) \
+		$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
+		--cfg $$(CFGFLAG$(1)_T_$(2)_H_$(3)) \
 		$$(CFG_RUSTC_FLAGS) $$(EXTRAFLAGS_STAGE$(1)) --target=$(2)) \
                 $$(RUSTC_FLAGS_$(2))
 
-PERF_STAGE$(1)_T_$(2)_H_$(3) :=						\
-	$$(Q)$$(call CFG_RUN_TARG_$(3),$(1),				\
-		$$(CFG_PERF_TOOL) 					\
-		$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
-		--cfg $$(CFGFLAG$(1)_T_$(2)_H_$(3))			\
+PERF_STAGE$(1)_T_$(2)_H_$(3) := \
+	$$(Q)$$(call CFG_RUN_TARG_$(3),$(1), \
+		$$(CFG_PERF_TOOL) \
+		$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
+		--cfg $$(CFGFLAG$(1)_T_$(2)_H_$(3)) \
 		$$(CFG_RUSTC_FLAGS) $$(EXTRAFLAGS_STAGE$(1)) --target=$(2)) \
                 $$(RUSTC_FLAGS_$(2))
 
@@ -455,13 +455,13 @@ define DEF_RUSTC_STAGE_TARGET
 # $(1) == architecture
 # $(2) == stage
 
-rustc-stage$(2)-H-$(1):							\
+rustc-stage$(2)-H-$(1): \
 	$$(foreach target,$$(CFG_TARGET),$$(SREQ$(2)_T_$$(target)_H_$(1)))
 
 endef
 
-$(foreach host,$(CFG_HOST),						\
- $(eval $(foreach stage,1 2 3,						\
+$(foreach host,$(CFG_HOST), \
+ $(eval $(foreach stage,1 2 3, \
   $(eval $(call DEF_RUSTC_STAGE_TARGET,$(host),$(stage))))))
 
 rustc-stage1: rustc-stage1-H-$(CFG_BUILD)
@@ -474,7 +474,7 @@ define DEF_RUSTC_TARGET
 rustc-H-$(1): rustc-stage2-H-$(1)
 endef
 
-$(foreach host,$(CFG_TARGET),			\
+$(foreach host,$(CFG_TARGET), \
  $(eval $(call DEF_RUSTC_TARGET,$(host))))
 
 rustc-stage1: rustc-stage1-H-$(CFG_BUILD)

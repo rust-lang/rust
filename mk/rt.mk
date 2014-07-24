@@ -114,10 +114,10 @@ $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
 
 endef
 
-$(foreach target,$(CFG_TARGET),					    \
+$(foreach target,$(CFG_TARGET), \
  $(eval $(call RUNTIME_RULES,$(target))))
-$(foreach lib,$(NATIVE_LIBS),					    \
- $(foreach target,$(CFG_TARGET),				    \
+$(foreach lib,$(NATIVE_LIBS), \
+ $(foreach target,$(CFG_TARGET), \
   $(eval $(call THIRD_PARTY_LIB,$(target),$(lib)))))
 
 

@@ -29,19 +29,19 @@ WFLAGS_ST2 = -D warnings
 # $(3) - host
 # $(4) crate
 define RUST_CRATE_FULLDEPS
-CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4) :=			    \
-		$$(CRATEFILE_$(4))				    \
-		$$(RSINPUTS_$(4))				    \
-		$$(foreach dep,$$(RUST_DEPS_$(4)),		    \
-		  $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep))	    \
-		$$(foreach dep,$$(NATIVE_DEPS_$(4)),		    \
+CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4) := \
+		$$(CRATEFILE_$(4)) \
+		$$(RSINPUTS_$(4)) \
+		$$(foreach dep,$$(RUST_DEPS_$(4)), \
+		  $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep)) \
+		$$(foreach dep,$$(NATIVE_DEPS_$(4)), \
 		  $$(RT_OUTPUT_DIR_$(2))/$$(call CFG_STATIC_LIB_NAME_$(2),$$(dep)))
 endef
 
-$(foreach host,$(CFG_HOST),						    \
- $(foreach target,$(CFG_TARGET),					    \
-  $(foreach stage,$(STAGES),						    \
-   $(foreach crate,$(CRATES),						    \
+$(foreach host,$(CFG_HOST), \
+ $(foreach target,$(CFG_TARGET), \
+  $(foreach stage,$(STAGES), \
+   $(foreach crate,$(CRATES), \
     $(eval $(call RUST_CRATE_FULLDEPS,$(stage),$(target),$(host),$(crate)))))))
 
 # RUST_TARGET_STAGE_N template: This defines how target artifacts are built
@@ -69,15 +69,15 @@ $(foreach host,$(CFG_HOST),						    \
 define RUST_TARGET_STAGE_N
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): CFG_COMPILER_HOST_TRIPLE = $(2)
-$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4):				    \
-		$$(CRATEFILE_$(4))				    \
-		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))	    \
-		$$(TSREQ$(1)_T_$(2)_H_$(3))			    \
+$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
+		$$(CRATEFILE_$(4)) \
+		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4)) \
+		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, rustc: $$(@D)/lib$(4))
-	$$(call REMOVE_ALL_OLD_GLOB_MATCHES,\
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_LIB_GLOB_$(2),$(4)))
-	$$(call REMOVE_ALL_OLD_GLOB_MATCHES,\
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_RLIB_GLOB,$(4)))
 	$$(STAGE$(1)_T_$(2)_H_$(3)) \
 		$$(WFLAGS_ST$(1)) \
@@ -89,9 +89,9 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4):				    \
 		-C extra-filename=-$$(CFG_FILENAME_EXTRA) \
 		$$<
 	@touch $$@
-	$$(call LIST_ALL_OLD_GLOB_MATCHES,\
+	$$(call LIST_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_LIB_GLOB_$(2),$(4)))
-	$$(call LIST_ALL_OLD_GLOB_MATCHES,\
+	$$(call LIST_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_RLIB_GLOB,$(4)))
 
 endef
@@ -110,12 +110,12 @@ endef
 # $(4) - name of the tool being built
 define TARGET_TOOL
 
-$$(TBIN$(1)_T_$(2)_H_$(3))/$(4)$$(X_$(2)):			\
-		$$(TOOL_SOURCE_$(4))				\
-		$$(TOOL_INPUTS_$(4))				\
-		$$(foreach dep,$$(TOOL_DEPS_$(4)),		\
-		    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep))	\
-		$$(TSREQ$(1)_T_$(2)_H_$(3))			\
+$$(TBIN$(1)_T_$(2)_H_$(3))/$(4)$$(X_$(2)): \
+		$$(TOOL_SOURCE_$(4)) \
+		$$(TOOL_INPUTS_$(4)) \
+		$$(foreach dep,$$(TOOL_DEPS_$(4)), \
+		    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep)) \
+		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 		| $$(TBIN$(1)_T_$(4)_H_$(3))/
 	@$$(call E, rustc: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --cfg $(4)
@@ -155,24 +155,24 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a: \
 	$$(Q)cp $$< $$@
 endef
 
-$(foreach source,$(CFG_HOST),						    \
- $(foreach target,$(CFG_TARGET),					    \
-  $(eval $(call TARGET_HOST_RULES,0,$(target),$(source)))		    \
-  $(eval $(call TARGET_HOST_RULES,1,$(target),$(source)))		    \
-  $(eval $(call TARGET_HOST_RULES,2,$(target),$(source)))		    \
+$(foreach source,$(CFG_HOST), \
+ $(foreach target,$(CFG_TARGET), \
+  $(eval $(call TARGET_HOST_RULES,0,$(target),$(source))) \
+  $(eval $(call TARGET_HOST_RULES,1,$(target),$(source))) \
+  $(eval $(call TARGET_HOST_RULES,2,$(target),$(source))) \
   $(eval $(call TARGET_HOST_RULES,3,$(target),$(source)))))
 
 # In principle, each host can build each target for both libs and tools
-$(foreach crate,$(CRATES),						    \
- $(foreach source,$(CFG_HOST),						    \
-  $(foreach target,$(CFG_TARGET),					    \
-   $(eval $(call RUST_TARGET_STAGE_N,0,$(target),$(source),$(crate)))	    \
-   $(eval $(call RUST_TARGET_STAGE_N,1,$(target),$(source),$(crate)))	    \
-   $(eval $(call RUST_TARGET_STAGE_N,2,$(target),$(source),$(crate)))	    \
+$(foreach crate,$(CRATES), \
+ $(foreach source,$(CFG_HOST), \
+  $(foreach target,$(CFG_TARGET), \
+   $(eval $(call RUST_TARGET_STAGE_N,0,$(target),$(source),$(crate))) \
+   $(eval $(call RUST_TARGET_STAGE_N,1,$(target),$(source),$(crate))) \
+   $(eval $(call RUST_TARGET_STAGE_N,2,$(target),$(source),$(crate))) \
    $(eval $(call RUST_TARGET_STAGE_N,3,$(target),$(source),$(crate))))))
 
-$(foreach host,$(CFG_HOST),						    \
- $(foreach target,$(CFG_TARGET),					    \
-  $(foreach stage,$(STAGES),						    \
-   $(foreach tool,$(TOOLS),						    \
+$(foreach host,$(CFG_HOST), \
+ $(foreach target,$(CFG_TARGET), \
+  $(foreach stage,$(STAGES), \
+   $(foreach tool,$(TOOLS), \
     $(eval $(call TARGET_TOOL,$(stage),$(target),$(host),$(tool)))))))
