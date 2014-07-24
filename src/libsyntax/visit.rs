@@ -216,7 +216,7 @@ pub fn walk_explicit_self<E: Clone, V: Visitor<E>>(visitor: &mut V,
                                                    explicit_self: &ExplicitSelf,
                                                    env: E) {
     match explicit_self.node {
-        SelfStatic | SelfValue(_) | SelfUniq(_) => {},
+        SelfStatic | SelfValue(_) => {},
         SelfRegion(ref lifetime, _, _) => {
             visitor.visit_opt_lifetime_ref(explicit_self.span, lifetime, env)
         }

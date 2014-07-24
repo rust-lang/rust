@@ -70,6 +70,7 @@ use core::prelude::*;
 use alloc::libc_heap::malloc_raw;
 use collections::string::String;
 use collections::hash;
+use core::fmt;
 use core::kinds::marker;
 use core::mem;
 use core::ptr;
@@ -92,23 +93,18 @@ impl Clone for CString {
     /// reasons, this is always a deep clone, rather than the usual shallow
     /// clone.
     fn clone(&self) -> CString {
-        if self.buf.is_null() {
-            CString { buf: self.buf, owns_buffer_: self.owns_buffer_ }
-        } else {
-            let len = self.len() + 1;
-            let buf = unsafe { malloc_raw(len) } as *mut libc::c_char;
-            unsafe { ptr::copy_nonoverlapping_memory(buf, self.buf, len); }
-            CString { buf: buf as *const libc::c_char, owns_buffer_: true }
-        }
+        let len = self.len() + 1;
+        let buf = unsafe { malloc_raw(len) } as *mut libc::c_char;
+        unsafe { ptr::copy_nonoverlapping_memory(buf, self.buf, len); }
+        CString { buf: buf as *const libc::c_char, owns_buffer_: true }
     }
 }
 
 impl PartialEq for CString {
     fn eq(&self, other: &CString) -> bool {
+        // Check if the two strings share the same buffer
         if self.buf as uint == other.buf as uint {
             true
-        } else if self.buf.is_null() || other.buf.is_null() {
-            false
         } else {
             unsafe {
                 libc::strcmp(self.buf, other.buf) == 0
@@ -135,7 +131,12 @@ impl<S: hash::Writer> hash::Hash<S> for CString {
 
 impl CString {
     /// Create a C String from a pointer.
+    ///
+    ///# Failure
+    ///
+    /// Fails if `buf` is null
     pub unsafe fn new(buf: *const libc::c_char, owns_buffer: bool) -> CString {
+        assert!(!buf.is_null());
         CString { buf: buf, owns_buffer_: owns_buffer }
     }
 
@@ -157,10 +158,6 @@ impl CString {
     /// let p = foo.to_c_str().as_ptr();
     /// ```
     ///
-    /// # Failure
-    ///
-    /// Fails if the CString is null.
-    ///
     /// # Example
     ///
     /// ```rust
@@ -174,8 +171,6 @@ impl CString {
     /// }
     /// ```
     pub fn as_ptr(&self) -> *const libc::c_char {
-        if self.buf.is_null() { fail!("CString is null!"); }
-
         self.buf
     }
 
@@ -196,44 +191,30 @@ impl CString {
     /// // wrong (the CString will be freed, invalidating `p`)
     /// let p = foo.to_c_str().as_mut_ptr();
     /// ```
-    ///
-    /// # Failure
-    ///
-    /// Fails if the CString is null.
     pub fn as_mut_ptr(&mut self) -> *mut libc::c_char {
-        if self.buf.is_null() { fail!("CString is null!") }
-
         self.buf as *mut _
     }
 
     /// Calls a closure with a reference to the underlying `*libc::c_char`.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the CString is null.
     #[deprecated="use `.as_ptr()`"]
     pub fn with_ref<T>(&self, f: |*const libc::c_char| -> T) -> T {
-        if self.buf.is_null() { fail!("CString is null!"); }
         f(self.buf)
     }
 
     /// Calls a closure with a mutable reference to the underlying `*libc::c_char`.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the CString is null.
     #[deprecated="use `.as_mut_ptr()`"]
     pub fn with_mut_ref<T>(&mut self, f: |*mut libc::c_char| -> T) -> T {
-        if self.buf.is_null() { fail!("CString is null!"); }
         f(self.buf as *mut libc::c_char)
     }
 
     /// Returns true if the CString is a null.
+    #[deprecated="a CString cannot be null"]
     pub fn is_null(&self) -> bool {
         self.buf.is_null()
     }
 
     /// Returns true if the CString is not null.
+    #[deprecated="a CString cannot be null"]
     pub fn is_not_null(&self) -> bool {
         self.buf.is_not_null()
     }
@@ -245,13 +226,8 @@ impl CString {
 
     /// Converts the CString into a `&[u8]` without copying.
     /// Includes the terminating NUL byte.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the CString is null.
     #[inline]
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
-        if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
             mem::transmute(Slice { data: self.buf, len: self.len() + 1 })
         }
@@ -259,13 +235,8 @@ impl CString {
 
     /// Converts the CString into a `&[u8]` without copying.
     /// Does not include the terminating NUL byte.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the CString is null.
     #[inline]
     pub fn as_bytes_no_nul<'a>(&'a self) -> &'a [u8] {
-        if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
             mem::transmute(Slice { data: self.buf, len: self.len() })
         }
@@ -273,10 +244,6 @@ impl CString {
 
     /// Converts the CString into a `&str` without copying.
     /// Returns None if the CString is not UTF-8.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the CString is null.
     #[inline]
     pub fn as_str<'a>(&'a self) -> Option<&'a str> {
         let buf = self.as_bytes_no_nul();
@@ -284,12 +251,7 @@ impl CString {
     }
 
     /// Return a CString iterator.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the CString is null.
     pub fn iter<'a>(&'a self) -> CChars<'a> {
-        if self.buf.is_null() { fail!("CString is null!"); }
         CChars {
             ptr: self.buf,
             marker: marker::ContravariantLifetime,
@@ -325,13 +287,8 @@ impl Drop for CString {
 
 impl Collection for CString {
     /// Return the number of bytes in the CString (not including the NUL terminator).
-    ///
-    /// # Failure
-    ///
-    /// Fails if the CString is null.
     #[inline]
     fn len(&self) -> uint {
-        if self.buf.is_null() { fail!("CString is null!"); }
         let mut cur = self.buf;
         let mut len = 0;
         unsafe {
@@ -341,6 +298,12 @@ impl Collection for CString {
             }
         }
         return len;
+    }
+}
+
+impl fmt::Show for CString {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        String::from_utf8_lossy(self.as_bytes_no_nul()).fmt(f)
     }
 }
 
@@ -625,13 +588,6 @@ mod tests {
     }
 
     #[test]
-    fn test_is_null() {
-        let c_str = unsafe { CString::new(ptr::null(), false) };
-        assert!(c_str.is_null());
-        assert!(!c_str.is_not_null());
-    }
-
-    #[test]
     fn test_unwrap() {
         let c_str = "hello".to_c_str();
         unsafe { libc::free(c_str.unwrap() as *mut libc::c_void) }
@@ -641,15 +597,7 @@ mod tests {
     fn test_as_ptr() {
         let c_str = "hello".to_c_str();
         let len = unsafe { libc::strlen(c_str.as_ptr()) };
-        assert!(!c_str.is_null());
-        assert!(c_str.is_not_null());
         assert_eq!(len, 5);
-    }
-    #[test]
-    #[should_fail]
-    fn test_as_ptr_empty_fail() {
-        let c_str = unsafe { CString::new(ptr::null(), false) };
-        c_str.as_ptr();
     }
 
     #[test]
@@ -710,20 +658,6 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
-    fn test_as_bytes_fail() {
-        let c_str = unsafe { CString::new(ptr::null(), false) };
-        c_str.as_bytes();
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_as_bytes_no_nul_fail() {
-        let c_str = unsafe { CString::new(ptr::null(), false) };
-        c_str.as_bytes_no_nul();
-    }
-
-    #[test]
     fn test_as_str() {
         let c_str = "hello".to_c_str();
         assert_eq!(c_str.as_str(), Some("hello"));
@@ -735,23 +669,8 @@ mod tests {
 
     #[test]
     #[should_fail]
-    fn test_as_str_fail() {
+    fn test_new_fail() {
         let c_str = unsafe { CString::new(ptr::null(), false) };
-        c_str.as_str();
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_len_fail() {
-        let c_str = unsafe { CString::new(ptr::null(), false) };
-        c_str.len();
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_iter_fail() {
-        let c_str = unsafe { CString::new(ptr::null(), false) };
-        c_str.iter();
     }
 
     #[test]
@@ -783,13 +702,6 @@ mod tests {
         let c_ = c_.unwrap();
         // force a copy, reading the memory
         c_.as_bytes().to_vec();
-    }
-
-    #[test]
-    fn test_clone_eq_null() {
-        let x = unsafe { CString::new(ptr::null(), false) };
-        let y = x.clone();
-        assert!(x == y);
     }
 }
 

@@ -58,11 +58,11 @@ use libc::{c_int, c_void};
 use std::fmt;
 use std::mem;
 use std::ptr;
+use std::string;
 use std::rt::local::Local;
 use std::rt::rtio;
 use std::rt::rtio::{IoResult, IoError};
 use std::rt::task::{BlockedTask, Task};
-use std::str::raw::from_c_str;
 use std::task;
 
 pub use self::async::AsyncWatcher;
@@ -154,7 +154,7 @@ pub trait UvHandle<T> {
         mem::transmute(uvll::get_data_for_uv_handle(*h))
     }
 
-    fn install(~self) -> Box<Self> {
+    fn install(self: Box<Self>) -> Box<Self> {
         unsafe {
             let myptr = mem::transmute::<&Box<Self>, &*mut u8>(&self);
             uvll::set_data_for_uv_handle(self.uv_handle(), *myptr);
@@ -363,7 +363,7 @@ impl UvError {
             let inner = match self { &UvError(a) => a };
             let name_str = uvll::uv_err_name(inner);
             assert!(name_str.is_not_null());
-            from_c_str(name_str).to_string()
+            string::raw::from_buf(name_str as *const u8)
         }
     }
 
@@ -372,7 +372,7 @@ impl UvError {
             let inner = match self { &UvError(a) => a };
             let desc_str = uvll::uv_strerror(inner);
             assert!(desc_str.is_not_null());
-            from_c_str(desc_str).to_string()
+            string::raw::from_buf(desc_str as *const u8)
         }
     }
 

@@ -265,7 +265,7 @@ impl GreenTask {
 
     // Runtime glue functions and helpers
 
-    pub fn put_with_sched(mut ~self, sched: Box<Scheduler>) {
+    pub fn put_with_sched(mut self: Box<GreenTask>, sched: Box<Scheduler>) {
         assert!(self.sched.is_none());
         self.sched = Some(sched);
         self.put();
@@ -276,18 +276,18 @@ impl GreenTask {
         self.task = Some(task);
     }
 
-    pub fn swap(mut ~self) -> Box<Task> {
+    pub fn swap(mut self: Box<GreenTask>) -> Box<Task> {
         let mut task = self.task.take_unwrap();
         task.put_runtime(self);
         return task;
     }
 
-    pub fn put(~self) {
+    pub fn put(self: Box<GreenTask>) {
         assert!(self.sched.is_some());
         Local::put(self.swap());
     }
 
-    fn terminate(mut ~self) -> ! {
+    fn terminate(mut self: Box<GreenTask>) -> ! {
         let sched = self.sched.take_unwrap();
         sched.terminate_current_task(self)
     }
@@ -311,7 +311,7 @@ impl GreenTask {
     // *not* a cheap operation to clone a handle. Until the day comes that we
     // need to optimize this, a lock should do just fine (it's completely
     // uncontended except for when the task is rescheduled).
-    fn reawaken_remotely(mut ~self) {
+    fn reawaken_remotely(mut self: Box<GreenTask>) {
         unsafe {
             let mtx = &mut self.nasty_deschedule_lock as *mut NativeMutex;
             let handle = self.handle.get_mut_ref() as *mut SchedHandle;
@@ -322,19 +322,21 @@ impl GreenTask {
 }
 
 impl Runtime for GreenTask {
-    fn yield_now(mut ~self, cur_task: Box<Task>) {
+    fn yield_now(mut self: Box<GreenTask>, cur_task: Box<Task>) {
         self.put_task(cur_task);
         let sched = self.sched.take_unwrap();
         sched.yield_now(self);
     }
 
-    fn maybe_yield(mut ~self, cur_task: Box<Task>) {
+    fn maybe_yield(mut self: Box<GreenTask>, cur_task: Box<Task>) {
         self.put_task(cur_task);
         let sched = self.sched.take_unwrap();
         sched.maybe_yield(self);
     }
 
-    fn deschedule(mut ~self, times: uint, cur_task: Box<Task>,
+    fn deschedule(mut self: Box<GreenTask>,
+                  times: uint,
+                  cur_task: Box<Task>,
                   f: |BlockedTask| -> Result<(), BlockedTask>) {
         self.put_task(cur_task);
         let mut sched = self.sched.take_unwrap();
@@ -383,7 +385,7 @@ impl Runtime for GreenTask {
         }
     }
 
-    fn reawaken(mut ~self, to_wake: Box<Task>) {
+    fn reawaken(mut self: Box<GreenTask>, to_wake: Box<Task>) {
         self.put_task(to_wake);
         assert!(self.sched.is_none());
 
@@ -434,7 +436,7 @@ impl Runtime for GreenTask {
         }
     }
 
-    fn spawn_sibling(mut ~self,
+    fn spawn_sibling(mut self: Box<GreenTask>,
                      cur_task: Box<Task>,
                      opts: TaskOpts,
                      f: proc():Send) {
@@ -471,7 +473,7 @@ impl Runtime for GreenTask {
 
     fn can_block(&self) -> bool { false }
 
-    fn wrap(~self) -> Box<Any> { self as Box<Any> }
+    fn wrap(self: Box<GreenTask>) -> Box<Any> { self as Box<Any> }
 }
 
 #[cfg(test)]

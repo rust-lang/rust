@@ -45,7 +45,7 @@ use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
-use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfUniq, SelfValue};
+use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{TokenTree, TraitMethod, TraitRef, TTDelim, TTSeq, TTTok};
 use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot, TyBox};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
@@ -3826,10 +3826,11 @@ impl<'a> Parser<'a> {
                 // We need to make sure it isn't a type
                 if self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
                     self.bump();
-                    SelfUniq(self.expect_self_ident())
-                } else {
-                    SelfStatic
+                    drop(self.expect_self_ident());
+                    let last_span = self.last_span;
+                    self.obsolete(last_span, ObsoleteOwnedSelf)
                 }
+                SelfStatic
             }
             token::IDENT(..) if self.is_self_ident() => {
                 let self_ident = self.expect_self_ident();
@@ -3877,7 +3878,10 @@ impl<'a> Parser<'a> {
                     self.look_ahead(2, |t| token::is_keyword(keywords::Self, t)) => {
                 mutbl_self = self.parse_mutability();
                 self.bump();
-                SelfUniq(self.expect_self_ident())
+                drop(self.expect_self_ident());
+                let last_span = self.last_span;
+                self.obsolete(last_span, ObsoleteOwnedSelf);
+                SelfStatic
             }
             _ => SelfStatic
         };
@@ -3921,7 +3925,6 @@ impl<'a> Parser<'a> {
             }
             SelfValue(id) => parse_remaining_arguments!(id),
             SelfRegion(_,_,id) => parse_remaining_arguments!(id),
-            SelfUniq(id) => parse_remaining_arguments!(id),
             SelfExplicit(_,id) => parse_remaining_arguments!(id),
         };
 
@@ -4042,7 +4045,8 @@ impl<'a> Parser<'a> {
 
     /// Parse a method in a trait impl, starting with `attrs` attributes.
     pub fn parse_method(&mut self,
-                    already_parsed_attrs: Option<Vec<Attribute>>) -> Gc<Method> {
+                        already_parsed_attrs: Option<Vec<Attribute>>)
+                        -> Gc<Method> {
         let next_attrs = self.parse_outer_attributes();
         let attrs = match already_parsed_attrs {
             Some(mut a) => { a.push_all_move(next_attrs); a }
@@ -4080,6 +4084,11 @@ impl<'a> Parser<'a> {
                 let visa = self.parse_visibility();
                 let abi = if self.eat_keyword(keywords::Extern) {
                     self.parse_opt_abi().unwrap_or(abi::C)
+                } else if attr::contains_name(attrs.as_slice(),
+                                              "rust_call_abi_hack") {
+                    // FIXME(stage0, pcwalton): Remove this awful hack after a
+                    // snapshot, and change to `extern "rust-call" fn`.
+                    abi::RustCall
                 } else {
                     abi::Rust
                 };

@@ -31,6 +31,7 @@ pub enum ObsoleteSyntax {
     ObsoleteOwnedExpr,
     ObsoleteOwnedPattern,
     ObsoleteOwnedVector,
+    ObsoleteOwnedSelf,
     ObsoleteManagedType,
     ObsoleteManagedExpr,
 }
@@ -69,6 +70,10 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ObsoleteOwnedVector => (
                 "`~[T]` is no longer a type",
                 "use the `Vec` type instead"
+            ),
+            ObsoleteOwnedSelf => (
+                "`~self` is no longer supported",
+                "write `self: Box<Self>` instead"
             ),
             ObsoleteManagedType => (
                 "`@` notation for managed pointers",

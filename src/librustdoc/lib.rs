@@ -102,6 +102,7 @@ pub fn opts() -> Vec<getopts::OptGroup> {
         optopt("w", "output-format", "the output type to write",
                "[html|json]"),
         optopt("o", "output", "where to place the output", "PATH"),
+        optopt("", "crate-name", "specify the name of this crate", "NAME"),
         optmulti("L", "library-path", "directory to add to crate search path",
                  "DIR"),
         optmulti("", "cfg", "pass a --cfg to rustc", ""),
@@ -131,7 +132,8 @@ pub fn opts() -> Vec<getopts::OptGroup> {
                  Markdown file or generated documentation",
                  "FILES"),
         optopt("", "markdown-playground-url",
-               "URL to send code snippets to", "URL")
+               "URL to send code snippets to", "URL"),
+        optflag("", "markdown-no-toc", "don't include table of contents")
     )
 }
 
@@ -220,7 +222,8 @@ pub fn main_args(args: &[String]) -> int {
             return test::run(input, cfgs, libs, externs, test_args)
         }
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
-                                                 &matches, &external_html),
+                                                 &matches, &external_html,
+                                                 !matches.opt_present("markdown-no-toc")),
         (false, false) => {}
     }
 
@@ -321,7 +324,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     let cr = Path::new(cratefile);
     info!("starting to run rustc");
-    let (krate, analysis) = std::task::try(proc() {
+    let (mut krate, analysis) = std::task::try(proc() {
         let cr = cr;
         core::run_core(libs.move_iter().collect(),
                        cfgs,
@@ -330,6 +333,11 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     }).map_err(|boxed_any|format!("{:?}", boxed_any)).unwrap();
     info!("finished with rustc");
     analysiskey.replace(Some(analysis));
+
+    match matches.opt_str("crate-name") {
+        Some(name) => krate.name = name,
+        None => {}
+    }
 
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
