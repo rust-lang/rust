@@ -74,8 +74,8 @@ mod tests {
         assert!(0b1110 as $T == (0b1100 as $T).bitor(&(0b1010 as $T)));
         assert!(0b1000 as $T == (0b1100 as $T).bitand(&(0b1010 as $T)));
         assert!(0b0110 as $T == (0b1100 as $T).bitxor(&(0b1010 as $T)));
-        assert!(0b1110 as $T == (0b0111 as $T).shl(&(1 as $T)));
-        assert!(0b0111 as $T == (0b1110 as $T).shr(&(1 as $T)));
+        assert!(0b1110 as $T == (0b0111 as $T).shl(&1));
+        assert!(0b0111 as $T == (0b1110 as $T).shr(&1));
         assert!(-(0b11 as $T) - (1 as $T) == (0b11 as $T).not());
     }
 
