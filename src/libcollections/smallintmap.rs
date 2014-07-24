@@ -279,6 +279,50 @@ impl<V> SmallIntMap<V> {
 }
 
 impl<V:Clone> SmallIntMap<V> {
+    /// Update a value in the map. If the key already exists in the map,
+    /// modify the value with `ff` taking `oldval, newval`.
+    /// Otherwise set the value to `newval`.
+    /// Return `true` if the key did not already exist in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut map = SmallIntMap::new();
+    ///
+    /// // Key does not exist, will do a simple insert
+    /// assert!(map.update(1, vec![1i, 2], |old, new| old.append(new.as_slice())));
+    /// assert_eq!(map.get(&1), &vec![1i, 2]);
+    ///
+    /// // Key exists, update the value
+    /// assert!(!map.update(1, vec![3i, 4], |old, new| old.append(new.as_slice())));
+    /// assert_eq!(map.get(&1), &vec![1i, 2, 3, 4]);
+    /// ```
+    pub fn update(&mut self, key: uint, newval: V, ff: |V, V| -> V) -> bool {
+        self.update_with_key(key, newval, |_k, v, v1| ff(v,v1))
+    }
+
+    /// Update a value in the map. If the key already exists in the map,
+    /// modify the value with `ff` taking `key, oldval, newval`.
+    /// Otherwise set the value to `newval`.
+    /// Return `true` if the key did not already exist in the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::SmallIntMap;
+    ///
+    /// let mut map = SmallIntMap::new();
+    ///
+    /// // Key does not exist, will do a simple insert
+    /// assert!(map.update_with_key(7, 10, |key, old, new| (old + new) % key));
+    /// assert_eq!(map.get(&7), &10);
+    ///
+    /// // Key exists, update the value
+    /// assert!(!map.update_with_key(7, 20, |key, old, new| (old + new) % key));
+    /// assert_eq!(map.get(&7), &2);
+    /// ```
     pub fn update_with_key(&mut self,
                            key: uint,
                            val: V,
@@ -289,10 +333,6 @@ impl<V:Clone> SmallIntMap<V> {
             Some(orig) => ff(key, (*orig).clone(), val)
         };
         self.insert(key, new_val)
-    }
-
-    pub fn update(&mut self, key: uint, newval: V, ff: |V, V| -> V) -> bool {
-        self.update_with_key(key, newval, |_k, v, v1| ff(v,v1))
     }
 }
 
