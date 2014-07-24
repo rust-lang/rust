@@ -29,7 +29,10 @@ macro_rules! earlyexit(
     ($e:expr) => (match $e { Some(v) => v, None => return None })
 )
 
-/// ISO 8601 duration
+/// The representation of a span of time.
+///
+/// This type has nanosecond precision, and conforms to the ISO 8601
+/// standard for Date interchange.
 #[deriving(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration {
     days: i32,
@@ -38,6 +41,7 @@ pub struct Duration {
 }
 
 impl Duration {
+    /// Create a new `Duration`.
     pub fn new(days: i32, secs: i32, nanos: i32) -> Option<Duration> {
         let (secs_, nanos) = div_mod_floor(nanos, NANOS_PER_SEC);
         let secs = earlyexit!(secs.checked_add(&secs_));
@@ -46,17 +50,20 @@ impl Duration {
         Some(Duration { days: days, secs: secs as u32, nanos: nanos as u32 })
     }
 
+    /// Create a new `Duration` from an integer number of weeks.
     #[inline]
     pub fn weeks(weeks: i32) -> Duration {
         Duration::days(weeks * 7)
     }
 
+    /// Create a new `Duration` from an integer number of days.
     #[inline]
     pub fn days(days: i32) -> Duration {
         let days = days.to_i32().expect("Duration::days out of bounds");
         Duration { days: days, secs: 0, nanos: 0 }
     }
 
+    /// Create a new `Duration` from an integer number of hours.
     #[inline]
     pub fn hours(hours: i32) -> Duration {
         let (days, hours) = div_mod_floor(hours, (SECS_PER_DAY / 3600));
@@ -64,6 +71,7 @@ impl Duration {
         Duration { secs: secs as u32, ..Duration::days(days) }
     }
 
+    /// Create a new `Duration` from an integer number of minutes.
     #[inline]
     pub fn minutes(mins: i32) -> Duration {
         let (days, mins) = div_mod_floor(mins, (SECS_PER_DAY / 60));
@@ -71,12 +79,14 @@ impl Duration {
         Duration { secs: secs as u32, ..Duration::days(days) }
     }
 
+    /// Create a new `Duration` from an integer number of seconds.
     #[inline]
     pub fn seconds(secs: i32) -> Duration {
         let (days, secs) = div_mod_floor(secs, SECS_PER_DAY);
         Duration { secs: secs as u32, ..Duration::days(days) }
     }
 
+    /// Create a new `Duration` from an integer number of milliseconds.
     #[inline]
     pub fn milliseconds(millis: i32) -> Duration {
         let (secs, millis) = div_mod_floor(millis, (NANOS_PER_SEC / 1_000_000));
@@ -84,6 +94,7 @@ impl Duration {
         Duration { nanos: nanos as u32, ..Duration::seconds(secs) }
     }
 
+    /// Create a new `Duration` from an integer number of microseconds.
     #[inline]
     pub fn microseconds(micros: i32) -> Duration {
         let (secs, micros) = div_mod_floor(micros, (NANOS_PER_SEC / 1_000));
@@ -91,22 +102,26 @@ impl Duration {
         Duration { nanos: nanos as u32, ..Duration::seconds(secs) }
     }
 
+    /// Create a new `Duration` from an integer number of nanoseconds.
     #[inline]
     pub fn nanoseconds(nanos: i32) -> Duration {
         let (secs, nanos) = div_mod_floor(nanos, NANOS_PER_SEC);
         Duration { nanos: nanos as u32, ..Duration::seconds(secs) }
     }
 
+    /// Return the number of whole days in the `Duration`.
     #[inline]
     pub fn ndays(&self) -> i32 {
         self.days as i32
     }
 
+    /// Return the fractional number of days in the `Duration` as seconds.
     #[inline]
     pub fn nseconds(&self) -> u32 {
         self.secs as u32
     }
 
+    /// Return the fractional number of seconds in the `Duration` as nanoseconds.
     #[inline]
     pub fn nnanoseconds(&self) -> u32 {
         self.nanos as u32
