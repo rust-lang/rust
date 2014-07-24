@@ -4045,7 +4045,8 @@ impl<'a> Parser<'a> {
 
     /// Parse a method in a trait impl, starting with `attrs` attributes.
     pub fn parse_method(&mut self,
-                    already_parsed_attrs: Option<Vec<Attribute>>) -> Gc<Method> {
+                        already_parsed_attrs: Option<Vec<Attribute>>)
+                        -> Gc<Method> {
         let next_attrs = self.parse_outer_attributes();
         let attrs = match already_parsed_attrs {
             Some(mut a) => { a.push_all_move(next_attrs); a }
@@ -4083,6 +4084,11 @@ impl<'a> Parser<'a> {
                 let visa = self.parse_visibility();
                 let abi = if self.eat_keyword(keywords::Extern) {
                     self.parse_opt_abi().unwrap_or(abi::C)
+                } else if attr::contains_name(attrs.as_slice(),
+                                              "rust_call_abi_hack") {
+                    // FIXME(stage0, pcwalton): Remove this awful hack after a
+                    // snapshot, and change to `extern "rust-call" fn`.
+                    abi::RustCall
                 } else {
                     abi::Rust
                 };
