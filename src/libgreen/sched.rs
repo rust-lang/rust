@@ -180,7 +180,7 @@ impl Scheduler {
 
     // Take a main task to run, and a scheduler to run it in. Create a
     // scheduler task and bootstrap into it.
-    pub fn bootstrap(mut ~self) {
+    pub fn bootstrap(mut self: Box<Scheduler>) {
 
         // Build an Idle callback.
         let cb = box SchedRunner as Box<Callback + Send>;
@@ -224,7 +224,8 @@ impl Scheduler {
 
     // This does not return a scheduler, as the scheduler is placed
     // inside the task.
-    pub fn run(mut ~self, stask: Box<GreenTask>) -> Box<GreenTask> {
+    pub fn run(mut self: Box<Scheduler>, stask: Box<GreenTask>)
+               -> Box<GreenTask> {
 
         // This is unsafe because we need to place the scheduler, with
         // the event_loop inside, inside our task. But we still need a
@@ -271,7 +272,7 @@ impl Scheduler {
     // If we try really hard to do some work, but no work is available to be
     // done, then we fall back to epoll() to block this thread waiting for more
     // work (instead of busy waiting).
-    fn run_sched_once(mut ~self, stask: Box<GreenTask>) {
+    fn run_sched_once(mut self: Box<Scheduler>, stask: Box<GreenTask>) {
         // Make sure that we're not lying in that the `stask` argument is indeed
         // the scheduler task for this scheduler.
         assert!(self.sched_task.is_none());
@@ -349,11 +350,10 @@ impl Scheduler {
     // returns the still-available scheduler. At this point all
     // message-handling will count as a turn of work, and as a result
     // return None.
-    fn interpret_message_queue(mut ~self, stask: Box<GreenTask>,
+    fn interpret_message_queue(mut self: Box<Scheduler>,
+                               stask: Box<GreenTask>,
                                effort: EffortLevel)
-            -> (Box<Scheduler>, Box<GreenTask>, bool)
-    {
-
+                               -> (Box<Scheduler>, Box<GreenTask>, bool) {
         let msg = if effort == DontTryTooHard {
             self.message_queue.casual_pop()
         } else {
@@ -432,7 +432,7 @@ impl Scheduler {
         }
     }
 
-    fn do_work(mut ~self, stask: Box<GreenTask>)
+    fn do_work(mut self: Box<Scheduler>, stask: Box<GreenTask>)
                -> (Box<Scheduler>, Box<GreenTask>, bool) {
         rtdebug!("scheduler calling do work");
         match self.find_work() {
@@ -517,7 +517,7 @@ impl Scheduler {
     // * Task Routing Functions - Make sure tasks send up in the right
     // place.
 
-    fn process_task(mut ~self,
+    fn process_task(mut self: Box<Scheduler>,
                     cur: Box<GreenTask>,
                     mut next: Box<GreenTask>,
                     schedule_fn: SchedulingFn)
@@ -610,7 +610,7 @@ impl Scheduler {
     // cleanup function f, which takes the scheduler and the
     // old task as inputs.
 
-    pub fn change_task_context(mut ~self,
+    pub fn change_task_context(mut self: Box<Scheduler>,
                                mut current_task: Box<GreenTask>,
                                mut next_task: Box<GreenTask>,
                                f: |&mut Scheduler, Box<GreenTask>|)
@@ -693,7 +693,7 @@ impl Scheduler {
 
     // * Context Swapping Helpers - Here be ugliness!
 
-    pub fn resume_task_immediately(~self,
+    pub fn resume_task_immediately(self: Box<Scheduler>,
                                    cur: Box<GreenTask>,
                                    next: Box<GreenTask>)
                                    -> (Box<Scheduler>, Box<GreenTask>) {
@@ -733,7 +733,7 @@ impl Scheduler {
     /// This situation is currently prevented, or in other words it is
     /// guaranteed that this function will not return before the given closure
     /// has returned.
-    pub fn deschedule_running_task_and_then(mut ~self,
+    pub fn deschedule_running_task_and_then(mut self: Box<Scheduler>,
                                             cur: Box<GreenTask>,
                                             f: |&mut Scheduler, BlockedTask|) {
         // Trickier - we need to get the scheduler task out of self
@@ -743,7 +743,7 @@ impl Scheduler {
         self.switch_running_tasks_and_then(cur, stask, f)
     }
 
-    pub fn switch_running_tasks_and_then(~self,
+    pub fn switch_running_tasks_and_then(self: Box<Scheduler>,
                                          cur: Box<GreenTask>,
                                          next: Box<GreenTask>,
                                          f: |&mut Scheduler, BlockedTask|) {
@@ -795,7 +795,9 @@ impl Scheduler {
 
     /// Called by a running task to end execution, after which it will
     /// be recycled by the scheduler for reuse in a new task.
-    pub fn terminate_current_task(mut ~self, cur: Box<GreenTask>) -> ! {
+    pub fn terminate_current_task(mut self: Box<Scheduler>,
+                                  cur: Box<GreenTask>)
+                                  -> ! {
         // Similar to deschedule running task and then, but cannot go through
         // the task-blocking path. The task is already dying.
         let stask = self.sched_task.take_unwrap();
@@ -807,7 +809,9 @@ impl Scheduler {
         fail!("should never return!");
     }
 
-    pub fn run_task(~self, cur: Box<GreenTask>, next: Box<GreenTask>) {
+    pub fn run_task(self: Box<Scheduler>,
+                    cur: Box<GreenTask>,
+                    next: Box<GreenTask>) {
         let (sched, task) =
             self.process_task(cur, next, Scheduler::switch_task);
         task.put_with_sched(sched);
@@ -823,7 +827,7 @@ impl Scheduler {
     /// to introduce some amount of randomness to the scheduler. Currently the
     /// randomness is a result of performing a round of work stealing (which
     /// may end up stealing from the current scheduler).
-    pub fn yield_now(mut ~self, cur: Box<GreenTask>) {
+    pub fn yield_now(mut self: Box<Scheduler>, cur: Box<GreenTask>) {
         // Async handles trigger the scheduler by calling yield_now on the local
         // task, which eventually gets us to here. See comments in SchedRunner
         // for more info on this.
@@ -842,7 +846,7 @@ impl Scheduler {
         }
     }
 
-    pub fn maybe_yield(mut ~self, cur: Box<GreenTask>) {
+    pub fn maybe_yield(mut self: Box<Scheduler>, cur: Box<GreenTask>) {
         // It's possible for sched tasks to possibly call this function, and it
         // just means that they're likely sending on channels (which
         // occasionally call this function). Sched tasks follow different paths

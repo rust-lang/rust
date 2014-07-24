@@ -248,7 +248,8 @@ impl PipeListener {
 }
 
 impl rtio::RtioUnixListener for PipeListener {
-    fn listen(~self) -> IoResult<Box<rtio::RtioUnixAcceptor + Send>> {
+    fn listen(self: Box<PipeListener>)
+              -> IoResult<Box<rtio::RtioUnixAcceptor + Send>> {
         // create the acceptor object from ourselves
         let mut acceptor = box PipeAcceptor {
             listener: self,

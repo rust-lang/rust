@@ -53,6 +53,7 @@ use middle::const_eval;
 use middle::def;
 use middle::lang_items::FnMutTraitLangItem;
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
+use middle::subst::{VecPerParamSpace};
 use middle::ty;
 use middle::ty_fold::TypeFolder;
 use middle::typeck::rscope::{ExplicitRscope, ImpliedSingleRscope};
@@ -297,6 +298,47 @@ pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope>(
     let substs = ast_path_substs(this, rscope, &generics, None, path);
     let ty = decl_ty.subst(tcx, &substs);
     TypeAndSubsts { substs: substs, ty: ty }
+}
+
+/// Returns the type that this AST path refers to. If the path has no type
+/// parameters and the corresponding type has type parameters, fresh type
+/// and/or region variables are substituted.
+///
+/// This is used when checking the constructor in struct literals.
+pub fn ast_path_to_ty_relaxed<AC:AstConv,
+                              RS:RegionScope>(
+                              this: &AC,
+                              rscope: &RS,
+                              did: ast::DefId,
+                              path: &ast::Path)
+                              -> TypeAndSubsts {
+    let tcx = this.tcx();
+    let ty::Polytype {
+        generics: generics,
+        ty: decl_ty
+    } = this.get_item_ty(did);
+
+    let substs = if (generics.has_type_params(TypeSpace) ||
+        generics.has_region_params(TypeSpace)) &&
+            path.segments.iter().all(|s| {
+                s.lifetimes.len() == 0 && s.types.len() == 0
+            }) {
+        let type_params = Vec::from_fn(generics.types.len(TypeSpace),
+                                       |_| this.ty_infer(path.span));
+        let region_params =
+            rscope.anon_regions(path.span, generics.regions.len(TypeSpace))
+                  .unwrap();
+        Substs::new(VecPerParamSpace::params_from_type(type_params),
+                    VecPerParamSpace::params_from_type(region_params))
+    } else {
+        ast_path_substs(this, rscope, &generics, None, path)
+    };
+
+    let ty = decl_ty.subst(tcx, &substs);
+    TypeAndSubsts {
+        substs: substs,
+        ty: ty,
+    }
 }
 
 pub static NO_REGIONS: uint = 1;
@@ -1051,7 +1093,6 @@ fn determine_explicit_self_category<AC:AstConv,
                                          lifetime);
             ty::ByReferenceExplicitSelfCategory(region, mutability)
         }
-        ast::SelfUniq(_) => ty::ByBoxExplicitSelfCategory,
         ast::SelfExplicit(ast_type, _) => {
             let explicit_type = ast_ty_to_ty(this, rscope, &*ast_type);
 

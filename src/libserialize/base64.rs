@@ -11,8 +11,8 @@
 // ignore-lexer-test FIXME #15679
 
 //! Base64 binary-to-text encoding
-use std::str;
 use std::fmt;
+use std::string;
 
 /// Available encoding character sets
 pub enum CharacterSet {
@@ -148,7 +148,7 @@ impl<'a> ToBase64 for &'a [u8] {
         }
 
         unsafe {
-            str::raw::from_utf8_owned(v)
+            string::raw::from_utf8(v)
         }
     }
 }

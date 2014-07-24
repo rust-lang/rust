@@ -131,21 +131,21 @@ struct Ops {
 }
 
 impl rt::Runtime for Ops {
-    fn yield_now(~self, mut cur_task: Box<Task>) {
+    fn yield_now(self: Box<Ops>, mut cur_task: Box<Task>) {
         // put the task back in TLS and then invoke the OS thread yield
         cur_task.put_runtime(self);
         Local::put(cur_task);
         Thread::yield_now();
     }
 
-    fn maybe_yield(~self, mut cur_task: Box<Task>) {
+    fn maybe_yield(self: Box<Ops>, mut cur_task: Box<Task>) {
         // just put the task back in TLS, on OS threads we never need to
         // opportunistically yield b/c the OS will do that for us (preemption)
         cur_task.put_runtime(self);
         Local::put(cur_task);
     }
 
-    fn wrap(~self) -> Box<Any> {
+    fn wrap(self: Box<Ops>) -> Box<Any> {
         self as Box<Any>
     }
 
@@ -192,7 +192,9 @@ impl rt::Runtime for Ops {
     // `awoken` field which indicates whether we were actually woken up via some
     // invocation of `reawaken`. This flag is only ever accessed inside the
     // lock, so there's no need to make it atomic.
-    fn deschedule(mut ~self, times: uint, mut cur_task: Box<Task>,
+    fn deschedule(mut self: Box<Ops>,
+                  times: uint,
+                  mut cur_task: Box<Task>,
                   f: |BlockedTask| -> Result<(), BlockedTask>) {
         let me = &mut *self as *mut Ops;
         cur_task.put_runtime(self);
@@ -250,7 +252,7 @@ impl rt::Runtime for Ops {
 
     // See the comments on `deschedule` for why the task is forgotten here, and
     // why it's valid to do so.
-    fn reawaken(mut ~self, mut to_wake: Box<Task>) {
+    fn reawaken(mut self: Box<Ops>, mut to_wake: Box<Task>) {
         unsafe {
             let me = &mut *self as *mut Ops;
             to_wake.put_runtime(self);
@@ -261,7 +263,7 @@ impl rt::Runtime for Ops {
         }
     }
 
-    fn spawn_sibling(~self,
+    fn spawn_sibling(self: Box<Ops>,
                      mut cur_task: Box<Task>,
                      opts: TaskOpts,
                      f: proc():Send) {

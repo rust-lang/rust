@@ -71,7 +71,7 @@ pub mod bench {
         // measure
         let mut i = 0;
         b.iter(|| {
-            map.find(keys.get(i));
+            map.find(&keys[i]);
             i = (i + 1) % n;
         })
     }

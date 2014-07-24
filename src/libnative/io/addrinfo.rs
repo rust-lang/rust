@@ -10,7 +10,6 @@
 
 use libc::{c_char, c_int};
 use libc;
-use std::c_str::CString;
 use std::mem;
 use std::ptr::{null, mut_null};
 use std::rt::rtio;
@@ -27,8 +26,10 @@ impl GetAddrInfoRequest {
     {
         assert!(host.is_some() || servname.is_some());
 
-        let c_host = host.map_or(unsafe { CString::new(null(), true) }, |x| x.to_c_str());
-        let c_serv = servname.map_or(unsafe { CString::new(null(), true) }, |x| x.to_c_str());
+        let c_host = host.map(|x| x.to_c_str());
+        let c_host = c_host.as_ref().map(|x| x.as_ptr()).unwrap_or(null());
+        let c_serv = servname.map(|x| x.to_c_str());
+        let c_serv = c_serv.as_ref().map(|x| x.as_ptr()).unwrap_or(null());
 
         let hint = hint.map(|hint| {
             libc::addrinfo {
@@ -50,9 +51,7 @@ impl GetAddrInfoRequest {
 
         // Make the call
         let s = unsafe {
-            let ch = if c_host.is_null() { null() } else { c_host.as_ptr() };
-            let cs = if c_serv.is_null() { null() } else { c_serv.as_ptr() };
-            getaddrinfo(ch, cs, hint_ptr, &mut res)
+            getaddrinfo(c_host, c_serv, hint_ptr, &mut res)
         };
 
         // Error?
@@ -104,6 +103,7 @@ fn get_error(_: c_int) -> IoError {
 
 #[cfg(not(windows))]
 fn get_error(s: c_int) -> IoError {
+    use std::c_str::CString;
 
     let err_str = unsafe {
         CString::new(gai_strerror(s), false).as_str().unwrap().to_string()

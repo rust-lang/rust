@@ -11,8 +11,8 @@
 // ignore-lexer-test FIXME #15679
 
 //! Hex binary-to-text encoding
-use std::str;
 use std::fmt;
+use std::string;
 
 /// A trait for converting a value to hexadecimal encoding
 pub trait ToHex {
@@ -47,7 +47,7 @@ impl<'a> ToHex for &'a [u8] {
         }
 
         unsafe {
-            str::raw::from_utf8_owned(v)
+            string::raw::from_utf8(v)
         }
     }
 }

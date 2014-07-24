@@ -955,8 +955,6 @@ pub enum ExplicitSelf_ {
     SelfValue(Ident),
     /// `&'lt self`, `&'lt mut self`
     SelfRegion(Option<Lifetime>, Mutability, Ident),
-    /// `~self`
-    SelfUniq(Ident),
     /// `self: TYPE`
     SelfExplicit(P<Ty>, Ident),
 }

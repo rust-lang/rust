@@ -20,7 +20,7 @@ use iter::Iterator;
 use mem;
 use option::{Option, Some, None};
 use slice::{ImmutableVector, MutableVector, Vector};
-use str::{OwnedStr, Str, StrAllocating, StrSlice};
+use str::{Str, StrAllocating, StrSlice};
 use string::String;
 use to_string::IntoStr;
 use vec::Vec;

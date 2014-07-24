@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Ordered containers with integer keys, implemented as radix tries (`TrieSet` and `TrieMap` types)
+//! Ordered containers with unsigned integer keys,
+//! implemented as radix tries (`TrieSet` and `TrieMap` types).
 
 use core::prelude::*;
 
@@ -35,7 +36,44 @@ enum Child<T> {
     Nothing
 }
 
-#[allow(missing_doc)]
+/// A map implemented as a radix trie.
+///
+/// # Example
+///
+/// ```
+/// use std::collections::TrieMap;
+///
+/// let mut map = TrieMap::new();
+/// map.insert(27, "Olaf");
+/// map.insert(1, "Edgar");
+/// map.insert(13, "Ruth");
+/// map.insert(1, "Martin");
+///
+/// assert_eq!(map.len(), 3);
+/// assert_eq!(map.find(&1), Some(&"Martin"));
+///
+/// if !map.contains_key(&90) {
+///     println!("Nobody is keyed 90");
+/// }
+///
+/// // Update a key
+/// match map.find_mut(&1) {
+///     Some(value) => *value = "Olga",
+///     None => (),
+/// }
+///
+/// map.remove(&13);
+/// assert_eq!(map.len(), 2);
+///
+/// // Print the key value pairs, ordered by key.
+/// for (key, value) in map.iter() {
+///     // Prints `1: Olga` then `27: Olaf`
+///     println!("{}: {}", key, value);
+/// }
+///
+/// map.clear();
+/// assert!(map.is_empty());
+/// ```
 pub struct TrieMap<T> {
     root: TrieNode<T>,
     length: uint
@@ -51,7 +89,7 @@ impl<T: PartialEq> PartialEq for TrieMap<T> {
 impl<T: Eq> Eq for TrieMap<T> {}
 
 impl<T> Collection for TrieMap<T> {
-    /// Return the number of elements in the map
+    /// Return the number of elements in the map.
     #[inline]
     fn len(&self) -> uint { self.length }
 }
@@ -66,7 +104,7 @@ impl<T> Mutable for TrieMap<T> {
 }
 
 impl<T> Map<uint, T> for TrieMap<T> {
-    /// Return a reference to the value corresponding to the key
+    /// Return a reference to the value corresponding to the key.
     #[inline]
     fn find<'a>(&'a self, key: &uint) -> Option<&'a T> {
         let mut node: &'a TrieNode<T> = &self.root;
@@ -89,7 +127,7 @@ impl<T> Map<uint, T> for TrieMap<T> {
 }
 
 impl<T> MutableMap<uint, T> for TrieMap<T> {
-    /// Return a mutable reference to the value corresponding to the key
+    /// Return a mutable reference to the value corresponding to the key.
     #[inline]
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
         find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
@@ -122,19 +160,54 @@ impl<T> Default for TrieMap<T> {
 }
 
 impl<T> TrieMap<T> {
-    /// Create an empty TrieMap
+    /// Create an empty TrieMap.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    /// let mut map: TrieMap<&str> = TrieMap::new();
+    /// ```
     #[inline]
     pub fn new() -> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
     }
 
-    /// Visit all key-value pairs in reverse order
+    /// Visit all key-value pairs in reverse order. Abort traversal when f returns false.
+    /// Return true if f returns true for all elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    /// let map: TrieMap<&str> = [(1, "a"), (2, "b"), (3, "c")].iter().map(|&x| x).collect();
+    ///
+    /// let mut vec = Vec::new();
+    /// assert_eq!(true, map.each_reverse(|&key, &value| { vec.push((key, value)); true }));
+    /// assert_eq!(vec, vec![(3, "c"), (2, "b"), (1, "a")]);
+    ///
+    /// // Stop when we reach 2
+    /// let mut vec = Vec::new();
+    /// assert_eq!(false, map.each_reverse(|&key, &value| { vec.push(value); key != 2 }));
+    /// assert_eq!(vec, vec!["c", "b"]);
+    /// ```
     #[inline]
     pub fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
         self.root.each_reverse(f)
     }
 
-    /// Get an iterator over the key-value pairs in the map
+    /// Get an iterator over the key-value pairs in the map, ordered by keys.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    /// let map: TrieMap<&str> = [(3, "c"), (1, "a"), (2, "b")].iter().map(|&x| x).collect();
+    ///
+    /// for (key, value) in map.iter() {
+    ///     println!("{}: {}", key, value);
+    /// }
+    /// ```
     pub fn iter<'a>(&'a self) -> Entries<'a, T> {
         let mut iter = unsafe {Entries::new()};
         iter.stack[0] = self.root.children.iter();
@@ -147,6 +220,21 @@ impl<T> TrieMap<T> {
 
     /// Get an iterator over the key-value pairs in the map, with the
     /// ability to mutate the values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    /// let mut map: TrieMap<int> = [(1, 2), (2, 4), (3, 6)].iter().map(|&x| x).collect();
+    ///
+    /// for (key, value) in map.mut_iter() {
+    ///     *value = -(key as int);
+    /// }
+    ///
+    /// assert_eq!(map.find(&1), Some(&-1));
+    /// assert_eq!(map.find(&2), Some(&-2));
+    /// assert_eq!(map.find(&3), Some(&-3));
+    /// ```
     pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, T> {
         let mut iter = unsafe {MutEntries::new()};
         iter.stack[0] = self.root.children.mut_iter();
@@ -255,12 +343,34 @@ impl<T> TrieMap<T> {
 
     /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    /// let map: TrieMap<&str> = [(2, "a"), (4, "b"), (6, "c")].iter().map(|&x| x).collect();
+    ///
+    /// assert_eq!(map.lower_bound(4).next(), Some((4, &"b")));
+    /// assert_eq!(map.lower_bound(5).next(), Some((6, &"c")));
+    /// assert_eq!(map.lower_bound(10).next(), None);
+    /// ```
     pub fn lower_bound<'a>(&'a self, key: uint) -> Entries<'a, T> {
         self.bound(key, false)
     }
 
     /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    /// let map: TrieMap<&str> = [(2, "a"), (4, "b"), (6, "c")].iter().map(|&x| x).collect();
+    ///
+    /// assert_eq!(map.upper_bound(4).next(), Some((6, &"c")));
+    /// assert_eq!(map.upper_bound(5).next(), Some((6, &"c")));
+    /// assert_eq!(map.upper_bound(10).next(), None);
+    /// ```
     pub fn upper_bound<'a>(&'a self, key: uint) -> Entries<'a, T> {
         self.bound(key, true)
     }
@@ -275,12 +385,50 @@ impl<T> TrieMap<T> {
 
     /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    /// let mut map: TrieMap<&str> = [(2, "a"), (4, "b"), (6, "c")].iter().map(|&x| x).collect();
+    ///
+    /// assert_eq!(map.mut_lower_bound(4).next(), Some((4, &mut "b")));
+    /// assert_eq!(map.mut_lower_bound(5).next(), Some((6, &mut "c")));
+    /// assert_eq!(map.mut_lower_bound(10).next(), None);
+    ///
+    /// for (key, value) in map.mut_lower_bound(4) {
+    ///     *value = "changed";
+    /// }
+    ///
+    /// assert_eq!(map.find(&2), Some(&"a"));
+    /// assert_eq!(map.find(&4), Some(&"changed"));
+    /// assert_eq!(map.find(&6), Some(&"changed"));
+    /// ```
     pub fn mut_lower_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
         self.mut_bound(key, false)
     }
 
     /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieMap;
+    /// let mut map: TrieMap<&str> = [(2, "a"), (4, "b"), (6, "c")].iter().map(|&x| x).collect();
+    ///
+    /// assert_eq!(map.mut_upper_bound(4).next(), Some((6, &mut "c")));
+    /// assert_eq!(map.mut_upper_bound(5).next(), Some((6, &mut "c")));
+    /// assert_eq!(map.mut_upper_bound(10).next(), None);
+    ///
+    /// for (key, value) in map.mut_upper_bound(4) {
+    ///     *value = "changed";
+    /// }
+    ///
+    /// assert_eq!(map.find(&2), Some(&"a"));
+    /// assert_eq!(map.find(&4), Some(&"b"));
+    /// assert_eq!(map.find(&6), Some(&"changed"));
+    /// ```
     pub fn mut_upper_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
         self.mut_bound(key, true)
     }
@@ -310,14 +458,42 @@ impl<S: Writer, T: Hash<S>> Hash<S> for TrieMap<T> {
     }
 }
 
-#[allow(missing_doc)]
+/// A set implemented as a radix trie.
+///
+/// # Example
+///
+/// ```
+/// use std::collections::TrieSet;
+///
+/// let mut set = TrieSet::new();
+/// set.insert(6);
+/// set.insert(28);
+/// set.insert(6);
+///
+/// assert_eq!(set.len(), 2);
+///
+/// if !set.contains(&3) {
+///     println!("3 is not in the set");
+/// }
+///
+/// // Print contents in order
+/// for x in set.iter() {
+///     println!("{}", x);
+/// }
+///
+/// set.remove(&6);
+/// assert_eq!(set.len(), 1);
+///
+/// set.clear();
+/// assert!(set.is_empty());
+/// ```
 #[deriving(Hash, PartialEq, Eq)]
 pub struct TrieSet {
     map: TrieMap<()>
 }
 
 impl Collection for TrieSet {
-    /// Return the number of elements in the set
+    /// Return the number of elements in the set.
     #[inline]
     fn len(&self) -> uint { self.map.len() }
 }
@@ -368,19 +544,61 @@ impl Default for TrieSet {
 }
 
 impl TrieSet {
-    /// Create an empty TrieSet
+    /// Create an empty TrieSet.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    /// let mut set = TrieSet::new();
+    /// ```
     #[inline]
     pub fn new() -> TrieSet {
         TrieSet{map: TrieMap::new()}
     }
 
-    /// Visit all values in reverse order
+    /// Visit all values in reverse order. Abort traversal when `f` returns false.
+    /// Return `true` if `f` returns `true` for all elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let set: TrieSet = [1, 2, 3, 4, 5].iter().map(|&x| x).collect();
+    ///
+    /// let mut vec = Vec::new();
+    /// assert_eq!(true, set.each_reverse(|&x| { vec.push(x); true }));
+    /// assert_eq!(vec, vec![5, 4, 3, 2, 1]);
+    ///
+    /// // Stop when we reach 3
+    /// let mut vec = Vec::new();
+    /// assert_eq!(false, set.each_reverse(|&x| { vec.push(x); x != 3 }));
+    /// assert_eq!(vec, vec![5, 4, 3]);
+    /// ```
     #[inline]
     pub fn each_reverse(&self, f: |&uint| -> bool) -> bool {
         self.map.each_reverse(|k, _| f(k))
     }
 
-    /// Get an iterator over the values in the set
+    /// Get an iterator over the values in the set, in sorted order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let mut set = TrieSet::new();
+    /// set.insert(3);
+    /// set.insert(2);
+    /// set.insert(1);
+    /// set.insert(2);
+    ///
+    /// // Print 1, 2, 3
+    /// for x in set.iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     #[inline]
     pub fn iter<'a>(&'a self) -> SetItems<'a> {
         SetItems{iter: self.map.iter()}
@@ -388,12 +606,34 @@ impl TrieSet {
 
     /// Get an iterator pointing to the first value that is not less than `val`.
     /// If all values in the set are less than `val` an empty iterator is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let set: TrieSet = [2, 4, 6, 8].iter().map(|&x| x).collect();
+    /// assert_eq!(set.lower_bound(4).next(), Some(4));
+    /// assert_eq!(set.lower_bound(5).next(), Some(6));
+    /// assert_eq!(set.lower_bound(10).next(), None);
+    /// ```
     pub fn lower_bound<'a>(&'a self, val: uint) -> SetItems<'a> {
         SetItems{iter: self.map.lower_bound(val)}
     }
 
     /// Get an iterator pointing to the first value that key is greater than `val`.
-    /// If all values in the set are not greater than `val` an empty iterator is returned.
+    /// If all values in the set are less than or equal to `val` an empty iterator is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let set: TrieSet = [2, 4, 6, 8].iter().map(|&x| x).collect();
+    /// assert_eq!(set.upper_bound(4).next(), Some(6));
+    /// assert_eq!(set.upper_bound(5).next(), Some(6));
+    /// assert_eq!(set.upper_bound(10).next(), None);
+    /// ```
     pub fn upper_bound<'a>(&'a self, val: uint) -> SetItems<'a> {
         SetItems{iter: self.map.upper_bound(val)}
     }
@@ -526,7 +766,7 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
     return ret;
 }
 
-/// Forward iterator over a map
+/// Forward iterator over a map.
 pub struct Entries<'a, T> {
     stack: [slice::Items<'a, Child<T>>, .. NUM_CHUNKS],
     length: uint,
@@ -660,7 +900,7 @@ macro_rules! iterator_impl {
 iterator_impl! { Entries, iter = iter, mutability = }
 iterator_impl! { MutEntries, iter = mut_iter, mutability = mut }
 
-/// Forward iterator over a set
+/// Forward iterator over a set.
 pub struct SetItems<'a> {
     iter: Entries<'a, ()>
 }

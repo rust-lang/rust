@@ -49,20 +49,19 @@ impl String {
         }
     }
 
-    /// Creates a new string buffer from length, capacity, and a pointer.
-    #[inline]
-    pub unsafe fn from_raw_parts(length: uint, capacity: uint, ptr: *mut u8) -> String {
-        String {
-            vec: Vec::from_raw_parts(length, capacity, ptr),
-        }
-    }
-
     /// Creates a new string buffer from the given string.
     #[inline]
     pub fn from_str(string: &str) -> String {
         String {
             vec: Vec::from_slice(string.as_bytes())
         }
+    }
+
+    /// Deprecated. Replaced by `string::raw::from_parts`
+    #[inline]
+    #[deprecated = "Replaced by string::raw::from_parts"]
+    pub unsafe fn from_raw_parts(length: uint, capacity: uint, ptr: *mut u8) -> String {
+        raw::from_parts(ptr, length, capacity)
     }
 
     #[allow(missing_doc)]
@@ -570,6 +569,62 @@ impl<S: Str> Add<S, String> for String {
     }
 }
 
+pub mod raw {
+    use core::mem;
+    use core::ptr::RawPtr;
+    use core::raw::Slice;
+
+    use super::String;
+    use vec::Vec;
+
+    /// Creates a new `String` from length, capacity, and a pointer.
+    ///
+    /// This is unsafe because:
+    /// * We call `Vec::from_raw_parts` to get a `Vec<u8>`
+    /// * We assume that the `Vec` contains valid UTF-8
+    #[inline]
+    pub unsafe fn from_parts(buf: *mut u8, length: uint, capacity: uint) -> String {
+        String {
+            vec: Vec::from_raw_parts(length, capacity, buf),
+        }
+    }
+
+    /// Create `String` from a *u8 buffer of the given length
+    ///
+    /// This function is unsafe because of two reasons:
+    /// * A raw pointer is dereferenced and transmuted to `&[u8]`
+    /// * The slice is not checked to see whether it contains valid UTF-8
+    pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> String {
+        use slice::CloneableVector;
+        let slice: &[u8] = mem::transmute(Slice {
+            data: buf,
+            len: len,
+        });
+        self::from_utf8(slice.to_vec())
+    }
+
+    /// Create a `String` from a null-terminated *u8 buffer
+    ///
+    /// This function is unsafe because we dereference memory until we find the NUL character,
+    /// which is not guaranteed to be present. Additionaly, the slice is not checked to see
+    /// whether it contains valid UTF-8
+    pub unsafe fn from_buf(buf: *const u8) -> String {
+        let mut len = 0;
+        while *buf.offset(len) != 0 {
+            len += 1;
+        }
+        self::from_buf_len(buf, len as uint)
+    }
+
+    /// Converts a vector of bytes to a new `String` without checking if
+    /// it contains valid UTF-8. This is unsafe because it assumes that
+    /// the utf-8-ness of the vector has already been validated.
+    #[inline]
+    pub unsafe fn from_utf8(bytes: Vec<u8>) -> String {
+        String { vec: bytes }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::prelude::*;
@@ -725,6 +780,24 @@ mod tests {
         // general
         assert_eq!(String::from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]),
                    String::from_str("\uFFFD𐒋\uFFFD"));
+    }
+
+    #[test]
+    fn test_from_buf_len() {
+        unsafe {
+            let a = vec![65u8, 65, 65, 65, 65, 65, 65, 0];
+            assert_eq!(super::raw::from_buf_len(a.as_ptr(), 3), String::from_str("AAA"));
+        }
+    }
+
+    #[test]
+    fn test_from_buf() {
+        unsafe {
+            let a = vec![65, 65, 65, 65, 65, 65, 65, 0];
+            let b = a.as_ptr();
+            let c = super::raw::from_buf(b);
+            assert_eq!(c, String::from_str("AAAAAAA"));
+        }
     }
 
     #[test]

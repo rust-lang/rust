@@ -1541,6 +1541,13 @@ fn try_overloaded_call(fcx: &FnCtxt,
                        callee_type: ty::t,
                        args: &[Gc<ast::Expr>])
                        -> bool {
+    // Bail out if the callee is a bare function or a closure. We check those
+    // manually.
+    match *structure_of(fcx, callee.span, callee_type) {
+        ty::ty_bare_fn(_) | ty::ty_closure(_) => return false,
+        _ => {}
+    }
+
     // Try `FnOnce`, then `FnMut`, then `Fn`.
     for &(maybe_function_trait, method_name) in [
         (fcx.tcx().lang_items.fn_once_trait(), token::intern("call_once")),
@@ -3409,10 +3416,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprStruct(ref path, ref fields, base_expr) => {
         // Resolve the path.
         let def = tcx.def_map.borrow().find(&id).map(|i| *i);
-        match def {
+        let struct_id = match def {
             Some(def::DefVariant(enum_id, variant_id, _)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
                                           variant_id, fields.as_slice());
+                enum_id
             }
             Some(def) => {
                 // Verify that this was actually a struct.
@@ -3432,10 +3440,46 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                             pprust::path_to_string(path));
                     }
                 }
+
+                def.def_id()
             }
             _ => {
                 tcx.sess.span_bug(path.span,
                                   "structure constructor wasn't resolved")
+            }
+        };
+
+        // Turn the path into a type and verify that that type unifies with
+        // the resulting structure type. This is needed to handle type
+        // parameters correctly.
+        let actual_structure_type = fcx.expr_ty(&*expr);
+        if !ty::type_is_error(actual_structure_type) {
+            let type_and_substs = astconv::ast_path_to_ty_relaxed(fcx,
+                                                                  fcx.infcx(),
+                                                                  struct_id,
+                                                                  path);
+            match fcx.mk_subty(false,
+                               infer::Misc(path.span),
+                               actual_structure_type,
+                               type_and_substs.ty) {
+                Ok(()) => {}
+                Err(type_error) => {
+                    let type_error_description =
+                        ty::type_err_to_str(tcx, &type_error);
+                    fcx.tcx()
+                       .sess
+                       .span_err(path.span,
+                                 format!("structure constructor specifies a \
+                                         structure of type `{}`, but this \
+                                         structure has type `{}`: {}",
+                                         fcx.infcx()
+                                            .ty_to_string(type_and_substs.ty),
+                                         fcx.infcx()
+                                            .ty_to_string(
+                                                actual_structure_type),
+                                         type_error_description).as_slice());
+                    ty::note_and_explain_type_err(tcx, &type_error);
+                }
             }
         }
       }
