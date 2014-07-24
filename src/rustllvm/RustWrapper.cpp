@@ -31,16 +31,30 @@ using namespace llvm::object;
 
 static char *LastError;
 
+#if LLVM_VERSION_MINOR >= 5
 extern "C" LLVMMemoryBufferRef
 LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
-  LLVMMemoryBufferRef MemBuf = NULL;
-  char *err = NULL;
-  LLVMCreateMemoryBufferWithContentsOfFile(Path, &MemBuf, &err);
-  if (err != NULL) {
-    LLVMRustSetLastError(err);
+  ErrorOr<std::unique_ptr<MemoryBuffer>> buf_or = MemoryBuffer::getFile(Path,
+                                                                        -1,
+                                                                        false);
+  if (!buf_or) {
+      LLVMRustSetLastError(buf_or.getError().message().c_str());
+      return nullptr;
   }
-  return MemBuf;
+  return wrap(buf_or.get().release());
 }
+#else
+extern "C" LLVMMemoryBufferRef
+LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
+  OwningPtr<MemoryBuffer> buf;
+  error_code err = MemoryBuffer::getFile(Path, buf, -1, false);
+  if (err) {
+      LLVMRustSetLastError(err.message().c_str());
+      return NULL;
+  }
+  return wrap(buf.take());
+}
+#endif
 
 extern "C" char *LLVMRustGetLastError(void) {
   char *ret = LastError;
@@ -658,10 +672,12 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
 #if LLVM_VERSION_MINOR >= 5
 extern "C" void*
 LLVMRustOpenArchive(char *path) {
-    ErrorOr<std::unique_ptr<MemoryBuffer>> buf_or = MemoryBuffer::getFile(path);
+    ErrorOr<std::unique_ptr<MemoryBuffer>> buf_or = MemoryBuffer::getFile(path,
+                                                                          -1,
+                                                                          false);
     if (!buf_or) {
         LLVMRustSetLastError(buf_or.getError().message().c_str());
-        return NULL;
+        return nullptr;
     }
 
     std::error_code err;
@@ -676,7 +692,7 @@ LLVMRustOpenArchive(char *path) {
 extern "C" void*
 LLVMRustOpenArchive(char *path) {
     OwningPtr<MemoryBuffer> buf;
-    error_code err = MemoryBuffer::getFile(path, buf);
+    error_code err = MemoryBuffer::getFile(path, buf, -1, false);
     if (err) {
         LLVMRustSetLastError(err.message().c_str());
         return NULL;
