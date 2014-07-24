@@ -120,7 +120,11 @@ pub fn lvalue_scratch_datum<'a, A>(bcx: &'a Block<'a>,
      */
 
     let llty = type_of::type_of(bcx.ccx(), ty);
-    let scratch = alloca_maybe_zeroed(bcx, llty, name, zero);
+    let scratch = if zero {
+        alloca_zeroed(bcx, llty, name)
+    } else {
+        alloca(bcx, llty, name)
+    };
 
     // Subtle. Populate the scratch memory *before* scheduling cleanup.
     let bcx = populate(arg, bcx, scratch);
@@ -145,7 +149,7 @@ pub fn rvalue_scratch_datum(bcx: &Block,
      */
 
     let llty = type_of::type_of(bcx.ccx(), ty);
-    let scratch = alloca_maybe_zeroed(bcx, llty, name, false);
+    let scratch = alloca(bcx, llty, name);
     Datum::new(scratch, ty, Rvalue::new(ByRef))
 }
 
