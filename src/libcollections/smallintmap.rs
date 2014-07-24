@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * A simple map based on a vector for small integer keys. Space requirements
- * are O(highest integer key).
- */
+//! A simple map based on a vector for small integer keys. Space requirements
+//! are O(highest integer key).
 
 #![allow(missing_doc)]
 
@@ -32,12 +30,12 @@ pub struct SmallIntMap<T> {
 }
 
 impl<V> Collection for SmallIntMap<V> {
-    /// Return the number of elements in the map
+    /// Return the number of elements in the map.
     fn len(&self) -> uint {
         self.v.iter().filter(|elt| elt.is_some()).count()
     }
 
-    /// Return true if there are no elements in the map
+    /// Return `true` if there are no elements in the map.
     fn is_empty(&self) -> bool {
         self.v.iter().all(|elt| elt.is_none())
     }
@@ -49,7 +47,7 @@ impl<V> Mutable for SmallIntMap<V> {
 }
 
 impl<V> Map<uint, V> for SmallIntMap<V> {
-    /// Return a reference to the value corresponding to the key
+    /// Return a reference to the value corresponding to the key.
     fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
         if *key < self.v.len() {
             match *self.v.get(*key) {
@@ -63,7 +61,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
 }
 
 impl<V> MutableMap<uint, V> for SmallIntMap<V> {
-    /// Return a mutable reference to the value corresponding to the key
+    /// Return a mutable reference to the value corresponding to the key.
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut V> {
         if *key < self.v.len() {
             match *self.v.get_mut(*key) {
@@ -76,7 +74,7 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
     }
 
     /// Insert a key-value pair into the map. An existing value for a
-    /// key is replaced by the new value. Return true if the key did
+    /// key is replaced by the new value. Return `true` if the key did
     /// not already exist in the map.
     fn insert(&mut self, key: uint, value: V) -> bool {
         let exists = self.contains_key(&key);
@@ -88,14 +86,14 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
         !exists
     }
 
-    /// Remove a key-value pair from the map. Return true if the key
-    /// was present in the map, otherwise false.
+    /// Remove a key-value pair from the map. Return `true` if the key
+    /// was present in the map, otherwise `false`.
     fn remove(&mut self, key: &uint) -> bool {
         self.pop(key).is_some()
     }
 
     /// Insert a key-value pair from the map. If the key already had a value
-    /// present in the map, that value is returned. Otherwise None is returned.
+    /// present in the map, that value is returned. Otherwise `None` is returned.
     fn swap(&mut self, key: uint, value: V) -> Option<V> {
         match self.find_mut(&key) {
             Some(loc) => { return Some(replace(loc, value)); }
@@ -121,10 +119,10 @@ impl<V> Default for SmallIntMap<V> {
 }
 
 impl<V> SmallIntMap<V> {
-    /// Create an empty SmallIntMap
+    /// Create an empty SmallIntMap.
     pub fn new() -> SmallIntMap<V> { SmallIntMap{v: vec!()} }
 
-    /// Create an empty SmallIntMap with capacity `capacity`
+    /// Create an empty SmallIntMap with capacity `capacity`.
     pub fn with_capacity(capacity: uint) -> SmallIntMap<V> {
         SmallIntMap { v: Vec::with_capacity(capacity) }
     }
@@ -134,7 +132,7 @@ impl<V> SmallIntMap<V> {
     }
 
     /// An iterator visiting all key-value pairs in ascending order by the keys.
-    /// Iterator element type is (uint, &'r V)
+    /// Iterator element type is `(uint, &'r V)`.
     pub fn iter<'r>(&'r self) -> Entries<'r, V> {
         Entries {
             front: 0,
@@ -145,7 +143,7 @@ impl<V> SmallIntMap<V> {
 
     /// An iterator visiting all key-value pairs in ascending order by the keys,
     /// with mutable references to the values
-    /// Iterator element type is (uint, &'r mut V)
+    /// Iterator element type is `(uint, &'r mut V)`.
     pub fn mut_iter<'r>(&'r mut self) -> MutEntries<'r, V> {
         MutEntries {
             front: 0,
@@ -154,7 +152,7 @@ impl<V> SmallIntMap<V> {
         }
     }
 
-    /// Empties the hash map, moving all values into the specified closure
+    /// Empties the hash map, moving all values into the specified closure.
     pub fn move_iter(&mut self)
         -> FilterMap<(uint, Option<V>), (uint, V),
                 Enumerate<vec::MoveItems<Option<V>>>>
