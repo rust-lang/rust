@@ -17,16 +17,16 @@
 /// should suffice.
 
 use alloc::arc::Arc;
-use std::ty::Unsafe;
+use std::cell::UnsafeCell;
 
 pub struct Refcount {
-    rc: Arc<Unsafe<uint>>,
+    rc: Arc<UnsafeCell<uint>>,
 }
 
 impl Refcount {
     /// Creates a new refcount of 1
     pub fn new() -> Refcount {
-        Refcount { rc: Arc::new(Unsafe::new(1)) }
+        Refcount { rc: Arc::new(UnsafeCell::new(1)) }
     }
 
     fn increment(&self) {

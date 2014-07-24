@@ -21,7 +21,7 @@ use core::atomics;
 use core::finally::Finally;
 use core::kinds::marker;
 use core::mem;
-use core::ty::Unsafe;
+use core::cell::UnsafeCell;
 use collections::{Vec, MutableSeq};
 
 use mutex;
@@ -91,7 +91,7 @@ struct Sem<Q> {
     //      (for good reason). We have an internal invariant on this semaphore,
     //      however, that the queue is never accessed outside of a locked
     //      context.
-    inner: Unsafe<SemInner<Q>>
+    inner: UnsafeCell<SemInner<Q>>
 }
 
 struct SemInner<Q> {
@@ -113,7 +113,7 @@ impl<Q: Send> Sem<Q> {
                 "semaphores cannot be initialized with negative values");
         Sem {
             lock: mutex::Mutex::new(),
-            inner: Unsafe::new(SemInner {
+            inner: UnsafeCell::new(SemInner {
                 waiters: WaitQueue::new(),
                 count: count,
                 blocked: q,

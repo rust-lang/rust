@@ -44,7 +44,7 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use core::mem;
-use core::ty::Unsafe;
+use core::cell::UnsafeCell;
 
 use atomics::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
 
@@ -71,7 +71,7 @@ struct Node<T> {
 /// popper at a time (many pushers are allowed).
 pub struct Queue<T> {
     head: AtomicPtr<Node<T>>,
-    tail: Unsafe<*mut Node<T>>,
+    tail: UnsafeCell<*mut Node<T>>,
 }
 
 impl<T> Node<T> {
@@ -90,7 +90,7 @@ impl<T: Send> Queue<T> {
         let stub = unsafe { Node::new(None) };
         Queue {
             head: AtomicPtr::new(stub),
-            tail: Unsafe::new(stub),
+            tail: UnsafeCell::new(stub),
         }
     }
 

@@ -379,7 +379,6 @@ impl<T> Drop for Weak<T> {
     }
 }
 
-#[unstable]
 #[experimental = "Weak pointers may not belong in this module."]
 impl<T> Clone for Weak<T> {
     #[inline]
