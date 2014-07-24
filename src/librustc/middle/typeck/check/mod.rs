@@ -1541,6 +1541,13 @@ fn try_overloaded_call(fcx: &FnCtxt,
                        callee_type: ty::t,
                        args: &[Gc<ast::Expr>])
                        -> bool {
+    // Bail out if the callee is a bare function or a closure. We check those
+    // manually.
+    match *structure_of(fcx, callee.span, callee_type) {
+        ty::ty_bare_fn(_) | ty::ty_closure(_) => return false,
+        _ => {}
+    }
+
     // Try `FnOnce`, then `FnMut`, then `Fn`.
     for &(maybe_function_trait, method_name) in [
         (fcx.tcx().lang_items.fn_once_trait(), token::intern("call_once")),
