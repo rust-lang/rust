@@ -1747,17 +1747,23 @@ impl<'a> Parser<'a> {
             segments: segments,
         };
 
-        // If required, save the segment spans.
-        match self.path_span_table {
-            Some(ref mut span_table) => {
-                span_table.insert(path.clone(), spans);
-            }
-            None => {}
-        }
+        self.maybe_save_path_spans(path.clone(), spans);
 
         PathAndBounds {
             path: path,
             bounds: bounds,
+        }
+    }
+
+    // TODO move, comment
+    // If required, save the segment spans.
+    fn maybe_save_path_spans(&mut self, path: ast::Path, spans: Vec<Span>) {
+        match self.path_span_table {
+            Some(ref mut span_table) => {
+                println!("Recordingspans for : {}, {}", ::print::pprust::path_to_string(&path), spans.len());
+                span_table.insert(path.clone(), spans);
+            }
+            None => {}
         }
     }
 
@@ -3596,7 +3602,7 @@ impl<'a> Parser<'a> {
         return (ret_lifetime, OwnedSlice::from_vec(result));
     }
 
-    fn trait_ref_from_ident(ident: Ident, span: Span) -> ast::TraitRef {
+    fn trait_ref_from_ident(&mut self, ident: Ident, span: Span) -> ast::TraitRef {
         let segment = ast::PathSegment {
             identifier: ident,
             lifetimes: Vec::new(),
@@ -3607,6 +3613,9 @@ impl<'a> Parser<'a> {
             global: false,
             segments: vec![segment],
         };
+
+        self.maybe_save_path_spans(path.clone(), vec![span]);
+
         ast::TraitRef {
             path: path,
             ref_id: ast::DUMMY_NODE_ID,
@@ -3624,7 +3633,7 @@ impl<'a> Parser<'a> {
         let mut ident = self.parse_ident();
         let mut unbound = None;
         if self.eat(&token::QUESTION) {
-            let tref = Parser::trait_ref_from_ident(ident, span);
+            let tref = self.trait_ref_from_ident(ident, span);
             unbound = Some(TraitTyParamBound(tref));
             span = self.span;
             ident = self.parse_ident();
@@ -4364,7 +4373,7 @@ impl<'a> Parser<'a> {
                     "expected 'Sized?' after `for` in trait item");
                 return None;
             }
-            let tref = Parser::trait_ref_from_ident(ident, span);
+        let tref = self.trait_ref_from_ident(ident, span);
             Some(TraitTyParamBound(tref))
         } else {
             None
@@ -5217,12 +5226,16 @@ impl<'a> Parser<'a> {
                 global: false,
                 segments: Vec::new()
             };
+
+            self.maybe_save_path_spans(path.clone(), Vec::new());
+
             return box(GC) spanned(lo, self.span.hi,
                             ViewPathList(path, idents, ast::DUMMY_NODE_ID));
         }
 
         let first_ident = self.parse_ident();
         let mut path = vec!(first_ident);
+        let mut spans = Vec::new();
         match self.token {
           token::EQ => {
             // x = foo::bar
@@ -5231,9 +5244,14 @@ impl<'a> Parser<'a> {
             path = vec!(self.parse_ident());
             while self.token == token::MOD_SEP {
                 self.bump();
+                let lo = self.span.lo;
                 let id = self.parse_ident();
+                let hi = self.last_span.hi;
+                let id_span = mk_sp(lo, hi);
                 path.push(id);
+                spans.push(id_span);
             }
+
             let path = ast::Path {
                 span: mk_sp(path_lo, self.span.hi),
                 global: false,
@@ -5245,6 +5263,9 @@ impl<'a> Parser<'a> {
                     }
                 }).collect()
             };
+
+            self.maybe_save_path_spans(path.clone(), spans);
+
             return box(GC) spanned(lo, self.span.hi,
                             ViewPathSimple(first_ident, path,
                                            ast::DUMMY_NODE_ID));
@@ -5254,11 +5275,15 @@ impl<'a> Parser<'a> {
             // foo::bar or foo::{a,b,c} or foo::*
             while self.token == token::MOD_SEP {
                 self.bump();
+                let lo = self.span.lo;
 
                 match self.token {
                   token::IDENT(i, _) => {
                     self.bump();
                     path.push(i);
+                    let hi = self.last_span.hi;
+                    let id_span = mk_sp(lo, hi);
+                    spans.push(id_span);
                   }
 
                   // foo::bar::{a,b,c}
@@ -5280,6 +5305,8 @@ impl<'a> Parser<'a> {
                             }
                         }).collect()
                     };
+
+                    self.maybe_save_path_spans(path.clone(), spans);
                     return box(GC) spanned(lo, self.span.hi,
                                     ViewPathList(path, idents, ast::DUMMY_NODE_ID));
                   }
@@ -5287,6 +5314,9 @@ impl<'a> Parser<'a> {
                   // foo::bar::*
                   token::BINOP(token::STAR) => {
                     self.bump();
+                    let hi = self.last_span.hi;
+                    let id_span = mk_sp(lo, hi);
+                    spans.push(id_span);
                     let path = ast::Path {
                         span: mk_sp(lo, self.span.hi),
                         global: false,
@@ -5298,6 +5328,8 @@ impl<'a> Parser<'a> {
                             }
                         }).collect()
                     };
+
+                    self.maybe_save_path_spans(path.clone(), spans);
                     return box(GC) spanned(lo, self.span.hi,
                                     ViewPathGlob(path, ast::DUMMY_NODE_ID));
                   }
@@ -5320,6 +5352,7 @@ impl<'a> Parser<'a> {
                 }
             }).collect()
         };
+        self.maybe_save_path_spans(path.clone(), spans);
         return box(GC) spanned(lo,
                         self.last_span.hi,
                         ViewPathSimple(last, path, ast::DUMMY_NODE_ID));

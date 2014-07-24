@@ -77,7 +77,7 @@ struct DxrVisitor<'l> {
     sess: &'l Session,
     analysis: &'l CrateAnalysis,
 
-    collected_paths: Vec<(NodeId, ast::Path, bool, recorder::Row)>,
+    collected_vars: Vec<(NodeId, Span, String, bool, recorder::Row)>,
     collecting: bool,
 
     span: SpanUtils<'l>,
@@ -244,24 +244,24 @@ impl <'l> DxrVisitor<'l> {
 
     fn process_formals(&mut self, formals: &Vec<ast::Arg>, qualname: &str, e:DxrVisitorEnv) {
         for arg in formals.iter() {
-            assert!(self.collected_paths.len() == 0 && !self.collecting);
+            assert!(self.collected_vars.len() == 0 && !self.collecting);
             self.collecting = true;
             self.visit_pat(&*arg.pat, e);
             self.collecting = false;
             let span_utils = self.span;
-            for &(id, ref p, _, _) in self.collected_paths.iter() {
+            for &(id, ref sp, ref name, _, _) in self.collected_vars.iter() {
                 let typ = ppaux::ty_to_string(&self.analysis.ty_cx,
                     *self.analysis.ty_cx.node_types.borrow().get(&(id as uint)));
                 // get the span only for the name of the variable (I hope the path is only ever a
                 // variable name, but who knows?)
-                self.fmt.formal_str(p.span,
-                                    span_utils.span_for_last_ident(p.span),
+                self.fmt.formal_str(*sp,
+                                    Some(*sp),
                                     id,
                                     qualname,
-                                    path_to_string(p).as_slice(),
+                                    name.as_slice(),
                                     typ.as_slice());
             }
-            self.collected_paths.clear();
+            self.collected_vars.clear();
         }
     }
 
@@ -711,25 +711,26 @@ impl <'l> DxrVisitor<'l> {
                                        ex.id).as_slice());
         }
         let def = def_map.get(&ex.id);
-        let sub_span = self.span.span_for_last_ident(ex.span);
+        // TODO name, unwrap - change sig of span_for_last_segment
+        let sub_span = self.span.span_for_last_segment(path).unwrap();
         match *def {
             def::DefLocal(id, _) |
             def::DefArg(id, _) |
             def::DefUpvar(id, _, _, _) |
             def::DefBinding(id, _) => self.fmt.ref_str(recorder::VarRef,
-                                                       ex.span,
                                                        sub_span,
+                                                       None,
                                                        ast_util::local_def(id),
                                                        e.cur_scope),
             def::DefStatic(def_id,_) |
             def::DefVariant(_, def_id, _) => self.fmt.ref_str(recorder::VarRef,
-                                                              ex.span,
                                                               sub_span,
+                                                              None,
                                                               def_id,
                                                               e.cur_scope),
             def::DefStruct(def_id) => self.fmt.ref_str(recorder::StructRef,
-                                                       ex.span,
                                                        sub_span,
+                                                       None,
                                                        def_id,
                                                         e.cur_scope),
             def::DefStaticMethod(declid, provenence, _) => {
@@ -758,8 +759,8 @@ impl <'l> DxrVisitor<'l> {
                                        Some(declid),
                                        e.cur_scope);
             },
-            def::DefFn(def_id, _) => self.fmt.fn_call_str(ex.span,
-                                                          sub_span,
+            def::DefFn(def_id, _) => self.fmt.fn_call_str(sub_span,
+                                                          None,
                                                           def_id,
                                                           e.cur_scope),
             _ => self.sess.span_bug(ex.span,
@@ -796,10 +797,10 @@ impl <'l> DxrVisitor<'l> {
         match self.lookup_type_ref(ex.id) {
             Some(id) => {
                 struct_def = Some(id);
-                let sub_span = self.span.span_for_last_ident(path.span);
+                let sub_span = self.span.span_for_last_segment(path).unwrap();
                 self.fmt.ref_str(recorder::StructRef,
-                                 path.span,
                                  sub_span,
+                                 None,
                                  id,
                                  e.cur_scope);
             },
@@ -817,11 +818,9 @@ impl <'l> DxrVisitor<'l> {
                             continue;
                         }
                         if f.name == field.ident.node.name {
-                            // We don't really need a sub-span here, but no harm done
-                            let sub_span = self.span.span_for_last_ident(field.ident.span);
                             self.fmt.ref_str(recorder::VarRef,
                                              field.ident.span,
-                                             sub_span,
+                                             None,
                                              f.id,
                                              e.cur_scope);
                         }
@@ -886,7 +885,7 @@ impl <'l> DxrVisitor<'l> {
 
         match p.node {
             ast::PatStruct(ref path, ref fields, _) => {
-                self.collected_paths.push((p.id, path.clone(), false, recorder::StructRef));
+                self.collected_vars.push((p.id, path.span, path_to_string(path), false, recorder::StructRef));
                 visit::walk_path(self, path, e);
                 let struct_def = match self.lookup_type_ref(p.id) {
                     Some(sd) => sd,
@@ -926,10 +925,10 @@ impl <'l> DxrVisitor<'l> {
                 }
             }
             ast::PatEnum(ref path, _) => {
-                self.collected_paths.push((p.id, path.clone(), false, recorder::VarRef));
+                self.collected_vars.push((p.id, path.span, path_to_string(path), false, recorder::VarRef));
                 visit::walk_pat(self, p, e);
             }
-            ast::PatIdent(bm, ref path1, ref optional_subpattern) => {
+            ast::PatIdent(bm, ref ident, ref optional_subpattern) => {
                 let immut = match bm {
                     // Even if the ref is mut, you can't change the ref, only
                     // the data pointed at, so showing the initialising expression
@@ -943,8 +942,7 @@ impl <'l> DxrVisitor<'l> {
                     }
                 };
                 // collect path for either visit_local or visit_arm
-                let path = ast_util::ident_to_path(path1.span,path1.node);
-                self.collected_paths.push((p.id, path, immut, recorder::VarRef));
+                self.collected_vars.push((p.id, ident.span, get_ident(ident.node).get().to_string(), immut, recorder::VarRef));
                 match *optional_subpattern {
                     None => {}
                     Some(subpattern) => self.visit_pat(&*subpattern, e),
@@ -1083,13 +1081,13 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
             ast::ViewItemUse(ref path) => {
                 match path.node {
                     ast::ViewPathSimple(ident, ref path, id) => {
-                        let sub_span = self.span.span_for_last_ident(path.span);
+                        let sub_span = self.span.span_for_last_segment(path).unwrap();
                         let mod_id = match self.lookup_type_ref(id) {
                             Some(def_id) => {
                                 match self.lookup_def_kind(id, path.span) {
                                     Some(kind) => self.fmt.ref_str(kind,
-                                                                   path.span,
                                                                    sub_span,
+                                                                   None,
                                                                    def_id,
                                                                    e.cur_scope),
                                     None => {},
@@ -1100,19 +1098,27 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
                         };
 
                         // 'use' always introduces an alias, if there is not an explicit
-                        // one, there is an implicit one.
-                        let sub_span =
-                            match self.span.sub_span_before_token(path.span, token::EQ) {
-                                Some(sub_span) => Some(sub_span),
-                                None => sub_span,
-                            };
+                        // one, there is an implicit one. Unfotunately, this is not
+                        // indicated by the AST node. So we just have to search for '='
+                        // like some kind of pimitive beast.
+                        let snippet = self.span.snippet(path.span);
+                        if snippet.as_slice().contains_char('=') {
+                            let ident_span = self.span.sub_span_before_token(path.span, token::EQ);
+                            self.fmt.use_alias_str(path.span,
+                                                   ident_span,
+                                                   id,
+                                                   mod_id,
+                                                   get_ident(ident).get(),
+                                                   e.cur_scope);
+                        } else {
+                            self.fmt.use_alias_str(sub_span,
+                                                   None,
+                                                   id,
+                                                   mod_id,
+                                                   get_ident(ident).get(),
+                                                   e.cur_scope);
+                        }
 
-                        self.fmt.use_alias_str(path.span,
-                                               sub_span,
-                                               id,
-                                               mod_id,
-                                               get_ident(ident).get(),
-                                               e.cur_scope);
                         self.write_sub_paths_truncated(path, e.cur_scope);
                     }
                     ast::ViewPathGlob(ref path, _) => {
@@ -1267,12 +1273,12 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
     fn visit_pat(&mut self, p: &ast::Pat, e: DxrVisitorEnv) {
         self.process_pat(p, e);
         if !self.collecting {
-            self.collected_paths.clear();
+            self.collected_vars.clear();
         }
     }
 
     fn visit_arm(&mut self, arm: &ast::Arm, e: DxrVisitorEnv) {
-        assert!(self.collected_paths.len() == 0 && !self.collecting);
+        assert!(self.collected_vars.len() == 0 && !self.collecting);
         self.collecting = true;
 
         for pattern in arm.pats.iter() {
@@ -1281,29 +1287,29 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
         }
         self.collecting = false;
         // process collected paths
-        for &(id, ref p, ref immut, ref_kind) in self.collected_paths.iter() {
+        for &(id, ref sp, ref name, ref immut, ref_kind) in self.collected_vars.iter() {
             let value = if *immut {
-                self.span.snippet(p.span).into_string()
+                self.span.snippet(*sp).into_string()
             } else {
                 "<mutable>".to_string()
             };
-            let sub_span = self.span.span_for_first_ident(p.span);
+            let sub_span = self.span.span_for_first_ident(*sp);
             let def_map = self.analysis.ty_cx.def_map.borrow();
             if !def_map.contains_key(&id) {
-                self.sess.span_bug(p.span,
+                self.sess.span_bug(*sp,
                                    format!("def_map has no key for {} in visit_arm",
                                            id).as_slice());
             }
             let def = def_map.get(&id);
             match *def {
-                def::DefBinding(id, _)  => self.fmt.variable_str(p.span,
+                def::DefBinding(id, _)  => self.fmt.variable_str(*sp,
                                                                  sub_span,
                                                                  id,
-                                                                 path_to_string(p).as_slice(),
+                                                                 name.as_slice(),
                                                                  value.as_slice(),
                                                                  ""),
                 def::DefVariant(_,id,_) => self.fmt.ref_str(ref_kind,
-                                                            p.span,
+                                                            *sp,
                                                             sub_span,
                                                             id,
                                                             e.cur_scope),
@@ -1312,7 +1318,7 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
                 _ => error!("unexpected defintion kind when processing collected paths: {:?}", *def)
             }
         }
-        self.collected_paths.clear();
+        self.collected_vars.clear();
         visit::walk_expr_opt(self, arm.guard, e);
         self.visit_expr(&*arm.body, e);
     }
@@ -1332,29 +1338,26 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
 
         // The local could declare multiple new vars, we must walk the
         // pattern and collect them all.
-        assert!(self.collected_paths.len() == 0 && !self.collecting);
+        assert!(self.collected_vars.len() == 0 && !self.collecting);
         self.collecting = true;
         self.visit_pat(&*l.pat, e);
         self.collecting = false;
 
         let value = self.span.snippet(l.span);
 
-        for &(id, ref p, ref immut, _) in self.collected_paths.iter() {
+        for &(id, ref sp, ref name, ref immut, _) in self.collected_vars.iter() {
             let value = if *immut { value.to_string() } else { "<mutable>".to_string() };
             let types = self.analysis.ty_cx.node_types.borrow();
             let typ = ppaux::ty_to_string(&self.analysis.ty_cx, *types.get(&(id as uint)));
-            // Get the span only for the name of the variable (I hope the path
-            // is only ever a variable name, but who knows?).
-            let sub_span = self.span.span_for_last_ident(p.span);
             // Rust uses the id of the pattern for var lookups, so we'll use it too.
-            self.fmt.variable_str(p.span,
-                                  sub_span,
+            self.fmt.variable_str(*sp,
+                                  Some(*sp),
                                   id,
-                                  path_to_string(p).as_slice(),
+                                  name.as_slice(),
                                   value.as_slice(),
                                   typ.as_slice());
         }
-        self.collected_paths.clear();
+        self.collected_vars.clear();
 
         // Just walk the initialiser and type (don't want to walk the pattern again).
         self.visit_ty(&*l.ty, e);
@@ -1379,7 +1382,7 @@ impl DxrVisitorEnv {
 pub fn process_crate(sess: &Session,
                      krate: &ast::Crate,
                      analysis: &CrateAnalysis,
-                     _path_spans: &ast::PathSpanTable,
+                     path_spans: &ast::PathSpanTable,
                      odir: &Option<Path>) {
     if generated_code(krate.span) {
         return;
@@ -1430,7 +1433,7 @@ pub fn process_crate(sess: &Session,
 
     let mut visitor = DxrVisitor{ sess: sess,
                                   analysis: analysis,
-                                  collected_paths: vec!(),
+                                  collected_vars: vec!(),
                                   collecting: false,
                                   fmt: FmtStrs::new(box Recorder {
                                                         out: output_file as Box<Writer>,
@@ -1438,11 +1441,13 @@ pub fn process_crate(sess: &Session,
                                                     },
                                                     SpanUtils {
                                                         sess: sess,
+                                                        path_spans: path_spans,
                                                         err_count: Cell::new(0)
                                                     },
                                                     cratename.clone()),
                                   span: SpanUtils {
                                       sess: sess,
+                                      path_spans: path_spans,
                                       err_count: Cell::new(0)
                                   }};
 

@@ -23,6 +23,7 @@ use syntax::parse::token::{is_keyword,keywords,is_ident,Token};
 
 pub struct SpanUtils<'a> {
     pub sess: &'a Session,
+    pub path_spans: &'a ast::PathSpanTable,
     pub err_count: Cell<int>,
 }
 
@@ -106,6 +107,18 @@ impl<'a> SpanUtils<'a> {
                 token::GT => -1,
                 token::BINOP(token::SHR) => -2,
                 _ => 0
+            }
+        }
+    }
+
+    pub fn span_for_last_segment(&self, path: &ast::Path) -> Option<Span> {
+        match self.path_spans.find(path) {
+            Some(segs) => {
+                Some(segs[segs.len()-1])
+            }
+            None => {
+                self.sess.span_err(path.span, "Couldn't find segment spans for path");
+                None
             }
         }
     }
