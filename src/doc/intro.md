@@ -276,7 +276,7 @@ fn main() {
 
         spawn(proc() {
             let numbers = rx.recv();
-            println!("{:d}", numbers[num as uint]);
+            println!("{:d}", numbers[num]);
         })
     }
 }
