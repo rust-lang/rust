@@ -1770,7 +1770,7 @@ fn main() {
 
 ```{notrust,ignore}
 $ cargo build
-  Compiling guessing_game v0.1.0 (file:/home/steve/tmp/guessing_game)
+  Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
 $
 ```
 
@@ -2042,7 +2042,7 @@ Let's try it out!
 
 ```{notrust,ignore}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/steve/tmp/guessing_game)
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
 src/guessing_game.rs:22:15: 22:24 error: mismatched types: expected `uint` but found `core::option::Option<uint>` (expected uint but found enum core::option::Option)
 src/guessing_game.rs:22     match cmp(input_num, secret_number) {
                                       ^~~~~~~~~
@@ -2246,7 +2246,7 @@ that `return`? If we give a non-number answer, we'll `return` and quit. Observe:
 ```{notrust,ignore}
 $ cargo build
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-steve@computer:~/tmp/guessing_game$ ./target/guessing_game 
+$ ./target/guessing_game 
 Guess the number!
 The secret number is: 59
 Please input your guess.
@@ -2462,19 +2462,361 @@ rest of your Rust education.
 Now that you're an expert at the basics, it's time to learn about some of
 Rust's more unique features.
 
-# iterators
+# Crates and Modules
 
-# Lambdas
+Rust features a strong module system, but it works a bit differently than in
+other programming languages. Rust's module system has two main components:
+**crate**s, and **module**s.
+
+A crate is Rust's unit of independent compilation. Rust always compiles one
+crate at a time, producing either a library or an executable. However, executables
+usually depend on libraries, and many libraries depend on other libraries as well.
+To support this, crates can depend on other crates.
+
+Each crate contains a hierarchy of modules. This tree starts off with a single
+module, called the **crate root**. Within the crate root, we can declare other
+modules, which can contain other modules, as deeply as you'd like.
+
+Note that we haven't mentioned anything about files yet. Rust does not impose a
+particular relationship between your filesystem structure and your module
+structure. That said, there is a conventional approach to how Rust looks for
+modules on the file system, but it's also overrideable.
+
+Enough talk, let's build something! Let's make a new project called `modules`.
+
+```{bash,ignore}
+$ cd ~/projects
+$ mkdir modules
+$ cd modules
+$ mkdir src
+```
+
+We need to make our two 'hello world' files. In `src/main.rs`:
+
+```{rust}
+fn main() {
+    println!("Hello, world!");
+}
+```
+
+And in `Cargo.toml`:
+
+```{notrust,ignore}
+[package]
+
+name = "modules"
+version = "0.1.0"
+authors = [ "someone@example.com" ]
+```
+
+Let's double check our work by compiling:
+
+```{bash,ignore}
+$ cargo build
+   Compiling modules v0.1.0 (file:/home/you/projects/modules)
+$ ./target/modules
+Hello, world!
+```
+
+Excellent! So, we already have a single crate here: our `src/main.rs` is a crate.
+Everything in that file is in the crate root. A crate that generates an executable
+defines a `main` function inside its root, as we've done here.
+
+Let's define a new module inside our crate. Edit `src/main.rs` to look
+like this:
+
+```
+fn main() {
+    println!("Hello, world!");
+}
+
+mod hello {
+    fn print_hello() {
+        println!("Hello, world!");
+    }
+}
+```
+
+We now have a module named `hello` inside of our crate root. Modules use
+`snake_case` naming, like functions and variable bindings.
+
+Inside the `hello` module, we've defined a `print_hello` function. This will
+also print out our hello world message. Modules allow you to split up your
+program into nice neat boxes of functionality, grouping common things together,
+and keeping different things apart. It's kinda like having a set of shelves:
+a place for everything and everything in its place.
+
+To call our `print_hello` function, we use the double colon (`::`):
+
+```{rust,ignore}
+hello::print_hello();
+```
+
+You've seen this before, with `io::stdin()` and `rand::random()`. Now you know
+how to make your own. However, crates and modules have rules about
+**visibility**, which controls who exactly may use the functions defined in a
+given module. By default, everything in a module is private, which means that
+it can only be used by other functions in the same module. This will not
+compile:
+
+```{rust,ignore}
+fn main() {
+    hello::print_hello();
+}
+
+mod hello {
+    fn print_hello() {
+        println!("Hello, world!");
+    }
+}
+```
+
+It gives an error:
+
+```{notrust,ignore}
+   Compiling modules v0.1.0 (file:/home/you/projects/modules)
+src/modules.rs:2:5: 2:23 error: function `print_hello` is private
+src/modules.rs:2     hello::print_hello();
+                     ^~~~~~~~~~~~~~~~~~
+```
+
+To make it public, we use the `pub` keyword:
+
+```{rust}
+fn main() {
+    hello::print_hello();
+}
+
+mod hello {
+    pub fn print_hello() {
+        println!("Hello, world!");
+    }
+}
+```
+
+This will work:
+
+```{notrust,ignore}
+$ cargo build
+   Compiling modules v0.1.0 (file:/home/you/projects/modules)
+$
+```
+
+Before we move on, let me show you one more Cargo command: `run`. `cargo run`
+is kind of like `cargo build`, but it also then runs the produced exectuable.
+Try it out:
+
+```{notrust,ignore}
+$ cargo run
+   Compiling modules v0.1.0 (file:/home/steve/tmp/modules)
+     Running `target/modules`
+Hello, world!
+$
+```
+
+Nice!
+
+There's a common pattern when you're building an executable: you build both an
+executable and a library, and put most of your logic in the library. That way,
+other programs can use that library to build their own functionality.
+
+Let's do that with our project. If you remember, libraries and executables
+are both crates, so while our project has one crate now, let's make a second:
+one for the library, and one for the executable.
+
+To make the second crate, open up `src/lib.rs` and put this code in it:
+
+```{rust}
+mod hello {
+    pub fn print_hello() {
+        println!("Hello, world!");
+    }
+}
+```
+
+And change your `src/main.rs` to look like this:
+
+```{rust,ignore}
+extern crate modules;
+
+fn main() {
+    modules::hello::print_hello();
+}
+```
+
+There's been a few changes. First, we moved our `hello` module into its own
+file, `src/lib.rs`. This is the file that Cargo expects a library crate to
+be named, by convention.
+
+Next, we added an `extern crate modules` to the top of our `src/main.rs`. This,
+as you can guess, lets Rust know that our crate relies on another, external
+crate. We also had to modify our call to `print_hello`: now that it's in
+another crate, we need to first specify the crate, then the module inside of it,
+then the function name.
+
+This doesn't _quite_ work yet. Try it:
+
+```{notrust,ignore}
+$ cargo build
+   Compiling modules v0.1.0 (file:/home/you/projects/modules)
+/home/you/projects/modules/src/lib.rs:2:5: 4:6 warning: code is never used: `print_hello`, #[warn(dead_code)] on by default
+/home/you/projects/modules/src/lib.rs:2     pub fn print_hello() {
+/home/you/projects/modules/src/lib.rs:3         println!("Hello, world!");
+/home/you/projects/modules/src/lib.rs:4     }
+/home/you/projects/modules/src/main.rs:4:5: 4:32 error: function `print_hello` is private
+/home/you/projects/modules/src/main.rs:4     modules::hello::print_hello();
+                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+error: aborting due to previous error
+Could not compile `modules`.
+```
+
+First, we get a warning that some code is never used. Odd. Next, we get an error:
+`print_hello` is private, so we can't call it. Notice that the first error came
+from `src/lib.rs`, and the second came from `src/main.rs`: cargo is smart enough
+to build it all with one command. Also, after seeing the second error, the warning
+makes sense: we never actually call `hello_world`, because we're not allowed to!
+
+Just like modules, crates also have private visibility by default. Any modules
+inside of a crate can only be used by other modules in the crate, unless they
+use `pub`. In `src/lib.rs`, change this line:
+
+```{rust,ignore}
+mod hello {
+```
+
+To this:
+
+```{rust,ignore}
+pub mod hello {
+```
+
+And everything should work:
+
+```{notrust,ignore}
+$ cargo run
+   Compiling modules v0.1.0 (file:/home/you/projects/modules)
+     Running `target/modules`
+Hello, world!
+```
+
+Let's do one more thing: add a `goodbye` module as well. Imagine a `src/lib.rs`
+that looks like this:
+
+```{rust,ignore}
+pub mod hello {
+    pub fn print_hello() {
+        println!("Hello, world!");
+    }
+}
+
+pub mod goodbye {
+    pub fn print_goodbye() {
+        println!("Goodbye for now!");
+    }
+}
+```
+
+Now, these two modules are pretty small, but imagine we've written a real, large
+program: they could both be huge. So maybe we want to move them into their own
+files. We can do that pretty easily, and there are two different conventions
+for doing it. Let's give each a try. First, make `src/lib.rs` look like this:
+
+```{rust,ignore}
+pub mod hello;
+pub mod goodbye;
+```
+
+This tells Rust that this crate has two public modules: `hello` and `goodbye`.
+
+Next, make a `src/hello.rs` that contains this:
+
+```{rust,ignore}
+pub fn print_hello() {
+    println!("Hello, world!");
+}
+```
+
+When we include a module like this, we don't need to make the `mod` declaration,
+it's just understood. This helps prevent 'rightward drift': when you end up
+indenting so many times that your code is hard to read.
+
+Finally, make a new directory, `src/goodbye`, and make a new file in it,
+`src/goodbye/mod.rs`:
+
+```{rust,ignore}
+pub fn print_goodbye() {
+    println!("Bye for now!");
+}
+```
+
+Same deal, but we can make a folder with a `mod.rs` instead of `mod_name.rs` in
+the same directory. If you have a lot of modules, nested folders can make
+sense.  For example, if the `goodbye` module had its _own_ modules inside of
+it, putting all of that in a folder helps keep our directory structure tidy.
+And in fact, if you place the modules in separate files, they're required to be
+in separate folders.
+
+This should all compile as usual:
+
+```{notrust,ignore}
+$ cargo build
+   Compiling modules v0.1.0 (file:/home/you/projects/modules)
+$
+```
+
+We've seen how the `::` operator can be used to call into modules, but when
+we have deep nesting like `modules::hello::say_hello`, it can get tedious.
+That's why we have the `use` keyword.
+
+`use` allows us to bring certain names into another scope. For example, here's
+our main program:
+
+```{rust,ignore}
+extern crate modules;
+
+fn main() {
+    modules::hello::print_hello();
+}
+```
+
+We could instead write this:
+
+```{rust,ignore}
+extern crate modules;
+
+use modules::hello::print_hello;
+
+fn main() {
+    print_hello();
+}
+```
+
+By bringing `print_hello` into scope, we don't need to qualify it anymore. However,
+it's considered proper style to do write this code like like this:
+
+```{rust,ignore}
+extern crate modules;
+
+use modules::hello;
+
+fn main() {
+    hello::print_hello();
+}
+```
+
+By just bringing the module into scope, we can keep one level of namespacing.
 
 # Testing
 
-attributes
+## Attributes
 
-stability markers
+## Stability Markers
 
-# Crates and Modules
+# Pointers
 
-visibility
+# Lambdas
+
+# iterators
 
 
 # Generics
