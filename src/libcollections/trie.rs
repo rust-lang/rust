@@ -36,7 +36,44 @@ enum Child<T> {
     Nothing
 }
 
-/// A map as a radix trie.
+/// A map implemented as a radix trie.
+///
+/// # Example
+///
+/// ```
+/// use std::collections::TrieMap;
+///
+/// let mut map = TrieMap::new();
+/// map.insert(27, "Olaf");
+/// map.insert(1, "Edgar");
+/// map.insert(13, "Ruth");
+/// map.insert(1, "Martin");
+///
+/// assert_eq!(map.len(), 3);
+/// assert_eq!(map.find(&1), Some(&"Martin"));
+///
+/// if !map.contains_key(&90) {
+///     println!("Nobody is keyed 90");
+/// }
+///
+/// // Update a key
+/// match map.find_mut(&1) {
+///     Some(value) => *value = "Olga",
+///     None => (),
+/// }
+///
+/// map.remove(&13);
+/// assert_eq!(map.len(), 2);
+///
+/// // Print the key value pairs, ordered by key.
+/// for (key, value) in map.iter() {
+///     // Prints `1: Olga` then `27: Olaf`
+///     println!("{}: {}", key, value);
+/// }
+///
+/// map.clear();
+/// assert!(map.is_empty());
+/// ```
 pub struct TrieMap<T> {
     root: TrieNode<T>,
     length: uint
@@ -421,7 +458,35 @@ impl<S: Writer, T: Hash<S>> Hash<S> for TrieMap<T> {
     }
 }
 
-/// A set as a radix trie.
+/// A set implemented as a radix trie.
+///
+/// # Example
+///
+/// ```
+/// use std::collections::TrieSet;
+///
+/// let mut set = TrieSet::new();
+/// set.insert(6);
+/// set.insert(28);
+/// set.insert(6);
+///
+/// assert_eq!(set.len(), 2);
+///
+/// if !set.contains(&3) {
+///     println!("3 is not in the set");
+/// }
+///
+/// // Print contents in order
+/// for x in set.iter() {
+///     println!("{}", x);
+/// }
+///
+/// set.remove(&6);
+/// assert_eq!(set.len(), 1);
+///
+/// set.clear();
+/// assert!(set.is_empty());
+/// ```
 #[deriving(Hash, PartialEq, Eq)]
 pub struct TrieSet {
     map: TrieMap<()>
