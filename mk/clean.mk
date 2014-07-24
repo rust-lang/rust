@@ -12,21 +12,21 @@
 # Cleanup
 ######################################################################
 
-CLEAN_STAGE_RULES :=							\
- $(foreach stage, $(STAGES),						\
-  $(foreach host, $(CFG_HOST),						\
-   clean$(stage)_H_$(host)						\
-   $(foreach target, $(CFG_TARGET),					\
+CLEAN_STAGE_RULES := \
+ $(foreach stage, $(STAGES), \
+  $(foreach host, $(CFG_HOST), \
+   clean$(stage)_H_$(host) \
+   $(foreach target, $(CFG_TARGET), \
     clean$(stage)_T_$(target)_H_$(host))))
 
-CLEAN_STAGE_RULES := $(CLEAN_STAGE_RULES)				\
+CLEAN_STAGE_RULES := $(CLEAN_STAGE_RULES) \
     $(foreach host, $(CFG_HOST), clean-generic-H-$(host))
 
-CLEAN_STAGE_RULES := $(CLEAN_STAGE_RULES)				\
+CLEAN_STAGE_RULES := $(CLEAN_STAGE_RULES) \
     $(foreach host, $(CFG_TARGET), clean-generic-T-$(host))
 
-CLEAN_LLVM_RULES = 								\
- $(foreach target, $(CFG_HOST),		\
+CLEAN_LLVM_RULES = \
+ $(foreach target, $(CFG_HOST), \
   clean-llvm$(target))
 
 .PHONY: clean clean-all clean-misc clean-llvm
@@ -54,20 +54,20 @@ clean-generic-$(2)-$(1):
 	         $(1)/rt \
 		 $(1)/test \
 		 $(1)/stage* \
-		 -type f \(           \
+		 -type f \( \
          -name '*.[odasS]' -o \
-         -name '*.so' -o      \
-         -name '*.dylib' -o   \
-         -name '*.rlib' -o   \
-         -name 'stamp.*' -o   \
-         -name '*.lib' -o     \
-         -name '*.dll' -o     \
-         -name '*.def' -o     \
-         -name '*.bc'         \
-         \)                   \
+         -name '*.so' -o \
+         -name '*.dylib' -o \
+         -name '*.rlib' -o \
+         -name 'stamp.*' -o \
+         -name '*.lib' -o \
+         -name '*.dll' -o \
+         -name '*.def' -o \
+         -name '*.bc' \
+         \) \
          | xargs rm -f
-	$(Q)find $(1)\
-         -name '*.dSYM'       \
+	$(Q)find $(1) \
+         -name '*.dSYM' \
          | xargs rm -Rf
 endef
 
@@ -76,8 +76,8 @@ $(foreach targ, $(CFG_TARGET), $(eval $(call CLEAN_GENERIC,$(targ),T)))
 
 define CLEAN_HOST_STAGE_N
 
-clean$(1)_H_$(2):							    \
-	    $$(foreach crate,$$(CRATES),clean$(1)_H_$(2)-lib-$$(crate))	    \
+clean$(1)_H_$(2): \
+	    $$(foreach crate,$$(CRATES),clean$(1)_H_$(2)-lib-$$(crate)) \
 	    $$(foreach tool,$$(TOOLS),clean$(1)_H_$(2)-tool-$$(tool))
 	$$(Q)rm -fr $(2)/rt/libbacktrace
 
@@ -96,8 +96,8 @@ $(foreach host, $(CFG_HOST), \
 
 define CLEAN_TARGET_STAGE_N
 
-clean$(1)_T_$(2)_H_$(3):						       \
-	    $$(foreach crate,$$(CRATES),clean$(1)_T_$(2)_H_$(3)-lib-$$(crate))  \
+clean$(1)_T_$(2)_H_$(3): \
+	    $$(foreach crate,$$(CRATES),clean$(1)_T_$(2)_H_$(3)-lib-$$(crate)) \
 	    $$(foreach tool,$$(TOOLS),clean$(1)_T_$(2)_H_$(3)-tool-$$(tool))
 	$$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 	$$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libcompiler-rt.a

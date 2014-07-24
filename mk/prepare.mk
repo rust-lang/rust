@@ -52,13 +52,13 @@ define PREPARE_LIB
 	$(nop)
 	@$(call E, prepare: $(PREPARE_WORKING_DEST_LIB_DIR)/$(1))
 	$(Q)LIB_NAME="$(notdir $(lastword $(wildcard $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1))))"; \
-	MATCHES="$(filter-out %$(notdir $(lastword $(wildcard $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1)))),\
+	MATCHES="$(filter-out %$(notdir $(lastword $(wildcard $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1)))), \
                         $(wildcard $(PREPARE_WORKING_DEST_LIB_DIR)/$(1)))"; \
-	if [ -n "$$MATCHES" ]; then                                              \
-	  echo "warning: one or libraries matching Rust library '$(1)'" &&       \
-	  echo "  (other than '$$LIB_NAME' itself) already present"     &&       \
-	  echo "  at destination $(PREPARE_WORKING_DEST_LIB_DIR):"                    &&       \
-	  echo $$MATCHES ;                                                       \
+	if [ -n "$$MATCHES" ]; then \
+	  echo "warning: one or libraries matching Rust library '$(1)'" && \
+	  echo "  (other than '$$LIB_NAME' itself) already present"     && \
+	  echo "  at destination $(PREPARE_WORKING_DEST_LIB_DIR):"      && \
+	  echo $$MATCHES ; \
 	fi
 	$(Q)$(PREPARE_LIB_CMD) `ls -drt1 $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1) | tail -1` $(PREPARE_WORKING_DEST_LIB_DIR)/
 endef
@@ -82,11 +82,11 @@ prepare-host-tool-$(1)-$(2)-$(3)-$(4): prepare-maybe-clean-$(4) \
                                   $$(foreach dep,$$(TOOL_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4)) \
                                   $$(HBIN$(2)_H_$(3))/$(1)$$(X_$(3)) \
                                   prepare-host-dirs-$(4)
-	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
-      $$(if $$(findstring $(3), $$(PREPARE_HOST)),\
+	$$(if $$(findstring $(2), $$(PREPARE_STAGE)), \
+      $$(if $$(findstring $(3), $$(PREPARE_HOST)), \
         $$(call PREPARE_BIN,$(1)$$(X_$$(PREPARE_HOST))),),)
-	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
-      $$(if $$(findstring $(3), $$(PREPARE_HOST)),\
+	$$(if $$(findstring $(2), $$(PREPARE_STAGE)), \
+      $$(if $$(findstring $(3), $$(PREPARE_HOST)), \
         $$(call PREPARE_MAN,$(1).1),),)
 endef
 
@@ -101,12 +101,12 @@ define DEF_PREPARE_HOST_LIB
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): prepare-maybe-clean-$(4) \
-                                 $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4))\
+                                 $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4)) \
                                  $$(HLIB$(2)_H_$(3))/stamp.$(1) \
                                  prepare-host-dirs-$(4)
-	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
-      $$(if $$(findstring $(3), $$(PREPARE_HOST)),\
-        $$(if $$(findstring 1,$$(ONLY_RLIB_$(1))),,\
+	$$(if $$(findstring $(2), $$(PREPARE_STAGE)), \
+      $$(if $$(findstring $(3), $$(PREPARE_HOST)), \
+        $$(if $$(findstring 1,$$(ONLY_RLIB_$(1))),, \
           $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$$(PREPARE_HOST),$(1)))),),)
 endef
 
@@ -129,17 +129,17 @@ prepare-target-$(2)-host-$(3)-$(1)-$(4): prepare-maybe-clean-$(4) \
 # *not* install the rlibs for host crates because there's no need to statically
 # link against most of them. They just produce a large amount of extra size
 # bloat.
-	$$(if $$(findstring $(1), $$(PREPARE_STAGE)),\
-      $$(if $$(findstring $(2), $$(PREPARE_TARGETS)),\
-        $$(if $$(findstring $(3), $$(PREPARE_HOST)),\
-          $$(call PREPARE_DIR,$$(PREPARE_WORKING_DEST_LIB_DIR))\
-          $$(foreach crate,$$(TARGET_CRATES),\
-	    $$(if $$(findstring 1, $$(ONLY_RLIB_$$(crate))),,\
-              $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate))))\
-            $$(call PREPARE_LIB,$$(call CFG_RLIB_GLOB,$$(crate))))\
-          $$(if $$(findstring $(2),$$(CFG_HOST)),\
-            $$(foreach crate,$$(HOST_CRATES),\
-              $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate)))),)\
+	$$(if $$(findstring $(1), $$(PREPARE_STAGE)), \
+      $$(if $$(findstring $(2), $$(PREPARE_TARGETS)), \
+        $$(if $$(findstring $(3), $$(PREPARE_HOST)), \
+          $$(call PREPARE_DIR,$$(PREPARE_WORKING_DEST_LIB_DIR)) \
+          $$(foreach crate,$$(TARGET_CRATES), \
+	    $$(if $$(findstring 1, $$(ONLY_RLIB_$$(crate))),, \
+              $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate)))) \
+            $$(call PREPARE_LIB,$$(call CFG_RLIB_GLOB,$$(crate)))) \
+          $$(if $$(findstring $(2),$$(CFG_HOST)), \
+            $$(foreach crate,$$(HOST_CRATES), \
+              $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate)))),) \
           $$(call PREPARE_LIB,libmorestack.a) \
           $$(call PREPARE_LIB,libcompiler-rt.a),),),)
 endef
@@ -160,8 +160,8 @@ prepare-everything-$(1): prepare-host-$(1) prepare-targets-$(1)
 prepare-host-$(1): prepare-host-tools-$(1)
 
 prepare-host-tools-$(1): \
-        $$(foreach tool, $$(PREPARE_TOOLS),\
-          $$(foreach host,$$(CFG_HOST),\
+        $$(foreach tool, $$(PREPARE_TOOLS), \
+          $$(foreach host,$$(CFG_HOST), \
             prepare-host-tool-$$(tool)-$$(PREPARE_STAGE)-$$(host)-$(1)))
 
 prepare-host-dirs-$(1): prepare-maybe-clean-$(1)
@@ -169,27 +169,27 @@ prepare-host-dirs-$(1): prepare-maybe-clean-$(1)
 	$$(call PREPARE_DIR,$$(PREPARE_DEST_LIB_DIR))
 	$$(call PREPARE_DIR,$$(PREPARE_DEST_MAN_DIR))
 
-$$(foreach tool,$$(PREPARE_TOOLS),\
-  $$(foreach host,$$(CFG_HOST),\
+$$(foreach tool,$$(PREPARE_TOOLS), \
+  $$(foreach host,$$(CFG_HOST), \
       $$(eval $$(call DEF_PREPARE_HOST_TOOL,$$(tool),$$(PREPARE_STAGE),$$(host),$(1)))))
 
-$$(foreach lib,$$(CRATES),\
-  $$(foreach host,$$(CFG_HOST),\
+$$(foreach lib,$$(CRATES), \
+  $$(foreach host,$$(CFG_HOST), \
     $$(eval $$(call DEF_PREPARE_HOST_LIB,$$(lib),$$(PREPARE_STAGE),$$(host),$(1)))))
 
-prepare-targets-$(1):\
-        $$(foreach host,$$(CFG_HOST),\
-           $$(foreach target,$$(CFG_TARGET),\
+prepare-targets-$(1): \
+        $$(foreach host,$$(CFG_HOST), \
+           $$(foreach target,$$(CFG_TARGET), \
              prepare-target-$$(target)-host-$$(host)-$$(PREPARE_STAGE)-$(1)))
 
-$$(foreach host,$$(CFG_HOST),\
+$$(foreach host,$$(CFG_HOST), \
   $$(foreach target,$$(CFG_TARGET), \
     $$(eval $$(call DEF_PREPARE_TARGET_N,$$(PREPARE_STAGE),$$(target),$$(host),$(1)))))
 
 prepare-maybe-clean-$(1):
-	$$(if $$(findstring true,$$(PREPARE_CLEAN)),\
+	$$(if $$(findstring true,$$(PREPARE_CLEAN)), \
       @$$(call E, cleaning destination $$(PREPARE_DEST_DIR)),)
-	$$(if $$(findstring true,$$(PREPARE_CLEAN)),\
+	$$(if $$(findstring true,$$(PREPARE_CLEAN)), \
       $$(Q)rm -rf $$(PREPARE_DEST_DIR),)
 
 
