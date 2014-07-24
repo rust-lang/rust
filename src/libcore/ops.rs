@@ -769,3 +769,37 @@ pub trait FnOnce<Args,Result> {
     fn call_once(self, args: Args) -> Result;
 }
 
+macro_rules! def_fn_mut(
+    ($($args:ident)*) => (
+        #[cfg(not(stage0))]
+        impl<Result$(,$args)*>
+        FnMut<($($args,)*),Result>
+        for extern "Rust" fn($($args: $args,)*) -> Result {
+            #[rust_call_abi_hack]
+            #[allow(uppercase_variables)]
+            fn call_mut(&mut self, args: ($($args,)*)) -> Result {
+                let ($($args,)*) = args;
+                (*self)($($args,)*)
+            }
+        }
+    )
+)
+
+def_fn_mut!()
+def_fn_mut!(A0)
+def_fn_mut!(A0 A1)
+def_fn_mut!(A0 A1 A2)
+def_fn_mut!(A0 A1 A2 A3)
+def_fn_mut!(A0 A1 A2 A3 A4)
+def_fn_mut!(A0 A1 A2 A3 A4 A5)
+def_fn_mut!(A0 A1 A2 A3 A4 A5 A6)
+def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7)
+def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8)
+def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9)
+def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10)
+def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11)
+def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12)
+def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13)
+def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14)
+def_fn_mut!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15)
+
