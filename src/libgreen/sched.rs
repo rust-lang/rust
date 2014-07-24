@@ -219,7 +219,7 @@ impl Scheduler {
         let message = stask.sched.get_mut_ref().message_queue.pop();
         rtassert!(match message { msgq::Empty => true, _ => false });
 
-        stask.task.get_mut_ref().destroyed = true;
+        stask.task.take().unwrap().drop();
     }
 
     // This does not return a scheduler, as the scheduler is placed
