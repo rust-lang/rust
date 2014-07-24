@@ -97,7 +97,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     ///
     /// ```
     /// use std::collections::LruCache;
-    /// let mut cache: LruCache<int, &str> = LruCache::new(10u);
+    /// let mut cache: LruCache<int, &str> = LruCache::new(10);
     /// ```
     pub fn new(capacity: uint) -> LruCache<K, V> {
         let cache = LruCache {
@@ -118,7 +118,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     ///
     /// ```
     /// use std::collections::LruCache;
-    /// let mut cache = LruCache::new(2u);
+    /// let mut cache = LruCache::new(2);
     ///
     /// cache.put(1i, "a");
     /// cache.put(2, "b");
@@ -161,7 +161,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     ///
     /// ```
     /// use std::collections::LruCache;
-    /// let mut cache = LruCache::new(2u);
+    /// let mut cache = LruCache::new(2);
     ///
     /// cache.put(1i, "a");
     /// cache.put(2, "b");
@@ -195,7 +195,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     ///
     /// ```
     /// use std::collections::LruCache;
-    /// let mut cache = LruCache::new(2u);
+    /// let mut cache = LruCache::new(2);
     ///
     /// cache.put(2i, "a");
     ///
@@ -217,7 +217,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     ///
     /// ```
     /// use std::collections::LruCache;
-    /// let mut cache: LruCache<int, &str> = LruCache::new(2u);
+    /// let mut cache: LruCache<int, &str> = LruCache::new(2);
     /// assert_eq!(cache.capacity(), 2);
     /// ```
     pub fn capacity(&self) -> uint {
@@ -231,7 +231,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     ///
     /// ```
     /// use std::collections::LruCache;
-    /// let mut cache = LruCache::new(2u);
+    /// let mut cache = LruCache::new(2);
     ///
     /// cache.put(1i, "a");
     /// cache.put(2, "b");
@@ -241,16 +241,15 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     /// assert_eq!(cache.get(&2), Some(&"b"));
     /// assert_eq!(cache.get(&3), Some(&"c"));
     ///
-    /// cache.change_capacity(3u);
+    /// cache.change_capacity(3);
     /// cache.put(1i, "a");
     /// cache.put(2, "b");
-    /// cache.put(3, "c");
     ///
     /// assert_eq!(cache.get(&1), Some(&"a"));
     /// assert_eq!(cache.get(&2), Some(&"b"));
     /// assert_eq!(cache.get(&3), Some(&"c"));
     ///
-    /// cache.change_capacity(1u);
+    /// cache.change_capacity(1);
     ///
     /// assert_eq!(cache.get(&1), None);
     /// assert_eq!(cache.get(&2), None);
