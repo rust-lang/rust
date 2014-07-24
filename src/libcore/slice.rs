@@ -746,6 +746,9 @@ pub trait ImmutableEqVector<T:PartialEq> {
 
     /// Find the last index containing a matching value
     fn rposition_elem(&self, t: &T) -> Option<uint>;
+    
+    /// Returns the index of the first matching subslice
+    fn find_slice(&self, needle: &[T]) -> Option<uint>;
 
     /// Return true if a vector contains an element with the given value
     fn contains(&self, x: &T) -> bool;
@@ -766,6 +769,19 @@ impl<'a,T:PartialEq> ImmutableEqVector<T> for &'a [T] {
     #[inline]
     fn rposition_elem(&self, t: &T) -> Option<uint> {
         self.iter().rposition(|x| *x == *t)
+    }
+    
+    #[inline]
+    fn find_slice(&self, needle: &[T]) -> Option<uint> {
+        if self.len() < needle.len() {
+            return None
+        }
+        for i in range(0, self.len() - needle.len() + 1) {
+            if self.slice_from(i).starts_with(needle) {
+                return Some(i)
+            }
+        }
+        None
     }
 
     #[inline]
