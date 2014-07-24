@@ -32,7 +32,7 @@ $(foreach t,$(CFG_TARGET),$(info cfg: os for $(t) is $(OSTYPE_$(t))))
 CFG_DSYMUTIL := true
 
 # Hack: not sure how to test if a file exists in make other than this
-OS_SUPP = $(patsubst %,--suppressions=%,\
+OS_SUPP = $(patsubst %,--suppressions=%, \
       $(wildcard $(CFG_SRC_DIR)src/etc/$(CFG_OSTYPE).supp*))
 
 ifdef CFG_DISABLE_OPTIMIZE_CXX
@@ -67,7 +67,7 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
     endif
   else
     ifdef CFG_VALGRIND
-      CFG_PERF_TOOL :=\
+      CFG_PERF_TOOL := \
         $(CFG_VALGRIND) --tool=cachegrind --cache-sim=yes --branch-sim=yes
     else
       CFG_PERF_TOOL := /usr/bin/time --verbose
@@ -94,7 +94,7 @@ define SET_FROM_CFG
   endif
 endef
 
-$(foreach cvar,CC CXX CPP CFLAGS CXXFLAGS CPPFLAGS,\
+$(foreach cvar,CC CXX CPP CFLAGS CXXFLAGS CPPFLAGS, \
   $(eval $(call SET_FROM_CFG,$(cvar))))
 
 CFG_RLIB_GLOB=lib$(1)-*.rlib
@@ -486,8 +486,8 @@ CFG_LIBUV_LINK_FLAGS_i586-mingw32msvc := -L$(CFG_MINGW32_CROSS_PATH)/i586-mingw3
 CFG_EXE_SUFFIX_i586-mingw32msvc := .exe
 CFG_WINDOWSY_i586-mingw32msvc := 1
 CFG_UNIXY_i586-mingw32msvc :=
-CFG_PATH_MUNGE_i586-mingw32msvc := $(strip perl -i.bak -p   \
-                             -e 's@\\(\S)@/\1@go;'       \
+CFG_PATH_MUNGE_i586-mingw32msvc := $(strip perl -i.bak -p \
+                             -e 's@\\(\S)@/\1@go;' \
                              -e 's@^/([a-zA-Z])/@\1:/@o;')
 CFG_LDPATH_i586-mingw32msvc :=
 CFG_RUN_i586-mingw32msvc=
@@ -591,7 +591,7 @@ define FILTER_FLAGS
   endif
 endef
 
-$(foreach target,$(CFG_TARGET),\
+$(foreach target,$(CFG_TARGET), \
   $(eval $(call FILTER_FLAGS,$(target))))
 
 
@@ -620,27 +620,27 @@ define CFG_MAKE_TOOLCHAIN
 	RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
   endif
 
-  CFG_COMPILE_C_$(1) = $$(CC_$(1))  \
-        $$(CFG_GCCISH_CFLAGS)      \
+  CFG_COMPILE_C_$(1) = $$(CC_$(1)) \
+        $$(CFG_GCCISH_CFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
-        $$(CFG_DEPEND_FLAGS)       \
+        $$(CFG_DEPEND_FLAGS) \
         -c -o $$(1) $$(2)
   CFG_LINK_C_$(1) = $$(CC_$(1)) \
-        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)          \
-        $$(CFG_GCCISH_LINK_FLAGS_$(1))              \
-        $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)     \
+        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
+        $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
+        $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2) \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
   CFG_COMPILE_CXX_$(1) = $$(CXX_$(1)) \
-        $$(CFG_GCCISH_CFLAGS)      \
-        $$(CFG_GCCISH_CXXFLAGS)    \
+        $$(CFG_GCCISH_CFLAGS) \
+        $$(CFG_GCCISH_CXXFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
-        $$(CFG_GCCISH_CXXFLAGS_$(1))    \
-        $$(CFG_DEPEND_FLAGS)       \
+        $$(CFG_GCCISH_CXXFLAGS_$(1)) \
+        $$(CFG_DEPEND_FLAGS) \
         -c -o $$(1) $$(2)
   CFG_LINK_CXX_$(1) = $$(CXX_$(1)) \
-        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)             \
-        $$(CFG_GCCISH_LINK_FLAGS_$(1))                 \
-        $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)        \
+        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
+        $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
+        $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2) \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
 
   ifeq ($$(findstring $(HOST_$(1)),arm mips mipsel),)
@@ -664,5 +664,5 @@ define CFG_MAKE_TOOLCHAIN
 
 endef
 
-$(foreach target,$(CFG_TARGET),\
+$(foreach target,$(CFG_TARGET), \
   $(eval $(call CFG_MAKE_TOOLCHAIN,$(target))))

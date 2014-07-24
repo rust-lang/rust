@@ -112,8 +112,8 @@ HTML_DEPS += doc/version_info.html
 doc/version_info.html: $(D)/version_info.html.template $(MKFILE_DEPS) \
                        $(wildcard $(D)/*.*) | doc/
 	@$(call E, version-info: $@)
-	$(Q)sed -e "s/VERSION/$(CFG_RELEASE)/; s/SHORT_HASH/$(\
-                    CFG_SHORT_VER_HASH)/;\
+	$(Q)sed -e "s/VERSION/$(CFG_RELEASE)/; s/SHORT_HASH/$( \
+                    CFG_SHORT_VER_HASH)/; \
                 s/STAMP/$(CFG_VER_HASH)/;" $< >$@
 
 GENERATED += doc/version.tex doc/version_info.html
