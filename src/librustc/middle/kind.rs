@@ -324,7 +324,8 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
 
 fn check_bounds_on_type_parameters(cx: &mut Context, e: &Expr) {
     let method_map = cx.tcx.method_map.borrow();
-    let method = method_map.find(&typeck::MethodCall::expr(e.id));
+    let method_call = typeck::MethodCall::expr(e.id);
+    let method = method_map.find(&method_call);
 
     // Find the values that were provided (if any)
     let item_substs = cx.tcx.item_substs.borrow();
@@ -393,6 +394,14 @@ fn check_bounds_on_type_parameters(cx: &mut Context, e: &Expr) {
                type_param_def.space, type_param_def.index, ty.repr(cx.tcx));
         check_typaram_bounds(cx, e.span, ty, type_param_def)
     }
+
+    // Check the vtable.
+    let vtable_map = cx.tcx.vtable_map.borrow();
+    let vtable_res = match vtable_map.find(&method_call) {
+        None => return,
+        Some(vtable_res) => vtable_res,
+    };
+    check_type_parameter_bounds_in_vtable_result(cx, e.span, vtable_res);
 }
 
 fn check_type_parameter_bounds_in_vtable_result(
