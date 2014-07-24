@@ -42,7 +42,7 @@ is roughly equivalent to:
 
 ```rust
 let x = (box 1i, box 2i);
-let x1 = { let (a, _) = x; a };
+let x1 = { let (_, a) = x; a };
 ```
 
 However, when taking a (possibly mutable) reference to a field, the equivalent
@@ -57,7 +57,7 @@ is roughly equivalent to:
 
 ```rust
 let x = (box 1i, box 2i);
-let x1 = { let (ref a, _) = x; a };
+let x1 = { let (_, ref a) = x; a };
 ```
 
 A similar process is performed with `&mut`.
