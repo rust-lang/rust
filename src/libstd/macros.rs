@@ -39,11 +39,10 @@
 #[macro_export]
 macro_rules! fail(
     () => ({
-        // static requires less code at runtime, more constant data
-        static FILE_LINE: (&'static str, uint) = (file!(), line!());
-        ::std::rt::begin_unwind_no_time_to_explain(&FILE_LINE)
+        fail!("explicit failure")
     });
     ($msg:expr) => ({
+        // static requires less code at runtime, more constant data
         static FILE_LINE: (&'static str, uint) = (file!(), line!());
         let (file, line) = FILE_LINE;
         ::std::rt::begin_unwind($msg, file, line)
