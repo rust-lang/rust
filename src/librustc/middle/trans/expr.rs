@@ -553,7 +553,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
             let expected = Call(bcx,
                                 expect,
                                 [bounds_check, C_bool(ccx, false)],
-                                []);
+                                None);
             bcx = with_cond(bcx, expected, |bcx| {
                 controlflow::trans_fail_bounds_check(bcx,
                                                      index_expr.span,
