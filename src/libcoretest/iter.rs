@@ -137,8 +137,8 @@ fn test_iterator_take_while() {
     let ys = [0u, 1, 2, 3, 5, 13];
     let mut it = xs.iter().take_while(|&x| *x < 15u);
     let mut i = 0;
-    for &x in it {
-        assert_eq!(x, ys[i]);
+    for x in it {
+        assert_eq!(*x, ys[i]);
         i += 1;
     }
     assert_eq!(i, ys.len());
@@ -150,8 +150,8 @@ fn test_iterator_skip_while() {
     let ys = [15, 16, 17, 19];
     let mut it = xs.iter().skip_while(|&x| *x < 15u);
     let mut i = 0;
-    for &x in it {
-        assert_eq!(x, ys[i]);
+    for x in it {
+        assert_eq!(*x, ys[i]);
         i += 1;
     }
     assert_eq!(i, ys.len());

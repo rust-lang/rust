@@ -21,6 +21,7 @@ use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::infer;
 use middle::typeck::require_same_types;
+use util::ppaux;
 
 use std::collections::{HashMap, HashSet};
 use std::gc::Gc;
@@ -486,7 +487,10 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, typ);
 
-        debug!("(checking match) writing type for pat id {}", pat.id);
+        debug!("(checking match) writing type {} (expected {}) for pat id {}",
+               ppaux::ty_to_string(tcx, typ),
+               ppaux::ty_to_string(tcx, expected),
+               pat.id);
 
         match sub {
           Some(ref p) => check_pat(pcx, &**p, expected),

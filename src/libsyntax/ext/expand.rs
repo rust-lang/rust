@@ -62,106 +62,16 @@ fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             }
         }
 
-        // Desugar expr_for_loop
-        // From: `['<ident>:] for <src_pat> in <src_expr> <src_loop_block>`
-        // FIXME #6993: change type of opt_ident to Option<Name>
-        ast::ExprForLoop(src_pat, src_expr, src_loop_block, opt_ident) => {
-
-            let span = e.span;
-
-            // to:
-            //
-            //   match &mut <src_expr> {
-            //     i => {
-            //       ['<ident>:] loop {
-            //         match i.next() {
-            //           None => break ['<ident>],
-            //           Some(mut value) => {
-            //             let <src_pat> = value;
-            //             <src_loop_block>
-            //           }
-            //         }
-            //       }
-            //     }
-            //   }
-            //
-            // (The use of the `let` is to give better error messages
-            // when the pattern is refutable.)
-
-            let local_ident = token::gensym_ident("i");
-            let next_ident = fld.cx.ident_of("next");
-            let none_ident = fld.cx.ident_of("None");
-
-            let local_path = fld.cx.path_ident(span, local_ident);
-            let some_path = fld.cx.path_ident(span, fld.cx.ident_of("Some"));
-
-            // `None => break ['<ident>],`
-            let none_arm = {
-                let break_expr = fld.cx.expr(span, ast::ExprBreak(opt_ident));
-                let none_pat = fld.cx.pat_ident(span, none_ident);
-                fld.cx.arm(span, vec!(none_pat), break_expr)
-            };
-
-            // let <src_pat> = value;
-            // use underscore to suppress lint error:
-            let value_ident = token::gensym_ident("_value");
-            // this is careful to use src_pat.span so that error
-            // messages point exact at that.
-            let local = box(GC) ast::Local {
-                ty: fld.cx.ty_infer(src_pat.span),
-                pat: src_pat,
-                init: Some(fld.cx.expr_ident(src_pat.span, value_ident)),
-                id: ast::DUMMY_NODE_ID,
-                span: src_pat.span,
-                source: ast::LocalFor
-            };
-            let local = codemap::respan(src_pat.span, ast::DeclLocal(local));
-            let local = box(GC) codemap::respan(span, ast::StmtDecl(box(GC) local,
-                                                            ast::DUMMY_NODE_ID));
-
-            // { let ...; <src_loop_block> }
-            let block = fld.cx.block(span, vec![local],
-                                     Some(fld.cx.expr_block(src_loop_block)));
-
-            // `Some(mut value) => { ... }`
-            // Note the _'s in the name will stop any unused mutability warnings.
-            let value_pat = fld.cx.pat_ident_binding_mode(span, value_ident,
-                                                          ast::BindByValue(ast::MutMutable));
-            let some_arm =
-                fld.cx.arm(span,
-                           vec!(fld.cx.pat_enum(span, some_path, vec!(value_pat))),
-                           fld.cx.expr_block(block));
-
-            // `match i.next() { ... }`
-            let match_expr = {
-                let next_call_expr =
-                    fld.cx.expr_method_call(span,
-                                            fld.cx.expr_path(local_path),
-                                            next_ident,
-                                            Vec::new());
-
-                fld.cx.expr_match(span, next_call_expr, vec!(none_arm, some_arm))
-            };
-
-            // ['ident:] loop { ... }
-            let loop_expr = fld.cx.expr(span,
-                                        ast::ExprLoop(fld.cx.block_expr(match_expr),
-                                                      opt_ident));
-
-            // `i => loop { ... }`
-
-            // `match &mut <src_expr> { i => loop { ... } }`
-            let discrim = fld.cx.expr_mut_addr_of(span, src_expr);
-            let i_pattern = fld.cx.pat_ident(span, local_ident);
-            let arm = fld.cx.arm(span, vec!(i_pattern), loop_expr);
-            // why these clone()'s everywhere? I guess I'll follow the pattern....
-            let match_expr = fld.cx.expr_match(span, discrim, vec!(arm));
-            fld.fold_expr(match_expr).clone()
-        }
-
         ast::ExprLoop(loop_block, opt_ident) => {
             let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
             fld.cx.expr(e.span, ast::ExprLoop(loop_block, opt_ident))
+        }
+
+        ast::ExprForLoop(pat, head, body, opt_ident) => {
+            let pat = fld.fold_pat(pat);
+            let head = fld.fold_expr(head);
+            let (body, opt_ident) = expand_loop_block(body, opt_ident, fld);
+            fld.cx.expr(e.span, ast::ExprForLoop(pat, head, body, opt_ident))
         }
 
         ast::ExprFnBlock(fn_decl, block) => {

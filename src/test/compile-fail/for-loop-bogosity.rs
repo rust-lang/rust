@@ -8,19 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// macro f should not be able to inject a reference to 'n'.
-//
-// Ignored because `for` loops are not hygienic yet; they will require special
-// handling since they introduce a new pattern binding position.
+struct MyStruct {
+    x: int,
+    y: int,
+}
 
-// ignore-test
-
-#![feature(macro_rules)]
-
-macro_rules! f(() => (n))
-
-fn main() -> (){
-    for n in range(0i, 1) {
-        println!("{}", f!()); //~ ERROR unresolved name `n`
+impl MyStruct {
+    fn next(&mut self) -> Option<int> {
+        Some(self.x)
     }
 }
+
+pub fn main() {
+    let mut bogus = MyStruct {
+        x: 1,
+        y: 2,
+    };
+    for x in bogus {    //~ ERROR does not implement the `Iterator` trait
+        drop(x);
+    }
+}
+

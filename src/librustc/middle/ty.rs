@@ -3090,7 +3090,7 @@ pub enum ExprKind {
 pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
     if tcx.method_map.borrow().contains_key(&typeck::MethodCall::expr(expr.id)) {
         // Overloaded operations are generally calls, and hence they are
-        // generated via DPS, but there are two exceptions:
+        // generated via DPS, but there are a few exceptions:
         return match expr.node {
             // `a += b` has a unit result.
             ast::ExprAssignOp(..) => RvalueStmtExpr,
@@ -3100,6 +3100,9 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
 
             // the index method invoked for `a[i]` always yields an `&T`
             ast::ExprIndex(..) => LvalueExpr,
+
+            // `for` loops are statements
+            ast::ExprForLoop(..) => RvalueStmtExpr,
 
             // in the general case, result could be any type, use DPS
             _ => RvalueDpsExpr
@@ -3209,11 +3212,10 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprLoop(..) |
         ast::ExprAssign(..) |
         ast::ExprInlineAsm(..) |
-        ast::ExprAssignOp(..) => {
+        ast::ExprAssignOp(..) |
+        ast::ExprForLoop(..) => {
             RvalueStmtExpr
         }
-
-        ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
         ast::ExprLit(_) | // Note: LitStr is carved out above
         ast::ExprUnary(..) |
