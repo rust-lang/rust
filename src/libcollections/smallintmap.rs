@@ -17,6 +17,7 @@ use core::prelude::*;
 
 use core::default::Default;
 use core::fmt;
+use core::iter;
 use core::iter::{Enumerate, FilterMap};
 use core::mem::replace;
 
@@ -192,6 +193,18 @@ impl<V> SmallIntMap<V> {
     /// ```
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
         self.find(key).expect("key not present")
+    }
+
+    /// An iterator visiting all keys in ascending order by the keys.
+    /// Iterator element type is `uint`.
+    pub fn keys<'r>(&'r self) -> Keys<'r, V> {
+        self.iter().map(|(k, _v)| k)
+    }
+
+    /// An iterator visiting all values in ascending order by the keys.
+    /// Iterator element type is `&'r V`.
+    pub fn values<'r>(&'r self) -> Values<'r, V> {
+        self.iter().map(|(_k, v)| v)
     }
 
     /// An iterator visiting all key-value pairs in ascending order by the keys.
@@ -422,6 +435,14 @@ pub struct MutEntries<'a, T> {
 iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
 double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
 
+/// Forward iterator over the keys of a map
+pub type Keys<'a, T> =
+    iter::Map<'static, (uint, &'a T), uint, Entries<'a, T>>;
+
+/// Forward iterator over the values of a map
+pub type Values<'a, T> =
+    iter::Map<'static, (uint, &'a T), &'a T, Entries<'a, T>>;
+
 #[cfg(test)]
 mod test_map {
     use std::prelude::*;
@@ -515,6 +536,32 @@ mod test_map {
         m.insert(1, 2i);
         assert_eq!(m.pop(&1), Some(2));
         assert_eq!(m.pop(&1), None);
+    }
+
+    #[test]
+    fn test_keys() {
+        let mut map = SmallIntMap::new();
+        map.insert(1, 'a');
+        map.insert(2, 'b');
+        map.insert(3, 'c');
+        let keys = map.keys().collect::<Vec<uint>>();
+        assert_eq!(keys.len(), 3);
+        assert!(keys.contains(&1));
+        assert!(keys.contains(&2));
+        assert!(keys.contains(&3));
+    }
+
+    #[test]
+    fn test_values() {
+        let mut map = SmallIntMap::new();
+        map.insert(1, 'a');
+        map.insert(2, 'b');
+        map.insert(3, 'c');
+        let values = map.values().map(|&v| v).collect::<Vec<char>>();
+        assert_eq!(values.len(), 3);
+        assert!(values.contains(&'a'));
+        assert!(values.contains(&'b'));
+        assert!(values.contains(&'c'));
     }
 
     #[test]
