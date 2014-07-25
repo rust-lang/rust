@@ -39,7 +39,7 @@
 #[macro_export]
 macro_rules! fail(
     () => (
-        ::std::rt::begin_unwind_no_time_to_explain(file!(), line!())
+        ::std::rt::begin_unwind_no_time_to_explain(&(file!(), line!()))
     );
     ($msg:expr) => (
         ::std::rt::begin_unwind($msg, file!(), line!())
@@ -58,7 +58,7 @@ macro_rules! fail(
         // up with the number of calls to fail!()
         #[inline(always)]
         fn run_fmt(fmt: &::std::fmt::Arguments) -> ! {
-            ::std::rt::begin_unwind_fmt(fmt, file!(), line!())
+            ::std::rt::begin_unwind_fmt(fmt, &(file!(), line!()))
         }
         format_args!(run_fmt, $fmt, $($arg)*)
     });
