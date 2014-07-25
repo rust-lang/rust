@@ -1235,7 +1235,8 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
                        output_type: ty::t,
                        param_substs: &'a param_substs,
                        sp: Option<Span>,
-                       block_arena: &'a TypedArena<Block<'a>>)
+                       block_arena: &'a TypedArena<Block<'a>>,
+                       handle_items: HandleItemsFlag)
                        -> FunctionContext<'a> {
     param_substs.validate();
 
@@ -1268,7 +1269,8 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
           block_arena: block_arena,
           ccx: ccx,
           debug_context: debug_context,
-          scopes: RefCell::new(Vec::new())
+          scopes: RefCell::new(Vec::new()),
+          handle_items: handle_items,
     };
 
     if has_env {
@@ -1579,7 +1581,8 @@ pub fn trans_closure(ccx: &CrateContext,
                      abi: Abi,
                      has_env: bool,
                      is_unboxed_closure: IsUnboxedClosureFlag,
-                     maybe_load_env: <'a> |&'a Block<'a>| -> &'a Block<'a>) {
+                     maybe_load_env: <'a> |&'a Block<'a>| -> &'a Block<'a>,
+                     handle_items: HandleItemsFlag) {
     ccx.stats.n_closures.set(ccx.stats.n_closures.get() + 1);
 
     let _icx = push_ctxt("trans_closure");
@@ -1596,7 +1599,8 @@ pub fn trans_closure(ccx: &CrateContext,
                           output_type,
                           param_substs,
                           Some(body.span),
-                          &arena);
+                          &arena,
+                          handle_items);
     let mut bcx = init_function(&fcx, false, output_type);
 
     // cleanup scope for the incoming arguments
@@ -1698,7 +1702,8 @@ pub fn trans_fn(ccx: &CrateContext,
                 llfndecl: ValueRef,
                 param_substs: &param_substs,
                 id: ast::NodeId,
-                attrs: &[ast::Attribute]) {
+                attrs: &[ast::Attribute],
+                handle_items: HandleItemsFlag) {
     let _s = StatRecorder::new(ccx, ccx.tcx.map.path_to_string(id).to_string());
     debug!("trans_fn(param_substs={})", param_substs.repr(ccx.tcx()));
     let _icx = push_ctxt("trans_fn");
@@ -1718,7 +1723,8 @@ pub fn trans_fn(ccx: &CrateContext,
                   abi,
                   false,
                   NotUnboxedClosure,
-                  |bcx| bcx);
+                  |bcx| bcx,
+                  handle_items);
 }
 
 pub fn trans_enum_variant(ccx: &CrateContext,
@@ -1824,7 +1830,7 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
 
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx, llfndecl, ctor_id, false, result_ty,
-                          param_substs, None, &arena);
+                          param_substs, None, &arena, TranslateItems);
     let bcx = init_function(&fcx, false, result_ty);
 
     let arg_tys = ty::ty_fn_args(ctor_ty);
@@ -1925,7 +1931,8 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                      llfn,
                      &param_substs::empty(),
                      item.id,
-                     item.attrs.as_slice());
+                     item.attrs.as_slice(),
+                     TranslateItems);
         } else {
             // Be sure to travel more than just one layer deep to catch nested
             // items in blocks and such.
