@@ -2991,7 +2991,7 @@ mod tests {
                 Some(e) => e,
                 None => { break; }
             };
-            let (ref expected_evt, ref expected_stack) = *expected.get(i);
+            let (ref expected_evt, ref expected_stack) = expected[i];
             if !parser.stack().is_equal_to(expected_stack.as_slice()) {
                 fail!("Parser stack is not equal to {}", expected_stack);
             }
