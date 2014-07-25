@@ -293,13 +293,16 @@ fn existing_match(e: &Env, name: &str,
         // library. Even though an upstream library may have loaded something of
         // the same name, we have to make sure it was loaded from the exact same
         // location as well.
+        //
+        // We're also sure to compare *paths*, not actual byte slices. The
+        // `source` stores paths which are normalized which may be different
+        // from the strings on the command line.
         let source = e.sess.cstore.get_used_crate_source(cnum).unwrap();
-        let dylib = source.dylib.as_ref().map(|p| p.as_vec());
-        let rlib = source.rlib.as_ref().map(|p| p.as_vec());
         match e.sess.opts.externs.find_equiv(&name) {
             Some(locs) => {
                 let found = locs.iter().any(|l| {
-                    Some(l.as_bytes()) == dylib || Some(l.as_bytes()) == rlib
+                    let l = Some(Path::new(l.as_slice()));
+                    l == source.dylib || l == source.rlib
                 });
                 if found {
                     ret = Some(cnum);
