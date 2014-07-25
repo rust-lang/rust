@@ -80,7 +80,8 @@ pub struct CrateAnalysis {
 pub type Externs = HashMap<String, Vec<String>>;
 
 /// Parses, resolves, and typechecks the given crate
-fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>, externs: Externs)
+fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>,
+                       externs: Externs, triple: Option<String>)
                        -> (DocContext, CrateAnalysis) {
     use syntax::codemap::dummy_spanned;
     use rustc::driver::driver::{FileInput,
@@ -99,6 +100,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>, ext
         crate_types: vec!(driver::config::CrateTypeRlib),
         lint_opts: vec!((warning_lint, lint::Allow)),
         externs: externs,
+        target_triple: triple.unwrap_or(driver::driver::host_triple().to_string()),
         ..rustc::driver::config::basic_options().clone()
     };
 
@@ -151,9 +153,10 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>, ext
     })
 }
 
-pub fn run_core(libs: HashSet<Path>, cfgs: Vec<String>, externs: Externs, path: &Path)
+pub fn run_core(libs: HashSet<Path>, cfgs: Vec<String>, externs: Externs,
+                path: &Path, triple: Option<String>)
                 -> (clean::Crate, CrateAnalysis) {
-    let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs, externs);
+    let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs, externs, triple);
     let ctxt = box(GC) ctxt;
     super::ctxtkey.replace(Some(ctxt));
 
