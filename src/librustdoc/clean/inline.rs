@@ -278,6 +278,17 @@ fn build_impl(cx: &core::DocContext,
     }
 
     let associated_trait = csearch::get_impl_trait(tcx, did);
+    // If this is an impl for a #[doc(hidden)] trait, be sure to not inline it.
+    match associated_trait {
+        Some(ref t) => {
+            let trait_attrs = load_attrs(tcx, t.def_id);
+            if trait_attrs.iter().any(|a| is_doc_hidden(a)) {
+                return None
+            }
+        }
+        None => {}
+    }
+
     let attrs = load_attrs(tcx, did);
     let ty = ty::lookup_item_type(tcx, did);
     let methods = csearch::get_impl_methods(&tcx.sess.cstore,
@@ -302,7 +313,7 @@ fn build_impl(cx: &core::DocContext,
         };
         Some(item)
     }).collect();
-    Some(clean::Item {
+    return Some(clean::Item {
         inner: clean::ImplItem(clean::Impl {
             derived: clean::detect_derived(attrs.as_slice()),
             trait_: associated_trait.clean().map(|bound| {
@@ -321,7 +332,21 @@ fn build_impl(cx: &core::DocContext,
         visibility: Some(ast::Inherited),
         stability: stability::lookup(tcx, did).clean(),
         def_id: did,
-    })
+    });
+
+    fn is_doc_hidden(a: &clean::Attribute) -> bool {
+        match *a {
+            clean::List(ref name, ref inner) if name.as_slice() == "doc" => {
+                inner.iter().any(|a| {
+                    match *a {
+                        clean::Word(ref s) => s.as_slice() == "hidden",
+                        _ => false,
+                    }
+                })
+            }
+            _ => false
+        }
+    }
 }
 
 fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
