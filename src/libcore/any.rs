@@ -55,7 +55,7 @@
 //! }
 //!
 //! // This function wants to log its parameter out prior to doing work with it.
-//! fn do_work<T: Show>(value: &T) {
+//! fn do_work<T: Show+'static>(value: &T) {
 //!     log(value);
 //!     // ...do some other work
 //! }
