@@ -208,17 +208,17 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
 
     let llval = match (simple, name.get()) {
         (Some(llfn), _) => {
-            Call(bcx, llfn, llargs.as_slice(), [])
+            Call(bcx, llfn, llargs.as_slice(), None)
         }
         (_, "abort") => {
             let llfn = ccx.get_intrinsic(&("llvm.trap"));
-            let v = Call(bcx, llfn, [], []);
+            let v = Call(bcx, llfn, [], None);
             Unreachable(bcx);
             v
         }
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
-            Call(bcx, llfn, [], [])
+            Call(bcx, llfn, [], None)
         }
         (_, "size_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
@@ -553,7 +553,7 @@ fn copy_intrinsic(bcx: &Block, allow_overlap: bool, volatile: bool,
     let llfn = ccx.get_intrinsic(&name);
 
     Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align,
-                     C_bool(ccx, volatile)], [])
+                     C_bool(ccx, volatile)], None)
 }
 
 fn memset_intrinsic(bcx: &Block, volatile: bool, tp_ty: ty::t,
@@ -572,13 +572,13 @@ fn memset_intrinsic(bcx: &Block, volatile: bool, tp_ty: ty::t,
     let llfn = ccx.get_intrinsic(&name);
 
     Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align,
-                     C_bool(ccx, volatile)], [])
+                     C_bool(ccx, volatile)], None)
 }
 
 fn count_zeros_intrinsic(bcx: &Block, name: &'static str, val: ValueRef) -> ValueRef {
     let y = C_bool(bcx.ccx(), false);
     let llfn = bcx.ccx().get_intrinsic(&name);
-    Call(bcx, llfn, [val, y], [])
+    Call(bcx, llfn, [val, y], None)
 }
 
 fn with_overflow_intrinsic(bcx: &Block, name: &'static str, t: ty::t,
@@ -586,7 +586,7 @@ fn with_overflow_intrinsic(bcx: &Block, name: &'static str, t: ty::t,
     let llfn = bcx.ccx().get_intrinsic(&name);
 
     // Convert `i1` to a `bool`, and write it to the out parameter
-    let val = Call(bcx, llfn, [a, b], []);
+    let val = Call(bcx, llfn, [a, b], None);
     let result = ExtractValue(bcx, val, 0);
     let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
     let ret = C_undef(type_of::type_of(bcx.ccx(), t));

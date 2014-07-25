@@ -130,10 +130,99 @@ pub enum OtherAttribute {
     NonNullAttribute = 1 << 44,
 }
 
+pub enum SpecialAttribute {
+    DereferenceableAttribute(u64)
+}
+
 #[repr(C)]
 pub enum AttributeSet {
     ReturnIndex = 0,
     FunctionIndex = !0
+}
+
+trait AttrHelper {
+    fn apply_llfn(&self, idx: c_uint, llfn: ValueRef);
+    fn apply_callsite(&self, idx: c_uint, callsite: ValueRef);
+}
+
+impl AttrHelper for Attribute {
+    fn apply_llfn(&self, idx: c_uint, llfn: ValueRef) {
+        unsafe {
+            LLVMAddFunctionAttribute(llfn, idx, *self as uint64_t);
+        }
+    }
+
+    fn apply_callsite(&self, idx: c_uint, callsite: ValueRef) {
+        unsafe {
+            LLVMAddCallSiteAttribute(callsite, idx, *self as uint64_t);
+        }
+    }
+}
+
+impl AttrHelper for OtherAttribute {
+    fn apply_llfn(&self, idx: c_uint, llfn: ValueRef) {
+        unsafe {
+            LLVMAddFunctionAttribute(llfn, idx, *self as uint64_t);
+        }
+    }
+
+    fn apply_callsite(&self, idx: c_uint, callsite: ValueRef) {
+        unsafe {
+            LLVMAddCallSiteAttribute(callsite, idx, *self as uint64_t);
+        }
+    }
+}
+
+impl AttrHelper for SpecialAttribute {
+    fn apply_llfn(&self, idx: c_uint, llfn: ValueRef) {
+        match *self {
+            DereferenceableAttribute(bytes) => unsafe {
+                LLVMAddDereferenceableAttr(llfn, idx, bytes as uint64_t);
+            }
+        }
+    }
+
+    fn apply_callsite(&self, idx: c_uint, callsite: ValueRef) {
+        match *self {
+            DereferenceableAttribute(bytes) => unsafe {
+                LLVMAddDereferenceableCallSiteAttr(callsite, idx, bytes as uint64_t);
+            }
+        }
+    }
+}
+
+pub struct AttrBuilder {
+    attrs: Vec<(uint, Box<AttrHelper>)>
+}
+
+impl AttrBuilder {
+    pub fn new() -> AttrBuilder {
+        AttrBuilder {
+            attrs: Vec::new()
+        }
+    }
+
+    pub fn arg<'a, T: AttrHelper + 'static>(&'a mut self, idx: uint, a: T) -> &'a mut AttrBuilder {
+        self.attrs.push((idx, box a as Box<AttrHelper>));
+        self
+    }
+
+    pub fn ret<'a, T: AttrHelper + 'static>(&'a mut self, a: T) -> &'a mut AttrBuilder {
+        self.attrs.push((ReturnIndex as uint, box a as Box<AttrHelper>));
+        self
+    }
+
+    pub fn apply_llfn(&self, llfn: ValueRef) {
+        for &(idx, ref attr) in self.attrs.iter() {
+            attr.apply_llfn(idx as c_uint, llfn);
+        }
+    }
+
+    pub fn apply_callsite(&self, callsite: ValueRef) {
+        for &(idx, ref attr) in self.attrs.iter() {
+            attr.apply_callsite(idx as c_uint, callsite);
+        }
+    }
 }
 
 // enum for the LLVM IntPredicate type
@@ -740,6 +829,7 @@ extern {
     pub fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: c_uint);
     pub fn LLVMGetGC(Fn: ValueRef) -> *const c_char;
     pub fn LLVMSetGC(Fn: ValueRef, Name: *const c_char);
+    pub fn LLVMAddDereferenceableAttr(Fn: ValueRef, index: c_uint, bytes: uint64_t);
     pub fn LLVMAddFunctionAttribute(Fn: ValueRef, index: c_uint, PA: uint64_t);
     pub fn LLVMAddFunctionAttrString(Fn: ValueRef, index: c_uint, Name: *const c_char);
     pub fn LLVMRemoveFunctionAttrString(Fn: ValueRef, index: c_uint, Name: *const c_char);
@@ -811,6 +901,9 @@ extern {
     pub fn LLVMAddCallSiteAttribute(Instr: ValueRef,
                                     index: c_uint,
                                     Val: uint64_t);
+    pub fn LLVMAddDereferenceableCallSiteAttr(Instr: ValueRef,
+                                              index: c_uint,
+                                              bytes: uint64_t);
 
     /* Operations on call instructions (only) */
     pub fn LLVMIsTailCall(CallInst: ValueRef) -> Bool;
