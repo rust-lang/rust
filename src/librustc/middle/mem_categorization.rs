@@ -499,11 +499,11 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                id, expr_ty.repr(self.tcx()), def);
 
         match def {
-          def::DefStruct(..) | def::DefVariant(..) => {
+          def::DefStruct(..) | def::DefVariant(..) | def::DefFn(..) |
+          def::DefStaticMethod(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
-          def::DefFn(..) | def::DefStaticMethod(..) | def::DefMod(_) |
-          def::DefForeignMod(_) | def::DefStatic(_, false) |
+          def::DefMod(_) | def::DefForeignMod(_) | def::DefStatic(_, false) |
           def::DefUse(_) | def::DefTrait(_) | def::DefTy(_) | def::DefPrimTy(_) |
           def::DefTyParam(..) | def::DefTyParamBinder(..) | def::DefRegion(_) |
           def::DefLabel(_) | def::DefSelfTy(..) | def::DefMethod(..) => {
