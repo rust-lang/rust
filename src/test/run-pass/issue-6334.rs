@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-
 // Tests that everything still compiles and runs fine even when
 // we reorder the bounds.
 
