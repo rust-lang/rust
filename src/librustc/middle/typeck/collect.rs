@@ -1218,6 +1218,8 @@ fn ty_generics(ccx: &CrateCtxt,
 
         check_bounds_compatible(ccx.tcx, &param_bounds, ident, span);
 
+        param_bounds.trait_bounds.sort_by(|a,b| a.def_id.cmp(&b.def_id));
+
         param_bounds
     }
 
@@ -1340,4 +1342,3 @@ fn check_method_self_type<RS:RegionScope>(
         _ => {}
     }
 }
-
