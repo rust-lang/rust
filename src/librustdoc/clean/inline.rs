@@ -364,27 +364,33 @@ fn build_impl(cx: &core::DocContext,
 fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
                 did: ast::DefId) -> clean::Module {
     let mut items = Vec::new();
+    fill_in(cx, tcx, did, &mut items);
+    return clean::Module {
+        items: items,
+        is_crate: false,
+    };
 
     // FIXME: this doesn't handle reexports inside the module itself.
     //        Should they be handled?
-    csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, vis| {
-        if vis != ast::Public { return }
-        match def {
-            decoder::DlDef(def) => {
-                match try_inline_def(cx, tcx, def) {
-                    Some(i) => items.extend(i.move_iter()),
-                    None => {}
+    fn fill_in(cx: &core::DocContext, tcx: &ty::ctxt, did: ast::DefId,
+               items: &mut Vec<clean::Item>) {
+        csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, vis| {
+            match def {
+                decoder::DlDef(def::DefForeignMod(did)) => {
+                    fill_in(cx, tcx, did, items);
                 }
+                decoder::DlDef(def) if vis == ast::Public => {
+                    match try_inline_def(cx, tcx, def) {
+                        Some(i) => items.extend(i.move_iter()),
+                        None => {}
+                    }
+                }
+                decoder::DlDef(..) => {}
+                // All impls were inlined above
+                decoder::DlImpl(..) => {}
+                decoder::DlField => fail!("unimplemented field"),
             }
-            // All impls were inlined above
-            decoder::DlImpl(..) => {}
-            decoder::DlField => fail!("unimplemented field"),
-        }
-    });
-
-    clean::Module {
-        items: items,
-        is_crate: false,
+        });
     }
 }
 
