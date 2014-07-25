@@ -11,6 +11,10 @@
 use middle::const_eval::{compare_const_vals, const_bool, const_float, const_nil, const_val};
 use middle::const_eval::{const_expr_to_pat, eval_const_expr, lookup_const_by_id};
 use middle::def::*;
+use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
+use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
+use middle::expr_use_visitor::{WriteAndRead};
+use middle::mem_categorization::cmt;
 use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
@@ -143,7 +147,16 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                                                 arm.pats.as_slice());
             }
 
-            // Second, check for unreachable arms.
+            // Second, if there is a guard on each arm, make sure it isn't
+            // assigning or borrowing anything mutably.
+            for arm in arms.iter() {
+                match arm.guard {
+                    Some(guard) => check_for_mutation_in_guard(cx, &*guard),
+                    None => {}
+                }
+            }
+
+            // Third, check for unreachable arms.
             check_arms(cx, arms.as_slice());
 
             // Finally, check if the whole match expression is exhaustive.
@@ -903,3 +916,53 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
         });
     }
 }
+
+/// Ensures that a pattern guard doesn't borrow by mutable reference or
+/// assign.
+fn check_for_mutation_in_guard<'a>(cx: &'a MatchCheckCtxt<'a>, guard: &Expr) {
+    let mut checker = MutationChecker {
+        cx: cx,
+    };
+    let mut visitor = ExprUseVisitor::new(&mut checker, checker.cx.tcx);
+    visitor.walk_expr(guard);
+}
+
+struct MutationChecker<'a> {
+    cx: &'a MatchCheckCtxt<'a>,
+}
+
+impl<'a> Delegate for MutationChecker<'a> {
+    fn consume(&mut self, _: NodeId, _: Span, _: cmt, _: ConsumeMode) {}
+    fn consume_pat(&mut self, _: &Pat, _: cmt, _: ConsumeMode) {}
+    fn borrow(&mut self,
+              _: NodeId,
+              span: Span,
+              _: cmt,
+              _: Region,
+              kind: BorrowKind,
+              _: LoanCause) {
+        match kind {
+            MutBorrow => {
+                self.cx
+                    .tcx
+                    .sess
+                    .span_err(span,
+                              "cannot mutably borrow in a pattern guard")
+            }
+            ImmBorrow | UniqueImmBorrow => {}
+        }
+    }
+    fn decl_without_init(&mut self, _: NodeId, _: Span) {}
+    fn mutate(&mut self, _: NodeId, span: Span, _: cmt, mode: MutateMode) {
+        match mode {
+            JustWrite | WriteAndRead => {
+                self.cx
+                    .tcx
+                    .sess
+                    .span_err(span, "cannot assign in a pattern guard")
+            }
+            Init => {}
+        }
+    }
+}
+
