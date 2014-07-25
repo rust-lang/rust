@@ -961,7 +961,7 @@ pub enum ExplicitSelf_ {
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Method {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
@@ -969,7 +969,7 @@ pub struct Method {
     pub node: Method_,
 }
 
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Method_ {
     /// Represents a method declaration
     MethDecl(Ident,
