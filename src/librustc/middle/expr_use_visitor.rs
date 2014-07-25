@@ -292,7 +292,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
         self.walk_expr(expr)
     }
 
-    fn walk_expr(&mut self, expr: &ast::Expr) {
+    pub fn walk_expr(&mut self, expr: &ast::Expr) {
         debug!("walk_expr(expr={})", expr.repr(self.tcx()));
 
         self.walk_adjustment(expr);
