@@ -33,7 +33,7 @@ macro_rules! fail(
         // up with the number of calls to fail!()
         #[inline(always)]
         fn run_fmt(fmt: &::std::fmt::Arguments) -> ! {
-            ::core::failure::begin_unwind(fmt, file!(), line!())
+            ::core::failure::begin_unwind(fmt, &(file!(), line!()))
         }
         format_args!(run_fmt, $fmt, $($arg)*)
     });

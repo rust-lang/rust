@@ -33,33 +33,72 @@
 use fmt;
 use intrinsics;
 
+#[cfg(stage0)]
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="fail_"]
 fn fail_(expr: &'static str, file: &'static str, line: uint) -> ! {
     format_args!(|args| -> () {
-        begin_unwind(args, file, line);
+        begin_unwind(args, &(file, line));
     }, "{}", expr);
 
     unsafe { intrinsics::abort() }
 }
 
+#[cfg(stage0)]
 #[cold]
 #[lang="fail_bounds_check"]
 fn fail_bounds_check(file: &'static str, line: uint,
                      index: uint, len: uint) -> ! {
     format_args!(|args| -> () {
-        begin_unwind(args, file, line);
+        begin_unwind(args, &(file, line));
     }, "index out of bounds: the len is {} but the index is {}", len, index);
     unsafe { intrinsics::abort() }
 }
 
+#[cfg(stage0)]
 #[cold]
-pub fn begin_unwind(fmt: &fmt::Arguments, file: &'static str, line: uint) -> ! {
+pub fn begin_unwind(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     #[allow(ctypes)]
     extern {
         #[lang = "begin_unwind"]
         fn begin_unwind(fmt: &fmt::Arguments, file: &'static str,
                         line: uint) -> !;
     }
+    let (file, line) = *file_line;
+    unsafe { begin_unwind(fmt, file, line) }
+}
+
+#[cfg(not(stage0))]
+#[cold] #[inline(never)] // this is the slow path, always
+#[lang="fail_"]
+fn fail_(expr: &'static str, file: &'static str, line: uint) -> ! {
+    format_args!(|args| -> () {
+        begin_unwind(args, &(file, line));
+    }, "{}", expr);
+
+    unsafe { intrinsics::abort() }
+}
+
+#[cfg(not(stage0))]
+#[cold]
+#[lang="fail_bounds_check"]
+fn fail_bounds_check(file: &'static str, line: uint,
+                     index: uint, len: uint) -> ! {
+    format_args!(|args| -> () {
+        begin_unwind(args, &(file, line));
+    }, "index out of bounds: the len is {} but the index is {}", len, index);
+    unsafe { intrinsics::abort() }
+}
+
+#[cfg(not(stage0))]
+#[cold]
+pub fn begin_unwind(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
+    #[allow(ctypes)]
+    extern {
+        #[lang = "begin_unwind"]
+        fn begin_unwind(fmt: &fmt::Arguments, file_line: &'static str,
+                        line: uint) -> !;
+    }
+    let (file, line) = *file_line;
     unsafe { begin_unwind(fmt, file, line) }
 }
