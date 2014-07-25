@@ -357,8 +357,8 @@
                 }, 20);
             });
 
-            $(document).off('keypress.searchnav');
-            $(document).on('keypress.searchnav', function(e) {
+            $(document).off('keydown.searchnav');
+            $(document).on('keydown.searchnav', function(e) {
                 var $active = $results.filter('.highlighted');
 
                 if (e.which === 38) { // up
