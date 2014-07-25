@@ -18,6 +18,7 @@ use core::default::Default;
 use core::mem::zeroed;
 use core::mem;
 use core::uint;
+use core::iter;
 use std::hash::{Writer, Hash};
 
 use {Collection, Mutable, Map, MutableMap, Set, MutableSet};
@@ -194,6 +195,18 @@ impl<T> TrieMap<T> {
     #[inline]
     pub fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
         self.root.each_reverse(f)
+    }
+
+    /// Get an iterator visiting all keys in ascending order by the keys.
+    /// Iterator element type is `uint`.
+    pub fn keys<'r>(&'r self) -> Keys<'r, T> {
+        self.iter().map(|(k, _v)| k)
+    }
+
+    /// Get an iterator visiting all values in ascending order by the keys.
+    /// Iterator element type is `&'r T`.
+    pub fn values<'r>(&'r self) -> Values<'r, T> {
+        self.iter().map(|(_k, v)| v)
     }
 
     /// Get an iterator over the key-value pairs in the map, ordered by keys.
@@ -783,6 +796,14 @@ pub struct MutEntries<'a, T> {
     remaining_max: uint
 }
 
+/// Forward iterator over the keys of a map
+pub type Keys<'a, T> =
+    iter::Map<'static, (uint, &'a T), uint, Entries<'a, T>>;
+
+/// Forward iterator over the values of a map
+pub type Values<'a, T> =
+    iter::Map<'static, (uint, &'a T), &'a T, Entries<'a, T>>;
+
 // FIXME #5846: see `addr!` above.
 macro_rules! item { ($i:item) => {$i}}
 
@@ -1068,6 +1089,28 @@ mod test_map {
         for &(k, v) in xs.iter() {
             assert_eq!(map.find(&k), Some(&v));
         }
+    }
+
+    #[test]
+    fn test_keys() {
+        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
+        let map = vec.move_iter().collect::<TrieMap<char>>();
+        let keys = map.keys().collect::<Vec<uint>>();
+        assert_eq!(keys.len(), 3);
+        assert!(keys.contains(&1));
+        assert!(keys.contains(&2));
+        assert!(keys.contains(&3));
+    }
+
+    #[test]
+    fn test_values() {
+        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
+        let map = vec.move_iter().collect::<TrieMap<char>>();
+        let values = map.values().map(|&v| v).collect::<Vec<char>>();
+        assert_eq!(values.len(), 3);
+        assert!(values.contains(&'a'));
+        assert!(values.contains(&'b'));
+        assert!(values.contains(&'c'));
     }
 
     #[test]
