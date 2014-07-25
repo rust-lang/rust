@@ -59,12 +59,15 @@ pub mod ast_map;
 pub mod ast_util;
 pub mod attr;
 pub mod codemap;
+pub mod config;
 pub mod crateid;
 pub mod diagnostic;
 pub mod fold;
 pub mod owned_slice;
 pub mod parse;
 pub mod ptr;
+pub mod show_span;
+pub mod test;
 pub mod visit;
 
 pub mod print {

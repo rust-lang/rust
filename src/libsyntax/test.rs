@@ -13,29 +13,29 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use driver::session::Session;
-use front::config;
-
+use std::gc::{Gc, GC};
 use std::slice;
 use std::mem;
 use std::vec;
-use syntax::{ast, ast_util};
-use syntax::ast_util::*;
-use syntax::attr::AttrMetaMethods;
-use syntax::attr;
-use syntax::codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
-use syntax::codemap;
-use syntax::ext::base::ExtCtxt;
-use syntax::ext::build::AstBuilder;
-use syntax::ext::expand::ExpansionConfig;
-use syntax::fold::{Folder, MoveMap};
-use syntax::fold;
-use syntax::owned_slice::OwnedSlice;
-use syntax::parse::token::InternedString;
-use syntax::parse::token;
-use syntax::print::pprust;
-use syntax::ptr::P;
-use syntax::util::small_vector::SmallVector;
+use ast_util::*;
+use attr::AttrMetaMethods;
+use attr;
+use codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
+use codemap;
+use diagnostic;
+use config;
+use ext::base::ExtCtxt;
+use ext::build::AstBuilder;
+use ext::expand::ExpansionConfig;
+use fold::{Folder, MoveMap};
+use fold;
+use owned_slice::OwnedSlice;
+use parse::token::InternedString;
+use parse::{token, ParseSess};
+use print::pprust;
+use {ast, ast_util};
+use ptr::P;
+use util::small_vector::SmallVector;
 
 struct Test {
     span: Span,
@@ -46,7 +46,8 @@ struct Test {
 }
 
 struct TestCtxt<'a> {
-    sess: &'a Session,
+    sess: &'a ParseSess,
+    span_diagnostic: &'a diagnostic::SpanHandler,
     path: Vec<ast::Ident>,
     ext_cx: ExtCtxt<'a>,
     testfns: Vec<Test>,
@@ -60,8 +61,10 @@ struct TestCtxt<'a> {
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
-pub fn modify_for_testing(sess: &Session,
-                          krate: ast::Crate) -> ast::Crate {
+pub fn modify_for_testing(sess: &ParseSess,
+                          cfg: &ast::CrateConfig,
+                          krate: ast::Crate,
+                          span_diagnostic: &diagnostic::SpanHandler) -> ast::Crate {
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
@@ -76,7 +79,7 @@ pub fn modify_for_testing(sess: &Session,
                                            "reexport_test_harness_main");
 
     if should_test {
-        generate_test_harness(sess, reexport_test_harness_main, krate)
+        generate_test_harness(sess, reexport_test_harness_main, krate, cfg, span_diagnostic)
     } else {
         strip_test_functions(krate)
     }
@@ -113,8 +116,8 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         if is_test_fn(&self.cx, &*i) || is_bench_fn(&self.cx, &*i) {
             match i.node {
                 ast::ItemFn(_, ast::UnsafeFn, _, _, _) => {
-                    let sess = self.cx.sess;
-                    sess.span_fatal(i.span,
+                    let diag = self.cx.span_diagnostic;
+                    diag.span_fatal(i.span,
                                     "unsafe functions cannot be used for \
                                      tests");
                 }
@@ -223,12 +226,15 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
     (it, sym)
 }
 
-fn generate_test_harness(sess: &Session,
+fn generate_test_harness(sess: &ParseSess,
                          reexport_test_harness_main: Option<InternedString>,
-                         krate: ast::Crate) -> ast::Crate {
+                         krate: ast::Crate,
+                         cfg: &ast::CrateConfig,
+                         sd: &diagnostic::SpanHandler) -> ast::Crate {
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
-        ext_cx: ExtCtxt::new(&sess.parse_sess, sess.opts.cfg.clone(),
+        span_diagnostic: sd,
+        ext_cx: ExtCtxt::new(sess, cfg.clone(),
                              ExpansionConfig {
                                  deriving_hash_type_parameter: false,
                                  crate_name: "test".to_string(),
@@ -288,8 +294,8 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     }
 
     if has_test_attr && !has_test_signature(i) {
-        let sess = cx.sess;
-        sess.span_err(
+        let diag = cx.span_diagnostic;
+        diag.span_err(
             i.span,
             "functions used as tests must have signature fn() -> ()."
         );
@@ -320,8 +326,8 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     }
 
     if has_bench_attr && !has_test_signature(i) {
-        let sess = cx.sess;
-        sess.span_err(i.span, "functions used as benches must have signature \
+        let diag = cx.span_diagnostic;
+        diag.span_err(i.span, "functions used as benches must have signature \
                       `fn(&mut Bencher) -> ()`");
     }
 
@@ -547,9 +553,8 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     let mut visible_path = match cx.toplevel_reexport {
         Some(id) => vec![id],
         None => {
-            cx.sess.bug(
-                "expected to find top-level re-export name, but found None"
-            );
+            let diag = cx.span_diagnostic;
+            diag.handler.bug("expected to find top-level re-export name, but found None");
         }
     };
     visible_path.extend(path.into_iter());
