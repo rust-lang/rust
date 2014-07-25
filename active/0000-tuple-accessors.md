@@ -26,41 +26,31 @@ Detailed design
 ===============
 
 Add syntax of the form `<expr>.<integer>` for accessing values within tuples and
-tuple structs. This syntax is recognised wherever an integer or float literal is
-found in place of the normal field or method name expected when accessing fields
-with `.`. Float literals in this position are expanded into two field accesses,
-so that an expression of the form `a.1.3` is equivalent to `(a.1).3`.
+tuple structs.  This syntax is recognised wherever an unsuffixed integer or
+float literal is found in place of the normal field or method name expected when
+accessing fields with `.`. Float literals in this position are expanded into two
+field accesses, so that an expression of the form `a.1.3` is equivalent to
+`(a.1).3`.
 
-Accessing a tuple or tuple struct field like so:
-
-```rust
-let x = (box 1i, box 2i);
-let x1 = x.1;
-```
-
-is roughly equivalent to:
+Tuple/tuple struct field access behaves the same way as accessing named fields
+on normal structs:
 
 ```rust
-let x = (box 1i, box 2i);
-let x1 = { let (_, a) = x; a };
+// With tuple struct
+struct Foo(int, int);
+let mut foo = Foo(3, -15);
+foo.0 = 5;
+assert_eq!(foo.0, 5);
+
+// With normal struct
+struct Foo2 { _0: int, _1: int }
+let mut foo2 = Foo2 { _0: 3, _1: -15 };
+foo2._0 = 5;
+assert_eq!(foo2._0, 5);
 ```
 
-However, when taking a (possibly mutable) reference to a field, the equivalent
-expansion is slightly different:
-
-```rust
-let x = (box 1i, box 2i);
-let x1 = &x.1;
-```
-
-is roughly equivalent to:
-
-```rust
-let x = (box 1i, box 2i);
-let x1 = { let (_, ref a) = x; a };
-```
-
-A similar process is performed with `&mut`.
+Effectively, a tuple or tuple struct field is just a normal named field with an
+integer for a name.
 
 Drawbacks
 =========
