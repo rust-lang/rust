@@ -199,13 +199,10 @@ check-fast: check-lite
 
 # Some less critical tests that are not prone to breakage.
 # Not run as part of the normal test suite, but tested by bors on checkin.
-check-secondary: check-syntax check-pretty
+check-secondary: check-lexer check-pretty
 
 # check + check-secondary.
 check-all: check check-secondary
-
-# Run the grammar tests.
-check-syntax: check-lexer
 
 # Pretty-printing tests.
 check-pretty: check-stage2-T-$(CFG_BUILD)-H-$(CFG_BUILD)-pretty-exec
