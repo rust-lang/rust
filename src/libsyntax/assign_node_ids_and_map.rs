@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use driver::session::Session;
-
-use syntax::ast;
-use syntax::ast_map;
+use ast;
+use ast_map;
+use parse::ParseSess;
 
 struct NodeIdAssigner<'a> {
-    sess: &'a Session
+    sess: &'a ParseSess
 }
 
 impl<'a> ast_map::FoldOps for NodeIdAssigner<'a> {
@@ -24,6 +23,7 @@ impl<'a> ast_map::FoldOps for NodeIdAssigner<'a> {
     }
 }
 
-pub fn assign_node_ids_and_map(sess: &Session, krate: ast::Crate) -> (ast::Crate, ast_map::Map) {
+pub fn assign_node_ids_and_map(sess: &ParseSess,
+                               krate: ast::Crate) -> (ast::Crate, ast_map::Map) {
     ast_map::map_crate(krate, NodeIdAssigner { sess: sess })
 }

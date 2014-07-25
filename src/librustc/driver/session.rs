@@ -47,7 +47,6 @@ pub struct Session {
     pub working_dir: Path,
     pub lint_store: RefCell<lint::LintStore>,
     pub lints: RefCell<NodeMap<Vec<(lint::LintId, codemap::Span, String)>>>,
-    pub node_id: Cell<ast::NodeId>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub crate_metadata: RefCell<Vec<String>>,
     pub features: front::feature_gate::Features,
@@ -129,17 +128,10 @@ impl Session {
         lints.insert(id, vec!((lint_id, sp, msg)));
     }
     pub fn next_node_id(&self) -> ast::NodeId {
-        self.reserve_node_ids(1)
+        self.parse_sess.next_node_id()
     }
     pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
-        let v = self.node_id.get();
-
-        match v.checked_add(&count) {
-            Some(next) => { self.node_id.set(next); }
-            None => self.bug("Input too large, ran out of node ids!")
-        }
-
-        v
+        self.parse_sess.reserve_node_ids(count)
     }
     pub fn diagnostic<'a>(&'a self) -> &'a diagnostic::SpanHandler {
         &self.parse_sess.span_diagnostic
@@ -251,7 +243,6 @@ pub fn build_session_(sopts: config::Options,
         working_dir: os::getcwd(),
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(NodeMap::new()),
-        node_id: Cell::new(1),
         crate_types: RefCell::new(Vec::new()),
         crate_metadata: RefCell::new(Vec::new()),
         features: front::feature_gate::Features::new(),
