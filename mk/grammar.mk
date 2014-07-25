@@ -45,17 +45,17 @@ check-lexer: $(BG) $(BG)RustLexer.class $(BG)verify
 	$(Q)$(SG)check.sh $(S) "$(BG)" \
 		"$(CFG_GRUN)" "$(BG)verify" "$(BG)RustLexer.tokens"
 else
-$(info grun not available, skipping lexer test...)
+$(info cfg: grun not available, skipping lexer test...)
 check-lexer:
 
 endif
 else
-$(info antlr4 not available, skipping lexer test...)
+$(info cfg: antlr4 not available, skipping lexer test...)
 check-lexer:
 
 endif
 else
-$(info javac not available, skipping lexer test...)
+$(info cfg: javac not available, skipping lexer test...)
 check-lexer:
 
 endif
