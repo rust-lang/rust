@@ -18,6 +18,7 @@ use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 use rustc::middle::def;
 use rustc::middle::ty;
+use rustc::middle::subst;
 use rustc::middle::stability;
 
 use core;
@@ -163,7 +164,7 @@ pub fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> clean::Trait {
     });
 
     clean::Trait {
-        generics: def.generics.clean(),
+        generics: (&def.generics, subst::TypeSpace).clean(),
         methods: methods.collect(),
         parents: parents.collect()
     }
@@ -178,7 +179,7 @@ fn build_external_function(tcx: &ty::ctxt,
             ty::ty_bare_fn(ref f) => (did, &f.sig).clean(),
             _ => fail!("bad function"),
         },
-        generics: t.generics.clean(),
+        generics: (&t.generics, subst::FnSpace).clean(),
         fn_style: style,
     }
 }
@@ -196,7 +197,7 @@ fn build_struct(tcx: &ty::ctxt, did: ast::DefId) -> clean::Struct {
             [ref f, ..] if f.name == unnamed_field.name => doctree::Tuple,
             _ => doctree::Plain,
         },
-        generics: t.generics.clean(),
+        generics: (&t.generics, subst::TypeSpace).clean(),
         fields: fields.iter().map(|f| f.clean()).collect(),
         fields_stripped: false,
     }
@@ -207,7 +208,7 @@ fn build_type(tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEnum {
     match ty::get(t.ty).sty {
         ty::ty_enum(edid, _) if !csearch::is_typedef(&tcx.sess.cstore, did) => {
             return clean::EnumItem(clean::Enum {
-                generics: t.generics.clean(),
+                generics: (&t.generics, subst::TypeSpace).clean(),
                 variants_stripped: false,
                 variants: ty::enum_variants(tcx, edid).clean(),
             })
@@ -217,7 +218,7 @@ fn build_type(tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEnum {
 
     clean::TypedefItem(clean::Typedef {
         type_: t.ty.clean(),
-        generics: t.generics.clean(),
+        generics: (&t.generics, subst::TypeSpace).clean(),
     })
 }
 
@@ -323,7 +324,7 @@ fn build_impl(cx: &core::DocContext,
                 }
             }),
             for_: ty.ty.clean(),
-            generics: ty.generics.clean(),
+            generics: (&ty.generics, subst::TypeSpace).clean(),
             methods: methods,
         }),
         source: clean::Span::empty(),
