@@ -653,35 +653,12 @@ impl Clean<Generics> for ast::Generics {
     }
 }
 
-impl Clean<Generics> for ty::Generics {
+impl<'a> Clean<Generics> for (&'a ty::Generics, subst::ParamSpace) {
     fn clean(&self) -> Generics {
-        // In the type space, generics can come in one of multiple
-        // namespaces.  This means that e.g. for fn items the type
-        // parameters will live in FnSpace, but for types the
-        // parameters will live in TypeSpace (trait definitions also
-        // define a parameter in SelfSpace). *Method* definitions are
-        // the one exception: they combine the TypeSpace parameters
-        // from the enclosing impl/trait with their own FnSpace
-        // parameters.
-        //
-        // In general, when we clean, we are trying to produce the
-        // "user-facing" generics. Hence we select the most specific
-        // namespace that is occupied, ignoring SelfSpace because it
-        // is implicit.
-
-        let space = {
-            if !self.types.is_empty_in(subst::FnSpace) ||
-                !self.regions.is_empty_in(subst::FnSpace)
-            {
-                subst::FnSpace
-            } else {
-                subst::TypeSpace
-            }
-        };
-
+        let (me, space) = *self;
         Generics {
-            type_params: Vec::from_slice(self.types.get_slice(space)).clean(),
-            lifetimes: Vec::from_slice(self.regions.get_slice(space)).clean(),
+            type_params: Vec::from_slice(me.types.get_slice(space)).clean(),
+            lifetimes: Vec::from_slice(me.regions.get_slice(space)).clean(),
         }
     }
 }
@@ -1030,7 +1007,7 @@ impl Clean<Item> for ty::Method {
             source: Span::empty(),
             inner: TyMethodItem(TyMethod {
                 fn_style: self.fty.fn_style,
-                generics: self.generics.clean(),
+                generics: (&self.generics, subst::FnSpace).clean(),
                 self_: self_,
                 decl: (self.def_id, &sig).clean(),
             })
