@@ -39,7 +39,8 @@ use super::Clean;
 ///
 /// The returned value is `None` if the `id` could not be inlined, and `Some`
 /// of a vector of items if it was successfully expanded.
-pub fn try_inline(id: ast::NodeId) -> Option<Vec<clean::Item>> {
+pub fn try_inline(id: ast::NodeId, into: Option<ast::Ident>)
+                  -> Option<Vec<clean::Item>> {
     let cx = ::ctxtkey.get().unwrap();
     let tcx = match cx.maybe_typed {
         core::Typed(ref tycx) => tycx,
@@ -51,7 +52,17 @@ pub fn try_inline(id: ast::NodeId) -> Option<Vec<clean::Item>> {
     };
     let did = def.def_id();
     if ast_util::is_local(did) { return None }
-    try_inline_def(&**cx, tcx, def)
+    try_inline_def(&**cx, tcx, def).map(|vec| {
+        vec.move_iter().map(|mut item| {
+            match into {
+                Some(into) if item.name.is_some() => {
+                    item.name = Some(into.clean());
+                }
+                _ => {}
+            }
+            item
+        }).collect()
+    })
 }
 
 fn try_inline_def(cx: &core::DocContext,
