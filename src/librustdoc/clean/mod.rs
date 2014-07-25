@@ -1763,7 +1763,7 @@ impl Clean<Vec<Item>> for ast::ViewItem {
                         // to keep any non-inlineable reexports so they can be
                         // listed in the documentation.
                         let remaining = list.iter().filter(|path| {
-                            match inline::try_inline(path.node.id()) {
+                            match inline::try_inline(path.node.id(), None) {
                                 Some(items) => {
                                     ret.extend(items.move_iter()); false
                                 }
@@ -1778,8 +1778,8 @@ impl Clean<Vec<Item>> for ast::ViewItem {
                             ret.push(convert(&ast::ViewItemUse(box(GC) path)));
                         }
                     }
-                    ast::ViewPathSimple(_, _, id) => {
-                        match inline::try_inline(id) {
+                    ast::ViewPathSimple(ident, _, id) => {
+                        match inline::try_inline(id, Some(ident)) {
                             Some(items) => ret.extend(items.move_iter()),
                             None => ret.push(convert(&self.node)),
                         }
