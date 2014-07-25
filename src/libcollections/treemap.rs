@@ -141,6 +141,16 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
+    /// Get a lazy iterator over the keys in the map.
+    pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
+        self.iter().map(|(k, _v)| k)
+    }
+
+    /// Get a lazy iterator over the values in the map.
+    pub fn values<'a>(&'a self) -> Values<'a, K, V> {
+        self.iter().map(|(_k, v)| v)
+    }
+
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
     pub fn iter<'a>(&'a self) -> Entries<'a, K, V> {
@@ -379,6 +389,15 @@ pub struct MutEntries<'a, K, V> {
 pub struct RevMutEntries<'a, K, V> {
     iter: MutEntries<'a, K, V>,
 }
+
+
+/// TreeMap keys iterator
+pub type Keys<'a, K, V> =
+    iter::Map<'static, (&'a K, &'a V), &'a K, Entries<'a, K, V>>;
+
+/// TreeMap values iterator
+pub type Values<'a, K, V> =
+    iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
 
 
 // FIXME #5846 we want to be able to choose between &x and &mut x
@@ -1468,6 +1487,28 @@ mod test_treemap {
 
         assert!(m_lower.iter().all(|(_, &x)| x == 0));
         assert!(m_upper.iter().all(|(_, &x)| x == 0));
+    }
+
+    #[test]
+    fn test_keys() {
+        let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
+        let map = vec.move_iter().collect::<TreeMap<int, char>>();
+        let keys = map.keys().map(|&k| k).collect::<Vec<int>>();
+        assert_eq!(keys.len(), 3);
+        assert!(keys.contains(&1));
+        assert!(keys.contains(&2));
+        assert!(keys.contains(&3));
+    }
+
+    #[test]
+    fn test_values() {
+        let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
+        let map = vec.move_iter().collect::<TreeMap<int, char>>();
+        let values = map.values().map(|&v| v).collect::<Vec<char>>();
+        assert_eq!(values.len(), 3);
+        assert!(values.contains(&'a'));
+        assert!(values.contains(&'b'));
+        assert!(values.contains(&'c'));
     }
 
     #[test]
