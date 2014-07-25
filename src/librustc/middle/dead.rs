@@ -354,11 +354,11 @@ fn create_and_seed_worklist(tcx: &ty::ctxt,
     // depending on whether a crate is built as bin or lib, and we want
     // the warning to be consistent, we also seed the worklist with
     // exported symbols.
-    for &id in exported_items.iter() {
-        worklist.push(id);
+    for id in exported_items.iter() {
+        worklist.push(*id);
     }
-    for &id in reachable_symbols.iter() {
-        worklist.push(id);
+    for id in reachable_symbols.iter() {
+        worklist.push(*id);
     }
 
     // Seed entry point

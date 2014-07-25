@@ -419,8 +419,8 @@ impl<'a> CoherenceChecker<'a> {
     }
 
     fn check_implementation_coherence(&self) {
-        for &trait_id in self.crate_context.tcx.trait_impls.borrow().keys() {
-            self.check_implementation_coherence_of(trait_id);
+        for trait_id in self.crate_context.tcx.trait_impls.borrow().keys() {
+            self.check_implementation_coherence_of(*trait_id);
         }
     }
 

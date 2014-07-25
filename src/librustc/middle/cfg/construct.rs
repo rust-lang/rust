@@ -240,7 +240,7 @@ impl<'a> CFGBuilder<'a> {
                 //   v 3
                 // [expr]
                 //
-                // Note that `break` and `loop` statements
+                // Note that `break` and `continue` statements
                 // may cause additional edges.
 
                 // Is the condition considered part of the loop?
@@ -258,7 +258,44 @@ impl<'a> CFGBuilder<'a> {
                 expr_exit
             }
 
-            ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
+            ast::ExprForLoop(ref pat, ref head, ref body, _) => {
+                //
+                //          [pred]
+                //            |
+                //            v 1
+                //          [head]
+                //            |
+                //            v 2
+                //        [loopback] <--+ 7
+                //            |         |
+                //            v 3       |
+                //   +------[cond]      |
+                //   |        |         |
+                //   |        v 5       |
+                //   |       [pat]      |
+                //   |        |         |
+                //   |        v 6       |
+                //   v 4    [body] -----+
+                // [expr]
+                //
+                // Note that `break` and `continue` statements
+                // may cause additional edges.
+
+                let head = self.expr(head.clone(), pred);       // 1
+                let loopback = self.add_dummy_node([head]);     // 2
+                let cond = self.add_dummy_node([loopback]);     // 3
+                let expr_exit = self.add_node(expr.id, [cond]); // 4
+                self.loop_scopes.push(LoopScope {
+                    loop_id: expr.id,
+                    continue_index: loopback,
+                    break_index: expr_exit,
+                });
+                let pat = self.pat(&**pat, cond);               // 5
+                let body = self.block(&**body, pat);            // 6
+                self.add_contained_edge(body, loopback);        // 7
+                self.loop_scopes.pop();
+                expr_exit
+            }
 
             ast::ExprLoop(ref body, _) => {
                 //

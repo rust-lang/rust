@@ -756,7 +756,8 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
       ast::ExprUnary(_, _) |
       ast::ExprAssignOp(_, _, _) |
       ast::ExprIndex(_, _) |
-      ast::ExprMethodCall(_, _, _) => {
+      ast::ExprMethodCall(_, _, _) |
+      ast::ExprForLoop(..) => {
         match fcx.inh.method_map.borrow().find(&MethodCall::expr(ex.id)) {
           Some(method) => {
               debug!("vtable resolution on parameter bounds for method call {}",

@@ -147,7 +147,12 @@ use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use mem;
 use slice;
 
-/// The `Option`
+// Note that this is not a lang item per se, but it has a hidden dependency on
+// `Iterator`, which is one. The compiler assumes that the `next` method of
+// `Iterator` is an enumeration with one type parameter and two variants,
+// which basically means it must be `Option`.
+
+/// The `Option` type.
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Show)]
 pub enum Option<T> {
     /// No value

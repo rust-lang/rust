@@ -13,14 +13,18 @@
 use char;
 use collections::Collection;
 use fmt;
-use iter::{Iterator, range, DoubleEndedIterator};
+use iter::{range, DoubleEndedIterator};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive, Primitive};
 use num::{Zero, One, cast};
-use option::{None, Some};
 use result::Ok;
 use slice::{ImmutableVector, MutableVector};
 use slice;
 use str::StrSlice;
+
+#[cfg(stage0)]
+use iter::Iterator;         // NOTE(stage0): Remove after snapshot.
+#[cfg(stage0)]
+use option::{Some, None};   // NOTE(stage0): Remove after snapshot.
 
 /// A flag that specifies whether to use exponential (scientific) notation.
 pub enum ExponentFormat {

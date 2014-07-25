@@ -1543,6 +1543,31 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>,
     }
 }
 
+/// Generates code for the pattern binding in a `for` loop like
+/// `for <pat> in <expr> { ... }`.
+pub fn store_for_loop_binding<'a>(
+                              bcx: &'a Block<'a>,
+                              pat: Gc<ast::Pat>,
+                              llvalue: ValueRef,
+                              body_scope: cleanup::ScopeId)
+                              -> &'a Block<'a> {
+    let _icx = push_ctxt("match::store_for_loop_binding");
+
+    if simple_identifier(&*pat).is_some() {
+        // Generate nicer LLVM for the common case of a `for` loop pattern
+        // like `for x in blahblah { ... }`.
+        let binding_type = node_id_type(bcx, pat.id);
+        bcx.fcx.lllocals.borrow_mut().insert(pat.id,
+                                             Datum::new(llvalue,
+                                                        binding_type,
+                                                        Lvalue));
+        return bcx
+    }
+
+    // General path. Copy out the values that are used in the pattern.
+    bind_irrefutable_pat(bcx, pat, llvalue, BindLocal, body_scope)
+}
+
 fn mk_binding_alloca<'a,A>(bcx: &'a Block<'a>,
                            p_id: ast::NodeId,
                            ident: &ast::Ident,

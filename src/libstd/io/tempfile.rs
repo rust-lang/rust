@@ -12,7 +12,7 @@
 
 use io::{fs, IoResult};
 use io;
-use iter::{Iterator, range};
+use iter::range;
 use libc;
 use ops::Drop;
 use option::{Option, None, Some};
@@ -20,6 +20,9 @@ use os;
 use path::{Path, GenericPath};
 use result::{Ok, Err};
 use sync::atomics;
+
+#[cfg(stage0)]
+use iter::Iterator; // NOTE(stage0): Remove after snapshot.
 
 /// A wrapper for a path to temporary directory implementing automatic
 /// scope-based deletion.
