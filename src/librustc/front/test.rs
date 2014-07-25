@@ -206,7 +206,7 @@ fn generate_test_harness(sess: &Session, krate: ast::Crate) -> ast::Crate {
                              }),
         path: Vec::new(),
         testfns: Vec::new(),
-        reexport_mod_ident: token::str_to_ident("__test_reexports"),
+        reexport_mod_ident: token::gensym_ident("__test_reexports"),
         is_test_crate: is_test_crate(&krate),
         config: krate.config.clone(),
     };
@@ -384,7 +384,7 @@ fn mk_test_module(cx: &TestCtxt) -> Gc<ast::Item> {
     let item_ = ast::ItemMod(testmod);
 
     let item = ast::Item {
-        ident: token::str_to_ident("__test"),
+        ident: token::gensym_ident("__test"),
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: item_,
@@ -417,11 +417,27 @@ fn mk_tests(cx: &TestCtxt) -> Gc<ast::Item> {
     // The vector of test_descs for this crate
     let test_descs = mk_test_descs(cx);
 
-    (quote_item!(&cx.ext_cx,
-        pub static TESTS : &'static [self::test::TestDescAndFn] =
-            $test_descs
-        ;
-    )).unwrap()
+    // FIXME #15962: should be using quote_item, but that stringifies
+    // __test_reexports, causing it to be reinterned, losing the
+    // gensym information.
+    let sp = DUMMY_SP;
+    let ecx = &cx.ext_cx;
+    let struct_type = ecx.ty_path(ecx.path(sp, vec![ecx.ident_of("self"),
+                                                    ecx.ident_of("test"),
+                                                    ecx.ident_of("TestDescAndFn")]),
+                                  None);
+    let static_lt = ecx.lifetime(sp, token::special_idents::static_lifetime.name);
+    // &'static [self::test::TestDescAndFn]
+    let static_type = ecx.ty_rptr(sp,
+                                  ecx.ty(sp, ast::TyVec(struct_type)),
+                                  Some(static_lt),
+                                  ast::MutImmutable);
+    // static TESTS: $static_type = &[...];
+    ecx.item_static(sp,
+                    ecx.ident_of("TESTS"),
+                    static_type,
+                    ast::MutImmutable,
+                    test_descs)
 }
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
@@ -448,59 +464,58 @@ fn mk_test_descs(cx: &TestCtxt) -> Gc<ast::Expr> {
 }
 
 fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> Gc<ast::Expr> {
+    // FIXME #15962: should be using quote_expr, but that stringifies
+    // __test_reexports, causing it to be reinterned, losing the
+    // gensym information.
+
     let span = test.span;
     let path = test.path.clone();
+    let ecx = &cx.ext_cx;
+    let self_id = ecx.ident_of("self");
+    let test_id = ecx.ident_of("test");
+
+    // creates self::test::$name
+    let test_path = |name| {
+        ecx.path(span, vec![self_id, test_id, ecx.ident_of(name)])
+    };
+    // creates $name: $expr
+    let field = |name, expr| ecx.field_imm(span, ecx.ident_of(name), expr);
 
     debug!("encoding {}", ast_util::path_name_i(path.as_slice()));
 
-    let name_lit: ast::Lit =
-        nospan(ast::LitStr(token::intern_and_get_ident(
-                    ast_util::path_name_i(path.as_slice()).as_slice()),
-                    ast::CookedStr));
+    // path to the #[test] function: "foo::bar::baz"
+    let path_string = ast_util::path_name_i(path.as_slice());
+    let name_expr = ecx.expr_str(span, token::intern_and_get_ident(path_string.as_slice()));
 
-    let name_expr = box(GC) ast::Expr {
-          id: ast::DUMMY_NODE_ID,
-          node: ast::ExprLit(box(GC) name_lit),
-          span: span
-    };
+    // self::test::StaticTestName($name_expr)
+    let name_expr = ecx.expr_call(span,
+                                  ecx.expr_path(test_path("StaticTestName")),
+                                  vec![name_expr]);
+
+    let ignore_expr = ecx.expr_bool(span, test.ignore);
+    let fail_expr = ecx.expr_bool(span, test.should_fail);
+
+    // self::test::TestDesc { ... }
+    let desc_expr = ecx.expr_struct(
+        span,
+        test_path("TestDesc"),
+        vec![field("name", name_expr),
+             field("ignore", ignore_expr),
+             field("should_fail", fail_expr)]);
+
 
     let mut visible_path = vec![cx.reexport_mod_ident.clone()];
     visible_path.extend(path.move_iter());
-    let fn_path = cx.ext_cx.path_global(DUMMY_SP, visible_path);
 
-    let fn_expr = box(GC) ast::Expr {
-        id: ast::DUMMY_NODE_ID,
-        node: ast::ExprPath(fn_path),
-        span: span,
-    };
+    let fn_expr = ecx.expr_path(ecx.path_global(span, visible_path));
 
-    let t_expr = if test.bench {
-        quote_expr!(&cx.ext_cx, self::test::StaticBenchFn($fn_expr) )
-    } else {
-        quote_expr!(&cx.ext_cx, self::test::StaticTestFn($fn_expr) )
-    };
+    let variant_name = if test.bench { "StaticBenchFn" } else { "StaticTestFn" };
+    // self::test::$variant_name($fn_expr)
+    let testfn_expr = ecx.expr_call(span, ecx.expr_path(test_path(variant_name)), vec![fn_expr]);
 
-    let ignore_expr = if test.ignore {
-        quote_expr!(&cx.ext_cx, true )
-    } else {
-        quote_expr!(&cx.ext_cx, false )
-    };
-
-    let fail_expr = if test.should_fail {
-        quote_expr!(&cx.ext_cx, true )
-    } else {
-        quote_expr!(&cx.ext_cx, false )
-    };
-
-    let e = quote_expr!(&cx.ext_cx,
-        self::test::TestDescAndFn {
-            desc: self::test::TestDesc {
-                name: self::test::StaticTestName($name_expr),
-                ignore: $ignore_expr,
-                should_fail: $fail_expr
-            },
-            testfn: $t_expr,
-        }
-    );
-    e
+    // self::test::TestDescAndFn { ... }
+    ecx.expr_struct(span,
+                    test_path("TestDescAndFn"),
+                    vec![field("desc", desc_expr),
+                         field("testfn", testfn_expr)])
 }
