@@ -170,6 +170,24 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                 .collect();
             check_exhaustive(cx, ex.span, &matrix);
         },
+        ExprForLoop(ref pat, _, _, _) => {
+            let mut static_inliner = StaticInliner {
+                tcx: cx.tcx
+            };
+            match is_refutable(cx, static_inliner.fold_pat(*pat)) {
+                Some(uncovered_pat) => {
+                    cx.tcx.sess.span_err(
+                        pat.span,
+                        format!("refutable pattern in `for` loop binding: \
+                                 `{}` not covered",
+                                pat_to_string(&*uncovered_pat)).as_slice());
+                },
+                None => {}
+            }
+
+            // Check legality of move bindings.
+            check_legality_of_move_bindings(cx, false, [ *pat ]);
+        }
         _ => ()
     }
 }

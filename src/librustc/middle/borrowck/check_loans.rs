@@ -440,6 +440,7 @@ impl<'a> CheckLoanCtxt<'a> {
                 euv::AddrOf(..) |
                 euv::AutoRef(..) |
                 euv::ClosureInvocation(..) |
+                euv::ForLoop(..) |
                 euv::RefBinding(..) => {
                     format!("previous borrow of `{}` occurs here",
                             self.bccx.loan_path_to_string(&*old_loan.loan_path))
@@ -666,6 +667,11 @@ impl<'a> CheckLoanCtxt<'a> {
                 }
             }
             return;
+        }
+
+        // Initializations are OK.
+        if mode == euv::Init {
+            return
         }
 
         // For immutable local variables, assignments are legal

@@ -5329,7 +5329,42 @@ impl<'a> Resolver<'a> {
                 })
             }
 
-            ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
+            ExprForLoop(ref pattern, ref head, ref body, optional_label) => {
+                self.resolve_expr(&**head);
+
+                self.value_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+
+                self.resolve_pattern(&**pattern,
+                                     LocalIrrefutableMode,
+                                     &mut HashMap::new());
+
+                match optional_label {
+                    None => {}
+                    Some(label) => {
+                        self.label_ribs
+                            .borrow_mut()
+                            .push(Rib::new(NormalRibKind));
+                        let def_like = DlDef(DefLabel(expr.id));
+
+                        {
+                            let label_ribs = self.label_ribs.borrow();
+                            let length = label_ribs.len();
+                            let rib = label_ribs.get(length - 1);
+                            let renamed = mtwt::resolve(label);
+                            rib.bindings.borrow_mut().insert(renamed,
+                                                             def_like);
+                        }
+                    }
+                }
+
+                self.resolve_block(&**body);
+
+                if optional_label.is_some() {
+                    drop(self.label_ribs.borrow_mut().pop())
+                }
+
+                self.value_ribs.borrow_mut().pop();
+            }
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 let renamed = mtwt::resolve(label);

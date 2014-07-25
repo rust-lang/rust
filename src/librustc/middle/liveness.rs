@@ -125,6 +125,17 @@ use syntax::print::pprust::{expr_to_string, block_to_string};
 use syntax::{visit, ast_util};
 use syntax::visit::{Visitor, FnKind};
 
+/// For use with `propagate_through_loop`.
+#[deriving(PartialEq, Eq)]
+enum LoopKind {
+    /// An endless `loop` loop.
+    LoopLoop,
+    /// A `while` loop, with the given expression as condition.
+    WhileLoop(Gc<Expr>),
+    /// A `for` loop.
+    ForLoop,
+}
+
 #[deriving(PartialEq)]
 struct Variable(uint);
 #[deriving(PartialEq)]
@@ -480,7 +491,20 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::walk_expr(ir, expr, ());
       }
-      ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
+      ExprForLoop(ref pat, _, _, _) => {
+        pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
+            debug!("adding local variable {} from for loop with bm {:?}",
+                   p_id, bm);
+            let name = path1.node;
+            ir.add_live_node_for_node(p_id, VarDefNode(sp));
+            ir.add_variable(Local(LocalInfo {
+                id: p_id,
+                ident: name
+            }));
+        });
+        ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
+        visit::walk_expr(ir, expr, ());
+      }
       ExprBinary(op, _, _) if ast_util::lazy_binop(op) => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::walk_expr(ir, expr, ());
@@ -994,15 +1018,21 @@ impl<'a> Liveness<'a> {
           }
 
           ExprWhile(ref cond, ref blk) => {
-            self.propagate_through_loop(expr, Some(cond.clone()), &**blk, succ)
+            self.propagate_through_loop(expr,
+                                        WhileLoop(cond.clone()),
+                                        &**blk,
+                                        succ)
           }
 
-          ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
+          ExprForLoop(_, ref head, ref blk, _) => {
+            let ln = self.propagate_through_loop(expr, ForLoop, &**blk, succ);
+            self.propagate_through_expr(&**head, ln)
+          }
 
           // Note that labels have been resolved, so we don't need to look
           // at the label ident
           ExprLoop(ref blk, _) => {
-            self.propagate_through_loop(expr, None, &**blk, succ)
+            self.propagate_through_loop(expr, LoopLoop, &**blk, succ)
           }
 
           ExprMatch(ref e, ref arms) => {
@@ -1281,7 +1311,7 @@ impl<'a> Liveness<'a> {
 
     fn propagate_through_loop(&mut self,
                               expr: &Expr,
-                              cond: Option<Gc<Expr>>,
+                              kind: LoopKind,
                               body: &Block,
                               succ: LiveNode)
                               -> LiveNode {
@@ -1309,17 +1339,20 @@ impl<'a> Liveness<'a> {
         let mut first_merge = true;
         let ln = self.live_node(expr.id, expr.span);
         self.init_empty(ln, succ);
-        if cond.is_some() {
-            // if there is a condition, then it's possible we bypass
-            // the body altogether.  otherwise, the only way is via a
-            // break in the loop body.
+        if kind != LoopLoop {
+            // If this is not a `loop` loop, then it's possible we bypass
+            // the body altogether. Otherwise, the only way is via a `break`
+            // in the loop body.
             self.merge_from_succ(ln, succ, first_merge);
             first_merge = false;
         }
         debug!("propagate_through_loop: using id for loop body {} {}",
                expr.id, block_to_string(body));
 
-        let cond_ln = self.propagate_through_opt_expr(cond, ln);
+        let cond_ln = match kind {
+            LoopLoop | ForLoop => ln,
+            WhileLoop(ref cond) => self.propagate_through_expr(&**cond, ln),
+        };
         let body_ln = self.with_loop_nodes(expr.id, succ, ln, |this| {
             this.propagate_through_block(body, cond_ln)
         });
@@ -1327,8 +1360,14 @@ impl<'a> Liveness<'a> {
         // repeat until fixed point is reached:
         while self.merge_from_succ(ln, body_ln, first_merge) {
             first_merge = false;
-            assert!(cond_ln == self.propagate_through_opt_expr(cond,
-                                                                    ln));
+
+            let new_cond_ln = match kind {
+                LoopLoop | ForLoop => ln,
+                WhileLoop(ref cond) => {
+                    self.propagate_through_expr(&**cond, ln)
+                }
+            };
+            assert!(cond_ln == new_cond_ln);
             assert!(body_ln == self.with_loop_nodes(expr.id, succ, ln,
             |this| this.propagate_through_block(body, cond_ln)));
         }
@@ -1415,10 +1454,9 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ExprAgain(..) | ExprLit(_) | ExprBlock(..) |
       ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |
       ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprUnboxedFn(..) |
-      ExprPath(..) | ExprBox(..) => {
+      ExprPath(..) | ExprBox(..) | ExprForLoop(..) => {
         visit::walk_expr(this, expr, ());
       }
-      ExprForLoop(..) => fail!("non-desugared expr_for_loop")
     }
 }
 
