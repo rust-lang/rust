@@ -747,7 +747,6 @@ pub enum SelfTy {
     SelfStatic,
     SelfValue,
     SelfBorrowed(Option<Lifetime>, Mutability),
-    SelfOwned,
     SelfExplicit(Type),
 }
 
@@ -971,28 +970,27 @@ impl Clean<Item> for ty::Method {
     fn clean(&self) -> Item {
         let cx = get_cx();
         let (self_, sig) = match self.explicit_self {
-            ty::StaticExplicitSelfCategory => (ast::SelfStatic.clean(), self.fty.sig.clone()),
+            ty::StaticExplicitSelfCategory => (ast::SelfStatic.clean(),
+                                               self.fty.sig.clone()),
             s => {
                 let sig = ty::FnSig {
                     inputs: Vec::from_slice(self.fty.sig.inputs.slice_from(1)),
                     ..self.fty.sig.clone()
                 };
                 let s = match s {
+                    ty::ByValueExplicitSelfCategory => SelfValue,
                     ty::ByReferenceExplicitSelfCategory(..) => {
                         match ty::get(self.fty.sig.inputs[0]).sty {
                             ty::ty_rptr(r, mt) => {
                                 SelfBorrowed(r.clean(), mt.mutbl.clean())
                             }
-                            _ => {
-                                // FIXME(pcwalton): This is wrong.
-                                SelfStatic
-                            }
+                            _ => unreachable!(),
                         }
                     }
-                    _ => {
-                        // FIXME(pcwalton): This is wrong.
-                        SelfStatic
+                    ty::ByBoxExplicitSelfCategory => {
+                        SelfExplicit(self.fty.sig.inputs[0].clean())
                     }
+                    ty::StaticExplicitSelfCategory => unreachable!(),
                 };
                 (s, sig)
             }
@@ -1213,8 +1211,18 @@ impl Clean<Type> for ty::t {
             ty::ty_float(ast::TyF32) => Primitive(F32),
             ty::ty_float(ast::TyF64) => Primitive(F64),
             ty::ty_str => Primitive(Str),
-            ty::ty_box(t) => Managed(box t.clean()),
-            ty::ty_uniq(t) => Unique(box t.clean()),
+            ty::ty_box(t) => {
+                let gc_did = get_cx().tcx_opt().and_then(|tcx| {
+                    tcx.lang_items.gc()
+                });
+                lang_struct(gc_did, t, "Gc", Managed)
+            }
+            ty::ty_uniq(t) => {
+                let box_did = get_cx().tcx_opt().and_then(|tcx| {
+                    tcx.lang_items.owned_box()
+                });
+                lang_struct(box_did, t, "Box", Unique)
+            }
             ty::ty_vec(mt, None) => Vector(box mt.ty.clean()),
             ty::ty_vec(mt, Some(i)) => FixedVector(box mt.ty.clean(),
                                                    format!("{}", i)),
@@ -2092,5 +2100,31 @@ impl Clean<Stability> for attr::Stability {
             text: self.text.as_ref().map_or("".to_string(),
                                             |interned| interned.get().to_string()),
         }
+    }
+}
+
+fn lang_struct(did: Option<ast::DefId>, t: ty::t, name: &str,
+               fallback: fn(Box<Type>) -> Type) -> Type {
+    let did = match did {
+        Some(did) => did,
+        None => return fallback(box t.clean()),
+    };
+    let fqn = csearch::get_item_path(get_cx().tcx(), did);
+    let fqn: Vec<String> = fqn.move_iter().map(|i| {
+        i.to_string()
+    }).collect();
+    get_cx().external_paths.borrow_mut().get_mut_ref()
+                           .insert(did, (fqn, TypeStruct));
+    ResolvedPath {
+        typarams: None,
+        did: did,
+        path: Path {
+            global: false,
+            segments: vec![PathSegment {
+                name: name.to_string(),
+                lifetimes: vec![],
+                types: vec![t.clean()],
+            }],
+        },
     }
 }

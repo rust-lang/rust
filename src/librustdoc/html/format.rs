@@ -444,8 +444,6 @@ impl fmt::Show for clean::Type {
                                format!("[{}, ..{}]", **t, *s).as_slice())
             }
             clean::Bottom => f.write("!".as_bytes()),
-            clean::Unique(ref t) => write!(f, "Box<{}>", **t),
-            clean::Managed(ref t) => write!(f, "Gc<{}>", **t),
             clean::RawPointer(m, ref t) => {
                 write!(f, "*{}{}", RawMutableSpace(m), **t)
             }
@@ -455,6 +453,9 @@ impl fmt::Show for clean::Type {
                     _ => "".to_string(),
                 };
                 write!(f, "&amp;{}{}{}", lt, MutableSpace(mutability), **ty)
+            }
+            clean::Unique(..) | clean::Managed(..) => {
+                fail!("should have been cleaned")
             }
         }
     }
@@ -491,7 +492,6 @@ impl<'a> fmt::Show for Method<'a> {
         match *selfty {
             clean::SelfStatic => {},
             clean::SelfValue => args.push_str("self"),
-            clean::SelfOwned => args.push_str("self: Box<Self>"),
             clean::SelfBorrowed(Some(ref lt), mtbl) => {
                 args.push_str(format!("&amp;{} {}self", *lt,
                                       MutableSpace(mtbl)).as_slice());
