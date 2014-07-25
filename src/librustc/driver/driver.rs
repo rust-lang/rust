@@ -166,7 +166,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     }
 
     if sess.show_span() {
-        front::show_span::run(sess, &krate);
+        syntax::show_span::run(sess.diagnostic(), &krate);
     }
 
     krate
@@ -209,7 +209,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // baz! should not use this definition unless foo is enabled.
 
     krate = time(time_passes, "configuration 1", krate, |krate|
-                 front::config::strip_unconfigured_items(krate));
+                 syntax::config::strip_unconfigured_items(krate));
 
     let mut addl_plugins = Some(addl_plugins);
     let Plugins { macros, registrars }
@@ -290,10 +290,13 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     // strip again, in case expansion added anything with a #[cfg].
     krate = time(time_passes, "configuration 2", krate, |krate|
-                 front::config::strip_unconfigured_items(krate));
+                 syntax::config::strip_unconfigured_items(krate));
 
     krate = time(time_passes, "maybe building test harness", krate, |krate|
-                 front::test::modify_for_testing(sess, krate));
+                 syntax::test::modify_for_testing(&sess.parse_sess,
+                                                  &sess.opts.cfg,
+                                                  krate,
+                                                  sess.diagnostic()));
 
     krate = time(time_passes, "prelude injection", krate, |krate|
                  front::std_inject::maybe_inject_prelude(sess, krate));
