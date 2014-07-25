@@ -33,7 +33,7 @@ extern crate collections;
 #[cfg(test)] #[phase(plugin, link)] extern crate std;
 
 pub use self::util::{Stdio, Stdout, Stderr};
-pub use self::unwind::{begin_unwind, begin_unwind_fmt, begin_unwind_no_time_to_explain};
+pub use self::unwind::{begin_unwind, begin_unwind_fmt};
 
 use core::prelude::*;
 
