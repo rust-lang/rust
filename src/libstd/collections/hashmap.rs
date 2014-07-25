@@ -693,7 +693,7 @@ impl DefaultResizePolicy {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
 /// use std::collections::HashMap;
 ///
 /// // type inference lets us omit an explicit type signature (which
@@ -727,6 +727,30 @@ impl DefaultResizePolicy {
 /// // iterate over everything.
 /// for (book, review) in book_reviews.iter() {
 ///     println!("{}: \"{}\"", *book, *review);
+/// }
+/// ```
+///
+/// The easiest way to use `HashMap` with a custom type is to derive `Eq` and `Hash`.
+/// We must also derive `PartialEq`.
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// #[deriving(Hash, Eq, PartialEq, Show)]
+/// struct Viking<'a> {
+///     name: &'a str,
+///     power: uint,
+/// }
+///
+/// let mut vikings = HashMap::new();
+///
+/// vikings.insert("Norway", Viking { name: "Einar", power: 9u });
+/// vikings.insert("Denmark", Viking { name: "Olaf", power: 4u });
+/// vikings.insert("Iceland", Viking { name: "Harald", power: 8u });
+///
+/// // Use derived implementation to print the vikings.
+/// for (land, viking) in vikings.iter() {
+///     println!("{} at {}", viking, land);
 /// }
 /// ```
 #[deriving(Clone)]
@@ -906,28 +930,10 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         // earlier.
         return Some(retval);
     }
-
-    /// Like `pop`, but can operate on any type that is equivalent to a key.
-    #[experimental]
-    pub fn pop_equiv<Q:Hash<S> + Equiv<K>>(&mut self, k: &Q) -> Option<V> {
-        if self.table.size() == 0 {
-            return None
-        }
-
-        let potential_new_size = self.table.size() - 1;
-        self.make_some_room(potential_new_size);
-
-        let starting_index = match self.search_equiv(k) {
-            Some(idx) => idx,
-            None      => return None,
-        };
-
-        self.pop_internal(starting_index)
-    }
 }
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Collection for HashMap<K, V, H> {
-    /// Return the number of elements in the map
+    /// Return the number of elements in the map.
     fn len(&self) -> uint { self.table.size() }
 }
 
@@ -1032,12 +1038,26 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> MutableMap<K, V> for HashMap<K, V, H> 
 
 impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     /// Create an empty HashMap.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// let mut map: HashMap<&str, int> = HashMap::new();
+    /// ```
     #[inline]
     pub fn new() -> HashMap<K, V, RandomSipHasher> {
         HashMap::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Creates an empty hash map with the given initial capacity.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// let mut map: HashMap<&str, int> = HashMap::with_capacity(10);
+    /// ```
     #[inline]
     pub fn with_capacity(capacity: uint) -> HashMap<K, V, RandomSipHasher> {
         let hasher = RandomSipHasher::new();
@@ -1049,6 +1069,17 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Creates an empty hashmap which will use the given hasher to hash keys.
     ///
     /// The creates map has the default initial capacity.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use std::hash::sip::SipHasher;
+    ///
+    /// let h = SipHasher::new();
+    /// let mut map = HashMap::with_hasher(h);
+    /// map.insert(1i, 2u);
+    /// ```
     #[inline]
     pub fn with_hasher(hasher: H) -> HashMap<K, V, H> {
         HashMap::with_capacity_and_hasher(INITIAL_CAPACITY, hasher)
@@ -1061,6 +1092,17 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// is designed to allow HashMaps to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use std::hash::sip::SipHasher;
+    ///
+    /// let h = SipHasher::new();
+    /// let mut map = HashMap::with_capacity_and_hasher(10, h);
+    /// map.insert(1i, 2u);
+    /// ```
     #[inline]
     pub fn with_capacity_and_hasher(capacity: uint, hasher: H) -> HashMap<K, V, H> {
         let cap = num::next_power_of_two(max(INITIAL_CAPACITY, capacity));
@@ -1077,6 +1119,12 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// This function has no effect on the operational semantics of the
     /// hashtable, only on performance.
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// let mut map: HashMap<&str, int> = HashMap::new();
+    /// map.reserve(10);
+    /// ```
     pub fn reserve(&mut self, new_minimum_capacity: uint) {
         let cap = num::next_power_of_two(
             max(INITIAL_CAPACITY, new_minimum_capacity));
@@ -1241,12 +1289,38 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
 
     /// Return the value corresponding to the key in the map, or insert
     /// and return the value if it doesn't exist.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// let mut map = HashMap::new();
+    ///
+    /// // Insert 1i with key "a"
+    /// assert_eq!(*map.find_or_insert("a", 1i), 1);
+    ///
+    /// // Find the existing key
+    /// assert_eq!(*map.find_or_insert("a", -2), 1);
+    /// ```
     pub fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a mut V {
         self.find_with_or_insert_with(k, v, |_k, _v, _a| (), |_k, a| a)
     }
 
     /// Return the value corresponding to the key in the map, or create,
     /// insert, and return a new value if it doesn't exist.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// let mut map = HashMap::new();
+    ///
+    /// // Insert 10 with key 2
+    /// assert_eq!(*map.find_or_insert_with(2i, |&key| 5 * key as uint), 10u);
+    ///
+    /// // Find the existing key
+    /// assert_eq!(*map.find_or_insert_with(2, |&key| key as uint), 10);
+    /// ```
     pub fn find_or_insert_with<'a>(&'a mut self, k: K, f: |&K| -> V)
                                -> &'a mut V {
         self.find_with_or_insert_with(k, (), |_k, _v, _a| (), |k, _a| f(k))
@@ -1255,6 +1329,20 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Insert a key-value pair into the map if the key is not already present.
     /// Otherwise, modify the existing value for the key.
     /// Returns the new or modified value for the key.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// let mut map = HashMap::new();
+    ///
+    /// // Insert 2 with key "a"
+    /// assert_eq!(*map.insert_or_update_with("a", 2u, |_key, val| *val = 3), 2);
+    ///
+    /// // Update and return the existing value
+    /// assert_eq!(*map.insert_or_update_with("a", 9, |_key, val| *val = 7), 7);
+    /// assert_eq!(map.get(&"a"), &7);
+    /// ```
     pub fn insert_or_update_with<'a>(
                                  &'a mut self,
                                  k: K,
@@ -1268,13 +1356,15 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// insert and return a new value if it doesn't exist.
     ///
     /// This method allows for all insertion behaviours of a hashmap;
-    /// see methods like `insert`, `find_or_insert` and
-    /// `insert_or_update_with` for less general and more friendly
-    /// variations of this.
+    /// see methods like
+    /// [`insert`](../trait.MutableMap.html#tymethod.insert),
+    /// [`find_or_insert`](#method.find_or_insert) and
+    /// [`insert_or_update_with`](#method.insert_or_update_with)
+    /// for less general and more friendly variations of this.
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashMap;
     ///
     /// // map some strings to vectors of strings
@@ -1326,7 +1416,22 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
-    /// Retrieves a value for the given key, failing if the key is not present.
+    /// Retrieves a value for the given key.
+    /// See [`find`](../trait.Map.html#tymethod.find) for a non-failing alternative.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the key is not present.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1i);
+    /// assert_eq!(map.get(&"a"), &1);
+    /// ```
     pub fn get<'a>(&'a self, k: &K) -> &'a V {
         match self.find(k) {
             Some(v) => v,
@@ -1334,7 +1439,31 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
-    /// Retrieves a (mutable) value for the given key, failing if the key is not present.
+    /// Retrieves a mutable value for the given key.
+    /// See [`find_mut`](../trait.MutableMap.html#tymethod.find_mut) for a non-failing alternative.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the key is not present.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1i);
+    /// {
+    ///     // val will freeze map to prevent usage during its lifetime
+    ///     let val = map.get_mut(&"a");
+    ///     *val = 40;
+    /// }
+    /// assert_eq!(map.get(&"a"), &40);
+    ///
+    /// // A more direct way could be:
+    /// *map.get_mut(&"a") = -2;
+    /// assert_eq!(map.get(&"a"), &-2);
+    /// ```
     pub fn get_mut<'a>(&'a mut self, k: &K) -> &'a mut V {
         match self.find_mut(k) {
             Some(v) => v,
@@ -1344,12 +1473,16 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
 
     /// Return true if the map contains a value for the specified key,
     /// using equivalence.
+    ///
+    /// See [pop_equiv](#method.pop_equiv) for an extended example.
     pub fn contains_key_equiv<Q: Hash<S> + Equiv<K>>(&self, key: &Q) -> bool {
         self.search_equiv(key).is_some()
     }
 
     /// Return the value corresponding to the key in the map, using
     /// equivalence.
+    ///
+    /// See [pop_equiv](#method.pop_equiv) for an extended example.
     pub fn find_equiv<'a, Q: Hash<S> + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
         match self.search_equiv(k) {
             None      => None,
@@ -1360,27 +1493,154 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
+    /// Remove an equivalent key from the map, returning the value at the
+    /// key if the key was previously in the map.
+    ///
+    /// # Example
+    ///
+    /// This is a slightly silly example where we define the number's parity as
+    /// the equivalence class. It is important that the values hash the same,
+    /// which is why we override `Hash`.
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use std::hash::Hash;
+    /// use std::hash::sip::SipState;
+    ///
+    /// #[deriving(Eq, PartialEq)]
+    /// struct EvenOrOdd {
+    ///     num: uint
+    /// };
+    ///
+    /// impl Hash for EvenOrOdd {
+    ///     fn hash(&self, state: &mut SipState) {
+    ///         let parity = self.num % 2;
+    ///         parity.hash(state);
+    ///     }
+    /// }
+    ///
+    /// impl Equiv<EvenOrOdd> for EvenOrOdd {
+    ///     fn equiv(&self, other: &EvenOrOdd) -> bool {
+    ///         self.num % 2 == other.num % 2
+    ///     }
+    /// }
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(EvenOrOdd { num: 3 }, "foo");
+    ///
+    /// assert!(map.contains_key_equiv(&EvenOrOdd { num: 1 }));
+    /// assert!(!map.contains_key_equiv(&EvenOrOdd { num: 4 }));
+    ///
+    /// assert_eq!(map.find_equiv(&EvenOrOdd { num: 5 }), Some(&"foo"));
+    /// assert_eq!(map.find_equiv(&EvenOrOdd { num: 2 }), None);
+    ///
+    /// assert_eq!(map.pop_equiv(&EvenOrOdd { num: 1 }), Some("foo"));
+    /// assert_eq!(map.pop_equiv(&EvenOrOdd { num: 2 }), None);
+    ///
+    /// ```
+    #[experimental]
+    pub fn pop_equiv<Q:Hash<S> + Equiv<K>>(&mut self, k: &Q) -> Option<V> {
+        if self.table.size() == 0 {
+            return None
+        }
+
+        let potential_new_size = self.table.size() - 1;
+        self.make_some_room(potential_new_size);
+
+        let starting_index = match self.search_equiv(k) {
+            Some(idx) => idx,
+            None      => return None,
+        };
+
+        self.pop_internal(starting_index)
+    }
+
     /// An iterator visiting all keys in arbitrary order.
-    /// Iterator element type is &'a K.
+    /// Iterator element type is `&'a K`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for key in map.keys() {
+    ///     println!("{}", key);
+    /// }
+    /// ```
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
         self.iter().map(|(k, _v)| k)
     }
 
     /// An iterator visiting all values in arbitrary order.
-    /// Iterator element type is &'a V.
+    /// Iterator element type is `&'a V`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for key in map.values() {
+    ///     println!("{}", key);
+    /// }
+    /// ```
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         self.iter().map(|(_k, v)| v)
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
-    /// Iterator element type is (&'a K, &'a V).
+    /// Iterator element type is `(&'a K, &'a V)`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for (key, val) in map.iter() {
+    ///     println!("key: {} val: {}", key, val);
+    /// }
+    /// ```
     pub fn iter<'a>(&'a self) -> Entries<'a, K, V> {
         self.table.iter()
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
-    /// Iterator element type is (&'a K, &'a mut V).
+    /// Iterator element type is `(&'a K, &'a mut V)`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// // Update all values
+    /// for (_, val) in map.mut_iter() {
+    ///     *val *= 2;
+    /// }
+    ///
+    /// for (key, val) in map.iter() {
+    ///     println!("key: {} val: {}", key, val);
+    /// }
+    /// ```
     pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
         self.table.mut_iter()
     }
@@ -1388,18 +1648,56 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Creates a consuming iterator, that is, one that moves each key-value
     /// pair out of the map in arbitrary order. The map cannot be used after
     /// calling this.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// // Not possible with .iter()
+    /// let vec: Vec<(&str, int)> = map.move_iter().collect();
+    /// ```
     pub fn move_iter(self) -> MoveEntries<K, V> {
         self.table.move_iter().map(|(_, k, v)| (k, v))
     }
 }
 
 impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
-    /// Like `find`, but returns a copy of the value.
+    /// Return a copy of the value corresponding to the key.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<uint, String> = HashMap::new();
+    /// map.insert(1u, "foo".to_string());
+    /// let s: String = map.find_copy(&1).unwrap();
+    /// ```
     pub fn find_copy(&self, k: &K) -> Option<V> {
         self.find(k).map(|v| (*v).clone())
     }
 
-    /// Like `get`, but returns a copy of the value.
+    /// Return a copy of the value corresponding to the key.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the key is not present.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<uint, String> = HashMap::new();
+    /// map.insert(1u, "foo".to_string());
+    /// let s: String = map.get_copy(&1);
+    /// ```
     pub fn get_copy(&self, k: &K) -> V {
         (*self.get(k)).clone()
     }
@@ -1489,7 +1787,7 @@ pub type SetMoveItems<K> =
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
 /// use std::collections::HashSet;
 ///
 /// // Type inference lets us omit an explicit type signature (which
@@ -1552,7 +1850,6 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     ///
     /// # Example
     ///
-    /// ```rust
     /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::new();
     /// ```
@@ -1566,7 +1863,6 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     ///
     /// # Example
     ///
-    /// ```rust
     /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::with_capacity(10);
     /// ```
@@ -1624,7 +1920,6 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
     /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::new();
     /// set.reserve(10);
@@ -1683,9 +1978,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let mut set = HashSet::new();
     /// set.insert("a");
     /// set.insert("b");
@@ -1705,9 +1999,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let mut set = HashSet::new();
     /// set.insert("a".to_string());
     /// set.insert("b".to_string());
@@ -1728,9 +2021,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
@@ -1758,9 +2050,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
@@ -1784,9 +2075,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
@@ -1810,9 +2100,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
     /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
     ///
