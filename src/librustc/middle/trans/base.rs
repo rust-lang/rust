@@ -2140,7 +2140,10 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
                 attrs.push((idx, llvm::NonNullAttribute as u64));
             }
             // `&mut` pointer parameters never alias other parameters, or mutable global data
-            ty::ty_rptr(b, mt) if mt.mutbl == ast::MutMutable => {
+            // `&` pointer parameters never alias either (for LLVM's purposes) as long as the
+            // interior is safe
+            ty::ty_rptr(b, mt) if mt.mutbl == ast::MutMutable ||
+                                  !ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe() => {
                 attrs.push((idx, llvm::NoAliasAttribute as u64));
                 attrs.push((idx, llvm::NonNullAttribute as u64));
                 match b {
