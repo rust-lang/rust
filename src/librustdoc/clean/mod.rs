@@ -1320,16 +1320,26 @@ impl Clean<Item> for ast::StructField {
 impl Clean<Item> for ty::field_ty {
     fn clean(&self) -> Item {
         use syntax::parse::token::special_idents::unnamed_field;
+        use rustc::metadata::csearch;
+
+        let cx = get_cx();
+        let attrs;
+
+        let attr_map = csearch::get_struct_field_attrs(&cx.tcx().sess.cstore, self.id);
+
         let name = if self.name == unnamed_field.name {
+            attrs = None;
             None
         } else {
+            attrs = Some(attr_map.find(&self.id.node).unwrap());
             Some(self.name)
         };
-        let cx = get_cx();
+
         let ty = ty::lookup_item_type(cx.tcx(), self.id);
+
         Item {
             name: name.clean(),
-            attrs: inline::load_attrs(cx.tcx(), self.id),
+            attrs: attrs.unwrap_or(&Vec::new()).clean(),
             source: Span::empty(),
             visibility: Some(self.vis),
             stability: get_stability(self.id),

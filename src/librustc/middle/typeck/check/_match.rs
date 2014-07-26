@@ -322,7 +322,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
             }
             Some(&(index, ref mut used)) => {
                 *used = true;
-                let class_field = *class_fields.get(index);
+                let class_field = class_fields.get(index).clone();
                 let field_type = ty::lookup_field_type(tcx,
                                                        class_id,
                                                        class_field.id,
