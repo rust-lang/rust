@@ -24,6 +24,8 @@ use core::mem::replace;
 use {Collection, Mutable, Map, MutableMap, MutableSeq};
 use {vec, slice};
 use vec::Vec;
+use hash;
+use hash::Hash;
 
 /// A map optimized for small integer keys.
 ///
@@ -58,7 +60,7 @@ use vec::Vec;
 /// months.clear();
 /// assert!(months.is_empty());
 /// ```
-#[deriving(Hash, PartialEq, Eq)]
+#[deriving(PartialEq, Eq)]
 pub struct SmallIntMap<T> {
     v: Vec<Option<T>>,
 }
@@ -164,6 +166,12 @@ impl<V:Clone> Clone for SmallIntMap<V> {
         for (i, w) in self.v.mut_iter().enumerate() {
             *w = source.v[i].clone();
         }
+    }
+}
+
+impl <S: hash::Writer, T: Hash<S>> Hash<S> for SmallIntMap<T> {
+    fn hash(&self, state: &mut S) {
+        self.v.hash(state)
     }
 }
 
@@ -478,8 +486,8 @@ pub type Values<'a, T> =
 #[cfg(test)]
 mod test_map {
     use std::prelude::*;
-    use std::hash;
     use vec::Vec;
+    use hash;
 
     use {Map, MutableMap, Mutable, MutableSeq};
     use super::SmallIntMap;
@@ -764,19 +772,19 @@ mod test_map {
 
     #[test]
     fn test_hash() {
-      let mut x = SmallIntMap::new();
-      let mut y = SmallIntMap::new();
+        let mut x = SmallIntMap::new();
+        let mut y = SmallIntMap::new();
 
-      assert!(hash::hash(&x) == hash::hash(&y));
-      x.insert(1, 'a');
-      x.insert(2, 'b');
-      x.insert(3, 'c');
+        assert!(hash::hash(&x) == hash::hash(&y));
+        x.insert(1, 'a');
+        x.insert(2, 'b');
+        x.insert(3, 'c');
 
-      y.insert(3, 'c');
-      y.insert(2, 'b');
-      y.insert(1, 'a');
+        y.insert(3, 'c');
+        y.insert(2, 'b');
+        y.insert(1, 'a');
 
-      assert!(hash::hash(&x) == hash::hash(&y));
+        assert!(hash::hash(&x) == hash::hash(&y));
     }
 
     #[test]
