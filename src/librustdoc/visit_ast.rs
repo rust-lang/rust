@@ -192,13 +192,16 @@ impl<'a> RustdocVisitor<'a> {
                        om: &mut Module,
                        please_inline: bool) -> Option<Gc<ast::ViewPath>> {
         match path.node {
-            ast::ViewPathSimple(_, _, id) => {
-                if self.resolve_id(id, false, om, please_inline) { return None }
+            ast::ViewPathSimple(dst, _, id) => {
+                if self.resolve_id(id, Some(dst), false, om, please_inline) {
+                    return None
+                }
             }
             ast::ViewPathList(ref p, ref paths, ref b) => {
                 let mut mine = Vec::new();
                 for path in paths.iter() {
-                    if !self.resolve_id(path.node.id(), false, om, please_inline) {
+                    if !self.resolve_id(path.node.id(), None, false, om,
+                                        please_inline) {
                         mine.push(path.clone());
                     }
                 }
@@ -212,14 +215,16 @@ impl<'a> RustdocVisitor<'a> {
 
             // these are feature gated anyway
             ast::ViewPathGlob(_, id) => {
-                if self.resolve_id(id, true, om, please_inline) { return None }
+                if self.resolve_id(id, None, true, om, please_inline) {
+                    return None
+                }
             }
         }
         return Some(path);
     }
 
-    fn resolve_id(&mut self, id: ast::NodeId, glob: bool,
-                  om: &mut Module, please_inline: bool) -> bool {
+    fn resolve_id(&mut self, id: ast::NodeId, renamed: Option<ast::Ident>,
+                  glob: bool, om: &mut Module, please_inline: bool) -> bool {
         let tcx = match self.cx.maybe_typed {
             core::Typed(ref tcx) => tcx,
             core::NotTyped(_) => return false
@@ -235,6 +240,15 @@ impl<'a> RustdocVisitor<'a> {
 
         match tcx.map.get(def.node) {
             ast_map::NodeItem(it) => {
+                let it = match renamed {
+                    Some(ident) => {
+                        box(GC) ast::Item {
+                            ident: ident,
+                            ..(*it).clone()
+                        }
+                    }
+                    None => it,
+                };
                 if glob {
                     match it.node {
                         ast::ItemMod(ref m) => {
