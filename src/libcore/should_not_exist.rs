@@ -37,7 +37,7 @@ use ptr;
 use raw::Vec;
 use slice::ImmutableVector;
 
-#[allow(ctypes)]
+#[allow(ffi_rust_types)]
 extern {
     fn rust_allocate(size: uint, align: uint) -> *u8;
     fn rust_deallocate(ptr: *u8, size: uint, align: uint);

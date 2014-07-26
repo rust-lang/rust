@@ -140,7 +140,7 @@ impl LintStore {
                      HardwiredLints,
                      WhileTrue,
                      UnusedCasts,
-                     CTypes,
+                     FFIRustTypes,
                      HeapMemory,
                      UnusedAttribute,
                      PathStatement,

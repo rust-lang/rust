@@ -55,7 +55,7 @@ fn fail_bounds_check(file: &'static str, line: uint,
 
 #[cold]
 pub fn begin_unwind(fmt: &fmt::Arguments, file: &'static str, line: uint) -> ! {
-    #[allow(ctypes)]
+    #[allow(ffi_rust_types)]
     extern {
         #[lang = "begin_unwind"]
         fn begin_unwind(fmt: &fmt::Arguments, file: &'static str,

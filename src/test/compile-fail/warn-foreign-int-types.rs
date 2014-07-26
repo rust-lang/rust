@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![forbid(ctypes)]
+#![forbid(ffi_rust_types)]
 #![allow(dead_code)]
 
 mod xx {

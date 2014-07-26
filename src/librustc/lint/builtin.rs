@@ -330,14 +330,14 @@ impl LintPass for TypeLimits {
     }
 }
 
-declare_lint!(CTYPES, Warn,
+declare_lint!(FFI_RUST_TYPES, Warn,
               "proper use of libc types in foreign modules")
 
-pub struct CTypes;
+pub struct FFIRustTypes;
 
-impl LintPass for CTypes {
+impl LintPass for FFIRustTypes {
     fn get_lints(&self) -> LintArray {
-        lint_array!(CTYPES)
+        lint_array!(FFI_RUST_TYPES)
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
@@ -346,18 +346,18 @@ impl LintPass for CTypes {
                 ast::TyPath(_, _, id) => {
                     match cx.tcx.def_map.borrow().get_copy(&id) {
                         def::DefPrimTy(ast::TyInt(ast::TyI)) => {
-                            cx.span_lint(CTYPES, ty.span,
+                            cx.span_lint(FFI_RUST_TYPES, ty.span,
                                          "found rust type `int` in foreign module, while \
                                           libc::c_int or libc::c_long should be used");
                         }
                         def::DefPrimTy(ast::TyUint(ast::TyU)) => {
-                            cx.span_lint(CTYPES, ty.span,
+                            cx.span_lint(FFI_RUST_TYPES, ty.span,
                                          "found rust type `uint` in foreign module, while \
                                           libc::c_uint or libc::c_ulong should be used");
                         }
                         def::DefTy(def_id) => {
                             if !adt::is_ffi_safe(cx.tcx, def_id) {
-                                cx.span_lint(CTYPES, ty.span,
+                                cx.span_lint(FFI_RUST_TYPES, ty.span,
                                              "found enum type without foreign-function-safe \
                                               representation annotation in foreign module");
                                 // hmm... this message could be more helpful
