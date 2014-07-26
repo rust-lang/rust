@@ -133,6 +133,18 @@ impl<T> RingBuf<T> {
     /// Retrieve an element in the RingBuf by index
     ///
     /// Fails if there is no element with the given index
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push(3i);
+    /// buf.push(4);
+    /// buf.push(5);
+    /// assert_eq!(buf.get(1), &4);
+    /// ```
     pub fn get<'a>(&'a self, i: uint) -> &'a T {
         let idx = self.raw_index(i);
         match *self.elts.get(idx) {
@@ -144,6 +156,19 @@ impl<T> RingBuf<T> {
     /// Retrieve an element in the RingBuf by index
     ///
     /// Fails if there is no element with the given index
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push(3i);
+    /// buf.push(4);
+    /// buf.push(5);
+    /// *buf.get_mut(1) = 7;
+    /// assert_eq!(buf.get(1), &7);
+    /// ```
     pub fn get_mut<'a>(&'a mut self, i: uint) -> &'a mut T {
         let idx = self.raw_index(i);
         match *self.elts.get_mut(idx) {
@@ -157,6 +182,20 @@ impl<T> RingBuf<T> {
     /// `i` and `j` may be equal.
     ///
     /// Fails if there is no element with the given index
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push(3i);
+    /// buf.push(4);
+    /// buf.push(5);
+    /// buf.swap(0, 2);
+    /// assert_eq!(buf.get(0), &5);
+    /// assert_eq!(buf.get(2), &3);
+    /// ```
     pub fn swap(&mut self, i: uint, j: uint) {
         assert!(i < self.len());
         assert!(j < self.len());
@@ -196,11 +235,38 @@ impl<T> RingBuf<T> {
     }
 
     /// Front-to-back iterator.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push(5i);
+    /// buf.push(3);
+    /// buf.push(4);
+    /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), &[&5, &3, &4]);
+    /// ```
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
         Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
     }
 
     /// Front-to-back iterator which returns mutable values.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push(5i);
+    /// buf.push(3);
+    /// buf.push(4);
+    /// for num in buf.mut_iter() {
+    ///     *num = *num - 2;
+    /// }
+    /// assert_eq!(buf.mut_iter().collect::<Vec<&mut int>>().as_slice(), &[&mut 3, &mut 1, &mut 2]);
+    /// ```
     pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
         let start_index = raw_index(self.lo, self.elts.len(), 0);
         let end_index = raw_index(self.lo, self.elts.len(), self.nelts);
