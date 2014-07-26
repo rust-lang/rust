@@ -92,6 +92,13 @@ impl<K, V> LruEntry<K, V> {
 
 impl<K: Hash + Eq, V> LruCache<K, V> {
     /// Create an LRU Cache that holds at most `capacity` items.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::LruCache;
+    /// let mut cache: LruCache<int, &str> = LruCache::new(10);
+    /// ```
     pub fn new(capacity: uint) -> LruCache<K, V> {
         let cache = LruCache {
             map: HashMap::new(),
@@ -106,6 +113,18 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     }
 
     /// Put a key-value pair into cache.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::LruCache;
+    /// let mut cache = LruCache::new(2);
+    ///
+    /// cache.put(1i, "a");
+    /// cache.put(2, "b");
+    /// assert_eq!(cache.get(&1), Some(&"a"));
+    /// assert_eq!(cache.get(&2), Some(&"b"));
+    /// ```
     pub fn put(&mut self, k: K, v: V) {
         let (node_ptr, node_opt) = match self.map.find_mut(&KeyRef{k: &k}) {
             Some(node) => {
@@ -137,6 +156,21 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     }
 
     /// Return a value corresponding to the key in the cache.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::LruCache;
+    /// let mut cache = LruCache::new(2);
+    ///
+    /// cache.put(1i, "a");
+    /// cache.put(2, "b");
+    /// cache.put(2, "c");
+    /// cache.put(3, "d");
+    ///
+    /// assert_eq!(cache.get(&1), None);
+    /// assert_eq!(cache.get(&2), Some(&"c"));
+    /// ```
     pub fn get<'a>(&'a mut self, k: &K) -> Option<&'a V> {
         let (value, node_ptr_opt) = match self.map.find_mut(&KeyRef{k: k}) {
             None => (None, None),
@@ -156,6 +190,20 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     }
 
     /// Remove and return a value corresponding to the key from the cache.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::LruCache;
+    /// let mut cache = LruCache::new(2);
+    ///
+    /// cache.put(2i, "a");
+    ///
+    /// assert_eq!(cache.pop(&1), None);
+    /// assert_eq!(cache.pop(&2), Some("a"));
+    /// assert_eq!(cache.pop(&2), None);
+    /// assert_eq!(cache.len(), 0);
+    /// ```
     pub fn pop(&mut self, k: &K) -> Option<V> {
         match self.map.pop(&KeyRef{k: k}) {
             None => None,
@@ -164,12 +212,49 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     }
 
     /// Return the maximum number of key-value pairs the cache can hold.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::LruCache;
+    /// let mut cache: LruCache<int, &str> = LruCache::new(2);
+    /// assert_eq!(cache.capacity(), 2);
+    /// ```
     pub fn capacity(&self) -> uint {
         self.max_size
     }
 
     /// Change the number of key-value pairs the cache can hold. Remove
     /// least-recently-used key-value pairs if necessary.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::LruCache;
+    /// let mut cache = LruCache::new(2);
+    ///
+    /// cache.put(1i, "a");
+    /// cache.put(2, "b");
+    /// cache.put(3, "c");
+    ///
+    /// assert_eq!(cache.get(&1), None);
+    /// assert_eq!(cache.get(&2), Some(&"b"));
+    /// assert_eq!(cache.get(&3), Some(&"c"));
+    ///
+    /// cache.change_capacity(3);
+    /// cache.put(1i, "a");
+    /// cache.put(2, "b");
+    ///
+    /// assert_eq!(cache.get(&1), Some(&"a"));
+    /// assert_eq!(cache.get(&2), Some(&"b"));
+    /// assert_eq!(cache.get(&3), Some(&"c"));
+    ///
+    /// cache.change_capacity(1);
+    ///
+    /// assert_eq!(cache.get(&1), None);
+    /// assert_eq!(cache.get(&2), None);
+    /// assert_eq!(cache.get(&3), Some(&"c"));
+    /// ```
     pub fn change_capacity(&mut self, capacity: uint) {
         for _ in range(capacity, self.len()) {
             self.remove_lru();
