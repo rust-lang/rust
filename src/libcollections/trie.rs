@@ -1329,7 +1329,7 @@ mod test_map {
     #[test]
     fn test_show() {
         let mut map = TrieMap::new();
-        let empty = TrieMap::new();
+        let empty: TrieMap<uint> = TrieMap::new();
 
         map.insert(1, 'a');
         map.insert(2, 'b');
