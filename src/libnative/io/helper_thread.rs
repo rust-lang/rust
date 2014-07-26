@@ -26,7 +26,7 @@ use std::mem;
 use std::rt::bookkeeping;
 use std::rt::mutex::StaticNativeMutex;
 use std::rt;
-use std::ty::Unsafe;
+use std::cell::UnsafeCell;
 
 use task;
 
@@ -41,35 +41,26 @@ pub struct Helper<M> {
     /// Internal lock which protects the remaining fields
     pub lock: StaticNativeMutex,
 
-    // You'll notice that the remaining fields are Unsafe<T>, and this is
+    // You'll notice that the remaining fields are UnsafeCell<T>, and this is
     // because all helper thread operations are done through &self, but we need
     // these to be mutable (once `lock` is held).
 
     /// Lazily allocated channel to send messages to the helper thread.
-    pub chan: Unsafe<*mut Sender<M>>,
+    pub chan: UnsafeCell<*mut Sender<M>>,
 
     /// OS handle used to wake up a blocked helper thread
-    pub signal: Unsafe<uint>,
+    pub signal: UnsafeCell<uint>,
 
     /// Flag if this helper thread has booted and been initialized yet.
-    pub initialized: Unsafe<bool>,
+    pub initialized: UnsafeCell<bool>,
 }
 
 macro_rules! helper_init( (static mut $name:ident: Helper<$m:ty>) => (
     static mut $name: Helper<$m> = Helper {
         lock: ::std::rt::mutex::NATIVE_MUTEX_INIT,
-        chan: ::std::ty::Unsafe {
-            value: 0 as *mut Sender<$m>,
-            marker1: ::std::kinds::marker::InvariantType,
-        },
-        signal: ::std::ty::Unsafe {
-            value: 0,
-            marker1: ::std::kinds::marker::InvariantType,
-        },
-        initialized: ::std::ty::Unsafe {
-            value: false,
-            marker1: ::std::kinds::marker::InvariantType,
-        },
+        chan: ::std::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
+        signal: ::std::cell::UnsafeCell { value: 0 },
+        initialized: ::std::cell::UnsafeCell { value: false },
     };
 ) )
 

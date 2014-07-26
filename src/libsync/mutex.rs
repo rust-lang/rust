@@ -61,9 +61,8 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use core::atomics;
-use core::kinds::marker;
 use core::mem;
-use core::ty::Unsafe;
+use core::cell::UnsafeCell;
 use rustrt::local::Local;
 use rustrt::mutex;
 use rustrt::task::{BlockedTask, Task};
@@ -143,11 +142,11 @@ pub struct StaticMutex {
     lock: mutex::StaticNativeMutex,
 
     /// Type of locking operation currently on this mutex
-    flavor: Unsafe<Flavor>,
+    flavor: UnsafeCell<Flavor>,
     /// uint-cast of the green thread waiting for this mutex
-    green_blocker: Unsafe<uint>,
+    green_blocker: UnsafeCell<uint>,
     /// uint-cast of the native thread waiting for this mutex
-    native_blocker: Unsafe<uint>,
+    native_blocker: UnsafeCell<uint>,
 
     /// A concurrent mpsc queue used by green threads, along with a count used
     /// to figure out when to dequeue and enqueue.
@@ -167,16 +166,13 @@ pub struct Guard<'a> {
 pub static MUTEX_INIT: StaticMutex = StaticMutex {
     lock: mutex::NATIVE_MUTEX_INIT,
     state: atomics::INIT_ATOMIC_UINT,
-    flavor: Unsafe { value: Unlocked, marker1: marker::InvariantType },
-    green_blocker: Unsafe { value: 0, marker1: marker::InvariantType },
-    native_blocker: Unsafe { value: 0, marker1: marker::InvariantType },
+    flavor: UnsafeCell { value: Unlocked },
+    green_blocker: UnsafeCell { value: 0 },
+    native_blocker: UnsafeCell { value: 0 },
     green_cnt: atomics::INIT_ATOMIC_UINT,
     q: q::Queue {
         head: atomics::INIT_ATOMIC_UINT,
-        tail: Unsafe {
-            value: 0 as *mut q::Node<uint>,
-            marker1: marker::InvariantType,
-        },
+        tail: UnsafeCell { value: 0 as *mut q::Node<uint> },
         stub: q::DummyNode {
             next: atomics::INIT_ATOMIC_UINT,
         }
@@ -467,9 +463,9 @@ impl Mutex {
         Mutex {
             lock: box StaticMutex {
                 state: atomics::AtomicUint::new(0),
-                flavor: Unsafe::new(Unlocked),
-                green_blocker: Unsafe::new(0),
-                native_blocker: Unsafe::new(0),
+                flavor: UnsafeCell::new(Unlocked),
+                green_blocker: UnsafeCell::new(0),
+                native_blocker: UnsafeCell::new(0),
                 green_cnt: atomics::AtomicUint::new(0),
                 q: q::Queue::new(),
                 lock: unsafe { mutex::StaticNativeMutex::new() },

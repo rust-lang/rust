@@ -44,7 +44,7 @@
 //!     // try to convert our value to a String.  If successful, we want to
 //!     // output the String's length as well as its value.  If not, it's a
 //!     // different type: just print it out unadorned.
-//!     match value_any.as_ref::<String>() {
+//!     match value_any.downcast_ref::<String>() {
 //!         Some(as_string) => {
 //!             println!("String ({}): {}", as_string.len(), as_string);
 //!         }
@@ -69,33 +69,41 @@
 //! }
 //! ```
 
+#![stable]
+
 use mem::{transmute, transmute_copy};
 use option::{Option, Some, None};
 use raw::TraitObject;
 use intrinsics::TypeId;
 
 /// A type with no inhabitants
+#[deprecated = "this type is being removed, define a type locally if \
+                necessary"]
 pub enum Void { }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
 ///////////////////////////////////////////////////////////////////////////////
 
-/// The `Any` trait is implemented by all `'static` types, and can be used for dynamic typing
+/// The `Any` trait is implemented by all `'static` types, and can be used for
+/// dynamic typing
 ///
-/// Every type with no non-`'static` references implements `Any`, so `Any` can be used as a trait
-/// object to emulate the effects dynamic typing.
-pub trait Any {
+/// Every type with no non-`'static` references implements `Any`, so `Any` can
+/// be used as a trait object to emulate the effects dynamic typing.
+#[stable]
+pub trait Any: AnyPrivate {}
+
+/// An inner trait to ensure that only this module can call `get_type_id()`.
+trait AnyPrivate {
     /// Get the `TypeId` of `self`
     fn get_type_id(&self) -> TypeId;
 }
 
-impl<T: 'static> Any for T {
-    /// Get the `TypeId` of `self`
-    fn get_type_id(&self) -> TypeId {
-        TypeId::of::<T>()
-    }
+impl<T: 'static> AnyPrivate for T {
+    fn get_type_id(&self) -> TypeId { TypeId::of::<T>() }
 }
+
+impl<T: 'static + AnyPrivate> Any for T {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Extension methods for Any trait objects.
@@ -103,17 +111,30 @@ impl<T: 'static> Any for T {
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Extension methods for a referenced `Any` trait object
+#[unstable = "this trait will not be necessary once DST lands, it will be a \
+              part of `impl Any`"]
 pub trait AnyRefExt<'a> {
     /// Returns true if the boxed type is the same as `T`
+    #[stable]
     fn is<T: 'static>(self) -> bool;
 
     /// Returns some reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    fn as_ref<T: 'static>(self) -> Option<&'a T>;
+    #[unstable = "naming conventions around acquiring references may change"]
+    fn downcast_ref<T: 'static>(self) -> Option<&'a T>;
+
+    /// Returns some reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    #[deprecated = "this function has been renamed to `downcast_ref`"]
+    fn as_ref<T: 'static>(self) -> Option<&'a T> {
+        self.downcast_ref::<T>()
+    }
 }
 
+#[stable]
 impl<'a> AnyRefExt<'a> for &'a Any {
     #[inline]
+    #[stable]
     fn is<T: 'static>(self) -> bool {
         // Get TypeId of the type this function is instantiated with
         let t = TypeId::of::<T>();
@@ -126,7 +147,8 @@ impl<'a> AnyRefExt<'a> for &'a Any {
     }
 
     #[inline]
-    fn as_ref<T: 'static>(self) -> Option<&'a T> {
+    #[unstable = "naming conventions around acquiring references may change"]
+    fn downcast_ref<T: 'static>(self) -> Option<&'a T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -142,15 +164,27 @@ impl<'a> AnyRefExt<'a> for &'a Any {
 }
 
 /// Extension methods for a mutable referenced `Any` trait object
+#[unstable = "this trait will not be necessary once DST lands, it will be a \
+              part of `impl Any`"]
 pub trait AnyMutRefExt<'a> {
     /// Returns some mutable reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    fn as_mut<T: 'static>(self) -> Option<&'a mut T>;
+    #[unstable = "naming conventions around acquiring references may change"]
+    fn downcast_mut<T: 'static>(self) -> Option<&'a mut T>;
+
+    /// Returns some mutable reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    #[deprecated = "this function has been renamed to `downcast_mut`"]
+    fn as_mut<T: 'static>(self) -> Option<&'a mut T> {
+        self.downcast_mut::<T>()
+    }
 }
 
+#[stable]
 impl<'a> AnyMutRefExt<'a> for &'a mut Any {
     #[inline]
-    fn as_mut<T: 'static>(self) -> Option<&'a mut T> {
+    #[unstable = "naming conventions around acquiring references may change"]
+    fn downcast_mut<T: 'static>(self) -> Option<&'a mut T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object

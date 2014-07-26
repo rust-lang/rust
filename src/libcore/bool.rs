@@ -11,4 +11,6 @@
 //! The boolean type
 
 #![doc(primitive = "bool")]
+#![unstable = "this module is purely for documentation and it will likely be \
+               removed from the public api"]
 
