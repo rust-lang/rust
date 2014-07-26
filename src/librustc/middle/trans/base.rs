@@ -2070,12 +2070,15 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
     // implications directly to the call instruction. Right now,
     // the only attribute we need to worry about is `sret`.
     if type_of::return_uses_outptr(ccx, ret_ty) {
+        let llret_sz = llsize_of_real(ccx, type_of::type_of(ccx, ret_ty));
+
         // The outptr can be noalias and nocapture because it's entirely
-        // invisible to the program. We can also mark it as nonnull
+        // invisible to the program. We also know it's nonnull as well
+        // as how many bytes we can dereference
         attrs.arg(1, llvm::StructRetAttribute)
              .arg(1, llvm::NoAliasAttribute)
              .arg(1, llvm::NoCaptureAttribute)
-             .arg(1, llvm::NonNullAttribute);
+             .arg(1, llvm::DereferenceableAttribute(llret_sz));
 
         // Add one more since there's an outptr
         first_arg_offset += 1;
@@ -2094,15 +2097,16 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
             _ => {}
         }
 
-        // We can also mark the return value as `nonnull` in certain cases
+        // We can also mark the return value as `dereferenceable` in certain cases
         match ty::get(ret_ty).sty {
             // These are not really pointers but pairs, (pointer, len)
             ty::ty_uniq(it) |
             ty::ty_rptr(_, ty::mt { ty: it, .. }) if match ty::get(it).sty {
                 ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
             } => {}
-            ty::ty_uniq(_) | ty::ty_rptr(_, _) => {
-                attrs.ret(llvm::NonNullAttribute);
+            ty::ty_uniq(inner) | ty::ty_rptr(_, ty::mt { ty: inner, .. }) => {
+                let llret_sz = llsize_of_real(ccx, type_of::type_of(ccx, inner));
+                attrs.ret(llvm::DereferenceableAttribute(llret_sz));
             }
             _ => {}
         }
@@ -2119,28 +2123,38 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
         match ty::get(t).sty {
             // this needs to be first to prevent fat pointers from falling through
             _ if !type_is_immediate(ccx, t) => {
+                let llarg_sz = llsize_of_real(ccx, type_of::type_of(ccx, t));
+
                 // For non-immediate arguments the callee gets its own copy of
                 // the value on the stack, so there are no aliases. It's also
                 // program-invisible so can't possibly capture
                 attrs.arg(idx, llvm::NoAliasAttribute)
                      .arg(idx, llvm::NoCaptureAttribute)
-                     .arg(idx, llvm::NonNullAttribute);
+                     .arg(idx, llvm::DereferenceableAttribute(llarg_sz));
             }
+
             ty::ty_bool => {
                 attrs.arg(idx, llvm::ZExtAttribute);
             }
+
             // `~` pointer parameters never alias because ownership is transferred
-            ty::ty_uniq(_) => {
+            ty::ty_uniq(inner) => {
+                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, inner));
+
                 attrs.arg(idx, llvm::NoAliasAttribute)
-                     .arg(idx, llvm::NonNullAttribute);
+                     .arg(idx, llvm::DereferenceableAttribute(llsz));
             }
-            // `&mut` pointer parameters never alias other parameters, or mutable global data
-            // `&` pointer parameters never alias either (for LLVM's purposes) as long as the
-            // interior is safe
-            ty::ty_rptr(b, mt) if mt.mutbl == ast::MutMutable ||
-                                  !ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe() => {
+
+            // The visit glue deals only with opaque pointers so we don't
+            // actually know the concrete type of Self thus we don't know how
+            // many bytes to mark as dereferenceable so instead we just mark
+            // it as nonnull which still holds true
+            ty::ty_rptr(b, ty::mt { ty: it, mutbl }) if match ty::get(it).sty {
+                ty::ty_param(_) => true, _ => false
+            } && mutbl == ast::MutMutable => {
                 attrs.arg(idx, llvm::NoAliasAttribute)
                      .arg(idx, llvm::NonNullAttribute);
+
                 match b {
                     ReLateBound(_, BrAnon(_)) => {
                         attrs.arg(idx, llvm::NoCaptureAttribute);
@@ -2148,15 +2162,38 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
                     _ => {}
                 }
             }
+
+            // `&mut` pointer parameters never alias other parameters, or mutable global data
+            // `&` pointer parameters never alias either (for LLVM's purposes) as long as the
+            // interior is safe
+            ty::ty_rptr(b, mt) if mt.mutbl == ast::MutMutable ||
+                                  !ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe() => {
+
+                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
+                attrs.arg(idx, llvm::NoAliasAttribute)
+                     .arg(idx, llvm::DereferenceableAttribute(llsz));
+
+                match b {
+                    ReLateBound(_, BrAnon(_)) => {
+                        attrs.arg(idx, llvm::NoCaptureAttribute);
+                    }
+                    _ => {}
+                }
+            }
+
             // When a reference in an argument has no named lifetime, it's impossible for that
             // reference to escape this function (returned or stored beyond the call by a closure).
-            ty::ty_rptr(ReLateBound(_, BrAnon(_)), _) => {
+            ty::ty_rptr(ReLateBound(_, BrAnon(_)), mt) => {
+                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
                 attrs.arg(idx, llvm::NoCaptureAttribute)
-                     .arg(idx, llvm::NonNullAttribute);
+                     .arg(idx, llvm::DereferenceableAttribute(llsz));
             }
-            // & pointer parameters are never null
-            ty::ty_rptr(_, _) => {
-                attrs.arg(idx, llvm::NonNullAttribute);
+
+            // & pointer parameters are also never null and we know exactly how
+            // many bytes we can dereference
+            ty::ty_rptr(_, mt) => {
+                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
+                attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
             }
             _ => ()
         }
