@@ -86,9 +86,15 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
             *ty == config::CrateTypeExecutable
         });
         if use_start(&krate) && any_exe {
+            let visible_rt_name = "rt";
+            let actual_rt_name = "native";
+            // Gensym the ident so it can't be named
+            let visible_rt_name = token::gensym_ident(visible_rt_name);
+            let actual_rt_name = token::intern_and_get_ident(actual_rt_name);
+
             vis.push(ast::ViewItem {
-                node: ast::ViewItemExternCrate(token::str_to_ident("native"),
-                                               None,
+                node: ast::ViewItemExternCrate(visible_rt_name,
+                                               Some((actual_rt_name, ast::CookedStr)),
                                                ast::DUMMY_NODE_ID),
                 attrs: Vec::new(),
                 vis: ast::Inherited,
