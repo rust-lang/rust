@@ -496,7 +496,7 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
             visitor.region_maps.mark_as_terminating_scope(body.id);
         }
 
-        ast::ExprWhile(expr, body) => {
+        ast::ExprWhile(expr, body, _) => {
             visitor.region_maps.mark_as_terminating_scope(expr.id);
             visitor.region_maps.mark_as_terminating_scope(body.id);
         }

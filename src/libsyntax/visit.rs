@@ -775,7 +775,7 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
             visitor.visit_block(&**if_block, env.clone());
             walk_expr_opt(visitor, optional_else, env.clone())
         }
-        ExprWhile(ref subexpression, ref block) => {
+        ExprWhile(ref subexpression, ref block, _) => {
             visitor.visit_expr(&**subexpression, env.clone());
             visitor.visit_block(&**block, env.clone())
         }

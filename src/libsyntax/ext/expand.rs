@@ -66,6 +66,12 @@ fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             }
         }
 
+        ast::ExprWhile(cond, body, opt_ident) => {
+            let cond = fld.fold_expr(cond);
+            let (body, opt_ident) = expand_loop_block(body, opt_ident, fld);
+            fld.cx.expr(e.span, ast::ExprWhile(cond, body, opt_ident))
+        }
+
         ast::ExprLoop(loop_block, opt_ident) => {
             let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
             fld.cx.expr(e.span, ast::ExprLoop(loop_block, opt_ident))

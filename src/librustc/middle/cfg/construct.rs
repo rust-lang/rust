@@ -227,7 +227,7 @@ impl<'a> CFGBuilder<'a> {
                 self.add_node(expr.id, [then_exit, else_exit])           // 4, 5
             }
 
-            ast::ExprWhile(ref cond, ref body) => {
+            ast::ExprWhile(ref cond, ref body, _) => {
                 //
                 //         [pred]
                 //           |
