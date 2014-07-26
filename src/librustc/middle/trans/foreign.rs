@@ -386,11 +386,14 @@ pub fn trans_native_call<'a>(
 
     // Add attributes that are always applicable, independent of the concrete foreign ABI
     if fn_type.ret_ty.is_indirect() {
+        let llret_sz = machine::llsize_of_real(ccx, fn_type.ret_ty.ty);
+
         // The outptr can be noalias and nocapture because it's entirely
-        // invisible to the program. We can also mark it as nonnull
+        // invisible to the program. We also know it's nonnull as well
+        // as how many bytes we can dereference
         attrs.arg(1, llvm::NoAliasAttribute)
              .arg(1, llvm::NoCaptureAttribute)
-             .arg(1, llvm::NonNullAttribute);
+             .arg(1, llvm::DereferenceableAttribute(llret_sz));
     };
 
     // Add attributes that depend on the concrete foreign ABI
