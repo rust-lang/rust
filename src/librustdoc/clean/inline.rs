@@ -18,6 +18,7 @@ use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 use rustc::middle::def;
 use rustc::middle::ty;
+use rustc::middle::subst;
 use rustc::middle::stability;
 
 use core;
@@ -38,7 +39,8 @@ use super::Clean;
 ///
 /// The returned value is `None` if the `id` could not be inlined, and `Some`
 /// of a vector of items if it was successfully expanded.
-pub fn try_inline(id: ast::NodeId) -> Option<Vec<clean::Item>> {
+pub fn try_inline(id: ast::NodeId, into: Option<ast::Ident>)
+                  -> Option<Vec<clean::Item>> {
     let cx = ::ctxtkey.get().unwrap();
     let tcx = match cx.maybe_typed {
         core::Typed(ref tycx) => tycx,
@@ -50,7 +52,17 @@ pub fn try_inline(id: ast::NodeId) -> Option<Vec<clean::Item>> {
     };
     let did = def.def_id();
     if ast_util::is_local(did) { return None }
-    try_inline_def(&**cx, tcx, def)
+    try_inline_def(&**cx, tcx, def).map(|vec| {
+        vec.move_iter().map(|mut item| {
+            match into {
+                Some(into) if item.name.is_some() => {
+                    item.name = Some(into.clean());
+                }
+                _ => {}
+            }
+            item
+        }).collect()
+    })
 }
 
 fn try_inline_def(cx: &core::DocContext,
@@ -163,7 +175,7 @@ pub fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> clean::Trait {
     });
 
     clean::Trait {
-        generics: def.generics.clean(),
+        generics: (&def.generics, subst::TypeSpace).clean(),
         methods: methods.collect(),
         parents: parents.collect()
     }
@@ -178,7 +190,7 @@ fn build_external_function(tcx: &ty::ctxt,
             ty::ty_bare_fn(ref f) => (did, &f.sig).clean(),
             _ => fail!("bad function"),
         },
-        generics: t.generics.clean(),
+        generics: (&t.generics, subst::FnSpace).clean(),
         fn_style: style,
     }
 }
@@ -196,7 +208,7 @@ fn build_struct(tcx: &ty::ctxt, did: ast::DefId) -> clean::Struct {
             [ref f, ..] if f.name == unnamed_field.name => doctree::Tuple,
             _ => doctree::Plain,
         },
-        generics: t.generics.clean(),
+        generics: (&t.generics, subst::TypeSpace).clean(),
         fields: fields.iter().map(|f| f.clean()).collect(),
         fields_stripped: false,
     }
@@ -207,7 +219,7 @@ fn build_type(tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEnum {
     match ty::get(t.ty).sty {
         ty::ty_enum(edid, _) if !csearch::is_typedef(&tcx.sess.cstore, did) => {
             return clean::EnumItem(clean::Enum {
-                generics: t.generics.clean(),
+                generics: (&t.generics, subst::TypeSpace).clean(),
                 variants_stripped: false,
                 variants: ty::enum_variants(tcx, edid).clean(),
             })
@@ -217,7 +229,7 @@ fn build_type(tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEnum {
 
     clean::TypedefItem(clean::Typedef {
         type_: t.ty.clean(),
-        generics: t.generics.clean(),
+        generics: (&t.generics, subst::TypeSpace).clean(),
     })
 }
 
@@ -278,6 +290,17 @@ fn build_impl(cx: &core::DocContext,
     }
 
     let associated_trait = csearch::get_impl_trait(tcx, did);
+    // If this is an impl for a #[doc(hidden)] trait, be sure to not inline it.
+    match associated_trait {
+        Some(ref t) => {
+            let trait_attrs = load_attrs(tcx, t.def_id);
+            if trait_attrs.iter().any(|a| is_doc_hidden(a)) {
+                return None
+            }
+        }
+        None => {}
+    }
+
     let attrs = load_attrs(tcx, did);
     let ty = ty::lookup_item_type(tcx, did);
     let methods = csearch::get_impl_methods(&tcx.sess.cstore,
@@ -302,7 +325,7 @@ fn build_impl(cx: &core::DocContext,
         };
         Some(item)
     }).collect();
-    Some(clean::Item {
+    return Some(clean::Item {
         inner: clean::ImplItem(clean::Impl {
             derived: clean::detect_derived(attrs.as_slice()),
             trait_: associated_trait.clean().map(|bound| {
@@ -312,7 +335,7 @@ fn build_impl(cx: &core::DocContext,
                 }
             }),
             for_: ty.ty.clean(),
-            generics: ty.generics.clean(),
+            generics: (&ty.generics, subst::TypeSpace).clean(),
             methods: methods,
         }),
         source: clean::Span::empty(),
@@ -321,33 +344,53 @@ fn build_impl(cx: &core::DocContext,
         visibility: Some(ast::Inherited),
         stability: stability::lookup(tcx, did).clean(),
         def_id: did,
-    })
+    });
+
+    fn is_doc_hidden(a: &clean::Attribute) -> bool {
+        match *a {
+            clean::List(ref name, ref inner) if name.as_slice() == "doc" => {
+                inner.iter().any(|a| {
+                    match *a {
+                        clean::Word(ref s) => s.as_slice() == "hidden",
+                        _ => false,
+                    }
+                })
+            }
+            _ => false
+        }
+    }
 }
 
 fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
                 did: ast::DefId) -> clean::Module {
     let mut items = Vec::new();
+    fill_in(cx, tcx, did, &mut items);
+    return clean::Module {
+        items: items,
+        is_crate: false,
+    };
 
     // FIXME: this doesn't handle reexports inside the module itself.
     //        Should they be handled?
-    csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, vis| {
-        if vis != ast::Public { return }
-        match def {
-            decoder::DlDef(def) => {
-                match try_inline_def(cx, tcx, def) {
-                    Some(i) => items.extend(i.move_iter()),
-                    None => {}
+    fn fill_in(cx: &core::DocContext, tcx: &ty::ctxt, did: ast::DefId,
+               items: &mut Vec<clean::Item>) {
+        csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, vis| {
+            match def {
+                decoder::DlDef(def::DefForeignMod(did)) => {
+                    fill_in(cx, tcx, did, items);
                 }
+                decoder::DlDef(def) if vis == ast::Public => {
+                    match try_inline_def(cx, tcx, def) {
+                        Some(i) => items.extend(i.move_iter()),
+                        None => {}
+                    }
+                }
+                decoder::DlDef(..) => {}
+                // All impls were inlined above
+                decoder::DlImpl(..) => {}
+                decoder::DlField => fail!("unimplemented field"),
             }
-            // All impls were inlined above
-            decoder::DlImpl(..) => {}
-            decoder::DlField => fail!("unimplemented field"),
-        }
-    });
-
-    clean::Module {
-        items: items,
-        is_crate: false,
+        });
     }
 }
 

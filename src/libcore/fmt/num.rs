@@ -26,6 +26,7 @@ use iter::Iterator;         // NOTE(stage0): Remove after snapshot.
 use option::{Some, None};   // NOTE(stage0): Remove after snapshot.
 
 /// A type that represents a specific radix
+#[doc(hidden)]
 trait GenericRadix {
     /// The number of digits.
     fn base(&self) -> u8;

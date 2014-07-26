@@ -117,6 +117,7 @@ pub fn opts() -> Vec<getopts::OptGroup> {
         optflag("", "test", "run code examples as tests"),
         optmulti("", "test-args", "arguments to pass to the test runner",
                  "ARGS"),
+        optopt("", "target", "target triple to document", "TRIPLE"),
         optmulti("", "markdown-css", "CSS files to include via <link> in a rendered Markdown file",
                  "FILES"),
         optmulti("", "html-in-header",
@@ -321,6 +322,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
                                  .map(|s| Path::new(s.as_slice()))
                                  .collect();
     let cfgs = matches.opt_strs("cfg");
+    let triple = matches.opt_str("target");
 
     let cr = Path::new(cratefile);
     info!("starting to run rustc");
@@ -329,7 +331,8 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
         core::run_core(libs.move_iter().collect(),
                        cfgs,
                        externs,
-                       &cr)
+                       &cr,
+                       triple)
     }).map_err(|boxed_any|format!("{:?}", boxed_any)).unwrap();
     info!("finished with rustc");
     analysiskey.replace(Some(analysis));
