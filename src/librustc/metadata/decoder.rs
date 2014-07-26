@@ -34,6 +34,7 @@ use std::hash::Hash;
 use std::hash;
 use std::io::extensions::u64_from_be_bytes;
 use std::io;
+use std::collections::hashmap::HashMap;
 use std::rc::Rc;
 use std::u64;
 use serialize::ebml::reader;
@@ -961,6 +962,19 @@ pub fn get_item_attrs(cdata: Cmd,
     let node_id = node_id.map(|x| x.node).unwrap_or(orig_node_id);
     let item = lookup_item(node_id, cdata.data());
     f(get_attributes(item));
+}
+
+pub fn get_struct_field_attrs(cdata: Cmd) -> HashMap<ast::NodeId, Vec<ast::Attribute>> {
+    let data = ebml::Doc::new(cdata.data());
+    let fields = reader::get_doc(data, tag_struct_fields);
+    let mut map = HashMap::new();
+    reader::tagged_docs(fields, tag_struct_field, |field| {
+        let id = reader::doc_as_u32(reader::get_doc(field, tag_struct_field_id));
+        let attrs = get_attributes(field);
+        map.insert(id, attrs);
+        true
+    });
+    map
 }
 
 fn struct_field_family_to_visibility(family: Family) -> ast::Visibility {

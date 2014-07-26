@@ -29,6 +29,8 @@ use syntax::attr;
 use syntax::diagnostic::expect;
 use syntax::parse::token;
 
+use std::collections::hashmap::HashMap;
+
 pub struct StaticMethodInfo {
     pub ident: ast::Ident,
     pub def_id: ast::DefId,
@@ -190,6 +192,12 @@ pub fn get_struct_fields(cstore: &cstore::CStore,
                       -> Vec<ty::field_ty> {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_struct_fields(cstore.intr.clone(), &*cdata, def.node)
+}
+
+pub fn get_struct_field_attrs(cstore: &cstore::CStore, def: ast::DefId) -> HashMap<ast::NodeId,
+        Vec<ast::Attribute>> {
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::get_struct_field_attrs(&*cdata)
 }
 
 pub fn get_type(tcx: &ty::ctxt,
