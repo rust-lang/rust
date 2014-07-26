@@ -263,7 +263,7 @@ impl<V> SmallIntMap<V> {
         }
     }
 
-    /// Empties the hash map, moving all values into the specified closure.
+    /// Empties the map, moving all values into the specified closure.
     ///
     /// # Example
     ///
