@@ -19,6 +19,13 @@ macro_rules! loop_x {
     }
 }
 
+macro_rules! while_true {
+    ($e: expr) => {
+        // $e shouldn't be able to interact with this 'x
+        'x: while 1i + 1 == 2 { $e }
+    }
+}
+
 macro_rules! run_once {
     ($e: expr) => {
         // ditto
@@ -48,6 +55,16 @@ pub fn main() {
         i + 1
     };
     assert_eq!(k, 1i);
+
+    let l: int = {
+        'x: for _ in range(0i, 1) {
+            // ditto
+            while_true!(break 'x);
+            i += 1;
+        }
+        i + 1
+    };
+    assert_eq!(l, 1i);
 
     let n: int = {
         'x: for _ in range(0i, 1) {

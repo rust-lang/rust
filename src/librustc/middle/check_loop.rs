@@ -35,7 +35,7 @@ impl<'a> Visitor<Context> for CheckLoopVisitor<'a> {
 
     fn visit_expr(&mut self, e: &ast::Expr, cx:Context) {
         match e.node {
-            ast::ExprWhile(ref e, ref b) => {
+            ast::ExprWhile(ref e, ref b, _) => {
                 self.visit_expr(&**e, cx);
                 self.visit_block(&**b, Loop);
             }

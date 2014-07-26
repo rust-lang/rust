@@ -749,7 +749,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             rcx.set_repeating_scope(repeating_scope);
         }
 
-        ast::ExprWhile(ref cond, ref body) => {
+        ast::ExprWhile(ref cond, ref body, _) => {
             let repeating_scope = rcx.set_repeating_scope(cond.id);
             rcx.visit_expr(&**cond, ());
 
