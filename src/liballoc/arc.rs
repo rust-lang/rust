@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Concurrency-enabled mechanisms for sharing mutable and/or immutable state
- * between tasks.
- */
+#![stable]
+
+//! Concurrency-enabled mechanisms for sharing mutable and/or immutable state
+//! between tasks.
 
 use core::atomics;
 use core::clone::Clone;
@@ -51,6 +51,7 @@ use heap::deallocate;
 /// }
 /// ```
 #[unsafe_no_drop_flag]
+#[stable]
 pub struct Arc<T> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -62,6 +63,7 @@ pub struct Arc<T> {
 /// Weak pointers will not keep the data inside of the `Arc` alive, and can be
 /// used to break cycles between `Arc` pointers.
 #[unsafe_no_drop_flag]
+#[experimental = "Weak pointers may not belong in this module."]
 pub struct Weak<T> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -77,6 +79,7 @@ struct ArcInner<T> {
 impl<T: Share + Send> Arc<T> {
     /// Create an atomically reference counted wrapper.
     #[inline]
+    #[stable]
     pub fn new(data: T) -> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
@@ -103,6 +106,7 @@ impl<T: Share + Send> Arc<T> {
     /// Weak pointers will not keep the data alive. Once all strong references
     /// to the underlying data have been dropped, the data itself will be
     /// destroyed.
+    #[experimental = "Weak pointers may not belong in this module."]
     pub fn downgrade(&self) -> Weak<T> {
         // See the clone() impl for why this is relaxed
         self.inner().weak.fetch_add(1, atomics::Relaxed);
@@ -110,7 +114,7 @@ impl<T: Share + Send> Arc<T> {
     }
 }
 
-#[unstable]
+#[unstable = "waiting on stability of Clone"]
 impl<T: Share + Send> Clone for Arc<T> {
     /// Duplicate an atomically reference counted wrapper.
     ///
@@ -135,6 +139,7 @@ impl<T: Share + Send> Clone for Arc<T> {
     }
 }
 
+#[experimental = "Deref is experimental."]
 impl<T: Send + Share> Deref<T> for Arc<T> {
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
@@ -169,6 +174,7 @@ impl<T: Send + Share + Clone> Arc<T> {
 }
 
 #[unsafe_destructor]
+#[experimental = "waiting on stability of Drop"]
 impl<T: Share + Send> Drop for Arc<T> {
     fn drop(&mut self) {
         // This structure has #[unsafe_no_drop_flag], so this drop glue may run
@@ -212,6 +218,7 @@ impl<T: Share + Send> Drop for Arc<T> {
     }
 }
 
+#[experimental = "Weak pointers may not belong in this module."]
 impl<T: Share + Send> Weak<T> {
     /// Attempts to upgrade this weak reference to a strong reference.
     ///
@@ -237,7 +244,7 @@ impl<T: Share + Send> Weak<T> {
     }
 }
 
-#[unstable]
+#[experimental = "Weak pointers may not belong in this module."]
 impl<T: Share + Send> Clone for Weak<T> {
     #[inline]
     fn clone(&self) -> Weak<T> {
@@ -248,6 +255,7 @@ impl<T: Share + Send> Clone for Weak<T> {
 }
 
 #[unsafe_destructor]
+#[experimental = "Weak pointers may not belong in this module."]
 impl<T: Share + Send> Drop for Weak<T> {
     fn drop(&mut self) {
         // see comments above for why this check is here

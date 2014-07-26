@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-use core::ty::Unsafe;
+use core::cell::UnsafeCell;
 use mutex;
 
 /// An OS mutex over some data.
@@ -23,7 +23,7 @@ use mutex;
 /// >           as part of `libsync` should almost always be favored.
 pub struct Exclusive<T> {
     lock: mutex::NativeMutex,
-    data: Unsafe<T>,
+    data: UnsafeCell<T>,
 }
 
 /// An RAII guard returned via `lock`
@@ -39,7 +39,7 @@ impl<T: Send> Exclusive<T> {
     pub fn new(user_data: T) -> Exclusive<T> {
         Exclusive {
             lock: unsafe { mutex::NativeMutex::new() },
-            data: Unsafe::new(user_data),
+            data: UnsafeCell::new(user_data),
         }
     }
 

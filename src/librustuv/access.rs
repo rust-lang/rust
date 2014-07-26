@@ -18,12 +18,12 @@ use alloc::arc::Arc;
 use std::mem;
 use std::rt::local::Local;
 use std::rt::task::{BlockedTask, Task};
-use std::ty::Unsafe;
+use std::cell::UnsafeCell;
 
 use homing::HomingMissile;
 
 pub struct Access {
-    inner: Arc<Unsafe<Inner>>,
+    inner: Arc<UnsafeCell<Inner>>,
 }
 
 pub struct Guard<'a> {
@@ -40,7 +40,7 @@ struct Inner {
 impl Access {
     pub fn new() -> Access {
         Access {
-            inner: Arc::new(Unsafe::new(Inner {
+            inner: Arc::new(UnsafeCell::new(Inner {
                 queue: vec![],
                 held: false,
                 closed: false,

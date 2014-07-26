@@ -35,7 +35,7 @@ use core::prelude::*;
 use alloc::arc::Arc;
 use collections::Vec;
 use core::num::next_power_of_two;
-use core::ty::Unsafe;
+use core::cell::UnsafeCell;
 
 use atomics::{AtomicUint,Relaxed,Release,Acquire};
 
@@ -46,7 +46,7 @@ struct Node<T> {
 
 struct State<T> {
     pad0: [u8, ..64],
-    buffer: Vec<Unsafe<Node<T>>>,
+    buffer: Vec<UnsafeCell<Node<T>>>,
     mask: uint,
     pad1: [u8, ..64],
     enqueue_pos: AtomicUint,
@@ -72,7 +72,7 @@ impl<T: Send> State<T> {
             capacity
         };
         let buffer = Vec::from_fn(capacity, |i| {
-            Unsafe::new(Node { sequence:AtomicUint::new(i), value: None })
+            UnsafeCell::new(Node { sequence:AtomicUint::new(i), value: None })
         });
         State{
             pad0: [0, ..64],

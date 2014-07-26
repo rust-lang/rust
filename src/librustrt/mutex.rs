@@ -341,8 +341,7 @@ mod imp {
     use libc;
     use self::os::{PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER,
                    pthread_mutex_t, pthread_cond_t};
-    use core::ty::Unsafe;
-    use core::kinds::marker;
+    use core::cell::UnsafeCell;
 
     type pthread_mutexattr_t = libc::c_void;
     type pthread_condattr_t = libc::c_void;
@@ -466,19 +465,13 @@ mod imp {
     }
 
     pub struct Mutex {
-        lock: Unsafe<pthread_mutex_t>,
-        cond: Unsafe<pthread_cond_t>,
+        lock: UnsafeCell<pthread_mutex_t>,
+        cond: UnsafeCell<pthread_cond_t>,
     }
 
     pub static MUTEX_INIT: Mutex = Mutex {
-        lock: Unsafe {
-            value: PTHREAD_MUTEX_INITIALIZER,
-            marker1: marker::InvariantType,
-        },
-        cond: Unsafe {
-            value: PTHREAD_COND_INITIALIZER,
-            marker1: marker::InvariantType,
-        },
+        lock: UnsafeCell { value: PTHREAD_MUTEX_INITIALIZER },
+        cond: UnsafeCell { value: PTHREAD_COND_INITIALIZER },
     };
 
     impl Mutex {
@@ -487,8 +480,8 @@ mod imp {
             // is better to avoid initialization of potentially
             // opaque OS data before it landed
             let m = Mutex {
-                lock: Unsafe::new(PTHREAD_MUTEX_INITIALIZER),
-                cond: Unsafe::new(PTHREAD_COND_INITIALIZER),
+                lock: UnsafeCell::new(PTHREAD_MUTEX_INITIALIZER),
+                cond: UnsafeCell::new(PTHREAD_COND_INITIALIZER),
             };
 
             return m;
