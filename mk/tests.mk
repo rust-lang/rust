@@ -171,28 +171,41 @@ endif
 # Main test targets
 ######################################################################
 
+# The main testing target. Tests lots of stuff.
 check: cleantmptestlogs cleantestlibs check-notidy tidy
 
+# As above but don't bother running tidy.
 check-notidy: cleantmptestlogs cleantestlibs all check-stage2
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
+# A slightly smaller set of tests for smoke testing.
 check-lite: cleantestlibs cleantmptestlogs \
 	$(foreach crate,$(TEST_TARGET_CRATES),check-stage2-$(crate)) \
 	check-stage2-rpass \
 	check-stage2-rfail check-stage2-cfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
+# Only check the 'reference' tests: rpass/cfail/rfail/rmake.
 check-ref: cleantestlibs cleantmptestlogs check-stage2-rpass \
 	check-stage2-rfail check-stage2-cfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
+# Only check the docs.
 check-docs: cleantestlibs cleantmptestlogs check-stage2-docs
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 # NOTE: Remove after reprogramming windows bots
 check-fast: check-lite
 
-check-syntax: check-lexer
+# Some less critical tests that are not prone to breakage.
+# Not run as part of the normal test suite, but tested by bors on checkin.
+check-secondary: check-lexer check-pretty
+
+# check + check-secondary.
+check-all: check check-secondary
+
+# Pretty-printing tests.
+check-pretty: check-stage2-T-$(CFG_BUILD)-H-$(CFG_BUILD)-pretty-exec
 
 .PHONY: cleantmptestlogs cleantestlibs
 
