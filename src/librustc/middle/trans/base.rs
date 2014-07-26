@@ -281,11 +281,7 @@ pub fn decl_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str) -> ValueRef {
 
     let llfn = decl_fn(ccx, name, llvm::CCallConv, llfty, output);
     let attrs = get_fn_llvm_attributes(ccx, fn_ty);
-    for &(idx, attr) in attrs.iter() {
-        unsafe {
-            llvm::LLVMAddFunctionAttribute(llfn, idx as c_uint, attr);
-        }
-    }
+    attrs.apply_llfn(llfn);
 
     llfn
 }
@@ -962,7 +958,7 @@ pub fn invoke<'a>(
                               llargs.as_slice(),
                               normal_bcx.llbb,
                               landing_pad,
-                              attributes.as_slice());
+                              Some(attributes));
         return (llresult, normal_bcx);
     } else {
         debug!("calling {} at {}", llfn, bcx.llbb);
@@ -975,7 +971,7 @@ pub fn invoke<'a>(
             None => debuginfo::clear_source_location(bcx.fcx)
         };
 
-        let llresult = Call(bcx, llfn, llargs.as_slice(), attributes.as_slice());
+        let llresult = Call(bcx, llfn, llargs.as_slice(), Some(attributes));
         return (llresult, bcx);
     }
 }
@@ -1081,7 +1077,7 @@ pub fn call_lifetime_start(cx: &Block, ptr: ValueRef) {
     let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_start = ccx.get_intrinsic(&"llvm.lifetime.start");
-    Call(cx, lifetime_start, [llsize, ptr], []);
+    Call(cx, lifetime_start, [llsize, ptr], None);
 }
 
 pub fn call_lifetime_end(cx: &Block, ptr: ValueRef) {
@@ -1095,7 +1091,7 @@ pub fn call_lifetime_end(cx: &Block, ptr: ValueRef) {
     let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_end = ccx.get_intrinsic(&"llvm.lifetime.end");
-    Call(cx, lifetime_end, [llsize, ptr], []);
+    Call(cx, lifetime_end, [llsize, ptr], None);
 }
 
 pub fn call_memcpy(cx: &Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
@@ -1111,7 +1107,7 @@ pub fn call_memcpy(cx: &Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, 
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(ccx, align as i32);
     let volatile = C_bool(ccx, false);
-    Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile], []);
+    Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile], None);
 }
 
 pub fn memcpy_ty(bcx: &Block, dst: ValueRef, src: ValueRef, t: ty::t) {
@@ -1156,7 +1152,7 @@ fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     let size = machine::llsize_of(ccx, ty);
     let align = C_i32(ccx, llalign_of_min(ccx, ty) as i32);
     let volatile = C_bool(ccx, false);
-    b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile], []);
+    b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile], None);
 }
 
 pub fn alloc_ty(bcx: &Block, t: ty::t, name: &str) -> ValueRef {
@@ -2040,7 +2036,7 @@ fn register_fn(ccx: &CrateContext,
 }
 
 pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
-                              -> Vec<(uint, u64)> {
+                              -> llvm::AttrBuilder {
     use middle::ty::{BrAnon, ReLateBound};
 
     let (fn_sig, abi, has_env) = match ty::get(fn_ty).sty {
@@ -2056,31 +2052,33 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
         _ => fail!("expected closure or function.")
     };
 
+    // Since index 0 is the return value of the llvm func, we start
+    // at either 1 or 2 depending on whether there's an env slot or not
+    let mut first_arg_offset = if has_env { 2 } else { 1 };
+    let mut attrs = llvm::AttrBuilder::new();
+    let ret_ty = fn_sig.output;
+
     // These have an odd calling convention, so we skip them for now.
     //
     // FIXME(pcwalton): We don't have to skip them; just untuple the result.
     if abi == RustCall {
-        return Vec::new()
+        return attrs;
     }
-
-    // Since index 0 is the return value of the llvm func, we start
-    // at either 1 or 2 depending on whether there's an env slot or not
-    let mut first_arg_offset = if has_env { 2 } else { 1 };
-    let mut attrs = Vec::new();
-    let ret_ty = fn_sig.output;
 
     // A function pointer is called without the declaration
     // available, so we have to apply any attributes with ABI
     // implications directly to the call instruction. Right now,
     // the only attribute we need to worry about is `sret`.
     if type_of::return_uses_outptr(ccx, ret_ty) {
-        attrs.push((1, llvm::StructRetAttribute as u64));
+        let llret_sz = llsize_of_real(ccx, type_of::type_of(ccx, ret_ty));
 
         // The outptr can be noalias and nocapture because it's entirely
-        // invisible to the program. We can also mark it as nonnull
-        attrs.push((1, llvm::NoAliasAttribute as u64));
-        attrs.push((1, llvm::NoCaptureAttribute as u64));
-        attrs.push((1, llvm::NonNullAttribute as u64));
+        // invisible to the program. We also know it's nonnull as well
+        // as how many bytes we can dereference
+        attrs.arg(1, llvm::StructRetAttribute)
+             .arg(1, llvm::NoAliasAttribute)
+             .arg(1, llvm::NoCaptureAttribute)
+             .arg(1, llvm::DereferenceableAttribute(llret_sz));
 
         // Add one more since there's an outptr
         first_arg_offset += 1;
@@ -2094,27 +2092,28 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
                 ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
             } => {}
             ty::ty_uniq(_) => {
-                attrs.push((llvm::ReturnIndex as uint, llvm::NoAliasAttribute as u64));
+                attrs.ret(llvm::NoAliasAttribute);
             }
             _ => {}
         }
 
-        // We can also mark the return value as `nonnull` in certain cases
+        // We can also mark the return value as `dereferenceable` in certain cases
         match ty::get(ret_ty).sty {
             // These are not really pointers but pairs, (pointer, len)
             ty::ty_uniq(it) |
             ty::ty_rptr(_, ty::mt { ty: it, .. }) if match ty::get(it).sty {
                 ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
             } => {}
-            ty::ty_uniq(_) | ty::ty_rptr(_, _) => {
-                attrs.push((llvm::ReturnIndex as uint, llvm::NonNullAttribute as u64));
+            ty::ty_uniq(inner) | ty::ty_rptr(_, ty::mt { ty: inner, .. }) => {
+                let llret_sz = llsize_of_real(ccx, type_of::type_of(ccx, inner));
+                attrs.ret(llvm::DereferenceableAttribute(llret_sz));
             }
             _ => {}
         }
 
         match ty::get(ret_ty).sty {
             ty::ty_bool => {
-                attrs.push((llvm::ReturnIndex as uint, llvm::ZExtAttribute as u64));
+                attrs.ret(llvm::ZExtAttribute);
             }
             _ => {}
         }
@@ -2124,44 +2123,77 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
         match ty::get(t).sty {
             // this needs to be first to prevent fat pointers from falling through
             _ if !type_is_immediate(ccx, t) => {
+                let llarg_sz = llsize_of_real(ccx, type_of::type_of(ccx, t));
+
                 // For non-immediate arguments the callee gets its own copy of
                 // the value on the stack, so there are no aliases. It's also
                 // program-invisible so can't possibly capture
-                attrs.push((idx, llvm::NoAliasAttribute as u64));
-                attrs.push((idx, llvm::NoCaptureAttribute as u64));
-                attrs.push((idx, llvm::NonNullAttribute as u64));
+                attrs.arg(idx, llvm::NoAliasAttribute)
+                     .arg(idx, llvm::NoCaptureAttribute)
+                     .arg(idx, llvm::DereferenceableAttribute(llarg_sz));
             }
+
             ty::ty_bool => {
-                attrs.push((idx, llvm::ZExtAttribute as u64));
+                attrs.arg(idx, llvm::ZExtAttribute);
             }
+
             // `~` pointer parameters never alias because ownership is transferred
-            ty::ty_uniq(_) => {
-                attrs.push((idx, llvm::NoAliasAttribute as u64));
-                attrs.push((idx, llvm::NonNullAttribute as u64));
+            ty::ty_uniq(inner) => {
+                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, inner));
+
+                attrs.arg(idx, llvm::NoAliasAttribute)
+                     .arg(idx, llvm::DereferenceableAttribute(llsz));
             }
+
+            // The visit glue deals only with opaque pointers so we don't
+            // actually know the concrete type of Self thus we don't know how
+            // many bytes to mark as dereferenceable so instead we just mark
+            // it as nonnull which still holds true
+            ty::ty_rptr(b, ty::mt { ty: it, mutbl }) if match ty::get(it).sty {
+                ty::ty_param(_) => true, _ => false
+            } && mutbl == ast::MutMutable => {
+                attrs.arg(idx, llvm::NoAliasAttribute)
+                     .arg(idx, llvm::NonNullAttribute);
+
+                match b {
+                    ReLateBound(_, BrAnon(_)) => {
+                        attrs.arg(idx, llvm::NoCaptureAttribute);
+                    }
+                    _ => {}
+                }
+            }
+
             // `&mut` pointer parameters never alias other parameters, or mutable global data
             // `&` pointer parameters never alias either (for LLVM's purposes) as long as the
             // interior is safe
             ty::ty_rptr(b, mt) if mt.mutbl == ast::MutMutable ||
                                   !ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe() => {
-                attrs.push((idx, llvm::NoAliasAttribute as u64));
-                attrs.push((idx, llvm::NonNullAttribute as u64));
+
+                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
+                attrs.arg(idx, llvm::NoAliasAttribute)
+                     .arg(idx, llvm::DereferenceableAttribute(llsz));
+
                 match b {
                     ReLateBound(_, BrAnon(_)) => {
-                        attrs.push((idx, llvm::NoCaptureAttribute as u64));
+                        attrs.arg(idx, llvm::NoCaptureAttribute);
                     }
                     _ => {}
                 }
             }
+
             // When a reference in an argument has no named lifetime, it's impossible for that
             // reference to escape this function (returned or stored beyond the call by a closure).
-            ty::ty_rptr(ReLateBound(_, BrAnon(_)), _) => {
-                attrs.push((idx, llvm::NoCaptureAttribute as u64));
-                attrs.push((idx, llvm::NonNullAttribute as u64));
+            ty::ty_rptr(ReLateBound(_, BrAnon(_)), mt) => {
+                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
+                attrs.arg(idx, llvm::NoCaptureAttribute)
+                     .arg(idx, llvm::DereferenceableAttribute(llsz));
             }
-            // & pointer parameters are never null
-            ty::ty_rptr(_, _) => {
-                attrs.push((idx, llvm::NonNullAttribute as u64));
+
+            // & pointer parameters are also never null and we know exactly how
+            // many bytes we can dereference
+            ty::ty_rptr(_, mt) => {
+                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
+                attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
             }
             _ => ()
         }

@@ -129,7 +129,7 @@ pub fn drop_ty<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
         } else {
             v
         };
-        Call(bcx, glue, [ptr], []);
+        Call(bcx, glue, [ptr], None);
     }
     bcx
 }
@@ -185,7 +185,7 @@ pub fn call_visit_glue(bcx: &Block, v: ValueRef, tydesc: ValueRef) {
     let llfn = Load(bcx, GEPi(bcx, tydesc, [0u, abi::tydesc_field_visit_glue]));
     let llrawptr = PointerCast(bcx, v, Type::i8p(bcx.ccx()));
 
-    Call(bcx, llfn, [llrawptr], []);
+    Call(bcx, llfn, [llrawptr], None);
 }
 
 fn make_visit_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
@@ -303,7 +303,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                         Call(bcx,
                              dtor,
                              [PointerCast(bcx, lluniquevalue, Type::i8p(bcx.ccx()))],
-                             []);
+                             None);
                         bcx
                     })
                 }
@@ -342,7 +342,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                 let dtor_ptr = GEPi(bcx, env, [0u, abi::box_field_tydesc]);
                 let dtor = Load(bcx, dtor_ptr);
                 let cdata = GEPi(bcx, env, [0u, abi::box_field_body]);
-                Call(bcx, dtor, [PointerCast(bcx, cdata, Type::i8p(bcx.ccx()))], []);
+                Call(bcx, dtor, [PointerCast(bcx, cdata, Type::i8p(bcx.ccx()))], None);
 
                 // Free the environment itself
                 // FIXME: #13994: pass align and size here
