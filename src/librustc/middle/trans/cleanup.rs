@@ -68,6 +68,7 @@ pub struct CachedEarlyExit {
 }
 
 pub trait Cleanup {
+    fn must_unwind(&self) -> bool;
     fn clean_on_unwind(&self) -> bool;
     fn trans<'a>(&self, bcx: &'a Block<'a>) -> &'a Block<'a>;
 }
@@ -252,7 +253,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         if !ty::type_needs_drop(self.ccx.tcx(), ty) { return; }
         let drop = box DropValue {
             is_immediate: false,
-            on_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
+            must_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
             val: val,
             ty: ty,
             zero: false
@@ -278,7 +279,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         if !ty::type_needs_drop(self.ccx.tcx(), ty) { return; }
         let drop = box DropValue {
             is_immediate: false,
-            on_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
+            must_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
             val: val,
             ty: ty,
             zero: true
@@ -304,7 +305,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         if !ty::type_needs_drop(self.ccx.tcx(), ty) { return; }
         let drop = box DropValue {
             is_immediate: true,
-            on_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
+            must_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
             val: val,
             ty: ty,
             zero: false
@@ -793,10 +794,10 @@ impl<'a> CleanupScope<'a> {
     }
 
     fn needs_invoke(&self) -> bool {
-        /*! True if this scope has cleanups for use during unwinding */
+        /*! True if this scope has cleanups that need unwinding */
 
         self.cached_landing_pad.is_some() ||
-            self.cleanups.iter().any(|c| c.clean_on_unwind())
+            self.cleanups.iter().any(|c| c.must_unwind())
     }
 
     fn block_name(&self, prefix: &str) -> String {
@@ -864,15 +865,19 @@ impl EarlyExitLabel {
 
 pub struct DropValue {
     is_immediate: bool,
-    on_unwind: bool,
+    must_unwind: bool,
     val: ValueRef,
     ty: ty::t,
     zero: bool
 }
 
 impl Cleanup for DropValue {
+    fn must_unwind(&self) -> bool {
+        self.must_unwind
+    }
+
     fn clean_on_unwind(&self) -> bool {
-        self.on_unwind
+        self.must_unwind
     }
 
     fn trans<'a>(&self, bcx: &'a Block<'a>) -> &'a Block<'a> {
@@ -900,6 +905,10 @@ pub struct FreeValue {
 }
 
 impl Cleanup for FreeValue {
+    fn must_unwind(&self) -> bool {
+        true
+    }
+
     fn clean_on_unwind(&self) -> bool {
         true
     }
@@ -921,8 +930,12 @@ pub struct LifetimeEnd {
 }
 
 impl Cleanup for LifetimeEnd {
-    fn clean_on_unwind(&self) -> bool {
+    fn must_unwind(&self) -> bool {
         false
+    }
+
+    fn clean_on_unwind(&self) -> bool {
+        true
     }
 
     fn trans<'a>(&self, bcx: &'a Block<'a>) -> &'a Block<'a> {
