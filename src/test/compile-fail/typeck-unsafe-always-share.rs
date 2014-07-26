@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Verify that Unsafe is *always* share regardles `T` is share.
+// Verify that UnsafeCell is *always* share regardles `T` is share.
 
 // ignore-tidy-linelength
 
-use std::ty::Unsafe;
+use std::cell::UnsafeCell;
 use std::kinds::marker;
 
 struct MyShare<T> {
-    u: Unsafe<T>
+    u: UnsafeCell<T>
 }
 
 struct NoShare {
@@ -28,10 +28,10 @@ fn test<T: Share>(s: T){
 }
 
 fn main() {
-    let us = Unsafe::new(MyShare{u: Unsafe::new(0i)});
+    let us = UnsafeCell::new(MyShare{u: UnsafeCell::new(0i)});
     test(us);
 
-    let uns = Unsafe::new(NoShare{m: marker::NoShare});
+    let uns = UnsafeCell::new(NoShare{m: marker::NoShare});
     test(uns);
 
     let ms = MyShare{u: uns};

@@ -160,12 +160,11 @@ use cmp::PartialEq;
 use kinds::{marker, Copy};
 use ops::{Deref, DerefMut, Drop};
 use option::{None, Option, Some};
-use ty::Unsafe;
 
 /// A mutable memory location that admits only `Copy` data.
 #[unstable = "likely to be renamed; otherwise stable"]
 pub struct Cell<T> {
-    value: Unsafe<T>,
+    value: UnsafeCell<T>,
     noshare: marker::NoShare,
 }
 
@@ -174,7 +173,7 @@ impl<T:Copy> Cell<T> {
     /// Creates a new `Cell` containing the given value.
     pub fn new(value: T) -> Cell<T> {
         Cell {
-            value: Unsafe::new(value),
+            value: UnsafeCell::new(value),
             noshare: marker::NoShare,
         }
     }
@@ -211,7 +210,7 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 /// A mutable memory location with dynamically checked borrow rules
 #[unstable = "likely to be renamed; otherwise stable"]
 pub struct RefCell<T> {
-    value: Unsafe<T>,
+    value: UnsafeCell<T>,
     borrow: Cell<BorrowFlag>,
     nocopy: marker::NoCopy,
     noshare: marker::NoShare,
@@ -228,7 +227,7 @@ impl<T> RefCell<T> {
     #[stable]
     pub fn new(value: T) -> RefCell<T> {
         RefCell {
-            value: Unsafe::new(value),
+            value: UnsafeCell::new(value),
             borrow: Cell::new(UNUSED),
             nocopy: marker::NoCopy,
             noshare: marker::NoShare,
@@ -400,4 +399,82 @@ impl<'b, T> DerefMut<T> for RefMut<'b, T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { &mut *self._parent.value.get() }
     }
+}
+
+/// The core primitive for interior mutability in Rust.
+///
+/// `UnsafeCell` type that wraps a type T and indicates unsafe interior
+/// operations on the wrapped type. Types with an `UnsafeCell<T>` field are
+/// considered to have an *unsafe interior*. The `UnsafeCell` type is the only
+/// legal way to obtain aliasable data that is considered mutable. In general,
+/// transmuting an &T type into an &mut T is considered undefined behavior.
+///
+/// Although it is possible to put an `UnsafeCell<T>` into static item, it is
+/// not permitted to take the address of the static item if the item is not
+/// declared as mutable. This rule exists because immutable static items are
+/// stored in read-only memory, and thus any attempt to mutate their interior
+/// can cause segfaults. Immutable static items containing `UnsafeCell<T>`
+/// instances are still useful as read-only initializers, however, so we do not
+/// forbid them altogether.
+///
+/// Types like `Cell` and `RefCell` use this type to wrap their internal data.
+///
+/// `UnsafeCell` doesn't opt-out from any kind, instead, types with an
+/// `UnsafeCell` interior are expected to opt-out from kinds themselves.
+///
+/// # Example:
+///
+/// ```rust
+/// use std::cell::UnsafeCell;
+/// use std::kinds::marker;
+///
+/// struct NotThreadSafe<T> {
+///     value: UnsafeCell<T>,
+///     marker: marker::NoShare
+/// }
+/// ```
+///
+/// **NOTE:** `UnsafeCell<T>` fields are public to allow static initializers. It
+/// is not recommended to access its fields directly, `get` should be used
+/// instead.
+#[lang="unsafe"]
+#[unstable = "this type may be renamed in the future"]
+pub struct UnsafeCell<T> {
+    /// Wrapped value
+    ///
+    /// This field should not be accessed directly, it is made public for static
+    /// initializers.
+    #[unstable]
+    pub value: T,
+}
+
+impl<T> UnsafeCell<T> {
+    /// Construct a new instance of `UnsafeCell` which will wrapp the specified
+    /// value.
+    ///
+    /// All access to the inner value through methods is `unsafe`, and it is
+    /// highly discouraged to access the fields directly.
+    #[stable]
+    pub fn new(value: T) -> UnsafeCell<T> {
+        UnsafeCell { value: value }
+    }
+
+    /// Gets a mutable pointer to the wrapped value.
+    ///
+    /// This function is unsafe as the pointer returned is an unsafe pointer and
+    /// no guarantees are made about the aliasing of the pointers being handed
+    /// out in this or other tasks.
+    #[inline]
+    #[unstable = "conventions around acquiring an inner reference are still \
+                  under development"]
+    pub unsafe fn get(&self) -> *mut T { &self.value as *const T as *mut T }
+
+    /// Unwraps the value
+    ///
+    /// This function is unsafe because there is no guarantee that this or other
+    /// tasks are currently inspecting the inner value.
+    #[inline]
+    #[unstable = "conventions around the name `unwrap` are still under \
+                  development"]
+    pub unsafe fn unwrap(self) -> T { self.value }
 }

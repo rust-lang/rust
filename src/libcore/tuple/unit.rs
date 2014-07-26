@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #![doc(primitive = "unit")]
+#![unstable = "this module is purely for documentation and it will likely be \
+               removed from the public api"]
 
 //! The `()` type, sometimes called "unit" or "nil".
 //!

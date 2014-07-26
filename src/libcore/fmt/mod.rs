@@ -98,13 +98,15 @@ pub struct Formatter<'a> {
     args: &'a [Argument<'a>],
 }
 
+enum Void {}
+
 /// This struct represents the generic "argument" which is taken by the Xprintf
 /// family of functions. It contains a function to format the given value. At
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
 pub struct Argument<'a> {
-    formatter: extern "Rust" fn(&any::Void, &mut Formatter) -> Result,
-    value: &'a any::Void,
+    formatter: extern "Rust" fn(&Void, &mut Formatter) -> Result,
+    value: &'a Void,
 }
 
 impl<'a> Arguments<'a> {

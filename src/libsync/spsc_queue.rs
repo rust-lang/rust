@@ -39,7 +39,7 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use core::mem;
-use core::ty::Unsafe;
+use core::cell::UnsafeCell;
 
 use atomics::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
 
@@ -58,13 +58,13 @@ struct Node<T> {
 /// time.
 pub struct Queue<T> {
     // consumer fields
-    tail: Unsafe<*mut Node<T>>, // where to pop from
+    tail: UnsafeCell<*mut Node<T>>, // where to pop from
     tail_prev: AtomicPtr<Node<T>>, // where to pop from
 
     // producer fields
-    head: Unsafe<*mut Node<T>>,      // where to push to
-    first: Unsafe<*mut Node<T>>,     // where to get new nodes from
-    tail_copy: Unsafe<*mut Node<T>>, // between first/tail
+    head: UnsafeCell<*mut Node<T>>,      // where to push to
+    first: UnsafeCell<*mut Node<T>>,     // where to get new nodes from
+    tail_copy: UnsafeCell<*mut Node<T>>, // between first/tail
 
     // Cache maintenance fields. Additions and subtractions are stored
     // separately in order to allow them to use nonatomic addition/subtraction.
@@ -103,11 +103,11 @@ impl<T: Send> Queue<T> {
         let n2 = Node::new();
         unsafe { (*n1).next.store(n2, Relaxed) }
         Queue {
-            tail: Unsafe::new(n2),
+            tail: UnsafeCell::new(n2),
             tail_prev: AtomicPtr::new(n1),
-            head: Unsafe::new(n2),
-            first: Unsafe::new(n1),
-            tail_copy: Unsafe::new(n1),
+            head: UnsafeCell::new(n2),
+            first: UnsafeCell::new(n1),
+            tail_copy: UnsafeCell::new(n1),
             cache_bound: bound,
             cache_additions: AtomicUint::new(0),
             cache_subtractions: AtomicUint::new(0),
