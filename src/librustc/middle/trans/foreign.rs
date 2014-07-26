@@ -382,21 +382,24 @@ pub fn trans_native_call<'a>(
 
     // A function pointer is called without the declaration available, so we have to apply
     // any attributes with ABI implications directly to the call instruction.
-    let mut attrs = Vec::new();
+    let mut attrs = llvm::AttrBuilder::new();
 
     // Add attributes that are always applicable, independent of the concrete foreign ABI
     if fn_type.ret_ty.is_indirect() {
+        let llret_sz = machine::llsize_of_real(ccx, fn_type.ret_ty.ty);
+
         // The outptr can be noalias and nocapture because it's entirely
-        // invisible to the program. We can also mark it as nonnull
-        attrs.push((1, llvm::NoAliasAttribute as u64));
-        attrs.push((1, llvm::NoCaptureAttribute as u64));
-        attrs.push((1, llvm::NonNullAttribute as u64));
+        // invisible to the program. We also know it's nonnull as well
+        // as how many bytes we can dereference
+        attrs.arg(1, llvm::NoAliasAttribute)
+             .arg(1, llvm::NoCaptureAttribute)
+             .arg(1, llvm::DereferenceableAttribute(llret_sz));
     };
 
     // Add attributes that depend on the concrete foreign ABI
     let mut arg_idx = if fn_type.ret_ty.is_indirect() { 1 } else { 0 };
     match fn_type.ret_ty.attr {
-        Some(attr) => attrs.push((arg_idx, attr as u64)),
+        Some(attr) => { attrs.arg(arg_idx, attr); },
         _ => ()
     }
 
@@ -409,7 +412,7 @@ pub fn trans_native_call<'a>(
         if arg_ty.pad.is_some() { arg_idx += 1; }
 
         match arg_ty.attr {
-            Some(attr) => attrs.push((arg_idx, attr as u64)),
+            Some(attr) => { attrs.arg(arg_idx, attr); },
             _ => {}
         }
 
@@ -420,7 +423,7 @@ pub fn trans_native_call<'a>(
                                         llfn,
                                         llargs_foreign.as_slice(),
                                         cc,
-                                        attrs.as_slice());
+                                        Some(attrs));
 
     // If the function we just called does not use an outpointer,
     // store the result into the rust outpointer. Cast the outpointer
@@ -762,7 +765,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
         // Perform the call itself
         debug!("calling llrustfn = {}, t = {}", ccx.tn.val_to_string(llrustfn), t.repr(ccx.tcx()));
         let attributes = base::get_fn_llvm_attributes(ccx, t);
-        let llrust_ret_val = builder.call(llrustfn, llrust_args.as_slice(), attributes.as_slice());
+        let llrust_ret_val = builder.call(llrustfn, llrust_args.as_slice(), Some(attributes));
 
         // Get the return value where the foreign fn expects it.
         let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {
