@@ -10,15 +10,39 @@ A **string** is a sequence of unicode scalar values encoded as a stream of
 UTF-8 bytes. All strings are guaranteed to be validly-encoded UTF-8 sequences.
 Additionally, strings are not null-terminated and can contain null bytes.
 
-Rust has two main types of strings: `&str` and `String`.
+Rust has two main types of strings: `String` and `&str`. 
+
+# String
+
+A `String` is a heap-allocated string. Mutable strings are growable, 
+and strings are guaranteed to be UTF-8. 
+
+
+```{rust}
+let mut s = "Hello".to_string();
+println!("{}", s);
+
+s.push_str(", world.");
+println!("{}", s);
+```
 
 # &str
 
-The first kind is a `&str`. This is pronounced a 'string slice.' String literals
-are of the type `&str`:
+The second kind,`&str`, is pronounced a 'string slice'. A string slice is 
+often used to represent a view in to an existing string. 
 
 ```{rust}
-let string = "Hello there.";
+let s = "Hello world".to_string();
+let hello: &str = s.as_slice().slice_to(5);
+println!("{} world", hello);
+```
+
+String literals are also of the type `&str`, so the example can be rewritten as
+
+```{rust}
+let s: &str = "Hello world";
+let hello: &str = s.slice_to(5);
+println!("{} world", hello);
 ```
 
 Like any Rust type, string slices have an associated lifetime. A string literal
@@ -36,18 +60,6 @@ Like vector slices, string slices are simply a pointer plus a length. This
 means that they're a 'view' into an already-allocated string, such as a
 `&'static str` or a `String`.
 
-# String
-
-A `String` is a heap-allocated string. This string is growable, and is also
-guaranteed to be UTF-8.
-
-```{rust}
-let mut s = "Hello".to_string();
-println!("{}", s);
-
-s.push_str(", world.");
-println!("{}", s);
-```
 
 You can coerce a `String` into a `&str` with the `as_slice()` method:
 
