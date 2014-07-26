@@ -1076,6 +1076,10 @@ fn compare_impl_method(tcx: &ty::ctxt,
             ty::note_and_explain_type_err(tcx, terr);
         }
     }
+
+    // Finally, resolve all regions. This catches wily misuses of lifetime
+    // parameters.
+    infcx.resolve_regions_and_report_errors();
 }
 
 fn check_cast(fcx: &FnCtxt,
