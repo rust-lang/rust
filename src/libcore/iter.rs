@@ -2006,7 +2006,8 @@ impl<A: Add<A, A> + PartialOrd + Clone + ToPrimitive> Iterator<A> for Range<A> {
         // This first checks if the elements are representable as i64. If they aren't, try u64 (to
         // handle cases like range(huge, huger)). We don't use uint/int because the difference of
         // the i64/u64 might lie within their range.
-        let bound = match self.state.to_i64() {
+        let state = self.state.to_i64();
+        let bound = match state {
             Some(a) => {
                 let sz = self.stop.to_i64().map(|b| b.checked_sub(&a));
                 match sz {

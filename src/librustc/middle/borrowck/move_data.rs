@@ -26,6 +26,7 @@ use middle::dataflow::BitwiseOperator;
 use middle::dataflow::DataFlowOperator;
 use euv = middle::expr_use_visitor;
 use mc = middle::mem_categorization;
+use middle::mem_categorization::Typer;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
@@ -163,7 +164,7 @@ pub type AssignDataFlow<'a> = DataFlowContext<'a, AssignDataFlowOperator>;
 
 fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
     match *loan_path {
-        LpVar(_) | LpUpvar(_) => {
+        LpVar(_) | LpUpvar(_) | LpAliasableRvalue(_) => {
             true
         }
         LpExtend(_, _, LpInterior(mc::InteriorElement(_))) => {
@@ -248,7 +249,7 @@ impl MoveData {
         }
 
         let index = match *lp {
-            LpVar(..) | LpUpvar(..) => {
+            LpVar(..) | LpUpvar(..) | LpAliasableRvalue(..) => {
                 let index = MovePathIndex(self.paths.borrow().len());
 
                 self.paths.borrow_mut().push(MovePath {
@@ -319,7 +320,7 @@ impl MoveData {
             }
             None => {
                 match **lp {
-                    LpVar(..) | LpUpvar(..) => { }
+                    LpVar(..) | LpUpvar(..) | LpAliasableRvalue(..) => { }
                     LpExtend(ref b, _, _) => {
                         self.add_existing_base_paths(b, result);
                     }
@@ -440,6 +441,17 @@ impl MoveData {
                     let path = *self.path_map.borrow().get(&path.loan_path);
                     self.kill_moves(path, kill_id, dfcx_moves);
                 }
+                LpAliasableRvalue(id) => {
+                    match tcx.temporary_scope(id) {
+                        Some(kill_id) => {
+                            let path = *self.path_map
+                                            .borrow()
+                                            .get(&path.loan_path);
+                            self.kill_moves(path, kill_id, dfcx_moves);
+                        }
+                        None => {}
+                    }
+                }
                 LpExtend(..) => {}
             }
         }
@@ -455,6 +467,14 @@ impl MoveData {
                 LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }) => {
                     let kill_id = closure_to_block(closure_expr_id, tcx);
                     dfcx_assign.add_kill(kill_id, assignment_index);
+                }
+                LpAliasableRvalue(expr_id) => {
+                    match tcx.temporary_scope(expr_id) {
+                        Some(kill_id) => {
+                            dfcx_assign.add_kill(kill_id, assignment_index)
+                        }
+                        None => {}
+                    }
                 }
                 LpExtend(..) => {
                     tcx.sess.bug("var assignment for non var path");

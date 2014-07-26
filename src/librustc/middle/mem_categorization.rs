@@ -80,6 +80,7 @@ use std::rc::Rc;
 #[deriving(Clone, PartialEq)]
 pub enum categorization {
     cat_rvalue(ty::Region),            // temporary val, argument is its scope
+    cat_aliasable_rvalue(ast::NodeId), // rvalue that might be aliased
     cat_static_item,
     cat_copied_upvar(CopiedUpvar),     // upvar copied into proc env
     cat_upvar(ty::UpvarId, ty::UpvarBorrow), // by ref upvar from stack closure
@@ -270,6 +271,7 @@ pub trait Typer {
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
+    fn is_rvalue_aliasable(&self, expr_id: ast::NodeId) -> bool;
 }
 
 impl MutabilityCategory {
@@ -676,6 +678,10 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                            span: Span,
                            expr_ty: ty::t)
                            -> cmt {
+        if self.typer.is_rvalue_aliasable(id) {
+            return self.cat_aliasable_rvalue(id, span, expr_ty)
+        }
+
         match self.typer.temporary_scope(id) {
             Some(scope) => {
                 self.cat_rvalue(id, span, ty::ReScope(scope), expr_ty)
@@ -697,6 +703,20 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
             cat:cat_rvalue(temp_scope),
             mutbl:McDeclared,
             ty:expr_ty
+        })
+    }
+
+    fn cat_aliasable_rvalue(&self,
+                            cmt_id: ast::NodeId,
+                            span: Span,
+                            expr_ty: ty::t)
+                            -> cmt {
+        Rc::new(cmt_ {
+            id: cmt_id,
+            span: span,
+            cat: cat_aliasable_rvalue(cmt_id),
+            mutbl: McDeclared,
+            ty: expr_ty,
         })
     }
 
@@ -1156,6 +1176,9 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
           cat_rvalue(..) => {
               "non-lvalue".to_string()
           }
+          cat_aliasable_rvalue(..) => {
+              "aliasable non-lvalue".to_string()
+          }
           cat_local(_) => {
               "local variable".to_string()
           }
@@ -1228,6 +1251,7 @@ impl cmt_ {
             cat_copied_upvar(..) |
             cat_local(..) |
             cat_arg(..) |
+            cat_aliasable_rvalue(..) |
             cat_deref(_, _, UnsafePtr(..)) |
             cat_deref(_, _, GcPtr(..)) |
             cat_deref(_, _, BorrowedPtr(..)) |
@@ -1269,6 +1293,7 @@ impl cmt_ {
 
             cat_copied_upvar(CopiedUpvar {onceness: ast::Once, ..}) |
             cat_rvalue(..) |
+            cat_aliasable_rvalue(..) |
             cat_local(..) |
             cat_upvar(..) |
             cat_arg(_) |
@@ -1324,7 +1349,8 @@ impl Repr for categorization {
             cat_copied_upvar(..) |
             cat_local(..) |
             cat_upvar(..) |
-            cat_arg(..) => {
+            cat_arg(..) |
+            cat_aliasable_rvalue(..) => {
                 format!("{:?}", *self)
             }
             cat_deref(ref cmt, derefs, ptr) => {

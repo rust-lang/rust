@@ -73,6 +73,12 @@ impl<'a> RestrictionsContext<'a> {
                 SafeIf(lp.clone(), vec!(lp))
             }
 
+            mc::cat_aliasable_rvalue(expr_id) => {
+                // R-Variable, effectively
+                let lp = Rc::new(LpAliasableRvalue(expr_id));
+                SafeIf(lp.clone(), vec!(lp))
+            }
+
             mc::cat_upvar(upvar_id, _) => {
                 // R-Variable, captured into closure
                 let lp = Rc::new(LpUpvar(upvar_id));

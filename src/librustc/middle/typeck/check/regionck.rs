@@ -290,6 +290,10 @@ impl<'fcx> mc::Typer for Rcx<'fcx> {
     fn upvar_borrow(&self, id: ty::UpvarId) -> ty::UpvarBorrow {
         self.fcx.inh.upvar_borrow_map.borrow().get_copy(&id)
     }
+
+    fn is_rvalue_aliasable(&self, expr_id: ast::NodeId) -> bool {
+        self.tcx().region_maps.aliasable_rvalues.borrow().contains(&expr_id)
+    }
 }
 
 pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
@@ -1319,7 +1323,8 @@ fn link_region(rcx: &Rcx,
             mc::cat_local(..) |
             mc::cat_arg(..) |
             mc::cat_upvar(..) |
-            mc::cat_rvalue(..) => {
+            mc::cat_rvalue(..) |
+            mc::cat_aliasable_rvalue(..) => {
                 // These are all "base cases" with independent lifetimes
                 // that are not subject to inference
                 return;
@@ -1390,7 +1395,8 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
             mc::cat_copied_upvar(_) |
             mc::cat_local(_) |
             mc::cat_arg(_) |
-            mc::cat_upvar(..) => {
+            mc::cat_upvar(..) |
+            mc::cat_aliasable_rvalue(..) => {
                 return;
             }
         }
@@ -1442,7 +1448,8 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
             mc::cat_copied_upvar(_) |
             mc::cat_local(_) |
             mc::cat_arg(_) |
-            mc::cat_upvar(..) => {
+            mc::cat_upvar(..) |
+            mc::cat_aliasable_rvalue(..) => {
                 return;
             }
         }
