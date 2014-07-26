@@ -24,7 +24,6 @@ use core::mem::replace;
 use {Collection, Mutable, Map, MutableMap, MutableSeq};
 use {vec, slice};
 use vec::Vec;
-use hash::Hash;
 
 /// A map optimized for small integer keys.
 ///
@@ -59,7 +58,7 @@ use hash::Hash;
 /// months.clear();
 /// assert!(months.is_empty());
 /// ```
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(Hash, PartialEq, Eq)]
 pub struct SmallIntMap<T> {
     v: Vec<Option<T>>,
 }
@@ -480,8 +479,9 @@ pub type Values<'a, T> =
 mod test_map {
     use std::prelude::*;
     use std::hash;
+    use vec::Vec;
 
-    use {Map, MutableMap, Mutable};
+    use {Map, MutableMap, Mutable, MutableSeq};
     use super::SmallIntMap;
 
     #[test]
@@ -737,9 +737,9 @@ mod test_map {
     fn test_clone() {
         let mut a = SmallIntMap::new();
 
-        a.insert(1, vec!(4i, 5, 6));
-        a.insert(4, vec!());
-        a.insert(6, vec!(1, 3));
+        a.insert(1, 'x');
+        a.insert(4, 'y');
+        a.insert(6, 'z');
 
         assert!(a.clone() == a);
     }
@@ -781,7 +781,7 @@ mod test_map {
 
     #[test]
     fn test_from_iter() {
-        let xs = vec![(1u, 'a'), (2, 'b'), (3, 'c'), (4, 'd'), (5, 'e'), (6, 'f')];
+        let xs: Vec<(uint, char)> = vec![(1u, 'a'), (2, 'b'), (3, 'c'), (4, 'd'), (5, 'e')];
 
         let map: SmallIntMap<char> = xs.iter().map(|&x| x).collect();
 
