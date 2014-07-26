@@ -12,7 +12,7 @@
 #![allow(non_snake_case_functions)]
 
 use llvm;
-use llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};
+use llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect, AttrBuilder};
 use llvm::{Opcode, IntPredicate, RealPredicate};
 use llvm::{ValueRef, BasicBlockRef};
 use middle::trans::common::*;
@@ -113,7 +113,7 @@ pub fn Invoke(cx: &Block,
               args: &[ValueRef],
               then: BasicBlockRef,
               catch: BasicBlockRef,
-              attributes: &[(uint, u64)])
+              attributes: Option<AttrBuilder>)
               -> ValueRef {
     if cx.unreachable.get() {
         return C_null(Type::i8(cx.ccx()));
@@ -681,13 +681,13 @@ pub fn InlineAsmCall(cx: &Block, asm: *const c_char, cons: *const c_char,
 }
 
 pub fn Call(cx: &Block, fn_: ValueRef, args: &[ValueRef],
-            attributes: &[(uint, u64)]) -> ValueRef {
+            attributes: Option<AttrBuilder>) -> ValueRef {
     if cx.unreachable.get() { return _UndefReturn(cx, fn_); }
     B(cx).call(fn_, args, attributes)
 }
 
 pub fn CallWithConv(cx: &Block, fn_: ValueRef, args: &[ValueRef], conv: CallConv,
-                    attributes: &[(uint, u64)]) -> ValueRef {
+                    attributes: Option<AttrBuilder>) -> ValueRef {
     if cx.unreachable.get() { return _UndefReturn(cx, fn_); }
     B(cx).call_with_conv(fn_, args, conv, attributes)
 }

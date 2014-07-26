@@ -11,7 +11,7 @@
 #![allow(dead_code)] // FFI wrappers
 
 use llvm;
-use llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};
+use llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect, AttrBuilder};
 use llvm::{Opcode, IntPredicate, RealPredicate, False};
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
 use middle::trans::base;
@@ -155,7 +155,7 @@ impl<'a> Builder<'a> {
                   args: &[ValueRef],
                   then: BasicBlockRef,
                   catch: BasicBlockRef,
-                  attributes: &[(uint, u64)])
+                  attributes: Option<AttrBuilder>)
                   -> ValueRef {
         self.count_insn("invoke");
 
@@ -174,8 +174,9 @@ impl<'a> Builder<'a> {
                                           then,
                                           catch,
                                           noname());
-            for &(idx, attr) in attributes.iter() {
-                llvm::LLVMAddCallSiteAttribute(v, idx as c_uint, attr);
+            match attributes {
+                Some(a) => a.apply_callsite(v),
+                None => {}
             }
             v
         }
@@ -777,7 +778,7 @@ impl<'a> Builder<'a> {
                                              c, noname(), False, False)
                 }
             });
-            self.call(asm, [], []);
+            self.call(asm, [], None);
         }
     }
 
@@ -802,12 +803,12 @@ impl<'a> Builder<'a> {
         unsafe {
             let v = llvm::LLVMInlineAsm(
                 fty.to_ref(), asm, cons, volatile, alignstack, dia as c_uint);
-            self.call(v, inputs, [])
+            self.call(v, inputs, None)
         }
     }
 
     pub fn call(&self, llfn: ValueRef, args: &[ValueRef],
-                attributes: &[(uint, u64)]) -> ValueRef {
+                attributes: Option<AttrBuilder>) -> ValueRef {
         self.count_insn("call");
 
         debug!("Call {} with args ({})",
@@ -820,15 +821,16 @@ impl<'a> Builder<'a> {
         unsafe {
             let v = llvm::LLVMBuildCall(self.llbuilder, llfn, args.as_ptr(),
                                         args.len() as c_uint, noname());
-            for &(idx, attr) in attributes.iter() {
-                llvm::LLVMAddCallSiteAttribute(v, idx as c_uint, attr);
+            match attributes {
+                Some(a) => a.apply_callsite(v),
+                None => {}
             }
             v
         }
     }
 
     pub fn call_with_conv(&self, llfn: ValueRef, args: &[ValueRef],
-                          conv: CallConv, attributes: &[(uint, u64)]) -> ValueRef {
+                          conv: CallConv, attributes: Option<AttrBuilder>) -> ValueRef {
         self.count_insn("callwithconv");
         let v = self.call(llfn, args, attributes);
         llvm::SetInstructionCallConv(v, conv);

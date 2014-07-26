@@ -113,12 +113,38 @@ extern "C" void LLVMAddCallSiteAttribute(LLVMValueRef Instr, unsigned index, uin
                                                          index, B)));
 }
 
+
+#if LLVM_VERSION_MINOR >= 5
+extern "C" void LLVMAddDereferenceableCallSiteAttr(LLVMValueRef Instr, unsigned idx, uint64_t b) {
+  CallSite Call = CallSite(unwrap<Instruction>(Instr));
+  AttrBuilder B;
+  B.addDereferenceableAttr(b);
+  Call.setAttributes(
+    Call.getAttributes().addAttributes(Call->getContext(), idx,
+                                       AttributeSet::get(Call->getContext(),
+                                                         idx, B)));
+}
+#else
+extern "C" void LLVMAddDereferenceableCallSiteAttr(LLVMValueRef, unsigned, uint64_t) {}
+#endif
+
 extern "C" void LLVMAddFunctionAttribute(LLVMValueRef Fn, unsigned index, uint64_t Val) {
   Function *A = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addRawValue(Val);
   A->addAttributes(index, AttributeSet::get(A->getContext(), index, B));
 }
+
+#if LLVM_VERSION_MINOR >= 5
+extern "C" void LLVMAddDereferenceableAttr(LLVMValueRef Fn, unsigned index, uint64_t bytes) {
+  Function *A = unwrap<Function>(Fn);
+  AttrBuilder B;
+  B.addDereferenceableAttr(bytes);
+  A->addAttributes(index, AttributeSet::get(A->getContext(), index, B));
+}
+#else
+extern "C" void LLVMAddDereferenceableAttr(LLVMValueRef, unsigned, uint64_t) {}
+#endif
 
 extern "C" void LLVMAddFunctionAttrString(LLVMValueRef Fn, unsigned index, const char *Name) {
   Function *F = unwrap<Function>(Fn);
