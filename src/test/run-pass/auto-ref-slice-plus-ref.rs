@@ -11,7 +11,6 @@
 // Testing that method lookup automatically both borrows vectors to slices
 // and also references them to create the &self pointer
 
-#![feature(managed_boxes)]
 
 trait MyIter {
     fn test_imm(&self);

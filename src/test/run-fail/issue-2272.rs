@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(managed_boxes)]
 
 // error-pattern:explicit failure
 // Issue #2272 - unwind this without leaking the unique pointer

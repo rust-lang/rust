@@ -49,7 +49,6 @@
 // lldb-command:print managed->val
 // lldb-check:[...]$5 = 7
 
-#![feature(managed_boxes)]
 #![allow(unused_variable)]
 
 use std::gc::GC;

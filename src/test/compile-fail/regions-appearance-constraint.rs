@@ -10,7 +10,6 @@
 
 // Test no-special rooting is used for managed boxes
 
-#![feature(managed_boxes)]
 
 use std::gc::GC;
 

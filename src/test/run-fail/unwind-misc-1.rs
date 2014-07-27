@@ -11,7 +11,6 @@
 // exec-env:RUST_NEWRT=1
 // error-pattern:fail
 
-#![feature(managed_boxes)]
 
 use std::vec;
 use std::collections;

@@ -10,7 +10,6 @@
 
 // ignore-pretty FIXME(#14193)
 
-#![feature(managed_boxes)]
 
 use std::gc::{Gc, GC};
 

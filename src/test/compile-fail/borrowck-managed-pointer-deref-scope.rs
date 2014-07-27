@@ -11,7 +11,6 @@
 // Verify that managed pointers scope is treated like ownoed pointers.
 // regresion test for #11586
 
-#![feature(managed_boxes)]
 
 use std::gc::{GC, Gc};
 
