@@ -845,8 +845,12 @@ impl DocFolder for Cache {
                     }
                     _ => (None, Some(self.stack.as_slice()))
                 };
+                let hidden_field = match item.inner {
+                    clean::StructFieldItem(clean::HiddenStructField) => true,
+                    _ => false
+                };
                 match parent {
-                    (parent, Some(path)) if !self.privmod => {
+                    (parent, Some(path)) if !self.privmod && !hidden_field => {
                         self.search_index.push(IndexItem {
                             ty: shortty(&item),
                             name: s.to_string(),
