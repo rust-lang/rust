@@ -118,7 +118,7 @@ differently.
 ## Container iterators
 
 Containers implement iteration over the contained elements by returning an
-iterator object. For example, vector slices several iterators available:
+iterator object. For example, for vector slices several iterators are available:
 
 * `iter()` for immutable references to the elements
 * `mut_iter()` for mutable references to the elements
