@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(managed_boxes, unsafe_destructor)]
+#![feature(unsafe_destructor)]
 
 use std::task;
 use std::gc::{Gc, GC};

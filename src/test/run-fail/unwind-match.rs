@@ -11,7 +11,6 @@
 // Issue #945
 // error-pattern:non-exhaustive match failure
 
-#![feature(managed_boxes)]
 
 use std::gc::GC;
 
