@@ -19,6 +19,7 @@ use core::cmp;
 use core::default::Default;
 use core::fmt;
 use core::iter::RandomAccessIterator;
+use std::hash::{Writer, Hash};
 
 use {Deque, Collection, Mutable, MutableSeq};
 use vec::Vec;
@@ -450,6 +451,14 @@ impl<A: PartialEq> PartialEq for RingBuf<A> {
     }
 }
 
+impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
+    fn hash(&self, state: &mut S) {
+        for elt in self.iter() {
+            elt.hash(state);
+        }
+    }
+}
+
 impl<A> FromIterator<A> for RingBuf<A> {
     fn from_iter<T: Iterator<A>>(iterator: T) -> RingBuf<A> {
         let (lower, _) = iterator.size_hint();
@@ -485,6 +494,7 @@ mod tests {
     use std::fmt::Show;
     use std::prelude::*;
     use std::gc::{GC, Gc};
+    use std::hash;
     use test::Bencher;
     use test;
 
@@ -910,6 +920,24 @@ mod tests {
         assert!(e != d);
         e.clear();
         assert!(e == RingBuf::new());
+    }
+
+    #[test]
+    fn test_hash() {
+      let mut x = RingBuf::new();
+      let mut y = RingBuf::new();
+
+      x.push(1i);
+      x.push(2);
+      x.push(3);
+
+      y.push(0i);
+      y.push(1i);
+      y.pop_front();
+      y.push(2);
+      y.push(3);
+
+      assert!(hash::hash(&x) == hash::hash(&y));
     }
 
     #[test]
