@@ -11,7 +11,6 @@
 // Regression test that rustc doesn't recurse infinitely substituting
 // the boxed type parameter
 
-#![feature(managed_boxes)]
 
 use std::gc::Gc;
 

@@ -10,7 +10,6 @@
 
 // ignore-pretty very bad with line comments
 
-#![feature(managed_boxes)]
 #![allow(non_snake_case_functions)]
 
 use std::io;

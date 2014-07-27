@@ -10,7 +10,6 @@
 
 // ignore-android: FIXME(#10381)
 
-#![feature(managed_boxes)]
 
 // Gdb doesn't know about UTF-32 character encoding and will print a rust char as only
 // its numerical value.

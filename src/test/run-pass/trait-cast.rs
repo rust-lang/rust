@@ -10,7 +10,6 @@
 
 // ignore-pretty FIXME(#14193)
 
-#![feature(managed_boxes)]
 
 // Test cyclic detector when using trait instances.
 

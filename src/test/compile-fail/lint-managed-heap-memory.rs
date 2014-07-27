@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![feature(managed_boxes)]
 #![forbid(managed_heap_memory)]
 
 use std::gc::{Gc, GC};

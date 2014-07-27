@@ -47,7 +47,6 @@
 // lldb-command:print managed_dtor->val
 // lldb-check:[...]$3 = StructWithDestructor { x: 33, y: 333, z: 3333, w: 33333 }
 
-#![feature(managed_boxes)]
 #![allow(unused_variable)]
 
 use std::gc::GC;

@@ -82,7 +82,6 @@
 // lldb-command:print *unique_val_interior_ref_2
 // lldb-check:[...]$9 = 26.5
 
-#![feature(managed_boxes)]
 #![allow(unused_variable)]
 
 use std::gc::GC;
