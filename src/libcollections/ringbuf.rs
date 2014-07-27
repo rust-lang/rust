@@ -460,6 +460,7 @@ impl<A: PartialOrd> PartialOrd for RingBuf<A> {
 
 impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
     fn hash(&self, state: &mut S) {
+        self.len().hash(state);
         for elt in self.iter() {
             elt.hash(state);
         }
