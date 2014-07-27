@@ -19,6 +19,7 @@ use core::cmp;
 use core::default::Default;
 use core::fmt;
 use core::iter::RandomAccessIterator;
+use core::iter;
 use std::hash::{Writer, Hash};
 
 use {Deque, Collection, Mutable, MutableSeq};
@@ -448,6 +449,12 @@ impl<A: PartialEq> PartialEq for RingBuf<A> {
     }
     fn ne(&self, other: &RingBuf<A>) -> bool {
         !self.eq(other)
+    }
+}
+
+impl<A: PartialOrd> PartialOrd for RingBuf<A> {
+    fn partial_cmp(&self, other: &RingBuf<A>) -> Option<Ordering> {
+        iter::order::partial_cmp(self.iter(), other.iter())
     }
 }
 
@@ -938,6 +945,19 @@ mod tests {
       y.push(3);
 
       assert!(hash::hash(&x) == hash::hash(&y));
+    }
+
+    #[test]
+    fn test_ord() {
+        let x = RingBuf::new();
+        let mut y = RingBuf::new();
+        y.push(1i);
+        y.push(2);
+        y.push(3);
+        assert!(x < y);
+        assert!(y > x);
+        assert!(x <= x);
+        assert!(x >= x);
     }
 
     #[test]
