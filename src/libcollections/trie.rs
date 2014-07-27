@@ -15,6 +15,8 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use core::default::Default;
+use core::fmt;
+use core::fmt::Show;
 use core::mem::zeroed;
 use core::mem;
 use core::uint;
@@ -31,6 +33,7 @@ static SIZE: uint = 1 << SHIFT;
 static MASK: uint = SIZE - 1;
 static NUM_CHUNKS: uint = uint::BITS / SHIFT;
 
+#[deriving(Clone)]
 enum Child<T> {
     Internal(Box<TrieNode<T>>),
     External(uint, T),
@@ -75,6 +78,7 @@ enum Child<T> {
 /// map.clear();
 /// assert!(map.is_empty());
 /// ```
+#[deriving(Clone)]
 pub struct TrieMap<T> {
     root: TrieNode<T>,
     length: uint
@@ -88,6 +92,19 @@ impl<T: PartialEq> PartialEq for TrieMap<T> {
 }
 
 impl<T: Eq> Eq for TrieMap<T> {}
+
+impl<T: Show> Show for TrieMap<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{{"));
+
+        for (i, (k, v)) in self.iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}: {}", k, *v));
+        }
+
+        write!(f, "}}")
+    }
+}
 
 impl<T> Collection for TrieMap<T> {
     /// Return the number of elements in the map.
@@ -500,9 +517,22 @@ impl<S: Writer, T: Hash<S>> Hash<S> for TrieMap<T> {
 /// set.clear();
 /// assert!(set.is_empty());
 /// ```
-#[deriving(Hash, PartialEq, Eq)]
+#[deriving(Clone, Hash, PartialEq, Eq)]
 pub struct TrieSet {
     map: TrieMap<()>
+}
+
+impl Show for TrieSet {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{{"));
+
+        for (i, x) in self.iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}", x));
+        }
+
+        write!(f, "}}")
+    }
 }
 
 impl Collection for TrieSet {
@@ -671,6 +701,19 @@ impl Extendable<uint> for TrieSet {
 struct TrieNode<T> {
     count: uint,
     children: [Child<T>, ..SIZE]
+}
+
+impl<T:Clone> Clone for TrieNode<T> {
+    #[inline]
+    fn clone(&self) -> TrieNode<T> {
+        let ch = &self.children;
+        TrieNode {
+            count: self.count,
+             children: [ch[0].clone(), ch[1].clone(), ch[2].clone(), ch[3].clone(),
+                        ch[4].clone(), ch[5].clone(), ch[6].clone(), ch[7].clone(),
+                        ch[8].clone(), ch[9].clone(), ch[10].clone(), ch[11].clone(),
+                        ch[12].clone(), ch[13].clone(), ch[14].clone(), ch[15].clone()]}
+    }
 }
 
 impl<T> TrieNode<T> {
@@ -1238,6 +1281,17 @@ mod test_map {
     }
 
     #[test]
+    fn test_clone() {
+        let mut a = TrieMap::new();
+
+        a.insert(1, 'a');
+        a.insert(2, 'b');
+        a.insert(3, 'c');
+
+        assert!(a.clone() == a);
+    }
+
+    #[test]
     fn test_eq() {
         let mut a = TrieMap::new();
         let mut b = TrieMap::new();
@@ -1270,6 +1324,20 @@ mod test_map {
       y.insert(1, 'a');
 
       assert!(hash::hash(&x) == hash::hash(&y));
+    }
+
+    #[test]
+    fn test_show() {
+        let mut map = TrieMap::new();
+        let empty: TrieMap<uint> = TrieMap::new();
+
+        map.insert(1, 'a');
+        map.insert(2, 'b');
+
+        let map_str = format!("{}", map);
+
+        assert!(map_str == "{1: a, 2: b}".to_string());
+        assert_eq!(format!("{}", empty), "{}".to_string());
     }
 }
 
@@ -1419,5 +1487,30 @@ mod test_set {
         for x in xs.iter() {
             assert!(set.contains(x));
         }
+    }
+
+    #[test]
+    fn test_show() {
+        let mut set = TrieSet::new();
+        let empty = TrieSet::new();
+
+        set.insert(1);
+        set.insert(2);
+
+        let set_str = format!("{}", set);
+
+        assert!(set_str == "{1, 2}".to_string());
+        assert_eq!(format!("{}", empty), "{}".to_string());
+    }
+
+    #[test]
+    fn test_clone() {
+        let mut a = TrieSet::new();
+
+        a.insert(1);
+        a.insert(2);
+        a.insert(3);
+
+        assert!(a.clone() == a);
     }
 }
