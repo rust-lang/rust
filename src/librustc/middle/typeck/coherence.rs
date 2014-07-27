@@ -60,29 +60,25 @@ fn get_base_type(inference_context: &InferCtxt,
                  span: Span,
                  original_type: t)
                  -> Option<t> {
-    let resolved_type;
-    match resolve_type(inference_context,
-                       Some(span),
-                       original_type,
-                       resolve_ivar) {
-        Ok(resulting_type) if !type_is_ty_var(resulting_type) => {
-            resolved_type = resulting_type;
-        }
+    let resolved_type = match resolve_type(inference_context,
+                                           Some(span),
+                                           original_type,
+                                           resolve_ivar) {
+        Ok(resulting_type) if !type_is_ty_var(resulting_type) => resulting_type,
         _ => {
             inference_context.tcx.sess.span_fatal(span,
                                                   "the type of this value must be known in order \
                                                    to determine the base type");
         }
-    }
+    };
 
     match get(resolved_type).sty {
         ty_enum(..) | ty_struct(..) | ty_unboxed_closure(..) => {
             debug!("(getting base type) found base type");
             Some(resolved_type)
         }
-        // FIXME(14865) I would prefere to use `_` here, but that causes a
-        // compiler error.
-        ty_uniq(_) | ty_rptr(_, _) | ty_trait(..) if ty::type_is_trait(resolved_type) => {
+
+        _ if ty::type_is_trait(resolved_type) => {
             debug!("(getting base type) found base type (trait)");
             Some(resolved_type)
         }
