@@ -1581,27 +1581,16 @@ pub struct Skip<T> {
 impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let mut next = self.iter.next();
-        if self.n == 0 {
-            next
-        } else {
-            let mut n = self.n;
-            while n > 0 {
-                n -= 1;
-                match next {
-                    Some(_) => {
-                        next = self.iter.next();
-                        continue
-                    }
-                    None => {
-                        self.n = 0;
-                        return None
-                    }
-                }
+        let mut n = self.n;
+        for elem in self.iter {
+            if n == 0 {
+                self.n = 0;
+                return Some(elem);
             }
-            self.n = 0;
-            next
+            n -= 1;
         }
+        if n != self.n { self.n = n }
+        None
     }
 
     #[inline]
