@@ -6,7 +6,8 @@
 
 Change the rebinding syntax from `use ID = PATH` to `use PATH as ID`,
 so that paths all line up on the left side, and imported identifers
-are all on the right side.
+are all on the right side.  Also modify `extern crate` syntax
+analogously, for consistency.
 
 # Motivation
 
@@ -60,11 +61,23 @@ Currently, the grammar for use statements is something like:
                             | path_glob ] ;
 ```
 
+Likewise, the grammar for extern crate declarations is something like:
+
+```
+  extern_crate_decl : "extern" "crate" ident [ '(' link_attrs ')' ] ? [ '=' string_lit ] ? ;
+```
+
 This RFC proposes changing the grammar for use statements to something like:
 
 ```
   use_decl : "pub" ? "use" [ path "as" ident
                             | path_glob ] ;
+```
+
+and the grammar for extern crate declarations to something like:
+
+```
+  extern_crate_decl : "extern" "crate" [ string_lit "as" ] ? ident [ '(' link_attrs ')' ] ? ;
 ```
 
 Both `use` and `pub use` forms are changed to use `path as ident`
@@ -75,8 +88,11 @@ Nothing about path globs is changed; the view items that use
 `ident = path` are disjoint from the view items that use path globs,
 and that continues to be the case under `path as ident`.
 
-The old syntax `"use" ident '=' path` is removed (or at least
-deprecated).
+The old syntaxes
+  `"use" ident '=' path`
+and
+  `"extern" "crate" ident '=' string_lit`
+are removed (or at least deprecated).
 
 # Drawbacks
 
@@ -161,4 +177,7 @@ But really, is `pub use foo::bar as a` all that bad?
 
 # Unresolved questions
 
-None yet.
+* In the revised `extern crate` form, is it best to put the
+  `link_attrs` after the identifier, as written above?  Or would it be
+  better for them to come after the `string_literal` when using the
+  `extern crate string_literal as ident` form?
