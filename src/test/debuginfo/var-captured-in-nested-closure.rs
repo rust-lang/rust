@@ -88,7 +88,6 @@
 // lldb-check:[...]$13 = 8
 // lldb-command:continue
 
-#![feature(managed_boxes)]
 #![allow(unused_variable)]
 
 use std::gc::GC;

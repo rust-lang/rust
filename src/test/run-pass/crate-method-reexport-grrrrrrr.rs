@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(managed_boxes)]
 
 // This is a regression test that the metadata for the
 // name_pool::methods impl in the other crate is reachable from this

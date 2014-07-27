@@ -11,7 +11,7 @@
 // no-pretty-expanded unnecessary unsafe block generated
 // ignore-lexer-test FIXME #15679
 
-#![feature(macro_rules, managed_boxes)]
+#![feature(macro_rules)]
 #![deny(warnings)]
 #![allow(unused_must_use)]
 

@@ -10,7 +10,6 @@
 
 // ignore-freebsd FIXME fails on BSD
 
-#![feature(managed_boxes)]
 
 trait noisy {
   fn speak(&mut self);
