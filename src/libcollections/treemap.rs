@@ -47,6 +47,107 @@ use vec::Vec;
 /// a red-black tree where red (horizontal) nodes can only be added
 /// as a right child. The time complexity is the same, and re-balancing
 /// operations are more frequent but also cheaper.
+///
+/// # Example
+///
+/// ```
+/// use std::collections::TreeMap;
+///
+/// let mut map = TreeMap::new();
+///
+/// map.insert(2i, "bar");
+/// map.insert(1i, "foo");
+/// map.insert(3i, "quux");
+///
+/// // In ascending order by keys
+/// for (key, value) in map.iter() {
+///     println!("{}: {}", key, value);
+/// }
+///
+/// // Print 1, 2, 3
+/// for key in map.keys() {
+///     println!("{}", key);
+/// }
+///
+/// // Print `foo`, `bar`, `quux`
+/// for key in map.values() {
+///     println!("{}", key);
+/// }
+///
+/// map.remove(&1);
+/// assert_eq!(map.len(), 2);
+///
+/// if !map.contains_key(&1) {
+///     println!("1 is no more");
+/// }
+///
+/// for key in range(0, 4) {
+///     match map.find(&key) {
+///         Some(val) => println!("{} has a value: {}", key, val),
+///         None => println!("{} not in map", key),
+///     }
+/// }
+///
+/// map.clear();
+/// assert!(map.is_empty());
+/// ```
+///
+/// The easiest way to use `TreeMap` with a custom type as keys is to implement `Ord`.
+/// We must also implement `PartialEq`, `Eq` and `PartialOrd`.
+///
+/// ```
+/// use std::collections::TreeMap;
+///
+/// // We need `Eq` and `PartialEq`, these can be derived.
+/// #[deriving(Eq, PartialEq)]
+/// struct Troll<'a> {
+///     name: &'a str,
+///     level: uint,
+/// }
+///
+/// // Implement `Ord` and sort trolls by level.
+/// impl<'a> Ord for Troll<'a> {
+///     fn cmp(&self, other: &Troll) -> Ordering {
+///         // If we swap `self` and `other`, we get descended ordering.
+///         self.level.cmp(&other.level)
+///     }
+/// }
+///
+/// // `PartialOrd` needs to be implemented as well.
+/// impl<'a> PartialOrd for Troll<'a> {
+///     fn partial_cmp(&self, other: &Troll) -> Option<Ordering> {
+///         Some(self.cmp(other))
+///     }
+/// }
+///
+/// // Use a map to store trolls, sorted by level, and track a list of
+/// // heroes slain.
+/// let mut trolls = TreeMap::new();
+///
+/// trolls.insert(Troll { name: "Orgarr", level: 2 },
+///               vec!["King Karl"]);
+/// trolls.insert(Troll { name: "Blargarr", level: 3 },
+///               vec!["Odd"]);
+/// trolls.insert(Troll { name: "Kron the Smelly One", level: 4 },
+///               vec!["Omar the Brave", "Peter: Slayer of Trolls"]);
+/// trolls.insert(Troll { name: "Wartilda", level: 1 },
+///               vec![]);
+///
+/// println!("You are facing {} trolls!", trolls.len());
+///
+/// // Print the trolls, ordered by level with smallest level first
+/// for (troll, heroes) in trolls.iter() {
+///     let what = if heroes.len() == 1u { "hero" }
+///                else { "heroes" };
+///
+///     println!("level {}: '{}' has slain {} {}",
+///              troll.level, troll.name, heroes.len(), what);
+/// }
+///
+/// // Kill all trolls
+/// trolls.clear();
+/// assert_eq!(trolls.len(), 0);
+/// ```
 
 // Future improvements:
 
