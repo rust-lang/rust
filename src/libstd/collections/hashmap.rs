@@ -1850,6 +1850,7 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     ///
     /// # Example
     ///
+    /// ```
     /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::new();
     /// ```
@@ -1863,6 +1864,7 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     ///
     /// # Example
     ///
+    /// ```
     /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::with_capacity(10);
     /// ```
@@ -1920,6 +1922,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// # Example
     ///
+    /// ```
     /// use std::collections::HashSet;
     /// let mut set: HashSet<int> = HashSet::new();
     /// set.reserve(10);
