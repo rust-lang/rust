@@ -12,7 +12,6 @@
 // previously ambiguous (e.g. 'if true { } *val;' gets parsed as a
 // binop)
 
-#![feature(managed_boxes)]
 
 use std::cell::Cell;
 use std::gc::GC;

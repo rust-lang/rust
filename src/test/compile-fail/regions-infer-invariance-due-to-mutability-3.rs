@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(managed_boxes)]
 
 struct invariant<'a> {
     f: |x: &mut &'a int|: 'static

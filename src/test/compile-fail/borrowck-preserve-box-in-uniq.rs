@@ -10,7 +10,6 @@
 
 // exec-env:RUST_POISON_ON_FREE=1
 
-#![feature(managed_boxes)]
 
 use std::gc::GC;
 

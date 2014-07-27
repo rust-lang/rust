@@ -12,7 +12,6 @@
 // ignore-pretty: does not work well with `--test`
 
 #![feature(quote)]
-#![feature(managed_boxes)]
 
 extern crate syntax;
 

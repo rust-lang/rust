@@ -10,7 +10,6 @@
 
 // error-pattern:fail
 
-#![feature(managed_boxes)]
 
 use std::gc::{Gc, GC};
 

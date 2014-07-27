@@ -42,7 +42,7 @@
 // lldb-check:[...]$2 = TheOnlyCase(-9747455)
 
 #![allow(unused_variable)]
-#![feature(struct_variant, managed_boxes)]
+#![feature(struct_variant)]
 
 use std::gc::GC;
 

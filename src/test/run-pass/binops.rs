@@ -10,7 +10,6 @@
 
 // Binop corner cases
 
-#![feature(managed_boxes)]
 
 use std::gc::GC;
 
