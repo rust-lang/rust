@@ -64,12 +64,12 @@ use vec::Vec;
 ///     println!("{}: {}", key, value);
 /// }
 ///
-/// // Print 1, 2, 3
+/// // Prints 1, 2, 3
 /// for key in map.keys() {
 ///     println!("{}", key);
 /// }
 ///
-/// // Print `foo`, `bar`, `quux`
+/// // Prints `foo`, `bar`, `quux`
 /// for key in map.values() {
 ///     println!("{}", key);
 /// }
@@ -108,7 +108,7 @@ use vec::Vec;
 /// // Implement `Ord` and sort trolls by level.
 /// impl<'a> Ord for Troll<'a> {
 ///     fn cmp(&self, other: &Troll) -> Ordering {
-///         // If we swap `self` and `other`, we get descended ordering.
+///         // If we swap `self` and `other`, we get descending ordering.
 ///         self.level.cmp(&other.level)
 ///     }
 /// }
@@ -290,7 +290,6 @@ impl<K: Ord, V> TreeMap<K, V> {
     }
 
     /// Get a lazy iterator over the key-value pairs in the map, in ascending order.
-    /// Requires that it be frozen (immutable).
     ///
     /// # Example
     ///
@@ -316,7 +315,6 @@ impl<K: Ord, V> TreeMap<K, V> {
     }
 
     /// Get a lazy reverse iterator over the key-value pairs in the map, in descending order.
-    /// Requires that it be frozen (immutable).
     ///
     /// # Example
     ///
@@ -972,7 +970,7 @@ impl<'a, T> Iterator<&'a T> for RevSetItems<'a, T> {
 /// // Implement `Ord` and sort trolls by level.
 /// impl<'a> Ord for Troll<'a> {
 ///     fn cmp(&self, other: &Troll) -> Ordering {
-///         // If we swap `self` and `other`, we get descended ordering.
+///         // If we swap `self` and `other`, we get descending ordering.
 ///         self.level.cmp(&other.level)
 ///     }
 /// }
