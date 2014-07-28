@@ -158,30 +158,82 @@ use {Collection, Mutable, MutableSeq};
 use slice;
 use vec::Vec;
 
+// begin stuff that should really be in a separate module
+
+pub trait Comparator<T> {
+    fn cmp (&self, a: &T, b: &T) -> Ordering;
+}
+
+#[deriving(Clone)]
+pub struct NaturalOrdering <T>;
+
+impl <T> Default for NaturalOrdering <T> {
+    fn default() -> NaturalOrdering <T> { NaturalOrdering }
+}
+
+impl <T: Ord> Comparator<T> for NaturalOrdering <T> {
+    fn cmp (&self, a: &T, b: &T) -> Ordering {
+        a.cmp(b)
+    }
+}
+
+pub fn natural_ord <T: Ord> () -> NaturalOrdering <T> { NaturalOrdering }
+
+#[deriving(Clone)]
+pub struct RevOrdering <C>{ comp: C }
+
+impl <T, C: Comparator<T> + Default> Default for RevOrdering <C> {
+    fn default() -> RevOrdering <C> {
+        RevOrdering { comp : Default::default() }
+    }
+}
+
+impl <T, C: Comparator<T>> Comparator<T> for RevOrdering <C> {
+    fn cmp (&self, a: &T, b: &T) -> Ordering {
+        self.comp.cmp(b,a)
+    }
+}
+
+pub fn rev_ord <T, C: Comparator<T>> (comp: C) -> RevOrdering<C> {
+    RevOrdering { comp : comp }
+}
+
+// end stuff that should be in a separate module
+
+
+pub fn max_heap <T:Ord> () -> PriorityQueue<T, NaturalOrdering<T>> {
+    PriorityQueue::with_comparator(Default::default())
+}
+
+pub fn min_heap <T:Ord> () -> PriorityQueue<T, RevOrdering<NaturalOrdering<T>>> {
+    PriorityQueue::with_comparator(Default::default())
+}
+
 /// A priority queue implemented with a binary heap.
 ///
 /// This will be a max-heap.
 #[deriving(Clone)]
-pub struct PriorityQueue<T> {
+pub struct PriorityQueue<T,C> {
     data: Vec<T>,
+    comp: C,
 }
 
-impl<T: Ord> Collection for PriorityQueue<T> {
+impl<T, C> Collection for PriorityQueue<T, C> {
     /// Returns the length of the queue
     fn len(&self) -> uint { self.data.len() }
 }
 
-impl<T: Ord> Mutable for PriorityQueue<T> {
+impl<T, C> Mutable for PriorityQueue<T, C> {
     /// Drop all items from the queue
     fn clear(&mut self) { self.data.truncate(0) }
 }
 
-impl<T: Ord> Default for PriorityQueue<T> {
+impl<T, C: Comparator<T> + Default> Default for PriorityQueue<T, C> {
     #[inline]
-    fn default() -> PriorityQueue<T> { PriorityQueue::new() }
+    fn default() -> PriorityQueue<T, C> { PriorityQueue::new() }
 }
 
-impl<T: Ord> PriorityQueue<T> {
+impl<T, C: Comparator<T> + Default> PriorityQueue<T, C> {
     /// Create an empty PriorityQueue as a max-heap.
     ///
     /// # Example
@@ -190,7 +242,9 @@ impl<T: Ord> PriorityQueue<T> {
     /// use std::collections::PriorityQueue;
     /// let pq: PriorityQueue<uint> = PriorityQueue::new();
     /// ```
-    pub fn new() -> PriorityQueue<T> { PriorityQueue{data: vec!(),} }
+    pub fn new() -> PriorityQueue<T, C> {
+        PriorityQueue::with_comparator(Default::default())
+    }
 
     /// Create an empty PriorityQueue with a specific capacity.
     /// This preallocates enough memory for `capacity` elements,
@@ -203,8 +257,8 @@ impl<T: Ord> PriorityQueue<T> {
     /// use std::collections::PriorityQueue;
     /// let pq: PriorityQueue<uint> = PriorityQueue::with_capacity(10u);
     /// ```
-    pub fn with_capacity(capacity: uint) -> PriorityQueue<T> {
-        PriorityQueue { data: Vec::with_capacity(capacity) }
+    pub fn with_capacity(capacity: uint) -> PriorityQueue<T, C> {
+        PriorityQueue::with_capacity_and_comparator(capacity, Default::default())
     }
 
     /// Create a PriorityQueue from a vector. This is sometimes called
@@ -216,8 +270,50 @@ impl<T: Ord> PriorityQueue<T> {
     /// use std::collections::PriorityQueue;
     /// let pq = PriorityQueue::from_vec(vec![9i, 1, 2, 7, 3, 2]);
     /// ```
-    pub fn from_vec(xs: Vec<T>) -> PriorityQueue<T> {
-        let mut q = PriorityQueue{data: xs,};
+    pub fn from_vec(xs: Vec<T>) -> PriorityQueue<T, C> {
+        PriorityQueue::from_vec_and_comparator(xs, Default::default())
+    }
+}
+
+impl<T, C: Comparator<T>> PriorityQueue<T, C> {
+    /// Create an empty PriorityQueue as a max-heap.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::PriorityQueue;
+    /// let pq: PriorityQueue<uint> = PriorityQueue::new();
+    /// ```
+    pub fn with_comparator(comp: C) -> PriorityQueue<T, C> {
+        PriorityQueue{data: vec!(), comp: comp}
+    }
+
+    /// Create an empty PriorityQueue with a specific capacity.
+    /// This preallocates enough memory for `capacity` elements,
+    /// so that the PriorityQueue does not have to be reallocated
+    /// until it contains at least that many values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::PriorityQueue;
+    /// let pq: PriorityQueue<uint> = PriorityQueue::with_capacity(10u);
+    /// ```
+    pub fn with_capacity_and_comparator(capacity: uint, comp: C) -> PriorityQueue<T, C> {
+        PriorityQueue { data: Vec::with_capacity(capacity), comp: comp }
+    }
+
+    /// Create a PriorityQueue from a vector. This is sometimes called
+    /// `heapifying` the vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::PriorityQueue;
+    /// let pq = PriorityQueue::from_vec(vec![9i, 1, 2, 7, 3, 2]);
+    /// ```
+    pub fn from_vec_and_comparator(xs: Vec<T>, comp: C) -> PriorityQueue<T, C> {
+        let mut q = PriorityQueue{data: xs, comp: comp };
         let mut n = q.len() / 2;
         while n > 0 {
             n -= 1;
@@ -225,7 +321,9 @@ impl<T: Ord> PriorityQueue<T> {
         }
         q
     }
+}
 
+impl<T, C: Comparator<T>> PriorityQueue<T, C> {
     /// An iterator visiting all values in underlying vector, in
     /// arbitrary order.
     ///
@@ -377,7 +475,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// assert_eq!(pq.top(), Some(&3i));
     /// ```
     pub fn push_pop(&mut self, mut item: T) -> T {
-        if !self.is_empty() && *self.top().unwrap() > item {
+        if !self.is_empty() && self.comp.cmp(self.top().unwrap(), &item) == Greater {
             swap(&mut item, self.data.get_mut(0));
             self.siftdown(0);
         }
@@ -434,7 +532,7 @@ impl<T: Ord> PriorityQueue<T> {
     ///     println!("{}", x);
     /// }
     /// ```
-    pub fn into_vec(self) -> Vec<T> { let PriorityQueue{data: v} = self; v }
+    pub fn into_vec(self) -> Vec<T> { let PriorityQueue{data: v, ..} = self; v }
 
     /// Consume the PriorityQueue and return a vector in sorted
     /// (ascending) order.
@@ -473,7 +571,7 @@ impl<T: Ord> PriorityQueue<T> {
 
             while pos > start {
                 let parent = (pos - 1) >> 1;
-                if new > *self.data.get(parent) {
+                if self.comp.cmp(&new, self.data.get(parent)) == Greater {
                     let x = replace(self.data.get_mut(parent), zeroed());
                     ptr::write(self.data.get_mut(pos), x);
                     pos = parent;
@@ -493,7 +591,7 @@ impl<T: Ord> PriorityQueue<T> {
             let mut child = 2 * pos + 1;
             while child < end {
                 let right = child + 1;
-                if right < end && !(*self.data.get(child) > *self.data.get(right)) {
+                if right < end && !(self.comp.cmp(self.data.get(child), self.data.get(right)) == Greater) {
                     child = right;
                 }
                 let x = replace(self.data.get_mut(child), zeroed());
@@ -526,15 +624,15 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<T: Ord> FromIterator<T> for PriorityQueue<T> {
-    fn from_iter<Iter: Iterator<T>>(iter: Iter) -> PriorityQueue<T> {
+impl<T, C:Comparator<T> + Default> FromIterator<T> for PriorityQueue<T,C> {
+    fn from_iter<Iter: Iterator<T>>(iter: Iter) -> PriorityQueue<T, C> {
         let mut q = PriorityQueue::new();
         q.extend(iter);
         q
     }
 }
 
-impl<T: Ord> Extendable<T> for PriorityQueue<T> {
+impl<T, C:Comparator<T> + Default> Extendable<T> for PriorityQueue<T, C> {
     fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
         let (lower, _) = iter.size_hint();
 
@@ -550,8 +648,8 @@ impl<T: Ord> Extendable<T> for PriorityQueue<T> {
 #[cfg(test)]
 mod tests {
     use std::prelude::*;
-
-    use priority_queue::PriorityQueue;
+    
+    use priority_queue::{ PriorityQueue, NaturalOrdering, natural_ord, max_heap };
     use vec::Vec;
     use MutableSeq;
 
@@ -559,7 +657,7 @@ mod tests {
     fn test_iterator() {
         let data = vec!(5i, 9, 3);
         let iterout = [9i, 5, 3];
-        let pq = PriorityQueue::from_vec(data);
+        let pq = PriorityQueue::from_vec_and_comparator(data, natural_ord::<int>());
         let mut i = 0;
         for el in pq.iter() {
             assert_eq!(*el, iterout[i]);
@@ -572,7 +670,7 @@ mod tests {
         let data = vec!(2u, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1);
         let mut sorted = data.clone();
         sorted.sort();
-        let mut heap = PriorityQueue::from_vec(data);
+        let mut heap = PriorityQueue::from_vec_and_comparator(data, natural_ord::<uint>());
         while !heap.is_empty() {
             assert_eq!(heap.top().unwrap(), sorted.last().unwrap());
             assert_eq!(heap.pop().unwrap(), sorted.pop().unwrap());
@@ -581,7 +679,7 @@ mod tests {
 
     #[test]
     fn test_push() {
-        let mut heap = PriorityQueue::from_vec(vec!(2i, 4, 9));
+        let mut heap = PriorityQueue::from_vec_and_comparator(vec!(2i, 4, 9), natural_ord::<int>());
         assert_eq!(heap.len(), 3);
         assert!(*heap.top().unwrap() == 9);
         heap.push(11);
@@ -603,7 +701,7 @@ mod tests {
 
     #[test]
     fn test_push_unique() {
-        let mut heap = PriorityQueue::from_vec(vec!(box 2i, box 4, box 9));
+        let mut heap = PriorityQueue::from_vec_and_comparator(vec!(box 2i, box 4, box 9), natural_ord::<Box<int>>());
         assert_eq!(heap.len(), 3);
         assert!(*heap.top().unwrap() == box 9);
         heap.push(box 11);
@@ -625,7 +723,7 @@ mod tests {
 
     #[test]
     fn test_push_pop() {
-        let mut heap = PriorityQueue::from_vec(vec!(5i, 5, 2, 1, 3));
+        let mut heap = PriorityQueue::from_vec_and_comparator(vec!(5i, 5, 2, 1, 3), natural_ord::<int>());
         assert_eq!(heap.len(), 5);
         assert_eq!(heap.push_pop(6), 6);
         assert_eq!(heap.len(), 5);
@@ -639,7 +737,7 @@ mod tests {
 
     #[test]
     fn test_replace() {
-        let mut heap = PriorityQueue::from_vec(vec!(5i, 5, 2, 1, 3));
+        let mut heap = PriorityQueue::from_vec_and_comparator(vec!(5i, 5, 2, 1, 3), natural_ord::<int>());
         assert_eq!(heap.len(), 5);
         assert_eq!(heap.replace(6).unwrap(), 5);
         assert_eq!(heap.len(), 5);
@@ -652,7 +750,7 @@ mod tests {
     }
 
     fn check_to_vec(mut data: Vec<int>) {
-        let heap = PriorityQueue::from_vec(data.clone());
+        let heap = PriorityQueue::from_vec_and_comparator(data.clone(), natural_ord::<int>());
         let mut v = heap.clone().into_vec();
         v.sort();
         data.sort();
@@ -680,19 +778,19 @@ mod tests {
 
     #[test]
     fn test_empty_pop() {
-        let mut heap: PriorityQueue<int> = PriorityQueue::new();
+        let mut heap: PriorityQueue<int, _> = max_heap();
         assert!(heap.pop().is_none());
     }
 
     #[test]
     fn test_empty_top() {
-        let empty: PriorityQueue<int> = PriorityQueue::new();
+        let empty: PriorityQueue<int, _> = max_heap();
         assert!(empty.top().is_none());
     }
 
     #[test]
     fn test_empty_replace() {
-        let mut heap: PriorityQueue<int> = PriorityQueue::new();
+        let mut heap: PriorityQueue<int, _> = max_heap();
         heap.replace(5).is_none();
     }
 
@@ -700,7 +798,7 @@ mod tests {
     fn test_from_iter() {
         let xs = vec!(9u, 8, 7, 6, 5, 4, 3, 2, 1);
 
-        let mut q: PriorityQueue<uint> = xs.as_slice().iter().rev().map(|&x| x).collect();
+        let mut q: PriorityQueue<uint, NaturalOrdering<uint>> = xs.as_slice().iter().rev().map(|&x| x).collect();
 
         for &x in xs.iter() {
             assert_eq!(q.pop().unwrap(), x);
