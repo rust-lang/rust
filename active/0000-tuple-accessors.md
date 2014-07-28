@@ -60,9 +60,11 @@ More complexity that is not strictly necessary.
 Alternatives
 ============
 
-Allow indexing of tuples and tuple structs: this has the advantage of
-consistency, but the disadvantage of not being checked for out-of-bounds errors
-at compile time.
+Stay with the status quo. Either recommend using a struct with named fields or
+suggest using pattern matching to extract values. If extracting individual
+fields of tuples is really necessary, `the `TupleN` traits could be used
+instead, and something like `#[deriving(Tuple3)]` could possibly be added for
+tuple structs.
 
 Unresolved questions
 ====================
