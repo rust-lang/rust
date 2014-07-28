@@ -209,7 +209,7 @@ fn build_struct(tcx: &ty::ctxt, did: ast::DefId) -> clean::Struct {
             _ => doctree::Plain,
         },
         generics: (&t.generics, subst::TypeSpace).clean(),
-        fields: fields.iter().map(|f| f.clean()).collect(),
+        fields: fields.clean(),
         fields_stripped: false,
     }
 }
