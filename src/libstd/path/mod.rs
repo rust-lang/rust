@@ -178,16 +178,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     fn into_vec(self) -> Vec<u8>;
 
     /// Returns an object that implements `Show` for printing paths
-    ///
-    /// This will print the equivalent of `to_display_str()` when used with a {} format parameter.
     fn display<'a>(&'a self) -> Display<'a, Self> {
         Display{ path: self, filename: false }
     }
 
     /// Returns an object that implements `Show` for printing filenames
     ///
-    /// This will print the equivalent of `to_filename_display_str()` when used with a {}
-    /// format parameter. If there is no filename, nothing will be printed.
+    /// If there is no filename, nothing will be printed.
     fn filename_display<'a>(&'a self) -> Display<'a, Self> {
         Display{ path: self, filename: true }
     }
