@@ -887,6 +887,7 @@ pub fn trans_call_inner<'a>(
         (Some(expr::Ignore), Some(llretslot)) => {
             // drop the value if it is not being saved.
             bcx = glue::drop_ty(bcx, llretslot, ret_ty);
+            call_lifetime_end(bcx, llretslot);
         }
         _ => {}
     }
