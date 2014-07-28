@@ -18,7 +18,6 @@ use attr::{AttrMetaMethods, AttributeMethods};
 use codemap::{CodeMap, BytePos};
 use codemap;
 use diagnostic;
-use parse::classify::expr_is_simple_block;
 use parse::token;
 use parse::lexer::comments;
 use parse;
@@ -149,6 +148,10 @@ pub fn ty_to_string(ty: &ast::Ty) -> String {
 
 pub fn pat_to_string(pat: &ast::Pat) -> String {
     to_string(|s| s.print_pat(pat))
+}
+
+pub fn arm_to_string(arm: &ast::Arm) -> String {
+    to_string(|s| s.print_arm(arm))
 }
 
 pub fn expr_to_string(e: &ast::Expr) -> String {
@@ -1402,53 +1405,8 @@ impl<'a> State<'a> {
                 try!(self.print_expr(&**expr));
                 try!(space(&mut self.s));
                 try!(self.bopen());
-                let len = arms.len();
-                for (i, arm) in arms.iter().enumerate() {
-                    // I have no idea why this check is necessary, but here it
-                    // is :(
-                    if arm.attrs.is_empty() {
-                        try!(space(&mut self.s));
-                    }
-                    try!(self.cbox(indent_unit));
-                    try!(self.ibox(0u));
-                    try!(self.print_outer_attributes(arm.attrs.as_slice()));
-                    let mut first = true;
-                    for p in arm.pats.iter() {
-                        if first {
-                            first = false;
-                        } else {
-                            try!(space(&mut self.s));
-                            try!(self.word_space("|"));
-                        }
-                        try!(self.print_pat(&**p));
-                    }
-                    try!(space(&mut self.s));
-                    match arm.guard {
-                        Some(ref e) => {
-                            try!(self.word_space("if"));
-                            try!(self.print_expr(&**e));
-                            try!(space(&mut self.s));
-                        }
-                        None => ()
-                    }
-                    try!(self.word_space("=>"));
-
-                    match arm.body.node {
-                        ast::ExprBlock(ref blk) => {
-                            // the block will close the pattern's ibox
-                            try!(self.print_block_unclosed_indent(&**blk,
-                                                                  indent_unit));
-                        }
-                        _ => {
-                            try!(self.end()); // close the ibox for the pattern
-                            try!(self.print_expr(&*arm.body));
-                        }
-                    }
-                    if !expr_is_simple_block(expr.clone())
-                        && i < len - 1 {
-                        try!(word(&mut self.s, ","));
-                    }
-                    try!(self.end()); // close enclosing cbox
+                for arm in arms.iter() {
+                    try!(self.print_arm(arm));
                 }
                 try!(self.bclose_(expr.span, indent_unit));
             }
@@ -1880,6 +1838,51 @@ impl<'a> State<'a> {
             ast::PatMac(ref m) => try!(self.print_mac(m)),
         }
         self.ann.post(self, NodePat(pat))
+    }
+
+    fn print_arm(&mut self, arm: &ast::Arm) -> IoResult<()> {
+        // I have no idea why this check is necessary, but here it
+        // is :(
+        if arm.attrs.is_empty() {
+            try!(space(&mut self.s));
+        }
+        try!(self.cbox(indent_unit));
+        try!(self.ibox(0u));
+        try!(self.print_outer_attributes(arm.attrs.as_slice()));
+        let mut first = true;
+        for p in arm.pats.iter() {
+            if first {
+                first = false;
+            } else {
+                try!(space(&mut self.s));
+                try!(self.word_space("|"));
+            }
+            try!(self.print_pat(&**p));
+        }
+        try!(space(&mut self.s));
+        match arm.guard {
+            Some(ref e) => {
+                try!(self.word_space("if"));
+                try!(self.print_expr(&**e));
+                try!(space(&mut self.s));
+            }
+            None => ()
+        }
+        try!(self.word_space("=>"));
+
+        match arm.body.node {
+            ast::ExprBlock(ref blk) => {
+                // the block will close the pattern's ibox
+                try!(self.print_block_unclosed_indent(&**blk,
+                                                      indent_unit));
+            }
+            _ => {
+                try!(self.end()); // close the ibox for the pattern
+                try!(self.print_expr(&*arm.body));
+                try!(word(&mut self.s, ","));
+            }
+        }
+        self.end() // close enclosing cbox
     }
 
     // Returns whether it printed anything
