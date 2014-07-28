@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Issue #12534.
-
-struct A(Box<uint>);
-
-fn f(a @ A(u): A) -> Box<uint> {    //~ ERROR cannot bind by-move with sub-bindings
-    drop(a);
-    u
+enum Option<T> {
+    None,
+    Some(T),
 }
 
-fn main() {}
+fn main() {
+    match &mut Some(1i) {
+        ref mut z @ &Some(ref a) => {
+        //~^ ERROR pattern bindings are not allowed after an `@`
+            **z = None;
+            println!("{}", *a);
+        }
+        _ => ()
+    }
+}
 

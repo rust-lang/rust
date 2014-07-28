@@ -15,24 +15,15 @@ fn main() {
         ref b @ None => b
     }, &Some(1i));
     assert_eq!(match value {
-        ref a @ ref _c @ Some(_) => a,
-        ref b @ None => b
-    }, &Some(1i));
-    assert_eq!(match value {
-        _a @ ref c @ Some(_) => c,
+        ref c @ Some(_) => c,
         ref b @ None => b
     }, &Some(1i));
     assert_eq!(match "foobarbaz" {
-        _a @ b @ _ => b
+        b @ _ => b
     }, "foobarbaz");
-
-    let a @ b @ c = "foobarbaz";
+    let a @ _ = "foobarbaz";
     assert_eq!(a, "foobarbaz");
-    assert_eq!(b, "foobarbaz");
-    assert_eq!(c, "foobarbaz");
     let value = Some(true);
-    let ref a @ b @ ref c = value;
+    let ref a @ _ = value;
     assert_eq!(a, &Some(true));
-    assert_eq!(b, Some(true));
-    assert_eq!(c, &Some(true));
 }

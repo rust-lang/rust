@@ -139,27 +139,36 @@ impl<'a> RestrictionsContext<'a> {
                 Safe
             }
 
-            mc::cat_deref(cmt_base, _, pk @ mc::BorrowedPtr(ty::MutBorrow, lt)) |
-            mc::cat_deref(cmt_base, _, pk @ mc::Implicit(ty::MutBorrow, lt)) => {
-                // R-Deref-Mut-Borrowed
-                if !self.bccx.is_subregion_of(self.loan_region, lt) {
-                    self.bccx.report(
-                        BckError {
-                            span: self.span,
-                            cause: self.cause,
-                            cmt: cmt_base,
-                            code: err_borrowed_pointer_too_short(
-                                self.loan_region, lt)});
-                    return Safe;
+            mc::cat_deref(cmt_base, _, pk) => {
+                match pk {
+                    mc::BorrowedPtr(ty::MutBorrow, lt) |
+                    mc::Implicit(ty::MutBorrow, lt) => {
+                        // R-Deref-Mut-Borrowed
+                        if !self.bccx.is_subregion_of(self.loan_region, lt) {
+                            self.bccx.report(
+                                BckError {
+                                    span: self.span,
+                                    cause: self.cause,
+                                    cmt: cmt_base,
+                                    code: err_borrowed_pointer_too_short(
+                                        self.loan_region, lt)});
+                            return Safe;
+                        }
+
+                        let result = self.restrict(cmt_base);
+                        self.extend(result, cmt.mutbl, LpDeref(pk))
+                    }
+                    mc::UnsafePtr(..) => {
+                        // We are very trusting when working with unsafe
+                        // pointers.
+                        Safe
+                    }
+                    _ => {
+                        self.bccx.tcx.sess.span_bug(self.span,
+                                                    "unhandled memcat in \
+                                                     cat_deref")
+                    }
                 }
-
-                let result = self.restrict(cmt_base);
-                self.extend(result, cmt.mutbl, LpDeref(pk))
-            }
-
-            mc::cat_deref(_, _, mc::UnsafePtr(..)) => {
-                // We are very trusting when working with unsafe pointers.
-                Safe
             }
 
             mc::cat_discr(cmt_base, _) => {
