@@ -37,7 +37,7 @@ use intrinsics;
 #[lang="fail_"]
 fn fail_(expr: &'static str, file: &'static str, line: uint) -> ! {
     format_args!(|args| -> () {
-        begin_unwind(args, file, line);
+        begin_unwind(args, &(file, line));
     }, "{}", expr);
 
     unsafe { intrinsics::abort() }
@@ -48,18 +48,20 @@ fn fail_(expr: &'static str, file: &'static str, line: uint) -> ! {
 fn fail_bounds_check(file: &'static str, line: uint,
                      index: uint, len: uint) -> ! {
     format_args!(|args| -> () {
-        begin_unwind(args, file, line);
+        begin_unwind(args, &(file, line));
     }, "index out of bounds: the len is {} but the index is {}", len, index);
     unsafe { intrinsics::abort() }
 }
 
 #[cold]
-pub fn begin_unwind(fmt: &fmt::Arguments, file: &'static str, line: uint) -> ! {
+pub fn begin_unwind(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     #[allow(ctypes)]
     extern {
         #[lang = "begin_unwind"]
         fn begin_unwind(fmt: &fmt::Arguments, file: &'static str,
                         line: uint) -> !;
     }
+    let (file, line) = *file_line;
     unsafe { begin_unwind(fmt, file, line) }
 }
+
