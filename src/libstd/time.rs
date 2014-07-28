@@ -69,12 +69,6 @@ impl Duration {
         Some(Duration { days: days, secs: secs as u32, nanos: nanos as u32 })
     }
 
-    /// Makes a new `Duration` with zero seconds.
-    #[inline]
-    pub fn zero() -> Duration {
-        Duration { days: 0, secs: 0, nanos: 0 }
-    }
-
     /// Makes a new `Duration` with given number of weeks.
     /// Equivalent to `Duration::new(weeks * 7, 0, 0)` with overflow checks.
     ///
