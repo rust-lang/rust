@@ -38,12 +38,15 @@
 /// ```
 #[macro_export]
 macro_rules! fail(
-    () => (
-        ::std::rt::begin_unwind_no_time_to_explain(file!(), line!())
-    );
-    ($msg:expr) => (
-        ::std::rt::begin_unwind($msg, file!(), line!())
-    );
+    () => ({
+        fail!("explicit failure")
+    });
+    ($msg:expr) => ({
+        // static requires less code at runtime, more constant data
+        static FILE_LINE: (&'static str, uint) = (file!(), line!());
+        let (file, line) = FILE_LINE;
+        ::std::rt::begin_unwind($msg, file, line)
+    });
     ($fmt:expr, $($arg:tt)*) => ({
         // a closure can't have return type !, so we need a full
         // function to pass to format_args!, *and* we need the
@@ -58,7 +61,8 @@ macro_rules! fail(
         // up with the number of calls to fail!()
         #[inline(always)]
         fn run_fmt(fmt: &::std::fmt::Arguments) -> ! {
-            ::std::rt::begin_unwind_fmt(fmt, file!(), line!())
+            static FILE_LINE: (&'static str, uint) = (file!(), line!());
+            ::std::rt::begin_unwind_fmt(fmt, &FILE_LINE)
         }
         format_args!(run_fmt, $fmt, $($arg)*)
     });
