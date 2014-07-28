@@ -44,9 +44,9 @@ pub struct Duration {
 }
 
 /// The minimum possible `Duration`.
-pub static MIN: Duration = Duration { days: MIN_DAYS, secs: 0, nanos: 0 };
+pub static MIN_DURATION: Duration = Duration { days: MIN_DAYS, secs: 0, nanos: 0 };
 /// The maximum possible `Duration`.
-pub static MAX: Duration = Duration { days: MAX_DAYS, secs: SECS_PER_DAY as u32 - 1,
+pub static MAX_DURATION: Duration = Duration { days: MAX_DAYS, secs: SECS_PER_DAY as u32 - 1,
                                       nanos: NANOS_PER_SEC as u32 - 1 };
 
 impl Duration {
@@ -280,8 +280,8 @@ impl Duration {
 }
 
 impl num::Bounded for Duration {
-    #[inline] fn min_value() -> Duration { MIN }
-    #[inline] fn max_value() -> Duration { MAX }
+    #[inline] fn min_value() -> Duration { MIN_DURATION }
+    #[inline] fn max_value() -> Duration { MAX_DURATION }
 }
 
 impl num::Zero for Duration {
@@ -502,7 +502,7 @@ fn div_rem_64(this: i64, other: i64) -> (i64, i64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{Duration, MIN_DAYS, MAX_DAYS, MIN, MAX};
+    use super::{Duration, MIN_DAYS, MAX_DAYS, MIN_DURATION, MAX_DURATION};
     use std::{i32, i64};
 
     #[test]
@@ -534,8 +534,8 @@ mod tests {
         assert_eq!(Duration::new(-1, -2, -3_004_005).num_days(), -1);
         assert_eq!(Duration::days(i32::MAX).num_days(), i32::MAX);
         assert_eq!(Duration::days(i32::MIN).num_days(), i32::MIN);
-        assert_eq!(MAX.num_days(), MAX_DAYS);
-        assert_eq!(MIN.num_days(), MIN_DAYS);
+        assert_eq!(MAX_DURATION.num_days(), MAX_DAYS);
+        assert_eq!(MIN_DURATION.num_days(), MIN_DAYS);
     }
 
     #[test]
@@ -551,8 +551,8 @@ mod tests {
         assert_eq!(Duration::new(-1, -2, -3_004_005).num_seconds(), -86402);
         assert_eq!(Duration::seconds(i32::MAX).num_seconds(), i32::MAX as i64);
         assert_eq!(Duration::seconds(i32::MIN).num_seconds(), i32::MIN as i64);
-        assert_eq!(MAX.num_seconds(), (MAX_DAYS as i64 + 1) * 86400 - 1);
-        assert_eq!(MIN.num_seconds(), MIN_DAYS as i64 * 86400);
+        assert_eq!(MAX_DURATION.num_seconds(), (MAX_DAYS as i64 + 1) * 86400 - 1);
+        assert_eq!(MIN_DURATION.num_seconds(), MIN_DAYS as i64 * 86400);
     }
 
     #[test]
@@ -568,8 +568,8 @@ mod tests {
         assert_eq!(Duration::new(-1, -2, -3_004_005).num_milliseconds(), -86402_003);
         assert_eq!(Duration::milliseconds(i32::MAX).num_milliseconds(), i32::MAX as i64);
         assert_eq!(Duration::milliseconds(i32::MIN).num_milliseconds(), i32::MIN as i64);
-        assert_eq!(MAX.num_milliseconds(), (MAX_DAYS as i64 + 1) * 86400_000 - 1);
-        assert_eq!(MIN.num_milliseconds(), MIN_DAYS as i64 * 86400_000);
+        assert_eq!(MAX_DURATION.num_milliseconds(), (MAX_DAYS as i64 + 1) * 86400_000 - 1);
+        assert_eq!(MIN_DURATION.num_milliseconds(), MIN_DAYS as i64 * 86400_000);
     }
 
     #[test]
@@ -585,8 +585,8 @@ mod tests {
         assert_eq!(Duration::new(-1, -2, -3_004_005).num_microseconds(), Some(-86402_003_004));
         assert_eq!(Duration::microseconds(i32::MAX).num_microseconds(), Some(i32::MAX as i64));
         assert_eq!(Duration::microseconds(i32::MIN).num_microseconds(), Some(i32::MIN as i64));
-        assert_eq!(MAX.num_microseconds(), None);
-        assert_eq!(MIN.num_microseconds(), None);
+        assert_eq!(MAX_DURATION.num_microseconds(), None);
+        assert_eq!(MIN_DURATION.num_microseconds(), None);
 
         // overflow checks
         static MICROS_PER_DAY: i64 = 86400_000_000;
@@ -607,8 +607,8 @@ mod tests {
         assert_eq!(Duration::new(-1, -2, -3_004_005).num_nanoseconds(), Some(-86402_003_004_005));
         assert_eq!(Duration::nanoseconds(i32::MAX).num_nanoseconds(), Some(i32::MAX as i64));
         assert_eq!(Duration::nanoseconds(i32::MIN).num_nanoseconds(), Some(i32::MIN as i64));
-        assert_eq!(MAX.num_nanoseconds(), None);
-        assert_eq!(MIN.num_nanoseconds(), None);
+        assert_eq!(MAX_DURATION.num_nanoseconds(), None);
+        assert_eq!(MIN_DURATION.num_nanoseconds(), None);
 
         // overflow checks
         static NANOS_PER_DAY: i64 = 86400_000_000_000;
