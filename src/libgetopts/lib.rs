@@ -529,7 +529,7 @@ impl fmt::Show for Fail_ {
 
 /// Parse command line arguments according to the provided options.
 ///
-/// On success returns `Ok(Opt)`. Use methods such as `opt_present`
+/// On success returns `Ok(Matches)`. Use methods such as `opt_present`
 /// `opt_str`, etc. to interrogate results.  Returns `Err(Fail_)` on
 /// failure: use the `Show` implementation of `Fail_` to display
 /// information about it.
