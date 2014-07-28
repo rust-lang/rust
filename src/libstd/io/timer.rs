@@ -22,7 +22,6 @@ use time::Duration;
 use io::{IoResult, IoError};
 use kinds::Send;
 use boxed::Box;
-use num::{CheckedMul, CheckedAdd};
 use rt::rtio::{IoFactory, LocalIo, RtioTimer, Callback};
 
 /// A synchronous timer object
@@ -71,31 +70,16 @@ pub struct Timer {
 
 struct TimerCallback { tx: Sender<()> }
 
-#[allow(missing_doc)]
-trait DurationExtension {
-    fn in_ms(&self) -> u64;
-}
-
-impl DurationExtension for Duration {
-    fn in_ms(&self) -> u64 {
-        if self.ndays() < 0 { fail!("negative duration") }
-        let nanos = self.nnanoseconds() as u64;
-        let secs = self.nseconds() as u64;
-        let days = self.ndays() as u64;
-        let nanos_in_ms = nanos / 1000;
-        let secs_in_ms = secs.checked_mul(&1000).expect("overflow");
-        let ms_per_day = 24 * 60 * 60 * 1000; // hours/day * min/hour * sec/min * ms/sec
-        let days_in_ms = days.checked_mul(&ms_per_day).expect("overflow");
-        let result = nanos_in_ms;
-        let result = result.checked_add(&secs_in_ms).expect("overflow");
-        let result = result.checked_add(&(days_in_ms as u64)).expect("overflow");
-        return result;
-    }
+fn in_ms(d: Duration) -> u64 {
+    // FIXME: Do we really want to fail on negative duration?
+    let ms = d.num_milliseconds();
+    if ms < 0 { fail!("negative duration") }
+    return ms as u64;
 }
 
 /// Sleep the current task for the specified duration.
 pub fn sleep(duration: Duration) {
-    sleep_ms(duration.in_ms())
+    sleep_ms(in_ms(duration))
 }
 
 /// Sleep the current task for `msecs` milliseconds.
@@ -121,7 +105,7 @@ impl Timer {
     /// Note that this function will cause any other receivers for this timer to
     /// be invalidated (the other end will be closed).
     pub fn sleep(&mut self, duration: Duration) {
-        self.obj.sleep(duration.in_ms());
+        self.obj.sleep(in_ms(duration));
     }
 
     /// Blocks the current task for `msecs` milliseconds.
@@ -145,7 +129,7 @@ impl Timer {
     /// fail.
     pub fn oneshot(&mut self, duration: Duration) -> Receiver<()> {
         let (tx, rx) = channel();
-        self.obj.oneshot(duration.in_ms(), box TimerCallback { tx: tx });
+        self.obj.oneshot(in_ms(duration), box TimerCallback { tx: tx });
         return rx
     }
 
@@ -204,7 +188,7 @@ impl Timer {
     /// fail.
     pub fn periodic(&mut self, duration: Duration) -> Receiver<()> {
         let (tx, rx) = channel();
-        self.obj.period(duration.in_ms(), box TimerCallback { tx: tx });
+        self.obj.period(in_ms(duration), box TimerCallback { tx: tx });
         return rx
     }
 
