@@ -1490,6 +1490,7 @@ fn encode_attributes(ebml_w: &mut Encoder, attrs: &[Attribute]) {
     ebml_w.start_tag(tag_attributes);
     for attr in attrs.iter() {
         ebml_w.start_tag(tag_attribute);
+        ebml_w.wr_tagged_u8(tag_attribute_is_sugared_doc, attr.node.is_sugared_doc as u8);
         encode_meta_item(ebml_w, attr.node.value);
         ebml_w.end_tag();
     }
@@ -1643,6 +1644,29 @@ fn encode_unboxed_closures<'a>(
     }
     ebml_w.end_tag();
 }
+
+fn encode_struct_field_attrs(ebml_w: &mut Encoder, krate: &Crate) {
+    struct StructFieldVisitor<'a, 'b> {
+        ebml_w: &'a mut Encoder<'b>,
+    }
+
+    impl<'a, 'b> Visitor<()> for StructFieldVisitor<'a, 'b> {
+        fn visit_struct_field(&mut self, field: &ast::StructField, _: ()) {
+            self.ebml_w.start_tag(tag_struct_field);
+            self.ebml_w.wr_tagged_u32(tag_struct_field_id, field.node.id);
+            encode_attributes(self.ebml_w, field.node.attrs.as_slice());
+            self.ebml_w.end_tag();
+        }
+    }
+
+    ebml_w.start_tag(tag_struct_fields);
+    visit::walk_crate(&mut StructFieldVisitor {
+        ebml_w: ebml_w
+    }, krate, ());
+    ebml_w.end_tag();
+}
+
+
 
 struct ImplVisitor<'a,'b,'c> {
     ecx: &'a EncodeContext<'b>,
@@ -1927,6 +1951,8 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
     encode_index(&mut ebml_w, items_index, write_i64);
     stats.index_bytes = ebml_w.writer.tell().unwrap() - i;
     ebml_w.end_tag();
+
+    encode_struct_field_attrs(&mut ebml_w, krate);
 
     stats.total_bytes = ebml_w.writer.tell().unwrap();
 

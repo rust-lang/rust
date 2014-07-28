@@ -34,6 +34,7 @@ use std::hash::Hash;
 use std::hash;
 use std::io::extensions::u64_from_be_bytes;
 use std::io;
+use std::collections::hashmap::HashMap;
 use std::rc::Rc;
 use std::u64;
 use serialize::ebml::reader;
@@ -963,6 +964,19 @@ pub fn get_item_attrs(cdata: Cmd,
     f(get_attributes(item));
 }
 
+pub fn get_struct_field_attrs(cdata: Cmd) -> HashMap<ast::NodeId, Vec<ast::Attribute>> {
+    let data = ebml::Doc::new(cdata.data());
+    let fields = reader::get_doc(data, tag_struct_fields);
+    let mut map = HashMap::new();
+    reader::tagged_docs(fields, tag_struct_field, |field| {
+        let id = reader::doc_as_u32(reader::get_doc(field, tag_struct_field_id));
+        let attrs = get_attributes(field);
+        map.insert(id, attrs);
+        true
+    });
+    map
+}
+
 fn struct_field_family_to_visibility(family: Family) -> ast::Visibility {
     match family {
       PublicField => ast::Public,
@@ -1042,6 +1056,9 @@ fn get_attributes(md: ebml::Doc) -> Vec<ast::Attribute> {
     match reader::maybe_get_doc(md, tag_attributes) {
       Some(attrs_d) => {
         reader::tagged_docs(attrs_d, tag_attribute, |attr_doc| {
+            let is_sugared_doc = reader::doc_as_u8(
+                reader::get_doc(attr_doc, tag_attribute_is_sugared_doc)
+            ) == 1;
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
             // an attribute
@@ -1053,7 +1070,7 @@ fn get_attributes(md: ebml::Doc) -> Vec<ast::Attribute> {
                         id: attr::mk_attr_id(),
                         style: ast::AttrOuter,
                         value: meta_item,
-                        is_sugared_doc: false,
+                        is_sugared_doc: is_sugared_doc,
                     },
                     span: codemap::DUMMY_SP
                 });

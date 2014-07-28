@@ -4071,7 +4071,7 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
 
         let len = results.as_slice().iter().map(|x| x.len()).sum();
         let mut result: Vec<field_ty> = Vec::with_capacity(len);
-        result.extend(results.as_slice().iter().flat_map(|rs| rs.iter().map(|&f| f)));
+        result.extend(results.as_slice().iter().flat_map(|rs| rs.iter().map(|f| f.clone())));
         assert!(result.len() == len);
         result
     } else {
@@ -4085,7 +4085,7 @@ pub fn lookup_struct_field(cx: &ctxt,
                         -> field_ty {
     let r = lookup_struct_fields(cx, parent);
     match r.iter().find(|f| f.id.node == field_id.node) {
-        Some(t) => *t,
+        Some(t) => t.clone(),
         None => cx.sess.bug("struct ID not found in parent's fields")
     }
 }
