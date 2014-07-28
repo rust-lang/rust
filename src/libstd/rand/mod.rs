@@ -95,12 +95,11 @@ use std::rand::distributions::{IndependentSample, Range};
 
 struct SimulationResult {
     win: bool,
-    switch: bool
+    switch: bool,
 }
 
 // Run a single simulation of the Monty Hall problem.
-fn simulate<R: Rng>(rng: &mut R) -> SimulationResult {
-    let random_door = Range::new(0u, 3);
+fn simulate<R: Rng>(random_door: &Range<uint>, rng: &mut R) -> SimulationResult {
     let car = random_door.ind_sample(rng);
 
     // This is our initial choice
@@ -121,32 +120,33 @@ fn simulate<R: Rng>(rng: &mut R) -> SimulationResult {
 // Returns the door the game host opens given our choice and knowledge of
 // where the car is. The game host will never open the door with the car.
 fn game_host_open<R: Rng>(car: uint, choice: uint, rng: &mut R) -> uint {
-    let choices = free_doors(vec![car, choice]);
+    let choices = free_doors(&[car, choice]);
     rand::sample(rng, choices.move_iter(), 1)[0]
 }
 
 // Returns the door we switch to, given our current choice and
 // the open door. There will only be one valid door.
 fn switch_door(choice: uint, open: uint) -> uint {
-    free_doors(vec![choice, open])[0]
+    free_doors(&[choice, open])[0]
 }
 
-fn free_doors(blocked: Vec<uint>) -> Vec<uint> {
+fn free_doors(blocked: &[uint]) -> Vec<uint> {
     range(0u, 3).filter(|x| !blocked.contains(x)).collect()
 }
 
 fn main() {
-    // The estimation will be more accuraty with more simulations
+    // The estimation will be more accurate with more simulations
     let num_simulations = 10000u;
 
     let mut rng = rand::task_rng();
+    let random_door = Range::new(0u, 3);
 
     let (mut switch_wins, mut switch_losses) = (0u, 0u);
     let (mut keep_wins, mut keep_losses) = (0u, 0u);
 
     println!("Running {} simulations...", num_simulations);
     for _ in range(0, num_simulations) {
-        let result = simulate(&mut rng);
+        let result = simulate(&random_door, &mut rng);
 
         match (result.win, result.switch) {
             (true, true) => switch_wins += 1,
