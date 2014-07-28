@@ -1490,6 +1490,7 @@ fn encode_attributes(ebml_w: &mut Encoder, attrs: &[Attribute]) {
     ebml_w.start_tag(tag_attributes);
     for attr in attrs.iter() {
         ebml_w.start_tag(tag_attribute);
+        ebml_w.wr_tagged_u8(tag_attribute_is_sugared_doc, attr.node.is_sugared_doc as u8);
         encode_meta_item(ebml_w, attr.node.value);
         ebml_w.end_tag();
     }

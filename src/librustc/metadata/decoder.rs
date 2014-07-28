@@ -1056,6 +1056,9 @@ fn get_attributes(md: ebml::Doc) -> Vec<ast::Attribute> {
     match reader::maybe_get_doc(md, tag_attributes) {
       Some(attrs_d) => {
         reader::tagged_docs(attrs_d, tag_attribute, |attr_doc| {
+            let is_sugared_doc = reader::doc_as_u8(
+                reader::get_doc(attr_doc, tag_attribute_is_sugared_doc)
+            ) == 1;
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
             // an attribute
@@ -1067,7 +1070,7 @@ fn get_attributes(md: ebml::Doc) -> Vec<ast::Attribute> {
                         id: attr::mk_attr_id(),
                         style: ast::AttrOuter,
                         value: meta_item,
-                        is_sugared_doc: false,
+                        is_sugared_doc: is_sugared_doc,
                     },
                     span: codemap::DUMMY_SP
                 });
