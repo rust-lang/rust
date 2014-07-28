@@ -380,6 +380,13 @@ impl<V: PartialOrd> PartialOrd for SmallIntMap<V> {
     }
 }
 
+impl<V: Ord> Ord for SmallIntMap<V> {
+    #[inline]
+    fn cmp(&self, other: &SmallIntMap<V>) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
+    }
+}
+
 impl<V: fmt::Show> fmt::Show for SmallIntMap<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
