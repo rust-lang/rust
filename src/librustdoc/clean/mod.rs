@@ -347,18 +347,18 @@ impl Clean<Item> for doctree::Module {
             }
         }
         let items: Vec<Vec<Item> > = vec!(
-            self.structs.clean().move_iter().collect(),
-            self.enums.clean().move_iter().collect(),
-            self.fns.clean().move_iter().collect(),
+            self.structs.clean(),
+            self.enums.clean(),
+            self.fns.clean(),
             foreigns,
-            self.mods.clean().move_iter().collect(),
-            self.typedefs.clean().move_iter().collect(),
-            self.statics.clean().move_iter().collect(),
-            self.traits.clean().move_iter().collect(),
-            self.impls.clean().move_iter().collect(),
+            self.mods.clean(),
+            self.typedefs.clean(),
+            self.statics.clean(),
+            self.traits.clean(),
+            self.impls.clean(),
             self.view_items.clean().move_iter()
                            .flat_map(|s| s.move_iter()).collect(),
-            self.macros.clean().move_iter().collect()
+            self.macros.clean(),
         );
 
         // determine if we should display the inner contents or
@@ -406,7 +406,7 @@ impl Clean<Attribute> for ast::MetaItem {
         match self.node {
             ast::MetaWord(ref s) => Word(s.get().to_string()),
             ast::MetaList(ref s, ref l) => {
-                List(s.get().to_string(), l.clean().move_iter().collect())
+                List(s.get().to_string(), l.clean())
             }
             ast::MetaNameValue(ref s, ref v) => {
                 NameValue(s.get().to_string(), lit_to_string(v))
@@ -460,7 +460,7 @@ impl Clean<TyParam> for ast::TyParam {
         TyParam {
             name: self.ident.clean(),
             did: ast::DefId { krate: ast::LOCAL_CRATE, node: self.id },
-            bounds: self.bounds.clean().move_iter().collect(),
+            bounds: self.bounds.clean(),
             default: self.default.clean()
         }
     }
@@ -688,7 +688,7 @@ impl Clean<Item> for ast::Method {
         };
         Item {
             name: Some(self.pe_ident().clean()),
-            attrs: self.attrs.clean().move_iter().collect(),
+            attrs: self.attrs.clean(),
             source: self.span.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.pe_vis().clean(),
@@ -727,7 +727,7 @@ impl Clean<Item> for ast::TypeMethod {
         };
         Item {
             name: Some(self.ident.clean()),
-            attrs: self.attrs.clean().move_iter().collect(),
+            attrs: self.attrs.clean(),
             source: self.span.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: None,
@@ -805,7 +805,7 @@ impl Clean<ClosureDecl> for ast::ClosureTy {
             onceness: self.onceness,
             fn_style: self.fn_style,
             bounds: match self.bounds {
-                Some(ref x) => x.clean().move_iter().collect(),
+                Some(ref x) => x.clean(),
                 None        => Vec::new()
             },
         }
@@ -1178,7 +1178,7 @@ impl Clean<Type> for ast::Ty {
             TyTup(ref tys) => Tuple(tys.iter().map(|x| x.clean()).collect()),
             TyPath(ref p, ref tpbs, id) => {
                 resolve_type(p.clean(),
-                             tpbs.clean().map(|x| x.move_iter().collect()),
+                             tpbs.clean().map(|x| x),
                              id)
             }
             TyClosure(ref c, region) => Closure(box c.clean(), region.clean()),
@@ -1307,7 +1307,7 @@ impl Clean<Item> for ast::StructField {
         };
         Item {
             name: name.clean(),
-            attrs: self.node.attrs.clean().move_iter().collect(),
+            attrs: self.node.attrs.clean(),
             source: self.span.clean(),
             visibility: Some(vis),
             stability: get_stability(ast_util::local_def(self.node.id)),
@@ -1320,16 +1320,26 @@ impl Clean<Item> for ast::StructField {
 impl Clean<Item> for ty::field_ty {
     fn clean(&self) -> Item {
         use syntax::parse::token::special_idents::unnamed_field;
+        use rustc::metadata::csearch;
+
+        let cx = get_cx();
+        let attrs;
+
+        let attr_map = csearch::get_struct_field_attrs(&cx.tcx().sess.cstore, self.id);
+
         let name = if self.name == unnamed_field.name {
+            attrs = None;
             None
         } else {
+            attrs = Some(attr_map.find(&self.id.node).unwrap());
             Some(self.name)
         };
-        let cx = get_cx();
+
         let ty = ty::lookup_item_type(cx.tcx(), self.id);
+
         Item {
             name: name.clean(),
-            attrs: inline::load_attrs(cx.tcx(), self.id),
+            attrs: attrs.unwrap_or(&Vec::new()).clean(),
             source: Span::empty(),
             visibility: Some(self.vis),
             stability: get_stability(self.id),
@@ -1388,7 +1398,7 @@ impl Clean<VariantStruct> for syntax::ast::StructDef {
     fn clean(&self) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
-            fields: self.fields.clean().move_iter().collect(),
+            fields: self.fields.clean(),
             fields_stripped: false,
         }
     }
@@ -1556,7 +1566,7 @@ impl Clean<Path> for ast::Path {
     fn clean(&self) -> Path {
         Path {
             global: self.global,
-            segments: self.segments.clean().move_iter().collect(),
+            segments: self.segments.clean(),
         }
     }
 }
@@ -1572,8 +1582,8 @@ impl Clean<PathSegment> for ast::PathSegment {
     fn clean(&self) -> PathSegment {
         PathSegment {
             name: self.identifier.clean(),
-            lifetimes: self.lifetimes.clean().move_iter().collect(),
-            types: self.types.clean().move_iter().collect()
+            lifetimes: self.lifetimes.clean(),
+            types: self.types.clean(),
         }
     }
 }
@@ -1640,7 +1650,7 @@ impl Clean<BareFunctionDecl> for ast::BareFnTy {
         BareFunctionDecl {
             fn_style: self.fn_style,
             generics: Generics {
-                lifetimes: self.lifetimes.clean().move_iter().collect(),
+                lifetimes: self.lifetimes.clean(),
                 type_params: Vec::new(),
             },
             decl: self.decl.clean(),
@@ -1745,7 +1755,7 @@ impl Clean<Vec<Item>> for ast::ViewItem {
         let convert = |node: &ast::ViewItem_| {
             Item {
                 name: None,
-                attrs: self.attrs.clean().move_iter().collect(),
+                attrs: self.attrs.clean(),
                 source: self.span.clean(),
                 def_id: ast_util::local_def(0),
                 visibility: self.vis.clean(),
@@ -1840,7 +1850,7 @@ impl Clean<ViewPath> for ast::ViewPath {
                 GlobImport(resolve_use_source(p.clean(), id)),
             ast::ViewPathList(ref p, ref pl, id) => {
                 ImportList(resolve_use_source(p.clean(), id),
-                           pl.clean().move_iter().collect())
+                           pl.clean())
             }
         }
     }
@@ -1893,7 +1903,7 @@ impl Clean<Item> for ast::ForeignItem {
         };
         Item {
             name: Some(self.ident.clean()),
-            attrs: self.attrs.clean().move_iter().collect(),
+            attrs: self.attrs.clean(),
             source: self.span.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
