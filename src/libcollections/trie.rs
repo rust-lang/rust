@@ -100,6 +100,13 @@ impl<T: PartialOrd> PartialOrd for TrieMap<T> {
     }
 }
 
+impl<T: Ord> Ord for TrieMap<T> {
+    #[inline]
+    fn cmp(&self, other: &TrieMap<T>) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
+    }
+}
+
 impl<T: Show> Show for TrieMap<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
@@ -524,7 +531,7 @@ impl<S: Writer, T: Hash<S>> Hash<S> for TrieMap<T> {
 /// set.clear();
 /// assert!(set.is_empty());
 /// ```
-#[deriving(Clone, Hash, PartialEq, Eq, PartialOrd)]
+#[deriving(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TrieSet {
     map: TrieMap<()>
 }

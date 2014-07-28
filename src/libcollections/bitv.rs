@@ -838,6 +838,13 @@ impl PartialOrd for Bitv {
     }
 }
 
+impl Ord for Bitv {
+    #[inline]
+    fn cmp(&self, other: &Bitv) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
+    }
+}
+
 impl fmt::Show for Bitv {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for bit in self.iter() {
@@ -963,7 +970,7 @@ impl<'a> RandomAccessIterator<bool> for Bits<'a> {
 /// assert!(bv.eq_vec([true, true, false, true,
 ///                    false, false, false, false]));
 /// ```
-#[deriving(Clone, PartialEq, Eq, PartialOrd)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BitvSet(Bitv);
 
 impl Default for BitvSet {
