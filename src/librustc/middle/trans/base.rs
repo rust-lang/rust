@@ -2554,6 +2554,15 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
 
 fn exported_name(ccx: &CrateContext, id: ast::NodeId,
                  ty: ty::t, attrs: &[ast::Attribute]) -> String {
+    match ccx.external_srcs().borrow().find(&id) {
+        Some(&did) => {
+            let sym = csearch::get_symbol(&ccx.sess().cstore, did);
+            debug!("found item {} in other crate...", sym);
+            return sym;
+        }
+        None => {}
+    }
+
     match attr::first_attr_value_str_by_name(attrs, "export_name") {
         // Use provided name
         Some(name) => name.get().to_string(),
@@ -2597,16 +2606,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     // using the current crate's name/version
                     // information in the hash of the symbol
                     debug!("making {}", sym);
-                    let (sym, is_local) = {
-                        match ccx.external_srcs().borrow().find(&i.id) {
-                            Some(&did) => {
-                                debug!("but found in other crate...");
-                                (csearch::get_symbol(&ccx.sess().cstore,
-                                                     did), false)
-                            }
-                            None => (sym, true)
-                        }
-                    };
+                    let is_local = !ccx.external_srcs().borrow().contains_key(&id);
 
                     // We need the translated value here, because for enums the
                     // LLVM type is not fully determined by the Rust type.
