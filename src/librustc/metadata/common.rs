@@ -231,3 +231,5 @@ pub static tag_unboxed_closure_type: uint = 0x97;
 pub static tag_struct_fields: uint = 0x98;
 pub static tag_struct_field: uint = 0x99;
 pub static tag_struct_field_id: uint = 0x9a;
+
+pub static tag_attribute_is_sugared_doc: uint = 0x9b;
