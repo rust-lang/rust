@@ -19,6 +19,6 @@ fn main() {
              "long".to_string(), "string".to_string()],
             None =>
             ["none".to_string(), "a".to_string(), "a".to_string(),
-             "a".to_string(), "a".to_string()]
+             "a".to_string(), "a".to_string()],
         };
 }

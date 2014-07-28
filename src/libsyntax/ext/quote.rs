@@ -147,6 +147,7 @@ pub mod rt {
     impl_to_source!(Gc<ast::Stmt>, stmt_to_string)
     impl_to_source!(Gc<ast::Expr>, expr_to_string)
     impl_to_source!(Gc<ast::Pat>, pat_to_string)
+    impl_to_source!(ast::Arm, arm_to_string)
     impl_to_source_slice!(ast::Ty, ", ")
     impl_to_source_slice!(Gc<ast::Item>, "\n\n")
 
@@ -240,6 +241,7 @@ pub mod rt {
     impl_to_tokens!(ast::Ident)
     impl_to_tokens!(Gc<ast::Item>)
     impl_to_tokens!(Gc<ast::Pat>)
+    impl_to_tokens!(ast::Arm)
     impl_to_tokens!(Gc<ast::Method>)
     impl_to_tokens_lifetime!(&'a [Gc<ast::Item>])
     impl_to_tokens!(ast::Ty)
