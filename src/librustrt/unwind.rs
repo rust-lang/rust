@@ -384,7 +384,7 @@ pub mod eabi {
 #[lang = "begin_unwind"]
 pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
                                 file: &'static str, line: uint) -> ! {
-    begin_unwind_fmt(msg, file, line)
+    begin_unwind_fmt(msg, &(file, line))
 }
 
 /// The entry point for unwinding with a formatted message.
@@ -394,8 +394,7 @@ pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
 #[inline(never)] #[cold]
-pub fn begin_unwind_fmt(msg: &fmt::Arguments, file: &'static str,
-                        line: uint) -> ! {
+pub fn begin_unwind_fmt(msg: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     use core::fmt::FormatWriter;
 
     // We do two allocations here, unfortunately. But (a) they're
@@ -415,9 +414,10 @@ pub fn begin_unwind_fmt(msg: &fmt::Arguments, file: &'static str,
     let mut v = Vec::new();
     let _ = write!(&mut VecWriter { v: &mut v }, "{}", msg);
 
-    begin_unwind_inner(box String::from_utf8(v).unwrap(), file, line)
+    begin_unwind_inner(box String::from_utf8(v).unwrap(), file_line)
 }
 
+// FIXME: Need to change expr_fail in AstBuilder to change this to &(str, uint)
 /// This is the entry point of unwinding for fail!() and assert!().
 #[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
 pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! {
@@ -429,13 +429,7 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
     // failing.
 
     // see below for why we do the `Any` coercion here.
-    begin_unwind_inner(box msg, file, line)
-}
-
-/// Unwinding for `fail!()`. Saves passing a string.
-#[inline(never)] #[cold] #[experimental]
-pub fn begin_unwind_no_time_to_explain(file: &'static str, line: uint) -> ! {
-    begin_unwind_inner(box () ("explicit failure"), file, line)
+    begin_unwind_inner(box msg, &(file, line))
 }
 
 /// The core of the unwinding.
@@ -448,9 +442,7 @@ pub fn begin_unwind_no_time_to_explain(file: &'static str, line: uint) -> ! {
 /// Do this split took the LLVM IR line counts of `fn main() { fail!()
 /// }` from ~1900/3700 (-O/no opts) to 180/590.
 #[inline(never)] #[cold] // this is the slow path, please never inline this
-fn begin_unwind_inner(msg: Box<Any + Send>,
-                      file: &'static str,
-                      line: uint) -> ! {
+fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) -> ! {
     // First, invoke call the user-defined callbacks triggered on task failure.
     //
     // By the time that we see a callback has been registered (by reading
@@ -467,6 +459,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>,
             0 => {}
             n => {
                 let f: Callback = unsafe { mem::transmute(n) };
+                let (file, line) = *file_line;
                 f(msg, file, line);
             }
         }
