@@ -1950,6 +1950,12 @@ interpreted:
 - `unsafe_no_drop_flag` - on structs, remove the flag that prevents
   destructors from being run twice. Destructors might be run multiple times on
   the same object with this attribute.
+- `phase` - on `extern crate` statements, allows specifying which "phase" of
+  compilation the crate should be loaded for. Currently, there are two
+  choices: `link` and `plugin`. `link` is the default. `plugin` will load the
+  crate at compile-time and use any syntax extensions or lints that the crate
+  defines. They can both be specified, `#[phase(link, plugin)]` to use a crate
+  both at runtime and compiletime.
 
 ### Conditional compilation
 
@@ -2395,16 +2401,16 @@ The currently implemented features of the reference compiler are:
                closure as `once` is unlikely to be supported going forward. So
                they are hidden behind this feature until they are to be removed.
 
-* `managed_boxes` - Usage of `@` pointers is gated due to many
+* `asm` - The `asm!` macro provides a means for inline assembly. This is often
+          useful, but the exact syntax for this feature along with its semantics
+          are likely to change, so this macro usage must be opted into.
+
+* `managed_boxes` - Usage of `@` is gated due to many
                     planned changes to this feature. In the past, this has meant
                     "a GC pointer", but the current implementation uses
                     reference counting and will likely change drastically over
                     time. Additionally, the `@` syntax will no longer be used to
                     create GC boxes.
-
-* `asm` - The `asm!` macro provides a means for inline assembly. This is often
-          useful, but the exact syntax for this feature along with its semantics
-          are likely to change, so this macro usage must be opted into.
 
 * `non_ascii_idents` - The compiler supports the use of non-ascii identifiers,
                        but the implementation is a little rough around the
@@ -2426,6 +2432,66 @@ The currently implemented features of the reference compiler are:
                 system linker is not guaranteed to continue in the future, and
                 if the system linker is not used then specifying custom flags
                 doesn't have much meaning.
+
+* `phase` - Usage of the `#[phase]` attribute allows loading compiler plugins
+            for custom lints or syntax extensions. The implementation is considered
+            unwholesome and in need of overhaul, and it is not clear what they
+            will look like moving forward.
+
+* `plugin_registrar` - Indicates that a crate has compiler plugins that it
+                       wants to load. As with `phase`, the implementation is
+                       in need of a overhaul, and it is not clear that plugins
+                       defined using this will continue to work.
+
+* `log_syntax` - Allows use of the `log_syntax` macro attribute, which is a
+                 nasty hack that will certainly be removed.
+
+* `trace_macros` - Allows use of the `trace_macros` macro, which is a nasty
+                   hack that will certainly be removed.
+
+* `concat_idents` - Allows use of the `concat_idents` macro, which is in many
+                    ways insufficient for concatenating identifiers, and may
+                    be removed entirely for something more wholsome.
+
+* `unsafe_destructor` - Allows use of the `#[unsafe_destructor]` attribute,
+                        which is considered wildly unsafe and will be
+                        obsoleted by language improvements.
+
+* `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
+                 are inherently unstable and no promise about them is made.
+
+* `lang_items` - Allows use of the `#[lang]` attribute. Like `intrinsics`,
+                 lang items are inherently unstable and no promise about
+                 them is made.
+
+* `simd` - Allows use of the `#[simd]` attribute, which is overly simple and
+           not the SIMD interface we want to expose in the long term.
+
+* `default_type_params` - Allows use of default type parameters. The future of
+                          this feature is uncertain.
+
+* `quote` - Allows use of the `quote_*!` family of macros, which are
+            implemented very poorly and will likely change significantly
+            with a proper implementation.
+
+* `linkage` - Allows use of the `linkage` attribute, which is not portable.
+
+* `struct_inherit` - Allows using struct inheritance, which is barely
+                     implemented and will probably be removed. Don't use this.
+
+* `overloaded_calls` - Allow implementing the `Fn*` family of traits on user
+                       types, allowing overloading the call operator (`()`).
+                       This feature may still undergo changes before being
+                       stabilized.
+
+* `unboxed_closure_sugar` - Allows using `|Foo| -> Bar` as a trait bound
+                            meaning one of the `Fn` traits.  Still
+                            experimental.
+
+* `rustc_diagnostic_macros`- A mysterious feature, used in the implementation
+                             of rustc, not meant for mortals.
+
+* `unboxed_closures` - A work in progress feature with many known bugs.
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about #[feature] directives which enabled
