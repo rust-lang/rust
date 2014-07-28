@@ -11,7 +11,7 @@ Motivation
 ==========
 
 Right now accessing fields of tuples and tuple structs is incredibly painful—one
-must rely on pattern matching alone to extract values. This became such a
+must rely on pattern-matching alone to extract values. This became such a
 problem that twelve traits were created in the standard library
 (`core::tuple::Tuple*`) to make tuple value accesses easier, adding `.valN()`,
 `.refN()`, and `.mutN()` methods to help this. But this is not a very nice
@@ -55,16 +55,16 @@ integer for a name.
 Drawbacks
 =========
 
-More complexity that is not strictly necessary.
+This adds more complexity that is not strictly necessary.
 
 Alternatives
 ============
 
 Stay with the status quo. Either recommend using a struct with named fields or
-suggest using pattern matching to extract values. If extracting individual
-fields of tuples is really necessary, `the `TupleN` traits could be used
-instead, and something like `#[deriving(Tuple3)]` could possibly be added for
-tuple structs.
+suggest using pattern-matching to extract values. If extracting individual
+fields of tuples is really necessary, the `TupleN` traits could be used instead,
+and something like `#[deriving(Tuple3)]` could possibly be added for tuple
+structs.
 
 Unresolved questions
 ====================
