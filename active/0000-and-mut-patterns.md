@@ -60,15 +60,19 @@ It makes matching through a `&mut` more verbose: `for &mut (ref mut x,
 p_) in v.mut_iter()` instead of `for &(ref mut x, _) in
 v.mut_iter()`.
 
-It is also more verbose if someone does actually want the current
-`&mut x` behaviour (of binding the contents to a mutable local): `&mut
-mut x`. However, this seems like a very rare edgecase.
-
 Macros wishing to pattern match on either `&` or `&mut` need to handle
 each case, rather than performing both with a single `&`. However,
 macros handling these types already need special `mut` vs. not
 handling if they ever name the types, or if they use `ref` vs. `ref
 mut` subpatterns.
+
+It also makes obtaining the current behaviour (binding by-value the
+contents of a reference to a mutable local) slightly harder. For a
+`&mut T` the pattern becomes `&mut mut x`, and, at the moment, for a
+`&T`, it must be matched with `&x` and then rebound with `let mut x =
+x;` (since disambiguating like `&(mut x)` doesn't yet work). However,
+based on some loose grepping of the Rust repo, both of these are very
+rare.
 
 # Alternatives
 
