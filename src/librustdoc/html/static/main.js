@@ -42,6 +42,9 @@
             $('.docblock.short').width(function() {
                 return contentWidth - 40 - $(this).prev().width();
             }).addClass('nowrap');
+            $('.summary-column').width(function() {
+                return contentWidth - 40 - $(this).prev().width();
+            })
         }, 150);
     }
     resizeShortBlocks();
