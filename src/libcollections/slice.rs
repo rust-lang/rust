@@ -579,7 +579,7 @@ pub trait MutableVectorAllocating<'a, T> {
      *
      * * src - A mutable vector of `T`
      * * start - The index into `src` to start copying from
-     * * end - The index into `str` to stop copying from
+     * * end - The index into `src` to stop copying from
      */
     fn move_from(self, src: Vec<T>, start: uint, end: uint) -> uint;
 }
