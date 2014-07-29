@@ -45,9 +45,9 @@
 //! }
 //!
 //! fn print_usage(program: &str, _opts: &[OptGroup]) {
-//!     println!("Usage: {} [options]", program);
-//!     println!("-o\t\tOutput");
-//!     println!("-h --help\tUsage");
+//!     let short = format!("Usage: {} [options]", program.as_slice());
+//!     let usage = getopts::usage(short.as_slice(), opts);
+//!     std::io::print(usage.as_slice());
 //! }
 //!
 //! fn main() {
