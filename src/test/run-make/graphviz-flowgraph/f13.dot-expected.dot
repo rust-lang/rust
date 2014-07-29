@@ -7,7 +7,7 @@ digraph block {
     N5[label="local x"];
     N6[label="local _y"];
     N7[label="expr x"];
-    N8[label="expr match x { E13a => _y = 1, E13b(v) => _y = v + 1 }"];
+    N8[label="expr match x { E13a => _y = 1, E13b(v) => _y = v + 1, }"];
     N9[label="(dummy_node)"];
     N10[label="local E13a"];
     N11[label="expr 1"];
@@ -21,7 +21,7 @@ digraph block {
     N19[label="expr v + 1"];
     N20[label="expr _y"];
     N21[label="expr _y = v + 1"];
-    N22[label="block {\l    let x = E13b(13);\l    let _y;\l    match x { E13a => _y = 1, E13b(v) => _y = v + 1 }\l}\l"];
+    N22[label="block {\l    let x = E13b(13);\l    let _y;\l    match x { E13a => _y = 1, E13b(v) => _y = v + 1, }\l}\l"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;

@@ -26,6 +26,7 @@ fn syntax_extension(cx: &ExtCtxt) {
     let _b: Option<Gc<syntax::ast::Item>> = quote_item!(cx, static foo : int = $e_toks; );
     let _c: Gc<syntax::ast::Pat> = quote_pat!(cx, (x, 1 .. 4, *) );
     let _d: Gc<syntax::ast::Stmt> = quote_stmt!(cx, let x = $a; );
+    let _d: syntax::ast::Arm = quote_arm!(cx, (ref x, ref y) = (x, y) );
     let _e: Gc<syntax::ast::Expr> = quote_expr!(cx, match foo { $p_toks => 10 } );
 
     let _f: Gc<syntax::ast::Expr> = quote_expr!(cx, ());
