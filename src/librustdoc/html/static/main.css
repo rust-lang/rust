@@ -129,6 +129,14 @@ pre {
     padding: 20px;
 }
 
+.content.source {
+    margin-top: 50px;
+    max-width: none;
+    overflow: visible;
+    margin-left: 0px;
+    min-width: 70em;
+}
+
 nav.sub {
     font-size: 16px;
     text-transform: uppercase;
