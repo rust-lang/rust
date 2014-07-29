@@ -92,7 +92,7 @@ impl<T: 'static> LocalData for T {}
 //      a proper map.
 #[doc(hidden)]
 pub type Map = Vec<Option<(*const u8, TLSValue, uint)>>;
-type TLSValue = Box<LocalData + Send>;
+type TLSValue = Box<LocalData + Send + 'static>;
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
 unsafe fn get_local_map<'a>() -> Option<&'a mut Map> {
@@ -176,7 +176,9 @@ impl<T: 'static> KeyValue<T> {
         // anything.
         let newval = data.map(|d| {
             let d = box d as Box<LocalData>;
-            let d: Box<LocalData + Send> = unsafe { mem::transmute(d) };
+            let d: Box<LocalData + Send + 'static> = unsafe {
+                mem::transmute(d)
+            };
             (keyval, d, 0)
         });
 

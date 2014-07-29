@@ -24,10 +24,10 @@ impl X for B {
 }
 
 struct A<'a> {
-    p: &'a X
+    p: &'a X+'a
 }
 
-fn make_a<'a>(p: &'a X) -> A<'a> {
+fn make_a<'a>(p: &'a X+'a) -> A<'a> {
     A { p: p }
 }
 

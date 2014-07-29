@@ -839,10 +839,11 @@ mod tests {
         let m = Arc::new(Mutex::new());
         let m2 = m.clone();
 
-        let result: result::Result<(), Box<Any + Send>> = task::try(proc() {
-            let _lock = m2.lock();
-            fail!();
-        });
+        let result: result::Result<(), Box<Any+Send+'static>> =
+            task::try(proc() {
+                let _lock = m2.lock();
+                fail!();
+            });
         assert!(result.is_err());
         // child task must have finished by the time try returns
         drop(m.lock());
@@ -1079,7 +1080,8 @@ mod tests {
         let x = Arc::new(RWLock::new());
         let x2 = x.clone();
 
-        let result: result::Result<(), Box<Any + Send>> = task::try(proc() {
+        let result: result::Result<(),
+                                   Box<Any+Send+'static>> = task::try(proc() {
             lock_rwlock_in_mode(&x2, mode1, || {
                 fail!();
             })

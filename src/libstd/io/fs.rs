@@ -86,7 +86,7 @@ use vec::Vec;
 /// configured at creation time, via the `FileAccess` parameter to
 /// `File::open_mode()`.
 pub struct File {
-    fd: Box<rtio::RtioFileStream + Send>,
+    fd: Box<rtio::RtioFileStream + Send + 'static>,
     path: Path,
     last_nread: int,
 }
@@ -130,9 +130,8 @@ impl File {
     /// * Attempting to open a file with a `FileAccess` that the user lacks
     ///   permissions for
     /// * Filesystem-level errors (full disk, etc)
-    pub fn open_mode(path: &Path,
-                     mode: FileMode,
-                     access: FileAccess) -> IoResult<File> {
+    pub fn open_mode(path: &Path, mode: FileMode, access: FileAccess)
+                     -> IoResult<File> {
         let rtio_mode = match mode {
             Open => rtio::Open,
             Append => rtio::Append,

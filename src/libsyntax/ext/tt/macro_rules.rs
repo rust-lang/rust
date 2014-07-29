@@ -28,6 +28,7 @@ use print;
 use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
+use std::mem;
 use std::rc::Rc;
 use std::gc::Gc;
 
@@ -117,7 +118,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
               cx: &mut ExtCtxt,
               sp: Span,
               arg: &[ast::TokenTree])
-              -> Box<MacResult> {
+              -> Box<MacResult+'static> {
         generic_extension(cx,
                           sp,
                           self.name,
@@ -143,7 +144,7 @@ fn generic_extension(cx: &ExtCtxt,
                      arg: &[ast::TokenTree],
                      lhses: &[Rc<NamedMatch>],
                      rhses: &[Rc<NamedMatch>])
-                     -> Box<MacResult> {
+                     -> Box<MacResult+'static> {
     if cx.trace_macros() {
         println!("{}! {} {} {}",
                  token::get_ident(name),
@@ -193,9 +194,17 @@ fn generic_extension(cx: &ExtCtxt,
                 let p = Parser::new(cx.parse_sess(), cx.cfg(), box trncbr);
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
-                return box ParserAnyMacro {
-                    parser: RefCell::new(p),
-                } as Box<MacResult>
+                unsafe {
+                    // FIXME(pcwalton): This is totally bogus with the
+                    // lifetimes. I have no idea how this even worked to begin
+                    // with.
+                    let result = box ParserAnyMacro {
+                        parser: RefCell::new(p),
+                    } as Box<MacResult>;
+                    let result: Box<MacResult+'static> =
+                        mem::transmute(result);
+                    return result
+                }
               }
               Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
                 best_fail_spot = sp;
@@ -216,8 +225,8 @@ fn generic_extension(cx: &ExtCtxt,
 pub fn add_new_extension(cx: &mut ExtCtxt,
                          sp: Span,
                          name: Ident,
-                         arg: Vec<ast::TokenTree> )
-                         -> Box<base::MacResult> {
+                         arg: Vec<ast::TokenTree>)
+                         -> Box<base::MacResult+'static> {
     // these spans won't matter, anyways
     fn ms(m: Matcher_) -> Matcher {
         Spanned {
@@ -274,5 +283,5 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
             name: token::get_ident(name).to_string(),
             ext: NormalTT(exp, Some(sp))
         }))
-    } as Box<MacResult>
+    } as Box<MacResult+'static>
 }

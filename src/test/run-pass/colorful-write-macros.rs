@@ -18,7 +18,7 @@ use std::fmt;
 use std::fmt::FormatWriter;
 
 struct Foo<'a> {
-    writer: &'a mut Writer,
+    writer: &'a mut Writer+'a,
     other: &'a str,
 }
 

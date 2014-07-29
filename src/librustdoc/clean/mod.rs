@@ -489,7 +489,7 @@ impl Clean<TyParamBound> for ast::TyParamBound {
     fn clean(&self) -> TyParamBound {
         match *self {
             ast::StaticRegionTyParamBound => RegionBound,
-            ast::OtherRegionTyParamBound(_) => RegionBound,
+            ast::OtherRegionTyParamBound(_, _) => RegionBound,
             ast::UnboxedFnTyParamBound(_) => {
                 // FIXME(pcwalton): Wrong.
                 RegionBound

@@ -20,11 +20,13 @@ pub struct SignalWatcher {
     handle: *mut uvll::uv_signal_t,
     home: HomeHandle,
 
-    cb: Box<Callback + Send>,
+    cb: Box<Callback + Send + 'static>,
 }
 
 impl SignalWatcher {
-    pub fn new(io: &mut UvIoFactory, signum: int, cb: Box<Callback + Send>)
+    pub fn new(io: &mut UvIoFactory,
+               signum: int,
+               cb: Box<Callback + Send + 'static>)
                -> Result<Box<SignalWatcher>, UvError> {
         let s = box SignalWatcher {
             handle: UvHandle::alloc(None::<SignalWatcher>, uvll::UV_SIGNAL),

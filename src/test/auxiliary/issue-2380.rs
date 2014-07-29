@@ -14,8 +14,8 @@
 
 pub trait i<T> { }
 
-pub fn f<T>() -> Box<i<T>> {
+pub fn f<T>() -> Box<i<T>+'static> {
     impl<T> i<T> for () { }
 
-    box() () as Box<i<T>>
+    box() () as Box<i<T>+'static>
 }

@@ -185,7 +185,7 @@ impl OverloadedCallType {
 pub struct ExprUseVisitor<'d,'t,TYPER> {
     typer: &'t TYPER,
     mc: mc::MemCategorizationContext<'t,TYPER>,
-    delegate: &'d mut Delegate,
+    delegate: &'d mut Delegate+'d,
 }
 
 // If the TYPER results in an error, it's because the type check
@@ -205,7 +205,7 @@ macro_rules! return_if_err(
 )
 
 impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
-    pub fn new(delegate: &'d mut Delegate,
+    pub fn new(delegate: &'d mut Delegate+'d,
                typer: &'t TYPER)
                -> ExprUseVisitor<'d,'t,TYPER> {
         ExprUseVisitor { typer: typer,

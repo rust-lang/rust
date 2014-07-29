@@ -94,14 +94,16 @@ impl Emitter for ExpectErrorEmitter {
     }
 }
 
-fn errors(msgs: &[&str]) -> (Box<Emitter+Send>, uint) {
+fn errors(msgs: &[&str]) -> (Box<Emitter+Send+'static>, uint) {
     let v = msgs.iter().map(|m| m.to_string()).collect();
-    (box ExpectErrorEmitter { messages: v } as Box<Emitter+Send>, msgs.len())
+    (box ExpectErrorEmitter {
+        messages: v,
+    } as Box<Emitter+Send+'static>, msgs.len())
 }
 
 fn test_env(_test_name: &str,
             source_string: &str,
-            (emitter, expected_err_count): (Box<Emitter+Send>, uint),
+            (emitter, expected_err_count): (Box<Emitter+Send+'static>, uint),
             body: |Env|) {
     let options =
         config::basic_options();

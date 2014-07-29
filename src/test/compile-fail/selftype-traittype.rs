@@ -13,7 +13,7 @@ trait add {
     fn plus(&self, x: Self) -> Self;
 }
 
-fn do_add(x: Box<add>, y: Box<add>) -> Box<add> {
+fn do_add(x: Box<add+'static>, y: Box<add+'static>) -> Box<add+'static> {
     x.plus(y) //~ ERROR cannot call a method whose type contains a self-type through an object
 }
 

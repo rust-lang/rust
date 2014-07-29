@@ -1432,7 +1432,8 @@ pub fn process_crate(sess: &Session,
                                   collected_paths: vec!(),
                                   collecting: false,
                                   fmt: FmtStrs::new(box Recorder {
-                                                        out: output_file as Box<Writer>,
+                                                        out: output_file as
+                                                        Box<Writer+'static>,
                                                         dump_spans: false,
                                                     },
                                                     SpanUtils {

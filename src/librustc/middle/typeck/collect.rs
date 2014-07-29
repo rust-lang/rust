@@ -1149,14 +1149,13 @@ fn ty_generics(ccx: &CrateCtxt,
         def
     }
 
-    fn compute_bounds(
-        ccx: &CrateCtxt,
-        param_ty: ty::ParamTy,
-        ast_bounds: &OwnedSlice<ast::TyParamBound>,
-        unbound: &Option<ast::TyParamBound>,
-        ident: ast::Ident,
-        span: Span) -> ty::ParamBounds
-    {
+    fn compute_bounds(ccx: &CrateCtxt,
+                      param_ty: ty::ParamTy,
+                      ast_bounds: &OwnedSlice<ast::TyParamBound>,
+                      unbound: &Option<ast::TyParamBound>,
+                      ident: ast::Ident,
+                      span: Span)
+                      -> ty::ParamBounds {
         /*!
          * Translate the AST's notion of ty param bounds (which are an
          * enum consisting of a newtyped Ty or a region) to ty's
@@ -1183,6 +1182,7 @@ fn ty_generics(ccx: &CrateCtxt,
                 }
 
                 StaticRegionTyParamBound => {
+                    // FIXME(pcwalton): Other lifetimes conflict with 'static.
                     param_bounds.builtin_bounds.add(ty::BoundStatic);
                 }
 
@@ -1200,12 +1200,12 @@ fn ty_generics(ccx: &CrateCtxt,
                     param_bounds.trait_bounds.push(Rc::new(trait_ref));
                 }
 
-                OtherRegionTyParamBound(span) => {
-                    if !ccx.tcx.sess.features.issue_5723_bootstrap.get() {
+                OtherRegionTyParamBound(_span, _) => {
+                    /*if !ccx.tcx.sess.features.issue_5723_bootstrap.get() {
                         ccx.tcx.sess.span_err(
                             span,
                             "only the 'static lifetime is accepted here.");
-                    }
+                    }*/
                 }
             }
         }

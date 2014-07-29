@@ -169,36 +169,35 @@ impl IoFactory {
 
 impl rtio::IoFactory for IoFactory {
     // networking
-    fn tcp_connect(&mut self, addr: rtio::SocketAddr,
-                   timeout: Option<u64>)
-        -> IoResult<Box<rtio::RtioTcpStream + Send>>
+    fn tcp_connect(&mut self, addr: rtio::SocketAddr, timeout: Option<u64>)
+        -> IoResult<Box<rtio::RtioTcpStream + Send + 'static>>
     {
         net::TcpStream::connect(addr, timeout).map(|s| {
-            box s as Box<rtio::RtioTcpStream + Send>
+            box s as Box<rtio::RtioTcpStream + Send + 'static>
         })
     }
     fn tcp_bind(&mut self, addr: rtio::SocketAddr)
-                -> IoResult<Box<rtio::RtioTcpListener + Send>> {
+                -> IoResult<Box<rtio::RtioTcpListener + Send + 'static>> {
         net::TcpListener::bind(addr).map(|s| {
-            box s as Box<rtio::RtioTcpListener + Send>
+            box s as Box<rtio::RtioTcpListener + Send + 'static>
         })
     }
     fn udp_bind(&mut self, addr: rtio::SocketAddr)
-                -> IoResult<Box<rtio::RtioUdpSocket + Send>> {
+                -> IoResult<Box<rtio::RtioUdpSocket + Send + 'static>> {
         net::UdpSocket::bind(addr).map(|u| {
-            box u as Box<rtio::RtioUdpSocket + Send>
+            box u as Box<rtio::RtioUdpSocket + Send + 'static>
         })
     }
     fn unix_bind(&mut self, path: &CString)
-                 -> IoResult<Box<rtio::RtioUnixListener + Send>> {
+                 -> IoResult<Box<rtio::RtioUnixListener + Send + 'static>> {
         pipe::UnixListener::bind(path).map(|s| {
-            box s as Box<rtio::RtioUnixListener + Send>
+            box s as Box<rtio::RtioUnixListener + Send + 'static>
         })
     }
     fn unix_connect(&mut self, path: &CString,
-                    timeout: Option<u64>) -> IoResult<Box<rtio::RtioPipe + Send>> {
+                    timeout: Option<u64>) -> IoResult<Box<rtio::RtioPipe + Send + 'static>> {
         pipe::UnixStream::connect(path, timeout).map(|s| {
-            box s as Box<rtio::RtioPipe + Send>
+            box s as Box<rtio::RtioPipe + Send + 'static>
         })
     }
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
@@ -210,18 +209,18 @@ impl rtio::IoFactory for IoFactory {
 
     // filesystem operations
     fn fs_from_raw_fd(&mut self, fd: c_int, close: rtio::CloseBehavior)
-                      -> Box<rtio::RtioFileStream + Send> {
+                      -> Box<rtio::RtioFileStream + Send + 'static> {
         let close = match close {
             rtio::CloseSynchronously | rtio::CloseAsynchronously => true,
             rtio::DontClose => false
         };
-        box file::FileDesc::new(fd, close) as Box<rtio::RtioFileStream + Send>
+        box file::FileDesc::new(fd, close) as Box<rtio::RtioFileStream + Send + 'static>
     }
     fn fs_open(&mut self, path: &CString, fm: rtio::FileMode,
                fa: rtio::FileAccess)
-        -> IoResult<Box<rtio::RtioFileStream + Send>>
+        -> IoResult<Box<rtio::RtioFileStream + Send + 'static>>
     {
-        file::open(path, fm, fa).map(|fd| box fd as Box<rtio::RtioFileStream + Send>)
+        file::open(path, fm, fa).map(|fd| box fd as Box<rtio::RtioFileStream + Send + 'static>)
     }
     fn fs_unlink(&mut self, path: &CString) -> IoResult<()> {
         file::unlink(path)
@@ -265,30 +264,30 @@ impl rtio::IoFactory for IoFactory {
     }
 
     // misc
-    fn timer_init(&mut self) -> IoResult<Box<rtio::RtioTimer + Send>> {
-        timer::Timer::new().map(|t| box t as Box<rtio::RtioTimer + Send>)
+    fn timer_init(&mut self) -> IoResult<Box<rtio::RtioTimer + Send + 'static>> {
+        timer::Timer::new().map(|t| box t as Box<rtio::RtioTimer + Send + 'static>)
     }
     fn spawn(&mut self, cfg: rtio::ProcessConfig)
-            -> IoResult<(Box<rtio::RtioProcess + Send>,
-                         Vec<Option<Box<rtio::RtioPipe + Send>>>)> {
+            -> IoResult<(Box<rtio::RtioProcess + Send + 'static>,
+                         Vec<Option<Box<rtio::RtioPipe + Send + 'static>>>)> {
         process::Process::spawn(cfg).map(|(p, io)| {
-            (box p as Box<rtio::RtioProcess + Send>,
+            (box p as Box<rtio::RtioProcess + Send + 'static>,
              io.move_iter().map(|p| p.map(|p| {
-                 box p as Box<rtio::RtioPipe + Send>
+                 box p as Box<rtio::RtioPipe + Send + 'static>
              })).collect())
         })
     }
     fn kill(&mut self, pid: libc::pid_t, signum: int) -> IoResult<()> {
         process::Process::kill(pid, signum)
     }
-    fn pipe_open(&mut self, fd: c_int) -> IoResult<Box<rtio::RtioPipe + Send>> {
-        Ok(box file::FileDesc::new(fd, true) as Box<rtio::RtioPipe + Send>)
+    fn pipe_open(&mut self, fd: c_int) -> IoResult<Box<rtio::RtioPipe + Send + 'static>> {
+        Ok(box file::FileDesc::new(fd, true) as Box<rtio::RtioPipe + Send + 'static>)
     }
     #[cfg(unix)]
     fn tty_open(&mut self, fd: c_int, _readable: bool)
-                -> IoResult<Box<rtio::RtioTTY + Send>> {
+                -> IoResult<Box<rtio::RtioTTY + Send + 'static>> {
         if unsafe { libc::isatty(fd) } != 0 {
-            Ok(box file::FileDesc::new(fd, true) as Box<rtio::RtioTTY + Send>)
+            Ok(box file::FileDesc::new(fd, true) as Box<rtio::RtioTTY + Send + 'static>)
         } else {
             Err(IoError {
                 code: libc::ENOTTY as uint,
@@ -299,9 +298,9 @@ impl rtio::IoFactory for IoFactory {
     }
     #[cfg(windows)]
     fn tty_open(&mut self, fd: c_int, _readable: bool)
-                -> IoResult<Box<rtio::RtioTTY + Send>> {
+                -> IoResult<Box<rtio::RtioTTY + Send + 'static>> {
         if tty::is_tty(fd) {
-            Ok(box tty::WindowsTTY::new(fd) as Box<rtio::RtioTTY + Send>)
+            Ok(box tty::WindowsTTY::new(fd) as Box<rtio::RtioTTY + Send + 'static>)
         } else {
             Err(IoError {
                 code: libc::ERROR_INVALID_HANDLE as uint,
@@ -311,7 +310,7 @@ impl rtio::IoFactory for IoFactory {
         }
     }
     fn signal(&mut self, _signal: int, _cb: Box<rtio::Callback>)
-              -> IoResult<Box<rtio::RtioSignal + Send>> {
+              -> IoResult<Box<rtio::RtioSignal + Send + 'static>> {
         Err(unimpl())
     }
 }

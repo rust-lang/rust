@@ -456,7 +456,11 @@ impl Runtime for GreenTask {
     // Local I/O is provided by the scheduler's event loop
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> {
         match self.sched.get_mut_ref().event_loop.io() {
-            Some(io) => Some(rtio::LocalIo::new(io)),
+            Some(io) => {
+                unsafe {
+                    Some(rtio::LocalIo::new(mem::transmute(io)))
+                }
+            }
             None => None,
         }
     }
@@ -473,7 +477,9 @@ impl Runtime for GreenTask {
 
     fn can_block(&self) -> bool { false }
 
-    fn wrap(self: Box<GreenTask>) -> Box<Any> { self as Box<Any> }
+    fn wrap(self: Box<GreenTask>) -> Box<Any + 'static> {
+        self as Box<Any + 'static>
+    }
 }
 
 #[cfg(test)]

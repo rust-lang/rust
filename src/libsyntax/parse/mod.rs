@@ -263,7 +263,8 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          tts: Vec<ast::TokenTree>,
                          cfg: ast::CrateConfig) -> Parser<'a> {
     let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, tts);
-    Parser::new(sess, cfg, box trdr)
+    let trdr: Box<lexer::Reader+'a> = box trdr;
+    Parser::new(sess, cfg, trdr)
 }
 
 /// Abort if necessary

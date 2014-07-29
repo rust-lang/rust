@@ -24,7 +24,7 @@
        html_root_url = "http://doc.rust-lang.org/master/")]
 
 #![feature(macro_rules, globs, managed_boxes, default_type_params, phase)]
-#![feature(quote, struct_variant, unsafe_destructor)]
+#![feature(quote, struct_variant, unsafe_destructor, issue_5723_bootstrap)]
 #![allow(deprecated)]
 
 extern crate fmt_macros;

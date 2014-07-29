@@ -103,7 +103,7 @@ pub struct Task {
     pub destroyed: bool,
     pub name: Option<SendStr>,
 
-    imp: Option<Box<Runtime + Send>>,
+    imp: Option<Box<Runtime + Send + 'static>>,
 }
 
 pub struct TaskOpts {
@@ -121,7 +121,7 @@ pub struct TaskOpts {
 ///
 /// If you wish for this result's delivery to block until all
 /// children tasks complete, recommend using a result future.
-pub type Result = ::core::result::Result<(), Box<Any + Send>>;
+pub type Result = ::core::result::Result<(), Box<Any + Send + 'static>>;
 
 pub struct GarbageCollector;
 pub struct LocalStorage(pub Option<local_data::Map>);
@@ -343,14 +343,14 @@ impl Task {
     /// Inserts a runtime object into this task, transferring ownership to the
     /// task. It is illegal to replace a previous runtime object in this task
     /// with this argument.
-    pub fn put_runtime(&mut self, ops: Box<Runtime + Send>) {
+    pub fn put_runtime(&mut self, ops: Box<Runtime + Send + 'static>) {
         assert!(self.imp.is_none());
         self.imp = Some(ops);
     }
 
     /// Removes the runtime from this task, transferring ownership to the
     /// caller.
-    pub fn take_runtime(&mut self) -> Box<Runtime + Send> {
+    pub fn take_runtime(&mut self) -> Box<Runtime + Send + 'static> {
         assert!(self.imp.is_some());
         self.imp.take().unwrap()
     }
@@ -380,7 +380,7 @@ impl Task {
                 Ok(t) => Some(t),
                 Err(t) => {
                     let data = mem::transmute::<_, raw::TraitObject>(t).data;
-                    let obj: Box<Runtime + Send> =
+                    let obj: Box<Runtime + Send + 'static> =
                         mem::transmute(raw::TraitObject {
                             vtable: vtable,
                             data: data,

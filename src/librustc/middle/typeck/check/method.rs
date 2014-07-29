@@ -270,8 +270,11 @@ fn construct_transformed_self_ty_for_object(
             tcx.sess.span_bug(span, "static method for object type receiver");
         }
         ByValueExplicitSelfCategory => {
-            let tr = ty::mk_trait(tcx, trait_def_id, obj_substs,
-                                  ty::empty_builtin_bounds());
+            let tr = ty::mk_trait(tcx,
+                                  trait_def_id,
+                                  obj_substs,
+                                  ty::empty_builtin_bounds(),
+                                  ty::ReStatic);
             ty::mk_uniq(tcx, tr)
         }
         ByReferenceExplicitSelfCategory(..) | ByBoxExplicitSelfCategory => {
@@ -279,13 +282,19 @@ fn construct_transformed_self_ty_for_object(
             match ty::get(transformed_self_ty).sty {
                 ty::ty_rptr(r, mt) => { // must be SelfRegion
                     let r = r.subst(tcx, rcvr_substs); // handle Early-Bound lifetime
-                    let tr = ty::mk_trait(tcx, trait_def_id, obj_substs,
-                                          ty::empty_builtin_bounds());
+                    let tr = ty::mk_trait(tcx,
+                                          trait_def_id,
+                                          obj_substs,
+                                          ty::empty_builtin_bounds(),
+                                          ty::ReStatic);
                     ty::mk_rptr(tcx, r, ty::mt{ ty: tr, mutbl: mt.mutbl })
                 }
                 ty::ty_uniq(_) => { // must be SelfUniq
-                    let tr = ty::mk_trait(tcx, trait_def_id, obj_substs,
-                                          ty::empty_builtin_bounds());
+                    let tr = ty::mk_trait(tcx,
+                                          trait_def_id,
+                                          obj_substs,
+                                          ty::empty_builtin_bounds(),
+                                          ty::ReStatic);
                     ty::mk_uniq(tcx, tr)
                 }
                 _ => {
@@ -947,12 +956,17 @@ impl<'a> LookupContext<'a> {
                     def_id: trt_did,
                     substs: ref trt_substs,
                     bounds: b,
+                    region: ref region,
                     .. }) => {
                 let tcx = self.tcx();
                 self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowObj, autoderefs, [MutImmutable, MutMutable],
                     |m, r| {
-                        let tr = ty::mk_trait(tcx, trt_did, trt_substs.clone(), b);
+                        let tr = ty::mk_trait(tcx,
+                                              trt_did,
+                                              trt_substs.clone(),
+                                              b,
+                                              *region);
                         ty::mk_rptr(tcx, r, ty::mt{ ty: tr, mutbl: m })
                     })
             }

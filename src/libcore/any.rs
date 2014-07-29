@@ -132,7 +132,7 @@ pub trait AnyRefExt<'a> {
 }
 
 #[stable]
-impl<'a> AnyRefExt<'a> for &'a Any {
+impl<'a,'b> AnyRefExt<'a> for &'a Any+'b {
     #[inline]
     #[stable]
     fn is<T: 'static>(self) -> bool {
@@ -181,7 +181,7 @@ pub trait AnyMutRefExt<'a> {
 }
 
 #[stable]
-impl<'a> AnyMutRefExt<'a> for &'a mut Any {
+impl<'a,'b> AnyMutRefExt<'a> for &'a mut Any+'b {
     #[inline]
     #[unstable = "naming conventions around acquiring references may change"]
     fn downcast_mut<T: 'static>(self) -> Option<&'a mut T> {

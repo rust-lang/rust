@@ -466,7 +466,7 @@ pub fn format(args: &Arguments) -> string::String{
     string::String::from_utf8(output.unwrap()).unwrap()
 }
 
-impl<'a> Writer for Formatter<'a> {
+impl<'a,'b> Writer for Formatter<'a,'b> {
     fn write(&mut self, b: &[u8]) -> io::IoResult<()> {
         match (*self).write(b) {
             Ok(()) => Ok(()),

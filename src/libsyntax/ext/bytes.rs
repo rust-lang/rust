@@ -18,7 +18,7 @@ use ext::build::AstBuilder;
 
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-                         -> Box<base::MacResult> {
+                         -> Box<base::MacResult+'static> {
     cx.span_warn(sp, "`bytes!` is deprecated, use `b\"foo\"` literals instead");
     cx.parse_sess.span_diagnostic.span_note(sp,
         "see http://doc.rust-lang.org/rust.html#byte-and-byte-string-literals \

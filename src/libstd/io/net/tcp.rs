@@ -52,11 +52,11 @@ use rt::rtio;
 /// drop(stream); // close the connection
 /// ```
 pub struct TcpStream {
-    obj: Box<RtioTcpStream + Send>,
+    obj: Box<RtioTcpStream + Send + 'static>,
 }
 
 impl TcpStream {
-    fn new(s: Box<RtioTcpStream + Send>) -> TcpStream {
+    fn new(s: Box<RtioTcpStream + Send + 'static>) -> TcpStream {
         TcpStream { obj: s }
     }
 
@@ -327,7 +327,7 @@ impl Writer for TcpStream {
 /// # }
 /// ```
 pub struct TcpListener {
-    obj: Box<RtioTcpListener + Send>,
+    obj: Box<RtioTcpListener + Send + 'static>,
 }
 
 impl TcpListener {
@@ -383,7 +383,7 @@ impl Listener<TcpStream, TcpAcceptor> for TcpListener {
 /// a `TcpListener`'s `listen` method, and this object can be used to accept new
 /// `TcpStream` instances.
 pub struct TcpAcceptor {
-    obj: Box<RtioTcpAcceptor + Send>,
+    obj: Box<RtioTcpAcceptor + Send + 'static>,
 }
 
 impl TcpAcceptor {

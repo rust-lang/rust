@@ -29,11 +29,11 @@ impl Inner for int {
 }
 
 struct Outer<'a> {
-    inner: &'a Inner
+    inner: &'a Inner+'a
 }
 
 impl<'a> Outer<'a> {
-    fn new(inner: &Inner) -> Outer {
+    fn new(inner: &'a Inner+'a) -> Outer<'a> {
         Outer {
             inner: inner
         }
@@ -51,11 +51,11 @@ pub fn main() {
 trait MyTrait<T> { }
 
 pub struct MyContainer<'a, T> {
-    foos: Vec<&'a MyTrait<T>> ,
+    foos: Vec<&'a MyTrait<T>+'a> ,
 }
 
 impl<'a, T> MyContainer<'a, T> {
-    pub fn add (&mut self, foo: &'a MyTrait<T>) {
+    pub fn add (&mut self, foo: &'a MyTrait<T>+'a) {
         self.foos.push(foo);
     }
 }

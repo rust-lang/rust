@@ -37,7 +37,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 }
 
 fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
-                   -> Box<MacResult> {
+                   -> Box<MacResult+'static> {
     if !tts.is_empty() {
         cx.span_fatal(sp, "make_a_1 takes no arguments");
     }

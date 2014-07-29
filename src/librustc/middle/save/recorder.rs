@@ -19,7 +19,7 @@ use syntax::codemap::*;
 
 pub struct Recorder {
     // output file
-    pub out: Box<Writer>,
+    pub out: Box<Writer+'static>,
     pub dump_spans: bool,
 }
 

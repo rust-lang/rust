@@ -944,11 +944,11 @@ pub trait Reader {
     }
 }
 
-impl Reader for Box<Reader> {
+impl<'a> Reader for Box<Reader + 'a> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
 }
 
-impl<'a> Reader for &'a mut Reader {
+impl<'a,'b> Reader for &'a mut Reader + 'b {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
 }
 
@@ -1277,7 +1277,7 @@ pub trait Writer {
     }
 }
 
-impl Writer for Box<Writer> {
+impl<'a> Writer for Box<Writer + 'a> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
 
@@ -1285,7 +1285,7 @@ impl Writer for Box<Writer> {
     fn flush(&mut self) -> IoResult<()> { self.flush() }
 }
 
-impl<'a> Writer for &'a mut Writer {
+impl<'a,'b> Writer for &'a mut Writer + 'b {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
 

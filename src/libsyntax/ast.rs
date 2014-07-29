@@ -213,7 +213,7 @@ pub enum TyParamBound {
     TraitTyParamBound(TraitRef),
     StaticRegionTyParamBound,
     UnboxedFnTyParamBound(UnboxedFnTy),
-    OtherRegionTyParamBound(Span) // FIXME -- just here until work for #5723 lands
+    OtherRegionTyParamBound(Span, Lifetime),
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]

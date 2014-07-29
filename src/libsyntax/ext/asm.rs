@@ -46,7 +46,7 @@ impl State {
 static OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
 pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-                  -> Box<base::MacResult> {
+                  -> Box<base::MacResult + 'static> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut asm = InternedString::new("");
     let mut asm_str_style = None;

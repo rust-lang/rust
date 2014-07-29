@@ -3964,7 +3964,7 @@ impl<'a> Resolver<'a> {
 
                 self.resolve_type(&*unboxed_function.decl.output);
             }
-            StaticRegionTyParamBound | OtherRegionTyParamBound(_) => {}
+            StaticRegionTyParamBound | OtherRegionTyParamBound(..) => {}
         }
     }
 

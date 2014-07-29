@@ -59,7 +59,7 @@ use collections::HashMap;
 /// assert!(child.wait().unwrap().success());
 /// ```
 pub struct Process {
-    handle: Box<RtioProcess + Send>,
+    handle: Box<RtioProcess + Send + 'static>,
     forget: bool,
 
     /// Handle to the child's stdin, if the `stdin` field of this process's

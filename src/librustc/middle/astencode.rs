@@ -946,12 +946,19 @@ impl<'a> ebml_writer_helpers for Encoder<'a> {
                     })
                 }
 
-                ty::AutoObject(store, b, def_id, ref substs) => {
+                ty::AutoObject(store,
+                               b,
+                               def_id,
+                               ref substs,
+                               ref lifetime) => {
                     this.emit_enum_variant("AutoObject", 2, 4, |this| {
                         this.emit_enum_variant_arg(0, |this| store.encode(this));
                         this.emit_enum_variant_arg(1, |this| b.encode(this));
                         this.emit_enum_variant_arg(2, |this| def_id.encode(this));
-                        this.emit_enum_variant_arg(3, |this| Ok(this.emit_substs(ecx, substs)))
+                        this.emit_enum_variant_arg(3, |this| Ok(this.emit_substs(ecx, substs)));
+                        this.emit_enum_variant_arg(4, |this| {
+                            lifetime.encode(this)
+                        })
                     })
                 }
             }
@@ -1359,8 +1366,14 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
                             this.read_enum_variant_arg(2, |this| Decodable::decode(this)).unwrap();
                         let substs = this.read_enum_variant_arg(3, |this| Ok(this.read_substs(xcx)))
                                     .unwrap();
+                        let region: ty::Region =
+                            this.read_enum_variant_arg(4, |this| Decodable::decode(this)).unwrap();
 
-                        ty::AutoObject(store.tr(xcx), b, def_id.tr(xcx), substs)
+                        ty::AutoObject(store.tr(xcx),
+                                       b,
+                                       def_id.tr(xcx),
+                                       substs,
+                                       region)
                     }
                     _ => fail!("bad enum variant for ty::AutoAdjustment")
                 })

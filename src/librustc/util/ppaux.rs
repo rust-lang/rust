@@ -401,7 +401,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
           parameterized(cx, base.as_slice(), substs, &generics)
       }
       ty_trait(box ty::TyTrait {
-          def_id: did, ref substs, ref bounds
+          def_id: did, ref substs, ref bounds, ref region
       }) => {
           let base = ty::item_path_str(cx, did);
           let trait_def = ty::lookup_trait_def(cx, did);
@@ -409,10 +409,12 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
                                  substs, &trait_def.generics);
           let bound_sep = if bounds.is_empty() { "" } else { ":" };
           let bound_str = bounds.repr(cx);
-          format!("{}{}{}",
+          let region_str = region_to_string(cx, "+", false, *region);
+          format!("{}{}{}{}",
                   ty,
                   bound_sep,
-                  bound_str)
+                  bound_str,
+                  region_str)
       }
       ty_str => "str".to_string(),
       ty_unboxed_closure(..) => "closure".to_string(),

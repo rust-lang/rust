@@ -282,7 +282,11 @@ impl<'cx> WritebackCx<'cx> {
                         })
                     }
 
-                    ty::AutoObject(trait_store, bb, def_id, substs) => {
+                    ty::AutoObject(trait_store,
+                                   bb,
+                                   def_id,
+                                   substs,
+                                   region) => {
                         let method_call = MethodCall::autoobject(id);
                         self.visit_method_map_entry(reason, method_call);
                         self.visit_vtable_map_entry(reason, method_call);
@@ -291,7 +295,8 @@ impl<'cx> WritebackCx<'cx> {
                             self.resolve(&trait_store, reason),
                             self.resolve(&bb, reason),
                             def_id,
-                            self.resolve(&substs, reason)
+                            self.resolve(&substs, reason),
+                            self.resolve(&region, reason)
                         )
                     }
                 };
