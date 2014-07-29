@@ -352,8 +352,13 @@ impl<'a> Parser<'a> {
             None => {
                 let tmp = self.cur.clone();
                 match self.word() {
-                    word if word.len() > 0 && self.consume('$') => {
-                        CountIsName(word)
+                    word if word.len() > 0 => {
+                        if self.consume('$') {
+                            CountIsName(word)
+                        } else {
+                            self.cur = tmp;
+                            CountImplied
+                        }
                     }
                     _ => {
                         self.cur = tmp;

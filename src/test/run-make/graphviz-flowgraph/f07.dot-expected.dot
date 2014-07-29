@@ -7,14 +7,15 @@ digraph block {
     N5[label="expr 7777i"];
     N6[label="expr [7i, 77i, 777i, 7777i]"];
     N7[label="expr match [7i, 77i, 777i, 7777i] { [x, y, ..] => x + y }"];
-    N8[label="local x"];
-    N9[label="local y"];
-    N10[label="pat .."];
-    N11[label="pat [x, y, ..]"];
-    N12[label="expr x"];
-    N13[label="expr y"];
-    N14[label="expr x + y"];
-    N15[label="block { match [7i, 77i, 777i, 7777i] { [x, y, ..] => x + y }; }"];
+    N8[label="(dummy_node)"];
+    N9[label="local x"];
+    N10[label="local y"];
+    N11[label="pat .."];
+    N12[label="pat [x, y, ..]"];
+    N13[label="expr x"];
+    N14[label="expr y"];
+    N15[label="expr x + y"];
+    N16[label="block { match [7i, 77i, 777i, 7777i] { [x, y, ..] => x + y }; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -27,7 +28,8 @@ digraph block {
     N11 -> N12;
     N12 -> N13;
     N13 -> N14;
-    N14 -> N7;
-    N7 -> N15;
-    N15 -> N1;
+    N14 -> N15;
+    N15 -> N7;
+    N7 -> N16;
+    N16 -> N1;
 }

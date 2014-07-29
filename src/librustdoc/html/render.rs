@@ -1734,17 +1734,19 @@ fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
         }
     }).peekable();
     match s.struct_type {
-        doctree::Plain if fields.peek().is_some() => {
-            try!(write!(w, "<h2 class='fields'>Fields</h2>\n<table>"));
-            for field in fields {
-                try!(write!(w, "<tr><td id='structfield.{name}'>\
-                                  {stab}<code>{name}</code></td><td>",
-                              stab = ConciseStability(&field.stability),
-                              name = field.name.get_ref().as_slice()));
-                try!(document(w, field));
-                try!(write!(w, "</td></tr>"));
+        doctree::Plain => {
+            if fields.peek().is_some() {
+                try!(write!(w, "<h2 class='fields'>Fields</h2>\n<table>"));
+                for field in fields {
+                    try!(write!(w, "<tr><td id='structfield.{name}'>\
+                                      {stab}<code>{name}</code></td><td>",
+                                  stab = ConciseStability(&field.stability),
+                                  name = field.name.get_ref().as_slice()));
+                    try!(document(w, field));
+                    try!(write!(w, "</td></tr>"));
+                }
+                try!(write!(w, "</table>"));
             }
-            try!(write!(w, "</table>"));
         }
         _ => {}
     }
