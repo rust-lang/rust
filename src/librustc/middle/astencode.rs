@@ -28,6 +28,7 @@ use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::typeck::{MethodCall, MethodCallee, MethodOrigin};
 use middle::{ty, typeck};
+use util::io::SeekableMemWriter;
 use util::ppaux::ty_to_string;
 
 use syntax::{ast, ast_map, ast_util, codemap, fold};
@@ -39,7 +40,6 @@ use syntax;
 
 use libc;
 use std::io::Seek;
-use std::io::MemWriter;
 use std::mem;
 use std::gc::GC;
 
@@ -73,7 +73,7 @@ trait tr_intern {
     fn tr_intern(&self, xcx: &ExtendedDecodeContext) -> ast::DefId;
 }
 
-pub type Encoder<'a> = writer::Encoder<'a, MemWriter>;
+pub type Encoder<'a> = writer::Encoder<'a, SeekableMemWriter>;
 
 // ______________________________________________________________________
 // Top-level methods.
@@ -1573,10 +1573,8 @@ fn mk_ctxt() -> parse::ParseSess {
 
 #[cfg(test)]
 fn roundtrip(in_item: Option<Gc<ast::Item>>) {
-    use std::io::MemWriter;
-
     let in_item = in_item.unwrap();
-    let mut wr = MemWriter::new();
+    let mut wr = SeekableMemWriter::new();
     {
         let mut ebml_w = writer::Encoder::new(&mut wr);
         encode_item_ast(&mut ebml_w, in_item);

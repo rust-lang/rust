@@ -26,6 +26,7 @@ use middle::ty;
 use middle::typeck;
 use middle::stability;
 use middle;
+use util::io::SeekableMemWriter;
 use util::nodemap::{NodeMap, NodeSet};
 
 use serialize::Encodable;
@@ -33,7 +34,6 @@ use std::cell::RefCell;
 use std::gc::Gc;
 use std::hash::Hash;
 use std::hash;
-use std::io::MemWriter;
 use std::mem;
 use std::collections::HashMap;
 use syntax::abi;
@@ -61,7 +61,7 @@ pub enum InlinedItemRef<'a> {
     IIForeignRef(&'a ast::ForeignItem)
 }
 
-pub type Encoder<'a> = writer::Encoder<'a, MemWriter>;
+pub type Encoder<'a> = writer::Encoder<'a, SeekableMemWriter>;
 
 pub type EncodeInlinedItem<'a> = |ecx: &EncodeContext,
                                   ebml_w: &mut Encoder,
@@ -1407,7 +1407,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
 // Path and definition ID indexing
 
 fn encode_index<T: Hash>(ebml_w: &mut Encoder, index: Vec<entry<T>>,
-                         write_fn: |&mut MemWriter, &T|) {
+                         write_fn: |&mut SeekableMemWriter, &T|) {
     let mut buckets: Vec<Vec<entry<T>>> = Vec::from_fn(256, |_| Vec::new());
     for elt in index.move_iter() {
         let h = hash::hash(&elt.val) as uint;
@@ -1424,7 +1424,7 @@ fn encode_index<T: Hash>(ebml_w: &mut Encoder, index: Vec<entry<T>>,
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
             assert!(elt.pos < 0xffff_ffff);
             {
-                let wr: &mut MemWriter = ebml_w.writer;
+                let wr: &mut SeekableMemWriter = ebml_w.writer;
                 wr.write_be_u32(elt.pos as u32);
             }
             write_fn(ebml_w.writer, &elt.val);
@@ -1436,15 +1436,15 @@ fn encode_index<T: Hash>(ebml_w: &mut Encoder, index: Vec<entry<T>>,
     ebml_w.start_tag(tag_index_table);
     for pos in bucket_locs.iter() {
         assert!(*pos < 0xffff_ffff);
-        let wr: &mut MemWriter = ebml_w.writer;
+        let wr: &mut SeekableMemWriter = ebml_w.writer;
         wr.write_be_u32(*pos as u32);
     }
     ebml_w.end_tag();
     ebml_w.end_tag();
 }
 
-fn write_i64(writer: &mut MemWriter, &n: &i64) {
-    let wr: &mut MemWriter = writer;
+fn write_i64(writer: &mut SeekableMemWriter, &n: &i64) {
+    let wr: &mut SeekableMemWriter = writer;
     assert!(n < 0x7fff_ffff);
     wr.write_be_u32(n as u32);
 }
@@ -1545,14 +1545,14 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut Encoder) {
 
                 ebml_w.start_tag(tag_lang_items_item_id);
                 {
-                    let wr: &mut MemWriter = ebml_w.writer;
+                    let wr: &mut SeekableMemWriter = ebml_w.writer;
                     wr.write_be_u32(i as u32);
                 }
                 ebml_w.end_tag();   // tag_lang_items_item_id
 
                 ebml_w.start_tag(tag_lang_items_item_node_id);
                 {
-                    let wr: &mut MemWriter = ebml_w.writer;
+                    let wr: &mut SeekableMemWriter = ebml_w.writer;
                     wr.write_be_u32(id.node as u32);
                 }
                 ebml_w.end_tag();   // tag_lang_items_item_node_id
@@ -1824,12 +1824,12 @@ pub static metadata_encoding_version : &'static [u8] =
       0, 0, 0, 1 ];
 
 pub fn encode_metadata(parms: EncodeParams, krate: &Crate) -> Vec<u8> {
-    let mut wr = MemWriter::new();
+    let mut wr = SeekableMemWriter::new();
     encode_metadata_inner(&mut wr, parms, krate);
     wr.unwrap().move_iter().collect()
 }
 
-fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate) {
+fn encode_metadata_inner(wr: &mut SeekableMemWriter, parms: EncodeParams, krate: &Crate) {
     struct Stats {
         attr_bytes: u64,
         dep_bytes: u64,
@@ -1982,7 +1982,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
 
 // Get the encoded string for a type
 pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> String {
-    let mut wr = MemWriter::new();
+    let mut wr = SeekableMemWriter::new();
     tyencode::enc_ty(&mut wr, &tyencode::ctxt {
         diag: tcx.sess.diagnostic(),
         ds: def_to_string,

@@ -16,9 +16,7 @@ extern crate serialize;
 use std::cell::{Cell, RefCell};
 use std::io::MemWriter;
 use serialize::{Encodable, Decodable};
-use serialize::ebml;
-use serialize::ebml::writer::Encoder;
-use serialize::ebml::reader::Decoder;
+use serialize::json;
 
 #[deriving(Encodable, Decodable)]
 struct A {
@@ -36,20 +34,8 @@ fn main() {
         foo: Cell::new(true),
         bar: RefCell::new( A { baz: 2 } )
     };
-    let mut w = MemWriter::new();
-    {
-        let mut e = Encoder::new(&mut w);
-        match obj.encode(&mut e) {
-            Ok(()) => (),
-            Err(e) => fail!("Failed to encode: {}", e)
-        };
-    }
-    let doc = ebml::Doc::new(w.get_ref());
-    let mut dec = Decoder::new(doc);
-    let obj2: B = match Decodable::decode(&mut dec) {
-        Ok(v) => v,
-        Err(e) => fail!("Failed to decode: {}", e)
-    };
+    let s = json::encode(&obj);
+    let obj2: B = json::decode(s.as_slice()).unwrap();
     assert!(obj.foo.get() == obj2.foo.get());
     assert!(obj.bar.borrow().baz == obj2.bar.borrow().baz);
 }
