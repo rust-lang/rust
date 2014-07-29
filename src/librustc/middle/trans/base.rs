@@ -1210,16 +1210,23 @@ pub fn arrayalloca(cx: &Block, ty: Type, v: ValueRef) -> ValueRef {
     p
 }
 
-// Creates and returns space for, or returns the argument representing, the
-// slot where the return value of the function must go.
-pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
-                           -> ValueRef {
+// Creates the alloca slot which holds the pointer to the slot for the final return value
+pub fn make_return_slot_pointer(fcx: &FunctionContext, output_type: ty::t) -> ValueRef {
+    let lloutputtype = type_of::type_of(fcx.ccx, output_type);
+
+    // Let's create the stack slot
+    let slot = AllocaFcx(fcx, lloutputtype.ptr_to(), "llretslotptr");
+
+    // and if we're using an out pointer, then store that in our newly made slot
     if type_of::return_uses_outptr(fcx.ccx, output_type) {
-        get_param(fcx.llfn, 0)
-    } else {
-        let lloutputtype = type_of::type_of(fcx.ccx, output_type);
-        AllocaFcx(fcx, lloutputtype, "__make_return_pointer")
+        let outptr = get_param(fcx.llfn, 0);
+
+        let b = fcx.ccx.builder();
+        b.position_before(fcx.alloca_insert_pt.get().unwrap());
+        b.store(outptr, slot);
     }
+
+    slot
 }
 
 // NB: must keep 4 fns in sync:
@@ -1258,7 +1265,7 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
     let mut fcx = FunctionContext {
           llfn: llfndecl,
           llenv: None,
-          llretptr: Cell::new(None),
+          llretslotptr: Cell::new(None),
           alloca_insert_pt: Cell::new(None),
           llreturn: Cell::new(None),
           personality: Cell::new(None),
@@ -1303,12 +1310,12 @@ pub fn init_function<'a>(fcx: &'a FunctionContext<'a>,
 
     if !return_type_is_void(fcx.ccx, substd_output_type) {
         // If the function returns nil/bot, there is no real return
-        // value, so do not set `llretptr`.
+        // value, so do not set `llretslotptr`.
         if !skip_retptr || fcx.caller_expects_out_pointer {
-            // Otherwise, we normally allocate the llretptr, unless we
+            // Otherwise, we normally allocate the llretslotptr, unless we
             // have been instructed to skip it for immediate return
             // values.
-            fcx.llretptr.set(Some(make_return_pointer(fcx, substd_output_type)));
+            fcx.llretslotptr.set(Some(make_return_slot_pointer(fcx, substd_output_type)));
         }
     }
 
@@ -1533,12 +1540,12 @@ pub fn finish_fn<'a>(fcx: &'a FunctionContext<'a>,
 
 // Builds the return block for a function.
 pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block, retty: ty::t) {
-    // Return the value if this function immediate; otherwise, return void.
-    if fcx.llretptr.get().is_none() || fcx.caller_expects_out_pointer {
+    if fcx.llretslotptr.get().is_none() {
         return RetVoid(ret_cx);
     }
 
-    let retptr = Value(fcx.llretptr.get().unwrap());
+    let retslot = Load(ret_cx, fcx.llretslotptr.get().unwrap());
+    let retptr = Value(retslot);
     let retval = match retptr.get_dominating_store(ret_cx) {
         // If there's only a single store to the ret slot, we can directly return
         // the value that was stored and omit the store and the alloca
@@ -1557,10 +1564,15 @@ pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block, retty: ty::t) {
             }
         }
         // Otherwise, load the return value from the ret slot
-        None => load_ty(ret_cx, fcx.llretptr.get().unwrap(), retty)
+        None => load_ty(ret_cx, retslot, retty)
     };
 
-    Ret(ret_cx, retval);
+    if fcx.caller_expects_out_pointer {
+        store_ty(ret_cx, retval, get_param(fcx.llfn, 0), retty);
+        RetVoid(ret_cx);
+    } else {
+        Ret(ret_cx, retval);
+    }
 }
 
 #[deriving(Clone, Eq, PartialEq)]
@@ -1658,10 +1670,10 @@ pub fn trans_closure(ccx: &CrateContext,
     // emitting should be enabled.
     debuginfo::start_emitting_source_locations(&fcx);
 
-    let dest = match fcx.llretptr.get() {
-        Some(e) => {expr::SaveIn(e)}
+    let dest = match fcx.llretslotptr.get() {
+        Some(_) => expr::SaveIn(alloca(bcx, type_of::type_of(bcx.ccx(), block_ty), "iret_slot")),
         None => {
-            assert!(type_is_zero_size(bcx.ccx(), block_ty))
+            assert!(type_is_zero_size(bcx.ccx(), block_ty));
             expr::Ignore
         }
     };
@@ -1671,6 +1683,13 @@ pub fn trans_closure(ccx: &CrateContext,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
     bcx = controlflow::trans_block(bcx, body, dest);
+
+    match dest {
+        expr::SaveIn(slot) => {
+            Store(bcx, slot, fcx.llretslotptr.get().unwrap());
+        }
+        _ => {}
+    }
 
     match fcx.llreturn.get() {
         Some(_) => {
@@ -1841,16 +1860,18 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
     let arg_datums = create_datums_for_fn_args(&fcx, arg_tys.as_slice());
 
     if !type_is_zero_size(fcx.ccx, result_ty) {
+        let dest = alloca(bcx, type_of::type_of(bcx.ccx(), result_ty), "eret_slot");
         let repr = adt::represent_type(ccx, result_ty);
         for (i, arg_datum) in arg_datums.move_iter().enumerate() {
             let lldestptr = adt::trans_field_ptr(bcx,
                                                  &*repr,
-                                                 fcx.llretptr.get().unwrap(),
+                                                 dest,
                                                  disr,
                                                  i);
             arg_datum.store_to(bcx, lldestptr);
         }
-        adt::trans_set_discr(bcx, &*repr, fcx.llretptr.get().unwrap(), disr);
+        adt::trans_set_discr(bcx, &*repr, dest, disr);
+        Store(bcx, dest, fcx.llretslotptr.get().unwrap());
     }
 
     finish_fn(&fcx, bcx, result_ty);

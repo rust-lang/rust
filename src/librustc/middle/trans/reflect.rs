@@ -321,7 +321,9 @@ impl<'a, 'b> Reflector<'a, 'b> {
                 let arg = get_param(llfdecl, fcx.arg_pos(0u) as c_uint);
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, &*repr, arg, Some(Type::i64(ccx)));
-                Store(bcx, ret, fcx.llretptr.get().unwrap());
+                let ret_alloca = alloca(bcx, Type::i64(ccx), "ret_slot");
+                Store(bcx, ret, ret_alloca);
+                Store(bcx, ret_alloca, fcx.llretslotptr.get().unwrap());
                 match fcx.llreturn.get() {
                     Some(llreturn) => Br(bcx, llreturn),
                     None => {}

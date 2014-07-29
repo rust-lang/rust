@@ -240,11 +240,11 @@ pub struct FunctionContext<'a> {
     // The environment argument in a closure.
     pub llenv: Option<ValueRef>,
 
-    // The place to store the return value. If the return type is immediate,
-    // this is an alloca in the function. Otherwise, it's the hidden first
-    // parameter to the function. After function construction, this should
-    // always be Some.
-    pub llretptr: Cell<Option<ValueRef>>,
+    // A pointer to where to store the return value. If the return type is
+    // immediate, this points to an alloca in the function. Otherwise, it's a
+    // pointer to the hidden first parameter of the function. After function
+    // construction, this should always be Some.
+    pub llretslotptr: Cell<Option<ValueRef>>,
 
     // These pub elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
@@ -259,8 +259,8 @@ pub struct FunctionContext<'a> {
     pub personality: Cell<Option<ValueRef>>,
 
     // True if the caller expects this fn to use the out pointer to
-    // return. Either way, your code should write into llretptr, but if
-    // this value is false, llretptr will be a local alloca.
+    // return. Either way, your code should write into the slot llretslotptr
+    // points to, but if this value is false, that slot will be a local alloca.
     pub caller_expects_out_pointer: bool,
 
     // Maps arguments to allocas created for them in llallocas.
