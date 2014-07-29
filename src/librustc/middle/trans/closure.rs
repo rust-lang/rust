@@ -582,16 +582,16 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
                                          ty::ty_fn_args(closure_ty)
                                             .as_slice());
     let mut llargs = Vec::new();
-    match fcx.llretptr.get() {
-        Some(llretptr) => {
-            llargs.push(llretptr);
+    match fcx.llretslotptr.get() {
+        Some(llretslotptr) => {
+            llargs.push(Load(bcx, llretslotptr));
         }
         None => {}
     }
     llargs.extend(args.iter().map(|arg| arg.val));
 
     let retval = Call(bcx, fn_ptr, llargs.as_slice(), None);
-    if type_is_zero_size(ccx, f.sig.output) || fcx.llretptr.get().is_some() {
+    if type_is_zero_size(ccx, f.sig.output) || fcx.llretslotptr.get().is_some() {
         RetVoid(bcx);
     } else {
         Ret(bcx, retval);
