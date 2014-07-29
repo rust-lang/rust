@@ -20,6 +20,7 @@ use middle::trans::callee;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::cleanup;
 use middle::trans::common::*;
+use middle::trans::consts;
 use middle::trans::datum;
 use middle::trans::debuginfo;
 use middle::trans::expr;
@@ -477,14 +478,6 @@ pub fn trans_ret<'a>(bcx: &'a Block<'a>,
     return bcx;
 }
 
-fn str_slice_arg<'a>(bcx: &'a Block<'a>, s: InternedString) -> ValueRef {
-    let ccx = bcx.ccx();
-    let s = C_str_slice(ccx, s);
-    let slot = alloca(bcx, val_ty(s), "__temp");
-    Store(bcx, s, slot);
-    slot
-}
-
 pub fn trans_fail<'a>(
                   bcx: &'a Block<'a>,
                   sp: Span,
@@ -493,12 +486,14 @@ pub fn trans_fail<'a>(
     let ccx = bcx.ccx();
     let _icx = push_ctxt("trans_fail_value");
 
-    let v_str = str_slice_arg(bcx, fail_str);
+    let v_str = C_str_slice(ccx, fail_str);
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
     let filename = token::intern_and_get_ident(loc.file.name.as_slice());
-    let v_filename = str_slice_arg(bcx, filename);
-    let v_line = loc.line as int;
-    let args = vec!(v_str, v_filename, C_int(ccx, v_line));
+    let filename = C_str_slice(ccx, filename);
+    let line = C_int(ccx, loc.line as int);
+    let expr_file_line_const = C_struct(ccx, &[v_str, filename, line], false);
+    let expr_file_line = consts::const_addr_of(ccx, expr_file_line_const);
+    let args = vec!(expr_file_line);
     let did = langcall(bcx, Some(sp), "", FailFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,
@@ -514,6 +509,7 @@ pub fn trans_fail_bounds_check<'a>(
                                index: ValueRef,
                                len: ValueRef)
                                -> &'a Block<'a> {
+    let ccx = bcx.ccx();
     let _icx = push_ctxt("trans_fail_bounds_check");
 
     // Extract the file/line from the span
@@ -521,9 +517,11 @@ pub fn trans_fail_bounds_check<'a>(
     let filename = token::intern_and_get_ident(loc.file.name.as_slice());
 
     // Invoke the lang item
-    let filename = str_slice_arg(bcx, filename);
-    let line = C_int(bcx.ccx(), loc.line as int);
-    let args = vec!(filename, line, index, len);
+    let filename = C_str_slice(ccx,  filename);
+    let line = C_int(ccx, loc.line as int);
+    let file_line_const = C_struct(ccx, &[filename, line], false);
+    let file_line = consts::const_addr_of(ccx, file_line_const);
+    let args = vec!(file_line, index, len);
     let did = langcall(bcx, Some(sp), "", FailBoundsCheckFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,

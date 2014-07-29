@@ -33,6 +33,7 @@
 use fmt;
 use intrinsics;
 
+#[cfg(stage0)]
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="fail_"]
 fn fail_(expr: &'static str, file: &'static str, line: uint) -> ! {
@@ -43,12 +44,37 @@ fn fail_(expr: &'static str, file: &'static str, line: uint) -> ! {
     unsafe { intrinsics::abort() }
 }
 
+#[cfg(stage0)]
 #[cold]
 #[lang="fail_bounds_check"]
 fn fail_bounds_check(file: &'static str, line: uint,
                      index: uint, len: uint) -> ! {
     format_args!(|args| -> () {
         begin_unwind(args, &(file, line));
+    }, "index out of bounds: the len is {} but the index is {}", len, index);
+    unsafe { intrinsics::abort() }
+}
+
+#[cfg(not(stage0))]
+#[cold] #[inline(never)] // this is the slow path, always
+#[lang="fail_"]
+fn fail_(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
+    let (expr, file, line) = *expr_file_line;
+    let ref file_line = (file, line);
+    format_args!(|args| -> () {
+        begin_unwind(args, file_line);
+    }, "{}", expr);
+
+    unsafe { intrinsics::abort() }
+}
+
+#[cfg(not(stage0))]
+#[cold]
+#[lang="fail_bounds_check"]
+fn fail_bounds_check(file_line: &(&'static str, uint),
+                     index: uint, len: uint) -> ! {
+    format_args!(|args| -> () {
+        begin_unwind(args, file_line);
     }, "index out of bounds: the len is {} but the index is {}", len, index);
     unsafe { intrinsics::abort() }
 }
