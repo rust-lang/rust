@@ -69,6 +69,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("rustc_diagnostic_macros", Active),
     ("unboxed_closures", Active),
 
+    // if you change this list without updating src/doc/rust.md, cmr will be sad
+
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
     ("issue_5723_bootstrap", Active),

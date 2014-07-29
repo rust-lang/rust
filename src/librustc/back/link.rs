@@ -1230,7 +1230,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     // the symbols
     if (sess.targ_cfg.os == abi::OsMacos || sess.targ_cfg.os == abi::OsiOS)
         && (sess.opts.debuginfo != NoDebugInfo) {
-            match Command::new("dsymutil").arg(out_filename).status() {
+            match Command::new("dsymutil").arg(out_filename).output() {
                 Ok(..) => {}
                 Err(e) => {
                     sess.err(format!("failed to run dsymutil: {}", e).as_slice());

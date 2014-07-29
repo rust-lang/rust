@@ -117,23 +117,23 @@ impl Float for f32 {
     #[inline]
     fn neg_zero() -> f32 { -0.0 }
 
-    /// Returns `true` if the number is NaN
+    /// Returns `true` if the number is NaN.
     #[inline]
     fn is_nan(self) -> bool { self != self }
 
-    /// Returns `true` if the number is infinite
+    /// Returns `true` if the number is infinite.
     #[inline]
     fn is_infinite(self) -> bool {
         self == Float::infinity() || self == Float::neg_infinity()
     }
 
-    /// Returns `true` if the number is neither infinite or NaN
+    /// Returns `true` if the number is neither infinite or NaN.
     #[inline]
     fn is_finite(self) -> bool {
         !(self.is_nan() || self.is_infinite())
     }
 
-    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
+    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN.
     #[inline]
     fn is_normal(self) -> bool {
         self.classify() == FPNormal
@@ -195,25 +195,25 @@ impl Float for f32 {
         (mantissa as u64, exponent, sign)
     }
 
-    /// Round half-way cases toward `NEG_INFINITY`
+    /// Rounds towards minus infinity.
     #[inline]
     fn floor(self) -> f32 {
         unsafe { intrinsics::floorf32(self) }
     }
 
-    /// Round half-way cases toward `INFINITY`
+    /// Rounds towards plus infinity.
     #[inline]
     fn ceil(self) -> f32 {
         unsafe { intrinsics::ceilf32(self) }
     }
 
-    /// Round half-way cases away from `0.0`
+    /// Rounds to nearest integer. Rounds half-way cases away from zero.
     #[inline]
     fn round(self) -> f32 {
         unsafe { intrinsics::roundf32(self) }
     }
 
-    /// The integer part of the number (rounds towards `0.0`)
+    /// Returns the integer part of the number (rounds towards zero).
     #[inline]
     fn trunc(self) -> f32 {
         unsafe { intrinsics::truncf32(self) }
@@ -236,7 +236,7 @@ impl Float for f32 {
         unsafe { intrinsics::fmaf32(self, a, b) }
     }
 
-    /// The reciprocal (multiplicative inverse) of the number
+    /// Returns the reciprocal (multiplicative inverse) of the number.
     #[inline]
     fn recip(self) -> f32 { 1.0 / self }
 
@@ -325,45 +325,45 @@ impl Float for f32 {
     #[inline]
     fn ln_10() -> f32 { consts::LN_10 }
 
-    /// Returns the exponential of the number
+    /// Returns the exponential of the number.
     #[inline]
     fn exp(self) -> f32 {
         unsafe { intrinsics::expf32(self) }
     }
 
-    /// Returns 2 raised to the power of the number
+    /// Returns 2 raised to the power of the number.
     #[inline]
     fn exp2(self) -> f32 {
         unsafe { intrinsics::exp2f32(self) }
     }
 
-    /// Returns the natural logarithm of the number
+    /// Returns the natural logarithm of the number.
     #[inline]
     fn ln(self) -> f32 {
         unsafe { intrinsics::logf32(self) }
     }
 
-    /// Returns the logarithm of the number with respect to an arbitrary base
+    /// Returns the logarithm of the number with respect to an arbitrary base.
     #[inline]
     fn log(self, base: f32) -> f32 { self.ln() / base.ln() }
 
-    /// Returns the base 2 logarithm of the number
+    /// Returns the base 2 logarithm of the number.
     #[inline]
     fn log2(self) -> f32 {
         unsafe { intrinsics::log2f32(self) }
     }
 
-    /// Returns the base 10 logarithm of the number
+    /// Returns the base 10 logarithm of the number.
     #[inline]
     fn log10(self) -> f32 {
         unsafe { intrinsics::log10f32(self) }
     }
 
-    /// Converts to degrees, assuming the number is in radians
+    /// Converts to degrees, assuming the number is in radians.
     #[inline]
     fn to_degrees(self) -> f32 { self * (180.0f32 / Float::pi()) }
 
-    /// Converts to radians, assuming the number is in degrees
+    /// Converts to radians, assuming the number is in degrees.
     #[inline]
     fn to_radians(self) -> f32 {
         let value: f32 = Float::pi();

@@ -123,23 +123,23 @@ impl Float for f64 {
     #[inline]
     fn neg_zero() -> f64 { -0.0 }
 
-    /// Returns `true` if the number is NaN
+    /// Returns `true` if the number is NaN.
     #[inline]
     fn is_nan(self) -> bool { self != self }
 
-    /// Returns `true` if the number is infinite
+    /// Returns `true` if the number is infinite.
     #[inline]
     fn is_infinite(self) -> bool {
         self == Float::infinity() || self == Float::neg_infinity()
     }
 
-    /// Returns `true` if the number is neither infinite or NaN
+    /// Returns `true` if the number is neither infinite or NaN.
     #[inline]
     fn is_finite(self) -> bool {
         !(self.is_nan() || self.is_infinite())
     }
 
-    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
+    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN.
     #[inline]
     fn is_normal(self) -> bool {
         self.classify() == FPNormal
@@ -201,25 +201,25 @@ impl Float for f64 {
         (mantissa, exponent, sign)
     }
 
-    /// Round half-way cases toward `NEG_INFINITY`
+    /// Rounds towards minus infinity.
     #[inline]
     fn floor(self) -> f64 {
         unsafe { intrinsics::floorf64(self) }
     }
 
-    /// Round half-way cases toward `INFINITY`
+    /// Rounds towards plus infinity.
     #[inline]
     fn ceil(self) -> f64 {
         unsafe { intrinsics::ceilf64(self) }
     }
 
-    /// Round half-way cases away from `0.0`
+    /// Rounds to nearest integer. Rounds half-way cases away from zero.
     #[inline]
     fn round(self) -> f64 {
         unsafe { intrinsics::roundf64(self) }
     }
 
-    /// The integer part of the number (rounds towards `0.0`)
+    /// Returns the integer part of the number (rounds towards zero).
     #[inline]
     fn trunc(self) -> f64 {
         unsafe { intrinsics::truncf64(self) }
@@ -242,7 +242,7 @@ impl Float for f64 {
         unsafe { intrinsics::fmaf64(self, a, b) }
     }
 
-    /// The reciprocal (multiplicative inverse) of the number
+    /// Returns the reciprocal (multiplicative inverse) of the number.
     #[inline]
     fn recip(self) -> f64 { 1.0 / self }
 
@@ -332,46 +332,45 @@ impl Float for f64 {
     #[inline]
     fn ln_10() -> f64 { consts::LN_10 }
 
-    /// Returns the exponential of the number
+    /// Returns the exponential of the number.
     #[inline]
     fn exp(self) -> f64 {
         unsafe { intrinsics::expf64(self) }
     }
 
-    /// Returns 2 raised to the power of the number
+    /// Returns 2 raised to the power of the number.
     #[inline]
     fn exp2(self) -> f64 {
         unsafe { intrinsics::exp2f64(self) }
     }
 
-    /// Returns the natural logarithm of the number
+    /// Returns the natural logarithm of the number.
     #[inline]
     fn ln(self) -> f64 {
         unsafe { intrinsics::logf64(self) }
     }
 
-    /// Returns the logarithm of the number with respect to an arbitrary base
+    /// Returns the logarithm of the number with respect to an arbitrary base.
     #[inline]
     fn log(self, base: f64) -> f64 { self.ln() / base.ln() }
 
-    /// Returns the base 2 logarithm of the number
+    /// Returns the base 2 logarithm of the number.
     #[inline]
     fn log2(self) -> f64 {
         unsafe { intrinsics::log2f64(self) }
     }
 
-    /// Returns the base 10 logarithm of the number
+    /// Returns the base 10 logarithm of the number.
     #[inline]
     fn log10(self) -> f64 {
         unsafe { intrinsics::log10f64(self) }
     }
 
-
-    /// Converts to degrees, assuming the number is in radians
+    /// Converts to degrees, assuming the number is in radians.
     #[inline]
     fn to_degrees(self) -> f64 { self * (180.0f64 / Float::pi()) }
 
-    /// Converts to radians, assuming the number is in degrees
+    /// Converts to radians, assuming the number is in degrees.
     #[inline]
     fn to_radians(self) -> f64 {
         let value: f64 = Float::pi();
