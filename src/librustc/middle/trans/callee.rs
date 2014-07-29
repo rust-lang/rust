@@ -775,6 +775,8 @@ pub fn trans_call_inner<'a>(
     // We trans them in place in `trans_intrinsic_call`
     assert!(abi != synabi::RustIntrinsic);
 
+    let is_rust_fn = abi == synabi::Rust || abi == synabi::RustCall;
+
     // Generate a location to store the result. If the user does
     // not care about the result, just make a stack slot.
     let opt_llretslot = match dest {
@@ -783,7 +785,9 @@ pub fn trans_call_inner<'a>(
             None
         }
         Some(expr::SaveIn(dst)) => Some(dst),
-        Some(expr::Ignore) => {
+        Some(expr::Ignore) if !is_rust_fn ||
+                type_of::return_uses_outptr(ccx, ret_ty) ||
+                ty::type_needs_drop(bcx.tcx(), ret_ty) => {
             if !type_is_zero_size(ccx, ret_ty) {
                 Some(alloc_ty(bcx, ret_ty, "__llret"))
             } else {
@@ -791,6 +795,7 @@ pub fn trans_call_inner<'a>(
                 Some(C_undef(llty.ptr_to()))
             }
         }
+        Some(expr::Ignore) => None
     };
 
     let mut llresult = unsafe {
@@ -803,7 +808,7 @@ pub fn trans_call_inner<'a>(
     // and done, either the return value of the function will have been
     // written in opt_llretslot (if it is Some) or `llresult` will be
     // set appropriately (otherwise).
-    if abi == synabi::Rust || abi == synabi::RustCall {
+    if is_rust_fn {
         let mut llargs = Vec::new();
 
         // Push the out-pointer if we use an out-pointer for this
@@ -878,15 +883,13 @@ pub fn trans_call_inner<'a>(
 
     // If the caller doesn't care about the result of this fn call,
     // drop the temporary slot we made.
-    match dest {
-        None => {
-            assert!(!type_of::return_uses_outptr(bcx.ccx(), ret_ty));
-        }
-        Some(expr::Ignore) => {
+    match (dest, opt_llretslot) {
+        (Some(expr::Ignore), Some(llretslot)) => {
             // drop the value if it is not being saved.
-            bcx = glue::drop_ty(bcx, opt_llretslot.unwrap(), ret_ty);
+            bcx = glue::drop_ty(bcx, llretslot, ret_ty);
+            call_lifetime_end(bcx, llretslot);
         }
-        Some(expr::SaveIn(_)) => { }
+        _ => {}
     }
 
     if ty::type_is_bot(ret_ty) {
