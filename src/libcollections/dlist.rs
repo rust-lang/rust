@@ -29,6 +29,7 @@ use core::fmt;
 use core::iter;
 use core::mem;
 use core::ptr;
+use std::hash::{Writer, Hash};
 
 use {Collection, Mutable, Deque, MutableSeq};
 
@@ -707,10 +708,20 @@ impl<A: fmt::Show> fmt::Show for DList<A> {
     }
 }
 
+impl<S: Writer, A: Hash<S>> Hash<S> for DList<A> {
+    fn hash(&self, state: &mut S) {
+        self.len().hash(state);
+        for elt in self.iter() {
+            elt.hash(state);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::prelude::*;
     use std::rand;
+    use std::hash;
     use test::Bencher;
     use test;
 
@@ -1073,6 +1084,24 @@ mod tests {
         let n = list_from([2i,3,4]);
         let m = list_from([1i,2,3]);
         assert!(n != m);
+    }
+
+    #[test]
+    fn test_hash() {
+      let mut x = DList::new();
+      let mut y = DList::new();
+
+      assert!(hash::hash(&x) == hash::hash(&y));
+
+      x.push_back(1i);
+      x.push_back(2);
+      x.push_back(3);
+
+      y.push_front(3i);
+      y.push_front(2);
+      y.push_front(1);
+
+      assert!(hash::hash(&x) == hash::hash(&y));
     }
 
     #[test]
