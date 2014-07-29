@@ -48,7 +48,6 @@ struct Test {
 struct TestCtxt<'a> {
     sess: &'a Session,
     path: Vec<ast::Ident>,
-    reexports: Vec<Vec<ast::Ident>>,
     ext_cx: ExtCtxt<'a>,
     testfns: Vec<Test>,
     reexport_mod_ident: ast::Ident,
@@ -74,6 +73,8 @@ pub fn modify_for_testing(sess: &Session,
 
 struct TestHarnessGenerator<'a> {
     cx: TestCtxt<'a>,
+    tests: Vec<ast::Ident>,
+    tested_submods: Vec<ast::Ident>,
 }
 
 impl<'a> fold::Folder for TestHarnessGenerator<'a> {
@@ -111,7 +112,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                         should_fail: should_fail(i)
                     };
                     self.cx.testfns.push(test);
-                    self.cx.reexports.push(self.cx.path.clone());
+                    self.tests.push(i.ident);
                     // debug!("have {} test/bench functions",
                     //        cx.testfns.len());
                 }
@@ -129,9 +130,11 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
     }
 
     fn fold_mod(&mut self, m: &ast::Mod) -> ast::Mod {
-        let reexports = mem::replace(&mut self.cx.reexports, Vec::new());
+        let tests = mem::replace(&mut self.tests, Vec::new());
+        let tested_submods = mem::replace(&mut self.tested_submods, Vec::new());
         let mut mod_folded = fold::noop_fold_mod(m, self);
-        let reexports = mem::replace(&mut self.cx.reexports, reexports);
+        let tests = mem::replace(&mut self.tests, tests);
+        let tested_submods = mem::replace(&mut self.tested_submods, tested_submods);
 
         // Remove any #[main] from the AST so it doesn't clash with
         // the one we're going to add. Only if compiling an executable.
@@ -152,20 +155,32 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         for i in mod_folded.items.mut_iter() {
             *i = nomain(*i);
         }
-        if !reexports.is_empty() {
-            mod_folded.items.push(mk_reexport_mod(&mut self.cx, reexports));
-            self.cx.reexports.push(self.cx.path.clone());
+        if !tests.is_empty() || !tested_submods.is_empty() {
+            mod_folded.items.push(mk_reexport_mod(&mut self.cx, tests,
+                                                  tested_submods));
+            if !self.cx.path.is_empty() {
+                self.tested_submods.push(self.cx.path[self.cx.path.len()-1]);
+            }
         }
 
         mod_folded
     }
 }
 
-fn mk_reexport_mod(cx: &mut TestCtxt, reexports: Vec<Vec<ast::Ident>>)
-                   -> Gc<ast::Item> {
-    let view_items = reexports.move_iter().map(|r| {
-        cx.ext_cx.view_use_simple(DUMMY_SP, ast::Public, cx.ext_cx.path(DUMMY_SP, r))
-    }).collect();
+fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
+                   tested_submods: Vec<ast::Ident>) -> Gc<ast::Item> {
+    let mut view_items = Vec::new();
+    let super_ = token::str_to_ident("super");
+
+    view_items.extend(tests.move_iter().map(|r| {
+        cx.ext_cx.view_use_simple(DUMMY_SP, ast::Public,
+                                  cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
+    }));
+    view_items.extend(tested_submods.move_iter().map(|r| {
+        let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, cx.reexport_mod_ident]);
+        cx.ext_cx.view_use_simple_(DUMMY_SP, ast::Public, r, path)
+    }));
+
     let reexport_mod = ast::Mod {
         inner: DUMMY_SP,
         view_items: view_items,
@@ -190,7 +205,6 @@ fn generate_test_harness(sess: &Session, krate: ast::Crate) -> ast::Crate {
                                  crate_name: "test".to_string(),
                              }),
         path: Vec::new(),
-        reexports: Vec::new(),
         testfns: Vec::new(),
         reexport_mod_ident: token::str_to_ident("__test_reexports"),
         is_test_crate: is_test_crate(&krate),
@@ -208,6 +222,8 @@ fn generate_test_harness(sess: &Session, krate: ast::Crate) -> ast::Crate {
 
     let mut fold = TestHarnessGenerator {
         cx: cx,
+        tests: Vec::new(),
+        tested_submods: Vec::new(),
     };
     let res = fold.fold_crate(krate);
     fold.cx.ext_cx.bt_pop();
@@ -448,11 +464,8 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> Gc<ast::Expr> {
           span: span
     };
 
-    let mut visible_path = Vec::new();
-    for ident in path.move_iter() {
-        visible_path.push(cx.reexport_mod_ident.clone());
-        visible_path.push(ident);
-    }
+    let mut visible_path = vec![cx.reexport_mod_ident.clone()];
+    visible_path.extend(path.move_iter());
     let fn_path = cx.ext_cx.path_global(DUMMY_SP, visible_path);
 
     let fn_expr = box(GC) ast::Expr {
