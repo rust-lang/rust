@@ -1433,13 +1433,15 @@ impl LintPass for MissingOverride {
                 };
                 let trait_ref = ty::node_id_to_trait_ref(cx.tcx, ast_trait_ref.ref_id);
                 let trait_methods = ty::trait_methods(cx.tcx, trait_ref.def_id);
-                let trait_set: HashSet<ast::Name> =
-                    trait_methods.iter().map(|m| { m.ident.name }).collect();
                 let impl_set: HashSet<ast::Name> =
                     impl_methods.iter().map(|m| { m.pe_ident().name }).collect();
-                if !trait_set.is_subset(&impl_set) {
-                    cx.span_lint(MISSING_OVERRIDE, attr.span,
-                                 "some default methods are not overridden");
+                let missing: Vec<String> = trait_methods.iter()
+                    .filter(|m| !impl_set.contains(&m.ident.name))
+                    .map(|m| format!("`{}`", token::get_name(m.ident.name))).collect();
+                if !missing.is_empty() {
+                    let msg = format!("some default methods are not overridden: {}",
+                                      missing.connect(", "));
+                    cx.span_lint(MISSING_OVERRIDE, attr.span, msg.as_slice());
                 }
             }
             _ => ()

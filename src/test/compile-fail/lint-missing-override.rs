@@ -16,7 +16,7 @@ trait Foo {
 
 struct Bar;
 
-#[no_default_methods] //~ ERROR: some default methods are not overridden
+#[no_default_methods] //~ ERROR: some default methods are not overridden: `foo`
 impl Foo for Bar {}
 
 fn main() {
