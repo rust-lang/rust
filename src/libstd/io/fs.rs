@@ -273,7 +273,7 @@ impl File {
 ///
 /// # Error
 ///
-/// This function will return an error if the path points to a directory, the
+/// This function will return an error if `path` points to a directory, if the
 /// user lacks permissions to remove the file, or if some other filesystem-level
 /// error occurs.
 pub fn unlink(path: &Path) -> IoResult<()> {
@@ -332,8 +332,8 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 ///
 /// # Error
 ///
-/// This call will return an error if the user lacks the requisite permissions
-/// to perform a `stat` call on the given path or if there is no entry in the
+/// This function will return an error if the user lacks the requisite permissions
+/// to perform a `stat` call on the given `path` or if there is no entry in the
 /// filesystem at the provided path.
 pub fn stat(path: &Path) -> IoResult<FileStat> {
     let err = match LocalIo::maybe_raise(|io| io.fs_stat(&path.to_c_str())) {
@@ -415,9 +415,9 @@ fn from_rtio(s: rtio::FileStat) -> FileStat {
 ///
 /// # Error
 ///
-/// Will return an error if the provided `path` doesn't exist, the process lacks
-/// permissions to view the contents, or if some other intermittent I/O error
-/// occurs.
+/// This function will return an error if the provided `from` doesn't exist, if
+/// the process lacks permissions to view the contents, or if some other
+/// intermittent I/O error occurs.
 pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
     let err = LocalIo::maybe_raise(|io| {
         io.fs_rename(&from.to_c_str(), &to.to_c_str())
@@ -444,8 +444,8 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
 ///
 /// # Error
 ///
-/// Will return an error in the following situations, but is not limited to
-/// just these cases:
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
 ///
 /// * The `from` path is not a file
 /// * The `from` file does not exist
@@ -503,9 +503,9 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 ///
 /// # Error
 ///
-/// If this function encounters an I/O error, it will return an `Err` value.
-/// Some possible error situations are not having the permission to
-/// change the attributes of a file or the file not existing.
+/// This function will return an error if the provided `path` doesn't exist, if
+/// the process lacks permissions to change the attributes of the file, or if
+/// some other I/O error is encountered.
 pub fn chmod(path: &Path, mode: io::FilePermission) -> IoResult<()> {
     let err = LocalIo::maybe_raise(|io| {
         io.fs_chmod(&path.to_c_str(), mode.bits() as uint)
@@ -577,8 +577,8 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 ///
 /// # Error
 ///
-/// This call will return an error if the user lacks permissions to make a new
-/// directory at the provided path, or if the directory already exists.
+/// This function will return an error if the user lacks permissions to make a
+/// new directory at the provided `path`, or if the directory already exists.
 pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
     let err = LocalIo::maybe_raise(|io| {
         io.fs_mkdir(&path.to_c_str(), mode.bits() as uint)
@@ -602,8 +602,8 @@ pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
 ///
 /// # Error
 ///
-/// This call will return an error if the user lacks permissions to remove the
-/// directory at the provided path, or if the directory isn't empty.
+/// This function will return an error if the user lacks permissions to remove
+/// the directory at the provided `path`, or if the directory isn't empty.
 pub fn rmdir(path: &Path) -> IoResult<()> {
     let err = LocalIo::maybe_raise(|io| {
         io.fs_rmdir(&path.to_c_str())
@@ -640,9 +640,9 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 ///
 /// # Error
 ///
-/// Will return an error if the provided `from` doesn't exist, the process lacks
-/// permissions to view the contents or if the `path` points at a non-directory
-/// file
+/// This function will return an error if the provided `path` doesn't exist, if
+/// the process lacks permissions to view the contents or if the `path` points
+/// at a non-directory file
 pub fn readdir(path: &Path) -> IoResult<Vec<Path>> {
     let err = LocalIo::maybe_raise(|io| {
         Ok(try!(io.fs_readdir(&path.to_c_str(), 0)).move_iter().map(|a| {
@@ -697,8 +697,7 @@ impl Iterator<Path> for Directories {
 ///
 /// # Error
 ///
-/// This function will return an `Err` value if an error happens, see
-/// `fs::mkdir` for more information about error conditions and performance.
+/// See `fs::mkdir`.
 pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
     // tjc: if directory exists but with different permissions,
     // should we return false?
@@ -735,8 +734,7 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
 ///
 /// # Error
 ///
-/// This function will return an `Err` value if an error happens. See
-/// `file::unlink` and `fs::readdir` for possible error conditions.
+/// See `file::unlink` and `fs::readdir`
 pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
     let mut rm_stack = Vec::new();
     rm_stack.push(path.clone());
