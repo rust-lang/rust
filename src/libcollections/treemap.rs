@@ -43,10 +43,111 @@ use std::hash::{Writer, Hash};
 use {Collection, Mutable, Set, MutableSet, MutableMap, Map, MutableSeq};
 use vec::Vec;
 
-// This is implemented as an AA tree, which is a simplified variation of
-// a red-black tree where red (horizontal) nodes can only be added
-// as a right child. The time complexity is the same, and re-balancing
-// operations are more frequent but also cheaper.
+/// This is implemented as an AA tree, which is a simplified variation of
+/// a red-black tree where red (horizontal) nodes can only be added
+/// as a right child. The time complexity is the same, and re-balancing
+/// operations are more frequent but also cheaper.
+///
+/// # Example
+///
+/// ```
+/// use std::collections::TreeMap;
+///
+/// let mut map = TreeMap::new();
+///
+/// map.insert(2i, "bar");
+/// map.insert(1i, "foo");
+/// map.insert(3i, "quux");
+///
+/// // In ascending order by keys
+/// for (key, value) in map.iter() {
+///     println!("{}: {}", key, value);
+/// }
+///
+/// // Prints 1, 2, 3
+/// for key in map.keys() {
+///     println!("{}", key);
+/// }
+///
+/// // Prints `foo`, `bar`, `quux`
+/// for key in map.values() {
+///     println!("{}", key);
+/// }
+///
+/// map.remove(&1);
+/// assert_eq!(map.len(), 2);
+///
+/// if !map.contains_key(&1) {
+///     println!("1 is no more");
+/// }
+///
+/// for key in range(0, 4) {
+///     match map.find(&key) {
+///         Some(val) => println!("{} has a value: {}", key, val),
+///         None => println!("{} not in map", key),
+///     }
+/// }
+///
+/// map.clear();
+/// assert!(map.is_empty());
+/// ```
+///
+/// The easiest way to use `TreeMap` with a custom type as keys is to implement `Ord`.
+/// We must also implement `PartialEq`, `Eq` and `PartialOrd`.
+///
+/// ```
+/// use std::collections::TreeMap;
+///
+/// // We need `Eq` and `PartialEq`, these can be derived.
+/// #[deriving(Eq, PartialEq)]
+/// struct Troll<'a> {
+///     name: &'a str,
+///     level: uint,
+/// }
+///
+/// // Implement `Ord` and sort trolls by level.
+/// impl<'a> Ord for Troll<'a> {
+///     fn cmp(&self, other: &Troll) -> Ordering {
+///         // If we swap `self` and `other`, we get descending ordering.
+///         self.level.cmp(&other.level)
+///     }
+/// }
+///
+/// // `PartialOrd` needs to be implemented as well.
+/// impl<'a> PartialOrd for Troll<'a> {
+///     fn partial_cmp(&self, other: &Troll) -> Option<Ordering> {
+///         Some(self.cmp(other))
+///     }
+/// }
+///
+/// // Use a map to store trolls, sorted by level, and track a list of
+/// // heroes slain.
+/// let mut trolls = TreeMap::new();
+///
+/// trolls.insert(Troll { name: "Orgarr", level: 2 },
+///               vec!["King Karl"]);
+/// trolls.insert(Troll { name: "Blargarr", level: 3 },
+///               vec!["Odd"]);
+/// trolls.insert(Troll { name: "Kron the Smelly One", level: 4 },
+///               vec!["Omar the Brave", "Peter: Slayer of Trolls"]);
+/// trolls.insert(Troll { name: "Wartilda", level: 1 },
+///               vec![]);
+///
+/// println!("You are facing {} trolls!", trolls.len());
+///
+/// // Print the trolls, ordered by level with smallest level first
+/// for (troll, heroes) in trolls.iter() {
+///     let what = if heroes.len() == 1u { "hero" }
+///                else { "heroes" };
+///
+///     println!("level {}: '{}' has slain {} {}",
+///              troll.level, troll.name, heroes.len(), what);
+/// }
+///
+/// // Kill all trolls
+/// trolls.clear();
+/// assert_eq!(trolls.len(), 0);
+/// ```
 
 // Future improvements:
 
@@ -59,7 +160,6 @@ use vec::Vec;
 //   * union: |
 // These would be convenient since the methods work like `each`
 
-#[allow(missing_doc)]
 #[deriving(Clone)]
 pub struct TreeMap<K, V> {
     root: Option<Box<TreeNode<K, V>>>,
@@ -138,21 +238,73 @@ impl<K: Ord, V> Default for TreeMap<K,V> {
 }
 
 impl<K: Ord, V> TreeMap<K, V> {
-    /// Create an empty TreeMap
+    /// Create an empty `TreeMap`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    /// let mut map: TreeMap<&str, int> = TreeMap::new();
+    /// ```
     pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
-    /// Get a lazy iterator over the keys in the map.
+    /// Get a lazy iterator over the keys in the map, in ascending order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    /// let mut map = TreeMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("c", 3i);
+    /// map.insert("b", 2i);
+    ///
+    /// // Print "a", "b", "c" in order.
+    /// for x in map.keys() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
         self.iter().map(|(k, _v)| k)
     }
 
-    /// Get a lazy iterator over the values in the map.
+    /// Get a lazy iterator over the values in the map, in ascending order
+    /// with respect to the corresponding keys.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    /// let mut map = TreeMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("c", 3i);
+    /// map.insert("b", 2i);
+    ///
+    /// // Print 1, 2, 3 ordered by keys.
+    /// for x in map.values() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         self.iter().map(|(_k, v)| v)
     }
 
-    /// Get a lazy iterator over the key-value pairs in the map.
-    /// Requires that it be frozen (immutable).
+    /// Get a lazy iterator over the key-value pairs in the map, in ascending order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    /// let mut map = TreeMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("c", 3i);
+    /// map.insert("b", 2i);
+    ///
+    /// // Print contents in ascending order
+    /// for (key, value) in map.iter() {
+    ///     println!("{}: {}", key, value);
+    /// }
+    /// ```
     pub fn iter<'a>(&'a self) -> Entries<'a, K, V> {
         Entries {
             stack: vec!(),
@@ -162,14 +314,48 @@ impl<K: Ord, V> TreeMap<K, V> {
         }
     }
 
-    /// Get a lazy reverse iterator over the key-value pairs in the map.
-    /// Requires that it be frozen (immutable).
+    /// Get a lazy reverse iterator over the key-value pairs in the map, in descending order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    /// let mut map = TreeMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("c", 3i);
+    /// map.insert("b", 2i);
+    ///
+    /// // Print contents in descending order
+    /// for (key, value) in map.rev_iter() {
+    ///     println!("{}: {}", key, value);
+    /// }
+    /// ```
     pub fn rev_iter<'a>(&'a self) -> RevEntries<'a, K, V> {
         RevEntries{iter: self.iter()}
     }
 
     /// Get a lazy forward iterator over the key-value pairs in the
     /// map, with the values being mutable.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    /// let mut map = TreeMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("c", 3i);
+    /// map.insert("b", 2i);
+    ///
+    /// // Add 10 until we find "b"
+    /// for (key, value) in map.mut_iter() {
+    ///     *value += 10;
+    ///     if key == &"b" { break }
+    /// }
+    ///
+    /// assert_eq!(map.find(&"a"), Some(&11));
+    /// assert_eq!(map.find(&"b"), Some(&12));
+    /// assert_eq!(map.find(&"c"), Some(&3));
+    /// ```
     pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
         MutEntries {
             stack: vec!(),
@@ -180,12 +366,47 @@ impl<K: Ord, V> TreeMap<K, V> {
     }
     /// Get a lazy reverse iterator over the key-value pairs in the
     /// map, with the values being mutable.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    /// let mut map = TreeMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("c", 3i);
+    /// map.insert("b", 2i);
+    ///
+    /// // Add 10 until we find "b"
+    /// for (key, value) in map.mut_rev_iter() {
+    ///     *value += 10;
+    ///     if key == &"b" { break }
+    /// }
+    ///
+    /// assert_eq!(map.find(&"a"), Some(&1));
+    /// assert_eq!(map.find(&"b"), Some(&12));
+    /// assert_eq!(map.find(&"c"), Some(&13));
+    /// ```
     pub fn mut_rev_iter<'a>(&'a mut self) -> RevMutEntries<'a, K, V> {
         RevMutEntries{iter: self.mut_iter()}
     }
 
 
-    /// Get a lazy iterator that consumes the treemap.
+    /// Get a lazy iterator that consumes the treemap, it is not usable
+    /// after calling this.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    /// let mut map = TreeMap::new();
+    /// map.insert("a", 1i);
+    /// map.insert("c", 3i);
+    /// map.insert("b", 2i);
+    ///
+    /// // Not possible with a regular `.iter()`
+    /// let vec: Vec<(&str, int)> = map.move_iter().collect();
+    /// assert_eq!(vec, vec![("a", 1), ("b", 2), ("c", 3)]);
+    /// ```
     pub fn move_iter(self) -> MoveEntries<K, V> {
         let TreeMap { root: root, length: length } = self;
         let stk = match root {
@@ -232,6 +453,7 @@ impl<K, V> TreeMap<K, V> {
     /// Return the value for which `f(key)` returns `Equal`. `f` is invoked
     /// with current key and guides tree navigation. That means `f` should
     /// be aware of natural ordering of the tree.
+    ///
     /// # Example
     ///
     /// ```
@@ -301,12 +523,44 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Return a lazy iterator to the first key-value pair whose key is not less than `k`
     /// If all keys in map are less than `k` an empty iterator is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    ///
+    /// let mut map = TreeMap::new();
+    /// map.insert(2i, "a");
+    /// map.insert(4, "b");
+    /// map.insert(6, "c");
+    /// map.insert(8, "d");
+    ///
+    /// assert_eq!(map.lower_bound(&4).next(), Some((&4, &"b")));
+    /// assert_eq!(map.lower_bound(&5).next(), Some((&6, &"c")));
+    /// assert_eq!(map.lower_bound(&10).next(), None);
+    /// ```
     pub fn lower_bound<'a>(&'a self, k: &K) -> Entries<'a, K, V> {
         bound_setup!(self.iter_for_traversal(), k, true)
     }
 
     /// Return a lazy iterator to the first key-value pair whose key is greater than `k`
-    /// If all keys in map are not greater than `k` an empty iterator is returned.
+    /// If all keys in map are less than or equal to `k` an empty iterator is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    ///
+    /// let mut map = TreeMap::new();
+    /// map.insert(2i, "a");
+    /// map.insert(4, "b");
+    /// map.insert(6, "c");
+    /// map.insert(8, "d");
+    ///
+    /// assert_eq!(map.upper_bound(&4).next(), Some((&6, &"c")));
+    /// assert_eq!(map.upper_bound(&5).next(), Some((&6, &"c")));
+    /// assert_eq!(map.upper_bound(&10).next(), None);
+    /// ```
     pub fn upper_bound<'a>(&'a self, k: &K) -> Entries<'a, K, V> {
         bound_setup!(self.iter_for_traversal(), k, false)
     }
@@ -327,6 +581,31 @@ impl<K: Ord, V> TreeMap<K, V> {
     ///
     /// If all keys in map are less than `k` an empty iterator is
     /// returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    ///
+    /// let mut map = TreeMap::new();
+    /// map.insert(2i, "a");
+    /// map.insert(4, "b");
+    /// map.insert(6, "c");
+    /// map.insert(8, "d");
+    ///
+    /// assert_eq!(map.mut_lower_bound(&4).next(), Some((&4, &mut "b")));
+    /// assert_eq!(map.mut_lower_bound(&5).next(), Some((&6, &mut "c")));
+    /// assert_eq!(map.mut_lower_bound(&10).next(), None);
+    ///
+    /// for (key, value) in map.mut_lower_bound(&4) {
+    ///     *value = "changed";
+    /// }
+    ///
+    /// assert_eq!(map.find(&2), Some(&"a"));
+    /// assert_eq!(map.find(&4), Some(&"changed"));
+    /// assert_eq!(map.find(&6), Some(&"changed"));
+    /// assert_eq!(map.find(&8), Some(&"changed"));
+    /// ```
     pub fn mut_lower_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
         bound_setup!(self.mut_iter_for_traversal(), k, true)
     }
@@ -334,8 +613,33 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Return a lazy iterator to the first key-value pair (with the
     /// value being mutable) whose key is greater than `k`.
     ///
-    /// If all keys in map are not greater than `k` an empty iterator
+    /// If all keys in map are less than or equal to `k` an empty iterator
     /// is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeMap;
+    ///
+    /// let mut map = TreeMap::new();
+    /// map.insert(2i, "a");
+    /// map.insert(4, "b");
+    /// map.insert(6, "c");
+    /// map.insert(8, "d");
+    ///
+    /// assert_eq!(map.mut_upper_bound(&4).next(), Some((&6, &mut "c")));
+    /// assert_eq!(map.mut_upper_bound(&5).next(), Some((&6, &mut "c")));
+    /// assert_eq!(map.mut_upper_bound(&10).next(), None);
+    ///
+    /// for (key, value) in map.mut_upper_bound(&4) {
+    ///     *value = "changed";
+    /// }
+    ///
+    /// assert_eq!(map.find(&2), Some(&"a"));
+    /// assert_eq!(map.find(&4), Some(&"b"));
+    /// assert_eq!(map.find(&6), Some(&"changed"));
+    /// assert_eq!(map.find(&8), Some(&"changed"));
+    /// ```
     pub fn mut_upper_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
         bound_setup!(self.mut_iter_for_traversal(), k, false)
     }
@@ -633,15 +937,68 @@ impl<'a, T> Iterator<&'a T> for RevSetItems<'a, T> {
 /// ```{rust}
 /// use std::collections::TreeSet;
 ///
-/// let mut tree_set = TreeSet::new();
+/// let mut set = TreeSet::new();
 ///
-/// tree_set.insert(2i);
-/// tree_set.insert(1i);
-/// tree_set.insert(3i);
+/// set.insert(2i);
+/// set.insert(1i);
+/// set.insert(3i);
 ///
-/// for i in tree_set.iter() {
+/// for i in set.iter() {
 ///    println!("{}", i) // prints 1, then 2, then 3
 /// }
+///
+/// set.remove(&3);
+///
+/// if !set.contains(&3) {
+///     println!("set does not contain a 3 anymore");
+/// }
+/// ```
+///
+/// The easiest way to use `TreeSet` with a custom type is to implement `Ord`.
+/// We must also implement `PartialEq`, `Eq` and `PartialOrd`.
+///
+/// ```
+/// use std::collections::TreeSet;
+///
+/// // We need `Eq` and `PartialEq`, these can be derived.
+/// #[deriving(Eq, PartialEq)]
+/// struct Troll<'a> {
+///     name: &'a str,
+///     level: uint,
+/// }
+///
+/// // Implement `Ord` and sort trolls by level.
+/// impl<'a> Ord for Troll<'a> {
+///     fn cmp(&self, other: &Troll) -> Ordering {
+///         // If we swap `self` and `other`, we get descending ordering.
+///         self.level.cmp(&other.level)
+///     }
+/// }
+///
+/// // `PartialOrd` needs to be implemented as well.
+/// impl<'a> PartialOrd for Troll<'a> {
+///     fn partial_cmp(&self, other: &Troll) -> Option<Ordering> {
+///         Some(self.cmp(other))
+///     }
+/// }
+///
+/// let mut trolls = TreeSet::new();
+///
+/// trolls.insert(Troll { name: "Orgarr", level: 2 });
+/// trolls.insert(Troll { name: "Blargarr", level: 3 });
+/// trolls.insert(Troll { name: "Kron the Smelly One", level: 4 });
+/// trolls.insert(Troll { name: "Wartilda", level: 1 });
+///
+/// println!("You are facing {} trolls!", trolls.len());
+///
+/// // Print the trolls, ordered by level with smallest level first
+/// for x in trolls.iter() {
+///     println!("level {}: {}!", x.level, x.name);
+/// }
+///
+/// // Kill all trolls
+/// trolls.clear();
+/// assert_eq!(trolls.len(), 0);
 /// ```
 #[deriving(Clone)]
 pub struct TreeSet<T> {
@@ -732,25 +1089,66 @@ impl<T: Ord> Default for TreeSet<T> {
 }
 
 impl<T: Ord> TreeSet<T> {
-    /// Create an empty TreeSet
+    /// Create an empty `TreeSet`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    /// let mut set: TreeSet<int> = TreeSet::new();
+    /// ```
     #[inline]
     pub fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
 
-    /// Get a lazy iterator over the values in the set.
-    /// Requires that it be frozen (immutable).
+    /// Get a lazy iterator over the values in the set, in ascending order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    /// let set: TreeSet<int> = [1i, 4, 3, 5, 2].iter().map(|&x| x).collect();
+    ///
+    /// // Will print in ascending order.
+    /// for x in set.iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     #[inline]
     pub fn iter<'a>(&'a self) -> SetItems<'a, T> {
         SetItems{iter: self.map.iter()}
     }
 
-    /// Get a lazy iterator over the values in the set.
-    /// Requires that it be frozen (immutable).
+    /// Get a lazy iterator over the values in the set, in descending order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    /// let set: TreeSet<int> = [1i, 4, 3, 5, 2].iter().map(|&x| x).collect();
+    ///
+    /// // Will print in descending order.
+    /// for x in set.rev_iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
     #[inline]
     pub fn rev_iter<'a>(&'a self) -> RevSetItems<'a, T> {
         RevSetItems{iter: self.map.rev_iter()}
     }
 
-    /// Get a lazy iterator that consumes the set.
+    /// Creates a consuming iterator, that is, one that moves each value out of the
+    /// set in ascending order. The set cannot be used after calling this.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    /// let set: TreeSet<int> = [1i, 4, 3, 5, 2].iter().map(|&x| x).collect();
+    ///
+    /// // Not possible with a regular `.iter()`
+    /// let v: Vec<int> = set.move_iter().collect();
+    /// assert_eq!(v, vec![1, 2, 3, 4, 5]);
+    /// ```
     #[inline]
     pub fn move_iter(self) -> MoveSetItems<T> {
         self.map.move_iter().map(|(value, _)| value)
@@ -758,36 +1156,135 @@ impl<T: Ord> TreeSet<T> {
 
     /// Get a lazy iterator pointing to the first value not less than `v` (greater or equal).
     /// If all elements in the set are less than `v` empty iterator is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    /// let set: TreeSet<int> = [2, 4, 6, 8].iter().map(|&x| x).collect();
+    ///
+    /// assert_eq!(set.lower_bound(&4).next(), Some(&4));
+    /// assert_eq!(set.lower_bound(&5).next(), Some(&6));
+    /// assert_eq!(set.lower_bound(&10).next(), None);
+    /// ```
     #[inline]
     pub fn lower_bound<'a>(&'a self, v: &T) -> SetItems<'a, T> {
         SetItems{iter: self.map.lower_bound(v)}
     }
 
     /// Get a lazy iterator pointing to the first value greater than `v`.
-    /// If all elements in the set are not greater than `v` empty iterator is returned.
+    /// If all elements in the set are less than or equal to `v` an
+    /// empty iterator is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    /// let set: TreeSet<int> = [2, 4, 6, 8].iter().map(|&x| x).collect();
+    ///
+    /// assert_eq!(set.upper_bound(&4).next(), Some(&6));
+    /// assert_eq!(set.upper_bound(&5).next(), Some(&6));
+    /// assert_eq!(set.upper_bound(&10).next(), None);
+    /// ```
     #[inline]
     pub fn upper_bound<'a>(&'a self, v: &T) -> SetItems<'a, T> {
         SetItems{iter: self.map.upper_bound(v)}
     }
 
-    /// Visit the values (in-order) representing the difference
+    /// Visit the values representing the difference, in ascending order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    ///
+    /// let a: TreeSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: TreeSet<int> = [3, 4, 5].iter().map(|&x| x).collect();
+    ///
+    /// // Can be seen as `a - b`.
+    /// for x in a.difference(&b) {
+    ///     println!("{}", x); // Print 1 then 2
+    /// }
+    ///
+    /// let diff: TreeSet<int> = a.difference(&b).map(|&x| x).collect();
+    /// assert_eq!(diff, [1, 2].iter().map(|&x| x).collect());
+    ///
+    /// // Note that difference is not symmetric,
+    /// // and `b - a` means something else:
+    /// let diff: TreeSet<int> = b.difference(&a).map(|&x| x).collect();
+    /// assert_eq!(diff, [4, 5].iter().map(|&x| x).collect());
+    /// ```
     pub fn difference<'a>(&'a self, other: &'a TreeSet<T>) -> DifferenceItems<'a, T> {
         DifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
-    /// Visit the values (in-order) representing the symmetric difference
+    /// Visit the values representing the symmetric difference, in ascending order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    ///
+    /// let a: TreeSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: TreeSet<int> = [3, 4, 5].iter().map(|&x| x).collect();
+    ///
+    /// // Print 1, 2, 4, 5 in ascending order.
+    /// for x in a.symmetric_difference(&b) {
+    ///     println!("{}", x);
+    /// }
+    ///
+    /// let diff1: TreeSet<int> = a.symmetric_difference(&b).map(|&x| x).collect();
+    /// let diff2: TreeSet<int> = b.symmetric_difference(&a).map(|&x| x).collect();
+    ///
+    /// assert_eq!(diff1, diff2);
+    /// assert_eq!(diff1, [1, 2, 4, 5].iter().map(|&x| x).collect());
+    /// ```
     pub fn symmetric_difference<'a>(&'a self, other: &'a TreeSet<T>)
         -> SymDifferenceItems<'a, T> {
         SymDifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
-    /// Visit the values (in-order) representing the intersection
+    /// Visit the values representing the intersection, in ascending order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    ///
+    /// let a: TreeSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: TreeSet<int> = [2, 3, 4].iter().map(|&x| x).collect();
+    ///
+    /// // Print 2, 3 in ascending order.
+    /// for x in a.intersection(&b) {
+    ///     println!("{}", x);
+    /// }
+    ///
+    /// let diff: TreeSet<int> = a.intersection(&b).map(|&x| x).collect();
+    /// assert_eq!(diff, [2, 3].iter().map(|&x| x).collect());
+    /// ```
     pub fn intersection<'a>(&'a self, other: &'a TreeSet<T>)
         -> IntersectionItems<'a, T> {
         IntersectionItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
-    /// Visit the values (in-order) representing the union
+    /// Visit the values representing the union, in ascending order.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    ///
+    /// let a: TreeSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: TreeSet<int> = [3, 4, 5].iter().map(|&x| x).collect();
+    ///
+    /// // Print 1, 2, 3, 4, 5 in ascending order.
+    /// for x in a.union(&b) {
+    ///     println!("{}", x);
+    /// }
+    ///
+    /// let diff: TreeSet<int> = a.union(&b).map(|&x| x).collect();
+    /// assert_eq!(diff, [1, 2, 3, 4, 5].iter().map(|&x| x).collect());
+    /// ```
     pub fn union<'a>(&'a self, other: &'a TreeSet<T>) -> UnionItems<'a, T> {
         UnionItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
