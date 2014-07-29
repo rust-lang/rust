@@ -1954,19 +1954,6 @@ impl<'a> Parser<'a> {
             token::BINOP(token::OR) |  token::OROR => {
                 return self.parse_lambda_expr();
             },
-            _ if self.eat_keyword(keywords::Proc) => {
-                let decl = self.parse_proc_decl();
-                let body = self.parse_expr();
-                let fakeblock = P(ast::Block {
-                        view_items: Vec::new(),
-                        stmts: Vec::new(),
-                        expr: Some(body),
-                        id: ast::DUMMY_NODE_ID,
-                        rules: DefaultBlock,
-                        span: body.span,
-                    });
-                return self.mk_expr(lo, body.span.hi, ExprProc(decl, fakeblock));
-            },
             // FIXME #13626: Should be able to stick in
             // token::SELF_KEYWORD_NAME
             token::IDENT(id @ ast::Ident{
@@ -1978,48 +1965,6 @@ impl<'a> Parser<'a> {
                 ex = ExprPath(path);
                 hi = self.last_span.hi;
             }
-            _ if self.eat_keyword(keywords::If) => {
-                return self.parse_if_expr();
-            },
-            _ if self.eat_keyword(keywords::For) => {
-                return self.parse_for_expr(None);
-            },
-            _ if self.eat_keyword(keywords::While) => {
-                return self.parse_while_expr();
-            },
-            _ if Parser::token_is_lifetime(&self.token) => {
-                let lifetime = self.get_lifetime();
-                self.bump();
-                self.expect(&token::COLON);
-                if self.eat_keyword(keywords::For) {
-                    return self.parse_for_expr(Some(lifetime))
-                } else if self.eat_keyword(keywords::Loop) {
-                    return self.parse_loop_expr(Some(lifetime))
-                } else {
-                    self.fatal("expected `for` or `loop` after a label")
-                }
-            },
-            _ if self.eat_keyword(keywords::Loop) => {
-                return self.parse_loop_expr(None);
-            },
-            _ if self.eat_keyword(keywords::Continue) => {
-                let lo = self.span.lo;
-                let ex = if Parser::token_is_lifetime(&self.token) {
-                    let lifetime = self.get_lifetime();
-                    self.bump();
-                    ExprAgain(Some(lifetime))
-                } else {
-                    ExprAgain(None)
-                };
-                let hi = self.span.hi;
-                return self.mk_expr(lo, hi, ex);
-            },
-            _ if self.eat_keyword(keywords::Match) => {
-                return self.parse_match_expr();
-            },
-            _ if self.eat_keyword(keywords::Unsafe) => {
-                return self.parse_block_expr(lo, UnsafeBlock(ast::UserProvided));
-            },
             token::LBRACKET => {
                 self.bump();
 
@@ -2057,88 +2002,158 @@ impl<'a> Parser<'a> {
                 }
                 hi = self.last_span.hi;
             },
-            _ if self.eat_keyword(keywords::Return) => {
-                // RETURN expression
-                if can_begin_expr(&self.token) {
-                    let e = self.parse_expr();
-                    hi = e.span.hi;
-                    ex = ExprRet(Some(e));
-                } else { ex = ExprRet(None); }
-            },
-            _ if self.eat_keyword(keywords::Break) => {
-                // BREAK expression
+            _ => {
+                if self.eat_keyword(keywords::Proc) {
+                    let decl = self.parse_proc_decl();
+                    let body = self.parse_expr();
+                    let fakeblock = P(ast::Block {
+                            view_items: Vec::new(),
+                            stmts: Vec::new(),
+                            expr: Some(body),
+                            id: ast::DUMMY_NODE_ID,
+                            rules: DefaultBlock,
+                            span: body.span,
+                        });
+                    return self.mk_expr(lo, body.span.hi, ExprProc(decl, fakeblock));
+                }
+                if self.eat_keyword(keywords::If) {
+                    return self.parse_if_expr();
+                }
+                if self.eat_keyword(keywords::For) {
+                    return self.parse_for_expr(None);
+                }
+                if self.eat_keyword(keywords::While) {
+                    return self.parse_while_expr();
+                }
                 if Parser::token_is_lifetime(&self.token) {
                     let lifetime = self.get_lifetime();
                     self.bump();
-                    ex = ExprBreak(Some(lifetime));
-                } else {
-                    ex = ExprBreak(None);
+                    self.expect(&token::COLON);
+                    if self.eat_keyword(keywords::For) {
+                        return self.parse_for_expr(Some(lifetime))
+                    }
+                    if self.eat_keyword(keywords::Loop) {
+                        return self.parse_loop_expr(Some(lifetime))
+                    }
+                    self.fatal("expected `for` or `loop` after a label")
                 }
-                hi = self.span.hi;
-            },
-            _ if self.token == token::MOD_SEP ||
-                is_ident(&self.token) && !self.is_keyword(keywords::True) &&
-                !self.is_keyword(keywords::False) => {
-                let pth = self.parse_path(LifetimeAndTypesWithColons).path;
-
-                // `!`, as an operator, is prefix, so we know this isn't that
-                if self.token == token::NOT {
-                    // MACRO INVOCATION expression
-                    self.bump();
-
-                    let ket = token::close_delimiter_for(&self.token)
-                        .unwrap_or_else(|| self.fatal("expected open delimiter"));
-                    self.bump();
-
-                    let tts = self.parse_seq_to_end(&ket,
-                                                    seq_sep_none(),
-                                                    |p| p.parse_token_tree());
-                    let hi = self.span.hi;
-
-                    return self.mk_mac_expr(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT));
-                } else if self.token == token::LBRACE {
-                    // This is a struct literal, unless we're prohibited from
-                    // parsing struct literals here.
-                    if self.restriction != RESTRICT_NO_STRUCT_LITERAL {
-                        // It's a struct literal.
+                if self.eat_keyword(keywords::Loop) {
+                    return self.parse_loop_expr(None);
+                }
+                if self.eat_keyword(keywords::Continue) {
+                    let lo = self.span.lo;
+                    let ex = if Parser::token_is_lifetime(&self.token) {
+                        let lifetime = self.get_lifetime();
                         self.bump();
-                        let mut fields = Vec::new();
-                        let mut base = None;
+                        ExprAgain(Some(lifetime))
+                    } else {
+                        ExprAgain(None)
+                    };
+                    let hi = self.span.hi;
+                    return self.mk_expr(lo, hi, ex);
+                }
+                if self.eat_keyword(keywords::Match) {
+                    return self.parse_match_expr();
+                }
+                if self.eat_keyword(keywords::Unsafe) {
+                    return self.parse_block_expr(
+                        lo,
+                        UnsafeBlock(ast::UserProvided));
+                }
+                if self.eat_keyword(keywords::Return) {
+                    // RETURN expression
+                    if can_begin_expr(&self.token) {
+                        let e = self.parse_expr();
+                        hi = e.span.hi;
+                        ex = ExprRet(Some(e));
+                    } else {
+                        ex = ExprRet(None);
+                    }
+                } else if self.eat_keyword(keywords::Break) {
+                    // BREAK expression
+                    if Parser::token_is_lifetime(&self.token) {
+                        let lifetime = self.get_lifetime();
+                        self.bump();
+                        ex = ExprBreak(Some(lifetime));
+                    } else {
+                        ex = ExprBreak(None);
+                    }
+                    hi = self.span.hi;
+                } else if self.token == token::MOD_SEP ||
+                        is_ident(&self.token) &&
+                        !self.is_keyword(keywords::True) &&
+                        !self.is_keyword(keywords::False) {
+                    let pth =
+                        self.parse_path(LifetimeAndTypesWithColons).path;
 
-                        while self.token != token::RBRACE {
-                            if self.eat(&token::DOTDOT) {
-                                base = Some(self.parse_expr());
-                                break;
+                    // `!`, as an operator, is prefix, so we know this isn't that
+                    if self.token == token::NOT {
+                        // MACRO INVOCATION expression
+                        self.bump();
+
+                        let ket = token::close_delimiter_for(&self.token)
+                            .unwrap_or_else(|| {
+                                self.fatal("expected open delimiter")
+                            });
+                        self.bump();
+
+                        let tts = self.parse_seq_to_end(
+                            &ket,
+                            seq_sep_none(),
+                            |p| p.parse_token_tree());
+                        let hi = self.span.hi;
+
+                        return self.mk_mac_expr(lo,
+                                                hi,
+                                                MacInvocTT(pth,
+                                                           tts,
+                                                           EMPTY_CTXT));
+                    }
+                    if self.token == token::LBRACE {
+                        // This is a struct literal, unless we're prohibited
+                        // from parsing struct literals here.
+                        if self.restriction != RESTRICT_NO_STRUCT_LITERAL {
+                            // It's a struct literal.
+                            self.bump();
+                            let mut fields = Vec::new();
+                            let mut base = None;
+
+                            while self.token != token::RBRACE {
+                                if self.eat(&token::DOTDOT) {
+                                    base = Some(self.parse_expr());
+                                    break;
+                                }
+
+                                fields.push(self.parse_field());
+                                self.commit_expr(fields.last().unwrap().expr,
+                                                 &[token::COMMA],
+                                                 &[token::RBRACE]);
                             }
 
-                            fields.push(self.parse_field());
-                            self.commit_expr(fields.last().unwrap().expr,
-                                             &[token::COMMA], &[token::RBRACE]);
-                        }
+                            if fields.len() == 0 && base.is_none() {
+                                let last_span = self.last_span;
+                                self.span_err(last_span,
+                                              "structure literal must either \
+                                              have at least one field or use \
+                                              functional structure update \
+                                              syntax");
+                            }
 
-                        if fields.len() == 0 && base.is_none() {
-                            let last_span = self.last_span;
-                            self.span_err(last_span,
-                                          "structure literal must either have at \
-                                          least one field or use functional \
-                                          structure update syntax");
+                            hi = self.span.hi;
+                            self.expect(&token::RBRACE);
+                            ex = ExprStruct(pth, fields, base);
+                            return self.mk_expr(lo, hi, ex);
                         }
-
-                        hi = self.span.hi;
-                        self.expect(&token::RBRACE);
-                        ex = ExprStruct(pth, fields, base);
-                        return self.mk_expr(lo, hi, ex);
                     }
-                }
 
-            hi = pth.span.hi;
-            ex = ExprPath(pth);
-            },
-            _ => {
-                // other literal expression
-                let lit = self.parse_lit();
-                hi = lit.span.hi;
-                ex = ExprLit(box(GC) lit);
+                    hi = pth.span.hi;
+                    ex = ExprPath(pth);
+                } else {
+                    // other literal expression
+                    let lit = self.parse_lit();
+                    hi = lit.span.hi;
+                    ex = ExprLit(box(GC) lit);
+                }
             }
         }
 
@@ -2501,37 +2516,41 @@ impl<'a> Parser<'a> {
               }
             };
           }
-          token::IDENT(_, _) if self.is_keyword(keywords::Box) => {
-            self.bump();
+          token::IDENT(_, _) => {
+              if self.is_keyword(keywords::Box) {
+                self.bump();
 
-            // Check for a place: `box(PLACE) EXPR`.
-            if self.eat(&token::LPAREN) {
-                // Support `box() EXPR` as the default.
-                if !self.eat(&token::RPAREN) {
-                    let place = self.parse_expr();
-                    self.expect(&token::RPAREN);
-                    let subexpression = self.parse_prefix_expr();
-                    hi = subexpression.span.hi;
-                    ex = ExprBox(place, subexpression);
-                    return self.mk_expr(lo, hi, ex);
+                // Check for a place: `box(PLACE) EXPR`.
+                if self.eat(&token::LPAREN) {
+                    // Support `box() EXPR` as the default.
+                    if !self.eat(&token::RPAREN) {
+                        let place = self.parse_expr();
+                        self.expect(&token::RPAREN);
+                        let subexpression = self.parse_prefix_expr();
+                        hi = subexpression.span.hi;
+                        ex = ExprBox(place, subexpression);
+                        return self.mk_expr(lo, hi, ex);
+                    }
                 }
-            }
 
-            // Otherwise, we use the unique pointer default.
-            let subexpression = self.parse_prefix_expr();
-            hi = subexpression.span.hi;
-            // HACK: turn `box [...]` into a boxed-vec
-            ex = match subexpression.node {
-                ExprVec(..) | ExprRepeat(..) => {
-                    let last_span = self.last_span;
-                    self.obsolete(last_span, ObsoleteOwnedVector);
-                    ExprVstore(subexpression, ExprVstoreUniq)
-                }
-                ExprLit(lit) if lit_is_str(lit) => {
-                    ExprVstore(subexpression, ExprVstoreUniq)
-                }
-                _ => self.mk_unary(UnUniq, subexpression)
-            };
+                // Otherwise, we use the unique pointer default.
+                let subexpression = self.parse_prefix_expr();
+                hi = subexpression.span.hi;
+                // HACK: turn `box [...]` into a boxed-vec
+                ex = match subexpression.node {
+                    ExprVec(..) | ExprRepeat(..) => {
+                        let last_span = self.last_span;
+                        self.obsolete(last_span, ObsoleteOwnedVector);
+                        ExprVstore(subexpression, ExprVstoreUniq)
+                    }
+                    ExprLit(lit) if lit_is_str(lit) => {
+                        ExprVstore(subexpression, ExprVstoreUniq)
+                    }
+                    _ => self.mk_unary(UnUniq, subexpression)
+                };
+              } else {
+                return self.parse_dot_or_call_expr()
+              }
           }
           _ => return self.parse_dot_or_call_expr()
         }
@@ -3832,17 +3851,6 @@ impl<'a> Parser<'a> {
                 }
                 SelfStatic
             }
-            token::IDENT(..) if self.is_self_ident() => {
-                let self_ident = self.expect_self_ident();
-
-                // Determine whether this is the fully explicit form, `self:
-                // TYPE`.
-                if self.eat(&token::COLON) {
-                    SelfExplicit(self.parse_ty(false), self_ident)
-                } else {
-                    SelfValue(self_ident)
-                }
-            }
             token::BINOP(token::STAR) => {
                 // Possibly "*self" or "*mut self" -- not supported. Try to avoid
                 // emitting cryptic "unexpected token" errors.
@@ -3860,30 +3868,47 @@ impl<'a> Parser<'a> {
                 // error case, making bogus self ident:
                 SelfValue(special_idents::self_)
             }
-            _ if Parser::token_is_mutability(&self.token) &&
-                    self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) => {
-                mutbl_self = self.parse_mutability();
-                let self_ident = self.expect_self_ident();
+            token::IDENT(..) => {
+                if self.is_self_ident() {
+                    let self_ident = self.expect_self_ident();
 
-                // Determine whether this is the fully explicit form, `self:
-                // TYPE`.
-                if self.eat(&token::COLON) {
-                    SelfExplicit(self.parse_ty(false), self_ident)
+                    // Determine whether this is the fully explicit form, `self:
+                    // TYPE`.
+                    if self.eat(&token::COLON) {
+                        SelfExplicit(self.parse_ty(false), self_ident)
+                    } else {
+                        SelfValue(self_ident)
+                    }
+                } else if Parser::token_is_mutability(&self.token) &&
+                        self.look_ahead(1, |t| {
+                            token::is_keyword(keywords::Self, t)
+                        }) {
+                    mutbl_self = self.parse_mutability();
+                    let self_ident = self.expect_self_ident();
+
+                    // Determine whether this is the fully explicit form,
+                    // `self: TYPE`.
+                    if self.eat(&token::COLON) {
+                        SelfExplicit(self.parse_ty(false), self_ident)
+                    } else {
+                        SelfValue(self_ident)
+                    }
+                } else if Parser::token_is_mutability(&self.token) &&
+                        self.look_ahead(1, |t| *t == token::TILDE) &&
+                        self.look_ahead(2, |t| {
+                            token::is_keyword(keywords::Self, t)
+                        }) {
+                    mutbl_self = self.parse_mutability();
+                    self.bump();
+                    drop(self.expect_self_ident());
+                    let last_span = self.last_span;
+                    self.obsolete(last_span, ObsoleteOwnedSelf);
+                    SelfStatic
                 } else {
-                    SelfValue(self_ident)
+                    SelfStatic
                 }
             }
-            _ if Parser::token_is_mutability(&self.token) &&
-                    self.look_ahead(1, |t| *t == token::TILDE) &&
-                    self.look_ahead(2, |t| token::is_keyword(keywords::Self, t)) => {
-                mutbl_self = self.parse_mutability();
-                self.bump();
-                drop(self.expect_self_ident());
-                let last_span = self.last_span;
-                self.obsolete(last_span, ObsoleteOwnedSelf);
-                SelfStatic
-            }
-            _ => SelfStatic
+            _ => SelfStatic,
         };
 
         let explicit_self_sp = mk_sp(lo, self.span.hi);
