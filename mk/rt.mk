@@ -171,6 +171,10 @@ else ifeq ($(OSTYPE_$(1)), apple-ios)
   JEMALLOC_ARGS_$(1) := --disable-tls
 else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
   LIBUV_OSTYPE_$(1) := freebsd
+else ifeq ($(OSTYPE_$(1)), unknown-dragonfly)
+  LIBUV_OSTYPE_$(1) := freebsd
+  # required on DragonFly, otherwise gyp fails with a Python exception
+  LIBUV_GYP_ARGS_$(1) := --no-parallel
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
   LIBUV_OSTYPE_$(1) := android
   LIBUV_ARGS_$(1) := PLATFORM=android host=android OS=linux
@@ -202,7 +206,7 @@ $$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS) $$(LIBUV_STAMP_$(1))
 	 $$(CFG_PYTHON) ./gyp_uv.py -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) \
 	   -D ninja \
 	   -DOS=$$(LIBUV_OSTYPE_$(1)) \
-	   -Goutput_dir=$$(@D) --generator-output $$(@D))
+	   -Goutput_dir=$$(@D) $$(LIBUV_GYP_ARGS_$(1)) --generator-output $$(@D))
 	touch $$@
 
 # Windows has a completely different build system for libuv because of mingw. In

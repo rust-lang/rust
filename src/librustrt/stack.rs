@@ -194,6 +194,10 @@ pub unsafe fn record_sp_limit(limit: uint) {
     unsafe fn target_record_sp_limit(limit: uint) {
         asm!("movq $0, %fs:24" :: "r"(limit) :: "volatile")
     }
+    #[cfg(target_arch = "x86_64", target_os = "dragonfly")] #[inline(always)]
+    unsafe fn target_record_sp_limit(limit: uint) {
+        asm!("movq $0, %fs:32" :: "r"(limit) :: "volatile")
+    }
 
     // x86
     #[cfg(target_arch = "x86", target_os = "macos")]
@@ -272,6 +276,13 @@ pub unsafe fn get_sp_limit() -> uint {
         asm!("movq %fs:24, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }
+    #[cfg(target_arch = "x86_64", target_os = "dragonfly")] #[inline(always)]
+    unsafe fn target_get_sp_limit() -> uint {
+        let limit;
+        asm!("movq %fs:32, $0" : "=r"(limit) ::: "volatile");
+        return limit;
+    }
+
 
     // x86
     #[cfg(target_arch = "x86", target_os = "macos")]
