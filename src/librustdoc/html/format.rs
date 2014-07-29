@@ -663,31 +663,27 @@ impl fmt::Show for ModuleSummary {
             context.push(m.name.as_slice());
             let path = context.connect("::");
 
-            // the total width of each row's stability summary, in pixels
-            let width = 500;
-
             try!(write!(f, "<tr>"));
-            try!(write!(f, "<td class='summary'>\
-                            <a class='summary' href='{}'>{}</a></td>",
+            try!(write!(f, "<td><a href='{}'>{}</a></td>",
                         Vec::from_slice(context.slice_from(1))
                             .append_one("index.html").connect("/"),
                         path));
-            try!(write!(f, "<td>"));
+            try!(write!(f, "<td class='summary-column'>"));
             try!(write!(f, "<span class='summary Stable' \
-                            style='width: {}px; display: inline-block'>&nbsp</span>",
-                        (width * cnt.stable)/tot));
+                            style='width: {:.4}%; display: inline-block'>&nbsp</span>",
+                        (100 * cnt.stable) as f64/tot as f64));
             try!(write!(f, "<span class='summary Unstable' \
-                            style='width: {}px; display: inline-block'>&nbsp</span>",
-                        (width * cnt.unstable)/tot));
+                            style='width: {:.4}%; display: inline-block'>&nbsp</span>",
+                        (100 * cnt.unstable) as f64/tot as f64));
             try!(write!(f, "<span class='summary Experimental' \
-                            style='width: {}px; display: inline-block'>&nbsp</span>",
-                        (width * cnt.experimental)/tot));
+                            style='width: {:.4}%; display: inline-block'>&nbsp</span>",
+                        (100 * cnt.experimental) as f64/tot as f64));
             try!(write!(f, "<span class='summary Deprecated' \
-                            style='width: {}px; display: inline-block'>&nbsp</span>",
-                        (width * cnt.deprecated)/tot));
+                            style='width: {:.4}%; display: inline-block'>&nbsp</span>",
+                        (100 * cnt.deprecated) as f64/tot as f64));
             try!(write!(f, "<span class='summary Unmarked' \
-                            style='width: {}px; display: inline-block'>&nbsp</span>",
-                        (width * cnt.unmarked)/tot));
+                            style='width: {:.4}%; display: inline-block'>&nbsp</span>",
+                        (100 * cnt.unmarked) as f64/tot as f64));
             try!(write!(f, "</td></tr>"));
 
             for submodule in m.submodules.iter() {
@@ -699,20 +695,33 @@ impl fmt::Show for ModuleSummary {
 
         let mut context = Vec::new();
 
+        let tot = self.counts.total();
+        let (stable, unstable, experimental, deprecated, unmarked) = if tot == 0 {
+            (0, 0, 0, 0, 0)
+        } else {
+            ((100 * self.counts.stable)/tot,
+             (100 * self.counts.unstable)/tot,
+             (100 * self.counts.experimental)/tot,
+             (100 * self.counts.deprecated)/tot,
+             (100 * self.counts.unmarked)/tot)
+        };
+
         try!(write!(f,
-r"<h1 class='fqn'>Stability dashboard: crate <a class='mod' href='index.html'>{}</a></h1>
+r"<h1 class='fqn'>Stability dashboard: crate <a class='mod' href='index.html'>{name}</a></h1>
 This dashboard summarizes the stability levels for all of the public modules of
-the crate, according to the total number of items at each level in the module and its children:
+the crate, according to the total number of items at each level in the module and
+its children (percentages total for {name}):
 <blockquote>
-<a class='stability Stable'></a> stable,<br/>
-<a class='stability Unstable'></a> unstable,<br/>
-<a class='stability Experimental'></a> experimental,<br/>
-<a class='stability Deprecated'></a> deprecated,<br/>
-<a class='stability Unmarked'></a> unmarked
+<a class='stability Stable'></a> stable ({}%),<br/>
+<a class='stability Unstable'></a> unstable ({}%),<br/>
+<a class='stability Experimental'></a> experimental ({}%),<br/>
+<a class='stability Deprecated'></a> deprecated ({}%),<br/>
+<a class='stability Unmarked'></a> unmarked ({}%)
 </blockquote>
 The counts do not include methods or trait
 implementations that are visible only through a re-exported type.",
-self.name));
+stable, unstable, experimental, deprecated, unmarked,
+name=self.name));
         try!(write!(f, "<table>"))
         try!(fmt_inner(f, &mut context, self));
         write!(f, "</table>")

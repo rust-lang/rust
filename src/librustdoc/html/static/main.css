@@ -407,7 +407,7 @@ h1 .stability {
 .stability.Stable { border-color: #54A759; color: #2D8632; }
 .stability.Frozen { border-color: #009431; color: #007726; }
 .stability.Locked { border-color: #0084B6; color: #00668c; }
-.stability.Unmarked { border-color: #FFFFFF; }
+.stability.Unmarked { border-color: #BBBBBB; }
 
 .summary {
     padding-right: 0px;
@@ -416,7 +416,7 @@ h1 .stability {
 .summary.Experimental { background-color: #D46D6A; }
 .summary.Unstable { background-color: #D4B16A; }
 .summary.Stable { background-color: #54A759; }
-.summary.Unmarked { background-color: #FFFFFF; }
+.summary.Unmarked { background-color: #BBBBBB; }
 
 :target { background: #FDFFD3; }
 
