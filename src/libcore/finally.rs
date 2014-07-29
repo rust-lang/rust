@@ -72,7 +72,7 @@ impl<T> Finally<T> for fn() -> T {
  * function could have failed at any point, so the values of the shared
  * state may be inconsistent.
  *
- * # Example
+ * ## Example
  *
  * ```
  * use std::finally::try_finally;

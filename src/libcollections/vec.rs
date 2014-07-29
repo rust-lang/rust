@@ -33,7 +33,7 @@ pub static PTR_MARKER: u8 = 0;
 
 /// An owned, growable vector.
 ///
-/// # Examples
+/// ## Examples
 ///
 /// ```
 /// let mut vec = Vec::new();
@@ -84,7 +84,7 @@ pub static PTR_MARKER: u8 = 0;
 /// }
 /// ```
 ///
-/// # Capacity and reallocation
+/// ## Capacity and reallocation
 ///
 /// The capacity of a vector is the amount of space allocated for any future
 /// elements that will be added onto the vector. This is not to be confused
@@ -112,7 +112,7 @@ impl<T> Vec<T> {
     ///
     /// The vector will not allocate until elements are pushed onto it.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec: Vec<int> = Vec::new();
@@ -137,7 +137,7 @@ impl<T> Vec<T> {
     /// the main `Vec` docs above, 'Capacity and reallocation'.) To create
     /// a vector of a given length, use `Vec::from_elem` or `Vec::from_fn`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec: Vec<int> = Vec::with_capacity(10);
@@ -172,7 +172,7 @@ impl<T> Vec<T> {
     /// Creates a `Vec` of size `length` and initializes the elements to the
     /// value returned by the closure `op`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = Vec::from_fn(3, |idx| idx * 2);
@@ -201,7 +201,7 @@ impl<T> Vec<T> {
     ///   beginning of that allocation
     /// - `ptr` must be allocated by the default `Vec` allocator
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::ptr;
@@ -242,7 +242,7 @@ impl<T> Vec<T> {
     /// satisfy `f` and all elements of `B` do not. The order of elements is
     /// preserved.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2i, 3i, 4i];
@@ -271,7 +271,7 @@ impl<T: Clone> Vec<T> {
     /// Iterates over the `second` vector, copying each element and appending it to
     /// the `first`. Afterwards, the `first` is then returned for use again.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2i];
@@ -286,7 +286,7 @@ impl<T: Clone> Vec<T> {
 
     /// Constructs a `Vec` by cloning elements of a slice.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let slice = [1i, 2, 3];
@@ -303,7 +303,7 @@ impl<T: Clone> Vec<T> {
     ///
     /// Creates a `Vec` with `length` copies of `value`.
     ///
-    /// # Example
+    /// ## Example
     /// ```
     /// let vec = Vec::from_elem(3, "hi");
     /// println!("{}", vec); // prints [hi, hi, hi]
@@ -327,7 +327,7 @@ impl<T: Clone> Vec<T> {
     /// Iterates over the slice `other`, clones each element, and then appends
     /// it to this `Vec`. The `other` vector is traversed in-order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i];
@@ -357,7 +357,7 @@ impl<T: Clone> Vec<T> {
     ///
     /// Adds `n` copies of `value` to the `Vec`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec!["hello"];
@@ -381,7 +381,7 @@ impl<T: Clone> Vec<T> {
     /// end of the vector, expands the vector by replicating `initval` to fill
     /// the intervening space.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec!["a", "b", "c"];
@@ -403,7 +403,7 @@ impl<T: Clone> Vec<T> {
     /// `(A,B)`, where all elements of `A` satisfy `f` and all elements of `B`
     /// do not. The order of elements is preserved.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2, 3, 4];
@@ -553,7 +553,7 @@ impl<T> Vec<T> {
     /// Returns the number of elements the vector can hold without
     /// reallocating.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec: Vec<int> = Vec::with_capacity(10);
@@ -567,11 +567,11 @@ impl<T> Vec<T> {
      /// Reserves capacity for at least `n` additional elements in the given
      /// vector.
      ///
-     /// # Failure
+     /// ## Failure
      ///
      /// Fails if the new capacity overflows `uint`.
      ///
-     /// # Example
+     /// ## Example
      ///
      /// ```
      /// let mut vec: Vec<int> = vec![1i];
@@ -596,7 +596,7 @@ impl<T> Vec<T> {
     /// If the capacity for `self` is already equal to or greater than the
     /// requested capacity, then no action is taken.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
@@ -614,7 +614,7 @@ impl<T> Vec<T> {
     /// If the capacity for `self` is already equal to or greater than the
     /// requested capacity, then no action is taken.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec: Vec<int> = Vec::with_capacity(10);
@@ -637,7 +637,7 @@ impl<T> Vec<T> {
 
     /// Shrink the capacity of the vector as much as possible
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
@@ -669,7 +669,7 @@ impl<T> Vec<T> {
     /// Appends one element to the vector provided. The vector itself is then
     /// returned for use again.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2];
@@ -687,7 +687,7 @@ impl<T> Vec<T> {
     /// If `len` is greater than the vector's current length, this has no
     /// effect.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
@@ -708,7 +708,7 @@ impl<T> Vec<T> {
 
     /// Work with `self` as a mutable slice.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// fn foo(slice: &mut [int]) {}
@@ -730,7 +730,7 @@ impl<T> Vec<T> {
     /// value out of the vector (from start to end). The vector cannot
     /// be used after calling this.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let v = vec!["a".to_string(), "b".to_string()];
@@ -757,7 +757,7 @@ impl<T> Vec<T> {
     /// modifying its buffers, so it is up to the caller to ensure that the
     /// vector is actually the specified size.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut v = vec![1u, 2, 3, 4];
@@ -772,11 +772,11 @@ impl<T> Vec<T> {
 
     /// Returns a reference to the value at index `index`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if `index` is out of bounds
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// #![allow(deprecated)]
@@ -792,11 +792,11 @@ impl<T> Vec<T> {
 
     /// Returns a mutable reference to the value at index `index`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if `index` is out of bounds
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
@@ -811,7 +811,7 @@ impl<T> Vec<T> {
     /// Returns an iterator over references to the elements of the vector in
     /// order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2, 3];
@@ -828,7 +828,7 @@ impl<T> Vec<T> {
     /// Returns an iterator over mutable references to the elements of the
     /// vector in order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
@@ -846,7 +846,7 @@ impl<T> Vec<T> {
     /// This sort is `O(n log n)` worst-case and stable, but allocates
     /// approximately `2 * n`, where `n` is the length of `self`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut v = vec![5i, 4, 1, 3, 2];
@@ -864,12 +864,12 @@ impl<T> Vec<T> {
 
     /// Returns a slice of self spanning the interval [`start`, `end`).
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails when the slice (or part of it) is outside the bounds of self, or when
     /// `start` > `end`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2, 3, 4];
@@ -882,11 +882,11 @@ impl<T> Vec<T> {
 
     /// Returns a slice containing all but the first element of the vector.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails when the vector is empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2, 3];
@@ -899,11 +899,11 @@ impl<T> Vec<T> {
 
     /// Returns all but the first `n' elements of a vector.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails when there are fewer than `n` elements in the vector.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2, 3, 4];
@@ -917,7 +917,7 @@ impl<T> Vec<T> {
     /// Returns a reference to the last element of a vector, or `None` if it is
     /// empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2, 3];
@@ -931,7 +931,7 @@ impl<T> Vec<T> {
     /// Returns a mutable reference to the last element of a vector, or `None`
     /// if it is empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
@@ -948,7 +948,8 @@ impl<T> Vec<T> {
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
-    /// # Example
+    /// ## Example
+    ///
     /// ```
     /// let mut v = vec!["foo".to_string(), "bar".to_string(),
     ///                  "baz".to_string(), "qux".to_string()];
@@ -974,12 +975,12 @@ impl<T> Vec<T> {
 
     /// Prepend an element to the vector.
     ///
-    /// # Warning
+    /// ## Warning
     ///
     /// This is an O(n) operation as it requires copying every element in the
     /// vector.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```ignore
     /// let mut vec = vec![1i, 2, 3];
@@ -995,12 +996,12 @@ impl<T> Vec<T> {
     /// Removes the first element from a vector and returns it, or `None` if
     /// the vector is empty.
     ///
-    /// # Warning
+    /// ## Warning
     ///
     /// This is an O(n) operation as it requires copying every element in the
     /// vector.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
@@ -1016,12 +1017,12 @@ impl<T> Vec<T> {
     /// Insert an element at position `index` within the vector, shifting all
     /// elements after position i one position to the right.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if `index` is not between `0` and the vector's length (both
     /// bounds inclusive).
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
@@ -1055,7 +1056,7 @@ impl<T> Vec<T> {
     /// shifting all elements after position `index` one position to the left.
     /// Returns `None` if `i` is out of bounds.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut v = vec![1i, 2, 3];
@@ -1094,7 +1095,7 @@ impl<T> Vec<T> {
     /// illegal to use the `other` vector after calling this method
     /// (because it is moved here).
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![box 1i];
@@ -1108,12 +1109,12 @@ impl<T> Vec<T> {
 
     /// Returns a mutable slice of `self` between `start` and `end`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails when `start` or `end` point outside the bounds of `self`, or when
     /// `start` > `end`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
@@ -1127,11 +1128,11 @@ impl<T> Vec<T> {
 
     /// Returns a mutable slice of self from `start` to the end of the vec.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails when `start` points outside the bounds of self.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
@@ -1144,11 +1145,11 @@ impl<T> Vec<T> {
 
     /// Returns a mutable slice of self from the start of the vec to `end`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails when `end` points outside the bounds of self.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
@@ -1165,11 +1166,11 @@ impl<T> Vec<T> {
     /// the index `mid` itself) and the second will contain all
     /// indices from `[mid, len)` (excluding the index `len` itself).
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if `mid > len`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4, 5, 6];
@@ -1200,7 +1201,7 @@ impl<T> Vec<T> {
 
     /// Reverse the order of elements in a vector, in place.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut v = vec![1i, 2, 3];
@@ -1214,11 +1215,11 @@ impl<T> Vec<T> {
 
     /// Returns a slice of `self` from `start` to the end of the vec.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails when `start` points outside the bounds of self.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2, 3];
@@ -1231,11 +1232,11 @@ impl<T> Vec<T> {
 
     /// Returns a slice of self from the start of the vec to `end`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails when `end` points outside the bounds of self.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2, 3, 4];
@@ -1248,11 +1249,11 @@ impl<T> Vec<T> {
 
     /// Returns a slice containing all but the last element of the vector.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the vector is empty
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2, 3];
@@ -1272,7 +1273,7 @@ impl<T> Vec<T> {
     /// Modifying the vector may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let v = vec![1i, 2, 3];
@@ -1297,7 +1298,7 @@ impl<T> Vec<T> {
     /// Modifying the vector may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::ptr;
@@ -1320,7 +1321,7 @@ impl<T> Vec<T> {
     /// In other words, remove all elements `e` such that `f(&e)` returns false.
     /// This method operates in place and preserves the order the retained elements.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
@@ -1351,7 +1352,7 @@ impl<T> Vec<T> {
     /// The vector is grown by `n` elements. The i-th new element are initialized to the value
     /// returned by `f(i)` where `i` is in the range [0, n).
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![0u, 1];
@@ -1372,7 +1373,7 @@ impl<T:Ord> Vec<T> {
     /// This sort is `O(n log n)` worst-case and stable, but allocates
     /// approximately `2 * n`, where `n` is the length of `self`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![3i, 1, 2];
@@ -1394,7 +1395,7 @@ impl<T> Mutable for Vec<T> {
 impl<T:PartialEq> Vec<T> {
     /// Return true if a vector contains an element with the given value
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let vec = vec![1i, 2, 3];
@@ -1409,7 +1410,7 @@ impl<T:PartialEq> Vec<T> {
     ///
     /// If the vector is sorted, this removes all duplicates.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 2, 3, 2];
@@ -1504,7 +1505,7 @@ impl<T:PartialEq> Vec<T> {
 impl<T> Vector<T> for Vec<T> {
     /// Work with `self` as a slice.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// fn foo(slice: &[int]) {}
@@ -1559,11 +1560,11 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
 impl<T> MutableSeq<T> for Vec<T> {
     /// Append an element to the back of a collection.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the number of elements in the vector overflows a `uint`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let mut vec = vec!(1i, 2);

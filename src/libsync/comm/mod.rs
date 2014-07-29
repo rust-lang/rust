@@ -69,7 +69,7 @@
 //! program is running on libnative and another is running on libgreen, they can
 //! still communicate with one another using channels.
 //!
-//! # Example
+//! ## Example
 //!
 //! Simple usage:
 //!
@@ -312,7 +312,7 @@
 // believe that there is anything fundamental which needs to change about these
 // channels, however, in order to support a more efficient select().
 //
-// # Conclusion
+// ## Conclusion
 //
 // And now that you've seen all the races that I found and attempted to fix,
 // here's the code for you to find some more!
@@ -468,7 +468,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// All data sent on the sender will become available on the receiver, and no
 /// send will block the calling task (this channel has an "infinite buffer").
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// let (tx, rx) = channel();
@@ -505,7 +505,7 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// As with asynchronous channels, all senders will fail in `send` if the
 /// `Receiver` has been destroyed.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// let (tx, rx) = sync_channel(1);
@@ -546,7 +546,7 @@ impl<T: Send> Sender<T> {
     ///
     /// Rust channels are infinitely buffered so this method will never block.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// This function will fail if the other end of the channel has hung up.
     /// This means that if the corresponding receiver has fallen out of scope,
@@ -581,12 +581,12 @@ impl<T: Send> Sender<T> {
     ///
     /// Like `send`, this method will never block.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// This method will never fail, it will return the message back to the
     /// caller if the other end is disconnected
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let (tx, rx) = channel();
@@ -727,7 +727,7 @@ impl<T: Send> SyncSender<T> {
     /// time. If the buffer size is 0, however, it can be guaranteed that the
     /// receiver has indeed received the data if this function returns success.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Similarly to `Sender::send`, this function will fail if the
     /// corresponding `Receiver` for this channel has disconnected. This
@@ -752,7 +752,7 @@ impl<T: Send> SyncSender<T> {
     /// is returned back to the callee. This function is similar to `try_send`,
     /// except that it will block if the channel is currently full.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// This function cannot fail.
     #[unstable = "this function may be renamed to send() in the future"]
@@ -770,7 +770,7 @@ impl<T: Send> SyncSender<T> {
     /// See `SyncSender::send` for notes about guarantees of whether the
     /// receiver has received the data or not if this function is successful.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// This function cannot fail
     #[unstable = "the return type of this function is candidate for \
@@ -810,7 +810,7 @@ impl<T: Send> Receiver<T> {
     /// on the channel from its paired `Sender` structure. This receiver will
     /// be woken up when data is ready, and the data will be returned.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Similar to channels, this method will trigger a task failure if the
     /// other end of the channel has hung up (been deallocated). The purpose of

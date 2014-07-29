@@ -14,7 +14,7 @@
 // control *just how much* you want to resolve and how you want to do
 // it.
 //
-// # Controlling the scope of resolution
+// ## Controlling the scope of resolution
 //
 // The options resolve_* determine what kinds of variables get
 // resolved.  Generally resolution starts with a top-level type
@@ -30,7 +30,7 @@
 // whether we resolve floating point and integral variables,
 // respectively.
 //
-// # What do if things are unconstrained
+// ## What do if things are unconstrained
 //
 // Sometimes we will encounter a variable that has no constraints, and
 // therefore cannot sensibly be mapped to any particular result.  By
@@ -39,7 +39,7 @@
 // resolution to fail in this case instead, except for the case of
 // integral variables, which resolve to `int` if forced.
 //
-// # resolve_all and force_all
+// ## resolve_all and force_all
 //
 // The options are a bit set, so you can use the *_all to resolve or
 // force all kinds of variables (including those we may add in the

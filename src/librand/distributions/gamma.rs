@@ -34,7 +34,7 @@ use super::{IndependentSample, Sample, Exp};
 /// == 1`, and using the boosting technique described in [1] for
 /// `shape < 1`.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::rand;
@@ -181,7 +181,7 @@ impl IndependentSample<f64> for GammaLargeShape {
 /// `k`, this uses the equivalent characterisation `χ²(k) = Gamma(k/2,
 /// 2)`.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::rand;
@@ -238,7 +238,7 @@ impl IndependentSample<f64> for ChiSquared {
 /// chi-squared distributions, that is, `F(m,n) = (χ²(m)/m) /
 /// (χ²(n)/n)`.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::rand;
@@ -282,7 +282,7 @@ impl IndependentSample<f64> for FisherF {
 /// The Student t distribution, `t(nu)`, where `nu` is the degrees of
 /// freedom.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::rand;

@@ -105,7 +105,7 @@ pub fn is_digit(c: char) -> bool {
 /// A full reference can be found here
 /// http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
 ///
-/// # Return value
+/// ## Return value
 ///
 /// Returns the char itself if no conversion was made
 #[inline]
@@ -118,7 +118,7 @@ pub fn to_uppercase(c: char) -> char {
 /// The case-folding performed is the common or simple mapping
 /// see `to_uppercase` for references and more information
 ///
-/// # Return value
+/// ## Return value
 ///
 /// Returns the char itself if no conversion if possible
 #[inline]
@@ -201,7 +201,7 @@ pub trait UnicodeChar {
     /// The case-folding performed is the common or simple mapping. See
     /// `to_uppercase()` for references and more information.
     ///
-    /// # Return value
+    /// ## Return value
     ///
     /// Returns the lowercase equivalent of the character, or the character
     /// itself if no conversion is possible.
@@ -217,7 +217,7 @@ pub trait UnicodeChar {
     ///
     /// A full reference can be found here [2].
     ///
-    /// # Return value
+    /// ## Return value
     ///
     /// Returns the uppercase equivalent of the character, or the character
     /// itself if no conversion was made.

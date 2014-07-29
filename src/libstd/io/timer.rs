@@ -29,7 +29,7 @@ use rt::rtio::{IoFactory, LocalIo, RtioTimer, Callback};
 /// period of time. Handles to this timer can also be created in the form of
 /// receivers which will receive notifications over time.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// # fn main() {}
@@ -107,7 +107,7 @@ impl Timer {
     /// invalidated at the end of that statement, and all `recv` calls will
     /// fail.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::io::Timer;
@@ -149,7 +149,7 @@ impl Timer {
     /// invalidated at the end of that statement, and all `recv` calls will
     /// fail.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::io::Timer;

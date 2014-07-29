@@ -35,7 +35,7 @@ pub struct String {
 impl String {
     /// Creates a new string buffer initialized with the empty string.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::new();
@@ -51,7 +51,7 @@ impl String {
     /// The string will be able to hold exactly `capacity` bytes without
     /// reallocating. If `capacity` is 0, the string will not allocate.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::with_capacity(10);
@@ -65,7 +65,7 @@ impl String {
 
     /// Creates a new string buffer from the given string.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let s = String::from_str("hello");
@@ -98,7 +98,7 @@ impl String {
     /// Returns `Err` with the original vector if the vector contains invalid
     /// UTF-8.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let hello_vec = vec![104, 101, 108, 108, 111];
@@ -121,7 +121,7 @@ impl String {
     /// Converts a vector of bytes to a new utf-8 string.
     /// Any invalid utf-8 sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let input = b"Hello \xF0\x90\x80World";
@@ -247,7 +247,7 @@ impl String {
     /// Decode a UTF-16 encoded vector `v` into a `String`, returning `None`
     /// if `v` contains any invalid data.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// // 𝄞music
@@ -273,7 +273,7 @@ impl String {
     /// Decode a UTF-16 encoded vector `v` into a string, replacing
     /// invalid data with the replacement character (U+FFFD).
     ///
-    /// # Example
+    /// ## Example
     /// ```rust
     /// // 𝄞mus<invalid>ic<invalid>
     /// let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
@@ -289,7 +289,7 @@ impl String {
 
     /// Convert a vector of chars to a string.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let chars = ['h', 'e', 'l', 'l', 'o'];
@@ -303,7 +303,7 @@ impl String {
 
     /// Return the underlying byte buffer, encoded as UTF-8.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let s = String::from_str("hello");
@@ -318,7 +318,7 @@ impl String {
     /// Pushes the given string onto this buffer; then, returns `self` so that it can be used
     /// again.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let s = String::from_str("hello");
@@ -335,7 +335,7 @@ impl String {
 
     /// Creates a string buffer by repeating a character `length` times.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let s = String::from_char(5, 'a');
@@ -359,11 +359,11 @@ impl String {
 
     /// Convert a byte to a UTF-8 string.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if invalid UTF-8
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let s = String::from_byte(104);
@@ -376,7 +376,7 @@ impl String {
 
     /// Pushes the given string onto this string buffer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("foo");
@@ -390,7 +390,7 @@ impl String {
 
     /// Push `ch` onto the given string `count` times.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("foo");
@@ -406,7 +406,7 @@ impl String {
 
     /// Returns the number of bytes that this string buffer can hold without reallocating.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let s = String::with_capacity(10);
@@ -419,7 +419,7 @@ impl String {
 
     /// Reserves capacity for at least `extra` additional bytes in this string buffer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::with_capacity(10);
@@ -434,7 +434,7 @@ impl String {
 
     /// Reserves capacity for at least `capacity` bytes in this string buffer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::new();
@@ -448,7 +448,7 @@ impl String {
 
     /// Reserves capacity for exactly `capacity` bytes in this string buffer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::new();
@@ -462,7 +462,7 @@ impl String {
 
     /// Shrinks the capacity of this string buffer to match its length.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("foo");
@@ -478,7 +478,7 @@ impl String {
 
     /// Adds the given character to the end of the string.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("abc");
@@ -509,7 +509,7 @@ impl String {
     /// This is unsafe because it does not check
     /// to ensure that the resulting string will be valid UTF-8.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::new();
@@ -525,7 +525,7 @@ impl String {
 
     /// Works with the underlying buffer as a byte slice.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let s = String::from_str("hello");
@@ -541,7 +541,7 @@ impl String {
     /// This is unsafe because it does not check
     /// to ensure that the resulting string will be valid UTF-8.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("hello");
@@ -560,11 +560,11 @@ impl String {
 
     /// Shorten a string to the specified length.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if `len` > current length.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("hello");
@@ -582,7 +582,7 @@ impl String {
     /// This is unsafe because it does not check
     /// to ensure that the resulting string will be valid UTF-8.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("hell");
@@ -602,7 +602,7 @@ impl String {
     /// This is unsafe because it does not check
     /// to ensure that the resulting string will be valid UTF-8.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("foo");
@@ -628,7 +628,7 @@ impl String {
     /// Removes the last character from the string buffer and returns it.
     /// Returns `None` if this string buffer is empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("foo");
@@ -657,7 +657,7 @@ impl String {
     /// This is unsafe because it does not check
     /// to ensure that the resulting string will be valid UTF-8.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("foo");
@@ -675,11 +675,11 @@ impl String {
     /// Removes the first character from the string buffer and returns it.
     /// Returns `None` if this string buffer is empty.
     ///
-    /// # Warning
+    /// ## Warning
     ///
     /// This is a O(n) operation as it requires copying every element in the buffer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("foo");
@@ -708,7 +708,7 @@ impl String {
     /// This is unsafe because it does not check
     /// to ensure that the resulting string will be valid UTF-8.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut s = String::from_str("hello");

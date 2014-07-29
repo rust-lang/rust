@@ -136,7 +136,7 @@ impl<T> RingBuf<T> {
     ///
     /// Fails if there is no element with the given index
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -159,7 +159,7 @@ impl<T> RingBuf<T> {
     ///
     /// Fails if there is no element with the given index
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -185,7 +185,7 @@ impl<T> RingBuf<T> {
     ///
     /// Fails if there is no element with the given index
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -215,7 +215,7 @@ impl<T> RingBuf<T> {
     /// doing nothing if `self`'s capacity is already equal to or greater
     /// than the requested capacity
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * n - The number of elements to reserve space for
     pub fn reserve_exact(&mut self, n: uint) {
@@ -229,7 +229,7 @@ impl<T> RingBuf<T> {
     /// Do nothing if `self`'s capacity is already equal to or greater
     /// than the requested capacity.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * n - The number of elements to reserve space for
     pub fn reserve(&mut self, n: uint) {
@@ -238,7 +238,7 @@ impl<T> RingBuf<T> {
 
     /// Front-to-back iterator.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -255,7 +255,7 @@ impl<T> RingBuf<T> {
 
     /// Front-to-back iterator which returns mutable values.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::RingBuf;

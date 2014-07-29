@@ -105,7 +105,8 @@ pub mod compat {
 
     /// Macro for creating a compatibility fallback for a Windows function
     ///
-    /// # Example
+    /// ## Example
+    ///
     /// ```
     /// compat_fn!(adll32::SomeFunctionW(_arg: LPCWSTR) {
     ///     // Fallback implementation

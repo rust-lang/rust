@@ -106,7 +106,7 @@ pub mod marker {
     /// *Note:* It is very unusual to have to add a covariant constraint.
     /// If you are not sure, you probably want to use `InvariantType`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// Given a struct `S` that includes a type parameter `T`
     /// but does not actually *reference* that type parameter:
@@ -147,7 +147,7 @@ pub mod marker {
     /// *Note:* It is very unusual to have to add a contravariant constraint.
     /// If you are not sure, you probably want to use `InvariantType`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// Given a struct `S` that includes a type parameter `T`
     /// but does not actually *reference* that type parameter:
@@ -187,7 +187,7 @@ pub mod marker {
     /// For more information about variance, refer to this Wikipedia
     /// article <http://en.wikipedia.org/wiki/Variance_%28computer_science%29>.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// The Cell type is an example which uses unsafe code to achieve
     /// "interior" mutability:

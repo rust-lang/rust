@@ -203,7 +203,7 @@ impl Uuid {
 
     /// Creates a UUID using the supplied field values
     ///
-    /// # Arguments
+    /// ## Arguments
     /// * `d1` A 32-bit word
     /// * `d2` A 16-bit word
     /// * `d3` A 16-bit word
@@ -229,7 +229,7 @@ impl Uuid {
 
     /// Creates a UUID using the supplied bytes
     ///
-    /// # Arguments
+    /// ## Arguments
     /// * `b` An array or slice of 16 bytes
     pub fn from_bytes(b: &[u8]) -> Option<Uuid> {
         if b.len() != 16 {

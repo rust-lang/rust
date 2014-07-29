@@ -276,7 +276,7 @@ impl<T> DList<T> {
     ///
     /// If the list is empty, do nothing.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -303,7 +303,7 @@ impl<T> DList<T> {
     ///
     /// If the list is empty, do nothing.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -330,7 +330,7 @@ impl<T> DList<T> {
     ///
     /// O(1)
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -371,7 +371,7 @@ impl<T> DList<T> {
     ///
     /// O(1)
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -400,7 +400,7 @@ impl<T> DList<T> {
     ///
     /// O(N)
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::DList;

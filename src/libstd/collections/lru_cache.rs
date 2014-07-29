@@ -14,7 +14,7 @@
 //! (where "used" means a look-up or putting the pair into the cache)
 //! pair is automatically removed.
 //!
-//! # Example
+//! ## Example
 //!
 //! ```rust
 //! use std::collections::LruCache;
@@ -93,7 +93,7 @@ impl<K, V> LruEntry<K, V> {
 impl<K: Hash + Eq, V> LruCache<K, V> {
     /// Create an LRU Cache that holds at most `capacity` items.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::LruCache;
@@ -114,7 +114,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
 
     /// Put a key-value pair into cache.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::LruCache;
@@ -157,7 +157,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
 
     /// Return a value corresponding to the key in the cache.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::LruCache;
@@ -191,7 +191,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
 
     /// Remove and return a value corresponding to the key from the cache.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::LruCache;
@@ -213,7 +213,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
 
     /// Return the maximum number of key-value pairs the cache can hold.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::LruCache;
@@ -227,7 +227,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     /// Change the number of key-value pairs the cache can hold. Remove
     /// least-recently-used key-value pairs if necessary.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::LruCache;

@@ -15,7 +15,7 @@
 //! didn't exactly turn out very cleanly. If you, too, are new to named pipes,
 //! read on as I'll try to explain some fun things that I ran into.
 //!
-//! # Unix pipes vs Named pipes
+//! ## Unix pipes vs Named pipes
 //!
 //! As with everything else, named pipes on windows are pretty different from
 //! unix pipes on unix. On unix, you use one "server pipe" to accept new client
@@ -25,7 +25,7 @@
 //! or not. Once attached to a client, a server pipe may then disconnect at a
 //! later date.
 //!
-//! # Accepting clients
+//! ## Accepting clients
 //!
 //! As with most other I/O interfaces, our Listener/Acceptor/Stream interfaces
 //! are built around the unix flavors. This means that we have one "server
@@ -42,7 +42,7 @@
 //! This model ends up having a small race or two, and you can find more details
 //! on the `native_accept` method.
 //!
-//! # Simultaneous reads and writes
+//! ## Simultaneous reads and writes
 //!
 //! In testing, I found that two simultaneous writes and two simultaneous reads
 //! on a pipe ended up working out just fine, but problems were encountered when
@@ -77,7 +77,7 @@
 //!   ConnectNamedPipe function is nonblocking, implying that the Listener needs
 //!   to have yet another event to do the actual blocking.
 //!
-//! # Conclusion
+//! ## Conclusion
 //!
 //! The conclusion here is that I probably don't know the best way to work with
 //! windows named pipes, but the solution here seems to work well enough to get

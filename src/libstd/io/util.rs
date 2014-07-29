@@ -34,7 +34,7 @@ impl<R: Reader> LimitReader<R> {
     /// Returns the number of bytes that can be read before the `LimitReader`
     /// will return EOF.
     ///
-    /// # Note
+    /// ## Note
     ///
     /// The reader may reach EOF after reading fewer bytes than indicated by
     /// this method if the underlying reader reaches EOF.

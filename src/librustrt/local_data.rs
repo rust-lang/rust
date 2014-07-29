@@ -140,12 +140,12 @@ impl<T: 'static> KeyValue<T> {
     /// If this key is already present in TLS, then the previous value is
     /// replaced with the provided data, and then returned.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// This function will fail if this key is present in TLS and currently on
     /// loan with the `get` method.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// local_data_key!(foo: int)
@@ -214,7 +214,7 @@ impl<T: 'static> KeyValue<T> {
     /// loan on this TLS key. While on loan, this key cannot be altered via the
     /// `replace` method.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// local_data_key!(key: int)

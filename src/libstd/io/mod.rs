@@ -292,7 +292,7 @@ pub type IoResult<T> = Result<T, IoError>;
 
 /// The type passed to I/O condition handlers to indicate error
 ///
-/// # FIXME
+/// ## FIXME
 ///
 /// Is something like this sufficient? It's kind of archaic
 #[deriving(PartialEq, Eq, Clone)]
@@ -540,14 +540,14 @@ pub trait Reader {
     /// Returns the number of bytes read. The number of bytes read may
     /// be less than the number requested, even 0. Returns `Err` on EOF.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// If an error occurs during this I/O operation, then it is returned as
     /// `Err(IoError)`. Note that end-of-file is considered an error, and can be
     /// inspected for in the error's `kind` field. Also note that reading 0
     /// bytes is not considered an error in all circumstances
     ///
-    /// # Implementation Note
+    /// ## Implementation Note
     ///
     /// When implementing this method on a new Reader, you are strongly encouraged
     /// not to return 0 if you can avoid it.
@@ -562,7 +562,7 @@ pub trait Reader {
     /// read. If `read` returns 0 too many times, `NoProgress` will be
     /// returned.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// If an error occurs at any point, that error is returned, and no further
     /// bytes are read.
@@ -606,7 +606,7 @@ pub trait Reader {
     /// Returns the number of bytes read. The number of bytes read may be
     /// less than the number requested, even 0. Returns Err on EOF.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// If an error occurs during this I/O operation, then it is returned
     /// as `Err(IoError)`. See `read()` for more details.
@@ -630,7 +630,7 @@ pub trait Reader {
     /// read. If `read` returns 0 too many times, `NoProgress` will be
     /// returned.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// If an error occurs at any point, that error is returned, and no further
     /// bytes are read.
@@ -662,7 +662,7 @@ pub trait Reader {
     /// Reads exactly `len` bytes and gives you back a new vector of length
     /// `len`
     ///
-    /// # Error
+    /// ## Error
     ///
     /// Fails with the same conditions as `read`. Additionally returns error
     /// on EOF. Note that if an error is returned, then some number of bytes may
@@ -679,7 +679,7 @@ pub trait Reader {
 
     /// Reads all remaining bytes from the stream.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// Returns any non-EOF error immediately. Previously read bytes are
     /// discarded when an error is returned.
@@ -700,7 +700,7 @@ pub trait Reader {
     /// Reads all of the remaining bytes of this stream, interpreting them as a
     /// UTF-8 encoded stream. The corresponding string is returned.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// This function returns all of the same errors as `read_to_end` with an
     /// additional error if the reader's contents are not a valid sequence of
@@ -717,7 +717,7 @@ pub trait Reader {
     /// Create an iterator that reads a single byte on
     /// each iteration, until EOF.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// Any error other than `EndOfFile` that is produced by the underlying Reader
     /// is returned by the iterator and should be handled by the caller.
@@ -957,7 +957,7 @@ impl<'a> Reader for &'a mut Reader {
 /// Similar to `slice()` except this function only bounds the slice on the
 /// capacity of `v`, not the length.
 ///
-/// # Failure
+/// ## Failure
 ///
 /// Fails when `start` or `end` point outside the capacity of `v`, or when
 /// `start` > `end`.
@@ -978,7 +978,7 @@ unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -
 /// A `RefReader` is a struct implementing `Reader` which contains a reference
 /// to another reader. This is often useful when composing streams.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// # fn main() {}
@@ -1031,7 +1031,7 @@ fn extend_sign(val: u64, nbytes: uint) -> i64 {
 pub trait Writer {
     /// Write the entirety of a given buffer
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// If an error happens during the I/O operation, the error is returned as
     /// `Err`. Note that it is considered an error if the entire buffer could
@@ -1053,7 +1053,7 @@ pub trait Writer {
     /// macro, but it is rare that this should explicitly be called. The
     /// `write!` macro should be favored to invoke this method instead.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// This function will return any I/O error reported while formatting.
     fn write_fmt(&mut self, fmt: &fmt::Arguments) -> IoResult<()> {
@@ -1296,7 +1296,7 @@ impl<'a> Writer for &'a mut Writer {
 /// A `RefWriter` is a struct implementing `Writer` which contains a reference
 /// to another writer. This is often useful when composing streams.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// # fn main() {}
@@ -1340,13 +1340,13 @@ impl<T: Reader + Writer> Stream for T {}
 /// An iterator that reads a line on each iteration,
 /// until `.read_line()` encounters `EndOfFile`.
 ///
-/// # Notes about the Iteration Protocol
+/// ## Notes about the Iteration Protocol
 ///
 /// The `Lines` may yield `None` and thus terminate
 /// an iteration, but continue to yield elements if iteration
 /// is attempted again.
 ///
-/// # Error
+/// ## Error
 ///
 /// Any error other than `EndOfFile` that is produced by the underlying Reader
 /// is returned by the iterator and should be handled by the caller.
@@ -1367,13 +1367,13 @@ impl<'r, T: Buffer> Iterator<IoResult<String>> for Lines<'r, T> {
 /// An iterator that reads a utf8-encoded character on each iteration,
 /// until `.read_char()` encounters `EndOfFile`.
 ///
-/// # Notes about the Iteration Protocol
+/// ## Notes about the Iteration Protocol
 ///
 /// The `Chars` may yield `None` and thus terminate
 /// an iteration, but continue to yield elements if iteration
 /// is attempted again.
 ///
-/// # Error
+/// ## Error
 ///
 /// Any error other than `EndOfFile` that is produced by the underlying Reader
 /// is returned by the iterator and should be handled by the caller.
@@ -1404,7 +1404,7 @@ pub trait Buffer: Reader {
     /// consumed from this buffer returned to ensure that the bytes are never
     /// returned twice.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// This function will return an I/O error if the underlying reader was
     /// read, but returned an error. Note that it is not an error to return a
@@ -1419,7 +1419,7 @@ pub trait Buffer: Reader {
     /// encoded unicode codepoints. If a newline is encountered, then the
     /// newline is contained in the returned string.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::io;
@@ -1428,7 +1428,7 @@ pub trait Buffer: Reader {
     /// let input = reader.read_line().ok().unwrap_or("nothing".to_string());
     /// ```
     ///
-    /// # Error
+    /// ## Error
     ///
     /// This function has the same error semantics as `read_until`:
     ///
@@ -1451,7 +1451,7 @@ pub trait Buffer: Reader {
 
     /// Create an iterator that reads a line on each iteration until EOF.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// Any error other than `EndOfFile` that is produced by the underlying Reader
     /// is returned by the iterator and should be handled by the caller.
@@ -1463,7 +1463,7 @@ pub trait Buffer: Reader {
     /// specified byte is encountered, reading ceases and the bytes up to and
     /// including the delimiter are returned.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// If any I/O error is encountered other than EOF, the error is immediately
     /// returned. Note that this may discard bytes which have already been read,
@@ -1508,7 +1508,7 @@ pub trait Buffer: Reader {
 
     /// Reads the next utf8-encoded character from the underlying stream.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// If an I/O error occurs, or EOF, then this function will return `Err`.
     /// This function will also return error if the stream does not contain a
@@ -1538,7 +1538,7 @@ pub trait Buffer: Reader {
     /// Create an iterator that reads a utf8-encoded character on each iteration
     /// until EOF.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// Any error other than `EndOfFile` that is produced by the underlying Reader
     /// is returned by the iterator and should be handled by the caller.
@@ -1570,7 +1570,7 @@ pub trait Seek {
     /// A successful seek clears the EOF indicator. Seeking beyond EOF is
     /// allowed, but seeking before position 0 is not allowed.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// * Seeking to a negative offset is considered an error
     /// * Seeking past the end of the stream does not modify the underlying
@@ -1586,7 +1586,7 @@ pub trait Seek {
 pub trait Listener<T, A: Acceptor<T>> {
     /// Spin up the listener and start queuing incoming connections
     ///
-    /// # Error
+    /// ## Error
     ///
     /// Returns `Err` if this listener could not be bound to listen for
     /// connections. In all cases, this listener is consumed.
@@ -1597,7 +1597,7 @@ pub trait Listener<T, A: Acceptor<T>> {
 pub trait Acceptor<T> {
     /// Wait for and accept an incoming connection
     ///
-    /// # Error
+    /// ## Error
     ///
     /// Returns `Err` if an I/O error is encountered.
     fn accept(&mut self) -> IoResult<T>;
@@ -1630,7 +1630,7 @@ impl<'a, T, A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A>
 /// Creates a standard error for a commonly used flavor of error. The `detail`
 /// field of the returned error will always be `None`.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::io;
@@ -1716,7 +1716,7 @@ pub enum FileType {
 /// A structure used to describe metadata information about a file. This
 /// structure is created through the `stat` method on a `Path`.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// # fn main() {}

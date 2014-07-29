@@ -67,7 +67,7 @@ impl<T> DerefMut<T> for Borrowed<T> {
 /// Borrow the thread-local value from thread-local storage.
 /// While the value is borrowed it is not available in TLS.
 ///
-/// # Safety note
+/// ## Safety note
 ///
 /// Does not validate the pointer type.
 #[inline]
@@ -153,7 +153,7 @@ pub mod compiled {
 
     /// Give a pointer to thread-local storage.
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// Does not validate the pointer type.
     #[inline(never)] // see comments above
@@ -163,7 +163,7 @@ pub mod compiled {
 
     /// Take ownership of a pointer from thread-local storage.
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// Does not validate the pointer type.
     #[inline(never)] // see comments above
@@ -178,7 +178,7 @@ pub mod compiled {
 
     /// Optionally take ownership of a pointer from thread-local storage.
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// Does not validate the pointer type.
     #[inline(never)] // see comments above
@@ -196,7 +196,7 @@ pub mod compiled {
 
     /// Take ownership of a pointer from thread-local storage.
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// Does not validate the pointer type.
     /// Leaves the old pointer in TLS for speed.
@@ -259,7 +259,7 @@ pub mod native {
 
     /// Give a pointer to thread-local storage.
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// Does not validate the pointer type.
     #[inline]
@@ -271,7 +271,7 @@ pub mod native {
 
     /// Take ownership of a pointer from thread-local storage.
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// Does not validate the pointer type.
     #[inline]
@@ -288,7 +288,7 @@ pub mod native {
 
     /// Optionally take ownership of a pointer from thread-local storage.
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// Does not validate the pointer type.
     #[inline]
@@ -310,7 +310,7 @@ pub mod native {
 
     /// Take ownership of a pointer from thread-local storage.
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// Does not validate the pointer type.
     /// Leaves the old pointer in TLS for speed.
@@ -337,7 +337,7 @@ pub mod native {
 
     /// Borrow a mutable reference to the thread-local value
     ///
-    /// # Safety Note
+    /// ## Safety Note
     ///
     /// Because this leaves the value in thread-local storage it is possible
     /// For the Scheduler pointer to be aliased

@@ -88,7 +88,7 @@ impl<T: Send> Queue<T> {
     /// Creates a new queue. The producer returned is connected to the consumer
     /// to push all data to the consumer.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     ///   * `bound` - This queue implementation is implemented with a linked
     ///               list, and this means that a push is always a malloc. In

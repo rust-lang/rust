@@ -24,7 +24,7 @@
 //! Note that &Any is limited to testing whether a value is of a specified
 //! concrete type, and cannot be used to test whether a type implements a trait.
 //!
-//! # Examples
+//! ## Examples
 //!
 //! Consider a situation where we want to log out a value passed to a function.
 //! We know the value we're working on implements Show, but we don't know its

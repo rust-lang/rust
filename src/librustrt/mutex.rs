@@ -30,7 +30,7 @@
 //! concurrency primitives should be used before them: the `sync` crate defines
 //! `StaticMutex` and `Mutex` types.
 //!
-//! # Example
+//! ## Example
 //!
 //! ```rust
 //! use std::rt::mutex::{NativeMutex, StaticNativeMutex, NATIVE_MUTEX_INIT};
@@ -105,7 +105,7 @@ impl StaticNativeMutex {
     /// Acquires this lock. This assumes that the current thread does not
     /// already hold the lock.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
@@ -116,7 +116,7 @@ impl StaticNativeMutex {
     /// } // automatically unlocked in `_guard`'s destructor
     /// ```
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe because it will not function correctly if this
     /// mutex has been *moved* since it was last used. The mutex can move an
@@ -136,7 +136,7 @@ impl StaticNativeMutex {
     /// Attempts to acquire the lock. The value returned is `Some` if
     /// the attempt succeeded.
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe for the same reasons as `lock`.
     pub unsafe fn trylock<'a>(&'a self) -> Option<LockGuard<'a>> {
@@ -152,7 +152,7 @@ impl StaticNativeMutex {
     /// These needs to be paired with a call to `.unlock_noguard`. Prefer using
     /// `.lock`.
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe for the same reasons as `lock`. Additionally, this
     /// does not guarantee that the mutex will ever be unlocked, and it is
@@ -166,7 +166,7 @@ impl StaticNativeMutex {
     /// If `true` is returned, this needs to be paired with a call to
     /// `.unlock_noguard`. Prefer using `.trylock`.
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe for the same reasons as `lock_noguard`.
     pub unsafe fn trylock_noguard(&self) -> bool {
@@ -176,7 +176,7 @@ impl StaticNativeMutex {
     /// Unlocks the lock. This assumes that the current thread already holds the
     /// lock.
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe for the same reasons as `lock`. Additionally, it
     /// is not guaranteed that this is unlocking a previously locked mutex. It
@@ -189,7 +189,7 @@ impl StaticNativeMutex {
     /// using `LockGuard.wait` since that guarantees that the lock is
     /// held.
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe for the same reasons as `lock`. Additionally, this
     /// is unsafe because the mutex may not be currently locked.
@@ -197,7 +197,7 @@ impl StaticNativeMutex {
 
     /// Signals a thread in `wait` to wake up
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe for the same reasons as `lock`. Additionally, this
     /// is unsafe because the mutex may not be currently locked.
@@ -222,7 +222,7 @@ impl NativeMutex {
     /// Acquires this lock. This assumes that the current thread does not
     /// already hold the lock.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::rt::mutex::NativeMutex;
@@ -236,7 +236,7 @@ impl NativeMutex {
     /// }
     /// ```
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe due to the same reasons as
     /// `StaticNativeMutex::lock`.
@@ -247,7 +247,7 @@ impl NativeMutex {
     /// Attempts to acquire the lock. The value returned is `Some` if
     /// the attempt succeeded.
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe due to the same reasons as
     /// `StaticNativeMutex::trylock`.
@@ -260,7 +260,7 @@ impl NativeMutex {
     /// These needs to be paired with a call to `.unlock_noguard`. Prefer using
     /// `.lock`.
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe due to the same reasons as
     /// `StaticNativeMutex::lock_noguard`.
@@ -273,7 +273,7 @@ impl NativeMutex {
     /// If `true` is returned, this needs to be paired with a call to
     /// `.unlock_noguard`. Prefer using `.trylock`.
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe due to the same reasons as
     /// `StaticNativeMutex::trylock_noguard`.
@@ -284,7 +284,7 @@ impl NativeMutex {
     /// Unlocks the lock. This assumes that the current thread already holds the
     /// lock.
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe due to the same reasons as
     /// `StaticNativeMutex::unlock_noguard`.
@@ -296,7 +296,7 @@ impl NativeMutex {
     /// using `LockGuard.wait` since that guarantees that the lock is
     /// held.
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe due to the same reasons as
     /// `StaticNativeMutex::wait_noguard`.
@@ -304,7 +304,7 @@ impl NativeMutex {
 
     /// Signals a thread in `wait` to wake up
     ///
-    /// # Unsafety
+    /// ## Unsafety
     ///
     /// This method is unsafe due to the same reasons as
     /// `StaticNativeMutex::signal_noguard`.

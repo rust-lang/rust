@@ -18,7 +18,7 @@
 /// format!-based argument list. See documentation in `std::fmt` for details on
 /// how to use the syntax.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// #![feature(phase)]
@@ -47,7 +47,7 @@ macro_rules! log(
 
 /// A convenience macro for logging at the error log level.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// #![feature(phase)]
@@ -65,7 +65,7 @@ macro_rules! error(
 
 /// A convenience macro for logging at the warning log level.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// #![feature(phase)]
@@ -83,7 +83,7 @@ macro_rules! warn(
 
 /// A convenience macro for logging at the info log level.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// #![feature(phase)]
@@ -103,7 +103,7 @@ macro_rules! info(
 /// be omitted at compile time by passing `--cfg ndebug` to the compiler. If
 /// this option is not passed, then debug statements will be compiled.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// #![feature(phase)]
@@ -120,7 +120,7 @@ macro_rules! debug(
 
 /// A macro to test whether a log level is enabled for the current module.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// #![feature(phase)]

@@ -79,7 +79,7 @@ use vec::Vec;
 /// Can be constructed via `File::open()`, `File::create()`, and
 /// `File::open_mode()`.
 ///
-/// # Error
+/// ## Error
 ///
 /// This type will return errors as an `IoResult<T>` if operations are
 /// attempted against it for which its underlying file descriptor was not
@@ -95,7 +95,7 @@ impl File {
     /// Open a file at `path` in the mode specified by the `mode` and `access`
     /// arguments
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust,should_fail
     /// use std::io::{File, Open, ReadWrite};
@@ -121,7 +121,7 @@ impl File {
     /// access-limitations indicated by `FileAccess` (e.g. calling `write` on a
     /// `File` opened as `Read` will return an error at runtime).
     ///
-    /// # Error
+    /// ## Error
     ///
     /// This function will return an error under a number of different
     /// circumstances, to include but not limited to:
@@ -164,7 +164,7 @@ impl File {
     ///
     /// For more information, see the `File::open_mode` function.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::io::File;
@@ -181,7 +181,7 @@ impl File {
     ///
     /// For more information, see the `File::open_mode` function.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// # #![allow(unused_must_use)]
@@ -257,7 +257,7 @@ impl File {
 
 /// Unlink a file from the underlying filesystem.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -271,7 +271,7 @@ impl File {
 /// guaranteed that a file is immediately deleted (e.g. depending on
 /// platform, other open file descriptors may prevent immediate removal)
 ///
-/// # Error
+/// ## Error
 ///
 /// This function will return an error if `path` points to a directory, if the
 /// user lacks permissions to remove the file, or if some other filesystem-level
@@ -318,7 +318,7 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 /// directory, etc. This function will traverse symlinks to query
 /// information about the destination file.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::io::fs;
@@ -330,7 +330,7 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 /// }
 /// ```
 ///
-/// # Error
+/// ## Error
 ///
 /// This function will return an error if the user lacks the requisite permissions
 /// to perform a `stat` call on the given `path` or if there is no entry in the
@@ -349,7 +349,7 @@ pub fn stat(path: &Path) -> IoResult<FileStat> {
 /// information about the symlink file instead of the file that it points
 /// to.
 ///
-/// # Error
+/// ## Error
 ///
 /// See `stat`
 pub fn lstat(path: &Path) -> IoResult<FileStat> {
@@ -404,7 +404,7 @@ fn from_rtio(s: rtio::FileStat) -> FileStat {
 
 /// Rename a file or directory to a new name.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -413,7 +413,7 @@ fn from_rtio(s: rtio::FileStat) -> FileStat {
 /// fs::rename(&Path::new("foo"), &Path::new("bar"));
 /// ```
 ///
-/// # Error
+/// ## Error
 ///
 /// This function will return an error if the provided `from` doesn't exist, if
 /// the process lacks permissions to view the contents, or if some other
@@ -433,7 +433,7 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
 /// Note that if `from` and `to` both point to the same file, then the file
 /// will likely get truncated by this operation.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -442,7 +442,7 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
 /// fs::copy(&Path::new("foo.txt"), &Path::new("bar.txt"));
 /// ```
 ///
-/// # Error
+/// ## Error
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
@@ -488,7 +488,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 /// Changes the permission mode bits found on a file or a directory. This
 /// function takes a mask from the `io` module
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -501,7 +501,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 /// fs::chmod(&Path::new("file.exe"), io::UserExec);
 /// ```
 ///
-/// # Error
+/// ## Error
 ///
 /// This function will return an error if the provided `path` doesn't exist, if
 /// the process lacks permissions to change the attributes of the file, or if
@@ -550,7 +550,7 @@ pub fn symlink(src: &Path, dst: &Path) -> IoResult<()> {
 
 /// Reads a symlink, returning the file that the symlink points to.
 ///
-/// # Error
+/// ## Error
 ///
 /// This function will return an error on failure. Failure conditions include
 /// reading a file that does not exist or reading a file which is not a symlink.
@@ -564,7 +564,7 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 
 /// Create a new, empty directory at the provided path
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -575,7 +575,7 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 /// fs::mkdir(&p, io::UserRWX);
 /// ```
 ///
-/// # Error
+/// ## Error
 ///
 /// This function will return an error if the user lacks permissions to make a
 /// new directory at the provided `path`, or if the directory already exists.
@@ -590,7 +590,7 @@ pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
 
 /// Remove an existing, empty directory
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -600,7 +600,7 @@ pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
 /// fs::rmdir(&p);
 /// ```
 ///
-/// # Error
+/// ## Error
 ///
 /// This function will return an error if the user lacks permissions to remove
 /// the directory at the provided `path`, or if the directory isn't empty.
@@ -614,7 +614,7 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 
 /// Retrieve a vector containing all entries within a provided directory
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::io;
@@ -638,7 +638,7 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// }
 /// ```
 ///
-/// # Error
+/// ## Error
 ///
 /// This function will return an error if the provided `path` doesn't exist, if
 /// the process lacks permissions to view the contents or if the `path` points
@@ -695,7 +695,7 @@ impl Iterator<Path> for Directories {
 /// Recursively create a directory and all of its parent components if they
 /// are missing.
 ///
-/// # Error
+/// ## Error
 ///
 /// See `fs::mkdir`.
 pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
@@ -732,7 +732,7 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
 /// Removes a directory at this path, after removing all its contents. Use
 /// carefully!
 ///
-/// # Error
+/// ## Error
 ///
 /// See `file::unlink` and `fs::readdir`
 pub fn rmdir_recursive(path: &Path) -> IoResult<()> {

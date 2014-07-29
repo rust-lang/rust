@@ -125,7 +125,7 @@ pub fn from_chars(chs: &[char]) -> String {
 pub trait StrVector {
     /// Concatenate a vector of strings.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let first = "Restaurant at the End of the".to_string();
@@ -137,7 +137,7 @@ pub trait StrVector {
 
     /// Concatenate a vector of strings, placing a given separator between each.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let first = "Roast".to_string();
@@ -304,17 +304,17 @@ impl<'a> Iterator<char> for Decompositions<'a> {
 
 /// Replace all occurrences of one string with another
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * s - The string containing substrings to replace
 /// * from - The string to replace
 /// * to - The replacement string
 ///
-/// # Return value
+/// ## Return value
 ///
 /// The original string with all occurrences of `from` replaced with `to`
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::str;
@@ -388,7 +388,7 @@ pub type SendStr = MaybeOwned<'static>;
 impl<'a> MaybeOwned<'a> {
     /// Returns `true` if this `MaybeOwned` wraps an owned string
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let string = String::from_str("orange");
@@ -405,7 +405,7 @@ impl<'a> MaybeOwned<'a> {
 
     /// Returns `true` if this `MaybeOwned` wraps a borrowed string
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let string = "orange";
@@ -427,7 +427,7 @@ pub trait IntoMaybeOwned<'a> {
     fn into_maybe_owned(self) -> MaybeOwned<'a>;
 }
 
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// let owned_string = String::from_str("orange");
@@ -441,7 +441,7 @@ impl<'a> IntoMaybeOwned<'a> for String {
     }
 }
 
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// let string = "orange";
@@ -453,7 +453,7 @@ impl<'a> IntoMaybeOwned<'a> for &'a str {
     fn into_maybe_owned(self) -> MaybeOwned<'a> { Slice(self) }
 }
 
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// let str = "orange";
@@ -626,16 +626,16 @@ pub trait StrAllocating: Str {
 
     /// Replace all occurrences of one string with another.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `from` - The string to replace
     /// * `to` - The replacement string
     ///
-    /// # Return value
+    /// ## Return value
     ///
     /// The original string with all occurrences of `from` replaced with `to`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let s = "Do you know the muffin man,

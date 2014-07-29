@@ -80,7 +80,7 @@ impl Variables {
 /**
   Expand a parameterized capability
 
-  # Arguments
+  ## Arguments
   * `cap`    - string to expand
   * `params` - vector of params for %p1 etc
   * `vars`   - Variables struct for %Pa etc

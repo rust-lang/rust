@@ -300,7 +300,7 @@ extern "rust-intrinsic" {
     /// Both types must have the same size and alignment, and this guarantee
     /// is enforced at compile-time.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::mem;
@@ -333,7 +333,7 @@ extern "rust-intrinsic" {
     ///
     /// `copy_nonoverlapping_memory` is semantically equivalent to C's `memcpy`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// A safe swap function:
     ///
@@ -358,7 +358,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     ///
-    /// # Safety Note
+    /// ## Safety Note
     ///
     /// If the source and destination overlap then the behavior of this
     /// function is undefined.
@@ -372,7 +372,7 @@ extern "rust-intrinsic" {
     ///
     /// `copy_memory` is semantically equivalent to C's `memmove`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///

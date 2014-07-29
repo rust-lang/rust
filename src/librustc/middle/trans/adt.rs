@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /*!
- * # Representation of Algebraic Data Types
+ * ## Representation of Algebraic Data Types
  *
  * This module determines how to represent enums, structs, and tuples
  * based on their monomorphized types; it is responsible both for

@@ -114,7 +114,7 @@ pub mod stream;
 /// for the `event_loop_factory` field. Using this function as the event loop
 /// factory will power programs with libuv and enable green threading.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// extern crate rustuv;

@@ -16,7 +16,7 @@
 pub trait Default {
     /// Return the "default value" for a type.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::default::Default;

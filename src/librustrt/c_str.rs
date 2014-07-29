@@ -158,7 +158,7 @@ impl CString {
     /// let p = foo.to_c_str().as_ptr();
     /// ```
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// extern crate libc;
@@ -311,7 +311,7 @@ impl fmt::Show for CString {
 pub trait ToCStr {
     /// Copy the receiver into a CString.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails the task if the receiver has an interior null.
     fn to_c_str(&self) -> CString;
@@ -322,7 +322,7 @@ pub trait ToCStr {
     /// Work with a temporary CString constructed from the receiver.
     /// The provided `*libc::c_char` will be freed immediately upon return.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// extern crate libc;
@@ -334,7 +334,7 @@ pub trait ToCStr {
     /// }
     /// ```
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails the task if the receiver has an interior null.
     #[inline]

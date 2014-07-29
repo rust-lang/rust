@@ -33,7 +33,7 @@
 //! * `Ord`
 //! * `Default`
 //!
-//! # Examples
+//! ## Examples
 //!
 //! Using methods:
 //!

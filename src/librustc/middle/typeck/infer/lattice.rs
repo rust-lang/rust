@@ -10,7 +10,7 @@
 
 /*!
  *
- * # Lattice Variables
+ * ## Lattice Variables
  *
  * This file contains generic code for operating on inference variables
  * that are characterized by an upper- and lower-bound.  The logic and

@@ -45,7 +45,7 @@ use collections::HashMap;
 /// process is created via the `Command` struct, which configures the spawning
 /// process and can itself be constructed using a builder-style interface.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```should_fail
 /// use std::io::Command;
@@ -308,7 +308,7 @@ impl Command {
     /// Executes the command as a child process, waiting for it to finish and
     /// collecting all of its output.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::io::Command;
@@ -329,7 +329,7 @@ impl Command {
     /// Executes a command as a child process, waiting for it to finish and
     /// collecting its exit status.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::io::Command;
@@ -457,7 +457,7 @@ impl Process {
     /// of signal delivery correctly, unix implementations may invoke
     /// `waitpid()` with `WNOHANG` in order to reap the child as necessary.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// If the signal delivery fails, the corresponding error is returned.
     pub fn signal(&mut self, signal: int) -> IoResult<()> {
@@ -482,7 +482,7 @@ impl Process {
     ///
     /// The stdin handle to the child process will be closed before waiting.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// This function can fail if a timeout was previously specified via
     /// `set_timeout` and the timeout expires before the child exits.
@@ -504,7 +504,7 @@ impl Process {
     /// A value of `None` will clear any previous timeout, and a value of `Some`
     /// will override any previously set timeout.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```no_run
     /// # #![allow(experimental)]
@@ -546,7 +546,7 @@ impl Process {
     ///
     /// The stdin handle to the child is closed before waiting.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// This function can fail for any of the same reasons that `wait()` can
     /// fail.

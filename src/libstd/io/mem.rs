@@ -43,7 +43,7 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 
 /// Writes to an owned, growable byte vector
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -132,7 +132,7 @@ impl Seek for MemWriter {
 
 /// Reads from an owned byte vector
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -227,7 +227,7 @@ impl Buffer for MemReader {
 /// If a write will not fit in the buffer, it returns an error and does not
 /// write any data.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -290,7 +290,7 @@ impl<'a> Seek for BufWriter<'a> {
 
 /// Reads from a fixed-size byte slice
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]

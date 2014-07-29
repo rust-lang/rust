@@ -1414,7 +1414,7 @@ fn link_args(cmd: &mut Command,
     add_local_native_libraries(cmd, sess);
     add_upstream_native_libraries(cmd, sess);
 
-    // # Telling the linker what we're doing
+    // ## Telling the linker what we're doing
 
     if dylib {
         // On mac we need to tell the linker to let this library be rpathed
@@ -1478,7 +1478,7 @@ fn link_args(cmd: &mut Command,
     }
 }
 
-// # Native library linking
+// ## Native library linking
 //
 // User-supplied library search paths (-L on the command line). These are
 // the same paths used to find Rust crates, so some of them may have been
@@ -1528,7 +1528,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
     }
 }
 
-// # Rust Crate linking
+// ## Rust Crate linking
 //
 // Rust crates are not considered at all when creating an rlib output. All
 // dependencies will be linked when producing the final output (instead of

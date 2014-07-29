@@ -319,7 +319,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// This function can be used to destroy any value by allowing `drop` to take
 /// ownership of its argument.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::cell::RefCell;

@@ -25,7 +25,7 @@ use mutex::{StaticMutex, MUTEX_INIT};
 /// functionality. This type can only be constructed with the `ONCE_INIT`
 /// value.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use sync::one::{Once, ONCE_INIT};

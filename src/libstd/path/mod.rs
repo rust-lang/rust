@@ -142,7 +142,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Creates a new Path from a byte vector or string.
     /// The resulting Path will always be normalized.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails the task if the path contains a NUL.
     ///
@@ -260,7 +260,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Replaces the filename portion of the path with the given byte vector or string.
     /// If the replacement name is [], this is equivalent to popping the path.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails the task if the filename contains a NUL.
     #[inline]
@@ -273,7 +273,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// If the argument is [] or "", this removes the extension.
     /// If `self` has no filename, this is a no-op.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails the task if the extension contains a NUL.
     fn set_extension<T: BytesContainer>(&mut self, extension: T) {
@@ -311,7 +311,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// byte vector or string.
     /// See `set_filename` for details.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails the task if the filename contains a NUL.
     #[inline]
@@ -324,7 +324,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// byte vector or string.
     /// See `set_extension` for details.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails the task if the extension contains a NUL.
     #[inline]
@@ -349,7 +349,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Pushes a path (as a byte vector or string) onto `self`.
     /// If the argument represents an absolute path, it replaces `self`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails the task if the path contains a NUL.
     #[inline]
@@ -381,7 +381,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// (as a byte vector or string).
     /// If the given path is absolute, the new Path will represent just that.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails the task if the path contains a NUL.
     #[inline]

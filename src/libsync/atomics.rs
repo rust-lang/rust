@@ -35,7 +35,7 @@
 //! are often used for lazy global initialization.
 //!
 //!
-//! # Examples
+//! ## Examples
 //!
 //! A simple spinlock:
 //!

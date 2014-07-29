@@ -68,7 +68,7 @@ pub fn is_match(regex: &str, text: &str) -> Result<bool, parse::Error> {
 /// methods. All other methods (searching and splitting) return borrowed
 /// pointers into the string given.
 ///
-/// # Examples
+/// ## Examples
 ///
 /// Find the location of a US phone number:
 ///
@@ -165,7 +165,7 @@ impl Regex {
 
     /// Returns true if and only if the regex matches the string given.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// Test if some text contains at least one word with exactly 13
     /// characters:
@@ -190,7 +190,7 @@ impl Regex {
     /// of the match. Testing the existence of a match is faster if you use
     /// `is_match`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// Find the start and end location of the first word with exactly 13
     /// characters:
@@ -217,7 +217,7 @@ impl Regex {
     /// `text`, returning the start and end byte indices with respect to
     /// `text`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// Find the start and end location of every word with exactly 13
     /// characters:
@@ -254,7 +254,7 @@ impl Regex {
     /// Otherwise, `find` is faster for discovering the location of the overall
     /// match.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// Say you have some text with movie names and their release years,
     /// like "'Citizen Kane' (1941)". It'd be nice if we could search for text
@@ -307,7 +307,7 @@ impl Regex {
     /// in `text`. This is operationally the same as `find_iter` (except it
     /// yields information about submatches).
     ///
-    /// # Example
+    /// ## Example
     ///
     /// We can use this to find all movie titles and their release years in
     /// some text, where the movie is formatted like "'Title' (xxxx)":
@@ -344,7 +344,7 @@ impl Regex {
     ///
     /// This method will *not* copy the text given.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// To split a string delimited by arbitrary amounts of spaces or tabs:
     ///
@@ -374,7 +374,7 @@ impl Regex {
     ///
     /// This method will *not* copy the text given.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// Get the first two words in some text:
     ///
@@ -403,7 +403,7 @@ impl Regex {
     ///
     /// If no match is found, then a copy of the string is returned unchanged.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// Note that this function is polymorphic with respect to the replacement.
     /// In typical usage, this can just be a normal string:

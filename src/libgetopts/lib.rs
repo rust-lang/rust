@@ -25,7 +25,7 @@
 //! argument following either a space or an equals sign. Single-character
 //! options don't require the space.
 //!
-//! # Example
+//! ## Example
 //!
 //! The following example shows simple command line parsing for an application
 //! that requires an input file to be specified, accepts an optional output

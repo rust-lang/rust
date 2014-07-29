@@ -148,7 +148,7 @@ impl TocBuilder {
                 }
             };
             // fill in any missing zeros, e.g. for
-            // # Foo (1)
+            // ## Foo (1)
             // ### Bar (1.0.1)
             for _ in range(toc_level, level - 1) {
                 sec_number.push_str("0.");

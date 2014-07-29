@@ -869,7 +869,7 @@ impl<'a> Iterator<Utf16Item> for Utf16Items<'a> {
 /// Create an iterator over the UTF-16 encoded codepoints in `v`,
 /// returning invalid surrogates as `LoneSurrogate`s.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::str;
@@ -894,7 +894,7 @@ pub fn utf16_items<'a>(v: &'a [u16]) -> Utf16Items<'a> {
 /// Return a slice of `v` ending at (and not including) the first NUL
 /// (0).
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::str;
@@ -993,7 +993,7 @@ pub mod raw {
     ///
     /// Returns the substring from [`begin`..`end`).
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// If begin is greater than end.
     /// If end is greater than the length of the string.
@@ -1094,14 +1094,14 @@ impl<'a> Collection for &'a str {
 pub trait StrSlice<'a> {
     /// Returns true if one string contains another
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// - needle - The string to look for
     fn contains<'a>(&self, needle: &'a str) -> bool;
 
     /// Returns true if a string contains a char.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// - needle - The char to look for
     fn contains_char(&self, needle: char) -> bool;
@@ -1109,7 +1109,7 @@ pub trait StrSlice<'a> {
     /// An iterator over the characters of `self`. Note, this iterates
     /// over unicode code-points, not unicode graphemes.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let v: Vec<char> = "abc åäö".chars().collect();
@@ -1126,7 +1126,7 @@ pub trait StrSlice<'a> {
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let v: Vec<&str> = "Mary had a little lamb".split(' ').collect();
@@ -1147,7 +1147,7 @@ pub trait StrSlice<'a> {
     /// matched by `sep`, restricted to splitting at most `count`
     /// times.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let v: Vec<&str> = "Mary had a little lambda".splitn(' ', 2).collect();
@@ -1173,7 +1173,7 @@ pub trait StrSlice<'a> {
     /// Equivalent to `split`, except that the trailing substring
     /// is skipped if empty (terminator semantics).
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let v: Vec<&str> = "A.B.".split_terminator('.').collect();
@@ -1197,7 +1197,7 @@ pub trait StrSlice<'a> {
     /// matched by `sep`, starting from the end of the string.
     /// Restricted to splitting at most `count` times.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(' ', 2).collect();
@@ -1219,7 +1219,7 @@ pub trait StrSlice<'a> {
     /// `self` that overlap, only the indices corresponding to the
     /// first match are returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let v: Vec<(uint, uint)> = "abcXXXabcYYYabc".match_indices("abc").collect();
@@ -1235,7 +1235,7 @@ pub trait StrSlice<'a> {
 
     /// An iterator over the substrings of `self` separated by `sep`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let v: Vec<&str> = "abcXXXabcYYYabc".split_str("abc").collect();
@@ -1250,7 +1250,7 @@ pub trait StrSlice<'a> {
     /// by `\n`). This does not include the empty string after a
     /// trailing `\n`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let four_lines = "foo\nbar\n\nbaz\n";
@@ -1263,7 +1263,7 @@ pub trait StrSlice<'a> {
     /// `\n` or `\r\n`. As with `.lines()`, this does not include an
     /// empty trailing line.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let four_lines = "foo\r\nbar\n\r\nbaz\n";
@@ -1285,7 +1285,7 @@ pub trait StrSlice<'a> {
     ///
     /// See also `.len()` for the byte length.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// // composed forms of `ö` and `é`
@@ -1317,7 +1317,7 @@ pub trait StrSlice<'a> {
     /// suffixes of strings, and `slice_chars` for slicing based on
     /// code point counts.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
@@ -1374,7 +1374,7 @@ pub trait StrSlice<'a> {
     /// Fails if `begin` > `end` or the either `begin` or `end` are
     /// beyond the last character of the string.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
@@ -1391,11 +1391,11 @@ pub trait StrSlice<'a> {
 
     /// Returns a string with characters that match `to_trim` removed.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * to_trim - a character matcher
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar")
@@ -1406,11 +1406,11 @@ pub trait StrSlice<'a> {
 
     /// Returns a string with leading `chars_to_trim` removed.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * to_trim - a character matcher
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11")
@@ -1421,11 +1421,11 @@ pub trait StrSlice<'a> {
 
     /// Returns a string with trailing `chars_to_trim` removed.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * to_trim - a character matcher
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar")
@@ -1442,7 +1442,7 @@ pub trait StrSlice<'a> {
     ///
     /// Fails if `index` is greater than `self.len()`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
@@ -1465,7 +1465,7 @@ pub trait StrSlice<'a> {
     /// This function can be used to iterate over the unicode characters of a
     /// string.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// This example manually iterate through the characters of a
     /// string; this should normally by done by `.chars()` or
@@ -1498,17 +1498,17 @@ pub trait StrSlice<'a> {
     /// 15: m
     /// ```
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * s - The string
     /// * i - The byte offset of the char to extract
     ///
-    /// # Return value
+    /// ## Return value
     ///
     /// A record {ch: char, next: uint} containing the char value and the byte
     /// index of the next unicode character.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// If `i` is greater than or equal to the length of the string.
     /// If `i` is not the index of the beginning of a valid UTF-8 character.
@@ -1520,7 +1520,7 @@ pub trait StrSlice<'a> {
     ///
     /// Returns 0 for next index if called on start index 0.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// If `i` is greater than the length of the string.
     /// If `i` is not an index following a valid UTF-8 character.
@@ -1528,7 +1528,7 @@ pub trait StrSlice<'a> {
 
     /// Plucks the character starting at the `i`th byte of a string.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// If `i` is greater than or equal to the length of the string.
     /// If `i` is not the index of the beginning of a valid UTF-8 character.
@@ -1536,7 +1536,7 @@ pub trait StrSlice<'a> {
 
     /// Plucks the character ending at the `i`th byte of a string.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// If `i` is greater than the length of the string.
     /// If `i` is not an index following a valid UTF-8 character.
@@ -1548,12 +1548,12 @@ pub trait StrSlice<'a> {
     /// Returns the byte index of the first character of `self` that
     /// matches `search`.
     ///
-    /// # Return value
+    /// ## Return value
     ///
     /// `Some` containing the byte index of the last matching character
     /// or `None` if there is no match
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
@@ -1572,12 +1572,12 @@ pub trait StrSlice<'a> {
     /// Returns the byte index of the last character of `self` that
     /// matches `search`.
     ///
-    /// # Return value
+    /// ## Return value
     ///
     /// `Some` containing the byte index of the last matching character
     /// or `None` if there is no match.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
@@ -1595,16 +1595,16 @@ pub trait StrSlice<'a> {
 
     /// Returns the byte index of the first matching substring
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `needle` - The string to search for
     ///
-    /// # Return value
+    /// ## Return value
     ///
     /// `Some` containing the byte index of the first matching substring
     /// or `None` if there is no match.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
@@ -1620,7 +1620,7 @@ pub trait StrSlice<'a> {
     /// shifted. If the string does not contain any characters,
     /// a tuple of None and an empty string is returned instead.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
@@ -1638,7 +1638,7 @@ pub trait StrSlice<'a> {
     ///
     /// Fails if `inner` is not a direct slice contained within self.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let string = "a\nb\nc";

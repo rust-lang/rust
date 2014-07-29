@@ -58,7 +58,7 @@ pub struct Paths {
 /// `glob_with(pattern, MatchOptions::new())`. Use `glob_with` directly if you
 /// want to use non-default match options.
 ///
-/// # Example
+/// ## Example
 ///
 /// Consider a directory `/media/pictures` containing only the files `kittens.jpg`,
 /// `puppies.jpg` and `hamsters.gif`:
@@ -329,7 +329,7 @@ impl Pattern {
      * Return if the given `str` matches this `Pattern` using the default
      * match options (i.e. `MatchOptions::new()`).
      *
-     * # Example
+     * ## Example
      *
      * ```rust
      * use glob::Pattern;

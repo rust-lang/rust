@@ -20,7 +20,7 @@ use result::{Ok, Err};
 ///
 /// It will fail if it there is insufficient data to fulfill a request.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::rand::{reader, Rng};

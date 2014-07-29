@@ -38,7 +38,7 @@ use rt::rtio;
 /// A structure which represents a TCP stream between a local socket and a
 /// remote socket.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```no_run
 /// # #![allow(unused_must_use)]
@@ -158,7 +158,7 @@ impl TcpStream {
     /// This method will close the reading portion of this connection, causing
     /// all pending and future reads to immediately return with an error.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
@@ -225,7 +225,7 @@ impl TcpStream {
     /// This will overwrite any previous read timeout set through either this
     /// function or `set_timeout`.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// When this timeout expires, if there is no pending read operation, no
     /// action is taken. Otherwise, the read operation will be scheduled to
@@ -242,7 +242,7 @@ impl TcpStream {
     /// This will overwrite any previous write timeout set through either this
     /// function or `set_timeout`.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// When this timeout expires, if there is no pending write operation, no
     /// action is taken. Otherwise, the pending write operation will be
@@ -293,7 +293,7 @@ impl Writer for TcpStream {
 /// A structure representing a socket server. This listener is used to create a
 /// `TcpAcceptor` which can be used to accept sockets on a local port.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// # fn main() { }
@@ -403,7 +403,7 @@ impl TcpAcceptor {
     /// regardless of whether the timeout has expired or not (the accept will
     /// not block in this case).
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```no_run
     /// # #![allow(experimental)]

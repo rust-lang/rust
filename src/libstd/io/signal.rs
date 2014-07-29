@@ -65,7 +65,7 @@ pub enum Signum {
 /// Listener automatically unregisters its handles once it is out of scope.
 /// However, clients can still unregister signums manually.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust,no_run
 /// # #![allow(unused_must_use)]
@@ -118,7 +118,7 @@ impl Listener {
     /// a signal, and a later call to `recv` will return the signal that was
     /// received while no task was waiting on it.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// If this function fails to register a signal handler, then an error will
     /// be returned.

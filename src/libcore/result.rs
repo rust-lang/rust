@@ -81,7 +81,7 @@
 //! let final_awesome_result = good_result.ok().unwrap();
 //! ~~~
 //!
-//! # Results must be used
+//! ## Results must be used
 //!
 //! A common problem with using return values to indicate errors is
 //! that it is easy to ignore the return value, thus failing to handle
@@ -157,7 +157,7 @@
 //! }
 //! ~~~
 //!
-//! # The `try!` macro
+//! ## The `try!` macro
 //!
 //! When writing code that calls many functions that return the
 //! `Result` type, the error handling can be tedious.  The `try!`
@@ -228,7 +228,7 @@
 //!
 //! `try!` is imported by the prelude, and is available everywhere.
 //!
-//! # `Result` and `Option`
+//! ## `Result` and `Option`
 //!
 //! The `Result` and [`Option`](../option/index.html) types are
 //! similar and complementary: they are often employed to indicate a
@@ -250,7 +250,7 @@
 //! let mut t = Timer::new().ok().expect("failed to create timer!");
 //! ~~~
 //!
-//! # `Result` vs. `fail!`
+//! ## `Result` vs. `fail!`
 //!
 //! `Result` is for recoverable errors; `fail!` is for unrecoverable
 //! errors. Callers should always be able to avoid failure if they
@@ -304,7 +304,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns true if the result is `Ok`
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ~~~
     /// use std::io::{File, Open, Write};
@@ -324,7 +324,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns true if the result is `Err`
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ~~~
     /// use std::io::{File, Open, Read};
@@ -353,7 +353,7 @@ impl<T, E> Result<T, E> {
     /// use `as_ref` to first convert the `Result<T, E>` into a
     /// `Result<&T, &E>`.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ~~~{.should_fail}
     /// use std::io::{File, IoResult};
@@ -415,7 +415,7 @@ impl<T, E> Result<T, E> {
     ///
     /// This function can be used to compose the results of two functions.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// Sum the lines of a buffer by mapping strings to numbers,
     /// ignoring I/O and parse errors:
@@ -536,7 +536,7 @@ impl<T, E> Result<T, E> {
 impl<T, E: Show> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Ok`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the value is an `Err`, with a custom failure message provided
     /// by the `Err`'s value.
@@ -553,7 +553,7 @@ impl<T, E: Show> Result<T, E> {
 impl<T: Show, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Err`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the value is an `Ok`, with a custom failure message provided
     /// by the `Ok`'s value.

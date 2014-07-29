@@ -10,7 +10,7 @@
 
 //! The Rust parser and macro expander.
 //!
-//! # Note
+//! ## Note
 //!
 //! This API is completely unstable and subject to change.
 

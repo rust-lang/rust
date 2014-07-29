@@ -24,7 +24,7 @@
 //! received values of receivers in a much more natural syntax then usage of the
 //! `Select` structure directly.
 //!
-//! # Example
+//! ## Example
 //!
 //! ```rust
 //! let (tx1, rx1) = channel();

@@ -82,7 +82,7 @@ pub fn get_host_addresses(host: &str) -> IoResult<Vec<IpAddr>> {
 /// Full-fleged resolution. This function will perform a synchronous call to
 /// getaddrinfo, controlled by the parameters
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * hostname - an optional hostname to lookup against
 /// * servname - an optional service name, listed in the system services

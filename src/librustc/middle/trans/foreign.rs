@@ -250,7 +250,7 @@ pub fn trans_native_call<'a>(
      * Prepares a call to a native function. This requires adapting
      * from the Rust argument passing rules to the native rules.
      *
-     * # Parameters
+     * ## Parameters
      *
      * - `callee_ty`: Rust type for the function we are calling
      * - `llfn`: the function pointer we are calling

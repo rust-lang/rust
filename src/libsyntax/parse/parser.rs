@@ -4643,7 +4643,7 @@ impl<'a> Parser<'a> {
 
     /// Parse extern crate links
     ///
-    /// # Example
+    /// ## Example
     ///
     /// extern crate url;
     /// extern crate foo = "bar";
@@ -4689,7 +4689,7 @@ impl<'a> Parser<'a> {
     /// `extern` is expected to have been
     /// consumed before calling this method
     ///
-    /// # Examples:
+    /// ## Examples:
     ///
     /// extern "C" {}
     /// extern {}

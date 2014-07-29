@@ -72,7 +72,7 @@ impl Rand for StandardNormal {
 /// This uses the ZIGNOR variant of the Ziggurat method, see
 /// `StandardNormal` for more details.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::rand;
@@ -115,7 +115,7 @@ impl IndependentSample<f64> for Normal {
 /// If `X` is log-normal distributed, then `ln(X)` is `N(mean,
 /// std_dev**2)` distributed.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::rand;

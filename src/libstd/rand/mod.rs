@@ -231,7 +231,7 @@ impl Rng for TaskRng {
 /// `random()` can generate various types of random things, and so may require
 /// type hinting to generate the specific type you want.
 ///
-/// # Examples
+/// ## Examples
 ///
 /// ```rust
 /// use std::rand;
@@ -253,7 +253,7 @@ pub fn random<T: Rand>() -> T {
 
 /// Randomly sample up to `amount` elements from an iterator.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::rand::{task_rng, sample};

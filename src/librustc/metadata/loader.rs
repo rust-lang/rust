@@ -15,7 +15,7 @@
 //! is the major guts (along with metadata::creader) of the compiler for loading
 //! crates and resolving dependencies. Let's take a tour!
 //!
-//! # The problem
+//! ## The problem
 //!
 //! Each invocation of the compiler is immediately concerned with one primary
 //! problem, to connect a set of crates to resolved crates on the filesystem.
@@ -108,7 +108,7 @@
 //!
 //! To resolve this problem, we come to the next section!
 //!
-//! # Expert Mode
+//! ## Expert Mode
 //!
 //! A number of flags have been added to the compiler to solve the "version
 //! problem" in the previous section, as well as generally enabling more
@@ -206,7 +206,7 @@
 //! In the end, this ends up not needing `--extern` to specify upstream
 //! transitive dependencies.
 //!
-//! # Wrapping up
+//! ## Wrapping up
 //!
 //! That's the general overview of loading crates in the compiler, but it's by
 //! no means all of the necessary details. Take a look at the rest of

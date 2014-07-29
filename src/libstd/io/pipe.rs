@@ -42,7 +42,7 @@ impl PipeStream {
     /// This operation consumes ownership of the file descriptor and it will be
     /// closed once the object is deallocated.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// # #![allow(unused_must_use)]
@@ -72,7 +72,7 @@ impl PipeStream {
     /// The structure returned contains a reader and writer I/O object. Data
     /// written to the writer can be read from the reader.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// This function can fail to succeed if the underlying OS has run out of
     /// available resources to allocate a new pipe.

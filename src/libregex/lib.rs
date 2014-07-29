@@ -21,7 +21,7 @@
 //! support and exhaustively lists the supported syntax. For more specific
 //! details on the API, please see the documentation for the `Regex` type.
 //!
-//! # First example: find a date
+//! ## First example: find a date
 //!
 //! General use of regular expressions in this package involves compiling an
 //! expression and then using it to search, split or replace text. For example,
@@ -46,7 +46,7 @@
 //! not process any escape sequences. For example, `"\\d"` is the same
 //! expression as `r"\d"`.
 //!
-//! # The `regex!` macro
+//! ## The `regex!` macro
 //!
 //! Rust's compile time meta-programming facilities provide a way to write a
 //! `regex!` macro which compiles regular expressions *when your program
@@ -88,7 +88,7 @@
 //! expressions, but 100+ calls to `regex!` will probably result in a
 //! noticeably bigger binary.
 //!
-//! # Example: iterating over capture groups
+//! ## Example: iterating over capture groups
 //!
 //! This crate provides convenient iterators for matching an expression
 //! repeatedly against a search string to find successive non-overlapping
@@ -114,7 +114,7 @@
 //! Notice that the year is in the capture group indexed at `1`. This is
 //! because the *entire match* is stored in the capture group at index `0`.
 //!
-//! # Example: replacement with named capture groups
+//! ## Example: replacement with named capture groups
 //!
 //! Building on the previous example, perhaps we'd like to rearrange the date
 //! formats. This can be done with text replacement. But to make the code
@@ -136,7 +136,7 @@
 //! provides more flexibility than is seen here. (See the documentation for
 //! `Regex::replace` for more details.)
 //!
-//! # Pay for what you use
+//! ## Pay for what you use
 //!
 //! With respect to searching text with a regular expression, there are three
 //! questions that can be asked:
@@ -154,7 +154,7 @@
 //! only need to test if an expression matches a string. (Use `is_match`
 //! instead.)
 //!
-//! # Unicode
+//! ## Unicode
 //!
 //! This implementation executes regular expressions **only** on sequences of
 //! Unicode code points while exposing match locations as byte indices into the
@@ -190,7 +190,7 @@
 //! # }
 //! ```
 //!
-//! # Syntax
+//! ## Syntax
 //!
 //! The syntax supported in this crate is almost in an exact correspondence
 //! with the syntax supported by RE2.
@@ -339,7 +339,7 @@
 //! [:xdigit:]   hex digit ([0-9A-Fa-f])
 //! </pre>
 //!
-//! # Untrusted input
+//! ## Untrusted input
 //!
 //! There are two factors to consider here: untrusted regular expressions and
 //! untrusted search text.
