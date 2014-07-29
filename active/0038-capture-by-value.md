@@ -1,6 +1,6 @@
 - Start Date: 2014-07-02
-- RFC PR #: 151
-- Rust Issue #: 12831
+- RFC PR: [rust-lang/rfcs#151](https://github.com/rust-lang/rfcs/pull/151)
+- Rust Issue: [rust-lang/rust#12831](https://github.com/rust-lang/rust/issues/12831)
 
 # Summary
 

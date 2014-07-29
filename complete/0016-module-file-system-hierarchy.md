@@ -1,6 +1,6 @@
 - Start Date: 2014-05-02
-- RFC PR #: 63
-- Rust Issue #: 14180
+- RFC PR: [rust-lang/rfcs#63](https://github.com/rust-lang/rfcs/pull/63)
+- Rust Issue: [rust-lang/rust#14180](https://github.com/rust-lang/rust/issues/14180)
 
 # Summary
 

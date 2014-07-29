@@ -1,6 +1,6 @@
 - Start Date: 2014-06-18
-- RFC PR #: 131
-- Rust Issue #: 16093
+- RFC PR: [rust-lang/rfcs#131](https://github.com/rust-lang/rfcs/pull/131)
+- Rust Issue: [rust-lang/rust#16093](https://github.com/rust-lang/rust/issues/16093)
 
 # Summary
 

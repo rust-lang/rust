@@ -1,6 +1,6 @@
 - Start Date: 2014-06-25
-- RFC PR #: 139
-- Rust Issue #: #10504
+- RFC PR: [rust-lang/rfcs#139](https://github.com/rust-lang/rfcs/pull/139)
+- Rust Issue: [rust-lang/rust#10504](https://github.com/rust-lang/rust/issues/10504)
 
 # Summary
 

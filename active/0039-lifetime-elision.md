@@ -1,6 +1,6 @@
 - Start Date: (2014-06-24)
-- RFC PR #: 141
-- Rust Issue #: 15552
+- RFC PR: [rust-lang/rfcs#141](https://github.com/rust-lang/rfcs/pull/141)
+- Rust Issue: [rust-lang/rust#15552](https://github.com/rust-lang/rust/issues/15552)
 
 # Summary
 

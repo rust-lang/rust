@@ -1,6 +1,6 @@
 - Start Date: 2014-05-04
-- RFC PR #: 0031
-- Rust Issue #: 15023
+- RFC PR: [rust-lang/rfcs#0031](https://github.com/rust-lang/rfcs/pull/0031)
+- Rust Issue: [rust-lang/rust#15023](https://github.com/rust-lang/rust/issues/15023)
 
 # Summary
 

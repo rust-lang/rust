@@ -1,6 +1,6 @@
 - Start Date: 2014-05-23
-- RFC PR #: 90
-- Rust Issue #: 14504
+- RFC PR: [rust-lang/rfcs#90](https://github.com/rust-lang/rfcs/pull/90)
+- Rust Issue: [rust-lang/rust#14504](https://github.com/rust-lang/rust/issues/14504)
 
 # Summary
 

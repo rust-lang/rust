@@ -1,6 +1,6 @@
 - Start Date: 2014-06-24
-- RFC PR #: 109
-- Rust Issue #: 14470
+- RFC PR: [rust-lang/rfcs#109](https://github.com/rust-lang/rfcs/pull/109)
+- Rust Issue: [rust-lang/rust#14470](https://github.com/rust-lang/rust/issues/14470)
 
 # Summary
 

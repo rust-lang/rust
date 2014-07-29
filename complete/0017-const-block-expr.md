@@ -1,6 +1,6 @@
 - Start Date: 2014-05-07
-- RFC PR #: 71
-- Rust Issue #: 14181
+- RFC PR: [rust-lang/rfcs#71](https://github.com/rust-lang/rfcs/pull/71)
+- Rust Issue: [rust-lang/rust#14181](https://github.com/rust-lang/rust/issues/14181)
 
 # Summary
 

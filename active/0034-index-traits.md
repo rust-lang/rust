@@ -1,6 +1,6 @@
 - Start Date: 2014-06-09
-- RFC PR #: #111
-- Rust Issue #: #6515
+- RFC PR: [rust-lang/rfcs#111](https://github.com/rust-lang/rfcs/pull/111)
+- Rust Issue: [rust-lang/rust#6515](https://github.com/rust-lang/rust/issues/6515)
 
 # Summary
 

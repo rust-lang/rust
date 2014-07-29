@@ -1,6 +1,6 @@
 - Start Date: 2014-03-11
-- RFC PR #: 1
-- Rust Issue #: 8122
+- RFC PR: [rust-lang/rfcs#1](https://github.com/rust-lang/rfcs/pull/1)
+- Rust Issue: [rust-lang/rust#8122](https://github.com/rust-lang/rust/issues/8122)
 
 # Summary
 

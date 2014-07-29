@@ -1,6 +1,6 @@
 - Start Date: 2014-04-30
-- RFC PR #: 60
-- Rust Issue #: 14312
+- RFC PR: [rust-lang/rfcs#60](https://github.com/rust-lang/rfcs/pull/60)
+- Rust Issue: [rust-lang/rust#14312](https://github.com/rust-lang/rust/issues/14312)
 
 # Summary
 

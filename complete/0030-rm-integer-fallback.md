@@ -1,6 +1,6 @@
 - Start Date: 2014-06-11
-- RFC PR #: 115
-- Rust Issue #: 6023
+- RFC PR: [rust-lang/rfcs#115](https://github.com/rust-lang/rfcs/pull/115)
+- Rust Issue: [rust-lang/rust#6023](https://github.com/rust-lang/rust/issues/6023)
 
 # Summary
 
