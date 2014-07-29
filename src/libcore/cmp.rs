@@ -39,7 +39,7 @@
 
 #![stable]
 
-use option::{Option, Some};
+use option::{None, Option, Some};
 
 /// Trait for values that can be compared for equality and inequality.
 ///
@@ -122,6 +122,30 @@ pub trait Ord: Eq + PartialOrd {
     /// assert_eq!( 5u.cmp(&5),  Equal);    // because 5 == 5
     /// ```
     fn cmp(&self, other: &Self) -> Ordering;
+
+    /// This method returns the greater of two values.
+    ///
+    /// If the values are equal, the value which this method was called on
+    /// (self) is returned.
+    #[inline]
+    fn max<'a>(&'a self, other: &'a Self) -> &'a Self {
+        match self.cmp(other) {
+            Less => other,
+            _ => self,
+        }
+    }
+
+    /// This method returns the lesser of two values.
+    ///
+    /// If the values are equal, the value which this method was called on
+    /// (self) is returned.
+    #[inline]
+    fn min<'a>(&'a self, other: &'a Self) -> &'a Self {
+        match self.cmp(other) {
+            Greater => other,
+            _ => self,
+        }
+    }
 }
 
 #[unstable = "Trait is unstable."]
@@ -205,6 +229,32 @@ pub trait PartialOrd: PartialEq {
         match self.partial_cmp(other) {
             Some(Greater) | Some(Equal) => true,
             _ => false,
+        }
+    }
+    
+    /// This method returns the greater of two values, if they can be compared.
+    ///
+    /// If the values are equal, the value which this method was called on
+    /// (self) is returned.
+    #[inline]
+    fn partial_max<'a>(&'a self, other: &'a Self) -> Option<&'a Self> {
+        match self.partial_cmp(other) {
+            Some(Less) => Some(other),
+            Some(_) => Some(self), 
+            _ => None,
+        }
+    }
+
+    /// This method returns the lesser of two values, if they can be compared.
+    ///
+    /// If the values are equal, the value which this method was called on
+    /// (self) is returned.
+    #[inline]
+    fn partial_min<'a>(&'a self, other: &'a Self) -> Option<&'a Self> {
+        match self.partial_cmp(other) {
+            Some(Greater) => Some(other),
+            Some(_) => Some(self),
+            _ => None,
         }
     }
 }
