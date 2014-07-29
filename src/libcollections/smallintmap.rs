@@ -373,6 +373,20 @@ impl<V:Clone> SmallIntMap<V> {
     }
 }
 
+impl<V: PartialOrd> PartialOrd for SmallIntMap<V> {
+    #[inline]
+    fn partial_cmp(&self, other: &SmallIntMap<V>) -> Option<Ordering> {
+        iter::order::partial_cmp(self.iter(), other.iter())
+    }
+}
+
+impl<V: Ord> Ord for SmallIntMap<V> {
+    #[inline]
+    fn cmp(&self, other: &SmallIntMap<V>) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
+    }
+}
+
 impl<V: fmt::Show> fmt::Show for SmallIntMap<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
@@ -768,6 +782,38 @@ mod test_map {
         assert!(a != b);
         assert!(b.insert(5, 19));
         assert!(a == b);
+    }
+
+    #[test]
+    fn test_lt() {
+        let mut a = SmallIntMap::new();
+        let mut b = SmallIntMap::new();
+
+        assert!(!(a < b) && !(b < a));
+        assert!(b.insert(2u, 5i));
+        assert!(a < b);
+        assert!(a.insert(2, 7));
+        assert!(!(a < b) && b < a);
+        assert!(b.insert(1, 0));
+        assert!(b < a);
+        assert!(a.insert(0, 6));
+        assert!(a < b);
+        assert!(a.insert(6, 2));
+        assert!(a < b && !(b < a));
+    }
+
+    #[test]
+    fn test_ord() {
+        let mut a = SmallIntMap::new();
+        let mut b = SmallIntMap::new();
+
+        assert!(a <= b && a >= b);
+        assert!(a.insert(1u, 1i));
+        assert!(a > b && a >= b);
+        assert!(b < a && b <= a);
+        assert!(b.insert(2, 2));
+        assert!(b > a && b >= a);
+        assert!(a < b && a <= b);
     }
 
     #[test]

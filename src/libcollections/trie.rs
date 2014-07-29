@@ -93,6 +93,20 @@ impl<T: PartialEq> PartialEq for TrieMap<T> {
 
 impl<T: Eq> Eq for TrieMap<T> {}
 
+impl<T: PartialOrd> PartialOrd for TrieMap<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &TrieMap<T>) -> Option<Ordering> {
+        iter::order::partial_cmp(self.iter(), other.iter())
+    }
+}
+
+impl<T: Ord> Ord for TrieMap<T> {
+    #[inline]
+    fn cmp(&self, other: &TrieMap<T>) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
+    }
+}
+
 impl<T: Show> Show for TrieMap<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
@@ -517,7 +531,7 @@ impl<S: Writer, T: Hash<S>> Hash<S> for TrieMap<T> {
 /// set.clear();
 /// assert!(set.is_empty());
 /// ```
-#[deriving(Clone, Hash, PartialEq, Eq)]
+#[deriving(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TrieSet {
     map: TrieMap<()>
 }
@@ -1310,6 +1324,38 @@ mod test_map {
     }
 
     #[test]
+    fn test_lt() {
+        let mut a = TrieMap::new();
+        let mut b = TrieMap::new();
+
+        assert!(!(a < b) && !(b < a));
+        assert!(b.insert(2u, 5i));
+        assert!(a < b);
+        assert!(a.insert(2, 7));
+        assert!(!(a < b) && b < a);
+        assert!(b.insert(1, 0));
+        assert!(b < a);
+        assert!(a.insert(0, 6));
+        assert!(a < b);
+        assert!(a.insert(6, 2));
+        assert!(a < b && !(b < a));
+    }
+
+    #[test]
+    fn test_ord() {
+        let mut a = TrieMap::new();
+        let mut b = TrieMap::new();
+
+        assert!(a <= b && a >= b);
+        assert!(a.insert(1u, 1i));
+        assert!(a > b && a >= b);
+        assert!(b < a && b <= a);
+        assert!(b.insert(2, 2));
+        assert!(b > a && b >= a);
+        assert!(a < b && a <= b);
+    }
+
+    #[test]
     fn test_hash() {
       let mut x = TrieMap::new();
       let mut y = TrieMap::new();
@@ -1512,5 +1558,37 @@ mod test_set {
         a.insert(3);
 
         assert!(a.clone() == a);
+    }
+
+    #[test]
+    fn test_lt() {
+        let mut a = TrieSet::new();
+        let mut b = TrieSet::new();
+
+        assert!(!(a < b) && !(b < a));
+        assert!(b.insert(2u));
+        assert!(a < b);
+        assert!(a.insert(3u));
+        assert!(!(a < b) && b < a);
+        assert!(b.insert(1));
+        assert!(b < a);
+        assert!(a.insert(0));
+        assert!(a < b);
+        assert!(a.insert(6));
+        assert!(a < b && !(b < a));
+    }
+
+    #[test]
+    fn test_ord() {
+        let mut a = TrieSet::new();
+        let mut b = TrieSet::new();
+
+        assert!(a <= b && a >= b);
+        assert!(a.insert(1u));
+        assert!(a > b && a >= b);
+        assert!(b < a && b <= a);
+        assert!(b.insert(2u));
+        assert!(b > a && b >= a);
+        assert!(a < b && a <= b);
     }
 }
