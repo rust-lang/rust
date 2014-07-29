@@ -155,29 +155,36 @@ macro_rules! impl_hash_tuple(
         }
     );
 
-    ($A:ident $($B:ident)*) => (
-        impl<
-            S: Writer,
-            $A: Hash<S> $(, $B: Hash<S>)*
-        > Hash<S> for ($A, $($B),*) {
+    ( $($name:ident)+) => (
+        impl<S: Writer, $($name: Hash<S>),*> Hash<S> for ($($name,)*) {
+            #[allow(uppercase_variables)]
             #[inline]
             fn hash(&self, state: &mut S) {
                 match *self {
-                    (ref $A, $(ref $B),*) => {
-                        $A.hash(state);
+                    ($(ref $name,)*) => {
                         $(
-                            $B.hash(state);
+                            $name.hash(state);
                         )*
                     }
                 }
             }
         }
-
-        impl_hash_tuple!($($B)*)
     );
 )
 
-impl_hash_tuple!(a0 a1 a2 a3 a4 a5 a6 a7)
+impl_hash_tuple!()
+impl_hash_tuple!(A)
+impl_hash_tuple!(A B)
+impl_hash_tuple!(A B C)
+impl_hash_tuple!(A B C D)
+impl_hash_tuple!(A B C D E)
+impl_hash_tuple!(A B C D E F)
+impl_hash_tuple!(A B C D E F G)
+impl_hash_tuple!(A B C D E F G H)
+impl_hash_tuple!(A B C D E F G H I)
+impl_hash_tuple!(A B C D E F G H I J)
+impl_hash_tuple!(A B C D E F G H I J K)
+impl_hash_tuple!(A B C D E F G H I J K L)
 
 impl<'a, S: Writer, T: Hash<S>> Hash<S> for &'a [T] {
     #[inline]
