@@ -92,7 +92,7 @@ impl<T: Share + Send> Arc<T> {
     }
 
     #[inline]
-    fn inner<'a>(&'a self) -> &'a ArcInner<T> {
+    fn inner(&self) -> &ArcInner<T> {
         // This unsafety is ok because while this arc is alive we're guaranteed
         // that the inner pointer is valid. Furthermore, we know that the
         // `ArcInner` structure itself is `Share` because the inner data is
@@ -142,7 +142,7 @@ impl<T: Share + Send> Clone for Arc<T> {
 #[experimental = "Deref is experimental."]
 impl<T: Send + Share> Deref<T> for Arc<T> {
     #[inline]
-    fn deref<'a>(&'a self) -> &'a T {
+    fn deref(&self) -> &T {
         &self.inner().data
     }
 }
@@ -155,7 +155,7 @@ impl<T: Send + Share + Clone> Arc<T> {
     /// data is cloned if the reference count is greater than one.
     #[inline]
     #[experimental]
-    pub fn make_unique<'a>(&'a mut self) -> &'a mut T {
+    pub fn make_unique(&mut self) -> &mut T {
         // Note that we hold a strong reference, which also counts as
         // a weak reference, so we only clone if there is an
         // additional reference of either kind.
@@ -238,7 +238,7 @@ impl<T: Share + Send> Weak<T> {
     }
 
     #[inline]
-    fn inner<'a>(&'a self) -> &'a ArcInner<T> {
+    fn inner(&self) -> &ArcInner<T> {
         // See comments above for why this is "safe"
         unsafe { &*self._ptr }
     }
