@@ -955,7 +955,7 @@ mod test {
         }
     ) )
 
-    struct TempDir(Path);
+    pub struct TempDir(Path);
 
     impl TempDir {
         fn join(&self, path: &str) -> Path {
