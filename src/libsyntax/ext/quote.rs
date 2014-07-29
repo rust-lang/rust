@@ -349,6 +349,14 @@ pub fn expand_quote_pat(cx: &mut ExtCtxt,
     base::MacExpr::new(expanded)
 }
 
+pub fn expand_quote_arm(cx: &mut ExtCtxt,
+                        sp: Span,
+                        tts: &[ast::TokenTree])
+                        -> Box<base::MacResult> {
+    let expanded = expand_parse_call(cx, sp, "parse_arm", vec!(), tts);
+    base::MacExpr::new(expanded)
+}
+
 pub fn expand_quote_ty(cx: &mut ExtCtxt,
                        sp: Span,
                        tts: &[ast::TokenTree])
