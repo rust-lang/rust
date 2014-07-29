@@ -67,6 +67,7 @@ use core::cmp;
 use core::default::Default;
 use core::fmt;
 use core::iter::Take;
+use core::iter;
 use core::ops::Index;
 use core::slice;
 use core::uint;
@@ -830,6 +831,20 @@ impl Clone for Bitv {
     }
 }
 
+impl PartialOrd for Bitv {
+    #[inline]
+    fn partial_cmp(&self, other: &Bitv) -> Option<Ordering> {
+        iter::order::partial_cmp(self.iter(), other.iter())
+    }
+}
+
+impl Ord for Bitv {
+    #[inline]
+    fn cmp(&self, other: &Bitv) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
+    }
+}
+
 impl fmt::Show for Bitv {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for bit in self.iter() {
@@ -955,7 +970,7 @@ impl<'a> RandomAccessIterator<bool> for Bits<'a> {
 /// assert!(bv.eq_vec([true, true, false, true,
 ///                    false, false, false, false]));
 /// ```
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BitvSet(Bitv);
 
 impl Default for BitvSet {
@@ -2187,6 +2202,37 @@ mod tests {
         assert!(a.remove(&1000));
         a.shrink_to_fit();
         assert_eq!(a.capacity(), uint::BITS);
+    }
+
+    #[test]
+    fn test_bitv_lt() {
+        let mut a = Bitv::with_capacity(5u, false);
+        let mut b = Bitv::with_capacity(5u, false);
+
+        assert!(!(a < b) && !(b < a));
+        b.set(2, true);
+        assert!(a < b);
+        a.set(3, true);
+        assert!(a < b);
+        a.set(2, true);
+        assert!(!(a < b) && b < a);
+        b.set(0, true);
+        assert!(a < b);
+    }
+
+    #[test]
+    fn test_ord() {
+        let mut a = Bitv::with_capacity(5u, false);
+        let mut b = Bitv::with_capacity(5u, false);
+
+        assert!(a <= b && a >= b);
+        a.set(1, true);
+        assert!(a > b && a >= b);
+        assert!(b < a && b <= a);
+        b.set(1, true);
+        b.set(2, true);
+        assert!(b > a && b >= a);
+        assert!(a < b && a <= b);
     }
 
     #[test]
