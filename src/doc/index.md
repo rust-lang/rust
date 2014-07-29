@@ -84,6 +84,7 @@ as that for which this documentation was generated.*
 
 * [Reddit](http://reddit.com/r/rust)
 * [Stack Overflow](http://stackoverflow.com/questions/tagged/rust)
+* [Developer Forum](http://discuss.rust-lang.org/)
 * The Rust IRC channels on [irc.mozilla.org](http://irc.mozilla.org/):
     * [`#rust`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust) - general discussion
     * [`#rust-gamedev`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-gamedev) - game development
