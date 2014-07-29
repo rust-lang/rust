@@ -269,7 +269,8 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(windows)] pub use funcs::extra::kernel32::{MoveFileExW, VirtualProtect};
 #[cfg(windows)] pub use funcs::extra::msvcrt::{get_osfhandle, open_osfhandle};
 
-#[cfg(target_os = "linux")] #[cfg(target_os = "android")] #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "linux")] #[cfg(target_os = "android")]
+#[cfg(target_os = "freebsd")] #[cfg(target_os = "dragonfly")]
 pub use consts::os::posix01::{CLOCK_REALTIME, CLOCK_MONOTONIC};
 
 #[cfg(target_os = "linux")] #[cfg(target_os = "android")]
@@ -279,6 +280,7 @@ pub use funcs::posix01::unistd::{fdatasync};
 pub use consts::os::extra::{MAP_STACK};
 
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "dragonfly")]
 pub use consts::os::bsd44::{TCP_KEEPIDLE};
 
 #[cfg(target_os = "macos")]
@@ -921,6 +923,205 @@ pub mod types {
                     pub __unused: [uint8_t, ..2],
                 }
 
+                pub struct utimbuf {
+                    pub actime: time_t,
+                    pub modtime: time_t,
+                }
+
+                pub type pthread_attr_t = *mut c_void;
+            }
+            pub mod posix08 {
+            }
+            pub mod bsd44 {
+            }
+            pub mod extra {
+            }
+        }
+    }
+
+    #[cfg(target_os = "dragonfly")]
+    pub mod os {
+        pub mod common {
+            pub mod posix01 {
+                use types::common::c95::{c_void};
+                use types::os::arch::c95::{c_char, c_int, size_t,
+                                                 time_t, suseconds_t, c_long};
+                use types::os::arch::c99::{uintptr_t};
+
+                pub type pthread_t = uintptr_t;
+
+                pub struct glob_t {
+                    pub gl_pathc:  size_t,
+                    pub __unused1: size_t,
+                    pub gl_offs:   size_t,
+                    pub __unused2: c_int,
+                    pub gl_pathv:  *mut *mut c_char,
+
+                    pub __unused3: *mut c_void,
+
+                    pub __unused4: *mut c_void,
+                    pub __unused5: *mut c_void,
+                    pub __unused6: *mut c_void,
+                    pub __unused7: *mut c_void,
+                    pub __unused8: *mut c_void,
+                }
+
+                pub struct timeval {
+                    pub tv_sec: time_t,
+                    pub tv_usec: suseconds_t,
+                }
+
+                pub struct timespec {
+                    pub tv_sec: time_t,
+                    pub tv_nsec: c_long,
+                }
+
+                pub enum timezone {}
+
+                pub type sighandler_t = size_t;
+            }
+            pub mod bsd44 {
+                use types::os::arch::c95::{c_char, c_int, c_uint};
+
+                pub type socklen_t = u32;
+                pub type sa_family_t = u8;
+                pub type in_port_t = u16;
+                pub type in_addr_t = u32;
+                pub struct sockaddr {
+                    pub sa_len: u8,
+                    pub sa_family: sa_family_t,
+                    pub sa_data: [u8, ..14],
+                }
+                pub struct sockaddr_storage {
+                    pub ss_len: u8,
+                    pub ss_family: sa_family_t,
+                    pub __ss_pad1: [u8, ..6],
+                    pub __ss_align: i64,
+                    pub __ss_pad2: [u8, ..112],
+                }
+                pub struct sockaddr_in {
+                    pub sin_len: u8,
+                    pub sin_family: sa_family_t,
+                    pub sin_port: in_port_t,
+                    pub sin_addr: in_addr,
+                    pub sin_zero: [u8, ..8],
+                }
+                pub struct in_addr {
+                    pub s_addr: in_addr_t,
+                }
+                pub struct sockaddr_in6 {
+                    pub sin6_len: u8,
+                    pub sin6_family: sa_family_t,
+                    pub sin6_port: in_port_t,
+                    pub sin6_flowinfo: u32,
+                    pub sin6_addr: in6_addr,
+                    pub sin6_scope_id: u32,
+                }
+                pub struct in6_addr {
+                    pub s6_addr: [u16, ..8]
+                }
+                pub struct ip_mreq {
+                    pub imr_multiaddr: in_addr,
+                    pub imr_interface: in_addr,
+                }
+                pub struct ip6_mreq {
+                    pub ipv6mr_multiaddr: in6_addr,
+                    pub ipv6mr_interface: c_uint,
+                }
+                pub struct addrinfo {
+                    pub ai_flags: c_int,
+                    pub ai_family: c_int,
+                    pub ai_socktype: c_int,
+                    pub ai_protocol: c_int,
+                    pub ai_addrlen: socklen_t,
+                    pub ai_canonname: *mut c_char,
+                    pub ai_addr: *mut sockaddr,
+                    pub ai_next: *mut addrinfo,
+                }
+                pub struct sockaddr_un {
+                    pub sun_len: u8,
+                    pub sun_family: sa_family_t,
+                    pub sun_path: [c_char, ..104]
+                }
+            }
+        }
+
+        #[cfg(target_arch = "x86_64")]
+        pub mod arch {
+            pub mod c95 {
+                pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = i64;
+                pub type c_ulong = u64;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                pub type size_t = u64;
+                pub type ptrdiff_t = i64;
+                pub type clock_t = i32;
+                pub type time_t = i64;
+                pub type suseconds_t = i64;
+                pub type wchar_t = i32;
+            }
+            pub mod c99 {
+                pub type c_longlong = i64;
+                pub type c_ulonglong = u64;
+                pub type intptr_t = int;
+                pub type uintptr_t = uint;
+            }
+            pub mod posix88 {
+                pub type off_t = i64;
+                pub type dev_t = u32;
+                pub type ino_t = u32;
+                pub type pid_t = i32;
+                pub type uid_t = u32;
+                pub type gid_t = u32;
+                pub type useconds_t = u32;
+                pub type mode_t = u16;
+                pub type ssize_t = i64;
+            }
+            pub mod posix01 {
+                use types::common::c95::{c_void};
+                use types::common::c99::{uint16_t, uint32_t, int32_t, uint64_t, int64_t};
+                use types::os::arch::c95::{c_long, time_t};
+                use types::os::arch::posix88::{dev_t, gid_t};
+                use types::os::arch::posix88::{mode_t, off_t};
+                use types::os::arch::posix88::{uid_t};
+
+                pub type nlink_t = u16;
+                pub type blksize_t = uint32_t;
+                pub type ino_t = uint64_t;
+                pub type blkcnt_t = i64;
+                pub type fflags_t = u32;
+
+                pub struct stat {
+                    pub st_ino: ino_t,
+                    pub st_nlink: nlink_t,
+                    pub st_dev: dev_t,
+                    pub st_mode: mode_t,
+                    pub st_padding1: uint16_t,
+                    pub st_uid: uid_t,
+                    pub st_gid: gid_t,
+                    pub st_rdev: dev_t,
+                    pub st_atime: time_t,
+                    pub st_atime_nsec: c_long,
+                    pub st_mtime: time_t,
+                    pub st_mtime_nsec: c_long,
+                    pub st_ctime: time_t,
+                    pub st_ctime_nsec: c_long,
+                    pub st_size: off_t,
+                    pub st_blocks: blkcnt_t,
+                    pub st_blksize: blksize_t,
+                    pub st_flags: fflags_t,
+                    pub st_gen: uint32_t,
+                    pub st_lspare: int32_t,
+                    pub st_qspare1: int64_t,
+                    pub st_qspare2: int64_t,
+                }
                 pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
@@ -2736,6 +2937,7 @@ pub mod consts {
     }
 
     #[cfg(target_os = "freebsd")]
+    #[cfg(target_os = "dragonfly")]
     pub mod os {
         pub mod c95 {
             use types::os::arch::c95::{c_int, c_uint};
@@ -2989,11 +3191,14 @@ pub mod consts {
             #[cfg(target_arch = "arm")]
             pub static PTHREAD_STACK_MIN: size_t = 4096;
 
-            #[cfg(target_arch = "mips")]
-            #[cfg(target_arch = "mipsel")]
-            #[cfg(target_arch = "x86")]
-            #[cfg(target_arch = "x86_64")]
+            #[cfg(target_os = "freebsd", target_arch = "mips")]
+            #[cfg(target_os = "freebsd", target_arch = "mipsel")]
+            #[cfg(target_os = "freebsd", target_arch = "x86")]
+            #[cfg(target_os = "freebsd", target_arch = "x86_64")]
             pub static PTHREAD_STACK_MIN: size_t = 2048;
+
+            #[cfg(target_os = "dragonfly")]
+            pub static PTHREAD_STACK_MIN: size_t = 1024;
 
             pub static CLOCK_REALTIME: c_int = 0;
             pub static CLOCK_MONOTONIC: c_int = 4;
@@ -3056,7 +3261,10 @@ pub mod consts {
             pub static O_SYNC : c_int = 128;
             pub static CTL_KERN: c_int = 1;
             pub static KERN_PROC: c_int = 14;
+            #[cfg(target_os = "freebsd")]
             pub static KERN_PROC_PATHNAME: c_int = 12;
+            #[cfg(target_os = "dragonfly")]
+            pub static KERN_PROC_PATHNAME: c_int = 9;
 
             pub static MAP_COPY : c_int = 0x0002;
             pub static MAP_RENAME : c_int = 0x0020;
@@ -3809,6 +4017,7 @@ pub mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "ios")]
     #[cfg(target_os = "freebsd")]
+    #[cfg(target_os = "dragonfly")]
     pub mod posix88 {
         pub mod stat_ {
             use types::os::arch::c95::{c_char, c_int};
@@ -3821,6 +4030,7 @@ pub mod funcs {
 
                 #[cfg(target_os = "linux")]
                 #[cfg(target_os = "freebsd")]
+                #[cfg(target_os = "dragonfly")]
                 #[cfg(target_os = "android")]
                 #[cfg(target_os = "ios")]
                 pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
@@ -3834,6 +4044,7 @@ pub mod funcs {
 
                 #[cfg(target_os = "linux")]
                 #[cfg(target_os = "freebsd")]
+                #[cfg(target_os = "dragonfly")]
                 #[cfg(target_os = "android")]
                 #[cfg(target_os = "ios")]
                 pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
@@ -4016,6 +4227,7 @@ pub mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "ios")]
     #[cfg(target_os = "freebsd")]
+    #[cfg(target_os = "dragonfly")]
     pub mod posix01 {
         pub mod stat_ {
             use types::os::arch::c95::{c_char, c_int};
@@ -4024,6 +4236,7 @@ pub mod funcs {
             extern {
                 #[cfg(target_os = "linux")]
                 #[cfg(target_os = "freebsd")]
+                #[cfg(target_os = "dragonfly")]
                 #[cfg(target_os = "android")]
                 #[cfg(target_os = "ios")]
                 pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
@@ -4129,6 +4342,7 @@ pub mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "ios")]
     #[cfg(target_os = "freebsd")]
+    #[cfg(target_os = "dragonfly")]
     pub mod posix08 {
         pub mod unistd {
         }
@@ -4212,6 +4426,7 @@ pub mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "ios")]
     #[cfg(target_os = "freebsd")]
+    #[cfg(target_os = "dragonfly")]
     pub mod bsd44 {
         use types::common::c95::{c_void};
         use types::os::arch::c95::{c_char, c_uchar, c_int, c_uint, size_t};
@@ -4275,6 +4490,7 @@ pub mod funcs {
     }
 
     #[cfg(target_os = "freebsd")]
+    #[cfg(target_os = "dragonfly")]
     pub mod extra {
     }
 

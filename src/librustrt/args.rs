@@ -42,6 +42,7 @@ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "dragonfly")]
 mod imp {
     use core::prelude::*;
 

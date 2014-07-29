@@ -37,6 +37,12 @@ pub fn get_rpath_flags(config: RPathConfig) -> Vec<String> {
                         "-Wl,-rpath,/usr/local/lib/gcc44".to_string(),
                         "-Wl,-z,origin".to_string()]);
     }
+    else if config.os == abi::OsDragonfly {
+        flags.push_all(["-Wl,-rpath,/usr/lib/gcc47".to_string(),
+                        "-Wl,-rpath,/usr/lib/gcc44".to_string(),
+                        "-Wl,-z,origin".to_string()]);
+    }
+
 
     debug!("preparing the RPATH!");
 
@@ -105,7 +111,7 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig,
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = match config.os {
-        abi::OsAndroid | abi::OsLinux | abi::OsFreebsd
+        abi::OsAndroid | abi::OsLinux | abi::OsFreebsd | abi::OsDragonfly
                           => "$ORIGIN",
         abi::OsMacos => "@loader_path",
         abi::OsWin32 | abi::OsiOS => unreachable!()
@@ -213,6 +219,20 @@ mod test {
     fn test_rpath_relative() {
         let config = &mut RPathConfig {
             os: abi::OsFreebsd,
+            used_crates: Vec::new(),
+            out_filename: Path::new("bin/rustc"),
+            get_install_prefix_lib_path: || fail!(),
+            realpath: |p| Ok(p.clone())
+        };
+        let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
+        assert_eq!(res.as_slice(), "$ORIGIN/../lib");
+    }
+
+    #[test]
+    #[cfg(target_os = "dragonfly")]
+    fn test_rpath_relative() {
+        let config = &mut RPathConfig {
+            os: abi::OsDragonfly,
             used_crates: Vec::new(),
             out_filename: Path::new("bin/rustc"),
             get_install_prefix_lib_path: || fail!(),
