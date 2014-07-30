@@ -72,6 +72,8 @@ fn main() {
     let pat = quote_pat!(cx, Some(_));
     check_pp(ext_cx, pat, pprust::print_pat, "Some(_)".to_string());
 
+    let arm = quote_arm!(cx, (ref x, ref y) => (x, y));
+    check_pp(ext_cx, arm, pprust::print_stmt, "(ref x, ref y) = (x, y)".to_string());
 }
 
 fn check_pp<T>(cx: fake_ext_ctxt,

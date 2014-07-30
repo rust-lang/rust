@@ -334,8 +334,10 @@ pub enum Pat_ {
     /// records this pattern's NodeId in an auxiliary
     /// set (of "PatIdents that refer to nullary enums")
     PatIdent(BindingMode, SpannedIdent, Option<Gc<Pat>>),
-    PatEnum(Path, Option<Vec<Gc<Pat>>>), /* "none" means a * pattern where
-                                     * we don't bind the fields to names */
+
+    /// "None" means a * pattern where we don't bind the fields to names.
+    PatEnum(Path, Option<Vec<Gc<Pat>>>),
+
     PatStruct(Path, Vec<FieldPat>, bool),
     PatTup(Vec<Gc<Pat>>),
     PatBox(Gc<Pat>),
