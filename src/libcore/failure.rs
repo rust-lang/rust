@@ -16,7 +16,7 @@
 //! interface for failure is:
 //!
 //! ```ignore
-//! fn begin_unwind(fmt: &fmt::Arguments, file: &str, line: uint) -> !;
+//! fn begin_unwind(fmt: &fmt::Arguments, &(&'static str, uint)) -> !;
 //! ```
 //!
 //! This definition allows for failing with any general message, but it does not
