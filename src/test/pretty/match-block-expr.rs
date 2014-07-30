@@ -11,10 +11,6 @@
 // pp-exact
 
 fn main() {
-    let x = Some(3i);
-    let _y =
-        match x {
-            Some(_) => "some(_)".to_string(),
-            None => "none".to_string(),
-        };
+    let x = match { 5i } { 1 => 5i, 2 => 6, _ => 7, };
+    assert_eq!(x , 7);
 }

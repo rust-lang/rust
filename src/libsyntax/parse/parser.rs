@@ -2727,35 +2727,39 @@ impl<'a> Parser<'a> {
         self.commit_expr_expecting(discriminant, token::LBRACE);
         let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::RBRACE {
-            let attrs = self.parse_outer_attributes();
-            let pats = self.parse_pats();
-            let mut guard = None;
-            if self.eat_keyword(keywords::If) {
-                guard = Some(self.parse_expr());
-            }
-            self.expect(&token::FAT_ARROW);
-            let expr = self.parse_expr_res(RESTRICT_STMT_EXPR);
-
-            let require_comma =
-                !classify::expr_is_simple_block(expr)
-                && self.token != token::RBRACE;
-
-            if require_comma {
-                self.commit_expr(expr, &[token::COMMA], &[token::RBRACE]);
-            } else {
-                self.eat(&token::COMMA);
-            }
-
-            arms.push(ast::Arm {
-                attrs: attrs,
-                pats: pats,
-                guard: guard,
-                body: expr
-            });
+            arms.push(self.parse_arm());
         }
         let hi = self.span.hi;
         self.bump();
         return self.mk_expr(lo, hi, ExprMatch(discriminant, arms));
+    }
+
+    pub fn parse_arm(&mut self) -> Arm {
+        let attrs = self.parse_outer_attributes();
+        let pats = self.parse_pats();
+        let mut guard = None;
+        if self.eat_keyword(keywords::If) {
+            guard = Some(self.parse_expr());
+        }
+        self.expect(&token::FAT_ARROW);
+        let expr = self.parse_expr_res(RESTRICT_STMT_EXPR);
+
+        let require_comma =
+            !classify::expr_is_simple_block(expr)
+            && self.token != token::RBRACE;
+
+        if require_comma {
+            self.commit_expr(expr, &[token::COMMA], &[token::RBRACE]);
+        } else {
+            self.eat(&token::COMMA);
+        }
+
+        ast::Arm {
+            attrs: attrs,
+            pats: pats,
+            guard: guard,
+            body: expr,
+        }
     }
 
     /// Parse an expression

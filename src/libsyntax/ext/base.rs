@@ -382,6 +382,9 @@ fn initial_syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern("quote_pat"),
                        builtin_normal_expander(
                             ext::quote::expand_quote_pat));
+    syntax_expanders.insert(intern("quote_arm"),
+                       builtin_normal_expander(
+                            ext::quote::expand_quote_arm));
     syntax_expanders.insert(intern("quote_stmt"),
                        builtin_normal_expander(
                             ext::quote::expand_quote_stmt));
