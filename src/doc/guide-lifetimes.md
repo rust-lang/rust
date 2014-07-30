@@ -431,36 +431,6 @@ In any case, whatever the lifetime of `r` is, the pointer produced by
 field of a struct is valid as long as the struct is valid. Therefore,
 the compiler accepts the function `get_x()`.
 
-To emphasize this point, let’s look at a variation on the example, this
-time one that does not compile:
-
-~~~ {.ignore}
-struct Point {x: f64, y: f64}
-fn get_x_sh(p: &Point) -> &f64 {
-    &p.x // Error reported here
-}
-~~~
-
-Here, the function `get_x_sh()` takes a reference as input and
-returns a reference. As before, the lifetime of the reference
-that will be returned is a parameter (specified by the
-caller). That means that `get_x_sh()` promises to return a reference
-that is valid for as long as the caller would like: this is
-subtly different from the first example, which promised to return a
-pointer that was valid for as long as its pointer argument was valid.
-
-Within `get_x_sh()`, we see the expression `&p.x` which takes the
-address of a field of a Point. The presence of this expression
-implies that the compiler must guarantee that , so long as the
-resulting pointer is valid, the original Point won't be moved or changed.
-
-But recall that `get_x_sh()` also promised to
-return a pointer that was valid for as long as the caller wanted it to
-be. Clearly, `get_x_sh()` is not in a position to make both of these
-guarantees; in fact, it cannot guarantee that the pointer will remain
-valid at all once it returns, as the parameter `p` may or may not be
-live in the caller. Therefore, the compiler will report an error here.
-
 In general, if you borrow a struct or box to create a
 reference, it will only be valid within the function
 and cannot be returned. This is why the typical way to return references
