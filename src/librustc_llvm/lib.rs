@@ -428,7 +428,10 @@ pub mod debuginfo {
       FlagObjcClassComplete  = 1 << 9,
       FlagObjectPointer      = 1 << 10,
       FlagVector             = 1 << 11,
-      FlagStaticMember       = 1 << 12
+      FlagStaticMember       = 1 << 12,
+      FlagIndirectVariable   = 1 << 13,
+      FlagLValueReference    = 1 << 14,
+      FlagRValueReference    = 1 << 15
     }
 }
 
