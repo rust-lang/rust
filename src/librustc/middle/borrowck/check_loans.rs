@@ -261,6 +261,7 @@ impl<'a> CheckLoanCtxt<'a> {
         //     let x = &mut a.b.c; // Restricts a, a.b, and a.b.c
         //     let y = a;          // Conflicts with restriction
 
+        let loan_path = owned_ptr_base_path(loan_path);
         let cont = self.each_in_scope_loan(scope_id, |loan| {
             let mut ret = true;
             for restr_path in loan.restricted_paths.iter() {
@@ -395,8 +396,9 @@ impl<'a> CheckLoanCtxt<'a> {
             return true;
         }
 
+        let loan2_base_path = owned_ptr_base_path_rc(&loan2.loan_path);
         for restr_path in loan1.restricted_paths.iter() {
-            if *restr_path != loan2.loan_path { continue; }
+            if *restr_path != loan2_base_path { continue; }
 
             let old_pronoun = if new_loan.loan_path == old_loan.loan_path {
                 "it".to_string()
@@ -648,7 +650,8 @@ impl<'a> CheckLoanCtxt<'a> {
 
         debug!("check_if_path_is_moved(id={:?}, use_kind={:?}, lp={})",
                id, use_kind, lp.repr(self.bccx.tcx));
-        self.move_data.each_move_of(id, lp, |move, moved_lp| {
+        let base_lp = owned_ptr_base_path_rc(lp);
+        self.move_data.each_move_of(id, &base_lp, |move, moved_lp| {
             self.bccx.report_use_of_moved_value(
                 span,
                 use_kind,
