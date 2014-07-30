@@ -226,7 +226,7 @@ impl<T: Clone> Rc<T> {
     /// data is cloned if the reference count is greater than one.
     #[inline]
     #[experimental]
-    pub fn make_unique<'a>(&'a mut self) -> &'a mut T {
+    pub fn make_unique(&mut self) -> &mut T {
         // Note that we hold a strong reference, which also counts as
         // a weak reference, so we only clone if there is an
         // additional reference of either kind.
@@ -247,7 +247,7 @@ impl<T: Clone> Rc<T> {
 impl<T> Deref<T> for Rc<T> {
     /// Borrow the value contained in the reference-counted box
     #[inline(always)]
-    fn deref<'a>(&'a self) -> &'a T {
+    fn deref(&self) -> &T {
         &self.inner().value
     }
 }
@@ -390,7 +390,7 @@ impl<T> Clone for Weak<T> {
 
 #[doc(hidden)]
 trait RcBoxPtr<T> {
-    fn inner<'a>(&'a self) -> &'a RcBox<T>;
+    fn inner(&self) -> &RcBox<T>;
 
     #[inline]
     fn strong(&self) -> uint { self.inner().strong.get() }
@@ -413,12 +413,12 @@ trait RcBoxPtr<T> {
 
 impl<T> RcBoxPtr<T> for Rc<T> {
     #[inline(always)]
-    fn inner<'a>(&'a self) -> &'a RcBox<T> { unsafe { &(*self._ptr) } }
+    fn inner(&self) -> &RcBox<T> { unsafe { &(*self._ptr) } }
 }
 
 impl<T> RcBoxPtr<T> for Weak<T> {
     #[inline(always)]
-    fn inner<'a>(&'a self) -> &'a RcBox<T> { unsafe { &(*self._ptr) } }
+    fn inner(&self) -> &RcBox<T> { unsafe { &(*self._ptr) } }
 }
 
 #[cfg(test)]
