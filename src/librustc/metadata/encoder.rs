@@ -1816,12 +1816,7 @@ fn encode_dylib_dependency_formats(rbml_w: &mut Encoder, ecx: &EncodeContext) {
 }
 
 // NB: Increment this as you change the metadata encoding version.
-pub static metadata_encoding_version : &'static [u8] =
-    &[0x72, //'r' as u8,
-      0x75, //'u' as u8,
-      0x73, //'s' as u8,
-      0x74, //'t' as u8,
-      0, 0, 0, 1 ];
+pub static metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 1 ];
 
 pub fn encode_metadata(parms: EncodeParams, krate: &Crate) -> Vec<u8> {
     let mut wr = SeekableMemWriter::new();
