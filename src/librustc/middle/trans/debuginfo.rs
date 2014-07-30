@@ -1152,7 +1152,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
             match expr.node {
                 ast::ExprFnBlock(_, fn_decl, top_level_block) |
                 ast::ExprProc(fn_decl, top_level_block) |
-                ast::ExprUnboxedFn(_, fn_decl, top_level_block) => {
+                ast::ExprUnboxedFn(_, _, fn_decl, top_level_block) => {
                     let name = format!("fn{}", token::gensym("fn"));
                     let name = token::str_to_ident(name.as_slice());
                     (name, fn_decl,
@@ -3620,7 +3620,7 @@ fn populate_scope_map(cx: &CrateContext,
 
             ast::ExprFnBlock(_, ref decl, ref block) |
             ast::ExprProc(ref decl, ref block) |
-            ast::ExprUnboxedFn(_, ref decl, ref block) => {
+            ast::ExprUnboxedFn(_, _, ref decl, ref block) => {
                 with_new_scope(cx,
                                block.span,
                                scope_stack,
@@ -3895,7 +3895,7 @@ fn push_debuginfo_type_name(cx: &CrateContext,
                 push_debuginfo_type_name(cx, sig.output, true, output);
             }
         },
-        ty::ty_unboxed_closure(_) => {
+        ty::ty_unboxed_closure(..) => {
             output.push_str("closure");
         }
         ty::ty_err      |

@@ -225,7 +225,7 @@ fn with_appropriate_checker(cx: &Context,
             b(check_for_bare)
         }
 
-        ty::ty_unboxed_closure(_) => {}
+        ty::ty_unboxed_closure(..) => {}
 
         ref s => {
             cx.tcx.sess.bug(format!("expect fn type in kind checker, not \

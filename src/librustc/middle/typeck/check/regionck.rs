@@ -132,7 +132,7 @@ use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
 use middle::typeck::MethodCall;
 use middle::pat_util;
-use util::nodemap::NodeMap;
+use util::nodemap::{DefIdMap, NodeMap};
 use util::ppaux::{ty_to_string, region_to_string, Repr};
 
 use syntax::ast;
@@ -294,6 +294,11 @@ impl<'fcx> mc::Typer for Rcx<'fcx> {
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> freevars::CaptureMode {
         self.tcx().capture_modes.borrow().get_copy(&closure_expr_id)
+    }
+
+    fn unboxed_closures<'a>(&'a self)
+                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure>> {
+        &self.fcx.inh.unboxed_closures
     }
 }
 
@@ -594,7 +599,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
         ast::ExprFnBlock(_, _, ref body) |
         ast::ExprProc(_, ref body) |
-        ast::ExprUnboxedFn(_, _, ref body) => {
+        ast::ExprUnboxedFn(_, _, _, ref body) => {
             check_expr_fn_block(rcx, expr, &**body);
         }
 
@@ -659,6 +664,17 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                                     region, ty::ReScope(s));
                 }
             });
+        }
+        ty::ty_unboxed_closure(_, region) => {
+            freevars::with_freevars(tcx, expr.id, |freevars| {
+                // No free variables means that there is no environment and
+                // hence the closure has static lifetime. Otherwise, the
+                // closure must not outlive the variables it closes over
+                // by-reference.
+                if !freevars.is_empty() {
+                    constrain_free_variables(rcx, region, expr, freevars);
+                }
+            })
         }
         _ => ()
     }

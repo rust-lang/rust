@@ -45,8 +45,8 @@ use middle::trans::adt;
 use middle::trans::build::*;
 use middle::trans::builder::{Builder, noname};
 use middle::trans::callee;
+use middle::trans::cleanup::{CleanupMethods, ScopeId};
 use middle::trans::cleanup;
-use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::controlflow;
@@ -252,6 +252,31 @@ fn get_extern_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str, did: ast::De
     f
 }
 
+pub fn self_type_for_unboxed_closure(ccx: &CrateContext,
+                                     closure_id: ast::DefId)
+                                     -> ty::t {
+    let unboxed_closure_type = ty::mk_unboxed_closure(ccx.tcx(),
+                                                      closure_id,
+                                                      ty::ReStatic);
+    let unboxed_closures = ccx.tcx.unboxed_closures.borrow();
+    let unboxed_closure = unboxed_closures.get(&closure_id);
+    match unboxed_closure.kind {
+        ty::FnUnboxedClosureKind => {
+            ty::mk_imm_rptr(&ccx.tcx, ty::ReStatic, unboxed_closure_type)
+        }
+        ty::FnMutUnboxedClosureKind => {
+            ty::mk_mut_rptr(&ccx.tcx, ty::ReStatic, unboxed_closure_type)
+        }
+        ty::FnOnceUnboxedClosureKind => unboxed_closure_type,
+    }
+}
+
+pub fn kind_for_unboxed_closure(ccx: &CrateContext, closure_id: ast::DefId)
+                                -> ty::UnboxedClosureKind {
+    let unboxed_closures = ccx.tcx.unboxed_closures.borrow();
+    unboxed_closures.get(&closure_id).kind
+}
+
 pub fn decl_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str) -> ValueRef {
     let (inputs, output, abi, env) = match ty::get(fn_ty).sty {
         ty::ty_bare_fn(ref f) => {
@@ -260,12 +285,12 @@ pub fn decl_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str) -> ValueRef {
         ty::ty_closure(ref f) => {
             (f.sig.inputs.clone(), f.sig.output, f.abi, Some(Type::i8p(ccx)))
         }
-        ty::ty_unboxed_closure(closure_did) => {
-            let unboxed_closure_types = ccx.tcx
-                                           .unboxed_closure_types
-                                           .borrow();
-            let function_type = unboxed_closure_types.get(&closure_did);
-            let llenvironment_type = type_of(ccx, fn_ty).ptr_to();
+        ty::ty_unboxed_closure(closure_did, _) => {
+            let unboxed_closures = ccx.tcx.unboxed_closures.borrow();
+            let unboxed_closure = unboxed_closures.get(&closure_did);
+            let function_type = unboxed_closure.closure_type.clone();
+            let self_type = self_type_for_unboxed_closure(ccx, closure_did);
+            let llenvironment_type = type_of_explicit_arg(ccx, self_type);
             (function_type.sig.inputs.clone(),
              function_type.sig.output,
              RustCall,
@@ -691,7 +716,7 @@ pub fn iter_structural_ty<'r,
               }
           })
       }
-      ty::ty_unboxed_closure(def_id) => {
+      ty::ty_unboxed_closure(def_id, _) => {
           let repr = adt::represent_type(cx.ccx(), t);
           let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id);
           for (i, upvar) in upvars.iter().enumerate() {
@@ -1308,7 +1333,7 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
             match e.node {
                 ast::ExprFnBlock(_, _, blk) |
                 ast::ExprProc(_, blk) |
-                ast::ExprUnboxedFn(_, _, blk) => {
+                ast::ExprUnboxedFn(_, _, _, blk) => {
                     let mut explicit = CheckForNestedReturnsVisitor { found: false };
                     let mut implicit = CheckForNestedReturnsVisitor { found: false };
                     visit::walk_expr(&mut explicit, &*e, false);
@@ -1460,6 +1485,8 @@ pub fn create_datums_for_fn_args(fcx: &FunctionContext,
 /// Creates rvalue datums for each of the incoming function arguments and
 /// tuples the arguments. These will later be stored into appropriate lvalue
 /// datums.
+///
+/// FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
 fn create_datums_for_fn_args_under_call_abi<
         'a>(
         mut bcx: &'a Block<'a>,
@@ -1708,7 +1735,8 @@ pub fn trans_closure(ccx: &CrateContext,
                      abi: Abi,
                      has_env: bool,
                      is_unboxed_closure: IsUnboxedClosureFlag,
-                     maybe_load_env: <'a> |&'a Block<'a>| -> &'a Block<'a>) {
+                     maybe_load_env: <'a>|&'a Block<'a>, ScopeId|
+                                         -> &'a Block<'a>) {
     ccx.stats.n_closures.set(ccx.stats.n_closures.get() + 1);
 
     let _icx = push_ctxt("trans_closure");
@@ -1773,7 +1801,7 @@ pub fn trans_closure(ccx: &CrateContext,
         }
     };
 
-    bcx = maybe_load_env(bcx);
+    bcx = maybe_load_env(bcx, cleanup::CustomScope(arg_scope));
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
@@ -1854,7 +1882,7 @@ pub fn trans_fn(ccx: &CrateContext,
                   abi,
                   false,
                   NotUnboxedClosure,
-                  |bcx| bcx);
+                  |bcx, _| bcx);
 }
 
 pub fn trans_enum_variant(ccx: &CrateContext,
@@ -2188,11 +2216,11 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
     let (fn_sig, abi, has_env) = match ty::get(fn_ty).sty {
         ty::ty_closure(ref f) => (f.sig.clone(), f.abi, true),
         ty::ty_bare_fn(ref f) => (f.sig.clone(), f.abi, false),
-        ty::ty_unboxed_closure(closure_did) => {
-            let unboxed_closure_types = ccx.tcx
-                                           .unboxed_closure_types
-                                           .borrow();
-            let function_type = unboxed_closure_types.get(&closure_did);
+        ty::ty_unboxed_closure(closure_did, _) => {
+            let unboxed_closures = ccx.tcx.unboxed_closures.borrow();
+            let function_type = unboxed_closures.get(&closure_did)
+                                                .closure_type
+                                                .clone();
             (function_type.sig.clone(), RustCall, true)
         }
         _ => fail!("expected closure or function.")
