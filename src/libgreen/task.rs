@@ -442,15 +442,30 @@ impl Runtime for GreenTask {
                      f: proc():Send) {
         self.put_task(cur_task);
 
+        // First, set up a bomb which when it goes off will restore the local
+        // task unless its disarmed. This will allow us to gracefully fail from
+        // inside of `configure` which allocates a new task.
+        struct Bomb { inner: Option<Box<GreenTask>> }
+        impl Drop for Bomb {
+            fn drop(&mut self) {
+                let _ = self.inner.take().map(|task| task.put());
+            }
+        }
+        let mut bomb = Bomb { inner: Some(self) };
+
         // Spawns a task into the current scheduler. We allocate the new task's
         // stack from the scheduler's stack pool, and then configure it
         // accordingly to `opts`. Afterwards we bootstrap it immediately by
         // switching to it.
         //
         // Upon returning, our task is back in TLS and we're good to return.
-        let mut sched = self.sched.take_unwrap();
-        let sibling = GreenTask::configure(&mut sched.stack_pool, opts, f);
-        sched.run_task(self, sibling)
+        let sibling = {
+            let sched = bomb.inner.get_mut_ref().sched.get_mut_ref();
+            GreenTask::configure(&mut sched.stack_pool, opts, f)
+        };
+        let mut me = bomb.inner.take().unwrap();
+        let sched = me.sched.take().unwrap();
+        sched.run_task(me, sibling)
     }
 
     // Local I/O is provided by the scheduler's event loop
