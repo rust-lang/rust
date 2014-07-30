@@ -170,6 +170,13 @@ pub trait AstBuilder {
                 subpats: Vec<Gc<ast::Pat>>) -> Gc<ast::Pat>;
     fn pat_struct(&self, span: Span,
                   path: ast::Path, field_pats: Vec<ast::FieldPat> ) -> Gc<ast::Pat>;
+    fn pat_tuple(&self, span: Span, pats: Vec<Gc<ast::Pat>>) -> Gc<ast::Pat>;
+
+    fn pat_some(&self, span: Span, pat: Gc<ast::Pat>) -> Gc<ast::Pat>;
+    fn pat_none(&self, span: Span) -> Gc<ast::Pat>;
+
+    fn pat_ok(&self, span: Span, pat: Gc<ast::Pat>) -> Gc<ast::Pat>;
+    fn pat_err(&self, span: Span, pat: Gc<ast::Pat>) -> Gc<ast::Pat>;
 
     fn arm(&self, span: Span, pats: Vec<Gc<ast::Pat>> , expr: Gc<ast::Expr>) -> ast::Arm;
     fn arm_unreachable(&self, span: Span) -> ast::Arm;
@@ -178,6 +185,7 @@ pub trait AstBuilder {
     fn expr_if(&self, span: Span,
                cond: Gc<ast::Expr>, then: Gc<ast::Expr>,
                els: Option<Gc<ast::Expr>>) -> Gc<ast::Expr>;
+    fn expr_loop(&self, span: Span, block: P<ast::Block>) -> Gc<ast::Expr>;
 
     fn lambda_fn_decl(&self, span: Span,
                       fn_decl: P<ast::FnDecl>, blk: P<ast::Block>) -> Gc<ast::Expr>;
@@ -777,6 +785,46 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let pat = ast::PatStruct(path, field_pats, false);
         self.pat(span, pat)
     }
+    fn pat_tuple(&self, span: Span, pats: Vec<Gc<ast::Pat>>) -> Gc<ast::Pat> {
+        let pat = ast::PatTup(pats);
+        self.pat(span, pat)
+    }
+
+    fn pat_some(&self, span: Span, pat: Gc<ast::Pat>) -> Gc<ast::Pat> {
+        let some = vec!(
+            self.ident_of("std"),
+            self.ident_of("option"),
+            self.ident_of("Some"));
+        let path = self.path_global(span, some);
+        self.pat_enum(span, path, vec!(pat))
+    }
+
+    fn pat_none(&self, span: Span) -> Gc<ast::Pat> {
+        let some = vec!(
+            self.ident_of("std"),
+            self.ident_of("option"),
+            self.ident_of("None"));
+        let path = self.path_global(span, some);
+        self.pat_enum(span, path, vec!())
+    }
+
+    fn pat_ok(&self, span: Span, pat: Gc<ast::Pat>) -> Gc<ast::Pat> {
+        let some = vec!(
+            self.ident_of("std"),
+            self.ident_of("result"),
+            self.ident_of("Ok"));
+        let path = self.path_global(span, some);
+        self.pat_enum(span, path, vec!(pat))
+    }
+
+    fn pat_err(&self, span: Span, pat: Gc<ast::Pat>) -> Gc<ast::Pat> {
+        let some = vec!(
+            self.ident_of("std"),
+            self.ident_of("result"),
+            self.ident_of("Err"));
+        let path = self.path_global(span, some);
+        self.pat_enum(span, path, vec!(pat))
+    }
 
     fn arm(&self, _span: Span, pats: Vec<Gc<ast::Pat>> , expr: Gc<ast::Expr>) -> ast::Arm {
         ast::Arm {
@@ -801,6 +849,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                els: Option<Gc<ast::Expr>>) -> Gc<ast::Expr> {
         let els = els.map(|x| self.expr_block(self.block_expr(x)));
         self.expr(span, ast::ExprIf(cond, self.block_expr(then), els))
+    }
+
+    fn expr_loop(&self, span: Span, block: P<ast::Block>) -> Gc<ast::Expr> {
+        self.expr(span, ast::ExprLoop(block, None))
     }
 
     fn lambda_fn_decl(&self, span: Span,
