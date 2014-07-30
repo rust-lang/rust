@@ -1,6 +1,5 @@
 % Language FAQ
 
-
 ## Are there any big programs written in it yet? I want to read big samples.
 
 There aren't many large programs yet. The Rust [compiler][rustc], 60,000+ lines at the time of writing, is written in Rust. As the oldest body of Rust code it has gone through many iterations of the language, and some parts are nicer to look at than others. It may not be the best code to learn from, but [borrowck] and [resolve] were written recently.
@@ -28,6 +27,18 @@ Some examples that demonstrate different aspects of the language:
 You may also be interested in browsing [GitHub's Rust][github-rust] page.
 
 [github-rust]: https://github.com/trending?l=rust
+
+## Is anyone using Rust in production?
+
+Currently, Rust is still pre-1.0, and so we don't recommend that you use Rust
+in production unless you know exactly what you're getting into.
+
+That said, there are two production deployments of Rust that we're aware of:
+
+* [OpenDNS](http://labs.opendns.com/2013/10/04/zeromq-helping-us-block-malicious-domains/)
+* [Skylight](http://skylight.io)
+
+Let the fact that this is an easily countable number be a warning.
 
 ## Does it run on Windows?
 
