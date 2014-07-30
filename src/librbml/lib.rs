@@ -8,16 +8,35 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Really Bad Markup Language (rbml) is a temporary measure until we migrate
+//! the rust object metadata to a better serialization format. It is not
+//! intended to be used by users.
+//!
+//! It is loosely based on the Extensible Binary Markup Language (ebml):
+//!     http://www.matroska.org/technical/specs/rfc/index.html
+
+#![crate_name = "rbml"]
+#![experimental]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![license = "MIT/ASL2"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://doc.rust-lang.org/master/",
+       html_playground_url = "http://play.rust-lang.org/")]
+#![feature(macro_rules, phase)]
 #![allow(missing_doc)]
+
+extern crate serialize;
+
+#[phase(plugin, link)] extern crate log;
+#[cfg(test)] extern crate test;
 
 use std::io;
 use std::str;
 
-// Simple Extensible Binary Markup Language (ebml) reader and writer on a
-// cursor model. See the specification here:
-//     http://www.matroska.org/technical/specs/rfc/index.html
 
-// Common data structures
+/// Common data structures
 #[deriving(Clone)]
 pub struct Doc<'a> {
     pub data: &'a [u8],
@@ -107,7 +126,7 @@ pub mod reader {
         Expected };
 
     pub type DecodeResult<T> = Result<T, Error>;
-    // ebml reading
+    // rbml reading
 
     macro_rules! try_or(
         ($e:expr, $r:expr) => (
@@ -637,7 +656,7 @@ pub mod writer {
 
     pub type EncodeResult = io::IoResult<()>;
 
-    // ebml writing
+    // rbml writing
     pub struct Encoder<'a, W> {
         pub writer: &'a mut W,
         size_positions: Vec<uint>,
@@ -671,7 +690,7 @@ pub mod writer {
         })
     }
 
-    // FIXME (#2741): Provide a function to write the standard ebml header.
+    // FIXME (#2741): Provide a function to write the standard rbml header.
     impl<'a, W: Writer + Seek> Encoder<'a, W> {
         pub fn new(w: &'a mut W) -> Encoder<'a, W> {
             Encoder {
@@ -1018,10 +1037,8 @@ pub mod writer {
 
 #[cfg(test)]
 mod tests {
-    use super::Doc;
-    use ebml::reader;
-    use ebml::writer;
-    use {Encodable, Decodable};
+    use super::{Doc, reader, writer};
+    use serialize::{Encodable, Decodable};
 
     use std::io::{IoError, IoResult, SeekStyle};
     use std::io;
@@ -1196,11 +1213,11 @@ mod tests {
             debug!("v == {}", v);
             let mut wr = SeekableMemWriter::new();
             {
-                let mut ebml_w = writer::Encoder::new(&mut wr);
-                let _ = v.encode(&mut ebml_w);
+                let mut rbml_w = writer::Encoder::new(&mut wr);
+                let _ = v.encode(&mut rbml_w);
             }
-            let ebml_doc = Doc::new(wr.get_ref());
-            let mut deser = reader::Decoder::new(ebml_doc);
+            let rbml_doc = Doc::new(wr.get_ref());
+            let mut deser = reader::Decoder::new(rbml_doc);
             let v1 = Decodable::decode(&mut deser).unwrap();
             debug!("v1 == {}", v1);
             assert_eq!(v, v1);
@@ -1215,9 +1232,8 @@ mod tests {
 #[cfg(test)]
 mod bench {
     #![allow(non_snake_case_functions)]
-    extern crate test;
-    use self::test::Bencher;
-    use ebml::reader;
+    use test::Bencher;
+    use super::reader;
 
     #[bench]
     pub fn vuint_at_A_aligned(b: &mut Bencher) {
