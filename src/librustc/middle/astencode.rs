@@ -28,7 +28,6 @@ use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::typeck::{MethodCall, MethodCallee, MethodOrigin};
 use middle::{ty, typeck};
-use util::io::SeekableMemWriter;
 use util::ppaux::ty_to_string;
 
 use syntax::{ast, ast_map, ast_util, codemap, fold};
@@ -43,6 +42,7 @@ use std::io::Seek;
 use std::mem;
 use std::gc::GC;
 
+use rbml::io::SeekableMemWriter;
 use rbml::{reader, writer};
 use rbml;
 use serialize;

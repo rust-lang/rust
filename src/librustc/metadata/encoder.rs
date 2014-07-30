@@ -26,7 +26,6 @@ use middle::ty;
 use middle::typeck;
 use middle::stability;
 use middle;
-use util::io::SeekableMemWriter;
 use util::nodemap::{NodeMap, NodeSet};
 
 use serialize::Encodable;
@@ -53,6 +52,7 @@ use syntax::visit::Visitor;
 use syntax::visit;
 use syntax;
 use rbml::writer;
+use rbml::io::SeekableMemWriter;
 
 /// A borrowed version of ast::InlinedItem.
 pub enum InlinedItemRef<'a> {
