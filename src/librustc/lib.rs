@@ -48,6 +48,9 @@ extern crate time;
 #[phase(plugin, link)] extern crate log;
 #[phase(plugin, link)] extern crate syntax;
 
+#[cfg(test)]
+extern crate test;
+
 mod diagnostics;
 
 pub mod back {
@@ -129,6 +132,7 @@ pub mod util {
 
     pub mod common;
     pub mod ppaux;
+    pub mod io;
     pub mod nodemap;
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate serialize;
-
-use std::io;
 use std::io::{IoError, IoResult, SeekStyle};
+use std::io;
 use std::slice;
-
-use serialize::{Encodable, Encoder};
-use serialize::json;
-use serialize::ebml::writer;
 
 static BUF_CAPACITY: uint = 128;
 
@@ -132,43 +126,107 @@ impl Seek for SeekableMemWriter {
     }
 }
 
-#[deriving(Encodable)]
-struct Foo {
-    baz: bool,
-}
+#[cfg(test)]
+mod tests {
+    use super::SeekableMemWriter;
+    use std::io;
+    use test::Bencher;
 
-#[deriving(Encodable)]
-struct Bar {
-    froboz: uint,
-}
+    #[test]
+    fn test_seekable_mem_writer() {
+        let mut writer = SeekableMemWriter::new();
+        assert_eq!(writer.tell(), Ok(0));
+        writer.write([0]).unwrap();
+        assert_eq!(writer.tell(), Ok(1));
+        writer.write([1, 2, 3]).unwrap();
+        writer.write([4, 5, 6, 7]).unwrap();
+        assert_eq!(writer.tell(), Ok(8));
+        assert_eq!(writer.get_ref(), &[0, 1, 2, 3, 4, 5, 6, 7]);
 
-enum WireProtocol {
-    JSON,
-    EBML,
-    // ...
-}
+        writer.seek(0, io::SeekSet).unwrap();
+        assert_eq!(writer.tell(), Ok(0));
+        writer.write([3, 4]).unwrap();
+        assert_eq!(writer.get_ref(), &[3, 4, 2, 3, 4, 5, 6, 7]);
 
-fn encode_json<'a,
-               T: Encodable<json::Encoder<'a>,
-                            std::io::IoError>>(val: &T,
-                                               wr: &'a mut SeekableMemWriter) {
-    let mut encoder = json::Encoder::new(wr);
-    val.encode(&mut encoder);
-}
-fn encode_ebml<'a,
-               T: Encodable<writer::Encoder<'a, SeekableMemWriter>,
-                            std::io::IoError>>(val: &T,
-                                               wr: &'a mut SeekableMemWriter) {
-    let mut encoder = writer::Encoder::new(wr);
-    val.encode(&mut encoder);
-}
+        writer.seek(1, io::SeekCur).unwrap();
+        writer.write([0, 1]).unwrap();
+        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 7]);
 
-pub fn main() {
-    let target = Foo{baz: false,};
-    let mut wr = SeekableMemWriter::new();
-    let proto = JSON;
-    match proto {
-        JSON => encode_json(&target, &mut wr),
-        EBML => encode_ebml(&target, &mut wr)
+        writer.seek(-1, io::SeekEnd).unwrap();
+        writer.write([1, 2]).unwrap();
+        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 1, 2]);
+
+        writer.seek(1, io::SeekEnd).unwrap();
+        writer.write([1]).unwrap();
+        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1]);
+    }
+
+    #[test]
+    fn seek_past_end() {
+        let mut r = SeekableMemWriter::new();
+        r.seek(10, io::SeekSet).unwrap();
+        assert!(r.write([3]).is_ok());
+    }
+
+    #[test]
+    fn seek_before_0() {
+        let mut r = SeekableMemWriter::new();
+        assert!(r.seek(-1, io::SeekSet).is_err());
+    }
+
+    fn do_bench_seekable_mem_writer(b: &mut Bencher, times: uint, len: uint) {
+        let src: Vec<u8> = Vec::from_elem(len, 5);
+
+        b.bytes = (times * len) as u64;
+        b.iter(|| {
+            let mut wr = SeekableMemWriter::new();
+            for _ in range(0, times) {
+                wr.write(src.as_slice()).unwrap();
+            }
+
+            let v = wr.unwrap();
+            assert_eq!(v.len(), times * len);
+            assert!(v.iter().all(|x| *x == 5));
+        });
+    }
+
+    #[bench]
+    fn bench_seekable_mem_writer_001_0000(b: &mut Bencher) {
+        do_bench_seekable_mem_writer(b, 1, 0)
+    }
+
+    #[bench]
+    fn bench_seekable_mem_writer_001_0010(b: &mut Bencher) {
+        do_bench_seekable_mem_writer(b, 1, 10)
+    }
+
+    #[bench]
+    fn bench_seekable_mem_writer_001_0100(b: &mut Bencher) {
+        do_bench_seekable_mem_writer(b, 1, 100)
+    }
+
+    #[bench]
+    fn bench_seekable_mem_writer_001_1000(b: &mut Bencher) {
+        do_bench_seekable_mem_writer(b, 1, 1000)
+    }
+
+    #[bench]
+    fn bench_seekable_mem_writer_100_0000(b: &mut Bencher) {
+        do_bench_seekable_mem_writer(b, 100, 0)
+    }
+
+    #[bench]
+    fn bench_seekable_mem_writer_100_0010(b: &mut Bencher) {
+        do_bench_seekable_mem_writer(b, 100, 10)
+    }
+
+    #[bench]
+    fn bench_seekable_mem_writer_100_0100(b: &mut Bencher) {
+        do_bench_seekable_mem_writer(b, 100, 100)
+    }
+
+    #[bench]
+    fn bench_seekable_mem_writer_100_1000(b: &mut Bencher) {
+        do_bench_seekable_mem_writer(b, 100, 1000)
     }
 }
