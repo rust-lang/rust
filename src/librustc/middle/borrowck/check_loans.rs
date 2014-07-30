@@ -28,6 +28,57 @@ use util::ppaux::Repr;
 
 use std::rc::Rc;
 
+// FIXME (#16118): These functions are intended to allow the borrow checker to
+// be less precise in its handling of Box while still allowing moves out of a
+// Box. They should be removed when OwnedPtr is removed from LoanPath.
+
+fn owned_ptr_base_path<'a>(loan_path: &'a LoanPath) -> &'a LoanPath {
+    //! Returns the base of the leftmost dereference of an OwnedPtr in
+    //! `loan_path`. If there is no dereference of an OwnedPtr in `loan_path`,
+    //! then it just returns `loan_path` itself.
+
+    return match owned_ptr_base_path_helper(loan_path) {
+        Some(new_loan_path) => new_loan_path,
+        None => loan_path.clone()
+    };
+
+    fn owned_ptr_base_path_helper<'a>(loan_path: &'a LoanPath) -> Option<&'a LoanPath> {
+        match *loan_path {
+            LpVar(_) | LpUpvar(_) => None,
+            LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
+                match owned_ptr_base_path_helper(&**lp_base) {
+                    v @ Some(_) => v,
+                    None => Some(&**lp_base)
+                }
+            }
+            LpExtend(ref lp_base, _, _) => owned_ptr_base_path_helper(&**lp_base)
+        }
+    }
+}
+
+fn owned_ptr_base_path_rc(loan_path: &Rc<LoanPath>) -> Rc<LoanPath> {
+    //! The equivalent of `owned_ptr_base_path` for an &Rc<LoanPath> rather than
+    //! a &LoanPath.
+
+    return match owned_ptr_base_path_helper(loan_path) {
+        Some(new_loan_path) => new_loan_path,
+        None => loan_path.clone()
+    };
+
+    fn owned_ptr_base_path_helper(loan_path: &Rc<LoanPath>) -> Option<Rc<LoanPath>> {
+        match **loan_path {
+            LpVar(_) | LpUpvar(_) => None,
+            LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
+                match owned_ptr_base_path_helper(lp_base) {
+                    v @ Some(_) => v,
+                    None => Some(lp_base.clone())
+                }
+            }
+            LpExtend(ref lp_base, _, _) => owned_ptr_base_path_helper(lp_base)
+        }
+    }
+}
+
 struct CheckLoanCtxt<'a> {
     bccx: &'a BorrowckCtxt<'a>,
     dfcx_loans: &'a LoanDataFlow<'a>,
