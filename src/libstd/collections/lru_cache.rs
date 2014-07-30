@@ -331,7 +331,8 @@ impl<K, V> Drop for LruCache<K, V> {
         unsafe {
             let node: Box<LruEntry<K, V>> = mem::transmute(self.head);
             // Prevent compiler from trying to drop the un-initialized field in the sigil node.
-            let box LruEntry { key: k, value: v, .. } = node;
+            let box internal_node = node;
+            let LruEntry { next: _, prev: _, key: k, value: v } = internal_node;
             mem::forget(k);
             mem::forget(v);
         }

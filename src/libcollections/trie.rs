@@ -783,7 +783,7 @@ fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
             *child = External(key, value);
             return None;
         }
-        Internal(ref mut x) => {
+        Internal(box ref mut x) => {
             return insert(&mut x.count, &mut x.children[chunk(key, idx)], key, value, idx + 1);
         }
         External(stored_key, ref mut stored_value) if stored_key == key => {
@@ -799,11 +799,17 @@ fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
     match mem::replace(child, Nothing) {
         External(stored_key, stored_value) => {
             let mut new = box TrieNode::new();
-            insert(&mut new.count,
-                   &mut new.children[chunk(stored_key, idx)],
-                   stored_key, stored_value, idx + 1);
-            let ret = insert(&mut new.count, &mut new.children[chunk(key, idx)],
-                         key, value, idx + 1);
+
+            let ret = {
+                let new_interior = &mut *new;
+                insert(&mut new_interior.count,
+                       &mut new_interior.children[chunk(stored_key, idx)],
+                       stored_key, stored_value, idx + 1);
+                insert(&mut new_interior.count,
+                       &mut new_interior.children[chunk(key, idx)],
+                       key, value, idx + 1)
+            };
+
             *child = Internal(new);
             return ret;
         }
@@ -821,7 +827,7 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
         }
       }
       External(..) => (None, false),
-      Internal(ref mut x) => {
+      Internal(box ref mut x) => {
           let ret = remove(&mut x.count, &mut x.children[chunk(key, idx)],
                            key, idx + 1);
           (ret, x.count == 0)
