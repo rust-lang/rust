@@ -165,7 +165,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
-    /// let x: &[u8] = ['f' as u8, 'o' as u8, 'o' as u8, 0];
+    /// let x: &[u8] = b"foo\0";
     /// assert!(Path::new_opt(x).is_none());
     /// ```
     #[inline]
@@ -197,7 +197,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// ```
     /// let p = Path::new("abc/def");
-    /// assert_eq!(p.as_vec(), &[97, 98, 99, 47, 100, 101, 102]);
+    /// assert_eq!(p.as_vec(), b"abc/def");
     /// ```
     fn as_vec<'a>(&'a self) -> &'a [u8];
 
@@ -207,7 +207,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// ```
     /// let p = Path::new("abc/def");
-    /// assert_eq!(p.into_vec(), vec!(97, 98, 99, 47, 100, 101, 102));
+    /// assert_eq!(p.into_vec(), b"abc/def".to_vec());
     /// // attempting to use p now results in "error: use of moved value"
     /// ```
     fn into_vec(self) -> Vec<u8>;
@@ -245,7 +245,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// ```
     /// let p = Path::new("abc/def/ghi");
-    /// assert_eq!(p.dirname(), &[97, 98, 99, 47, 100, 101, 102]);
+    /// assert_eq!(p.dirname(), b"abc/def");
     /// ```
     fn dirname<'a>(&'a self) -> &'a [u8];
 
@@ -271,7 +271,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// ```
     /// let p = Path::new("abc/def/ghi");
-    /// assert_eq!(p.filename(), Some(&[103, 104, 105]));
+    /// assert_eq!(p.filename(), Some(b"ghi"));
     /// ```
     fn filename<'a>(&'a self) -> Option<&'a [u8]>;
 
@@ -297,7 +297,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// ```
     /// let p = Path::new("/abc/def.txt");
-    /// assert_eq!(p.filestem(), Some(&[100, 101, 102]));
+    /// assert_eq!(p.filestem(), Some(b"def"));
     /// ```
     fn filestem<'a>(&'a self) -> Option<&'a [u8]> {
         match self.filename() {
@@ -336,7 +336,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// ```
     /// let p = Path::new("abc/def.txt");
-    /// assert_eq!(p.extension(), Some(&[116, 120, 116]));
+    /// assert_eq!(p.extension(), Some(b"txt"));
     /// ```
     fn extension<'a>(&'a self) -> Option<&'a [u8]> {
         match self.filename() {
@@ -457,6 +457,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Returns a new Path constructed by setting the extension to the given
     /// byte vector or string.
     /// See `set_extension` for details.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut p = Path::new("abc/def.txt");
+    /// assert!(p.with_extension("csv") == Path::new("abc/def.csv"));
+    /// ```
     ///
     /// # Failure
     ///
