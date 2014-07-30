@@ -149,7 +149,7 @@ impl PartialOrd for Ordering {
 /// If the first ordering is different, the first ordering is all that must be returned.
 /// If the first ordering is equal, then second ordering is returned.
 #[inline]
-#[deprecated = "Just call .cmp() on an Ordering"]
+#[deprecated = "Just call .cmp() on a tuple"]
 pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
     match o1 {
         Equal => o2,
