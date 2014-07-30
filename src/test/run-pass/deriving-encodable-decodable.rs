@@ -16,15 +16,16 @@
 #![feature(struct_variant)]
 
 extern crate rand;
+extern crate rbml;
 extern crate serialize;
 
 use std::io::MemWriter;
 use rand::{random, Rand};
+use rbml;
+use rbml::Doc;
+use rbml::writer::Encoder;
+use rbml::reader::Decoder;
 use serialize::{Encodable, Decodable};
-use serialize::ebml;
-use serialize::ebml::Doc;
-use serialize::ebml::writer::Encoder;
-use serialize::ebml::reader::Decoder;
 
 #[deriving(Encodable, Decodable, Eq, Rand)]
 struct A;
@@ -61,7 +62,7 @@ fn roundtrip<'a, T: Rand + Eq + Encodable<Encoder<'a>> +
     let mut w = MemWriter::new();
     let mut e = Encoder::new(&mut w);
     obj.encode(&mut e);
-    let doc = ebml::Doc::new(@w.get_ref());
+    let doc = rbml::Doc::new(@w.get_ref());
     let mut dec = Decoder::new(doc);
     let obj2 = Decodable::decode(&mut dec);
     assert!(obj == obj2);

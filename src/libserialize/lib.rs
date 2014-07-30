@@ -39,6 +39,5 @@ mod serialize;
 mod collection_impls;
 
 pub mod base64;
-pub mod ebml;
 pub mod hex;
 pub mod json;

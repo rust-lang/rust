@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate rbml;
 extern crate serialize;
 
 use std::io;
@@ -16,7 +17,7 @@ use std::slice;
 
 use serialize::{Encodable, Encoder};
 use serialize::json;
-use serialize::ebml::writer;
+use rbml::writer;
 
 static BUF_CAPACITY: uint = 128;
 
@@ -144,7 +145,7 @@ struct Bar {
 
 enum WireProtocol {
     JSON,
-    EBML,
+    RBML,
     // ...
 }
 
@@ -155,7 +156,7 @@ fn encode_json<'a,
     let mut encoder = json::Encoder::new(wr);
     val.encode(&mut encoder);
 }
-fn encode_ebml<'a,
+fn encode_rbml<'a,
                T: Encodable<writer::Encoder<'a, SeekableMemWriter>,
                             std::io::IoError>>(val: &T,
                                                wr: &'a mut SeekableMemWriter) {
@@ -169,6 +170,6 @@ pub fn main() {
     let proto = JSON;
     match proto {
         JSON => encode_json(&target, &mut wr),
-        EBML => encode_ebml(&target, &mut wr)
+        RBML => encode_rbml(&target, &mut wr)
     }
 }
