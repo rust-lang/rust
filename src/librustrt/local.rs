@@ -125,8 +125,8 @@ mod test {
         }).join();
     }
 
-    fn cleanup_task(mut t: Box<Task>) {
-        t.destroyed = true;
+    fn cleanup_task(t: Box<Task>) {
+        t.drop();
     }
 
 }
