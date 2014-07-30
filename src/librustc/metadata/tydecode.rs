@@ -432,7 +432,8 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       }
       'k' => {
           let did = parse_def(st, NominalType, |x,y| conv(x,y));
-          return ty::mk_unboxed_closure(st.tcx, did);
+          let region = parse_region(st, conv);
+          return ty::mk_unboxed_closure(st.tcx, did, region);
       }
       'e' => {
           return ty::mk_err();

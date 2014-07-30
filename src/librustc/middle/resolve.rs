@@ -5289,7 +5289,7 @@ impl<'a> Resolver<'a> {
 
             ExprFnBlock(_, fn_decl, block) |
             ExprProc(fn_decl, block) |
-            ExprUnboxedFn(_, fn_decl, block) => {
+            ExprUnboxedFn(_, _, fn_decl, block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.id),
                                       Some(fn_decl), NoTypeParameters,
                                       block);

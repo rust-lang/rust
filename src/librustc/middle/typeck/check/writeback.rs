@@ -43,7 +43,7 @@ pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) {
     let mut wbcx = WritebackCx::new(fcx);
     wbcx.visit_expr(e, ());
     wbcx.visit_upvar_borrow_map();
-    wbcx.visit_unboxed_closure_types();
+    wbcx.visit_unboxed_closures();
 }
 
 pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
@@ -62,7 +62,7 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
         }
     }
     wbcx.visit_upvar_borrow_map();
-    wbcx.visit_unboxed_closure_types();
+    wbcx.visit_unboxed_closures();
 }
 
 pub fn resolve_impl_res(infcx: &infer::InferCtxt,
@@ -134,7 +134,7 @@ impl<'cx> Visitor<()> for WritebackCx<'cx> {
         match e.node {
             ast::ExprFnBlock(_, ref decl, _) |
             ast::ExprProc(ref decl, _) |
-            ast::ExprUnboxedFn(_, ref decl, _) => {
+            ast::ExprUnboxedFn(_, _, ref decl, _) => {
                 for input in decl.inputs.iter() {
                     let _ = self.visit_node_id(ResolvingExpr(e.span),
                                                input.id);
@@ -211,23 +211,27 @@ impl<'cx> WritebackCx<'cx> {
         }
     }
 
-    fn visit_unboxed_closure_types(&self) {
+    fn visit_unboxed_closures(&self) {
         if self.fcx.writeback_errors.get() {
             return
         }
 
-        for (def_id, closure_ty) in self.fcx
-                                        .inh
-                                        .unboxed_closure_types
-                                        .borrow()
-                                        .iter() {
-            let closure_ty = self.resolve(closure_ty,
+        for (def_id, unboxed_closure) in self.fcx
+                                             .inh
+                                             .unboxed_closures
+                                             .borrow()
+                                             .iter() {
+            let closure_ty = self.resolve(&unboxed_closure.closure_type,
                                           ResolvingUnboxedClosure(*def_id));
+            let unboxed_closure = ty::UnboxedClosure {
+                closure_type: closure_ty,
+                kind: unboxed_closure.kind,
+            };
             self.fcx
                 .tcx()
-                .unboxed_closure_types
+                .unboxed_closures
                 .borrow_mut()
-                .insert(*def_id, closure_ty);
+                .insert(*def_id, unboxed_closure);
         }
     }
 

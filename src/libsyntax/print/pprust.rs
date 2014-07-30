@@ -9,8 +9,10 @@
 // except according to those terms.
 
 use abi;
-use ast::{P, StaticRegionTyParamBound, OtherRegionTyParamBound};
-use ast::{TraitTyParamBound, UnboxedFnTyParamBound, Required, Provided};
+use ast::{FnMutUnboxedClosureKind, FnOnceUnboxedClosureKind};
+use ast::{FnUnboxedClosureKind, P, OtherRegionTyParamBound};
+use ast::{StaticRegionTyParamBound, TraitTyParamBound, UnboxedClosureKind};
+use ast::{UnboxedFnTyParamBound, Required, Provided};
 use ast;
 use ast_util;
 use owned_slice::OwnedSlice;
@@ -228,7 +230,7 @@ pub fn method_to_string(p: &ast::Method) -> String {
 }
 
 pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
-    $to_string(|s| s.print_fn_block_args(p, false))
+    $to_string(|s| s.print_fn_block_args(p, None))
 }
 
 pub fn path_to_string(p: &ast::Path) -> String {
@@ -594,7 +596,7 @@ impl<'a> State<'a> {
                                       &None,
                                       Some(&generics),
                                       None,
-                                      false));
+                                      None));
             }
             ast::TyClosure(f, ref region) => {
                 let generics = ast::Generics {
@@ -611,7 +613,7 @@ impl<'a> State<'a> {
                                       &f.bounds,
                                       Some(&generics),
                                       None,
-                                      false));
+                                      None));
             }
             ast::TyProc(ref f) => {
                 let generics = ast::Generics {
@@ -628,7 +630,7 @@ impl<'a> State<'a> {
                                       &f.bounds,
                                       Some(&generics),
                                       None,
-                                      false));
+                                      None));
             }
             ast::TyUnboxedFn(f) => {
                 try!(self.print_ty_fn(None,
@@ -641,7 +643,7 @@ impl<'a> State<'a> {
                                       &None,
                                       None,
                                       None,
-                                      true));
+                                      Some(f.kind)));
             }
             ast::TyPath(ref path, ref bounds, _) => {
                 try!(self.print_bounded_path(path, bounds));
@@ -1054,7 +1056,7 @@ impl<'a> State<'a> {
                               &None,
                               Some(&m.generics),
                               Some(m.explicit_self.node),
-                              false));
+                              None));
         word(&mut self.s, ";")
     }
 
@@ -1481,7 +1483,7 @@ impl<'a> State<'a> {
                 // we are inside.
                 //
                 // if !decl.inputs.is_empty() {
-                try!(self.print_fn_block_args(&**decl, false));
+                try!(self.print_fn_block_args(&**decl, None));
                 try!(space(&mut self.s));
                 // }
 
@@ -1505,7 +1507,7 @@ impl<'a> State<'a> {
                 // empty box to satisfy the close.
                 try!(self.ibox(0));
             }
-            ast::ExprUnboxedFn(capture_clause, ref decl, ref body) => {
+            ast::ExprUnboxedFn(capture_clause, kind, ref decl, ref body) => {
                 try!(self.print_capture_clause(capture_clause));
 
                 // in do/for blocks we don't want to show an empty
@@ -1513,7 +1515,7 @@ impl<'a> State<'a> {
                 // we are inside.
                 //
                 // if !decl.inputs.is_empty() {
-                try!(self.print_fn_block_args(&**decl, true));
+                try!(self.print_fn_block_args(&**decl, Some(kind)));
                 try!(space(&mut self.s));
                 // }
 
@@ -2052,13 +2054,17 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_fn_block_args(&mut self,
-                               decl: &ast::FnDecl,
-                               is_unboxed: bool)
-                               -> IoResult<()> {
+    pub fn print_fn_block_args(
+            &mut self,
+            decl: &ast::FnDecl,
+            unboxed_closure_kind: Option<UnboxedClosureKind>)
+            -> IoResult<()> {
         try!(word(&mut self.s, "|"));
-        if is_unboxed {
-            try!(self.word_space("&mut:"));
+        match unboxed_closure_kind {
+            None => {}
+            Some(FnUnboxedClosureKind) => try!(self.word_space("&:")),
+            Some(FnMutUnboxedClosureKind) => try!(self.word_space("&mut:")),
+            Some(FnOnceUnboxedClosureKind) => try!(self.word_space(":")),
         }
         try!(self.print_fn_args(decl, None));
         try!(word(&mut self.s, "|"));
@@ -2148,7 +2154,7 @@ impl<'a> State<'a> {
                                          &None,
                                          None,
                                          None,
-                                         true)
+                                         Some(unboxed_function_type.kind))
                     }
                     OtherRegionTyParamBound(_) => Ok(())
                 })
@@ -2366,7 +2372,8 @@ impl<'a> State<'a> {
                        opt_bounds: &Option<OwnedSlice<ast::TyParamBound>>,
                        generics: Option<&ast::Generics>,
                        opt_explicit_self: Option<ast::ExplicitSelf_>,
-                       is_unboxed: bool)
+                       opt_unboxed_closure_kind:
+                        Option<ast::UnboxedClosureKind>)
                        -> IoResult<()> {
         try!(self.ibox(indent_unit));
 
@@ -2383,7 +2390,7 @@ impl<'a> State<'a> {
             try!(self.print_fn_style(fn_style));
             try!(self.print_opt_abi_and_extern_if_nondefault(opt_abi));
             try!(self.print_onceness(onceness));
-            if !is_unboxed {
+            if opt_unboxed_closure_kind.is_none() {
                 try!(word(&mut self.s, "fn"));
             }
         }
@@ -2399,20 +2406,30 @@ impl<'a> State<'a> {
         match generics { Some(g) => try!(self.print_generics(g)), _ => () }
         try!(zerobreak(&mut self.s));
 
-        if is_unboxed || opt_sigil == Some('&') {
+        if opt_unboxed_closure_kind.is_some() || opt_sigil == Some('&') {
             try!(word(&mut self.s, "|"));
         } else {
             try!(self.popen());
         }
 
-        if is_unboxed {
-            try!(word(&mut self.s, "&mut"));
-            try!(self.word_space(":"));
+        match opt_unboxed_closure_kind {
+            Some(ast::FnUnboxedClosureKind) => {
+                try!(word(&mut self.s, "&"));
+                try!(self.word_space(":"));
+            }
+            Some(ast::FnMutUnboxedClosureKind) => {
+                try!(word(&mut self.s, "&mut"));
+                try!(self.word_space(":"));
+            }
+            Some(ast::FnOnceUnboxedClosureKind) => {
+                try!(self.word_space(":"));
+            }
+            None => {}
         }
 
         try!(self.print_fn_args(decl, opt_explicit_self));
 
-        if is_unboxed || opt_sigil == Some('&') {
+        if opt_unboxed_closure_kind.is_some() || opt_sigil == Some('&') {
             try!(word(&mut self.s, "|"));
         } else {
             if decl.variadic {

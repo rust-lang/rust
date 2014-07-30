@@ -795,7 +795,7 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
                              expression.id,
                              env.clone())
         }
-        ExprUnboxedFn(_, ref function_declaration, ref body) => {
+        ExprUnboxedFn(_, _, ref function_declaration, ref body) => {
             visitor.visit_fn(&FkFnBlock,
                              &**function_declaration,
                              &**body,

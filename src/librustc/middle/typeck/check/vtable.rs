@@ -71,7 +71,7 @@ use syntax::visit::Visitor;
 pub struct VtableContext<'a> {
     pub infcx: &'a infer::InferCtxt<'a>,
     pub param_env: &'a ty::ParameterEnvironment,
-    pub unboxed_closure_types: &'a RefCell<DefIdMap<ty::ClosureTy>>,
+    pub unboxed_closures: &'a RefCell<DefIdMap<ty::UnboxedClosure>>,
 }
 
 impl<'a> VtableContext<'a> {
@@ -309,31 +309,42 @@ fn search_for_unboxed_closure_vtable(vcx: &VtableContext,
                                      -> Option<vtable_origin> {
     let tcx = vcx.tcx();
     let closure_def_id = match ty::get(ty).sty {
-        ty::ty_unboxed_closure(closure_def_id) => closure_def_id,
+        ty::ty_unboxed_closure(closure_def_id, _) => closure_def_id,
         _ => return None,
     };
 
     let fn_traits = [
-        tcx.lang_items.fn_trait(),
-        tcx.lang_items.fn_mut_trait(),
-        tcx.lang_items.fn_once_trait()
+        (ty::FnUnboxedClosureKind, tcx.lang_items.fn_trait()),
+        (ty::FnMutUnboxedClosureKind, tcx.lang_items.fn_mut_trait()),
+        (ty::FnOnceUnboxedClosureKind, tcx.lang_items.fn_once_trait()),
     ];
-    for fn_trait in fn_traits.iter() {
-        match *fn_trait {
-            Some(ref fn_trait) if *fn_trait == trait_ref.def_id => {}
+    for tuple in fn_traits.iter() {
+        let kind = match tuple {
+            &(kind, Some(ref fn_trait)) if *fn_trait == trait_ref.def_id => {
+                kind
+            }
             _ => continue,
         };
 
         // Check to see whether the argument and return types match.
-        let unboxed_closure_types = tcx.unboxed_closure_types.borrow();
-        let closure_type = match unboxed_closure_types.find(&closure_def_id) {
-            Some(closure_type) => (*closure_type).clone(),
+        let unboxed_closures = tcx.unboxed_closures.borrow();
+        let closure_type = match unboxed_closures.find(&closure_def_id) {
+            Some(closure) => {
+                if closure.kind != kind {
+                    continue
+                }
+                closure.closure_type.clone()
+            }
             None => {
                 // Try the inherited unboxed closure type map.
-                let unboxed_closure_types = vcx.unboxed_closure_types
-                                               .borrow();
-                match unboxed_closure_types.find(&closure_def_id) {
-                    Some(closure_type) => (*closure_type).clone(),
+                let unboxed_closures = vcx.unboxed_closures.borrow();
+                match unboxed_closures.find(&closure_def_id) {
+                    Some(closure) => {
+                        if closure.kind != kind {
+                            continue
+                        }
+                        closure.closure_type.clone()
+                    }
                     None => {
                         tcx.sess.span_bug(span,
                                           "didn't find unboxed closure type \
@@ -881,11 +892,11 @@ pub fn resolve_impl(tcx: &ty::ctxt,
     debug!("impl_trait_ref={}", impl_trait_ref.repr(tcx));
 
     let infcx = &infer::new_infer_ctxt(tcx);
-    let unboxed_closure_types = RefCell::new(DefIdMap::new());
+    let unboxed_closures = RefCell::new(DefIdMap::new());
     let vcx = VtableContext {
         infcx: infcx,
         param_env: &param_env,
-        unboxed_closure_types: &unboxed_closure_types,
+        unboxed_closures: &unboxed_closures,
     };
 
     // Resolve the vtables for the trait reference on the impl.  This
@@ -934,11 +945,11 @@ pub fn resolve_impl(tcx: &ty::ctxt,
 pub fn trans_resolve_method(tcx: &ty::ctxt, id: ast::NodeId,
                             substs: &subst::Substs) -> vtable_res {
     let generics = ty::lookup_item_type(tcx, ast_util::local_def(id)).generics;
-    let unboxed_closure_types = RefCell::new(DefIdMap::new());
+    let unboxed_closures = RefCell::new(DefIdMap::new());
     let vcx = VtableContext {
         infcx: &infer::new_infer_ctxt(tcx),
         param_env: &ty::construct_parameter_environment(tcx, &ty::Generics::empty(), id),
-        unboxed_closure_types: &unboxed_closure_types,
+        unboxed_closures: &unboxed_closures,
     };
 
     lookup_vtables(&vcx,
