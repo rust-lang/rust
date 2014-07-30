@@ -312,7 +312,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
                 let empty_param_substs = param_substs::empty();
                 let fcx = new_fn_ctxt(ccx, llfdecl, -1, false,
                                       ty::mk_u64(), &empty_param_substs,
-                                      None, &arena);
+                                      None, &arena, TranslateItems);
                 let bcx = init_function(&fcx, false, ty::mk_u64());
 
                 // we know the return type of llfdecl is an int here, so

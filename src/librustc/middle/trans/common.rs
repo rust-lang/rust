@@ -221,6 +221,12 @@ impl<T:Subst+Clone> SubstP for T {
 pub type RvalueDatum = datum::Datum<datum::Rvalue>;
 pub type LvalueDatum = datum::Datum<datum::Lvalue>;
 
+#[deriving(Clone, Eq, PartialEq)]
+pub enum HandleItemsFlag {
+    IgnoreItems,
+    TranslateItems,
+}
+
 // Function context.  Every LLVM function we create will have one of
 // these.
 pub struct FunctionContext<'a> {
@@ -289,6 +295,9 @@ pub struct FunctionContext<'a> {
 
     // Cleanup scopes.
     pub scopes: RefCell<Vec<cleanup::CleanupScope<'a>> >,
+
+    // How to handle items encountered during translation of this function.
+    pub handle_items: HandleItemsFlag,
 }
 
 impl<'a> FunctionContext<'a> {

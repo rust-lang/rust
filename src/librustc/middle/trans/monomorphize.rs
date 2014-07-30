@@ -149,7 +149,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
               } => {
                   let d = mk_lldecl();
                   set_llvm_fn_attrs(i.attrs.as_slice(), d);
-                  trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, []);
+                  trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, [],
+                           IgnoreItems);
                   d
               }
               _ => {
@@ -181,7 +182,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeMethod(mth) => {
             let d = mk_lldecl();
             set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-            trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d, &psubsts, mth.id, []);
+            trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d, &psubsts, mth.id, [],
+                     IgnoreItems);
             d
         }
         ast_map::NodeTraitMethod(method) => {
@@ -190,7 +192,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                     let d = mk_lldecl();
                     set_llvm_fn_attrs(mth.attrs.as_slice(), d);
                     trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d,
-                             &psubsts, mth.id, []);
+                             &psubsts, mth.id, [], IgnoreItems);
                     d
                 }
                 _ => {
