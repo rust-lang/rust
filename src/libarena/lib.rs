@@ -207,7 +207,7 @@ impl Arena {
     }
 
     #[inline]
-    fn alloc_copy<'a, T>(&'a self, op: || -> T) -> &'a T {
+    fn alloc_copy<T>(&self, op: || -> T) -> &T {
         unsafe {
             let ptr = self.alloc_copy_inner(mem::size_of::<T>(),
                                             mem::min_align_of::<T>());
@@ -261,7 +261,7 @@ impl Arena {
     }
 
     #[inline]
-    fn alloc_noncopy<'a, T>(&'a self, op: || -> T) -> &'a T {
+    fn alloc_noncopy<T>(&self, op: || -> T) -> &T {
         unsafe {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
@@ -285,7 +285,7 @@ impl Arena {
     /// Allocate a new item in the arena, using `op` to initialize the value
     /// and returning a reference to it.
     #[inline]
-    pub fn alloc<'a, T>(&'a self, op: || -> T) -> &'a T {
+    pub fn alloc<T>(&self, op: || -> T) -> &T {
         unsafe {
             if intrinsics::needs_drop::<T>() {
                 self.alloc_noncopy(op)
@@ -458,13 +458,13 @@ impl<T> TypedArena<T> {
 
     /// Allocates an object in the TypedArena, returning a reference to it.
     #[inline]
-    pub fn alloc<'a>(&'a self, object: T) -> &'a T {
+    pub fn alloc(&self, object: T) -> &T {
         if self.ptr == self.end {
             self.grow()
         }
 
-        let ptr: &'a T = unsafe {
-            let ptr: &'a mut T = mem::transmute(self.ptr);
+        let ptr: &T = unsafe {
+            let ptr: &mut T = mem::transmute(self.ptr);
             ptr::write(ptr, object);
             self.ptr.set(self.ptr.get().offset(1));
             ptr
