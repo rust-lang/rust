@@ -69,7 +69,7 @@ fn fail_(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
 }
 
 #[cfg(not(stage0))]
-#[cold]
+#[cold] #[inline(never)]
 #[lang="fail_bounds_check"]
 fn fail_bounds_check(file_line: &(&'static str, uint),
                      index: uint, len: uint) -> ! {
@@ -79,7 +79,7 @@ fn fail_bounds_check(file_line: &(&'static str, uint),
     unsafe { intrinsics::abort() }
 }
 
-#[cold]
+#[cold] #[inline(never)]
 pub fn begin_unwind(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     #[allow(ctypes)]
     extern {
