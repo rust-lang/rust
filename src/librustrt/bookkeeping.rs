@@ -19,14 +19,24 @@
 //! decrement() manually.
 
 use core::atomics;
+use core::ops::Drop;
 
 use mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
 static mut TASK_COUNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
 static mut TASK_LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
-pub fn increment() {
+pub struct Token { _private: () }
+
+impl Drop for Token {
+    fn drop(&mut self) { decrement() }
+}
+
+/// Increment the number of live tasks, returning a token which will decrement
+/// the count when dropped.
+pub fn increment() -> Token {
     let _ = unsafe { TASK_COUNT.fetch_add(1, atomics::SeqCst) };
+    Token { _private: () }
 }
 
 pub fn decrement() {

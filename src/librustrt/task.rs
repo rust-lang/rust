@@ -100,10 +100,19 @@ pub struct Task {
     pub storage: LocalStorage,
     pub unwinder: Unwinder,
     pub death: Death,
-    pub destroyed: bool,
     pub name: Option<SendStr>,
 
+    state: TaskState,
     imp: Option<Box<Runtime + Send>>,
+}
+
+// Once a task has entered the `Armed` state it must be destroyed via `drop`,
+// and no other method. This state is used to track this transition.
+#[deriving(PartialEq)]
+enum TaskState {
+    New,
+    Armed,
+    Destroyed,
 }
 
 pub struct TaskOpts {
@@ -159,7 +168,7 @@ impl Task {
             storage: LocalStorage(None),
             unwinder: Unwinder::new(),
             death: Death::new(),
-            destroyed: false,
+            state: New,
             name: None,
             imp: None,
         }
@@ -203,7 +212,7 @@ impl Task {
     /// }).destroy();
     /// # }
     /// ```
-    pub fn run(self: Box<Task>, f: ||) -> Box<Task> {
+    pub fn run(mut self: Box<Task>, f: ||) -> Box<Task> {
         assert!(!self.is_destroyed(), "cannot re-use a destroyed task");
 
         // First, make sure that no one else is in TLS. This does not allow
@@ -212,6 +221,7 @@ impl Task {
         if Local::exists(None::<Task>) {
             fail!("cannot run a task recursively inside another");
         }
+        self.state = Armed;
         Local::put(self);
 
         // There are two primary reasons that general try/catch is unsafe. The
@@ -333,12 +343,12 @@ impl Task {
         // Now that we're done, we remove the task from TLS and flag it for
         // destruction.
         let mut task: Box<Task> = Local::take();
-        task.destroyed = true;
+        task.state = Destroyed;
         return task;
     }
 
     /// Queries whether this can be destroyed or not.
-    pub fn is_destroyed(&self) -> bool { self.destroyed }
+    pub fn is_destroyed(&self) -> bool { self.state == Destroyed }
 
     /// Inserts a runtime object into this task, transferring ownership to the
     /// task. It is illegal to replace a previous runtime object in this task
@@ -453,12 +463,20 @@ impl Task {
     pub fn can_block(&self) -> bool {
         self.imp.get_ref().can_block()
     }
+
+    /// Consume this task, flagging it as a candidate for destruction.
+    ///
+    /// This function is required to be invoked to destroy a task. A task
+    /// destroyed through a normal drop will abort.
+    pub fn drop(mut self) {
+        self.state = Destroyed;
+    }
 }
 
 impl Drop for Task {
     fn drop(&mut self) {
         rtdebug!("called drop for a task: {}", self as *mut Task as uint);
-        rtassert!(self.destroyed);
+        rtassert!(self.state != Armed);
     }
 }
 
@@ -634,12 +652,17 @@ mod test {
         begin_unwind("cause", file!(), line!())
     }
 
+    #[test]
+    fn drop_new_task_ok() {
+        drop(Task::new());
+    }
+
     // Task blocking tests
 
     #[test]
     fn block_and_wake() {
         let task = box Task::new();
         let mut task = BlockedTask::block(task).wake().unwrap();
-        task.destroyed = true;
+        task.drop();
     }
 }
