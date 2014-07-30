@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ascii::StrAsciiExt;
+use std::ascii::AsciiExt;
 use std::cmp;
 
 #[deriving(Show, Clone)]
