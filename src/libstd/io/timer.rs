@@ -114,6 +114,29 @@ impl Timer {
     /// this is called in method-chaining style, the receiver will be
     /// invalidated at the end of that statement, and all `recv` calls will
     /// fail.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::io::Timer;
+    ///
+    /// let mut timer = Timer::new().unwrap();
+    /// let ten_milliseconds = timer.oneshot(10);
+    ///
+    /// for _ in range(0u, 100) { /* do work */ }
+    ///
+    /// // blocks until 10 ms after the `oneshot` call
+    /// ten_milliseconds.recv();
+    /// ```
+    ///
+    /// ```rust
+    /// use std::io::Timer;
+    ///
+    /// // Incorrect, method chaining-style:
+    /// let mut five_ms = Timer::new().unwrap().oneshot(5);
+    /// // The timer object was destroyed, so this will always fail:
+    /// // five_ms.recv()
+    /// ```
     pub fn oneshot(&mut self, duration: Duration) -> Receiver<()> {
         let (tx, rx) = channel();
         self.obj.oneshot(in_ms(duration), box TimerCallback { tx: tx });
@@ -133,6 +156,35 @@ impl Timer {
     /// this is called in method-chaining style, the receiver will be
     /// invalidated at the end of that statement, and all `recv` calls will
     /// fail.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::io::Timer;
+    ///
+    /// let mut timer = Timer::new().unwrap();
+    /// let ten_milliseconds = timer.periodic(10);
+    ///
+    /// for _ in range(0u, 100) { /* do work */ }
+    ///
+    /// // blocks until 10 ms after the `periodic` call
+    /// ten_milliseconds.recv();
+    ///
+    /// for _ in range(0u, 100) { /* do work */ }
+    ///
+    /// // blocks until 20 ms after the `periodic` call (*not* 10ms after the
+    /// // previous `recv`)
+    /// ten_milliseconds.recv();
+    /// ```
+    ///
+    /// ```rust
+    /// use std::io::Timer;
+    ///
+    /// // Incorrect, method chaining-style.
+    /// let mut five_ms = Timer::new().unwrap().periodic(5);
+    /// // The timer object was destroyed, so this will always fail:
+    /// // five_ms.recv()
+    /// ```
     pub fn periodic(&mut self, duration: Duration) -> Receiver<()> {
         let (tx, rx) = channel();
         self.obj.period(in_ms(duration), box TimerCallback { tx: tx });
