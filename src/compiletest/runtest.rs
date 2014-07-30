@@ -458,7 +458,8 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
         }
 
         _=> {
-            let rust_src_root = find_rust_src_root(config).expect("Could not find Rust source root");
+            let rust_src_root = find_rust_src_root(config)
+                .expect("Could not find Rust source root");
             let rust_pp_module_rel_path = Path::new("./src/etc");
             let rust_pp_module_abs_path = rust_src_root.join(rust_pp_module_rel_path)
                                                        .as_str()
