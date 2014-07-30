@@ -430,6 +430,18 @@ impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
         self.fcx.with_region_lb(b.id, || visit::walk_block(self, b, ()));
     }
 
+    // Since an expr occurs as part of the type fixed size arrays we
+    // need to record the type for that node
+    fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
+        match t.node {
+            ast::TyFixedLengthVec(ref ty, ref count_expr) => {
+                self.visit_ty(&**ty, ());
+                check_expr_with_hint(self.fcx, &**count_expr, ty::mk_uint());
+            }
+            _ => visit::walk_ty(self, t, ())
+        }
+    }
+
     // Don't descend into fns and items
     fn visit_fn(&mut self, _: &visit::FnKind, _: &ast::FnDecl,
                 _: &ast::Block, _: Span, _: ast::NodeId, _: ()) { }
@@ -3444,6 +3456,12 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         }
       }
       ast::ExprCast(ref e, ref t) => {
+        match t.node {
+            ast::TyFixedLengthVec(_, ref count_expr) => {
+                check_expr_with_hint(fcx, &**count_expr, ty::mk_uint());
+            }
+            _ => {}
+        }
         check_cast(fcx, &**e, &**t, id, expr.span);
       }
       ast::ExprVec(ref args) => {

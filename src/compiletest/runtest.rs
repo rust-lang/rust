@@ -168,7 +168,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
                                     props,
                                     testfile,
                                     srcs[round].to_string(),
-                                    "normal");
+                                    props.pretty_mode.as_slice());
 
         if !proc_res.status.success() {
             fatal_proc_rec(format!("pretty-printing failed in round {}",
@@ -199,6 +199,9 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
     }
 
     compare_source(expected.as_slice(), actual.as_slice());
+
+    // If we're only making sure that the output matches then just stop here
+    if props.pretty_compare_only { return; }
 
     // Finally, let's make sure it actually appears to remain valid code
     let proc_res = typecheck_source(config, props, testfile, actual);

@@ -358,9 +358,9 @@ impl LintPass for CTypes {
                         def::DefTy(def_id) => {
                             if !adt::is_ffi_safe(cx.tcx, def_id) {
                                 cx.span_lint(CTYPES, ty.span,
-                                             "found enum type without foreign-function-safe \
-                                              representation annotation in foreign module");
-                                // hmm... this message could be more helpful
+                                             "found enum type without foreign-function-safe
+                                             representation annotation in foreign module, consider \
+                                             adding a #[repr(...)] attribute to the enumeration");
                             }
                         }
                         _ => ()
