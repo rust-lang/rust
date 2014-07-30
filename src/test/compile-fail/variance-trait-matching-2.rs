@@ -15,7 +15,9 @@ use std::io;
 use serialize::{Encodable, Encoder};
 
 pub fn buffer_encode<'a,
-                     T:Encodable<serialize::json::Encoder<'a>,io::IoError>>(
+                     'b,
+                     T:Encodable<serialize::json::Encoder<'a,'b>,
+                                 io::IoError>>(
                      to_encode_object: &T)
                      -> Vec<u8> {
     let mut m = MemWriter::new();

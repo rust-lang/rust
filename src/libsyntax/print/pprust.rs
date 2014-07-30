@@ -51,23 +51,27 @@ pub struct CurrentCommentAndLiteral {
     cur_lit: uint,
 }
 
-pub struct State<'a> {
+pub struct State<'a,'b> {
     pub s: pp::Printer,
     cm: Option<&'a CodeMap>,
     comments: Option<Vec<comments::Comment> >,
     literals: Option<Vec<comments::Literal> >,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
     boxes: Vec<pp::Breaks>,
-    ann: &'a PpAnn
+    ann: &'a PpAnn+'b
 }
 
-pub fn rust_printer(writer: Box<io::Writer>) -> State<'static> {
+pub fn rust_printer(writer: Box<io::Writer+'static>)
+                    -> State<'static,'static> {
     static NO_ANN: NoAnn = NoAnn;
     rust_printer_annotated(writer, &NO_ANN)
 }
 
-pub fn rust_printer_annotated<'a>(writer: Box<io::Writer>,
-                                  ann: &'a PpAnn) -> State<'a> {
+pub fn rust_printer_annotated<'a,
+                              'b>(
+                              writer: Box<io::Writer+'static>,
+                              ann: &'a PpAnn+'b)
+                              -> State<'a,'b> {
     State {
         s: pp::mk_printer(writer, default_columns),
         cm: None,
@@ -89,14 +93,17 @@ pub static default_columns: uint = 78u;
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments and literals to
 /// copy forward.
-pub fn print_crate<'a>(cm: &'a CodeMap,
-                       span_diagnostic: &diagnostic::SpanHandler,
-                       krate: &ast::Crate,
-                       filename: String,
-                       input: &mut io::Reader,
-                       out: Box<io::Writer>,
-                       ann: &'a PpAnn,
-                       is_expanded: bool) -> IoResult<()> {
+pub fn print_crate<'a,
+                   'b>(
+                   cm: &'a CodeMap,
+                   span_diagnostic: &diagnostic::SpanHandler,
+                   krate: &ast::Crate,
+                   filename: String,
+                   input: &mut io::Reader,
+                   out: Box<io::Writer+'static>,
+                   ann: &'a PpAnn+'b,
+                   is_expanded: bool)
+                   -> IoResult<()> {
     let (cmnts, lits) = comments::gather_comments_and_literals(
         span_diagnostic,
         filename,
@@ -268,7 +275,7 @@ fn needs_parentheses(expr: &ast::Expr) -> bool {
     }
 }
 
-impl<'a> State<'a> {
+impl<'a,'b> State<'a,'b> {
     pub fn ibox(&mut self, u: uint) -> IoResult<()> {
         self.boxes.push(pp::Inconsistent);
         pp::ibox(&mut self.s, u)
@@ -2070,7 +2077,9 @@ impl<'a> State<'a> {
                                          None,
                                          true)
                     }
-                    OtherRegionTyParamBound(_) => Ok(())
+                    OtherRegionTyParamBound(_, ref lifetime) => {
+                        self.print_lifetime(lifetime)
+                    }
                 })
             }
             Ok(())

@@ -719,11 +719,11 @@ pub fn pretty_print_input(sess: Session,
     let mut rdr = MemReader::new(src);
 
     let out = match ofile {
-        None => box io::stdout() as Box<Writer>,
+        None => box io::stdout() as Box<Writer+'static>,
         Some(p) => {
             let r = io::File::create(&p);
             match r {
-                Ok(w) => box w as Box<Writer>,
+                Ok(w) => box w as Box<Writer+'static>,
                 Err(e) => fail!("print-print failed to open {} due to {}",
                                 p.display(), e),
             }
@@ -767,6 +767,7 @@ pub fn pretty_print_input(sess: Session,
                     let variants = gather_flowgraph_variants(&sess);
                     let analysis = phase_3_run_analysis_passes(sess, &krate,
                                                                ast_map, id);
+                    let out: Box<Writer> = out;
                     print_flowgraph(variants, analysis, code, out)
                 }
                 None => {

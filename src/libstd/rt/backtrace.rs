@@ -289,9 +289,9 @@ mod imp {
     pub fn write(w: &mut Writer) -> IoResult<()> {
         use io::IoError;
 
-        struct Context<'a> {
+        struct Context<'a,'b> {
             idx: int,
-            writer: &'a mut Writer,
+            writer: &'a mut Writer + 'b,
             last_error: Option<IoError>,
         }
 

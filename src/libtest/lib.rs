@@ -138,7 +138,7 @@ pub enum TestFn {
     StaticMetricFn(proc(&mut MetricMap)),
     DynTestFn(proc():Send),
     DynMetricFn(proc(&mut MetricMap)),
-    DynBenchFn(Box<TDynBenchFn>)
+    DynBenchFn(Box<TDynBenchFn+'static>)
 }
 
 impl TestFn {
@@ -473,7 +473,7 @@ pub enum TestResult {
 }
 
 enum OutputLocation<T> {
-    Pretty(Box<term::Terminal<term::WriterWrapper> + Send>),
+    Pretty(Box<term::Terminal<term::WriterWrapper> + Send + 'static>),
     Raw(T),
 }
 
@@ -1048,8 +1048,8 @@ pub fn run_test(opts: &TestOpts,
             if nocapture {
                 drop((stdout, stderr));
             } else {
-                task = task.stdout(box stdout as Box<Writer + Send>);
-                task = task.stderr(box stderr as Box<Writer + Send>);
+                task = task.stdout(box stdout as Box<Writer+Send+'static>);
+                task = task.stderr(box stderr as Box<Writer+Send+'static>);
             }
             let result_future = task.try_future(testfn);
 

@@ -94,7 +94,7 @@ pub trait Runtime {
     fn can_block(&self) -> bool;
 
     // FIXME: This is a serious code smell and this should not exist at all.
-    fn wrap(self: Box<Self>) -> Box<Any>;
+    fn wrap(self: Box<Self>) -> Box<Any + 'static>;
 }
 
 /// The default error code of the rust runtime if the main task fails instead

@@ -480,10 +480,12 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
           debug!("Trying to match traits {:?} and {:?}", a, b);
           let substs = if_ok!(this.substs(a_.def_id, &a_.substs, &b_.substs));
           let bounds = if_ok!(this.bounds(a_.bounds, b_.bounds));
+          let region = if_ok!(this.regions(a_.region, b_.region));
           Ok(ty::mk_trait(tcx,
                           a_.def_id,
                           substs.clone(),
-                          bounds))
+                          bounds,
+                          region))
       }
 
       (&ty::ty_struct(a_id, ref a_substs), &ty::ty_struct(b_id, ref b_substs))

@@ -26,10 +26,10 @@ use task::Task;
 pub trait EventLoop {
     fn run(&mut self);
     fn callback(&mut self, arg: proc(): Send);
-    fn pausable_idle_callback(&mut self, Box<Callback + Send>)
-                              -> Box<PausableIdleCallback + Send>;
-    fn remote_callback(&mut self, Box<Callback + Send>)
-                       -> Box<RemoteCallback + Send>;
+    fn pausable_idle_callback(&mut self, Box<Callback + Send + 'static>)
+                              -> Box<PausableIdleCallback + Send + 'static>;
+    fn remote_callback(&mut self, Box<Callback + Send + 'static>)
+                       -> Box<RemoteCallback + Send + 'static>;
 
     /// The asynchronous I/O services. Not all event loops may provide one.
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory>;
@@ -120,7 +120,7 @@ pub struct ProcessConfig<'a> {
 }
 
 pub struct LocalIo<'a> {
-    factory: &'a mut IoFactory,
+    factory: &'a mut IoFactory + 'static,
 }
 
 #[unsafe_destructor]
@@ -174,39 +174,41 @@ impl<'a> LocalIo<'a> {
         }
     }
 
-    pub fn new<'a>(io: &'a mut IoFactory) -> LocalIo<'a> {
+    pub fn new<'a>(io: &'a mut IoFactory + 'static) -> LocalIo<'a> {
         LocalIo { factory: io }
     }
 
     /// Returns the underlying I/O factory as a trait reference.
     #[inline]
-    pub fn get<'a>(&'a mut self) -> &'a mut IoFactory {
-        let f: &'a mut IoFactory = self.factory;
+    pub fn get<'a>(&'a mut self) -> &'a mut IoFactory + 'static {
+        let f: &'a mut IoFactory + 'static = self.factory;
         f
     }
 }
 
 pub trait IoFactory {
     // networking
-    fn tcp_connect(&mut self, addr: SocketAddr,
-                   timeout: Option<u64>) -> IoResult<Box<RtioTcpStream + Send>>;
+    fn tcp_connect(&mut self, addr: SocketAddr, timeout: Option<u64>)
+                   -> IoResult<Box<RtioTcpStream + Send + 'static>>;
     fn tcp_bind(&mut self, addr: SocketAddr)
-                -> IoResult<Box<RtioTcpListener + Send>>;
+                -> IoResult<Box<RtioTcpListener + Send + 'static>>;
     fn udp_bind(&mut self, addr: SocketAddr)
-                -> IoResult<Box<RtioUdpSocket + Send>>;
+                -> IoResult<Box<RtioUdpSocket + Send + 'static>>;
     fn unix_bind(&mut self, path: &CString)
-                 -> IoResult<Box<RtioUnixListener + Send>>;
-    fn unix_connect(&mut self, path: &CString,
-                    timeout: Option<u64>) -> IoResult<Box<RtioPipe + Send>>;
-    fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
+                 -> IoResult<Box<RtioUnixListener + Send + 'static>>;
+    fn unix_connect(&mut self, path: &CString, timeout: Option<u64>)
+                    -> IoResult<Box<RtioPipe + Send + 'static>>;
+    fn get_host_addresses(&mut self,
+                          host: Option<&str>,
+                          servname: Option<&str>,
                           hint: Option<AddrinfoHint>)
                           -> IoResult<Vec<AddrinfoInfo>>;
 
     // filesystem operations
     fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior)
-                      -> Box<RtioFileStream + Send>;
+                      -> Box<RtioFileStream + Send + 'static>;
     fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
-               -> IoResult<Box<RtioFileStream + Send>>;
+               -> IoResult<Box<RtioFileStream + Send + 'static>>;
     fn fs_unlink(&mut self, path: &CString) -> IoResult<()>;
     fn fs_stat(&mut self, path: &CString) -> IoResult<FileStat>;
     fn fs_mkdir(&mut self, path: &CString, mode: uint) -> IoResult<()>;
@@ -225,24 +227,26 @@ pub trait IoFactory {
         IoResult<()>;
 
     // misc
-    fn timer_init(&mut self) -> IoResult<Box<RtioTimer + Send>>;
+    fn timer_init(&mut self) -> IoResult<Box<RtioTimer + Send + 'static>>;
     fn spawn(&mut self, cfg: ProcessConfig)
-            -> IoResult<(Box<RtioProcess + Send>,
-                         Vec<Option<Box<RtioPipe + Send>>>)>;
+            -> IoResult<(Box<RtioProcess + Send + 'static>,
+                         Vec<Option<Box<RtioPipe + Send + 'static>>>)>;
     fn kill(&mut self, pid: libc::pid_t, signal: int) -> IoResult<()>;
-    fn pipe_open(&mut self, fd: c_int) -> IoResult<Box<RtioPipe + Send>>;
+    fn pipe_open(&mut self, fd: c_int)
+                 -> IoResult<Box<RtioPipe + Send + 'static>>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
-            -> IoResult<Box<RtioTTY + Send>>;
-    fn signal(&mut self, signal: int, cb: Box<Callback + Send>)
-        -> IoResult<Box<RtioSignal + Send>>;
+            -> IoResult<Box<RtioTTY + Send + 'static>>;
+    fn signal(&mut self, signal: int, cb: Box<Callback + Send + 'static>)
+        -> IoResult<Box<RtioSignal + Send + 'static>>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
-    fn listen(self: Box<Self>) -> IoResult<Box<RtioTcpAcceptor + Send>>;
+    fn listen(self: Box<Self>)
+              -> IoResult<Box<RtioTcpAcceptor + Send + 'static>>;
 }
 
 pub trait RtioTcpAcceptor : RtioSocket {
-    fn accept(&mut self) -> IoResult<Box<RtioTcpStream + Send>>;
+    fn accept(&mut self) -> IoResult<Box<RtioTcpStream + Send + 'static>>;
     fn accept_simultaneously(&mut self) -> IoResult<()>;
     fn dont_accept_simultaneously(&mut self) -> IoResult<()>;
     fn set_timeout(&mut self, timeout: Option<u64>);
@@ -256,7 +260,7 @@ pub trait RtioTcpStream : RtioSocket {
     fn nodelay(&mut self) -> IoResult<()>;
     fn keepalive(&mut self, delay_in_seconds: uint) -> IoResult<()>;
     fn letdie(&mut self) -> IoResult<()>;
-    fn clone(&self) -> Box<RtioTcpStream + Send>;
+    fn clone(&self) -> Box<RtioTcpStream + Send + 'static>;
     fn close_write(&mut self) -> IoResult<()>;
     fn close_read(&mut self) -> IoResult<()>;
     fn set_timeout(&mut self, timeout_ms: Option<u64>);
@@ -284,7 +288,7 @@ pub trait RtioUdpSocket : RtioSocket {
     fn hear_broadcasts(&mut self) -> IoResult<()>;
     fn ignore_broadcasts(&mut self) -> IoResult<()>;
 
-    fn clone(&self) -> Box<RtioUdpSocket + Send>;
+    fn clone(&self) -> Box<RtioUdpSocket + Send + 'static>;
     fn set_timeout(&mut self, timeout_ms: Option<u64>);
     fn set_read_timeout(&mut self, timeout_ms: Option<u64>);
     fn set_write_timeout(&mut self, timeout_ms: Option<u64>);
@@ -292,8 +296,8 @@ pub trait RtioUdpSocket : RtioSocket {
 
 pub trait RtioTimer {
     fn sleep(&mut self, msecs: u64);
-    fn oneshot(&mut self, msecs: u64, cb: Box<Callback + Send>);
-    fn period(&mut self, msecs: u64, cb: Box<Callback + Send>);
+    fn oneshot(&mut self, msecs: u64, cb: Box<Callback + Send + 'static>);
+    fn period(&mut self, msecs: u64, cb: Box<Callback + Send + 'static>);
 }
 
 pub trait RtioFileStream {
@@ -319,7 +323,7 @@ pub trait RtioProcess {
 pub trait RtioPipe {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint>;
     fn write(&mut self, buf: &[u8]) -> IoResult<()>;
-    fn clone(&self) -> Box<RtioPipe + Send>;
+    fn clone(&self) -> Box<RtioPipe + Send + 'static>;
 
     fn close_write(&mut self) -> IoResult<()>;
     fn close_read(&mut self) -> IoResult<()>;
@@ -329,11 +333,12 @@ pub trait RtioPipe {
 }
 
 pub trait RtioUnixListener {
-    fn listen(self: Box<Self>) -> IoResult<Box<RtioUnixAcceptor + Send>>;
+    fn listen(self: Box<Self>)
+              -> IoResult<Box<RtioUnixAcceptor + Send + 'static>>;
 }
 
 pub trait RtioUnixAcceptor {
-    fn accept(&mut self) -> IoResult<Box<RtioPipe + Send>>;
+    fn accept(&mut self) -> IoResult<Box<RtioPipe + Send + 'static>>;
     fn set_timeout(&mut self, timeout: Option<u64>);
 }
 

@@ -66,10 +66,10 @@ pub mod terminfo;
 #[cfg(windows)]
 mod win;
 
-/// A hack to work around the fact that `Box<Writer + Send>` does not
-/// currently implement `Writer`.
+/// A hack to work around the fact that `Box<Writer + Send + 'static>` does
+/// not currently implement `Writer`.
 pub struct WriterWrapper {
-    wrapped: Box<Writer + Send>,
+    wrapped: Box<Writer + Send + 'static>,
 }
 
 impl Writer for WriterWrapper {
@@ -87,31 +87,31 @@ impl Writer for WriterWrapper {
 #[cfg(not(windows))]
 /// Return a Terminal wrapping stdout, or None if a terminal couldn't be
 /// opened.
-pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
+pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send + 'static>> {
     let ti: Option<TerminfoTerminal<WriterWrapper>>
         = Terminal::new(WriterWrapper {
-            wrapped: box std::io::stdout() as Box<Writer + Send>,
+            wrapped: box std::io::stdout() as Box<Writer + Send + 'static>,
         });
-    ti.map(|t| box t as Box<Terminal<WriterWrapper> + Send>)
+    ti.map(|t| box t as Box<Terminal<WriterWrapper> + Send + 'static>)
 }
 
 #[cfg(windows)]
 /// Return a Terminal wrapping stdout, or None if a terminal couldn't be
 /// opened.
-pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
+pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send + 'static>> {
     let ti: Option<TerminfoTerminal<WriterWrapper>>
         = Terminal::new(WriterWrapper {
-            wrapped: box std::io::stdout() as Box<Writer + Send>,
+            wrapped: box std::io::stdout() as Box<Writer + Send + 'static>,
         });
 
     match ti {
-        Some(t) => Some(box t as Box<Terminal<WriterWrapper> + Send>),
+        Some(t) => Some(box t as Box<Terminal<WriterWrapper>+Send+'static>),
         None => {
             let wc: Option<WinConsole<WriterWrapper>>
                 = Terminal::new(WriterWrapper {
-                    wrapped: box std::io::stdout() as Box<Writer + Send>,
+                    wrapped: box std::io::stdout() as Box<Writer+Send+'static>,
                 });
-            wc.map(|w| box w as Box<Terminal<WriterWrapper> + Send>)
+            wc.map(|w| box w as Box<Terminal<WriterWrapper>+Send+'static>)
         }
     }
 }
@@ -119,31 +119,34 @@ pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
 #[cfg(not(windows))]
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
-pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send> + Send> {
+pub fn stderr() -> Option<Box<Terminal<WriterWrapper>+Send+'static>+
+                              Send+'static> {
     let ti: Option<TerminfoTerminal<WriterWrapper>>
         = Terminal::new(WriterWrapper {
-            wrapped: box std::io::stderr() as Box<Writer + Send>,
+            wrapped: box std::io::stderr() as Box<Writer+Send+'static>,
         });
-    ti.map(|t| box t as Box<Terminal<WriterWrapper> + Send>)
+    ti.map(|t| box t as Box<Terminal<WriterWrapper>+Send+'static>)
 }
 
 #[cfg(windows)]
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
-pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send> + Send> {
+pub fn stderr() -> Option<Box<Terminal<WriterWrapper>+Send+'static>
+                              +Send+'static> {
     let ti: Option<TerminfoTerminal<WriterWrapper>>
         = Terminal::new(WriterWrapper {
-            wrapped: box std::io::stderr() as Box<Writer + Send>,
+            wrapped: box std::io::stderr() as Box<Writer+Send+'static>,
         });
 
     match ti {
-        Some(t) => Some(box t as Box<Terminal<WriterWrapper> + Send>),
+        Some(t) => Some(box t as Box<Terminal<WriterWrapper>+Send+'static>),
         None => {
             let wc: Option<WinConsole<WriterWrapper>>
                 = Terminal::new(WriterWrapper {
-                    wrapped: box std::io::stderr() as Box<Writer + Send>,
+                    wrapped: box std::io::stderr() as
+                        Box<Writer+Send+'static>,
                 });
-            wc.map(|w| box w as Box<Terminal<WriterWrapper> + Send>)
+            wc.map(|w| box w as Box<Terminal<WriterWrapper> + Send + 'static>)
         }
     }
 }

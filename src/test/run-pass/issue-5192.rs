@@ -28,12 +28,12 @@ impl EventLoop for UvEventLoop {
 }
 
 pub struct Scheduler {
-    event_loop: Box<EventLoop>,
+    event_loop: Box<EventLoop+'static>,
 }
 
 impl Scheduler {
 
-    pub fn new(event_loop: Box<EventLoop>) -> Scheduler {
+    pub fn new(event_loop: Box<EventLoop+'static>) -> Scheduler {
         Scheduler {
             event_loop: event_loop,
         }
@@ -41,5 +41,6 @@ impl Scheduler {
 }
 
 pub fn main() {
-    let _sched = Scheduler::new(box UvEventLoop::new() as Box<EventLoop>);
+    let _sched =
+        Scheduler::new(box UvEventLoop::new() as Box<EventLoop+'static>);
 }

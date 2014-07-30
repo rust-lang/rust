@@ -304,7 +304,7 @@ pub struct Parser<'a> {
     pub tokens_consumed: uint,
     pub restriction: restriction,
     pub quote_depth: uint, // not (yet) related to the quasiquoter
-    pub reader: Box<Reader>,
+    pub reader: Box<Reader+'a>,
     pub interner: Rc<token::IdentInterner>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
@@ -341,8 +341,10 @@ fn real_token(rdr: &mut Reader) -> TokenAndSpan {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(sess: &'a ParseSess, cfg: ast::CrateConfig,
-               mut rdr: Box<Reader>) -> Parser<'a> {
+    pub fn new(sess: &'a ParseSess,
+               cfg: ast::CrateConfig,
+               mut rdr: Box<Reader+'a>)
+               -> Parser<'a> {
         let tok0 = real_token(rdr);
         let span = tok0.sp;
         let placeholder = TokenAndSpan {
@@ -3573,7 +3575,13 @@ impl<'a> Parser<'a> {
                             name: lifetime.name
                         });
                     } else {
-                        result.push(OtherRegionTyParamBound(self.span));
+                        result.push(OtherRegionTyParamBound(
+                                self.span,
+                                ast::Lifetime {
+                            id: ast::DUMMY_NODE_ID,
+                            span: self.span,
+                            name: lifetime.name
+                        }));
                     }
                     self.bump();
                 }

@@ -319,7 +319,7 @@ pub mod rt {
 pub fn expand_quote_tokens(cx: &mut ExtCtxt,
                            sp: Span,
                            tts: &[ast::TokenTree])
-                           -> Box<base::MacResult> {
+                           -> Box<base::MacResult+'static> {
     let (cx_expr, expr) = expand_tts(cx, sp, tts);
     let expanded = expand_wrapper(cx, sp, cx_expr, expr);
     base::MacExpr::new(expanded)
@@ -327,7 +327,7 @@ pub fn expand_quote_tokens(cx: &mut ExtCtxt,
 
 pub fn expand_quote_expr(cx: &mut ExtCtxt,
                          sp: Span,
-                         tts: &[ast::TokenTree]) -> Box<base::MacResult> {
+                         tts: &[ast::TokenTree]) -> Box<base::MacResult+'static> {
     let expanded = expand_parse_call(cx, sp, "parse_expr", Vec::new(), tts);
     base::MacExpr::new(expanded)
 }
@@ -335,7 +335,7 @@ pub fn expand_quote_expr(cx: &mut ExtCtxt,
 pub fn expand_quote_item(cx: &mut ExtCtxt,
                          sp: Span,
                          tts: &[ast::TokenTree])
-                         -> Box<base::MacResult> {
+                         -> Box<base::MacResult+'static> {
     let expanded = expand_parse_call(cx, sp, "parse_item_with_outer_attributes",
                                     vec!(), tts);
     base::MacExpr::new(expanded)
@@ -344,7 +344,7 @@ pub fn expand_quote_item(cx: &mut ExtCtxt,
 pub fn expand_quote_pat(cx: &mut ExtCtxt,
                         sp: Span,
                         tts: &[ast::TokenTree])
-                        -> Box<base::MacResult> {
+                        -> Box<base::MacResult+'static> {
     let expanded = expand_parse_call(cx, sp, "parse_pat", vec!(), tts);
     base::MacExpr::new(expanded)
 }
@@ -360,7 +360,7 @@ pub fn expand_quote_arm(cx: &mut ExtCtxt,
 pub fn expand_quote_ty(cx: &mut ExtCtxt,
                        sp: Span,
                        tts: &[ast::TokenTree])
-                       -> Box<base::MacResult> {
+                       -> Box<base::MacResult+'static> {
     let e_param_colons = cx.expr_lit(sp, ast::LitBool(false));
     let expanded = expand_parse_call(cx, sp, "parse_ty",
                                      vec!(e_param_colons), tts);
@@ -370,7 +370,7 @@ pub fn expand_quote_ty(cx: &mut ExtCtxt,
 pub fn expand_quote_method(cx: &mut ExtCtxt,
                            sp: Span,
                            tts: &[ast::TokenTree])
-                           -> Box<base::MacResult> {
+                           -> Box<base::MacResult+'static> {
     let e_param_colons = cx.expr_none(sp);
     let expanded = expand_parse_call(cx, sp, "parse_method",
                                      vec!(e_param_colons), tts);
@@ -380,7 +380,7 @@ pub fn expand_quote_method(cx: &mut ExtCtxt,
 pub fn expand_quote_stmt(cx: &mut ExtCtxt,
                          sp: Span,
                          tts: &[ast::TokenTree])
-                         -> Box<base::MacResult> {
+                         -> Box<base::MacResult+'static> {
     let e_attrs = cx.expr_vec_ng(sp);
     let expanded = expand_parse_call(cx, sp, "parse_stmt",
                                     vec!(e_attrs), tts);

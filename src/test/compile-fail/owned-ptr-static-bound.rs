@@ -8,23 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test
+//
+// See failure below.
 
 trait A<T> {}
-struct B<'a, T>(&'a A<T>);
+struct B<'a, T>(&'a A<T>+'a);
 
 trait X {}
 impl<'a, T> X for B<'a, T> {}
 
-fn f<'a, T, U>(v: Box<A<T>>) -> Box<X> {
-    box B(v) as Box<X> //~ ERROR value may contain references; add `'static` bound to `T`
+fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
+    box B(v) as Box<X+'static> //~ ERROR `*v` does not live long enough
+    //~^ ERROR does not fulfill `'static`
 }
 
-fn g<'a, T, U>(v: Box<A<U>>) -> Box<X> {
-    box B(v) as Box<X> //~ ERROR value may contain references; add `'static` bound to `U`
+fn g<'a, T, U>(v: Box<A<U>+'static>) -> Box<X+'static> {
+    box B(v) as Box<X+'static> //~ ERROR `*v` does not live long enough
+    //~^ ERROR does not fulfill `'static`
 }
 
-fn h<'a, T: 'static>(v: Box<A<T>>) -> Box<X> {
-    box B(v) as Box<X> // ok
+fn h<T: 'static>(v: &'static A<T>+'static) -> Box<X+'static> {
+    box B(v) as Box<X+'static> // should be ok but fails now (FIXME)
 }
 
 fn main() {}

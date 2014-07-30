@@ -28,6 +28,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(phase, globs, macro_rules, unsafe_destructor)]
+#![feature(issue_5723_bootstrap)]
 #![deny(missing_doc)]
 #![no_std]
 

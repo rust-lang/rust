@@ -18,17 +18,7 @@ fn borrowed_receiver(x: &Foo) -> &() {
 }
 
 fn owned_receiver(x: Box<Foo>) -> &'static () {
-    x.borrowed() //~ ERROR `*x` does not live long enough
-}
-
-fn mut_owned_receiver(mut x: Box<Foo>) {
-    let _y = x.borrowed();
-    let _z = &mut x; //~ ERROR cannot borrow
-}
-
-fn imm_owned_receiver(mut x: Box<Foo>) {
-    let _y = x.borrowed();
-    let _z = &x;
+    x.borrowed() //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {}

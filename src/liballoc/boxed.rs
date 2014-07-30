@@ -103,14 +103,14 @@ pub trait BoxAny {
 }
 
 #[stable]
-impl BoxAny for Box<Any> {
+impl<'a> BoxAny for Box<Any+'a> {
     #[inline]
-    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
+    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any+'a>> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
                 let to: TraitObject =
-                    *mem::transmute::<&Box<Any>, &TraitObject>(&self);
+                    *mem::transmute::<&Box<Any+'a>, &TraitObject>(&self);
 
                 // Prevent destructor on self being run
                 intrinsics::forget(self);
@@ -130,7 +130,7 @@ impl<T: fmt::Show> fmt::Show for Box<T> {
     }
 }
 
-impl fmt::Show for Box<Any> {
+impl<'a> fmt::Show for Box<Any+'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")
     }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: type `&Foo` does not implement any method in scope named `foo`
+// error-pattern: does not implement any method in scope named `foo`
 
 trait Foo {
     fn foo(self: Box<Self>);
@@ -19,5 +19,5 @@ impl Foo for int {
 }
 
 fn main() {
-    (&5 as &Foo).foo();
+    (&5 as &Foo+'static).foo();
 }

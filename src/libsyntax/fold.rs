@@ -509,7 +509,9 @@ fn fold_ty_param_bound<T: Folder>(tpb: &TyParamBound, fld: &mut T)
                 decl: fld.fold_fn_decl(&*unboxed_function_type.decl),
             })
         }
-        OtherRegionTyParamBound(s) => OtherRegionTyParamBound(s)
+        OtherRegionTyParamBound(s, ref lifetime) => {
+            OtherRegionTyParamBound(s, fld.fold_lifetime(lifetime))
+        }
     }
 }
 

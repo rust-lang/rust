@@ -145,9 +145,9 @@ pub struct TaskBuilder<S = SiblingSpawner> {
     // The size of the stack for the spawned task
     stack_size: Option<uint>,
     // Task-local stdout
-    stdout: Option<Box<Writer + Send>>,
+    stdout: Option<Box<Writer + Send + 'static>>,
     // Task-local stderr
-    stderr: Option<Box<Writer + Send>>,
+    stderr: Option<Box<Writer + Send + 'static>>,
     // The mechanics of actually spawning the task (i.e.: green or native)
     spawner: S,
     // Optionally wrap the eventual task body
@@ -188,14 +188,16 @@ impl<S: Spawner> TaskBuilder<S> {
 
     /// Redirect task-local stdout.
     #[experimental = "May not want to make stdio overridable here."]
-    pub fn stdout(mut self, stdout: Box<Writer + Send>) -> TaskBuilder<S> {
+    pub fn stdout(mut self, stdout: Box<Writer + Send + 'static>)
+                  -> TaskBuilder<S> {
         self.stdout = Some(stdout);
         self
     }
 
     /// Redirect task-local stderr.
     #[experimental = "May not want to make stdio overridable here."]
-    pub fn stderr(mut self, stderr: Box<Writer + Send>) -> TaskBuilder<S> {
+    pub fn stderr(mut self, stderr: Box<Writer + Send + 'static>)
+                  -> TaskBuilder<S> {
         self.stderr = Some(stderr);
         self
     }
@@ -246,8 +248,10 @@ impl<S: Spawner> TaskBuilder<S> {
     }
 
     // Where spawning actually happens (whether yielding a future or not)
-    fn spawn_internal(self, f: proc():Send,
-                      on_exit: Option<proc(Result<(), Box<Any + Send>>):Send>) {
+    fn spawn_internal(self,
+                      f: proc():Send,
+                      on_exit:
+                      Option<proc(Result<(), Box<Any+Send+'static>>):Send>) {
         let TaskBuilder {
             name, stack_size, stdout, stderr, spawner, mut gen_body, nocopy: _
         } = self;
@@ -295,7 +299,7 @@ impl<S: Spawner> TaskBuilder<S> {
     /// containing the argument to `fail!(...)` as an `Any` trait object.
     #[experimental = "Futures are experimental."]
     pub fn try_future<T:Send>(self, f: proc():Send -> T)
-                              -> Future<Result<T, Box<Any + Send>>> {
+                              -> Future<Result<T, Box<Any+Send+'static>>> {
         // currently, the on_exit proc provided by librustrt only works for unit
         // results, so we use an additional side-channel to communicate the
         // result.
@@ -315,7 +319,8 @@ impl<S: Spawner> TaskBuilder<S> {
     /// Execute a function in a newly-spawnedtask and block until the task
     /// completes or fails. Equivalent to `.try_future(f).unwrap()`.
     #[unstable = "Error type may change."]
-    pub fn try<T:Send>(self, f: proc():Send -> T) -> Result<T, Box<Any + Send>> {
+    pub fn try<T:Send>(self, f: proc():Send -> T)
+               -> Result<T, Box<Any + Send + 'static>> {
         self.try_future(f).unwrap()
     }
 }
@@ -337,7 +342,8 @@ pub fn spawn(f: proc(): Send) {
 ///
 /// This is equivalent to `TaskBuilder::new().try`.
 #[unstable = "Error type may change."]
-pub fn try<T: Send>(f: proc(): Send -> T) -> Result<T, Box<Any + Send>> {
+pub fn try<T: Send>(f: proc(): Send -> T)
+           -> Result<T, Box<Any + Send + 'static>> {
     TaskBuilder::new().try(f)
 }
 
@@ -346,7 +352,8 @@ pub fn try<T: Send>(f: proc(): Send -> T) -> Result<T, Box<Any + Send>> {
 ///
 /// This is equivalent to `TaskBuilder::new().try_future`.
 #[experimental = "Futures are experimental."]
-pub fn try_future<T:Send>(f: proc():Send -> T) -> Future<Result<T, Box<Any + Send>>> {
+pub fn try_future<T:Send>(f: proc():Send -> T)
+                  -> Future<Result<T, Box<Any + Send + 'static>>> {
     TaskBuilder::new().try_future(f)
 }
 
@@ -616,10 +623,10 @@ mod test {
     #[test]
     fn test_try_fail_message_any() {
         match try(proc() {
-            fail!(box 413u16 as Box<Any + Send>);
+            fail!(box 413u16 as Box<Any + Send + 'static>);
         }) {
             Err(e) => {
-                type T = Box<Any + Send>;
+                type T = Box<Any + Send + 'static>;
                 assert!(e.is::<T>());
                 let any = e.downcast::<T>().unwrap();
                 assert!(any.is::<u16>());
@@ -647,7 +654,8 @@ mod test {
         let mut reader = ChanReader::new(rx);
         let stdout = ChanWriter::new(tx);
 
-        let r = TaskBuilder::new().stdout(box stdout as Box<Writer + Send>)
+        let r = TaskBuilder::new().stdout(box stdout as Box<Writer + Send +
+                                            'static>)
                                   .try(proc() {
                 print!("Hello, world!");
             });

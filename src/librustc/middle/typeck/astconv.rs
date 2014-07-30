@@ -612,7 +612,8 @@ fn mk_pointer<AC:AstConv,
             let tr = ty::mk_trait(this.tcx(),
                                   def_id,
                                   substs,
-                                  ty::empty_builtin_bounds());
+                                  ty::empty_builtin_bounds(),
+                                  ty::ReStatic);
             match ptr_ty {
                 Uniq => {
                     return ty::mk_uniq(this.tcx(), tr);
@@ -669,16 +670,31 @@ fn mk_pointer<AC:AstConv,
                             return ty::mk_err();
                         }
                     };
-                    let bounds = conv_builtin_bounds(this.tcx(),
-                                                     path.span,
-                                                     bounds,
-                                                     trait_store);
+                    let (bounds, region) = conv_builtin_bounds(this.tcx(),
+                                                               path.span,
+                                                               bounds,
+                                                               trait_store);
+                    let region = match region {
+                        Some(region) => region,
+                        None => {
+                            match rscope.anon_regions(path.span, 1) {
+                                Err(()) => {
+                                    tcx.sess.span_err(path.span,
+                                                      "missing lifetime on \
+                                                       trait object");
+                                    ty::ReStatic
+                                }
+                                Ok(regions) => *regions.get(0),
+                            }
+                        }
+                    };
                     let tr = ty::mk_trait(tcx,
                                           result.def_id,
                                           result.substs.clone(),
-                                          bounds);
+                                          bounds,
+                                          region);
                     // We could just match on ptr_ty, but we need to pass a trait
-                    // store to conv_builtin_bounds, so mathc twice for now.
+                    // store to conv_builtin_bounds, so match twice for now.
                     return match trait_store {
                         ty::UniqTraitStore => {
                             return ty::mk_uniq(tcx, tr);
@@ -775,10 +791,14 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
 
                 // Use corresponding trait store to figure out default bounds
                 // if none were specified.
-                let bounds = conv_builtin_bounds(this.tcx(),
-                                                 ast_ty.span,
-                                                 &f.bounds,
-                                                 store);
+                let (bounds, region) = conv_builtin_bounds(this.tcx(),
+                                                           ast_ty.span,
+                                                           &f.bounds,
+                                                           store);
+                if region.is_some() && region != Some(ty::ReStatic) {
+                    tcx.sess.span_err(ast_ty.span,
+                                      "only `'static` is permitted here")
+                }
 
                 let fn_decl = ty_of_closure(this,
                                             ast_ty.id,
@@ -794,10 +814,15 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             ast::TyProc(ref f) => {
                 // Use corresponding trait store to figure out default bounds
                 // if none were specified.
-                let bounds = conv_builtin_bounds(this.tcx(),
-                                                 ast_ty.span,
-                                                 &f.bounds,
-                                                 ty::UniqTraitStore);
+                let (bounds, region) =
+                    conv_builtin_bounds(this.tcx(),
+                                        ast_ty.span,
+                                        &f.bounds,
+                                        ty::UniqTraitStore);
+                if region.is_some() && region != Some(ty::ReStatic) {
+                    tcx.sess.span_err(ast_ty.span,
+                                      "only `'static` is permitted here")
+                }
 
                 let fn_decl = ty_of_closure(this,
                                             ast_ty.id,
@@ -1207,7 +1232,7 @@ fn conv_builtin_bounds(tcx: &ty::ctxt,
                        span: Span,
                        ast_bounds: &Option<OwnedSlice<ast::TyParamBound>>,
                        store: ty::TraitStore)
-                       -> ty::BuiltinBounds {
+                       -> (ty::BuiltinBounds, Option<ty::Region>) {
     //! Converts a list of bounds from the AST into a `BuiltinBounds`
     //! struct. Reports an error if any of the bounds that appear
     //! in the AST refer to general traits and not the built-in traits
@@ -1219,6 +1244,7 @@ fn conv_builtin_bounds(tcx: &ty::ctxt,
     //! override this with an empty bounds list, e.g. "Box<fn:()>" or
     //! "Box<Trait:>".
 
+    let mut region = None;
     match (ast_bounds, store) {
         (&Some(ref bound_vec), _) => {
             let mut builtin_bounds = ty::empty_builtin_bounds();
@@ -1240,32 +1266,42 @@ fn conv_builtin_bounds(tcx: &ty::ctxt,
                              or object bounds");
                     }
                     ast::StaticRegionTyParamBound => {
+                        if region.is_some() {
+                            tcx.sess.span_err(span,
+                                              "only one lifetime may be \
+                                               present")
+                        }
                         builtin_bounds.add(ty::BoundStatic);
+                        region = Some(ty::ReStatic);
                     }
                     ast::UnboxedFnTyParamBound(_) => {
                         tcx.sess.span_err(span,
                                           "unboxed functions are not allowed \
                                            here");
                     }
-                    ast::OtherRegionTyParamBound(span) => {
-                        if !tcx.sess.features.issue_5723_bootstrap.get() {
-                            tcx.sess.span_err(
-                                span,
-                                "only the 'static lifetime is accepted \
-                                 here.");
+                    ast::OtherRegionTyParamBound(span, ref lifetime) => {
+                        if region.is_some() {
+                            tcx.sess.span_err(span,
+                                              "only one lifetime may be \
+                                               present")
                         }
+                        region = Some(ast_region_to_region(tcx, lifetime))
                     }
                 }
             }
-            builtin_bounds
+            (builtin_bounds, region)
         },
         // &'static Trait is sugar for &'static Trait:'static.
         (&None, ty::RegionTraitStore(ty::ReStatic, _)) => {
-            let mut set = ty::empty_builtin_bounds(); set.add(ty::BoundStatic); set
+            let mut set = ty::empty_builtin_bounds();
+            set.add(ty::BoundStatic);
+            (set, None)
         }
         // No bounds are automatically applied for &'r Trait or ~Trait
         (&None, ty::RegionTraitStore(..)) |
-        (&None, ty::UniqTraitStore) => ty::empty_builtin_bounds(),
+        (&None, ty::UniqTraitStore) => {
+            (ty::empty_builtin_bounds(), None)
+        }
     }
 }
 

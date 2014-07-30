@@ -17,8 +17,7 @@ use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
 use middle::typeck;
 use middle::typeck::{MethodCall, NoAdjustment};
-use util::ppaux::{Repr, ty_to_string};
-use util::ppaux::UserString;
+use util::ppaux::{Repr, UserString, ty_to_string};
 
 use syntax::ast::*;
 use syntax::attr;
@@ -590,11 +589,10 @@ pub fn check_static(tcx: &ty::ctxt, ty: ty::t, sp: Span) -> bool {
 
 /// This is rather subtle.  When we are casting a value to an instantiated
 /// trait like `a as trait<'r>`, regionck already ensures that any references
-/// that appear in the type of `a` are bounded by `'r` (ed.: rem
-/// FIXME(#5723)).  However, it is possible that there are *type parameters*
-/// in the type of `a`, and those *type parameters* may have references
-/// within them.  We have to guarantee that the regions which appear in those
-/// type parameters are not obscured.
+/// that appear in the type of `a` are bounded by `'r`. However, it is
+/// possible that there are *type parameters* in the type of `a`, and those
+/// *type parameters* may have references within them.  We have to guarantee
+/// that the regions which appear in those type parameters are not obscured.
 ///
 /// Therefore, we ensure that one of three conditions holds:
 ///
@@ -652,30 +650,11 @@ pub fn check_cast_for_escaping_regions(
     ty::walk_regions_and_ty(
         cx.tcx,
         source_ty,
-
-        |_r| {
-            // FIXME(#5723) --- turn this check on once &Objects are usable
-            //
-            // if !target_regions.iter().any(|t_r| is_subregion_of(cx, *t_r, r)) {
-            //     cx.tcx.sess.span_err(
-            //         source_span,
-            //         format!("source contains reference with lifetime \
-            //               not found in the target type `{}`",
-            //              ty_to_string(cx.tcx, target_ty)));
-            //     note_and_explain_region(
-            //         cx.tcx, "source data is only valid for ", r, "");
-            // }
-        },
-
+        |_| {},
         |ty| {
             match ty::get(ty).sty {
                 ty::ty_param(source_param) => {
-                    if source_param.space == subst::SelfSpace {
-                        // FIXME (#5723) -- there is no reason that
-                        // Self should be exempt from this check,
-                        // except for historical accident. Bottom
-                        // line, we need proper region bounding.
-                    } else if target_params.iter().any(|x| x == &source_param) {
+                    if target_params.iter().any(|x| x == &source_param) {
                         /* case (2) */
                     } else {
                         check_static(cx.tcx, ty, source_span); /* case (3) */

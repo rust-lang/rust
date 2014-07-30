@@ -19,7 +19,7 @@ use ext::build::AstBuilder;
 pub fn expand_syntax_ext(ecx: &mut base::ExtCtxt,
                          sp: Span,
                          _tts: &[ast::TokenTree])
-                         -> Box<base::MacResult> {
+                         -> Box<base::MacResult+'static> {
     ecx.span_err(sp, "`fmt!` is deprecated, use `format!` instead");
     ecx.parse_sess.span_diagnostic.span_note(sp,
         "see http://doc.rust-lang.org/std/fmt/ \

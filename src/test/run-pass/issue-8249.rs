@@ -13,11 +13,13 @@ struct B;
 impl A for B {}
 
 struct C<'a> {
-    foo: &'a mut A,
+    foo: &'a mut A+'a,
 }
 
-fn foo(a: &mut A) {
-    C{ foo: a };
+fn foo<'a>(a: &'a mut A+'a) {
+    C {
+        foo: a,
+    };
 }
 
 pub fn main() {

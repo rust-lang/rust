@@ -119,12 +119,12 @@ impl Buffer for NullReader {
 
 /// A `Writer` which multiplexes writes to a set of `Writers`.
 pub struct MultiWriter {
-    writers: Vec<Box<Writer>>
+    writers: Vec<Box<Writer + 'static>>
 }
 
 impl MultiWriter {
     /// Creates a new `MultiWriter`
-    pub fn new(writers: Vec<Box<Writer>>) -> MultiWriter {
+    pub fn new(writers: Vec<Box<Writer + 'static>>) -> MultiWriter {
         MultiWriter { writers: writers }
     }
 }
@@ -338,8 +338,9 @@ mod test {
             }
         }
 
-        let mut multi = MultiWriter::new(vec!(box TestWriter as Box<Writer>,
-                                              box TestWriter as Box<Writer>));
+        let mut multi = MultiWriter::new(
+            vec!(box TestWriter as Box<Writer + 'static>,
+                 box TestWriter as Box<Writer + 'static>));
         multi.write([1, 2, 3]).unwrap();
         assert_eq!(2, unsafe { writes });
         assert_eq!(0, unsafe { flushes });

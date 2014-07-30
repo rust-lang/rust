@@ -67,7 +67,7 @@ pub struct Timer {
 }
 
 struct Inner {
-    cb: Option<Box<rtio::Callback + Send>>,
+    cb: Option<Box<rtio::Callback + Send + 'static>>,
     interval: u64,
     repeat: bool,
     target: u64,
@@ -254,7 +254,7 @@ impl rtio::RtioTimer for Timer {
         Timer::sleep(msecs);
     }
 
-    fn oneshot(&mut self, msecs: u64, cb: Box<rtio::Callback + Send>) {
+    fn oneshot(&mut self, msecs: u64, cb: Box<rtio::Callback+Send+'static>) {
         let now = now();
         let mut inner = self.inner();
 
@@ -266,7 +266,7 @@ impl rtio::RtioTimer for Timer {
         unsafe { HELPER.send(NewTimer(inner)); }
     }
 
-    fn period(&mut self, msecs: u64, cb: Box<rtio::Callback + Send>) {
+    fn period(&mut self, msecs: u64, cb: Box<rtio::Callback+Send+'static>) {
         let now = now();
         let mut inner = self.inner();
 

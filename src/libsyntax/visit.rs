@@ -531,7 +531,9 @@ pub fn walk_ty_param_bounds<E: Clone, V: Visitor<E>>(visitor: &mut V,
                 visitor.visit_ty(&*function_declaration.decl.output,
                                  env.clone());
             }
-            OtherRegionTyParamBound(..) => {}
+            OtherRegionTyParamBound(_, ref lifetime) => {
+                visitor.visit_lifetime_ref(lifetime, env.clone())
+            }
         }
     }
 }

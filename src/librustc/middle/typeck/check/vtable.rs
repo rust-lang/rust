@@ -553,8 +553,10 @@ fn fixup_substs(vcx: &VtableContext,
     let tcx = vcx.tcx();
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx,
-                         id, substs,
-                         ty::empty_builtin_bounds());
+                         id,
+                         substs,
+                         ty::empty_builtin_bounds(),
+                         ty::ReStatic);
     fixup_ty(vcx, span, t, is_early).map(|t_f| {
         match ty::get(t_f).sty {
           ty::ty_trait(ref inner) => inner.substs.clone(),
@@ -812,7 +814,8 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                 AutoObject(store,
                            bounds,
                            def_id,
-                           ref substs) => {
+                           ref substs,
+                           ref region) => {
                     debug!("doing trait adjustment for expr {} {} \
                             (early? {})",
                            ex.id,
@@ -822,7 +825,8 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                     let trait_ty = ty::mk_trait(cx.tcx,
                                                 def_id,
                                                 substs.clone(),
-                                                bounds);
+                                                bounds,
+                                                *region);
                     let object_ty = match store {
                         ty::UniqTraitStore => ty::mk_uniq(cx.tcx, trait_ty),
                         ty::RegionTraitStore(r, m) => {

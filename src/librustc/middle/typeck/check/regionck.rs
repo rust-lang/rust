@@ -418,7 +418,11 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                         infer::AutoBorrow(expr.span));
                 }
             }
-            ty::AutoObject(ty::RegionTraitStore(trait_region, _), _, _, _) => {
+            ty::AutoObject(ty::RegionTraitStore(trait_region, _),
+                           _,
+                           _,
+                           _,
+                           region_bound) => {
                 // Determine if we are casting `expr` to a trait
                 // instance.  If so, we have to be sure that the type of
                 // the source obeys the trait's region bound.
@@ -436,6 +440,21 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                 let source_ty = rcx.resolve_node_type(expr.id);
                 constrain_regions_in_type(rcx, trait_region,
                                             infer::RelateObjectBound(expr.span), source_ty);
+
+                // Resolve the regions inside the type.
+                let interior_source_type = match ty::deref(source_ty, true) {
+                    Some(mt) => mt.ty,
+                    None => {
+                        rcx.fcx.tcx().sess.span_bug(expr.span,
+                                                    "autoobject type wasn't \
+                                                     derefable?!")
+                    }
+                };
+
+                constrain_regions_in_type(rcx,
+                                          region_bound,
+                                          infer::RelateObjectBound(expr.span),
+                                          interior_source_type);
             }
             _ => {}
         }
@@ -548,13 +567,32 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             match ty::get(target_ty).sty {
                 ty::ty_rptr(trait_region, ty::mt{ty, ..}) => {
                     match ty::get(ty).sty {
-                        ty::ty_trait(..) => {
+                        ty::ty_trait(ref ty_trait) => {
                             let source_ty = rcx.resolve_expr_type_adjusted(&**source);
                             constrain_regions_in_type(
                                 rcx,
                                 trait_region,
                                 infer::RelateObjectBound(expr.span),
                                 source_ty);
+
+                            // Resolve the regions inside the type.
+                            let interior_source_type =
+                                match ty::deref(source_ty, true) {
+                                    Some(mt) => mt.ty,
+                                    None => {
+                                        rcx.fcx
+                                           .tcx()
+                                           .sess
+                                           .span_bug(expr.span,
+                                                     "trait cast type wasn't \
+                                                      derefable?!")
+                                    }
+                                };
+                            constrain_regions_in_type(
+                                rcx,
+                                ty_trait.region,
+                                infer::RelateObjectBound(expr.span),
+                                interior_source_type);
                         }
                         _ => {}
                     }

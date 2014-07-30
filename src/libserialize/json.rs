@@ -293,7 +293,8 @@ pub fn decode<T: ::Decodable<Decoder, DecoderError>>(s: &str) -> DecodeResult<T>
 }
 
 /// Shortcut function to encode a `T` into a JSON `String`
-pub fn encode<'a, T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> String {
+pub fn encode<'a,'b,T: Encodable<Encoder<'a,'b>,io::IoError>>(object: &T)
+              -> String {
     let buff = Encoder::buffer_encode(object);
     String::from_utf8(buff).unwrap()
 }
@@ -378,19 +379,20 @@ fn fmt_number_or_null(v: f64) -> String {
 }
 
 /// A structure for implementing serialization to JSON.
-pub struct Encoder<'a> {
-    writer: &'a mut io::Writer,
+pub struct Encoder<'a,'b> {
+    writer: &'a mut io::Writer+'b,
 }
 
-impl<'a> Encoder<'a> {
+impl<'a,'b> Encoder<'a,'b> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
-    pub fn new(writer: &'a mut io::Writer) -> Encoder<'a> {
+    pub fn new(writer: &'a mut io::Writer+'b) -> Encoder<'a,'b> {
         Encoder { writer: writer }
     }
 
     /// Encode the specified struct into a json [u8]
-    pub fn buffer_encode<T:Encodable<Encoder<'a>, io::IoError>>(object: &T) -> Vec<u8>  {
+    pub fn buffer_encode<T:Encodable<Encoder<'a,'b>,io::IoError>>(object: &T)
+                         -> Vec<u8>  {
         //Serialize the object in a string using a writer
         let mut m = MemWriter::new();
         // FIXME(14302) remove the transmute and unsafe block.
@@ -406,12 +408,13 @@ impl<'a> Encoder<'a> {
     ///
     /// Note: this function is deprecated. Consider using `json::encode` instead.
     #[deprecated = "Replaced by `json::encode`"]
-    pub fn str_encode<T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> String {
+    pub fn str_encode<T: Encodable<Encoder<'a,'b>,io::IoError>>(object: &T)
+                      -> String {
         encode(object)
     }
 }
 
-impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
+impl<'a,'b> ::Encoder<io::IoError> for Encoder<'a,'b> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
     fn emit_uint(&mut self, v: uint) -> EncodeResult { self.emit_f64(v as f64) }
@@ -446,7 +449,10 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
         escape_str(self.writer, v)
     }
 
-    fn emit_enum(&mut self, _name: &str, f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+    fn emit_enum(&mut self,
+                 _name: &str,
+                 f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                 -> EncodeResult {
         f(self)
     }
 
@@ -454,7 +460,8 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
                          name: &str,
                          _id: uint,
                          cnt: uint,
-                         f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+                         f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                         -> EncodeResult {
         // enums are encoded as strings or objects
         // Bunny => "Bunny"
         // Kangaroo(34,"William") => {"variant": "Kangaroo", "fields": [34,"William"]}
@@ -471,7 +478,8 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
 
     fn emit_enum_variant_arg(&mut self,
                              idx: uint,
-                             f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+                             f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                             -> EncodeResult {
         if idx != 0 {
             try!(write!(self.writer, ","));
         }
@@ -482,21 +490,24 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
                                 name: &str,
                                 id: uint,
                                 cnt: uint,
-                                f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+                                f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                                -> EncodeResult {
         self.emit_enum_variant(name, id, cnt, f)
     }
 
     fn emit_enum_struct_variant_field(&mut self,
                                       _: &str,
                                       idx: uint,
-                                      f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+                                      f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                                      -> EncodeResult {
         self.emit_enum_variant_arg(idx, f)
     }
 
     fn emit_struct(&mut self,
                    _: &str,
                    _: uint,
-                   f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+                   f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                   -> EncodeResult {
         try!(write!(self.writer, "{{"));
         try!(f(self));
         write!(self.writer, "}}")
@@ -505,56 +516,70 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
     fn emit_struct_field(&mut self,
                          name: &str,
                          idx: uint,
-                         f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+                         f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                         -> EncodeResult {
         if idx != 0 { try!(write!(self.writer, ",")); }
         try!(escape_str(self.writer, name));
         try!(write!(self.writer, ":"));
         f(self)
     }
 
-    fn emit_tuple(&mut self, len: uint, f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+    fn emit_tuple(&mut self,
+                  len: uint,
+                  f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                  -> EncodeResult {
         self.emit_seq(len, f)
     }
     fn emit_tuple_arg(&mut self,
                       idx: uint,
-                      f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+                      f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                      -> EncodeResult {
         self.emit_seq_elt(idx, f)
     }
 
     fn emit_tuple_struct(&mut self,
                          _name: &str,
                          len: uint,
-                         f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+                         f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                         -> EncodeResult {
         self.emit_seq(len, f)
     }
     fn emit_tuple_struct_arg(&mut self,
                              idx: uint,
-                             f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+                             f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                             -> EncodeResult {
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_option(&mut self, f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+    fn emit_option(&mut self, f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                   -> EncodeResult {
         f(self)
     }
     fn emit_option_none(&mut self) -> EncodeResult { self.emit_nil() }
-    fn emit_option_some(&mut self, f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+    fn emit_option_some(&mut self, f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                        -> EncodeResult {
         f(self)
     }
 
-    fn emit_seq(&mut self, _len: uint, f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+    fn emit_seq(&mut self, _: uint, f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                -> EncodeResult {
         try!(write!(self.writer, "["));
         try!(f(self));
         write!(self.writer, "]")
     }
 
-    fn emit_seq_elt(&mut self, idx: uint, f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+    fn emit_seq_elt(&mut self,
+                    idx: uint,
+                    f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                    -> EncodeResult {
         if idx != 0 {
             try!(write!(self.writer, ","));
         }
         f(self)
     }
 
-    fn emit_map(&mut self, _len: uint, f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+    fn emit_map(&mut self, _: uint, f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                -> EncodeResult {
         try!(write!(self.writer, "{{"));
         try!(f(self));
         write!(self.writer, "}}")
@@ -562,7 +587,8 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
 
     fn emit_map_elt_key(&mut self,
                         idx: uint,
-                        f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+                        f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                        -> EncodeResult {
         if idx != 0 { try!(write!(self.writer, ",")) }
         // ref #12967, make sure to wrap a key in double quotes,
         // in the event that its of a type that omits them (eg numbers)
@@ -582,7 +608,8 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
 
     fn emit_map_elt_val(&mut self,
                         _idx: uint,
-                        f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+                        f: |&mut Encoder<'a,'b>| -> EncodeResult)
+                        -> EncodeResult {
         try!(write!(self.writer, ":"));
         f(self)
     }
@@ -590,19 +617,19 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
 
 /// Another encoder for JSON, but prints out human-readable JSON instead of
 /// compact data
-pub struct PrettyEncoder<'a> {
-    writer: &'a mut io::Writer,
+pub struct PrettyEncoder<'a,'b> {
+    writer: &'a mut io::Writer+'b,
     indent: uint,
 }
 
-impl<'a> PrettyEncoder<'a> {
+impl<'a,'b> PrettyEncoder<'a,'b> {
     /// Creates a new encoder whose output will be written to the specified writer
-    pub fn new<'a>(writer: &'a mut io::Writer) -> PrettyEncoder<'a> {
+    pub fn new<'a,'b>(writer: &'a mut io::Writer+'b) -> PrettyEncoder<'a,'b> {
         PrettyEncoder { writer: writer, indent: 0 }
     }
 }
 
-impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
+impl<'a,'b> ::Encoder<io::IoError> for PrettyEncoder<'a,'b> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
     fn emit_uint(&mut self, v: uint) -> EncodeResult { self.emit_f64(v as f64) }
@@ -641,7 +668,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 
     fn emit_enum(&mut self,
                  _name: &str,
-                 f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                 f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         f(self)
     }
 
@@ -649,7 +676,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
                          name: &str,
                          _: uint,
                          cnt: uint,
-                         f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                         f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         if cnt == 0 {
             escape_str(self.writer, name)
         } else {
@@ -668,7 +695,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 
     fn emit_enum_variant_arg(&mut self,
                              idx: uint,
-                             f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                             f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         if idx != 0 {
             try!(write!(self.writer, ",\n"));
         }
@@ -680,14 +707,14 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
                                 name: &str,
                                 id: uint,
                                 cnt: uint,
-                                f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                                f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         self.emit_enum_variant(name, id, cnt, f)
     }
 
     fn emit_enum_struct_variant_field(&mut self,
                                       _: &str,
                                       idx: uint,
-                                      f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                                      f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         self.emit_enum_variant_arg(idx, f)
     }
 
@@ -695,7 +722,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
     fn emit_struct(&mut self,
                    _: &str,
                    len: uint,
-                   f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                   f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         if len == 0 {
             write!(self.writer, "{{}}")
         } else {
@@ -712,7 +739,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
     fn emit_struct_field(&mut self,
                          name: &str,
                          idx: uint,
-                         f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                         f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         if idx == 0 {
             try!(write!(self.writer, "\n"));
         } else {
@@ -726,38 +753,38 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 
     fn emit_tuple(&mut self,
                   len: uint,
-                  f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                  f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         self.emit_seq(len, f)
     }
     fn emit_tuple_arg(&mut self,
                       idx: uint,
-                      f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                      f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         self.emit_seq_elt(idx, f)
     }
 
     fn emit_tuple_struct(&mut self,
                          _: &str,
                          len: uint,
-                         f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                         f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         self.emit_seq(len, f)
     }
     fn emit_tuple_struct_arg(&mut self,
                              idx: uint,
-                             f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                             f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_option(&mut self, f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+    fn emit_option(&mut self, f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         f(self)
     }
     fn emit_option_none(&mut self) -> EncodeResult { self.emit_nil() }
-    fn emit_option_some(&mut self, f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+    fn emit_option_some(&mut self, f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         f(self)
     }
 
     fn emit_seq(&mut self,
                 len: uint,
-                f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         if len == 0 {
             write!(self.writer, "[]")
         } else {
@@ -773,7 +800,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 
     fn emit_seq_elt(&mut self,
                     idx: uint,
-                    f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                    f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         if idx == 0 {
             try!(write!(self.writer, "\n"));
         } else {
@@ -785,7 +812,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 
     fn emit_map(&mut self,
                 len: uint,
-                f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         if len == 0 {
             write!(self.writer, "{{}}")
         } else {
@@ -801,7 +828,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 
     fn emit_map_elt_key(&mut self,
                         idx: uint,
-                        f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                        f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         if idx == 0 {
             try!(write!(self.writer, "\n"));
         } else {
@@ -826,7 +853,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 
     fn emit_map_elt_val(&mut self,
                         _idx: uint,
-                        f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
+                        f: |&mut PrettyEncoder<'a,'b>| -> EncodeResult) -> EncodeResult {
         try!(write!(self.writer, ": "));
         f(self)
     }

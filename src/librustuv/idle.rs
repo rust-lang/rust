@@ -18,11 +18,12 @@ use std::rt::rtio::{Callback, PausableIdleCallback};
 pub struct IdleWatcher {
     handle: *mut uvll::uv_idle_t,
     idle_flag: bool,
-    callback: Box<Callback + Send>,
+    callback: Box<Callback + Send + 'static>,
 }
 
 impl IdleWatcher {
-    pub fn new(loop_: &mut Loop, cb: Box<Callback + Send>) -> Box<IdleWatcher> {
+    pub fn new(loop_: &mut Loop, cb: Box<Callback + Send + 'static>)
+               -> Box<IdleWatcher> {
         let handle = UvHandle::alloc(None::<IdleWatcher>, uvll::UV_IDLE);
         assert_eq!(unsafe {
             uvll::uv_idle_init(loop_.handle, handle)

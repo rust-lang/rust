@@ -8,13 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-trait Foo { }
-
-fn foo<'a>(x: Box<Foo + 'a>) { //~ ERROR only the 'static lifetime is accepted here
+trait Foo {
+    fn borrowed(&self) -> &();
 }
 
-fn bar<'a, T:'a>() { //~ ERROR only the 'static lifetime is accepted here
+fn mut_owned_receiver(mut x: Box<Foo>) {
+    let _y = x.borrowed();
+    let _z = &mut x; //~ ERROR cannot borrow
 }
 
-fn main() { }
+fn imm_owned_receiver(mut x: Box<Foo>) {
+    let _y = x.borrowed();
+    let _z = &x;
+}
+
+fn main() {}
+

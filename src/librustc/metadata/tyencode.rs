@@ -232,13 +232,15 @@ fn enc_sty(w: &mut SeekableMemWriter, cx: &ctxt, st: &ty::sty) {
         ty::ty_trait(box ty::TyTrait {
                 def_id,
                 ref substs,
-                bounds
+                bounds,
+                region
             }) => {
             mywrite!(w, "x[{}|", (cx.ds)(def_id));
             enc_substs(w, cx, substs);
             let bounds = ty::ParamBounds {builtin_bounds: bounds,
                                           trait_bounds: Vec::new()};
             enc_bounds(w, cx, &bounds);
+            enc_region(w, cx, region);
             mywrite!(w, "]");
         }
         ty::ty_tup(ref ts) => {

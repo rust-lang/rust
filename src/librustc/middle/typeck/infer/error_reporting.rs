@@ -910,7 +910,9 @@ impl<'a> Rebuilder<'a> {
         ty_param_bounds.map(|tpb| {
             match tpb {
                 &ast::StaticRegionTyParamBound => ast::StaticRegionTyParamBound,
-                &ast::OtherRegionTyParamBound(s) => ast::OtherRegionTyParamBound(s),
+                &ast::OtherRegionTyParamBound(s, region) => {
+                    ast::OtherRegionTyParamBound(s, region)
+                }
                 &ast::UnboxedFnTyParamBound(unboxed_function_type) => {
                     ast::UnboxedFnTyParamBound(unboxed_function_type)
                 }

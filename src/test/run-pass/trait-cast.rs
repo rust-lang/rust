@@ -20,7 +20,7 @@ struct Tree(Gc<RefCell<TreeR>>);
 struct TreeR {
     left: Option<Tree>,
     right: Option<Tree>,
-    val: Box<to_str+Send>
+    val: Box<to_str+Send+'static>
 }
 
 trait to_str {
@@ -55,12 +55,16 @@ impl to_str for Tree {
 fn foo<T:to_str>(x: T) -> String { x.to_str_() }
 
 pub fn main() {
-    let t1 = Tree(box(GC) RefCell::new(TreeR{left: None,
-                                       right: None,
-                                       val: box 1i as Box<to_str+Send>}));
-    let t2 = Tree(box(GC) RefCell::new(TreeR{left: Some(t1),
-                                       right: Some(t1),
-                                       val: box 2i as Box<to_str+Send>}));
+    let t1 = Tree(box(GC) RefCell::new(TreeR{
+        left: None,
+        right: None,
+        val: box 1i as Box<to_str+Send+'static>
+    }));
+    let t2 = Tree(box(GC) RefCell::new(TreeR{
+        left: Some(t1),
+        right: Some(t1),
+        val: box 2i as Box<to_str+Send+'static>
+    }));
     let expected =
         "[2, some([1, none, none]), some([1, none, none])]".to_string();
     assert!(t2.to_str_() == expected);

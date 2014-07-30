@@ -149,7 +149,8 @@ enum WireProtocol {
 }
 
 fn encode_json<'a,
-               T: Encodable<json::Encoder<'a>,
+               'b,
+               T: Encodable<json::Encoder<'a,'b>,
                             std::io::IoError>>(val: &T,
                                                wr: &'a mut SeekableMemWriter) {
     let mut encoder = json::Encoder::new(wr);

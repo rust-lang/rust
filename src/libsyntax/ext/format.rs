@@ -669,7 +669,7 @@ impl<'a, 'b> Context<'a, 'b> {
 }
 
 pub fn expand_format_args(ecx: &mut ExtCtxt, sp: Span,
-                          tts: &[ast::TokenTree]) -> Box<base::MacResult> {
+                          tts: &[ast::TokenTree]) -> Box<base::MacResult+'static> {
 
     match parse_args(ecx, sp, false, tts) {
         (invocation, Some((efmt, args, order, names))) => {
@@ -681,7 +681,7 @@ pub fn expand_format_args(ecx: &mut ExtCtxt, sp: Span,
 }
 
 pub fn expand_format_args_method(ecx: &mut ExtCtxt, sp: Span,
-                                 tts: &[ast::TokenTree]) -> Box<base::MacResult> {
+                                 tts: &[ast::TokenTree]) -> Box<base::MacResult+'static> {
 
     match parse_args(ecx, sp, true, tts) {
         (invocation, Some((efmt, args, order, names))) => {

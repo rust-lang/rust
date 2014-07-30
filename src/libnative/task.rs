@@ -145,8 +145,8 @@ impl rt::Runtime for Ops {
         Local::put(cur_task);
     }
 
-    fn wrap(self: Box<Ops>) -> Box<Any> {
-        self as Box<Any>
+    fn wrap(self: Box<Ops>) -> Box<Any+'static> {
+        self as Box<Any+'static>
     }
 
     fn stack_bounds(&self) -> (uint, uint) { self.stack_bounds }
@@ -274,7 +274,12 @@ impl rt::Runtime for Ops {
     }
 
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> {
-        Some(rtio::LocalIo::new(&mut self.io as &mut rtio::IoFactory))
+        unsafe {
+            let io_factory: &mut rtio::IoFactory = &mut self.io;
+            let io_factory: &mut rtio::IoFactory+'static =
+                mem::transmute(io_factory);
+            Some(rtio::LocalIo::new(io_factory))
+        }
     }
 }
 

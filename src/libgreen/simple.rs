@@ -82,7 +82,7 @@ impl Runtime for SimpleTask {
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> { None }
     fn stack_bounds(&self) -> (uint, uint) { fail!() }
     fn can_block(&self) -> bool { true }
-    fn wrap(self: Box<SimpleTask>) -> Box<Any> { fail!() }
+    fn wrap(self: Box<SimpleTask>) -> Box<Any+'static> { fail!() }
 }
 
 pub fn task() -> Box<Task> {

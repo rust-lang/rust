@@ -209,7 +209,8 @@ pub enum AutoAdjustment {
     AutoObject(ty::TraitStore,
                ty::BuiltinBounds,
                ast::DefId, /* Trait ID */
-               subst::Substs /* Trait substitutions */)
+               subst::Substs, /* Trait substitutions */
+               ty::Region /* Region bound on trait */)
 }
 
 #[deriving(Clone, Decodable, Encodable)]
@@ -755,7 +756,9 @@ pub enum sty {
 pub struct TyTrait {
     pub def_id: DefId,
     pub substs: Substs,
-    pub bounds: BuiltinBounds
+    pub bounds: BuiltinBounds,
+    /// The region bound for this trait.
+    pub region: Region,
 }
 
 #[deriving(PartialEq, Eq, Hash, Show)]
@@ -1192,8 +1195,9 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
           flags |= sflags(substs);
       }
-      &ty_trait(box ty::TyTrait { ref substs, .. }) => {
+      &ty_trait(box ty::TyTrait { ref substs, ref region, .. }) => {
           flags |= sflags(substs);
+          flags |= rflags(*region);
       }
       &ty_box(tt) | &ty_uniq(tt) => {
         flags |= get(tt).flags
@@ -1420,13 +1424,15 @@ pub fn mk_ctor_fn(cx: &ctxt,
 pub fn mk_trait(cx: &ctxt,
                 did: ast::DefId,
                 substs: Substs,
-                bounds: BuiltinBounds)
-             -> t {
+                bounds: BuiltinBounds,
+                region: Region)
+                -> t {
     // take a copy of substs so that we own the vectors inside
     let inner = box TyTrait {
         def_id: did,
         substs: substs,
-        bounds: bounds
+        bounds: bounds,
+        region: region,
     };
     mk_t(cx, ty_trait(inner))
 }
@@ -2948,9 +2954,13 @@ pub fn adjust_ty(cx: &ctxt,
                     }
                 }
 
-                AutoObject(store, bounds, def_id, ref substs) => {
+                AutoObject(store, bounds, def_id, ref substs, ref region) => {
 
-                    let tr = mk_trait(cx, def_id, substs.clone(), bounds);
+                    let tr = mk_trait(cx,
+                                      def_id,
+                                      substs.clone(),
+                                      bounds,
+                                      *region);
                     match store {
                         UniqTraitStore => {
                             mk_uniq(cx, tr)
@@ -3000,9 +3010,18 @@ pub fn adjust_ty(cx: &ctxt,
                   m: ast::Mutability, ty: ty::t) -> ty::t {
         match get(ty).sty {
             ty_uniq(t) | ty_rptr(_, mt{ty: t, ..}) => match get(t).sty {
-                ty_trait(box ty::TyTrait {def_id, ref substs, bounds, .. }) => {
+                ty_trait(box ty::TyTrait {
+                        def_id,
+                        ref substs,
+                        bounds,
+                        region
+                }) => {
                     mk_rptr(cx, r, mt {
-                        ty: ty::mk_trait(cx, def_id, substs.clone(), bounds),
+                        ty: ty::mk_trait(cx,
+                                         def_id,
+                                         substs.clone(),
+                                         bounds,
+                                         region),
                         mutbl: m
                     })
                 }
@@ -4393,11 +4412,14 @@ pub fn visitor_object_ty(tcx: &ctxt,
     let substs = Substs::empty();
     let trait_ref = Rc::new(TraitRef { def_id: trait_lang_item, substs: substs });
     Ok((trait_ref.clone(),
-        mk_rptr(tcx, region, mt {mutbl: ast::MutMutable,
-                                 ty: mk_trait(tcx,
-                                              trait_ref.def_id,
-                                              trait_ref.substs.clone(),
-                                              empty_builtin_bounds()) })))
+        mk_rptr(tcx, region, mt {
+            mutbl: ast::MutMutable,
+            ty: mk_trait(tcx,
+                         trait_ref.def_id,
+                         trait_ref.substs.clone(),
+                         empty_builtin_bounds(),
+                         ReStatic)
+        })))
 }
 
 pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {

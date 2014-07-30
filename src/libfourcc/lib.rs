@@ -71,7 +71,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 }
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-                         -> Box<base::MacResult> {
+                         -> Box<base::MacResult+'static> {
     let (expr, endian) = parse_tts(cx, tts);
 
     let little = match endian {

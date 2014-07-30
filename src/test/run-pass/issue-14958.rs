@@ -14,8 +14,8 @@ trait Foo {}
 
 struct Bar;
 
-impl<'a> std::ops::Fn<(&'a Foo,), ()> for Bar {
-    extern "rust-call" fn call(&self, _: (&'a Foo,)) {}
+impl<'a> std::ops::Fn<(&'a Foo+'a,), ()> for Bar {
+    extern "rust-call" fn call(&self, _: (&'a Foo+'a,)) {}
 }
 
 struct Baz;

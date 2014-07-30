@@ -29,7 +29,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 }
 
 fn expand_foo(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
-              -> Box<MacResult> {
+              -> Box<MacResult+'static> {
     let answer = other::the_answer();
     MacExpr::new(quote_expr!(cx, $answer))
 }

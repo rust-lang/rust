@@ -127,7 +127,7 @@ impl SpanHandler {
 /// others log errors for later reporting.
 pub struct Handler {
     err_count: Cell<uint>,
-    emit: RefCell<Box<Emitter + Send>>,
+    emit: RefCell<Box<Emitter + Send + 'static>>,
 }
 
 impl Handler {
@@ -204,7 +204,7 @@ pub fn default_handler(color_config: ColorConfig,
     mk_handler(box EmitterWriter::stderr(color_config, registry))
 }
 
-pub fn mk_handler(e: Box<Emitter + Send>) -> Handler {
+pub fn mk_handler(e: Box<Emitter + Send + 'static>) -> Handler {
     Handler {
         err_count: Cell::new(0),
         emit: RefCell::new(e),
@@ -317,8 +317,8 @@ pub struct EmitterWriter {
 }
 
 enum Destination {
-    Terminal(Box<term::Terminal<WriterWrapper> + Send>),
-    Raw(Box<Writer + Send>),
+    Terminal(Box<term::Terminal<WriterWrapper> + Send + 'static>),
+    Raw(Box<Writer + Send + 'static>),
 }
 
 impl EmitterWriter {
@@ -343,7 +343,7 @@ impl EmitterWriter {
         }
     }
 
-    pub fn new(dst: Box<Writer + Send>,
+    pub fn new(dst: Box<Writer + Send + 'static>,
                registry: Option<diagnostics::registry::Registry>) -> EmitterWriter {
         EmitterWriter { dst: Raw(dst), registry: registry }
     }

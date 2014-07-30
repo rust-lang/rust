@@ -82,7 +82,7 @@ pub struct Unwinder {
 
 struct Exception {
     uwe: uw::_Unwind_Exception,
-    cause: Option<Box<Any + Send>>,
+    cause: Option<Box<Any + Send + 'static>>,
 }
 
 pub type Callback = fn(msg: &Any + Send, file: &'static str, line: uint);
@@ -134,7 +134,8 @@ impl Unwinder {
 ///   guaranteed that a rust task is in place when invoking this function.
 ///   Unwinding twice can lead to resource leaks where some destructors are not
 ///   run.
-pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
+pub unsafe fn try(f: ||)
+              -> ::core::result::Result<(), Box<Any + Send + 'static>> {
     let closure: Closure = mem::transmute(f);
     let ep = rust_try(try_fn, closure.code as *mut c_void,
                       closure.env as *mut c_void);
@@ -173,7 +174,7 @@ pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
 // An uninlined, unmangled function upon which to slap yer breakpoints
 #[inline(never)]
 #[no_mangle]
-fn rust_fail(cause: Box<Any + Send>) -> ! {
+fn rust_fail(cause: Box<Any + Send + 'static>) -> ! {
     rtdebug!("begin_unwind()");
 
     unsafe {
@@ -442,7 +443,9 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
 /// Do this split took the LLVM IR line counts of `fn main() { fail!()
 /// }` from ~1900/3700 (-O/no opts) to 180/590.
 #[inline(never)] #[cold] // this is the slow path, please never inline this
-fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) -> ! {
+fn begin_unwind_inner(msg: Box<Any + Send + 'static>,
+                      file_line: &(&'static str, uint))
+                      -> ! {
     // First, invoke call the user-defined callbacks triggered on task failure.
     //
     // By the time that we see a callback has been registered (by reading

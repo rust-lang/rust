@@ -27,12 +27,13 @@ pub struct AsyncWatcher {
 }
 
 struct Payload {
-    callback: Box<Callback + Send>,
+    callback: Box<Callback + Send + 'static>,
     exit_flag: Arc<Exclusive<bool>>,
 }
 
 impl AsyncWatcher {
-    pub fn new(loop_: &mut Loop, cb: Box<Callback + Send>) -> AsyncWatcher {
+    pub fn new(loop_: &mut Loop, cb: Box<Callback + Send + 'static>)
+               -> AsyncWatcher {
         let handle = UvHandle::alloc(None::<AsyncWatcher>, uvll::UV_ASYNC);
         assert_eq!(unsafe {
             uvll::uv_async_init(loop_.handle, handle, async_cb)

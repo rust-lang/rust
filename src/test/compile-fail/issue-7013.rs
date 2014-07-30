@@ -27,11 +27,11 @@ impl Foo for B {
 }
 
 struct A {
-    v: Box<Foo + Send>,
+    v: Box<Foo + Send + 'static>,
 }
 
 fn main() {
-    let a = A {v: box B{v: None} as Box<Foo+Send>};
+    let a = A {v: box B{v: None} as Box<Foo+Send+'static>};
     //~^ ERROR cannot pack type `Box<B>`, which does not fulfill `Send`
     let v = Rc::new(RefCell::new(a));
     let w = v.clone();

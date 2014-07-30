@@ -113,18 +113,41 @@ impl<'f> Coerce<'f> {
                         });
                     }
 
-                    ty::ty_trait(box ty::TyTrait { def_id, ref substs, bounds }) => {
+                    ty::ty_trait(box ty::TyTrait {
+                            def_id,
+                            ref substs,
+                            bounds,
+                            region
+                    }) => {
                         let result = self.unpack_actual_value(a, |sty_a| {
                             match *sty_a {
                                 ty::ty_rptr(_, mt_a) => match ty::get(mt_a.ty).sty {
                                     ty::ty_trait(..) => {
-                                        self.coerce_borrowed_object(a, sty_a, b, mt_b.mutbl)
+                                        self.coerce_borrowed_object(a,
+                                                                    sty_a,
+                                                                    b,
+                                                                    mt_b.mutbl)
                                     }
-                                    _ => self.coerce_object(a, sty_a, b, def_id, substs,
-                                                            ty::RegionTraitStore(r_b, mt_b.mutbl),
-                                                            bounds)
+                                    _ => {
+                                        let trait_store =
+                                            ty::RegionTraitStore(r_b,
+                                                                 mt_b.mutbl);
+                                        self.coerce_object(a,
+                                                           sty_a,
+                                                           b,
+                                                           def_id,
+                                                           substs,
+                                                           trait_store,
+                                                           bounds,
+                                                           region)
+                                    }
                                 },
-                                _ => self.coerce_borrowed_object(a, sty_a, b, mt_b.mutbl)
+                                _ => {
+                                    self.coerce_borrowed_object(a,
+                                                                sty_a,
+                                                                b,
+                                                                mt_b.mutbl)
+                                }
                             }
                         });
 
@@ -144,15 +167,23 @@ impl<'f> Coerce<'f> {
 
             ty::ty_uniq(t_b) => {
                 match ty::get(t_b).sty {
-                    ty::ty_trait(box ty::TyTrait { def_id, ref substs, bounds }) => {
+                    ty::ty_trait(box ty::TyTrait { def_id, ref substs, bounds, region }) => {
                         let result = self.unpack_actual_value(a, |sty_a| {
                             match *sty_a {
                                 ty::ty_uniq(t_a) => match ty::get(t_a).sty {
                                     ty::ty_trait(..) => {
                                         Err(ty::terr_mismatch)
                                     }
-                                    _ => self.coerce_object(a, sty_a, b, def_id, substs,
-                                                            ty::UniqTraitStore, bounds)
+                                    _ => {
+                                        self.coerce_object(a,
+                                                           sty_a,
+                                                           b,
+                                                           def_id,
+                                                           substs,
+                                                           ty::UniqTraitStore,
+                                                           bounds,
+                                                           region)
+                                    }
                                 },
                                 _ => Err(ty::terr_mismatch)
                             }
@@ -320,8 +351,8 @@ impl<'f> Coerce<'f> {
                               a: ty::t,
                               sty_a: &ty::sty,
                               b: ty::t,
-                              b_mutbl: ast::Mutability) -> CoerceResult
-    {
+                              b_mutbl: ast::Mutability)
+                              -> CoerceResult {
         debug!("coerce_borrowed_object(a={}, sty_a={:?}, b={})",
                a.repr(self.get_ref().infcx.tcx), sty_a,
                b.repr(self.get_ref().infcx.tcx));
@@ -336,9 +367,14 @@ impl<'f> Coerce<'f> {
                         def_id,
                         ref substs,
                         bounds,
+                        region,
                         ..
                     }) => {
-                    let tr = ty::mk_trait(tcx, def_id, substs.clone(), bounds);
+                    let tr = ty::mk_trait(tcx,
+                                          def_id,
+                                          substs.clone(),
+                                          bounds,
+                                          region);
                     ty::mk_rptr(tcx, r_a, ty::mt{ mutbl: b_mutbl, ty: tr })
                 }
                 _ => {
@@ -446,13 +482,17 @@ impl<'f> Coerce<'f> {
                          trait_def_id: ast::DefId,
                          trait_substs: &subst::Substs,
                          trait_store: ty::TraitStore,
-                         bounds: ty::BuiltinBounds) -> CoerceResult {
-
+                         bounds: ty::BuiltinBounds,
+                         region: ty::Region)
+                         -> CoerceResult {
         debug!("coerce_object(a={}, sty_a={:?}, b={})",
                a.repr(self.get_ref().infcx.tcx), sty_a,
                b.repr(self.get_ref().infcx.tcx));
 
-        Ok(Some(ty::AutoObject(trait_store, bounds,
-                               trait_def_id, trait_substs.clone())))
+        Ok(Some(ty::AutoObject(trait_store,
+                               bounds,
+                               trait_def_id,
+                               trait_substs.clone(),
+                               region)))
     }
 }

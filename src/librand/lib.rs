@@ -24,7 +24,7 @@
        html_root_url = "http://doc.rust-lang.org/master/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(macro_rules, phase, globs)]
+#![feature(macro_rules, phase, globs, issue_5723_bootstrap)]
 #![no_std]
 #![experimental]
 

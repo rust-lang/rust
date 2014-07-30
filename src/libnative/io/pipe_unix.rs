@@ -179,8 +179,9 @@ impl rtio::RtioPipe for UnixStream {
         }
     }
 
-    fn clone(&self) -> Box<rtio::RtioPipe + Send> {
-        box UnixStream::new(self.inner.clone()) as Box<rtio::RtioPipe + Send>
+    fn clone(&self) -> Box<rtio::RtioPipe + Send + 'static> {
+        box UnixStream::new(self.inner.clone())
+            as Box<rtio::RtioPipe + Send + 'static>
     }
 
     fn close_write(&mut self) -> IoResult<()> {
@@ -230,9 +231,9 @@ impl UnixListener {
 
 impl rtio::RtioUnixListener for UnixListener {
     fn listen(self: Box<UnixListener>)
-              -> IoResult<Box<rtio::RtioUnixAcceptor + Send>> {
+              -> IoResult<Box<rtio::RtioUnixAcceptor + Send + 'static>> {
         self.native_listen(128).map(|a| {
-            box a as Box<rtio::RtioUnixAcceptor + Send>
+            box a as Box<rtio::RtioUnixAcceptor + Send + 'static>
         })
     }
 }
@@ -265,8 +266,10 @@ impl UnixAcceptor {
 }
 
 impl rtio::RtioUnixAcceptor for UnixAcceptor {
-    fn accept(&mut self) -> IoResult<Box<rtio::RtioPipe + Send>> {
-        self.native_accept().map(|s| box s as Box<rtio::RtioPipe + Send>)
+    fn accept(&mut self) -> IoResult<Box<rtio::RtioPipe + Send + 'static>> {
+        self.native_accept().map(|s| {
+            box s as Box<rtio::RtioPipe + Send + 'static>
+        })
     }
     fn set_timeout(&mut self, timeout: Option<u64>) {
         self.deadline = timeout.map(|a| ::io::timer::now() + a).unwrap_or(0);
