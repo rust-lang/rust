@@ -113,7 +113,7 @@ macro_rules! bitflags(
     ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
         $($(#[$Flag_attr:meta])* static $Flag:ident = $value:expr),+
     }) => (
-        #[deriving(PartialEq, Eq, Clone)]
+        #[deriving(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
         $(#[$attr])*
         pub struct $BitFlags {
             bits: $T,
@@ -220,6 +220,7 @@ macro_rules! bitflags(
 
 #[cfg(test)]
 mod tests {
+    use hash;
     use option::{Some, None};
     use ops::{BitOr, BitAnd, Sub, Not};
 
@@ -335,5 +336,43 @@ mod tests {
         assert!((e1 & e2) == FlagC);     // intersection
         assert!((e1 - e2) == FlagA);     // set difference
         assert!(!e2 == FlagA);           // set complement
+    }
+
+    #[test]
+    fn test_lt() {
+        let mut a = Flags::empty();
+        let mut b = Flags::empty();
+
+        assert!(!(a < b) && !(b < a));
+        b = FlagB;
+        assert!(a < b);
+        a = FlagC;
+        assert!(!(a < b) && b < a);
+        b = FlagC | FlagB;
+        assert!(a < b);
+    }
+
+    #[test]
+    fn test_ord() {
+        let mut a = Flags::empty();
+        let mut b = Flags::empty();
+
+        assert!(a <= b && a >= b);
+        a = FlagA;
+        assert!(a > b && a >= b);
+        assert!(b < a && b <= a);
+        b = FlagB;
+        assert!(b > a && b >= a);
+        assert!(a < b && a <= b);
+    }
+
+    #[test]
+    fn test_hash() {
+      let mut x = Flags::empty();
+      let mut y = Flags::empty();
+      assert!(hash::hash(&x) == hash::hash(&y));
+      x = Flags::all();
+      y = FlagABC;
+      assert!(hash::hash(&x) == hash::hash(&y));
     }
 }
