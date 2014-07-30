@@ -38,13 +38,13 @@ pub type BigRational = Ratio<BigInt>;
 
 impl<T: Clone + Integer + PartialOrd>
     Ratio<T> {
-    /// Create a ratio representing the integer `t`.
+    /// Creates a ratio representing the integer `t`.
     #[inline]
     pub fn from_integer(t: T) -> Ratio<T> {
         Ratio::new_raw(t, One::one())
     }
 
-    /// Create a ratio without checking for `denom == 0` or reducing.
+    /// Creates a ratio without checking for `denom == 0` or reducing.
     #[inline]
     pub fn new_raw(numer: T, denom: T) -> Ratio<T> {
         Ratio { numer: numer, denom: denom }
@@ -61,7 +61,7 @@ impl<T: Clone + Integer + PartialOrd>
         ret
     }
 
-    /// Convert to an integer.
+    /// Converts to an integer.
     #[inline]
     pub fn to_integer(&self) -> T {
         self.trunc().numer
@@ -79,7 +79,7 @@ impl<T: Clone + Integer + PartialOrd>
         &self.denom
     }
 
-    /// Return true if the rational number is an integer (denominator is 1).
+    /// Returns true if the rational number is an integer (denominator is 1).
     #[inline]
     pub fn is_integer(&self) -> bool {
         self.denom == One::one()
@@ -103,19 +103,21 @@ impl<T: Clone + Integer + PartialOrd>
         }
     }
 
-    /// Return a `reduce`d copy of self.
+    /// Returns a `reduce`d copy of self.
     pub fn reduced(&self) -> Ratio<T> {
         let mut ret = self.clone();
         ret.reduce();
         ret
     }
 
-    /// Return the reciprocal
+    /// Returns the reciprocal.
     #[inline]
     pub fn recip(&self) -> Ratio<T> {
         Ratio::new_raw(self.denom.clone(), self.numer.clone())
     }
 
+    /// Rounds towards minus infinity.
+    #[inline]
     pub fn floor(&self) -> Ratio<T> {
         if *self < Zero::zero() {
             Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
@@ -124,6 +126,8 @@ impl<T: Clone + Integer + PartialOrd>
         }
     }
 
+    /// Rounds towards plus infinity.
+    #[inline]
     pub fn ceil(&self) -> Ratio<T> {
         if *self < Zero::zero() {
             Ratio::from_integer(self.numer / self.denom)
@@ -132,8 +136,12 @@ impl<T: Clone + Integer + PartialOrd>
         }
     }
 
+    /// Rounds to the nearest integer. Rounds half-way cases away from zero.
+    ///
+    /// Note: This function is currently broken and always rounds away from zero.
     #[inline]
     pub fn round(&self) -> Ratio<T> {
+        // FIXME(#15826)
         if *self < Zero::zero() {
             Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
         } else {
@@ -141,18 +149,21 @@ impl<T: Clone + Integer + PartialOrd>
         }
     }
 
+    /// Rounds towards zero.
     #[inline]
     pub fn trunc(&self) -> Ratio<T> {
         Ratio::from_integer(self.numer / self.denom)
     }
 
+    ///Returns the fractional part of a number.
+    #[inline]
     pub fn fract(&self) -> Ratio<T> {
         Ratio::new_raw(self.numer % self.denom, self.denom.clone())
     }
 }
 
 impl Ratio<BigInt> {
-    /// Converts a float into a rational number
+    /// Converts a float into a rational number.
     pub fn from_float<T: Float>(f: T) -> Option<BigRational> {
         if !f.is_finite() {
             return None;
@@ -328,7 +339,7 @@ impl<T: ToStrRadix> ToStrRadix for Ratio<T> {
 
 impl<T: FromStr + Clone + Integer + PartialOrd>
     FromStr for Ratio<T> {
-    /// Parses `numer/denom` or just `numer`
+    /// Parses `numer/denom` or just `numer`.
     fn from_str(s: &str) -> Option<Ratio<T>> {
         let mut split = s.splitn('/', 1);
 

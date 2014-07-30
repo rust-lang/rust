@@ -269,6 +269,14 @@
       <match>\\\%{common_escape}</match>
     </context>
 
+    <context id="raw-string" style-ref="string" class="string" class-disabled="no-spell-check">
+      <start>r(#*)"</start>
+      <end>"\%{1@start}</end>
+      <include>
+        <context ref="def:line-continue"/>
+      </include>
+    </context>
+
     <context id="string" style-ref="string" class="string" class-disabled="no-spell-check">
       <start>"</start>
       <end>"</end>
@@ -287,6 +295,8 @@
       <end>\]</end>
       <include>
         <context ref="def:in-comment"/>
+        <context ref="string"/>
+        <context ref="raw-string"/>
       </include>
     </context>
 
@@ -305,6 +315,7 @@
         <context ref="number"/>
         <context ref="scope"/>
         <context ref="string"/>
+        <context ref="raw-string"/>
         <context ref="char"/>
         <context ref="lifetime"/>
         <context ref="attribute"/>

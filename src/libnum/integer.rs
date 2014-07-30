@@ -77,16 +77,20 @@ pub trait Integer: Num + PartialOrd
     /// ~~~
     fn lcm(&self, other: &Self) -> Self;
 
-    /// Returns `true` if `other` divides evenly into `self`.
+    /// Deprecated, use `is_multiple_of` instead.
+    #[deprecated = "function renamed to `is_multiple_of`"]
+    fn divides(&self, other: &Self) -> bool;
+
+    /// Returns `true` if `other` is a multiple of `self`.
     ///
     /// # Examples
     ///
     /// ~~~
     /// # use num::Integer;
-    /// assert_eq!(9i.divides(&3), true);
-    /// assert_eq!(3i.divides(&9), false);
+    /// assert_eq!(9i.is_multiple_of(&3), true);
+    /// assert_eq!(3i.is_multiple_of(&9), false);
     /// ~~~
-    fn divides(&self, other: &Self) -> bool;
+    fn is_multiple_of(&self, other: &Self) -> bool;
 
     /// Returns `true` if the number is even.
     ///
@@ -231,10 +235,14 @@ macro_rules! impl_integer_for_int {
                 ((*self * *other) / self.gcd(other)).abs()
             }
 
-            /// Returns `true` if the number can be divided by `other` without
-            /// leaving a remainder
+            /// Deprecated, use `is_multiple_of` instead.
+            #[deprecated = "function renamed to `is_multiple_of`"]
             #[inline]
-            fn divides(&self, other: &$T) -> bool { *self % *other == 0 }
+            fn divides(&self, other: &$T) -> bool { return self.is_multiple_of(other); }
+
+            /// Returns `true` if the number is a multiple of `other`.
+            #[inline]
+            fn is_multiple_of(&self, other: &$T) -> bool { *self % *other == 0 }
 
             /// Returns `true` if the number is divisible by `2`
             #[inline]
@@ -393,21 +401,26 @@ macro_rules! impl_integer_for_uint {
                 n
             }
 
-            /// Calculates the Lowest Common Multiple (LCM) of the number and `other`
+            /// Calculates the Lowest Common Multiple (LCM) of the number and `other`.
             #[inline]
             fn lcm(&self, other: &$T) -> $T {
                 (*self * *other) / self.gcd(other)
             }
 
-            /// Returns `true` if the number can be divided by `other` without leaving a remainder
+            /// Deprecated, use `is_multiple_of` instead.
+            #[deprecated = "function renamed to `is_multiple_of`"]
             #[inline]
-            fn divides(&self, other: &$T) -> bool { *self % *other == 0 }
+            fn divides(&self, other: &$T) -> bool { return self.is_multiple_of(other); }
 
-            /// Returns `true` if the number is divisible by `2`
+            /// Returns `true` if the number is a multiple of `other`.
+            #[inline]
+            fn is_multiple_of(&self, other: &$T) -> bool { *self % *other == 0 }
+
+            /// Returns `true` if the number is divisible by `2`.
             #[inline]
             fn is_even(&self) -> bool { self & 1 == 0 }
 
-            /// Returns `true` if the number is not divisible by `2`
+            /// Returns `true` if the number is not divisible by `2`.
             #[inline]
             fn is_odd(&self) -> bool { !self.is_even() }
         }
@@ -449,10 +462,10 @@ macro_rules! impl_integer_for_uint {
             }
 
             #[test]
-            fn test_divides() {
-                assert!((6 as $T).divides(&(6 as $T)));
-                assert!((6 as $T).divides(&(3 as $T)));
-                assert!((6 as $T).divides(&(1 as $T)));
+            fn test_is_multiple_of() {
+                assert!((6 as $T).is_multiple_of(&(6 as $T)));
+                assert!((6 as $T).is_multiple_of(&(3 as $T)));
+                assert!((6 as $T).is_multiple_of(&(1 as $T)));
             }
 
             #[test]

@@ -514,9 +514,14 @@ impl Integer for BigUint {
     #[inline]
     fn lcm(&self, other: &BigUint) -> BigUint { ((*self * *other) / self.gcd(other)) }
 
-    /// Returns `true` if the number can be divided by `other` without leaving a remainder.
+    /// Deprecated, use `is_multiple_of` instead.
+    #[deprecated = "function renamed to `is_multiple_of`"]
     #[inline]
-    fn divides(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
+    fn divides(&self, other: &BigUint) -> bool { return self.is_multiple_of(other); }
+
+    /// Returns `true` if the number is a multiple of `other`.
+    #[inline]
+    fn is_multiple_of(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
 
     /// Returns `true` if the number is divisible by `2`.
     #[inline]
@@ -1112,9 +1117,14 @@ impl Integer for BigInt {
         BigInt::from_biguint(Plus, self.data.lcm(&other.data))
     }
 
-    /// Returns `true` if the number can be divided by `other` without leaving a remainder.
+    /// Deprecated, use `is_multiple_of` instead.
+    #[deprecated = "function renamed to `is_multiple_of`"]
     #[inline]
-    fn divides(&self, other: &BigInt) -> bool { self.data.divides(&other.data) }
+    fn divides(&self, other: &BigInt) -> bool { return self.is_multiple_of(other); }
+
+    /// Returns `true` if the number is a multiple of `other`.
+    #[inline]
+    fn is_multiple_of(&self, other: &BigInt) -> bool { self.data.is_multiple_of(&other.data) }
 
     /// Returns `true` if the number is divisible by `2`.
     #[inline]

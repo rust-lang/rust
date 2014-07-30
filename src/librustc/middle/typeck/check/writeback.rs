@@ -181,8 +181,14 @@ impl<'cx> Visitor<()> for WritebackCx<'cx> {
         visit::walk_local(self, l, ());
     }
 
-    fn visit_ty(&mut self, _t: &ast::Ty, _: ()) {
-        // ignore
+    fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
+        match t.node {
+            ast::TyFixedLengthVec(ref ty, ref count_expr) => {
+                self.visit_ty(&**ty, ());
+                write_ty_to_tcx(self.tcx(), count_expr.id, ty::mk_uint());
+            }
+            _ => visit::walk_ty(self, t, ())
+        }
     }
 }
 
