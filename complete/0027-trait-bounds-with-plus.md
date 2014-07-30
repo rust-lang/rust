@@ -1,6 +1,6 @@
 - Start Date: 2014-05-22
-- RFC PR #: 87
-- Rust Issue #: 12778
+- RFC PR: [rust-lang/rfcs#87](https://github.com/rust-lang/rfcs/pull/87)
+- Rust Issue: [rust-lang/rust#12778](https://github.com/rust-lang/rust/issues/12778)
 
 # Summary
 

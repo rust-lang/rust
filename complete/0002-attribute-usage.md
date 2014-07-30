@@ -1,6 +1,6 @@
 - Start Date: 2012-03-20
-- RFC PR #: 3
-- Rust Issue #: 14373
+- RFC PR: [rust-lang/rfcs#3](https://github.com/rust-lang/rfcs/pull/3)
+- Rust Issue: [rust-lang/rust#14373](https://github.com/rust-lang/rust/issues/14373)
 
 # Summary
 

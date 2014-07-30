@@ -1,6 +1,6 @@
 - Start Date: 2014-03-20
-- RFC PR #: 49
-- Rust Issue #: 12812
+- RFC PR: [rust-lang/rfcs#49](https://github.com/rust-lang/rfcs/pull/49)
+- Rust Issue: [rust-lang/rust#12812](https://github.com/rust-lang/rust/issues/12812)
 
 # Summary
 

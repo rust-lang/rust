@@ -1,6 +1,6 @@
 - Start Date: 2014-07-29
-- RFC PR #: 44
-- Rust Issue #: 16095
+- RFC PR: [rust-lang/rfcs#44](https://github.com/rust-lang/rfcs/pull/44)
+- Rust Issue: [rust-lang/rust#16095](https://github.com/rust-lang/rust/issues/16095)
 
 # Summary
 

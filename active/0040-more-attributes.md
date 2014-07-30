@@ -1,6 +1,6 @@
 - Start Date: 2014-03-20
-- RFC PR #: #16
-- Rust Issue #: 15701
+- RFC PR: [rust-lang/rfcs#16](https://github.com/rust-lang/rfcs/pull/16)
+- Rust Issue: [rust-lang/rust#15701](https://github.com/rust-lang/rust/issues/15701)
 
 # Summary
 

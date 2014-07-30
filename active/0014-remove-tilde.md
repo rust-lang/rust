@@ -1,6 +1,6 @@
 - Start Date: 2014-04-30
-- RFC PR #: 59
-- Rust Issue #: 13885
+- RFC PR: [rust-lang/rfcs#59](https://github.com/rust-lang/rfcs/pull/59)
+- Rust Issue: [rust-lang/rust#13885](https://github.com/rust-lang/rust/issues/13885)
 
 # Summary
 

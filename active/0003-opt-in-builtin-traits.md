@@ -1,6 +1,6 @@
 - Start Date: 2014-03-24
-- RFC PR #: 19
-- Rust Issue #: 13231
+- RFC PR: [rust-lang/rfcs#19](https://github.com/rust-lang/rfcs/pull/19)
+- Rust Issue: [rust-lang/rust#13231](https://github.com/rust-lang/rust/issues/13231)
 
 # Summary
 
