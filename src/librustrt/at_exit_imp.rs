@@ -31,7 +31,7 @@ pub fn init() {
     let state: Box<Queue> = box Exclusive::new(Vec::new());
     unsafe {
         rtassert!(!RUNNING.load(atomics::SeqCst));
-        rtassert!(QUEUE.swap(mem::transmute(state), atomics::SeqCst) == 0);
+        assert!(QUEUE.swap(mem::transmute(state), atomics::SeqCst) == 0);
     }
 }
 
