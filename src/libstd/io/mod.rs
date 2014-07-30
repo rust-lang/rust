@@ -1795,7 +1795,6 @@ pub struct UnstableFileStat {
 bitflags!(
     #[doc="A set of permissions for a file or directory is represented
 by a set of flags which are or'd together."]
-    #[deriving(Hash)]
     #[deriving(Show)]
     flags FilePermission: u32 {
         static UserRead     = 0o400,
