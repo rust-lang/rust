@@ -145,7 +145,11 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let path = Path::new("foo/bar");
+    /// # }
     /// ```
     ///
     /// # Failure
@@ -165,8 +169,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let x: &[u8] = b"foo\0";
     /// assert!(Path::new_opt(x).is_none());
+    /// # }
     /// ```
     #[inline]
     fn new_opt<T: BytesContainer>(path: T) -> Option<Self> {
@@ -183,8 +191,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("/abc/def");
     /// assert_eq!(p.as_str(), Some("/abc/def"));
+    /// # }
     /// ```
     #[inline]
     fn as_str<'a>(&'a self) -> Option<&'a str> {
@@ -196,8 +208,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def");
     /// assert_eq!(p.as_vec(), b"abc/def");
+    /// # }
     /// ```
     fn as_vec<'a>(&'a self) -> &'a [u8];
 
@@ -206,9 +222,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def");
     /// assert_eq!(p.into_vec(), b"abc/def".to_vec());
     /// // attempting to use p now results in "error: use of moved value"
+    /// # }
     /// ```
     fn into_vec(self) -> Vec<u8>;
 
@@ -217,8 +237,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def");
     /// println!("{}", p.display()); // prints "abc/def"
+    /// # }
     /// ```
     fn display<'a>(&'a self) -> Display<'a, Self> {
         Display{ path: self, filename: false }
@@ -231,8 +255,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def");
     /// println!("{}", p.filename_display()); // prints "def"
+    /// # }
     /// ```
     fn filename_display<'a>(&'a self) -> Display<'a, Self> {
         Display{ path: self, filename: true }
@@ -244,8 +272,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def/ghi");
     /// assert_eq!(p.dirname(), b"abc/def");
+    /// # }
     /// ```
     fn dirname<'a>(&'a self) -> &'a [u8];
 
@@ -255,8 +287,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def/ghi");
     /// assert_eq!(p.dirname_str(), Some("abc/def"));
+    /// # }
     /// ```
     #[inline]
     fn dirname_str<'a>(&'a self) -> Option<&'a str> {
@@ -270,8 +306,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def/ghi");
     /// assert_eq!(p.filename(), Some(b"ghi"));
+    /// # }
     /// ```
     fn filename<'a>(&'a self) -> Option<&'a [u8]>;
 
@@ -281,8 +321,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def/ghi");
     /// assert_eq!(p.filename_str(), Some("ghi"));
+    /// # }
     /// ```
     #[inline]
     fn filename_str<'a>(&'a self) -> Option<&'a str> {
@@ -296,8 +340,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("/abc/def.txt");
     /// assert_eq!(p.filestem(), Some(b"def"));
+    /// # }
     /// ```
     fn filestem<'a>(&'a self) -> Option<&'a [u8]> {
         match self.filename() {
@@ -319,8 +367,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("/abc/def.txt");
     /// assert_eq!(p.filestem_str(), Some("def"));
+    /// # }
     /// ```
     #[inline]
     fn filestem_str<'a>(&'a self) -> Option<&'a str> {
@@ -335,8 +387,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def.txt");
     /// assert_eq!(p.extension(), Some(b"txt"));
+    /// # }
     /// ```
     fn extension<'a>(&'a self) -> Option<&'a [u8]> {
         match self.filename() {
@@ -358,8 +414,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def.txt");
     /// assert_eq!(p.extension_str(), Some("txt"));
+    /// # }
     /// ```
     #[inline]
     fn extension_str<'a>(&'a self) -> Option<&'a str> {
@@ -372,9 +432,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("abc/def.txt");
     /// p.set_filename("foo.dat");
     /// assert!(p == Path::new("abc/foo.dat"));
+    /// # }
     /// ```
     ///
     /// # Failure
@@ -394,9 +458,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("abc/def.txt");
     /// p.set_extension("csv");
     /// assert!(p == Path::new("abc/def.csv"));
+    /// # }
     /// ```
     ///
     /// # Failure
@@ -440,8 +508,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("abc/def.txt");
     /// assert!(p.with_filename("foo.dat") == Path::new("abc/foo.dat"));
+    /// # }
     /// ```
     ///
     /// # Failure
@@ -461,8 +533,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("abc/def.txt");
     /// assert!(p.with_extension("csv") == Path::new("abc/def.csv"));
+    /// # }
     /// ```
     ///
     /// # Failure
@@ -481,8 +557,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def/ghi");
     /// assert!(p.dir_path() == Path::new("abc/def"));
+    /// # }
     /// ```
     fn dir_path(&self) -> Self {
         // self.dirname() returns a NUL-free vector
@@ -496,8 +576,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// assert!(Path::new("abc/def").root_path() == None);
     /// assert!(Path::new("/abc/def").root_path() == Some(Path::new("/")));
+    /// # }
     /// ```
     fn root_path(&self) -> Option<Self>;
 
@@ -507,9 +591,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("foo/bar");
     /// p.push("baz.txt");
     /// assert!(p == Path::new("foo/bar/baz.txt"));
+    /// # }
     /// ```
     ///
     /// # Failure
@@ -527,9 +615,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("foo");
     /// p.push_many(&["bar", "baz.txt"]);
     /// assert!(p == Path::new("foo/bar/baz.txt"));
+    /// # }
     /// ```
     #[inline]
     fn push_many<T: BytesContainer>(&mut self, paths: &[T]) {
@@ -552,9 +644,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("foo/bar/baz.txt");
     /// p.pop();
     /// assert!(p == Path::new("foo/bar"));
+    /// # }
     /// ```
     fn pop(&mut self) -> bool;
 
@@ -565,8 +661,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("/foo");
     /// assert!(p.join("bar.txt") == Path::new("/foo/bar.txt"));
+    /// # }
     /// ```
     ///
     /// # Failure
@@ -586,9 +686,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("foo");
     /// let fbbq = Path::new("foo/bar/baz/quux.txt");
     /// assert!(p.join_many(&["bar", "baz", "quux.txt"]) == fbbq);
+    /// # }
     /// ```
     #[inline]
     fn join_many<T: BytesContainer>(&self, paths: &[T]) -> Self {
@@ -604,8 +708,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("/abc/def");
     /// assert!(p.is_absolute());
+    /// # }
     /// ```
     fn is_absolute(&self) -> bool;
 
@@ -617,8 +725,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def");
     /// assert!(p.is_relative());
+    /// # }
     /// ```
     fn is_relative(&self) -> bool {
         !self.is_absolute()
@@ -631,10 +743,14 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("foo/bar/baz/quux.txt");
     /// let fb = Path::new("foo/bar");
     /// let bq = Path::new("baz/quux.txt");
     /// assert!(fb.is_ancestor_of(&p));
+    /// # }
     /// ```
     fn is_ancestor_of(&self, other: &Self) -> bool;
 
@@ -646,10 +762,14 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("foo/bar/baz/quux.txt");
     /// let fb = Path::new("foo/bar");
     /// let bq = Path::new("baz/quux.txt");
     /// assert!(p.path_relative_from(&fb) == Some(bq));
+    /// # }
     /// ```
     fn path_relative_from(&self, base: &Self) -> Option<Self>;
 
@@ -658,9 +778,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Example
     ///
     /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("foo/bar/baz/quux.txt");
     /// let bq = Path::new("baz/quux.txt");
     /// assert!(p.ends_with_path(&bq));
+    /// # }
     /// ```
     fn ends_with_path(&self, child: &Self) -> bool;
 }
