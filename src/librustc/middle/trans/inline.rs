@@ -133,7 +133,7 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
           if unparameterized {
               let llfn = get_item_val(ccx, mth.id);
                 trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), llfn,
-                       &param_substs::empty(), mth.id, []);
+                       &param_substs::empty(), mth.id, [], TranslateItems);
           }
           local_def(mth.id)
         }
