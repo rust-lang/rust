@@ -688,7 +688,7 @@ impl String {
     /// assert_eq!(s.shift_char(), Some('o'));
     /// assert_eq!(s.shift_char(), None);
     /// ```
-    pub fn shift_char (&mut self) -> Option<char> {
+    pub fn shift_char(&mut self) -> Option<char> {
         let len = self.len();
         if len == 0 {
             return None
