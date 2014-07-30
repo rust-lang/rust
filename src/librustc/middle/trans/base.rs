@@ -2593,7 +2593,7 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     }
 
     let encode_inlined_item: encoder::EncodeInlinedItem =
-        |ecx, ebml_w, ii| astencode::encode_inlined_item(ecx, ebml_w, ii);
+        |ecx, rbml_w, ii| astencode::encode_inlined_item(ecx, rbml_w, ii);
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);
