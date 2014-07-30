@@ -578,12 +578,12 @@ fn main() {
 
 Notice we changed the signature of `add_one()` to request a mutable reference.
 
-# Best practices
+## Best practices
 
 Boxes are appropriate to use in two situations: Recursive data structures,
 and occasionally, when returning data.
 
-## Recursive data structures
+### Recursive data structures
 
 Sometimes, you need a recursive data structure. The simplest is known as a
 'cons list':
@@ -615,7 +615,7 @@ we don't know the size, and therefore, we need to heap allocate our list.
 Working with recursive or other unknown-sized data structures is the primary
 use-case for boxes.
 
-## Returning data
+### Returning data
 
 This is important enough to have its own section entirely. The TL;DR is this:
 you don't generally want to return pointers, even when you might in a language
