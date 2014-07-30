@@ -31,7 +31,7 @@
 #![macro_escape]
 
 use std::hash;
-use std::ascii::StrAsciiExt;
+use std::ascii::AsciiExt;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
 use syntax::ast;
