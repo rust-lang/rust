@@ -22,6 +22,8 @@ use slice;
 use slice::{Vector, ImmutableVector, MutableVector};
 use vec::Vec;
 
+static BUF_CAPACITY: uint = 128;
+
 fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> {
     // compute offset as signed and clamp to prevent overflow
     let pos = match seek {
@@ -54,29 +56,26 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 ///
 /// assert_eq!(w.unwrap(), vec!(0, 1, 2));
 /// ```
+#[deriving(Clone)]
 pub struct MemWriter {
     buf: Vec<u8>,
-    pos: uint,
 }
 
 impl MemWriter {
     /// Create a new `MemWriter`.
     #[inline]
     pub fn new() -> MemWriter {
-        MemWriter::with_capacity(128)
+        MemWriter::with_capacity(BUF_CAPACITY)
     }
     /// Create a new `MemWriter`, allocating at least `n` bytes for
     /// the internal buffer.
     #[inline]
     pub fn with_capacity(n: uint) -> MemWriter {
-        MemWriter { buf: Vec::with_capacity(n), pos: 0 }
+        MemWriter { buf: Vec::with_capacity(n) }
     }
 
     /// Acquires an immutable reference to the underlying buffer of this
     /// `MemWriter`.
-    ///
-    /// No method is exposed for acquiring a mutable reference to the buffer
-    /// because it could corrupt the state of this `MemWriter`.
     #[inline]
     pub fn get_ref<'a>(&'a self) -> &'a [u8] { self.buf.as_slice() }
 
@@ -88,44 +87,7 @@ impl MemWriter {
 impl Writer for MemWriter {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        // Make sure the internal buffer is as least as big as where we
-        // currently are
-        let difference = self.pos as i64 - self.buf.len() as i64;
-        if difference > 0 {
-            self.buf.grow(difference as uint, &0);
-        }
-
-        // Figure out what bytes will be used to overwrite what's currently
-        // there (left), and what will be appended on the end (right)
-        let cap = self.buf.len() - self.pos;
-        let (left, right) = if cap <= buf.len() {
-            (buf.slice_to(cap), buf.slice_from(cap))
-        } else {
-            (buf, &[])
-        };
-
-        // Do the necessary writes
-        if left.len() > 0 {
-            slice::bytes::copy_memory(self.buf.mut_slice_from(self.pos), left);
-        }
-        if right.len() > 0 {
-            self.buf.push_all(right);
-        }
-
-        // Bump us forward
-        self.pos += buf.len();
-        Ok(())
-    }
-}
-
-impl Seek for MemWriter {
-    #[inline]
-    fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
-
-    #[inline]
-    fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
-        let new = try!(combine(style, self.pos, self.buf.len(), pos));
-        self.pos = new as uint;
+        self.buf.push_all(buf);
         Ok(())
     }
 }
@@ -381,30 +343,10 @@ mod test {
     #[test]
     fn test_mem_writer() {
         let mut writer = MemWriter::new();
-        assert_eq!(writer.tell(), Ok(0));
         writer.write([0]).unwrap();
-        assert_eq!(writer.tell(), Ok(1));
         writer.write([1, 2, 3]).unwrap();
         writer.write([4, 5, 6, 7]).unwrap();
-        assert_eq!(writer.tell(), Ok(8));
         assert_eq!(writer.get_ref(), &[0, 1, 2, 3, 4, 5, 6, 7]);
-
-        writer.seek(0, SeekSet).unwrap();
-        assert_eq!(writer.tell(), Ok(0));
-        writer.write([3, 4]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 3, 4, 5, 6, 7]);
-
-        writer.seek(1, SeekCur).unwrap();
-        writer.write([0, 1]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 7]);
-
-        writer.seek(-1, SeekEnd).unwrap();
-        writer.write([1, 2]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 1, 2]);
-
-        writer.seek(1, SeekEnd).unwrap();
-        writer.write([1]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1]);
     }
 
     #[test]
@@ -570,10 +512,6 @@ mod test {
         r.seek(10, SeekSet).unwrap();
         assert!(r.read(&mut []).is_err());
 
-        let mut r = MemWriter::new();
-        r.seek(10, SeekSet).unwrap();
-        assert!(r.write([3]).is_ok());
-
         let mut buf = [0];
         let mut r = BufWriter::new(buf);
         r.seek(10, SeekSet).unwrap();
@@ -587,9 +525,6 @@ mod test {
         assert!(r.seek(-1, SeekSet).is_err());
 
         let mut r = MemReader::new(vec!(10));
-        assert!(r.seek(-1, SeekSet).is_err());
-
-        let mut r = MemWriter::new();
         assert!(r.seek(-1, SeekSet).is_err());
 
         let mut buf = [0];
@@ -614,6 +549,7 @@ mod test {
     fn do_bench_mem_writer(b: &mut Bencher, times: uint, len: uint) {
         let src: Vec<u8> = Vec::from_elem(len, 5);
 
+        b.bytes = (times * len) as u64;
         b.iter(|| {
             let mut wr = MemWriter::new();
             for _ in range(0, times) {
