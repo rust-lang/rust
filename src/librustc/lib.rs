@@ -133,7 +133,6 @@ pub mod util {
 
     pub mod common;
     pub mod ppaux;
-    pub mod io;
     pub mod nodemap;
 }
 
