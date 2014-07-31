@@ -24,7 +24,10 @@ fn start(argc: int, argv: *const *const u8) -> int {
 
 #[inline(never)]
 fn foo() {
-    fail!()
+    let _v = vec![1i, 2, 3];
+    if os::getenv("IS_TEST").is_some() {
+        fail!()
+    }
 }
 
 #[inline(never)]
@@ -37,8 +40,11 @@ fn double() {
 }
 
 fn runtest(me: &str) {
+    let mut template = Command::new(me);
+    template.env("IS_TEST", "1");
+
     // Make sure that the stack trace is printed
-    let mut p = Command::new(me).arg("fail").env("RUST_BACKTRACE", "1").spawn().unwrap();
+    let p = template.clone().arg("fail").env("RUST_BACKTRACE", "1").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(out.error.as_slice()).unwrap();
@@ -46,7 +52,7 @@ fn runtest(me: &str) {
             "bad output: {}", s);
 
     // Make sure the stack trace is *not* printed
-    let mut p = Command::new(me).arg("fail").spawn().unwrap();
+    let p = template.clone().arg("fail").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(out.error.as_slice()).unwrap();
@@ -54,7 +60,7 @@ fn runtest(me: &str) {
             "bad output2: {}", s);
 
     // Make sure a stack trace is printed
-    let mut p = Command::new(me).arg("double-fail").spawn().unwrap();
+    let p = template.clone().arg("double-fail").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(out.error.as_slice()).unwrap();
@@ -62,7 +68,7 @@ fn runtest(me: &str) {
             "bad output3: {}", s);
 
     // Make sure a stack trace isn't printed too many times
-    let mut p = Command::new(me).arg("double-fail")
+    let p = template.clone().arg("double-fail")
                                 .env("RUST_BACKTRACE", "1").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
