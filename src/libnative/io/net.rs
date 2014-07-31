@@ -326,11 +326,13 @@ impl TcpStream {
                    seconds as libc::c_int)
     }
     #[cfg(target_os = "freebsd")]
+    #[cfg(target_os = "dragonfly")]
     fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPIDLE,
                    seconds as libc::c_int)
     }
-    #[cfg(not(target_os = "macos"), not(target_os = "ios"), not(target_os = "freebsd"))]
+    #[cfg(not(target_os = "macos"), not(target_os = "ios"), not(target_os = "freebsd"),
+      not(target_os = "dragonfly"))]
     fn set_tcp_keepalive(&mut self, _seconds: uint) -> IoResult<()> {
         Ok(())
     }

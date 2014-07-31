@@ -43,6 +43,7 @@ type pthread_key_t = ::libc::c_ulong;
 
 #[cfg(target_os="linux")]
 #[cfg(target_os="freebsd")]
+#[cfg(target_os="dragonfly")]
 #[cfg(target_os="android")]
 #[cfg(target_os = "ios")]
 #[allow(non_camel_case_types)] // foreign type

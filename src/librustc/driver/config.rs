@@ -390,12 +390,13 @@ pub fn default_lib_output() -> CrateType {
 
 pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let tos = match sess.targ_cfg.os {
-        abi::OsWin32 =>   InternedString::new("win32"),
-        abi::OsMacos =>   InternedString::new("macos"),
-        abi::OsLinux =>   InternedString::new("linux"),
-        abi::OsAndroid => InternedString::new("android"),
-        abi::OsFreebsd => InternedString::new("freebsd"),
-        abi::OsiOS =>     InternedString::new("ios"),
+        abi::OsWin32 =>     InternedString::new("win32"),
+        abi::OsMacos =>     InternedString::new("macos"),
+        abi::OsLinux =>     InternedString::new("linux"),
+        abi::OsAndroid =>   InternedString::new("android"),
+        abi::OsFreebsd =>   InternedString::new("freebsd"),
+        abi::OsDragonfly => InternedString::new("dragonfly"),
+        abi::OsiOS =>       InternedString::new("ios"),
     };
 
     // ARM is bi-endian, however using NDK seems to default
@@ -451,13 +452,14 @@ pub fn get_os(triple: &str) -> Option<abi::Os> {
     None
 }
 static os_names : &'static [(&'static str, abi::Os)] = &[
-    ("mingw32", abi::OsWin32),
-    ("win32",   abi::OsWin32),
-    ("darwin",  abi::OsMacos),
-    ("android", abi::OsAndroid),
-    ("linux",   abi::OsLinux),
-    ("freebsd", abi::OsFreebsd),
-    ("ios",     abi::OsiOS)];
+    ("mingw32",   abi::OsWin32),
+    ("win32",     abi::OsWin32),
+    ("darwin",    abi::OsMacos),
+    ("android",   abi::OsAndroid),
+    ("linux",     abi::OsLinux),
+    ("freebsd",   abi::OsFreebsd),
+    ("dragonfly", abi::OsDragonfly),
+    ("ios",       abi::OsiOS)];
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
     for &(arch, abi) in architecture_abis.iter() {

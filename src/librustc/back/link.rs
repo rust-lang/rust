@@ -927,6 +927,7 @@ pub fn filename_for_input(sess: &Session,
                 abi::OsLinux => (loader::LINUX_DLL_PREFIX, loader::LINUX_DLL_SUFFIX),
                 abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
                 abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
+                abi::OsDragonfly => (loader::DRAGONFLY_DLL_PREFIX, loader::DRAGONFLY_DLL_SUFFIX),
                 abi::OsiOS => unreachable!(),
             };
             out_filename.with_filename(format!("{}{}{}",
@@ -944,6 +945,7 @@ pub fn filename_for_input(sess: &Session,
                 abi::OsLinux |
                 abi::OsAndroid |
                 abi::OsFreebsd |
+                abi::OsDragonfly |
                 abi::OsiOS => out_filename.clone(),
             }
         }
@@ -1324,7 +1326,7 @@ fn link_args(cmd: &mut Command,
         cmd.arg("-Wl,--gc-sections");
     }
 
-    if sess.targ_cfg.os == abi::OsLinux {
+    if sess.targ_cfg.os == abi::OsLinux || sess.targ_cfg.os == abi::OsDragonfly {
         // GNU-style linkers will use this to omit linking to libraries which
         // don't actually fulfill any relocations, but only for libraries which
         // follow this flag. Thus, use it before specifying libraries to link to.
@@ -1449,6 +1451,12 @@ fn link_args(cmd: &mut Command,
                   "-L/usr/local/lib/gcc46",
                   "-L/usr/local/lib/gcc44"]);
     }
+    else if sess.targ_cfg.os == abi::OsDragonfly {
+        cmd.args(["-L/usr/local/lib",
+                  "-L/usr/lib/gcc47",
+                  "-L/usr/lib/gcc44"]);
+    }
+
 
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the

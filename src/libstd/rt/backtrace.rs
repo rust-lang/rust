@@ -464,11 +464,15 @@ mod imp {
         // the symbols. The libbacktrace API also states that the filename must
         // be in "permanent memory", so we copy it to a static and then use the
         // static as the pointer.
+        //
+        // FIXME: We also call self_exe_name() on DragonFly BSD. I haven't
+        //        tested if this is required or not.
         unsafe fn init_state() -> *mut backtrace_state {
             static mut STATE: *mut backtrace_state = 0 as *mut backtrace_state;
             static mut LAST_FILENAME: [libc::c_char, ..256] = [0, ..256];
             if !STATE.is_null() { return STATE }
-            let selfname = if cfg!(target_os = "freebsd") {
+            let selfname = if cfg!(target_os = "freebsd") ||
+                              cfg!(target_os = "dragonfly") {
                 os::self_exe_name()
             } else {
                 None

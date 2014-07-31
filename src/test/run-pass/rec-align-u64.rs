@@ -39,6 +39,7 @@ struct Outer {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "dragonfly")]
 mod m {
     #[cfg(target_arch = "x86")]
     pub mod m {

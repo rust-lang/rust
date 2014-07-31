@@ -2007,7 +2007,7 @@ The following configurations must be defined by the implementation:
    `"unix"` or `"windows"`. The value of this configuration option is defined as
    a configuration itself, like `unix` or `windows`.
  * `target_os = "..."`. Operating system of the target, examples include
-   `"win32"`, `"macos"`, `"linux"`, `"android"` or `"freebsd"`.
+   `"win32"`, `"macos"`, `"linux"`, `"android"`, `"freebsd"` or `"dragonfly"`.
  * `target_word_size = "..."`. Target word size in bits. This is set to `"32"`
    for targets with 32-bit pointers, and likewise set to `"64"` for 64-bit
    pointers.

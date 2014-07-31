@@ -580,6 +580,33 @@ CFG_LDPATH_x86_64-unknown-freebsd :=
 CFG_RUN_x86_64-unknown-freebsd=$(2)
 CFG_RUN_TARG_x86_64-unknown-freebsd=$(call CFG_RUN_x86_64-unknown-freebsd,,$(2))
 
+# x86_64-pc-dragonfly-elf configuration
+CC_x86_64-unknown-dragonfly=$(CC)
+CXX_x86_64-unknown-dragonfly=$(CXX)
+CPP_x86_64-unknown-dragonfly=$(CPP)
+AR_x86_64-unknown-dragonfly=$(AR)
+CFG_LIB_NAME_x86_64-unknown-dragonfly=lib$(1).so
+CFG_STATIC_LIB_NAME_x86_64-unknown-dragonfly=lib$(1).a
+CFG_LIB_GLOB_x86_64-unknown-dragonfly=lib$(1)-*.so
+CFG_LIB_DSYM_GLOB_x86_64-unknown-dragonfly=$(1)-*.dylib.dSYM
+CFG_CFLAGS_x86_64-unknown-dragonfly := -I/usr/include -I/usr/local/include $(CFLAGS)
+CFG_GCCISH_CFLAGS_x86_64-unknown-dragonfly := -Wall -Werror -g -fPIC -I/usr/include -I/usr/local/include $(CFLAGS)
+CFG_GCCISH_LINK_FLAGS_x86_64-unknown-dragonfly := -shared -fPIC -g -pthread  -lrt
+CFG_GCCISH_DEF_FLAG_x86_64-unknown-dragonfly := -Wl,--export-dynamic,--dynamic-list=
+CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-dragonfly := -Wl,-whole-archive
+CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-dragonfly := -Wl,-no-whole-archive
+CFG_DEF_SUFFIX_x86_64-unknown-dragonfly := .bsd.def
+CFG_LLC_FLAGS_x86_64-unknown-dragonfly :=
+CFG_INSTALL_NAME_x86_64-unknown-dragonfly =
+CFG_LIBUV_LINK_FLAGS_x86_64-unknown-dragonfly := -pthread  -lkvm
+CFG_EXE_SUFFIX_x86_64-unknown-dragonfly :=
+CFG_WINDOWSY_x86_64-unknown-dragonfly :=
+CFG_UNIXY_x86_64-unknown-dragonfly := 1
+CFG_PATH_MUNGE_x86_64-unknown-dragonfly :=
+CFG_LDPATH_x86_64-unknown-dragonfly :=
+CFG_RUN_x86_64-unknown-dragonfly=$(2)
+CFG_RUN_TARG_x86_64-unknown-dragonfly=$(call CFG_RUN_x86_64-unknown-dragonfly,,$(2))
+
 
 # The -Qunused-arguments sidesteps spurious warnings from clang
 define FILTER_FLAGS
