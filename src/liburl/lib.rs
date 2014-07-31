@@ -11,7 +11,7 @@
 //! Types/fns concerning URLs (see RFC 3986)
 
 #![crate_name = "url"]
-#![experimental]
+#![deprecated="This is being removed. Use rust-url instead. http://servo.github.io/rust-url/"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
@@ -35,6 +35,7 @@ use std::path::BytesContainer;
 /// # Example
 ///
 /// ```rust
+/// # #![allow(deprecated)]
 /// use url::Url;
 ///
 /// let raw = "https://username@example.com:8080/foo/bar?baz=qux#quz";
@@ -214,6 +215,7 @@ fn encode_inner<T: BytesContainer>(c: T, full_url: bool) -> String {
 /// # Example
 ///
 /// ```rust
+/// # #![allow(deprecated)]
 /// use url::encode;
 ///
 /// let url = encode("https://example.com/Rust (programming language)");
@@ -241,6 +243,7 @@ pub type DecodeResult<T> = Result<T, String>;
 /// # Example
 ///
 /// ```rust
+/// # #![allow(deprecated)]
 /// use url::decode;
 ///
 /// let url = decode("https://example.com/Rust%20(programming%20language)");
@@ -428,6 +431,7 @@ fn query_from_str(rawquery: &str) -> DecodeResult<Query> {
 /// # Example
 ///
 /// ```rust
+/// # #![allow(deprecated)]
 /// let query = vec![("title".to_string(), "The Village".to_string()),
 ///                  ("north".to_string(), "52.91".to_string()),
 ///                  ("west".to_string(), "4.10".to_string())];
@@ -453,6 +457,7 @@ pub fn query_to_str(query: &Query) -> String {
 /// # Example
 ///
 /// ```rust
+/// # #![allow(deprecated)]
 /// use url::get_scheme;
 ///
 /// let scheme = match get_scheme("https://example.com/") {
