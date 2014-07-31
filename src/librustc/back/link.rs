@@ -32,6 +32,7 @@ use std::char;
 use std::collections::HashSet;
 use std::io::{fs, TempDir, Command};
 use std::io;
+use std::mem;
 use std::ptr;
 use std::str;
 use std::string::String;
@@ -44,6 +45,36 @@ use syntax::ast_map;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::parse::token;
+
+// RLIB LLVM-BYTECODE OBJECT LAYOUT
+// Version 1
+// Bytes    Data
+// 0..10    "RUST_OBJECT" encoded in ASCII
+// 11..14   format version as little-endian u32
+// 15..22   size in bytes of deflate compressed LLVM bitcode as
+//          little-endian u64
+// 23..     compressed LLVM bitcode
+
+// This is the "magic number" expected at the beginning of a LLVM bytecode
+// object in an rlib.
+pub static RLIB_BYTECODE_OBJECT_MAGIC: &'static [u8] = b"RUST_OBJECT";
+
+// The version number this compiler will write to bytecode objects in rlibs
+pub static RLIB_BYTECODE_OBJECT_VERSION: u32 = 1;
+
+// The offset in bytes the bytecode object format version number can be found at
+pub static RLIB_BYTECODE_OBJECT_VERSION_OFFSET: uint = 11;
+
+// The offset in bytes the size of the compressed bytecode can be found at in
+// format version 1
+pub static RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: uint =
+    RLIB_BYTECODE_OBJECT_VERSION_OFFSET + 4;
+
+// The offset in bytes the compressed LLVM bytecode can be found at in format
+// version 1
+pub static RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: uint =
+    RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
+
 
 #[deriving(Clone, PartialEq, PartialOrd, Ord, Eq)]
 pub enum OutputType {
@@ -1103,28 +1134,44 @@ fn link_rlib<'a>(sess: &'a Session,
             // is never exactly 16 bytes long by adding a 16 byte extension to
             // it. This is to work around a bug in LLDB that would cause it to
             // crash if the name of a file in an archive was exactly 16 bytes.
-            let bc = obj_filename.with_extension("bc");
-            let bc_deflated = obj_filename.with_extension("bytecode.deflate");
-            match fs::File::open(&bc).read_to_end().and_then(|data| {
-                fs::File::create(&bc_deflated)
-                    .write(match flate::deflate_bytes(data.as_slice()) {
-                        Some(compressed) => compressed,
-                        None => sess.fatal("failed to compress bytecode")
-                     }.as_slice())
-            }) {
+            let bc_filename = obj_filename.with_extension("bc");
+            let bc_deflated_filename = obj_filename.with_extension("bytecode.deflate");
+
+            let bc_data = match fs::File::open(&bc_filename).read_to_end() {
+                Ok(buffer) => buffer,
+                Err(e) => sess.fatal(format!("failed to read bytecode: {}",
+                                             e).as_slice())
+            };
+
+            let bc_data_deflated = match flate::deflate_bytes(bc_data.as_slice()) {
+                Some(compressed) => compressed,
+                None => sess.fatal(format!("failed to compress bytecode from {}",
+                                           bc_filename.display()).as_slice())
+            };
+
+            let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
+                Ok(file) => file,
+                Err(e) => {
+                    sess.fatal(format!("failed to create compressed bytecode \
+                                        file: {}", e).as_slice())
+                }
+            };
+
+            match write_rlib_bytecode_object_v1(&mut bc_file_deflated,
+                                                bc_data_deflated.as_slice()) {
                 Ok(()) => {}
                 Err(e) => {
                     sess.err(format!("failed to write compressed bytecode: \
-                                      {}",
-                                     e).as_slice());
+                                      {}", e).as_slice());
                     sess.abort_if_errors()
                 }
-            }
-            ab.add_file(&bc_deflated).unwrap();
-            remove(sess, &bc_deflated);
+            };
+
+            ab.add_file(&bc_deflated_filename).unwrap();
+            remove(sess, &bc_deflated_filename);
             if !sess.opts.cg.save_temps &&
                !sess.opts.output_types.contains(&OutputTypeBitcode) {
-                remove(sess, &bc);
+                remove(sess, &bc_filename);
             }
         }
 
@@ -1132,6 +1179,32 @@ fn link_rlib<'a>(sess: &'a Session,
     }
 
     ab
+}
+
+fn write_rlib_bytecode_object_v1<T: Writer>(writer: &mut T,
+                                            bc_data_deflated: &[u8])
+                                         -> ::std::io::IoResult<()> {
+    let bc_data_deflated_size: u64 = bc_data_deflated.as_slice().len() as u64;
+
+    try! { writer.write(RLIB_BYTECODE_OBJECT_MAGIC) };
+    try! { writer.write_le_u32(1) };
+    try! { writer.write_le_u64(bc_data_deflated_size) };
+    try! { writer.write(bc_data_deflated.as_slice()) };
+
+    let number_of_bytes_written_so_far =
+        RLIB_BYTECODE_OBJECT_MAGIC.len() +                // magic id
+        mem::size_of_val(&RLIB_BYTECODE_OBJECT_VERSION) + // version
+        mem::size_of_val(&bc_data_deflated_size) +        // data size field
+        bc_data_deflated_size as uint;                    // actual data
+
+    // If the number of bytes written to the object so far is odd, add a
+    // padding byte to make it even. This works around a crash bug in LLDB
+    // (see issue #15950)
+    if number_of_bytes_written_so_far % 2 == 1 {
+        try! { writer.write_u8(0) };
+    }
+
+    return Ok(());
 }
 
 // Create a static archive
