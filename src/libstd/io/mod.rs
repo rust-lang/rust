@@ -223,6 +223,7 @@ responding to errors that may occur while attempting to read the numbers.
 
 use char::Char;
 use collections::Collection;
+use default::Default;
 use fmt;
 use int;
 use iter::Iterator;
@@ -1795,7 +1796,6 @@ pub struct UnstableFileStat {
 bitflags!(
     #[doc="A set of permissions for a file or directory is represented
 by a set of flags which are or'd together."]
-    #[deriving(Hash)]
     #[deriving(Show)]
     flags FilePermission: u32 {
         static UserRead     = 0o400,
@@ -1829,6 +1829,11 @@ on unix-like systems."]
         static AllPermissions = UserRWX.bits | GroupRWX.bits | OtherRWX.bits
     }
 )
+
+impl Default for FilePermission {
+    #[inline]
+    fn default() -> FilePermission { FilePermission::empty() }
+}
 
 #[cfg(test)]
 mod tests {
