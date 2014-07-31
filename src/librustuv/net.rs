@@ -10,7 +10,6 @@
 
 use libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use libc;
-use std::intrinsics;
 use std::mem;
 use std::ptr;
 use std::rt::rtio;
@@ -849,18 +848,18 @@ pub struct SocketWatcher {
     handle: *mut uvll::uv_poll_t,
     socket: uvll::uv_os_socket_t,
     home: HomeHandle,
-    close_on_drop: bool,
+
+    // See above for what these are
+    refcount: Refcount,
+    read_access: AccessTimeout,
+    write_access: AccessTimeout,
+
 }
 
 #[cfg(windows)]
-pub fn net_buflen(buf: &[u8]) -> i32 {
-    buf.len() as i32
-}
-
+type Buflen = i32;
 #[cfg(not(windows))]
-pub fn net_buflen(buf: &[u8]) -> u64 {
-    buf.len() as u64
-}
+type Buflen = u64;
 
 #[cfg(windows)]
 fn last_error() -> IoError {
@@ -909,7 +908,9 @@ fn make_nonblocking(socket: c_int) -> Option<IoError> {
 }
 
 impl SocketWatcher {
-    pub fn new(io: &mut UvIoFactory, socket: uvll::uv_os_socket_t, close_on_drop: bool)
+    // NOTE It is an error to have multiple SocketWatchers for the same socket,
+    //      see documentation for uv_poll_s in uv.h.
+    pub fn new(io: &mut UvIoFactory, socket: uvll::uv_os_socket_t)
         -> Result<SocketWatcher, IoError>
     {
         let handle = unsafe { uvll::malloc_handle(uvll::UV_POLL) };
@@ -918,7 +919,9 @@ impl SocketWatcher {
             handle: handle,
             home: io.make_handle(),
             socket: socket,
-            close_on_drop: close_on_drop
+            refcount: Refcount::new(),
+            read_access: AccessTimeout::new(),
+            write_access: AccessTimeout::new(),
         };
 
         // Make socket non-blocking - required for libuv
@@ -941,7 +944,7 @@ impl UvHandle<uvll::uv_poll_t> for SocketWatcher {
 impl Drop for SocketWatcher {
     fn drop(&mut self) {
         let _m = self.fire_homing_missile();
-        if self.close_on_drop {
+        if self.refcount.decrement() {
             self.close();
         }
     }
@@ -959,10 +962,12 @@ impl rtio::RtioCustomSocket for SocketWatcher {
             task: Option<BlockedTask>,
             buf: &'b [u8],
             result: Option<Result<ssize_t, IoError>>,
-            socket: Option<uvll::uv_os_socket_t>,
+            socket: uvll::uv_os_socket_t,
             addr: *mut libc::sockaddr_storage
         }
-        let _m = self.fire_homing_missile();
+        let loop_ = self.uv_loop();
+        let m = self.fire_homing_missile();
+        let _guard = try!(self.read_access.grant(m));
         let a = match unsafe {
             uvll::uv_poll_start(self.handle, uvll::UV_READABLE as c_int, recv_cb)
         } {
@@ -971,11 +976,12 @@ impl rtio::RtioCustomSocket for SocketWatcher {
                     task: None,
                     buf: buf,
                     result: None,
-                    socket: Some(self.socket),
+                    socket: self.socket,
                     addr: addr,
                 };
-                wait_until_woken_after(&mut cx.task, &self.uv_loop(), || {
-                    unsafe { uvll::set_data_for_uv_handle(self.handle, &mut cx) }
+                let handle = self.handle;
+                wait_until_woken_after(&mut cx.task, &loop_, || {
+                    unsafe { uvll::set_data_for_uv_handle(handle, &mut cx) }
                 });
                 cx.result.unwrap().map(|n| n as uint)
             }
@@ -985,13 +991,15 @@ impl rtio::RtioCustomSocket for SocketWatcher {
 
         extern fn recv_cb(handle: *mut uvll::uv_poll_t, status: c_int, events: c_int) {
             assert!((events & (uvll::UV_READABLE as c_int)) != 0);
-            let cx: &mut Ctx = unsafe {
-                intrinsics::transmute(uvll::get_data_for_uv_handle(handle))
+            let cx = unsafe {
+                uvll::get_data_for_uv_handle(handle) as *mut Ctx
             };
 
             if status < 0 {
-                cx.result = Some(Err(uv_error_to_io_error(UvError(status))));
-                wakeup(&mut cx.task);
+                unsafe {
+                    (*cx).result = Some(Err(uv_error_to_io_error(UvError(status))));
+                    wakeup(&mut (*cx).task);
+                }
                 return;
             }
 
@@ -999,29 +1007,22 @@ impl rtio::RtioCustomSocket for SocketWatcher {
                 assert_eq!(uvll::uv_poll_stop(handle), 0)
             }
 
-            let mut caddrlen = unsafe {
-                                   intrinsics::size_of::<libc::sockaddr_storage>()
-                               } as libc::socklen_t;
-            let len = match cx.socket {
-                Some(sock) => unsafe {
-                    libc::recvfrom(sock,
-                                   cx.buf.as_ptr() as *mut c_void,
-                                   net_buflen(cx.buf),
-                                   0,
-                                   cx.addr as *mut libc::sockaddr,
-                                   &mut caddrlen)
-                },
-                _   => -1
+            let mut caddrlen = mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
+            let len = unsafe {
+                libc::recvfrom((*cx).socket, (*cx).buf.as_ptr() as *mut c_void,
+                               (*cx).buf.len() as Buflen, 0,
+                               (*cx).addr as *mut libc::sockaddr, &mut caddrlen)
             };
-            if len == -1 {
-                cx.result = Some(Err(last_error()));
-                wakeup(&mut cx.task);
-                return;
+
+            unsafe {
+                (*cx).result = if len == -1 {
+                                   Some(Err(last_error()))
+                               } else {
+                                   Some(Ok(len as ssize_t))
+                               };
+
+                wakeup(&mut (*cx).task);
             }
-
-            cx.result = Some(Ok(len as ssize_t));
-
-            wakeup(&mut cx.task);
         }
     }
 
@@ -1032,11 +1033,13 @@ impl rtio::RtioCustomSocket for SocketWatcher {
             task: Option<BlockedTask>,
             buf: &'b [u8],
             result: Option<Result<uint, IoError>>,
-            socket: Option<uvll::uv_os_socket_t>,
+            socket: uvll::uv_os_socket_t,
             addr: *const libc::sockaddr,
             len: uint
         }
-        let _m = self.fire_homing_missile();
+        let loop_ = self.uv_loop();
+        let m = self.fire_homing_missile();
+        let _guard = try!(self.write_access.grant(m));
 
         let a = match unsafe {
             uvll::uv_poll_start(self.handle, uvll::UV_WRITABLE as c_int, send_cb)
@@ -1046,12 +1049,13 @@ impl rtio::RtioCustomSocket for SocketWatcher {
                     task: None,
                     buf: buf,
                     result: None,
-                    socket: Some(self.socket),
+                    socket: self.socket,
                     addr: dst,
                     len: slen
                 };
-                wait_until_woken_after(&mut cx.task, &self.uv_loop(), || {
-                    unsafe { uvll::set_data_for_uv_handle(self.handle, &mut cx) }
+                let handle = self.handle;
+                wait_until_woken_after(&mut cx.task, &loop_, || {
+                    unsafe { uvll::set_data_for_uv_handle(handle, &mut cx) }
                 });
                 cx.result.unwrap()
             }
@@ -1061,12 +1065,14 @@ impl rtio::RtioCustomSocket for SocketWatcher {
 
         extern fn send_cb(handle: *mut uvll::uv_poll_t, status: c_int, events: c_int) {
             assert!((events & (uvll::UV_WRITABLE as c_int)) != 0);
-            let cx: &mut Ctx = unsafe {
-                intrinsics::transmute(uvll::get_data_for_uv_handle(handle))
+            let cx = unsafe {
+                uvll::get_data_for_uv_handle(handle) as *mut Ctx
             };
             if status < 0 {
-                cx.result = Some(Err(uv_error_to_io_error(UvError(status))));
-                wakeup(&mut cx.task);
+                unsafe {
+                    (*cx).result = Some(Err(uv_error_to_io_error(UvError(status))));
+                    wakeup(&mut (*cx).task);
+                }
                 return;
             }
 
@@ -1074,28 +1080,33 @@ impl rtio::RtioCustomSocket for SocketWatcher {
                 assert_eq!(uvll::uv_poll_stop(handle), 0)
             }
 
-            let len = match cx.socket {
-                Some(sock) => {
-                    unsafe {
-                        libc::sendto(sock,
-                            cx.buf.as_ptr() as *const c_void,
-                            net_buflen(cx.buf),
-                            0,
-                            cx.addr,
-                            cx.len as libc::socklen_t)
-                    }
-                },
-                _   => -1
+            let len = unsafe {
+                libc::sendto((*cx).socket, (*cx).buf.as_ptr() as *const c_void,
+                             (*cx).buf.len() as Buflen, 0,
+                             (*cx).addr, (*cx).len as libc::socklen_t)
             };
 
-            cx.result = if len < 0 {
-                            Some(Err(last_error()))
-                        } else {
-                            Some(Ok(len as uint))
-                        };
+            unsafe {
+                (*cx).result = if len < 0 {
+                                   Some(Err(last_error()))
+                               } else {
+                                   Some(Ok(len as uint))
+                               };
 
-            wakeup(&mut cx.task);
+                wakeup(&mut (*cx).task);
+            }
         }
+    }
+
+    fn clone(&self) -> Box<rtio::RtioCustomSocket + Send> {
+        box SocketWatcher {
+            handle: self.handle,
+            socket: self.socket,
+            home: self.home.clone(),
+            refcount: self.refcount.clone(),
+            write_access: self.write_access.clone(),
+            read_access: self.read_access.clone(),
+        } as Box<rtio::RtioCustomSocket + Send>
     }
 }
 

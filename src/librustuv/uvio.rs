@@ -176,14 +176,9 @@ impl IoFactory for UvIoFactory {
         r.map_err(uv_error_to_io_error)
     }
 
-    fn socket_from_raw_fd(&mut self, fd: uvll::uv_os_socket_t, close_on_drop: rtio::CloseBehavior)
+    fn socket_from_raw_fd(&mut self, fd: uvll::uv_os_socket_t)
                           -> IoResult<Box<rtio::RtioCustomSocket + Send>> {
-        let close = match close_on_drop {
-            rtio::CloseSynchronously | rtio::CloseAsynchronously => true,
-            rtio::DontClose => false
-        };
-
-        SocketWatcher::new(self, fd, close).map(|sw| box sw as Box<rtio::RtioCustomSocket + Send>)
+        SocketWatcher::new(self, fd).map(|sw| box sw as Box<rtio::RtioCustomSocket + Send>)
     }
 
     fn fs_from_raw_fd(&mut self, fd: c_int, close: rtio::CloseBehavior)

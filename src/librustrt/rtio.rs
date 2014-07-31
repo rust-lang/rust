@@ -204,7 +204,7 @@ pub trait IoFactory {
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<AddrinfoHint>)
                           -> IoResult<Vec<AddrinfoInfo>>;
-    fn socket_from_raw_fd(&mut self, fd: CSocketT, close: CloseBehavior)
+    fn socket_from_raw_fd(&mut self, fd: CSocketT)
                           -> IoResult<Box<RtioCustomSocket + Send>>;
 
     // filesystem operations
@@ -300,6 +300,7 @@ pub trait RtioUdpSocket : RtioSocket {
 pub trait RtioCustomSocket {
     fn recv_from(&mut self, buf: &mut [u8], *mut libc::sockaddr_storage) -> IoResult<uint>;
     fn send_to(&mut self, buf: &[u8], dst: *const libc::sockaddr, len: uint) -> IoResult<uint>;
+    fn clone(&self) -> Box<RtioCustomSocket + Send>;
 }
 
 pub trait RtioTimer {
