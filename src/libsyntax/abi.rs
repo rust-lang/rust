@@ -11,7 +11,7 @@
 use std::fmt;
 
 #[deriving(PartialEq)]
-pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, OsiOS, 
+pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, OsiOS,
               OsDragonfly }
 
 #[deriving(PartialEq, Eq, Hash, Encodable, Decodable, Clone)]
