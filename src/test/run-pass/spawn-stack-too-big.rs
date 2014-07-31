@@ -38,7 +38,7 @@ fn test() {}
 fn test() {
     let (tx, rx) = channel();
     spawn(proc() {
-        TaskBuilder::new().stack_size(1024 * 1024 * 1024 * 64).spawn(proc() {
+        TaskBuilder::new().stack_size(128 * 1024 * 1024 * 1024).spawn(proc() {
         });
         tx.send(());
     });
