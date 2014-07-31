@@ -159,7 +159,6 @@ use {Collection, Mutable, MutableSeq};
 use hash;
 use hash::Hash;
 use slice;
-use slice::MutableOrdVector;
 use vec::Vec;
 
 /// A priority queue implemented with a binary heap.
@@ -542,7 +541,7 @@ impl<T: Ord> PriorityQueue<T> {
         self.siftdown_range(pos, len);
     }
 
-    fn as_sorted_vec(&self) -> Vec<&T> {
+    fn as_sorted_vec<'a>(&'a self) -> Vec<&'a T> {
         let mut a: Vec<&T> = self.data.iter().collect();
         fn dual(o: Ordering) -> Ordering {
             match o {
