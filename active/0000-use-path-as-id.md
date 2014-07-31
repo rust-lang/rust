@@ -175,6 +175,29 @@ and import simultaneously, like so:
 
 But really, is `pub use foo::bar as a` all that bad?
 
+## Allow `extern crate ident as ident`
+
+As written, this RFC allows for two variants of `extern_crate_decl`:
+
+```rust
+extern crate old_name;
+extern crate "old_name" as new_name;
+```
+
+These are just analogous to the current options that use `=` instead of `as`.
+
+However, the RFC comment dialogue suggested also allowing a renaming
+form that does not use a string literal:
+
+```rust
+extern crate old_name as new_name;
+```
+
+I have no opinion on whether this should be added or not.  Arguably
+this choice is orthgonal to the goals of this RFC (since, if this is a
+good idea, it could just as well be implemented with the `=` syntax).
+Perhaps it should just be filed as a separate RFC on its own.
+
 # Unresolved questions
 
 * In the revised `extern crate` form, is it best to put the
