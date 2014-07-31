@@ -341,7 +341,7 @@ fn expand_item_underscore(item: &ast::Item_, fld: &mut MacroExpander) -> ast::It
         ast::ItemFn(decl, fn_style, abi, ref generics, body) => {
             let (rewritten_fn_decl, rewritten_body)
                 = expand_and_rename_fn_decl_and_block(&*decl, body, fld);
-            let expanded_generics = fold::fold_generics(generics,fld);
+            let expanded_generics = fold::noop_fold_generics(generics,fld);
             ast::ItemFn(rewritten_fn_decl, fn_style, abi, expanded_generics, rewritten_body)
         }
         _ => noop_fold_item_underscore(&*item, fld)
@@ -795,7 +795,7 @@ impl<'a> Folder for IdentRenamer<'a> {
         }
     }
     fn fold_mac(&mut self, macro: &ast::Mac) -> ast::Mac {
-        fold::fold_mac(macro, self)
+        fold::noop_fold_mac(macro, self)
     }
 }
 
@@ -827,7 +827,7 @@ impl<'a> Folder for PatIdentRenamer<'a> {
         }
     }
     fn fold_mac(&mut self, macro: &ast::Mac) -> ast::Mac {
-        fold::fold_mac(macro, self)
+        fold::noop_fold_mac(macro, self)
     }
 }
 
@@ -850,7 +850,7 @@ fn expand_method(m: &ast::Method, fld: &mut MacroExpander) -> SmallVector<Gc<ast
                     id: id,
                     span: fld.new_span(m.span),
                     node: ast::MethDecl(fld.fold_ident(ident),
-                                        fold_generics(generics, fld),
+                                        noop_fold_generics(generics, fld),
                                         abi,
                                         fld.fold_explicit_self(explicit_self),
                                         fn_style,
@@ -1017,7 +1017,7 @@ impl Folder for Marker {
         let macro = match m.node {
             MacInvocTT(ref path, ref tts, ctxt) => {
                 MacInvocTT(self.fold_path(path),
-                           fold_tts(tts.as_slice(), self),
+                           self.fold_tts(tts.as_slice()),
                            mtwt::apply_mark(self.mark, ctxt))
             }
         };
@@ -1030,7 +1030,7 @@ impl Folder for Marker {
 
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
 fn mark_tts(tts: &[TokenTree], m: Mrk) -> Vec<TokenTree> {
-    fold_tts(tts, &mut Marker{mark:m})
+    noop_fold_tts(tts, &mut Marker{mark:m})
 }
 
 // apply a given mark to the given expr. Used following the expansion of a macro.

@@ -606,7 +606,7 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
     }
 
     fn fold_mac(&mut self, mac: &Mac) -> Mac {
-        fold::fold_mac(mac, self)
+        fold::noop_fold_mac(mac, self)
     }
 }
 
