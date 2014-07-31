@@ -20,7 +20,7 @@
 /// for the atomic reference counting), but I was having trouble how to destroy
 /// the data early in a drop of a Port.
 ///
-/// # Implementation
+/// ## Implementation
 ///
 /// Oneshots are implemented around one atomic uint variable. This variable
 /// indicates both the state of the port/chan but also contains any tasks

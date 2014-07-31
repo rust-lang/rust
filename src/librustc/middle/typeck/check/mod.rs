@@ -759,7 +759,7 @@ fn check_method_body(ccx: &CrateCtxt,
     /*!
      * Type checks a method body.
      *
-     * # Parameters
+     * ## Parameters
      * - `item_generics`: generics defined on the impl/trait that contains
      *   the method
      * - `self_bound`: bound for the `Self` type parameter, if any
@@ -856,7 +856,7 @@ fn check_impl_methods_against_trait(ccx: &CrateCtxt,
  * Checks that a method from an impl/class conforms to the signature of
  * the same method as declared in the trait.
  *
- * # Parameters
+ * ## Parameters
  *
  * - impl_generics: the generics declared on the impl itself (not the method!)
  * - impl_m: type of the method we are checking

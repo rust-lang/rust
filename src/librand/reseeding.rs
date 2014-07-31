@@ -33,7 +33,7 @@ pub struct ReseedingRng<R, Rsdr> {
 impl<R: Rng, Rsdr: Reseeder<R>> ReseedingRng<R, Rsdr> {
     /// Create a new `ReseedingRng` with the given parameters.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `rng`: the random number generator to use.
     /// * `generation_threshold`: the number of bytes of entropy at which to reseed the RNG.
@@ -100,7 +100,7 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default>
 
 /// Something that can be used to reseed an RNG via `ReseedingRng`.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::rand::{Rng, SeedableRng, StdRng};

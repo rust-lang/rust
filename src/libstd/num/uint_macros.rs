@@ -21,7 +21,7 @@ macro_rules! uint_module (($T:ty) => (
 ///
 /// Yields an `Option` because `buf` may or may not actually be parseable.
 ///
-/// # Examples
+/// ## Examples
 ///
 /// ```
 /// let num = std::uint::parse_bytes([49,50,51,52,53,54,55,56,57], 10);
@@ -58,7 +58,7 @@ impl FromStrRadix for $T {
 ///
 /// Use in place of x.to_string() when you do not need to store the string permanently
 ///
-/// # Examples
+/// ## Examples
 ///
 /// ```
 /// #![allow(deprecated)]

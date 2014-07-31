@@ -306,7 +306,7 @@ impl StdWriter {
     ///
     /// If successful, returns `Ok((width, height))`.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// This function will return an error if the output stream is not actually
     /// connected to a TTY instance, or if querying the TTY instance fails.
@@ -328,7 +328,7 @@ impl StdWriter {
     /// Controls whether this output stream is a "raw stream" or simply a normal
     /// stream.
     ///
-    /// # Error
+    /// ## Error
     ///
     /// This function will return an error if the output stream is not actually
     /// connected to a TTY instance, or if querying the TTY instance fails.

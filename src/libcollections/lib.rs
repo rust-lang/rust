@@ -74,7 +74,7 @@ mod deque;
 pub trait Mutable: Collection {
     /// Clear the container, removing all values.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut v = vec![1i, 2, 3];
@@ -89,7 +89,7 @@ pub trait Mutable: Collection {
 pub trait Map<K, V>: Collection {
     /// Return a reference to the value corresponding to the key.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -103,7 +103,7 @@ pub trait Map<K, V>: Collection {
 
     /// Return true if the map contains a value for the specified key.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -125,7 +125,7 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
     /// key is replaced by the new value. Return true if the key did
     /// not already exist in the map.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -143,7 +143,7 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
     /// Remove a key-value pair from the map. Return true if the key
     /// was present in the map, otherwise false.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -161,7 +161,7 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
     /// Insert a key-value pair from the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise None is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -179,7 +179,7 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -193,7 +193,7 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
 
     /// Return a mutable reference to the value corresponding to the key.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -215,7 +215,7 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
 pub trait Set<T>: Collection {
     /// Return true if the set contains a value.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -229,7 +229,7 @@ pub trait Set<T>: Collection {
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -247,7 +247,7 @@ pub trait Set<T>: Collection {
 
     /// Return true if the set is a subset of another.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -265,7 +265,7 @@ pub trait Set<T>: Collection {
 
     /// Return true if the set is a superset of another.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -295,7 +295,7 @@ pub trait MutableSet<T>: Set<T> + Mutable {
     /// Add a value to the set. Return true if the value was not already
     /// present in the set.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -311,7 +311,7 @@ pub trait MutableSet<T>: Set<T> + Mutable {
     /// Remove a value from the set. Return true if the value was
     /// present in the set.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -328,7 +328,7 @@ pub trait MutableSet<T>: Set<T> + Mutable {
 pub trait MutableSeq<T>: Mutable {
     /// Append an element to the back of a collection.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let mut vec = vec!(1i, 2);
@@ -339,7 +339,7 @@ pub trait MutableSeq<T>: Mutable {
     /// Remove the last element from a collection and return it, or `None` if it is
     /// empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let mut vec = vec!(1i, 2, 3);
@@ -352,7 +352,7 @@ pub trait MutableSeq<T>: Mutable {
 /// A double-ended sequence that allows querying, insertion and deletion at both
 /// ends.
 ///
-/// # Example
+/// ## Example
 ///
 /// With a `Deque` we can simulate a queue efficiently:
 ///
@@ -412,7 +412,7 @@ pub trait Deque<T> : MutableSeq<T> {
     /// Provide a reference to the front element, or `None` if the sequence is
     /// empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::{RingBuf, Deque};
@@ -429,7 +429,7 @@ pub trait Deque<T> : MutableSeq<T> {
     /// Provide a mutable reference to the front element, or `None` if the
     /// sequence is empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::{RingBuf, Deque};
@@ -450,7 +450,7 @@ pub trait Deque<T> : MutableSeq<T> {
     /// Provide a reference to the back element, or `None` if the sequence is
     /// empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::{DList, Deque};
@@ -467,7 +467,7 @@ pub trait Deque<T> : MutableSeq<T> {
     /// Provide a mutable reference to the back element, or `None` if the sequence
     /// is empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::{DList, Deque};
@@ -487,7 +487,7 @@ pub trait Deque<T> : MutableSeq<T> {
 
     /// Insert an element first in the sequence.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::{DList, Deque};
@@ -501,7 +501,7 @@ pub trait Deque<T> : MutableSeq<T> {
 
     /// Insert an element last in the sequence.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```ignore
     /// use std::collections::{DList, Deque};
@@ -516,7 +516,7 @@ pub trait Deque<T> : MutableSeq<T> {
 
     /// Remove the last element and return it, or `None` if the sequence is empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```ignore
     /// use std::collections::{RingBuf, Deque};
@@ -534,7 +534,7 @@ pub trait Deque<T> : MutableSeq<T> {
 
     /// Remove the first element and return it, or `None` if the sequence is empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::{RingBuf, Deque};

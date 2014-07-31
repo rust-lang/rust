@@ -715,7 +715,7 @@ impl Scheduler {
     /// Block a running task, context switch to the scheduler, then pass the
     /// blocked task to a closure.
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// The closure here is a *stack* closure that lives in the
     /// running task.  It gets transmuted to the scheduler's lifetime

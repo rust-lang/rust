@@ -15,7 +15,7 @@
 pub trait Collection {
     /// Return the number of elements in the container
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let a = [1i, 2, 3];
@@ -25,7 +25,7 @@ pub trait Collection {
 
     /// Return true if the container contains no elements
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let s = String::new();

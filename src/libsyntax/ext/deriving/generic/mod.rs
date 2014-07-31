@@ -79,7 +79,7 @@
 //! enums (one for each variant). For empty struct and empty enum
 //! variants, it is represented as a count of 0.
 //!
-//! # Examples
+//! ## Examples
 //!
 //! The following simplified `PartialEq` is used for in-code examples:
 //!

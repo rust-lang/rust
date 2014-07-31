@@ -42,7 +42,7 @@ enum Child<T> {
 
 /// A map implemented as a radix trie.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::collections::TrieMap;
@@ -194,7 +194,7 @@ impl<T> Default for TrieMap<T> {
 impl<T> TrieMap<T> {
     /// Create an empty TrieMap.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -208,7 +208,7 @@ impl<T> TrieMap<T> {
     /// Visit all key-value pairs in reverse order. Abort traversal when f returns false.
     /// Return true if f returns true for all elements.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -242,7 +242,7 @@ impl<T> TrieMap<T> {
 
     /// Get an iterator over the key-value pairs in the map, ordered by keys.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -265,7 +265,7 @@ impl<T> TrieMap<T> {
     /// Get an iterator over the key-value pairs in the map, with the
     /// ability to mutate the values.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -315,7 +315,7 @@ macro_rules! bound {
      // there's no 0-or-1 repeats yet.
      mutability = $($mut_:tt)*) => {
         {
-            // # For `mut`
+            // ## For `mut`
             // We need an unsafe pointer here because we are borrowing
             // mutable references to the internals of each of these
             // mutable nodes, while still using the outer node.
@@ -327,7 +327,7 @@ macro_rules! bound {
             // iterator), i.e. we can never cause a deallocation of any
             // TrieNodes so the raw pointer is always valid.
             //
-            // # For non-`mut`
+            // ## For non-`mut`
             // We like sharing code so much that even a little unsafe won't
             // stop us.
             let this = $this;
@@ -388,7 +388,7 @@ impl<T> TrieMap<T> {
     /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -405,7 +405,7 @@ impl<T> TrieMap<T> {
     /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -430,7 +430,7 @@ impl<T> TrieMap<T> {
     /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -455,7 +455,7 @@ impl<T> TrieMap<T> {
     /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -504,7 +504,7 @@ impl<S: Writer, T: Hash<S>> Hash<S> for TrieMap<T> {
 
 /// A set implemented as a radix trie.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::collections::TrieSet;
@@ -603,7 +603,7 @@ impl Default for TrieSet {
 impl TrieSet {
     /// Create an empty TrieSet.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -617,7 +617,7 @@ impl TrieSet {
     /// Visit all values in reverse order. Abort traversal when `f` returns false.
     /// Return `true` if `f` returns `true` for all elements.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -640,7 +640,7 @@ impl TrieSet {
 
     /// Get an iterator over the values in the set, in sorted order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -664,7 +664,7 @@ impl TrieSet {
     /// Get an iterator pointing to the first value that is not less than `val`.
     /// If all values in the set are less than `val` an empty iterator is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -681,7 +681,7 @@ impl TrieSet {
     /// Get an iterator pointing to the first value that key is greater than `val`.
     /// If all values in the set are less than or equal to `val` an empty iterator is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TrieSet;

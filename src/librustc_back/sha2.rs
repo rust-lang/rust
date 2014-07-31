@@ -222,14 +222,14 @@ impl <T: FixedBuffer> StandardPadding for T {
 pub trait Digest {
     /// Provide message data.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * input - A vector of message data
     fn input(&mut self, input: &[u8]);
 
     /// Retrieve the digest result. This method may be called multiple times.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * out - the vector to hold the result. Must be large enough to contain output_bits().
     fn result(&mut self, out: &mut [u8]);
@@ -243,7 +243,7 @@ pub trait Digest {
 
     /// Convenience function that feeds a string into a digest.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `input` The string to feed into the digest
     fn input_str(&mut self, input: &str) {

@@ -150,7 +150,7 @@ static NAN_BUF:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
  * This is meant to be a common base implementation for all integral string
  * conversion functions like `to_string()` or `to_str_radix()`.
  *
- * # Arguments
+ * ## Arguments
  * - `num`           - The number to convert. Accepts any number that
  *                     implements the numeric traits.
  * - `radix`         - Base to use. Accepts only the values 2-36.
@@ -161,13 +161,13 @@ static NAN_BUF:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
  * - `f`             - a callback which will be invoked for each ascii character
  *                     which composes the string representation of this integer
  *
- * # Return value
+ * ## Return value
  * A tuple containing the byte vector, and a boolean flag indicating
  * whether it represents a special value like `inf`, `-inf`, `NaN` or not.
  * It returns a tuple because there can be ambiguity between a special value
  * and a number representation at higher bases.
  *
- * # Failure
+ * ## Failure
  * - Fails if `radix` < 2 or `radix` > 36.
  */
 #[deprecated = "format!() and friends should be favored instead"]
@@ -230,7 +230,7 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
  * This is meant to be a common base implementation for all numeric string
  * conversion functions like `to_string()` or `to_str_radix()`.
  *
- * # Arguments
+ * ## Arguments
  * - `num`           - The number to convert. Accepts any number that
  *                     implements the numeric traits.
  * - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
@@ -246,13 +246,13 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
  * - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
  *                     exponential notation is desired.
  *
- * # Return value
+ * ## Return value
  * A tuple containing the byte vector, and a boolean flag indicating
  * whether it represents a special value like `inf`, `-inf`, `NaN` or not.
  * It returns a tuple because there can be ambiguity between a special value
  * and a number representation at higher bases.
  *
- * # Failure
+ * ## Failure
  * - Fails if `radix` < 2 or `radix` > 36.
  * - Fails if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
  *   between digit and exponent sign `'e'`.
@@ -514,7 +514,7 @@ static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * be a common base implementation for all numeric string conversion
  * functions like `from_str()` or `from_str_radix()`.
  *
- * # Arguments
+ * ## Arguments
  * - `buf`        - The byte slice to parse.
  * - `radix`      - Which base to parse the number as. Accepts 2-36.
  * - `negative`   - Whether to accept negative numbers.
@@ -534,12 +534,12 @@ static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - `ignore_underscores` - Whether all underscores within the string should
  *                          be ignored.
  *
- * # Return value
+ * ## Return value
  * Returns `Some(n)` if `buf` parses to a number n without overflowing, and
  * `None` otherwise, depending on the constraints set by the remaining
  * arguments.
  *
- * # Failure
+ * ## Failure
  * - Fails if `radix` < 2 or `radix` > 36.
  * - Fails if `radix` > 14 and `exponent` is `ExpDec` due to conflict
  *   between digit and exponent sign `'e'`.

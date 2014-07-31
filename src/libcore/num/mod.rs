@@ -51,7 +51,7 @@ pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
 
 /// Defines an additive identity element for `Self`.
 ///
-/// # Deriving
+/// ## Deriving
 ///
 /// This trait can be automatically be derived using `#[deriving(Zero)]`
 /// attribute. If you choose to use this, make sure that the laws outlined in
@@ -59,14 +59,14 @@ pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
 pub trait Zero: Add<Self, Self> {
     /// Returns the additive identity element of `Self`, `0`.
     ///
-    /// # Laws
+    /// ## Laws
     ///
     /// ~~~text
     /// a + 0 = a       ∀ a ∈ Self
     /// 0 + a = a       ∀ a ∈ Self
     /// ~~~
     ///
-    /// # Purity
+    /// ## Purity
     ///
     /// This function should return the same result at all times regardless of
     /// external mutable state, for example values stored in TLS or in
@@ -112,14 +112,14 @@ zero_impl!(f64, 0.0f64)
 pub trait One: Mul<Self, Self> {
     /// Returns the multiplicative identity element of `Self`, `1`.
     ///
-    /// # Laws
+    /// ## Laws
     ///
     /// ~~~text
     /// a * 1 = a       ∀ a ∈ Self
     /// 1 * a = a       ∀ a ∈ Self
     /// ~~~
     ///
-    /// # Purity
+    /// ## Purity
     ///
     /// This function should return the same result at all times regardless of
     /// external mutable state, for example values stored in TLS or in
@@ -241,7 +241,7 @@ macro_rules! signed_float_impl(
                 unsafe { $fdim(*self, *other) }
             }
 
-            /// # Returns
+            /// ## Returns
             ///
             /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
             /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
@@ -308,7 +308,7 @@ trait_impl!(Unsigned for uint u8 u16 u32 u64)
 
 /// Raises a value to the power of exp, using exponentiation by squaring.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::num;
@@ -395,7 +395,7 @@ pub trait Int: Primitive
              + Shr<uint,Self> {
     /// Returns the number of ones in the binary representation of the integer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let n = 0b01001100u8;
@@ -406,7 +406,7 @@ pub trait Int: Primitive
 
     /// Returns the number of zeros in the binary representation of the integer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let n = 0b01001100u8;
@@ -421,7 +421,7 @@ pub trait Int: Primitive
     /// Returns the number of leading zeros in the in the binary representation
     /// of the integer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let n = 0b0101000u16;
@@ -433,7 +433,7 @@ pub trait Int: Primitive
     /// Returns the number of trailing zeros in the in the binary representation
     /// of the integer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let n = 0b0101000u16;
@@ -445,7 +445,7 @@ pub trait Int: Primitive
     /// Shifts the bits to the left by a specified amount amount, `n`, wrapping
     /// the truncated bits to the end of the resulting integer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let n = 0x0123456789ABCDEFu64;
@@ -458,7 +458,7 @@ pub trait Int: Primitive
     /// Shifts the bits to the right by a specified amount amount, `n`, wrapping
     /// the truncated bits to the beginning of the resulting integer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let n = 0x0123456789ABCDEFu64;
@@ -470,7 +470,7 @@ pub trait Int: Primitive
 
     /// Reverses the byte order of the integer.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let n = 0x0123456789ABCDEFu64;
@@ -484,7 +484,7 @@ pub trait Int: Primitive
     ///
     /// On big endian this is a no-op. On little endian the bytes are swapped.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let n = 0x0123456789ABCDEFu64;
@@ -504,7 +504,7 @@ pub trait Int: Primitive
     ///
     /// On little endian this is a no-op. On big endian the bytes are swapped.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let n = 0x0123456789ABCDEFu64;
@@ -524,7 +524,7 @@ pub trait Int: Primitive
     ///
     /// On big endian this is a no-op. On little endian the bytes are swapped.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let n = 0x0123456789ABCDEFu64;
@@ -544,7 +544,7 @@ pub trait Int: Primitive
     ///
     /// On little endian this is a no-op. On big endian the bytes are swapped.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let n = 0x0123456789ABCDEFu64;
@@ -1130,7 +1130,7 @@ impl_from_primitive!(f64, to_f64)
 
 /// Cast from one machine scalar to another.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::num;
@@ -1218,7 +1218,7 @@ impl<T: CheckedAdd + CheckedSub + Zero + PartialOrd + Bounded> Saturating for T 
 pub trait CheckedAdd: Add<Self, Self> {
     /// Adds two numbers, checking for overflow. If overflow happens, `None` is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::num::CheckedAdd;
@@ -1279,7 +1279,7 @@ checked_impl!(CheckedAdd, checked_add, i64, intrinsics::i64_add_with_overflow)
 pub trait CheckedSub: Sub<Self, Self> {
     /// Subtracts two numbers, checking for underflow. If underflow happens, `None` is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::num::CheckedSub;
@@ -1315,7 +1315,7 @@ pub trait CheckedMul: Mul<Self, Self> {
     /// Multiplies two numbers, checking for underflow or overflow. If underflow or overflow
     /// happens, `None` is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::num::CheckedMul;
@@ -1350,7 +1350,7 @@ pub trait CheckedDiv: Div<Self, Self> {
     /// Divides two numbers, checking for underflow or overflow. If underflow or overflow happens,
     /// `None` is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::num::CheckedDiv;

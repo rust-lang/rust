@@ -27,13 +27,13 @@ use ptr::RawPtr;
 /// An iterator that reads a single byte on each iteration,
 /// until `.read_byte()` returns `EndOfFile`.
 ///
-/// # Notes about the Iteration Protocol
+/// ## Notes about the Iteration Protocol
 ///
 /// The `Bytes` may yield `None` and thus terminate
 /// an iteration, but continue to yield elements if iteration
 /// is attempted again.
 ///
-/// # Error
+/// ## Error
 ///
 /// Any error other than `EndOfFile` that is produced by the underlying Reader
 /// is returned by the iterator and should be handled by the caller.

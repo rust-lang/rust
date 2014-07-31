@@ -15,7 +15,7 @@
 //! stack-allocation strategy. This can be optionally linked in to rust
 //! programs in order to provide M:N functionality inside of 1:1 programs.
 //!
-//! # Architecture
+//! ## Architecture
 //!
 //! An M:N scheduling library implies that there are N OS thread upon which M
 //! "green threads" are multiplexed. In other words, a set of green threads are
@@ -80,7 +80,7 @@
 //! stealing simply implies what with M green threads and N schedulers where
 //! M > N it is very likely that all schedulers will be busy executing work.
 //!
-//! # Considerations when using libgreen
+//! ## Considerations when using libgreen
 //!
 //! An M:N runtime has both pros and cons, and there is no one answer as to
 //! whether M:N or 1:1 is appropriate to use. As always, there are many
@@ -110,7 +110,7 @@
 //! lost cause. These are simply just concerns which should be considered when
 //! invoking native code.
 //!
-//! # Starting with libgreen
+//! ## Starting with libgreen
 //!
 //! ```rust
 //! extern crate green;
@@ -128,7 +128,7 @@
 //! > **Note**: This `main` function in this example does *not* have I/O
 //! >           support. The basic event loop does not provide any support
 //!
-//! # Starting with I/O support in libgreen
+//! ## Starting with I/O support in libgreen
 //!
 //! ```rust
 //! extern crate green;
@@ -157,7 +157,7 @@
 //! }
 //! ```
 //!
-//! # Using a scheduler pool
+//! ## Using a scheduler pool
 //!
 //! This library adds a `GreenTaskBuilder` trait that extends the methods
 //! available on `std::task::TaskBuilder` to allow spawning a green task,
@@ -255,7 +255,7 @@ pub mod task;
 
 /// A helper macro for booting a program with libgreen
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// #![feature(phase)]
@@ -285,7 +285,7 @@ macro_rules! green_start( ($f:ident) => (
 /// This function will block until the entire pool of M:N schedulers have
 /// exited. This function also requires a local task to be available.
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * `argc` & `argv` - The argument vector. On Unix this information is used
 ///   by os::args.
@@ -294,7 +294,7 @@ macro_rules! green_start( ($f:ident) => (
 ///            down. The entire pool (and this function) will only return once
 ///            all child tasks have finished executing.
 ///
-/// # Return value
+/// ## Return value
 ///
 /// The return value is used as the process return code. 0 on success, 101 on
 /// error.

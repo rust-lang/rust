@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! # The Rust Core Library
+//! ## The Rust Core Library
 //!
 //! The Rust Core Library is the dependency-free foundation of [The
 //! Rust Standard Library](../std/index.html). It is the portable glue
@@ -26,7 +26,7 @@
 //! subject to change over time; only the interface exposed through libstd is
 //! intended to be stable.
 //!
-//! # How to use the core library
+//! ## How to use the core library
 //!
 // FIXME: Fill me in with more detail when the interface settles
 //! This library is built on the assumption of a few existing symbols:

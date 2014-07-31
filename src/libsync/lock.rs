@@ -99,7 +99,7 @@ impl<'a> Condvar<'a> {
     ///
     /// wait() is equivalent to wait_on(0).
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// A task which is killed while waiting on a condition variable will wake
     /// up, fail, and unlock the associated lock as it unwinds.
@@ -153,7 +153,7 @@ impl<'a> Condvar<'a> {
 /// type `T`. A mutex always provides exclusive access, and concurrent requests
 /// will block while the mutex is already locked.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use sync::{Mutex, Arc};
@@ -213,7 +213,7 @@ impl<T: Send> Mutex<T> {
     /// when dropped. All concurrent tasks attempting to lock the mutex will
     /// block while the returned value is still alive.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Failing while inside the Mutex will unlock the Mutex while unwinding, so
     /// that other tasks won't block forever. It will also poison the Mutex:
@@ -254,7 +254,7 @@ impl<'a, T: Send> DerefMut<T> for MutexGuard<'a, T> {
 /// A dual-mode reader-writer lock. The data can be accessed mutably or
 /// immutably, and immutably-accessing tasks may run concurrently.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use sync::{RWLock, Arc};
@@ -317,7 +317,7 @@ impl<T: Send + Share> RWLock<T> {
     /// Access the underlying data mutably. Locks the rwlock in write mode;
     /// other readers and writers will block.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Failing while inside the lock will unlock the lock while unwinding, so
     /// that other tasks won't block forever. As Mutex.lock, it will also poison
@@ -345,7 +345,7 @@ impl<T: Send + Share> RWLock<T> {
     /// Access the underlying data immutably. May run concurrently with other
     /// reading tasks.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Failing will unlock the lock while unwinding. However, unlike all other
     /// access modes, this will not poison the lock.

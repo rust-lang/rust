@@ -53,7 +53,7 @@
 //
 // FIXME: Show how `Option` is used in practice, with lots of methods
 //
-//! # Options and pointers ("nullable" pointers)
+//! ## Options and pointers ("nullable" pointers)
 //!
 //! Rust's pointer types must always point to a valid location; there are
 //! no "null" pointers. Instead, Rust has *optional* pointers, like
@@ -85,7 +85,7 @@
 //! representation of `Option<Box<T>>` a single pointer. Optional pointers
 //! in Rust are stored as efficiently as any other pointer type.
 //!
-//! # Examples
+//! ## Examples
 //!
 //! Basic pattern matching on `Option`:
 //!
@@ -191,7 +191,7 @@ impl<T> Option<T> {
 
     /// Convert from `Option<T>` to `Option<&T>`
     ///
-    /// # Example
+    /// ## Example
     ///
     /// Convert an `Option<String>` into an `Option<int>`, preserving the original.
     /// The `map` method takes the `self` argument by value, consuming the original,
@@ -240,7 +240,7 @@ impl<T> Option<T> {
 
     /// Unwraps an option, yielding the content of a `Some`
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the value is a `None` with a custom failure message provided by
     /// `msg`.
@@ -254,11 +254,11 @@ impl<T> Option<T> {
 
     /// Moves a value out of an option type and returns it, consuming the `Option`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the self value equals `None`.
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// In general, because this function may fail, its use is discouraged.
     /// Instead, prefer to use pattern matching and handle the `None`
@@ -295,7 +295,7 @@ impl<T> Option<T> {
 
     /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value
     ///
-    /// # Example
+    /// ## Example
     ///
     /// Convert an `Option<String>` into an `Option<uint>`, consuming the original:
     ///
@@ -438,7 +438,7 @@ impl<T> Option<T> {
     /// The option dance. Moves a value out of an option type and returns it,
     /// replacing the original with `None`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the value equals `None`.
     #[inline]
@@ -451,11 +451,11 @@ impl<T> Option<T> {
 
     /// Gets an immutable reference to the value inside an option.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the value equals `None`
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// In general, because this function may fail, its use is discouraged
     /// (calling `get` on `None` is akin to dereferencing a null pointer).
@@ -471,11 +471,11 @@ impl<T> Option<T> {
 
     /// Gets a mutable reference to the value inside an option.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the value equals `None`
     ///
-    /// # Safety note
+    /// ## Safety note
     ///
     /// In general, because this function may fail, its use is discouraged
     /// (calling `get` on `None` is akin to dereferencing a null pointer).
@@ -497,7 +497,7 @@ impl<T: Default> Option<T> {
     /// value, otherwise if `None`, returns the default value for that
     /// type.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// Convert a string to an integer, turning poorly-formed strings
     /// into 0 (the default value for integers). `from_str` converts

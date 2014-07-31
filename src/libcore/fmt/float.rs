@@ -76,7 +76,7 @@ static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * This is meant to be a common base implementation for all numeric string
  * conversion functions like `to_string()` or `to_str_radix()`.
  *
- * # Arguments
+ * ## Arguments
  * - `num`           - The number to convert. Accepts any number that
  *                     implements the numeric traits.
  * - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
@@ -94,7 +94,7 @@ static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - `f`             - A closure to invoke with the bytes representing the
  *                     float.
  *
- * # Failure
+ * ## Failure
  * - Fails if `radix` < 2 or `radix` > 36.
  * - Fails if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
  *   between digit and exponent sign `'e'`.

@@ -189,7 +189,7 @@ impl<'a> BytesContainer for &'a Path {
 impl GenericPathUnsafe for Path {
     /// See `GenericPathUnsafe::from_vec_unchecked`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if not valid UTF-8.
     #[inline]
@@ -203,7 +203,7 @@ impl GenericPathUnsafe for Path {
 
     /// See `GenericPathUnsafe::set_filename_unchecked`.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if not valid UTF-8.
     unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T) {
@@ -630,7 +630,7 @@ impl GenericPath for Path {
 impl Path {
     /// Returns a new Path from a byte vector or string
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails the task if the vector contains a NUL.
     /// Fails if invalid UTF-8.

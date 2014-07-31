@@ -23,7 +23,7 @@
 //! work everywhere. The `RawPtr` also defines the `offset` method,
 //! for pointer math.
 //!
-//! # Common ways to create unsafe pointers
+//! ## Common ways to create unsafe pointers
 //!
 //! ## 1. Coerce a reference (`&T`) or mutable reference (`&mut T`).
 //!
@@ -104,7 +104,7 @@ pub use intrinsics::set_memory;
 
 /// Create a null pointer.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::ptr;
@@ -118,7 +118,7 @@ pub fn null<T>() -> *const T { 0 as *const T }
 
 /// Create an unsafe mutable null pointer.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::ptr;
@@ -222,7 +222,7 @@ pub unsafe fn array_each_with_len<T>(arr: *const *const T, len: uint,
 /// an array of pointers), iterate through each *const T,
 /// passing to the provided callback function
 ///
-/// # Safety Note
+/// ## Safety Note
 ///
 /// This will only work with a null-terminated
 /// pointer array.
@@ -268,7 +268,7 @@ pub trait RawPtr<T> {
     /// Returns `None` if the pointer is null, or else returns the value wrapped
     /// in `Some`.
     ///
-    /// # Safety Notes
+    /// ## Safety Notes
     ///
     /// While this method is useful for null-safety, it is important to note
     /// that this is still an unsafe operation because the returned value could

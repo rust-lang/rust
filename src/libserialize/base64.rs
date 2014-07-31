@@ -63,7 +63,7 @@ impl<'a> ToBase64 for &'a [u8] {
     /**
      * Turn a vector of `u8` bytes into a base64 string.
      *
-     * # Example
+     * ## Example
      *
      * ```rust
      * extern crate serialize;
@@ -186,7 +186,7 @@ impl<'a> FromBase64 for &'a str {
      * You can use the `String::from_utf8` function in `std::string` to turn a
      * `Vec<u8>` into a string with characters corresponding to those values.
      *
-     * # Example
+     * ## Example
      *
      * This converts a string literal to base64 and back.
      *

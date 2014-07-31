@@ -422,7 +422,7 @@ pub fn trans_fn_ref_with_vtables(
      * Translates a reference to a fn/method item, monomorphizing and
      * inlining as it goes.
      *
-     * # Parameters
+     * ## Parameters
      *
      * - `bcx`: the current block where the reference to the fn occurs
      * - `def_id`: def id of the fn or method item being referenced

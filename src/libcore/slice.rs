@@ -99,11 +99,11 @@ pub trait ImmutableVector<'a, T> {
      * `size`. The windows overlap. If the vector is shorter than
      * `size`, the iterator returns no values.
      *
-     * # Failure
+     * ## Failure
      *
      * Fails if `size` is 0.
      *
-     * # Example
+     * ## Example
      *
      * Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`,
      * `[3,4]`):
@@ -124,11 +124,11 @@ pub trait ImmutableVector<'a, T> {
      * length of the vector, then the last chunk will not have length
      * `size`.
      *
-     * # Failure
+     * ## Failure
      *
      * Fails if `size` is 0.
      *
-     * # Example
+     * ## Example
      *
      * Print the vector two elements at a time (i.e. `[1,2]`,
      * `[3,4]`, `[5]`):
@@ -428,7 +428,7 @@ pub trait MutableVector<'a, T> {
      * length of the vector, then the last chunk will not have length
      * `size`.
      *
-     * # Failure
+     * ## Failure
      *
      * Fails if `size` is 0.
      */
@@ -474,12 +474,12 @@ pub trait MutableVector<'a, T> {
     ///
     /// Fails if `a` or `b` are out of bounds.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * a - The index of the first element
     /// * b - The index of the second element
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let mut v = ["a", "b", "c", "d"];
@@ -497,7 +497,7 @@ pub trait MutableVector<'a, T> {
     ///
     /// Fails if `mid > len`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let mut v = [1i, 2, 3, 4, 5, 6];
@@ -525,7 +525,7 @@ pub trait MutableVector<'a, T> {
 
     /// Reverse the order of elements in a vector, in place.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let mut v = [1i, 2, 3];
@@ -554,7 +554,7 @@ pub trait MutableVector<'a, T> {
     /// does run the destructor at `index`. It is equivalent to
     /// `self[index] = val`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let mut v = ["foo".to_string(), "bar".to_string(), "baz".to_string()];
@@ -574,7 +574,7 @@ pub trait MutableVector<'a, T> {
     /// old value and hence is only suitable when the vector
     /// is newly allocated.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let mut v = ["foo".to_string(), "bar".to_string()];
@@ -808,7 +808,7 @@ pub trait MutableCloneableVector<T> {
     /// shorter of `self.len()` and `src.len()`). Returns the number
     /// of elements copied.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::slice::MutableCloneableVector;

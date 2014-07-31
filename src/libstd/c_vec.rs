@@ -67,7 +67,7 @@ impl<T> CVec<T> {
     /// Fails if the given pointer is null. The returned vector will not attempt
     /// to deallocate the vector when dropped.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * base - A raw pointer to a buffer
     /// * len - The number of elements in the buffer
@@ -85,7 +85,7 @@ impl<T> CVec<T> {
     ///
     /// Fails if the given pointer is null.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * base - A foreign pointer to a buffer
     /// * len - The number of elements in the buffer

@@ -691,7 +691,7 @@ impl DefaultResizePolicy {
 /// 3. Emmanuel Goossaert. ["Robin Hood hashing: backward shift
 ///    deletion"](http://codecapsule.com/2013/11/17/robin-hood-hashing-backward-shift-deletion/)
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::collections::HashMap;
@@ -1039,7 +1039,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> MutableMap<K, V> for HashMap<K, V, H> 
 impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     /// Create an empty HashMap.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1052,7 +1052,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
 
     /// Creates an empty hash map with the given initial capacity.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1070,7 +1070,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// The creates map has the default initial capacity.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1093,7 +1093,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1290,7 +1290,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Return the value corresponding to the key in the map, or insert
     /// and return the value if it doesn't exist.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1309,7 +1309,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Return the value corresponding to the key in the map, or create,
     /// insert, and return a new value if it doesn't exist.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1330,7 +1330,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Otherwise, modify the existing value for the key.
     /// Returns the new or modified value for the key.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1362,7 +1362,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// [`insert_or_update_with`](#method.insert_or_update_with)
     /// for less general and more friendly variations of this.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1419,11 +1419,11 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Retrieves a value for the given key.
     /// See [`find`](../trait.Map.html#tymethod.find) for a non-failing alternative.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the key is not present.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1442,11 +1442,11 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Retrieves a mutable value for the given key.
     /// See [`find_mut`](../trait.MutableMap.html#tymethod.find_mut) for a non-failing alternative.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the key is not present.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1496,7 +1496,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Remove an equivalent key from the map, returning the value at the
     /// key if the key was previously in the map.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// This is a slightly silly example where we define the number's parity as
     /// the equivalence class. It is important that the values hash the same,
@@ -1558,7 +1558,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// An iterator visiting all keys in arbitrary order.
     /// Iterator element type is `&'a K`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1579,7 +1579,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// An iterator visiting all values in arbitrary order.
     /// Iterator element type is `&'a V`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1600,7 +1600,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// An iterator visiting all key-value pairs in arbitrary order.
     /// Iterator element type is `(&'a K, &'a V)`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1622,7 +1622,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// with mutable references to the values.
     /// Iterator element type is `(&'a K, &'a mut V)`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1649,7 +1649,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// pair out of the map in arbitrary order. The map cannot be used after
     /// calling this.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1670,7 +1670,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
 impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Return a copy of the value corresponding to the key.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1685,11 +1685,11 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
 
     /// Return a copy of the value corresponding to the key.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the key is not present.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1785,7 +1785,7 @@ pub type SetMoveItems<K> =
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
 /// requires that the elements implement the `Eq` and `Hash` traits.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::collections::HashSet;
@@ -1848,7 +1848,7 @@ pub struct HashSet<T, H = RandomSipHasher> {
 impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     /// Create an empty HashSet.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -1862,7 +1862,7 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     /// Create an empty HashSet with space for at least `n` elements in
     /// the hash table.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -1880,7 +1880,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// The hash set is also created with the default initial capacity.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::HashSet;
@@ -1903,7 +1903,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::collections::HashSet;
@@ -1920,7 +1920,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 
     /// Reserve space for at least `n` elements in the hash table.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -1934,7 +1934,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// Returns true if the hash set contains a value equivalent to the
     /// given query value.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// This is a slightly silly example where we define the number's
     /// parity as the equivilance class. It is important that the
@@ -1979,7 +1979,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// An iterator visiting all elements in arbitrary order.
     /// Iterator element type is &'a T.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -2000,7 +2000,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// of the set in arbitrary order. The set cannot be used after calling
     /// this.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -2022,7 +2022,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 
     /// Visit the values representing the difference.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -2051,7 +2051,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 
     /// Visit the values representing the symmetric difference.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -2076,7 +2076,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 
     /// Visit the values representing the intersection.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -2101,7 +2101,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 
     /// Visit the values representing the union.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::HashSet;

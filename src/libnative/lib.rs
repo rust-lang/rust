@@ -14,7 +14,7 @@
 //! runtime. In addition, all I/O provided by this crate is the thread blocking
 //! version of I/O.
 //!
-//! # Starting with libnative
+//! ## Starting with libnative
 //!
 //! ```rust
 //! extern crate native;
@@ -29,7 +29,7 @@
 //! }
 //! ```
 //!
-//! # Force spawning a native task
+//! ## Force spawning a native task
 //!
 //! ```rust
 //! extern crate native;

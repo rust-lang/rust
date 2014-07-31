@@ -116,7 +116,7 @@ impl AtomicBool {
     /// replace the current value with `new`. Return the previous value.
     /// If the return value is equal to `old` then the value was updated.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use std::sync::Arc;
@@ -167,7 +167,7 @@ impl AtomicBool {
     /// argument `val`, and sets the new value to the result.
     /// Returns the previous value.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
@@ -197,7 +197,7 @@ impl AtomicBool {
     /// argument `val`, and sets the new value to the result.
     /// Returns the previous value.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
@@ -228,7 +228,7 @@ impl AtomicBool {
     /// argument `val`, and sets the new value to the result.
     /// Returns the previous value.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
@@ -258,7 +258,7 @@ impl AtomicBool {
     /// argument `val`, and sets the new value to the result.
     /// Returns the previous value.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
@@ -319,7 +319,7 @@ impl AtomicInt {
 
     /// Add to the current value, returning the previous
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicInt, SeqCst};
@@ -335,7 +335,7 @@ impl AtomicInt {
 
     /// Subtract from the current value, returning the previous
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicInt, SeqCst};
@@ -351,7 +351,7 @@ impl AtomicInt {
 
     /// Bitwise and with the current value, returning the previous
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
@@ -366,7 +366,7 @@ impl AtomicInt {
 
     /// Bitwise or with the current value, returning the previous
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
@@ -381,7 +381,7 @@ impl AtomicInt {
 
     /// Bitwise xor with the current value, returning the previous
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
@@ -431,7 +431,7 @@ impl AtomicUint {
 
     /// Add to the current value, returning the previous
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
@@ -447,7 +447,7 @@ impl AtomicUint {
 
     /// Subtract from the current value, returning the previous
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
@@ -463,7 +463,7 @@ impl AtomicUint {
 
     /// Bitwise and with the current value, returning the previous
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
@@ -478,7 +478,7 @@ impl AtomicUint {
 
     /// Bitwise or with the current value, returning the previous
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
@@ -493,7 +493,7 @@ impl AtomicUint {
 
     /// Bitwise xor with the current value, returning the previous
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
@@ -675,7 +675,7 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
 ///
 /// Accepts `Acquire`, `Release`, `AcqRel` and `SeqCst` orderings.
 ///
-/// # Failure
+/// ## Failure
 ///
 /// Fails if `order` is `Relaxed`
 #[inline]

@@ -14,7 +14,7 @@
 //! The flags should only be defined for integer types, otherwise unexpected
 //! type errors may occur at compile time.
 //!
-//! # Example
+//! ## Example
 //!
 //! ~~~rust
 //! bitflags!(
@@ -71,18 +71,18 @@
 //! }
 //! ~~~
 //!
-//! # Attributes
+//! ## Attributes
 //!
 //! Attributes can be attached to the generated `struct` by placing them
 //! before the `flags` keyword.
 //!
-//! # Derived traits
+//! ## Derived traits
 //!
 //! The `PartialEq` and `Clone` traits are automatically derived for the `struct` using
 //! the `deriving` attribute. Additional traits can be derived by providing an
 //! explicit `deriving` attribute on `flags`.
 //!
-//! # Operators
+//! ## Operators
 //!
 //! The following operator traits are implemented for the generated `struct`:
 //!
@@ -91,7 +91,7 @@
 //! - `Sub`: set difference
 //! - `Not`: set complement
 //!
-//! # Methods
+//! ## Methods
 //!
 //! The following methods are defined for the generated `struct`:
 //!

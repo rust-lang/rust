@@ -11,7 +11,7 @@
 //! A proper mutex implementation regardless of the "flavor of task" which is
 //! acquiring the lock.
 
-// # Implementation of Rust mutexes
+// ## Implementation of Rust mutexes
 //
 // Most answers to the question of "how do I use a mutex" are "use pthreads",
 // but for Rust this isn't quite sufficient. Green threads cannot acquire an OS
@@ -85,7 +85,7 @@ pub static NATIVE_BLOCKED: uint = 1 << 2;
 /// available. The mutex can also be statically initialized or created via a
 /// `new` constructor.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use sync::mutex::Mutex;
@@ -122,7 +122,7 @@ enum Flavor {
 /// to a `Mutex`, a `destroy` method. This method is unsafe to call, and
 /// documentation can be found directly on the method.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use sync::mutex::{StaticMutex, MUTEX_INIT};

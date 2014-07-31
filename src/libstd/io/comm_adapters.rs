@@ -22,7 +22,7 @@ use vec::Vec;
 
 /// Allows reading from a rx.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::io::ChanReader;
@@ -88,7 +88,7 @@ impl Reader for ChanReader {
 
 /// Allows writing to a tx.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// # #![allow(unused_must_use)]

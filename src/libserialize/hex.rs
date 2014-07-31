@@ -27,7 +27,7 @@ impl<'a> ToHex for &'a [u8] {
     /**
      * Turn a vector of `u8` bytes into a hexadecimal string.
      *
-     * # Example
+     * ## Example
      *
      * ```rust
      * extern crate serialize;
@@ -85,7 +85,7 @@ impl<'a> FromHex for &'a str {
      * You can use the `String::from_utf8` function in `std::string` to turn a
      * `Vec<u8>` into a string with characters corresponding to those values.
      *
-     * # Example
+     * ## Example
      *
      * This converts a string literal to hexadecimal and back.
      *

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /*!
- * # Categorization
+ * ## Categorization
  *
  * The job of the categorization module is to analyze an expression to
  * determine what kind of memory is used in evaluating it (for example,
@@ -823,7 +823,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
         //! an auto-adjustment, where N is the number of autoderefs
         //! in that adjustment.
         //!
-        //! # Parameters
+        //! ## Parameters
         //! - `elt`: the AST node being indexed
         //! - `base_cmt`: the cmt of `elt`
         //! - `derefs`: the deref number to be used for

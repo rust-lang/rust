@@ -10,7 +10,7 @@
 
 /*!
  *
- * # Compilation of match statements
+ * ## Compilation of match statements
  *
  * I will endeavor to explain the code as best I can.  I have only a loose
  * understanding of some parts of it.
@@ -1501,7 +1501,7 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>,
      * Creates entries in the `llargs` map for each of the bindings
      * in `pat`.
      *
-     * # Arguments
+     * ## Arguments
      *
      * - `pat` is the argument pattern
      * - `llval` is a pointer to the argument value (in other words,
@@ -1614,7 +1614,7 @@ fn bind_irrefutable_pat<'a>(
      * LLVM is able to optimize the code, but it causes longer compile
      * times and makes the generated code nigh impossible to read.
      *
-     * # Arguments
+     * ## Arguments
      * - bcx: starting basic block context
      * - pat: the irrefutable pattern being matched.
      * - val: the value being matched -- must be an lvalue (by ref, with cleanup)

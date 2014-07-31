@@ -31,7 +31,7 @@ use rt::rtio;
 /// IPv6 addresses, and there is no corresponding notion of a server because UDP
 /// is a datagram protocol.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust,no_run
 /// # #![allow(unused_must_use)]

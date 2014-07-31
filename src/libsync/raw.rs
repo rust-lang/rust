@@ -216,7 +216,7 @@ pub struct Condvar<'a> {
 impl<'a> Condvar<'a> {
     /// Atomically drop the associated lock, and block until a signal is sent.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// A task which is killed while waiting on a condition variable will wake
     /// up, fail, and unlock the associated lock as it unwinds.
@@ -367,7 +367,7 @@ pub struct SemaphoreGuard<'a> {
 impl Semaphore {
     /// Create a new semaphore with the specified count.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// This function will fail if `count` is negative.
     pub fn new(count: int) -> Semaphore {
@@ -396,7 +396,7 @@ impl Semaphore {
 /// A blocking, bounded-waiting, mutual exclusion lock with an associated
 /// FIFO condition variable.
 ///
-/// # Failure
+/// ## Failure
 /// A task which fails while holding a mutex will unlock the mutex as it
 /// unwinds.
 pub struct Mutex {
@@ -443,7 +443,7 @@ impl Mutex {
 
 /// A blocking, no-starvation, reader-writer lock with an associated condvar.
 ///
-/// # Failure
+/// ## Failure
 ///
 /// A task which fails while holding an rwlock will unlock the rwlock as it
 /// unwinds.
@@ -514,7 +514,7 @@ impl RWLock {
     /// method on the returned guard. Additionally, the guard will contain a
     /// `Condvar` attached to this lock.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use sync::raw::RWLock;

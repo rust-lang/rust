@@ -66,7 +66,7 @@ use collections::str::SendStr;
 /// context while having a point in the future where destruction is allowed.
 /// More information can be found on these specific methods.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```no_run
 /// extern crate native;
@@ -196,7 +196,7 @@ impl Task {
     /// It is invalid to call this function with a task that has been previously
     /// destroyed via a failed call to `run`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```no_run
     /// extern crate native;

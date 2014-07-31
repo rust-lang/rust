@@ -33,7 +33,7 @@
 //! already mutably borrowed; when this happens it results in task
 //! failure.
 //!
-//! # When to choose interior mutability
+//! ## When to choose interior mutability
 //!
 //! The more common inherited mutability, where one must have unique
 //! access to mutate a value, is one of the key language elements that
@@ -263,7 +263,7 @@ impl<T> RefCell<T> {
     /// The borrow lasts until the returned `Ref` exits scope. Multiple
     /// immutable borrows can be taken out at the same time.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the value is currently mutably borrowed.
     #[unstable]
@@ -296,7 +296,7 @@ impl<T> RefCell<T> {
     /// The borrow lasts until the returned `RefMut` exits scope. The value
     /// cannot be borrowed while this borrow is active.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the value is currently borrowed.
     #[unstable]
@@ -422,7 +422,7 @@ impl<'b, T> DerefMut<T> for RefMut<'b, T> {
 /// `UnsafeCell` doesn't opt-out from any kind, instead, types with an
 /// `UnsafeCell` interior are expected to opt-out from kinds themselves.
 ///
-/// # Example:
+/// ## Example:
 ///
 /// ```rust
 /// use std::cell::UnsafeCell;

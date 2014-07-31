@@ -27,7 +27,7 @@
 /// The multi-argument form of this macro fails with a string and has the
 /// `format!` syntax for building a string.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```should_fail
 /// # #![allow(unreachable_code)]
@@ -73,7 +73,7 @@ macro_rules! fail(
 /// This will invoke the `fail!` macro if the provided expression cannot be
 /// evaluated to `true` at runtime.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// // the failure message for these assertions is the stringified value of the
@@ -107,7 +107,7 @@ macro_rules! assert(
 ///
 /// On failure, this macro will print the values of the expressions.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// let a = 3i;
@@ -140,7 +140,7 @@ macro_rules! assert_eq(
 /// checks that are too expensive to be present in a release build but may be
 /// helpful during development.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// // the failure message for these assertions is the stringified value of the
@@ -170,7 +170,7 @@ macro_rules! debug_assert(
 /// useful for checks that are too expensive to be present in a release build
 /// but may be helpful during development.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// let a = 3i;
@@ -186,7 +186,7 @@ macro_rules! debug_assert_eq(
 /// executed. This is occasionally useful to put after loops that never
 /// terminate normally, but instead directly return from a function.
 ///
-/// # Example
+/// ## Example
 ///
 /// ~~~rust
 /// struct Item { weight: uint }
@@ -220,7 +220,7 @@ macro_rules! unimplemented(
 /// Use the syntax described in `std::fmt` to create a value of type `String`.
 /// See `std::fmt` for more information.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// format!("test");
@@ -237,7 +237,7 @@ macro_rules! format(
 /// Use the `format!` syntax to write data into a buffer of type `&mut Writer`.
 /// See `std::fmt` for more information.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// # #![allow(unused_must_use)]
@@ -276,7 +276,7 @@ macro_rules! print(
 /// The syntax of this macro is the same as that used for `format!`. For more
 /// information, see `std::fmt` and `std::io::stdio`.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// println!("hello there!");
@@ -289,7 +289,7 @@ macro_rules! println(
 
 /// Declare a task-local key with a specific type.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// local_data_key!(my_integer: int)
@@ -334,7 +334,7 @@ macro_rules! vec(
 /// receivers. It places no restrictions on the types of receivers given to
 /// this macro, this can be viewed as a heterogeneous select.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// let (tx1, rx1) = channel();
@@ -401,7 +401,7 @@ pub mod builtin {
     ///
     /// For more information, see the documentation in `std::fmt`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::fmt;
@@ -427,7 +427,7 @@ pub mod builtin {
     /// will be emitted.  To not emit a compile error, use the `option_env!`
     /// macro instead.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let home: &'static str = env!("HOME");
@@ -446,7 +446,7 @@ pub mod builtin {
     /// A compile time error is never emitted when using this macro regardless
     /// of whether the environment variable is present or not.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let key: Option<&'static str> = option_env!("SECRET_KEY");
@@ -465,7 +465,7 @@ pub mod builtin {
     /// literals, and integers less than 256. The byte slice returned is the
     /// utf8-encoding of strings and characters.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let rust = bytes!("r", 'u', "st", 255);
@@ -484,7 +484,7 @@ pub mod builtin {
     /// statement or expression position, meaning this macro may be difficult to
     /// use in some situations.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// #![feature(concat_idents)]
@@ -508,7 +508,7 @@ pub mod builtin {
     /// Integer and floating point literals are stringified in order to be
     /// concatenated.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let s = concat!("test", 10i, 'b', true);
@@ -523,7 +523,7 @@ pub mod builtin {
     /// the invocation of the `line!()` macro itself, but rather the first macro
     /// invocation leading up to the invocation of the `line!()` macro.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let current_line = line!();
@@ -538,7 +538,7 @@ pub mod builtin {
     /// the invocation of the `col!()` macro itself, but rather the first macro
     /// invocation leading up to the invocation of the `col!()` macro.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let current_col = col!();
@@ -554,7 +554,7 @@ pub mod builtin {
     /// first macro invocation leading up to the invocation of the `file!()`
     /// macro.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let this_file = file!();
@@ -569,7 +569,7 @@ pub mod builtin {
     /// stringification of all the tokens passed to the macro. No restrictions
     /// are placed on the syntax of the macro invocation itself.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let one_plus_one = stringify!(1 + 1);
@@ -584,7 +584,7 @@ pub mod builtin {
     /// contents of the filename specified. The file is located relative to the
     /// current file (similarly to how modules are found),
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust,ignore
     /// let secret_key = include_str!("secret-key.ascii");
@@ -598,7 +598,7 @@ pub mod builtin {
     /// the contents of the filename specified. The file is located relative to
     /// the current file (similarly to how modules are found),
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust,ignore
     /// let secret_key = include_bin!("secret-key.bin");
@@ -612,7 +612,7 @@ pub mod builtin {
     /// leading back up to the crate root. The first component of the path
     /// returned is the name of the crate currently being compiled.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// mod test {
@@ -635,7 +635,7 @@ pub mod builtin {
     /// The syntax given to this macro is the same syntax as the `cfg`
     /// attribute.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let my_directory = if cfg!(windows) {

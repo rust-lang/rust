@@ -15,7 +15,7 @@ pub trait Integer: Num + PartialOrd
                  + Rem<Self, Self> {
     /// Floored integer division.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ~~~
     /// # use num::Integer;
@@ -39,7 +39,7 @@ pub trait Integer: Num + PartialOrd
     /// assert!(n.div_floor(&d) * d + n.mod_floor(&d) == n)
     /// ~~~
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ~~~
     /// # use num::Integer;
@@ -57,7 +57,7 @@ pub trait Integer: Num + PartialOrd
 
     /// Greatest Common Divisor (GCD).
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ~~~
     /// # use num::Integer;
@@ -68,7 +68,7 @@ pub trait Integer: Num + PartialOrd
 
     /// Lowest Common Multiple (LCM).
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ~~~
     /// # use num::Integer;
@@ -83,7 +83,7 @@ pub trait Integer: Num + PartialOrd
 
     /// Returns `true` if `other` is a multiple of `self`.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ~~~
     /// # use num::Integer;
@@ -94,7 +94,7 @@ pub trait Integer: Num + PartialOrd
 
     /// Returns `true` if the number is even.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ~~~
     /// # use num::Integer;
@@ -105,7 +105,7 @@ pub trait Integer: Num + PartialOrd
 
     /// Returns `true` if the number is odd.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ~~~
     /// # use num::Integer;
@@ -117,7 +117,7 @@ pub trait Integer: Num + PartialOrd
     /// Simultaneous truncated integer division and modulus.
     /// Returns `(quotient, remainder)`.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ~~~
     /// # use num::Integer;
@@ -139,7 +139,7 @@ pub trait Integer: Num + PartialOrd
     /// Simultaneous floored integer division and modulus.
     /// Returns `(quotient, remainder)`.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ~~~
     /// # use num::Integer;

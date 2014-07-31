@@ -36,7 +36,7 @@
 //! the main task fails the application will exit with a non-zero
 //! exit code.
 //!
-//! # Basic task scheduling
+//! ## Basic task scheduling
 //!
 //! By default, every task is created with the same "flavor" as the calling task.
 //! This flavor refers to the scheduling mode, with two possibilities currently
@@ -51,7 +51,7 @@
 //! })
 //! ```
 //!
-//! # Advanced task scheduling
+//! ## Advanced task scheduling
 //!
 //! Task spawning can also be configured to use a particular scheduler, to
 //! redirect the new task's output, or to yield a `future` representing the
@@ -287,7 +287,7 @@ impl<S: Spawner> TaskBuilder<S> {
     /// Taking the value of the future will block until the child task
     /// terminates.
     ///
-    /// # Return value
+    /// ## Return value
     ///
     /// If the child task executes successfully (without failing) then the
     /// future returns `result::Ok` containing the value returned by the

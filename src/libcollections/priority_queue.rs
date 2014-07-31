@@ -10,7 +10,7 @@
 
 //! A priority queue implemented with a binary heap.
 //!
-//! # Example
+//! ## Example
 //!
 //! This is a larger example which implements [Dijkstra's algorithm][dijkstra]
 //! to solve the [shortest path problem][sssp] on a [directed graph][dir_graph].
@@ -184,7 +184,7 @@ impl<T: Ord> Default for PriorityQueue<T> {
 impl<T: Ord> PriorityQueue<T> {
     /// Create an empty PriorityQueue as a max-heap.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -197,7 +197,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// so that the PriorityQueue does not have to be reallocated
     /// until it contains at least that many values.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -210,7 +210,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// Create a PriorityQueue from a vector. This is sometimes called
     /// `heapifying` the vector.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -229,7 +229,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// An iterator visiting all values in underlying vector, in
     /// arbitrary order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -246,7 +246,7 @@ impl<T: Ord> PriorityQueue<T> {
 
     /// Returns the greatest item in a queue or `None` if it is empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -269,7 +269,7 @@ impl<T: Ord> PriorityQueue<T> {
 
     /// Returns the number of elements the queue can hold without reallocating.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -282,7 +282,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// Reserve capacity for exactly `n` elements in the PriorityQueue.
     /// Do nothing if the capacity is already sufficient.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -296,7 +296,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// Reserve capacity for at least `n` elements in the PriorityQueue.
     /// Do nothing if the capacity is already sufficient.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -312,7 +312,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// Remove the greatest item from a queue and return it, or `None` if it is
     /// empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -341,7 +341,7 @@ impl<T: Ord> PriorityQueue<T> {
 
     /// Push an item onto the queue.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -362,7 +362,7 @@ impl<T: Ord> PriorityQueue<T> {
 
     /// Optimized version of a push followed by a pop.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -387,7 +387,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// Optimized version of a pop followed by a push. The push is done
     /// regardless of whether the queue is empty.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -421,7 +421,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// Consume the PriorityQueue and return the underlying vector
     /// in arbitrary order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;
@@ -439,7 +439,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// Consume the PriorityQueue and return a vector in sorted
     /// (ascending) order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::PriorityQueue;

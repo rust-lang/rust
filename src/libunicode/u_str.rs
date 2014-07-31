@@ -42,7 +42,7 @@ pub trait UnicodeStrSlice<'a> {
     /// [UAX#29](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries)
     /// recommends extended grapheme cluster boundaries for general processing.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let gr1 = "a\u0310e\u0301o\u0308\u0332".graphemes(true).collect::<Vec<&str>>();
@@ -55,7 +55,7 @@ pub trait UnicodeStrSlice<'a> {
     /// Returns an iterator over the grapheme clusters of self and their byte offsets.
     /// See `graphemes()` method for more information.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let gr_inds = "a̐éö̲\r\n".grapheme_indices(true).collect::<Vec<(uint, &str)>>();
@@ -67,7 +67,7 @@ pub trait UnicodeStrSlice<'a> {
     /// by any sequence of whitespace). Sequences of whitespace are
     /// collapsed, so empty "words" are not included.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let some_words = " Mary   had\ta little  \n\t lamb";
@@ -80,7 +80,7 @@ pub trait UnicodeStrSlice<'a> {
     ///
     /// Whitespace characters are determined by `char::is_whitespace`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// assert!(" \t\n".is_whitespace());
@@ -95,7 +95,7 @@ pub trait UnicodeStrSlice<'a> {
     ///
     /// Alphanumeric characters are determined by `char::is_alphanumeric`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// assert!("Löwe老虎Léopard123".is_alphanumeric());

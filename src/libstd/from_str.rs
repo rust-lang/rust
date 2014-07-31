@@ -34,7 +34,7 @@ impl FromStr for bool {
     ///
     /// Yields an `Option<bool>`, because `s` may or may not actually be parseable.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// assert_eq!(from_str::<bool>("true"), Some(true));

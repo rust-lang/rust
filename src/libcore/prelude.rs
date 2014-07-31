@@ -18,7 +18,7 @@
 //! There is no method to automatically inject this prelude, and this prelude is
 //! a subset of the standard library's prelude.
 //!
-//! # Example
+//! ## Example
 //!
 //! ```ignore
 //! # fn main() {

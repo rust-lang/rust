@@ -42,7 +42,7 @@ impl<T> TaskPool<T> {
     /// `init_fn_factory` returns a function which, given the index of the
     /// task, should return local data to be kept around in that task.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// This function will fail if `n_tasks` is less than 1.
     pub fn new(n_tasks: uint,

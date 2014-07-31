@@ -48,7 +48,7 @@ use vec::Vec;
 /// as a right child. The time complexity is the same, and re-balancing
 /// operations are more frequent but also cheaper.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::collections::TreeMap;
@@ -240,7 +240,7 @@ impl<K: Ord, V> Default for TreeMap<K,V> {
 impl<K: Ord, V> TreeMap<K, V> {
     /// Create an empty `TreeMap`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -250,7 +250,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Get a lazy iterator over the keys in the map, in ascending order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -271,7 +271,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Get a lazy iterator over the values in the map, in ascending order
     /// with respect to the corresponding keys.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -291,7 +291,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Get a lazy iterator over the key-value pairs in the map, in ascending order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -316,7 +316,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Get a lazy reverse iterator over the key-value pairs in the map, in descending order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -337,7 +337,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Get a lazy forward iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -367,7 +367,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Get a lazy reverse iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -394,7 +394,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Get a lazy iterator that consumes the treemap, it is not usable
     /// after calling this.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -425,7 +425,7 @@ impl<K, V> TreeMap<K, V> {
     /// with current key and guides tree navigation. That means `f` should
     /// be aware of natural ordering of the tree.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use collections::treemap::TreeMap;
@@ -454,7 +454,7 @@ impl<K, V> TreeMap<K, V> {
     /// with current key and guides tree navigation. That means `f` should
     /// be aware of natural ordering of the tree.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// let mut t = collections::treemap::TreeMap::new();
@@ -524,7 +524,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Return a lazy iterator to the first key-value pair whose key is not less than `k`
     /// If all keys in map are less than `k` an empty iterator is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -546,7 +546,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Return a lazy iterator to the first key-value pair whose key is greater than `k`
     /// If all keys in map are less than or equal to `k` an empty iterator is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -582,7 +582,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// If all keys in map are less than `k` an empty iterator is
     /// returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -616,7 +616,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// If all keys in map are less than or equal to `k` an empty iterator
     /// is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -1091,7 +1091,7 @@ impl<T: Ord> Default for TreeSet<T> {
 impl<T: Ord> TreeSet<T> {
     /// Create an empty `TreeSet`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -1102,7 +1102,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Get a lazy iterator over the values in the set, in ascending order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -1120,7 +1120,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Get a lazy iterator over the values in the set, in descending order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -1139,7 +1139,7 @@ impl<T: Ord> TreeSet<T> {
     /// Creates a consuming iterator, that is, one that moves each value out of the
     /// set in ascending order. The set cannot be used after calling this.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -1157,7 +1157,7 @@ impl<T: Ord> TreeSet<T> {
     /// Get a lazy iterator pointing to the first value not less than `v` (greater or equal).
     /// If all elements in the set are less than `v` empty iterator is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -1176,7 +1176,7 @@ impl<T: Ord> TreeSet<T> {
     /// If all elements in the set are less than or equal to `v` an
     /// empty iterator is returned.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -1193,7 +1193,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Visit the values representing the difference, in ascending order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -1220,7 +1220,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Visit the values representing the symmetric difference, in ascending order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -1246,7 +1246,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Visit the values representing the intersection, in ascending order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -1269,7 +1269,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Visit the values representing the union, in ascending order.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::TreeSet;

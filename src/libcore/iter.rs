@@ -111,7 +111,7 @@ pub trait Iterator<A> {
     /// finish iterating over the current iterator, and then it will iterate
     /// over the other specified iterator.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [0i];
@@ -131,7 +131,7 @@ pub trait Iterator<A> {
     /// either iterator returns None, all further invocations of next() will
     /// return None.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [0i];
@@ -149,7 +149,7 @@ pub trait Iterator<A> {
     /// Creates a new iterator which will apply the specified function to each
     /// element returned by the first, yielding the mapped element instead.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2];
@@ -167,7 +167,7 @@ pub trait Iterator<A> {
     /// by this iterator. Only elements which have the predicate evaluate to
     /// `true` will be yielded.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2];
@@ -184,7 +184,7 @@ pub trait Iterator<A> {
     /// If the specified function returns None, the element is skipped.
     /// Otherwise the option is unwrapped and the new value is yielded.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2];
@@ -200,7 +200,7 @@ pub trait Iterator<A> {
     /// Creates an iterator which yields a pair of the value returned by this
     /// iterator plus the current index of iteration.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [100i, 200];
@@ -219,7 +219,7 @@ pub trait Iterator<A> {
     /// Creates an iterator that has a `.peek()` method
     /// that returns an optional reference to the next element.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let xs = [100i, 200, 300];
@@ -242,7 +242,7 @@ pub trait Iterator<A> {
     /// returns false. Once the predicate returns false, all further elements are
     /// yielded.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 2, 1];
@@ -261,7 +261,7 @@ pub trait Iterator<A> {
     /// returns true. After the predicate returns false for the first time, no
     /// further elements will be yielded.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 2, 1];
@@ -278,7 +278,7 @@ pub trait Iterator<A> {
     /// Creates an iterator which skips the first `n` elements of this iterator,
     /// and then it yields all further items.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -295,7 +295,7 @@ pub trait Iterator<A> {
     /// Creates an iterator which yields the first `n` elements of this
     /// iterator, and then it will always return None.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -315,7 +315,7 @@ pub trait Iterator<A> {
     /// mutated as necessary. The yielded values from the closure are yielded
     /// from the Scan instance when not None.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -339,7 +339,7 @@ pub trait Iterator<A> {
     /// Creates an iterator that maps each element to an iterator,
     /// and yields the elements of the produced iterators
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::iter::count;
@@ -364,7 +364,7 @@ pub trait Iterator<A> {
     /// iterator yields `None`. Random-access iterator behavior is not
     /// affected, only single and double-ended iterator behavior.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// fn process<U: Iterator<int>>(it: U) -> int {
@@ -394,7 +394,7 @@ pub trait Iterator<A> {
     /// element before yielding it. This is often useful for debugging an
     /// iterator pipeline.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::iter::AdditiveIterator;
@@ -418,7 +418,7 @@ pub trait Iterator<A> {
     /// This is useful to allow applying iterator adaptors while still
     /// retaining ownership of the original iterator value.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let mut xs = range(0u, 10);
@@ -435,7 +435,7 @@ pub trait Iterator<A> {
     /// Apply a function to each element, or stop iterating if the
     /// function returns `false`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust,ignore
     /// range(0u, 5).advance(|x| {print!("{} ", x); true});
@@ -456,7 +456,7 @@ pub trait Iterator<A> {
     /// Loops through the entire iterator, collecting all of the elements into
     /// a container implementing `FromIterator`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -471,7 +471,7 @@ pub trait Iterator<A> {
     /// Loops through `n` iterations, returning the `n`th element of the
     /// iterator.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -493,7 +493,7 @@ pub trait Iterator<A> {
     /// Loops through the entire iterator, returning the last element of the
     /// iterator.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -509,7 +509,7 @@ pub trait Iterator<A> {
     /// Performs a fold operation over the entire iterator, returning the
     /// eventual state at the end of the iteration.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -529,7 +529,7 @@ pub trait Iterator<A> {
 
     /// Counts the number of elements in this iterator.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -544,7 +544,7 @@ pub trait Iterator<A> {
 
     /// Tests whether the predicate holds true for all elements in the iterator.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -560,7 +560,7 @@ pub trait Iterator<A> {
     /// Tests whether any element of an iterator satisfies the specified
     /// predicate.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -599,7 +599,7 @@ pub trait Iterator<A> {
     /// Return the element that gives the maximum value from the
     /// specified function.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let xs = [-3i, 0, 1, 5, -10];
@@ -623,7 +623,7 @@ pub trait Iterator<A> {
     /// Return the element that gives the minimum value from the
     /// specified function.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let xs = [-3i, 0, 1, 5, -10];
@@ -809,7 +809,7 @@ impl<'a, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for ByRef<'a, T> {
 pub trait AdditiveIterator<A> {
     /// Iterates over the entire iterator, summing up all the elements
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::iter::AdditiveIterator;
@@ -834,7 +834,7 @@ impl<A: Add<A, A> + Zero, T: Iterator<A>> AdditiveIterator<A> for T {
 pub trait MultiplicativeIterator<A> {
     /// Iterates over the entire iterator, multiplying all the elements
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::iter::{count, MultiplicativeIterator};
@@ -862,7 +862,7 @@ impl<A: Mul<A, A> + One, T: Iterator<A>> MultiplicativeIterator<A> for T {
 pub trait OrdIterator<A> {
     /// Consumes the entire iterator to return the maximum element.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -872,7 +872,7 @@ pub trait OrdIterator<A> {
 
     /// Consumes the entire iterator to return the minimum element.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let a = [1i, 2, 3, 4, 5];
@@ -893,7 +893,7 @@ pub trait OrdIterator<A> {
     /// On an iterator of length `n`, `min_max` does `1.5 * n` comparisons,
     /// and so faster than calling `min` and `max separately which does `2 * n` comparisons.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::iter::{NoElements, OneElement, MinMax};
@@ -1000,7 +1000,7 @@ impl<T: Clone> MinMaxResult<T> {
     /// `Some(x,y)` is returned where `x <= y`. If `MinMaxResult` has variant `OneElement(x)`,
     /// performing this operation will make one clone of `x`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::iter::{NoElements, OneElement, MinMax, MinMaxResult};
@@ -1027,7 +1027,7 @@ impl<T: Clone> MinMaxResult<T> {
 pub trait CloneableIterator {
     /// Repeats an iterator endlessly
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use std::iter::{CloneableIterator, count};
@@ -1973,7 +1973,7 @@ pub struct Range<A> {
 /// Returns an iterator over the given range [start, stop) (that is, starting
 /// at start (inclusive), and ending at stop (exclusive)).
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// let array = [0, 1, 2, 3, 4];

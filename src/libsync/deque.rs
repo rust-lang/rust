@@ -22,7 +22,7 @@
 //! The only lock-synchronized portions of this deque are the buffer allocation
 //! and deallocation portions. Otherwise all operations are lock-free.
 //!
-//! # Example
+//! ## Example
 //!
 //!     use std::sync::deque::BufferPool;
 //!

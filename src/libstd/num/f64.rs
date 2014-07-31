@@ -199,7 +199,7 @@ impl FloatMath for f64 {
 
     /// Inverse hyperbolic sine
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// - on success, the inverse hyperbolic sine of `self` will be returned
     /// - `self` if `self` is `0.0`, `-0.0`, `INFINITY`, or `NEG_INFINITY`
@@ -214,7 +214,7 @@ impl FloatMath for f64 {
 
     /// Inverse hyperbolic cosine
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// - on success, the inverse hyperbolic cosine of `self` will be returned
     /// - `INFINITY` if `self` is `INFINITY`
@@ -229,7 +229,7 @@ impl FloatMath for f64 {
 
     /// Inverse hyperbolic tangent
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// - on success, the inverse hyperbolic tangent of `self` will be returned
     /// - `self` if `self` is `0.0` or `-0.0`
@@ -249,7 +249,7 @@ impl FloatMath for f64 {
 
 /// Converts a float to a string
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * num - The float value
 #[inline]
@@ -261,7 +261,7 @@ pub fn to_string(num: f64) -> String {
 
 /// Converts a float to a string in hexadecimal format
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * num - The float value
 #[inline]
@@ -274,7 +274,7 @@ pub fn to_str_hex(num: f64) -> String {
 /// Converts a float to a string in a given radix, and a flag indicating
 /// whether it's a special value
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * num - The float value
 /// * radix - The base to use
@@ -287,7 +287,7 @@ pub fn to_str_radix_special(num: f64, rdx: uint) -> (String, bool) {
 /// Converts a float to a string with exactly the number of
 /// provided significant digits
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * num - The float value
 /// * digits - The number of significant digits
@@ -301,7 +301,7 @@ pub fn to_str_exact(num: f64, dig: uint) -> String {
 /// Converts a float to a string with a maximum number of
 /// significant digits
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * num - The float value
 /// * digits - The number of significant digits
@@ -315,7 +315,7 @@ pub fn to_str_digits(num: f64, dig: uint) -> String {
 /// Converts a float to a string using the exponential notation with exactly the number of
 /// provided digits after the decimal point in the significand
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * num - The float value
 /// * digits - The number of digits after the decimal point
@@ -330,7 +330,7 @@ pub fn to_str_exp_exact(num: f64, dig: uint, upper: bool) -> String {
 /// Converts a float to a string using the exponential notation with the maximum number of
 /// digits after the decimal point in the significand
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * num - The float value
 /// * digits - The number of digits after the decimal point
@@ -345,12 +345,12 @@ pub fn to_str_exp_digits(num: f64, dig: uint, upper: bool) -> String {
 impl num::ToStrRadix for f64 {
     /// Converts a float to a string in a given radix
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * num - The float value
     /// * radix - The base to use
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if called on a special value like `inf`, `-inf` or `NAN` due to
     /// possible misinterpretation of the result at higher bases. If those values
@@ -382,11 +382,11 @@ impl num::ToStrRadix for f64 {
 ///
 /// Leading and trailing whitespace represent an error.
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * num - A string
 ///
-/// # Return value
+/// ## Return value
 ///
 /// `None` if the string did not represent a valid number.  Otherwise,
 /// `Some(n)` where `n` is the floating-point number represented by `[num]`.
@@ -414,11 +414,11 @@ impl FromStr for f64 {
     ///
     /// Leading and trailing whitespace represent an error.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * num - A string
     ///
-    /// # Return value
+    /// ## Return value
     ///
     /// `none` if the string did not represent a valid number.  Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
@@ -438,12 +438,12 @@ impl num::FromStrRadix for f64 {
     ///
     /// Leading and trailing whitespace represent an error.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * num - A string
     /// * radix - The base to use. Must lie in the range [2 .. 36]
     ///
-    /// # Return value
+    /// ## Return value
     ///
     /// `None` if the string did not represent a valid number. Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.

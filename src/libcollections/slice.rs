@@ -555,7 +555,7 @@ pub trait MutableVectorAllocating<'a, T> {
     /// This sort is `O(n log n)` worst-case and stable, but allocates
     /// approximately `2 * n`, where `n` is the length of `self`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let mut v = [5i, 4, 1, 3, 2];
@@ -575,7 +575,7 @@ pub trait MutableVectorAllocating<'a, T> {
      * Returns the number of elements copied (the shorter of self.len()
      * and end - start).
      *
-     * # Arguments
+     * ## Arguments
      *
      * * src - A mutable vector of `T`
      * * start - The index into `src` to start copying from
@@ -606,7 +606,7 @@ pub trait MutableOrdVector<T> {
     ///
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let mut v = [-5i, 4, 1, -3, 2];
@@ -620,7 +620,7 @@ pub trait MutableOrdVector<T> {
     ///
     /// Returns `true` if successful, `false` if the slice is at the last-ordered permutation.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let v = &mut [0i, 1, 2];
@@ -635,7 +635,7 @@ pub trait MutableOrdVector<T> {
     ///
     /// Returns `true` if successful, `false` if the slice is at the first-ordered permutation.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// let v = &mut [1i, 0, 2];

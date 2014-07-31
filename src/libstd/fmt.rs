@@ -446,13 +446,13 @@ pub use core::fmt::{secret_pointer};
 /// The format function takes a precompiled format string and a list of
 /// arguments, to return the resulting formatted string.
 ///
-/// # Arguments
+/// ## Arguments
 ///
 ///   * args - a structure of arguments generated via the `format_args!` macro.
 ///            Because this structure can only be safely generated at
 ///            compile-time, this function is safe.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::fmt;

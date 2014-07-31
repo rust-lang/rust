@@ -10,7 +10,7 @@
 
 //! Calculation and management of a Strict Version Hash for crates
 //!
-//! # Today's ABI problem
+//! ## Today's ABI problem
 //!
 //! In today's implementation of rustc, it is incredibly difficult to achieve
 //! forward binary compatibility without resorting to C-like interfaces. Within
@@ -28,7 +28,7 @@
 //! not currently support forwards ABI compatibility (in place upgrades of a
 //! crate).
 //!
-//! # SVH and how it alleviates the problem
+//! ## SVH and how it alleviates the problem
 //!
 //! With all of this knowledge on hand, this module contains the implementation
 //! of a notion of a "Strict Version Hash" for a crate. This is essentially a
@@ -42,7 +42,7 @@
 //! By encoding this strict version hash into all crate's metadata, stale crates
 //! can be detected immediately and error'd about by rustc itself.
 //!
-//! # Relevant links
+//! ## Relevant links
 //!
 //! Original issue: https://github.com/rust-lang/rust/issues/10207
 

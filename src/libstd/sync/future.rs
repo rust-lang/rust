@@ -12,7 +12,7 @@
  * A type representing values that may be computed concurrently and
  * operations for working with them.
  *
- * # Example
+ * ## Example
  *
  * ```rust
  * use std::sync::Future;

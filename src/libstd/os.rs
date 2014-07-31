@@ -72,7 +72,7 @@ static BUF_BYTES : uint = 2048u;
 
 /// Returns the current working directory as a Path.
 ///
-/// # Failure
+/// ## Failure
 ///
 /// Fails if the current working directory value is invalid:
 /// Possibles cases:
@@ -80,7 +80,7 @@ static BUF_BYTES : uint = 2048u;
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::os;
@@ -105,7 +105,7 @@ pub fn getcwd() -> Path {
 
 /// Returns the current working directory as a Path.
 ///
-/// # Failure
+/// ## Failure
 ///
 /// Fails if the current working directory value is invalid.
 /// Possibles cases:
@@ -113,7 +113,7 @@ pub fn getcwd() -> Path {
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::os;
@@ -207,7 +207,7 @@ fn with_env_lock<T>(f: || -> T) -> T {
 /// Invalid UTF-8 bytes are replaced with \uFFFD. See `String::from_utf8_lossy()`
 /// for details.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::os;
@@ -314,11 +314,11 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// Any invalid UTF-8 bytes in the value are replaced by \uFFFD. See
 /// `String::from_utf8_lossy()` for details.
 ///
-/// # Failure
+/// ## Failure
 ///
 /// Fails if `n` has any interior NULs.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::os;
@@ -337,7 +337,7 @@ pub fn getenv(n: &str) -> Option<String> {
 /// Fetches the environment variable `n` byte vector from the current process,
 /// returning None if the variable isn't set.
 ///
-/// # Failure
+/// ## Failure
 ///
 /// Fails if `n` has any interior NULs.
 pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
@@ -382,7 +382,7 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
 /// Sets the environment variable `n` to the value `v` for the currently running
 /// process.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::os;
@@ -454,7 +454,7 @@ pub fn unsetenv(n: &str) {
 /// Parses input according to platform conventions for the `PATH`
 /// environment variable.
 ///
-/// # Example
+/// ## Example
 /// ```rust
 /// use std::os;
 ///
@@ -527,7 +527,7 @@ pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
 /// `Path`s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::os;
@@ -638,7 +638,7 @@ pub fn dll_filename(base: &str) -> String {
 /// Optionally returns the filesystem path to the current executable which is
 /// running but with the executable name.
 ///
-/// # Examples
+/// ## Examples
 ///
 /// ```rust
 /// use std::os;
@@ -722,7 +722,7 @@ pub fn self_exe_name() -> Option<Path> {
 ///
 /// Like self_exe_name() but without the binary's name.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::os;
@@ -738,19 +738,19 @@ pub fn self_exe_path() -> Option<Path> {
 
 /// Optionally returns the path to the current user's home directory if known.
 ///
-/// # Unix
+/// ## Unix
 ///
 /// Returns the value of the 'HOME' environment variable if it is set
 /// and not equal to the empty string.
 ///
-/// # Windows
+/// ## Windows
 ///
 /// Returns the value of the 'HOME' environment variable if it is
 /// set and not equal to the empty string. Otherwise, returns the value of the
 /// 'USERPROFILE' environment variable if it is set and not equal to the empty
 /// string.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```rust
 /// use std::os;
@@ -839,7 +839,7 @@ pub fn tmpdir() -> Path {
 /// directory. If the given path is already an absolute path, return it
 /// as is.
 ///
-/// # Example
+/// ## Example
 /// ```rust
 /// use std::os;
 /// use std::path::Path;
@@ -866,7 +866,7 @@ pub fn make_absolute(p: &Path) -> Path {
 /// Changes the current working directory to the specified path, returning
 /// whether the change was completed successfully or not.
 ///
-/// # Example
+/// ## Example
 /// ```rust
 /// use std::os;
 /// use std::path::Path;
@@ -956,7 +956,9 @@ pub fn errno() -> uint {
 }
 
 /// Return the string corresponding to an `errno()` value of `errnum`.
-/// # Example
+///
+/// ## Example
+///
 /// ```rust
 /// use std::os;
 ///
@@ -1252,7 +1254,8 @@ extern "system" {
 ///
 /// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
 /// See `String::from_utf8_lossy` for details.
-/// # Example
+///
+/// ## Example
 ///
 /// ```rust
 /// use std::os;

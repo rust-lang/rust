@@ -29,7 +29,7 @@ use hash::Hash;
 
 /// A map optimized for small integer keys.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::collections::SmallIntMap;
@@ -178,7 +178,7 @@ impl <S: hash::Writer, T: Hash<S>> Hash<S> for SmallIntMap<T> {
 impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::SmallIntMap;
@@ -189,7 +189,7 @@ impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap with space for at least `capacity` elements
     /// before resizing.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::SmallIntMap;
@@ -202,11 +202,11 @@ impl<V> SmallIntMap<V> {
     /// Retrieves a value for the given key.
     /// See [`find`](../trait.Map.html#tymethod.find) for a non-failing alternative.
     ///
-    /// # Failure
+    /// ## Failure
     ///
     /// Fails if the key is not present.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::SmallIntMap;
@@ -234,7 +234,7 @@ impl<V> SmallIntMap<V> {
     /// An iterator visiting all key-value pairs in ascending order by the keys.
     /// Iterator element type is `(uint, &'r V)`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::SmallIntMap;
@@ -261,7 +261,7 @@ impl<V> SmallIntMap<V> {
     /// with mutable references to the values
     /// Iterator element type is `(uint, &'r mut V)`.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::SmallIntMap;
@@ -289,7 +289,7 @@ impl<V> SmallIntMap<V> {
 
     /// Empties the map, moving all values into the specified closure.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::SmallIntMap;
@@ -321,7 +321,7 @@ impl<V:Clone> SmallIntMap<V> {
     /// Otherwise set the value to `newval`.
     /// Return `true` if the key did not already exist in the map.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::SmallIntMap;
@@ -345,7 +345,7 @@ impl<V:Clone> SmallIntMap<V> {
     /// Otherwise set the value to `newval`.
     /// Return `true` if the key did not already exist in the map.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::collections::SmallIntMap;
