@@ -12,9 +12,9 @@
 
 Task local data management
 
-Allows storing arbitrary types inside task-local-storage (TLS), to be accessed
+Allows storing arbitrary types inside task-local-data (TLD), to be accessed
 anywhere within a task, keyed by a global pointer parameterized over the type of
-the TLS slot.  Useful for dynamic variables, singletons, and interfacing with
+the TLD slot. Useful for dynamic variables, singletons, and interfacing with
 foreign code with bad callback interfaces.
 
 To declare a new key for storing local data of a particular type, use the
@@ -40,12 +40,15 @@ assert_eq!(*key_vector.get().unwrap(), vec![4]);
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
-use collections::MutableSeq;
-use collections::vec::Vec;
+use alloc::heap;
+use collections::treemap::TreeMap;
+use collections::{Map, MutableMap};
+use core::cmp;
 use core::kinds::marker;
 use core::mem;
-use core::raw;
+use core::ptr;
+use core::fmt;
+use core::cell::UnsafeCell;
 
 use local::Local;
 use task::{Task, LocalStorage};
@@ -66,33 +69,53 @@ pub type Key<T> = &'static KeyValue<T>;
 #[allow(missing_doc)]
 pub enum KeyValue<T> { Key }
 
+// The task-local-map stores all TLD information for the currently running
+// task. It is stored as an owned pointer into the runtime, and it's only
+// allocated when TLD is used for the first time.
+//
+// TLD values are boxed up, with a loan count stored in the box. The box is
+// necessary given how TLD maps are constructed, but theoretically in the
+// future this could be rewritten to statically construct TLD offsets at
+// compile-time to get O(1) lookup. At that time, the box can be removed.
+//
+// A very common usage pattern for TLD is to use replace(None) to extract a
+// value from TLD, work with it, and then store it (or a derived/new value)
+// back with replace(v). We take special care to reuse the allocation in this
+// case for performance reasons.
+//
+// However, that does mean that if a value is replaced with None, the
+// allocation will stay alive and the entry will stay in the TLD map until the
+// task deallocates. This makes the assumption that every key inserted into a
+// given task's TLD is going to be present for a majority of the rest of the
+// task's lifetime, but that's a fairly safe assumption, and there's very
+// little downside as long as it holds true for most keys.
+//
+// The Map type must be public in order to allow rustrt to see it.
+//
+// We'd like to use HashMap here, but it uses TLD in its construction (it uses
+// the task-local rng). We could try to provide our own source of randomness,
+// except it also lives in libstd (which is a client of us) so we can't even
+// reference it. Instead, use TreeMap, which provides reasonable performance.
 #[doc(hidden)]
-trait LocalData {}
-impl<T: 'static> LocalData for T {}
+pub type Map = TreeMap<uint, TLDValue>;
+#[unsafe_no_drop_flag]
+struct TLDValue {
+    // box_ptr is a pointer to TLDValueBox<T>. It can never be null.
+    box_ptr: *mut (),
+    // drop_fn is the function that knows how to drop the box_ptr.
+    drop_fn: unsafe fn(p: *mut ())
+}
 
-// The task-local-map stores all TLS information for the currently running task.
-// It is stored as an owned pointer into the runtime, and it's only allocated
-// when TLS is used for the first time. This map must be very carefully
-// constructed because it has many mutable loans unsoundly handed out on it to
-// the various invocations of TLS requests.
-//
-// One of the most important operations is loaning a value via `get` to a
-// caller. In doing so, the slot that the TLS entry is occupying cannot be
-// invalidated because upon returning its loan state must be updated. Currently
-// the TLS map is a vector, but this is possibly dangerous because the vector
-// can be reallocated/moved when new values are pushed onto it.
-//
-// This problem currently isn't solved in a very elegant way. Inside the `get`
-// function, it internally "invalidates" all references after the loan is
-// finished and looks up into the vector again. In theory this will prevent
-// pointers from being moved under our feet so long as LLVM doesn't go too crazy
-// with the optimizations.
-//
-// n.b. If TLS is used heavily in future, this could be made more efficient with
-//      a proper map.
-#[doc(hidden)]
-pub type Map = Vec<Option<(*const u8, TLSValue, uint)>>;
-type TLSValue = Box<LocalData + Send>;
+struct TLDValueBox<T> {
+    // value is only initialized when refcount >= 1.
+    value: T,
+    // refcount of 0 means uninitialized value, 1 means initialized, 2+ means
+    // borrowed.
+    // NB: we use UnsafeCell instead of Cell because Ref should be allowed to
+    // be Share. The only mutation occurs when a Ref is created or destroyed,
+    // so there's no issue with &Ref being thread-safe.
+    refcount: UnsafeCell<uint>
+}
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
 unsafe fn get_local_map<'a>() -> Option<&'a mut Map> {
@@ -101,14 +124,14 @@ unsafe fn get_local_map<'a>() -> Option<&'a mut Map> {
     let task: *mut Task = Local::unsafe_borrow();
     match &mut (*task).storage {
         // If the at_exit function is already set, then we just need to take
-        // a loan out on the TLS map stored inside
+        // a loan out on the TLD map stored inside
         &LocalStorage(Some(ref mut map_ptr)) => {
             return Some(map_ptr);
         }
-        // If this is the first time we've accessed TLS, perform similar
+        // If this is the first time we've accessed TLD, perform similar
         // actions to the oldsched way of doing things.
         &LocalStorage(ref mut slot) => {
-            *slot = Some(Vec::new());
+            *slot = Some(TreeMap::new());
             match *slot {
                 Some(ref mut map_ptr) => { return Some(map_ptr) }
                 None => fail!("unreachable code"),
@@ -117,33 +140,34 @@ unsafe fn get_local_map<'a>() -> Option<&'a mut Map> {
     }
 }
 
-fn key_to_key_value<T: 'static>(key: Key<T>) -> *const u8 {
-    key as *const KeyValue<T> as *const u8
-}
-
-/// An RAII immutable reference to a task-local value.
+/// A RAII immutable reference to a task-local value.
 ///
 /// The task-local data can be accessed through this value, and when this
 /// structure is dropped it will return the borrow on the data.
 pub struct Ref<T> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref
-    _ptr: &'static T,
-    _key: Key<T>,
-    _index: uint,
-    _nosend: marker::NoSend,
+    _inner: &'static TLDValueBox<T>,
+    _marker: marker::NoSend
+}
+
+fn key_to_key_value<T: 'static>(key: Key<T>) -> uint {
+    key as *const _ as uint
 }
 
 impl<T: 'static> KeyValue<T> {
-    /// Replaces a value in task local storage.
+    /// Replaces a value in task local data.
     ///
-    /// If this key is already present in TLS, then the previous value is
+    /// If this key is already present in TLD, then the previous value is
     /// replaced with the provided data, and then returned.
     ///
     /// # Failure
     ///
-    /// This function will fail if this key is present in TLS and currently on
+    /// This function will fail if the key is present in TLD and currently on
     /// loan with the `get` method.
+    ///
+    /// It will also fail if there is no local task (because the current thread
+    /// is not owned by the runtime).
     ///
     /// # Example
     ///
@@ -161,58 +185,70 @@ impl<T: 'static> KeyValue<T> {
         };
         let keyval = key_to_key_value(self);
 
-        // When the task-local map is destroyed, all the data needs to be
-        // cleaned up. For this reason we can't do some clever tricks to store
-        // '~T' as a '*c_void' or something like that. To solve the problem, we
-        // cast everything to a trait (LocalData) which is then stored inside
-        // the map.  Upon destruction of the map, all the objects will be
-        // destroyed and the traits have enough information about them to
-        // destroy themselves.
-        //
-        // Additionally, the type of the local data map must ascribe to Send, so
-        // we do the transmute here to add the Send bound back on. This doesn't
-        // actually matter because TLS will always own the data (until its moved
-        // out) and we're not actually sending it to other schedulers or
-        // anything.
-        let newval = data.map(|d| {
-            let d = box d as Box<LocalData>;
-            let d: Box<LocalData + Send> = unsafe { mem::transmute(d) };
-            (keyval, d, 0)
-        });
-
-        let pos = match self.find(map) {
-            Some((i, _, &0)) => Some(i),
-            Some((_, _, _)) => fail!("TLS value cannot be replaced because it \
-                                      is already borrowed"),
-            None => map.iter().position(|entry| entry.is_none()),
+        // The following match takes a mutable borrow on the map. In order to insert
+        // our data if the key isn't present, we need to let the match end first.
+        let data = match (map.find_mut(&keyval), data) {
+            (None, Some(data)) => {
+                // The key doesn't exist and we need to insert it. To make borrowck
+                // happy, return it up a scope and insert it there.
+                data
+            }
+            (None, None) => {
+                // The key doesn't exist and we're trying to replace it with nothing.
+                // Do nothing.
+                return None
+            }
+            (Some(slot), data) => {
+                // We have a slot with a box.
+                let value_box = slot.box_ptr as *mut TLDValueBox<T>;
+                let refcount = unsafe { *(*value_box).refcount.get() };
+                return match (refcount, data) {
+                    (0, None) => {
+                        // The current value is uninitialized and we have no new value.
+                        // Do nothing.
+                        None
+                    }
+                    (0, Some(newValue)) => {
+                        // The current value is uninitialized and we're storing a new value.
+                        unsafe {
+                            ptr::write(&mut (*value_box).value, newValue);
+                            *(*value_box).refcount.get() = 1;
+                            None
+                        }
+                    }
+                    (1, None) => {
+                        // We have an initialized value and we're removing it.
+                        unsafe {
+                            let ret = ptr::read(&(*value_box).value);
+                            *(*value_box).refcount.get() = 0;
+                            Some(ret)
+                        }
+                    }
+                    (1, Some(newValue)) => {
+                        // We have an initialized value and we're replacing it.
+                        let value_ref = unsafe { &mut (*value_box).value };
+                        let ret = mem::replace(value_ref, newValue);
+                        // Refcount is already 1, leave it as that.
+                        Some(ret)
+                    }
+                    _ => {
+                        // Refcount is 2+, which means we have a live borrow.
+                        fail!("TLD value cannot be replaced because it is already borrowed");
+                    }
+                }
+            }
         };
-
-        match pos {
-            Some(i) => {
-                mem::replace(map.get_mut(i), newval).map(|(_, data, _)| {
-                    // Move `data` into transmute to get out the memory that it
-                    // owns, we must free it manually later.
-                    let t: raw::TraitObject = unsafe { mem::transmute(data) };
-                    let alloc: Box<T> = unsafe { mem::transmute(t.data) };
-
-                    // Now that we own `alloc`, we can just move out of it as we
-                    // would with any other data.
-                    *alloc
-                })
-            }
-            None => {
-                map.push(newval);
-                None
-            }
-        }
+        // If we've reached this point, we need to insert into the map.
+        map.insert(keyval, TLDValue::new(data));
+        None
     }
 
-    /// Borrows a value from TLS.
+    /// Borrows a value from TLD.
     ///
-    /// If `None` is returned, then this key is not present in TLS. If `Some` is
-    /// returned, then the returned data is a smart pointer representing a new
-    /// loan on this TLS key. While on loan, this key cannot be altered via the
-    /// `replace` method.
+    /// If `None` is returned, then this key is not present in TLD. If `Some`
+    /// is returned, then the returned data is a smart pointer representing a
+    /// new loan on this TLD key. While on loan, this key cannot be altered via
+    /// the `replace` method.
     ///
     /// # Example
     ///
@@ -229,52 +265,149 @@ impl<T: 'static> KeyValue<T> {
             Some(map) => map,
             None => return None,
         };
+        let keyval = key_to_key_value(self);
 
-        self.find(map).map(|(pos, data, loan)| {
-            *loan += 1;
-
-            // data was created with `~T as ~LocalData`, so we extract
-            // pointer part of the trait, (as ~T), and then use
-            // compiler coercions to achieve a '&' pointer.
-            let ptr = unsafe {
-                let data = data as *const Box<LocalData + Send>
-                                as *const raw::TraitObject;
-                &mut *((*data).data as *mut T)
-            };
-            Ref { _ptr: ptr, _index: pos, _nosend: marker::NoSend, _key: self }
-        })
+        match map.find(&keyval) {
+            Some(slot) => {
+                let value_box = slot.box_ptr as *mut TLDValueBox<T>;
+                if unsafe { *(*value_box).refcount.get() } >= 1 {
+                    unsafe {
+                        *(*value_box).refcount.get() += 1;
+                        Some(Ref {
+                            _inner: &*value_box,
+                            _marker: marker::NoSend
+                        })
+                    }
+                } else {
+                    None
+                }
+            }
+            None => None
+        }
     }
 
-    fn find<'a>(&'static self,
-                map: &'a mut Map) -> Option<(uint, &'a TLSValue, &'a mut uint)>{
-        let key_value = key_to_key_value(self);
-        map.mut_iter().enumerate().filter_map(|(i, entry)| {
-            match *entry {
-                Some((k, ref data, ref mut loan)) if k == key_value => {
-                    Some((i, data, loan))
-                }
-                _ => None
-            }
-        }).next()
+    // it's not clear if this is the right design for a public API, or if
+    // there's even a need for this as a public API, but our benchmarks need
+    // this to ensure consistent behavior on each run.
+    #[cfg(test)]
+    fn clear(&'static self) {
+        let map = match unsafe { get_local_map() } {
+            Some(map) => map,
+            None => return
+        };
+        let keyval = key_to_key_value(self);
+        self.replace(None); // ensure we have no outstanding borrows
+        map.remove(&keyval);
     }
 }
 
 impl<T: 'static> Deref<T> for Ref<T> {
-    fn deref<'a>(&'a self) -> &'a T { self._ptr }
+    #[inline(always)]
+    fn deref<'a>(&'a self) -> &'a T {
+        &self._inner.value
+    }
+}
+
+impl<T: 'static + fmt::Show> fmt::Show for Ref<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        (**self).fmt(f)
+    }
+}
+
+impl<T: cmp::PartialEq + 'static> cmp::PartialEq for Ref<T> {
+    fn eq(&self, other: &Ref<T>) -> bool {
+        (**self).eq(&**other)
+    }
+    fn ne(&self, other: &Ref<T>) -> bool {
+        (**self).ne(&**other)
+    }
+}
+
+impl<T: cmp::Eq + 'static> cmp::Eq for Ref<T> {}
+
+impl<T: cmp::PartialOrd + 'static> cmp::PartialOrd for Ref<T> {
+    fn partial_cmp(&self, other: &Ref<T>) -> Option<cmp::Ordering> {
+        (**self).partial_cmp(&**other)
+    }
+    fn lt(&self, other: &Ref<T>) -> bool { (**self).lt(&**other) }
+    fn le(&self, other: &Ref<T>) -> bool { (**self).le(&**other) }
+    fn gt(&self, other: &Ref<T>) -> bool { (**self).gt(&**other) }
+    fn ge(&self, other: &Ref<T>) -> bool { (**self).ge(&**other) }
+}
+
+impl<T: cmp::Ord + 'static> cmp::Ord for Ref<T> {
+    fn cmp(&self, other: &Ref<T>) -> cmp::Ordering {
+        (**self).cmp(&**other)
+    }
 }
 
 #[unsafe_destructor]
 impl<T: 'static> Drop for Ref<T> {
     fn drop(&mut self) {
-        let map = unsafe { get_local_map().unwrap() };
+        unsafe {
+            *self._inner.refcount.get() -= 1;
+        }
+    }
+}
 
-        let (_, _, ref mut loan) = *map.get_mut(self._index).get_mut_ref();
-        *loan -= 1;
+impl TLDValue {
+    fn new<T>(value: T) -> TLDValue {
+        let box_ptr = unsafe {
+            let allocation = heap::allocate(mem::size_of::<TLDValueBox<T>>(),
+                                            mem::min_align_of::<TLDValueBox<T>>());
+            let value_box = allocation as *mut TLDValueBox<T>;
+            ptr::write(value_box, TLDValueBox {
+                value: value,
+                refcount: UnsafeCell::new(1)
+            });
+            value_box as *mut ()
+        };
+        // Destruction of TLDValue needs to know how to properly deallocate the TLDValueBox,
+        // so we need our own custom destructor function.
+        unsafe fn d<T>(p: *mut ()) {
+            let value_box = p as *mut TLDValueBox<T>;
+            debug_assert!(*(*value_box).refcount.get() < 2, "TLDValue destructed while borrowed");
+            // use a RAII type here to ensure we always deallocate even if we fail while
+            // running the destructor for the value.
+            struct Guard<T> {
+                p: *mut TLDValueBox<T>
+            }
+            #[unsafe_destructor]
+            impl<T> Drop for Guard<T> {
+                fn drop(&mut self) {
+                    let size = mem::size_of::<TLDValueBox<T>>();
+                    let align = mem::align_of::<TLDValueBox<T>>();
+                    unsafe { heap::deallocate(self.p as *mut u8, size, align); }
+                }
+            }
+            let _guard = Guard::<T> { p: value_box };
+            if *(*value_box).refcount.get() != 0 {
+                // the contained value is valid; drop it
+                ptr::read(&(*value_box).value);
+            }
+            // the box will be deallocated by the guard
+        }
+        TLDValue {
+            box_ptr: box_ptr,
+            drop_fn: d::<T>
+        }
+    }
+}
+
+
+impl Drop for TLDValue {
+    fn drop(&mut self) {
+        // box_ptr should always be non-null. Check it anyway just to be thorough
+        if !self.box_ptr.is_null() {
+            unsafe { (self.drop_fn)(self.box_ptr) }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    extern crate test;
+
     use std::prelude::*;
     use std::gc::{Gc, GC};
     use super::*;
@@ -285,7 +418,7 @@ mod tests {
         static my_key: Key<String> = &Key;
         my_key.replace(Some("parent data".to_string()));
         task::spawn(proc() {
-            // TLS shouldn't carry over.
+            // TLD shouldn't carry over.
             assert!(my_key.get().is_none());
             my_key.replace(Some("child data".to_string()));
             assert!(my_key.get().get_ref().as_slice() == "child data");
@@ -379,6 +512,26 @@ mod tests {
     }
 
     #[test]
+    fn test_cleanup_drops_values() {
+        let (tx, rx) = channel::<()>();
+        struct Dropper {
+            tx: Sender<()>
+        };
+        impl Drop for Dropper {
+            fn drop(&mut self) {
+                self.tx.send(());
+            }
+        }
+        static key: Key<Dropper> = &Key;
+        let _ = task::try(proc() {
+            key.replace(Some(Dropper{ tx: tx }));
+        });
+        // At this point the task has been cleaned up and the TLD dropped.
+        // If the channel doesn't have a value now, then the Sender was leaked.
+        assert_eq!(rx.try_recv(), Ok(()));
+    }
+
+    #[test]
     fn test_static_pointer() {
         static key: Key<&'static int> = &Key;
         static VALUE: int = 0;
@@ -426,9 +579,117 @@ mod tests {
     #[should_fail]
     fn test_nested_get_set1() {
         static key: Key<int> = &Key;
-        key.replace(Some(4));
+        assert_eq!(key.replace(Some(4)), None);
 
         let _k = key.get();
         key.replace(Some(4));
+    }
+
+    // ClearKey is a RAII class that ensures the keys are cleared from the map.
+    // This is so repeated runs of a benchmark don't bloat the map with extra
+    // keys and distort the measurements.
+    // It's not used on the tests because the tests run in separate tasks.
+    struct ClearKey<T>(Key<T>);
+    #[unsafe_destructor]
+    impl<T: 'static> Drop for ClearKey<T> {
+        fn drop(&mut self) {
+            let ClearKey(ref key) = *self;
+            key.clear();
+        }
+    }
+
+    #[bench]
+    fn bench_replace_none(b: &mut test::Bencher) {
+        static key: Key<uint> = &Key;
+        let _clear = ClearKey(key);
+        key.replace(None);
+        b.iter(|| {
+            key.replace(None)
+        });
+    }
+
+    #[bench]
+    fn bench_replace_some(b: &mut test::Bencher) {
+        static key: Key<uint> = &Key;
+        let _clear = ClearKey(key);
+        key.replace(Some(1u));
+        b.iter(|| {
+            key.replace(Some(2))
+        });
+    }
+
+    #[bench]
+    fn bench_replace_none_some(b: &mut test::Bencher) {
+        static key: Key<uint> = &Key;
+        let _clear = ClearKey(key);
+        key.replace(Some(0u));
+        b.iter(|| {
+            let old = key.replace(None).unwrap();
+            let new = old + 1;
+            key.replace(Some(new))
+        });
+    }
+
+    #[bench]
+    fn bench_100_keys_replace_last(b: &mut test::Bencher) {
+        static keys: [KeyValue<uint>, ..100] = [Key, ..100];
+        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in keys.iter().enumerate() {
+            key.replace(Some(i));
+        }
+        b.iter(|| {
+            let key: Key<uint> = &keys[99];
+            key.replace(Some(42))
+        });
+    }
+
+    #[bench]
+    fn bench_1000_keys_replace_last(b: &mut test::Bencher) {
+        static keys: [KeyValue<uint>, ..1000] = [Key, ..1000];
+        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in keys.iter().enumerate() {
+            key.replace(Some(i));
+        }
+        b.iter(|| {
+            let key: Key<uint> = &keys[999];
+            key.replace(Some(42))
+        });
+        for key in keys.iter() { key.clear(); }
+    }
+
+    #[bench]
+    fn bench_get(b: &mut test::Bencher) {
+        static key: Key<uint> = &Key;
+        let _clear = ClearKey(key);
+        key.replace(Some(42));
+        b.iter(|| {
+            key.get()
+        });
+    }
+
+    #[bench]
+    fn bench_100_keys_get_last(b: &mut test::Bencher) {
+        static keys: [KeyValue<uint>, ..100] = [Key, ..100];
+        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in keys.iter().enumerate() {
+            key.replace(Some(i));
+        }
+        b.iter(|| {
+            let key: Key<uint> = &keys[99];
+            key.get()
+        });
+    }
+
+    #[bench]
+    fn bench_1000_keys_get_last(b: &mut test::Bencher) {
+        static keys: [KeyValue<uint>, ..1000] = [Key, ..1000];
+        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in keys.iter().enumerate() {
+            key.replace(Some(i));
+        }
+        b.iter(|| {
+            let key: Key<uint> = &keys[999];
+            key.get()
+        });
     }
 }
