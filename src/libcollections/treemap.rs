@@ -923,6 +923,7 @@ impl<T: Ord> Extendable<T> for TreeMultiset<T> {
 }
 
 impl<T: Ord> FromIterator<T> for TreeMultiset<T> {
+    #[inline]
     fn from_iter<Iter: Iterator<T>>(iter: Iter) -> TreeMultiset<T> {
         let mut mset = TreeMultiset::new();
         mset.extend(iter);
@@ -941,6 +942,7 @@ impl<T: Ord> TreeMultiset<T> {
     pub fn new() -> TreeMultiset<T> { TreeMultiset {map: TreeMap::new(), length: 0} }
 
     /// Get the number of distinct values in the multiset
+    #[inline]
     pub fn num_distinct(&self) -> uint { self.map.len() }
 
     /// Get a lazy iterator over the values in the multiset.
@@ -973,30 +975,35 @@ impl<T: Ord> TreeMultiset<T> {
     }
 
     /// Visit the values (in-order) representing the difference
+    #[inline]
     pub fn difference<'a>(&'a self, other: &'a TreeMultiset<T>)
         -> DifferenceItems<'a, T, MultisetItems<'a, T>> {
         DifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visit the values (in-order) representing the symmetric difference
+    #[inline]
     pub fn symmetric_difference<'a>(&'a self, other: &'a TreeMultiset<T>)
         -> SymDifferenceItems<'a, T, MultisetItems<'a, T>> {
         SymDifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visit the values (in-order) representing the multiset sum
+    #[inline]
     pub fn sum<'a>(&'a self, other: &'a TreeMultiset<T>)
         -> SumItems<'a, T, MultisetItems<'a, T>> {
         SumItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visit the values (in-order) representing the intersection
+    #[inline]
     pub fn intersection<'a>(&'a self, other: &'a TreeMultiset<T>)
         -> IntersectionItems<'a, T, MultisetItems<'a, T>> {
         IntersectionItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visit the values (in-order) representing the union
+    #[inline]
     pub fn union<'a>(&'a self, other: &'a TreeMultiset<T>)
         -> UnionItems<'a, T, MultisetItems<'a, T>> {
         UnionItems{a: self.iter().peekable(), b: other.iter().peekable()}
@@ -1057,17 +1064,20 @@ impl<T: Ord> TreeMultiset<T> {
     }
 
     /// Return true if the value occurs at least once in the multiset.
+    #[inline]
     pub fn contains(&self, value: &T) -> bool {
-        self.count(value) > 0u
+        self.count(value) > 0
     }
 
     /// Return true if the multiset is a superset of another.
+    #[inline]
     pub fn is_superset(&self, other: &TreeMultiset<T>) -> bool {
         other.is_subset(self)
     }
 
     /// Add `n` occurrences of `value` to the multiset. Return true if the value
     /// was not already present in the multiset.
+    #[inline]
     pub fn insert_many(&mut self, value: T, n: uint) -> bool {
         let curr = self.count(&value);
         self.length += n;
@@ -1077,6 +1087,7 @@ impl<T: Ord> TreeMultiset<T> {
     /// Remove `n` occurrences of `value` from the multiset. If there are less
     /// than `n` occurrences, remove all occurrences. Return the number of
     /// occurrences removed.
+    #[inline]
     pub fn remove_many(&mut self, value: &T, n: uint) -> uint {
         let curr = self.count(value);
 
@@ -1098,12 +1109,14 @@ impl<T: Ord> TreeMultiset<T> {
 
     /// Add one occurrence of `value` to the multiset. Return true if the value
     /// was not already present in the multiset.
+    #[inline]
     pub fn insert(&mut self, value: T) -> bool {
         self.insert_many(value, 1)
     }
 
     /// Remove one occurrence of `value` from the multiset. Return true if the
     /// value was present in the multiset.
+    #[inline]
     pub fn remove(&mut self, value: &T) -> bool {
         self.remove_many(value, 1) > 0u
     }
