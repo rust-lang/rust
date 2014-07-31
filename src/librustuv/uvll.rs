@@ -719,6 +719,7 @@ extern {
 extern {}
 
 #[cfg(target_os = "linux")]
+#[cfg(target_os = "dragonfly")]
 #[link(name = "rt")]
 extern {}
 
@@ -729,5 +730,6 @@ extern {}
 extern {}
 
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "dragonfly")]
 #[link(name = "kvm")]
 extern {}

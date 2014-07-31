@@ -70,7 +70,7 @@ extern char **environ;
 #endif
 #endif
 
-#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__)
+#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || defined(__DragonFly__)
 extern char **environ;
 #endif
 
@@ -355,6 +355,13 @@ rust_unset_sigprocmask() {
     sigprocmask(SIG_SETMASK, &sset, NULL);
 }
 
+#endif
+
+#if defined(__DragonFly__)
+#include <errno.h>
+// In DragonFly __error() is an inline function and as such
+// no symbol exists for it.
+int *__dfly_error(void) { return __error(); }
 #endif
 
 //

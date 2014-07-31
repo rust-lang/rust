@@ -38,6 +38,10 @@ extern {}
 #[link(name = "pthread")]
 extern {}
 
+#[cfg(target_os = "dragonfly")]
+#[link(name = "pthread")]
+extern {}
+
 #[cfg(target_os = "macos")]
 #[link(name = "System")]
 extern {}

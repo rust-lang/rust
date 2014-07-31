@@ -63,6 +63,27 @@ mod imp {
         pub static F_SETLKW: libc::c_int = 13;
     }
 
+    #[cfg(target_os = "dragonfly")]
+    mod os {
+        use libc;
+
+        pub struct flock {
+            pub l_start: libc::off_t,
+            pub l_len: libc::off_t,
+            pub l_pid: libc::pid_t,
+            pub l_type: libc::c_short,
+            pub l_whence: libc::c_short,
+
+            // not actually here, but brings in line with freebsd
+            pub l_sysid: libc::c_int,
+        }
+
+        pub static F_UNLCK: libc::c_short = 2;
+        pub static F_WRLCK: libc::c_short = 3;
+        pub static F_SETLK: libc::c_int = 8;
+        pub static F_SETLKW: libc::c_int = 9;
+    }
+
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "ios")]
     mod os {

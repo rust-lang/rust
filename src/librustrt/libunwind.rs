@@ -94,6 +94,9 @@ extern {}
 #[link(name = "gcc")]
 extern {}
 
+#[cfg(target_os = "dragonfly")]
+#[link(name = "gcc_pic")]
+extern {}
 
 extern "C" {
     // iOS on armv7 uses SjLj exceptions and requires to link
