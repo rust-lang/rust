@@ -72,12 +72,6 @@ pub struct Timer {
 
 struct TimerCallback { tx: Sender<()> }
 
-fn in_ms(d: Duration) -> u64 {
-    let ms = d.num_milliseconds();
-    if ms < 0 { return 0 };
-    return ms as u64;
-}
-
 /// Sleep the current task for the specified duration.
 ///
 /// When provided a zero or negative `duration`, the function will
@@ -108,7 +102,7 @@ impl Timer {
     /// return immediately.
     pub fn sleep(&mut self, duration: Duration) {
         // Short-circuit the timer backend for 0 duration
-        let ms = in_ms(duration);
+        let ms = in_ms_u64(duration);
         if ms == 0 { return }
         self.obj.sleep(ms);
     }
@@ -153,8 +147,8 @@ impl Timer {
     pub fn oneshot(&mut self, duration: Duration) -> Receiver<()> {
         let (tx, rx) = channel();
         // Short-circuit the timer backend for 0 duration
-        if in_ms(duration) != 0 {
-            self.obj.oneshot(in_ms(duration), box TimerCallback { tx: tx });
+        if in_ms_u64(duration) != 0 {
+            self.obj.oneshot(in_ms_u64(duration), box TimerCallback { tx: tx });
         } else {
             tx.send(());
         }
@@ -207,7 +201,7 @@ impl Timer {
     /// When provided a zero or negative `duration`, the messages will
     /// be sent without delay.
     pub fn periodic(&mut self, duration: Duration) -> Receiver<()> {
-        let ms = in_ms(duration);
+        let ms = in_ms_u64(duration);
         // FIXME: The backend implementations don't ever send a message
         // if given a 0 ms duration. Temporarily using 1ms. It's
         // not clear what use a 0ms period is anyway...
@@ -222,6 +216,12 @@ impl Callback for TimerCallback {
     fn call(&mut self) {
         let _ = self.tx.send_opt(());
     }
+}
+
+fn in_ms_u64(d: Duration) -> u64 {
+    let ms = d.num_milliseconds();
+    if ms < 0 { return 0 };
+    return ms as u64;
 }
 
 #[cfg(test)]

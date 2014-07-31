@@ -33,6 +33,7 @@ use kinds::Send;
 use boxed::Box;
 use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe};
+use time::Duration;
 
 /// A stream which communicates over a named pipe.
 pub struct UnixStream {
@@ -68,9 +69,9 @@ impl UnixStream {
     /// elapses the function will return an error of kind `TimedOut`.
     #[experimental = "the timeout argument is likely to change types"]
     pub fn connect_timeout<P: ToCStr>(path: &P,
-                                      timeout_ms: u64) -> IoResult<UnixStream> {
+                                      timeout: Duration) -> IoResult<UnixStream> {
         LocalIo::maybe_raise(|io| {
-            let s = io.unix_connect(&path.to_c_str(), Some(timeout_ms));
+            let s = io.unix_connect(&path.to_c_str(), Some(in_ms_u64(timeout)));
             s.map(|p| UnixStream { obj: p })
         }).map_err(IoError::from_rtio_error)
     }
@@ -499,13 +500,13 @@ mod tests {
 
     iotest!(fn connect_timeout_error() {
         let addr = next_test_unix();
-        assert!(UnixStream::connect_timeout(&addr, 100).is_err());
+        assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(100)).is_err());
     })
 
     iotest!(fn connect_timeout_success() {
         let addr = next_test_unix();
         let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
-        assert!(UnixStream::connect_timeout(&addr, 100).is_ok());
+        assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(100)).is_ok());
     })
 
     iotest!(fn close_readwrite_smoke() {
