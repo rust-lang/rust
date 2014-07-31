@@ -256,6 +256,18 @@ pub struct Permutations<T> {
 }
 
 impl<T: Clone> Iterator<Vec<T>> for Permutations<T> {
+    /// Returns next permuation in Iterator of all possible
+    /// permuations of a vector.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v = [1i, 2, 3];
+    /// let mut perms = v.permutations();
+    /// assert_eq!(Some(vec!(1i, 2, 3)), perms.next());
+    /// assert_eq!(Some(vec!(1i, 3, 2)), perms.next());
+    /// assert_eq!(Some(vec!(3i, 1, 2)), perms.next());
+    /// ```
     #[inline]
     fn next(&mut self) -> Option<Vec<T>> {
         match self.swaps.next() {
@@ -334,6 +346,18 @@ impl<'a,T:Clone> ImmutableCloneableVector<T> for &'a [T] {
         (lefts, rights)
     }
 
+    /// Returns an iterator over all permutations of a vector.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v = [1i, 2, 3];
+    /// let mut perms = v.permutations();
+    ///
+    /// for p in perms {
+    ///   println!("{}", p);
+    /// }
+    /// ```
     fn permutations(self) -> Permutations<T> {
         Permutations{
             swaps: ElementSwaps::new(self.len()),
@@ -580,6 +604,16 @@ pub trait MutableVectorAllocating<'a, T> {
      * * src - A mutable vector of `T`
      * * start - The index into `src` to start copying from
      * * end - The index into `src` to stop copying from
+     *
+     * # Example
+     *
+     * ```rust
+     * let mut a = [1i, 2, 3, 4, 5];
+     * let b = vec![6i, 7, 8];
+     * let num_moved = a.move_from(b, 0, 3);
+     * assert_eq!(num_moved, 3);
+     * assert!(a == [6i, 7, 8, 4, 5]);
+     * ```
      */
     fn move_from(self, src: Vec<T>, start: uint, end: uint) -> uint;
 }
