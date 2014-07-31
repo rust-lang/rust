@@ -296,12 +296,14 @@ pub unsafe fn local_malloc_(drop_glue: fn(*mut u8), size: uint,
 pub unsafe fn local_malloc(drop_glue: fn(*mut u8), size: uint,
                            align: uint) -> *mut u8 {
     // FIXME: Unsafe borrow for speed. Lame.
-    let task: Option<*mut Task> = Local::try_unsafe_borrow();
-    match task {
-        Some(task) => {
-            (*task).heap.alloc(drop_glue, size, align) as *mut u8
+    {
+        let task: Option<*mut Task> = Local::try_unsafe_borrow();
+        match task {
+            Some(task) => {
+                (*task).heap.alloc(drop_glue, size, align) as *mut u8
+            }
+            None => rtabort!("local malloc outside of task")
         }
-        None => rtabort!("local malloc outside of task")
     }
 }
 
@@ -318,12 +320,14 @@ pub unsafe fn local_free_(ptr: *mut u8) {
 #[inline]
 pub unsafe fn local_free(ptr: *mut u8) {
     // FIXME: Unsafe borrow for speed. Lame.
-    let task_ptr: Option<*mut Task> = Local::try_unsafe_borrow();
-    match task_ptr {
-        Some(task) => {
-            (*task).heap.free(ptr as *mut Box)
+    {
+        let task_ptr: Option<*mut Task> = Local::try_unsafe_borrow();
+        match task_ptr {
+            Some(task) => {
+                (*task).heap.free(ptr as *mut Box)
+            }
+            None => rtabort!("local free outside of task")
         }
-        None => rtabort!("local free outside of task")
     }
 }
 

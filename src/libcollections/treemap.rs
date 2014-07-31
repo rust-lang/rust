@@ -1084,27 +1084,29 @@ impl<T: Ord> Set<T> for TreeSet<T> {
     }
 
     fn is_subset(&self, other: &TreeSet<T>) -> bool {
-        let mut x = self.iter();
-        let mut y = other.iter();
-        let mut a = x.next();
-        let mut b = y.next();
-        while a.is_some() {
-            if b.is_none() {
-                return false;
+        {
+            let mut x = self.iter();
+            let mut y = other.iter();
+            let mut a = x.next();
+            let mut b = y.next();
+            while a.is_some() {
+                if b.is_none() {
+                    return false;
+                }
+
+                let a1 = a.unwrap();
+                let b1 = b.unwrap();
+
+                match b1.cmp(a1) {
+                    Less => (),
+                    Greater => return false,
+                    Equal => a = x.next(),
+                }
+
+                b = y.next();
             }
-
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-
-            match b1.cmp(a1) {
-                Less => (),
-                Greater => return false,
-                Equal => a = x.next(),
-            }
-
-            b = y.next();
+            true
         }
-        true
     }
 }
 

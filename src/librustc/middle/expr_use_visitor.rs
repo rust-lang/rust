@@ -511,37 +511,41 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                 }
             }
             _ => {
-                let overloaded_call_type =
-                    match self.tcx()
-                              .method_map
-                              .borrow()
-                              .find(&MethodCall::expr(call.id)) {
-                    Some(ref method_callee) => {
-                        OverloadedCallType::from_method_origin(
-                            self.tcx(),
-                            &method_callee.origin)
+                let overloaded_call_type;
+                {
+                    let method_map = self.tcx().method_map.borrow();
+                    overloaded_call_type = match method_map.find(
+                            &MethodCall::expr(call.id)) {
+                        Some(ref method_callee) => {
+                            OverloadedCallType::from_method_origin(
+                                self.tcx(),
+                                &method_callee.origin)
+                        }
+                        None => {
+                            self.tcx().sess.span_bug(
+                                callee.span,
+                                format!("unexpected callee type {}",
+                                        callee_ty.repr(self.tcx()))
+                                                 .as_slice())
+                        }
                     }
-                    None => {
-                        self.tcx().sess.span_bug(
-                            callee.span,
-                            format!("unexpected callee type {}",
-                                    callee_ty.repr(self.tcx())).as_slice())
+                }
+                {
+                    match overloaded_call_type {
+                        FnMutOverloadedCall => {
+                            self.borrow_expr(callee,
+                                             ty::ReScope(call.id),
+                                             ty::MutBorrow,
+                                             ClosureInvocation);
+                        }
+                        FnOverloadedCall => {
+                            self.borrow_expr(callee,
+                                             ty::ReScope(call.id),
+                                             ty::ImmBorrow,
+                                             ClosureInvocation);
+                        }
+                        FnOnceOverloadedCall => self.consume_expr(callee),
                     }
-                };
-                match overloaded_call_type {
-                    FnMutOverloadedCall => {
-                        self.borrow_expr(callee,
-                                         ty::ReScope(call.id),
-                                         ty::MutBorrow,
-                                         ClosureInvocation);
-                    }
-                    FnOverloadedCall => {
-                        self.borrow_expr(callee,
-                                         ty::ReScope(call.id),
-                                         ty::ImmBorrow,
-                                         ClosureInvocation);
-                    }
-                    FnOnceOverloadedCall => self.consume_expr(callee),
                 }
             }
         }
@@ -933,8 +937,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
             // inferred by regionbk
             let upvar_id = ty::UpvarId { var_id: id_var,
                                          closure_expr_id: closure_expr.id };
-            let upvar_borrow = self.tcx().upvar_borrow_map.borrow()
-                                   .get_copy(&upvar_id);
+            let upvar_borrow = {
+                let upvar_borrow_map = self.tcx().upvar_borrow_map.borrow();
+                upvar_borrow_map.get_copy(&upvar_id)
+            };
 
             self.delegate.borrow(closure_expr.id,
                                  closure_expr.span,

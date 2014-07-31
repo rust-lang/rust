@@ -424,49 +424,54 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         };
 
         let impl_items = tcx.impl_items.borrow();
-        let trait_impls = match tcx.trait_impls.borrow().find_copy(&drop_trait) {
+        let trait_impls = tcx.trait_impls.borrow();
+        let trait_impls = match trait_impls.find_copy(&drop_trait) {
             None => return, // No types with (new-style) dtors present.
             Some(found_impls) => found_impls
         };
 
-        for &impl_did in trait_impls.borrow().iter() {
-            let items = impl_items.get(&impl_did);
-            if items.len() < 1 {
-                // We'll error out later. For now, just don't ICE.
-                continue;
-            }
-            let method_def_id = *items.get(0);
-
-            let self_type = self.get_self_type_for_implementation(impl_did);
-            match ty::get(self_type.ty).sty {
-                ty::ty_enum(type_def_id, _) |
-                ty::ty_struct(type_def_id, _) |
-                ty::ty_unboxed_closure(type_def_id, _) => {
-                    tcx.destructor_for_type
-                       .borrow_mut()
-                       .insert(type_def_id, method_def_id.def_id());
-                    tcx.destructors
-                       .borrow_mut()
-                       .insert(method_def_id.def_id());
+        {
+            let trait_impls = trait_impls.borrow();
+            for &impl_did in trait_impls.iter() {
+                let items = impl_items.get(&impl_did);
+                if items.len() < 1 {
+                    // We'll error out later. For now, just don't ICE.
+                    continue;
                 }
-                _ => {
-                    // Destructors only work on nominal types.
-                    if impl_did.krate == ast::LOCAL_CRATE {
-                        {
-                            match tcx.map.find(impl_did.node) {
-                                Some(ast_map::NodeItem(item)) => {
-                                    span_err!(tcx.sess, item.span, E0120,
-                                        "the Drop trait may only be implemented on structures");
-                                }
-                                _ => {
-                                    tcx.sess.bug("didn't find impl in ast \
-                                                  map");
+                let method_def_id = *items.get(0);
+
+                let self_type = self.get_self_type_for_implementation(impl_did);
+                match ty::get(self_type.ty).sty {
+                    ty::ty_enum(type_def_id, _) |
+                    ty::ty_struct(type_def_id, _) |
+                    ty::ty_unboxed_closure(type_def_id, _) => {
+                        tcx.destructor_for_type
+                           .borrow_mut()
+                           .insert(type_def_id, method_def_id.def_id());
+                        tcx.destructors
+                           .borrow_mut()
+                           .insert(method_def_id.def_id());
+                    }
+                    _ => {
+                        // Destructors only work on nominal types.
+                        if impl_did.krate == ast::LOCAL_CRATE {
+                            {
+                                match tcx.map.find(impl_did.node) {
+                                    Some(ast_map::NodeItem(item)) => {
+                                        span_err!(tcx.sess, item.span, E0120,
+                                            "the Drop trait may only be \
+                                             implemented on structures");
+                                    }
+                                    _ => {
+                                        tcx.sess.bug("didn't find impl in \
+                                                      ast map");
+                                    }
                                 }
                             }
+                        } else {
+                            tcx.sess.bug("found external impl of Drop trait \
+                                          on something other than a struct");
                         }
-                    } else {
-                        tcx.sess.bug("found external impl of Drop trait on \
-                                      something other than a struct");
                     }
                 }
             }

@@ -1319,8 +1319,14 @@ impl<'a> Resolver<'a> {
                     TyPath(ref path, _, _) if path.segments.len() == 1 => {
                         let name = path.segments.last().unwrap().identifier;
 
-                        let parent_opt = parent.module().children.borrow()
-                                               .find_copy(&name.name);
+                        let parent_opt = {
+                            let parent_module = parent.module();
+                            {
+                                let children = parent_module.children
+                                                            .borrow();
+                                children.find_copy(&name.name)
+                            }
+                        };
                         let new_parent = match parent_opt {
                             // It already exists
                             Some(ref child) if child.get_module_if_available()
@@ -1635,9 +1641,18 @@ impl<'a> Resolver<'a> {
                         &*parent.module(),
                         name.name,
                         view_item.span);
-                    parent.module().external_module_children.borrow_mut()
-                                   .insert(name.name, external_module.clone());
-                    self.build_reduced_graph_for_external_crate(external_module);
+                    {
+                        let module = parent.module();
+                        {
+                            let mut external_module_children =
+                                module.external_module_children.borrow_mut();
+                            external_module_children.insert(
+                                name.name,
+                                external_module.clone());
+                        }
+                    }
+                    self.build_reduced_graph_for_external_crate(
+                        external_module);
                 }
             }
         }
@@ -2148,19 +2163,25 @@ impl<'a> Resolver<'a> {
         self.current_module = orig_module;
 
         self.populate_module_if_necessary(&module_);
-        for (_, child_node) in module_.children.borrow().iter() {
-            match child_node.get_module_if_available() {
-                None => {
-                    // Nothing to do.
-                }
-                Some(child_module) => {
-                    self.resolve_imports_for_module_subtree(child_module);
+        {
+            let children = module_.children.borrow();
+            for (_, child_node) in children.iter() {
+                match child_node.get_module_if_available() {
+                    None => {
+                        // Nothing to do.
+                    }
+                    Some(child_module) => {
+                        self.resolve_imports_for_module_subtree(child_module);
+                    }
                 }
             }
         }
 
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
-            self.resolve_imports_for_module_subtree(child_module.clone());
+        {
+            let anonymous_children = module_.anonymous_children.borrow();
+            for (_, child_module) in anonymous_children.iter() {
+                self.resolve_imports_for_module_subtree(child_module.clone());
+            }
         }
     }
 
@@ -2173,32 +2194,38 @@ impl<'a> Resolver<'a> {
             return;
         }
 
-        let imports = module.imports.borrow();
-        let import_count = imports.len();
-        while module.resolved_import_count.get() < import_count {
-            let import_index = module.resolved_import_count.get();
-            let import_directive = imports.get(import_index);
-            match self.resolve_import_for_module(module.clone(),
-                                                 import_directive) {
-                Failed(err) => {
-                    let (span, help) = match err {
-                        Some((span, msg)) => (span, format!(". {}", msg)),
-                        None => (import_directive.span, String::new())
-                    };
-                    let msg = format!("unresolved import `{}`{}",
-                                      self.import_path_to_string(
-                                          import_directive.module_path
-                                                          .as_slice(),
-                                          import_directive.subclass),
-                                      help);
-                    self.resolve_error(span, msg.as_slice());
+        {
+            let imports = &module.imports;
+            let imports = imports.borrow();
+            let import_count = imports.len();
+            while module.resolved_import_count.get() < import_count {
+                let import_index = module.resolved_import_count.get();
+                let import_directive = imports.get(import_index);
+                match self.resolve_import_for_module(module.clone(),
+                                                     import_directive) {
+                    Failed(err) => {
+                        let (span, help) = match err {
+                            Some((span, msg)) => (span, format!(". {}", msg)),
+                            None => (import_directive.span, String::new())
+                        };
+                        let msg = format!("unresolved import `{}`{}",
+                                          self.import_path_to_string(
+                                              import_directive.module_path
+                                                              .as_slice(),
+                                              import_directive.subclass),
+                                          help);
+                        self.resolve_error(span, msg.as_slice());
+                    }
+                    Indeterminate => {
+                        // Bail out. We'll come around next time.
+                        break
+                    }
+                    Success(()) => () // Good. Continue.
                 }
-                Indeterminate => break, // Bail out. We'll come around next time.
-                Success(()) => () // Good. Continue.
-            }
 
-            module.resolved_import_count
-                  .set(module.resolved_import_count.get() + 1);
+                module.resolved_import_count
+                      .set(module.resolved_import_count.get() + 1);
+            }
         }
     }
 
@@ -2666,58 +2693,62 @@ impl<'a> Resolver<'a> {
         assert_eq!(containing_module.glob_count.get(), 0);
 
         // Add all resolved imports from the containing module.
-        let import_resolutions = containing_module.import_resolutions
-                                                  .borrow();
-        for (ident, target_import_resolution) in import_resolutions.iter() {
-            debug!("(resolving glob import) writing module resolution \
-                    {:?} into `{}`",
-                   target_import_resolution.type_target.is_none(),
-                   self.module_to_string(module_));
+        {
+            let import_resolutions = containing_module.import_resolutions
+                                                      .borrow();
+            for (ident, target_import_resolution) in
+                    import_resolutions.iter() {
+                debug!("(resolving glob import) writing module resolution \
+                        {:?} into `{}`",
+                       target_import_resolution.type_target.is_none(),
+                       self.module_to_string(module_));
 
-            if !target_import_resolution.is_public {
-                debug!("(resolving glob import) nevermind, just kidding");
-                continue
-            }
-
-            // Here we merge two import resolutions.
-            let mut import_resolutions = module_.import_resolutions.borrow_mut();
-            match import_resolutions.find_mut(ident) {
-                Some(dest_import_resolution) => {
-                    // Merge the two import resolutions at a finer-grained
-                    // level.
-
-                    match target_import_resolution.value_target {
-                        None => {
-                            // Continue.
-                        }
-                        Some(ref value_target) => {
-                            dest_import_resolution.value_target =
-                                Some(value_target.clone());
-                        }
-                    }
-                    match target_import_resolution.type_target {
-                        None => {
-                            // Continue.
-                        }
-                        Some(ref type_target) => {
-                            dest_import_resolution.type_target =
-                                Some(type_target.clone());
-                        }
-                    }
-                    dest_import_resolution.is_public = is_public;
-                    continue;
+                if !target_import_resolution.is_public {
+                    debug!("(resolving glob import) nevermind, just kidding");
+                    continue
                 }
-                None => {}
+
+                // Here we merge two import resolutions.
+                let mut import_resolutions = module_.import_resolutions.borrow_mut();
+                match import_resolutions.find_mut(ident) {
+                    Some(dest_import_resolution) => {
+                        // Merge the two import resolutions at a finer-grained
+                        // level.
+
+                        match target_import_resolution.value_target {
+                            None => {
+                                // Continue.
+                            }
+                            Some(ref value_target) => {
+                                dest_import_resolution.value_target =
+                                    Some(value_target.clone());
+                            }
+                        }
+                        match target_import_resolution.type_target {
+                            None => {
+                                // Continue.
+                            }
+                            Some(ref type_target) => {
+                                dest_import_resolution.type_target =
+                                    Some(type_target.clone());
+                            }
+                        }
+                        dest_import_resolution.is_public = is_public;
+                        continue;
+                    }
+                    None => {}
+                }
+
+                // Simple: just copy the old import resolution.
+                let mut new_import_resolution =
+                    ImportResolution::new(id, is_public);
+                new_import_resolution.value_target =
+                    target_import_resolution.value_target.clone();
+                new_import_resolution.type_target =
+                    target_import_resolution.type_target.clone();
+
+                import_resolutions.insert(*ident, new_import_resolution);
             }
-
-            // Simple: just copy the old import resolution.
-            let mut new_import_resolution = ImportResolution::new(id, is_public);
-            new_import_resolution.value_target =
-                target_import_resolution.value_target.clone();
-            new_import_resolution.type_target =
-                target_import_resolution.type_target.clone();
-
-            import_resolutions.insert(*ident, new_import_resolution);
         }
 
         // Add all children from the containing module.
@@ -3236,28 +3267,35 @@ impl<'a> Resolver<'a> {
         // all its imports in the usual way; this is because chains of
         // adjacent import statements are processed as though they mutated the
         // current scope.
-        match module_.import_resolutions.borrow().find(&name.name) {
-            None => {
-                // Not found; continue.
-            }
-            Some(import_resolution) => {
-                match (*import_resolution).target_for_namespace(namespace) {
-                    None => {
-                        // Not found; continue.
-                        debug!("(resolving item in lexical scope) found \
-                                import resolution, but not in namespace {:?}",
-                               namespace);
-                    }
-                    Some(target) => {
-                        debug!("(resolving item in lexical scope) using \
-                                import resolution");
-                        // track used imports and extern crates as well
-                        self.used_imports.insert((import_resolution.id(namespace), namespace));
-                        match target.target_module.def_id.get() {
-                            Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
-                            _ => {}
+        {
+            let import_resolutions = module_.import_resolutions.borrow();
+            match import_resolutions.find(&name.name) {
+                None => {
+                    // Not found; continue.
+                }
+                Some(import_resolution) => {
+                    match (*import_resolution).target_for_namespace(namespace) {
+                        None => {
+                            // Not found; continue.
+                            debug!("(resolving item in lexical scope) found \
+                                    import resolution, but not in namespace {:?}",
+                                   namespace);
                         }
-                        return Success((target, false));
+                        Some(target) => {
+                            debug!("(resolving item in lexical scope) using \
+                                    import resolution");
+                            // track used imports and extern crates as well
+                            self.used_imports.insert((
+                                    import_resolution.id(namespace),
+                                    namespace));
+                            match target.target_module.def_id.get() {
+                                Some(DefId{krate: kid, ..}) => {
+                                    self.used_crates.insert(kid);
+                                }
+                                _ => {}
+                            }
+                            return Success((target, false));
+                        }
                     }
                 }
             }
@@ -3265,11 +3303,25 @@ impl<'a> Resolver<'a> {
 
         // Search for external modules.
         if namespace == TypeNS {
-            match module_.external_module_children.borrow().find_copy(&name.name) {
+            let name_bindings;
+            {
+                let external_module_children = module_.external_module_children
+                                                      .borrow();
+                {
+                    match external_module_children.find_copy(&name.name) {
+                        None => name_bindings = None,
+                        Some(module) => {
+                            name_bindings = Some(Rc::new(
+                                Resolver::create_name_bindings_from_module(
+                                    module)));
+                            debug!("lower name bindings succeeded");
+                        }
+                    }
+                }
+            }
+            match name_bindings {
                 None => {}
-                Some(module) => {
-                    let name_bindings =
-                        Rc::new(Resolver::create_name_bindings_from_module(module));
+                Some(name_bindings) => {
                     debug!("lower name bindings succeeded");
                     return Success((Target::new(module_,
                                                 name_bindings,
@@ -3493,17 +3545,20 @@ impl<'a> Resolver<'a> {
         // First, check the direct children of the module.
         self.populate_module_if_necessary(&module_);
 
-        match module_.children.borrow().find(&name) {
-            Some(name_bindings)
-                    if name_bindings.defined_in_namespace(namespace) => {
-                debug!("(resolving name in module) found node as child");
-                return Success((Target::new(module_.clone(),
-                                            name_bindings.clone(),
-                                            false),
-                               false));
-            }
-            Some(_) | None => {
-                // Continue.
+        {
+            let children = module_.children.borrow();
+            match children.find(&name) {
+                Some(name_bindings)
+                        if name_bindings.defined_in_namespace(namespace) => {
+                    debug!("(resolving name in module) found node as child");
+                    return Success((Target::new(module_.clone(),
+                                                name_bindings.clone(),
+                                                false),
+                                   false));
+                }
+                Some(_) | None => {
+                    // Continue.
+                }
             }
         }
 
@@ -3516,49 +3571,66 @@ impl<'a> Resolver<'a> {
         }
 
         // Check the list of resolved imports.
-        match module_.import_resolutions.borrow().find(&name) {
-            Some(import_resolution) if allow_private_imports ||
-                                       import_resolution.is_public => {
+        {
+            let import_resolutions = module_.import_resolutions.borrow();
+            match import_resolutions.find(&name) {
+                Some(import_resolution) if allow_private_imports ||
+                                           import_resolution.is_public => {
 
-                if import_resolution.is_public &&
-                        import_resolution.outstanding_references != 0 {
-                    debug!("(resolving name in module) import \
-                           unresolved; bailing out");
-                    return Indeterminate;
-                }
-                match import_resolution.target_for_namespace(namespace) {
-                    None => {
-                        debug!("(resolving name in module) name found, \
-                                but not in namespace {:?}",
-                               namespace);
+                    if import_resolution.is_public &&
+                            import_resolution.outstanding_references != 0 {
+                        debug!("(resolving name in module) import \
+                               unresolved; bailing out");
+                        return Indeterminate;
                     }
-                    Some(target) => {
-                        debug!("(resolving name in module) resolved to \
-                                import");
-                        // track used imports and extern crates as well
-                        self.used_imports.insert((import_resolution.id(namespace), namespace));
-                        match target.target_module.def_id.get() {
-                            Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
-                            _ => {}
+                    match import_resolution.target_for_namespace(namespace) {
+                        None => {
+                            debug!("(resolving name in module) name found, \
+                                    but not in namespace {:?}",
+                                   namespace);
                         }
-                        return Success((target, true));
+                        Some(target) => {
+                            debug!("(resolving name in module) resolved to \
+                                    import");
+                            // track used imports and extern crates as well
+                            self.used_imports.insert(
+                                (import_resolution.id(namespace), namespace));
+                            match target.target_module.def_id.get() {
+                                Some(DefId{krate: kid, ..}) => {
+                                    self.used_crates.insert(kid);
+                                },
+                                _ => {}
+                            }
+                            return Success((target, true));
+                        }
                     }
                 }
+                Some(..) | None => {} // Continue.
             }
-            Some(..) | None => {} // Continue.
         }
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            match module_.external_module_children.borrow().find_copy(&name) {
+            let name_bindings;
+            {
+                let external_module_children =
+                    module_.external_module_children.borrow();
+                match external_module_children.find_copy(&name) {
+                    None => name_bindings = None,
+                    Some(module) => {
+                        name_bindings = Some(Rc::new(
+                                Resolver::create_name_bindings_from_module(
+                                    module)));
+                    }
+                }
+            }
+            match name_bindings {
                 None => {}
-                Some(module) => {
-                    let name_bindings =
-                        Rc::new(Resolver::create_name_bindings_from_module(module));
+                Some(name_bindings) => {
                     return Success((Target::new(module_,
                                                 name_bindings,
                                                 false),
-                                    false));
+                                    false))
                 }
             }
         }
@@ -3571,39 +3643,49 @@ impl<'a> Resolver<'a> {
 
     fn report_unresolved_imports(&mut self, module_: Rc<Module>) {
         let index = module_.resolved_import_count.get();
-        let imports = module_.imports.borrow();
-        let import_count = imports.len();
-        if index != import_count {
-            let sn = self.session
-                         .codemap()
-                         .span_to_snippet(imports.get(index).span)
-                         .unwrap();
-            if sn.as_slice().contains("::") {
-                self.resolve_error(imports.get(index).span,
-                                   "unresolved import");
-            } else {
-                let err = format!("unresolved import (maybe you meant `{}::*`?)",
-                                  sn.as_slice().slice(0, sn.len()));
-                self.resolve_error(imports.get(index).span, err.as_slice());
+        {
+            let imports = module_.imports.borrow();
+            let import_count = imports.len();
+            if index != import_count {
+                let sn = self.session
+                             .codemap()
+                             .span_to_snippet(imports.get(index).span)
+                             .unwrap();
+                if sn.as_slice().contains("::") {
+                    self.resolve_error(imports.get(index).span,
+                                       "unresolved import");
+                } else {
+                    let err = format!("unresolved import (maybe you meant \
+                                       `{}::*`?)",
+                                      sn.as_slice().slice(0, sn.len()));
+                    self.resolve_error(imports.get(index).span,
+                                       err.as_slice());
+                }
             }
         }
 
         // Descend into children and anonymous children.
         self.populate_module_if_necessary(&module_);
 
-        for (_, child_node) in module_.children.borrow().iter() {
-            match child_node.get_module_if_available() {
-                None => {
-                    // Continue.
-                }
-                Some(child_module) => {
-                    self.report_unresolved_imports(child_module);
+        {
+            let children = module_.children.borrow();
+            for (_, child_node) in children.iter() {
+                match child_node.get_module_if_available() {
+                    None => {
+                        // Continue.
+                    }
+                    Some(child_module) => {
+                        self.report_unresolved_imports(child_module);
+                    }
                 }
             }
         }
 
-        for (_, module_) in module_.anonymous_children.borrow().iter() {
-            self.report_unresolved_imports(module_.clone());
+        {
+            let anonymous_children = module_.anonymous_children.borrow();
+            for (_, module_) in anonymous_children.iter() {
+                self.report_unresolved_imports(module_.clone());
+            }
         }
     }
 
@@ -3651,19 +3733,25 @@ impl<'a> Resolver<'a> {
         self.record_exports_for_module(&*module_);
         self.populate_module_if_necessary(&module_);
 
-        for (_, child_name_bindings) in module_.children.borrow().iter() {
-            match child_name_bindings.get_module_if_available() {
-                None => {
-                    // Nothing to do.
-                }
-                Some(child_module) => {
-                    self.record_exports_for_module_subtree(child_module);
+        {
+            let children = module_.children.borrow();
+            for (_, child_name_bindings) in children.iter() {
+                match child_name_bindings.get_module_if_available() {
+                    None => {
+                        // Nothing to do.
+                    }
+                    Some(child_module) => {
+                        self.record_exports_for_module_subtree(child_module);
+                    }
                 }
             }
         }
 
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
-            self.record_exports_for_module_subtree(child_module.clone());
+        {
+            let anonymous_children = module_.anonymous_children.borrow();
+            for (_, child_module) in anonymous_children.iter() {
+                self.record_exports_for_module_subtree(child_module.clone());
+            }
         }
     }
 
@@ -4001,9 +4089,13 @@ impl<'a> Resolver<'a> {
 
                 // plain insert (no renaming, types are not currently hygienic....)
                 let name = self.type_self_name;
-                self_type_rib.bindings.borrow_mut()
-                             .insert(name, DlDef(DefSelfTy(item.id)));
-                self.type_ribs.borrow_mut().push(self_type_rib);
+                {
+                    self_type_rib.bindings.borrow_mut()
+                                 .insert(name, DlDef(DefSelfTy(item.id)));
+                }
+                {
+                    self.type_ribs.borrow_mut().push(self_type_rib);
+                }
 
                 // Create a new rib for the trait-wide type parameters.
                 self.with_type_parameter_rib(HasTypeParameters(generics,
@@ -4171,17 +4263,25 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_label_rib(&mut self, f: |&mut Resolver|) {
-        self.label_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+        {
+            self.label_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+        }
         f(self);
-        self.label_ribs.borrow_mut().pop();
+        {
+            self.label_ribs.borrow_mut().pop();
+        }
     }
 
     fn with_constant_rib(&mut self, f: |&mut Resolver|) {
-        self.value_ribs.borrow_mut().push(Rib::new(ConstantItemRibKind));
-        self.type_ribs.borrow_mut().push(Rib::new(ConstantItemRibKind));
+        {
+            self.value_ribs.borrow_mut().push(Rib::new(ConstantItemRibKind));
+            self.type_ribs.borrow_mut().push(Rib::new(ConstantItemRibKind));
+        }
         f(self);
-        self.type_ribs.borrow_mut().pop();
-        self.value_ribs.borrow_mut().pop();
+        {
+            self.type_ribs.borrow_mut().pop();
+            self.value_ribs.borrow_mut().pop();
+        }
     }
 
     fn resolve_function(&mut self,
@@ -4190,12 +4290,16 @@ impl<'a> Resolver<'a> {
                         type_parameters: TypeParameters,
                         block: &Block) {
         // Create a value rib for the function.
-        let function_value_rib = Rib::new(rib_kind);
-        self.value_ribs.borrow_mut().push(function_value_rib);
+        {
+            let function_value_rib = Rib::new(rib_kind);
+            self.value_ribs.borrow_mut().push(function_value_rib);
+        }
 
         // Create a label rib for the function.
-        let function_label_rib = Rib::new(rib_kind);
-        self.label_ribs.borrow_mut().push(function_label_rib);
+        {
+            let function_label_rib = Rib::new(rib_kind);
+            self.label_ribs.borrow_mut().push(function_label_rib);
+        }
 
         // If this function has type parameters, add them now.
         self.with_type_parameter_rib(type_parameters, |this| {
@@ -4621,7 +4725,9 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_arm(&mut self, arm: &Arm) {
-        self.value_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+        {
+            self.value_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+        }
 
         let mut bindings_list = HashMap::new();
         for pattern in arm.pats.iter() {
@@ -4635,21 +4741,28 @@ impl<'a> Resolver<'a> {
         visit::walk_expr_opt(self, &arm.guard);
         self.resolve_expr(&*arm.body);
 
-        self.value_ribs.borrow_mut().pop();
+        {
+            self.value_ribs.borrow_mut().pop();
+        }
     }
 
     fn resolve_block(&mut self, block: &Block) {
         debug!("(resolving block) entering block");
-        self.value_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+        {
+            self.value_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+        }
 
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module.clone();
-        match orig_module.anonymous_children.borrow().find(&block.id) {
-            None => { /* Nothing to do. */ }
-            Some(anonymous_module) => {
-                debug!("(resolving block) found anonymous module, moving \
-                        down");
-                self.current_module = anonymous_module.clone();
+        {
+            let anonymous_children = orig_module.anonymous_children.borrow();
+            match anonymous_children.find(&block.id) {
+                None => { /* Nothing to do. */ }
+                Some(anonymous_module) => {
+                    debug!("(resolving block) found anonymous module, moving \
+                            down");
+                    self.current_module = anonymous_module.clone();
+                }
             }
         }
 
@@ -4659,7 +4772,9 @@ impl<'a> Resolver<'a> {
         // Move back up.
         self.current_module = orig_module;
 
-        self.value_ribs.borrow_mut().pop();
+        {
+            self.value_ribs.borrow_mut().pop();
+        }
         debug!("(resolving block) leaving block");
     }
 
@@ -5503,14 +5618,16 @@ impl<'a> Resolver<'a> {
         let mut maybes: Vec<token::InternedString> = Vec::new();
         let mut values: Vec<uint> = Vec::new();
 
-        let mut j = this.value_ribs.borrow().len();
-        while j != 0 {
-            j -= 1;
+        {
             let value_ribs = this.value_ribs.borrow();
-            let bindings = value_ribs.get(j).bindings.borrow();
-            for (&k, _) in bindings.iter() {
-                maybes.push(token::get_name(k));
-                values.push(uint::MAX);
+            let mut j = value_ribs.len();
+            while j != 0 {
+                j -= 1;
+                let bindings = value_ribs.get(j).bindings.borrow();
+                for (&k, _) in bindings.iter() {
+                    maybes.push(token::get_name(k));
+                    values.push(uint::MAX);
+                }
             }
         }
 
@@ -5598,16 +5715,19 @@ impl<'a> Resolver<'a> {
                             }
                             _ => {
                                 let mut method_scope = false;
-                                self.value_ribs.borrow().iter().rev().all(|rib| {
-                                    let res = match *rib {
-                                        Rib { bindings: _, kind: MethodRibKind(_, _) } => true,
-                                        Rib { bindings: _, kind: ItemRibKind } => false,
-                                        _ => return true, // Keep advancing
-                                    };
+                                {
+                                    let value_ribs = self.value_ribs.borrow();
+                                    value_ribs.iter().rev().all(|rib| {
+                                        let res = match *rib {
+                                            Rib { bindings: _, kind: MethodRibKind(_, _) } => true,
+                                            Rib { bindings: _, kind: ItemRibKind } => false,
+                                            _ => return true, // Keep advancing
+                                        };
 
-                                    method_scope = res;
-                                    false // Stop advancing
-                                });
+                                        method_scope = res;
+                                        false // Stop advancing
+                                    });
+                                }
 
                                 if method_scope && token::get_name(self.self_name).get()
                                                                    == wrong_name.as_slice() {
@@ -5699,7 +5819,10 @@ impl<'a> Resolver<'a> {
             ExprForLoop(ref pattern, ref head, ref body, optional_label) => {
                 self.resolve_expr(&**head);
 
-                self.value_ribs.borrow_mut().push(Rib::new(NormalRibKind));
+                {
+                    let mut value_ribs = self.value_ribs.borrow_mut();
+                    value_ribs.push(Rib::new(NormalRibKind));
+                }
 
                 self.resolve_pattern(&**pattern,
                                      LocalIrrefutableMode,
@@ -5735,23 +5858,35 @@ impl<'a> Resolver<'a> {
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 let renamed = mtwt::resolve(label);
-                match self.search_ribs(self.label_ribs.borrow().as_slice(),
-                                       renamed, expr.span) {
-                    None => {
-                        self.resolve_error(
-                            expr.span,
-                            format!("use of undeclared label `{}`",
-                                    token::get_ident(label)).as_slice())
+                let def;
+                {
+                    let label_ribs = self.label_ribs.borrow();
+                    def = match self.search_ribs(label_ribs.as_slice(),
+                                                 renamed,
+                                                 expr.span) {
+                        None => {
+                            self.resolve_error(
+                                expr.span,
+                                format!("use of undeclared label `{}`",
+                                        token::get_ident(label)).as_slice());
+                            None
+                        }
+                        Some(DlDef(def @ DefLabel(_))) => {
+                            // Since this def is a label, it is never read.
+                            Some(def)
+                        }
+                        Some(_) => {
+                            self.session.span_bug(expr.span,
+                                                  "label wasn't mapped to a \
+                                                   label def!")
+                        }
                     }
-                    Some(DlDef(def @ DefLabel(_))) => {
-                        // Since this def is a label, it is never read.
+                }
+                match def {
+                    Some(def) => {
                         self.record_def(expr.id, (def, LastMod(AllPublic)))
                     }
-                    Some(_) => {
-                        self.session.span_bug(expr.span,
-                                              "label wasn't mapped to a \
-                                               label def!")
-                    }
+                    None => {}
                 }
             }
 
@@ -5818,7 +5953,8 @@ impl<'a> Resolver<'a> {
 
             {
                 let trait_item_map = self.trait_item_map.borrow();
-                for (_, child_names) in search_module.children.borrow().iter() {
+                let children = search_module.children.borrow();
+                for (_, child_names) in children.iter() {
                     let def = match child_names.def_for_namespace(TypeNS) {
                         Some(def) => def,
                         None => continue
@@ -6061,27 +6197,32 @@ impl<'a> Resolver<'a> {
         }
 
         debug!("Import resolutions:");
-        let import_resolutions = module_.import_resolutions.borrow();
-        for (&name, import_resolution) in import_resolutions.iter() {
-            let value_repr;
-            match import_resolution.target_for_namespace(ValueNS) {
-                None => { value_repr = "".to_string(); }
-                Some(_) => {
-                    value_repr = " value:?".to_string();
-                    // FIXME #4954
+        {
+            let import_resolutions = module_.import_resolutions.borrow();
+            for (&name, import_resolution) in import_resolutions.iter() {
+                let value_repr;
+                match import_resolution.target_for_namespace(ValueNS) {
+                    None => { value_repr = "".to_string(); }
+                    Some(_) => {
+                        value_repr = " value:?".to_string();
+                        // FIXME #4954
+                    }
                 }
-            }
 
-            let type_repr;
-            match import_resolution.target_for_namespace(TypeNS) {
-                None => { type_repr = "".to_string(); }
-                Some(_) => {
-                    type_repr = " type:?".to_string();
-                    // FIXME #4954
+                let type_repr;
+                match import_resolution.target_for_namespace(TypeNS) {
+                    None => { type_repr = "".to_string(); }
+                    Some(_) => {
+                        type_repr = " type:?".to_string();
+                        // FIXME #4954
+                    }
                 }
-            }
 
-            debug!("* {}:{}{}", token::get_name(name), value_repr, type_repr);
+                debug!("* {}:{}{}",
+                       token::get_name(name),
+                       value_repr,
+                       type_repr);
+            }
         }
     }
 }

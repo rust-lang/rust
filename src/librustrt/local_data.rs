@@ -121,20 +121,22 @@ struct TLDValueBox<T> {
 unsafe fn get_local_map<'a>() -> Option<&'a mut Map> {
     if !Local::exists(None::<Task>) { return None }
 
-    let task: *mut Task = Local::unsafe_borrow();
-    match &mut (*task).storage {
-        // If the at_exit function is already set, then we just need to take
-        // a loan out on the TLD map stored inside
-        &LocalStorage(Some(ref mut map_ptr)) => {
-            return Some(map_ptr);
-        }
-        // If this is the first time we've accessed TLD, perform similar
-        // actions to the oldsched way of doing things.
-        &LocalStorage(ref mut slot) => {
-            *slot = Some(TreeMap::new());
-            match *slot {
-                Some(ref mut map_ptr) => { return Some(map_ptr) }
-                None => fail!("unreachable code"),
+    {
+        let task: *mut Task = Local::unsafe_borrow();
+        match &mut (*task).storage {
+            // If the at_exit function is already set, then we just need to
+            // take a loan out on the TLD map stored inside
+            &LocalStorage(Some(ref mut map_ptr)) => {
+                return Some(map_ptr);
+            }
+            // If this is the first time we've accessed TLD, perform similar
+            // actions to the oldsched way of doing things.
+            &LocalStorage(ref mut slot) => {
+                *slot = Some(TreeMap::new());
+                match *slot {
+                    Some(ref mut map_ptr) => { return Some(map_ptr) }
+                    None => fail!("unreachable code"),
+                }
             }
         }
     }

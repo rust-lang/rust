@@ -276,9 +276,11 @@ impl RegionMaps {
         sub_region == super_region || {
             match (sub_region, super_region) {
                 (ty::ReEmpty, _) |
-                (_, ty::ReStatic) => {
-                    true
-                }
+                (_, ty::ReStatic) => true,
+                (ty::ReScope(_), ty::ReFunction) => true,
+                (ty::ReFunction, ty::ReFree(_)) => true,
+                (ty::ReFunction, ty::ReScope(_)) => false,
+                (ty::ReFree(_), ty::ReFunction) => false,
 
                 (ty::ReScope(sub_scope), ty::ReScope(super_scope)) => {
                     self.is_subscope_of(sub_scope, super_scope)

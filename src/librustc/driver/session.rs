@@ -258,7 +258,10 @@ pub fn build_session_(sopts: config::Options,
         recursion_limit: Cell::new(64),
     };
 
-    sess.lint_store.borrow_mut().register_builtin(Some(&sess));
+    {
+        sess.lint_store.borrow_mut().register_builtin(Some(&sess));
+    }
+
     sess
 }
 

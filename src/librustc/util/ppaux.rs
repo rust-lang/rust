@@ -14,8 +14,8 @@ use middle::subst::{VecPerParamSpace,Subst};
 use middle::subst;
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
-use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
-use middle::ty::{ReSkolemized, ReVar};
+use middle::ty::{ReEmpty, ReFree, ReFunction, ReScope, ReInfer, ReStatic};
+use middle::ty::{ReSkolemized, ReVar, Region};
 use middle::ty::{mt, t, ParamTy};
 use middle::ty::{ty_bool, ty_char, ty_bot, ty_box, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
@@ -140,6 +140,8 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
         }
       }
 
+      ReFunction => { ("the lifetime of the function".to_string(), None) }
+
       ReStatic => { ("the static lifetime".to_string(), None) }
 
       ReEmpty => { ("the empty lifetime".to_string(), None) }
@@ -214,6 +216,7 @@ pub fn region_to_string(cx: &ctxt, prefix: &str, space: bool, region: Region) ->
             bound_region_to_string(cx, prefix, space, br)
         }
         ty::ReInfer(ReVar(_)) => prefix.to_string(),
+        ty::ReFunction => format!("{}'<function>{}", prefix, space_str),
         ty::ReStatic => format!("{}'static{}", prefix, space_str),
         ty::ReEmpty => format!("{}'<empty>{}", prefix, space_str),
     }
@@ -790,6 +793,10 @@ impl Repr for ty::Region {
 
             ty::ReScope(id) => {
                 format!("ReScope({})", id)
+            }
+
+            ty::ReFunction => {
+                "ReStatic".to_string()
             }
 
             ty::ReStatic => {

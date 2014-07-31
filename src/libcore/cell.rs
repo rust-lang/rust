@@ -310,8 +310,11 @@ impl<T> RefCell<T> {
 
 #[unstable = "waiting for `Clone` to become stable"]
 impl<T: Clone> Clone for RefCell<T> {
-    fn clone(&self) -> RefCell<T> {
-        RefCell::new(self.borrow().clone())
+    fn clone<'a>(&'a self) -> RefCell<T> {
+        {
+            let borrowed: Ref<'a,T> = self.borrow();
+            RefCell::new(borrowed.clone())
+        }
     }
 }
 

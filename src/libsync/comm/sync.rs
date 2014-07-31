@@ -68,7 +68,7 @@ struct State<T> {
     /// This is only relevant in the 0-buffer case. This obviously cannot be
     /// safely constructed, but it's guaranteed to always have a valid pointer
     /// value.
-    canceled: Option<&'static mut bool>,
+    canceled: Option<*mut bool>,
 }
 
 /// Possible flavors of tasks who can be blocked on this channel.
@@ -182,7 +182,9 @@ impl<T: Send> Packet<T> {
             NoneBlocked if state.cap == 0 => {
                 let mut canceled = false;
                 assert!(state.canceled.is_none());
-                state.canceled = Some(unsafe { mem::transmute(&mut canceled) });
+                state.canceled = Some(unsafe {
+                    mem::transmute::<&mut bool,*mut bool>(&mut canceled)
+                });
                 wait(&mut state.blocker, BlockedSender, &self.lock);
                 if canceled {Err(state.buf.dequeue())} else {Ok(())}
             }
@@ -347,7 +349,9 @@ impl<T: Send> Packet<T> {
         let waiter = match mem::replace(&mut state.blocker, NoneBlocked) {
             NoneBlocked => None,
             BlockedSender(task) => {
-                *state.canceled.take().unwrap() = true;
+                unsafe {
+                    *state.canceled.take().unwrap() = true;
+                }
                 Some(task)
             }
             BlockedReceiver(..) => unreachable!(),

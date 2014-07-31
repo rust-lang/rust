@@ -225,6 +225,9 @@ pub enum SubregionOrigin {
 
     // Managed data cannot contain borrowed pointers.
     Managed(Span),
+
+    // Region constraint arriving from destructor safety
+    SafeDestructor(Span),
 }
 
 /// Reasons to create a region inference variable
@@ -1046,6 +1049,7 @@ impl SubregionOrigin {
             AddrOf(a) => a,
             AutoBorrow(a) => a,
             Managed(a) => a,
+            SafeDestructor(a) => a,
         }
     }
 }
@@ -1119,6 +1123,7 @@ impl Repr for SubregionOrigin {
             AddrOf(a) => format!("AddrOf({})", a.repr(tcx)),
             AutoBorrow(a) => format!("AutoBorrow({})", a.repr(tcx)),
             Managed(a) => format!("Managed({})", a.repr(tcx)),
+            SafeDestructor(a) => format!("SafeDestructor({})", a.repr(tcx)),
         }
     }
 }

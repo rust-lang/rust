@@ -148,15 +148,20 @@ impl<'a> LocalIo<'a> {
         //
         // In order to get around this, we just transmute a copy out of the task
         // in order to have what is likely a static lifetime (bad).
-        let mut t: Box<Task> = match Local::try_take() {
-            Some(t) => t,
-            None => return None,
-        };
-        let ret = t.local_io().map(|t| {
-            unsafe { mem::transmute_copy(&t) }
-        });
-        Local::put(t);
-        return ret;
+        {
+            let mut t: Box<Task> = match Local::try_take() {
+                Some(t) => t,
+                None => return None,
+            };
+            let ret: Option<LocalIo<'static>>;
+            unsafe {
+                ret = t.local_io().map(|t| mem::transmute_copy(&t));
+            }
+            Local::put(t);
+            unsafe {
+                return mem::transmute(ret);
+            }
+        }
     }
 
     pub fn maybe_raise<T>(f: |io: &mut IoFactory| -> IoResult<T>)

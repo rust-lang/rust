@@ -149,6 +149,9 @@ pub fn enc_region(w: &mut SeekableMemWriter, cx: &ctxt, r: ty::Region) {
         ty::ReScope(nid) => {
             mywrite!(w, "s{}|", nid);
         }
+        ty::ReFunction => {
+            mywrite!(w, "n");
+        }
         ty::ReStatic => {
             mywrite!(w, "t");
         }

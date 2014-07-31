@@ -105,13 +105,15 @@ impl Once {
         // If the count is negative, then someone else finished the job,
         // otherwise we run the job and record how many people will try to grab
         // this lock
-        let guard = self.mutex.lock();
-        if self.cnt.load(atomic::SeqCst) > 0 {
-            f();
-            let prev = self.cnt.swap(int::MIN, atomic::SeqCst);
-            self.lock_cnt.store(prev, atomic::SeqCst);
+        {
+            let guard = self.mutex.lock();
+            if self.cnt.load(atomic::SeqCst) > 0 {
+                f();
+                let prev = self.cnt.swap(int::MIN, atomic::SeqCst);
+                self.lock_cnt.store(prev, atomic::SeqCst);
+            }
+            drop(guard);
         }
-        drop(guard);
 
         // Last one out cleans up after everyone else, no leaks!
         if self.lock_cnt.fetch_add(-1, atomic::SeqCst) == 1 {

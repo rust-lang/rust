@@ -234,10 +234,12 @@ impl Task {
 
         // After running the closure given return the task back out if it ran
         // successfully, or clean up the task if it failed.
-        let task: Box<Task> = Local::take();
-        match result {
-            Ok(()) => task,
-            Err(cause) => { task.cleanup(Err(cause)) }
+        {
+            let task: Box<Task> = Local::take();
+            match result {
+                Ok(()) => task,
+                Err(cause) => { task.cleanup(Err(cause)) }
+            }
         }
     }
 
@@ -263,88 +265,90 @@ impl Task {
     /// done being processed. It is assumed that TLD and the local heap have
     /// already been destroyed and/or annihilated.
     fn cleanup(self: Box<Task>, result: Result) -> Box<Task> {
-        // The first thing to do when cleaning up is to deallocate our local
-        // resources, such as TLD and GC data.
-        //
-        // FIXME: there are a number of problems with this code
-        //
-        // 1. If any TLD object fails destruction, then all of TLD will leak.
-        //    This appears to be a consequence of #14875.
-        //
-        // 2. Failing during GC annihilation aborts the runtime #14876.
-        //
-        // 3. Setting a TLD key while destroying TLD or while destroying GC will
-        //    abort the runtime #14807.
-        //
-        // 4. Invoking GC in GC destructors will abort the runtime #6996.
-        //
-        // 5. The order of destruction of TLD and GC matters, but either way is
-        //    susceptible to leaks (see 3/4) #8302.
-        //
-        // That being said, there are a few upshots to this code
-        //
-        // 1. If TLD destruction fails, heap destruction will be attempted.
-        //    There is a test for this at fail-during-tld-destroy.rs. Sadly the
-        //    other way can't be tested due to point 2 above. Note that we must
-        //    immortalize the heap first because if any deallocations are
-        //    attempted while TLD is being dropped it will attempt to free the
-        //    allocation from the wrong heap (because the current one has been
-        //    replaced).
-        //
-        // 2. One failure in destruction is tolerable, so long as the task
-        //    didn't originally fail while it was running.
-        //
-        // And with all that in mind, we attempt to clean things up!
-        let mut task = self.run(|| {
-            let mut task = Local::borrow(None::<Task>);
-            let tld = {
-                let &LocalStorage(ref mut optmap) = &mut task.storage;
-                optmap.take()
-            };
-            let mut heap = mem::replace(&mut task.heap, LocalHeap::new());
-            unsafe { heap.immortalize() }
-            drop(task);
+        {
+            // The first thing to do when cleaning up is to deallocate our local
+            // resources, such as TLD and GC data.
+            //
+            // FIXME: there are a number of problems with this code
+            //
+            // 1. If any TLD object fails destruction, then all of TLD will leak.
+            //    This appears to be a consequence of #14875.
+            //
+            // 2. Failing during GC annihilation aborts the runtime #14876.
+            //
+            // 3. Setting a TLD key while destroying TLD or while destroying GC will
+            //    abort the runtime #14807.
+            //
+            // 4. Invoking GC in GC destructors will abort the runtime #6996.
+            //
+            // 5. The order of destruction of TLD and GC matters, but either way is
+            //    susceptible to leaks (see 3/4) #8302.
+            //
+            // That being said, there are a few upshots to this code
+            //
+            // 1. If TLD destruction fails, heap destruction will be attempted.
+            //    There is a test for this at fail-during-tld-destroy.rs. Sadly the
+            //    other way can't be tested due to point 2 above. Note that we must
+            //    immortalize the heap first because if any deallocations are
+            //    attempted while TLD is being dropped it will attempt to free the
+            //    allocation from the wrong heap (because the current one has been
+            //    replaced).
+            //
+            // 2. One failure in destruction is tolerable, so long as the task
+            //    didn't originally fail while it was running.
+            //
+            // And with all that in mind, we attempt to clean things up!
+            let mut task = self.run(|| {
+                let mut task = Local::borrow(None::<Task>);
+                let tld = {
+                    let &LocalStorage(ref mut optmap) = &mut task.storage;
+                    optmap.take()
+                };
+                let mut heap = mem::replace(&mut task.heap, LocalHeap::new());
+                unsafe { heap.immortalize() }
+                drop(task);
 
-            // First, destroy task-local storage. This may run user dtors.
-            drop(tld);
+                // First, destroy task-local storage. This may run user dtors.
+                drop(tld);
 
-            // Destroy remaining boxes. Also may run user dtors.
-            drop(heap);
-        });
+                // Destroy remaining boxes. Also may run user dtors.
+                drop(heap);
+            });
 
-        // If the above `run` block failed, then it must be the case that the
-        // task had previously succeeded. This also means that the code below
-        // was recursively run via the `run` method invoking this method. In
-        // this case, we just make sure the world is as we thought, and return.
-        if task.is_destroyed() {
-            rtassert!(result.is_ok())
-            return task
+            // If the above `run` block failed, then it must be the case that the
+            // task had previously succeeded. This also means that the code below
+            // was recursively run via the `run` method invoking this method. In
+            // this case, we just make sure the world is as we thought, and return.
+            if task.is_destroyed() {
+                rtassert!(result.is_ok())
+                return task
+            }
+
+            // After taking care of the data above, we need to transmit the result
+            // of this task.
+            let what_to_do = task.death.on_exit.take();
+            Local::put(task);
+
+            // FIXME: this is running in a seriously constrained context. If this
+            //        allocates GC or allocates TLD then it will likely abort the
+            //        runtime. Similarly, if this fails, this will also likely abort
+            //        the runtime.
+            //
+            //        This closure is currently limited to a channel send via the
+            //        standard library's task interface, but this needs
+            //        reconsideration to whether it's a reasonable thing to let a
+            //        task to do or not.
+            match what_to_do {
+                Some(f) => { f(result) }
+                None => { drop(result) }
+            }
+
+            // Now that we're done, we remove the task from TLS and flag it for
+            // destruction.
+            let mut task: Box<Task> = Local::take();
+            task.state = Destroyed;
+            return task;
         }
-
-        // After taking care of the data above, we need to transmit the result
-        // of this task.
-        let what_to_do = task.death.on_exit.take();
-        Local::put(task);
-
-        // FIXME: this is running in a seriously constrained context. If this
-        //        allocates GC or allocates TLD then it will likely abort the
-        //        runtime. Similarly, if this fails, this will also likely abort
-        //        the runtime.
-        //
-        //        This closure is currently limited to a channel send via the
-        //        standard library's task interface, but this needs
-        //        reconsideration to whether it's a reasonable thing to let a
-        //        task to do or not.
-        match what_to_do {
-            Some(f) => { f(result) }
-            None => { drop(result) }
-        }
-
-        // Now that we're done, we remove the task from TLS and flag it for
-        // destruction.
-        let mut task: Box<Task> = Local::take();
-        task.state = Destroyed;
-        return task;
     }
 
     /// Queries whether this can be destroyed or not.

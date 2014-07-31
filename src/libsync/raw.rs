@@ -122,9 +122,12 @@ impl<Q: Send> Sem<Q> {
     }
 
     unsafe fn with(&self, f: |&mut SemInner<Q>|) {
-        let _g = self.lock.lock();
-        // This &mut is safe because, due to the lock, we are the only one who can touch the data
-        f(&mut *self.inner.get())
+        {
+            let _g = self.lock.lock();
+            // This &mut is safe because, due to the lock, we are the only one
+            // who can touch the data
+            f(&mut *self.inner.get())
+        }
     }
 
     pub fn acquire(&self) {
@@ -498,12 +501,17 @@ impl RWLock {
     /// when dropped. Calls to 'read' from other tasks may run concurrently with
     /// this one.
     pub fn read<'a>(&'a self) -> RWLockReadGuard<'a> {
-        let _guard = self.order_lock.access();
-        let old_count = self.read_count.fetch_add(1, atomic::Acquire);
-        if old_count == 0 {
-            self.access_lock.acquire();
+        {
+            let order_lock = &self.order_lock;
+            let _guard = order_lock.access();
+            let old_count = self.read_count.fetch_add(1, atomic::Acquire);
+            if old_count == 0 {
+                self.access_lock.acquire();
+            }
+            RWLockReadGuard {
+                lock: self,
+            }
         }
-        RWLockReadGuard { lock: self }
     }
 
     /// Acquire a write-lock, returning an RAII guard that will unlock the lock
@@ -527,8 +535,10 @@ impl RWLock {
     /// drop(read);
     /// ```
     pub fn write<'a>(&'a self) -> RWLockWriteGuard<'a> {
-        let _g = self.order_lock.access();
-        self.access_lock.acquire();
+        {
+            let _g = self.order_lock.access();
+            self.access_lock.acquire();
+        }
 
         // It's important to thread our order lock into the condvar, so that
         // when a cond.wait() wakes up, it uses it while reacquiring the

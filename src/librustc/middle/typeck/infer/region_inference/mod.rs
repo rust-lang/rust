@@ -14,7 +14,8 @@
 use middle::ty;
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound};
-use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
+use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, ReFunction};
+use middle::ty::{BrFresh};
 use middle::typeck::infer::cres;
 use middle::typeck::infer::{RegionVariableOrigin, SubregionOrigin, TypeTrace};
 use middle::typeck::infer;
@@ -777,6 +778,18 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
              self.lub_free_regions(a_fr, b_fr)
           }
 
+          (ReFree(ref fr), ReFunction) | (ReFunction, ReFree(ref fr)) => {
+              // Free regions outlive the function region.
+              ReFree(*fr)
+          }
+
+          (ReFunction, ReScope(_)) | (ReScope(_), ReFunction) => {
+              // The function region outlives all scopes.
+              ReFunction
+          }
+
+          (ReFunction, ReFunction) => ReFunction,
+
           // For these types, we cannot define any additional
           // relationship:
           (ReInfer(ReSkolemized(..)), _) |
@@ -873,6 +886,18 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             (ReFree(ref a_fr), ReFree(ref b_fr)) => {
                 self.glb_free_regions(a_fr, b_fr)
             }
+
+            (ReFree(_), ReFunction) | (ReFunction, ReFree(_)) => {
+                // Function regions don't live as long as free regions.
+                Ok(ReFunction)
+            }
+
+            (ReFunction, ReScope(s)) | (ReScope(s), ReFunction) => {
+                // Scope regions don't live as long as function regions.
+                Ok(ReScope(s))
+            }
+
+            (ReFunction, ReFunction) => Ok(ReFunction),
 
             // For these types, we cannot define any additional
             // relationship:
