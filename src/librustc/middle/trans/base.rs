@@ -2124,11 +2124,24 @@ impl<'a> Visitor<()> for TransItemVisitor<'a> {
     }
 }
 
-pub fn update_linkage(ccx: &CrateContext, llval: ValueRef, id: ast::NodeId) {
-    if ccx.reachable().contains(&id) || ccx.sess().opts.cg.codegen_units > 1 {
-        llvm::SetLinkage(llval, llvm::ExternalLinkage);
-    } else {
-        llvm::SetLinkage(llval, llvm::InternalLinkage);
+/// Set the appropriate linkage for an LLVM `ValueRef` (function or global).
+/// If the `llval` is the direct translation of a specific Rust item, `id`
+/// should be set to the `NodeId` of that item.  (This mapping should be
+/// 1-to-1, so monomorphizations and drop/visit glue should have `id` set to
+/// `None`.)
+pub fn update_linkage(ccx: &CrateContext, llval: ValueRef, id: Option<ast::NodeId>) {
+    match id {
+        Some(id) if ccx.reachable().contains(&id) => {
+            llvm::SetLinkage(llval, llvm::ExternalLinkage);
+        },
+        _ => {
+            // `id` does not refer to an item in `ccx.reachable`.
+            if ccx.sess().opts.cg.codegen_units > 1 {
+                llvm::SetLinkage(llval, llvm::ExternalLinkage);
+            } else {
+                llvm::SetLinkage(llval, llvm::InternalLinkage);
+            }
+        },
     }
 }
 
@@ -2157,7 +2170,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                          item.id,
                          item.attrs.as_slice());
             }
-            update_linkage(ccx, llfn, item.id);
+            update_linkage(ccx, llfn, Some(item.id));
         }
 
         // Be sure to travel more than just one layer deep to catch nested
@@ -2185,7 +2198,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
           consts::trans_const(ccx, m, item.id);
 
           let g = get_item_val(ccx, item.id);
-          update_linkage(ccx, g, item.id);
+          update_linkage(ccx, g, Some(item.id));
 
           // Do static_assert checking. It can't really be done much earlier
           // because we need to get the value of the bool out of LLVM
