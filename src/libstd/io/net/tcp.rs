@@ -34,6 +34,7 @@ use boxed::Box;
 use rt::rtio::{IoFactory, LocalIo, RtioSocket, RtioTcpListener};
 use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 use rt::rtio;
+use time::Duration;
 
 /// A structure which represents a TCP stream between a local socket and a
 /// remote socket.
@@ -102,11 +103,11 @@ impl TcpStream {
     /// and port, similar to the API seen in `connect`.
     #[experimental = "the timeout argument may eventually change types"]
     pub fn connect_timeout(addr: SocketAddr,
-                           timeout_ms: u64) -> IoResult<TcpStream> {
+                           timeout: Duration) -> IoResult<TcpStream> {
         let SocketAddr { ip, port } = addr;
         let addr = rtio::SocketAddr { ip: super::to_rtio(ip), port: port };
         LocalIo::maybe_raise(|io| {
-            io.tcp_connect(addr, Some(timeout_ms)).map(TcpStream::new)
+            io.tcp_connect(addr, Some(in_ms_u64(timeout))).map(TcpStream::new)
         }).map_err(IoError::from_rtio_error)
     }
 
@@ -441,6 +442,12 @@ impl Acceptor<TcpStream> for TcpAcceptor {
             Err(e) => Err(IoError::from_rtio_error(e)),
         }
     }
+}
+
+fn in_ms_u64(d: Duration) -> u64 {
+    let ms = d.num_milliseconds();
+    if ms < 0 { return 0 };
+    return ms as u64;
 }
 
 #[cfg(test)]
