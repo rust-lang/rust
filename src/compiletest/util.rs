@@ -21,6 +21,7 @@ static OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("android", "android"),
     ("linux", "linux"),
     ("freebsd", "freebsd"),
+    ("dragonfly", "dragonfly"),
 ];
 
 pub fn get_os(triple: &str) -> &'static str {
