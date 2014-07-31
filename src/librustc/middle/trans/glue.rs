@@ -171,11 +171,30 @@ pub fn get_drop_glue(ccx: &CrateContext, t: ty::t) -> ValueRef {
     };
 
     let llfnty = Type::glue_fn(ccx, llty);
-    let glue = declare_generic_glue(ccx, t, llfnty, "drop");
+
+    let (glue, new_sym) = match ccx.available_drop_glues().borrow().find(&t) {
+        Some(old_sym) => {
+            let glue = decl_cdecl_fn(ccx, old_sym.as_slice(), llfnty, ty::mk_nil());
+            (glue, None)
+        },
+        None => {
+            let (sym, glue) = declare_generic_glue(ccx, t, llfnty, "drop");
+            (glue, Some(sym))
+        },
+    };
 
     ccx.drop_glues().borrow_mut().insert(t, glue);
 
-    make_generic_glue(ccx, t, glue, make_drop_glue, "drop");
+    // To avoid infinite recursion, don't `make_drop_glue` until after we've
+    // added the entry to the `drop_glues` cache.
+    match new_sym {
+        Some(sym) => {
+            ccx.available_drop_glues().borrow_mut().insert(t, sym);
+            // We're creating a new drop glue, so also generate a body.
+            make_generic_glue(ccx, t, glue, make_drop_glue, "drop");
+        },
+        None => {},
+    }
 
     glue
 }
@@ -189,9 +208,28 @@ pub fn lazily_emit_visit_glue(ccx: &CrateContext, ti: &tydesc_info) -> ValueRef 
         Some(visit_glue) => visit_glue,
         None => {
             debug!("+++ lazily_emit_tydesc_glue VISIT {}", ppaux::ty_to_string(ccx.tcx(), ti.ty));
-            let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "visit");
+
+            let (glue_fn, new_sym) = match ccx.available_visit_glues().borrow().find(&ti.ty) {
+                Some(old_sym) => {
+                    let glue_fn = decl_cdecl_fn(ccx, old_sym.as_slice(), llfnty, ty::mk_nil());
+                    (glue_fn, None)
+                },
+                None => {
+                    let (sym, glue_fn) = declare_generic_glue(ccx, ti.ty, llfnty, "visit");
+                    (glue_fn, Some(sym))
+                },
+            };
+
             ti.visit_glue.set(Some(glue_fn));
-            make_generic_glue(ccx, ti.ty, glue_fn, make_visit_glue, "visit");
+
+            match new_sym {
+                Some(sym) => {
+                    ccx.available_visit_glues().borrow_mut().insert(ti.ty, sym);
+                    make_generic_glue(ccx, ti.ty, glue_fn, make_visit_glue, "visit");
+                },
+                None => {},
+            }
+
             debug!("--- lazily_emit_tydesc_glue VISIT {}", ppaux::ty_to_string(ccx.tcx(), ti.ty));
             glue_fn
         }
@@ -602,15 +640,15 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> tydesc_info {
 }
 
 fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
-                        name: &str) -> ValueRef {
+                        name: &str) -> (String, ValueRef) {
     let _icx = push_ctxt("declare_generic_glue");
     let fn_nm = mangle_internal_name_by_type_and_seq(
         ccx,
         t,
         format!("glue_{}", name).as_slice());
     let llfn = decl_cdecl_fn(ccx, fn_nm.as_slice(), llfnty, ty::mk_nil());
-    note_unique_llvm_symbol(ccx, fn_nm);
-    return llfn;
+    note_unique_llvm_symbol(ccx, fn_nm.clone());
+    return (fn_nm, llfn);
 }
 
 fn make_generic_glue(ccx: &CrateContext,
@@ -631,7 +669,8 @@ fn make_generic_glue(ccx: &CrateContext,
 
     let bcx = init_function(&fcx, false, ty::mk_nil());
 
-    llvm::SetLinkage(llfn, llvm::InternalLinkage);
+    update_linkage(ccx, llfn, None);
+
     ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1u);
     // All glue functions take values passed *by alias*; this is a
     // requirement since in many contexts glue is invoked indirectly and

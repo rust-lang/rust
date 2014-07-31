@@ -159,14 +159,18 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                   ..
               } => {
                   let d = mk_lldecl(abi);
+                  base::update_linkage(ccx, d, None);
                   set_llvm_fn_attrs(i.attrs.as_slice(), d);
 
-                  if abi != abi::Rust {
-                      foreign::trans_rust_fn_with_foreign_abi(
-                          ccx, &**decl, &**body, [], d, &psubsts, fn_id.node,
-                          Some(hash.as_slice()));
-                  } else {
-                      trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, []);
+                  if !ccx.available_monomorphizations().borrow().contains(&s) {
+                      ccx.available_monomorphizations().borrow_mut().insert(s.clone());
+                      if abi != abi::Rust {
+                          foreign::trans_rust_fn_with_foreign_abi(
+                              ccx, &**decl, &**body, [], d, &psubsts, fn_id.node,
+                              Some(hash.as_slice()));
+                      } else {
+                          trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, []);
+                      }
                   }
 
                   d
@@ -201,14 +205,18 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             match *ii {
                 ast::MethodImplItem(mth) => {
                     let d = mk_lldecl(abi::Rust);
+                    base::update_linkage(ccx, d, None);
                     set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-                    trans_fn(ccx,
-                             &*mth.pe_fn_decl(),
-                             &*mth.pe_body(),
-                             d,
-                             &psubsts,
-                             mth.id,
-                             []);
+                    if !ccx.available_monomorphizations().borrow().contains(&s) {
+                        ccx.available_monomorphizations().borrow_mut().insert(s.clone());
+                            trans_fn(ccx,
+                                     &*mth.pe_fn_decl(),
+                                     &*mth.pe_body(),
+                                     d,
+                                     &psubsts,
+                                     mth.id,
+                                     []);
+                    }
                     d
                 }
             }
@@ -217,9 +225,13 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             match *method {
                 ast::ProvidedMethod(mth) => {
                     let d = mk_lldecl(abi::Rust);
+                    base::update_linkage(ccx, d, None);
                     set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-                    trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d,
-                             &psubsts, mth.id, []);
+                    if !ccx.available_monomorphizations().borrow().contains(&s) {
+                        ccx.available_monomorphizations().borrow_mut().insert(s.clone());
+                        trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d,
+                                 &psubsts, mth.id, []);
+                    }
                     d
                 }
                 _ => {

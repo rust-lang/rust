@@ -85,7 +85,7 @@ pub fn trans_impl(ccx: &CrateContext,
                              &param_substs::empty(),
                              method.id,
                              []);
-                    update_linkage(ccx, llfn, method.id);
+                    update_linkage(ccx, llfn, Some(method.id));
                 }
                 let mut v = TransItemVisitor {
                     ccx: ccx,
