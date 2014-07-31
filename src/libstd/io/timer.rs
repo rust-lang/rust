@@ -17,6 +17,8 @@ and create receivers which will receive notifications after a period of time.
 
 */
 
+// FIXME: These functions take Durations but only pass ms to the backend impls.
+
 use comm::{Receiver, Sender, channel};
 use time::Duration;
 use io::{IoResult, IoError};
@@ -71,13 +73,15 @@ pub struct Timer {
 struct TimerCallback { tx: Sender<()> }
 
 fn in_ms(d: Duration) -> u64 {
-    // FIXME: Do we really want to fail on negative duration?
     let ms = d.num_milliseconds();
-    if ms < 0 { fail!("negative duration") }
+    if ms < 0 { return 0 };
     return ms as u64;
 }
 
 /// Sleep the current task for the specified duration.
+///
+/// When provided a zero or negative `duration`, the function will
+/// return immediately.
 pub fn sleep(duration: Duration) {
     let timer = Timer::new();
     let mut timer = timer.ok().expect("timer::sleep: could not create a Timer");
@@ -99,8 +103,14 @@ impl Timer {
     ///
     /// Note that this function will cause any other receivers for this timer to
     /// be invalidated (the other end will be closed).
+    ///
+    /// When provided a zero or negative `duration`, the function will
+    /// return immediately.
     pub fn sleep(&mut self, duration: Duration) {
-        self.obj.sleep(in_ms(duration));
+        // Short-circuit the timer backend for 0 duration
+        let ms = in_ms(duration);
+        if ms == 0 { return }
+        self.obj.sleep(ms);
     }
 
     /// Creates a oneshot receiver which will have a notification sent when
@@ -137,9 +147,17 @@ impl Timer {
     /// // The timer object was destroyed, so this will always fail:
     /// // five_ms.recv()
     /// ```
+    ///
+    /// When provided a zero or negative `duration`, the message will
+    /// be sent immediately.
     pub fn oneshot(&mut self, duration: Duration) -> Receiver<()> {
         let (tx, rx) = channel();
-        self.obj.oneshot(in_ms(duration), box TimerCallback { tx: tx });
+        // Short-circuit the timer backend for 0 duration
+        if in_ms(duration) != 0 {
+            self.obj.oneshot(in_ms(duration), box TimerCallback { tx: tx });
+        } else {
+            tx.send(());
+        }
         return rx
     }
 
@@ -185,9 +203,17 @@ impl Timer {
     /// // The timer object was destroyed, so this will always fail:
     /// // five_ms.recv()
     /// ```
+    ///
+    /// When provided a zero or negative `duration`, the messages will
+    /// be sent without delay.
     pub fn periodic(&mut self, duration: Duration) -> Receiver<()> {
+        let ms = in_ms(duration);
+        // FIXME: The backend implementations don't ever send a message
+        // if given a 0 ms duration. Temporarily using 1ms. It's
+        // not clear what use a 0ms period is anyway...
+        let ms = if ms == 0 { 1 } else { ms };
         let (tx, rx) = channel();
-        self.obj.period(in_ms(duration), box TimerCallback { tx: tx });
+        self.obj.period(ms, box TimerCallback { tx: tx });
         return rx
     }
 }
@@ -200,8 +226,6 @@ impl Callback for TimerCallback {
 
 #[cfg(test)]
 mod test {
-    use time::Duration;
-
     iotest!(fn test_io_timer_sleep_simple() {
         let mut timer = Timer::new().unwrap();
         timer.sleep(Duration::milliseconds(1));
@@ -214,20 +238,20 @@ mod test {
 
     iotest!(fn test_io_timer_sleep_oneshot_forget() {
         let mut timer = Timer::new().unwrap();
-        timer.oneshot(Duration::milliseconds(100000000000));
+        timer.oneshot(Duration::milliseconds(100000000));
     })
 
     iotest!(fn oneshot_twice() {
         let mut timer = Timer::new().unwrap();
         let rx1 = timer.oneshot(Duration::milliseconds(10000));
-        let rx = timer.oneshot(1);
+        let rx = timer.oneshot(Duration::milliseconds(1));
         rx.recv();
         assert_eq!(rx1.recv_opt(), Err(()));
     })
 
     iotest!(fn test_io_timer_oneshot_then_sleep() {
         let mut timer = Timer::new().unwrap();
-        let rx = timer.oneshot(Duration::milliseconds(100000000000));
+        let rx = timer.oneshot(Duration::milliseconds(100000000));
         timer.sleep(Duration::milliseconds(1)); // this should invalidate rx
 
         assert_eq!(rx.recv_opt(), Err(()));
@@ -243,7 +267,7 @@ mod test {
 
     iotest!(fn test_io_timer_sleep_periodic_forget() {
         let mut timer = Timer::new().unwrap();
-        timer.periodic(Duration::milliseconds(100000000000));
+        timer.periodic(Duration::milliseconds(100000000));
     })
 
     iotest!(fn test_io_timer_sleep_standalone() {
@@ -277,7 +301,7 @@ mod test {
         let rx = timer.periodic(Duration::milliseconds(1));
         rx.recv();
         rx.recv();
-        let rx2 = timer.periodic(Durtion::milliseconds(1));
+        let rx2 = timer.periodic(Duration::milliseconds(1));
         rx2.recv();
         rx2.recv();
     })
@@ -375,4 +399,45 @@ mod test {
         // callback do something terrible.
         timer2.sleep(Duration::milliseconds(2));
     })
+
+    iotest!(fn sleep_zero() {
+        let mut timer = Timer::new().unwrap();
+        timer.sleep(Duration::milliseconds(0));
+    })
+
+    iotest!(fn sleep_negative() {
+        let mut timer = Timer::new().unwrap();
+        timer.sleep(Duration::milliseconds(-1000000));
+    })
+
+    iotest!(fn oneshot_zero() {
+        let mut timer = Timer::new().unwrap();
+        let rx = timer.oneshot(Duration::milliseconds(0));
+        rx.recv();
+    })
+
+    iotest!(fn oneshot_negative() {
+        let mut timer = Timer::new().unwrap();
+        let rx = timer.oneshot(Duration::milliseconds(-1000000));
+        rx.recv();
+    })
+
+    iotest!(fn periodic_zero() {
+        let mut timer = Timer::new().unwrap();
+        let rx = timer.periodic(Duration::milliseconds(0));
+        rx.recv();
+        rx.recv();
+        rx.recv();
+        rx.recv();
+    })
+
+    iotest!(fn periodic_negative() {
+        let mut timer = Timer::new().unwrap();
+        let rx = timer.periodic(Duration::milliseconds(-1000000));
+        rx.recv();
+        rx.recv();
+        rx.recv();
+        rx.recv();
+    })
+
 }

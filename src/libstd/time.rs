@@ -497,12 +497,16 @@ fn div_rem_64(this: i64, other: i64) -> (i64, i64) {
 #[cfg(test)]
 mod tests {
     use super::{Duration, MIN_DAYS, MAX_DAYS, MIN_DURATION, MAX_DURATION};
-    use std::{i32, i64};
+    use {i32, i64};
+    use num::{Zero, CheckedAdd, CheckedSub};
+    use option::{Some, None};
+    use to_string::ToString;
 
     #[test]
     fn test_duration() {
-        assert_eq!(Duration::zero(), Duration::zero());
-        assert!(Duration::zero() != Duration::seconds(1));
+        let d: Duration = Zero::zero();
+        assert_eq!(d, Zero::zero());
+        assert!(Duration::seconds(1) != Zero::zero());
         assert_eq!(Duration::seconds(1) + Duration::seconds(2), Duration::seconds(3));
         assert_eq!(Duration::seconds(86399) + Duration::seconds(4),
                    Duration::days(1) + Duration::seconds(3));
@@ -517,7 +521,8 @@ mod tests {
 
     #[test]
     fn test_duration_num_days() {
-        assert_eq!(Duration::zero().num_days(), 0);
+        let d: Duration = Zero::zero();
+        assert_eq!(d.num_days(), 0);
         assert_eq!(Duration::days(1).num_days(), 1);
         assert_eq!(Duration::days(-1).num_days(), -1);
         assert_eq!(Duration::seconds(86399).num_days(), 0);
@@ -534,7 +539,8 @@ mod tests {
 
     #[test]
     fn test_duration_num_seconds() {
-        assert_eq!(Duration::zero().num_seconds(), 0);
+        let d: Duration = Zero::zero();
+        assert_eq!(d.num_seconds(), 0);
         assert_eq!(Duration::seconds(1).num_seconds(), 1);
         assert_eq!(Duration::seconds(-1).num_seconds(), -1);
         assert_eq!(Duration::milliseconds(999).num_seconds(), 0);
@@ -551,7 +557,8 @@ mod tests {
 
     #[test]
     fn test_duration_num_milliseconds() {
-        assert_eq!(Duration::zero().num_milliseconds(), 0);
+        let d: Duration = Zero::zero();
+        assert_eq!(d.num_milliseconds(), 0);
         assert_eq!(Duration::milliseconds(1).num_milliseconds(), 1);
         assert_eq!(Duration::milliseconds(-1).num_milliseconds(), -1);
         assert_eq!(Duration::microseconds(999).num_milliseconds(), 0);
@@ -568,7 +575,8 @@ mod tests {
 
     #[test]
     fn test_duration_num_microseconds() {
-        assert_eq!(Duration::zero().num_microseconds(), Some(0));
+        let d: Duration = Zero::zero();
+        assert_eq!(d.num_microseconds(), Some(0));
         assert_eq!(Duration::microseconds(1).num_microseconds(), Some(1));
         assert_eq!(Duration::microseconds(-1).num_microseconds(), Some(-1));
         assert_eq!(Duration::nanoseconds(999).num_microseconds(), Some(0));
@@ -594,7 +602,8 @@ mod tests {
 
     #[test]
     fn test_duration_num_nanoseconds() {
-        assert_eq!(Duration::zero().num_nanoseconds(), Some(0));
+        let d: Duration = Zero::zero();
+        assert_eq!(d.num_nanoseconds(), Some(0));
         assert_eq!(Duration::nanoseconds(1).num_nanoseconds(), Some(1));
         assert_eq!(Duration::nanoseconds(-1).num_nanoseconds(), Some(-1));
         assert_eq!(Duration::new(1, 2, 3_004_005).num_nanoseconds(), Some(86402_003_004_005));
@@ -627,9 +636,10 @@ mod tests {
 
     #[test]
     fn test_duration_mul() {
-        assert_eq!(Duration::zero() * i32::MAX, Duration::zero());
-        assert_eq!(Duration::zero() * i32::MIN, Duration::zero());
-        assert_eq!(Duration::nanoseconds(1) * 0, Duration::zero());
+        let d: Duration = Zero::zero();
+        assert_eq!(d * i32::MAX, d);
+        assert_eq!(d * i32::MIN, d);
+        assert_eq!(Duration::nanoseconds(1) * 0, Zero::zero());
         assert_eq!(Duration::nanoseconds(1) * 1, Duration::nanoseconds(1));
         assert_eq!(Duration::nanoseconds(1) * 1_000_000_000, Duration::seconds(1));
         assert_eq!(Duration::nanoseconds(1) * -1_000_000_000, -Duration::seconds(1));
@@ -642,8 +652,9 @@ mod tests {
 
     #[test]
     fn test_duration_div() {
-        assert_eq!(Duration::zero() / i32::MAX, Duration::zero());
-        assert_eq!(Duration::zero() / i32::MIN, Duration::zero());
+        let d: Duration = Zero::zero();
+        assert_eq!(d / i32::MAX, d);
+        assert_eq!(d / i32::MIN, d);
         assert_eq!(Duration::nanoseconds(123_456_789) / 1, Duration::nanoseconds(123_456_789));
         assert_eq!(Duration::nanoseconds(123_456_789) / -1, -Duration::nanoseconds(123_456_789));
         assert_eq!(-Duration::nanoseconds(123_456_789) / -1, Duration::nanoseconds(123_456_789));
@@ -652,7 +663,8 @@ mod tests {
 
     #[test]
     fn test_duration_fmt() {
-        assert_eq!(Duration::zero().to_string(), "PT0S".to_string());
+        let d: Duration = Zero::zero();
+        assert_eq!(d.to_string(), "PT0S".to_string());
         assert_eq!(Duration::days(42).to_string(), "P42D".to_string());
         assert_eq!(Duration::days(-42).to_string(), "P-42D".to_string());
         assert_eq!(Duration::seconds(42).to_string(), "PT42S".to_string());
