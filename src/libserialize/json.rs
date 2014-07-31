@@ -257,6 +257,7 @@ pub enum DecoderError {
     ExpectedError(String, String),
     MissingFieldError(String),
     UnknownVariantError(String),
+    ApplicationError(String)
 }
 
 /// Returns a readable error string for a given error code.
@@ -2070,6 +2071,10 @@ impl ::Decoder<DecoderError> for Decoder {
                            -> DecodeResult<T> {
         debug!("read_map_elt_val(idx={})", idx);
         f(self)
+    }
+
+    fn error(&mut self, err: &str) -> DecoderError {
+        ApplicationError(err.to_string())
     }
 }
 
