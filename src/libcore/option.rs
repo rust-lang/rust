@@ -143,6 +143,7 @@
 
 use cmp::{PartialEq, Eq, Ord};
 use default::Default;
+use slice::Vector;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use mem;
 use slice;
@@ -214,15 +215,6 @@ impl<T> Option<T> {
     #[inline]
     pub fn as_mut<'r>(&'r mut self) -> Option<&'r mut T> {
         match *self { Some(ref mut x) => Some(x), None => None }
-    }
-
-    /// Convert from `Option<T>` to `&[T]` (without copying)
-    #[inline]
-    pub fn as_slice<'r>(&'r self) -> &'r [T] {
-        match *self {
-            Some(ref x) => slice::ref_slice(x),
-            None => &[]
-        }
     }
 
     /// Convert from `Option<T>` to `&mut [T]` (without copying)
@@ -525,6 +517,17 @@ impl<T: Default> Option<T> {
 /////////////////////////////////////////////////////////////////////////////
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
+
+impl<T> Vector<T> for Option<T> {
+    /// Convert from `Option<T>` to `&[T]` (without copying)
+    #[inline]
+    fn as_slice<'a>(&'a self) -> &'a [T] {
+        match *self {
+            Some(ref x) => slice::ref_slice(x),
+            None => &[]
+        }
+    }
+}
 
 impl<T> Default for Option<T> {
     #[inline]
