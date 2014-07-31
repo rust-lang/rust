@@ -485,6 +485,9 @@ pub fn get_res_dtor(ccx: &CrateContext,
     if !substs.types.is_empty() {
         assert_eq!(did.krate, ast::LOCAL_CRATE);
 
+        // Since we're in trans we don't care for any region parameters
+        let ref substs = subst::Substs::erased(substs.types.clone());
+
         let vtables = typeck::check::vtable::trans_resolve_method(ccx.tcx(), did.node, substs);
         let (val, _) = monomorphize::monomorphic_fn(ccx, did, substs, vtables, None);
 
