@@ -121,10 +121,6 @@ pub struct CrateContext {
     /// Holds the LLVM values for closure IDs.
     pub unboxed_closure_vals: RefCell<DefIdMap<ValueRef>>,
 
-    /// Set when at least one function uses GC. Needed so that
-    /// decl_gc_metadata knows whether to link to the module metadata, which
-    /// is not emitted by LLVM's GC pass when no functions use GC.
-    pub uses_gc: bool,
     pub dbg_cx: Option<debuginfo::CrateDebugContext>,
 
     pub eh_personality: RefCell<Option<ValueRef>>,
@@ -230,7 +226,6 @@ impl CrateContext {
                 opaque_vec_type: Type::from_ref(ptr::mut_null()),
                 builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                 unboxed_closure_vals: RefCell::new(DefIdMap::new()),
-                uses_gc: false,
                 dbg_cx: dbg_cx,
                 eh_personality: RefCell::new(None),
                 intrinsics: RefCell::new(HashMap::new()),
