@@ -847,6 +847,7 @@ fn translate_status(status: c_int) -> rtio::ProcessExit {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "ios")]
     #[cfg(target_os = "freebsd")]
+    #[cfg(target_os = "dragonfly")]
     mod imp {
         pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
         pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }

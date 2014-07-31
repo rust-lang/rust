@@ -25,10 +25,14 @@ pub struct Stack {
 // anyway), but some platforms don't support it at all. For example, it appears
 // that there's a bug in freebsd that MAP_STACK implies MAP_FIXED (so it always
 // fails): http://lists.freebsd.org/pipermail/freebsd-bugs/2011-July/044840.html
-#[cfg(not(windows), not(target_os = "freebsd"))]
+//
+// DragonFly BSD also seems to suffer from the same problem. When MAP_STACK is
+// used, it returns the same `ptr` multiple times.
+#[cfg(not(windows), not(target_os = "freebsd"), not(target_os = "dragonfly"))]
 static STACK_FLAGS: libc::c_int = libc::MAP_STACK | libc::MAP_PRIVATE |
                                   libc::MAP_ANON;
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "dragonfly")]
 static STACK_FLAGS: libc::c_int = libc::MAP_PRIVATE | libc::MAP_ANON;
 #[cfg(windows)]
 static STACK_FLAGS: libc::c_int = 0;
