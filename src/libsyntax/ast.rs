@@ -261,7 +261,7 @@ pub struct Crate {
 
 pub type MetaItem = Spanned<MetaItem_>;
 
-#[deriving(Clone, Encodable, Decodable, Eq, Hash, Show)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MetaItem_ {
     MetaWord(InternedString),
     MetaList(InternedString, Vec<Gc<MetaItem>>),
@@ -425,7 +425,7 @@ pub enum LocalSource {
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Local {
     pub ty: P<Ty>,
     pub pat: Gc<Pat>,
@@ -437,7 +437,7 @@ pub struct Local {
 
 pub type Decl = Spanned<Decl_>;
 
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Decl_ {
     /// A local (let) binding:
     DeclLocal(Gc<Local>),
@@ -679,7 +679,7 @@ pub struct MutTy {
     pub mutbl: Mutability,
 }
 
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct TypeField {
     pub ident: Ident,
     pub mt: MutTy,
@@ -963,7 +963,7 @@ pub enum ExplicitSelf_ {
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Method {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
@@ -971,7 +971,7 @@ pub struct Method {
     pub node: Method_,
 }
 
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Method_ {
     /// Represents a method declaration
     MethDecl(Ident,
@@ -1050,7 +1050,7 @@ pub type PathListItem = Spanned<PathListItem_>;
 
 pub type ViewPath = Spanned<ViewPath_>;
 
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum ViewPath_ {
 
     /// `quux = foo::bar::baz`
@@ -1115,7 +1115,7 @@ pub struct Attribute_ {
 /// that the ref_id is for. The impl_id maps to the "self type" of this impl.
 /// If this impl is an ItemImpl, the impl_id is redundant (it could be the
 /// same as the impl's node id).
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash,   Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct TraitRef {
     pub path: Path,
     pub ref_id: NodeId,
@@ -1171,7 +1171,7 @@ impl StructFieldKind {
     }
 }
 
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct StructDef {
     /// Fields, not including ctor
     pub fields: Vec<StructField>,
@@ -1221,7 +1221,7 @@ pub enum Item_ {
     ItemMac(Mac),
 }
 
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct ForeignItem {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
@@ -1231,7 +1231,7 @@ pub struct ForeignItem {
     pub vis: Visibility,
 }
 
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum ForeignItem_ {
     ForeignItemFn(P<FnDecl>, Generics),
     ForeignItemStatic(P<Ty>, /* is_mutbl */ bool),
@@ -1240,7 +1240,7 @@ pub enum ForeignItem_ {
 /// The data we save and restore about an inlined item or method.  This is not
 /// part of the AST that we parse from a file, but it becomes part of the tree
 /// that we trans.
-#[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum InlinedItem {
     IIItem(Gc<Item>),
     IIMethod(DefId /* impl id */, bool /* is provided */, Gc<Method>),

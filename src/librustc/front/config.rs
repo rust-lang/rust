@@ -44,7 +44,7 @@ impl<'a> fold::Folder for Context<'a> {
         fold_expr(self, expr)
     }
     fn fold_mac(&mut self, mac: &ast::Mac) -> ast::Mac {
-        fold::fold_mac(mac, self)
+        fold::noop_fold_mac(mac, self)
     }
 }
 
