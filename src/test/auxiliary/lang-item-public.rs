@@ -12,7 +12,7 @@
 #![feature(lang_items)]
 
 #[lang="fail_"]
-fn fail(_: &'static str, _: &'static str, _: uint) -> ! { loop {} }
+fn fail(_: &(&'static str, &'static str, uint)) -> ! { loop {} }
 
 #[lang = "stack_exhausted"]
 extern fn stack_exhausted() {}

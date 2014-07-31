@@ -29,6 +29,8 @@ unlikely.
 To create a new random (V4) UUID and print it out in hexadecimal form:
 
 ```rust
+# #![allow(deprecated)]
+# extern crate uuid;
 use uuid::Uuid;
 
 fn main() {
