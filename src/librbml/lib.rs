@@ -105,7 +105,8 @@ pub enum EbmlEncoderTag {
 pub enum Error {
     IntTooBig(uint),
     Expected(String),
-    IoError(std::io::IoError)
+    IoError(std::io::IoError),
+    ApplicationError(String)
 }
 // --------------------------------------
 
@@ -119,11 +120,11 @@ pub mod reader {
 
     use serialize;
 
-    use super::{ EsVec, EsMap, EsEnum, EsVecLen, EsVecElt, EsMapLen, EsMapKey,
-        EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64, EsI32, EsI16, EsI8,
-        EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal, EsEnumBody, EsUint,
-        EsOpaque, EsLabel, EbmlEncoderTag, Doc, TaggedDoc, Error, IntTooBig,
-        Expected };
+    use super::{ ApplicationError, EsVec, EsMap, EsEnum, EsVecLen, EsVecElt,
+        EsMapLen, EsMapKey, EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64,
+        EsI32, EsI16, EsI8, EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
+        EsEnumBody, EsUint, EsOpaque, EsLabel, EbmlEncoderTag, Doc, TaggedDoc,
+        Error, IntTooBig, Expected };
 
     pub type DecodeResult<T> = Result<T, Error>;
     // rbml reading
@@ -635,6 +636,10 @@ pub mod reader {
                                -> DecodeResult<T> {
             debug!("read_map_elt_val(idx={})", idx);
             self.push_doc(EsMapVal, f)
+        }
+
+        fn error(&mut self, err: &str) -> Error {
+            ApplicationError(err.to_string())
         }
     }
 }
