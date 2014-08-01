@@ -144,6 +144,8 @@ pub fn parse_stmt_from_source_str(name: String,
     maybe_aborted(p.parse_stmt(attrs),p)
 }
 
+// Note: keep in sync with `with_hygiene::parse_tts_from_source_str`
+// until #16472 is resolved.
 pub fn parse_tts_from_source_str(name: String,
                                  source: String,
                                  cfg: ast::CrateConfig,
@@ -160,6 +162,8 @@ pub fn parse_tts_from_source_str(name: String,
     maybe_aborted(p.parse_all_token_trees(),p)
 }
 
+// Note: keep in sync with `with_hygiene::new_parser_from_source_str`
+// until #16472 is resolved.
 // Create a new parser from a source string
 pub fn new_parser_from_source_str<'a>(sess: &'a ParseSess,
                                       cfg: ast::CrateConfig,
@@ -192,6 +196,8 @@ pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
     p
 }
 
+// Note: keep this in sync with `with_hygiene::filemap_to_parser` until
+// #16472 is resolved.
 /// Given a filemap and config, return a parser
 pub fn filemap_to_parser<'a>(sess: &'a ParseSess,
                              filemap: Rc<FileMap>,
@@ -248,6 +254,8 @@ pub fn string_to_filemap(sess: &ParseSess, source: String, path: String)
     sess.span_diagnostic.cm.new_filemap(path, source)
 }
 
+// Note: keep this in sync with `with_hygiene::filemap_to_tts` (apart
+// from the StringReader constructor), until #16472 is resolved.
 /// Given a filemap, produce a sequence of token-trees
 pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     -> Vec<ast::TokenTree> {
@@ -265,6 +273,67 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          cfg: ast::CrateConfig) -> Parser<'a> {
     let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, tts);
     Parser::new(sess, cfg, box trdr)
+}
+
+// FIXME (Issue #16472): The `with_hygiene` mod should go away after
+// ToToken impls are revised to go directly to token-trees.
+pub mod with_hygiene {
+    use ast;
+    use codemap::FileMap;
+    use parse::parser::Parser;
+    use std::rc::Rc;
+    use super::ParseSess;
+    use super::{maybe_aborted, string_to_filemap, tts_to_parser};
+
+    // Note: keep this in sync with `super::parse_tts_from_source_str` until
+    // #16472 is resolved.
+    pub fn parse_tts_from_source_str(name: String,
+                                     source: String,
+                                     cfg: ast::CrateConfig,
+                                     sess: &ParseSess) -> Vec<ast::TokenTree> {
+        let mut p = new_parser_from_source_str(
+            sess,
+            cfg,
+            name,
+            source
+        );
+        p.quote_depth += 1u;
+        // right now this is re-creating the token trees from ... token trees.
+        maybe_aborted(p.parse_all_token_trees(),p)
+    }
+
+    // Note: keep this in sync with `super::new_parser_from_source_str` until
+    // #16472 is resolved.
+    // Create a new parser from a source string
+    fn new_parser_from_source_str<'a>(sess: &'a ParseSess,
+                                      cfg: ast::CrateConfig,
+                                      name: String,
+                                      source: String) -> Parser<'a> {
+        filemap_to_parser(sess, string_to_filemap(sess, source, name), cfg)
+    }
+
+    // Note: keep this in sync with `super::filemap_to_parserr` until
+    // #16472 is resolved.
+    /// Given a filemap and config, return a parser
+    fn filemap_to_parser<'a>(sess: &'a ParseSess,
+                             filemap: Rc<FileMap>,
+                             cfg: ast::CrateConfig) -> Parser<'a> {
+        tts_to_parser(sess, filemap_to_tts(sess, filemap), cfg)
+    }
+
+    // Note: keep this in sync with `super::filemap_to_tts` until
+    // #16472 is resolved.
+    /// Given a filemap, produce a sequence of token-trees
+    fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
+                      -> Vec<ast::TokenTree> {
+        // it appears to me that the cfg doesn't matter here... indeed,
+        // parsing tt's probably shouldn't require a parser at all.
+        use make_reader = super::lexer::make_reader_with_embedded_idents;
+        let cfg = Vec::new();
+        let srdr = make_reader(&sess.span_diagnostic, filemap);
+        let mut p1 = Parser::new(sess, cfg, box srdr);
+        p1.parse_all_token_trees()
+    }
 }
 
 /// Abort if necessary
