@@ -630,8 +630,9 @@ impl LintPass for GatherNodeLevels {
         match it.node {
             ast::ItemEnum(..) => {
                 let lint_id = LintId::of(builtin::VARIANT_SIZE_DIFFERENCE);
-                match cx.lints.get_level_source(lint_id) {
-                    lvlsrc @ (lvl, _) if lvl != Allow => {
+                let lvlsrc = cx.lints.get_level_source(lint_id);
+                match lvlsrc {
+                    (lvl, _) if lvl != Allow => {
                         cx.node_levels.borrow_mut()
                             .insert((it.id, lint_id), lvlsrc);
                     },

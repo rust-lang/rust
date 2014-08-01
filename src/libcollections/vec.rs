@@ -1724,7 +1724,7 @@ mod tests {
             }
         }
 
-        let mut count_x @ mut count_y = 0;
+        let (mut count_x, mut count_y) = (0, 0);
         {
             let mut tv = TwoVec {
                 x: Vec::new(),

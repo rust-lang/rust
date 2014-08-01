@@ -145,6 +145,9 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                 check_legality_of_move_bindings(cx,
                                                 arm.guard.is_some(),
                                                 arm.pats.as_slice());
+                for pat in arm.pats.iter() {
+                    check_legality_of_bindings_in_at_patterns(cx, &**pat);
+                }
             }
 
             // Second, if there is a guard on each arm, make sure it isn't
@@ -200,6 +203,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
 
             // Check legality of move bindings.
             check_legality_of_move_bindings(cx, false, [ *pat ]);
+            check_legality_of_bindings_in_at_patterns(cx, &**pat);
         }
         _ => ()
     }
@@ -455,8 +459,12 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: ty::t,
 
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
-fn is_useful(cx: &MatchCheckCtxt, matrix @ &Matrix(ref rows): &Matrix,
-             v: &[Gc<Pat>], witness: WitnessPreference) -> Usefulness {
+fn is_useful(cx: &MatchCheckCtxt,
+             matrix: &Matrix,
+             v: &[Gc<Pat>],
+             witness: WitnessPreference)
+             -> Usefulness {
+    let &Matrix(ref rows) = matrix;
     debug!("{:}", matrix);
     if rows.len() == 0u {
         return match witness {
@@ -819,8 +827,9 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
         None => ()
     }
 
-    // Check legality of move bindings.
+    // Check legality of move bindings and `@` patterns.
     check_legality_of_move_bindings(cx, false, [ loc.pat ]);
+    check_legality_of_bindings_in_at_patterns(cx, &*loc.pat);
 }
 
 fn check_fn(cx: &mut MatchCheckCtxt,
@@ -840,6 +849,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             None => ()
         }
         check_legality_of_move_bindings(cx, false, [input.pat]);
+        check_legality_of_bindings_in_at_patterns(cx, &*input.pat);
     }
 }
 
@@ -856,7 +866,6 @@ fn is_refutable(cx: &MatchCheckCtxt, pat: Gc<Pat>) -> Option<Gc<Pat>> {
 }
 
 // Legality of move bindings checking
-
 fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                                    has_guard: bool,
                                    pats: &[Gc<Pat>]) {
@@ -962,6 +971,35 @@ impl<'a> Delegate for MutationChecker<'a> {
                     .span_err(span, "cannot assign in a pattern guard")
             }
             Init => {}
+        }
+    }
+}
+
+/// Forbids bindings in `@` patterns. This is necessary for memory safety,
+/// because of the way rvalues are handled in the borrow check. (See issue
+/// #14587.)
+fn check_legality_of_bindings_in_at_patterns(cx: &MatchCheckCtxt, pat: &Pat) {
+    let mut visitor = AtBindingPatternVisitor {
+        cx: cx,
+    };
+    visitor.visit_pat(pat, true);
+}
+
+struct AtBindingPatternVisitor<'a,'b> {
+    cx: &'a MatchCheckCtxt<'b>,
+}
+
+impl<'a,'b> Visitor<bool> for AtBindingPatternVisitor<'a,'b> {
+    fn visit_pat(&mut self, pat: &Pat, bindings_allowed: bool) {
+        if !bindings_allowed && pat_is_binding(&self.cx.tcx.def_map, pat) {
+            self.cx.tcx.sess.span_err(pat.span,
+                                      "pattern bindings are not allowed \
+                                       after an `@`");
+        }
+
+        match pat.node {
+            PatIdent(_, _, Some(_)) => visit::walk_pat(self, pat, false),
+            _ => visit::walk_pat(self, pat, bindings_allowed),
         }
     }
 }
