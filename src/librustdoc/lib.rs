@@ -214,13 +214,14 @@ pub fn main_args(args: &[String]) -> int {
         Some(eh) => eh,
         None => return 3
     };
+    let crate_name = matches.opt_str("crate-name");
 
     match (should_test, markdown_input) {
         (true, true) => {
             return markdown::test(input, libs, externs, test_args)
         }
         (true, false) => {
-            return test::run(input, cfgs, libs, externs, test_args)
+            return test::run(input, cfgs, libs, externs, test_args, crate_name)
         }
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
                                                  &matches, &external_html,
