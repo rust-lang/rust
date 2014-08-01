@@ -449,7 +449,7 @@ pub struct UnsafeCell<T> {
 }
 
 impl<T> UnsafeCell<T> {
-    /// Construct a new instance of `UnsafeCell` which will wrapp the specified
+    /// Construct a new instance of `UnsafeCell` which will wrap the specified
     /// value.
     ///
     /// All access to the inner value through methods is `unsafe`, and it is
