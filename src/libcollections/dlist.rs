@@ -683,6 +683,8 @@ impl<A: PartialEq> PartialEq for DList<A> {
     }
 }
 
+impl<A: Eq> Eq for DList<A> {}
+
 impl<A: PartialOrd> PartialOrd for DList<A> {
     fn partial_cmp(&self, other: &DList<A>) -> Option<Ordering> {
         iter::order::partial_cmp(self.iter(), other.iter())
