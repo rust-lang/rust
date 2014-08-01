@@ -1,4 +1,4 @@
-% Language FAQ
+% The Rust Language FAQ
 
 ## Are there any big programs written in it yet? I want to read big samples.
 

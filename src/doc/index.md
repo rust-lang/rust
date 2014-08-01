@@ -1,4 +1,4 @@
-% Rust documentation
+% Rust Documentation
 
 <!-- Completely hide the TOC and the section numbers -->
 <style type="text/css">
@@ -19,7 +19,7 @@ li {list-style-type: none; }
 * [Containers and Iterators](guide-container.html)
 * [Tasks and Communication](guide-tasks.html)
 * [Foreign Function Interface](guide-ffi.html)
-* [Writing Safe Unsafe and Low-Level Code](guide-unsafe.html)
+* [Writing Unsafe and Low-Level Code](guide-unsafe.html)
 * [Macros](guide-macros.html)
 * [Testing](guide-testing.html)
 * [Rust's Runtime](guide-runtime.html)
