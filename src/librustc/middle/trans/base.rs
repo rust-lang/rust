@@ -2125,12 +2125,43 @@ impl<'a> Visitor<()> for TransItemVisitor<'a> {
     }
 }
 
+/// Enum describing the origin of an LLVM `Value`, for linkage purposes.
+pub enum ValueOrigin {
+    /// The LLVM `Value` is in this context because the corresponding item was
+    /// assigned to the current compilation unit.
+    OriginalTranslation,
+    /// The `Value`'s corresponding item was assigned to some other compilation
+    /// unit, but the `Value` was translated in this context anyway because the
+    /// item is marked `#[inline]`.
+    InlinedCopy,
+}
+
 /// Set the appropriate linkage for an LLVM `ValueRef` (function or global).
 /// If the `llval` is the direct translation of a specific Rust item, `id`
 /// should be set to the `NodeId` of that item.  (This mapping should be
 /// 1-to-1, so monomorphizations and drop/visit glue should have `id` set to
-/// `None`.)
-pub fn update_linkage(ccx: &CrateContext, llval: ValueRef, id: Option<ast::NodeId>) {
+/// `None`.)  `llval_origin` indicates whether `llval` is the translation of an
+/// item assigned to `ccx`'s compilation unit or an inlined copy of an item
+/// assigned to a different compilation unit.
+pub fn update_linkage(ccx: &CrateContext,
+                      llval: ValueRef,
+                      id: Option<ast::NodeId>,
+                      llval_origin: ValueOrigin) {
+    match llval_origin {
+        InlinedCopy => {
+            // `llval` is a translation of an item defined in a separate
+            // compilation unit.  This only makes sense if there are at least
+            // two compilation units.
+            assert!(ccx.sess().opts.cg.codegen_units > 1);
+            // `llval` is a copy of something defined elsewhere, so use
+            // `AvailableExternallyLinkage` to avoid duplicating code in the
+            // output.
+            llvm::SetLinkage(llval, llvm::AvailableExternallyLinkage);
+            return;
+        },
+        OriginalTranslation => {},
+    }
+
     match id {
         Some(id) if ccx.reachable().contains(&id) => {
             llvm::SetLinkage(llval, llvm::ExternalLinkage);
@@ -2149,29 +2180,41 @@ pub fn update_linkage(ccx: &CrateContext, llval: ValueRef, id: Option<ast::NodeI
 pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
     let _icx = push_ctxt("trans_item");
 
+    let from_external = ccx.external_srcs().borrow().contains_key(&item.id);
+
     match item.node {
       ast::ItemFn(ref decl, _fn_style, abi, ref generics, ref body) => {
         if !generics.is_type_parameterized() {
-            let llfn = get_item_val(ccx, item.id);
-            if abi != Rust {
-                foreign::trans_rust_fn_with_foreign_abi(ccx,
-                                                        &**decl,
-                                                        &**body,
-                                                        item.attrs.as_slice(),
-                                                        llfn,
-                                                        &param_substs::empty(),
-                                                        item.id,
-                                                        None);
-            } else {
-                trans_fn(ccx,
-                         &**decl,
-                         &**body,
-                         llfn,
-                         &param_substs::empty(),
-                         item.id,
-                         item.attrs.as_slice());
+            let trans_everywhere = attr::requests_inline(item.attrs.as_slice());
+            // Ignore `trans_everywhere` for cross-crate inlined items
+            // (`from_external`).  `trans_item` will be called once for each
+            // compilation unit that references the item, so it will still get
+            // translated everywhere it's needed.
+            for (ref ccx, is_origin) in ccx.maybe_iter(!from_external && trans_everywhere) {
+                let llfn = get_item_val(ccx, item.id);
+                if abi != Rust {
+                    foreign::trans_rust_fn_with_foreign_abi(ccx,
+                                                            &**decl,
+                                                            &**body,
+                                                            item.attrs.as_slice(),
+                                                            llfn,
+                                                            &param_substs::empty(),
+                                                            item.id,
+                                                            None);
+                } else {
+                    trans_fn(ccx,
+                             &**decl,
+                             &**body,
+                             llfn,
+                             &param_substs::empty(),
+                             item.id,
+                             item.attrs.as_slice());
+                }
+                update_linkage(ccx,
+                               llfn,
+                               Some(item.id),
+                               if is_origin { OriginalTranslation } else { InlinedCopy });
             }
-            update_linkage(ccx, llfn, Some(item.id));
         }
 
         // Be sure to travel more than just one layer deep to catch nested
@@ -2196,10 +2239,17 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
           // Recurse on the expression to catch items in blocks
           let mut v = TransItemVisitor{ ccx: ccx };
           v.visit_expr(&**expr, ());
-          consts::trans_const(ccx, m, item.id);
 
-          let g = get_item_val(ccx, item.id);
-          update_linkage(ccx, g, Some(item.id));
+          let trans_everywhere = attr::requests_inline(item.attrs.as_slice());
+          for (ref ccx, is_origin) in ccx.maybe_iter(!from_external && trans_everywhere) {
+              consts::trans_const(ccx, m, item.id);
+
+              let g = get_item_val(ccx, item.id);
+              update_linkage(ccx,
+                             g,
+                             Some(item.id),
+                             if is_origin { OriginalTranslation } else { InlinedCopy });
+          }
 
           // Do static_assert checking. It can't really be done much earlier
           // because we need to get the value of the bool out of LLVM

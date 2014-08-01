@@ -669,7 +669,7 @@ fn make_generic_glue(ccx: &CrateContext,
 
     let bcx = init_function(&fcx, false, ty::mk_nil());
 
-    update_linkage(ccx, llfn, None);
+    update_linkage(ccx, llfn, None, OriginalTranslation);
 
     ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1u);
     // All glue functions take values passed *by alias*; this is a

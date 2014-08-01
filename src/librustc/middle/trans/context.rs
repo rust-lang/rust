@@ -155,6 +155,9 @@ pub struct LocalCrateContext {
 pub struct CrateContext<'a> {
     shared: &'a SharedCrateContext,
     local: &'a LocalCrateContext,
+    /// The index of `local` in `shared.local_ccxs`.  This is used in
+    /// `maybe_iter(true)` to identify the original `LocalCrateContext`.
+    index: uint,
 }
 
 pub struct CrateContextIterator<'a> {
@@ -174,9 +177,40 @@ impl<'a> Iterator<CrateContext<'a>> for CrateContextIterator<'a> {
         Some(CrateContext {
             shared: self.shared,
             local: &self.shared.local_ccxs[index],
+            index: index,
         })
     }
 }
+
+/// The iterator produced by `CrateContext::maybe_iter`.
+pub struct CrateContextMaybeIterator<'a> {
+    shared: &'a SharedCrateContext,
+    index: uint,
+    single: bool,
+    origin: uint,
+}
+
+impl<'a> Iterator<(CrateContext<'a>, bool)> for CrateContextMaybeIterator<'a> {
+    fn next(&mut self) -> Option<(CrateContext<'a>, bool)> {
+        if self.index >= self.shared.local_ccxs.len() {
+            return None;
+        }
+
+        let index = self.index;
+        self.index += 1;
+        if self.single {
+            self.index = self.shared.local_ccxs.len();
+        }
+
+        let ccx = CrateContext {
+            shared: self.shared,
+            local: &self.shared.local_ccxs[index],
+            index: index,
+        };
+        Some((ccx, index == self.origin))
+    }
+}
+
 
 unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
@@ -270,18 +304,21 @@ impl SharedCrateContext {
         CrateContext {
             shared: self,
             local: &self.local_ccxs[index],
+            index: index,
         }
     }
 
     fn get_smallest_ccx<'a>(&'a self) -> CrateContext<'a> {
-        let local_ccx =
+        let (local_ccx, index) =
             self.local_ccxs
                 .iter()
-                .min_by(|&local_ccx| local_ccx.n_llvm_insns.get())
+                .zip(range(0, self.local_ccxs.len()))
+                .min_by(|&(local_ccx, _idx)| local_ccx.n_llvm_insns.get())
                 .unwrap();
         CrateContext {
             shared: self,
             local: local_ccx,
+            index: index,
         }
     }
 
@@ -426,6 +463,7 @@ impl LocalCrateContext {
         CrateContext {
             shared: shared,
             local: self,
+            index: -1 as uint,
         }
     }
 }
@@ -445,6 +483,22 @@ impl<'b> CrateContext<'b> {
     pub fn rotate(&self) -> CrateContext<'b> {
         self.shared.get_smallest_ccx()
     }
+
+    /// Either iterate over only `self`, or iterate over all `CrateContext`s in
+    /// the `SharedCrateContext`.  The iterator produces `(ccx, is_origin)`
+    /// pairs, where `is_origin` is `true` if `ccx` is `self` and `false`
+    /// otherwise.  This method is useful for avoiding code duplication in
+    /// cases where it may or may not be necessary to translate code into every
+    /// context.
+    pub fn maybe_iter(&self, iter_all: bool) -> CrateContextMaybeIterator<'b> {
+        CrateContextMaybeIterator {
+            shared: self.shared,
+            index: if iter_all { 0 } else { self.index },
+            single: !iter_all,
+            origin: self.index,
+        }
+    }
+
 
     pub fn tcx<'a>(&'a self) -> &'a ty::ctxt {
         &self.shared.tcx
