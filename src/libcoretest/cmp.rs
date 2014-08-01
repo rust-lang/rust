@@ -29,6 +29,13 @@ fn test_mut_int_totalord() {
 }
 
 #[test]
+fn test_ordering_reverse() {
+    assert_eq!(Less.reverse(), Greater);
+    assert_eq!(Equal.reverse(), Equal);
+    assert_eq!(Greater.reverse(), Less);
+}
+
+#[test]
 fn test_ordering_order() {
     assert!(Less < Equal);
     assert_eq!(Greater.cmp(&Less), Greater);
