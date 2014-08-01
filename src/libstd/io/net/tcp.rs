@@ -93,7 +93,7 @@ impl TcpStream {
     }
 
     /// Creates a TCP connection to a remote socket address, timing out after
-    /// the specified number of milliseconds.
+    /// the specified duration.
     ///
     /// This is the same as the `connect` method, except that if the timeout
     /// specified (in milliseconds) elapses before a connection is made an error
@@ -101,13 +101,19 @@ impl TcpStream {
     ///
     /// Note that the `addr` argument may one day be split into a separate host
     /// and port, similar to the API seen in `connect`.
+    ///
+    /// # Failure
+    ///
+    /// Fails on a `timeout` of zero or negative duration.
     #[experimental = "the timeout argument may eventually change types"]
     pub fn connect_timeout(addr: SocketAddr,
                            timeout: Duration) -> IoResult<TcpStream> {
+        assert!(timeout > Duration::milliseconds(0));
+
         let SocketAddr { ip, port } = addr;
         let addr = rtio::SocketAddr { ip: super::to_rtio(ip), port: port };
         LocalIo::maybe_raise(|io| {
-            io.tcp_connect(addr, Some(in_ms_u64(timeout))).map(TcpStream::new)
+            io.tcp_connect(addr, Some(timeout.num_milliseconds() as u64)).map(TcpStream::new)
         }).map_err(IoError::from_rtio_error)
     }
 
@@ -442,12 +448,6 @@ impl Acceptor<TcpStream> for TcpAcceptor {
             Err(e) => Err(IoError::from_rtio_error(e)),
         }
     }
-}
-
-fn in_ms_u64(d: Duration) -> u64 {
-    let ms = d.num_milliseconds();
-    if ms < 0 { return 0 };
-    return ms as u64;
 }
 
 #[cfg(test)]

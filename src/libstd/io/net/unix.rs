@@ -67,11 +67,17 @@ impl UnixStream {
     ///
     /// This function is similar to `connect`, except that if `timeout_ms`
     /// elapses the function will return an error of kind `TimedOut`.
+    ///
+    /// # Failure
+    ///
+    /// Fails on a `timeout` of zero or negative duration.
     #[experimental = "the timeout argument is likely to change types"]
     pub fn connect_timeout<P: ToCStr>(path: &P,
                                       timeout: Duration) -> IoResult<UnixStream> {
+        assert!(timeout > Duration::milliseconds(0));
+
         LocalIo::maybe_raise(|io| {
-            let s = io.unix_connect(&path.to_c_str(), Some(in_ms_u64(timeout)));
+            let s = io.unix_connect(&path.to_c_str(), Some(timeout.num_milliseconds() as u64));
             s.map(|p| UnixStream { obj: p })
         }).map_err(IoError::from_rtio_error)
     }
@@ -508,6 +514,18 @@ mod tests {
         let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
         assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(100)).is_ok());
     })
+
+    iotest!(fn connect_timeout_zero() {
+        let addr = next_test_unix();
+        let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
+        assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(0)).is_ok());
+    } #[should_fail])
+
+    iotest!(fn connect_timeout_negative() {
+        let addr = next_test_unix();
+        let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
+        assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(-1)).is_ok());
+    } #[should_fail])
 
     iotest!(fn close_readwrite_smoke() {
         let addr = next_test_unix();
