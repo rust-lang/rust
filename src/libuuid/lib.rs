@@ -501,7 +501,10 @@ impl<T: Encoder<E>, E> Encodable<T, E> for Uuid {
 impl<T: Decoder<E>, E> Decodable<T, E> for Uuid {
     /// Decode a UUID from a string
     fn decode(d: &mut T) -> Result<Uuid, E> {
-        Ok(from_str(try!(d.read_str()).as_slice()).unwrap())
+        match from_str(try!(d.read_str()).as_slice()) {
+            Some(decode) => Ok(decode),
+            None => Err(d.error("Unable to decode UUID"))
+        }
     }
 }
 
@@ -800,6 +803,23 @@ mod test {
         let s = json::encode(&u);
         let u2 = json::decode(s.as_slice()).unwrap();
         assert_eq!(u, u2);
+    }
+
+    #[test]
+    fn test_bad_decode() {
+        use serialize::json;
+        use serialize::{Encodable, Decodable};
+
+        let js_good = json::String("a1a2a3a4a5a6a7a8a1a2a3a4a5a6a7a8".to_string());
+        let js_bad1 = json::String("a1a2a3a4a5a6a7a8a1a2a3a4a5a6a7ah".to_string());
+        let js_bad2 = json::String("a1a2a3a4a5a6a7a8a1a2a3a4a5a6a7a".to_string());
+
+        let u_good: Result<Uuid, _> = Decodable::decode(&mut json::Decoder::new(js_good));
+        let u_bad1: Result<Uuid, _> = Decodable::decode(&mut json::Decoder::new(js_bad1));
+        let u_bad2: Result<Uuid, _> = Decodable::decode(&mut json::Decoder::new(js_bad2));
+        assert!(u_good.is_ok());
+        assert!(u_bad1.is_err());
+        assert!(u_bad2.is_err());
     }
 
     #[test]
