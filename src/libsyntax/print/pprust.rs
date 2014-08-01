@@ -58,7 +58,8 @@ pub struct State<'a> {
     literals: Option<Vec<comments::Literal> >,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
     boxes: Vec<pp::Breaks>,
-    ann: &'a PpAnn
+    ann: &'a PpAnn,
+    encode_idents_with_hygiene: bool,
 }
 
 pub fn rust_printer(writer: Box<io::Writer>) -> State<'static> {
@@ -78,7 +79,8 @@ pub fn rust_printer_annotated<'a>(writer: Box<io::Writer>,
             cur_lit: 0
         },
         boxes: Vec::new(),
-        ann: ann
+        ann: ann,
+        encode_idents_with_hygiene: false,
     }
 }
 
@@ -148,7 +150,8 @@ impl<'a> State<'a> {
                 cur_lit: 0
             },
             boxes: Vec::new(),
-            ann: ann
+            ann: ann,
+            encode_idents_with_hygiene: false,
         }
     }
 }
@@ -169,70 +172,77 @@ pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
     }
 }
 
+// FIXME (Issue #16472): the thing_to_string_impls macro should go away
+// after we revise the syntax::ext::quote::ToToken impls to go directly
+// to token-trees instea of thing -> string -> token-trees.
+
+macro_rules! thing_to_string_impls {
+    ($to_string:ident) => {
+
 pub fn ty_to_string(ty: &ast::Ty) -> String {
-    to_string(|s| s.print_type(ty))
+    $to_string(|s| s.print_type(ty))
 }
 
 pub fn pat_to_string(pat: &ast::Pat) -> String {
-    to_string(|s| s.print_pat(pat))
+    $to_string(|s| s.print_pat(pat))
 }
 
 pub fn arm_to_string(arm: &ast::Arm) -> String {
-    to_string(|s| s.print_arm(arm))
+    $to_string(|s| s.print_arm(arm))
 }
 
 pub fn expr_to_string(e: &ast::Expr) -> String {
-    to_string(|s| s.print_expr(e))
+    $to_string(|s| s.print_expr(e))
 }
 
 pub fn lifetime_to_string(e: &ast::Lifetime) -> String {
-    to_string(|s| s.print_lifetime(e))
+    $to_string(|s| s.print_lifetime(e))
 }
 
 pub fn tt_to_string(tt: &ast::TokenTree) -> String {
-    to_string(|s| s.print_tt(tt))
+    $to_string(|s| s.print_tt(tt))
 }
 
 pub fn tts_to_string(tts: &[ast::TokenTree]) -> String {
-    to_string(|s| s.print_tts(tts))
+    $to_string(|s| s.print_tts(tts))
 }
 
 pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
-    to_string(|s| s.print_stmt(stmt))
+    $to_string(|s| s.print_stmt(stmt))
 }
 
 pub fn item_to_string(i: &ast::Item) -> String {
-    to_string(|s| s.print_item(i))
+    $to_string(|s| s.print_item(i))
 }
 
 pub fn generics_to_string(generics: &ast::Generics) -> String {
-    to_string(|s| s.print_generics(generics))
+    $to_string(|s| s.print_generics(generics))
 }
 
 pub fn ty_method_to_string(p: &ast::TypeMethod) -> String {
-    to_string(|s| s.print_ty_method(p))
+    $to_string(|s| s.print_ty_method(p))
 }
 
 pub fn method_to_string(p: &ast::Method) -> String {
-    to_string(|s| s.print_method(p))
+    $to_string(|s| s.print_method(p))
 }
 
 pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
-    to_string(|s| s.print_fn_block_args(p, false))
+    $to_string(|s| s.print_fn_block_args(p, false))
 }
 
 pub fn path_to_string(p: &ast::Path) -> String {
-    to_string(|s| s.print_path(p, false))
+    $to_string(|s| s.print_path(p, false))
 }
 
 pub fn ident_to_string(id: &ast::Ident) -> String {
-    to_string(|s| s.print_ident(*id))
+    $to_string(|s| s.print_ident(*id))
 }
 
 pub fn fun_to_string(decl: &ast::FnDecl, fn_style: ast::FnStyle, name: ast::Ident,
                   opt_explicit_self: Option<ast::ExplicitSelf_>,
                   generics: &ast::Generics) -> String {
-    to_string(|s| {
+    $to_string(|s| {
         try!(s.print_fn(decl, Some(fn_style), abi::Rust,
                         name, generics, opt_explicit_self, ast::Inherited));
         try!(s.end()); // Close the head box
@@ -241,7 +251,7 @@ pub fn fun_to_string(decl: &ast::FnDecl, fn_style: ast::FnStyle, name: ast::Iden
 }
 
 pub fn block_to_string(blk: &ast::Block) -> String {
-    to_string(|s| {
+    $to_string(|s| {
         // containing cbox, will be closed by print-block at }
         try!(s.cbox(indent_unit));
         // head-ibox, will be closed by print-block after {
@@ -251,31 +261,57 @@ pub fn block_to_string(blk: &ast::Block) -> String {
 }
 
 pub fn meta_item_to_string(mi: &ast::MetaItem) -> String {
-    to_string(|s| s.print_meta_item(mi))
+    $to_string(|s| s.print_meta_item(mi))
 }
 
 pub fn attribute_to_string(attr: &ast::Attribute) -> String {
-    to_string(|s| s.print_attribute(attr))
+    $to_string(|s| s.print_attribute(attr))
 }
 
 pub fn lit_to_string(l: &ast::Lit) -> String {
-    to_string(|s| s.print_literal(l))
+    $to_string(|s| s.print_literal(l))
 }
 
 pub fn explicit_self_to_string(explicit_self: ast::ExplicitSelf_) -> String {
-    to_string(|s| s.print_explicit_self(explicit_self, ast::MutImmutable).map(|_| {}))
+    $to_string(|s| s.print_explicit_self(explicit_self, ast::MutImmutable).map(|_| {}))
 }
 
 pub fn variant_to_string(var: &ast::Variant) -> String {
-    to_string(|s| s.print_variant(var))
+    $to_string(|s| s.print_variant(var))
 }
 
 pub fn arg_to_string(arg: &ast::Arg) -> String {
-    to_string(|s| s.print_arg(arg))
+    $to_string(|s| s.print_arg(arg))
 }
 
 pub fn mac_to_string(arg: &ast::Mac) -> String {
-    to_string(|s| s.print_mac(arg))
+    $to_string(|s| s.print_mac(arg))
+}
+
+} }
+
+thing_to_string_impls!(to_string)
+
+// FIXME (Issue #16472): the whole `with_hygiene` mod should go away
+// after we revise the syntax::ext::quote::ToToken impls to go directly
+// to token-trees instea of thing -> string -> token-trees.
+
+pub mod with_hygiene {
+    use abi;
+    use ast;
+    use std::io::IoResult;
+    use super::indent_unit;
+
+    // This function is the trick that all the rest of the routines
+    // hang on.
+    pub fn to_string_hyg(f: |&mut super::State| -> IoResult<()>) -> String {
+        super::to_string(|s| {
+            s.encode_idents_with_hygiene = true;
+            f(s)
+        })
+    }
+
+    thing_to_string_impls!(to_string_hyg)
 }
 
 pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
@@ -1672,7 +1708,12 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ident(&mut self, ident: ast::Ident) -> IoResult<()> {
-        word(&mut self.s, token::get_ident(ident).get())
+        if self.encode_idents_with_hygiene {
+            let encoded = ident.encode_with_hygiene();
+            word(&mut self.s, encoded.as_slice())
+        } else {
+            word(&mut self.s, token::get_ident(ident).get())
+        }
     }
 
     pub fn print_name(&mut self, name: ast::Name) -> IoResult<()> {
