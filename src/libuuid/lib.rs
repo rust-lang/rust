@@ -29,6 +29,8 @@ unlikely.
 To create a new random (V4) UUID and print it out in hexadecimal form:
 
 ```rust
+# #![allow(deprecated)]
+# extern crate uuid;
 use uuid::Uuid;
 
 fn main() {
@@ -55,7 +57,8 @@ Examples of string representations:
 */
 
 #![crate_name = "uuid"]
-#![experimental]
+#![deprecated = "This is now a cargo package located at: \
+                 https://github.com/rust-lang/uuid"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
@@ -312,7 +315,7 @@ impl Uuid {
     }
 
     /// Return an array of 16 octets containing the UUID data
-    pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
+    pub fn as_bytes(&self) -> &[u8] {
         self.bytes.as_slice()
     }
 

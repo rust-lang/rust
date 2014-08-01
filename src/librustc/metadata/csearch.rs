@@ -20,8 +20,8 @@ use middle::ty;
 use middle::typeck;
 use middle::subst::VecPerParamSpace;
 
-use serialize::ebml;
-use serialize::ebml::reader;
+use rbml;
+use rbml::reader;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::ast_map;
@@ -218,7 +218,7 @@ pub fn get_field_type(tcx: &ty::ctxt, class_id: ast::DefId,
                       def: ast::DefId) -> ty::Polytype {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(class_id.krate);
-    let all_items = reader::get_doc(ebml::Doc::new(cdata.data()), tag_items);
+    let all_items = reader::get_doc(rbml::Doc::new(cdata.data()), tag_items);
     let class_doc = expect(tcx.sess.diagnostic(),
                            decoder::maybe_find_item(class_id.node, all_items),
                            || {

@@ -43,6 +43,7 @@ use option::{Option, Some, None};
 use ptr::RawPtr;
 use ptr;
 use raw;
+use slice::Vector;
 
 /// The type representing a foreign chunk of memory
 pub struct CVec<T> {
@@ -101,13 +102,6 @@ impl<T> CVec<T> {
         }
     }
 
-    /// View the stored data as a slice.
-    pub fn as_slice<'a>(&'a self) -> &'a [T] {
-        unsafe {
-            mem::transmute(raw::Slice { data: self.base as *const T, len: self.len })
-        }
-    }
-
     /// View the stored data as a mutable slice.
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
@@ -148,6 +142,15 @@ impl<T> CVec<T> {
     pub unsafe fn unwrap(mut self) -> *mut T {
         self.dtor = None;
         self.base
+    }
+}
+
+impl<T> Vector<T> for CVec<T> {
+    /// View the stored data as a slice.
+    fn as_slice<'a>(&'a self) -> &'a [T] {
+        unsafe {
+            mem::transmute(raw::Slice { data: self.base as *const T, len: self.len })
+        }
     }
 }
 

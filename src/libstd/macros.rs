@@ -37,6 +37,39 @@
 /// fail!("this is a {} {message}", "fancy", message = "message");
 /// ```
 #[macro_export]
+#[cfg(not(stage0))]
+macro_rules! fail(
+    () => ({
+        fail!("explicit failure")
+    });
+    ($msg:expr) => ({
+        // static requires less code at runtime, more constant data
+        static FILE_LINE: (&'static str, uint) = (file!(), line!());
+        ::std::rt::begin_unwind($msg, &FILE_LINE)
+    });
+    ($fmt:expr, $($arg:tt)*) => ({
+        // a closure can't have return type !, so we need a full
+        // function to pass to format_args!, *and* we need the
+        // file and line numbers right here; so an inner bare fn
+        // is our only choice.
+        //
+        // LLVM doesn't tend to inline this, presumably because begin_unwind_fmt
+        // is #[cold] and #[inline(never)] and because this is flagged as cold
+        // as returning !. We really do want this to be inlined, however,
+        // because it's just a tiny wrapper. Small wins (156K to 149K in size)
+        // were seen when forcing this to be inlined, and that number just goes
+        // up with the number of calls to fail!()
+        #[inline(always)]
+        fn run_fmt(fmt: &::std::fmt::Arguments) -> ! {
+            static FILE_LINE: (&'static str, uint) = (file!(), line!());
+            ::std::rt::begin_unwind_fmt(fmt, &FILE_LINE)
+        }
+        format_args!(run_fmt, $fmt, $($arg)*)
+    });
+)
+
+#[macro_export]
+#[cfg(stage0)]
 macro_rules! fail(
     () => ({
         fail!("explicit failure")
