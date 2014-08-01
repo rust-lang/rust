@@ -151,10 +151,13 @@
 use core::prelude::*;
 
 use core::default::Default;
+use core::fmt;
 use core::mem::{zeroed, replace, swap};
 use core::ptr;
 
 use {Collection, Mutable, MutableSeq};
+use hash;
+use hash::Hash;
 use slice;
 use vec::Vec;
 
@@ -164,6 +167,32 @@ use vec::Vec;
 #[deriving(Clone)]
 pub struct PriorityQueue<T> {
     data: Vec<T>,
+}
+
+impl<T: Ord + PartialEq> PartialEq for PriorityQueue<T> {
+    fn eq(&self, other: &PriorityQueue<T>) -> bool {
+        self.len() == other.len() &&
+            self.as_sorted_vec() == other.as_sorted_vec()
+    }
+}
+
+impl <S: hash::Writer, T: Ord + Hash<S>> Hash<S> for PriorityQueue<T> {
+    fn hash(&self, state: &mut S) {
+        self.as_sorted_vec().hash(state)
+    }
+}
+
+impl<T: Ord + fmt::Show> fmt::Show for PriorityQueue<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "["));
+
+        for (i, e) in self.as_sorted_vec().iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}", *e));
+        }
+
+        write!(f, "]")
+    }
 }
 
 impl<T: Ord> Collection for PriorityQueue<T> {
@@ -511,6 +540,19 @@ impl<T: Ord> PriorityQueue<T> {
         let len = self.len();
         self.siftdown_range(pos, len);
     }
+
+    fn as_sorted_vec<'a>(&'a self) -> Vec<&'a T> {
+        let mut a: Vec<&T> = self.data.iter().collect();
+        fn dual(o: Ordering) -> Ordering {
+            match o {
+                Less => Greater,
+                Equal => Equal,
+                Greater => Less,
+            }
+        }
+        a.sort_by(|a, b| dual(a.cmp(b)));
+        a
+    }
 }
 
 /// PriorityQueue iterator.
@@ -550,6 +592,7 @@ impl<T: Ord> Extendable<T> for PriorityQueue<T> {
 #[cfg(test)]
 mod tests {
     use std::prelude::*;
+    use hash;
 
     use priority_queue::PriorityQueue;
     use vec::Vec;
@@ -705,5 +748,50 @@ mod tests {
         for &x in xs.iter() {
             assert_eq!(q.pop().unwrap(), x);
         }
+    }
+
+    #[test]
+    fn test_eq() {
+        let mut n = PriorityQueue::new();
+        let mut m = PriorityQueue::new();
+        assert!(n == m);
+        n.push(1u);
+        assert!(n != m);
+        m.push(1u);
+        assert!(n == m);
+        m.push(2);
+        n.push(3);
+        assert!(n != m);
+        n.push(2);
+        m.push(3);
+        assert!(n == m);
+    }
+
+    #[test]
+    fn test_hash() {
+        let mut x = PriorityQueue::new();
+        let mut y = PriorityQueue::new();
+
+        assert!(hash::hash(&x) == hash::hash(&y));
+        x.push('a');
+        x.push('b');
+        x.push('c');
+
+        y.push('c');
+        y.push('b');
+        y.push('a');
+
+        assert!(hash::hash(&x) == hash::hash(&y));
+    }
+
+    #[test]
+    fn test_show() {
+        let pqueue: PriorityQueue<int> = range(0i, 10).collect();
+        assert!(format!("{}", pqueue).as_slice() == "[9, 8, 7, 6, 5, 4, 3, 2, 1, 0]");
+
+        let pqueue: PriorityQueue<&str> = vec!["just", "one", "test", "more"].iter()
+                                                                        .map(|&s| s)
+                                                                        .collect();
+        assert!(format!("{}", pqueue).as_slice() == "[test, one, more, just]");
     }
 }
