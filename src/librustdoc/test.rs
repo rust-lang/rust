@@ -41,7 +41,8 @@ pub fn run(input: &str,
            cfgs: Vec<String>,
            libs: HashSet<Path>,
            externs: core::Externs,
-           mut test_args: Vec<String>)
+           mut test_args: Vec<String>,
+           crate_name: Option<String>)
            -> int {
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
@@ -87,7 +88,11 @@ pub fn run(input: &str,
 
     let mut v = RustdocVisitor::new(&*ctx, None);
     v.visit(&ctx.krate);
-    let krate = v.clean();
+    let mut krate = v.clean();
+    match crate_name {
+        Some(name) => krate.name = name,
+        None => {}
+    }
     let (krate, _) = passes::collapse_docs(krate);
     let (krate, _) = passes::unindent_comments(krate);
 
