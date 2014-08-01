@@ -10,33 +10,33 @@
 
 // ignore-test FIXME(#5121)
 
-
-extern crate time;
+extern crate rbml;
 extern crate serialize;
+extern crate time;
 
 // These tests used to be separate files, but I wanted to refactor all
 // the common code.
 
 use std::hashmap::{HashMap, HashSet};
 
-use EBReader = serialize::ebml::reader;
-use EBWriter = serialize::ebml::writer;
+use EBReader = rbml::reader;
+use EBWriter = rbml::writer;
 use std::cmp::Eq;
 use std::cmp;
 use std::io;
 use serialize::{Decodable, Encodable};
 
-fn test_ebml<'a, 'b, A:
+fn test_rbml<'a, 'b, A:
     Eq +
     Encodable<EBWriter::Encoder<'a>> +
     Decodable<EBReader::Decoder<'b>>
 >(a1: &A) {
     let mut wr = std::io::MemWriter::new();
-    let mut ebml_w = EBwriter::Encoder::new(&mut wr);
-    a1.encode(&mut ebml_w);
+    let mut rbml_w = EBwriter::Encoder::new(&mut wr);
+    a1.encode(&mut rbml_w);
     let bytes = wr.get_ref();
 
-    let d: serialize::ebml::Doc<'a> = EBDoc::new(bytes);
+    let d: serialize::rbml::Doc<'a> = EBDoc::new(bytes);
     let mut decoder: EBReader::Decoder<'a> = EBreader::Decoder::new(d);
     let a2: A = Decodable::decode(&mut decoder);
     assert!(*a1 == a2);
@@ -133,40 +133,40 @@ enum CLike { A, B, C }
 
 pub fn main() {
     let a = &Plus(@Minus(@Val(3u), @Val(10u)), @Plus(@Val(22u), @Val(5u)));
-    test_ebml(a);
+    test_rbml(a);
 
     let a = &Spanned {lo: 0u, hi: 5u, node: 22u};
-    test_ebml(a);
+    test_rbml(a);
 
     let a = &Point {x: 3u, y: 5u};
-    test_ebml(a);
+    test_rbml(a);
 
     let a = &Top(22u);
-    test_ebml(a);
+    test_rbml(a);
 
     let a = &Bottom(222u);
-    test_ebml(a);
+    test_rbml(a);
 
     let a = &A;
-    test_ebml(a);
+    test_rbml(a);
 
     let a = &B;
-    test_ebml(a);
+    test_rbml(a);
 
     let a = &time::now();
-    test_ebml(a);
+    test_rbml(a);
 
-    test_ebml(&1.0f32);
-    test_ebml(&1.0f64);
-    test_ebml(&'a');
+    test_rbml(&1.0f32);
+    test_rbml(&1.0f64);
+    test_rbml(&'a');
 
     let mut a = HashMap::new();
-    test_ebml(&a);
+    test_rbml(&a);
     a.insert(1, 2);
-    test_ebml(&a);
+    test_rbml(&a);
 
     let mut a = HashSet::new();
-    test_ebml(&a);
+    test_rbml(&a);
     a.insert(1);
-    test_ebml(&a);
+    test_rbml(&a);
 }

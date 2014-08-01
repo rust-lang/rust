@@ -3547,6 +3547,17 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         span_err!(tcx.sess, path.span, E0071,
                             "`{}` does not name a structure",
                             pprust::path_to_string(path));
+
+                        // Make sure to still write the types
+                        // otherwise we might ICE
+                        fcx.write_error(id);
+                        for field in fields.iter() {
+                            check_expr(fcx, &*field.expr);
+                        }
+                        match base_expr {
+                            Some(ref base) => check_expr(fcx, &**base),
+                            None => {}
+                        }
                     }
                 }
 

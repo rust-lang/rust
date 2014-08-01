@@ -39,7 +39,7 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io::SeekableMemWriter;
+/// use rbml::io::SeekableMemWriter;
 ///
 /// let mut w = SeekableMemWriter::new();
 /// w.write([0, 1, 2]);
@@ -128,6 +128,7 @@ impl Seek for SeekableMemWriter {
 
 #[cfg(test)]
 mod tests {
+    extern crate test;
     use super::SeekableMemWriter;
     use std::io;
     use test::Bencher;

@@ -485,6 +485,9 @@ pub fn get_res_dtor(ccx: &CrateContext,
     if !substs.types.is_empty() {
         assert_eq!(did.krate, ast::LOCAL_CRATE);
 
+        // Since we're in trans we don't care for any region parameters
+        let ref substs = subst::Substs::erased(substs.types.clone());
+
         let vtables = typeck::check::vtable::trans_resolve_method(ccx.tcx(), did.node, substs);
         let (val, _) = monomorphize::monomorphic_fn(ccx, did, substs, vtables, None);
 
@@ -2593,7 +2596,7 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     }
 
     let encode_inlined_item: encoder::EncodeInlinedItem =
-        |ecx, ebml_w, ii| astencode::encode_inlined_item(ecx, ebml_w, ii);
+        |ecx, rbml_w, ii| astencode::encode_inlined_item(ecx, rbml_w, ii);
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);

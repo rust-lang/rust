@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![no_std]
-#![feature(lang_items)]
 
-#[lang="fail_"]
-fn fail(_: &(&'static str, &'static str, uint)) -> ! { loop {} }
+pub struct GslResult {
+    pub val: f64,
+    pub err: f64
+}
 
-#[lang = "stack_exhausted"]
-extern fn stack_exhausted() {}
+impl GslResult {
+    pub fn new() -> GslResult {
+        Result { //~ ERROR: `Result` does not name a structure
+            val: 0f64,
+            err: 0f64
+        }
+    }
+}
 
-#[lang = "eh_personality"]
-extern fn eh_personality() {}
+fn main() {}

@@ -578,12 +578,12 @@ fn main() {
 
 Notice we changed the signature of `add_one()` to request a mutable reference.
 
-# Best practices
+## Best practices
 
 Boxes are appropriate to use in two situations: Recursive data structures,
 and occasionally, when returning data.
 
-## Recursive data structures
+### Recursive data structures
 
 Sometimes, you need a recursive data structure. The simplest is known as a
 'cons list':
@@ -615,7 +615,7 @@ we don't know the size, and therefore, we need to heap allocate our list.
 Working with recursive or other unknown-sized data structures is the primary
 use-case for boxes.
 
-## Returning data
+### Returning data
 
 This is important enough to have its own section entirely. The TL;DR is this:
 you don't generally want to return pointers, even when you might in a language
@@ -733,18 +733,15 @@ This part is coming soon.
 
 Here's a quick rundown of Rust's pointer types:
 
-| Type         | Name                | Summary                                   |
-|--------------|---------------------|-------------------------------------------|
-| `&T`         | Reference           | Allows one or more references to read `T` |
-| `&mut T`     | Mutable Reference   | Allows a single reference to              |
-|              |                     | read and write `T`                        |
-| `Box<T>`     | Box                 | Heap allocated `T` with a single owner    |
-|              |                     | that may read and write `T`.              |
-| `Rc<T>`      | "arr cee" pointer   | Heap allocated `T` with many readers      |
-| `Arc<T>`     | Arc pointer         | Same as above, but safe sharing across    |
-|              |                     | threads                                   |
-| `*const T`   | Raw pointer         | Unsafe read access to `T`                 |
-| `*mut T`     | Mutable raw pointer | Unsafe read and write access to `T`       |
+| Type         | Name                | Summary                                                             |
+|--------------|---------------------|---------------------------------------------------------------------|
+| `&T`         | Reference           | Allows one or more references to read `T`                           |
+| `&mut T`     | Mutable Reference   | Allows a single reference to read and write `T`                     |
+| `Box<T>`     | Box                 | Heap allocated `T` with a single owner that may read and write `T`. |
+| `Rc<T>`      | "arr cee" pointer   | Heap allocated `T` with many readers                                |
+| `Arc<T>`     | Arc pointer         | Same as above, but safe sharing across threads                      |
+| `*const T`   | Raw pointer         | Unsafe read access to `T`                                           |
+| `*mut T`     | Mutable raw pointer | Unsafe read and write access to `T`                                 |
 
 # Related resources
 

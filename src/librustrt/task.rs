@@ -649,7 +649,7 @@ mod test {
     #[should_fail]
     fn test_begin_unwind() {
         use std::rt::unwind::begin_unwind;
-        begin_unwind("cause", file!(), line!())
+        begin_unwind("cause", &(file!(), line!()))
     }
 
     #[test]

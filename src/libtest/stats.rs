@@ -164,7 +164,7 @@ impl<T: FloatMath + FromPrimitive> Summary<T> {
     }
 }
 
-impl<'a,T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
+impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
 
     // FIXME #11059 handle NaN, inf and overflow
     fn sum(self) -> T {

@@ -109,7 +109,7 @@ fn const_vec(cx: &CrateContext, e: &ast::Expr,
     (v, llunitty, inlineable.iter().fold(true, |a, &b| a && b))
 }
 
-fn const_addr_of(cx: &CrateContext, cv: ValueRef) -> ValueRef {
+pub fn const_addr_of(cx: &CrateContext, cv: ValueRef) -> ValueRef {
     unsafe {
         let gv = "const".with_c_str(|name| {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(cv).to_ref(), name)
