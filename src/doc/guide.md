@@ -440,7 +440,7 @@ what you need, so it's not verboten.
 
 Let's get back to bindings. Rust variable bindings have one more aspect that
 differs from other languages: bindings are required to be initialized with a
-value before you're allowed to use it. If we try...
+type before you're allowed to use it. If we try...
 
 ```{ignore}
 let x;
