@@ -74,7 +74,7 @@ enum Message<T> {
 impl<T: Send> Packet<T> {
     pub fn new() -> Packet<T> {
         Packet {
-            queue: spsc::Queue::new(128),
+            queue: unsafe { spsc::Queue::new(128) },
 
             cnt: atomics::AtomicInt::new(0),
             steals: 0,
