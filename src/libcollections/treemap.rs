@@ -1564,7 +1564,8 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
                 save.level -= 1;
 
                 if right_level > save.level {
-                    for x in save.right.mut_iter() { x.level = save.level }
+                    let save_level = save.level;
+                    for x in save.right.mut_iter() { x.level = save_level }
                 }
 
                 skew(save);
