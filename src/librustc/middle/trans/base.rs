@@ -85,6 +85,7 @@ use arena::TypedArena;
 use libc::{c_uint, uint64_t};
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
+use std::collections::HashSet;
 use std::rc::Rc;
 use std::{i8, i16, i32, i64};
 use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel, Rust, RustCall};
@@ -2891,6 +2892,84 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
     return metadata;
 }
 
+/// Find any symbols that are defined in one compilation unit, but not declared
+/// in any other compilation unit.  Give these symbols internal linkage.
+fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
+    use std::c_str::CString;
+
+    unsafe {
+        let mut declared = HashSet::new();
+
+        let iter_globals = |llmod| {
+            ValueIter {
+                cur: llvm::LLVMGetFirstGlobal(llmod),
+                step: llvm::LLVMGetNextGlobal,
+            }
+        };
+
+        let iter_functions = |llmod| {
+            ValueIter {
+                cur: llvm::LLVMGetFirstFunction(llmod),
+                step: llvm::LLVMGetNextFunction,
+            }
+        };
+
+        // Collect all external declarations in all compilation units.
+        for ccx in cx.iter() {
+            for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
+                let linkage = llvm::LLVMGetLinkage(val);
+                // We only care about external declarations (not definitions)
+                // and available_externally definitions.
+                if !(linkage == llvm::ExternalLinkage as c_uint &&
+                     llvm::LLVMIsDeclaration(val) != 0) &&
+                   !(linkage == llvm::AvailableExternallyLinkage as c_uint) {
+                    continue
+                }
+
+                let name = CString::new(llvm::LLVMGetValueName(val), false);
+                declared.insert(name);
+            }
+        }
+
+        // Examine each external definition.  If the definition is not used in
+        // any other compilation unit, and is not reachable from other crates,
+        // then give it internal linkage.
+        for ccx in cx.iter() {
+            for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
+                // We only care about external definitions.
+                if !(llvm::LLVMGetLinkage(val) == llvm::ExternalLinkage as c_uint &&
+                     llvm::LLVMIsDeclaration(val) == 0) {
+                    continue
+                }
+
+                let name = CString::new(llvm::LLVMGetValueName(val), false);
+                if !declared.contains(&name) &&
+                   !reachable.contains_equiv(&name.as_str().unwrap()) {
+                    llvm::SetLinkage(val, llvm::InternalLinkage);
+                }
+            }
+        }
+    }
+
+
+    struct ValueIter {
+        cur: ValueRef,
+        step: unsafe extern "C" fn(ValueRef) -> ValueRef,
+    }
+
+    impl Iterator<ValueRef> for ValueIter {
+        fn next(&mut self) -> Option<ValueRef> {
+            let old = self.cur;
+            if !old.is_null() {
+                self.cur = unsafe { (self.step)(old) };
+                Some(old)
+            } else {
+                None
+            }
+        }
+    }
+}
+
 pub fn trans_crate(krate: ast::Crate,
                    analysis: CrateAnalysis) -> (ty::ctxt, CrateTranslation) {
     let CrateAnalysis { ty_cx: tcx, exp_map2, reachable, name, .. } = analysis;
@@ -3008,6 +3087,10 @@ pub fn trans_crate(krate: ast::Crate,
     reachable.push("rust_eh_personality".to_string());
     // referenced from rt/rust_try.ll
     reachable.push("rust_eh_personality_catch".to_string());
+
+    if codegen_units > 1 {
+        internalize_symbols(&shared_ccx, &reachable.iter().map(|x| x.clone()).collect());
+    }
 
     let metadata_module = ModuleTranslation {
         llcx: shared_ccx.metadata_llcx(),
