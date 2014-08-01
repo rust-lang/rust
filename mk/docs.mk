@@ -285,7 +285,7 @@ doc/$(1)/:
 $(2) += doc/$(1)/index.html
 doc/$(1)/index.html: CFG_COMPILER_HOST_TRIPLE = $(CFG_TARGET)
 doc/$(1)/index.html: $$(LIB_DOC_DEP_$(1)) doc/$(1)/
-	@$$(call E, rustdoc $$@)
+	@$$(call E, rustdoc: $$@)
 	$$(Q)$$(RUSTDOC) --cfg dox --cfg stage2 $$<
 endef
 
