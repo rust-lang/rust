@@ -163,6 +163,9 @@ pub trait Decoder<E> {
     fn read_map<T>(&mut self, f: |&mut Self, uint| -> Result<T, E>) -> Result<T, E>;
     fn read_map_elt_key<T>(&mut self, idx: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
     fn read_map_elt_val<T>(&mut self, idx: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
+
+    // Failure
+    fn error(&mut self, err: &str) -> E;
 }
 
 pub trait Encodable<S:Encoder<E>, E> {
