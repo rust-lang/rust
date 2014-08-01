@@ -324,13 +324,14 @@ table th {
 
 .rusttest { display: none; }
 pre.rust { position: relative; }
-pre.rust a { transform: scaleX(-1); }
 .test-arrow {
     display: inline-block;
     position: absolute;
     top: 0;
     right: 10px;
     font-size: 150%;
+    -webkit-transform: scaleX(-1);
+    transform: scaleX(-1);
 }
 
 @media (min-width: 1170px) {
