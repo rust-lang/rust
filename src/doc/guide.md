@@ -451,7 +451,7 @@ let x;
 ```{ignore}
 src/hello_world.rs:2:9: 2:10 error: cannot determine a type for this local variable: unconstrained type
 src/hello_world.rs:2     let x;
-                               ^
+                             ^
 ```
 
 Giving it a type will compile, though:
@@ -477,7 +477,7 @@ but it will still print "Hello, world!":
    Compiling hello_world v0.1.0 (file:/home/you/projects/hello_world)
 src/hello_world.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
 src/hello_world.rs:2     let x: int;
-                               ^
+                             ^
 ```
 
 Rust warns us that we never use the variable binding, but since we never use it,
@@ -499,7 +499,7 @@ $ cargo build
    Compiling hello_world v0.1.0 (file:/home/you/projects/hello_world)
 src/hello_world.rs:4:39: 4:40 error: use of possibly uninitialized variable: `x`
 src/hello_world.rs:4     println!("The value of x is: {}", x);
-                                                             ^
+                                                           ^
 note: in expansion of format_args!
 <std macros>:2:23: 2:77 note: expansion site
 <std macros>:1:1: 3:2 note: in expansion of println!
