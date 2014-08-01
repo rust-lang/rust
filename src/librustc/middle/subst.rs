@@ -584,9 +584,11 @@ impl<'a> TypeFolder for SubstFolder<'a> {
                                 self.tcx().sess.span_bug(
                                     span,
                                     format!("Type parameter out of range \
-                                     when substituting in region {} (root type={})",
+                                     when substituting in region {} (root type={}) \
+                                     (space={}, index={})",
                                     region_name.as_str(),
-                                    self.root_ty.repr(self.tcx())).as_slice());
+                                    self.root_ty.repr(self.tcx()),
+                                    space, i).as_slice());
                             }
                         }
                 }

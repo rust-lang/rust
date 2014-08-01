@@ -44,6 +44,7 @@ extern crate libc;
 extern crate llvm = "rustc_llvm";
 extern crate rustc_back = "rustc_back";
 extern crate serialize;
+extern crate rbml;
 extern crate time;
 #[phase(plugin, link)] extern crate log;
 #[phase(plugin, link)] extern crate syntax;
@@ -132,7 +133,6 @@ pub mod util {
 
     pub mod common;
     pub mod ppaux;
-    pub mod io;
     pub mod nodemap;
 }
 

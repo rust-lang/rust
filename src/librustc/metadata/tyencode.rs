@@ -27,7 +27,7 @@ use syntax::ast::*;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token;
 
-use util::io::SeekableMemWriter;
+use rbml::io::SeekableMemWriter;
 
 macro_rules! mywrite( ($($arg:tt)*) => ({ write!($($arg)*); }) )
 

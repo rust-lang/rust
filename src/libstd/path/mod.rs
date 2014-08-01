@@ -142,6 +142,16 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Creates a new Path from a byte vector or string.
     /// The resulting Path will always be normalized.
     ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let path = Path::new("foo/bar");
+    /// # }
+    /// ```
+    ///
     /// # Failure
     ///
     /// Fails the task if the path contains a NUL.
@@ -155,6 +165,17 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
     /// Creates a new Path from a byte vector or string, if possible.
     /// The resulting Path will always be normalized.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let x: &[u8] = b"foo\0";
+    /// assert!(Path::new_opt(x).is_none());
+    /// # }
+    /// ```
     #[inline]
     fn new_opt<T: BytesContainer>(path: T) -> Option<Self> {
         if contains_nul(&path) {
@@ -166,18 +187,63 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
     /// Returns the path as a string, if possible.
     /// If the path is not representable in utf-8, this returns None.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("/abc/def");
+    /// assert_eq!(p.as_str(), Some("/abc/def"));
+    /// # }
+    /// ```
     #[inline]
     fn as_str<'a>(&'a self) -> Option<&'a str> {
         str::from_utf8(self.as_vec())
     }
 
     /// Returns the path as a byte vector
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def");
+    /// assert_eq!(p.as_vec(), b"abc/def");
+    /// # }
+    /// ```
     fn as_vec<'a>(&'a self) -> &'a [u8];
 
     /// Converts the Path into an owned byte vector
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def");
+    /// assert_eq!(p.into_vec(), b"abc/def".to_vec());
+    /// // attempting to use p now results in "error: use of moved value"
+    /// # }
+    /// ```
     fn into_vec(self) -> Vec<u8>;
 
     /// Returns an object that implements `Show` for printing paths
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def");
+    /// println!("{}", p.display()); // prints "abc/def"
+    /// # }
+    /// ```
     fn display<'a>(&'a self) -> Display<'a, Self> {
         Display{ path: self, filename: false }
     }
@@ -185,32 +251,102 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Returns an object that implements `Show` for printing filenames
     ///
     /// If there is no filename, nothing will be printed.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def");
+    /// println!("{}", p.filename_display()); // prints "def"
+    /// # }
+    /// ```
     fn filename_display<'a>(&'a self) -> Display<'a, Self> {
         Display{ path: self, filename: true }
     }
 
     /// Returns the directory component of `self`, as a byte vector (with no trailing separator).
     /// If `self` has no directory component, returns ['.'].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def/ghi");
+    /// assert_eq!(p.dirname(), b"abc/def");
+    /// # }
+    /// ```
     fn dirname<'a>(&'a self) -> &'a [u8];
+
     /// Returns the directory component of `self`, as a string, if possible.
     /// See `dirname` for details.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def/ghi");
+    /// assert_eq!(p.dirname_str(), Some("abc/def"));
+    /// # }
+    /// ```
     #[inline]
     fn dirname_str<'a>(&'a self) -> Option<&'a str> {
         str::from_utf8(self.dirname())
     }
+
     /// Returns the file component of `self`, as a byte vector.
     /// If `self` represents the root of the file hierarchy, returns None.
     /// If `self` is "." or "..", returns None.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def/ghi");
+    /// assert_eq!(p.filename(), Some(b"ghi"));
+    /// # }
+    /// ```
     fn filename<'a>(&'a self) -> Option<&'a [u8]>;
+
     /// Returns the file component of `self`, as a string, if possible.
     /// See `filename` for details.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def/ghi");
+    /// assert_eq!(p.filename_str(), Some("ghi"));
+    /// # }
+    /// ```
     #[inline]
     fn filename_str<'a>(&'a self) -> Option<&'a str> {
         self.filename().and_then(str::from_utf8)
     }
+
     /// Returns the stem of the filename of `self`, as a byte vector.
     /// The stem is the portion of the filename just before the last '.'.
     /// If there is no '.', the entire filename is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("/abc/def.txt");
+    /// assert_eq!(p.filestem(), Some(b"def"));
+    /// # }
+    /// ```
     fn filestem<'a>(&'a self) -> Option<&'a [u8]> {
         match self.filename() {
             None => None,
@@ -224,16 +360,40 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             })
         }
     }
+
     /// Returns the stem of the filename of `self`, as a string, if possible.
     /// See `filestem` for details.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("/abc/def.txt");
+    /// assert_eq!(p.filestem_str(), Some("def"));
+    /// # }
+    /// ```
     #[inline]
     fn filestem_str<'a>(&'a self) -> Option<&'a str> {
         self.filestem().and_then(str::from_utf8)
     }
+
     /// Returns the extension of the filename of `self`, as an optional byte vector.
     /// The extension is the portion of the filename just after the last '.'.
     /// If there is no extension, None is returned.
     /// If the filename ends in '.', the empty vector is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def.txt");
+    /// assert_eq!(p.extension(), Some(b"txt"));
+    /// # }
+    /// ```
     fn extension<'a>(&'a self) -> Option<&'a [u8]> {
         match self.filename() {
             None => None,
@@ -247,8 +407,20 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             }
         }
     }
+
     /// Returns the extension of the filename of `self`, as a string, if possible.
     /// See `extension` for details.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def.txt");
+    /// assert_eq!(p.extension_str(), Some("txt"));
+    /// # }
+    /// ```
     #[inline]
     fn extension_str<'a>(&'a self) -> Option<&'a str> {
         self.extension().and_then(str::from_utf8)
@@ -256,6 +428,18 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
     /// Replaces the filename portion of the path with the given byte vector or string.
     /// If the replacement name is [], this is equivalent to popping the path.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let mut p = Path::new("abc/def.txt");
+    /// p.set_filename("foo.dat");
+    /// assert!(p == Path::new("abc/foo.dat"));
+    /// # }
+    /// ```
     ///
     /// # Failure
     ///
@@ -265,10 +449,23 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         assert!(!contains_nul(&filename));
         unsafe { self.set_filename_unchecked(filename) }
     }
+
     /// Replaces the extension with the given byte vector or string.
     /// If there is no extension in `self`, this adds one.
     /// If the argument is [] or "", this removes the extension.
     /// If `self` has no filename, this is a no-op.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let mut p = Path::new("abc/def.txt");
+    /// p.set_extension("csv");
+    /// assert!(p == Path::new("abc/def.csv"));
+    /// # }
+    /// ```
     ///
     /// # Failure
     ///
@@ -308,6 +505,17 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// byte vector or string.
     /// See `set_filename` for details.
     ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let mut p = Path::new("abc/def.txt");
+    /// assert!(p.with_filename("foo.dat") == Path::new("abc/foo.dat"));
+    /// # }
+    /// ```
+    ///
     /// # Failure
     ///
     /// Fails the task if the filename contains a NUL.
@@ -317,9 +525,21 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         p.set_filename(filename);
         p
     }
+
     /// Returns a new Path constructed by setting the extension to the given
     /// byte vector or string.
     /// See `set_extension` for details.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let mut p = Path::new("abc/def.txt");
+    /// assert!(p.with_extension("csv") == Path::new("abc/def.csv"));
+    /// # }
+    /// ```
     ///
     /// # Failure
     ///
@@ -333,6 +553,17 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
     /// Returns the directory component of `self`, as a Path.
     /// If `self` represents the root of the filesystem hierarchy, returns `self`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def/ghi");
+    /// assert!(p.dir_path() == Path::new("abc/def"));
+    /// # }
+    /// ```
     fn dir_path(&self) -> Self {
         // self.dirname() returns a NUL-free vector
         unsafe { GenericPathUnsafe::new_unchecked(self.dirname()) }
@@ -341,10 +572,33 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Returns a Path that represents the filesystem root that `self` is rooted in.
     ///
     /// If `self` is not absolute, or vol/cwd-relative in the case of Windows, this returns None.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// assert!(Path::new("abc/def").root_path() == None);
+    /// assert!(Path::new("/abc/def").root_path() == Some(Path::new("/")));
+    /// # }
+    /// ```
     fn root_path(&self) -> Option<Self>;
 
     /// Pushes a path (as a byte vector or string) onto `self`.
     /// If the argument represents an absolute path, it replaces `self`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let mut p = Path::new("foo/bar");
+    /// p.push("baz.txt");
+    /// assert!(p == Path::new("foo/bar/baz.txt"));
+    /// # }
+    /// ```
     ///
     /// # Failure
     ///
@@ -354,8 +608,21 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         assert!(!contains_nul(&path));
         unsafe { self.push_unchecked(path) }
     }
+
     /// Pushes multiple paths (as byte vectors or strings) onto `self`.
     /// See `push` for details.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let mut p = Path::new("foo");
+    /// p.push_many(&["bar", "baz.txt"]);
+    /// assert!(p == Path::new("foo/bar/baz.txt"));
+    /// # }
+    /// ```
     #[inline]
     fn push_many<T: BytesContainer>(&mut self, paths: &[T]) {
         let t: Option<T> = None;
@@ -369,14 +636,38 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             }
         }
     }
+
     /// Removes the last path component from the receiver.
     /// Returns `true` if the receiver was modified, or `false` if it already
     /// represented the root of the file hierarchy.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let mut p = Path::new("foo/bar/baz.txt");
+    /// p.pop();
+    /// assert!(p == Path::new("foo/bar"));
+    /// # }
+    /// ```
     fn pop(&mut self) -> bool;
 
     /// Returns a new Path constructed by joining `self` with the given path
     /// (as a byte vector or string).
     /// If the given path is absolute, the new Path will represent just that.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("/foo");
+    /// assert!(p.join("bar.txt") == Path::new("/foo/bar.txt"));
+    /// # }
+    /// ```
     ///
     /// # Failure
     ///
@@ -387,9 +678,22 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         p.push(path);
         p
     }
+
     /// Returns a new Path constructed by joining `self` with the given paths
     /// (as byte vectors or strings).
     /// See `join` for details.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("foo");
+    /// let fbbq = Path::new("foo/bar/baz/quux.txt");
+    /// assert!(p.join_many(&["bar", "baz", "quux.txt"]) == fbbq);
+    /// # }
+    /// ```
     #[inline]
     fn join_many<T: BytesContainer>(&self, paths: &[T]) -> Self {
         let mut p = self.clone();
@@ -400,12 +704,34 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Returns whether `self` represents an absolute path.
     /// An absolute path is defined as one that, when joined to another path, will
     /// yield back the same absolute path.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("/abc/def");
+    /// assert!(p.is_absolute());
+    /// # }
+    /// ```
     fn is_absolute(&self) -> bool;
 
     /// Returns whether `self` represents a relative path.
     /// Typically this is the inverse of `is_absolute`.
     /// But for Windows paths, it also means the path is not volume-relative or
     /// relative to the current working directory.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("abc/def");
+    /// assert!(p.is_relative());
+    /// # }
+    /// ```
     fn is_relative(&self) -> bool {
         !self.is_absolute()
     }
@@ -413,15 +739,53 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Returns whether `self` is equal to, or is an ancestor of, the given path.
     /// If both paths are relative, they are compared as though they are relative
     /// to the same parent path.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("foo/bar/baz/quux.txt");
+    /// let fb = Path::new("foo/bar");
+    /// let bq = Path::new("baz/quux.txt");
+    /// assert!(fb.is_ancestor_of(&p));
+    /// # }
+    /// ```
     fn is_ancestor_of(&self, other: &Self) -> bool;
 
     /// Returns the Path that, were it joined to `base`, would yield `self`.
     /// If no such path exists, None is returned.
     /// If `self` is absolute and `base` is relative, or on Windows if both
     /// paths refer to separate drives, an absolute path is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("foo/bar/baz/quux.txt");
+    /// let fb = Path::new("foo/bar");
+    /// let bq = Path::new("baz/quux.txt");
+    /// assert!(p.path_relative_from(&fb) == Some(bq));
+    /// # }
+    /// ```
     fn path_relative_from(&self, base: &Self) -> Option<Self>;
 
     /// Returns whether the relative path `child` is a suffix of `self`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # foo();
+    /// # #[cfg(windows)] fn foo() {}
+    /// # #[cfg(unix)] fn foo() {
+    /// let p = Path::new("foo/bar/baz/quux.txt");
+    /// let bq = Path::new("baz/quux.txt");
+    /// assert!(p.ends_with_path(&bq));
+    /// # }
+    /// ```
     fn ends_with_path(&self, child: &Self) -> bool;
 }
 

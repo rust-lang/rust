@@ -29,7 +29,8 @@
 //! `0.8.1-rc.3.0+20130922.linux`.
 
 #![crate_name = "semver"]
-#![experimental]
+#![deprecated = "This is now a cargo package located at: \
+                 https://github.com/rust-lang/semver"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
