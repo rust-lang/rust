@@ -22,7 +22,7 @@ use std::uint;
 
 // This is a simple bench that creates M pairs of tasks. These
 // tasks ping-pong back and forth over a pair of streams. This is a
-// cannonical message-passing benchmark as it heavily strains message
+// canonical message-passing benchmark as it heavily strains message
 // passing and almost nothing else.
 
 fn ping_pong_bench(n: uint, m: uint) {

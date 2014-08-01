@@ -72,7 +72,7 @@ static STATIC7: SafeStruct = SafeStruct{field1: Variant1, field2: Variant3(WithD
 //~^ ERROR static items are not allowed to have destructors
 
 // Test variadic constructor for structs. The base struct should be examined
-// as well as every field persent in the constructor.
+// as well as every field present in the constructor.
 // This example shouldn't fail because all the fields are safe.
 static STATIC8: SafeStruct = SafeStruct{field1: Variant1,
                                         ..SafeStruct{field1: Variant1, field2: Variant1}};

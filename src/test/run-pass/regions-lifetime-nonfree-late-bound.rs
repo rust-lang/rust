@@ -12,7 +12,7 @@
 //
 // The original issue causing the ICE: the LUB-computations during
 // type inference were encountering late-bound lifetimes, and
-// asserting that such lifetimes should have already been subsituted
+// asserting that such lifetimes should have already been substituted
 // with a concrete lifetime.
 //
 // However, those encounters were occurring within the lexical scope

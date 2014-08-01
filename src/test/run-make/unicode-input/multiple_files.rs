@@ -13,7 +13,7 @@ use std::io::{File, Command};
 use std::rand::{task_rng, Rng};
 
 // creates unicode_input_multiple_files_{main,chars}.rs, where the
-// former imports the latter. `_chars` just contains an indentifier
+// former imports the latter. `_chars` just contains an identifier
 // made up of random characters, because will emit an error message
 // about the ident being in the wrong place, with a span (and creating
 // this span used to upset the compiler).
