@@ -28,6 +28,57 @@ use util::ppaux::Repr;
 
 use std::rc::Rc;
 
+// FIXME (#16118): These functions are intended to allow the borrow checker to
+// be less precise in its handling of Box while still allowing moves out of a
+// Box. They should be removed when OwnedPtr is removed from LoanPath.
+
+fn owned_ptr_base_path<'a>(loan_path: &'a LoanPath) -> &'a LoanPath {
+    //! Returns the base of the leftmost dereference of an OwnedPtr in
+    //! `loan_path`. If there is no dereference of an OwnedPtr in `loan_path`,
+    //! then it just returns `loan_path` itself.
+
+    return match owned_ptr_base_path_helper(loan_path) {
+        Some(new_loan_path) => new_loan_path,
+        None => loan_path.clone()
+    };
+
+    fn owned_ptr_base_path_helper<'a>(loan_path: &'a LoanPath) -> Option<&'a LoanPath> {
+        match *loan_path {
+            LpVar(_) | LpUpvar(_) => None,
+            LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
+                match owned_ptr_base_path_helper(&**lp_base) {
+                    v @ Some(_) => v,
+                    None => Some(&**lp_base)
+                }
+            }
+            LpExtend(ref lp_base, _, _) => owned_ptr_base_path_helper(&**lp_base)
+        }
+    }
+}
+
+fn owned_ptr_base_path_rc(loan_path: &Rc<LoanPath>) -> Rc<LoanPath> {
+    //! The equivalent of `owned_ptr_base_path` for an &Rc<LoanPath> rather than
+    //! a &LoanPath.
+
+    return match owned_ptr_base_path_helper(loan_path) {
+        Some(new_loan_path) => new_loan_path,
+        None => loan_path.clone()
+    };
+
+    fn owned_ptr_base_path_helper(loan_path: &Rc<LoanPath>) -> Option<Rc<LoanPath>> {
+        match **loan_path {
+            LpVar(_) | LpUpvar(_) => None,
+            LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
+                match owned_ptr_base_path_helper(lp_base) {
+                    v @ Some(_) => v,
+                    None => Some(lp_base.clone())
+                }
+            }
+            LpExtend(ref lp_base, _, _) => owned_ptr_base_path_helper(lp_base)
+        }
+    }
+}
+
 struct CheckLoanCtxt<'a> {
     bccx: &'a BorrowckCtxt<'a>,
     dfcx_loans: &'a LoanDataFlow<'a>,
@@ -210,6 +261,7 @@ impl<'a> CheckLoanCtxt<'a> {
         //     let x = &mut a.b.c; // Restricts a, a.b, and a.b.c
         //     let y = a;          // Conflicts with restriction
 
+        let loan_path = owned_ptr_base_path(loan_path);
         let cont = self.each_in_scope_loan(scope_id, |loan| {
             let mut ret = true;
             for restr_path in loan.restricted_paths.iter() {
@@ -344,8 +396,9 @@ impl<'a> CheckLoanCtxt<'a> {
             return true;
         }
 
+        let loan2_base_path = owned_ptr_base_path_rc(&loan2.loan_path);
         for restr_path in loan1.restricted_paths.iter() {
-            if *restr_path != loan2.loan_path { continue; }
+            if *restr_path != loan2_base_path { continue; }
 
             let old_pronoun = if new_loan.loan_path == old_loan.loan_path {
                 "it".to_string()
@@ -597,7 +650,8 @@ impl<'a> CheckLoanCtxt<'a> {
 
         debug!("check_if_path_is_moved(id={:?}, use_kind={:?}, lp={})",
                id, use_kind, lp.repr(self.bccx.tcx));
-        self.move_data.each_move_of(id, lp, |move, moved_lp| {
+        let base_lp = owned_ptr_base_path_rc(lp);
+        self.move_data.each_move_of(id, &base_lp, |move, moved_lp| {
             self.bccx.report_use_of_moved_value(
                 span,
                 use_kind,
