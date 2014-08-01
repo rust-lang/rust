@@ -600,8 +600,9 @@ impl<'a> RegionVarBindings<'a> {
                         b).as_slice());
           }
 
-          (f @ ReFree(ref fr), ReScope(s_id)) |
-          (ReScope(s_id), f @ ReFree(ref fr)) => {
+          (ReFree(ref fr), ReScope(s_id)) |
+          (ReScope(s_id), ReFree(ref fr)) => {
+            let f = ReFree(*fr);
             // A "free" region can be interpreted as "some region
             // at least as big as the block fr.scope_id".  So, we can
             // reasonably compare free regions and scopes:
@@ -706,8 +707,9 @@ impl<'a> RegionVarBindings<'a> {
                             b).as_slice());
             }
 
-            (ReFree(ref fr), s @ ReScope(s_id)) |
-            (s @ ReScope(s_id), ReFree(ref fr)) => {
+            (ReFree(ref fr), ReScope(s_id)) |
+            (ReScope(s_id), ReFree(ref fr)) => {
+                let s = ReScope(s_id);
                 // Free region is something "at least as big as
                 // `fr.scope_id`."  If we find that the scope `fr.scope_id` is bigger
                 // than the scope `s_id`, then we can say that the GLB
