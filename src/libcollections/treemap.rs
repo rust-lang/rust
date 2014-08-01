@@ -182,6 +182,13 @@ impl<K: Ord, V: PartialOrd> PartialOrd for TreeMap<K, V> {
     }
 }
 
+impl<K: Ord, V: Ord> Ord for TreeMap<K, V> {
+    #[inline]
+    fn cmp(&self, other: &TreeMap<K, V>) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
+    }
+}
+
 impl<K: Ord + Show, V: Show> Show for TreeMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
@@ -1018,6 +1025,13 @@ impl<T: Ord> PartialOrd for TreeSet<T> {
     #[inline]
     fn partial_cmp(&self, other: &TreeSet<T>) -> Option<Ordering> {
         self.map.partial_cmp(&other.map)
+    }
+}
+
+impl<T: Ord> Ord for TreeSet<T> {
+    #[inline]
+    fn cmp(&self, other: &TreeSet<T>) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
     }
 }
 

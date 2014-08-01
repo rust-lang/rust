@@ -460,6 +460,13 @@ impl<A: PartialOrd> PartialOrd for RingBuf<A> {
     }
 }
 
+impl<A: Ord> Ord for RingBuf<A> {
+    #[inline]
+    fn cmp(&self, other: &RingBuf<A>) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
+    }
+}
+
 impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
     fn hash(&self, state: &mut S) {
         self.len().hash(state);

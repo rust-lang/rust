@@ -691,6 +691,13 @@ impl<A: PartialOrd> PartialOrd for DList<A> {
     }
 }
 
+impl<A: Ord> Ord for DList<A> {
+    #[inline]
+    fn cmp(&self, other: &DList<A>) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
+    }
+}
+
 impl<A: Clone> Clone for DList<A> {
     fn clone(&self) -> DList<A> {
         self.iter().map(|x| x.clone()).collect()
