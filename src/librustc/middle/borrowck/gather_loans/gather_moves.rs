@@ -148,7 +148,8 @@ fn check_and_get_illegal_move_origin(bccx: &BorrowckCtxt,
 
         mc::cat_rvalue(..) |
         mc::cat_local(..) |
-        mc::cat_arg(..) => {
+        mc::cat_arg(..) |
+        mc::cat_aliasable_rvalue(..) => {
             None
         }
 

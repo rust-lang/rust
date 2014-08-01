@@ -277,6 +277,7 @@ impl Loan {
 pub enum LoanPath {
     LpVar(ast::NodeId),               // `x` in doc.rs
     LpUpvar(ty::UpvarId),             // `x` captured by-value into closure
+    LpAliasableRvalue(ast::NodeId),   // potentially-aliasable rvalue
     LpExtend(Rc<LoanPath>, mc::MutabilityCategory, LoanPathElem)
 }
 
@@ -299,11 +300,15 @@ pub fn closure_to_block(closure_id: ast::NodeId,
 }
 
 impl LoanPath {
-    pub fn kill_scope(&self, tcx: &ty::ctxt) -> ast::NodeId {
+    pub fn kill_scope(&self, tcx: &ty::ctxt) -> Option<ast::NodeId> {
         match *self {
-            LpVar(local_id) => tcx.region_maps.var_scope(local_id),
-            LpUpvar(upvar_id) =>
-                closure_to_block(upvar_id.closure_expr_id, tcx),
+            LpVar(local_id) => Some(tcx.region_maps.var_scope(local_id)),
+            LpUpvar(upvar_id) => {
+                Some(closure_to_block(upvar_id.closure_expr_id, tcx))
+            }
+            LpAliasableRvalue(expr_id) => {
+                tcx.region_maps.temporary_scope(expr_id)
+            }
             LpExtend(ref base, _, _) => base.kill_scope(tcx),
         }
     }
@@ -326,6 +331,10 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
         mc::cat_local(id) |
         mc::cat_arg(id) => {
             Some(Rc::new(LpVar(id)))
+        }
+
+        mc::cat_aliasable_rvalue(id) => {
+            Some(Rc::new(LpAliasableRvalue(id)))
         }
 
         mc::cat_upvar(ty::UpvarId {var_id: id, closure_expr_id: proc_id}, _) |
@@ -799,6 +808,10 @@ impl<'a> BorrowckCtxt<'a> {
                 out.push_str(ty::local_var_name_str(self.tcx, id).get());
             }
 
+            LpAliasableRvalue(_) => {
+                out.push_str("<rvalue>")
+            }
+
             LpExtend(ref lp_base, _, LpInterior(mc::InteriorField(fname))) => {
                 self.append_autoderefd_loan_path_to_string(&**lp_base, out);
                 match fname {
@@ -836,7 +849,10 @@ impl<'a> BorrowckCtxt<'a> {
                 self.append_autoderefd_loan_path_to_string(&**lp_base, out)
             }
 
-            LpVar(..) | LpUpvar(..) | LpExtend(_, _, LpInterior(..)) => {
+            LpVar(..) |
+            LpUpvar(..) |
+            LpExtend(_, _, LpInterior(..)) |
+            LpAliasableRvalue(..) => {
                 self.append_loan_path_to_string(loan_path, out)
             }
         }
@@ -901,6 +917,10 @@ impl Repr for LoanPath {
             &LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
                 let s = tcx.map.node_to_string(var_id);
                 format!("$({} captured by id={})", s, closure_expr_id)
+            }
+
+            &LpAliasableRvalue(id) => {
+                format!("$(rvalue{})", id)
             }
 
             &LpExtend(ref lp, _, LpDeref(_)) => {

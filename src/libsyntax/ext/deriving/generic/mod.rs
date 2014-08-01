@@ -559,8 +559,10 @@ impl<'a> MethodDef<'a> {
             fields: fields
         };
         let mut f = self.combine_substructure.borrow_mut();
-        let f: &mut CombineSubstructureFunc = &mut *f;
-        (*f)(cx, trait_.span, &substructure)
+        unsafe {
+            let f: &mut CombineSubstructureFunc = ::std::mem::transmute_copy(& &mut *f);
+            (*f)(cx, trait_.span, &substructure)
+        }
     }
 
     fn get_ret_ty(&self,

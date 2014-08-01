@@ -74,6 +74,11 @@ The region maps encode information about region relationships.
   would have to cleanup. Therefore we ensure that the temporaries never
   outlast the conditional/repeating expression, preventing the need
   for dynamic checks and/or arbitrary amounts of stack space.
+
+- `aliasable_rvalues` is a set containing the IDs of every rvalue that is
+  potentially aliasable. Most rvalues cannot be aliased, but those referenced
+  by a pattern that contains `@` bindings are. The borrow checker must treat
+  these rvalues as though they were lvalues to prevent illegal mutations.
 */
 pub struct RegionMaps {
     scope_map: RefCell<NodeMap<ast::NodeId>>,
@@ -81,6 +86,7 @@ pub struct RegionMaps {
     free_region_map: RefCell<HashMap<FreeRegion, Vec<FreeRegion> >>,
     rvalue_scopes: RefCell<NodeMap<ast::NodeId>>,
     terminating_scopes: RefCell<HashSet<ast::NodeId>>,
+    pub aliasable_rvalues: RefCell<HashSet<ast::NodeId>>,
 }
 
 #[deriving(Clone)]
@@ -143,6 +149,16 @@ impl RegionMaps {
 
         debug!("record_terminating_scope(scope_id={})", scope_id);
         self.terminating_scopes.borrow_mut().insert(scope_id);
+    }
+
+    pub fn mark_as_aliasable_rvalue(&self, expr_id: ast::NodeId) {
+        /*!
+         * Records that an rvalue is an ALIASABLE RVALUE. Aliasable rvalues
+         * are those that could potentially get referred to by multiple names.
+         * The borrow checker needs to be extra careful with these.
+         */
+
+        self.aliasable_rvalues.borrow_mut().insert(expr_id);
     }
 
     pub fn opt_encl_scope(&self, id: ast::NodeId) -> Option<ast::NodeId> {
@@ -527,6 +543,7 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
         }
 
         ast::ExprForLoop(ref _pat, ref _head, ref body, _) => {
+            //visitor.region_maps.mark_as_aliasable_rvalue(head.id);
             visitor.region_maps.mark_as_terminating_scope(body.id);
 
             // The variable parent of everything inside (most importantly, the
@@ -534,7 +551,9 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
             new_cx.var_parent = Some(body.id);
         }
 
-        ast::ExprMatch(..) => {
+        ast::ExprMatch(ref scrutinee, _) => {
+            visitor.region_maps.mark_as_aliasable_rvalue(scrutinee.id);
+
             new_cx.var_parent = Some(expr.id);
         }
 
@@ -650,6 +669,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
 
     match local.init {
         Some(ref expr) => {
+            visitor.region_maps.mark_as_aliasable_rvalue(expr.id);
             record_rvalue_scope_if_borrow_expr(visitor, &**expr, blk_id);
 
             if is_binding_pat(&*local.pat) || is_borrowed_ty(&*local.ty) {
@@ -910,6 +930,7 @@ pub fn resolve_crate(sess: &Session, krate: &ast::Crate) -> RegionMaps {
         free_region_map: RefCell::new(HashMap::new()),
         rvalue_scopes: RefCell::new(NodeMap::new()),
         terminating_scopes: RefCell::new(HashSet::new()),
+        aliasable_rvalues: RefCell::new(HashSet::new()),
     };
     {
         let mut visitor = RegionResolutionVisitor {

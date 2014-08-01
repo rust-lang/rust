@@ -16,6 +16,7 @@
 use middle::borrowck::*;
 use euv = middle::expr_use_visitor;
 use mc = middle::mem_categorization;
+use middle::mem_categorization::Typer;
 use middle::ty;
 use util::ppaux::Repr;
 use syntax::ast;
@@ -67,6 +68,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
 
         match cmt.cat {
             mc::cat_rvalue(..) |
+            mc::cat_aliasable_rvalue(..) |
             mc::cat_copied_upvar(..) |                  // L-Local
             mc::cat_local(..) |                         // L-Local
             mc::cat_arg(..) |                           // L-Local
@@ -177,6 +179,12 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_local(local_id) |
             mc::cat_arg(local_id) => {
                 ty::ReScope(self.bccx.tcx.region_maps.var_scope(local_id))
+            }
+            mc::cat_aliasable_rvalue(expr_id) => {
+                match self.bccx.tcx.temporary_scope(expr_id) {
+                    Some(scope) => ty::ReScope(scope),
+                    None => ty::ReStatic,
+                }
             }
             mc::cat_deref(_, _, mc::UnsafePtr(..)) => {
                 ty::ReStatic

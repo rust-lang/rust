@@ -840,8 +840,10 @@ fn encode_inlined_item(ecx: &EncodeContext,
                        ebml_w: &mut Encoder,
                        ii: InlinedItemRef) {
     let mut eii = ecx.encode_inlined_item.borrow_mut();
-    let eii: &mut EncodeInlinedItem = &mut *eii;
-    (*eii)(ecx, ebml_w, ii)
+    unsafe {
+        let eii: &mut EncodeInlinedItem = ::std::mem::transmute_copy(& &mut *eii);
+        (*eii)(ecx, ebml_w, ii)
+    }
 }
 
 fn style_fn_family(s: FnStyle) -> char {

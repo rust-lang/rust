@@ -79,12 +79,14 @@ impl<'a> CFGBuilder<'a> {
 
     fn stmt(&mut self, stmt: Gc<ast::Stmt>, pred: CFGIndex) -> CFGIndex {
         match stmt.node {
-            ast::StmtDecl(ref decl, _) => {
-                self.decl(&**decl, pred)
+            ast::StmtDecl(ref decl, stmt_id) => {
+                self.decl(&**decl, stmt_id, pred)
             }
 
-            ast::StmtExpr(ref expr, _) | ast::StmtSemi(ref expr, _) => {
-                self.expr(expr.clone(), pred)
+            ast::StmtExpr(ref expr, stmt_id) |
+            ast::StmtSemi(ref expr, stmt_id) => {
+                let expr_exit = self.expr(expr.clone(), pred);
+                self.add_node(stmt_id, [expr_exit])
             }
 
             ast::StmtMac(..) => {
@@ -93,11 +95,13 @@ impl<'a> CFGBuilder<'a> {
         }
     }
 
-    fn decl(&mut self, decl: &ast::Decl, pred: CFGIndex) -> CFGIndex {
+    fn decl(&mut self, decl: &ast::Decl, stmt_id: ast::NodeId, pred: CFGIndex)
+            -> CFGIndex {
         match decl.node {
             ast::DeclLocal(ref local) => {
                 let init_exit = self.opt_expr(local.init.clone(), pred);
-                self.pat(&*local.pat, init_exit)
+                let stmt_exit = self.add_node(stmt_id, [init_exit]);
+                self.pat(&*local.pat, stmt_exit)
             }
 
             ast::DeclItem(_) => {

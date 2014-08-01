@@ -395,9 +395,10 @@ impl<'a> GatherLoanCtxt<'a> {
         //! from a local variable, mark the mutability decl as necessary.
 
         match *loan_path {
-            LpVar(local_id) |
-            LpUpvar(ty::UpvarId{ var_id: local_id, closure_expr_id: _ }) => {
-                self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+            LpVar(id) |
+            LpUpvar(ty::UpvarId{ var_id: id, closure_expr_id: _ }) |
+            LpAliasableRvalue(id) => {
+                self.tcx().used_mut_nodes.borrow_mut().insert(id);
             }
             LpExtend(ref base, mc::McInherited, _) => {
                 self.mark_loan_path_as_mutated(&**base);
@@ -446,13 +447,20 @@ impl<'a> GatherLoanCtxt<'a> {
         //! with immutable `&` pointers, because borrows of such pointers
         //! do not require restrictions and hence do not cause a loan.
 
-        let lexical_scope = lp.kill_scope(self.bccx.tcx);
-        let rm = &self.bccx.tcx.region_maps;
-        if rm.is_subscope_of(lexical_scope, loan_scope) {
-            lexical_scope
-        } else {
-            assert!(self.bccx.tcx.region_maps.is_subscope_of(loan_scope, lexical_scope));
-            loan_scope
+        match lp.kill_scope(self.bccx.tcx) {
+            Some(lexical_scope) => {
+                let rm = &self.bccx.tcx.region_maps;
+                if rm.is_subscope_of(lexical_scope, loan_scope) {
+                    lexical_scope
+                } else {
+                    assert!(self.bccx
+                                .tcx
+                                .region_maps
+                                .is_subscope_of(loan_scope, lexical_scope));
+                    loan_scope
+                }
+            }
+            None => loan_scope,
         }
     }
 

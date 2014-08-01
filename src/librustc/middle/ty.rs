@@ -4862,6 +4862,10 @@ impl mc::Typer for ty::ctxt {
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
         self.upvar_borrow_map.borrow().get_copy(&upvar_id)
     }
+
+    fn is_rvalue_aliasable(&self, expr_id: ast::NodeId) -> bool {
+        self.region_maps.aliasable_rvalues.borrow().contains(&expr_id)
+    }
 }
 
 /// The category of explicit self.

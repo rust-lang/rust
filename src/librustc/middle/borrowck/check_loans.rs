@@ -242,7 +242,7 @@ impl<'a> CheckLoanCtxt<'a> {
         let mut loan_path = loan_path;
         loop {
             match *loan_path {
-                LpVar(_) | LpUpvar(_) => {
+                LpVar(_) | LpUpvar(_) | LpAliasableRvalue(_) => {
                     break;
                 }
                 LpExtend(ref lp_base, _, _) => {
@@ -633,7 +633,7 @@ impl<'a> CheckLoanCtxt<'a> {
          */
 
         match **lp {
-            LpVar(_) | LpUpvar(_) => {
+            LpVar(_) | LpUpvar(_) | LpAliasableRvalue(_) => {
                 // assigning to `x` does not require that `x` is initialized
             }
             LpExtend(ref lp_base, _, LpInterior(_)) => {
@@ -722,7 +722,9 @@ impl<'a> CheckLoanCtxt<'a> {
                 debug!("mark_writes_through_upvars_as_used_mut(cmt={})",
                        cmt.repr(this.tcx()));
                 match cmt.cat.clone() {
-                    mc::cat_local(id) | mc::cat_arg(id) => {
+                    mc::cat_local(id) |
+                    mc::cat_arg(id) |
+                    mc::cat_aliasable_rvalue(id) => {
                         this.tcx().used_mut_nodes.borrow_mut().insert(id);
                         return;
                     }
