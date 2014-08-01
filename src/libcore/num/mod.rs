@@ -418,7 +418,7 @@ pub trait Int: Primitive
         (!self).count_ones()
     }
 
-    /// Returns the number of leading zeros in the in the binary representation
+    /// Returns the number of leading zeros in the binary representation
     /// of the integer.
     ///
     /// # Example
@@ -430,7 +430,7 @@ pub trait Int: Primitive
     /// ```
     fn leading_zeros(self) -> Self;
 
-    /// Returns the number of trailing zeros in the in the binary representation
+    /// Returns the number of trailing zeros in the binary representation
     /// of the integer.
     ///
     /// # Example
