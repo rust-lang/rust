@@ -38,7 +38,7 @@ use util::ppaux::Repr;
 use std::c_str::ToCStr;
 use syntax::abi::{Rust, RustCall};
 use syntax::parse::token;
-use syntax::{ast, ast_map, visit};
+use syntax::{ast, ast_map, attr, visit};
 use syntax::ast_util::PostExpansionMethod;
 
 // drop_glue pointer, size, align.
@@ -77,15 +77,21 @@ pub fn trans_impl(ccx: &CrateContext,
         match *impl_item {
             ast::MethodImplItem(method) => {
                 if method.pe_generics().ty_params.len() == 0u {
-                    let llfn = get_item_val(ccx, method.id);
-                    trans_fn(ccx,
-                             &*method.pe_fn_decl(),
-                             &*method.pe_body(),
-                             llfn,
-                             &param_substs::empty(),
-                             method.id,
-                             []);
-                    update_linkage(ccx, llfn, Some(method.id));
+                    let trans_everywhere = attr::requests_inline(method.attrs.as_slice());
+                    for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
+                        let llfn = get_item_val(ccx, method.id);
+                        trans_fn(ccx,
+                                 &*method.pe_fn_decl(),
+                                 &*method.pe_body(),
+                                 llfn,
+                                 &param_substs::empty(),
+                                 method.id,
+                                 []);
+                        update_linkage(ccx,
+                                       llfn,
+                                       Some(method.id),
+                                       if is_origin { OriginalTranslation } else { InlinedCopy });
+                    }
                 }
                 let mut v = TransItemVisitor {
                     ccx: ccx,

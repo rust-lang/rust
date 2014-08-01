@@ -11,6 +11,7 @@
 use back::link::exported_name;
 use driver::session;
 use llvm::ValueRef;
+use llvm;
 use middle::subst;
 use middle::subst::Subst;
 use middle::trans::base::{set_llvm_fn_attrs, set_inline_hint};
@@ -27,6 +28,7 @@ use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, PostExpansionMethod};
+use syntax::attr;
 use std::hash::{sip, Hash};
 
 pub fn monomorphic_fn(ccx: &CrateContext,
@@ -150,6 +152,25 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);
         lldecl
     };
+    let setup_lldecl = |lldecl, attrs: &[ast::Attribute]| {
+        base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
+        set_llvm_fn_attrs(attrs, lldecl);
+
+        let is_first = !ccx.available_monomorphizations().borrow().contains(&s);
+        if is_first {
+            ccx.available_monomorphizations().borrow_mut().insert(s.clone());
+        }
+
+        let trans_everywhere = attr::requests_inline(attrs);
+        if trans_everywhere && !is_first {
+            llvm::SetLinkage(lldecl, llvm::AvailableExternallyLinkage);
+        }
+
+        // If `true`, then `lldecl` should be given a function body.
+        // Otherwise, it should be left as a declaration of an external
+        // function, with no definition in the current compilation unit.
+        trans_everywhere || is_first
+    };
 
     let lldecl = match map_node {
         ast_map::NodeItem(i) => {
@@ -159,11 +180,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                   ..
               } => {
                   let d = mk_lldecl(abi);
-                  base::update_linkage(ccx, d, None);
-                  set_llvm_fn_attrs(i.attrs.as_slice(), d);
-
-                  if !ccx.available_monomorphizations().borrow().contains(&s) {
-                      ccx.available_monomorphizations().borrow_mut().insert(s.clone());
+                  let needs_body = setup_lldecl(d, i.attrs.as_slice());
+                  if needs_body {
                       if abi != abi::Rust {
                           foreign::trans_rust_fn_with_foreign_abi(
                               ccx, &**decl, &**body, [], d, &psubsts, fn_id.node,
@@ -205,17 +223,15 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             match *ii {
                 ast::MethodImplItem(mth) => {
                     let d = mk_lldecl(abi::Rust);
-                    base::update_linkage(ccx, d, None);
-                    set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-                    if !ccx.available_monomorphizations().borrow().contains(&s) {
-                        ccx.available_monomorphizations().borrow_mut().insert(s.clone());
-                            trans_fn(ccx,
-                                     &*mth.pe_fn_decl(),
-                                     &*mth.pe_body(),
-                                     d,
-                                     &psubsts,
-                                     mth.id,
-                                     []);
+                    let needs_body = setup_lldecl(d, mth.attrs.as_slice());
+                    if needs_body {
+                        trans_fn(ccx,
+                                 &*mth.pe_fn_decl(),
+                                 &*mth.pe_body(),
+                                 d,
+                                 &psubsts,
+                                 mth.id,
+                                 []);
                     }
                     d
                 }
@@ -225,10 +241,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             match *method {
                 ast::ProvidedMethod(mth) => {
                     let d = mk_lldecl(abi::Rust);
-                    base::update_linkage(ccx, d, None);
-                    set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-                    if !ccx.available_monomorphizations().borrow().contains(&s) {
-                        ccx.available_monomorphizations().borrow_mut().insert(s.clone());
+                    let needs_body = setup_lldecl(d, mth.attrs.as_slice());
+                    if needs_body {
                         trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d,
                                  &psubsts, mth.id, []);
                     }
