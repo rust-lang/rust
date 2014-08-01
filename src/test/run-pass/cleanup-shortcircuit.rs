@@ -18,7 +18,7 @@
 // option. this file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that cleanups for the RHS of shorcircuiting operators work.
+// Test that cleanups for the RHS of shortcircuiting operators work.
 
 use std::os;
 

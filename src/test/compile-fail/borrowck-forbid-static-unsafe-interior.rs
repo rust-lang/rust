@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Verify that it is not possible to take the address of
-// static items with usnafe interior.
+// static items with unsafe interior.
 
 use std::kinds::marker;
 use std::cell::UnsafeCell;

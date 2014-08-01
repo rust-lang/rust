@@ -13,7 +13,7 @@
 
 // notes on this test case:
 // On Thu, Apr 18, 2013-2014 at 6:30 PM, John Clements <clements@brinckerhoff.org> wrote:
-// the "issue-2185.rs" test was ignoreed with a ref to #2263. Issue #2263 is now fixed,
+// the "issue-2185.rs" test was ignored with a ref to #2263. Issue #2263 is now fixed,
 // so I tried it again, and after adding some &self parameters, I got this error:
 //
 // Running /usr/local/bin/rustc:

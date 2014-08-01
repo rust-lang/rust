@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This briefuly tests the capability of `Cell` and `RefCell` to implement the
+// This briefly tests the capability of `Cell` and `RefCell` to implement the
 // `Encodable` and `Decodable` traits via `#[deriving(Encodable, Decodable)]`
 
 extern crate serialize;

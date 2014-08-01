@@ -9,7 +9,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty: `expand` addes some preludes before shebang
+// ignore-pretty: `expand` adds some preludes before shebang
 //
 // ignore-lexer-test FIXME #15878
 
