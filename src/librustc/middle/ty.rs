@@ -269,7 +269,7 @@ pub struct ctxt {
 
     /// Stores the type parameters which were substituted to obtain the type
     /// of this node.  This only applies to nodes that refer to entities
-    /// param<eterized by type parameters, such as generic fns, types, or
+    /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
     pub item_substs: RefCell<NodeMap<ItemSubsts>>,
 

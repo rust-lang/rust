@@ -118,7 +118,7 @@ extern fn bootstrap_green_task(task: uint, code: *mut (), env: *mut ()) -> ! {
     // preserving a handle to the GreenTask down to this point, this
     // unfortunately must call `GreenTask::convert`. In order to avoid
     // this we could add a `terminate` function to the `Runtime` trait
-    // in libstd, but that seems less appropriate since the coversion
+    // in libstd, but that seems less appropriate since the conversion
     // method exists.
     GreenTask::convert(task).terminate();
 }

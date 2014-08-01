@@ -873,7 +873,7 @@ pub fn make_absolute(p: &Path) -> Path {
 ///
 /// let root = Path::new("/");
 /// assert!(os::change_dir(&root));
-/// println!("Succesfully changed working directory to {}!", root.display());
+/// println!("Successfully changed working directory to {}!", root.display());
 /// ```
 pub fn change_dir(p: &Path) -> bool {
     return chdir(p);

@@ -136,7 +136,7 @@ pub struct Config {
     // Extra parameter to run adb on arm-linux-androideabi
     pub adb_path: String,
 
-    // Extra parameter to run test sute on arm-linux-androideabi
+    // Extra parameter to run test suite on arm-linux-androideabi
     pub adb_test_dir: String,
 
     // status whether android device available or not

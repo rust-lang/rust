@@ -79,7 +79,7 @@ pub fn get_host_addresses(host: &str) -> IoResult<Vec<IpAddr>> {
     lookup(Some(host), None, None).map(|a| a.move_iter().map(|i| i.address.ip).collect())
 }
 
-/// Full-fleged resolution. This function will perform a synchronous call to
+/// Full-fledged resolution. This function will perform a synchronous call to
 /// getaddrinfo, controlled by the parameters
 ///
 /// # Arguments
