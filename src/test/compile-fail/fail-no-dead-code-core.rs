@@ -8,31 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(phase)]
 #![deny(dead_code)]
+#![allow(unreachable_code)]
 
-static _X: uint = 0;
+#[phase(link, plugin)] extern crate core;
 
-fn _foo() {}
 
-struct _Y {
-    _z: uint
+fn foo() { //~ ERROR code is never used
+
+    // none of these should have any dead_code exposed to the user
+    fail!();
+
+    fail!("foo");
+
+    fail!("bar {}", "baz")
 }
 
-enum _Z {}
 
-impl _Y {
-    fn _bar() {}
-}
-
-type _A = int;
-
-mod _bar {
-    fn _qux() {}
-}
-
-extern {
-    #[link_name = "abort"]
-    fn _abort() -> !;
-}
-
-pub fn main() {}
+fn main() {}
