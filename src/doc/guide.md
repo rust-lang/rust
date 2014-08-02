@@ -316,7 +316,7 @@ Put this inside:
 
 name = "hello_world"
 version = "0.1.0"
-authors = [ "someone@example.com" ]
+authors = [ "Your name <you@example.com>" ]
 
 [[bin]]
 
@@ -353,6 +353,18 @@ of `rustc`, but think about the future: when our project has more than one
 file, we would need to call `rustc` twice, and pass it a bunch of options to
 tell it to build everything together. With Cargo, as our project grows, we can
 just `cargo build` and it'll work the right way.
+
+You'll also notice that Cargo has created a new file: `Cargo.lock`.
+
+```{ignore,notrust}
+[root]
+name = "hello_world"
+version = "0.0.1"
+```
+
+This file is used by Cargo to keep track of dependencies in your application.
+Right now, we don't have any, so it's a bit sparse. You won't ever need
+to touch this file yourself, just let Cargo handle it.
 
 That's it! We've successfully built `hello_world` with Cargo. Even though our
 program is simple, it's using much of the real tooling that you'll use for the
@@ -1594,33 +1606,37 @@ taken to the screen. Sound good?
 
 ## Set up
 
-Let's set up a new project. Go to your projects directory, and make a new
-directory for the project, as well as a `src` directory for our code:
+Let's set up a new project. Go to your projects directory. Remember how we
+had to create our directory structure and a `Cargo.toml` for `hello_world`? Cargo
+has a command that does that for us. Let's give it a shot:
 
 ```{bash}
 $ cd ~/projects
-$ mkdir guessing_game
+$ cargo new guessing_game --bin
 $ cd guessing_game
-$ mkdir src
 ```
 
-Great. Next, let's make a `Cargo.toml` file so Cargo knows how to build our
-project:
+We pass the name of our project to `cargo new`, and then the `--bin` flag,
+since we're making a binary, rather than a library.
+
+Check out the generated `Cargo.toml`:
 
 ```{ignore}
 [package]
 
 name = "guessing_game"
 version = "0.1.0"
-authors = [ "someone@example.com" ]
+authors = ["Your Name <you@example.com>"]
 
 [[bin]]
 
 name = "guessing_game"
 ```
 
-Finally, we need our source file. Let's just make it hello world for now, so we
-can check that our setup works. In `src/guessing_game.rs`:
+Cargo gets this information from your environment. If it's not correct, go ahead
+and fix that.
+
+Finally, Cargo generated a hello, world for us. Check out `src/main.rs`:
 
 ```{rust}
 fn main() {
@@ -1628,7 +1644,7 @@ fn main() {
 }
 ```
 
-Let's make sure that worked:
+Let's try compiling what Cargo gave us:
 
 ```{bash}
 $ cargo build
@@ -1883,7 +1899,6 @@ fn cmp(a: int, b: int) -> Ordering {
 If we try to compile, we'll get some errors:
 
 ```{notrust,ignore}
-$ cargo build
 $ cargo build
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
 src/guessing_game.rs:20:15: 20:20 error: mismatched types: expected `int` but found `collections::string::String` (expected int but found struct collections::string::String)
@@ -2486,27 +2501,7 @@ Enough talk, let's build something! Let's make a new project called `modules`.
 
 ```{bash,ignore}
 $ cd ~/projects
-$ mkdir modules
-$ cd modules
-$ mkdir src
-```
-
-We need to make our two 'hello world' files. In `src/main.rs`:
-
-```{rust}
-fn main() {
-    println!("Hello, world!");
-}
-```
-
-And in `Cargo.toml`:
-
-```{notrust,ignore}
-[package]
-
-name = "modules"
-version = "0.1.0"
-authors = [ "someone@example.com" ]
+$ cargo new modules --bin
 ```
 
 Let's double check our work by compiling:
@@ -2924,27 +2919,8 @@ now: make a new project:
 
 ```{bash,ignore}
 $ cd ~/projects
-$ mkdir testing
+$ cargo new testing --bin
 $ cd testing
-$ mkdir test
-```
-
-In `src/main.rs`:
-
-```{rust}
-fn main() {
-    println!("Hello, world!");
-}
-```
-
-And in `Cargo.toml`:
-
-```{notrust,ignore}
-[package]
-
-name = "testing"
-version = "0.1.0"
-authors = [ "someone@example.com" ]
 ```
 
 And try it out:
@@ -2952,6 +2928,7 @@ And try it out:
 ```{notrust,ignore}
 $ cargo run
    Compiling testing v0.1.0 (file:/home/you/projects/testing)
+     Running `target/testing`
 Hello, world!
 $
 ```
