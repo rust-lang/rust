@@ -60,7 +60,7 @@ impl Counts {
 }
 
 #[deriving(Encodable, Decodable, PartialEq, Eq)]
-/// A summarized module, which includes total counts and summarized chilcren
+/// A summarized module, which includes total counts and summarized children
 /// modules.
 pub struct ModuleSummary {
     pub name: String,

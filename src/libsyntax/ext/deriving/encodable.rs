@@ -41,7 +41,7 @@
 //! }
 //! ```
 //!
-//! Other interesting scenarios are whe the item has type parameters or
+//! Other interesting scenarios are when the item has type parameters or
 //! references other non-built-in types.  A type definition like:
 //!
 //! ```ignore

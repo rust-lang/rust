@@ -119,7 +119,7 @@
 //!     //           10      |               |
 //!     //                   +---------------+
 //!     //
-//!     // The graph is represented as an adjecency list where each index,
+//!     // The graph is represented as an adjacency list where each index,
 //!     // corresponding to a node value, has a list of outgoing edges.
 //!     // Chosen for it's efficiency.
 //!     let graph = vec![
