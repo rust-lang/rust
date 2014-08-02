@@ -15,7 +15,7 @@ extern crate lint_output_format;
 use lint_output_format::{foo, bar, baz};
 
 fn main() {
-    let _x = foo(); //~ WARNING #[warn(deprecated)] on by default
+    let _x = foo(); //~ WARNING #![warn(deprecated)] on by default
     let _y = bar(); //~ ERROR [-F experimental]
     let _z = baz(); //~ ERROR [-D unstable]
 }

@@ -475,7 +475,7 @@ but it will still print "Hello, world!":
 
 ```{ignore,notrust}
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-src/guessing_game.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
+src/guessing_game.rs:2:9: 2:10 warning: unused variable: `x`, #![warn(unused_variable)] on by default
 src/guessing_game.rs:2     let x: int;
                                ^
 ```

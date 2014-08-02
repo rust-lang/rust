@@ -262,7 +262,7 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
     let mut note = None;
     let msg = match source {
         Default => {
-            format!("{}, #[{}({})] on by default", msg,
+            format!("{}, #![{}({})] on by default", msg,
                     level.as_str(), name)
         },
         CommandLine => {
