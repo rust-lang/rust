@@ -152,7 +152,7 @@ Now that you've got your file open, type this in:
 
 ```
 fn main() {
-    println!("Hello, world");
+    println!("Hello, world!");
 }
 ```
 
@@ -161,7 +161,7 @@ Save the file, and then type this into your terminal window:
 ```{bash}
 $ rustc hello_world.rs
 $ ./hello_world # or hello_world.exe on Windows
-Hello, world
+Hello, world!
 ```
 
 Success! Let's go over what just happened in detail.
@@ -187,7 +187,7 @@ declaration, with one space in between.
 Next up is this line:
 
 ```
-    println!("Hello, world");
+    println!("Hello, world!");
 ```
 
 This line does all of the work in our little program. There are a number of
@@ -205,7 +205,7 @@ to mention: Rust's macros are significantly different than C macros, if you've
 used those. Don't be scared of using macros. We'll get to the details
 eventually, you'll just have to trust us for now.
 
-Next, `"Hello, world"` is a **string**. Strings are a surprisingly complicated
+Next, `"Hello, world!"` is a **string**. Strings are a surprisingly complicated
 topic in a systems programming language, and this is a **statically allocated**
 string. We will talk more about different kinds of allocation later. We pass
 this string as an argument to `println!`, which prints the string to the
