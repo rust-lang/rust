@@ -101,7 +101,7 @@ h3.impl, h3.method, h4.method {
 h3.impl, h3.method {
     margin-top: 15px;
 }
-h1, h2, h3, h4, section.sidebar, a.source, .search-input, .content table a {
+h1, h2, h3, h4, section.sidebar, a.source, .search-input, .content table a, .collapse-toggle {
     font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -277,7 +277,10 @@ nav.sub {
 }
 .content .multi-column li { width: 100%; display: inline-block; }
 
-.content .method { font-size: 1em; }
+.content .method { 
+    font-size: 1em; 
+    position: relative;
+}
 .content .methods .docblock { margin-left: 40px; }
 
 .content .impl-methods .docblock { margin-left: 40px; }
@@ -405,7 +408,7 @@ h1 .stability {
     padding: 4px 10px;
 }
 
-.impl-methods .stability {
+.impl-methods .stability, .methods .stability {
     margin-right: 20px;
 }
 
@@ -476,4 +479,37 @@ pre.rust { position: relative; }
     nav.sub {
         margin: 0 auto;
     }
+}
+
+.collapse-toggle {
+    font-weight: 100;
+    position: absolute;
+    left: 13px;
+    color: #999;
+    margin-top: 2px;
+}
+
+.toggle-wrapper > .collapse-toggle {
+    left: -24px;
+    margin-top: 0px;
+}
+
+.toggle-wrapper {
+    position: relative;
+}
+
+.toggle-wrapper.collapsed {
+    height: 1em;
+    transition: height .2s;
+}
+
+.collapse-toggle > .inner {
+    display: inline-block;
+    width: 1ch;
+    text-align: center;
+}
+
+.toggle-label {
+    color: #999;
+    font-style: italic;
 }
