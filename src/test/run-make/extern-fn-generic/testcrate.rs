@@ -8,10 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern {
-    fn foo<T>(); //~ ERROR foreign items may not have type parameters
+#![crate_type = "lib"]
+
+#[repr(C)]
+pub struct TestStruct<T> {
+    pub x: u8,
+    pub y: T
 }
 
-fn main() {
-    foo::<i32>();
+pub extern "C" fn foo<T>(ts: TestStruct<T>) -> T { ts.y }
+
+#[link(name = "test")]
+extern {
+    pub fn call(c: extern "C" fn(TestStruct<i32>) -> i32) -> i32;
 }

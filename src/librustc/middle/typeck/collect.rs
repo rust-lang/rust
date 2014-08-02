@@ -444,17 +444,6 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
     }
 }
 
-fn ensure_generics_abi(ccx: &CrateCtxt,
-                       span: Span,
-                       abi: abi::Abi,
-                       generics: &ast::Generics) {
-    if generics.ty_params.len() > 0 &&
-       !(abi == abi::Rust || abi == abi::RustIntrinsic) {
-        span_err!(ccx.tcx.sess, span, E0123,
-                  "foreign functions may not use type parameters");
-    }
-}
-
 pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
     let tcx = ccx.tcx;
     debug!("convert: item {} with id {}", token::get_ident(it.ident), it.id);
@@ -572,13 +561,8 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
         },
         ast::ItemTy(_, ref generics) => {
             ensure_no_ty_param_bounds(ccx, it.span, generics, "type");
-            let pty = ty_of_item(ccx, it);
-            write_ty_to_tcx(tcx, it.id, pty.ty);
-        },
-        ast::ItemFn(_, _, abi, ref generics, _) => {
-            ensure_generics_abi(ccx, it.span, abi, generics);
-            let pty = ty_of_item(ccx, it);
-            write_ty_to_tcx(tcx, it.id, pty.ty);
+            let tpt = ty_of_item(ccx, it);
+            write_ty_to_tcx(tcx, it.id, tpt.ty);
         },
         _ => {
             // This call populates the type cache with the converted type

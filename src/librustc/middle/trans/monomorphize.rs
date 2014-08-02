@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,6 +18,7 @@ use middle::trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use middle::trans::base::{trans_fn, decl_internal_rust_fn};
 use middle::trans::base;
 use middle::trans::common::*;
+use middle::trans::foreign;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
@@ -123,19 +124,29 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         monomorphizing.insert(fn_id, depth + 1);
     }
 
-    let s = ccx.tcx.map.with_path(fn_id.node, |path| {
+    let hash;
+    let s = {
         let mut state = sip::SipState::new();
         hash_id.hash(&mut state);
         mono_ty.hash(&mut state);
 
-        exported_name(path, format!("h{}", state.result()).as_slice())
-    });
+        hash = format!("h{}", state.result());
+        ccx.tcx.map.with_path(fn_id.node, |path| {
+            exported_name(path, hash.as_slice())
+        })
+    };
+
     debug!("monomorphize_fn mangled to {}", s);
 
     // This shouldn't need to option dance.
     let mut hash_id = Some(hash_id);
-    let mk_lldecl = || {
-        let lldecl = decl_internal_rust_fn(ccx, mono_ty, s.as_slice());
+    let mk_lldecl = |abi: abi::Abi| {
+        let lldecl = if abi != abi::Rust {
+            foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, s.as_slice())
+        } else {
+            decl_internal_rust_fn(ccx, mono_ty, s.as_slice())
+        };
+
         ccx.monomorphized.borrow_mut().insert(hash_id.take_unwrap(), lldecl);
         lldecl
     };
@@ -144,13 +155,21 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeItem(i) => {
             match *i {
               ast::Item {
-                  node: ast::ItemFn(ref decl, _, _, _, ref body),
+                  node: ast::ItemFn(ref decl, _, abi, _, ref body),
                   ..
               } => {
-                  let d = mk_lldecl();
+                  let d = mk_lldecl(abi);
                   set_llvm_fn_attrs(i.attrs.as_slice(), d);
-                  trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, [],
-                           IgnoreItems);
+
+                  if abi != abi::Rust {
+                      foreign::trans_rust_fn_with_foreign_abi(
+                          ccx, &**decl, &**body, [], d, &psubsts, fn_id.node,
+                          Some(hash.as_slice()));
+                  } else {
+                      trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, [],
+                               IgnoreItems);
+                  }
+
                   d
               }
               _ => {
@@ -162,7 +181,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             let parent = ccx.tcx.map.get_parent(fn_id.node);
             let tvs = ty::enum_variants(ccx.tcx(), local_def(parent));
             let this_tv = tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
-            let d = mk_lldecl();
+            let d = mk_lldecl(abi::Rust);
             set_inline_hint(d);
             match v.node.kind {
                 ast::TupleVariantKind(ref args) => {
@@ -180,7 +199,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             d
         }
         ast_map::NodeMethod(mth) => {
-            let d = mk_lldecl();
+            let d = mk_lldecl(abi::Rust);
             set_llvm_fn_attrs(mth.attrs.as_slice(), d);
             trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d, &psubsts, mth.id, [],
                      IgnoreItems);
@@ -189,7 +208,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeTraitMethod(method) => {
             match *method {
                 ast::Provided(mth) => {
-                    let d = mk_lldecl();
+                    let d = mk_lldecl(abi::Rust);
                     set_llvm_fn_attrs(mth.attrs.as_slice(), d);
                     trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d,
                              &psubsts, mth.id, [], IgnoreItems);
@@ -202,7 +221,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             }
         }
         ast_map::NodeStructCtor(struct_def) => {
-            let d = mk_lldecl();
+            let d = mk_lldecl(abi::Rust);
             set_inline_hint(d);
             base::trans_tuple_struct(ccx,
                                      struct_def.fields.as_slice(),
@@ -230,7 +249,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     ccx.monomorphizing.borrow_mut().insert(fn_id, depth);
 
     debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx(), fn_id));
-    (lldecl, false)
+    (lldecl, true)
 }
 
 // Used to identify cached monomorphized functions and vtables

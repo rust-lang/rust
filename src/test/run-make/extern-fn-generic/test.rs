@@ -8,10 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate testcrate;
+
+extern "C" fn bar<T>(ts: testcrate::TestStruct<T>) -> T { ts.y }
+
+#[link(name = "test")]
 extern {
-    fn foo<T>(); //~ ERROR foreign items may not have type parameters
+    fn call(c: extern "C" fn(testcrate::TestStruct<i32>) -> i32) -> i32;
 }
 
 fn main() {
-    foo::<i32>();
+    // Let's test calling it cross crate
+    let back = unsafe {
+        testcrate::call(testcrate::foo::<i32>)
+    };
+    assert_eq!(3, back);
+
+    // And just within this crate
+    let back = unsafe {
+        call(bar::<i32>)
+    };
+    assert_eq!(3, back);
 }

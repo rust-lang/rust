@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern {
-    fn foo<T>(); //~ ERROR foreign items may not have type parameters
-}
+extern "C" fn foo<T: Int>(a: T, b: T) -> T { a + b }
 
 fn main() {
-    foo::<i32>();
+    assert_eq!(99u8, foo(255u8, 100u8));
+    assert_eq!(99u16, foo(65535u16, 100u16));
 }

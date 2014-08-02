@@ -171,7 +171,7 @@ impl<'a> Drop for StatRecorder<'a> {
 }
 
 // only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
-fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
+pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
            ty: Type, output: ty::t) -> ValueRef {
 
     let llfn: ValueRef = name.with_c_str(|buf| {
@@ -1922,20 +1922,27 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
     let _icx = push_ctxt("trans_item");
     match item.node {
       ast::ItemFn(ref decl, _fn_style, abi, ref generics, ref body) => {
-        if abi != Rust {
-            let llfndecl = get_item_val(ccx, item.id);
-            foreign::trans_rust_fn_with_foreign_abi(
-                ccx, &**decl, &**body, item.attrs.as_slice(), llfndecl, item.id);
-        } else if !generics.is_type_parameterized() {
+        if !generics.is_type_parameterized() {
             let llfn = get_item_val(ccx, item.id);
-            trans_fn(ccx,
-                     &**decl,
-                     &**body,
-                     llfn,
-                     &param_substs::empty(),
-                     item.id,
-                     item.attrs.as_slice(),
-                     TranslateItems);
+            if abi != Rust {
+                foreign::trans_rust_fn_with_foreign_abi(ccx,
+                                                        &**decl,
+                                                        &**body,
+                                                        item.attrs.as_slice(),
+                                                        llfn,
+                                                        &param_substs::empty(),
+                                                        item.id,
+                                                        None);
+            } else {
+                trans_fn(ccx,
+                         &**decl,
+                         &**body,
+                         llfn,
+                         &param_substs::empty(),
+                         item.id,
+                         item.attrs.as_slice(),
+                         TranslateItems);
+            }
         } else {
             // Be sure to travel more than just one layer deep to catch nested
             // items in blocks and such.
