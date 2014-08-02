@@ -162,4 +162,15 @@ debugging linking in the compiler you might set
 `RUST_LOG=rustc::metadata::creader,rustc::util::filesearch,rustc::back::rpath`
 For a full description see [the logging crate][1].
 
+## How fast is Rust?
+
+As always, this question is difficult to answer. There's still a lot of work to
+do on speed, and depending on what you're benchmarking, Rust has variable
+performance.
+
+That said, it is an explicit goal of Rust to be as fast as C++ for most things.
+Language decisions are made with performance in mind, and we want Rust to be as
+fast as possible. Given that Rust is built on top of LLVM, any performance
+improvements in it also help us be faster.
+
 [1]:log/index.html
