@@ -173,10 +173,19 @@ impl<K: PartialEq + Ord, V: PartialEq> PartialEq for TreeMap<K, V> {
     }
 }
 
+impl<K: Eq + Ord, V: Eq> Eq for TreeMap<K, V> {}
+
 impl<K: Ord, V: PartialOrd> PartialOrd for TreeMap<K, V> {
     #[inline]
     fn partial_cmp(&self, other: &TreeMap<K, V>) -> Option<Ordering> {
         iter::order::partial_cmp(self.iter(), other.iter())
+    }
+}
+
+impl<K: Ord, V: Ord> Ord for TreeMap<K, V> {
+    #[inline]
+    fn cmp(&self, other: &TreeMap<K, V>) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
     }
 }
 
@@ -1010,10 +1019,19 @@ impl<T: PartialEq + Ord> PartialEq for TreeSet<T> {
     fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
 }
 
+impl<T: Eq + Ord> Eq for TreeSet<T> {}
+
 impl<T: Ord> PartialOrd for TreeSet<T> {
     #[inline]
     fn partial_cmp(&self, other: &TreeSet<T>) -> Option<Ordering> {
         self.map.partial_cmp(&other.map)
+    }
+}
+
+impl<T: Ord> Ord for TreeSet<T> {
+    #[inline]
+    fn cmp(&self, other: &TreeSet<T>) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
     }
 }
 

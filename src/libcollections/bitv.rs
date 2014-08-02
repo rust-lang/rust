@@ -978,6 +978,21 @@ impl Default for BitvSet {
     fn default() -> BitvSet { BitvSet::new() }
 }
 
+impl FromIterator<bool> for BitvSet {
+    fn from_iter<I:Iterator<bool>>(iterator: I) -> BitvSet {
+        let mut ret = BitvSet::new();
+        ret.extend(iterator);
+        ret
+    }
+}
+
+impl Extendable<bool> for BitvSet {
+    #[inline]
+    fn extend<I: Iterator<bool>>(&mut self, iterator: I) {
+        self.get_mut_ref().extend(iterator);
+    }
+}
+
 impl BitvSet {
     /// Create a new bit vector set with initially no contents.
     ///
@@ -1959,6 +1974,17 @@ mod tests {
     }
 
     #[test]
+    fn test_bitv_set_from_bools() {
+        let bools = vec![true, false, true, true];
+        let a: BitvSet = bools.iter().map(|n| *n).collect();
+        let mut b = BitvSet::new();
+        b.insert(0);
+        b.insert(2);
+        b.insert(3);
+        assert_eq!(a, b);
+    }
+
+    #[test]
     fn test_to_bools() {
         let bools = vec!(false, false, true, false, false, true, true, false);
         assert_eq!(from_bytes([0b00100110]).iter().collect::<Vec<bool>>(), bools);
@@ -1977,7 +2003,7 @@ mod tests {
     #[test]
     fn test_bitv_set_iterator() {
         let bools = [true, false, true, true];
-        let bitv = BitvSet::from_bitv(bools.iter().map(|n| *n).collect());
+        let bitv: BitvSet = bools.iter().map(|n| *n).collect();
 
         let idxs: Vec<uint> = bitv.iter().collect();
         assert_eq!(idxs, vec!(0, 2, 3));
