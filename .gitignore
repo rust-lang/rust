@@ -51,6 +51,8 @@
 .project
 .settings/
 .valgrindrc
+/*-*-*-*/
+/*-*-*/
 /Makefile
 /build
 /dist/
@@ -75,8 +77,6 @@ TAGS.vi
 \#*\#
 config.mk
 config.stamp
-i686-pc-mingw32/
-i686-unknown-linux-gnu/
 keywords.md
 lexer.ml
 src/.DS_Store
@@ -86,5 +86,3 @@ tmp.*.rs
 version.md
 version.ml
 version.texi
-x86_64-apple-darwin/
-x86_64-unknown-linux-gnu/
