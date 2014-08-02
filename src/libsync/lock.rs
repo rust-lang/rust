@@ -223,7 +223,7 @@ impl<T: Send> Mutex<T> {
     pub fn lock<'a>(&'a self) -> MutexGuard<'a, T> {
         let guard = self.lock.lock();
 
-        // These two accesses are safe because we're guranteed at this point
+        // These two accesses are safe because we're guaranteed at this point
         // that we have exclusive access to this mutex. We are indeed able to
         // promote ourselves from &Mutex to `&mut T`
         let poison = unsafe { &mut *self.failed.get() };
@@ -326,7 +326,7 @@ impl<T: Send + Share> RWLock<T> {
     pub fn write<'a>(&'a self) -> RWLockWriteGuard<'a, T> {
         let guard = self.lock.write();
 
-        // These two accesses are safe because we're guranteed at this point
+        // These two accesses are safe because we're guaranteed at this point
         // that we have exclusive access to this rwlock. We are indeed able to
         // promote ourselves from &RWLock to `&mut T`
         let poison = unsafe { &mut *self.failed.get() };

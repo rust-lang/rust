@@ -1937,7 +1937,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// # Example
     ///
     /// This is a slightly silly example where we define the number's
-    /// parity as the equivilance class. It is important that the
+    /// parity as the equivalence class. It is important that the
     /// values hash the same, which is why we implement `Hash`.
     ///
     /// ```rust

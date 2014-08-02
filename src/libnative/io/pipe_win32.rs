@@ -311,7 +311,7 @@ impl UnixStream {
                     }
                 }
 
-                // An example I found on microsoft's website used 20
+                // An example I found on Microsoft's website used 20
                 // seconds, libuv uses 30 seconds, hence we make the
                 // obvious choice of waiting for 25 seconds.
                 None => {

@@ -1532,7 +1532,7 @@ pub struct BitPositions<'a> {
     next_idx: uint
 }
 
-/// An iterator combining wo `BitvSet` iterators.
+/// An iterator combining two `BitvSet` iterators.
 pub struct TwoBitPositions<'a> {
     set: &'a BitvSet,
     other: &'a BitvSet,

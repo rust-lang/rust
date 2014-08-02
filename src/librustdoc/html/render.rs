@@ -1098,7 +1098,7 @@ impl Context {
         Ok(())
     }
 
-    /// Non-parellelized version of rendering an item. This will take the input
+    /// Non-parallelized version of rendering an item. This will take the input
     /// item, render its contents, and then invoke the specified closure with
     /// all sub-items which need to be rendered.
     ///

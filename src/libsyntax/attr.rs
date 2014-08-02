@@ -426,7 +426,7 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[Gc<MetaItem>]) {
 /// not allowed on univariant or zero-variant enums, which have no discriminant.
 ///
 /// If a discriminant type is so specified, then the discriminant will be
-/// present (before fields, if any) with that type; reprensentation
+/// present (before fields, if any) with that type; representation
 /// optimizations which would remove it will not be done.
 pub fn find_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
     -> ReprAttr {
