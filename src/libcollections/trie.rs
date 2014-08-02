@@ -502,6 +502,21 @@ impl<S: Writer, T: Hash<S>> Hash<S> for TrieMap<T> {
     }
 }
 
+impl<T> Index<uint, T> for TrieMap<T> {
+    #[inline]
+    fn index<'a>(&'a self, i: &uint) -> &'a T {
+        self.find(i).expect("key not present")
+    }
+}
+
+// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
+/*impl<T> IndexMut<uint, T> for TrieMap<T> {
+    #[inline]
+    fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut T {
+        self.find_mut(i).expect("key not present")
+    }
+}*/
+
 /// A set implemented as a radix trie.
 ///
 /// # Example
@@ -1390,6 +1405,29 @@ mod test_map {
 
         assert!(map_str == "{1: a, 2: b}".to_string());
         assert_eq!(format!("{}", empty), "{}".to_string());
+    }
+
+    #[test]
+    fn test_index() {
+        let mut map = TrieMap::new();
+
+        map.insert(1, 2i);
+        map.insert(2, 1i);
+        map.insert(3, 4i);
+
+        assert_eq!(map[2], 1);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_index_nonexistent() {
+        let mut map = TrieMap::new();
+
+        map.insert(1, 2i);
+        map.insert(2, 1i);
+        map.insert(3, 4i);
+
+        map[4];
     }
 }
 
