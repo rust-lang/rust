@@ -1316,6 +1316,12 @@ impl<'a> fmt::Show for Item<'a> {
             _ => {}
         };
 
+        try!(write!(fmt,
+        r##"<span id='render-detail'>
+            <a id="collapse-all" href="#">[collapse all]</a>
+            <a id="expand-all" href="#">[expand all]</a>
+        </span>"##));
+
         // Write `src` tag
         //
         // When this item is part of a `pub use` in a downstream crate, the

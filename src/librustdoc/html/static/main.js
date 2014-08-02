@@ -730,4 +730,55 @@
     if (query['gotosrc']) {
         window.location = $('#src-' + query['gotosrc']).attr('href');
     }
+
+    $("#expand-all").on("click", function() {
+        $(".docblock").show();
+        $(".toggle-label").hide();
+        $(".toggle-wrapper").removeClass("collapsed");
+        $(".collapse-toggle").children(".inner").html("-");
+    });
+
+    $("#collapse-all").on("click", function() {
+        $(".docblock").hide();
+        $(".toggle-label").show();
+        $(".toggle-wrapper").addClass("collapsed");
+        $(".collapse-toggle").children(".inner").html("+");
+    });
+
+    $(document).on("click", ".collapse-toggle", function() {
+        var toggle = $(this);
+        var relatedDoc = toggle.parent().next();
+        if (relatedDoc.is(".docblock")) {
+            if (relatedDoc.is(":visible")) {
+                relatedDoc.slideUp({duration:'fast', easing:'linear'});
+                toggle.parent(".toggle-wrapper").addClass("collapsed");
+                toggle.children(".inner").html("+");
+                toggle.children(".toggle-label").fadeIn();
+            } else {
+                relatedDoc.slideDown({duration:'fast', easing:'linear'});
+                toggle.parent(".toggle-wrapper").removeClass("collapsed");
+                toggle.children(".inner").html("-");
+                toggle.children(".toggle-label").hide();
+            }
+        }
+    });
+
+    $(function() {
+        var toggle = "<a href='javascript:void(0)'"
+            + "class='collapse-toggle'>[<span class='inner'>-</span>]</a>";
+
+        $(".method").each(function() {
+           if ($(this).next().is(".docblock")) {
+               $(this).children().first().after(toggle);
+           }
+        });
+
+        var mainToggle = $(toggle);
+        mainToggle.append("<span class='toggle-label' style='display:none'>"
+            + "&nbsp;Expand&nbsp;description</span></a>")
+        var wrapper =  $("<div class='toggle-wrapper'>");
+        wrapper.append(mainToggle);
+        $("#main > .docblock").before(wrapper);
+    });
+
 }());
