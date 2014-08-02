@@ -449,9 +449,9 @@ let x;
 ...we'll get an error:
 
 ```{ignore}
-src/guessing_game.rs:2:9: 2:10 error: cannot determine a type for this local variable: unconstrained type
-src/guessing_game.rs:2     let x;
-                               ^
+src/hello_world.rs:2:9: 2:10 error: cannot determine a type for this local variable: unconstrained type
+src/hello_world.rs:2     let x;
+                             ^
 ```
 
 Giving it a type will compile, though:
@@ -460,7 +460,7 @@ Giving it a type will compile, though:
 let x: int;
 ```
 
-Let's try it out. Change your `src/guessing_game.rs` file to look like this:
+Let's try it out. Change your `src/hello_world.rs` file to look like this:
 
 ```{rust}
 fn main() {
@@ -474,10 +474,10 @@ You can use `cargo build` on the command line to build it. You'll get a warning,
 but it will still print "Hello, world!":
 
 ```{ignore,notrust}
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-src/guessing_game.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
-src/guessing_game.rs:2     let x: int;
-                               ^
+   Compiling hello_world v0.1.0 (file:/home/you/projects/hello_world)
+src/hello_world.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
+src/hello_world.rs:2     let x: int;
+                             ^
 ```
 
 Rust warns us that we never use the variable binding, but since we never use it,
@@ -496,16 +496,16 @@ And try to build it. You'll get an error:
 
 ```{bash}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-src/guessing_game.rs:4:39: 4:40 error: use of possibly uninitialized variable: `x`
-src/guessing_game.rs:4     println!("The value of x is: {}", x);
-                                                             ^
+   Compiling hello_world v0.1.0 (file:/home/you/projects/hello_world)
+src/hello_world.rs:4:39: 4:40 error: use of possibly uninitialized variable: `x`
+src/hello_world.rs:4     println!("The value of x is: {}", x);
+                                                           ^
 note: in expansion of format_args!
 <std macros>:2:23: 2:77 note: expansion site
 <std macros>:1:1: 3:2 note: in expansion of println!
-src/guessing_game.rs:4:5: 4:42 note: expansion site
+src/hello_world.rs:4:5: 4:42 note: expansion site
 error: aborting due to previous error
-Could not execute process `rustc src/guessing_game.rs --crate-type bin --out-dir /home/you/projects/guessing_game/target -L /home/you/projects/guessing_game/target -L /home/you/projects/guessing_game/target/deps` (status=101)
+Could not execute process `rustc src/hello_world.rs --crate-type bin --out-dir /home/you/projects/hello_world/target -L /home/you/projects/hello_world/target -L /home/you/projects/hello_world/target/deps` (status=101)
 ```
 
 Rust will not let us use a value that has not been initialized. So why let us
