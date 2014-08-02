@@ -362,7 +362,7 @@ macro_rules! count_args(
 macro_rules! vec(
     ($($e:expr),*) => ({
         // leading _ to allow empty construction without a warning.
-        let mut _temp = ::std::vec::Vec::new();
+        let mut _temp = ::std::vec::Vec::with_capacity(count_args!($($e),*));
         $(_temp.push($e);)*
         _temp
     });
