@@ -387,29 +387,15 @@ impl Tm {
 /// Parses the time from the string according to the format string.
 pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
-        let mut i = pos;
-        for ch in needle.bytes() {
-            if s.as_bytes()[i] != ch {
-                return false;
-            }
-            i += 1u;
-        }
-        return true;
+        return s.slice_from(pos).starts_with(needle);
     }
 
-    fn match_strs(ss: &str, pos: uint, strs: &[(String, i32)])
+    fn match_strs(ss: &str, pos: uint, strs: &[(&str, i32)])
       -> Option<(i32, uint)> {
-        let mut i = 0u;
-        let len = strs.len();
-        while i < len {
-            match strs[i] { // can't use let due to let-pattern bugs
-                (ref needle, value) => {
-                    if match_str(ss, pos, needle.as_slice()) {
-                        return Some((value, pos + needle.len()));
-                    }
-                }
+        for &(needle, value) in strs.iter() {
+            if match_str(ss, pos, needle) {
+                return Some((value, pos + needle.len()));
             }
-            i += 1u;
         }
 
         None
@@ -493,59 +479,59 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
       -> Result<uint, String> {
         match ch {
           'A' => match match_strs(s, pos, [
-              ("Sunday".to_string(), 0_i32),
-              ("Monday".to_string(), 1_i32),
-              ("Tuesday".to_string(), 2_i32),
-              ("Wednesday".to_string(), 3_i32),
-              ("Thursday".to_string(), 4_i32),
-              ("Friday".to_string(), 5_i32),
-              ("Saturday".to_string(), 6_i32)
+              ("Sunday", 0_i32),
+              ("Monday", 1_i32),
+              ("Tuesday", 2_i32),
+              ("Wednesday", 3_i32),
+              ("Thursday", 4_i32),
+              ("Friday", 5_i32),
+              ("Saturday", 6_i32)
           ]) {
             Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
             None => Err("Invalid day".to_string())
           },
           'a' => match match_strs(s, pos, [
-              ("Sun".to_string(), 0_i32),
-              ("Mon".to_string(), 1_i32),
-              ("Tue".to_string(), 2_i32),
-              ("Wed".to_string(), 3_i32),
-              ("Thu".to_string(), 4_i32),
-              ("Fri".to_string(), 5_i32),
-              ("Sat".to_string(), 6_i32)
+              ("Sun", 0_i32),
+              ("Mon", 1_i32),
+              ("Tue", 2_i32),
+              ("Wed", 3_i32),
+              ("Thu", 4_i32),
+              ("Fri", 5_i32),
+              ("Sat", 6_i32)
           ]) {
             Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
             None => Err("Invalid day".to_string())
           },
           'B' => match match_strs(s, pos, [
-              ("January".to_string(), 0_i32),
-              ("February".to_string(), 1_i32),
-              ("March".to_string(), 2_i32),
-              ("April".to_string(), 3_i32),
-              ("May".to_string(), 4_i32),
-              ("June".to_string(), 5_i32),
-              ("July".to_string(), 6_i32),
-              ("August".to_string(), 7_i32),
-              ("September".to_string(), 8_i32),
-              ("October".to_string(), 9_i32),
-              ("November".to_string(), 10_i32),
-              ("December".to_string(), 11_i32)
+              ("January", 0_i32),
+              ("February", 1_i32),
+              ("March", 2_i32),
+              ("April", 3_i32),
+              ("May", 4_i32),
+              ("June", 5_i32),
+              ("July", 6_i32),
+              ("August", 7_i32),
+              ("September", 8_i32),
+              ("October", 9_i32),
+              ("November", 10_i32),
+              ("December", 11_i32)
           ]) {
             Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
             None => Err("Invalid month".to_string())
           },
           'b' | 'h' => match match_strs(s, pos, [
-              ("Jan".to_string(), 0_i32),
-              ("Feb".to_string(), 1_i32),
-              ("Mar".to_string(), 2_i32),
-              ("Apr".to_string(), 3_i32),
-              ("May".to_string(), 4_i32),
-              ("Jun".to_string(), 5_i32),
-              ("Jul".to_string(), 6_i32),
-              ("Aug".to_string(), 7_i32),
-              ("Sep".to_string(), 8_i32),
-              ("Oct".to_string(), 9_i32),
-              ("Nov".to_string(), 10_i32),
-              ("Dec".to_string(), 11_i32)
+              ("Jan", 0_i32),
+              ("Feb", 1_i32),
+              ("Mar", 2_i32),
+              ("Apr", 3_i32),
+              ("May", 4_i32),
+              ("Jun", 5_i32),
+              ("Jul", 6_i32),
+              ("Aug", 7_i32),
+              ("Sep", 8_i32),
+              ("Oct", 9_i32),
+              ("Nov", 10_i32),
+              ("Dec", 11_i32)
           ]) {
             Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
             None => Err("Invalid month".to_string())
@@ -659,13 +645,13 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
           }
           'n' => parse_char(s, pos, '\n'),
           'P' => match match_strs(s, pos,
-                                  [("am".to_string(), 0_i32), ("pm".to_string(), 12_i32)]) {
+                                  [("am", 0_i32), ("pm", 12_i32)]) {
 
             Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
             None => Err("Invalid hour".to_string())
           },
           'p' => match match_strs(s, pos,
-                                  [("AM".to_string(), 0_i32), ("PM".to_string(), 12_i32)]) {
+                                  [("AM", 0_i32), ("PM", 12_i32)]) {
 
             Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
             None => Err("Invalid hour".to_string())
