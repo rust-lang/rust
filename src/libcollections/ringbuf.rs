@@ -452,9 +452,18 @@ impl<A: PartialEq> PartialEq for RingBuf<A> {
     }
 }
 
+impl<A: Eq> Eq for RingBuf<A> {}
+
 impl<A: PartialOrd> PartialOrd for RingBuf<A> {
     fn partial_cmp(&self, other: &RingBuf<A>) -> Option<Ordering> {
         iter::order::partial_cmp(self.iter(), other.iter())
+    }
+}
+
+impl<A: Ord> Ord for RingBuf<A> {
+    #[inline]
+    fn cmp(&self, other: &RingBuf<A>) -> Ordering {
+        iter::order::cmp(self.iter(), other.iter())
     }
 }
 
