@@ -348,6 +348,15 @@ macro_rules! try(
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 )
 
+/// Expands to an expression which evaluates to the number of
+/// comma-separated expression parameters passed to it.
+#[macro_export]
+macro_rules! count_args(
+    ($e:expr $(,$e_rest:expr)*) => (1u + count_args!($($e_rest),*));
+    () => (0u);
+    ($($e:expr),*,) => (count_args!($($e),*))
+)
+
 /// Create a `std::vec::Vec` containing the arguments.
 #[macro_export]
 macro_rules! vec(
