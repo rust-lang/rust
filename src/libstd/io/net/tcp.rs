@@ -171,13 +171,14 @@ impl TcpStream {
     /// # #![allow(unused_must_use)]
     /// use std::io::timer;
     /// use std::io::TcpStream;
+    /// use std::time::Duration;
     ///
     /// let mut stream = TcpStream::connect("127.0.0.1", 34254).unwrap();
     /// let stream2 = stream.clone();
     ///
     /// spawn(proc() {
     ///     // close this stream after one second
-    ///     timer::sleep(1000);
+    ///     timer::sleep(Duration::seconds(1));
     ///     let mut stream = stream2;
     ///     stream.close_read();
     /// });

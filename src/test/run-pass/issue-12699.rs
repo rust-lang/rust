@@ -12,6 +12,7 @@
 extern crate native;
 
 use std::io::timer;
+use std::time::Duration;
 
 #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
@@ -19,5 +20,5 @@ fn start(argc: int, argv: *const *const u8) -> int {
 }
 
 fn main() {
-    timer::sleep(250);
+    timer::sleep(Duration::milliseconds(250));
 }

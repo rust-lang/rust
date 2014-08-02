@@ -10,12 +10,13 @@
 
 use std::comm;
 use std::io::timer::Timer;
+use std::time::Duration;
 
 pub fn main() {
     let (tx, rx) = channel();
     spawn(proc (){
         let mut timer = Timer::new().unwrap();
-        timer.sleep(10);
+        timer.sleep(Duration::milliseconds(10));
         tx.send(());
     });
     loop {

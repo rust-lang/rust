@@ -13,6 +13,8 @@ extern crate native;
 extern crate green;
 extern crate rustuv;
 
+use std::time::Duration;
+
 #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
     green::start(argc, argv, rustuv::event_loop, main)
@@ -24,6 +26,6 @@ fn main() {
 
 fn customtask() {
     let mut timer = std::io::timer::Timer::new().unwrap();
-    let periodic = timer.periodic(10);
+    let periodic = timer.periodic(Duration::milliseconds(10));
     periodic.recv();
 }

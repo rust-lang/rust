@@ -38,15 +38,16 @@ use rt::rtio::{IoFactory, LocalIo, RtioTimer, Callback};
 /// # fn main() {}
 /// # fn foo() {
 /// use std::io::Timer;
+/// use std::time::Duration;
 ///
 /// let mut timer = Timer::new().unwrap();
-/// timer.sleep(10); // block the task for awhile
+/// timer.sleep(Duration::milliseconds(10)); // block the task for awhile
 ///
-/// let timeout = timer.oneshot(10);
+/// let timeout = timer.oneshot(Duration::milliseconds(10));
 /// // do some work
 /// timeout.recv(); // wait for the timeout to expire
 ///
-/// let periodic = timer.periodic(10);
+/// let periodic = timer.periodic(Duration::milliseconds(10));
 /// loop {
 ///     periodic.recv();
 ///     // this loop is only executed once every 10ms
@@ -61,9 +62,10 @@ use rt::rtio::{IoFactory, LocalIo, RtioTimer, Callback};
 /// # fn main() {}
 /// # fn foo() {
 /// use std::io::timer;
+/// use std::time::Duration;
 ///
 /// // Put this task to sleep for 5 seconds
-/// timer::sleep(5000);
+/// timer::sleep(Duration::seconds(5));
 /// # }
 /// ```
 pub struct Timer {
@@ -123,9 +125,10 @@ impl Timer {
     ///
     /// ```rust
     /// use std::io::Timer;
+    /// use std::time::Duration;
     ///
     /// let mut timer = Timer::new().unwrap();
-    /// let ten_milliseconds = timer.oneshot(10);
+    /// let ten_milliseconds = timer.oneshot(Duration::milliseconds(10));
     ///
     /// for _ in range(0u, 100) { /* do work */ }
     ///
@@ -135,9 +138,10 @@ impl Timer {
     ///
     /// ```rust
     /// use std::io::Timer;
+    /// use std::time::Duration;
     ///
     /// // Incorrect, method chaining-style:
-    /// let mut five_ms = Timer::new().unwrap().oneshot(5);
+    /// let mut five_ms = Timer::new().unwrap().oneshot(Duration::milliseconds(5));
     /// // The timer object was destroyed, so this will always fail:
     /// // five_ms.recv()
     /// ```
@@ -173,9 +177,10 @@ impl Timer {
     ///
     /// ```rust
     /// use std::io::Timer;
+    /// use std::time::Duration;
     ///
     /// let mut timer = Timer::new().unwrap();
-    /// let ten_milliseconds = timer.periodic(10);
+    /// let ten_milliseconds = timer.periodic(Duration::milliseconds(10));
     ///
     /// for _ in range(0u, 100) { /* do work */ }
     ///
@@ -191,9 +196,10 @@ impl Timer {
     ///
     /// ```rust
     /// use std::io::Timer;
+    /// use std::time::Duration;
     ///
     /// // Incorrect, method chaining-style.
-    /// let mut five_ms = Timer::new().unwrap().periodic(5);
+    /// let mut five_ms = Timer::new().unwrap().periodic(Duration::milliseconds(5));
     /// // The timer object was destroyed, so this will always fail:
     /// // five_ms.recv()
     /// ```

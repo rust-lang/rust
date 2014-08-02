@@ -25,6 +25,7 @@ extern crate green;
 extern crate rustuv;
 
 use std::io::{Process, Command};
+use std::time::Duration;
 
 macro_rules! succeed( ($e:expr) => (
     match $e { Ok(..) => {}, Err(e) => fail!("failure: {}", e) }
@@ -115,7 +116,7 @@ pub fn test_destroy_actually_kills(force: bool) {
     // Don't let this test time out, this should be quick
     let (tx, rx1) = channel();
     let mut t = timer::Timer::new().unwrap();
-    let rx2 = t.oneshot(1000);
+    let rx2 = t.oneshot(Duration::milliseconds(1000));
     spawn(proc() {
         select! {
             () = rx2.recv() => unsafe { libc::exit(1) },
