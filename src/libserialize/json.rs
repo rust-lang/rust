@@ -209,7 +209,8 @@ use Encodable;
 /// Represents a json value
 #[deriving(Clone, PartialEq, PartialOrd)]
 pub enum Json {
-    Number(f64),
+    Integer(i64),
+    Floating(f64),
     String(String),
     Boolean(bool),
     List(List),
@@ -836,7 +837,8 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 impl<E: ::Encoder<S>, S> Encodable<E, S> for Json {
     fn encode(&self, e: &mut E) -> Result<(), S> {
         match *self {
-            Number(v) => v.encode(e),
+            Integer(v) => v.encode(e),
+            Floating(v) => v.encode(e),
             String(ref v) => v.encode(e),
             Boolean(v) => v.encode(e),
             List(ref v) => v.encode(e),
@@ -958,14 +960,42 @@ impl Json {
 
     /// Returns true if the Json value is a Number. Returns false otherwise.
     pub fn is_number(&self) -> bool {
-        self.as_number().is_some()
+        match *self {
+            Integer(_) | Floating(_) => true,
+            _ => false,
+        }
     }
 
-    /// If the Json value is a Number, returns the associated f64.
+    /// Returns true if the Json value is a i64. Returns false otherwise.
+    pub fn is_i64(&self) -> bool {
+        match *self {
+            Integer(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if the Json value is a f64. Returns false otherwise.
+    pub fn is_f64(&self) -> bool {
+        match *self {
+            Floating(_) => true,
+            _ => false,
+        }
+    }
+
+    /// If the Json value is a Integer, returns the associated i64.
     /// Returns None otherwise.
-    pub fn as_number(&self) -> Option<f64> {
-        match self {
-            &Number(n) => Some(n),
+    pub fn as_i64(&self) -> Option<i64> {
+        match *self {
+            Integer(n) => Some(n),
+            _ => None
+        }
+    }
+
+    /// If the Json value is a Floating, returns the associated f64.
+    /// Returns None otherwise.
+    pub fn as_f64(&self) -> Option<f64> {
+        match *self {
+            Floating(n) => Some(n),
             _ => None
         }
     }
@@ -1007,7 +1037,8 @@ pub enum JsonEvent {
     ListStart,
     ListEnd,
     BooleanValue(bool),
-    NumberValue(f64),
+    IntegerValue(i64),
+    FloatingValue(f64),
     StringValue(String),
     NullValue,
     Error(ParserError),
@@ -1257,29 +1288,44 @@ impl<T: Iterator<char>> Parser<T> {
               self.ch_is('\r') { self.bump(); }
     }
 
-    fn parse_number(&mut self) -> Result<f64, ParserError> {
-        let mut neg = 1.0;
+    fn parse_number(&mut self) -> JsonEvent {
+        let mut neg = 1;
 
         if self.ch_is('-') {
             self.bump();
-            neg = -1.0;
+            neg = -1;
         }
 
-        let mut res = try!(self.parse_integer());
+        let res = match self.parse_i64() {
+            Ok(res) => res,
+            Err(e) => { return Error(e); }
+        };
 
-        if self.ch_is('.') {
-            res = try!(self.parse_decimal(res));
+        if self.ch_is('.') || self.ch_is('e') || self.ch_is('E') {
+            let mut res = res as f64;
+
+            if self.ch_is('.') {
+                res = match self.parse_decimal(res) {
+                    Ok(res) => res,
+                    Err(e) => { return Error(e); }
+                };
+            }
+
+            if self.ch_is('e') || self.ch_is('E') {
+                res = match self.parse_exponent(res) {
+                    Ok(res) => res,
+                    Err(e) => { return Error(e); }
+                };
+            }
+
+            FloatingValue((neg as f64) * res)
+        } else {
+            IntegerValue(neg * res)
         }
-
-        if self.ch_is('e') || self.ch_is('E') {
-            res = try!(self.parse_exponent(res));
-        }
-
-        Ok(neg * res)
     }
 
-    fn parse_integer(&mut self) -> Result<f64, ParserError> {
-        let mut res = 0.0;
+    fn parse_i64(&mut self) -> Result<i64, ParserError> {
+        let mut res = 0;
 
         match self.ch_or_null() {
             '0' => {
@@ -1295,8 +1341,8 @@ impl<T: Iterator<char>> Parser<T> {
                 while !self.eof() {
                     match self.ch_or_null() {
                         c @ '0' .. '9' => {
-                            res *= 10.0;
-                            res += ((c as int) - ('0' as int)) as f64;
+                            res *= 10;
+                            res += (c as i64) - ('0' as i64);
                             self.bump();
                         }
                         _ => break,
@@ -1654,10 +1700,7 @@ impl<T: Iterator<char>> Parser<T> {
             'n' => { self.parse_ident("ull", NullValue) }
             't' => { self.parse_ident("rue", BooleanValue(true)) }
             'f' => { self.parse_ident("alse", BooleanValue(false)) }
-            '0' .. '9' | '-' => match self.parse_number() {
-                Ok(f) => NumberValue(f),
-                Err(e) => Error(e),
-            },
+            '0' .. '9' | '-' => self.parse_number(),
             '"' => match self.parse_str() {
                 Ok(s) => StringValue(s),
                 Err(e) => Error(e),
@@ -1721,7 +1764,8 @@ impl<T: Iterator<char>> Builder<T> {
     fn build_value(&mut self) -> Result<Json, BuilderError> {
         return match self.token {
             Some(NullValue) => { Ok(Null) }
-            Some(NumberValue(n)) => { Ok(Number(n)) }
+            Some(IntegerValue(n)) => { Ok(Integer(n)) }
+            Some(FloatingValue(n)) => { Ok(Floating(n)) }
             Some(BooleanValue(b)) => { Ok(Boolean(b)) }
             Some(StringValue(ref mut s)) => {
                 let mut temp = String::new();
@@ -1848,7 +1892,20 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_u8 (&mut self)  -> DecodeResult<u8  > { Ok(try!(self.read_f64()) as u8) }
     fn read_uint(&mut self) -> DecodeResult<uint> { Ok(try!(self.read_f64()) as uint) }
 
-    fn read_i64(&mut self) -> DecodeResult<i64> { Ok(try!(self.read_f64()) as i64) }
+    fn read_i64(&mut self) -> DecodeResult<i64> {
+        debug!("read_i64");
+        match self.pop() {
+            Integer(f) => Ok(f),
+            Floating(f) => Ok(f as i64),
+            String(s) => {
+                // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
+                // is going to have a string here, as per JSON spec.
+                Ok(std::from_str::from_str(s.as_slice()).unwrap())
+            },
+            value => Err(ExpectedError("Number".to_string(), format!("{}", value)))
+        }
+    }
+
     fn read_i32(&mut self) -> DecodeResult<i32> { Ok(try!(self.read_f64()) as i32) }
     fn read_i16(&mut self) -> DecodeResult<i16> { Ok(try!(self.read_f64()) as i16) }
     fn read_i8 (&mut self) -> DecodeResult<i8 > { Ok(try!(self.read_f64()) as i8) }
@@ -1862,7 +1919,8 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_f64(&mut self) -> DecodeResult<f64> {
         debug!("read_f64");
         match self.pop() {
-            Number(f) => Ok(f),
+            Integer(f) => Ok(f as f64),
+            Floating(f) => Ok(f),
             String(s) => {
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
@@ -2087,7 +2145,7 @@ pub trait ToJson {
 macro_rules! to_json_impl(
     ($($t:ty), +) => (
         $(impl ToJson for $t {
-            fn to_json(&self) -> Json { Number(*self as f64) }
+            fn to_json(&self) -> Json { Integer(*self as i64) }
         })+
     )
 )
@@ -2106,7 +2164,7 @@ impl ToJson for f64 {
     fn to_json(&self) -> Json {
         match self.classify() {
             FPNaN | FPInfinite => Null,
-            _                  => Number(*self)
+            _                  => Floating(*self)
         }
     }
 }
@@ -2210,12 +2268,12 @@ mod tests {
     extern crate test;
     use self::test::Bencher;
     use {Encodable, Decodable};
-    use super::{Encoder, Decoder, Error, Boolean, Number, List, String, Null,
+    use super::{Encoder, Decoder, Error, Boolean, Integer, Floating, List, String, Null,
                 PrettyEncoder, Object, Json, from_str, ParseError, ExpectedError,
                 MissingFieldError, UnknownVariantError, DecodeResult, DecoderError,
                 JsonEvent, Parser, StackElement,
-                ObjectStart, ObjectEnd, ListStart, ListEnd, BooleanValue, NumberValue, StringValue,
-                NullValue, SyntaxError, Key, Index, Stack,
+                ObjectStart, ObjectEnd, ListStart, ListEnd, BooleanValue, IntegerValue, FloatingValue,
+                StringValue, NullValue, SyntaxError, Key, Index, Stack,
                 InvalidSyntax, InvalidNumber, EOFWhileParsingObject, EOFWhileParsingList,
                 EOFWhileParsingValue, EOFWhileParsingString, KeyMustBeAString, ExpectedColon,
                 TrailingCharacters};
@@ -2264,29 +2322,40 @@ mod tests {
         assert_eq!(Null.to_pretty_str().into_string(), "null".to_string());
     }
 
+    #[test]
+    fn test_write_i64() {
+        assert_eq!(Integer(0).to_string().into_string(), "0".to_string());
+        assert_eq!(Integer(0).to_pretty_str().into_string(), "0".to_string());
+
+        assert_eq!(Integer(1234).to_string().into_string(), "1234".to_string());
+        assert_eq!(Integer(1234).to_pretty_str().into_string(), "1234".to_string());
+
+        assert_eq!(Integer(-5678).to_string().into_string(), "-5678".to_string());
+        assert_eq!(Integer(-5678).to_pretty_str().into_string(), "-5678".to_string());
+    }
 
     #[test]
-    fn test_write_number() {
-        assert_eq!(Number(3.0).to_string().into_string(), "3".to_string());
-        assert_eq!(Number(3.0).to_pretty_str().into_string(), "3".to_string());
+    fn test_write_f64() {
+        assert_eq!(Floating(3.0).to_string().into_string(), "3".to_string());
+        assert_eq!(Floating(3.0).to_pretty_str().into_string(), "3".to_string());
 
-        assert_eq!(Number(3.1).to_string().into_string(), "3.1".to_string());
-        assert_eq!(Number(3.1).to_pretty_str().into_string(), "3.1".to_string());
+        assert_eq!(Floating(3.1).to_string().into_string(), "3.1".to_string());
+        assert_eq!(Floating(3.1).to_pretty_str().into_string(), "3.1".to_string());
 
-        assert_eq!(Number(-1.5).to_string().into_string(), "-1.5".to_string());
-        assert_eq!(Number(-1.5).to_pretty_str().into_string(), "-1.5".to_string());
+        assert_eq!(Floating(-1.5).to_string().into_string(), "-1.5".to_string());
+        assert_eq!(Floating(-1.5).to_pretty_str().into_string(), "-1.5".to_string());
 
-        assert_eq!(Number(0.5).to_string().into_string(), "0.5".to_string());
-        assert_eq!(Number(0.5).to_pretty_str().into_string(), "0.5".to_string());
+        assert_eq!(Floating(0.5).to_string().into_string(), "0.5".to_string());
+        assert_eq!(Floating(0.5).to_pretty_str().into_string(), "0.5".to_string());
 
-        assert_eq!(Number(f64::NAN).to_string().into_string(), "null".to_string());
-        assert_eq!(Number(f64::NAN).to_pretty_str().into_string(), "null".to_string());
+        assert_eq!(Floating(f64::NAN).to_string().into_string(), "null".to_string());
+        assert_eq!(Floating(f64::NAN).to_pretty_str().into_string(), "null".to_string());
 
-        assert_eq!(Number(f64::INFINITY).to_string().into_string(), "null".to_string());
-        assert_eq!(Number(f64::INFINITY).to_pretty_str().into_string(), "null".to_string());
+        assert_eq!(Floating(f64::INFINITY).to_string().into_string(), "null".to_string());
+        assert_eq!(Floating(f64::INFINITY).to_pretty_str().into_string(), "null".to_string());
 
-        assert_eq!(Number(f64::NEG_INFINITY).to_string().into_string(), "null".to_string());
-        assert_eq!(Number(f64::NEG_INFINITY).to_pretty_str().into_string(), "null".to_string());
+        assert_eq!(Floating(f64::NEG_INFINITY).to_string().into_string(), "null".to_string());
+        assert_eq!(Floating(f64::NEG_INFINITY).to_pretty_str().into_string(), "null".to_string());
     }
 
     #[test]
@@ -2324,7 +2393,7 @@ mod tests {
         let long_test_list = List(vec![
             Boolean(false),
             Null,
-            List(vec![String("foo\nbar".to_string()), Number(3.5)])]);
+            List(vec![String("foo\nbar".to_string()), Floating(3.5)])]);
 
         assert_eq!(long_test_list.to_string().into_string(),
             "[false,null,[\"foo\\nbar\",3.5]]".to_string());
@@ -2539,14 +2608,14 @@ mod tests {
         assert_eq!(from_str("1e"),  Err(SyntaxError(InvalidNumber, 1, 3)));
         assert_eq!(from_str("1e+"), Err(SyntaxError(InvalidNumber, 1, 4)));
 
-        assert_eq!(from_str("3"), Ok(Number(3.0)));
-        assert_eq!(from_str("3.1"), Ok(Number(3.1)));
-        assert_eq!(from_str("-1.2"), Ok(Number(-1.2)));
-        assert_eq!(from_str("0.4"), Ok(Number(0.4)));
-        assert_eq!(from_str("0.4e5"), Ok(Number(0.4e5)));
-        assert_eq!(from_str("0.4e+15"), Ok(Number(0.4e15)));
-        assert_eq!(from_str("0.4e-01"), Ok(Number(0.4e-01)));
-        assert_eq!(from_str(" 3 "), Ok(Number(3.0)));
+        assert_eq!(from_str("3"), Ok(Integer(3)));
+        assert_eq!(from_str("3.1"), Ok(Floating(3.1)));
+        assert_eq!(from_str("-1.2"), Ok(Floating(-1.2)));
+        assert_eq!(from_str("0.4"), Ok(Floating(0.4)));
+        assert_eq!(from_str("0.4e5"), Ok(Floating(0.4e5)));
+        assert_eq!(from_str("0.4e+15"), Ok(Floating(0.4e15)));
+        assert_eq!(from_str("0.4e-01"), Ok(Floating(0.4e-01)));
+        assert_eq!(from_str(" 3 "), Ok(Integer(3)));
     }
 
     #[test]
@@ -2622,11 +2691,11 @@ mod tests {
         assert_eq!(from_str("[ false ]"), Ok(List(vec![Boolean(false)])));
         assert_eq!(from_str("[null]"), Ok(List(vec![Null])));
         assert_eq!(from_str("[3, 1]"),
-                     Ok(List(vec![Number(3.0), Number(1.0)])));
+                     Ok(List(vec![Integer(3), Integer(1)])));
         assert_eq!(from_str("\n[3, 2]\n"),
-                     Ok(List(vec![Number(3.0), Number(2.0)])));
+                     Ok(List(vec![Integer(3), Integer(2)])));
         assert_eq!(from_str("[2, [4, 1]]"),
-               Ok(List(vec![Number(2.0), List(vec![Number(4.0), Number(1.0)])])));
+               Ok(List(vec![Integer(2), List(vec![Integer(4), Integer(1)])])));
     }
 
     #[test]
@@ -2664,7 +2733,7 @@ mod tests {
 
         assert_eq!(from_str("{}").unwrap(), mk_object([]));
         assert_eq!(from_str("{\"a\": 3}").unwrap(),
-                  mk_object([("a".to_string(), Number(3.0))]));
+                  mk_object([("a".to_string(), Integer(3))]));
 
         assert_eq!(from_str(
                       "{ \"a\": null, \"b\" : true }").unwrap(),
@@ -2678,7 +2747,7 @@ mod tests {
         assert_eq!(from_str(
                       "{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
                   mk_object([
-                      ("a".to_string(), Number(1.0)),
+                      ("a".to_string(), Floating(1.0)),
                       ("b".to_string(), List(vec![Boolean(true)]))
                   ]));
         assert_eq!(from_str(
@@ -2691,7 +2760,7 @@ mod tests {
                           ]\
                       }").unwrap(),
                   mk_object([
-                      ("a".to_string(), Number(1.0)),
+                      ("a".to_string(), Floating(1.0)),
                       ("b".to_string(), List(vec![
                           Boolean(true),
                           String("foo\nbar".to_string()),
@@ -2898,11 +2967,35 @@ mod tests {
     }
 
     #[test]
-    fn test_as_number(){
+    fn test_is_i64(){
         let json_value = from_str("12").unwrap();
-        let json_num = json_value.as_number();
-        let expected_num = 12f64;
-        assert!(json_num.is_some() && json_num.unwrap() == expected_num);
+        assert!(json_value.is_i64());
+
+        let json_value = from_str("12.0").unwrap();
+        assert!(!json_value.is_i64());
+    }
+
+    #[test]
+    fn test_is_f64(){
+        let json_value = from_str("12").unwrap();
+        assert!(!json_value.is_f64());
+
+        let json_value = from_str("12.0").unwrap();
+        assert!(json_value.is_f64());
+    }
+
+    #[test]
+    fn test_as_i64(){
+        let json_value = from_str("12").unwrap();
+        let json_num = json_value.as_i64();
+        assert_eq!(json_num, Some(12));
+    }
+
+    #[test]
+    fn test_as_f64(){
+        let json_value = from_str("12.0").unwrap();
+        let json_num = json_value.as_f64();
+        assert_eq!(json_num, Some(12f64));
     }
 
     #[test]
@@ -3007,17 +3100,17 @@ mod tests {
     #[ignore(cfg(target_word_size = "32"))] // FIXME(#14064)
     fn test_streaming_parser() {
         assert_stream_equal(
-            r#"{ "foo":"bar", "array" : [0, 1, 2,3 ,4,5], "idents":[null,true,false]}"#,
+            r#"{ "foo":"bar", "array" : [0, 1, 2, 3, 4, 5], "idents":[null,true,false]}"#,
             vec![
                 (ObjectStart,             vec![]),
                   (StringValue("bar".to_string()),   vec![Key("foo")]),
                   (ListStart,             vec![Key("array")]),
-                    (NumberValue(0.0),    vec![Key("array"), Index(0)]),
-                    (NumberValue(1.0),    vec![Key("array"), Index(1)]),
-                    (NumberValue(2.0),    vec![Key("array"), Index(2)]),
-                    (NumberValue(3.0),    vec![Key("array"), Index(3)]),
-                    (NumberValue(4.0),    vec![Key("array"), Index(4)]),
-                    (NumberValue(5.0),    vec![Key("array"), Index(5)]),
+                    (IntegerValue(0),         vec![Key("array"), Index(0)]),
+                    (IntegerValue(1),         vec![Key("array"), Index(1)]),
+                    (IntegerValue(2),         vec![Key("array"), Index(2)]),
+                    (IntegerValue(3),         vec![Key("array"), Index(3)]),
+                    (IntegerValue(4),         vec![Key("array"), Index(4)]),
+                    (IntegerValue(5),         vec![Key("array"), Index(5)]),
                   (ListEnd,               vec![Key("array")]),
                   (ListStart,             vec![Key("idents")]),
                     (NullValue,           vec![Key("idents"), Index(0)]),
@@ -3061,7 +3154,7 @@ mod tests {
             "{\"a\": 3}",
             vec![
                 (ObjectStart,        vec![]),
-                  (NumberValue(3.0), vec![Key("a")]),
+                  (IntegerValue(3),      vec![Key("a")]),
                 (ObjectEnd,          vec![]),
             ]
         );
@@ -3078,7 +3171,7 @@ mod tests {
             "{\"a\" : 1.0 ,\"b\": [ true ]}",
             vec![
                 (ObjectStart,           vec![]),
-                  (NumberValue(1.0),    vec![Key("a")]),
+                  (FloatingValue(1.0),       vec![Key("a")]),
                   (ListStart,           vec![Key("b")]),
                     (BooleanValue(true),vec![Key("b"), Index(0)]),
                   (ListEnd,             vec![Key("b")]),
@@ -3096,7 +3189,7 @@ mod tests {
             }"#,
             vec![
                 (ObjectStart,                   vec![]),
-                  (NumberValue(1.0),            vec![Key("a")]),
+                  (FloatingValue(1.0),               vec![Key("a")]),
                   (ListStart,                   vec![Key("b")]),
                     (BooleanValue(true),        vec![Key("b"), Index(0)]),
                     (StringValue("foo\nbar".to_string()),  vec![Key("b"), Index(1)]),
@@ -3155,8 +3248,8 @@ mod tests {
             "[3, 1]",
             vec![
                 (ListStart,     vec![]),
-                    (NumberValue(3.0), vec![Index(0)]),
-                    (NumberValue(1.0), vec![Index(1)]),
+                    (IntegerValue(3), vec![Index(0)]),
+                    (IntegerValue(1), vec![Index(1)]),
                 (ListEnd,       vec![]),
             ]
         );
@@ -3164,21 +3257,21 @@ mod tests {
             "\n[3, 2]\n",
             vec![
                 (ListStart,     vec![]),
-                    (NumberValue(3.0), vec![Index(0)]),
-                    (NumberValue(2.0), vec![Index(1)]),
+                    (IntegerValue(3), vec![Index(0)]),
+                    (IntegerValue(2), vec![Index(1)]),
                 (ListEnd,       vec![]),
             ]
         );
         assert_stream_equal(
             "[2, [4, 1]]",
             vec![
-                (ListStart,                 vec![]),
-                    (NumberValue(2.0),      vec![Index(0)]),
-                    (ListStart,             vec![Index(1)]),
-                        (NumberValue(4.0),  vec![Index(1), Index(0)]),
-                        (NumberValue(1.0),  vec![Index(1), Index(1)]),
-                    (ListEnd,               vec![Index(1)]),
-                (ListEnd,                   vec![]),
+                (ListStart,            vec![]),
+                    (IntegerValue(2),      vec![Index(0)]),
+                    (ListStart,        vec![Index(1)]),
+                        (IntegerValue(4),  vec![Index(1), Index(0)]),
+                        (IntegerValue(1),  vec![Index(1), Index(1)]),
+                    (ListEnd,          vec![Index(1)]),
+                (ListEnd,              vec![]),
             ]
         );
 
@@ -3277,29 +3370,29 @@ mod tests {
         use std::collections::{HashMap,TreeMap};
         use super::ToJson;
 
-        let list2 = List(vec!(Number(1.0_f64), Number(2.0_f64)));
-        let list3 = List(vec!(Number(1.0f64), Number(2.0f64), Number(3.0f64)));
+        let list2 = List(vec!(Integer(1), Integer(2)));
+        let list3 = List(vec!(Integer(1), Integer(2), Integer(3)));
         let object = {
             let mut tree_map = TreeMap::new();
-            tree_map.insert("a".to_string(), Number(1.0_f64));
-            tree_map.insert("b".to_string(), Number(2.0_f64));
+            tree_map.insert("a".to_string(), Integer(1));
+            tree_map.insert("b".to_string(), Integer(2));
             Object(tree_map)
         };
 
         assert_eq!(list2.to_json(), list2);
         assert_eq!(object.to_json(), object);
-        assert_eq!(3_i.to_json(), Number(3.0_f64));
-        assert_eq!(4_i8.to_json(), Number(4.0_f64));
-        assert_eq!(5_i16.to_json(), Number(5.0_f64));
-        assert_eq!(6_i32.to_json(), Number(6.0_f64));
-        assert_eq!(7_i64.to_json(), Number(7.0_f64));
-        assert_eq!(8_u.to_json(), Number(8.0_f64));
-        assert_eq!(9_u8.to_json(), Number(9.0_f64));
-        assert_eq!(10_u16.to_json(), Number(10.0_f64));
-        assert_eq!(11_u32.to_json(), Number(11.0_f64));
-        assert_eq!(12_u64.to_json(), Number(12.0_f64));
-        assert_eq!(13.0_f32.to_json(), Number(13.0_f64));
-        assert_eq!(14.0_f64.to_json(), Number(14.0_f64));
+        assert_eq!(3_i.to_json(), Integer(3));
+        assert_eq!(4_i8.to_json(), Integer(4));
+        assert_eq!(5_i16.to_json(), Integer(5));
+        assert_eq!(6_i32.to_json(), Integer(6));
+        assert_eq!(7_i64.to_json(), Integer(7));
+        assert_eq!(8_u.to_json(), Integer(8));
+        assert_eq!(9_u8.to_json(), Integer(9));
+        assert_eq!(10_u16.to_json(), Integer(10));
+        assert_eq!(11_u32.to_json(), Integer(11));
+        assert_eq!(12_u64.to_json(), Integer(12));
+        assert_eq!(13.0_f32.to_json(), Floating(13.0_f64));
+        assert_eq!(14.0_f64.to_json(), Floating(14.0_f64));
         assert_eq!(().to_json(), Null);
         assert_eq!(f32::INFINITY.to_json(), Null);
         assert_eq!(f64::NAN.to_json(), Null);
@@ -3320,7 +3413,7 @@ mod tests {
         hash_map.insert("a".to_string(), 1i);
         hash_map.insert("b".to_string(), 2);
         assert_eq!(hash_map.to_json(), object);
-        assert_eq!(Some(15i).to_json(), Number(15f64));
+        assert_eq!(Some(15i).to_json(), Integer(15));
         assert_eq!(None::<int>.to_json(), Null);
     }
 
