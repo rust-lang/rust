@@ -364,7 +364,7 @@ impl Tm {
     }
 
     /**
-     * Returns a time string formatted according to RFC 3999. RFC 3999 is
+     * Returns a time string formatted according to RFC 3339. RFC 3339 is
      * compatible with ISO 8601.
      *
      * local: "2012-02-22T07:53:18-07:00"
