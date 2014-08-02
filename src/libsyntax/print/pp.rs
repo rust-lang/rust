@@ -225,12 +225,12 @@ pub fn mk_printer(out: Box<io::Writer>, linewidth: uint) -> Printer {
 /// 'right' indices denote the active portion of the ring buffer as well as
 /// describing hypothetical points-in-the-infinite-stream at most 3N tokens
 /// apart (i.e. "not wrapped to ring-buffer boundaries"). The paper will switch
-/// between using 'left' and 'right' terms to denote the wrapepd-to-ring-buffer
+/// between using 'left' and 'right' terms to denote the wrapped-to-ring-buffer
 /// and point-in-infinite-stream senses freely.
 ///
 /// There is a parallel ring buffer, 'size', that holds the calculated size of
 /// each token. Why calculated? Because for Begin/End pairs, the "size"
-/// includes everything betwen the pair. That is, the "size" of Begin is
+/// includes everything between the pair. That is, the "size" of Begin is
 /// actually the sum of the sizes of everything between Begin and the paired
 /// End that follows. Since that is arbitrarily far in the future, 'size' is
 /// being rewritten regularly while the printer runs; in fact most of the
@@ -270,7 +270,7 @@ pub struct Printer {
     left: uint,
     /// Index of right side of input stream
     right: uint,
-    /// Ring-buffr stream goes through
+    /// Ring-buffer stream goes through
     token: Vec<Token> ,
     /// Ring-buffer of calculated sizes
     size: Vec<int> ,

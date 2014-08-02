@@ -842,7 +842,7 @@ pub mod raw {
     /// Create a `String` from a null-terminated *u8 buffer
     ///
     /// This function is unsafe because we dereference memory until we find the NUL character,
-    /// which is not guaranteed to be present. Additionaly, the slice is not checked to see
+    /// which is not guaranteed to be present. Additionally, the slice is not checked to see
     /// whether it contains valid UTF-8
     pub unsafe fn from_buf(buf: *const u8) -> String {
         let mut len = 0;

@@ -28,7 +28,7 @@ pub struct StreamWatcher {
     // Cache the last used uv_write_t so we don't have to allocate a new one on
     // every call to uv_write(). Ideally this would be a stack-allocated
     // structure, but currently we don't have mappings for all the structures
-    // defined in libuv, so we're foced to malloc this.
+    // defined in libuv, so we're forced to malloc this.
     last_write_req: Option<Request>,
 
     blocked_writer: Option<BlockedTask>,

@@ -325,7 +325,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
     let DebuggerCommands { commands, check_lines, .. } = parse_debugger_commands(testfile, "gdb");
     let mut cmds = commands.connect("\n");
 
-    // compile test file (it shoud have 'compile-flags:-g' in the header)
+    // compile test file (it should have 'compile-flags:-g' in the header)
     let compiler_run_result = compile_test(config, props, testfile);
     if !compiler_run_result.status.success() {
         fatal_proc_rec("compilation failed!", &compiler_run_result);
@@ -520,7 +520,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 
     let config = &mut config;
 
-    // compile test file (it shoud have 'compile-flags:-g' in the header)
+    // compile test file (it should have 'compile-flags:-g' in the header)
     let compile_result = compile_test(config, props, testfile);
     if !compile_result.status.success() {
         fatal_proc_rec("compilation failed!", &compile_result);

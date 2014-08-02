@@ -769,7 +769,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
 // It turns out that there's this nifty MSG_DONTWAIT flag which can be passed to
 // send/recv, but the niftiness wears off once you realize it only works well on
 // linux [1] [2]. This means that it's pretty easy to get a nonblocking
-// operation on linux (no flag fidding, no affecting other objects), but not on
+// operation on linux (no flag fiddling, no affecting other objects), but not on
 // other platforms.
 //
 // To work around this constraint on other platforms, we end up using the

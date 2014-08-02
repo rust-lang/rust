@@ -11,7 +11,7 @@
 //! Finds crate binaries and loads their metadata
 //!
 //! Might I be the first to welcome you to a world of platform differences,
-//! version requirements, dependency graphs, conficting desires, and fun! This
+//! version requirements, dependency graphs, conflicting desires, and fun! This
 //! is the major guts (along with metadata::creader) of the compiler for loading
 //! crates and resolving dependencies. Let's take a tour!
 //!
@@ -83,7 +83,7 @@
 //! 5. Does the target in the metadata agree with the current target?
 //! 6. Does the SVH match? (more on this later)
 //!
-//! If the file answeres `yes` to all these questions, then the file is
+//! If the file answers `yes` to all these questions, then the file is
 //! considered as being *candidate* for being accepted. It is illegal to have
 //! more than two candidates as the compiler has no method by which to resolve
 //! this conflict. Additionally, rlib/dylib candidates are considered
@@ -173,7 +173,7 @@
 //! ## Loading transitive dependencies
 //!
 //! Dealing with same-named-but-distinct crates is not just a local problem, but
-//! one that also needs to be dealt with for transitive dependences. Note that
+//! one that also needs to be dealt with for transitive dependencies. Note that
 //! in the letter above `--extern` flags only apply to the *local* set of
 //! dependencies, not the upstream transitive dependencies. Consider this
 //! dependency graph:
@@ -660,7 +660,7 @@ impl<'a> Context<'a> {
             false
         });
 
-        // Now that we have an itertor of good candidates, make sure there's at
+        // Now that we have an iterator of good candidates, make sure there's at
         // most one rlib and at most one dylib.
         let mut rlibs = HashSet::new();
         let mut dylibs = HashSet::new();
