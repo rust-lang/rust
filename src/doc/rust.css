@@ -23,22 +23,22 @@
     src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
 }
 @font-face {
-    font-family: 'Source Serif Pro';
+    font-family: 'Source Sans Pro';
     font-style: normal;
     font-weight: 400;
-    src: local('Source Serif Pro'), url("SourceSerifPro-Regular.woff") format('woff');
+    src: local('Source Sans Pro'), url("SourceSansPro-Regular.woff") format('woff');
 }
 @font-face {
-    font-family: 'Source Serif Pro';
+    font-family: 'Source Sans Pro';
     font-style: italic;
     font-weight: 400;
     src: url("Heuristica-Italic.woff") format('woff');
 }
 @font-face {
-    font-family: 'Source Serif Pro';
+    font-family: 'Source Sans Pro';
     font-style: normal;
     font-weight: 700;
-    src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
+    src: local('Source Sans Pro Bold'), url("SourceSansPro-Bold.woff") format('woff');
 }
 @font-face {
     font-family: 'Source Code Pro';
@@ -58,7 +58,7 @@
 body {
     margin: 0 auto;
     padding: 0 15px;
-    font-family: "Source Serif Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 18px;
     color: #333;
     line-height: 1.428571429;
