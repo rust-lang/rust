@@ -354,6 +354,18 @@ file, we would need to call `rustc` twice, and pass it a bunch of options to
 tell it to build everything together. With Cargo, as our project grows, we can
 just `cargo build` and it'll work the right way.
 
+You'll also notice that Cargo has created a new file: `Cargo.lock`.
+
+```{ignore,notrust}
+[root]
+name = "hello_world"
+version = "0.0.1"
+```
+
+This file is used by Cargo to keep track of dependencies in your application.
+Right now, we don't have any, so it's a bit sparse. You won't ever need
+to touch this file yourself, just let Cargo handle it.
+
 That's it! We've successfully built `hello_world` with Cargo. Even though our
 program is simple, it's using much of the real tooling that you'll use for the
 rest of your Rust career.
