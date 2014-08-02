@@ -1,4 +1,4 @@
-% Project FAQ
+% The Rust Project FAQ
 
 # What is this project's goal, in one sentence?
 

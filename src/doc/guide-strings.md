@@ -1,4 +1,4 @@
-% The Strings Guide
+% The Guide to Rust Strings
 
 Strings are an important concept to master in any programming language. If you
 come from a managed language background, you may be surprised at the complexity
