@@ -33,6 +33,7 @@ mod m {
 
     #[main]
     #[cfg(target_arch = "x86_64")]
+    #[cfg(target_arch = "arm")]
     pub fn main() {
         unsafe {
             assert_eq!(::rusti::pref_align_of::<u64>(), 8u);
