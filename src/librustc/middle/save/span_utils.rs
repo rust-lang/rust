@@ -367,8 +367,7 @@ impl<'a> SpanUtils<'a> {
         if generated_code(path.span) {
             return vec!();
         }
-
-        self.spans_with_brackets(path.span, 0, -1)
+        self.path_spans.get(path)
     }
 
     // Return an owned vector of the subspans of the param identifier

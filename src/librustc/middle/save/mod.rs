@@ -118,6 +118,11 @@ impl <'l> DxrVisitor<'l> {
             return vec!();
         }
 
+        //TODO
+        if spans.len() > path.segments.len() {
+            error!("nrc - hmm, still a problem");
+        }
+
         let mut result: Vec<(Span, String)> = vec!();
 
 
@@ -422,7 +427,8 @@ impl <'l> DxrVisitor<'l> {
     }
 
     // Dump generic params bindings, then visit_generics
-    fn process_generic_params(&mut self, generics:&ast::Generics,
+    fn process_generic_params(&mut self,
+                              generics: &ast::Generics,
                               full_span: Span,
                               prefix: &str,
                               id: NodeId,
@@ -680,6 +686,7 @@ impl <'l> DxrVisitor<'l> {
                    item: &ast::Item,  // The module in question, represented as an item.
                    e: DxrVisitorEnv,
                    m: &ast::Mod) {
+        //TODO should map items to spans too
         let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
 
         let cm = self.sess.codemap();
@@ -836,6 +843,7 @@ impl <'l> DxrVisitor<'l> {
 
     fn process_method_call(&mut self,
                            ex: &ast::Expr,
+                           ident: &ast::SpannedIdent,
                            e: DxrVisitorEnv,
                            args: &Vec<Gc<ast::Expr>>) {
         let method_map = self.analysis.ty_cx.method_map.borrow();
@@ -867,9 +875,8 @@ impl <'l> DxrVisitor<'l> {
                 (None, Some(method.def_id))
             },
         };
-        let sub_span = self.span.sub_span_for_meth_name(ex.span);
-        self.fmt.meth_call_str(ex.span,
-                               sub_span,
+        self.fmt.meth_call_str(ident.span,
+                               None,
                                def_id,
                                decl_id,
                                e.cur_scope);
@@ -1102,22 +1109,18 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
                         // indicated by the AST node. So we just have to search for '='
                         // like some kind of pimitive beast.
                         let snippet = self.span.snippet(path.span);
-                        if snippet.as_slice().contains_char('=') {
+                        let (span, sub_span) = if snippet.as_slice().contains_char('=') {
                             let ident_span = self.span.sub_span_before_token(path.span, token::EQ);
-                            self.fmt.use_alias_str(path.span,
-                                                   ident_span,
-                                                   id,
-                                                   mod_id,
-                                                   get_ident(ident).get(),
-                                                   e.cur_scope);
+                            (path.span, ident_span)
                         } else {
-                            self.fmt.use_alias_str(sub_span,
-                                                   None,
-                                                   id,
-                                                   mod_id,
-                                                   get_ident(ident).get(),
-                                                   e.cur_scope);
+                            (sub_span, None)
                         }
+                        self.fmt.use_alias_str(sub_span,
+                                               None,
+                                               id,
+                                               mod_id,
+                                               get_ident(ident).get(),
+                                               e.cur_scope);
 
                         self.write_sub_paths_truncated(path, e.cur_scope);
                     }
@@ -1214,7 +1217,7 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
             ast::ExprPath(ref path) => self.process_path(ex, e, path),
             ast::ExprStruct(ref path, ref fields, base) =>
                 self.process_struct_lit(ex, e, path, fields, base),
-            ast::ExprMethodCall(_, _, ref args) => self.process_method_call(ex, e, args),
+            ast::ExprMethodCall(ident, _, ref args) => self.process_method_call(ex, ident, e, args),
             ast::ExprField(sub_ex, ident, _) => {
                 if generated_code(sub_ex.span) {
                     return
@@ -1293,7 +1296,8 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
             } else {
                 "<mutable>".to_string()
             };
-            let sub_span = self.span.span_for_first_ident(*sp);
+            // TODO do we need this? I think 'no'
+            //let sub_span = self.span.span_for_first_ident(*sp);
             let def_map = self.analysis.ty_cx.def_map.borrow();
             if !def_map.contains_key(&id) {
                 self.sess.span_bug(*sp,
@@ -1303,14 +1307,14 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
             let def = def_map.get(&id);
             match *def {
                 def::DefBinding(id, _)  => self.fmt.variable_str(*sp,
-                                                                 sub_span,
+                                                                 None,
                                                                  id,
                                                                  name.as_slice(),
                                                                  value.as_slice(),
                                                                  ""),
                 def::DefVariant(_,id,_) => self.fmt.ref_str(ref_kind,
                                                             *sp,
-                                                            sub_span,
+                                                            None,
                                                             id,
                                                             e.cur_scope),
                 // FIXME(nrc) what is this doing here?
