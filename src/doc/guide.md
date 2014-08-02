@@ -3387,22 +3387,270 @@ out.
 
 # Pointers
 
+In systems programming, pointers are an incredibly important topic. Rust has a
+very rich set of pointers, and they operate differently than in many other
+languages. They are important enough that we have a specific [Pointer
+Guide](/guide-pointers.html) that goes into pointers in much detail. In fact,
+while you're currently reading this guide, which covers the language in broad
+overview, there are a number of other guides that put a specific topic under a
+microscope. You can find the list of guides on the [documentation index
+page](/index.html#guides).
+
+In this section, we'll assume that you're familiar with pointers as a general
+concept. If you aren't, please read the [introduction to
+pointers](/guide-pointers.html#an-introduction) section of the Pointer Guide,
+and then come back here. We'll wait.
+
+Got the gist? Great. Let's talk about pointers in Rust.
+
+## References
+
+The most primitive form of pointer in Rust is called a **reference**.
+References are created using the ampersand (`&`). Here's a simple
+reference:
+
+```{rust}
+let x = 5i;
+let y = &x;
+```
+
+`y` is a reference to `x`. To dereference (get the value being referred to
+rather than the reference itself) `y`, we use the asterisk (`*`):
+
+```{rust}
+let x = 5i;
+let y = &x;
+
+assert_eq!(5i, *y);
+```
+
+Like any `let` binding, references are immutable by default.
+
+You can declare that functions take a reference:
+
+```{rust}
+fn add_one(x: &int) -> int { *x + 1 }
+
+fn main() {
+    assert_eq!(6, add_one(&5));
+}
+```
+
+As you can see, we can make a reference from a literal by applying `&` as well.
+Of course, in this simple function, there's not a lot of reason to take `x` by
+reference. It's just an example of the syntax.
+
+Because references are immutable, you can have multiple references that
+**alias** (point to the same place):
+
+```{rust}
+let x = 5i;
+let y = &x;
+let z = &x;
+```
+
+We can make a mutable reference by using `&mut` instead of `&`:
+
+```{rust}
+let mut x = 5i;
+let y = &mut x;
+```
+
+Note that `x` must also be mutable. If it isn't, like this:
+
+```{rust,ignore}
+let x = 5i;
+let y = &mut x;
+```
+
+Rust will complain:
+
+```{ignore,notrust}
+6:19 error: cannot borrow immutable local variable `x` as mutable
+ let y = &mut x;
+              ^
+```
+
+We don't want a mutable reference to immutable data! This error message uses a
+term we haven't talked about yet, 'borrow.' We'll get to that in just a moment.
+
+This simple example actually illustrates a lot of Rust's power: Rust has
+prevented us, at compile time, from breaking our own rules. Because Rust's
+references check these kinds of rules entirely at compile time, there's no
+runtime overhead for this safety.  At runtime, these are the same as a raw
+machine pointer, like in C or C++.  We've just double-checked ahead of time
+that we haven't done anything dangerous.
+
+Rust will also prevent us from creating two mutable references that alias.
+This won't work:
+
+```{rust,ignore}
+let mut x = 5i;
+let y = &mut x;
+let z = &mut x;
+```
+
+It gives us this error:
+
+```{notrust,ignore}
+error: cannot borrow `x` as mutable more than once at a time
+     let z = &mut x;
+                  ^
+note: previous borrow of `x` occurs here; the mutable borrow prevents subsequent moves, borrows, or modification of `x` until the borrow ends
+     let y = &mut x;
+                  ^
+note: previous borrow ends here
+ fn main() {
+     let mut x = 5i;
+     let y = &mut x;
+     let z = &mut x;
+ }
+ ^
+```
+
+This is a big error message. Let's dig into it for a moment. There are three
+parts: the error and two notes. The error says what we expected, we cannot have
+two pointers that point to the same memory.
+
+The two notes give some extra context. Rust's error messages often contain this
+kind of extra information when the error is complex. Rust is telling us two
+things: first, that the reason we cannot **borrow** `x` as `z` is that we
+previously borrowed `x` as `y`. The second note shows where `y`'s borrowing
+ends.
+
+Wait, borrowing?
+
+In order to truly understand this error, we have to learn a few new concepts:
+**ownership**, **borrowing**, and **lifetimes**.
+
+## Ownership, borrowing, and lifetimes
+
+## Boxes
+
+All of our references so far have been to variables we've created on the stack.
+In Rust, the simplest way to allocate heap variables is using a *box*.  To
+create a box, use the `box` keyword:
+ 
+```{rust}
+let x = box 5i;
+```
+
+This allocates an integer `5` on the heap, and creates a binding `x` that
+refers to it.. The great thing about boxed pointers is that we don't have to
+manually free this allocation! If we write 
+
+```{rust}
+{
+    let x = box 5i;
+    // do stuff
+}
+```
+
+then Rust will automatically free `x` at the end of the block. This isn't
+because Rust has a garbage collector -- it doesn't. Instead, Rust uses static
+analysis to determine the *lifetime* of `x`, and then generates code to free it
+once it's sure the `x` won't be used again. This Rust code will do the same
+thing as the following C code:
+
+```{c,ignore}
+{
+    int *x = (int *)malloc(sizeof(int));
+    // do stuff
+    free(x);
+}
+```
+
+This means we get the benefits of manual memory management, but the compiler
+ensures that we don't do something wrong. We can't forget to `free` our memory.
+
+Boxes are the sole owner of their contents, so you cannot take a mutable
+reference to them and then use the original box:
+
+```{rust,ignore}
+let mut x = box 5i;
+let y = &mut x;
+
+*x; // you might expect 5, but this is actually an error
+```
+
+This gives us this error:
+
+```{notrust,ignore}
+8:7 error: cannot use `*x` because it was mutably borrowed
+ *x;
+ ^~
+ 6:19 note: borrow of `x` occurs here
+ let y = &mut x;
+              ^
+```
+
+As long as `y` is borrowing the contents, we cannot use `x`. After `y` is
+done borrowing the value, we can use it again. This works fine:
+
+```{rust}
+let mut x = box 5i;
+
+{
+    let y = &mut x;
+} // y goes out of scope at the end of the block
+
+*x;
+```
+
+## Rc and Arc
+
+Sometimes, you need to allocate something on the heap, but give out multiple
+references to the memory. Rust's `Rc<T>` (pronounced 'arr cee tee') and
+`Arc<T>` types (again, the `T` is for generics, we'll learn more later) provide
+you with this ability.  **Rc** stands for 'reference counted,' and **Arc** for
+'atomically reference counted.' This is how Rust keeps track of the multiple
+owners: every time we make a new reference to the `Rc<T>`, we add one to its
+internal 'reference count.' Every time a reference goes out of scope, we
+subtract one from the count. When the count is zero, the `Rc<T>` can be safely
+deallocated. `Arc<T>` is almost identical to `Rc<T>`, except for one thing: The
+'atomically' in 'Arc' means that increasing and decreasing the count uses a
+thread-safe mechanism to do so. Why two types? `Rc<T>` is faster, so if you're
+not in a multi-threaded scenario, you can have that advantage. Since we haven't
+talked about threading yet in Rust, we'll show you `Rc<T>` for the rest of this
+section.
+
+To create an `Rc<T>`, use `Rc::new()`:
+
+```{rust}
+use std::rc::Rc;
+
+let x = Rc::new(5i);
+```
+
+To create a second reference, use the `.clone()` method:
+
+```{rust}
+use std::rc::Rc;
+
+let x = Rc::new(5i);
+let y = x.clone();
+```
+
+The `Rc<T>` will live as long as any of its references are alive. After they
+all go out of scope, the memory will be `free`d.
+
+If you use `Rc<T>` or `Arc<T>`, you have to be careful about introducing
+cycles. If you have two `Rc<T>`s that point to each other, the reference counts
+will never drop to zero, and you'll have a memory leak. To learn more, check
+out [the section on `Rc<T>` and `Arc<T>` in the pointers
+guide](http://doc.rust-lang.org/guide-pointers.html#rc-and-arc).
+
+# Patterns
+
 # Lambdas
 
 # iterators
-
 
 # Generics
 
 # Traits
 
 # Operators and built-in Traits
-
-# Ownership and Lifetimes
-
-Move vs. Copy
-
-Allocation
 
 # Tasks
 
