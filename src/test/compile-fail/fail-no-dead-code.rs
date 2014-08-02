@@ -9,30 +9,17 @@
 // except according to those terms.
 
 #![deny(dead_code)]
+#![allow(unreachable_code)]
 
-static _X: uint = 0;
+fn foo() { //~ ERROR code is never used
 
-fn _foo() {}
+    // none of these should have any dead_code exposed to the user
+    fail!();
 
-struct _Y {
-    _z: uint
+    fail!("foo");
+
+    fail!("bar {}", "baz")
 }
 
-enum _Z {}
 
-impl _Y {
-    fn _bar() {}
-}
-
-type _A = int;
-
-mod _bar {
-    fn _qux() {}
-}
-
-extern {
-    #[link_name = "abort"]
-    fn _abort() -> !;
-}
-
-pub fn main() {}
+fn main() {}

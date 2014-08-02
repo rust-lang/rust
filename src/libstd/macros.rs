@@ -43,8 +43,8 @@ macro_rules! fail(
     });
     ($msg:expr) => ({
         // static requires less code at runtime, more constant data
-        static FILE_LINE: (&'static str, uint) = (file!(), line!());
-        ::std::rt::begin_unwind($msg, &FILE_LINE)
+        static _FILE_LINE: (&'static str, uint) = (file!(), line!());
+        ::std::rt::begin_unwind($msg, &_FILE_LINE)
     });
     ($fmt:expr, $($arg:tt)*) => ({
         // a closure can't have return type !, so we need a full
@@ -58,12 +58,17 @@ macro_rules! fail(
         // because it's just a tiny wrapper. Small wins (156K to 149K in size)
         // were seen when forcing this to be inlined, and that number just goes
         // up with the number of calls to fail!()
+        //
+        // The leading _'s are to avoid dead code warnings if this is
+        // used inside a dead function. Just `#[allow(dead_code)]` is
+        // insufficient, since the user may have
+        // `#[forbid(dead_code)]` and which cannot be overridden.
         #[inline(always)]
-        fn run_fmt(fmt: &::std::fmt::Arguments) -> ! {
-            static FILE_LINE: (&'static str, uint) = (file!(), line!());
-            ::std::rt::begin_unwind_fmt(fmt, &FILE_LINE)
+        fn _run_fmt(fmt: &::std::fmt::Arguments) -> ! {
+            static _FILE_LINE: (&'static str, uint) = (file!(), line!());
+            ::std::rt::begin_unwind_fmt(fmt, &_FILE_LINE)
         }
-        format_args!(run_fmt, $fmt, $($arg)*)
+        format_args!(_run_fmt, $fmt, $($arg)*)
     });
 )
 

@@ -26,7 +26,6 @@ use syntax::ast_util::{local_def, is_local, PostExpansionMethod};
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap;
-use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 
