@@ -1823,11 +1823,11 @@ meta_item : ident [ '=' literal
 meta_seq : meta_item [ ',' meta_seq ] ? ;
 ~~~~
 
-Static entities in Rust &mdash; crates, modules and items &mdash; may have _attributes_
-applied to them. Attributes in Rust are modeled on Attributes in ECMA-335,
-with the syntax coming from ECMA-334 (C#). An attribute is a general,
-free-form metadatum that is interpreted according to name, convention, and
-language and compiler version. Attributes may appear as any of:
+Any item declaration may have an _attribute_ applied to it. Attributes in Rust
+are modeled on Attributes in ECMA-335, with the syntax coming from ECMA-334
+(C#). An attribute is a general, free-form metadatum that is interpreted
+according to name, convention, and language and compiler version. Attributes
+may appear as any of:
 
 * A single identifier, the attribute name
 * An identifier followed by the equals sign '=' and a literal, providing a
