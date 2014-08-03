@@ -1536,6 +1536,9 @@ declare_lint!(pub UNKNOWN_CRATE_TYPE, Deny,
 declare_lint!(pub VARIANT_SIZE_DIFFERENCE, Allow,
               "detects enums with widely varying variant sizes")
 
+declare_lint!(pub REPR_C_IMPLICIT_PADDING, Allow,
+              "detects implicit padding, which cannot be memset reliably, in C structures")
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 pub struct HardwiredLints;
@@ -1554,7 +1557,8 @@ impl LintPass for HardwiredLints {
             WARNINGS,
             UNKNOWN_FEATURES,
             UNKNOWN_CRATE_TYPE,
-            VARIANT_SIZE_DIFFERENCE
+            VARIANT_SIZE_DIFFERENCE,
+            REPR_C_IMPLICIT_PADDING
         )
     }
 }

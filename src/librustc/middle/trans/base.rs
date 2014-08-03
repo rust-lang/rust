@@ -1908,6 +1908,29 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
     }
 }
 
+fn struct_repr_padding_lint(ccx: &CrateContext, struct_def: &ast::StructDef, id: ast::NodeId) {
+    let levels = ccx.tcx.node_lint_levels.borrow();
+    let lint_id = lint::LintId::of(lint::builtin::REPR_C_IMPLICIT_PADDING);
+    let lvlsrc = match levels.find(&(id, lint_id)) {
+        None | Some(&(lint::Allow, _)) => return,
+        Some(&lvlsrc) => lvlsrc,
+    };
+
+    let mut total_size = 0;
+    for field in struct_def.fields.iter() {
+        let align = llalign_of_min(ccx, sizing_type_of(ccx,
+                                            ty::node_id_to_type(&ccx.tcx, field.node.id)));
+        if total_size % align != 0 {
+            lint::raw_emit_lint(&ccx.tcx().sess, lint::builtin::REPR_C_IMPLICIT_PADDING,
+                              lvlsrc, Some(field.span),
+                              format!("field expects alignment of {} bytes, but is being \
+                                       inserted after {}", align, total_size).as_slice());
+        }
+        total_size += llsize_of_real(ccx, sizing_type_of(ccx,
+                                            ty::node_id_to_type(&ccx.tcx, field.node.id)));
+    }
+}
+
 pub struct TransItemVisitor<'a> {
     pub ccx: &'a CrateContext,
 }
@@ -1976,6 +1999,14 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
       },
       ast::ItemForeignMod(ref foreign_mod) => {
         foreign::trans_foreign_mod(ccx, foreign_mod);
+      }
+      ast::ItemStruct(ref struct_definition, _) => {
+          // Only run the struct padding lint if we have #[repr(C)]
+          if item.attrs.iter().fold(attr::ReprAny, |acc, attr| {
+              attr::find_repr_attr(ccx.tcx.sess.diagnostic(), attr, acc)
+          }) == attr::ReprExtern {
+              struct_repr_padding_lint(ccx, &**struct_definition, item.id);
+          }
       }
       ast::ItemTrait(..) => {
         // Inside of this trait definition, we won't be actually translating any

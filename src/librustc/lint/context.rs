@@ -638,6 +638,16 @@ impl LintPass for GatherNodeLevels {
                     _ => { }
                 }
             },
+            ast::ItemStruct(..) => {
+                let lint_id = LintId::of(builtin::REPR_C_IMPLICIT_PADDING);
+                match cx.lints.get_level_source(lint_id) {
+                    lvlsrc @ (lvl, _) if lvl != Allow => {
+                        cx.node_levels.borrow_mut()
+                            .insert((it.id, lint_id), lvlsrc);
+                    },
+                    _ => { }
+                }
+            }
             _ => { }
         }
     }
