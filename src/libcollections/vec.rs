@@ -964,7 +964,7 @@ impl<T> Vec<T> {
     #[inline]
     pub fn swap_remove(&mut self, index: uint) -> Option<T> {
         let length = self.len();
-        if index < length - 1 {
+        if length > 0 && index < length - 1 {
             self.as_mut_slice().swap(index, length - 1);
         } else if index >= length {
             return None
@@ -2001,6 +2001,12 @@ mod tests {
     fn test_index_out_of_bounds() {
         let vec = vec!(1i, 2, 3);
         let _ = vec[3];
+    }
+
+    #[test]
+    fn test_swap_remove_empty() {
+        let mut vec: Vec<uint> = vec!();
+        assert_eq!(vec.swap_remove(0), None);
     }
 
     #[bench]
