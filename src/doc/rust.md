@@ -112,8 +112,7 @@ production. See [tokens](#tokens) for more information.
 
 ## Input format
 
-Rust input is interpreted as a sequence of Unicode codepoints encoded in UTF-8,
-normalized to Unicode normalization form NFKC.
+Rust input is interpreted as a sequence of Unicode codepoints encoded in UTF-8.
 Most Rust grammar rules are defined in terms of printable ASCII-range codepoints,
 but a small number are defined in terms of Unicode properties or explicit
 codepoint lists. [^inputformat]
