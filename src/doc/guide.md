@@ -1626,10 +1626,6 @@ Check out the generated `Cargo.toml`:
 name = "guessing_game"
 version = "0.1.0"
 authors = ["Your Name <you@example.com>"]
-
-[[bin]]
-
-name = "guessing_game"
 ```
 
 Cargo gets this information from your environment. If it's not correct, go ahead
