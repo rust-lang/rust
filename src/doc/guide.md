@@ -1060,7 +1060,6 @@ you create a new type that's a synonym for another one:
 
 ```
 struct Inches(int);
-struct Centimeters(int);
 
 let length = Inches(10);
 
