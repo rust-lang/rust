@@ -1712,6 +1712,9 @@ pub mod raw {
 
 /// An owned, partially type-converted vector.
 ///
+/// This struct takes two type parameters `T` and `U` which must be of the
+/// same, non-zero size.
+///
 /// No allocations are performed by usage, only a deallocation happens in the
 /// destructor which should only run when unwinding.
 ///
@@ -1725,13 +1728,13 @@ pub mod raw {
 /// # Example
 ///
 /// ```rust
-/// let pv = PartialVec::new(vec![0u, 1]);
+/// let pv = PartialVec::from_vec(vec![0u, 1]);
 /// assert_eq!(pv.pop(), Some(0));
 /// assert_eq!(pv.pop(), Some(1));
 /// assert_eq!(pv.pop(), None);
 /// pv.push(2u);
 /// pv.push(3);
-/// assert_eq!(pv.into_vec(), vec![2, 3]);
+/// assert_eq!(pv.into_vec().as_slice(), &[2, 3]);
 /// ```
 //
 // Upheld invariants:
@@ -1751,6 +1754,8 @@ pub mod raw {
 //
 // (f) From `start_t` (incl.) to `end_t` (excl.) there are sequential instances
 //     of type `T`.
+//
+// (g) The size of `T` and `U` is equal and non-zero.
 
 pub struct PartialVec<T,U> {
     vec: Vec<T>,
@@ -1763,8 +1768,14 @@ pub struct PartialVec<T,U> {
 
 impl<T,U> PartialVec<T,U> {
     /// Creates a `PartialVec` from a `Vec`.
-    pub fn new(mut vec: Vec<T>) -> PartialVec<T,U> {
+    ///
+    /// # Failure
+    ///
+    /// Fails if `T` and `U` have differing sizes or are zero-sized.
+    pub fn from_vec(mut vec: Vec<T>) -> PartialVec<T,U> {
         // FIXME: Assert that the types `T` and `U` have the same size.
+        //
+        // These asserts make sure (g) is satisfied.
         assert!(mem::size_of::<T>() != 0);
         assert!(mem::size_of::<U>() != 0);
         assert!(mem::size_of::<T>() == mem::size_of::<U>());
@@ -1793,23 +1804,23 @@ impl<T,U> PartialVec<T,U> {
         let start_u = start as *mut U;
         let end_u = start as *mut U;
         let start_t = start;
+
+        // This points inside the vector, as the vector has length `offset`.
         let end_t = unsafe { start_t.offset(offset) };
 
         // (b) is satisfied, `start_u` points to the start of `vec`.
-
+        //
         // (c) is also satisfied, `end_t` points to the end of `vec`.
-
+        //
         // `start_u == end_u == start_t <= end_t`, so also `start_u <= end_u <=
         // start_t <= end_t`, thus (b).
-
+        //
         // As `start_u == end_u`, it is represented correctly that there are no
         // instances of `U` in `vec`, thus (e) is satisfied.
-
+        //
         // At start, there are only elements of type `T` in `vec`, so (f) is
         // satisfied, as `start_t` points to the start of `vec` and `end_t` to
         // the end of it.
-
-        // This points inside the vector, as the vector has length `offset`.
 
         PartialVec {
             // (a) is satisfied, `vec` isn't modified in the function.
@@ -1823,8 +1834,8 @@ impl<T,U> PartialVec<T,U> {
 
     /// Pops a `T` from the `PartialVec`.
     ///
-    /// Returns `Some(t)` if there are more `T`s in the vector, otherwise
-    /// `None`.
+    /// Removes the next `T` from the vector and returns it as `Some(T)`, or
+    /// `None` if there are none left.
     fn pop(&mut self) -> Option<T> {
         // The `if` ensures that there are more `T`s in `vec`.
         if self.start_t < self.end_t {
@@ -1869,21 +1880,26 @@ impl<T,U> PartialVec<T,U> {
     ///
     /// Fails if not all `T`s were popped, also fails if not the same amount of
     /// `U`s was pushed before calling `unwrap`.
-    pub fn into_vec(self) -> Vec<U> {
+    pub fn into_vec(mut self) -> Vec<U> {
         // If `self.end_u == self.end_t`, we know from (e) that there are no
         // more `T`s in `vec`, we also know that the whole length of `vec` is
-        // now used by `U`s, thus we can just transmute `vec` from a vector of
-        // `T`s to a vector of `U`s safely.
+        // now used by `U`s, thus we can just interpret `vec` as a vector of
+        // `U` safely.
 
         assert!(self.end_u as *const () == self.end_t as *const (),
             "trying to unwrap a PartialVec before completing the writes to it");
 
         // Extract `vec` and prevent the destructor of `PartialVec` from
-        // running.
+        // running. Note that none of the function calls can fail, thus no
+        // resources can be leaked (as the `vec` member of `PartialVec` is the
+        // only one which holds allocations -- and it is returned from this
+        // function.
         unsafe {
-            let vec = ptr::read(&self.vec);
+            let vec_len = self.vec.len();
+            let vec_cap = self.vec.capacity();
+            let vec_ptr = self.vec.as_mut_ptr() as *mut U;
             mem::forget(self);
-            mem::transmute(vec)
+            Vec::from_raw_parts(vec_len, vec_cap, vec_ptr)
         }
     }
 }
@@ -1923,24 +1939,29 @@ impl<T,U> Iterator<T> for PartialVec<T,U> {
 }
 
 impl<T> Vec<T> {
-    /// Converts a `Vec<T>` to a `Vec<U>` where `T` and `U` have the same size.
+    /// Converts a `Vec<T>` to a `Vec<U>` where `T` and `U` have the same
+    /// non-zero size.
+    ///
+    /// # Failure
+    ///
+    /// Fails if `T` and `U` have differing sizes or are zero-sized.
     ///
     /// # Example
     ///
     /// ```rust
     /// let v = vec![0u, 1, 2];
     /// let w = v.map_inplace(|i| i + 3);
-    /// assert_eq!(w.as_slice() == &[3, 4, 5]);
+    /// assert_eq!(w.as_slice(), &[3, 4, 5]);
     ///
     /// let big_endian_u16s = vec![0x1122u16, 0x3344];
     /// let u8s = big_endian_u16s.map_inplace(|x| [
     ///     ((x >> 8) & 0xff) as u8,
     ///     (x & 0xff) as u8
     /// ]);
-    /// assert_eq!(u8s.as_slice() == &[[0x11, 0x22], [0x33, 0x44]]);
+    /// assert_eq!(u8s.as_slice(), &[[0x11, 0x22], [0x33, 0x44]]);
     /// ```
     pub fn map_inplace<U>(self, f: |T| -> U) -> Vec<U> {
-        let mut pv = PartialVec::new(self);
+        let mut pv = PartialVec::from_vec(self);
         loop {
             let maybe_t = pv.pop();
             match maybe_t {
@@ -2292,7 +2313,7 @@ mod tests {
     #[test]
     fn test_map_inplace() {
         let v = vec![0u, 1, 2];
-        assert_eq!(v.map_inplace(|i: uint| i as int - 1).as_slice, &[-1i, 0, 1]);
+        assert_eq!(v.map_inplace(|i: uint| i as int - 1).as_slice(), &[-1i, 0, 1]);
     }
 
     #[bench]
