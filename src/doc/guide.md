@@ -32,7 +32,7 @@ Linux or a Mac, all you need to do is this (note that you don't need to type
 in the `$`s, they just indicate the start of each command):
 
 ```{ignore}
-$ curl -s http://www.rust-lang.org/rustup.sh | sudo sh
+$ curl -s https://raw.githubusercontent.com/rust-lang/rust-www/gh-pages/rustup.sh | sudo sh
 ```
 
 (If you're concerned about `curl | sudo sh`, please keep reading. Disclaimer
@@ -46,7 +46,7 @@ Not every programming language is great for everyone. Just pass an argument to
 the script:
 
 ```{ignore}
-$ curl -s http://www.rust-lang.org/rustup.sh | sudo sh -s -- --uninstall
+$ curl -s https://raw.githubusercontent.com/rust-lang/rust-www/gh-pages/rustup.sh | sudo sh -s -- --uninstall
 ```
 
 If you used the Windows installer, just re-run the `.exe` and it will give you
