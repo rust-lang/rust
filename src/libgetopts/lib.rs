@@ -128,7 +128,7 @@ pub enum Occur {
     Req,
     /// The option could or not occur.
     Optional,
-    /// The option occurs once or multiple times.
+    /// The option occurs zero or more times.
     Multi,
 }
 
