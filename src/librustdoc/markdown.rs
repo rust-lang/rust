@@ -98,7 +98,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
     {css}
     {in_header}
 </head>
-<body>
+<body class="rustdoc">
     <!--[if lte IE 8]>
     <div class="warning">
         This old browser is unsupported and will most likely display funky
