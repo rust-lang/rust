@@ -235,7 +235,7 @@ pub fn print(s: &str) {
     with_task_stdout(|io| io.write(s.as_bytes()))
 }
 
-/// Prints a string as a line. to the stdout of the current process. A literal
+/// Prints a string to the stdout of the current process. A literal
 /// `\n` character is printed to the console after the string.
 pub fn println(s: &str) {
     with_task_stdout(|io| {
