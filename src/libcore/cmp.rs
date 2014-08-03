@@ -100,6 +100,40 @@ pub enum Ordering {
    Greater = 1i,
 }
 
+impl Ordering {
+    /// Reverse the `Ordering`, so that `Less` becomes `Greater` and
+    /// vice versa.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!(Less.reverse(), Greater);
+    /// assert_eq!(Equal.reverse(), Equal);
+    /// assert_eq!(Greater.reverse(), Less);
+    ///
+    ///
+    /// let mut data = &mut [2u, 10, 5, 8];
+    ///
+    /// // sort the array from largest to smallest.
+    /// data.sort_by(|a, b| a.cmp(b).reverse());
+    ///
+    /// assert_eq!(data, &mut [10u, 8, 5, 2]);
+    /// ```
+    #[inline]
+    #[experimental]
+    pub fn reverse(self) -> Ordering {
+        unsafe {
+            // this compiles really nicely (to a single instruction);
+            // an explicit match has a pile of branches and
+            // comparisons.
+            //
+            // NB. it is safe because of the explicit discriminants
+            // given above.
+            ::mem::transmute::<_, Ordering>(-(self as i8))
+        }
+    }
+}
+
 /// Trait for types that form a [total order](
 /// https://en.wikipedia.org/wiki/Total_order).
 ///
