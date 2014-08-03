@@ -22,26 +22,28 @@ use serialize::hex::ToHex;
 /// Write a u32 into a vector, which must be 4 bytes long. The value is written in big-endian
 /// format.
 fn write_u32_be(dst: &mut[u8], input: u32) {
-    use std::mem::to_be32;
-    assert!(dst.len() == 4);
-    unsafe {
-        let x = dst.unsafe_mut_ref(0) as *mut _ as *mut u32;
-        *x = to_be32(input);
-    }
+    dst[0] = (input >> 24) as u8;
+    dst[1] = (input >> 16) as u8;
+    dst[2] = (input >> 8) as u8;
+    dst[3] = input as u8;
+}
+
+/// Read the value of a vector of bytes as a u32 value in big-endian format.
+fn read_u32_be(input: &[u8]) -> u32 {
+    return
+        (input[0] as u32) << 24 |
+        (input[1] as u32) << 16 |
+        (input[2] as u32) << 8 |
+        (input[3] as u32);
 }
 
 /// Read a vector of bytes into a vector of u32s. The values are read in big-endian format.
 fn read_u32v_be(dst: &mut[u32], input: &[u8]) {
-    use std::mem::to_be32;
     assert!(dst.len() * 4 == input.len());
-    unsafe {
-        let mut x = dst.unsafe_mut_ref(0) as *mut _ as *mut u32;
-        let mut y = input.unsafe_ref(0) as *const _ as *const u32;
-        for _ in range(0, dst.len()) {
-            *x = to_be32(*y);
-            x = x.offset(1);
-            y = y.offset(1);
-        }
+    let mut pos = 0u;
+    for chunk in input.chunks(4) {
+        dst[pos] = read_u32_be(chunk);
+        pos += 1;
     }
 }
 
