@@ -1294,7 +1294,7 @@ impl<'a> Item<'a> {
 impl<'a> fmt::Show for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Write the breadcrumb trail header for the top
-        try!(write!(fmt, "\n<h1 class='fqn'>"));
+        try!(write!(fmt, "\n<h1 class='fqn'><div class='in-band'>"));
         match self.item.inner {
             clean::ModuleItem(ref m) => if m.is_crate {
                     try!(write!(fmt, "Crate "));
@@ -1316,7 +1316,7 @@ impl<'a> fmt::Show for Item<'a> {
             let cur = self.cx.current.as_slice();
             let amt = if self.ismodule() { cur.len() - 1 } else { cur.len() };
             for (i, component) in cur.iter().enumerate().take(amt) {
-                try!(write!(fmt, "<a href='{}index.html'>{}</a>::",
+                try!(write!(fmt, "<a href='{}index.html'>{}</a>&#8203;::",
                             "../".repeat(cur.len() - i - 1),
                             component.as_slice()));
             }
@@ -1325,10 +1325,10 @@ impl<'a> fmt::Show for Item<'a> {
                     shortty(self.item), self.item.name.get_ref().as_slice()));
 
         // Write stability level
-        try!(write!(fmt, "{}", Stability(&self.item.stability)));
+        try!(write!(fmt, "&#8203;{}", Stability(&self.item.stability)));
 
         // Links to out-of-band information, i.e. src and stability dashboard
-        try!(write!(fmt, "<span class='out-of-band'>"));
+        try!(write!(fmt, "</div><div class='out-of-band'>"));
 
         // Write stability dashboard link
         match self.item.inner {
@@ -1340,8 +1340,8 @@ impl<'a> fmt::Show for Item<'a> {
 
         try!(write!(fmt,
         r##"<span id='render-detail'>
-            <a id="collapse-all" href="#">[collapse all]</a>
-            <a id="expand-all" href="#">[expand all]</a>
+            <a id="collapse-all" href="#">[-]
+            </a>&nbsp;<a id="expand-all" href="#">[+]</a>
         </span>"##));
 
         // Write `src` tag
@@ -1360,7 +1360,7 @@ impl<'a> fmt::Show for Item<'a> {
             }
         }
 
-        try!(write!(fmt, "</span>"));
+        try!(write!(fmt, "</div>"));
 
         try!(write!(fmt, "</h1>\n"));
 
