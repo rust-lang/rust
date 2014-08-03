@@ -64,6 +64,12 @@
 /nd/
 /rt/
 /rustllvm/
+/src/libunicode/DerivedCoreProperties.txt
+/src/libunicode/EastAsianWidth.txt
+/src/libunicode/HangulSyllableType.txt
+/src/libunicode/PropList.txt
+/src/libunicode/Scripts.txt
+/src/libunicode/UnicodeData.txt
 /stage0/
 /stage1/
 /stage2/
