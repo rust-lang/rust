@@ -39,6 +39,7 @@ r##"<!DOCTYPE html>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="The {krate} library documentation.">
+    <meta name="generator" content="rustdoc">
 
     <title>{title}</title>
 
@@ -47,7 +48,7 @@ r##"<!DOCTYPE html>
     {favicon}
     {in_header}
 </head>
-<body>
+<body class="rustdoc">
     <!--[if lte IE 8]>
     <div class="warning">
         This old browser is unsupported and will most likely display funky
