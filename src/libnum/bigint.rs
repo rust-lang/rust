@@ -1449,8 +1449,8 @@ mod biguint_tests {
 
     #[test]
     fn test_cmp() {
-        let data: Vec<BigUint> = [ &[], &[1], &[2], &[-1], &[0, 1], &[2, 1], &[1, 1, 1]  ]
-            .iter().map(|v| BigUint::from_slice(*v)).collect();
+        let data: [&[_], ..7] = [ &[], &[1], &[2], &[-1], &[0, 1], &[2, 1], &[1, 1, 1]  ];
+        let data: Vec<BigUint> = data.iter().map(|v| BigUint::from_slice(*v)).collect();
         for (i, ni) in data.iter().enumerate() {
             for (j0, nj) in data.slice(i, data.len()).iter().enumerate() {
                 let j = j0 + i;
@@ -2311,7 +2311,7 @@ mod bigint_tests {
 
     #[test]
     fn test_cmp() {
-        let vs = [ &[2 as BigDigit], &[1, 1], &[2, 1], &[1, 1, 1] ];
+        let vs: [&[BigDigit], ..4] = [ &[2 as BigDigit], &[1, 1], &[2, 1], &[1, 1, 1] ];
         let mut nums = Vec::new();
         for s in vs.iter().rev() {
             nums.push(BigInt::from_slice(Minus, *s));

@@ -15,10 +15,11 @@ static CONSTEXPR: *const int = &413 as *const _;
 
 pub fn main() {
     let x: Vec<_> = range(0u, 5).collect();
-    assert_eq!(x.as_slice(), &[0u,1,2,3,4]);
+    let expected: &[uint] = &[0,1,2,3,4];
+    assert_eq!(x.as_slice(), expected);
 
     let x = range(0u, 5).collect::<Vec<_>>();
-    assert_eq!(x.as_slice(), &[0u,1,2,3,4]);
+    assert_eq!(x.as_slice(), expected);
 
     let y: _ = "hello";
     assert_eq!(y.len(), 5);

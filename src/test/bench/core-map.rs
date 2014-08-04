@@ -100,7 +100,8 @@ fn main() {
     let mut rand = Vec::with_capacity(n_keys);
 
     {
-        let mut rng: IsaacRng = SeedableRng::from_seed(&[1, 1, 1, 1, 1, 1, 1]);
+        let seed: &[_] = &[1, 1, 1, 1, 1, 1, 1];
+        let mut rng: IsaacRng = SeedableRng::from_seed(seed);
         let mut set = HashSet::new();
         while set.len() != n_keys {
             let next = rng.gen();

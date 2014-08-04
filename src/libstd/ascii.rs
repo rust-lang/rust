@@ -609,11 +609,12 @@ mod tests {
     #[test]
     fn test_ascii_vec() {
         let test = &[40u8, 32u8, 59u8];
-        assert_eq!(test.to_ascii(), v2ascii!([40, 32, 59]));
-        assert_eq!("( ;".to_ascii(), v2ascii!([40, 32, 59]));
+        let b: &[_] = v2ascii!([40, 32, 59]);
+        assert_eq!(test.to_ascii(), b);
+        assert_eq!("( ;".to_ascii(), b);
         let v = vec![40u8, 32u8, 59u8];
-        assert_eq!(v.as_slice().to_ascii(), v2ascii!([40, 32, 59]));
-        assert_eq!("( ;".to_string().as_slice().to_ascii(), v2ascii!([40, 32, 59]));
+        assert_eq!(v.as_slice().to_ascii(), b);
+        assert_eq!("( ;".to_string().as_slice().to_ascii(), b);
 
         assert_eq!("abCDef&?#".to_ascii().to_lower().into_string(), "abcdef&?#".to_string());
         assert_eq!("abCDef&?#".to_ascii().to_upper().into_string(), "ABCDEF&?#".to_string());
@@ -688,13 +689,12 @@ mod tests {
         assert_eq!((test1).to_ascii_opt(), None);
 
         let v = [40u8, 32u8, 59u8];
-        let v2 = v2ascii!(&[40, 32, 59]);
+        let v2: &[_] = v2ascii!(&[40, 32, 59]);
         assert_eq!(v.to_ascii_opt(), Some(v2));
         let v = [127u8, 128u8, 255u8];
         assert_eq!(v.to_ascii_opt(), None);
 
         let v = "( ;";
-        let v2 = v2ascii!(&[40, 32, 59]);
         assert_eq!(v.to_ascii_opt(), Some(v2));
         assert_eq!("zoä华".to_ascii_opt(), None);
 

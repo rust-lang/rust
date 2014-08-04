@@ -846,7 +846,10 @@ impl<'a, P: GenericPath> Display<'a, P> {
     pub fn as_maybe_owned(&self) -> MaybeOwned<'a> {
         String::from_utf8_lossy(if self.filename {
             match self.path.filename() {
-                None => &[],
+                None => {
+                    let result: &[u8] = &[];
+                    result
+                }
                 Some(v) => v
             }
         } else {
