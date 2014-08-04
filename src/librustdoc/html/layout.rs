@@ -26,7 +26,8 @@ pub struct Page<'a> {
     pub title: &'a str,
     pub ty: &'a str,
     pub root_path: &'a str,
-    pub description: &'a str
+    pub description: &'a str,
+    pub keywords: &'a str
 }
 
 pub fn render<T: fmt::Show, S: fmt::Show>(
@@ -41,6 +42,7 @@ r##"<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
     <meta name="description" content="{description}">
+    <meta name="keywords" content="{keywords}">
 
     <title>{title}</title>
 
@@ -137,6 +139,7 @@ r##"<!DOCTYPE html>
     },
     title     = page.title,
     description = page.description,
+    keywords = page.keywords,
     favicon   = if layout.favicon.len() == 0 {
         "".to_string()
     } else {
