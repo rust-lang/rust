@@ -143,12 +143,10 @@ pub trait AstBuilder {
     fn expr_u8(&self, sp: Span, u: u8) -> Gc<ast::Expr>;
     fn expr_bool(&self, sp: Span, value: bool) -> Gc<ast::Expr>;
 
-    fn expr_vstore(&self, sp: Span, expr: Gc<ast::Expr>, vst: ast::ExprVstore) -> Gc<ast::Expr>;
     fn expr_vec(&self, sp: Span, exprs: Vec<Gc<ast::Expr>> ) -> Gc<ast::Expr>;
     fn expr_vec_ng(&self, sp: Span) -> Gc<ast::Expr>;
     fn expr_vec_slice(&self, sp: Span, exprs: Vec<Gc<ast::Expr>> ) -> Gc<ast::Expr>;
     fn expr_str(&self, sp: Span, s: InternedString) -> Gc<ast::Expr>;
-    fn expr_str_uniq(&self, sp: Span, s: InternedString) -> Gc<ast::Expr>;
 
     fn expr_some(&self, sp: Span, expr: Gc<ast::Expr>) -> Gc<ast::Expr>;
     fn expr_none(&self, sp: Span) -> Gc<ast::Expr>;
@@ -654,9 +652,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_lit(sp, ast::LitBool(value))
     }
 
-    fn expr_vstore(&self, sp: Span, expr: Gc<ast::Expr>, vst: ast::ExprVstore) -> Gc<ast::Expr> {
-        self.expr(sp, ast::ExprVstore(expr, vst))
-    }
     fn expr_vec(&self, sp: Span, exprs: Vec<Gc<ast::Expr>> ) -> Gc<ast::Expr> {
         self.expr(sp, ast::ExprVec(exprs))
     }
@@ -669,15 +664,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                               Vec::new())
     }
     fn expr_vec_slice(&self, sp: Span, exprs: Vec<Gc<ast::Expr>> ) -> Gc<ast::Expr> {
-        self.expr_vstore(sp, self.expr_vec(sp, exprs), ast::ExprVstoreSlice)
+        self.expr_addr_of(sp, self.expr_vec(sp, exprs))
     }
     fn expr_str(&self, sp: Span, s: InternedString) -> Gc<ast::Expr> {
         self.expr_lit(sp, ast::LitStr(s, ast::CookedStr))
     }
-    fn expr_str_uniq(&self, sp: Span, s: InternedString) -> Gc<ast::Expr> {
-        self.expr_vstore(sp, self.expr_str(sp, s), ast::ExprVstoreUniq)
-    }
-
 
     fn expr_cast(&self, sp: Span, expr: Gc<ast::Expr>, ty: P<ast::Ty>) -> Gc<ast::Expr> {
         self.expr(sp, ast::ExprCast(expr, ty))

@@ -77,3 +77,17 @@ pub fn coerce(fcx: &FnCtxt, sp: Span, expected: ty::t, expr: &ast::Expr) {
       }
     }
 }
+
+pub fn coerce_with_fn(fcx: &FnCtxt,
+                      sp: Span,
+                      expected: ty::t,
+                      expr: &ast::Expr,
+                      handle_err: |Span, ty::t, ty::t, &ty::type_err|) {
+    let expr_ty = fcx.expr_ty(expr);
+    match fcx.mk_assignty(expr, expr_ty, expected) {
+      result::Ok(()) => { /* ok */ }
+      result::Err(ref err) => {
+        handle_err(sp, expected, expr_ty, err);
+      }
+    }
+}

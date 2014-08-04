@@ -1137,7 +1137,8 @@ mod test {
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
         let docs = item.attrs.iter().filter(|a| a.name().get() == "doc")
                     .map(|a| a.value_str().unwrap().get().to_string()).collect::<Vec<_>>();
-        assert_eq!(docs.as_slice(), &["/// doc comment".to_string(), "/// line 2".to_string()]);
+        let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
+        assert_eq!(docs.as_slice(), b);
 
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();

@@ -450,6 +450,8 @@ impl Datum<Expr> {
                                name: &str,
                                expr_id: ast::NodeId)
                                -> DatumBlock<'a, Lvalue> {
+        assert!(ty::lltype_is_sized(bcx.tcx(), self.ty),
+                "Trying to convert unsized value to lval");
         self.match_kind(
             |l| DatumBlock::new(bcx, l),
             |r| {
@@ -504,12 +506,28 @@ impl Datum<Lvalue> {
         self.val
     }
 
-    pub fn get_element(&self,
-                       ty: ty::t,
-                       gep: |ValueRef| -> ValueRef)
-                       -> Datum<Lvalue> {
+    // Extracts a component of a compound data structure (e.g., a field from a
+    // struct). Note that if self is an opened, unsized type then the returned
+    // datum may also be unsized _without the size information_. It is the
+    // callers responsibility to package the result in some way to make a valid
+    // datum in that case (e.g., by making a fat pointer or opened pair).
+    pub fn get_element<'a>(&self,
+                           bcx: &'a Block<'a>,
+                           ty: ty::t,
+                           gep: |ValueRef| -> ValueRef)
+                           -> Datum<Lvalue> {
+        let val = match ty::get(self.ty).sty {
+            _ if ty::type_is_sized(bcx.tcx(), self.ty) => gep(self.val),
+            ty::ty_open(_) => {
+                let base = Load(bcx, expr::get_dataptr(bcx, self.val));
+                gep(base)
+            }
+            _ => bcx.tcx().sess.bug(
+                format!("Unexpected unsized type in get_element: {}",
+                        bcx.ty_to_str(self.ty)).as_slice())
+        };
         Datum {
-            val: gep(self.val),
+            val: val,
             kind: Lvalue,
             ty: ty,
         }

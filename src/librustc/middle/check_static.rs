@@ -107,21 +107,19 @@ impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
 
         match e.node {
             ast::ExprField(..) | ast::ExprVec(..) |
-            ast::ExprBlock(..) | ast::ExprTup(..) |
-            ast::ExprVstore(_, ast::ExprVstoreSlice) => {
+            ast::ExprBlock(..) | ast::ExprTup(..)  => {
                 visit::walk_expr(self, e, is_const);
             }
-            ast::ExprVstore(_, ast::ExprVstoreMutSlice) => {
+            ast::ExprAddrOf(ast::MutMutable, _) => {
                 span_err!(self.tcx.sess, e.span, E0020,
                     "static items are not allowed to have mutable slices");
-           },
+            },
             ast::ExprUnary(ast::UnBox, _) => {
                 span_err!(self.tcx.sess, e.span, E0021,
                     "static items are not allowed to have managed pointers");
             }
             ast::ExprBox(..) |
-            ast::ExprUnary(ast::UnUniq, _) |
-            ast::ExprVstore(_, ast::ExprVstoreUniq) => {
+            ast::ExprUnary(ast::UnUniq, _) => {
                 span_err!(self.tcx.sess, e.span, E0022,
                     "static items are not allowed to have custom pointers");
             }

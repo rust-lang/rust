@@ -10,8 +10,8 @@
 
 fn foopy() {}
 
-static f: ||: 'static = foopy; //~ ERROR found extern fn
+static f: ||: 'static = foopy;
 
 fn main () {
-    f();
+    f(); //~ ERROR closure invocation in a static location
 }

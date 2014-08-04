@@ -92,8 +92,6 @@ use core::iter::{range_step, MultiplicativeIterator};
 
 use MutableSeq;
 use vec::Vec;
-#[cfg(not(stage0))]
-use raw::Slice;
 
 pub use core::slice::{Chunks, Slice, ImmutableSlice, ImmutablePartialEqSlice};
 pub use core::slice::{ImmutableOrdSlice, MutableSlice, Items, MutItems};
@@ -284,64 +282,6 @@ pub trait CloneableVector<T> {
 
 impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     /// Returns a copy of `v`.
-    #[cfg(not(stage0))]
-    fn to_owned(&self) -> ~[T] {
-        use num::CheckedMul;
-        use option::Expect;
-
-        let len = self.len();
-
-        if len == 0 {
-            unsafe {
-                let slice: Slice<T> = Slice{data: 0 as *T, len: 0};
-                mem::transmute(slice)
-            }
-        } else {
-            let unit_size = mem::size_of::<T>();
-            let data_size = if unit_size == 0 {
-                len
-            } else {
-                let data_size = len.checked_mul(&unit_size);
-                data_size.expect("overflow in from_iter()")
-            };
-
-            unsafe {
-                // this should pass the real required alignment
-                let ret = allocate(data_size, 8) as *mut T;
-
-                if unit_size > 0 {
-                    // Be careful with the following loop. We want it to be optimized
-                    // to a memcpy (or something similarly fast) when T is Copy. LLVM
-                    // is easily confused, so any extra operations during the loop can
-                    // prevent this optimization.
-                    let mut i = 0;
-                    let p = &mut (*ret) as *mut _ as *mut T;
-                    try_finally(
-                        &mut i, (),
-                        |i, ()| while *i < len {
-                            mem::move_val_init(
-                                &mut(*p.offset(*i as int)),
-                                self.unsafe_ref(*i).clone());
-                            *i += 1;
-                        },
-                        |i| if *i < len {
-                            // we must be failing, clean up after ourselves
-                            for j in range(0, *i as int) {
-                                ptr::read(&*p.offset(j));
-                            }
-                            // FIXME: #13994 (should pass align and size here)
-                            deallocate(ret as *mut u8, 0, 8);
-                        });
-                }
-                let slice: Slice<T> = Slice{data: ret as *T, len: len};
-                mem::transmute(slice)
-            }
-        }
-    }
-
-    /// Returns a copy of `v`.
-    // NOTE: remove after snapshot
-    #[cfg(stage0)]
     #[inline]
     fn to_vec(&self) -> Vec<T> { Vec::from_slice(*self) }
 

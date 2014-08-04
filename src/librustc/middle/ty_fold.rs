@@ -360,8 +360,11 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_ptr(ref tm) => {
             ty::ty_ptr(tm.fold_with(this))
         }
-        ty::ty_vec(ref tm, sz) => {
-            ty::ty_vec(tm.fold_with(this), sz)
+        ty::ty_vec(typ, sz) => {
+            ty::ty_vec(typ.fold_with(this), sz)
+        }
+        ty::ty_open(typ) => {
+            ty::ty_open(typ.fold_with(this))
         }
         ty::ty_enum(tid, ref substs) => {
             ty::ty_enum(tid, substs.fold_with(this))
@@ -420,11 +423,13 @@ pub fn super_fold_autoref<T:TypeFolder>(this: &mut T,
                                         -> ty::AutoRef
 {
     match *autoref {
-        ty::AutoPtr(r, m) => ty::AutoPtr(r.fold_with(this), m),
-        ty::AutoBorrowVec(r, m) => ty::AutoBorrowVec(r.fold_with(this), m),
-        ty::AutoBorrowVecRef(r, m) => ty::AutoBorrowVecRef(r.fold_with(this), m),
+        ty::AutoPtr(r, m, None) => ty::AutoPtr(this.fold_region(r), m, None),
+        ty::AutoPtr(r, m, Some(ref a)) => {
+            ty::AutoPtr(this.fold_region(r), m, Some(box super_fold_autoref(this, a.clone())))
+        }
         ty::AutoUnsafe(m) => ty::AutoUnsafe(m),
-        ty::AutoBorrowObj(r, m) => ty::AutoBorrowObj(r.fold_with(this), m),
+        ty::AutoUnsize(ref k) => ty::AutoUnsize(k.clone()),
+        ty::AutoUnsizeUniq(ref k) => ty::AutoUnsizeUniq(k.clone()),
     }
 }
 

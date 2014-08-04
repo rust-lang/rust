@@ -1411,8 +1411,8 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
             infer::AutoBorrow(span) => {
                 self.tcx.sess.span_note(
                     span,
-                    "...so that automatically reference is valid \
-                     at the time of borrow");
+                    "...so that reference is valid \
+                     at the time of implicit borrow");
             }
             infer::BindingTypeIsNotValidAtDecl(span) => {
                 self.tcx.sess.span_note(

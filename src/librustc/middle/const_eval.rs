@@ -206,14 +206,6 @@ impl<'a> ConstEvalVisitor<'a> {
             ast::ExprVec(ref es) =>
                 join_all(es.iter().map(|e| self.classify(&**e))),
 
-            ast::ExprVstore(ref e, vstore) => {
-                match vstore {
-                    ast::ExprVstoreSlice => self.classify(&**e),
-                    ast::ExprVstoreUniq |
-                    ast::ExprVstoreMutSlice => non_const
-                }
-            }
-
             ast::ExprStruct(_, ref fs, None) => {
                 let cs = fs.iter().map(|f| self.classify(&*f.expr));
                 join_all(cs)
@@ -554,8 +546,6 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           }
       }
       ExprLit(ref lit) => Ok(lit_to_const(&**lit)),
-      // If we have a vstore, just keep going; it has to be a string
-      ExprVstore(ref e, _) => eval_const_expr_partial(tcx, &**e),
       ExprParen(ref e)     => eval_const_expr_partial(tcx, &**e),
       ExprBlock(ref block) => {
         match block.expr {

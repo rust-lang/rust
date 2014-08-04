@@ -98,18 +98,14 @@ pub fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
         ty::ty_box(typ) if !ty::type_needs_drop(tcx, typ) =>
             ty::mk_box(tcx, ty::mk_i8()),
 
-        ty::ty_uniq(typ) if !ty::type_needs_drop(tcx, typ) => {
-            match ty::get(typ).sty {
-                ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..) => t,
-                _ => {
-                    let llty = sizing_type_of(ccx, typ);
-                    // `Box<ZeroSizeType>` does not allocate.
-                    if llsize_of_alloc(ccx, llty) == 0 {
-                        ty::mk_i8()
-                    } else {
-                        ty::mk_uniq(tcx, ty::mk_i8())
-                    }
-                }
+        ty::ty_uniq(typ) if !ty::type_needs_drop(tcx, typ)
+                         && ty::type_is_sized(tcx, typ) => {
+            let llty = sizing_type_of(ccx, typ);
+            // `Box<ZeroSizeType>` does not allocate.
+            if llsize_of_alloc(ccx, llty) == 0 {
+                ty::mk_i8()
+            } else {
+                ty::mk_uniq(tcx, ty::mk_i8())
             }
         }
         _ => t
@@ -276,8 +272,8 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
         }
         ty::ty_uniq(content_ty) => {
             match ty::get(content_ty).sty {
-                ty::ty_vec(mt, None) => {
-                    tvec::make_drop_glue_unboxed(bcx, v0, mt.ty)
+                ty::ty_vec(ty, None) => {
+                    tvec::make_drop_glue_unboxed(bcx, v0, ty)
                 }
                 ty::ty_str => {
                     let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
@@ -297,7 +293,13 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                     })
                 }
                 _ => {
-                    let llbox = Load(bcx, v0);
+                    let llval = if ty::type_is_sized(bcx.tcx(), content_ty) {
+                        v0
+                    } else {
+                        // The Box is a fat pointer
+                        GEPi(bcx, v0, [0, abi::trt_field_box])
+                    };
+                    let llbox = Load(bcx, llval);
                     let not_null = IsNotNull(bcx, llbox);
                     with_cond(bcx, not_null, |bcx| {
                         let bcx = drop_ty(bcx, llbox, content_ty);
