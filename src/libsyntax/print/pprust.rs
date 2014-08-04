@@ -159,6 +159,7 @@ impl<'a> State<'a> {
 }
 
 pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
+    use std::raw::TraitObject;
     let mut s = rust_printer(box MemWriter::new());
     f(&mut s).unwrap();
     eof(&mut s.s).unwrap();
@@ -166,7 +167,8 @@ pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
         // FIXME(pcwalton): A nasty function to extract the string from an `io::Writer`
         // that we "know" to be a `MemWriter` that works around the lack of checked
         // downcasts.
-        let (_, wr): (uint, Box<MemWriter>) = mem::transmute_copy(&s.s.out);
+        let obj: TraitObject = mem::transmute_copy(&s.s.out);
+        let wr: Box<MemWriter> = mem::transmute(obj.data);
         let result =
             String::from_utf8(Vec::from_slice(wr.get_ref().as_slice())).unwrap();
         mem::forget(wr);
@@ -1321,16 +1323,6 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_expr_vstore(&mut self, t: ast::ExprVstore) -> IoResult<()> {
-        match t {
-            ast::ExprVstoreUniq => word(&mut self.s, "box "),
-            ast::ExprVstoreSlice => word(&mut self.s, "&"),
-            ast::ExprVstoreMutSlice => {
-                try!(word(&mut self.s, "&"));
-                word(&mut self.s, "mut")
-            }
-        }
-    }
 
     fn print_call_post(&mut self, args: &[Gc<ast::Expr>]) -> IoResult<()> {
         try!(self.popen());
@@ -1355,10 +1347,6 @@ impl<'a> State<'a> {
         try!(self.ibox(indent_unit));
         try!(self.ann.pre(self, NodeExpr(expr)));
         match expr.node {
-            ast::ExprVstore(ref e, v) => {
-                try!(self.print_expr_vstore(v));
-                try!(self.print_expr(&**e));
-            },
             ast::ExprBox(ref p, ref e) => {
                 try!(word(&mut self.s, "box"));
                 try!(word(&mut self.s, "("));

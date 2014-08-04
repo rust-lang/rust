@@ -49,7 +49,7 @@
 // implementations below. If pointer arithmetic is done through integers the
 // optimizations start to break down.
 extern "rust-intrinsic" {
-    fn offset<T>(dst: *const T, offset: int) -> *const T;
+    fn offset<type T>(dst: *const T, offset: int) -> *const T;
 }
 
 #[no_mangle]

@@ -72,13 +72,15 @@ impl Clone for HomeHandle {
 }
 
 pub fn local_id() -> uint {
+    use std::raw::TraitObject;
+
     let mut io = match LocalIo::borrow() {
         Some(io) => io, None => return 0,
     };
     let io = io.get();
     unsafe {
-        let (_vtable, ptr): (uint, uint) = mem::transmute(io);
-        return ptr;
+        let obj: TraitObject = mem::transmute(io);
+        return mem::transmute(obj.data);
     }
 }
 

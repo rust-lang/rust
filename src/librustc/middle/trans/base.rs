@@ -195,16 +195,6 @@ pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
                                                llvm::NoReturnAttribute as uint64_t)
             }
         }
-        // `~` pointer return values never alias because ownership is transferred
-        ty::ty_uniq(t)
-            => match ty::get(t).sty {
-                ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..) => {}
-                _ => unsafe {
-                    llvm::LLVMAddReturnAttribute(llfn,
-                                                 lib::llvm::NoAliasAttribute as c_uint,
-                                                 lib::llvm::NoReturnAttribute as uint64_t);
-                }
-            },
         _ => {}
     }
 
@@ -965,14 +955,23 @@ pub fn invoke<'a>(
               llfn: ValueRef,
               llargs: Vec<ValueRef> ,
               fn_ty: ty::t,
-              call_info: Option<NodeInfo>)
+              call_info: Option<NodeInfo>,
+              // FIXME(15064) is_lang_item is a horrible hack, please remove it
+              // at the soonest opportunity.
+              is_lang_item: bool)
               -> (ValueRef, &'a Block<'a>) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable.get() {
         return (C_null(Type::i8(bcx.ccx())), bcx);
     }
 
-    let attributes = get_fn_llvm_attributes(bcx.ccx(), fn_ty);
+    // FIXME(15064) Lang item methods may (in the reflect case) not have proper
+    // types, so doing an attribute lookup will fail.
+    let attributes = if is_lang_item {
+        Vec::new()
+    } else {
+        get_fn_llvm_attributes(bcx.ccx(), fn_ty)
+    };
 
     match bcx.opt_node_id {
         None => {
@@ -2311,9 +2310,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
         match ty::get(ret_ty).sty {
             // `~` pointer return values never alias because ownership
             // is transferred
-            ty::ty_uniq(it) if match ty::get(it).sty {
-                ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
-            } => {}
+            ty::ty_uniq(it) if !ty::type_is_sized(ccx.tcx(), it) => {}
             ty::ty_uniq(_) => {
                 attrs.ret(llvm::NoAliasAttribute);
             }
@@ -2324,9 +2321,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
         match ty::get(ret_ty).sty {
             // These are not really pointers but pairs, (pointer, len)
             ty::ty_uniq(it) |
-            ty::ty_rptr(_, ty::mt { ty: it, .. }) if match ty::get(it).sty {
-                ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
-            } => {}
+            ty::ty_rptr(_, ty::mt { ty: it, .. }) if !ty::type_is_sized(ccx.tcx(), it) => {}
             ty::ty_uniq(inner) | ty::ty_rptr(_, ty::mt { ty: inner, .. }) => {
                 let llret_sz = llsize_of_real(ccx, type_of::type_of(ccx, inner));
                 attrs.ret(llvm::DereferenceableAttribute(llret_sz));
@@ -2593,7 +2588,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                     // We need the translated value here, because for enums the
                     // LLVM type is not fully determined by the Rust type.
-                    let (v, inlineable) = consts::const_expr(ccx, &**expr, is_local);
+                    let (v, inlineable, _) = consts::const_expr(ccx, &**expr, is_local);
                     ccx.const_values.borrow_mut().insert(id, v);
                     let mut inlineable = inlineable;
 

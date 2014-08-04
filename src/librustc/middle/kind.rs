@@ -405,14 +405,27 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                            "repeated element will be copied");
             }
         }
+        ExprAssign(ref lhs, _) |
+        ExprAssignOp(_, ref lhs, _) => {
+            let lhs_ty = ty::expr_ty(cx.tcx, &**lhs);
+            if !ty::type_is_sized(cx.tcx, lhs_ty) {
+                cx.tcx.sess.span_err(lhs.span, "dynamically sized type on lhs of assignment");
+            }
+        }
+        ExprStruct(..) => {
+            let e_ty = ty::expr_ty(cx.tcx, e);
+            if !ty::type_is_sized(cx.tcx, e_ty) {
+                cx.tcx.sess.span_err(e.span, "trying to initialise a dynamically sized struct");
+            }
+        }
         _ => {}
     }
 
     // Search for auto-adjustments to find trait coercions.
     match cx.tcx.adjustments.borrow().find(&e.id) {
         Some(adjustment) => {
-            match *adjustment {
-                ty::AutoObject(..) => {
+            match adjustment {
+                adj if ty::adjust_is_object(adj) => {
                     let source_ty = ty::expr_ty(cx.tcx, e);
                     let target_ty = ty::expr_ty_adjusted(cx.tcx, e);
                     let method_call = MethodCall {
@@ -425,8 +438,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                                      e.span,
                                      method_call);
                 }
-                ty::AutoAddEnv(..) |
-                ty::AutoDerefRef(..) => {}
+                _ => {}
             }
         }
         None => {}

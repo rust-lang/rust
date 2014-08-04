@@ -27,7 +27,7 @@ impl<'a> GetRef<'a> for Box<'a> {
 
 impl<'a> Box<'a> {
     fn or<'b,G:GetRef<'b>>(&self, g2: G) -> &'a int {
-        g2.get() //~ ERROR lifetime mismatch
+        g2.get() //~ ERROR cannot infer an appropriate lifetime for automatic coercion due to
     }
 }
 

@@ -402,7 +402,7 @@ impl TypeMap {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(inner_type_id.as_slice());
             },
-            ty::ty_vec(ty::mt { ty: inner_type, .. }, optional_length) => {
+            ty::ty_vec(inner_type, optional_length) => {
                 match optional_length {
                     Some(len) => {
                         unique_type_id.push_str(format!("[{}]", len).as_slice());
@@ -592,18 +592,6 @@ impl TypeMap {
                                                .as_slice(),
                                            variant_name);
         let interner_key = self.unique_id_interner.intern(Rc::new(enum_variant_type_id));
-        UniqueTypeId(interner_key)
-    }
-
-    fn get_unique_type_id_of_heap_vec_box(&mut self,
-                                          cx: &CrateContext,
-                                          element_type: ty::t)
-                                       -> UniqueTypeId {
-        let element_type_id = self.get_unique_type_id_of_type(cx, element_type);
-        let heap_vec_box_type_id = format!("{{HEAP_VEC_BOX<{}>}}",
-                                           self.get_unique_type_id_as_string(element_type_id)
-                                               .as_slice());
-        let interner_key = self.unique_id_interner.intern(Rc::new(heap_vec_box_type_id));
         UniqueTypeId(interner_key)
     }
 
@@ -2811,25 +2799,12 @@ fn subroutine_type_metadata(cx: &CrateContext,
 }
 
 fn trait_pointer_metadata(cx: &CrateContext,
-                          // trait_pointer_type must be the type of the fat
-                          // pointer to the concrete trait object
-                          trait_pointer_type: ty::t,
+                          trait_object_type: ty::t,
                           unique_type_id: UniqueTypeId)
                        -> DIType {
     // The implementation provided here is a stub. It makes sure that the trait
     // type is assigned the correct name, size, namespace, and source location.
     // But it does not describe the trait's methods.
-
-    let trait_object_type = match ty::get(trait_pointer_type).sty {
-        ty::ty_uniq(pointee_type) => pointee_type,
-        ty::ty_rptr(_, ty::mt { ty, .. }) => ty,
-        _ => {
-            let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_pointer_type);
-            cx.sess().bug(format!("debuginfo: Unexpected trait-pointer type in \
-                                   trait_pointer_metadata(): {}",
-                                   pp_type_name.as_slice()).as_slice());
-        }
-    };
 
     let def_id = match ty::get(trait_object_type).sty {
         ty::ty_trait(box ty::TyTrait { def_id, .. }) => def_id,
@@ -2842,11 +2817,11 @@ fn trait_pointer_metadata(cx: &CrateContext,
     };
 
     let trait_pointer_type_name =
-        compute_debuginfo_type_name(cx, trait_pointer_type, false);
+        compute_debuginfo_type_name(cx, trait_object_type, false);
 
     let (containing_scope, _) = get_namespace_and_span_for_item(cx, def_id);
 
-    let trait_pointer_llvm_type = type_of::type_of(cx, trait_pointer_type);
+    let trait_llvm_type = type_of::type_of(cx, trait_object_type);
 
     composite_type_metadata(cx,
                             trait_pointer_llvm_type,
@@ -2914,29 +2889,33 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_box(pointee_type) => {
             at_box_metadata(cx, t, pointee_type, unique_type_id)
         }
-        ty::ty_vec(ref mt, Some(len)) => {
-            fixed_vec_metadata(cx, unique_type_id, mt.ty, len, usage_site_span)
+        ty::ty_vec(typ, Some(len)) => {
+            fixed_vec_metadata(cx, unique_type_id, typ, len, usage_site_span)
         }
-        ty::ty_uniq(pointee_type) => {
-            match ty::get(pointee_type).sty {
-                ty::ty_vec(ref mt, None) => {
-                    let vec_metadata = vec_slice_metadata(cx, t, mt.ty, usage_site_span);
-                    pointer_type_metadata(cx, t, vec_metadata)
+        // FIXME Can we do better than this for unsized vec/str fields?
+        ty::ty_vec(typ, None) => fixed_vec_metadata(cx, unique_type_id, typ, 0, usage_site_span),
+        ty::ty_str => fixed_vec_metadata(cx, unique_type_id, ty::mk_i8(), 0, usage_site_span),
+        ty::ty_trait(..) => {
+            MetadataCreationResult::new(
+                        trait_pointer_metadata(cx, t, unique_type_id),
+            false)
+        }
+        ty::ty_uniq(ty) | ty::ty_ptr(ty::mt{ty, ..}) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
+            match ty::get(ty).sty {
+                ty::ty_vec(typ, None) => {
+                    vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
                 }
                 ty::ty_str => {
-                    let i8_t = ty::mk_i8();
-                    let vec_metadata = vec_slice_metadata(cx, t, i8_t, usage_site_span);
-                    pointer_type_metadata(cx, t, vec_metadata)
+                    vec_slice_metadata(cx, t, ty::mk_u8(), unique_type_id, usage_site_span)
                 }
                 ty::ty_trait(..) => {
                     MetadataCreationResult::new(
-                        trait_pointer_metadata(cx, t, unique_type_id),
+                        trait_pointer_metadata(cx, ty, unique_type_id),
                         false)
                 }
                 _ => {
-                    let pointee_metadata = type_metadata(cx,
-                                                         pointee_type,
-                                                         usage_site_span);
+                    let pointee_metadata = type_metadata(cx, ty, usage_site_span);
+
                     match debug_context(cx).type_map
                                            .borrow()
                                            .find_metadata_for_unique_id(unique_type_id) {
@@ -2946,33 +2925,6 @@ fn type_metadata(cx: &CrateContext,
 
                     MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee_metadata),
                                                 false)
-                }
-            }
-        }
-        ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {
-            match ty::get(mt.ty).sty {
-                ty::ty_vec(ref mt, None) => {
-                    vec_slice_metadata(cx, t, mt.ty, unique_type_id, usage_site_span)
-                }
-                ty::ty_str => {
-                    vec_slice_metadata(cx, t, ty::mk_u8(), unique_type_id, usage_site_span)
-                }
-                ty::ty_trait(..) => {
-                    MetadataCreationResult::new(
-                        trait_pointer_metadata(cx, t, unique_type_id),
-                        false)
-                }
-                _ => {
-                    let pointee = type_metadata(cx, mt.ty, usage_site_span);
-
-                    match debug_context(cx).type_map
-                                           .borrow()
-                                           .find_metadata_for_unique_id(unique_type_id) {
-                        Some(metadata) => return metadata,
-                        None => { /* proceed normally */ }
-                    };
-
-                    MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee), false)
                 }
             }
         }
@@ -3471,7 +3423,6 @@ fn populate_scope_map(cx: &CrateContext,
             ast::ExprAgain(_) |
             ast::ExprPath(_)  => {}
 
-            ast::ExprVstore(ref sub_exp, _)   |
             ast::ExprCast(ref sub_exp, _)     |
             ast::ExprAddrOf(_, ref sub_exp)  |
             ast::ExprField(ref sub_exp, _, _) |

@@ -129,9 +129,22 @@ impl<'f> Combine for Sub<'f> {
                 if_ok!(self.get_ref().var_sub_var(a_id, b_id));
                 Ok(a)
             }
+            // The vec/str check here and below is so that we don't unify
+            // T with [T], this is necessary so we reflect subtyping of references
+            // (&T does not unify with &[T]) where that in turn is to reflect
+            // the historical non-typedness of [T].
+            (&ty::ty_infer(TyVar(_)), &ty::ty_str) |
+            (&ty::ty_infer(TyVar(_)), &ty::ty_vec(_, None)) => {
+                Err(ty::terr_sorts(expected_found(self, a, b)))
+            }
             (&ty::ty_infer(TyVar(a_id)), _) => {
                 if_ok!(self.get_ref().var_sub_t(a_id, b));
                 Ok(a)
+            }
+
+            (&ty::ty_str, &ty::ty_infer(TyVar(_))) |
+            (&ty::ty_vec(_, None), &ty::ty_infer(TyVar(_))) => {
+                Err(ty::terr_sorts(expected_found(self, a, b)))
             }
             (_, &ty::ty_infer(TyVar(b_id))) => {
                 if_ok!(self.get_ref().t_sub_var(a, b_id));

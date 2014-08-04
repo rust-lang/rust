@@ -225,7 +225,6 @@ mod svh_visitor {
         SawExprBreak(Option<token::InternedString>),
         SawExprAgain(Option<token::InternedString>),
 
-        SawExprVstore,
         SawExprBox,
         SawExprVec,
         SawExprCall,
@@ -257,7 +256,6 @@ mod svh_visitor {
 
     fn saw_expr<'a>(node: &'a Expr_) -> SawExprComponent<'a> {
         match *node {
-            ExprVstore(..)           => SawExprVstore,
             ExprBox(..)              => SawExprBox,
             ExprVec(..)              => SawExprVec,
             ExprCall(..)             => SawExprCall,

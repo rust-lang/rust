@@ -529,10 +529,10 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
             check_ptr_to_unsized(this, a, b, a_mt.ty, b_mt.ty, ty::mk_rptr(tcx, r, mt))
       }
 
-      (&ty::ty_vec(ref a_mt, sz_a), &ty::ty_vec(ref b_mt, sz_b)) => {
-        this.mts(a_mt, b_mt).and_then(|mt| {
+      (&ty::ty_vec(a_t, sz_a), &ty::ty_vec(b_t, sz_b)) => {
+        this.tys(a_t, b_t).and_then(|t| {
             if sz_a == sz_b {
-                Ok(ty::mk_vec(tcx, mt, sz_a))
+                Ok(ty::mk_vec(tcx, t, sz_a))
             } else {
                 Err(ty::terr_sorts(expected_found(this, a, b)))
             }

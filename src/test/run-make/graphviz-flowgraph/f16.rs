@@ -16,11 +16,11 @@ pub fn expr_continue_label_16() {
         'inner: loop {
             if x == 1i {
                 continue 'outer;
-                "unreachable"
+                "unreachable";
             }
             if y >= 1i {
                 break;
-                "unreachable"
+                "unreachable";
             }
             y -= 1i;
         }

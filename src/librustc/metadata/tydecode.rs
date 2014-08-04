@@ -377,9 +377,9 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         return ty::mk_rptr(st.tcx, r, mt);
       }
       'V' => {
-        let mt = parse_mt(st, |x,y| conv(x,y));
+        let t = parse_ty(st, |x,y| conv(x,y));
         let sz = parse_size(st);
-        return ty::mk_vec(st.tcx, mt, sz);
+        return ty::mk_vec(st.tcx, t, sz);
       }
       'v' => {
         return ty::mk_str(st.tcx);

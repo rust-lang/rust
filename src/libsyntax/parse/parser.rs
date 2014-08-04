@@ -27,9 +27,8 @@ use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
 use ast::{ExprLit, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary, ExprUnboxedFn};
-use ast::{ExprVec, ExprVstore, ExprVstoreSlice};
-use ast::{ExprVstoreMutSlice, ExprWhile, ExprForLoop, Field, FnDecl};
-use ast::{ExprVstoreUniq, Once, Many};
+use ast::{ExprVec, ExprWhile, ExprForLoop, Field, FnDecl};
+use ast::{Once, Many};
 use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
 use ast::{FnOnceUnboxedClosureKind};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
@@ -1428,13 +1427,16 @@ impl<'a> Parser<'a> {
         } else if self.token == token::TILDE {
             // OWNED POINTER
             self.bump();
-            let last_span = self.last_span;
+            let span = self.last_span;
             match self.token {
-                token::LBRACKET =>
-                    self.obsolete(last_span, ObsoleteOwnedVector),
-                _ => self.obsolete(last_span, ObsoleteOwnedType),
-            };
-            TyUniq(self.parse_ty(true))
+                token::IDENT(ref ident, _)
+                        if "str" == token::get_ident(*ident).get() => {
+                    // This is OK (for now).
+                }
+                token::LBRACKET => {}   // Also OK.
+                _ => self.obsolete(span, ObsoleteOwnedType)
+            }
+            TyUniq(self.parse_ty(false))
         } else if self.token == token::BINOP(token::STAR) {
             // STAR POINTER (bare pointer?)
             self.bump();
@@ -2549,16 +2551,7 @@ impl<'a> Parser<'a> {
             let m = self.parse_mutability();
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
-            // HACK: turn &[...] into a &-vec
-            ex = match e.node {
-              ExprVec(..) if m == MutImmutable => {
-                ExprVstore(e, ExprVstoreSlice)
-              }
-              ExprVec(..) if m == MutMutable => {
-                ExprVstore(e, ExprVstoreMutSlice)
-              }
-              _ => ExprAddrOf(m, e)
-            };
+            ex = ExprAddrOf(m, e);
           }
           token::AT => {
             self.bump();
@@ -2570,25 +2563,18 @@ impl<'a> Parser<'a> {
           }
           token::TILDE => {
             self.bump();
+            let span = self.last_span;
+            match self.token {
+                token::LIT_STR(_) => {
+                    // This is OK (for now).
+                }
+                token::LBRACKET => {}   // Also OK.
+                _ => self.obsolete(span, ObsoleteOwnedExpr)
+            }
 
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
-            // HACK: turn ~[...] into a ~-vec
-            let last_span = self.last_span;
-            ex = match e.node {
-              ExprVec(..) | ExprRepeat(..) => {
-                  self.obsolete(last_span, ObsoleteOwnedVector);
-                  ExprVstore(e, ExprVstoreUniq)
-              }
-              ExprLit(lit) if lit_is_str(lit) => {
-                  self.obsolete(last_span, ObsoleteOwnedExpr);
-                  ExprVstore(e, ExprVstoreUniq)
-              }
-              _ => {
-                  self.obsolete(last_span, ObsoleteOwnedExpr);
-                  self.mk_unary(UnUniq, e)
-              }
-            };
+            ex = self.mk_unary(UnUniq, e);
           }
           token::IDENT(_, _) => {
               if self.is_keyword(keywords::Box) {
@@ -2607,24 +2593,10 @@ impl<'a> Parser<'a> {
                     }
                 }
 
-                // Otherwise, we use the unique pointer default.
-                let subexpression = self.parse_prefix_expr();
-                hi = subexpression.span.hi;
-                // HACK: turn `box [...]` into a boxed-vec
-                ex = match subexpression.node {
-                    ExprVec(..) | ExprRepeat(..) => {
-                        let last_span = self.last_span;
-                        self.obsolete(last_span, ObsoleteOwnedVector);
-                        ExprVstore(subexpression, ExprVstoreUniq)
-                    }
-                    ExprLit(lit) if lit_is_str(lit) => {
-                        ExprVstore(subexpression, ExprVstoreUniq)
-                    }
-                    _ => self.mk_unary(UnUniq, subexpression)
-                };
-              } else {
-                return self.parse_dot_or_call_expr()
-              }
+            // Otherwise, we use the unique pointer default.
+            let subexpression = self.parse_prefix_expr();
+            hi = subexpression.span.hi;
+            ex = self.mk_unary(UnUniq, subexpression);
           }
           _ => return self.parse_dot_or_call_expr()
         }

@@ -302,7 +302,7 @@ extern {}
 /// A wrapper for a nullable pointer. Don't use this except for interacting
 /// with libc. Basically Option, but without the dependence on libstd.
 // If/when libprim happens, this can be removed in favor of that
-pub enum Nullable<T> {
+pub enum Nullable<type T> {
     Null,
     NotNull(T)
 }

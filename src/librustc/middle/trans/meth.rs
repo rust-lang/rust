@@ -666,6 +666,26 @@ fn emit_vtable_methods(bcx: &Block,
     }).collect()
 }
 
+pub fn vtable_ptr<'a>(bcx: &'a Block<'a>,
+                      id: ast::NodeId,
+                      self_ty: ty::t) -> ValueRef {
+    let ccx = bcx.ccx();
+    let origins = {
+        let vtable_map = ccx.tcx.vtable_map.borrow();
+        // This trait cast might be because of implicit coercion
+        let adjs = ccx.tcx.adjustments.borrow();
+        let adjust = adjs.find(&id);
+        let method_call = if adjust.is_some() && ty::adjust_is_object(adjust.unwrap()) {
+            MethodCall::autoobject(id)
+        } else {
+            MethodCall::expr(id)
+        };
+        let vres = vtable_map.get(&method_call).get_self().unwrap();
+        resolve_param_vtables_under_param_substs(ccx.tcx(), bcx.fcx.param_substs, vres)
+    };
+    get_vtable(bcx, self_ty, origins)
+}
+
 pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
                             datum: Datum<Expr>,
                             id: ast::NodeId,
@@ -688,27 +708,16 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
         SaveIn(dest) => dest
     };
 
-    let ccx = bcx.ccx();
     let v_ty = datum.ty;
-    let llbox_ty = type_of(bcx.ccx(), datum.ty);
+    let llbox_ty = type_of(bcx.ccx(), v_ty);
 
     // Store the pointer into the first half of pair.
-    let mut llboxdest = GEPi(bcx, lldest, [0u, abi::trt_field_box]);
-    llboxdest = PointerCast(bcx, llboxdest, llbox_ty.ptr_to());
+    let llboxdest = GEPi(bcx, lldest, [0u, abi::trt_field_box]);
+    let llboxdest = PointerCast(bcx, llboxdest, llbox_ty.ptr_to());
     bcx = datum.store_to(bcx, llboxdest);
 
     // Store the vtable into the second half of pair.
-    let origins = {
-        let vtable_map = ccx.tcx.vtable_map.borrow();
-        // This trait cast might be because of implicit coercion
-        let method_call = match ccx.tcx.adjustments.borrow().find(&id) {
-            Some(&ty::AutoObject(..)) => MethodCall::autoobject(id),
-            _ => MethodCall::expr(id)
-        };
-        let vres = vtable_map.get(&method_call).get_self().unwrap();
-        resolve_param_vtables_under_param_substs(ccx.tcx(), bcx.fcx.param_substs, vres)
-    };
-    let vtable = get_vtable(bcx, v_ty, origins);
+    let vtable = vtable_ptr(bcx, id, v_ty);
     let llvtabledest = GEPi(bcx, lldest, [0u, abi::trt_field_vtable]);
     let llvtabledest = PointerCast(bcx, llvtabledest, val_ty(vtable).ptr_to());
     Store(bcx, vtable, llvtabledest);

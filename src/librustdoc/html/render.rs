@@ -259,7 +259,8 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
 
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
-    match krate.module.as_ref().map(|m| m.doc_list().unwrap_or(&[])) {
+    let default: &[_] = &[];
+    match krate.module.as_ref().map(|m| m.doc_list().unwrap_or(default)) {
         Some(attrs) => {
             for attr in attrs.iter() {
                 match *attr {
