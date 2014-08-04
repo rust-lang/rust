@@ -305,7 +305,8 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                         },
                         _ => None
                     },
-                    ast_map::NodeMethod(..) => {
+                    ast_map::NodeImplItem(..) |
+                    ast_map::NodeTraitItem(..) => {
                         Some(FreeRegionsFromSameFn::new(fr1, fr2, scope_id))
                     },
                     _ => None
@@ -699,9 +700,17 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                         _ => None
                     }
                 }
-                ast_map::NodeMethod(ref m) => {
-                    Some((m.pe_fn_decl(), m.pe_generics(), m.pe_fn_style(),
-                          m.pe_ident(), Some(m.pe_explicit_self().node), m.span))
+                ast_map::NodeImplItem(ref item) => {
+                    match **item {
+                        ast::MethodImplItem(ref m) => {
+                            Some((m.pe_fn_decl(),
+                                  m.pe_generics(),
+                                  m.pe_fn_style(),
+                                  m.pe_ident(),
+                                  Some(m.pe_explicit_self().node),
+                                  m.span))
+                        }
+                    }
                 },
                 _ => None
             },
@@ -1454,10 +1463,14 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
                 },
                 _ => None
             },
-            ast_map::NodeMethod(m) => {
-                taken.push_all(m.pe_generics().lifetimes.as_slice());
-                Some(m.id)
-            },
+            ast_map::NodeImplItem(ii) => {
+                match *ii {
+                    ast::MethodImplItem(m) => {
+                        taken.push_all(m.pe_generics().lifetimes.as_slice());
+                        Some(m.id)
+                    }
+                }
+            }
             _ => None
         },
         None => None

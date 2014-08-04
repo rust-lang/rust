@@ -35,7 +35,6 @@ use util::common::indenter;
 use util::ppaux::Repr;
 
 use std::c_str::ToCStr;
-use std::gc::Gc;
 use syntax::abi::{Rust, RustCall};
 use syntax::parse::token;
 use syntax::{ast, ast_map, visit};
@@ -49,7 +48,7 @@ see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
 pub fn trans_impl(ccx: &CrateContext,
                   name: ast::Ident,
-                  methods: &[Gc<ast::Method>],
+                  impl_items: &[ast::ImplItem],
                   generics: &ast::Generics,
                   id: ast::NodeId) {
     let _icx = push_ctxt("meth::trans_impl");
@@ -61,24 +60,34 @@ pub fn trans_impl(ccx: &CrateContext,
     // items that we need to translate.
     if !generics.ty_params.is_empty() {
         let mut v = TransItemVisitor{ ccx: ccx };
-        for method in methods.iter() {
-            visit::walk_method_helper(&mut v, &**method, ());
+        for impl_item in impl_items.iter() {
+            match *impl_item {
+                ast::MethodImplItem(method) => {
+                    visit::walk_method_helper(&mut v, &*method, ());
+                }
+            }
         }
         return;
     }
-    for method in methods.iter() {
-        if method.pe_generics().ty_params.len() == 0u {
-            let llfn = get_item_val(ccx, method.id);
-            trans_fn(ccx,
-                     &*method.pe_fn_decl(),
-                     &*method.pe_body(),
-                     llfn,
-                     &param_substs::empty(),
-                     method.id,
-                     []);
+    for impl_item in impl_items.iter() {
+        match *impl_item {
+            ast::MethodImplItem(method) => {
+                if method.pe_generics().ty_params.len() == 0u {
+                    let llfn = get_item_val(ccx, method.id);
+                    trans_fn(ccx,
+                             &*method.pe_fn_decl(),
+                             &*method.pe_body(),
+                             llfn,
+                             &param_substs::empty(),
+                             method.id,
+                             []);
+                }
+                let mut v = TransItemVisitor {
+                    ccx: ccx,
+                };
+                visit::walk_method_helper(&mut v, &*method, ());
+            }
         }
-        let mut v = TransItemVisitor{ ccx: ccx };
-        visit::walk_method_helper(&mut v, &**method, ());
     }
 }
 
@@ -165,10 +174,10 @@ pub fn trans_static_method_callee(bcx: &Block,
 
     let mname = if method_id.krate == ast::LOCAL_CRATE {
         match bcx.tcx().map.get(method_id.node) {
-            ast_map::NodeTraitMethod(method) => {
+            ast_map::NodeTraitItem(method) => {
                 let ident = match *method {
-                    ast::Required(ref m) => m.ident,
-                    ast::Provided(ref m) => m.pe_ident()
+                    ast::RequiredMethod(ref m) => m.ident,
+                    ast::ProvidedMethod(ref m) => m.pe_ident()
                 };
                 ident.name
             }
@@ -213,22 +222,33 @@ pub fn trans_static_method_callee(bcx: &Block,
     }
 }
 
-fn method_with_name(ccx: &CrateContext,
-                    impl_id: ast::DefId,
-                    name: ast::Name) -> ast::DefId {
+fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
+                    -> ast::DefId {
     match ccx.impl_method_cache.borrow().find_copy(&(impl_id, name)) {
         Some(m) => return m,
         None => {}
     }
 
-    let methods = ccx.tcx.impl_methods.borrow();
-    let methods = methods.find(&impl_id)
-                         .expect("could not find impl while translating");
-    let meth_did = methods.iter().find(|&did| ty::method(&ccx.tcx, *did).ident.name == name)
-                                 .expect("could not find method while translating");
+    let impl_items = ccx.tcx.impl_items.borrow();
+    let impl_items =
+        impl_items.find(&impl_id)
+                  .expect("could not find impl while translating");
+    let meth_did = impl_items.iter()
+                             .find(|&did| {
+                                match *did {
+                                    ty::MethodTraitItemId(did) => {
+                                        ty::impl_or_trait_item(&ccx.tcx,
+                                                               did).ident()
+                                                                   .name ==
+                                            name
+                                    }
+                                }
+                             }).expect("could not find method while \
+                                        translating");
 
-    ccx.impl_method_cache.borrow_mut().insert((impl_id, name), *meth_did);
-    *meth_did
+    ccx.impl_method_cache.borrow_mut().insert((impl_id, name),
+                                              meth_did.def_id());
+    meth_did.def_id()
 }
 
 fn trans_monomorphized_callee<'a>(
@@ -242,7 +262,9 @@ fn trans_monomorphized_callee<'a>(
     match vtbl {
       typeck::vtable_static(impl_did, rcvr_substs, rcvr_origins) => {
           let ccx = bcx.ccx();
-          let mname = ty::trait_method(ccx.tcx(), trait_id, n_method).ident;
+          let mname = match ty::trait_item(ccx.tcx(), trait_id, n_method) {
+              ty::MethodTraitItem(method) => method.ident,
+          };
           let mth_id = method_with_name(bcx.ccx(), impl_did, mname.name);
 
           // create a concatenated set of substitutions which includes
@@ -433,7 +455,7 @@ pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
 
     return Callee {
         bcx: bcx,
-        data: TraitMethod(MethodData {
+        data: TraitItem(MethodData {
             llfn: mptr,
             llself: llself,
         })
@@ -552,35 +574,42 @@ fn emit_vtable_methods(bcx: &Block,
 
     ty::populate_implementations_for_trait_if_necessary(bcx.tcx(), trt_id);
 
-    let trait_method_def_ids = ty::trait_method_def_ids(tcx, trt_id);
-    trait_method_def_ids.iter().map(|method_def_id| {
-        let ident = ty::method(tcx, *method_def_id).ident;
+    let trait_item_def_ids = ty::trait_item_def_ids(tcx, trt_id);
+    trait_item_def_ids.iter().map(|method_def_id| {
+        let method_def_id = method_def_id.def_id();
+        let ident = ty::impl_or_trait_item(tcx, method_def_id).ident();
         // The substitutions we have are on the impl, so we grab
         // the method type from the impl to substitute into.
         let m_id = method_with_name(ccx, impl_id, ident.name);
-        let m = ty::method(tcx, m_id);
-        debug!("(making impl vtable) emitting method {} at subst {}",
-               m.repr(tcx),
-               substs.repr(tcx));
-        if m.generics.has_type_params(subst::FnSpace) ||
-           ty::type_has_self(ty::mk_bare_fn(tcx, m.fty.clone())) {
-            debug!("(making impl vtable) method has self or type params: {}",
-                   token::get_ident(ident));
-            C_null(Type::nil(ccx).ptr_to())
-        } else {
-            let mut fn_ref = trans_fn_ref_with_vtables(bcx,
-                                                       m_id,
-                                                       ExprId(0),
-                                                       substs.clone(),
-                                                       vtables.clone());
-            if m.explicit_self == ty::ByValueExplicitSelfCategory {
-                fn_ref = trans_unboxing_shim(bcx,
-                                             fn_ref,
-                                             &*m,
-                                             m_id,
-                                             substs.clone());
+        let ti = ty::impl_or_trait_item(tcx, m_id);
+        match ti {
+            ty::MethodTraitItem(m) => {
+                debug!("(making impl vtable) emitting method {} at subst {}",
+                       m.repr(tcx),
+                       substs.repr(tcx));
+                if m.generics.has_type_params(subst::FnSpace) ||
+                   ty::type_has_self(ty::mk_bare_fn(tcx, m.fty.clone())) {
+                    debug!("(making impl vtable) method has self or type \
+                            params: {}",
+                           token::get_ident(ident));
+                    C_null(Type::nil(ccx).ptr_to())
+                } else {
+                    let mut fn_ref = trans_fn_ref_with_vtables(
+                        bcx,
+                        m_id,
+                        ExprId(0),
+                        substs.clone(),
+                        vtables.clone());
+                    if m.explicit_self == ty::ByValueExplicitSelfCategory {
+                        fn_ref = trans_unboxing_shim(bcx,
+                                                     fn_ref,
+                                                     &*m,
+                                                     m_id,
+                                                     substs.clone());
+                    }
+                    fn_ref
+                }
             }
-            fn_ref
         }
     }).collect()
 }

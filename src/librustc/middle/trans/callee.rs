@@ -77,7 +77,7 @@ pub enum CalleeData {
 
     Intrinsic(ast::NodeId, subst::Substs),
 
-    TraitMethod(MethodData)
+    TraitItem(MethodData)
 }
 
 pub struct Callee<'a> {
@@ -449,7 +449,7 @@ pub fn trans_fn_ref_with_vtables(
     assert!(substs.types.all(|t| !ty::type_needs_infer(*t)));
 
     // Load the info for the appropriate trait if necessary.
-    match ty::trait_of_method(tcx, def_id) {
+    match ty::trait_of_item(tcx, def_id) {
         None => {}
         Some(trait_id) => {
             ty::populate_implementations_for_trait_if_necessary(tcx, trait_id)
@@ -476,35 +476,43 @@ pub fn trans_fn_ref_with_vtables(
             // So, what we need to do is find this substitution and
             // compose it with the one we already have.
 
-            let impl_id = ty::method(tcx, def_id).container_id();
-            let method = ty::method(tcx, source_id);
-            let trait_ref = ty::impl_trait_ref(tcx, impl_id)
-                .expect("could not find trait_ref for impl with \
-                         default methods");
+            let impl_id = ty::impl_or_trait_item(tcx, def_id).container()
+                                                             .id();
+            let impl_or_trait_item = ty::impl_or_trait_item(tcx, source_id);
+            match impl_or_trait_item {
+                ty::MethodTraitItem(method) => {
+                    let trait_ref = ty::impl_trait_ref(tcx, impl_id)
+                        .expect("could not find trait_ref for impl with \
+                                 default methods");
 
-            // Compute the first substitution
-            let first_subst = make_substs_for_receiver_types(
-                tcx, &*trait_ref, &*method);
+                    // Compute the first substitution
+                    let first_subst = make_substs_for_receiver_types(
+                        tcx, &*trait_ref, &*method);
 
-            // And compose them
-            let new_substs = first_subst.subst(tcx, &substs);
+                    // And compose them
+                    let new_substs = first_subst.subst(tcx, &substs);
 
-            debug!("trans_fn_with_vtables - default method: \
-                    substs = {}, trait_subst = {}, \
-                    first_subst = {}, new_subst = {}, \
-                    vtables = {}",
-                   substs.repr(tcx), trait_ref.substs.repr(tcx),
-                   first_subst.repr(tcx), new_substs.repr(tcx),
-                   vtables.repr(tcx));
+                    debug!("trans_fn_with_vtables - default method: \
+                            substs = {}, trait_subst = {}, \
+                            first_subst = {}, new_subst = {}, \
+                            vtables = {}",
+                           substs.repr(tcx), trait_ref.substs.repr(tcx),
+                           first_subst.repr(tcx), new_substs.repr(tcx),
+                           vtables.repr(tcx));
 
-            let param_vtables =
-                resolve_default_method_vtables(bcx, impl_id, &substs, vtables);
+                    let param_vtables =
+                        resolve_default_method_vtables(bcx,
+                                                       impl_id,
+                                                       &substs,
+                                                       vtables);
 
-            debug!("trans_fn_with_vtables - default method: \
-                    param_vtables = {}",
-                   param_vtables.repr(tcx));
+                    debug!("trans_fn_with_vtables - default method: \
+                            param_vtables = {}",
+                           param_vtables.repr(tcx));
 
-            (true, source_id, new_substs, param_vtables)
+                    (true, source_id, new_substs, param_vtables)
+                }
+            }
         }
     };
 
@@ -742,7 +750,7 @@ pub fn trans_call_inner<'a>(
         Fn(llfn) => {
             (llfn, None, None)
         }
-        TraitMethod(d) => {
+        TraitItem(d) => {
             (d.llfn, None, Some(d.llself))
         }
         Closure(d) => {

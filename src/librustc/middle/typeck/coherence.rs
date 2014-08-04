@@ -20,7 +20,8 @@ use metadata::csearch;
 use middle::subst;
 use middle::subst::{Substs};
 use middle::ty::get;
-use middle::ty::{ImplContainer, lookup_item_type};
+use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
+use middle::ty::{lookup_item_type};
 use middle::ty::{t, ty_bool, ty_char, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_param, Polytype, ty_ptr};
@@ -308,7 +309,7 @@ impl<'a> CoherenceChecker<'a> {
             }
         }
 
-        let impl_methods = self.create_impl_from_item(item);
+        let impl_items = self.create_impl_from_item(item);
 
         for associated_trait in associated_traits.iter() {
             let trait_ref = ty::node_id_to_trait_ref(
@@ -337,16 +338,17 @@ impl<'a> CoherenceChecker<'a> {
             }
         }
 
-        tcx.impl_methods.borrow_mut().insert(impl_did, impl_methods);
+        tcx.impl_items.borrow_mut().insert(impl_did, impl_items);
     }
 
     // Creates default method IDs and performs type substitutions for an impl
     // and trait pair. Then, for each provided method in the trait, inserts a
     // `ProvidedMethodInfo` instance into the `provided_method_sources` map.
-    fn instantiate_default_methods(&self,
-                                   impl_id: DefId,
-                                   trait_ref: &ty::TraitRef,
-                                   all_methods: &mut Vec<DefId>) {
+    fn instantiate_default_methods(
+            &self,
+            impl_id: DefId,
+            trait_ref: &ty::TraitRef,
+            all_impl_items: &mut Vec<ImplOrTraitItemId>) {
         let tcx = self.crate_context.tcx;
         debug!("instantiate_default_methods(impl_id={:?}, trait_ref={})",
                impl_id, trait_ref.repr(tcx));
@@ -373,7 +375,7 @@ impl<'a> CoherenceChecker<'a> {
                     Some(trait_method.def_id)));
 
             debug!("new_method_ty={}", new_method_ty.repr(tcx));
-            all_methods.push(new_did);
+            all_impl_items.push(MethodTraitItemId(new_did));
 
             // construct the polytype for the method based on the
             // method_ty.  it will have all the generics from the
@@ -385,7 +387,9 @@ impl<'a> CoherenceChecker<'a> {
             debug!("new_polytype={}", new_polytype.repr(tcx));
 
             tcx.tcache.borrow_mut().insert(new_did, new_polytype);
-            tcx.methods.borrow_mut().insert(new_did, new_method_ty);
+            tcx.impl_or_trait_items
+               .borrow_mut()
+               .insert(new_did, ty::MethodTraitItem(new_method_ty));
 
             // Pair the new synthesized ID up with the
             // ID of the method.
@@ -576,13 +580,20 @@ impl<'a> CoherenceChecker<'a> {
         }
     }
 
-    // Converts an implementation in the AST to a vector of methods.
-    fn create_impl_from_item(&self, item: &Item) -> Vec<DefId> {
+    // Converts an implementation in the AST to a vector of items.
+    fn create_impl_from_item(&self, item: &Item) -> Vec<ImplOrTraitItemId> {
         match item.node {
-            ItemImpl(_, ref trait_refs, _, ref ast_methods) => {
-                let mut methods: Vec<DefId> = ast_methods.iter().map(|ast_method| {
-                    local_def(ast_method.id)
-                }).collect();
+            ItemImpl(_, ref trait_refs, _, ref ast_items) => {
+                let mut items: Vec<ImplOrTraitItemId> =
+                        ast_items.iter()
+                                 .map(|ast_item| {
+                            match *ast_item {
+                                ast::MethodImplItem(ast_method) => {
+                                    MethodTraitItemId(
+                                        local_def(ast_method.id))
+                                }
+                            }
+                        }).collect();
 
                 for trait_ref in trait_refs.iter() {
                     let ty_trait_ref = ty::node_id_to_trait_ref(
@@ -591,10 +602,10 @@ impl<'a> CoherenceChecker<'a> {
 
                     self.instantiate_default_methods(local_def(item.id),
                                                      &*ty_trait_ref,
-                                                     &mut methods);
+                                                     &mut items);
                 }
 
-                methods
+                items
             }
             _ => {
                 self.crate_context.tcx.sess.span_bug(item.span,
@@ -614,7 +625,8 @@ impl<'a> CoherenceChecker<'a> {
                          impls_seen: &mut HashSet<DefId>,
                          impl_def_id: DefId) {
         let tcx = self.crate_context.tcx;
-        let methods = csearch::get_impl_methods(&tcx.sess.cstore, impl_def_id);
+        let impl_items = csearch::get_impl_items(&tcx.sess.cstore,
+                                                 impl_def_id);
 
         // Make sure we don't visit the same implementation multiple times.
         if !impls_seen.insert(impl_def_id) {
@@ -629,20 +641,27 @@ impl<'a> CoherenceChecker<'a> {
         // Do a sanity check.
         assert!(associated_traits.is_some());
 
-        // Record all the trait methods.
+        // Record all the trait items.
         for trait_ref in associated_traits.iter() {
             self.add_trait_impl(trait_ref.def_id, impl_def_id);
         }
 
         // For any methods that use a default implementation, add them to
         // the map. This is a bit unfortunate.
-        for &method_def_id in methods.iter() {
-            for &source in ty::method(tcx, method_def_id).provided_source.iter() {
-                tcx.provided_method_sources.borrow_mut().insert(method_def_id, source);
+        for item_def_id in impl_items.iter() {
+            let impl_item = ty::impl_or_trait_item(tcx, item_def_id.def_id());
+            match impl_item {
+                ty::MethodTraitItem(ref method) => {
+                    for &source in method.provided_source.iter() {
+                        tcx.provided_method_sources
+                           .borrow_mut()
+                           .insert(item_def_id.def_id(), source);
+                    }
+                }
             }
         }
 
-        tcx.impl_methods.borrow_mut().insert(impl_def_id, methods);
+        tcx.impl_items.borrow_mut().insert(impl_def_id, impl_items);
     }
 
     // Adds implementations and traits from external crates to the coherence
@@ -669,28 +688,31 @@ impl<'a> CoherenceChecker<'a> {
             Some(id) => id, None => { return }
         };
 
-        let impl_methods = tcx.impl_methods.borrow();
+        let impl_items = tcx.impl_items.borrow();
         let trait_impls = match tcx.trait_impls.borrow().find_copy(&drop_trait) {
             None => return, // No types with (new-style) dtors present.
             Some(found_impls) => found_impls
         };
 
         for &impl_did in trait_impls.borrow().iter() {
-            let methods = impl_methods.get(&impl_did);
-            if methods.len() < 1 {
+            let items = impl_items.get(&impl_did);
+            if items.len() < 1 {
                 // We'll error out later. For now, just don't ICE.
                 continue;
             }
-            let method_def_id = *methods.get(0);
+            let method_def_id = *items.get(0);
 
             let self_type = self.get_self_type_for_implementation(impl_did);
             match ty::get(self_type.ty).sty {
                 ty::ty_enum(type_def_id, _) |
                 ty::ty_struct(type_def_id, _) |
                 ty::ty_unboxed_closure(type_def_id, _) => {
-                    tcx.destructor_for_type.borrow_mut().insert(type_def_id,
-                                                                method_def_id);
-                    tcx.destructors.borrow_mut().insert(method_def_id);
+                    tcx.destructor_for_type
+                       .borrow_mut()
+                       .insert(type_def_id, method_def_id.def_id());
+                    tcx.destructors
+                       .borrow_mut()
+                       .insert(method_def_id.def_id());
                 }
                 _ => {
                     // Destructors only work on nominal types.

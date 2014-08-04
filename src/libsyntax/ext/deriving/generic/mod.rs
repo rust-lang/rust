@@ -452,8 +452,13 @@ impl<'a> TraitDef<'a> {
             self.span,
             ident,
             (vec!(attr)).append(self.attributes.as_slice()),
-            ast::ItemImpl(trait_generics, opt_trait_ref,
-                          self_type, methods))
+            ast::ItemImpl(trait_generics,
+                          opt_trait_ref,
+                          self_type,
+                          methods.move_iter()
+                                 .map(|method| {
+                                     ast::MethodImplItem(method)
+                                 }).collect()))
     }
 
     fn expand_struct_def(&self,

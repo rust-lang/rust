@@ -157,13 +157,13 @@ pub fn record_extern_fqn(cx: &core::DocContext,
 
 pub fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> clean::Trait {
     let def = ty::lookup_trait_def(tcx, did);
-    let methods = ty::trait_methods(tcx, did).clean();
+    let trait_items = ty::trait_items(tcx, did).clean();
     let provided = ty::provided_trait_methods(tcx, did);
-    let mut methods = methods.move_iter().map(|meth| {
-        if provided.iter().any(|a| a.def_id == meth.def_id) {
-            clean::Provided(meth)
+    let mut items = trait_items.move_iter().map(|trait_item| {
+        if provided.iter().any(|a| a.def_id == trait_item.def_id) {
+            clean::ProvidedMethod(trait_item)
         } else {
-            clean::Required(meth)
+            clean::RequiredMethod(trait_item)
         }
     });
     let supertraits = ty::trait_supertraits(tcx, did);
@@ -176,7 +176,7 @@ pub fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> clean::Trait {
 
     clean::Trait {
         generics: (&def.generics, subst::TypeSpace).clean(),
-        methods: methods.collect(),
+        items: items.collect(),
         parents: parents.collect()
     }
 }
@@ -303,27 +303,33 @@ fn build_impl(cx: &core::DocContext,
 
     let attrs = load_attrs(tcx, did);
     let ty = ty::lookup_item_type(tcx, did);
-    let methods = csearch::get_impl_methods(&tcx.sess.cstore,
-                                            did).iter().filter_map(|did| {
-        let method = ty::method(tcx, *did);
-        if method.vis != ast::Public && associated_trait.is_none() {
-            return None
-        }
-        let mut item = ty::method(tcx, *did).clean();
-        item.inner = match item.inner.clone() {
-            clean::TyMethodItem(clean::TyMethod {
-                fn_style, decl, self_, generics
-            }) => {
-                clean::MethodItem(clean::Method {
-                    fn_style: fn_style,
-                    decl: decl,
-                    self_: self_,
-                    generics: generics,
-                })
+    let trait_items = csearch::get_impl_items(&tcx.sess.cstore, did)
+            .iter()
+            .filter_map(|did| {
+        let did = did.def_id();
+        let impl_item = ty::impl_or_trait_item(tcx, did);
+        match impl_item {
+            ty::MethodTraitItem(method) => {
+                if method.vis != ast::Public && associated_trait.is_none() {
+                    return None
+                }
+                let mut item = method.clean();
+                item.inner = match item.inner.clone() {
+                    clean::TyMethodItem(clean::TyMethod {
+                        fn_style, decl, self_, generics
+                    }) => {
+                        clean::MethodItem(clean::Method {
+                            fn_style: fn_style,
+                            decl: decl,
+                            self_: self_,
+                            generics: generics,
+                        })
+                    }
+                    _ => fail!("not a tymethod"),
+                };
+                Some(item)
             }
-            _ => fail!("not a tymethod"),
-        };
-        Some(item)
+        }
     }).collect();
     return Some(clean::Item {
         inner: clean::ImplItem(clean::Impl {
@@ -336,7 +342,7 @@ fn build_impl(cx: &core::DocContext,
             }),
             for_: ty.ty.clean(),
             generics: (&ty.generics, subst::TypeSpace).clean(),
-            methods: methods,
+            items: trait_items,
         }),
         source: clean::Span::empty(),
         name: None,

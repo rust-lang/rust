@@ -84,7 +84,8 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
     let id = match ii {
         e::IIItemRef(i) => i.id,
         e::IIForeignRef(i) => i.id,
-        e::IIMethodRef(_, _, m) => m.id,
+        e::IITraitItemRef(_, e::ProvidedInlinedTraitItemRef(m)) => m.id,
+        e::IITraitItemRef(_, e::RequiredInlinedTraitItemRef(m)) => m.id,
     };
     debug!("> Encoding inlined item: {} ({})",
            ecx.tcx.map.path_to_string(id),
@@ -137,7 +138,12 @@ pub fn decode_inlined_item(cdata: &cstore::crate_metadata,
         let ident = match ii {
             ast::IIItem(i) => i.ident,
             ast::IIForeign(i) => i.ident,
-            ast::IIMethod(_, _, m) => m.pe_ident(),
+            ast::IITraitItem(_, iti) => {
+                match iti {
+                    ast::ProvidedInlinedTraitItem(m) => m.pe_ident(),
+                    ast::RequiredInlinedTraitItem(m) => m.pe_ident(),
+                }
+            }
         };
         debug!("Fn named: {}", token::get_ident(ident));
         debug!("< Decoded inlined fn: {}::{}",
@@ -344,12 +350,29 @@ fn simplify_ast(ii: e::InlinedItemRef) -> ast::InlinedItem {
 
     match ii {
         // HACK we're not dropping items.
-        e::IIItemRef(i) => ast::IIItem(fold::noop_fold_item(i, &mut fld)
-                                       .expect_one("expected one item")),
-        e::IIMethodRef(d, p, m) => ast::IIMethod(d, p, fold::noop_fold_method(m, &mut fld)
-                                                 .expect_one(
-                "noop_fold_method must produce exactly one method")),
-        e::IIForeignRef(i) => ast::IIForeign(fold::noop_fold_foreign_item(i, &mut fld))
+        e::IIItemRef(i) => {
+            ast::IIItem(fold::noop_fold_item(i, &mut fld)
+                            .expect_one("expected one item"))
+        }
+        e::IITraitItemRef(d, iti) => {
+            ast::IITraitItem(d, match iti {
+                e::ProvidedInlinedTraitItemRef(m) => {
+                    ast::ProvidedInlinedTraitItem(
+                        fold::noop_fold_method(m, &mut fld)
+                            .expect_one("noop_fold_method must produce \
+                                         exactly one method"))
+                }
+                e::RequiredInlinedTraitItemRef(m) => {
+                    ast::RequiredInlinedTraitItem(
+                        fold::noop_fold_method(m, &mut fld)
+                            .expect_one("noop_fold_method must produce \
+                                         exactly one method"))
+                }
+            })
+        }
+        e::IIForeignRef(i) => {
+            ast::IIForeign(fold::noop_fold_foreign_item(i, &mut fld))
+        }
     }
 }
 
@@ -389,9 +412,23 @@ fn renumber_and_map_ast(xcx: &ExtendedDecodeContext,
             ast::IIItem(i) => {
                 ast::IIItem(fld.fold_item(i).expect_one("expected one item"))
             }
-            ast::IIMethod(d, is_provided, m) => {
-                ast::IIMethod(xcx.tr_def_id(d), is_provided, fld.fold_method(m)
-                              .expect_one("expected one method"))
+            ast::IITraitItem(d, iti) => {
+                match iti {
+                    ast::ProvidedInlinedTraitItem(m) => {
+                        ast::IITraitItem(
+                            xcx.tr_def_id(d),
+                            ast::ProvidedInlinedTraitItem(
+                                fld.fold_method(m)
+                                   .expect_one("expected one method")))
+                    }
+                    ast::RequiredInlinedTraitItem(m) => {
+                        ast::IITraitItem(
+                            xcx.tr_def_id(d),
+                            ast::RequiredInlinedTraitItem(
+                                fld.fold_method(m)
+                                   .expect_one("expected one method")))
+                    }
+                }
             }
             ast::IIForeign(i) => ast::IIForeign(fld.fold_foreign_item(i))
         }

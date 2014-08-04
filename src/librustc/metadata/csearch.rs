@@ -16,6 +16,7 @@ use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use middle::lang_items;
+use middle::resolve;
 use middle::ty;
 use middle::typeck;
 use middle::subst::VecPerParamSpace;
@@ -121,30 +122,33 @@ pub fn get_enum_variants(tcx: &ty::ctxt, def: ast::DefId)
 }
 
 /// Returns information about the given implementation.
-pub fn get_impl_methods(cstore: &cstore::CStore, impl_def_id: ast::DefId)
-                        -> Vec<ast::DefId> {
+pub fn get_impl_items(cstore: &cstore::CStore, impl_def_id: ast::DefId)
+                      -> Vec<ty::ImplOrTraitItemId> {
     let cdata = cstore.get_crate_data(impl_def_id.krate);
-    decoder::get_impl_methods(&*cdata, impl_def_id.node)
+    decoder::get_impl_items(&*cdata, impl_def_id.node)
 }
 
-pub fn get_method(tcx: &ty::ctxt, def: ast::DefId) -> ty::Method {
+pub fn get_impl_or_trait_item(tcx: &ty::ctxt, def: ast::DefId)
+                              -> ty::ImplOrTraitItem {
     let cdata = tcx.sess.cstore.get_crate_data(def.krate);
-    decoder::get_method(tcx.sess.cstore.intr.clone(), &*cdata, def.node, tcx)
+    decoder::get_impl_or_trait_item(tcx.sess.cstore.intr.clone(),
+                                    &*cdata,
+                                    def.node,
+                                    tcx)
 }
 
-pub fn get_method_name_and_explicit_self(cstore: &cstore::CStore,
-                                         def: ast::DefId)
-                                         -> (ast::Ident,
-                                             ty::ExplicitSelfCategory)
-{
+pub fn get_trait_item_name_and_kind(cstore: &cstore::CStore, def: ast::DefId)
+                                    -> (ast::Ident, resolve::TraitItemKind) {
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_method_name_and_explicit_self(cstore.intr.clone(), &*cdata, def.node)
+    decoder::get_trait_item_name_and_kind(cstore.intr.clone(),
+                                          &*cdata,
+                                          def.node)
 }
 
-pub fn get_trait_method_def_ids(cstore: &cstore::CStore,
-                                def: ast::DefId) -> Vec<ast::DefId> {
+pub fn get_trait_item_def_ids(cstore: &cstore::CStore, def: ast::DefId)
+                              -> Vec<ty::ImplOrTraitItemId> {
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_trait_method_def_ids(&*cdata, def.node)
+    decoder::get_trait_item_def_ids(&*cdata, def.node)
 }
 
 pub fn get_item_variances(cstore: &cstore::CStore,
@@ -286,15 +290,15 @@ pub fn each_implementation_for_trait(cstore: &cstore::CStore,
     decoder::each_implementation_for_trait(&*cdata, def_id.node, callback)
 }
 
-/// If the given def ID describes a method belonging to a trait (either a
+/// If the given def ID describes an item belonging to a trait (either a
 /// default method or an implementation of a trait method), returns the ID of
 /// the trait that the method belongs to. Otherwise, returns `None`.
-pub fn get_trait_of_method(cstore: &cstore::CStore,
-                           def_id: ast::DefId,
-                           tcx: &ty::ctxt)
-                           -> Option<ast::DefId> {
+pub fn get_trait_of_item(cstore: &cstore::CStore,
+                         def_id: ast::DefId,
+                         tcx: &ty::ctxt)
+                         -> Option<ast::DefId> {
     let cdata = cstore.get_crate_data(def_id.krate);
-    decoder::get_trait_of_method(&*cdata, def_id.node, tcx)
+    decoder::get_trait_of_item(&*cdata, def_id.node, tcx)
 }
 
 pub fn get_tuple_struct_definition_if_ctor(cstore: &cstore::CStore,

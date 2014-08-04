@@ -77,7 +77,7 @@ pub static tag_crate_dep_hash: uint = 0x1e;
 
 pub static tag_mod_impl: uint = 0x1f;
 
-pub static tag_item_trait_method: uint = 0x20;
+pub static tag_item_trait_item: uint = 0x20;
 
 pub static tag_item_trait_ref: uint = 0x21;
 pub static tag_item_super_trait_ref: uint = 0x22;
@@ -95,14 +95,14 @@ pub static tag_item_field_origin: uint = 0x29;
 
 pub static tag_item_variances: uint = 0x2a;
 /*
-  trait items contain tag_item_trait_method elements,
-  impl items contain tag_item_impl_method elements, and classes
+  trait items contain tag_item_trait_item elements,
+  impl items contain tag_item_impl_item elements, and classes
   have both. That's because some code treats classes like traits,
   and other code treats them like impls. Because classes can contain
-  both, tag_item_trait_method and tag_item_impl_method have to be two
+  both, tag_item_trait_item and tag_item_impl_item have to be two
   different tags.
  */
-pub static tag_item_impl_method: uint = 0x30;
+pub static tag_item_impl_item: uint = 0x30;
 pub static tag_item_trait_method_explicit_self: uint = 0x31;
 
 
@@ -154,9 +154,11 @@ impl astencode_tag {
     }
 }
 
-pub static tag_item_trait_method_sort: uint = 0x60;
+pub static tag_item_trait_item_sort: uint = 0x60;
 
-pub static tag_item_impl_type_basename: uint = 0x61;
+pub static tag_item_trait_parent_sort: uint = 0x61;
+
+pub static tag_item_impl_type_basename: uint = 0x62;
 
 pub static tag_crate_triple: uint = 0x66;
 

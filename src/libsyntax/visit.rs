@@ -99,7 +99,7 @@ pub trait Visitor<E: Clone> {
         walk_fn(self, fk, fd, b, s, e)
     }
     fn visit_ty_method(&mut self, t: &TypeMethod, e: E) { walk_ty_method(self, t, e) }
-    fn visit_trait_method(&mut self, t: &TraitMethod, e: E) { walk_trait_method(self, t, e) }
+    fn visit_trait_item(&mut self, t: &TraitItem, e: E) { walk_trait_item(self, t, e) }
     fn visit_struct_def(&mut self, s: &StructDef, _: Ident, _: &Generics, _: NodeId, e: E) {
         walk_struct_def(self, s, e)
     }
@@ -148,7 +148,16 @@ pub fn walk_inlined_item<E: Clone, V: Visitor<E>>(visitor: &mut V,
     match *item {
         IIItem(i) => visitor.visit_item(&*i, env),
         IIForeign(i) => visitor.visit_foreign_item(&*i, env),
-        IIMethod(_, _, m) => walk_method_helper(visitor, &*m, env),
+        IITraitItem(_, iti) => {
+            match iti {
+                ProvidedInlinedTraitItem(m) => {
+                    walk_method_helper(visitor, &*m, env)
+                }
+                RequiredInlinedTraitItem(m) => {
+                    walk_method_helper(visitor, &*m, env)
+                }
+            }
+        }
     }
 }
 
@@ -269,7 +278,7 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
         ItemImpl(ref type_parameters,
                  ref trait_reference,
                  typ,
-                 ref methods) => {
+                 ref impl_items) => {
             visitor.visit_generics(type_parameters, env.clone());
             match *trait_reference {
                 Some(ref trait_reference) => walk_trait_ref_helper(visitor,
@@ -277,8 +286,12 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
                 None => ()
             }
             visitor.visit_ty(&*typ, env.clone());
-            for method in methods.iter() {
-                walk_method_helper(visitor, &**method, env.clone())
+            for impl_item in impl_items.iter() {
+                match *impl_item {
+                    MethodImplItem(method) => {
+                        walk_method_helper(visitor, &*method, env.clone())
+                    }
+                }
             }
         }
         ItemStruct(ref struct_definition, ref generics) => {
@@ -297,7 +310,7 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
                                    env.clone())
             }
             for method in methods.iter() {
-                visitor.visit_trait_method(method, env.clone())
+                visitor.visit_trait_item(method, env.clone())
             }
         }
         ItemMac(ref macro) => visitor.visit_mac(macro, env.clone()),
@@ -626,14 +639,14 @@ pub fn walk_ty_method<E: Clone, V: Visitor<E>>(visitor: &mut V,
     }
 }
 
-pub fn walk_trait_method<E: Clone, V: Visitor<E>>(visitor: &mut V,
-                                                  trait_method: &TraitMethod,
+pub fn walk_trait_item<E: Clone, V: Visitor<E>>(visitor: &mut V,
+                                                  trait_method: &TraitItem,
                                                   env: E) {
     match *trait_method {
-        Required(ref method_type) => {
+        RequiredMethod(ref method_type) => {
             visitor.visit_ty_method(method_type, env)
         }
-        Provided(ref method) => walk_method_helper(visitor, &**method, env),
+        ProvidedMethod(ref method) => walk_method_helper(visitor, &**method, env),
     }
 }
 

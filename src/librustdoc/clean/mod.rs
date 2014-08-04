@@ -907,7 +907,7 @@ impl Clean<RetStyle> for ast::RetStyle {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Trait {
-    pub methods: Vec<TraitMethod>,
+    pub items: Vec<TraitItem>,
     pub generics: Generics,
     pub parents: Vec<Type>,
 }
@@ -922,7 +922,7 @@ impl Clean<Item> for doctree::Trait {
             visibility: self.vis.clean(),
             stability: self.stab.clean(),
             inner: TraitItem(Trait {
-                methods: self.methods.clean(),
+                items: self.items.clean(),
                 generics: self.generics.clean(),
                 parents: self.parents.clean(),
             }),
@@ -937,37 +937,50 @@ impl Clean<Type> for ast::TraitRef {
 }
 
 #[deriving(Clone, Encodable, Decodable)]
-pub enum TraitMethod {
-    Required(Item),
-    Provided(Item),
+pub enum TraitItem {
+    RequiredMethod(Item),
+    ProvidedMethod(Item),
 }
 
-impl TraitMethod {
+impl TraitItem {
     pub fn is_req(&self) -> bool {
         match self {
-            &Required(..) => true,
+            &RequiredMethod(..) => true,
             _ => false,
         }
     }
     pub fn is_def(&self) -> bool {
         match self {
-            &Provided(..) => true,
+            &ProvidedMethod(..) => true,
             _ => false,
         }
     }
     pub fn item<'a>(&'a self) -> &'a Item {
         match *self {
-            Required(ref item) => item,
-            Provided(ref item) => item,
+            RequiredMethod(ref item) => item,
+            ProvidedMethod(ref item) => item,
         }
     }
 }
 
-impl Clean<TraitMethod> for ast::TraitMethod {
-    fn clean(&self) -> TraitMethod {
+impl Clean<TraitItem> for ast::TraitItem {
+    fn clean(&self) -> TraitItem {
         match self {
-            &ast::Required(ref t) => Required(t.clean()),
-            &ast::Provided(ref t) => Provided(t.clean()),
+            &ast::RequiredMethod(ref t) => RequiredMethod(t.clean()),
+            &ast::ProvidedMethod(ref t) => ProvidedMethod(t.clean()),
+        }
+    }
+}
+
+#[deriving(Clone, Encodable, Decodable)]
+pub enum ImplItem {
+    MethodImplItem(Item),
+}
+
+impl Clean<ImplItem> for ast::ImplItem {
+    fn clean(&self) -> ImplItem {
+        match self {
+            &ast::MethodImplItem(ref t) => MethodImplItem(t.clean()),
         }
     }
 }
@@ -1015,6 +1028,14 @@ impl Clean<Item> for ty::Method {
                 self_: self_,
                 decl: (self.def_id, &sig).clean(),
             })
+        }
+    }
+}
+
+impl Clean<Item> for ty::ImplOrTraitItem {
+    fn clean(&self) -> Item {
+        match *self {
+            ty::MethodTraitItem(ref mti) => mti.clean(),
         }
     }
 }
@@ -1714,7 +1735,7 @@ pub struct Impl {
     pub generics: Generics,
     pub trait_: Option<Type>,
     pub for_: Type,
-    pub methods: Vec<Item>,
+    pub items: Vec<Item>,
     pub derived: bool,
 }
 
@@ -1735,7 +1756,11 @@ impl Clean<Item> for doctree::Impl {
                 generics: self.generics.clean(),
                 trait_: self.trait_.clean(),
                 for_: self.for_.clean(),
-                methods: self.methods.clean(),
+                items: self.items.clean().move_iter().map(|ti| {
+                        match ti {
+                            MethodImplItem(i) => i,
+                        }
+                    }).collect(),
                 derived: detect_derived(self.attrs.as_slice()),
             }),
         }

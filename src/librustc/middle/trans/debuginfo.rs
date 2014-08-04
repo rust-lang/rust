@@ -1140,13 +1140,17 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 }
             }
         }
-        ast_map::NodeMethod(ref method) => {
-            (method.pe_ident(),
-             method.pe_fn_decl(),
-             method.pe_generics(),
-             method.pe_body(),
-             method.span,
-             true)
+        ast_map::NodeImplItem(ref item) => {
+            match **item {
+                ast::MethodImplItem(ref method) => {
+                    (method.pe_ident(),
+                     method.pe_fn_decl(),
+                     method.pe_generics(),
+                     method.pe_body(),
+                     method.span,
+                     true)
+                }
+            }
         }
         ast_map::NodeExpr(ref expr) => {
             match expr.node {
@@ -1168,9 +1172,9 @@ pub fn create_function_debug_context(cx: &CrateContext,
                         "create_function_debug_context: expected an expr_fn_block here")
             }
         }
-        ast_map::NodeTraitMethod(ref trait_method) => {
+        ast_map::NodeTraitItem(ref trait_method) => {
             match **trait_method {
-                ast::Provided(ref method) => {
+                ast::ProvidedMethod(ref method) => {
                     (method.pe_ident(),
                      method.pe_fn_decl(),
                      method.pe_generics(),

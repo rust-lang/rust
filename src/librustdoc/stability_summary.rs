@@ -21,7 +21,7 @@ use syntax::attr::{Deprecated, Experimental, Unstable, Stable, Frozen, Locked};
 use syntax::ast::Public;
 
 use clean::{Crate, Item, ModuleItem, Module, StructItem, Struct, EnumItem, Enum};
-use clean::{ImplItem, Impl, TraitItem, Trait, TraitMethod, Provided, Required};
+use clean::{ImplItem, Impl, Trait, TraitItem, ProvidedMethod, RequiredMethod};
 use clean::{ViewItemItem, PrimitiveItem};
 
 #[deriving(Zero, Encodable, Decodable, PartialEq, Eq)]
@@ -110,7 +110,7 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
     match item.inner {
         // Require explicit `pub` to be visible
         StructItem(Struct { fields: ref subitems, .. }) |
-        ImplItem(Impl { methods: ref subitems, trait_: None, .. }) => {
+        ImplItem(Impl { items: ref subitems, trait_: None, .. }) => {
             let subcounts = subitems.iter().filter(|i| visible(*i))
                                            .map(summarize_item)
                                            .map(|s| s.val0())
@@ -124,16 +124,21 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
                                            .sum();
             (item_counts + subcounts, None)
         }
-        TraitItem(Trait { methods: ref methods, .. }) => {
-            fn extract_item<'a>(meth: &'a TraitMethod) -> &'a Item {
-                match *meth {
-                    Provided(ref item) | Required(ref item) => item
+        TraitItem(Trait {
+            items: ref trait_items,
+            ..
+        }) => {
+            fn extract_item<'a>(trait_item: &'a TraitItem) -> &'a Item {
+                match *trait_item {
+                    ProvidedMethod(ref item) |
+                    RequiredMethod(ref item) => item
                 }
             }
-            let subcounts = methods.iter().map(extract_item)
-                                          .map(summarize_item)
-                                          .map(|s| s.val0())
-                                          .sum();
+            let subcounts = trait_items.iter()
+                                       .map(extract_item)
+                                       .map(summarize_item)
+                                       .map(|s| s.val0())
+                                       .sum();
             (item_counts + subcounts, None)
         }
         ModuleItem(Module { items: ref items, .. }) => {

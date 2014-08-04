@@ -18,11 +18,12 @@ use metadata::common::*;
 use metadata::csearch::StaticMethodInfo;
 use metadata::csearch;
 use metadata::cstore;
-use metadata::tydecode::{parse_ty_data, parse_def_id,
-                         parse_type_param_def_data,
-                         parse_bare_fn_ty_data, parse_trait_ref_data};
-use middle::lang_items;
+use metadata::tydecode::{parse_ty_data, parse_def_id};
+use metadata::tydecode::{parse_type_param_def_data, parse_bare_fn_ty_data};
+use metadata::tydecode::{parse_trait_ref_data};
 use middle::def;
+use middle::lang_items;
+use middle::resolve::TraitItemKind;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty;
@@ -165,9 +166,9 @@ fn item_visibility(item: rbml::Doc) -> ast::Visibility {
     }
 }
 
-fn item_method_sort(item: rbml::Doc) -> char {
+fn item_sort(item: rbml::Doc) -> char {
     let mut ret = 'r';
-    reader::tagged_docs(item, tag_item_trait_method_sort, |doc| {
+    reader::tagged_docs(item, tag_item_trait_item_sort, |doc| {
         ret = doc.as_str_slice().as_bytes()[0] as char;
         false
     });
@@ -338,15 +339,18 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
         UnsafeFn  => DlDef(def::DefFn(did, ast::UnsafeFn)),
         Fn        => DlDef(def::DefFn(did, ast::NormalFn)),
         StaticMethod | UnsafeStaticMethod => {
-            let fn_style = if fam == UnsafeStaticMethod { ast::UnsafeFn } else
-                { ast::NormalFn };
+            let fn_style = if fam == UnsafeStaticMethod {
+                ast::UnsafeFn
+            } else {
+                ast::NormalFn
+            };
             // def_static_method carries an optional field of its enclosing
             // trait or enclosing impl (if this is an inherent static method).
             // So we need to detect whether this is in a trait or not, which
             // we do through the mildly hacky way of checking whether there is
-            // a trait_method_sort.
+            // a trait_parent_sort.
             let provenance = if reader::maybe_get_doc(
-                  item, tag_item_trait_method_sort).is_some() {
+                  item, tag_item_trait_parent_sort).is_some() {
                 def::FromTrait(item_reqd_and_translated_parent_item(cnum,
                                                                     item))
             } else {
@@ -536,14 +540,11 @@ fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
             None => {}
             Some(inherent_impl_doc) => {
                 let _ = reader::tagged_docs(inherent_impl_doc,
-                                            tag_item_impl_method,
-                                            |impl_method_def_id_doc| {
-                    let impl_method_def_id =
-                        reader::with_doc_data(impl_method_def_id_doc,
-                                              parse_def_id);
-                    let impl_method_def_id =
-                        translate_def_id(cdata, impl_method_def_id);
-                    match maybe_find_item(impl_method_def_id.node, items) {
+                                            tag_item_impl_item,
+                                            |impl_item_def_id_doc| {
+                    let impl_item_def_id = item_def_id(impl_item_def_id_doc,
+                                                       cdata);
+                    match maybe_find_item(impl_item_def_id.node, items) {
                         None => {}
                         Some(impl_method_doc) => {
                             match item_family(impl_method_doc) {
@@ -554,7 +555,7 @@ fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
                                         item_name(&*intr, impl_method_doc);
                                     let static_method_def_like =
                                         item_to_def_like(impl_method_doc,
-                                                         impl_method_def_id,
+                                                         impl_item_def_id,
                                                          cdata.cnum);
                                     callback(static_method_def_like,
                                              static_method_name,
@@ -752,33 +753,46 @@ fn get_explicit_self(item: rbml::Doc) -> ty::ExplicitSelfCategory {
     }
 }
 
-/// Returns information about the given implementation.
-pub fn get_impl_methods(cdata: Cmd, impl_id: ast::NodeId) -> Vec<ast::DefId> {
-    let mut methods = Vec::new();
+/// Returns the def IDs of all the items in the given implementation.
+pub fn get_impl_items(cdata: Cmd, impl_id: ast::NodeId)
+                      -> Vec<ty::ImplOrTraitItemId> {
+    let mut impl_items = Vec::new();
     reader::tagged_docs(lookup_item(impl_id, cdata.data()),
-                        tag_item_impl_method, |doc| {
-        let m_did = reader::with_doc_data(doc, parse_def_id);
-        methods.push(translate_def_id(cdata, m_did));
+                        tag_item_impl_item, |doc| {
+        let def_id = item_def_id(doc, cdata);
+        match item_sort(doc) {
+            'r' | 'p' => impl_items.push(ty::MethodTraitItemId(def_id)),
+            _ => fail!("unknown impl item sort"),
+        }
         true
     });
 
-    methods
+    impl_items
 }
 
-pub fn get_method_name_and_explicit_self(intr: Rc<IdentInterner>,
-                                         cdata: Cmd,
-                                         id: ast::NodeId)
-                                         -> (ast::Ident,
-                                             ty::ExplicitSelfCategory) {
-    let method_doc = lookup_item(id, cdata.data());
-    let name = item_name(&*intr, method_doc);
-    let explicit_self = get_explicit_self(method_doc);
-    (name, explicit_self)
+pub fn get_trait_item_name_and_kind(intr: Rc<IdentInterner>,
+                                    cdata: Cmd,
+                                    id: ast::NodeId)
+                                    -> (ast::Ident, TraitItemKind) {
+    let doc = lookup_item(id, cdata.data());
+    let name = item_name(&*intr, doc);
+    match item_sort(doc) {
+        'r' | 'p' => {
+            let explicit_self = get_explicit_self(doc);
+            (name, TraitItemKind::from_explicit_self_category(explicit_self))
+        }
+        c => {
+            fail!("get_trait_item_name_and_kind(): unknown trait item kind \
+                   in metadata: `{}`", c)
+        }
+    }
 }
 
-pub fn get_method(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
-                  tcx: &ty::ctxt) -> ty::Method
-{
+pub fn get_impl_or_trait_item(intr: Rc<IdentInterner>,
+                              cdata: Cmd,
+                              id: ast::NodeId,
+                              tcx: &ty::ctxt)
+                              -> ty::ImplOrTraitItem {
     let method_doc = lookup_item(id, cdata.data());
     let def_id = item_def_id(method_doc, cdata);
 
@@ -791,36 +805,45 @@ pub fn get_method(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
     };
 
     let name = item_name(&*intr, method_doc);
-    let type_param_defs = item_ty_param_defs(method_doc, tcx, cdata,
-                                             tag_item_method_tps);
-    let rp_defs = item_region_param_defs(method_doc, cdata);
-    let fty = doc_method_fty(method_doc, tcx, cdata);
-    let vis = item_visibility(method_doc);
-    let explicit_self = get_explicit_self(method_doc);
-    let provided_source = get_provided_source(method_doc, cdata);
 
-    ty::Method::new(
-        name,
-        ty::Generics {
-            types: type_param_defs,
-            regions: rp_defs,
-        },
-        fty,
-        explicit_self,
-        vis,
-        def_id,
-        container,
-        provided_source
-    )
+    match item_sort(method_doc) {
+        'r' | 'p' => {
+            let type_param_defs = item_ty_param_defs(method_doc, tcx, cdata,
+                                                     tag_item_method_tps);
+            let rp_defs = item_region_param_defs(method_doc, cdata);
+            let fty = doc_method_fty(method_doc, tcx, cdata);
+            let vis = item_visibility(method_doc);
+            let explicit_self = get_explicit_self(method_doc);
+            let provided_source = get_provided_source(method_doc, cdata);
+
+            let generics = ty::Generics {
+                types: type_param_defs,
+                regions: rp_defs,
+            };
+            ty::MethodTraitItem(Rc::new(ty::Method::new(name,
+                                                        generics,
+                                                        fty,
+                                                        explicit_self,
+                                                        vis,
+                                                        def_id,
+                                                        container,
+                                                        provided_source)))
+        }
+        _ => fail!("unknown impl/trait item sort"),
+    }
 }
 
-pub fn get_trait_method_def_ids(cdata: Cmd,
-                                id: ast::NodeId) -> Vec<ast::DefId> {
+pub fn get_trait_item_def_ids(cdata: Cmd, id: ast::NodeId)
+                              -> Vec<ty::ImplOrTraitItemId> {
     let data = cdata.data();
     let item = lookup_item(id, data);
     let mut result = Vec::new();
-    reader::tagged_docs(item, tag_item_trait_method, |mth| {
-        result.push(item_def_id(mth, cdata));
+    reader::tagged_docs(item, tag_item_trait_item, |mth| {
+        let def_id = item_def_id(mth, cdata);
+        match item_sort(mth) {
+            'r' | 'p' => result.push(ty::MethodTraitItemId(def_id)),
+            _ => fail!("unknown trait item sort"),
+        }
         true
     });
     result
@@ -834,19 +857,29 @@ pub fn get_item_variances(cdata: Cmd, id: ast::NodeId) -> ty::ItemVariances {
     Decodable::decode(&mut decoder).unwrap()
 }
 
-pub fn get_provided_trait_methods(intr: Rc<IdentInterner>, cdata: Cmd,
-                                  id: ast::NodeId, tcx: &ty::ctxt)
+pub fn get_provided_trait_methods(intr: Rc<IdentInterner>,
+                                  cdata: Cmd,
+                                  id: ast::NodeId,
+                                  tcx: &ty::ctxt)
                                   -> Vec<Rc<ty::Method>> {
     let data = cdata.data();
     let item = lookup_item(id, data);
     let mut result = Vec::new();
 
-    reader::tagged_docs(item, tag_item_trait_method, |mth_id| {
+    reader::tagged_docs(item, tag_item_trait_item, |mth_id| {
         let did = item_def_id(mth_id, cdata);
         let mth = lookup_item(did.node, data);
 
-        if item_method_sort(mth) == 'p' {
-            result.push(Rc::new(get_method(intr.clone(), cdata, did.node, tcx)));
+        if item_sort(mth) == 'p' {
+            let trait_item = get_impl_or_trait_item(intr.clone(),
+                                                    cdata,
+                                                    did.node,
+                                                    tcx);
+            match trait_item {
+                ty::MethodTraitItem(ref method) => {
+                    result.push((*method).clone())
+                }
+            }
         }
         true
     });
@@ -905,8 +938,8 @@ pub fn get_static_methods_if_impl(intr: Rc<IdentInterner>,
     if !ret { return None }
 
     let mut impl_method_ids = Vec::new();
-    reader::tagged_docs(item, tag_item_impl_method, |impl_method_doc| {
-        impl_method_ids.push(reader::with_doc_data(impl_method_doc, parse_def_id));
+    reader::tagged_docs(item, tag_item_impl_item, |impl_method_doc| {
+        impl_method_ids.push(item_def_id(impl_method_doc, cdata));
         true
     });
 
@@ -1230,8 +1263,8 @@ pub fn each_implementation_for_trait(cdata: Cmd,
     });
 }
 
-pub fn get_trait_of_method(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
-                           -> Option<ast::DefId> {
+pub fn get_trait_of_item(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
+                         -> Option<ast::DefId> {
     let item_doc = lookup_item(id, cdata.data());
     let parent_item_id = match item_parent_item(item_doc) {
         None => return None,
