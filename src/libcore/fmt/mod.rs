@@ -127,9 +127,9 @@ impl<'a> Arguments<'a> {
 /// to prevent modification.
 ///
 /// The `format_args!` macro will safely create an instance of this structure
-/// and pass it to a user-supplied function. The macro validates the format
-/// string at compile-time so usage of the `write` and `format` functions can
-/// be safely performed.
+/// and pass it to a function or closure, passed as the first argument. The
+/// macro validates the format string at compile-time so usage of the `write`
+/// and `format` functions can be safely performed.
 pub struct Arguments<'a> {
     fmt: &'a [rt::Piece<'a>],
     args: &'a [Argument<'a>],
