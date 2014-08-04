@@ -563,9 +563,9 @@ impl<'a> Visitor<()> for Context<'a> {
         visit::walk_generics(self, g, ());
     }
 
-    fn visit_trait_method(&mut self, m: &ast::TraitMethod, _: ()) {
+    fn visit_trait_item(&mut self, m: &ast::TraitItem, _: ()) {
         run_lints!(self, check_trait_method, m);
-        visit::walk_trait_method(self, m, ());
+        visit::walk_trait_item(self, m, ());
     }
 
     fn visit_opt_lifetime_ref(&mut self, sp: Span, lt: &Option<ast::Lifetime>, _: ()) {

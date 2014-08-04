@@ -154,7 +154,7 @@ pub struct Static {
 
 pub struct Trait {
     pub name: Ident,
-    pub methods: Vec<ast::TraitMethod>, //should be TraitMethod
+    pub items: Vec<ast::TraitItem>, //should be TraitItem
     pub generics: ast::Generics,
     pub parents: Vec<ast::TraitRef>,
     pub attrs: Vec<ast::Attribute>,
@@ -168,7 +168,7 @@ pub struct Impl {
     pub generics: ast::Generics,
     pub trait_: Option<ast::TraitRef>,
     pub for_: ast::P<ast::Ty>,
-    pub methods: Vec<Gc<ast::Method>>,
+    pub items: Vec<ast::ImplItem>,
     pub attrs: Vec<ast::Attribute>,
     pub where: Span,
     pub vis: ast::Visibility,

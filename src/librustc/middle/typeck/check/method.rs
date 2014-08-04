@@ -220,9 +220,15 @@ fn get_method_index(tcx: &ty::ctxt,
     // methods from them.
     let mut method_count = 0;
     ty::each_bound_trait_and_supertraits(tcx, &[subtrait], |bound_ref| {
-        if bound_ref.def_id == trait_ref.def_id { false }
-            else {
-            method_count += ty::trait_methods(tcx, bound_ref.def_id).len();
+        if bound_ref.def_id == trait_ref.def_id {
+            false
+        } else {
+            let trait_items = ty::trait_items(tcx, bound_ref.def_id);
+            for trait_item in trait_items.iter() {
+                match *trait_item {
+                    ty::MethodTraitItem(_) => method_count += 1,
+                }
+            }
             true
         }
     });
@@ -488,11 +494,13 @@ impl<'a> LookupContext<'a> {
         ty::populate_implementations_for_trait_if_necessary(self.tcx(), trait_did);
 
         // Look for explicit implementations.
-        let impl_methods = self.tcx().impl_methods.borrow();
+        let impl_items = self.tcx().impl_items.borrow();
         for impl_infos in self.tcx().trait_impls.borrow().find(&trait_did).iter() {
             for impl_did in impl_infos.borrow().iter() {
-                let methods = impl_methods.get(impl_did);
-                self.push_candidates_from_impl(*impl_did, methods.as_slice(), true);
+                let items = impl_items.get(impl_did);
+                self.push_candidates_from_impl(*impl_did,
+                                               items.as_slice(),
+                                               true);
             }
         }
     }
@@ -520,8 +528,11 @@ impl<'a> LookupContext<'a> {
             trait_did: DefId,
             closure_did: DefId,
             closure_function_type: &ClosureTy) {
-        let method =
-            ty::trait_methods(self.tcx(), trait_did).get(0).clone();
+        let trait_item = ty::trait_items(self.tcx(), trait_did).get(0)
+                                                               .clone();
+        let method = match trait_item {
+            ty::MethodTraitItem(method) => method,
+        };
 
         let vcx = self.fcx.vtable_context();
         let region_params =
@@ -701,14 +712,24 @@ impl<'a> LookupContext<'a> {
             let this_bound_idx = next_bound_idx;
             next_bound_idx += 1;
 
-            let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
-            match trait_methods.iter().position(|m| {
-                m.explicit_self != ty::StaticExplicitSelfCategory &&
-                m.ident.name == self.m_name }) {
+            let trait_items = ty::trait_items(tcx, bound_trait_ref.def_id);
+            match trait_items.iter().position(|ti| {
+                match *ti {
+                    ty::MethodTraitItem(ref m) => {
+                        m.explicit_self != ty::StaticExplicitSelfCategory &&
+                        m.ident.name == self.m_name
+                    }
+                }
+            }) {
                 Some(pos) => {
-                    let method = trait_methods.get(pos).clone();
+                    let method = match *trait_items.get(pos) {
+                        ty::MethodTraitItem(ref method) => (*method).clone(),
+                    };
 
-                    match mk_cand(bound_trait_ref, method, pos, this_bound_idx) {
+                    match mk_cand(bound_trait_ref,
+                                  method,
+                                  pos,
+                                  this_bound_idx) {
                         Some(cand) => {
                             debug!("pushing inherent candidate for param: {}",
                                    cand.repr(self.tcx()));
@@ -733,18 +754,20 @@ impl<'a> LookupContext<'a> {
         // metadata if necessary.
         ty::populate_implementations_for_type_if_necessary(self.tcx(), did);
 
-        let impl_methods = self.tcx().impl_methods.borrow();
+        let impl_items = self.tcx().impl_items.borrow();
         for impl_infos in self.tcx().inherent_impls.borrow().find(&did).iter() {
             for impl_did in impl_infos.borrow().iter() {
-                let methods = impl_methods.get(impl_did);
-                self.push_candidates_from_impl(*impl_did, methods.as_slice(), false);
+                let items = impl_items.get(impl_did);
+                self.push_candidates_from_impl(*impl_did,
+                                               items.as_slice(),
+                                               false);
             }
         }
     }
 
     fn push_candidates_from_impl(&mut self,
                                  impl_did: DefId,
-                                 impl_methods: &[DefId],
+                                 impl_items: &[ImplOrTraitItemId],
                                  is_extension: bool) {
         let did = if self.report_statics == ReportStaticMethods {
             // we only want to report each base trait once
@@ -762,13 +785,23 @@ impl<'a> LookupContext<'a> {
 
         debug!("push_candidates_from_impl: {} {}",
                token::get_name(self.m_name),
-               impl_methods.iter().map(|&did| ty::method(self.tcx(), did).ident)
-                                 .collect::<Vec<ast::Ident>>()
-                                 .repr(self.tcx()));
+               impl_items.iter()
+                         .map(|&did| {
+                             ty::impl_or_trait_item(self.tcx(),
+                                                    did.def_id()).ident()
+                         })
+                         .collect::<Vec<ast::Ident>>()
+                         .repr(self.tcx()));
 
-        let method = match impl_methods.iter().map(|&did| ty::method(self.tcx(), did))
-                                              .find(|m| m.ident.name == self.m_name) {
-            Some(method) => method,
+        let method = match impl_items.iter()
+                                     .map(|&did| {
+                                         ty::impl_or_trait_item(self.tcx(),
+                                                                did.def_id())
+                                     })
+                                     .find(|m| {
+                                         m.ident().name == self.m_name
+                                     }) {
+            Some(ty::MethodTraitItem(method)) => method,
             None => { return; } // No method with the right name.
         };
 
@@ -1486,9 +1519,16 @@ impl<'a> LookupContext<'a> {
                 let did = if self.report_statics == ReportStaticMethods {
                     // If we're reporting statics, we want to report the trait
                     // definition if possible, rather than an impl
-                    match ty::trait_method_of_method(self.tcx(), impl_did) {
-                        None => {debug!("(report candidate) No trait method found"); impl_did},
-                        Some(trait_did) => {debug!("(report candidate) Found trait ref"); trait_did}
+                    match ty::trait_item_of_item(self.tcx(), impl_did) {
+                        None => {
+                            debug!("(report candidate) No trait method \
+                                    found");
+                            impl_did
+                        }
+                        Some(MethodTraitItemId(trait_did)) => {
+                            debug!("(report candidate) Found trait ref");
+                            trait_did
+                        }
                     }
                 } else {
                     // If it is an instantiated default method, use the original

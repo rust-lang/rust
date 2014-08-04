@@ -60,9 +60,9 @@ impl MaybeFnLike for ast::Item {
     }
 }
 
-impl MaybeFnLike for ast::TraitMethod {
+impl MaybeFnLike for ast::TraitItem {
     fn is_fn_like(&self) -> bool {
-        match *self { ast::Provided(_) => true, _ => false, }
+        match *self { ast::ProvidedMethod(_) => true, _ => false, }
     }
 }
 
@@ -97,9 +97,9 @@ impl Code {
         match node {
             ast_map::NodeItem(item) if item.is_fn_like() =>
                 Some(FnLikeCode(new(node))),
-            ast_map::NodeTraitMethod(tm) if tm.is_fn_like() =>
+            ast_map::NodeTraitItem(tm) if tm.is_fn_like() =>
                 Some(FnLikeCode(new(node))),
-            ast_map::NodeMethod(_) =>
+            ast_map::NodeImplItem(_) =>
                 Some(FnLikeCode(new(node))),
             ast_map::NodeExpr(e) if e.is_fn_like() =>
                 Some(FnLikeCode(new(node))),
@@ -200,11 +200,15 @@ impl FnLikeNode {
                     }),
                 _ => fail!("item FnLikeNode that is not fn-like"),
             },
-            ast_map::NodeTraitMethod(ref t) => match **t {
-                ast::Provided(ref m) => method(&**m),
+            ast_map::NodeTraitItem(ref t) => match **t {
+                ast::ProvidedMethod(ref m) => method(&**m),
                 _ => fail!("trait method FnLikeNode that is not fn-like"),
             },
-            ast_map::NodeMethod(ref m) => method(&**m),
+            ast_map::NodeImplItem(ref ii) => {
+                match **ii {
+                    ast::MethodImplItem(ref m) => method(&**m),
+                }
+            }
             ast_map::NodeExpr(ref e) => match e.node {
                 ast::ExprFnBlock(_, ref decl, ref block) =>
                     closure(ClosureParts::new(*decl, *block, e.id, e.span)),

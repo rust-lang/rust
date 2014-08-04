@@ -241,51 +241,52 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
     token::gensym_ident(pretty.as_slice())
 }
 
-/// extract a TypeMethod from a TraitMethod. if the TraitMethod is
-/// a default, pull out the useful fields to make a TypeMethod
-//
-// NB: to be used only after expansion is complete, and macros are gone.
-pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
-    match *method {
-        Required(ref m) => (*m).clone(),
-        Provided(m) => {
-            match m.node {
-                MethDecl(ident,
-                         ref generics,
-                         abi,
-                         explicit_self,
-                         fn_style,
-                         decl,
-                         _,
-                         vis) => {
-                    TypeMethod {
-                        ident: ident,
-                        attrs: m.attrs.clone(),
-                        fn_style: fn_style,
-                        decl: decl,
-                        generics: generics.clone(),
-                        explicit_self: explicit_self,
-                        id: m.id,
-                        span: m.span,
-                        vis: vis,
-                        abi: abi,
-                    }
-                },
-                MethMac(_) => fail!("expected non-macro method declaration")
+pub fn trait_method_to_ty_method(method: &Method) -> TypeMethod {
+    match method.node {
+        MethDecl(ident,
+                 ref generics,
+                 abi,
+                 explicit_self,
+                 fn_style,
+                 decl,
+                 _,
+                 vis) => {
+            TypeMethod {
+                ident: ident,
+                attrs: method.attrs.clone(),
+                fn_style: fn_style,
+                decl: decl,
+                generics: generics.clone(),
+                explicit_self: explicit_self,
+                id: method.id,
+                span: method.span,
+                vis: vis,
+                abi: abi,
             }
-
-        }
+        },
+        MethMac(_) => fail!("expected non-macro method declaration")
     }
 }
 
-pub fn split_trait_methods(trait_methods: &[TraitMethod])
+/// extract a TypeMethod from a TraitItem. if the TraitItem is
+/// a default, pull out the useful fields to make a TypeMethod
+//
+// NB: to be used only after expansion is complete, and macros are gone.
+pub fn trait_item_to_ty_method(method: &TraitItem) -> TypeMethod {
+    match *method {
+        RequiredMethod(ref m) => (*m).clone(),
+        ProvidedMethod(ref m) => trait_method_to_ty_method(&**m),
+    }
+}
+
+pub fn split_trait_methods(trait_methods: &[TraitItem])
     -> (Vec<TypeMethod> , Vec<Gc<Method>> ) {
     let mut reqd = Vec::new();
     let mut provd = Vec::new();
     for trt_method in trait_methods.iter() {
         match *trt_method {
-            Required(ref tm) => reqd.push((*tm).clone()),
-            Provided(m) => provd.push(m)
+            RequiredMethod(ref tm) => reqd.push((*tm).clone()),
+            ProvidedMethod(m) => provd.push(m)
         }
     };
     (reqd, provd)
@@ -543,12 +544,12 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
         visit::walk_struct_def(self, struct_def, ());
     }
 
-    fn visit_trait_method(&mut self, tm: &ast::TraitMethod, _: ()) {
+    fn visit_trait_item(&mut self, tm: &ast::TraitItem, _: ()) {
         match *tm {
-            ast::Required(ref m) => self.operation.visit_id(m.id),
-            ast::Provided(ref m) => self.operation.visit_id(m.id),
+            ast::RequiredMethod(ref m) => self.operation.visit_id(m.id),
+            ast::ProvidedMethod(ref m) => self.operation.visit_id(m.id),
         }
-        visit::walk_trait_method(self, tm, ());
+        visit::walk_trait_item(self, tm, ());
     }
 }
 

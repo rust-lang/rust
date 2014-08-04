@@ -25,7 +25,6 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::ppaux::ty_to_string;
 
-use std::rc::Rc;
 use arena::TypedArena;
 use libc::c_uint;
 use syntax::ast::DefId;
@@ -36,7 +35,7 @@ use syntax::parse::token;
 
 pub struct Reflector<'a, 'b> {
     visitor_val: ValueRef,
-    visitor_methods: &'a [Rc<ty::Method>],
+    visitor_items: &'a [ty::ImplOrTraitItem],
     final_bcx: &'b Block<'b>,
     tydesc_ty: Type,
     bcx: &'b Block<'b>
@@ -87,13 +86,14 @@ impl<'a, 'b> Reflector<'a, 'b> {
     pub fn visit(&mut self, ty_name: &str, args: &[ValueRef]) {
         let fcx = self.bcx.fcx;
         let tcx = self.bcx.tcx();
-        let mth_idx = ty::method_idx(token::str_to_ident(format!(
+        let mth_idx = ty::impl_or_trait_item_idx(token::str_to_ident(format!(
                         "visit_{}", ty_name).as_slice()),
-                                     self.visitor_methods.as_slice()).expect(
+                                     self.visitor_items.as_slice()).expect(
                 format!("couldn't find visit method for {}", ty_name).as_slice());
-        let mth_ty =
-            ty::mk_bare_fn(tcx,
-                           self.visitor_methods[mth_idx].fty.clone());
+        let method = match self.visitor_items[mth_idx] {
+            ty::MethodTraitItem(ref method) => (*method).clone(),
+        };
+        let mth_ty = ty::mk_bare_fn(tcx, method.fty.clone());
         let v = self.visitor_val;
         debug!("passing {} args:", args.len());
         let mut bcx = self.bcx;
@@ -397,10 +397,10 @@ pub fn emit_calls_to_trait_visit_ty<'a>(
     let final = fcx.new_temp_block("final");
     let tydesc_ty = ty::get_tydesc_ty(bcx.tcx()).unwrap();
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
-    let visitor_methods = ty::trait_methods(bcx.tcx(), visitor_trait_id);
+    let visitor_items = ty::trait_items(bcx.tcx(), visitor_trait_id);
     let mut r = Reflector {
         visitor_val: visitor_val,
-        visitor_methods: visitor_methods.as_slice(),
+        visitor_items: visitor_items.as_slice(),
         final_bcx: final,
         tydesc_ty: tydesc_ty,
         bcx: bcx

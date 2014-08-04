@@ -1299,9 +1299,9 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                 _ => tcx.sess.bug("unexpected item variant in has_nested_returns")
             }
         }
-        Some(ast_map::NodeTraitMethod(trait_method)) => {
+        Some(ast_map::NodeTraitItem(trait_method)) => {
             match *trait_method {
-                ast::Provided(m) => {
+                ast::ProvidedMethod(m) => {
                     match m.node {
                         ast::MethDecl(_, _, _, _, _, _, blk, _) => {
                             let mut explicit = CheckForNestedReturnsVisitor { found: false };
@@ -1313,20 +1313,34 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                         ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
                     }
                 }
-                ast::Required(_) => tcx.sess.bug("unexpected variant: required trait method in \
-                                                  has_nested_returns")
+                ast::RequiredMethod(_) => {
+                    tcx.sess.bug("unexpected variant: required trait method \
+                                  in has_nested_returns")
+                }
             }
         }
-        Some(ast_map::NodeMethod(m)) => {
-            match m.node {
-                ast::MethDecl(_, _, _, _, _, _, blk, _) => {
-                    let mut explicit = CheckForNestedReturnsVisitor { found: false };
-                    let mut implicit = CheckForNestedReturnsVisitor { found: false };
-                    visit::walk_method_helper(&mut explicit, &*m, false);
-                    visit::walk_expr_opt(&mut implicit, blk.expr, true);
-                    explicit.found || implicit.found
+        Some(ast_map::NodeImplItem(ref ii)) => {
+            match **ii {
+                ast::MethodImplItem(ref m) => {
+                    match m.node {
+                        ast::MethDecl(_, _, _, _, _, _, blk, _) => {
+                            let mut explicit = CheckForNestedReturnsVisitor {
+                                found: false,
+                            };
+                            let mut implicit = CheckForNestedReturnsVisitor {
+                                found: false,
+                            };
+                            visit::walk_method_helper(&mut explicit,
+                                                      &**m,
+                                                      false);
+                            visit::walk_expr_opt(&mut implicit,
+                                                 blk.expr,
+                                                 true);
+                            explicit.found || implicit.found
+                        }
+                        ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
+                    }
                 }
-                ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
             }
         }
         Some(ast_map::NodeExpr(e)) => {
@@ -2107,8 +2121,12 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
         let mut v = TransItemVisitor{ ccx: ccx };
         v.visit_block(&**body, ());
       }
-      ast::ItemImpl(ref generics, _, _, ref ms) => {
-        meth::trans_impl(ccx, item.ident, ms.as_slice(), generics, item.id);
+      ast::ItemImpl(ref generics, _, _, ref impl_items) => {
+        meth::trans_impl(ccx,
+                         item.ident,
+                         impl_items.as_slice(),
+                         generics,
+                         item.id);
       }
       ast::ItemMod(ref m) => {
         trans_mod(ccx, m);
@@ -2615,21 +2633,23 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             v
         }
 
-        ast_map::NodeTraitMethod(trait_method) => {
-            debug!("get_item_val(): processing a NodeTraitMethod");
+        ast_map::NodeTraitItem(trait_method) => {
+            debug!("get_item_val(): processing a NodeTraitItem");
             match *trait_method {
-                ast::Required(_) => {
+                ast::RequiredMethod(_) => {
                     ccx.sess().bug("unexpected variant: required trait method in \
                                    get_item_val()");
                 }
-                ast::Provided(m) => {
+                ast::ProvidedMethod(m) => {
                     register_method(ccx, id, &*m)
                 }
             }
         }
 
-        ast_map::NodeMethod(m) => {
-            register_method(ccx, id, &*m)
+        ast_map::NodeImplItem(ii) => {
+            match *ii {
+                ast::MethodImplItem(m) => register_method(ccx, id, &*m),
+            }
         }
 
         ast_map::NodeForeignItem(ni) => {

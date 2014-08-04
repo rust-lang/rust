@@ -54,11 +54,17 @@ use syntax;
 use rbml::writer;
 use rbml::io::SeekableMemWriter;
 
-/// A borrowed version of ast::InlinedItem.
+/// A borrowed version of `ast::InlinedItem`.
 pub enum InlinedItemRef<'a> {
     IIItemRef(&'a ast::Item),
-    IIMethodRef(ast::DefId, bool, &'a ast::Method),
+    IITraitItemRef(ast::DefId, InlinedTraitItemRef<'a>),
     IIForeignRef(&'a ast::ForeignItem)
+}
+
+/// A borrowed version of `ast::InlinedTraitItem`.
+pub enum InlinedTraitItemRef<'a> {
+    ProvidedInlinedTraitItemRef(&'a Method),
+    RequiredInlinedTraitItemRef(&'a Method),
 }
 
 pub type Encoder<'a> = writer::Encoder<'a, SeekableMemWriter>;
@@ -403,14 +409,24 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                                          rbml_w: &mut Encoder,
                                          exp: &middle::resolve::Export2)
                                          -> bool {
-    let impl_methods = ecx.tcx.impl_methods.borrow();
+    let impl_items = ecx.tcx.impl_items.borrow();
     match ecx.tcx.inherent_impls.borrow().find(&exp.def_id) {
         Some(implementations) => {
             for base_impl_did in implementations.borrow().iter() {
-                for &method_did in impl_methods.get(base_impl_did).iter() {
-                    let m = ty::method(ecx.tcx, method_did);
-                    if m.explicit_self == ty::StaticExplicitSelfCategory {
-                        encode_reexported_static_method(rbml_w, exp, m.def_id, m.ident);
+                for &method_did in impl_items.get(base_impl_did).iter() {
+                    let impl_item = ty::impl_or_trait_item(
+                        ecx.tcx,
+                        method_did.def_id());
+                    match impl_item {
+                        ty::MethodTraitItem(ref m) => {
+                            if m.explicit_self ==
+                                    ty::StaticExplicitSelfCategory {
+                                encode_reexported_static_method(rbml_w,
+                                                                exp,
+                                                                m.def_id,
+                                                                m.ident);
+                            }
+                        }
                     }
                 }
             }
@@ -425,11 +441,18 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                                           rbml_w: &mut Encoder,
                                           exp: &middle::resolve::Export2)
                                           -> bool {
-    match ecx.tcx.trait_methods_cache.borrow().find(&exp.def_id) {
-        Some(methods) => {
-            for m in methods.iter() {
-                if m.explicit_self == ty::StaticExplicitSelfCategory {
-                    encode_reexported_static_method(rbml_w, exp, m.def_id, m.ident);
+    match ecx.tcx.trait_items_cache.borrow().find(&exp.def_id) {
+        Some(trait_items) => {
+            for trait_item in trait_items.iter() {
+                match *trait_item {
+                    ty::MethodTraitItem(ref m) if m.explicit_self ==
+                            ty::StaticExplicitSelfCategory => {
+                        encode_reexported_static_method(rbml_w,
+                                                        exp,
+                                                        m.def_id,
+                                                        m.ident);
+                    }
+                    _ => {}
                 }
             }
 
@@ -675,8 +698,14 @@ fn encode_explicit_self(rbml_w: &mut Encoder,
     }
 }
 
-fn encode_method_sort(rbml_w: &mut Encoder, sort: char) {
-    rbml_w.start_tag(tag_item_trait_method_sort);
+fn encode_item_sort(rbml_w: &mut Encoder, sort: char) {
+    rbml_w.start_tag(tag_item_trait_item_sort);
+    rbml_w.writer.write(&[ sort as u8 ]);
+    rbml_w.end_tag();
+}
+
+fn encode_parent_sort(rbml_w: &mut Encoder, sort: char) {
+    rbml_w.start_tag(tag_item_trait_parent_sort);
     rbml_w.writer.write(&[ sort as u8 ]);
     rbml_w.end_tag();
 }
@@ -799,6 +828,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
 
     encode_method_ty_fields(ecx, rbml_w, m);
     encode_parent_item(rbml_w, local_def(parent_id));
+    encode_item_sort(rbml_w, 'r');
 
     let stab = stability::lookup(ecx.tcx, m.def_id);
     encode_stability(rbml_w, stab);
@@ -819,9 +849,11 @@ fn encode_info_for_method(ecx: &EncodeContext,
     for &ast_method in ast_method_opt.iter() {
         let any_types = !pty.generics.types.is_empty();
         if any_types || is_default_impl || should_inline(ast_method.attrs.as_slice()) {
-            encode_inlined_item(ecx, rbml_w,
-                                IIMethodRef(local_def(parent_id), false,
-                                            &*ast_method));
+            encode_inlined_item(ecx,
+                                rbml_w,
+                                IITraitItemRef(local_def(parent_id),
+                                               RequiredInlinedTraitItemRef(
+                                                   &*ast_method)));
         } else {
             encode_symbol(ecx, rbml_w, m.def_id.node);
         }
@@ -1106,11 +1138,11 @@ fn encode_info_for_item(ecx: &EncodeContext,
             None => {}
         }
       }
-      ItemImpl(_, ref opt_trait, ty, ref ast_methods) => {
+      ItemImpl(_, ref opt_trait, ty, ref ast_items) => {
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
-        let impl_methods = tcx.impl_methods.borrow();
-        let methods = impl_methods.get(&def_id);
+        let impl_items = tcx.impl_items.borrow();
+        let items = impl_items.get(&def_id);
 
         add_to_index(item, rbml_w, index);
         rbml_w.start_tag(tag_items_data_item);
@@ -1128,10 +1160,14 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
             _ => {}
         }
-        for &method_def_id in methods.iter() {
-            rbml_w.start_tag(tag_item_impl_method);
-            let s = def_to_string(method_def_id);
-            rbml_w.writer.write(s.as_bytes());
+        for &item_def_id in items.iter() {
+            rbml_w.start_tag(tag_item_impl_item);
+            match item_def_id {
+                ty::MethodTraitItemId(item_def_id) => {
+                    encode_def_id(rbml_w, item_def_id);
+                    encode_item_sort(rbml_w, 'r');
+                }
+            }
             rbml_w.end_tag();
         }
         for ast_trait_ref in opt_trait.iter() {
@@ -1145,27 +1181,46 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_stability(rbml_w, stab);
         rbml_w.end_tag();
 
-        // Iterate down the methods, emitting them. We rely on the
-        // assumption that all of the actually implemented methods
+        // Iterate down the trait items, emitting them. We rely on the
+        // assumption that all of the actually implemented trait items
         // appear first in the impl structure, in the same order they do
         // in the ast. This is a little sketchy.
-        let num_implemented_methods = ast_methods.len();
-        for (i, &method_def_id) in methods.iter().enumerate() {
-            let ast_method = if i < num_implemented_methods {
-                Some(*ast_methods.get(i))
-            } else { None };
+        let num_implemented_methods = ast_items.len();
+        for (i, &trait_item_def_id) in items.iter().enumerate() {
+            let ast_item = if i < num_implemented_methods {
+                Some(*ast_items.get(i))
+            } else {
+                None
+            };
 
             index.push(entry {
-                val: method_def_id.node as i64,
+                val: trait_item_def_id.def_id().node as i64,
                 pos: rbml_w.writer.tell().unwrap(),
             });
-            encode_info_for_method(ecx,
-                                   rbml_w,
-                                   &*ty::method(tcx, method_def_id),
-                                   path.clone(),
-                                   false,
-                                   item.id,
-                                   ast_method)
+
+            let trait_item_type =
+                ty::impl_or_trait_item(tcx, trait_item_def_id.def_id());
+            match (trait_item_type, ast_item) {
+                (ty::MethodTraitItem(method_type),
+                 Some(ast::MethodImplItem(ast_method))) => {
+                    encode_info_for_method(ecx,
+                                           rbml_w,
+                                           &*method_type,
+                                           path.clone(),
+                                           false,
+                                           item.id,
+                                           Some(ast_method))
+                }
+                (ty::MethodTraitItem(method_type), None) => {
+                    encode_info_for_method(ecx,
+                                           rbml_w,
+                                           &*method_type,
+                                           path.clone(),
+                                           false,
+                                           item.id,
+                                           None)
+                }
+            }
         }
       }
       ItemTrait(_, _, ref super_traits, ref ms) => {
@@ -1184,13 +1239,18 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_attributes(rbml_w, item.attrs.as_slice());
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
-        for &method_def_id in ty::trait_method_def_ids(tcx, def_id).iter() {
-            rbml_w.start_tag(tag_item_trait_method);
-            encode_def_id(rbml_w, method_def_id);
+        for &method_def_id in ty::trait_item_def_ids(tcx, def_id).iter() {
+            rbml_w.start_tag(tag_item_trait_item);
+            match method_def_id {
+                ty::MethodTraitItemId(method_def_id) => {
+                    encode_def_id(rbml_w, method_def_id);
+                    encode_item_sort(rbml_w, 'r');
+                }
+            }
             rbml_w.end_tag();
 
             rbml_w.start_tag(tag_mod_child);
-            rbml_w.wr_str(def_to_string(method_def_id).as_slice());
+            rbml_w.wr_str(def_to_string(method_def_id.def_id()).as_slice());
             rbml_w.end_tag();
         }
         encode_path(rbml_w, path.clone());
@@ -1207,66 +1267,83 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
         rbml_w.end_tag();
 
-        // Now output the method info for each method.
-        let r = ty::trait_method_def_ids(tcx, def_id);
-        for (i, &method_def_id) in r.iter().enumerate() {
-            assert_eq!(method_def_id.krate, ast::LOCAL_CRATE);
-
-            let method_ty = ty::method(tcx, method_def_id);
+        // Now output the trait item info for each trait item.
+        let r = ty::trait_item_def_ids(tcx, def_id);
+        for (i, &item_def_id) in r.iter().enumerate() {
+            assert_eq!(item_def_id.def_id().krate, ast::LOCAL_CRATE);
 
             index.push(entry {
-                val: method_def_id.node as i64,
+                val: item_def_id.def_id().node as i64,
                 pos: rbml_w.writer.tell().unwrap(),
             });
 
             rbml_w.start_tag(tag_items_data_item);
 
-            encode_method_ty_fields(ecx, rbml_w, &*method_ty);
-            encode_parent_item(rbml_w, def_id);
+            let trait_item_type =
+                ty::impl_or_trait_item(tcx, item_def_id.def_id());
+            match trait_item_type {
+                 ty::MethodTraitItem(method_ty) => {
+                    let method_def_id = item_def_id.def_id();
 
-            let stab = stability::lookup(tcx, method_def_id);
-            encode_stability(rbml_w, stab);
+                    encode_method_ty_fields(ecx, rbml_w, &*method_ty);
+                    encode_parent_item(rbml_w, def_id);
 
-            let elem = ast_map::PathName(method_ty.ident.name);
-            encode_path(rbml_w, path.clone().chain(Some(elem).move_iter()));
+                    let stab = stability::lookup(tcx, method_def_id);
+                    encode_stability(rbml_w, stab);
 
-            match method_ty.explicit_self {
-                ty::StaticExplicitSelfCategory => {
-                    encode_family(rbml_w,
-                                  fn_style_static_method_family(
-                                      method_ty.fty.fn_style));
+                    let elem = ast_map::PathName(method_ty.ident.name);
+                    encode_path(rbml_w,
+                                path.clone().chain(Some(elem).move_iter()));
 
-                    let pty = ty::lookup_item_type(tcx, method_def_id);
-                    encode_bounds_and_type(rbml_w, ecx, &pty);
-                }
+                    match method_ty.explicit_self {
+                        ty::StaticExplicitSelfCategory => {
+                            encode_family(rbml_w,
+                                          fn_style_static_method_family(
+                                              method_ty.fty.fn_style));
 
-                _ => {
-                    encode_family(rbml_w,
-                                  style_fn_family(
-                                      method_ty.fty.fn_style));
-                }
-            }
+                            let pty = ty::lookup_item_type(tcx,
+                                                           method_def_id);
+                            encode_bounds_and_type(rbml_w, ecx, &pty);
+                        }
 
-            match ms.get(i) {
-                &Required(ref tm) => {
-                    encode_attributes(rbml_w, tm.attrs.as_slice());
-                    encode_method_sort(rbml_w, 'r');
-                    encode_method_argument_names(rbml_w, &*tm.decl);
-                }
-
-                &Provided(m) => {
-                    encode_attributes(rbml_w, m.attrs.as_slice());
-                    // If this is a static method, we've already encoded
-                    // this.
-                    if method_ty.explicit_self != ty::StaticExplicitSelfCategory {
-                        // FIXME: I feel like there is something funny going on.
-                        let pty = ty::lookup_item_type(tcx, method_def_id);
-                        encode_bounds_and_type(rbml_w, ecx, &pty);
+                        _ => {
+                            encode_family(rbml_w,
+                                          style_fn_family(
+                                              method_ty.fty.fn_style));
+                        }
                     }
-                    encode_method_sort(rbml_w, 'p');
-                    encode_inlined_item(ecx, rbml_w,
-                                        IIMethodRef(def_id, true, &*m));
-                    encode_method_argument_names(rbml_w, &*m.pe_fn_decl());
+
+                    match ms.get(i) {
+                        &RequiredMethod(ref tm) => {
+                            encode_attributes(rbml_w, tm.attrs.as_slice());
+                            encode_item_sort(rbml_w, 'r');
+                            encode_parent_sort(rbml_w, 't');
+                            encode_method_argument_names(rbml_w, &*tm.decl);
+                        }
+
+                        &ProvidedMethod(m) => {
+                            encode_attributes(rbml_w, m.attrs.as_slice());
+                            // If this is a static method, we've already
+                            // encoded this.
+                            if method_ty.explicit_self !=
+                                    ty::StaticExplicitSelfCategory {
+                                // FIXME: I feel like there is something funny
+                                // going on.
+                                let pty = ty::lookup_item_type(tcx, method_def_id);
+                                encode_bounds_and_type(rbml_w, ecx, &pty);
+                            }
+                            encode_item_sort(rbml_w, 'p');
+                            encode_parent_sort(rbml_w, 't');
+                            encode_inlined_item(
+                                ecx,
+                                rbml_w,
+                                IITraitItemRef(
+                                    def_id,
+                                    ProvidedInlinedTraitItemRef(&*m)));
+                            encode_method_argument_names(rbml_w,
+                                                         &*m.pe_fn_decl());
+                        }
+                    }
                 }
             }
 
