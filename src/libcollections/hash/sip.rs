@@ -495,8 +495,8 @@ mod tests {
         assert!(s != t && t != u);
         assert!(hash(&s) != hash(&t) && hash(&s) != hash(&u));
 
-        let v = (&[1u8], &[0u8, 0], &[0u8]);
-        let w = (&[1u8, 0, 0, 0], &[], &[]);
+        let v: (&[u8], &[u8], &[u8]) = (&[1u8], &[0u8, 0], &[0u8]);
+        let w: (&[u8], &[u8], &[u8]) = (&[1u8, 0, 0, 0], &[], &[]);
 
         assert!(v != w);
         assert!(hash(&v) != hash(&w));

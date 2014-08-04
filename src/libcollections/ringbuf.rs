@@ -865,12 +865,18 @@ mod tests {
         for i in range(0i, 5) {
             d.push_back(i);
         }
-        assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), &[&0,&1,&2,&3,&4]);
+        {
+            let b: &[_] = &[&0,&1,&2,&3,&4];
+            assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), b);
+        }
 
         for i in range(6i, 9) {
             d.push_front(i);
         }
-        assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), &[&8,&7,&6,&0,&1,&2,&3,&4]);
+        {
+            let b: &[_] = &[&8,&7,&6,&0,&1,&2,&3,&4];
+            assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), b);
+        }
 
         let mut it = d.iter();
         let mut len = d.len();
@@ -890,12 +896,16 @@ mod tests {
         for i in range(0i, 5) {
             d.push_back(i);
         }
-        assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), &[&4,&3,&2,&1,&0]);
+        {
+            let b: &[_] = &[&4,&3,&2,&1,&0];
+            assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), b);
+        }
 
         for i in range(6i, 9) {
             d.push_front(i);
         }
-        assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), &[&4,&3,&2,&1,&0,&6,&7,&8]);
+        let b: &[_] = &[&4,&3,&2,&1,&0,&6,&7,&8];
+        assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), b);
     }
 
     #[test]

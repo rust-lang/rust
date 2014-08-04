@@ -183,16 +183,17 @@ mod tests {
     #[test]
     pub fn test_from_hex_all_bytes() {
         for i in range(0u, 256) {
+            let ii: &[u8] = &[i as u8];
             assert_eq!(format!("{:02x}", i as uint).as_slice()
                                                    .from_hex()
                                                    .unwrap()
                                                    .as_slice(),
-                       &[i as u8]);
+                       ii);
             assert_eq!(format!("{:02X}", i as uint).as_slice()
                                                    .from_hex()
                                                    .unwrap()
                                                    .as_slice(),
-                       &[i as u8]);
+                       ii);
         }
     }
 

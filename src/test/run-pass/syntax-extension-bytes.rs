@@ -12,13 +12,17 @@ static static_vec: &'static [u8] = bytes!("abc", 0xFF, '!');
 
 pub fn main() {
     let vec = bytes!("abc");
-    assert_eq!(vec, &[97_u8, 98_u8, 99_u8]);
+    let expected: &[u8] = &[97_u8, 98_u8, 99_u8];
+    assert_eq!(vec, expected);
 
     let vec = bytes!("null", 0);
-    assert_eq!(vec, &[110_u8, 117_u8, 108_u8, 108_u8, 0_u8]);
+    let expected: &[u8] = &[110_u8, 117_u8, 108_u8, 108_u8, 0_u8];
+    assert_eq!(vec, expected);
 
     let vec = bytes!(' ', " ", 32, 32u8);
-    assert_eq!(vec, &[32_u8, 32_u8, 32_u8, 32_u8]);
+    let expected: &[u8] = &[32_u8, 32_u8, 32_u8, 32_u8];
+    assert_eq!(vec, expected);
 
-    assert_eq!(static_vec, &[97_u8, 98_u8, 99_u8, 255_u8, 33_u8]);
+    let expected: &[u8] = &[97_u8, 98_u8, 99_u8, 255_u8, 33_u8];
+    assert_eq!(static_vec, expected);
 }

@@ -309,7 +309,8 @@ pub trait SeedableRng<Seed>: Rng {
     /// ```rust
     /// use std::rand::{Rng, SeedableRng, StdRng};
     ///
-    /// let mut rng: StdRng = SeedableRng::from_seed(&[1, 2, 3, 4]);
+    /// let seed: &[_] = &[1, 2, 3, 4];
+    /// let mut rng: StdRng = SeedableRng::from_seed(seed);
     /// println!("{}", rng.gen::<f64>());
     /// rng.reseed([5, 6, 7, 8]);
     /// println!("{}", rng.gen::<f64>());
@@ -323,7 +324,8 @@ pub trait SeedableRng<Seed>: Rng {
     /// ```rust
     /// use std::rand::{Rng, SeedableRng, StdRng};
     ///
-    /// let mut rng: StdRng = SeedableRng::from_seed(&[1, 2, 3, 4]);
+    /// let seed: &[_] = &[1, 2, 3, 4];
+    /// let mut rng: StdRng = SeedableRng::from_seed(seed);
     /// println!("{}", rng.gen::<f64>());
     /// ```
     fn from_seed(seed: Seed) -> Self;

@@ -918,8 +918,8 @@ pub fn utf16_items<'a>(v: &'a [u16]) -> Utf16Items<'a> {
 ///
 /// // "ab\0d"
 /// v[2] = 0;
-/// assert_eq!(str::truncate_utf16_at_nul(v),
-///            &['a' as u16, 'b' as u16]);
+/// let b: &[_] = &['a' as u16, 'b' as u16];
+/// assert_eq!(str::truncate_utf16_at_nul(v), b);
 /// ```
 pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
     match v.iter().position(|c| *c == 0) {
@@ -1439,7 +1439,8 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar")
-    /// assert_eq!("12foo1bar12".trim_chars(&['1', '2']), "foo1bar")
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_chars(x), "foo1bar")
     /// assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_digit()), "foo1bar")
     /// ```
     fn trim_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
@@ -1454,7 +1455,8 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11")
-    /// assert_eq!("12foo1bar12".trim_left_chars(&['1', '2']), "foo1bar12")
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_left_chars(x), "foo1bar12")
     /// assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_digit()), "foo1bar123")
     /// ```
     fn trim_left_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
@@ -1469,7 +1471,8 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar")
-    /// assert_eq!("12foo1bar12".trim_right_chars(&['1', '2']), "12foo1bar")
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_right_chars(x), "12foo1bar")
     /// assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_digit()), "123foo1bar")
     /// ```
     fn trim_right_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
@@ -1620,7 +1623,8 @@ pub trait StrSlice<'a> {
     /// assert_eq!(s.find(|c: char| c.is_whitespace()), Some(5));
     ///
     /// // neither are found
-    /// assert_eq!(s.find(&['1', '2']), None);
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!(s.find(x), None);
     /// ```
     fn find<C: CharEq>(&self, search: C) -> Option<uint>;
 
@@ -1644,7 +1648,8 @@ pub trait StrSlice<'a> {
     /// assert_eq!(s.rfind(|c: char| c.is_whitespace()), Some(12));
     ///
     /// // searches for an occurrence of either `1` or `2`, but neither are found
-    /// assert_eq!(s.rfind(&['1', '2']), None);
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!(s.rfind(x), None);
     /// ```
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint>;
 

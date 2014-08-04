@@ -37,13 +37,16 @@ pub fn main() {
         _ => fail!()
     }
 
-    assert_eq!(b"a\n\r\t\\\'\"\0\xF0",
-               &[97u8, 10u8, 13u8, 9u8, 92u8, 39u8, 34u8, 0u8, 240u8]);
+    let expected: &[_] = &[97u8, 10u8, 13u8, 9u8, 92u8, 39u8, 34u8, 0u8, 240u8];
+    assert_eq!(b"a\n\r\t\\\'\"\0\xF0", expected);
+    let expected: &[_] = &[97u8, 98u8];
     assert_eq!(b"a\
-                 b", &[97u8, 98u8]);
-    assert_eq!(BAR, &[97u8, 240u8, 9u8]);
+                 b", expected);
+    let expected: &[_] = &[97u8, 240u8, 9u8];
+    assert_eq!(BAR, expected);
 
-    match &[97u8, 10u8] {
+    let val: &[_] = &[97u8, 10u8];
+    match val {
         b"a\n" => {},
         _ => fail!(),
     }
@@ -55,9 +58,12 @@ pub fn main() {
          _ => 3u
     }, 2);
 
-    assert_eq!(BAZ, &[97u8, 92u8, 110u8]);
-    assert_eq!(br"a\n", &[97u8, 92u8, 110u8]);
+    let expected: &[_] = &[97u8, 92u8, 110u8];
+    assert_eq!(BAZ, expected);
+    let expected: &[_] = &[97u8, 92u8, 110u8];
+    assert_eq!(br"a\n", expected);
     assert_eq!(br"a\n", b"a\\n");
-    assert_eq!(br###"a"##b"###, &[97u8, 34u8, 35u8, 35u8, 98u8]);
+    let expected: &[_] = &[97u8, 34u8, 35u8, 35u8, 98u8];
+    assert_eq!(br###"a"##b"###, expected);
     assert_eq!(br###"a"##b"###, b"a\"##b");
 }
