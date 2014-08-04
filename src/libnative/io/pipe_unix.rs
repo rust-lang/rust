@@ -29,12 +29,13 @@ fn unix_socket(ty: libc::c_int) -> IoResult<fd_t> {
     }
 }
 
-fn addr_to_sockaddr_un(addr: &CString) -> IoResult<(libc::sockaddr_storage, uint)> {
+fn addr_to_sockaddr_un(addr: &CString,
+                       storage: &mut libc::sockaddr_storage)
+                       -> IoResult<libc::socklen_t> {
     // the sun_path length is limited to SUN_LEN (with null)
     assert!(mem::size_of::<libc::sockaddr_storage>() >=
             mem::size_of::<libc::sockaddr_un>());
-    let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
-    let s: &mut libc::sockaddr_un = unsafe { mem::transmute(&mut storage) };
+    let s = unsafe { &mut *(storage as *mut _ as *mut libc::sockaddr_un) };
 
     let len = addr.len();
     if len > s.sun_path.len() - 1 {
@@ -53,7 +54,7 @@ fn addr_to_sockaddr_un(addr: &CString) -> IoResult<(libc::sockaddr_storage, uint
 
     // count the null terminator
     let len = mem::size_of::<libc::sa_family_t>() + len + 1;
-    return Ok((storage, len));
+    return Ok(len as libc::socklen_t);
 }
 
 struct Inner {
@@ -76,10 +77,10 @@ impl Drop for Inner {
 
 fn connect(addr: &CString, ty: libc::c_int,
            timeout: Option<u64>) -> IoResult<Inner> {
-    let (addr, len) = try!(addr_to_sockaddr_un(addr));
+    let mut storage = unsafe { mem::zeroed() };
+    let len = try!(addr_to_sockaddr_un(addr, &mut storage));
     let inner = Inner::new(try!(unix_socket(ty)));
-    let addrp = &addr as *const _ as *const libc::sockaddr;
-    let len = len as libc::socklen_t;
+    let addrp = &storage as *const _ as *const libc::sockaddr;
 
     match timeout {
         None => {
@@ -96,11 +97,12 @@ fn connect(addr: &CString, ty: libc::c_int,
 }
 
 fn bind(addr: &CString, ty: libc::c_int) -> IoResult<Inner> {
-    let (addr, len) = try!(addr_to_sockaddr_un(addr));
+    let mut storage = unsafe { mem::zeroed() };
+    let len = try!(addr_to_sockaddr_un(addr, &mut storage));
     let inner = Inner::new(try!(unix_socket(ty)));
-    let addrp = &addr as *const _;
+    let addrp = &storage as *const _ as *const libc::sockaddr;
     match unsafe {
-        libc::bind(inner.fd, addrp as *const _, len as libc::socklen_t)
+        libc::bind(inner.fd, addrp, len)
     } {
         -1 => Err(super::last_error()),
         _  => Ok(inner)
