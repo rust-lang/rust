@@ -464,12 +464,25 @@ def emit_charwidth_module(f, width_table):
             pfun=lambda x: "(%s,%s,%s,%s)" % (escape_char(x[0]), escape_char(x[1]), x[2], x[3]))
     f.write("}\n\n")
 
-def emit_norm_module(f, canon, compat, combine):
+def emit_norm_module(f, canon, compat, combine, norm_props):
     canon_keys = canon.keys()
     canon_keys.sort()
 
     compat_keys = compat.keys()
     compat_keys.sort()
+
+    canon_comp = {}
+    comp_exclusions = norm_props["Full_Composition_Exclusion"]
+    for char in canon_keys:
+        if True in map(lambda (lo, hi): lo <= char <= hi, comp_exclusions):
+            continue
+        decomp = canon[char]
+        if len(decomp) == 2:
+            if not canon_comp.has_key(decomp[0]):
+                canon_comp[decomp[0]] = []
+            canon_comp[decomp[0]].append( (decomp[1], char) )
+    canon_comp_keys = canon_comp.keys()
+    canon_comp_keys.sort()
 
     f.write("pub mod normalization {\n")
 
@@ -493,6 +506,22 @@ def emit_norm_module(f, canon, compat, combine):
     f.write("    // Compatibility decompositions\n")
     emit_table(f, "compatibility_table", compat_keys, "&'static [(char, &'static [char])]",
         pfun=mkdata_fun(compat))
+
+    def comp_pfun(char):
+        data = "(%s,&[" % escape_char(char)
+        canon_comp[char].sort(lambda x, y: x[0] - y[0])
+        first = True
+        for pair in canon_comp[char]:
+            if not first:
+                data += ","
+            first = False
+            data += "(%s,%s)" % (escape_char(pair[0]), escape_char(pair[1]))
+        data += "])"
+        return data
+
+    f.write("    // Canonical compositions\n")
+    emit_table(f, "composition_table", canon_comp_keys,
+        "&'static [(char, &'static [(char, char)])]", pfun=comp_pfun)
 
     f.write("""
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
@@ -579,6 +608,8 @@ if __name__ == "__main__":
         scripts = load_properties("Scripts.txt", [])
         props = load_properties("PropList.txt",
                 ["White_Space", "Join_Control", "Noncharacter_Code_Point"])
+        norm_props = load_properties("DerivedNormalizationProps.txt",
+                     ["Full_Composition_Exclusion"])
 
         # grapheme cluster category from DerivedCoreProperties
         # the rest are defined below
@@ -612,7 +643,7 @@ if __name__ == "__main__":
         emit_regex_module(rf, allcats, perl_words)
 
         # normalizations and conversions module
-        emit_norm_module(rf, canon_decomp, compat_decomp, combines)
+        emit_norm_module(rf, canon_decomp, compat_decomp, combines, norm_props)
         emit_conversions_module(rf, lowerupper, upperlower)
 
         ### character width module
