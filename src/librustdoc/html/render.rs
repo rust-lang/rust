@@ -748,6 +748,7 @@ impl<'a> SourceCollector<'a> {
             ty: "source",
             root_path: root_path.as_slice(),
             description: desc.as_slice(),
+            keywords: get_basic_keywords(),
         };
         try!(layout::render(&mut w as &mut Writer, &self.cx.layout,
                             &page, &(""), &Source(contents)));
@@ -1081,6 +1082,7 @@ impl Context {
                 root_path: this.root_path.as_slice(),
                 title: title.as_slice(),
                 description: desc.as_slice(),
+                keywords: get_basic_keywords(),
             };
             let html_dst = &this.dst.join("stability.html");
             let mut html_out = BufferedWriter::new(try!(File::create(html_dst)));
@@ -1137,11 +1139,13 @@ impl Context {
                 format!("API documentation for the Rust `{}` {} in crate `{}`.",
                         it.name.get_ref(), tyname, cx.layout.krate)
             };
+            let keywords = make_item_keywords(it);
             let page = layout::Page {
                 ty: tyname,
                 root_path: cx.root_path.as_slice(),
                 title: title.as_slice(),
                 description: desc.as_slice(),
+                keywords: keywords.as_slice(),
             };
 
             markdown::reset_headers();
@@ -2169,4 +2173,12 @@ fn ignore_private_item(it: &clean::Item) -> bool {
         clean::PrimitiveItem(..) => it.visibility != Some(ast::Public),
         _ => false,
     }
+}
+
+fn get_basic_keywords() -> &'static str {
+    "rust, rustlang, rust-lang"
+}
+
+fn make_item_keywords(it: &clean::Item) -> String {
+    format!("{}, {}", get_basic_keywords(), it.name.get_ref())
 }
