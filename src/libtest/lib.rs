@@ -356,8 +356,7 @@ Test Attributes:
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
-                     tests. This may also be written as #[ignore(cfg(...))] to
-                     ignore the test on certain configurations.",
+                     tests.",
              usage = getopts::usage(message.as_slice(),
                                     optgroups().as_slice()));
 }

@@ -80,7 +80,7 @@ iotest!(fn eventual_timeout() {
         }
     }
     fail!("never timed out!");
-} #[ignore(cfg(target_os = "freebsd"))])
+} #[cfg_attr(target_os = "freebsd", ignore)])
 
 iotest!(fn timeout_success() {
     let addr = next_test_ip4();
