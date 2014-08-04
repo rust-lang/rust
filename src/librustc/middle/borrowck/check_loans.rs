@@ -764,18 +764,17 @@ impl<'a> CheckLoanCtxt<'a> {
         return;
 
         fn mark_variable_as_used_mut(this: &CheckLoanCtxt,
-                                     cmt: mc::cmt) {
+                                     mut cmt: mc::cmt) {
             //! If the mutability of the `cmt` being written is inherited
             //! from a local variable, liveness will
             //! not have been able to detect that this variable's mutability
             //! is important, so we must add the variable to the
             //! `used_mut_nodes` table here.
 
-            let mut cmt = cmt;
             loop {
-                debug!("mark_writes_through_upvars_as_used_mut(cmt={})",
-                       cmt.repr(this.tcx()));
+                debug!("mark_variable_as_used_mut(cmt={})", cmt.repr(this.tcx()));
                 match cmt.cat.clone() {
+                    mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: id, .. }) |
                     mc::cat_local(id) | mc::cat_arg(id) => {
                         this.tcx().used_mut_nodes.borrow_mut().insert(id);
                         return;
@@ -792,7 +791,6 @@ impl<'a> CheckLoanCtxt<'a> {
 
                     mc::cat_rvalue(..) |
                     mc::cat_static_item |
-                    mc::cat_copied_upvar(..) |
                     mc::cat_deref(_, _, mc::UnsafePtr(..)) |
                     mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
                     mc::cat_deref(_, _, mc::Implicit(..)) => {
