@@ -1333,7 +1333,7 @@ impl<'a> fmt::Show for Item<'a> {
         // Write stability dashboard link
         match self.item.inner {
             clean::ModuleItem(ref m) if m.is_crate => {
-                try!(write!(fmt, "<a href='stability.html'>[stability dashboard]</a> "));
+                try!(write!(fmt, "<a href='stability.html'>[stability]</a> "));
             }
             _ => {}
         };
