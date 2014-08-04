@@ -96,7 +96,7 @@
 use std::cmp::PartialEq;
 use std::fmt;
 use std::result::{Err, Ok};
-use std::result;
+use std::result;cou
 use std::string::String;
 
 /// Name of an option. Either a string or a single char.
@@ -117,7 +117,7 @@ pub enum HasArg {
     Yes,
     /// The option is just a flag, therefore no argument.
     No,
-    /// The option argument is optional and it could or not exist.
+    /// The option argument is optional.
     Maybe,
 }
 
@@ -126,7 +126,7 @@ pub enum HasArg {
 pub enum Occur {
     /// The option occurs once.
     Req,
-    /// The option could or not occur.
+    /// The option occurs at most once.
     Optional,
     /// The option occurs zero or more times.
     Multi,
