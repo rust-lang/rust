@@ -766,7 +766,7 @@ mod tests {
         assert_eq!((-0f32).frexp(), (-0f32, 0));
     }
 
-    #[test] #[ignore(cfg(windows))] // FIXME #8755
+    #[test] #[cfg_attr(windows, ignore)] // FIXME #8755
     fn test_frexp_nowin() {
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();

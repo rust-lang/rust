@@ -44,6 +44,9 @@ struct Complex;
 #[cfg_attr(any(notset, not(any(set1, notset))), deriving(Show))]
 struct ComplexNot(NotShowable);
 
+#[cfg_attr(any(target_endian = "little", target_endian = "big"), deriving(Show))]
+struct KeyValue;
+
 fn is_show<T: Show>() {}
 
 fn main() {
@@ -52,4 +55,5 @@ fn main() {
     is_show::<AllSet1Set2>();
     is_show::<AnySet1Notset>();
     is_show::<Complex>();
+    is_show::<KeyValue>();
 }

@@ -533,7 +533,7 @@ mod test {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, PermissionDenied),
         }
-    } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))])
+    } #[cfg_attr(any(windows, target_os = "android"), ignore)])
 
     iotest!(fn connect_error() {
         match TcpStream::connect("0.0.0.0", 1) {

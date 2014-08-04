@@ -1085,7 +1085,7 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#10102) server never sees second packet
+    #[cfg_attr(windows, ignore)] // FIXME(#10102) server never sees second packet
     fn test_udp_twice() {
         let server_addr = ::next_test_ip4();
         let client_addr = ::next_test_ip4();
