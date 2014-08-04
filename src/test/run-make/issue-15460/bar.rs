@@ -8,26 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate testcrate;
-
-use std::mem;
-
-extern {
-    fn give_back(tu: testcrate::TestUnion) -> u64;
-}
-
+extern crate foo;
 fn main() {
-    let magic: u64 = 0xDEADBEEF;
-
-    // Let's test calling it cross crate
-    let back = unsafe {
-        testcrate::give_back(mem::transmute(magic))
-    };
-    assert_eq!(magic, back);
-
-    // And just within this crate
-    let back = unsafe {
-        give_back(mem::transmute(magic))
-    };
-    assert_eq!(magic, back);
+    unsafe { foo::foo() }
 }

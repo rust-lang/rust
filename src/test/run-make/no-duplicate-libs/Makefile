@@ -1,6 +1,7 @@
 -include ../tools.mk
 
-all: $(call STATICLIB,foo) $(call STATICLIB,bar)
+all:
+	$(RUSTC) foo.rs
+	$(RUSTC) bar.rs
 	$(RUSTC) main.rs
 	$(call RUN,main)
-
