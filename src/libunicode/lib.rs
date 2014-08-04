@@ -35,7 +35,7 @@ extern crate core;
 // regex module
 pub use tables::regex;
 
-mod decompose;
+mod normalize;
 mod tables;
 mod u_char;
 mod u_str;
@@ -61,7 +61,7 @@ pub mod char {
     pub use core::char::{from_digit, escape_unicode, escape_default};
     pub use core::char::{len_utf8_bytes, Char};
 
-    pub use decompose::{decompose_canonical, decompose_compatible};
+    pub use normalize::{decompose_canonical, decompose_compatible, compose};
 
     pub use tables::normalization::canonical_combining_class;
 
