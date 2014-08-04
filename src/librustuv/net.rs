@@ -75,17 +75,17 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
     }
 }
 
-fn addr_to_sockaddr(addr: rtio::SocketAddr) -> (libc::sockaddr_storage, uint) {
+fn addr_to_sockaddr(addr: rtio::SocketAddr,
+                    storage: &mut libc::sockaddr_storage)
+                    -> libc::socklen_t {
     unsafe {
-        let mut storage: libc::sockaddr_storage = mem::zeroed();
         let len = match addr.ip {
             rtio::Ipv4Addr(a, b, c, d) => {
                 let ip = (a as u32 << 24) |
                          (b as u32 << 16) |
                          (c as u32 <<  8) |
                          (d as u32 <<  0);
-                let storage: &mut libc::sockaddr_in =
-                    mem::transmute(&mut storage);
+                let storage = storage as *mut _ as *mut libc::sockaddr_in;
                 (*storage).sin_family = libc::AF_INET as libc::sa_family_t;
                 (*storage).sin_port = htons(addr.port);
                 (*storage).sin_addr = libc::in_addr {
@@ -95,11 +95,10 @@ fn addr_to_sockaddr(addr: rtio::SocketAddr) -> (libc::sockaddr_storage, uint) {
                 mem::size_of::<libc::sockaddr_in>()
             }
             rtio::Ipv6Addr(a, b, c, d, e, f, g, h) => {
-                let storage: &mut libc::sockaddr_in6 =
-                    mem::transmute(&mut storage);
-                storage.sin6_family = libc::AF_INET6 as libc::sa_family_t;
-                storage.sin6_port = htons(addr.port);
-                storage.sin6_addr = libc::in6_addr {
+                let storage = storage as *mut _ as *mut libc::sockaddr_in6;
+                (*storage).sin6_family = libc::AF_INET6 as libc::sa_family_t;
+                (*storage).sin6_port = htons(addr.port);
+                (*storage).sin6_addr = libc::in6_addr {
                     s6_addr: [
                         htons(a),
                         htons(b),
@@ -114,7 +113,7 @@ fn addr_to_sockaddr(addr: rtio::SocketAddr) -> (libc::sockaddr_storage, uint) {
                 mem::size_of::<libc::sockaddr_in6>()
             }
         };
-        return (storage, len);
+        return len as libc::socklen_t
     }
 }
 
@@ -203,8 +202,9 @@ impl TcpWatcher {
                    timeout: Option<u64>) -> Result<TcpWatcher, UvError> {
         let tcp = TcpWatcher::new(io);
         let cx = ConnectCtx { status: -1, task: None, timer: None };
-        let (addr, _len) = addr_to_sockaddr(address);
-        let addr_p = &addr as *const _ as *const libc::sockaddr;
+        let mut storage = unsafe { mem::zeroed() };
+        let _len = addr_to_sockaddr(address, &mut storage);
+        let addr_p = &storage as *const _ as *const libc::sockaddr;
         cx.connect(tcp, timeout, io, |req, tcp, cb| {
             unsafe { uvll::uv_tcp_connect(req.handle, tcp.handle, addr_p, cb) }
         })
@@ -361,10 +361,11 @@ impl TcpListener {
             outgoing: tx,
             incoming: rx,
         };
-        let (addr, _len) = addr_to_sockaddr(address);
+        let mut storage = unsafe { mem::zeroed() };
+        let _len = addr_to_sockaddr(address, &mut storage);
         let res = unsafe {
-            let addr_p = &addr as *const libc::sockaddr_storage;
-            uvll::uv_tcp_bind(l.handle, addr_p as *const libc::sockaddr)
+            let addr_p = &storage as *const _ as *const libc::sockaddr;
+            uvll::uv_tcp_bind(l.handle, addr_p)
         };
         return match res {
             0 => Ok(l.install()),
@@ -513,10 +514,11 @@ impl UdpWatcher {
         assert_eq!(unsafe {
             uvll::uv_udp_init(io.uv_loop(), udp.handle)
         }, 0);
-        let (addr, _len) = addr_to_sockaddr(address);
+        let mut storage = unsafe { mem::zeroed() };
+        let _len = addr_to_sockaddr(address, &mut storage);
         let result = unsafe {
-            let addr_p = &addr as *const libc::sockaddr_storage;
-            uvll::uv_udp_bind(udp.handle, addr_p as *const libc::sockaddr, 0u32)
+            let addr_p = &storage as *const _ as *const libc::sockaddr;
+            uvll::uv_udp_bind(udp.handle, addr_p, 0u32)
         };
         return match result {
             0 => Ok(udp),
@@ -614,8 +616,9 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         let guard = try!(self.write_access.grant(m));
 
         let mut req = Request::new(uvll::UV_UDP_SEND);
-        let (addr, _len) = addr_to_sockaddr(dst);
-        let addr_p = &addr as *const _ as *const libc::sockaddr;
+        let mut storage = unsafe { mem::zeroed() };
+        let _len = addr_to_sockaddr(dst, &mut storage);
+        let addr_p = &storage as *const _ as *const libc::sockaddr;
 
         // see comments in StreamWatcher::write for why we may allocate a buffer
         // here.
