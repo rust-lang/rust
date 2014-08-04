@@ -159,6 +159,9 @@ pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
     }
 
     #[link(name = "rustrt_native", kind = "static")]
+    #[cfg(not(test))]
+    extern {}
+
     extern {
         // Rust's try-catch
         // When f(...) returns normally, the return value is null.
