@@ -96,3 +96,14 @@ iotest!(fn timeout_error() {
 
     assert!(TcpStream::connect_timeout(addr, Duration::milliseconds(1000)).is_err());
 })
+
+    iotest!(fn connect_timeout_zero() {
+        let addr = next_test_ip4();
+        assert!(TcpStream::connect_timeout(&addr, Duration::milliseconds(0)).is_err());
+    })
+
+    iotest!(fn connect_timeout_negative() {
+        let addr = next_test_ip4();
+        assert!(TcpStream::connect_timeout(&addr, Duration::milliseconds(-1)).is_err());
+    })
+

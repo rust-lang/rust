@@ -27,6 +27,7 @@ use io::net::addrinfo::get_host_addresses;
 use io::net::ip::SocketAddr;
 use io::{IoError, ConnectionFailed, InvalidInput};
 use io::{Reader, Writer, Listener, Acceptor};
+use io::{standard_error, TimedOut};
 use from_str::FromStr;
 use kinds::Send;
 use option::{None, Some, Option};
@@ -102,13 +103,14 @@ impl TcpStream {
     /// Note that the `addr` argument may one day be split into a separate host
     /// and port, similar to the API seen in `connect`.
     ///
-    /// # Failure
-    ///
-    /// Fails on a `timeout` of zero or negative duration.
+    /// If a `timeout` with zero or negative duration is specified then
+    /// the function returns `Err`, with the error kind set to `TimedOut`.
     #[experimental = "the timeout argument may eventually change types"]
     pub fn connect_timeout(addr: SocketAddr,
                            timeout: Duration) -> IoResult<TcpStream> {
-        assert!(timeout > Duration::milliseconds(0));
+        if timeout <= Duration::milliseconds(0) {
+            return standard_error(TimedOut);
+        }
 
         let SocketAddr { ip, port } = addr;
         let addr = rtio::SocketAddr { ip: super::to_rtio(ip), port: port };
