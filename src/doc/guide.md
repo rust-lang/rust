@@ -1647,14 +1647,14 @@ $ cargo build
 $
 ```
 
-Excellent! Open up your `src/guessing_game.rs` again. We'll be writing all of
+Excellent! Open up your `src/main.rs` again. We'll be writing all of
 our code in this file. We'll talk about multiple-file projects later on in the
 guide.
 
 ## Processing a Guess
 
 Let's get to it! The first thing we need to do for our guessing game is
-allow our player to input a guess. Put this in your `src/guessing_game.rs`:
+allow our player to input a guess. Put this in your `src/main.rs`:
 
 ```{rust,no_run}
 use std::io;
@@ -1734,9 +1734,9 @@ this using `cargo build`:
 ```{notrust,no_run}
 $ cargo build
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-src/guessing_game.rs:7:26: 7:34 error: the type of this value must be known in this context
-src/guessing_game.rs:7     let secret_number = (rand::random() % 100i) + 1i;
-                                                ^~~~~~~~
+src/main.rs:7:26: 7:34 error: the type of this value must be known in this context
+src/main.rs:7     let secret_number = (rand::random() % 100i) + 1i;
+                                       ^~~~~~~~
 error: aborting due to previous error
 ```
 
@@ -1896,12 +1896,12 @@ If we try to compile, we'll get some errors:
 ```{notrust,ignore}
 $ cargo build
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-src/guessing_game.rs:20:15: 20:20 error: mismatched types: expected `int` but found `collections::string::String` (expected int but found struct collections::string::String)
-src/guessing_game.rs:20     match cmp(input, secret_number) {
-                                      ^~~~~
-src/guessing_game.rs:20:22: 20:35 error: mismatched types: expected `int` but found `uint` (expected int but found uint)
-src/guessing_game.rs:20     match cmp(input, secret_number) {
-                                             ^~~~~~~~~~~~~
+src/main.rs:20:15: 20:20 error: mismatched types: expected `int` but found `collections::string::String` (expected int but found struct collections::string::String)
+src/main.rs:20     match cmp(input, secret_number) {
+                             ^~~~~
+src/main.rs:20:22: 20:35 error: mismatched types: expected `int` but found `uint` (expected int but found uint)
+src/main.rs:20     match cmp(input, secret_number) {
+                                    ^~~~~~~~~~~~~
 error: aborting due to 2 previous errors
 ```
 
@@ -1950,9 +1950,9 @@ And try compiling again:
 ```{notrust,ignore}
 $ cargo build
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-src/guessing_game.rs:20:15: 20:20 error: mismatched types: expected `uint` but found `collections::string::String` (expected uint but found struct collections::string::String)
-src/guessing_game.rs:20     match cmp(input, secret_number) {
-                                      ^~~~~
+src/main.rs:20:15: 20:20 error: mismatched types: expected `uint` but found `collections::string::String` (expected uint but found struct collections::string::String)
+src/main.rs:20     match cmp(input, secret_number) {
+                             ^~~~~
 error: aborting due to previous error
 ```
 
@@ -2053,9 +2053,9 @@ Let's try it out!
 ```{notrust,ignore}
 $ cargo build
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-src/guessing_game.rs:22:15: 22:24 error: mismatched types: expected `uint` but found `core::option::Option<uint>` (expected uint but found enum core::option::Option)
-src/guessing_game.rs:22     match cmp(input_num, secret_number) {
-                                      ^~~~~~~~~
+src/main.rs:22:15: 22:24 error: mismatched types: expected `uint` but found `core::option::Option<uint>` (expected uint but found enum core::option::Option)
+src/main.rs:22     match cmp(input_num, secret_number) {
+                             ^~~~~~~~~
 error: aborting due to previous error
 ```
 
