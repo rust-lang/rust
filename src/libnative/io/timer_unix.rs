@@ -52,7 +52,7 @@ use std::os;
 use std::ptr;
 use std::rt::rtio;
 use std::rt::rtio::IoResult;
-use std::sync::atomics;
+use std::sync::atomic;
 use std::comm;
 
 use io::c;
@@ -207,8 +207,8 @@ impl Timer {
         // instead of ()
         unsafe { HELPER.boot(|| {}, helper); }
 
-        static mut ID: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
-        let id = unsafe { ID.fetch_add(1, atomics::Relaxed) };
+        static mut ID: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+        let id = unsafe { ID.fetch_add(1, atomic::Relaxed) };
         Ok(Timer {
             id: id,
             inner: Some(box Inner {
