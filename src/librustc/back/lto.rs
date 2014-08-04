@@ -20,6 +20,8 @@ use util::common::time;
 use libc;
 use flate;
 
+use std::mem;
+
 pub fn run(sess: &session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[String]) {
     if sess.opts.cg.prefer_dynamic {
@@ -57,28 +59,58 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         let file = path.filename_str().unwrap();
         let file = file.slice(3, file.len() - 5); // chop off lib/.rlib
         debug!("reading {}", file);
-        let bc = time(sess.time_passes(),
-                      format!("read {}.bytecode.deflate", name).as_slice(),
-                      (),
-                      |_| {
-                          archive.read(format!("{}.bytecode.deflate",
-                                               file).as_slice())
-                      });
-        let bc = bc.expect("missing compressed bytecode in archive!");
-        let bc = time(sess.time_passes(),
-                      format!("inflate {}.bc", file).as_slice(),
-                      (),
-                      |_| {
-                          match flate::inflate_bytes(bc) {
-                              Some(bc) => bc,
-                              None => {
-                                  sess.fatal(format!("failed to decompress \
-                                                      bc of `{}`",
-                                                     name).as_slice())
-                              }
-                          }
-                      });
-        let ptr = bc.as_slice().as_ptr();
+        let bc_encoded = time(sess.time_passes(),
+                              format!("read {}.bytecode.deflate", name).as_slice(),
+                              (),
+                              |_| {
+                                  archive.read(format!("{}.bytecode.deflate",
+                                                       file).as_slice())
+                              });
+        let bc_encoded = bc_encoded.expect("missing compressed bytecode in archive!");
+        let bc_extractor = if is_versioned_bytecode_format(bc_encoded) {
+            |_| {
+                // Read the version
+                let version = extract_bytecode_format_version(bc_encoded);
+
+                if version == 1 {
+                    // The only version existing so far
+                    let data_size = extract_compressed_bytecode_size_v1(bc_encoded);
+                    let compressed_data = bc_encoded.slice(
+                        link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET,
+                        link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET + data_size as uint);
+
+                    match flate::inflate_bytes(compressed_data) {
+                        Some(inflated) => inflated,
+                        None => {
+                            sess.fatal(format!("failed to decompress bc of `{}`",
+                                               name).as_slice())
+                        }
+                    }
+                } else {
+                    sess.fatal(format!("Unsupported bytecode format version {}",
+                                       version).as_slice())
+                }
+            }
+        } else {
+            // the object must be in the old, pre-versioning format, so simply
+            // inflate everything and let LLVM decide if it can make sense of it
+            |_| {
+                match flate::inflate_bytes(bc_encoded) {
+                    Some(bc) => bc,
+                    None => {
+                        sess.fatal(format!("failed to decompress bc of `{}`",
+                                           name).as_slice())
+                    }
+                }
+            }
+        };
+
+        let bc_decoded = time(sess.time_passes(),
+                              format!("decode {}.bc", file).as_slice(),
+                              (),
+                              bc_extractor);
+
+        let ptr = bc_decoded.as_slice().as_ptr();
         debug!("linking {}", name);
         time(sess.time_passes(),
              format!("ll link {}", name).as_slice(),
@@ -86,7 +118,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
              |()| unsafe {
             if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                     ptr as *const libc::c_char,
-                                                    bc.len() as libc::size_t) {
+                                                    bc_decoded.len() as libc::size_t) {
                 link::llvm_err(sess,
                                format!("failed to load bc of `{}`",
                                        name.as_slice()));
@@ -137,3 +169,28 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     }
     debug!("lto done");
 }
+
+fn is_versioned_bytecode_format(bc: &[u8]) -> bool {
+    let magic_id_byte_count = link::RLIB_BYTECODE_OBJECT_MAGIC.len();
+    return bc.len() > magic_id_byte_count &&
+           bc.slice(0, magic_id_byte_count) == link::RLIB_BYTECODE_OBJECT_MAGIC;
+}
+
+fn extract_bytecode_format_version(bc: &[u8]) -> u32 {
+    return read_from_le_bytes::<u32>(bc, link::RLIB_BYTECODE_OBJECT_VERSION_OFFSET);
+}
+
+fn extract_compressed_bytecode_size_v1(bc: &[u8]) -> u64 {
+    return read_from_le_bytes::<u64>(bc, link::RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET);
+}
+
+fn read_from_le_bytes<T: Int>(bytes: &[u8], position_in_bytes: uint) -> T {
+    let byte_data = bytes.slice(position_in_bytes,
+                                position_in_bytes + mem::size_of::<T>());
+    let data = unsafe {
+        *(byte_data.as_ptr() as *const T)
+    };
+
+    Int::from_le(data)
+}
+
