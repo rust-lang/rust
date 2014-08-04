@@ -20,7 +20,7 @@ use option::{Some, None};
 use os;
 use result::{Ok, Err};
 use str::StrSlice;
-use sync::atomics;
+use sync::atomic;
 use unicode::char::UnicodeChar;
 
 pub use self::imp::write;
@@ -28,9 +28,9 @@ pub use self::imp::write;
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
 pub fn log_enabled() -> bool {
-    static mut ENABLED: atomics::AtomicInt = atomics::INIT_ATOMIC_INT;
+    static mut ENABLED: atomic::AtomicInt = atomic::INIT_ATOMIC_INT;
     unsafe {
-        match ENABLED.load(atomics::SeqCst) {
+        match ENABLED.load(atomic::SeqCst) {
             1 => return false,
             2 => return true,
             _ => {}
@@ -41,7 +41,7 @@ pub fn log_enabled() -> bool {
         Some(..) => 2,
         None => 1,
     };
-    unsafe { ENABLED.store(val, atomics::SeqCst); }
+    unsafe { ENABLED.store(val, atomic::SeqCst); }
     val == 2
 }
 

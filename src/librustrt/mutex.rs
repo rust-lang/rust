@@ -519,7 +519,7 @@ mod imp {
 #[cfg(windows)]
 mod imp {
     use alloc::libc_heap::malloc_raw;
-    use core::atomics;
+    use core::atomic;
     use core::ptr;
     use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
     use libc;
@@ -533,20 +533,20 @@ mod imp {
 
     pub struct Mutex {
         // pointers for the lock/cond handles, atomically updated
-        lock: atomics::AtomicUint,
-        cond: atomics::AtomicUint,
+        lock: atomic::AtomicUint,
+        cond: atomic::AtomicUint,
     }
 
     pub static MUTEX_INIT: Mutex = Mutex {
-        lock: atomics::INIT_ATOMIC_UINT,
-        cond: atomics::INIT_ATOMIC_UINT,
+        lock: atomic::INIT_ATOMIC_UINT,
+        cond: atomic::INIT_ATOMIC_UINT,
     };
 
     impl Mutex {
         pub unsafe fn new() -> Mutex {
             Mutex {
-                lock: atomics::AtomicUint::new(init_lock()),
-                cond: atomics::AtomicUint::new(init_cond()),
+                lock: atomic::AtomicUint::new(init_lock()),
+                cond: atomic::AtomicUint::new(init_cond()),
             }
         }
         pub unsafe fn lock(&self) {
@@ -573,38 +573,38 @@ mod imp {
         /// that no other thread is currently holding the lock or waiting on the
         /// condition variable contained inside.
         pub unsafe fn destroy(&self) {
-            let lock = self.lock.swap(0, atomics::SeqCst);
-            let cond = self.cond.swap(0, atomics::SeqCst);
+            let lock = self.lock.swap(0, atomic::SeqCst);
+            let cond = self.cond.swap(0, atomic::SeqCst);
             if lock != 0 { free_lock(lock) }
             if cond != 0 { free_cond(cond) }
         }
 
         unsafe fn getlock(&self) -> *mut c_void {
-            match self.lock.load(atomics::SeqCst) {
+            match self.lock.load(atomic::SeqCst) {
                 0 => {}
                 n => return n as *mut c_void
             }
             let lock = init_lock();
-            match self.lock.compare_and_swap(0, lock, atomics::SeqCst) {
+            match self.lock.compare_and_swap(0, lock, atomic::SeqCst) {
                 0 => return lock as *mut c_void,
                 _ => {}
             }
             free_lock(lock);
-            return self.lock.load(atomics::SeqCst) as *mut c_void;
+            return self.lock.load(atomic::SeqCst) as *mut c_void;
         }
 
         unsafe fn getcond(&self) -> *mut c_void {
-            match self.cond.load(atomics::SeqCst) {
+            match self.cond.load(atomic::SeqCst) {
                 0 => {}
                 n => return n as *mut c_void
             }
             let cond = init_cond();
-            match self.cond.compare_and_swap(0, cond, atomics::SeqCst) {
+            match self.cond.compare_and_swap(0, cond, atomic::SeqCst) {
                 0 => return cond as *mut c_void,
                 _ => {}
             }
             free_cond(cond);
-            return self.cond.load(atomics::SeqCst) as *mut c_void;
+            return self.cond.load(atomic::SeqCst) as *mut c_void;
         }
     }
 

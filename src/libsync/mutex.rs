@@ -60,7 +60,7 @@
 use core::prelude::*;
 
 use alloc::boxed::Box;
-use core::atomics;
+use core::atomic;
 use core::mem;
 use core::cell::UnsafeCell;
 use rustrt::local::Local;
@@ -137,7 +137,7 @@ enum Flavor {
 /// ```
 pub struct StaticMutex {
     /// Current set of flags on this mutex
-    state: atomics::AtomicUint,
+    state: atomic::AtomicUint,
     /// an OS mutex used by native threads
     lock: mutex::StaticNativeMutex,
 
@@ -151,7 +151,7 @@ pub struct StaticMutex {
     /// A concurrent mpsc queue used by green threads, along with a count used
     /// to figure out when to dequeue and enqueue.
     q: q::Queue<uint>,
-    green_cnt: atomics::AtomicUint,
+    green_cnt: atomic::AtomicUint,
 }
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
@@ -165,16 +165,16 @@ pub struct Guard<'a> {
 /// other mutex constants.
 pub static MUTEX_INIT: StaticMutex = StaticMutex {
     lock: mutex::NATIVE_MUTEX_INIT,
-    state: atomics::INIT_ATOMIC_UINT,
+    state: atomic::INIT_ATOMIC_UINT,
     flavor: UnsafeCell { value: Unlocked },
     green_blocker: UnsafeCell { value: 0 },
     native_blocker: UnsafeCell { value: 0 },
-    green_cnt: atomics::INIT_ATOMIC_UINT,
+    green_cnt: atomic::INIT_ATOMIC_UINT,
     q: q::Queue {
-        head: atomics::INIT_ATOMIC_UINT,
+        head: atomic::INIT_ATOMIC_UINT,
         tail: UnsafeCell { value: 0 as *mut q::Node<uint> },
         stub: q::DummyNode {
-            next: atomics::INIT_ATOMIC_UINT,
+            next: atomic::INIT_ATOMIC_UINT,
         }
     }
 };
@@ -185,7 +185,7 @@ impl StaticMutex {
         // Attempt to steal the mutex from an unlocked state.
         //
         // FIXME: this can mess up the fairness of the mutex, seems bad
-        match self.state.compare_and_swap(0, LOCKED, atomics::SeqCst) {
+        match self.state.compare_and_swap(0, LOCKED, atomic::SeqCst) {
             0 => {
                 // After acquiring the mutex, we can safely access the inner
                 // fields.
@@ -230,7 +230,7 @@ impl StaticMutex {
         // allow threads coming out of the native_lock function to try their
         // best to not hit a cvar in deschedule.
         let mut old = match self.state.compare_and_swap(0, LOCKED,
-                                                        atomics::SeqCst) {
+                                                        atomic::SeqCst) {
             0 => {
                 let flavor = if can_block {
                     NativeAcquisition
@@ -272,7 +272,7 @@ impl StaticMutex {
                 if old & LOCKED != 0 {
                     old = match self.state.compare_and_swap(old,
                                                             old | native_bit,
-                                                            atomics::SeqCst) {
+                                                            atomic::SeqCst) {
                         n if n == old => return Ok(()),
                         n => n
                     };
@@ -280,7 +280,7 @@ impl StaticMutex {
                     assert_eq!(old, 0);
                     old = match self.state.compare_and_swap(old,
                                                             old | LOCKED,
-                                                            atomics::SeqCst) {
+                                                            atomic::SeqCst) {
                         n if n == old => {
                             // After acquiring the lock, we have access to the
                             // flavor field, and we've regained access to our
@@ -330,7 +330,7 @@ impl StaticMutex {
         //
         // FIXME: There isn't a cancellation currently of an enqueue, forcing
         //        the unlocker to spin for a bit.
-        if self.green_cnt.fetch_add(1, atomics::SeqCst) == 0 {
+        if self.green_cnt.fetch_add(1, atomic::SeqCst) == 0 {
             Local::put(t);
             return
         }
@@ -348,7 +348,7 @@ impl StaticMutex {
     fn green_unlock(&self) {
         // If we're the only green thread, then no need to check the queue,
         // otherwise the fixme above forces us to spin for a bit.
-        if self.green_cnt.fetch_sub(1, atomics::SeqCst) == 1 { return }
+        if self.green_cnt.fetch_sub(1, atomic::SeqCst) == 1 { return }
         let node;
         loop {
             match unsafe { self.q.pop() } {
@@ -380,7 +380,7 @@ impl StaticMutex {
         // of the outer mutex.
         let flavor = unsafe { mem::replace(&mut *self.flavor.get(), Unlocked) };
 
-        let mut state = self.state.load(atomics::SeqCst);
+        let mut state = self.state.load(atomic::SeqCst);
         let mut unlocked = false;
         let task;
         loop {
@@ -412,7 +412,7 @@ impl StaticMutex {
                     }
                     unlocked = true;
                 }
-                match self.state.compare_and_swap(LOCKED, 0, atomics::SeqCst) {
+                match self.state.compare_and_swap(LOCKED, 0, atomic::SeqCst) {
                     LOCKED => return,
                     n => { state = n; }
                 }
@@ -435,7 +435,7 @@ impl StaticMutex {
         loop {
             assert!(state & bit != 0);
             let new = state ^ bit;
-            match self.state.compare_and_swap(state, new, atomics::SeqCst) {
+            match self.state.compare_and_swap(state, new, atomic::SeqCst) {
                 n if n == state => break,
                 n => { state = n; }
             }
@@ -462,11 +462,11 @@ impl Mutex {
     pub fn new() -> Mutex {
         Mutex {
             lock: box StaticMutex {
-                state: atomics::AtomicUint::new(0),
+                state: atomic::AtomicUint::new(0),
                 flavor: UnsafeCell::new(Unlocked),
                 green_blocker: UnsafeCell::new(0),
                 native_blocker: UnsafeCell::new(0),
-                green_cnt: atomics::AtomicUint::new(0),
+                green_cnt: atomic::AtomicUint::new(0),
                 q: q::Queue::new(),
                 lock: unsafe { mutex::StaticNativeMutex::new() },
             }
@@ -498,7 +498,7 @@ impl<'a> Guard<'a> {
         if cfg!(debug) {
             // once we've acquired a lock, it's ok to access the flavor
             assert!(unsafe { *lock.flavor.get() != Unlocked });
-            assert!(lock.state.load(atomics::SeqCst) & LOCKED != 0);
+            assert!(lock.state.load(atomic::SeqCst) & LOCKED != 0);
         }
         Guard { lock: lock }
     }

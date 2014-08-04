@@ -42,7 +42,7 @@ use core::mem;
 use core::cell::UnsafeCell;
 use alloc::arc::Arc;
 
-use atomics::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
+use atomic::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
 
 // Node within the linked list queue of messages to send
 struct Node<T> {

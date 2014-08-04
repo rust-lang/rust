@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::ptr;
-use std::sync::atomics;
+use std::sync::atomic;
 use std::os::{errno, page_size, MemoryMap, MapReadable, MapWritable,
               MapNonStandardFlags, getenv};
 use libc;
@@ -158,8 +158,8 @@ impl StackPool {
 }
 
 fn max_cached_stacks() -> uint {
-    static mut AMT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
-    match unsafe { AMT.load(atomics::SeqCst) } {
+    static mut AMT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+    match unsafe { AMT.load(atomic::SeqCst) } {
         0 => {}
         n => return n - 1,
     }
@@ -169,7 +169,7 @@ fn max_cached_stacks() -> uint {
     let amt = amt.unwrap_or(10);
     // 0 is our sentinel value, so ensure that we'll never see 0 after
     // initialization has run
-    unsafe { AMT.store(amt + 1, atomics::SeqCst); }
+    unsafe { AMT.store(amt + 1, atomic::SeqCst); }
     return amt;
 }
 

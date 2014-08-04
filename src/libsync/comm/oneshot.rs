@@ -39,7 +39,7 @@ use core::mem;
 use rustrt::local::Local;
 use rustrt::task::{Task, BlockedTask};
 
-use atomics;
+use atomic;
 use comm::Receiver;
 
 // Various states you can find a port in.
@@ -49,7 +49,7 @@ static DISCONNECTED: uint = 2;
 
 pub struct Packet<T> {
     // Internal state of the chan/port pair (stores the blocked task as well)
-    state: atomics::AtomicUint,
+    state: atomic::AtomicUint,
     // One-shot data slot location
     data: Option<T>,
     // when used for the second time, a oneshot channel must be upgraded, and
@@ -86,7 +86,7 @@ impl<T: Send> Packet<T> {
         Packet {
             data: None,
             upgrade: NothingSent,
-            state: atomics::AtomicUint::new(EMPTY),
+            state: atomic::AtomicUint::new(EMPTY),
         }
     }
 
@@ -100,7 +100,7 @@ impl<T: Send> Packet<T> {
         self.data = Some(t);
         self.upgrade = SendUsed;
 
-        match self.state.swap(DATA, atomics::SeqCst) {
+        match self.state.swap(DATA, atomic::SeqCst) {
             // Sent the data, no one was waiting
             EMPTY => Ok(()),
 
@@ -136,11 +136,11 @@ impl<T: Send> Packet<T> {
     pub fn recv(&mut self) -> Result<T, Failure<T>> {
         // Attempt to not block the task (it's a little expensive). If it looks
         // like we're not empty, then immediately go through to `try_recv`.
-        if self.state.load(atomics::SeqCst) == EMPTY {
+        if self.state.load(atomic::SeqCst) == EMPTY {
             let t: Box<Task> = Local::take();
             t.deschedule(1, |task| {
                 let n = unsafe { task.cast_to_uint() };
-                match self.state.compare_and_swap(EMPTY, n, atomics::SeqCst) {
+                match self.state.compare_and_swap(EMPTY, n, atomic::SeqCst) {
                     // Nothing on the channel, we legitimately block
                     EMPTY => Ok(()),
 
@@ -160,7 +160,7 @@ impl<T: Send> Packet<T> {
     }
 
     pub fn try_recv(&mut self) -> Result<T, Failure<T>> {
-        match self.state.load(atomics::SeqCst) {
+        match self.state.load(atomic::SeqCst) {
             EMPTY => Err(Empty),
 
             // We saw some data on the channel, but the channel can be used
@@ -170,7 +170,7 @@ impl<T: Send> Packet<T> {
             // the state changes under our feet we'd rather just see that state
             // change.
             DATA => {
-                self.state.compare_and_swap(DATA, EMPTY, atomics::SeqCst);
+                self.state.compare_and_swap(DATA, EMPTY, atomic::SeqCst);
                 match self.data.take() {
                     Some(data) => Ok(data),
                     None => unreachable!(),
@@ -207,7 +207,7 @@ impl<T: Send> Packet<T> {
         };
         self.upgrade = GoUp(up);
 
-        match self.state.swap(DISCONNECTED, atomics::SeqCst) {
+        match self.state.swap(DISCONNECTED, atomic::SeqCst) {
             // If the channel is empty or has data on it, then we're good to go.
             // Senders will check the data before the upgrade (in case we
             // plastered over the DATA state).
@@ -223,7 +223,7 @@ impl<T: Send> Packet<T> {
     }
 
     pub fn drop_chan(&mut self) {
-        match self.state.swap(DISCONNECTED, atomics::SeqCst) {
+        match self.state.swap(DISCONNECTED, atomic::SeqCst) {
             DATA | DISCONNECTED | EMPTY => {}
 
             // If someone's waiting, we gotta wake them up
@@ -235,7 +235,7 @@ impl<T: Send> Packet<T> {
     }
 
     pub fn drop_port(&mut self) {
-        match self.state.swap(DISCONNECTED, atomics::SeqCst) {
+        match self.state.swap(DISCONNECTED, atomic::SeqCst) {
             // An empty channel has nothing to do, and a remotely disconnected
             // channel also has nothing to do b/c we're about to run the drop
             // glue
@@ -258,7 +258,7 @@ impl<T: Send> Packet<T> {
     // If Ok, the value is whether this port has data, if Err, then the upgraded
     // port needs to be checked instead of this one.
     pub fn can_recv(&mut self) -> Result<bool, Receiver<T>> {
-        match self.state.load(atomics::SeqCst) {
+        match self.state.load(atomic::SeqCst) {
             EMPTY => Ok(false), // Welp, we tried
             DATA => Ok(true),   // we have some un-acquired data
             DISCONNECTED if self.data.is_some() => Ok(true), // we have data
@@ -283,7 +283,7 @@ impl<T: Send> Packet<T> {
     // because there is data, or fail because there is an upgrade pending.
     pub fn start_selection(&mut self, task: BlockedTask) -> SelectionResult<T> {
         let n = unsafe { task.cast_to_uint() };
-        match self.state.compare_and_swap(EMPTY, n, atomics::SeqCst) {
+        match self.state.compare_and_swap(EMPTY, n, atomic::SeqCst) {
             EMPTY => SelSuccess,
             DATA => SelCanceled(unsafe { BlockedTask::cast_from_uint(n) }),
             DISCONNECTED if self.data.is_some() => {
@@ -317,7 +317,7 @@ impl<T: Send> Packet<T> {
     //
     // The return value indicates whether there's data on this port.
     pub fn abort_selection(&mut self) -> Result<bool, Receiver<T>> {
-        let state = match self.state.load(atomics::SeqCst) {
+        let state = match self.state.load(atomic::SeqCst) {
             // Each of these states means that no further activity will happen
             // with regard to abortion selection
             s @ EMPTY |
@@ -326,7 +326,7 @@ impl<T: Send> Packet<T> {
 
             // If we've got a blocked task, then use an atomic to gain ownership
             // of it (may fail)
-            n => self.state.compare_and_swap(n, EMPTY, atomics::SeqCst)
+            n => self.state.compare_and_swap(n, EMPTY, atomic::SeqCst)
         };
 
         // Now that we've got ownership of our state, figure out what to do
@@ -367,6 +367,6 @@ impl<T: Send> Packet<T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Packet<T> {
     fn drop(&mut self) {
-        assert_eq!(self.state.load(atomics::SeqCst), DISCONNECTED);
+        assert_eq!(self.state.load(atomic::SeqCst), DISCONNECTED);
     }
 }

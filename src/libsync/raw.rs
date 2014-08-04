@@ -17,7 +17,7 @@
 
 use core::prelude::*;
 
-use core::atomics;
+use core::atomic;
 use core::finally::Finally;
 use core::kinds::marker;
 use core::mem;
@@ -458,7 +458,7 @@ pub struct RWLock {
     //
     // FIXME(#6598): The atomics module has no relaxed ordering flag, so I use
     // acquire/release orderings superfluously. Change these someday.
-    read_count: atomics::AtomicUint,
+    read_count: atomic::AtomicUint,
 }
 
 /// An RAII helper which is created by acquiring a read lock on an RWLock. When
@@ -490,7 +490,7 @@ impl RWLock {
         RWLock {
             order_lock: Semaphore::new(1),
             access_lock: Sem::new_and_signal(1, num_condvars),
-            read_count: atomics::AtomicUint::new(0),
+            read_count: atomic::AtomicUint::new(0),
         }
     }
 
@@ -499,7 +499,7 @@ impl RWLock {
     /// this one.
     pub fn read<'a>(&'a self) -> RWLockReadGuard<'a> {
         let _guard = self.order_lock.access();
-        let old_count = self.read_count.fetch_add(1, atomics::Acquire);
+        let old_count = self.read_count.fetch_add(1, atomic::Acquire);
         if old_count == 0 {
             self.access_lock.acquire();
         }
@@ -575,7 +575,7 @@ impl<'a> RWLockWriteGuard<'a> {
         // things from now on
         unsafe { mem::forget(self) }
 
-        let old_count = lock.read_count.fetch_add(1, atomics::Release);
+        let old_count = lock.read_count.fetch_add(1, atomic::Release);
         // If another reader was already blocking, we need to hand-off
         // the "reader cloud" access lock to them.
         if old_count != 0 {
@@ -600,7 +600,7 @@ impl<'a> Drop for RWLockWriteGuard<'a> {
 #[unsafe_destructor]
 impl<'a> Drop for RWLockReadGuard<'a> {
     fn drop(&mut self) {
-        let old_count = self.lock.read_count.fetch_sub(1, atomics::Release);
+        let old_count = self.lock.read_count.fetch_sub(1, atomic::Release);
         assert!(old_count > 0);
         if old_count == 1 {
             // Note: this release used to be outside of a locked access

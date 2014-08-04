@@ -232,7 +232,7 @@ use std::rt::rtio;
 use std::rt::thread::Thread;
 use std::rt::task::TaskOpts;
 use std::rt;
-use std::sync::atomics::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
+use std::sync::atomic::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
 use std::sync::deque;
 use std::task::{TaskBuilder, Spawner};
 

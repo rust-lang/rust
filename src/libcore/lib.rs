@@ -113,7 +113,7 @@ pub mod ty {
 /* Core types and methods on primitives */
 
 pub mod any;
-pub mod atomics;
+pub mod atomic;
 pub mod bool;
 pub mod cell;
 pub mod char;

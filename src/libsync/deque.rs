@@ -61,7 +61,7 @@ use core::mem::{forget, min_align_of, size_of, transmute};
 use core::ptr;
 use rustrt::exclusive::Exclusive;
 
-use atomics::{AtomicInt, AtomicPtr, SeqCst};
+use atomic::{AtomicInt, AtomicPtr, SeqCst};
 
 // Once the queue is less than 1/K full, then it will be downsized. Note that
 // the deque requires that this number be less than 2.
@@ -414,7 +414,7 @@ mod tests {
     use std::rt::thread::Thread;
     use std::rand;
     use std::rand::Rng;
-    use atomics::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst,
+    use atomic::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst,
                   AtomicUint, INIT_ATOMIC_UINT};
     use std::vec;
 
