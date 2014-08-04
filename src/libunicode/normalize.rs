@@ -13,12 +13,12 @@
   for Unicode characters.
   */
 
+use core::cmp::{Equal, Less, Greater};
 use core::option::{Option, Some, None};
 use core::slice::ImmutableVector;
-use tables::normalization::{canonical_table, compatibility_table};
+use tables::normalization::{canonical_table, compatibility_table, composition_table};
 
-fn bsearch_table(c: char, r: &'static [(char, &'static [char])]) -> Option<&'static [char]> {
-    use core::cmp::{Equal, Less, Greater};
+fn bsearch_table<T>(c: char, r: &'static [(char, &'static [T])]) -> Option<&'static [T]> {
     match r.bsearch(|&(val, _)| {
         if c == val { Equal }
         else if val < c { Less }
@@ -80,6 +80,27 @@ fn d(c: char, i: |char|, k: bool) {
     i(c);
 }
 
+pub fn compose(a: char, b: char) -> Option<char> {
+    compose_hangul(a, b).or_else(|| {
+        match bsearch_table(a, composition_table) {
+            None => None,
+            Some(candidates) => {
+                match candidates.bsearch(|&(val, _)| {
+                    if b == val { Equal }
+                    else if val < b { Less }
+                    else { Greater }
+                }) {
+                    Some(idx) => {
+                        let (_, result) = candidates[idx];
+                        Some(result)
+                    }
+                    None => None
+                }
+            }
+        }
+    })
+}
+
 // Constants from Unicode 6.3.0 Section 3.12 Conjoining Jamo Behavior
 static S_BASE: u32 = 0xAC00;
 static L_BASE: u32 = 0x1100;
@@ -92,6 +113,7 @@ static N_COUNT: u32 = (V_COUNT * T_COUNT);
 static S_COUNT: u32 = (L_COUNT * N_COUNT);
 
 // Decompose a precomposed Hangul syllable
+#[inline(always)]
 fn decompose_hangul(s: char, f: |char|) {
     use core::mem::transmute;
 
@@ -109,4 +131,23 @@ fn decompose_hangul(s: char, f: |char|) {
             f(transmute(T_BASE + ti));
         }
     }
+}
+
+// Compose a pair of Hangul Jamo
+#[inline(always)]
+fn compose_hangul(a: char, b: char) -> Option<char> {
+    use core::mem::transmute;
+    let l = a as u32;
+    let v = b as u32;
+    // Compose an LPart and a VPart
+    if L_BASE <= l && l < (L_BASE + L_COUNT) && V_BASE <= v && v < (V_BASE + V_COUNT) {
+        let r = S_BASE + (l - L_BASE) * N_COUNT + (v - V_BASE) * T_COUNT;
+        return unsafe { Some(transmute(r)) };
+    }
+    // Compose an LVPart and a TPart
+    if S_BASE <= l && l <= (S_BASE+S_COUNT-T_COUNT) && T_BASE <= v && v < (T_BASE+T_COUNT) {
+        let r = l + (v - T_BASE);
+        return unsafe { Some(transmute(r)) };
+    }
+    None
 }

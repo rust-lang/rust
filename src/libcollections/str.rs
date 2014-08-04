@@ -77,8 +77,9 @@ use core::cmp;
 use core::iter::AdditiveIterator;
 use core::mem;
 
-use {Collection, MutableSeq};
+use {Collection, Deque, MutableSeq};
 use hash;
+use ringbuf::RingBuf;
 use string::String;
 use unicode;
 use vec::Vec;
@@ -299,6 +300,106 @@ impl<'a> Iterator<char> for Decompositions<'a> {
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (lower, _) = self.iter.size_hint();
         (lower, None)
+    }
+}
+
+#[deriving(Clone)]
+enum RecompositionState {
+    Composing,
+    Purging,
+    Finished
+}
+
+/// External iterator for a string's recomposition's characters.
+/// Use with the `std::iter` module.
+#[deriving(Clone)]
+pub struct Recompositions<'a> {
+    iter: Decompositions<'a>,
+    state: RecompositionState,
+    buffer: RingBuf<char>,
+    composee: Option<char>,
+    last_ccc: Option<u8>
+}
+
+impl<'a> Iterator<char> for Recompositions<'a> {
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        loop {
+            match self.state {
+                Composing => {
+                    for ch in self.iter {
+                        let ch_class = unicode::char::canonical_combining_class(ch);
+                        if self.composee.is_none() {
+                            if ch_class != 0 {
+                                return Some(ch);
+                            }
+                            self.composee = Some(ch);
+                            continue;
+                        }
+                        let k = self.composee.clone().unwrap();
+
+                        match self.last_ccc {
+                            None => {
+                                match unicode::char::compose(k, ch) {
+                                    Some(r) => {
+                                        self.composee = Some(r);
+                                        continue;
+                                    }
+                                    None => {
+                                        if ch_class == 0 {
+                                            self.composee = Some(ch);
+                                            return Some(k);
+                                        }
+                                        self.buffer.push(ch);
+                                        self.last_ccc = Some(ch_class);
+                                    }
+                                }
+                            }
+                            Some(l_class) => {
+                                if l_class >= ch_class {
+                                    // `ch` is blocked from `composee`
+                                    if ch_class == 0 {
+                                        self.composee = Some(ch);
+                                        self.last_ccc = None;
+                                        self.state = Purging;
+                                        return Some(k);
+                                    }
+                                    self.buffer.push(ch);
+                                    self.last_ccc = Some(ch_class);
+                                    continue;
+                                }
+                                match unicode::char::compose(k, ch) {
+                                    Some(r) => {
+                                        self.composee = Some(r);
+                                        continue;
+                                    }
+                                    None => {
+                                        self.buffer.push(ch);
+                                        self.last_ccc = Some(ch_class);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    self.state = Finished;
+                    if self.composee.is_some() {
+                        return self.composee.take();
+                    }
+                }
+                Purging => {
+                    match self.buffer.pop_front() {
+                        None => self.state = Composing,
+                        s => return s
+                    }
+                }
+                Finished => {
+                    match self.buffer.pop_front() {
+                        None => return self.composee.take(),
+                        s => return s
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -742,6 +843,32 @@ pub trait StrAllocating: Str {
             buffer: Vec::new(),
             sorted: false,
             kind: Compatible
+        }
+    }
+
+    /// An Iterator over the string in Unicode Normalization Form C
+    /// (canonical decomposition followed by canonical composition).
+    #[inline]
+    fn nfc_chars<'a>(&'a self) -> Recompositions<'a> {
+        Recompositions {
+            iter: self.nfd_chars(),
+            state: Composing,
+            buffer: RingBuf::new(),
+            composee: None,
+            last_ccc: None
+        }
+    }
+
+    /// An Iterator over the string in Unicode Normalization Form KC
+    /// (compatibility decomposition followed by canonical composition).
+    #[inline]
+    fn nfkc_chars<'a>(&'a self) -> Recompositions<'a> {
+        Recompositions {
+            iter: self.nfkd_chars(),
+            state: Composing,
+            buffer: RingBuf::new(),
+            composee: None,
+            last_ccc: None
         }
     }
 }
@@ -1754,39 +1881,80 @@ mod tests {
 
     #[test]
     fn test_nfd_chars() {
-        assert_eq!("abc".nfd_chars().collect::<String>(), String::from_str("abc"));
-        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<String>(),
-                   String::from_str("d\u0307\u01c4"));
-        assert_eq!("\u2026".nfd_chars().collect::<String>(), String::from_str("\u2026"));
-        assert_eq!("\u2126".nfd_chars().collect::<String>(), String::from_str("\u03a9"));
-        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<String>(),
-                   String::from_str("d\u0323\u0307"));
-        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<String>(),
-                   String::from_str("d\u0323\u0307"));
-        assert_eq!("a\u0301".nfd_chars().collect::<String>(), String::from_str("a\u0301"));
-        assert_eq!("\u0301a".nfd_chars().collect::<String>(), String::from_str("\u0301a"));
-        assert_eq!("\ud4db".nfd_chars().collect::<String>(),
-                   String::from_str("\u1111\u1171\u11b6"));
-        assert_eq!("\uac1c".nfd_chars().collect::<String>(), String::from_str("\u1100\u1162"));
+        macro_rules! t {
+            ($input: expr, $expected: expr) => {
+                assert_eq!($input.nfd_chars().collect::<String>(), $expected.into_string());
+            }
+        }
+        t!("abc", "abc");
+        t!("\u1e0b\u01c4", "d\u0307\u01c4");
+        t!("\u2026", "\u2026");
+        t!("\u2126", "\u03a9");
+        t!("\u1e0b\u0323", "d\u0323\u0307");
+        t!("\u1e0d\u0307", "d\u0323\u0307");
+        t!("a\u0301", "a\u0301");
+        t!("\u0301a", "\u0301a");
+        t!("\ud4db", "\u1111\u1171\u11b6");
+        t!("\uac1c", "\u1100\u1162");
     }
 
     #[test]
     fn test_nfkd_chars() {
-        assert_eq!("abc".nfkd_chars().collect::<String>(), String::from_str("abc"));
-        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<String>(),
-                   String::from_str("d\u0307DZ\u030c"));
-        assert_eq!("\u2026".nfkd_chars().collect::<String>(), String::from_str("..."));
-        assert_eq!("\u2126".nfkd_chars().collect::<String>(), String::from_str("\u03a9"));
-        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<String>(),
-                   String::from_str("d\u0323\u0307"));
-        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<String>(),
-                   String::from_str("d\u0323\u0307"));
-        assert_eq!("a\u0301".nfkd_chars().collect::<String>(), String::from_str("a\u0301"));
-        assert_eq!("\u0301a".nfkd_chars().collect::<String>(),
-                   String::from_str("\u0301a"));
-        assert_eq!("\ud4db".nfkd_chars().collect::<String>(),
-                   String::from_str("\u1111\u1171\u11b6"));
-        assert_eq!("\uac1c".nfkd_chars().collect::<String>(), String::from_str("\u1100\u1162"));
+        macro_rules! t {
+            ($input: expr, $expected: expr) => {
+                assert_eq!($input.nfkd_chars().collect::<String>(), $expected.into_string());
+            }
+        }
+        t!("abc", "abc");
+        t!("\u1e0b\u01c4", "d\u0307DZ\u030c");
+        t!("\u2026", "...");
+        t!("\u2126", "\u03a9");
+        t!("\u1e0b\u0323", "d\u0323\u0307");
+        t!("\u1e0d\u0307", "d\u0323\u0307");
+        t!("a\u0301", "a\u0301");
+        t!("\u0301a", "\u0301a");
+        t!("\ud4db", "\u1111\u1171\u11b6");
+        t!("\uac1c", "\u1100\u1162");
+    }
+
+    #[test]
+    fn test_nfc_chars() {
+        macro_rules! t {
+            ($input: expr, $expected: expr) => {
+                assert_eq!($input.nfc_chars().collect::<String>(), $expected.into_string());
+            }
+        }
+        t!("abc", "abc");
+        t!("\u1e0b\u01c4", "\u1e0b\u01c4");
+        t!("\u2026", "\u2026");
+        t!("\u2126", "\u03a9");
+        t!("\u1e0b\u0323", "\u1e0d\u0307");
+        t!("\u1e0d\u0307", "\u1e0d\u0307");
+        t!("a\u0301", "\xe1");
+        t!("\u0301a", "\u0301a");
+        t!("\ud4db", "\ud4db");
+        t!("\uac1c", "\uac1c");
+        t!("a\u0300\u0305\u0315\u05aeb", "\xe0\u05ae\u0305\u0315b");
+    }
+
+    #[test]
+    fn test_nfkc_chars() {
+        macro_rules! t {
+            ($input: expr, $expected: expr) => {
+                assert_eq!($input.nfkc_chars().collect::<String>(), $expected.into_string());
+            }
+        }
+        t!("abc", "abc");
+        t!("\u1e0b\u01c4", "\u1e0bD\u017d");
+        t!("\u2026", "...");
+        t!("\u2126", "\u03a9");
+        t!("\u1e0b\u0323", "\u1e0d\u0307");
+        t!("\u1e0d\u0307", "\u1e0d\u0307");
+        t!("a\u0301", "\xe1");
+        t!("\u0301a", "\u0301a");
+        t!("\ud4db", "\ud4db");
+        t!("\uac1c", "\uac1c");
+        t!("a\u0300\u0305\u0315\u05aeb", "\xe0\u05ae\u0305\u0315b");
     }
 
     #[test]
