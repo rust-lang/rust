@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use super::archive::{Archive, ArchiveBuilder, ArchiveConfig, METADATA_FILENAME};
+use super::archive;
 use super::rpath;
 use super::rpath::RPathConfig;
 use super::svh::Svh;
@@ -1597,28 +1598,60 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
     // For those that support this, we ensure we pass the option if the library
     // was flagged "static" (most defaults are dynamic) to ensure that if
     // libfoo.a and libfoo.so both exist that the right one is chosen.
-    let takes_hints = sess.targ_cfg.os != abi::OsMacos && sess.targ_cfg.os != abi::OsiOS;
+    let takes_hints = sess.targ_cfg.os != abi::OsMacos &&
+                      sess.targ_cfg.os != abi::OsiOS;
 
-    for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
-        match kind {
-            cstore::NativeUnknown | cstore::NativeStatic => {
-                if takes_hints {
-                    if kind == cstore::NativeStatic {
-                        cmd.arg("-Wl,-Bstatic");
-                    } else {
-                        cmd.arg("-Wl,-Bdynamic");
-                    }
-                }
-                cmd.arg(format!("-l{}", *l));
-            }
-            cstore::NativeFramework => {
-                cmd.arg("-framework");
-                cmd.arg(l.as_slice());
-            }
+    let libs = sess.cstore.get_used_libraries();
+    let libs = libs.borrow();
+
+    let mut staticlibs = libs.iter().filter_map(|&(ref l, kind)| {
+        if kind == cstore::NativeStatic {Some(l)} else {None}
+    });
+    let mut others = libs.iter().filter(|&&(_, kind)| {
+        kind != cstore::NativeStatic
+    });
+
+    // Platforms that take hints generally also support the --whole-archive
+    // flag. We need to pass this flag when linking static native libraries to
+    // ensure the entire library is included.
+    //
+    // For more details see #15460, but the gist is that the linker will strip
+    // away any unused objects in the archive if we don't otherwise explicitly
+    // reference them. This can occur for libraries which are just providing
+    // bindings, libraries with generic functions, etc.
+    if takes_hints {
+        cmd.arg("-Wl,--whole-archive").arg("-Wl,-Bstatic");
+    }
+    let search_path = archive_search_paths(sess);
+    for l in staticlibs {
+        if takes_hints {
+            cmd.arg(format!("-l{}", l));
+        } else {
+            // -force_load is the OSX equivalent of --whole-archive, but it
+            // involves passing the full path to the library to link.
+            let lib = archive::find_library(l.as_slice(),
+                                            sess.targ_cfg.os,
+                                            search_path.as_slice(),
+                                            &sess.diagnostic().handler);
+            let mut v = b"-Wl,-force_load,".to_vec();
+            v.push_all(lib.as_vec());
+            cmd.arg(v.as_slice());
         }
     }
     if takes_hints {
-        cmd.arg("-Wl,-Bdynamic");
+        cmd.arg("-Wl,--no-whole-archive").arg("-Wl,-Bdynamic");
+    }
+
+    for &(ref l, kind) in others {
+        match kind {
+            cstore::NativeUnknown => {
+                cmd.arg(format!("-l{}", l));
+            }
+            cstore::NativeFramework => {
+                cmd.arg("-framework").arg(l.as_slice());
+            }
+            cstore::NativeStatic => unreachable!(),
+        }
     }
 }
 

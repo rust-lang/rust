@@ -8,26 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate testcrate;
+#![no_std]
+#![feature(lang_items)]
+#![crate_type = "dylib"]
 
-use std::mem;
+extern crate libc;
 
-extern {
-    fn give_back(tu: testcrate::TestUnion) -> u64;
-}
+#[no_mangle]
+pub extern fn foo() {}
 
-fn main() {
-    let magic: u64 = 0xDEADBEEF;
-
-    // Let's test calling it cross crate
-    let back = unsafe {
-        testcrate::give_back(mem::transmute(magic))
-    };
-    assert_eq!(magic, back);
-
-    // And just within this crate
-    let back = unsafe {
-        give_back(mem::transmute(magic))
-    };
-    assert_eq!(magic, back);
-}
+#[lang = "stack_exhausted"] fn stack_exhausted() {}
+#[lang = "eh_personality"] fn eh_personality() {}
