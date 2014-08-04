@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A structure for holding a set of enum variants
+//! A structure for holding a set of enum variants.
 //!
 //! This module defines a container which uses an efficient bit mask
 //! representation to hold C-like enum variants.
@@ -16,7 +16,7 @@
 use core::prelude::*;
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
-/// A specialized Set implementation to use enum types.
+/// A specialized `Set` implementation to use enum types.
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
     // for which no variant exists
@@ -25,9 +25,9 @@ pub struct EnumSet<E> {
 
 /// An interface for casting C-like enum to uint and back.
 pub trait CLike {
-    /// Converts C-like enum to uint.
+    /// Converts a C-like enum to a `uint`.
     fn to_uint(&self) -> uint;
-    /// Converts uint to C-like enum.
+    /// Converts a `uint` to a C-like enum.
     fn from_uint(uint) -> Self;
 }
 
@@ -36,47 +36,47 @@ fn bit<E:CLike>(e: E) -> uint {
 }
 
 impl<E:CLike> EnumSet<E> {
-    /// Returns an empty EnumSet.
+    /// Returns an empty `EnumSet`.
     pub fn empty() -> EnumSet<E> {
         EnumSet {bits: 0}
     }
 
-    /// Returns true if an EnumSet is empty.
+    /// Returns true if the `EnumSet` is empty.
     pub fn is_empty(&self) -> bool {
         self.bits == 0
     }
 
-    /// Returns true if an EnumSet contains any enum of a given EnumSet
+    /// Returns `true` if the `EnumSet` contains any enum of the given `EnumSet`.
     pub fn intersects(&self, e: EnumSet<E>) -> bool {
         (self.bits & e.bits) != 0
     }
 
-    /// Returns an intersection of both EnumSets.
+    /// Returns the intersection of both `EnumSets`.
     pub fn intersection(&self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & e.bits}
     }
 
-    /// Returns true if a given EnumSet is included in an EnumSet.
+    /// Returns `true` if a given `EnumSet` is included in an `EnumSet`.
     pub fn contains(&self, e: EnumSet<E>) -> bool {
         (self.bits & e.bits) == e.bits
     }
 
-    /// Returns a union of both EnumSets.
+    /// Returns the union of both `EnumSets`.
     pub fn union(&self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits | e.bits}
     }
 
-    /// Add an enum to an EnumSet
+    /// Adds an enum to an `EnumSet`.
     pub fn add(&mut self, e: E) {
         self.bits |= bit(e);
     }
 
-    /// Returns true if an EnumSet contains a given enum
+    /// Returns `true` if an `EnumSet` contains a given enum.
     pub fn contains_elem(&self, e: E) -> bool {
         (self.bits & bit(e)) != 0
     }
 
-    /// Returns an iterator over an EnumSet
+    /// Returns an iterator over an `EnumSet`.
     pub fn iter(&self) -> Items<E> {
         Items::new(self.bits)
     }

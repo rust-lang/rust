@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -14,7 +14,7 @@
 use libc::{c_void, size_t, free, malloc, realloc};
 use core::ptr::{RawPtr, mut_null};
 
-/// A wrapper around libc::malloc, aborting on out-of-memory
+/// A wrapper around libc::malloc, aborting on out-of-memory.
 #[inline]
 pub unsafe fn malloc_raw(size: uint) -> *mut u8 {
     // `malloc(0)` may allocate, but it may also return a null pointer
@@ -30,7 +30,7 @@ pub unsafe fn malloc_raw(size: uint) -> *mut u8 {
     }
 }
 
-/// A wrapper around libc::realloc, aborting on out-of-memory
+/// A wrapper around libc::realloc, aborting on out-of-memory.
 #[inline]
 pub unsafe fn realloc_raw(ptr: *mut u8, size: uint) -> *mut u8 {
     // `realloc(ptr, 0)` may allocate, but it may also return a null pointer

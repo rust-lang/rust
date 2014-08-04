@@ -167,12 +167,12 @@ pub struct PriorityQueue<T> {
 }
 
 impl<T: Ord> Collection for PriorityQueue<T> {
-    /// Returns the length of the queue
+    /// Returns the length of the queue.
     fn len(&self) -> uint { self.data.len() }
 }
 
 impl<T: Ord> Mutable for PriorityQueue<T> {
-    /// Drop all items from the queue
+    /// Drops all items from the queue.
     fn clear(&mut self) { self.data.truncate(0) }
 }
 
@@ -182,7 +182,7 @@ impl<T: Ord> Default for PriorityQueue<T> {
 }
 
 impl<T: Ord> PriorityQueue<T> {
-    /// Create an empty PriorityQueue as a max-heap.
+    /// Creates an empty `PriorityQueue` as a max-heap.
     ///
     /// # Example
     ///
@@ -192,9 +192,9 @@ impl<T: Ord> PriorityQueue<T> {
     /// ```
     pub fn new() -> PriorityQueue<T> { PriorityQueue{data: vec!(),} }
 
-    /// Create an empty PriorityQueue with a specific capacity.
+    /// Creates an empty `PriorityQueue` with a specific capacity.
     /// This preallocates enough memory for `capacity` elements,
-    /// so that the PriorityQueue does not have to be reallocated
+    /// so that the `PriorityQueue` does not have to be reallocated
     /// until it contains at least that many values.
     ///
     /// # Example
@@ -207,7 +207,7 @@ impl<T: Ord> PriorityQueue<T> {
         PriorityQueue { data: Vec::with_capacity(capacity) }
     }
 
-    /// Create a PriorityQueue from a vector. This is sometimes called
+    /// Creates a `PriorityQueue` from a vector. This is sometimes called
     /// `heapifying` the vector.
     ///
     /// # Example
@@ -244,7 +244,7 @@ impl<T: Ord> PriorityQueue<T> {
         Items { iter: self.data.iter() }
     }
 
-    /// Returns the greatest item in a queue or `None` if it is empty.
+    /// Returns the greatest item in a queue, or `None` if it is empty.
     ///
     /// # Example
     ///
@@ -279,7 +279,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// ```
     pub fn capacity(&self) -> uint { self.data.capacity() }
 
-    /// Reserve capacity for exactly `n` elements in the PriorityQueue.
+    /// Reserves capacity for exactly `n` elements in the `PriorityQueue`.
     /// Do nothing if the capacity is already sufficient.
     ///
     /// # Example
@@ -293,7 +293,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// ```
     pub fn reserve_exact(&mut self, n: uint) { self.data.reserve_exact(n) }
 
-    /// Reserve capacity for at least `n` elements in the PriorityQueue.
+    /// Reserves capacity for at least `n` elements in the `PriorityQueue`.
     /// Do nothing if the capacity is already sufficient.
     ///
     /// # Example
@@ -309,8 +309,8 @@ impl<T: Ord> PriorityQueue<T> {
         self.data.reserve(n)
     }
 
-    /// Remove the greatest item from a queue and return it, or `None` if it is
-    /// empty.
+    /// Removes the greatest item from a queue and returns it, or `None` if it
+    /// is empty.
     ///
     /// # Example
     ///
@@ -339,7 +339,7 @@ impl<T: Ord> PriorityQueue<T> {
     #[deprecated="renamed to `pop`"]
     pub fn maybe_pop(&mut self) -> Option<T> { self.pop() }
 
-    /// Push an item onto the queue.
+    /// Pushes an item onto the queue.
     ///
     /// # Example
     ///
@@ -360,7 +360,8 @@ impl<T: Ord> PriorityQueue<T> {
         self.siftup(0, new_len);
     }
 
-    /// Optimized version of a push followed by a pop.
+    /// Pushes an item onto a queue then pops the greatest item off the queue in
+    /// an optimized fashion.
     ///
     /// # Example
     ///
@@ -384,8 +385,9 @@ impl<T: Ord> PriorityQueue<T> {
         item
     }
 
-    /// Optimized version of a pop followed by a push. The push is done
-    /// regardless of whether the queue is empty.
+    /// Pops the greatest item off a queue then pushes an item onto the queue in
+    /// an optimized fashion. The push is done regardless of whether the queue
+    /// was empty.
     ///
     /// # Example
     ///
@@ -418,7 +420,7 @@ impl<T: Ord> PriorityQueue<T> {
     #[deprecated="renamed to `into_sorted_vec`"]
     fn to_sorted_vec(self) -> Vec<T> { self.into_sorted_vec() }
 
-    /// Consume the PriorityQueue and return the underlying vector
+    /// Consumes the `PriorityQueue` and returns the underlying vector
     /// in arbitrary order.
     ///
     /// # Example
@@ -436,7 +438,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// ```
     pub fn into_vec(self) -> Vec<T> { let PriorityQueue{data: v} = self; v }
 
-    /// Consume the PriorityQueue and return a vector in sorted
+    /// Consumes the `PriorityQueue` and returns a vector in sorted
     /// (ascending) order.
     ///
     /// # Example
@@ -513,7 +515,7 @@ impl<T: Ord> PriorityQueue<T> {
     }
 }
 
-/// PriorityQueue iterator.
+/// `PriorityQueue` iterator.
 pub struct Items <'a, T> {
     iter: slice::Items<'a, T>,
 }
