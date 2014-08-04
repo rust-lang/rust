@@ -162,8 +162,7 @@ mod test {
     use mem;
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME #8818
-    #[ignore(cfg(target_os="android"))] // FIXME(#10379)
+    #[cfg_attr(any(windows, target_os = "android"), ignore)] // FIXME #8818, #10379
     fn test_loading_cosine() {
         // The math library does not need to be loaded since it is already
         // statically linked in

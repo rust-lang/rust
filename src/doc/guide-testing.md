@@ -72,8 +72,8 @@ is not used.
 Tests that should not be run can be annotated with the `ignore`
 attribute. The existence of these tests will be noted in the test
 runner output, but the test will not be run. Tests can also be ignored
-by configuration so, for example, to ignore a test on windows you can
-write `#[ignore(cfg(target_os = "win32"))]`.
+by configuration using the `cfg_attr` attribute so, for example, to ignore a
+test on windows you can write `#[cfg_attr(windows, ignore)]`.
 
 Tests that are intended to fail can be annotated with the
 `should_fail` attribute. The test will be run, and if it causes its
