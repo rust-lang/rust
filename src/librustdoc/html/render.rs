@@ -745,9 +745,9 @@ impl<'a> SourceCollector<'a> {
         let desc = format!("Source to the Rust file `{}`.", filename);
         let page = layout::Page {
             title: title.as_slice(),
-            description: desc.as_slice(),
             ty: "source",
             root_path: root_path.as_slice(),
+            description: desc.as_slice(),
         };
         try!(layout::render(&mut w as &mut Writer, &self.cx.layout,
                             &page, &(""), &Source(contents)));
@@ -1078,9 +1078,9 @@ impl Context {
                                this.layout.krate);
             let page = layout::Page {
                 ty: "mod",
-                description: desc.as_slice(),
                 root_path: this.root_path.as_slice(),
                 title: title.as_slice(),
+                description: desc.as_slice(),
             };
             let html_dst = &this.dst.join("stability.html");
             let mut html_out = BufferedWriter::new(try!(File::create(html_dst)));
@@ -1139,9 +1139,9 @@ impl Context {
             };
             let page = layout::Page {
                 ty: tyname,
-                description: desc.as_slice(),
                 root_path: cx.root_path.as_slice(),
                 title: title.as_slice(),
+                description: desc.as_slice(),
             };
 
             markdown::reset_headers();
