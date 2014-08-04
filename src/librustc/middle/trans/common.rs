@@ -574,7 +574,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
                                                 !null_terminated as Bool);
 
         let gsym = token::gensym("str");
-        let g = format!("str{}", gsym).with_c_str(|buf| {
+        let g = format!("str{}", gsym.uint()).with_c_str(|buf| {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(sc).to_ref(), buf)
         });
         llvm::LLVMSetInitializer(g, sc);
@@ -603,7 +603,7 @@ pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
         let lldata = C_bytes(cx, data);
 
         let gsym = token::gensym("binary");
-        let g = format!("binary{}", gsym).with_c_str(|buf| {
+        let g = format!("binary{}", gsym.uint()).with_c_str(|buf| {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(lldata).to_ref(), buf)
         });
         llvm::LLVMSetInitializer(g, lldata);
