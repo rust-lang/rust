@@ -10,21 +10,19 @@
 //
 // ignore-lexer-test FIXME #15883
 
-/*!
- * Implementation of SipHash 2-4
- *
- * See: http://131002.net/siphash/
- *
- * Consider this as a main "general-purpose" hash for all hashtables: it
- * runs at good speed (competitive with spooky and city) and permits
- * strong _keyed_ hashing. Key your hashtables from a strong RNG,
- * such as `rand::Rng`.
- *
- * Although the SipHash algorithm is considered to be cryptographically
- * strong, this implementation has not been reviewed for such purposes.
- * As such, all cryptographic uses of this implementation are strongly
- * discouraged.
- */
+//! An implementation of SipHash 2-4.
+//!
+//! See: http://131002.net/siphash/
+//!
+//! Consider this as a main "general-purpose" hash for all hashtables: it
+//! runs at good speed (competitive with spooky and city) and permits
+//! strong _keyed_ hashing. Key your hashtables from a strong RNG,
+//! such as `rand::Rng`.
+//!
+//! Although the SipHash algorithm is considered to be cryptographically
+//! strong, this implementation has not been reviewed for such purposes.
+//! As such, all cryptographic uses of this implementation are strongly
+//! discouraged.
 
 use core::prelude::*;
 
@@ -89,13 +87,13 @@ macro_rules! compress (
 )
 
 impl SipState {
-    /// Create a `SipState` that is keyed off the provided keys.
+    /// Creates a `SipState` that is keyed off the provided keys.
     #[inline]
     pub fn new() -> SipState {
         SipState::new_with_keys(0, 0)
     }
 
-    /// Create a `SipState` that is keyed off the provided keys.
+    /// Creates a `SipState` that is keyed off the provided keys.
     #[inline]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipState {
         let mut state = SipState {
@@ -113,7 +111,7 @@ impl SipState {
         state
     }
 
-    /// Reset the state back to it's initial state.
+    /// Resets the state to its initial state.
     #[inline]
     pub fn reset(&mut self) {
         self.length = 0;
@@ -124,7 +122,7 @@ impl SipState {
         self.ntail = 0;
     }
 
-    /// Return the computed hash.
+    /// Returns the computed hash.
     #[inline]
     pub fn result(&self) -> u64 {
         let mut v0 = self.v0;
@@ -219,13 +217,13 @@ pub struct SipHasher {
 }
 
 impl SipHasher {
-    /// Create a `Sip`.
+    /// Creates a `Sip`.
     #[inline]
     pub fn new() -> SipHasher {
         SipHasher::new_with_keys(0, 0)
     }
 
-    /// Create a `Sip` that is keyed off the provided keys.
+    /// Creates a `Sip` that is keyed off the provided keys.
     #[inline]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
         SipHasher {
@@ -251,7 +249,7 @@ impl Default for SipHasher {
     }
 }
 
-/// Hash a value using the SipHash algorithm.
+/// Hashes a value using the SipHash algorithm.
 #[inline]
 pub fn hash<T: Hash<SipState>>(value: &T) -> u64 {
     let mut state = SipState::new();
@@ -259,7 +257,7 @@ pub fn hash<T: Hash<SipState>>(value: &T) -> u64 {
     state.result()
 }
 
-/// Hash a value with the SipHash algorithm with the provided keys.
+/// Hashes a value with the SipHash algorithm with the provided keys.
 #[inline]
 pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
     let mut state = SipState::new_with_keys(k0, k1);

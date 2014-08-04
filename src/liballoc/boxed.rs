@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A unique pointer type
+//! A unique pointer type.
 
 use core::any::{Any, AnyRefExt};
 use core::clone::Clone;
@@ -26,12 +26,14 @@ use core::result::{Ok, Err, Result};
 ///
 /// The following two examples are equivalent:
 ///
-///     use std::boxed::HEAP;
+/// ```rust
+/// use std::boxed::HEAP;
 ///
-///     # struct Bar;
-///     # impl Bar { fn new(_a: int) { } }
-///     let foo = box(HEAP) Bar::new(2);
-///     let foo = box Bar::new(2);
+/// # struct Bar;
+/// # impl Bar { fn new(_a: int) { } }
+/// let foo = box(HEAP) Bar::new(2);
+/// let foo = box Bar::new(2);
+/// ```
 #[lang = "exchange_heap"]
 #[experimental = "may be renamed; uncertain about custom allocator design"]
 pub static HEAP: () = ();
@@ -47,11 +49,11 @@ impl<T: Default> Default for Box<T> {
 
 #[unstable]
 impl<T: Clone> Clone for Box<T> {
-    /// Return a copy of the owned box.
+    /// Returns a copy of the owned box.
     #[inline]
     fn clone(&self) -> Box<T> { box {(**self).clone()} }
 
-    /// Perform copy-assignment from `source` by reusing the existing allocation.
+    /// Performs copy-assignment from `source` by reusing the existing allocation.
     #[inline]
     fn clone_from(&mut self, source: &Box<T>) {
         (**self).clone_from(&(**source));
@@ -86,7 +88,7 @@ impl<T: Ord> Ord for Box<T> {
 }
 impl<T: Eq> Eq for Box<T> {}
 
-/// Extension methods for an owning `Any` trait object
+/// Extension methods for an owning `Any` trait object.
 #[unstable = "post-DST and coherence changes, this will not be a trait but \
               rather a direct `impl` on `Box<Any>`"]
 pub trait BoxAny {
