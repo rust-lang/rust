@@ -742,8 +742,10 @@ impl<'a> SourceCollector<'a> {
         let mut w = BufferedWriter::new(try!(File::create(&cur)));
 
         let title = format!("{} -- source", cur.filename_display());
+        let desc = format!("Source to the Rust file `{}`.", filename);
         let page = layout::Page {
             title: title.as_slice(),
+            description: desc.as_slice(),
             ty: "source",
             root_path: root_path.as_slice(),
         };
@@ -1072,8 +1074,11 @@ impl Context {
             try!(stability.encode(&mut json::Encoder::new(&mut json_out)));
 
             let title = stability.name.clone().append(" - Stability dashboard");
+            let desc = format!("API stability overview for the Rust `{}` crate.",
+                               this.layout.krate);
             let page = layout::Page {
                 ty: "mod",
+                description: desc.as_slice(),
                 root_path: this.root_path.as_slice(),
                 title: title.as_slice(),
             };
@@ -1120,8 +1125,21 @@ impl Context {
                 title.push_str(it.name.get_ref().as_slice());
             }
             title.push_str(" - Rust");
+            let tyname = shortty(it).to_static_str();
+            let is_crate = match it.inner {
+                clean::ModuleItem(clean::Module { items: _, is_crate: true }) => true,
+                _ => false
+            };
+            let desc = if is_crate {
+                format!("API documentation for the Rust `{}` crate.",
+                        cx.layout.krate)
+            } else {
+                format!("API documentation for the Rust `{}` {} in crate `{}`.",
+                        it.name.get_ref(), tyname, cx.layout.krate)
+            };
             let page = layout::Page {
-                ty: shortty(it).to_static_str(),
+                ty: tyname,
+                description: desc.as_slice(),
                 root_path: cx.root_path.as_slice(),
                 title: title.as_slice(),
             };

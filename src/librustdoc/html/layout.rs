@@ -26,6 +26,7 @@ pub struct Page<'a> {
     pub title: &'a str,
     pub ty: &'a str,
     pub root_path: &'a str,
+    pub description: &'a str
 }
 
 pub fn render<T: fmt::Show, S: fmt::Show>(
@@ -38,8 +39,8 @@ r##"<!DOCTYPE html>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="The {krate} library documentation.">
     <meta name="generator" content="rustdoc">
+    <meta name="description" content="{description}">
 
     <title>{title}</title>
 
@@ -135,6 +136,7 @@ r##"<!DOCTYPE html>
                 layout.logo)
     },
     title     = page.title,
+    description = page.description,
     favicon   = if layout.favicon.len() == 0 {
         "".to_string()
     } else {
