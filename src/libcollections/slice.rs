@@ -256,18 +256,6 @@ pub struct Permutations<T> {
 }
 
 impl<T: Clone> Iterator<Vec<T>> for Permutations<T> {
-    /// Returns next permuation in Iterator of all possible
-    /// permuations of a vector.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let v = [1i, 2, 3];
-    /// let mut perms = v.permutations();
-    /// assert_eq!(Some(vec!(1i, 2, 3)), perms.next());
-    /// assert_eq!(Some(vec!(1i, 3, 2)), perms.next());
-    /// assert_eq!(Some(vec!(3i, 1, 2)), perms.next());
-    /// ```
     #[inline]
     fn next(&mut self) -> Option<Vec<T>> {
         match self.swaps.next() {
@@ -326,6 +314,28 @@ pub trait ImmutableCloneableVector<T> {
 
     /// Create an iterator that yields every possible permutation of the
     /// vector in succession.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v = [1i, 2, 3];
+    /// let mut perms = v.permutations();
+    ///
+    /// for p in perms {
+    ///   println!("{}", p);
+    /// }
+    /// ```
+    ///
+    /// # Example 2: iterating through permutations one by one.
+    ///
+    /// ```rust
+    /// let v = [1i, 2, 3];
+    /// let mut perms = v.permutations();
+    ///
+    /// assert_eq!(Some(vec![1i, 2, 3]), perms.next());
+    /// assert_eq!(Some(vec![1i, 3, 2]), perms.next());
+    /// assert_eq!(Some(vec![3i, 1, 2]), perms.next());
+    /// ```
     fn permutations(self) -> Permutations<T>;
 }
 
@@ -347,17 +357,6 @@ impl<'a,T:Clone> ImmutableCloneableVector<T> for &'a [T] {
     }
 
     /// Returns an iterator over all permutations of a vector.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let v = [1i, 2, 3];
-    /// let mut perms = v.permutations();
-    ///
-    /// for p in perms {
-    ///   println!("{}", p);
-    /// }
-    /// ```
     fn permutations(self) -> Permutations<T> {
         Permutations{
             swaps: ElementSwaps::new(self.len()),
