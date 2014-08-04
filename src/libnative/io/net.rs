@@ -66,26 +66,27 @@ fn ip_to_inaddr(ip: rtio::IpAddr) -> InAddr {
     }
 }
 
-fn addr_to_sockaddr(addr: rtio::SocketAddr) -> (libc::sockaddr_storage, uint) {
+fn addr_to_sockaddr(addr: rtio::SocketAddr,
+                    storage: &mut libc::sockaddr_storage)
+                    -> libc::socklen_t {
     unsafe {
-        let storage: libc::sockaddr_storage = mem::zeroed();
         let len = match ip_to_inaddr(addr.ip) {
             InAddr(inaddr) => {
-                let storage: *mut libc::sockaddr_in = mem::transmute(&storage);
+                let storage = storage as *mut _ as *mut libc::sockaddr_in;
                 (*storage).sin_family = libc::AF_INET as libc::sa_family_t;
                 (*storage).sin_port = htons(addr.port);
                 (*storage).sin_addr = inaddr;
                 mem::size_of::<libc::sockaddr_in>()
             }
             In6Addr(inaddr) => {
-                let storage: *mut libc::sockaddr_in6 = mem::transmute(&storage);
+                let storage = storage as *mut _ as *mut libc::sockaddr_in6;
                 (*storage).sin6_family = libc::AF_INET6 as libc::sa_family_t;
                 (*storage).sin6_port = htons(addr.port);
                 (*storage).sin6_addr = inaddr;
                 mem::size_of::<libc::sockaddr_in6>()
             }
         };
-        return (storage, len);
+        return len as libc::socklen_t;
     }
 }
 
@@ -277,9 +278,9 @@ impl TcpStream {
         let fd = try!(socket(addr, libc::SOCK_STREAM));
         let ret = TcpStream::new(Inner::new(fd));
 
-        let (addr, len) = addr_to_sockaddr(addr);
-        let addrp = &addr as *const _ as *const libc::sockaddr;
-        let len = len as libc::socklen_t;
+        let mut storage = unsafe { mem::zeroed() };
+        let len = addr_to_sockaddr(addr, &mut storage);
+        let addrp = &storage as *const _ as *const libc::sockaddr;
 
         match timeout {
             Some(timeout) => {
@@ -457,9 +458,9 @@ impl TcpListener {
         let fd = try!(socket(addr, libc::SOCK_STREAM));
         let ret = TcpListener { inner: Inner::new(fd) };
 
-        let (addr, len) = addr_to_sockaddr(addr);
-        let addrp = &addr as *const _ as *const libc::sockaddr;
-        let len = len as libc::socklen_t;
+        let mut storage = unsafe { mem::zeroed() };
+        let len = addr_to_sockaddr(addr, &mut storage);
+        let addrp = &storage as *const _ as *const libc::sockaddr;
 
         // On platforms with Berkeley-derived sockets, this allows
         // to quickly rebind a socket, without needing to wait for
@@ -566,9 +567,9 @@ impl UdpSocket {
             write_deadline: 0,
         };
 
-        let (addr, len) = addr_to_sockaddr(addr);
-        let addrp = &addr as *const _ as *const libc::sockaddr;
-        let len = len as libc::socklen_t;
+        let mut storage = unsafe { mem::zeroed() };
+        let len = addr_to_sockaddr(addr, &mut storage);
+        let addrp = &storage as *const _ as *const libc::sockaddr;
 
         match unsafe { libc::bind(fd, addrp, len) } {
             -1 => Err(last_error()),
@@ -656,9 +657,9 @@ impl rtio::RtioUdpSocket for UdpSocket {
     }
 
     fn send_to(&mut self, buf: &[u8], dst: rtio::SocketAddr) -> IoResult<()> {
-        let (dst, dstlen) = addr_to_sockaddr(dst);
-        let dstp = &dst as *const _ as *const libc::sockaddr;
-        let dstlen = dstlen as libc::socklen_t;
+        let mut storage = unsafe { mem::zeroed() };
+        let dstlen = addr_to_sockaddr(dst, &mut storage);
+        let dstp = &storage as *const _ as *const libc::sockaddr;
 
         let fd = self.fd();
         let dolock = || self.lock_nonblocking();
