@@ -560,10 +560,13 @@ pub fn lit_to_const(lit: &Lit) -> const_val {
         }
         LitByte(n) => const_uint(n as u64),
         LitChar(n) => const_uint(n as u64),
-        LitInt(n, _) => const_int(n),
-        LitUint(n, _) => const_uint(n),
-        LitIntUnsuffixed(n) => const_int(n),
-        LitFloat(ref n, _) | LitFloatUnsuffixed(ref n) => {
+        LitInt(n, ast::SignedIntLit(_, ast::Plus)) |
+        LitInt(n, ast::UnsuffixedIntLit(ast::Plus)) => const_int(n as i64),
+        LitInt(n, ast::SignedIntLit(_, ast::Minus)) |
+        LitInt(n, ast::UnsuffixedIntLit(ast::Minus)) => const_int(-(n as i64)),
+        LitInt(n, ast::UnsignedIntLit(_)) => const_uint(n),
+        LitFloat(ref n, _) |
+        LitFloatUnsuffixed(ref n) => {
             const_float(from_str::<f64>(n.get()).unwrap() as f64)
         }
         LitNil => const_nil,

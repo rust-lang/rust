@@ -37,11 +37,14 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                     ast::LitChar(c) => {
                         accumulator.push_char(c);
                     }
-                    ast::LitInt(i, _) | ast::LitIntUnsuffixed(i) => {
+                    ast::LitInt(i, ast::UnsignedIntLit(_)) |
+                    ast::LitInt(i, ast::SignedIntLit(_, ast::Plus)) |
+                    ast::LitInt(i, ast::UnsuffixedIntLit(ast::Plus)) => {
                         accumulator.push_str(format!("{}", i).as_slice());
                     }
-                    ast::LitUint(u, _) => {
-                        accumulator.push_str(format!("{}", u).as_slice());
+                    ast::LitInt(i, ast::SignedIntLit(_, ast::Minus)) |
+                    ast::LitInt(i, ast::UnsuffixedIntLit(ast::Minus)) => {
+                        accumulator.push_str(format!("-{}", i).as_slice());
                     }
                     ast::LitNil => {}
                     ast::LitBool(b) => {

@@ -626,13 +626,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(sp, ast::ExprLit(box(GC) respan(sp, lit)))
     }
     fn expr_uint(&self, span: Span, i: uint) -> Gc<ast::Expr> {
-        self.expr_lit(span, ast::LitUint(i as u64, ast::TyU))
+        self.expr_lit(span, ast::LitInt(i as u64, ast::UnsignedIntLit(ast::TyU)))
     }
     fn expr_int(&self, sp: Span, i: int) -> Gc<ast::Expr> {
-        self.expr_lit(sp, ast::LitInt(i as i64, ast::TyI))
+        self.expr_lit(sp, ast::LitInt(i as u64, ast::SignedIntLit(ast::TyI, ast::Sign::new(i))))
     }
     fn expr_u8(&self, sp: Span, u: u8) -> Gc<ast::Expr> {
-        self.expr_lit(sp, ast::LitUint(u as u64, ast::TyU8))
+        self.expr_lit(sp, ast::LitInt(u as u64, ast::UnsignedIntLit(ast::TyU8)))
     }
     fn expr_bool(&self, sp: Span, value: bool) -> Gc<ast::Expr> {
         self.expr_lit(sp, ast::LitBool(value))

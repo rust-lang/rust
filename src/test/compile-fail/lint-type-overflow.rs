@@ -48,6 +48,9 @@ fn main() {
     let x: i32 = -2147483649; //~ error: literal out of range for its type
     let x = -2147483649_i32; //~ error: literal out of range for its type
 
+    let x = 9223372036854775808_i64; //~ error: literal out of range for its type
+    let x = 18446744073709551615_i64; //~ error: literal out of range for its type
+
     let x = -3.40282348e+38_f32; //~ error: literal out of range for its type
     let x =  3.40282348e+38_f32; //~ error: literal out of range for its type
     let x = -1.7976931348623159e+308_f64; //~ error: literal out of range for its type
