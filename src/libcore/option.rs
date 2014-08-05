@@ -230,7 +230,8 @@ impl<T> Option<T> {
     // Getting to contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Unwraps an option, yielding the content of a `Some`
+    /// Moves a value out of the `Some` variant and returns it, consuming the
+    /// `Option`.
     ///
     /// # Failure
     ///
@@ -244,6 +245,8 @@ impl<T> Option<T> {
         }
     }
 
+    /// Deprecated. Use `assert` instead.
+    ///
     /// Moves a value out of an option type and returns it, consuming the `Option`.
     ///
     /// # Failure
@@ -256,10 +259,30 @@ impl<T> Option<T> {
     /// Instead, prefer to use pattern matching and handle the `None`
     /// case explicitly.
     #[inline]
+    #[deprecated = "use assert instead"]
     pub fn unwrap(self) -> T {
         match self {
             Some(val) => val,
             None => fail!("called `Option::unwrap()` on a `None` value"),
+        }
+    }
+
+    /// Moves a value out of the `Some` variant and returns it, consuming the
+    /// `Option`.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the self value equals `None`.
+    ///
+    /// # Safety note
+    ///
+    /// In general, because this function may fail, its use is discouraged.
+    /// Instead, prefer to use pattern matching and handle the `None`
+    /// case explicitly.
+    pub fn assert(self) -> T {
+        match self {
+            Some(val) => val,
+            None => fail!("called `Option::assert()` on a `None` value"),
         }
     }
 
@@ -272,7 +295,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the contained value or computes it from a closure.
+    /// Returns the contained value or computes a default from a closure.
     #[inline]
     pub fn unwrap_or_else(self, f: || -> T) -> T {
         match self {
@@ -434,6 +457,7 @@ impl<T> Option<T> {
     ///
     /// Fails if the value equals `None`.
     #[inline]
+    #[deprecated = "use .take().assert() instead"]
     pub fn take_unwrap(&mut self) -> T {
         match self.take() {
             Some(x) => x,
@@ -454,6 +478,7 @@ impl<T> Option<T> {
     /// Instead, prefer to use pattern matching and handle the `None`
     /// case explicitly.
     #[inline]
+    #[deprecated = "use .as_ref().assert() instead"]
     pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
             Some(ref x) => x,
@@ -474,6 +499,7 @@ impl<T> Option<T> {
     /// Instead, prefer to use pattern matching and handle the `None`
     /// case explicitly.
     #[inline]
+    #[deprecated = "use .as_mut().assert() instead"]
     pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
             Some(ref mut x) => x,

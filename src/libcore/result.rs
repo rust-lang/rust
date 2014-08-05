@@ -534,13 +534,17 @@ impl<T, E> Result<T, E> {
 }
 
 impl<T, E: Show> Result<T, E> {
-    /// Unwraps a result, yielding the content of an `Ok`.
+    /// Deprecated. Use `assert` instead.
+    ///
+    /// Moves a value out of the `Ok` variant and returns it, consuming the
+    /// `Result`.
     ///
     /// # Failure
     ///
     /// Fails if the value is an `Err`, with a custom failure message provided
     /// by the `Err`'s value.
     #[inline]
+    #[deprecated = "use assert instead"]
     pub fn unwrap(self) -> T {
         match self {
             Ok(t) => t,
@@ -548,20 +552,56 @@ impl<T, E: Show> Result<T, E> {
                 fail!("called `Result::unwrap()` on an `Err` value: {}", e)
         }
     }
+
+    /// Moves a value out of the `Ok` variant and returns it, consuming the
+    /// `Result`.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the value is an `Err`, with a custom failure message provided
+    /// by the `Err`'s value.
+    #[inline]
+    pub fn assert(self) -> T {
+        match self {
+            Ok(t) => t,
+            Err(e) =>
+                fail!("called `Result::assert()` on an `Err` value: {}", e)
+        }
+    }
 }
 
 impl<T: Show, E> Result<T, E> {
-    /// Unwraps a result, yielding the content of an `Err`.
+    /// Deprecated. Use `assert_err` instead.
+    ///
+    /// Moves a value out of the `Err` variant and returns it, consuming the
+    /// `Result`.
     ///
     /// # Failure
     ///
     /// Fails if the value is an `Ok`, with a custom failure message provided
     /// by the `Ok`'s value.
     #[inline]
+    #[deprecated = "use assert_err instead"]
     pub fn unwrap_err(self) -> E {
         match self {
             Ok(t) =>
                 fail!("called `Result::unwrap_err()` on an `Ok` value: {}", t),
+            Err(e) => e
+        }
+    }
+
+    /// Moves a value out of the `Err` variant and returns it, consuming the
+    /// `Result`.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the value is an `Ok`, with a custom failure message provided
+    /// by the `Ok`'s value.
+    #[inline]
+    pub fn assert_err(self) -> E {
+        match self {
+            Ok(t) =>
+                fail!("called `Result::assert_err()` on an `Ok` value: {}", t),
             Err(e) => e
         }
     }
