@@ -65,6 +65,7 @@ impl GetAddrInfoRequest {
                 ai_canonname: mut_null(),
                 ai_addr: mut_null(),
                 ai_next: mut_null(),
+                __padding: [0, ..4]
             }
         });
         let hint_ptr = hint.as_ref().map_or(null(), |x| {

@@ -40,7 +40,8 @@ impl GetAddrInfoRequest {
                 ai_addrlen: 0,
                 ai_canonname: mut_null(),
                 ai_addr: mut_null(),
-                ai_next: mut_null()
+                ai_next: mut_null(),
+                __padding: [0, ..4]
             }
         });
 
