@@ -359,10 +359,11 @@ fn main() {
             // Take the lock, along with exclusive access to the underlying array
             let mut numbers = numbers_lock.lock();
 
-            // This is ugly for now, but will be replaced by
-            // `numbers[num as uint] += 1` in the near future.
+            // This is ugly for now because of the need for `get_mut`, but
+            // will be replaced by `numbers[num as uint] += 1`
+            // in the near future.
             // See: https://github.com/rust-lang/rust/issues/6515
-            *numbers.get_mut(num as uint) = *numbers.get_mut(num as uint) + 1;
+            *numbers.get_mut(num as uint) += 1;
 
             println!("{}", (*numbers)[num as uint]);
 
