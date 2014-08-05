@@ -516,8 +516,8 @@ pub fn lstat(_p: &CString) -> IoResult<rtio::FileStat> {
 
 pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
     let mut buf = libc::utimbuf {
-        actime: (atime / 1000) as libc::time64_t,
-        modtime: (mtime / 1000) as libc::time64_t,
+        actime: atime as libc::time64_t,
+        modtime: mtime as libc::time64_t,
     };
     let p = try!(to_utf16(p));
     super::mkerr_libc(unsafe {

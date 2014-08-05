@@ -1588,8 +1588,7 @@ mod test {
                 "truncate didn't truncate");
     })
 
-    #[test]
-    fn utime() {
+    iotest!(fn utime() {
         let tmpdir = tmpdir();
         let path = tmpdir.join("a");
         check!(File::create(&path));
@@ -1597,17 +1596,16 @@ mod test {
         check!(change_file_times(&path, 1000, 2000));
         assert_eq!(check!(path.stat()).accessed, 1000);
         assert_eq!(check!(path.stat()).modified, 2000);
-    }
+    })
 
-    #[test]
-    fn utime_noexist() {
+    iotest!(fn utime_noexist() {
         let tmpdir = tmpdir();
 
         match change_file_times(&tmpdir.join("a"), 100, 200) {
             Ok(..) => fail!(),
             Err(..) => {}
         }
-    }
+    })
 
     iotest!(fn binary_file() {
         use rand::{StdRng, Rng};
