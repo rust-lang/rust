@@ -310,6 +310,13 @@ extern "rust-intrinsic" {
     /// ```
     pub fn transmute<T,U>(e: T) -> U;
 
+    /// Gives the address for the return value of the enclosing function.
+    ///
+    /// Using this instrinsic in a function that does not use an out pointer
+    /// will trigger a compiler error.
+    #[cfg(not(stage0))]
+    pub fn return_address() -> *const u8;
+
     /// Returns `true` if a type requires drop glue.
     pub fn needs_drop<T>() -> bool;
 
