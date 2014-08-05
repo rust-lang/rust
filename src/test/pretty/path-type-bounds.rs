@@ -14,11 +14,11 @@
 trait Tr { }
 impl Tr for int { }
 
-fn foo(x: Box<Tr+ Share>) -> Box<Tr+ Share> { x }
+fn foo(x: Box<Tr+ Sync>) -> Box<Tr+ Sync> { x }
 
 fn main() {
-    let x: Box<Tr+ Share>;
+    let x: Box<Tr+ Sync>;
 
-    box() 1i as Box<Tr+ Share>;
+    box() 1i as Box<Tr+ Sync>;
 }
 

@@ -13,6 +13,6 @@
 
 #![crate_type="lib"]
 
-pub trait RequiresShare : Share { }
+pub trait RequiresShare : Sync { }
 pub trait RequiresRequiresShareAndSend : RequiresShare + Send { }
 pub trait RequiresCopy : Copy { }

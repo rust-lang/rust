@@ -12,6 +12,6 @@
 
 trait Foo : Send { }
 
-impl <T: Share> Foo for T { } //~ ERROR cannot implement this trait
+impl <T: Sync> Foo for T { } //~ ERROR cannot implement this trait
 
 fn main() { }

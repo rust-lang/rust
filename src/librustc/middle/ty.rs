@@ -833,7 +833,7 @@ pub enum BuiltinBound {
     BoundSend,
     BoundSized,
     BoundCopy,
-    BoundShare,
+    BoundSync,
 }
 
 pub fn empty_builtin_bounds() -> BuiltinBounds {
@@ -845,7 +845,7 @@ pub fn all_builtin_bounds() -> BuiltinBounds {
     set.add(BoundStatic);
     set.add(BoundSend);
     set.add(BoundSized);
-    set.add(BoundShare);
+    set.add(BoundSync);
     set
 }
 
@@ -1804,7 +1804,7 @@ def_type_content_sets!(
         ReachesBorrowed                     = 0b0000_0010__0000_0000__0000,
         // ReachesManaged /* see [1] below */  = 0b0000_0100__0000_0000__0000,
         ReachesMutable                      = 0b0000_1000__0000_0000__0000,
-        ReachesNoShare                      = 0b0001_0000__0000_0000__0000,
+        ReachesNoSync                       = 0b0001_0000__0000_0000__0000,
         ReachesAll                          = 0b0001_1111__0000_0000__0000,
 
         // Things that cause values to *move* rather than *copy*
@@ -1828,8 +1828,8 @@ def_type_content_sets!(
         // Things that prevent values from being considered sized
         Nonsized                            = 0b0000_0000__0000_0000__0001,
 
-        // Things that prevent values from being shared
-        Nonsharable                         = 0b0001_0000__0000_0000__0000,
+        // Things that prevent values from being sync
+        Nonsync                             = 0b0001_0000__0000_0000__0000,
 
         // Things that make values considered not POD (would be same
         // as `Moves`, but for the fact that managed data `@` is
@@ -1855,7 +1855,7 @@ impl TypeContents {
             BoundSend => self.is_sendable(cx),
             BoundSized => self.is_sized(cx),
             BoundCopy => self.is_copy(cx),
-            BoundShare => self.is_sharable(cx),
+            BoundSync => self.is_sync(cx),
         }
     }
 
@@ -1875,8 +1875,8 @@ impl TypeContents {
         !self.intersects(TC::Nonsendable)
     }
 
-    pub fn is_sharable(&self, _: &ctxt) -> bool {
-        !self.intersects(TC::Nonsharable)
+    pub fn is_sync(&self, _: &ctxt) -> bool {
+        !self.intersects(TC::Nonsync)
     }
 
     pub fn owns_managed(&self) -> bool {
@@ -2169,11 +2169,11 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         } else if Some(did) == cx.lang_items.no_copy_bound() {
             tc | TC::OwnsAffine
         } else if Some(did) == cx.lang_items.no_share_bound() {
-            tc | TC::ReachesNoShare
+            tc | TC::ReachesNoSync
         } else if Some(did) == cx.lang_items.unsafe_type() {
             // FIXME(#13231): This shouldn't be needed after
             // opt-in built-in bounds are implemented.
-            (tc | TC::InteriorUnsafe) - TC::Nonsharable
+            (tc | TC::InteriorUnsafe) - TC::Nonsync
         } else {
             tc
         }
@@ -2237,7 +2237,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 BoundSend => TC::Nonsendable,
                 BoundSized => TC::Nonsized,
                 BoundCopy => TC::Noncopy,
-                BoundShare => TC::Nonsharable,
+                BoundSync => TC::Nonsync,
             };
         });
         return tc;

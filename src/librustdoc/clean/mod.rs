@@ -535,9 +535,9 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
             ty::BoundCopy =>
                 (tcx.lang_items.copy_trait().unwrap(),
                  external_path("Copy", &empty)),
-            ty::BoundShare =>
-                (tcx.lang_items.share_trait().unwrap(),
-                 external_path("Share", &empty)),
+            ty::BoundSync =>
+                (tcx.lang_items.sync_trait().unwrap(),
+                 external_path("Sync", &empty)),
         };
         let fqn = csearch::get_item_path(tcx, did);
         let fqn = fqn.move_iter().map(|i| i.to_string()).collect();

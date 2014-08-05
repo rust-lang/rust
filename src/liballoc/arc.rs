@@ -15,7 +15,7 @@
 
 use core::atomic;
 use core::clone::Clone;
-use core::kinds::{Share, Send};
+use core::kinds::{Sync, Send};
 use core::mem::{min_align_of, size_of, drop};
 use core::mem;
 use core::ops::{Drop, Deref};
@@ -76,7 +76,7 @@ struct ArcInner<T> {
     data: T,
 }
 
-impl<T: Share + Send> Arc<T> {
+impl<T: Sync + Send> Arc<T> {
     /// Create an atomically reference counted wrapper.
     #[inline]
     #[stable]
@@ -95,8 +95,8 @@ impl<T: Share + Send> Arc<T> {
     fn inner(&self) -> &ArcInner<T> {
         // This unsafety is ok because while this arc is alive we're guaranteed
         // that the inner pointer is valid. Furthermore, we know that the
-        // `ArcInner` structure itself is `Share` because the inner data is
-        // `Share` as well, so we're ok loaning out an immutable pointer to
+        // `ArcInner` structure itself is `Sync` because the inner data is
+        // `Sync` as well, so we're ok loaning out an immutable pointer to
         // these contents.
         unsafe { &*self._ptr }
     }
@@ -115,7 +115,7 @@ impl<T: Share + Send> Arc<T> {
 }
 
 #[unstable = "waiting on stability of Clone"]
-impl<T: Share + Send> Clone for Arc<T> {
+impl<T: Sync + Send> Clone for Arc<T> {
     /// Duplicate an atomically reference counted wrapper.
     ///
     /// The resulting two `Arc` objects will point to the same underlying data
@@ -140,14 +140,14 @@ impl<T: Share + Send> Clone for Arc<T> {
 }
 
 #[experimental = "Deref is experimental."]
-impl<T: Send + Share> Deref<T> for Arc<T> {
+impl<T: Send + Sync> Deref<T> for Arc<T> {
     #[inline]
     fn deref(&self) -> &T {
         &self.inner().data
     }
 }
 
-impl<T: Send + Share + Clone> Arc<T> {
+impl<T: Send + Sync + Clone> Arc<T> {
     /// Acquires a mutable pointer to the inner contents by guaranteeing that
     /// the reference count is one (no sharing is possible).
     ///
@@ -175,7 +175,7 @@ impl<T: Send + Share + Clone> Arc<T> {
 
 #[unsafe_destructor]
 #[experimental = "waiting on stability of Drop"]
-impl<T: Share + Send> Drop for Arc<T> {
+impl<T: Sync + Send> Drop for Arc<T> {
     fn drop(&mut self) {
         // This structure has #[unsafe_no_drop_flag], so this drop glue may run
         // more than once (but it is guaranteed to be zeroed after the first if
@@ -219,7 +219,7 @@ impl<T: Share + Send> Drop for Arc<T> {
 }
 
 #[experimental = "Weak pointers may not belong in this module."]
-impl<T: Share + Send> Weak<T> {
+impl<T: Sync + Send> Weak<T> {
     /// Attempts to upgrade this weak reference to a strong reference.
     ///
     /// This method will fail to upgrade this reference if the strong reference
@@ -245,7 +245,7 @@ impl<T: Share + Send> Weak<T> {
 }
 
 #[experimental = "Weak pointers may not belong in this module."]
-impl<T: Share + Send> Clone for Weak<T> {
+impl<T: Sync + Send> Clone for Weak<T> {
     #[inline]
     fn clone(&self) -> Weak<T> {
         // See comments in Arc::clone() for why this is relaxed
@@ -256,7 +256,7 @@ impl<T: Share + Send> Clone for Weak<T> {
 
 #[unsafe_destructor]
 #[experimental = "Weak pointers may not belong in this module."]
-impl<T: Share + Send> Drop for Weak<T> {
+impl<T: Sync + Send> Drop for Weak<T> {
     fn drop(&mut self) {
         // see comments above for why this check is here
         if self._ptr.is_null() { return }

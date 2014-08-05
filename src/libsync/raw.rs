@@ -87,7 +87,7 @@ impl WaitQueue {
 // The building-block used to make semaphores, mutexes, and rwlocks.
 struct Sem<Q> {
     lock: mutex::Mutex,
-    // n.b, we need Sem to be `Share`, but the WaitQueue type is not send/share
+    // n.b, we need Sem to be `Sync`, but the WaitQueue type is not send/share
     //      (for good reason). We have an internal invariant on this semaphore,
     //      however, that the queue is never accessed outside of a locked
     //      context.

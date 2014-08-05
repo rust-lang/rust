@@ -12,7 +12,7 @@
 // are const.
 
 
-fn foo<T: Share>(x: T) -> T { x }
+fn foo<T: Sync>(x: T) -> T { x }
 
 struct F { field: int }
 

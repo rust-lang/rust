@@ -20,7 +20,7 @@ struct E {
 }
 
 impl A for E {
-  fn b<F: Share, G>(_x: F) -> F { fail!() } //~ ERROR type parameter 0 requires `Share`
+  fn b<F: Sync, G>(_x: F) -> F { fail!() } //~ ERROR type parameter 0 requires `Sync`
 }
 
 fn main() {}

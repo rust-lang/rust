@@ -2196,7 +2196,7 @@ and may not be overridden:
 Types are sendable
 unless they contain references.
 
-* `Share` - Types that are *threadsafe*.
+* `Sync` - Types that are *threadsafe*.
 These are types that are safe to be used across several threads with access to
 a `&T` pointer. `Mutex<T>` is an example of a *sharable* type with internal mutable data.
 
@@ -2250,7 +2250,7 @@ We say that the `Printable` trait _provides_ a `print` method with the
 given signature.  This means that we can call `print` on an argument
 of any type that implements the `Printable` trait.
 
-Rust's built-in `Send` and `Share` types are examples of traits that
+Rust's built-in `Send` and `Sync` types are examples of traits that
 don't provide any methods.
 
 Traits may be implemented for specific types with [impls]. An impl for
@@ -2535,7 +2535,7 @@ select the method to call at runtime.
 
 This usage of traits is similar to Java interfaces.
 
-There are some built-in bounds, such as `Send` and `Share`, which are properties
+There are some built-in bounds, such as `Send` and `Sync`, which are properties
 of the components of types. By design, trait objects don't know the exact type
 of their contents and so the compiler cannot reason about those properties.
 
@@ -2548,7 +2548,7 @@ trait Foo {}
 trait Bar<T> {}
 
 fn sendable_foo(f: Box<Foo + Send>) { /* ... */ }
-fn shareable_bar<T: Share>(b: &Bar<T> + Share) { /* ... */ }
+fn sync_bar<T: Sync>(b: &Bar<T> + Sync) { /* ... */ }
 ~~~
 
 When no colon is specified (such as the type `Box<Foo>`), it is inferred that the

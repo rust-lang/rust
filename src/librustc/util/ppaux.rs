@@ -646,7 +646,7 @@ impl Repr for ty::ParamBounds {
                 ty::BoundSend => "Send".to_string(),
                 ty::BoundSized => "Sized".to_string(),
                 ty::BoundCopy => "Copy".to_string(),
-                ty::BoundShare => "Share".to_string(),
+                ty::BoundSync => "Sync".to_string(),
             });
         }
         for t in self.trait_bounds.iter() {
@@ -931,7 +931,7 @@ impl UserString for ty::BuiltinBound {
             ty::BoundSend => "Send".to_string(),
             ty::BoundSized => "Sized".to_string(),
             ty::BoundCopy => "Copy".to_string(),
-            ty::BoundShare => "Share".to_string(),
+            ty::BoundSync => "Sync".to_string(),
         }
     }
 }
