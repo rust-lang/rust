@@ -18,6 +18,7 @@ use parse::token::{InternedString, str_to_ident};
 use parse::token;
 
 use std::fmt;
+use std::num::Zero;
 use std::fmt::Show;
 use std::option::Option;
 use std::rc::Rc;
@@ -657,14 +658,45 @@ pub enum StrStyle {
 pub type Lit = Spanned<Lit_>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum Sign {
+    Minus,
+    Plus
+}
+
+impl<T: PartialOrd+Zero> Sign {
+    pub fn new(n: T) -> Sign {
+        if n < Zero::zero() {
+            Minus
+        } else {
+            Plus
+        }
+    }
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum LitIntType {
+    SignedIntLit(IntTy, Sign),
+    UnsignedIntLit(UintTy),
+    UnsuffixedIntLit(Sign)
+}
+
+impl LitIntType {
+    pub fn suffix_len(&self) -> uint {
+        match *self {
+            UnsuffixedIntLit(_) => 0,
+            SignedIntLit(s, _) => s.suffix_len(),
+            UnsignedIntLit(u) => u.suffix_len()
+        }
+    }
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Lit_ {
     LitStr(InternedString, StrStyle),
     LitBinary(Rc<Vec<u8> >),
     LitByte(u8),
     LitChar(char),
-    LitInt(i64, IntTy),
-    LitUint(u64, UintTy),
-    LitIntUnsuffixed(i64),
+    LitInt(u64, LitIntType),
     LitFloat(InternedString, FloatTy),
     LitFloatUnsuffixed(InternedString),
     LitNil,

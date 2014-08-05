@@ -2057,9 +2057,9 @@ fn check_lit(fcx: &FnCtxt,
         }
         ast::LitByte(_) => ty::mk_u8(),
         ast::LitChar(_) => ty::mk_char(),
-        ast::LitInt(_, t) => ty::mk_mach_int(t),
-        ast::LitUint(_, t) => ty::mk_mach_uint(t),
-        ast::LitIntUnsuffixed(_) => {
+        ast::LitInt(_, ast::SignedIntLit(t, _)) => ty::mk_mach_int(t),
+        ast::LitInt(_, ast::UnsignedIntLit(t)) => ty::mk_mach_uint(t),
+        ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
             let opt_ty = expected.map_to_option(fcx, |sty| {
                 match *sty {
                     ty::ty_int(i) => Some(ty::mk_mach_int(i)),

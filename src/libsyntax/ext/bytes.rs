@@ -47,7 +47,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
 
                 // u8 literal, push to vector expression
-                ast::LitUint(v, ast::TyU8) => {
+                ast::LitInt(v, ast::UnsignedIntLit(ast::TyU8)) => {
                     if v > 0xFF {
                         cx.span_err(expr.span, "too large u8 literal in bytes!");
                         err = true;
@@ -57,12 +57,13 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
 
                 // integer literal, push to vector expression
-                ast::LitIntUnsuffixed(v) => {
+                ast::LitInt(_, ast::UnsuffixedIntLit(ast::Minus)) => {
+                    cx.span_err(expr.span, "negative integer literal in bytes!");
+                    err = true;
+                }
+                ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
                     if v > 0xFF {
                         cx.span_err(expr.span, "too large integer literal in bytes!");
-                        err = true;
-                    } else if v < 0 {
-                        cx.span_err(expr.span, "negative integer literal in bytes!");
                         err = true;
                     } else {
                         bytes.push(cx.expr_u8(expr.span, v as u8));

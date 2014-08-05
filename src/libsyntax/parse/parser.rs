@@ -34,7 +34,7 @@ use ast::{Ident, NormalFn, Inherited, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
-use ast::{LitNil, LitStr, LitUint, Local, LocalLet};
+use ast::{LitNil, LitStr, LitInt, Local, LocalLet};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal};
 use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
 use ast::{NamedField, UnNeg, NoReturn, UnNot, P, Pat, PatEnum};
@@ -1889,7 +1889,7 @@ impl<'a> Parser<'a> {
     pub fn mk_lit_u32(&mut self, i: u32) -> Gc<Expr> {
         let span = &self.span;
         let lv_lit = box(GC) codemap::Spanned {
-            node: LitUint(i as u64, TyU32),
+            node: LitInt(i as u64, ast::UnsignedIntLit(TyU32)),
             span: *span
         };
 

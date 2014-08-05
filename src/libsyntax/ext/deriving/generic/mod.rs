@@ -996,7 +996,7 @@ impl<'a> MethodDef<'a> {
             let arms : Vec<ast::Arm> = variants.iter().enumerate()
                 .map(|(index, &variant)| {
                     let pat = variant_to_pat(cx, sp, &*variant);
-                    let lit = ast::LitUint(index as u64, ast::TyU);
+                    let lit = ast::LitInt(index as u64, ast::UnsignedIntLit(ast::TyU));
                     cx.arm(sp, vec![pat], cx.expr_lit(sp, lit))
                 }).collect();
 
