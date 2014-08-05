@@ -47,9 +47,13 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
     match lit.node {
         ast::LitByte(b) => C_integral(Type::uint_from_ty(cx, ast::TyU8), b as u64, false),
         ast::LitChar(i) => C_integral(Type::char(cx), i as u64, false),
-        ast::LitInt(i, t) => C_integral(Type::int_from_ty(cx, t), i as u64, true),
-        ast::LitUint(u, t) => C_integral(Type::uint_from_ty(cx, t), u, false),
-        ast::LitIntUnsuffixed(i) => {
+        ast::LitInt(i, ast::SignedIntLit(t, _)) => {
+            C_integral(Type::int_from_ty(cx, t), i, true)
+        }
+        ast::LitInt(u, ast::UnsignedIntLit(t)) => {
+            C_integral(Type::uint_from_ty(cx, t), u, false)
+        }
+        ast::LitInt(i, ast::UnsuffixedIntLit(_)) => {
             let lit_int_ty = ty::node_id_to_type(cx.tcx(), e.id);
             match ty::get(lit_int_ty).sty {
                 ty::ty_int(t) => {

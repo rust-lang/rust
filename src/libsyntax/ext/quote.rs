@@ -189,16 +189,17 @@ pub mod rt {
         (signed, $t:ty, $tag:ident) => (
             impl ToSource for $t {
                 fn to_source(&self) -> String {
-                    let lit = dummy_spanned(ast::LitInt(*self as i64, ast::$tag));
-                    pprust::lit_to_string(&lit)
+                    let lit = ast::LitInt(*self as u64, ast::SignedIntLit(ast::$tag,
+                                                                          ast::Sign::new(*self)));
+                    pprust::lit_to_string(&dummy_spanned(lit))
                 }
             }
         );
         (unsigned, $t:ty, $tag:ident) => (
             impl ToSource for $t {
                 fn to_source(&self) -> String {
-                    let lit = dummy_spanned(ast::LitUint(*self as u64, ast::$tag));
-                    pprust::lit_to_string(&lit)
+                    let lit = ast::LitInt(*self as u64, ast::UnsignedIntLit(ast::$tag));
+                    pprust::lit_to_string(&dummy_spanned(lit))
                 }
             }
         );
