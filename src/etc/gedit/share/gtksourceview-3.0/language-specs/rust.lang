@@ -22,6 +22,7 @@
     <style id="number" _name="Number" map-to="def:number"/>
     <style id="scope" _name="Scope" map-to="def:preprocessor"/>
     <style id="attribute" _name="Attribute" map-to="def:preprocessor"/>
+    <style id="macro" _name="Macro" map-to="def:preprocessor"/>
   </styles>
 
   <definitions>
@@ -251,6 +252,12 @@
       </match>
     </context>
 
+    <context id="macro" style-ref="macro">
+      <match extended="true">
+        \%{ident}!
+      </match>
+    </context>
+
     <context id="lifetime" style-ref="keyword">
       <match extended="true">
         '\%{ident}
@@ -308,6 +315,7 @@
         <context ref="types"/>
         <context ref="ctypes"/>
         <context ref="self"/>
+        <context ref="macro"/>
         <context ref="constants"/>
         <context ref="cconstants"/>
         <context ref="line-comment"/>
