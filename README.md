@@ -77,7 +77,7 @@ the feature; but the nature of the process means that we cannot expect
 every merged RFC to actually reflect what the end result will be at
 the time of the next major release; therefore we try to keep each RFC
 document somewhat in sync with the language feature as planned,
-tracking such changes via follow pull requests to the document.
+tracking such changes via followup pull requests to the document.
 
 An RFC that makes it through the entire process to implementation is
 considered 'complete' and is moved to the 'complete' folder; an RFC
