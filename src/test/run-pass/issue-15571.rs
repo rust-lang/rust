@@ -8,13 +8,57 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+fn match_on_local() {
     let mut foo = Some(box 5i);
     match foo {
         None => {},
         Some(x) => {
             foo = Some(x);
         }
-    };
+    }
     println!("'{}'", foo.unwrap());
+}
+
+fn match_on_arg(mut foo: Option<Box<int>>) {
+    match foo {
+        None => {}
+        Some(x) => {
+            foo = Some(x);
+        }
+    }
+    println!("'{}'", foo.unwrap());
+}
+
+fn match_on_binding() {
+    match Some(box 7i) {
+        mut foo => {
+            match foo {
+                None => {},
+                Some(x) => {
+                    foo = Some(x);
+                }
+            }
+            println!("'{}'", foo.unwrap());
+        }
+    }
+}
+
+fn match_on_upvar() {
+    let mut foo = Some(box 8i);
+    (proc() {
+        match foo {
+            None => {},
+            Some(x) => {
+                foo = Some(x);
+            }
+        }
+        println!("'{}'", foo.unwrap());
+    })();
+}
+
+fn main() {
+    match_on_local();
+    match_on_arg(Some(box 6i));
+    match_on_binding();
+    match_on_upvar();
 }
