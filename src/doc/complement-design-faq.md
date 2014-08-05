@@ -50,15 +50,15 @@ non-deterministic behavior. Rust provides the tools to make using a GC
 possible and even pleasant, but it should not be a requirement for
 implementing the language.
 
-## Non-`Share` `static mut` is unsafe
+## Non-`Sync` `static mut` is unsafe
 
-Types which are [`Share`][share] are thread-safe when multiple shared
-references to them are used concurrently. Types which are not `Share` are not
+Types which are [`Sync`][sync] are thread-safe when multiple shared
+references to them are used concurrently. Types which are not `Sync` are not
 thread-safe, and thus when used in a global require unsafe code to use.
 
-[share]: http://doc.rust-lang.org/core/kinds/trait.Share.html
+[sync]: http://doc.rust-lang.org/core/kinds/trait.Sync.html
 
-### If mutable static items that implement `Share` are safe, why is taking &mut SHARABLE unsafe?
+### If mutable static items that implement `Sync` are safe, why is taking &mut SHARABLE unsafe?
 
 Having multiple aliasing `&mut T`s is never allowed. Due to the nature of
 globals, the borrow checker cannot possibly ensure that a static obeys the

@@ -94,7 +94,7 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             "FromPrimitive" => expand!(primitive::expand_deriving_from_primitive),
 
                             "Send" => expand!(bounds::expand_deriving_bound),
-                            "Share" => expand!(bounds::expand_deriving_bound),
+                            "Sync" => expand!(bounds::expand_deriving_bound),
                             "Copy" => expand!(bounds::expand_deriving_bound),
 
                             ref tname => {

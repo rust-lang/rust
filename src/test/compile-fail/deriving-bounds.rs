@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Share(Bad),Send,Copy)]
+#[deriving(Sync(Bad),Send,Copy)]
 //~^ ERROR unexpected value in deriving, expected a trait
 struct Test;
 

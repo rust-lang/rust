@@ -20,18 +20,18 @@ pub enum PopResult<T> {
 
 pub fn queue<T: Send>() -> (Consumer<T>, Producer<T>) {
     let a = Arc::new(mpsc::Queue::new());
-    (Consumer { inner: a.clone(), noshare: marker::NoShare },
-     Producer { inner: a, noshare: marker::NoShare })
+    (Consumer { inner: a.clone(), noshare: marker::NoSync },
+     Producer { inner: a, noshare: marker::NoSync })
 }
 
 pub struct Producer<T> {
     inner: Arc<mpsc::Queue<T>>,
-    noshare: marker::NoShare,
+    noshare: marker::NoSync,
 }
 
 pub struct Consumer<T> {
     inner: Arc<mpsc::Queue<T>>,
-    noshare: marker::NoShare,
+    noshare: marker::NoSync,
 }
 
 impl<T: Send> Consumer<T> {
@@ -60,6 +60,6 @@ impl<T: Send> Producer<T> {
 
 impl<T: Send> Clone for Producer<T> {
     fn clone(&self) -> Producer<T> {
-        Producer { inner: self.inner.clone(), noshare: marker::NoShare }
+        Producer { inner: self.inner.clone(), noshare: marker::NoSync }
     }
 }

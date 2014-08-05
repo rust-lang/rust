@@ -179,7 +179,7 @@ pub struct Rc<T> {
     // field accesses of the contained type via Deref
     _ptr: *mut RcBox<T>,
     _nosend: marker::NoSend,
-    _noshare: marker::NoShare
+    _noshare: marker::NoSync
 }
 
 #[stable]
@@ -199,7 +199,7 @@ impl<T> Rc<T> {
                     weak: Cell::new(1)
                 }),
                 _nosend: marker::NoSend,
-                _noshare: marker::NoShare
+                _noshare: marker::NoSync
             }
         }
     }
@@ -213,7 +213,7 @@ impl<T> Rc<T> {
         Weak {
             _ptr: self._ptr,
             _nosend: marker::NoSend,
-            _noshare: marker::NoShare
+            _noshare: marker::NoSync
         }
     }
 }
@@ -348,7 +348,7 @@ impl<T> Clone for Rc<T> {
     #[inline]
     fn clone(&self) -> Rc<T> {
         self.inc_strong();
-        Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoShare }
+        Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoSync }
     }
 }
 
@@ -412,7 +412,7 @@ pub struct Weak<T> {
     // field accesses of the contained type via Deref
     _ptr: *mut RcBox<T>,
     _nosend: marker::NoSend,
-    _noshare: marker::NoShare
+    _noshare: marker::NoSync
 }
 
 #[experimental = "Weak pointers may not belong in this module."]
@@ -423,7 +423,7 @@ impl<T> Weak<T> {
             None
         } else {
             self.inc_strong();
-            Some(Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoShare })
+            Some(Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoSync })
         }
     }
 }
@@ -451,7 +451,7 @@ impl<T> Clone for Weak<T> {
     #[inline]
     fn clone(&self) -> Weak<T> {
         self.inc_weak();
-        Weak { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoShare }
+        Weak { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoSync }
     }
 }
 

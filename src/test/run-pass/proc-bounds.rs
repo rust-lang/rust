@@ -12,18 +12,18 @@ fn foo<T>() {}
 fn bar<T>(_: T) {}
 
 fn is_send<T: Send>() {}
-fn is_freeze<T: Share>() {}
+fn is_freeze<T: Sync>() {}
 fn is_static<T: 'static>() {}
 
 pub fn main() {
     foo::<proc()>();
     foo::<proc()>();
     foo::<proc():Send>();
-    foo::<proc():Send + Share>();
-    foo::<proc():'static + Send + Share>();
+    foo::<proc():Send + Sync>();
+    foo::<proc():'static + Send + Sync>();
 
     is_send::<proc():Send>();
-    is_freeze::<proc():Share>();
+    is_freeze::<proc():Sync>();
     is_static::<proc():'static>();
 
 

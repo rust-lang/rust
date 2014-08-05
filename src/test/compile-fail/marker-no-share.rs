@@ -10,9 +10,9 @@
 
 use std::kinds::marker;
 
-fn foo<P: Share>(p: P) { }
+fn foo<P: Sync>(p: P) { }
 
 fn main()
 {
-    foo(marker::NoShare); //~ ERROR does not fulfill `Share`
+    foo(marker::NoSync); //~ ERROR does not fulfill `Sync`
 }

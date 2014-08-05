@@ -13,7 +13,7 @@
 // Language items are items that represent concepts intrinsic to the language
 // itself. Examples are:
 //
-// * Traits that specify "kinds"; e.g. "Share", "Send".
+// * Traits that specify "kinds"; e.g. "Sync", "Send".
 //
 // * Traits that represent operators; e.g. "Add", "Sub", "Index".
 //
@@ -92,8 +92,8 @@ impl LanguageItems {
             Some(ty::BoundSized)
         } else if Some(id) == self.copy_trait() {
             Some(ty::BoundCopy)
-        } else if Some(id) == self.share_trait() {
-            Some(ty::BoundShare)
+        } else if Some(id) == self.sync_trait() {
+            Some(ty::BoundSync)
         } else {
             None
         }
@@ -218,7 +218,7 @@ lets_do_this! {
     SendTraitLangItem,               "send",                    send_trait;
     SizedTraitLangItem,              "sized",                   sized_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
-    ShareTraitLangItem,              "share",                   share_trait;
+    SyncTraitLangItem,               "sync",                    sync_trait;
 
     DropTraitLangItem,               "drop",                    drop_trait;
 
@@ -296,7 +296,7 @@ lets_do_this! {
 
     NoSendItem,                      "no_send_bound",           no_send_bound;
     NoCopyItem,                      "no_copy_bound",           no_copy_bound;
-    NoShareItem,                     "no_share_bound",          no_share_bound;
+    NoSyncItem,                     "no_share_bound",          no_share_bound;
     ManagedItem,                     "managed_bound",           managed_bound;
 
     IteratorItem,                    "iterator",                iterator;

@@ -15,7 +15,7 @@ trait Foo {
 fn b(_x: Box<Foo+Send>) {
 }
 
-fn c(x: Box<Foo+Share+Send>) {
+fn c(x: Box<Foo+Sync+Send>) {
     e(x);
 }
 

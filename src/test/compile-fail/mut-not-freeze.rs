@@ -10,9 +10,9 @@
 
 use std::cell::RefCell;
 
-fn f<T: Share>(_: T) {}
+fn f<T: Sync>(_: T) {}
 
 fn main() {
     let x = RefCell::new(0i);
-    f(x); //~ ERROR: which does not fulfill `Share`
+    f(x); //~ ERROR: which does not fulfill `Sync`
 }

@@ -112,7 +112,7 @@ struct TLDValueBox<T> {
     // refcount of 0 means uninitialized value, 1 means initialized, 2+ means
     // borrowed.
     // NB: we use UnsafeCell instead of Cell because Ref should be allowed to
-    // be Share. The only mutation occurs when a Ref is created or destroyed,
+    // be Sync. The only mutation occurs when a Ref is created or destroyed,
     // so there's no issue with &Ref being thread-safe.
     refcount: UnsafeCell<uint>
 }

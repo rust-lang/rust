@@ -8,36 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Verify that UnsafeCell is *always* share regardles `T` is share.
+// Verify that UnsafeCell is *always* sync regardles `T` is sync.
 
 // ignore-tidy-linelength
 
 use std::cell::UnsafeCell;
 use std::kinds::marker;
 
-struct MyShare<T> {
+struct MySync<T> {
     u: UnsafeCell<T>
 }
 
-struct NoShare {
-    m: marker::NoShare
+struct NoSync {
+    m: marker::NoSync
 }
 
-fn test<T: Share>(s: T){
+fn test<T: Sync>(s: T){
 
 }
 
 fn main() {
-    let us = UnsafeCell::new(MyShare{u: UnsafeCell::new(0i)});
+    let us = UnsafeCell::new(MySync{u: UnsafeCell::new(0i)});
     test(us);
 
-    let uns = UnsafeCell::new(NoShare{m: marker::NoShare});
+    let uns = UnsafeCell::new(NoSync{m: marker::NoSync});
     test(uns);
 
-    let ms = MyShare{u: uns};
+    let ms = MySync{u: uns};
     test(ms);
 
-    let ns = NoShare{m: marker::NoShare};
+    let ns = NoSync{m: marker::NoSync};
     test(ns);
-    //~^ ERROR instantiating a type parameter with an incompatible type `NoShare`, which does not fulfill `Share`
+    //~^ ERROR instantiating a type parameter with an incompatible type `NoSync`, which does not fulfill `Sync`
 }
