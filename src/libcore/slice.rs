@@ -76,6 +76,16 @@ pub trait ImmutableVector<'a, T> {
      * Fails when `end` points outside the bounds of self.
      */
     fn slice_to(&self, end: uint) -> &'a [T];
+
+    /// Divides one slice into two at an index.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding
+    /// the index `mid` itself) and the second will contain all
+    /// indices from `[mid, len)` (excluding the index `len` itself).
+    ///
+    /// Fails if `mid > len`.
+    fn split_at(&self, mid: uint) -> (&'a [T], &'a [T]);
+
     /// Returns an iterator over the vector
     fn iter(self) -> Items<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
@@ -245,6 +255,11 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     #[inline]
     fn slice_to(&self, end: uint) -> &'a [T] {
         self.slice(0, end)
+    }
+
+    #[inline]
+    fn split_at(&self, mid: uint) -> (&'a [T], &'a [T]) {
+        (self.slice(0, mid), self.slice(mid, self.len()))
     }
 
     #[inline]
@@ -1192,8 +1207,7 @@ impl<'a, T> Iterator<&'a [T]> for Chunks<'a, T> {
             None
         } else {
             let chunksz = cmp::min(self.v.len(), self.size);
-            let (fst, snd) = (self.v.slice_to(chunksz),
-                              self.v.slice_from(chunksz));
+            let (fst, snd) = self.v.split_at(chunksz);
             self.v = snd;
             Some(fst)
         }
@@ -1219,8 +1233,7 @@ impl<'a, T> DoubleEndedIterator<&'a [T]> for Chunks<'a, T> {
         } else {
             let remainder = self.v.len() % self.size;
             let chunksz = if remainder != 0 { remainder } else { self.size };
-            let (fst, snd) = (self.v.slice_to(self.v.len() - chunksz),
-                              self.v.slice_from(self.v.len() - chunksz));
+            let (fst, snd) = self.v.split_at(self.v.len() - chunksz);
             self.v = fst;
             Some(snd)
         }
