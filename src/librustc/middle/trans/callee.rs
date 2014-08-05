@@ -765,9 +765,11 @@ pub fn trans_call_inner<'a>(
             assert!(abi == synabi::RustIntrinsic);
             assert!(dest.is_some());
 
+            let call_info = call_info.expect("no call info for intrinsic call?");
             return intrinsic::trans_intrinsic_call(bcx, node, callee_ty,
                                                    arg_cleanup_scope, args,
-                                                   dest.unwrap(), substs);
+                                                   dest.unwrap(), substs,
+                                                   call_info);
         }
         NamedTupleConstructor(substs, disr) => {
             assert!(dest.is_some());
