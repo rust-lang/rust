@@ -1298,7 +1298,8 @@ pub fn trans_match<'a>(
 fn is_discr_reassigned(bcx: &Block, discr: &ast::Expr, body: &ast::Expr) -> bool {
     match discr.node {
         ast::ExprPath(..) => match bcx.def(discr.id) {
-            def::DefLocal(vid, _) | def::DefBinding(vid, _) => {
+            def::DefArg(vid, _) | def::DefBinding(vid, _) |
+            def::DefLocal(vid, _) | def::DefUpvar(vid, _, _, _) => {
                 let mut rc = ReassignmentChecker {
                     node: vid,
                     reassigned: false
@@ -1326,9 +1327,11 @@ impl euv::Delegate for ReassignmentChecker {
     fn borrow(&mut self, _: ast::NodeId, _: Span, _: mc::cmt, _: ty::Region,
               _: ty::BorrowKind, _: euv::LoanCause) {}
     fn decl_without_init(&mut self, _: ast::NodeId, _: Span) {}
+
     fn mutate(&mut self, _: ast::NodeId, _: Span, cmt: mc::cmt, _: euv::MutateMode) {
         match cmt.cat {
-            mc::cat_local(vid) => self.reassigned = self.node == vid,
+            mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: vid, .. }) |
+            mc::cat_arg(vid) | mc::cat_local(vid) => self.reassigned = self.node == vid,
             _ => {}
         }
     }
