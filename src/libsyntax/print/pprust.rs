@@ -2415,15 +2415,25 @@ impl<'a> State<'a> {
                 word(&mut self.s, res.as_slice())
             }
             ast::LitInt(i, t) => {
-                word(&mut self.s,
-                     ast_util::int_ty_to_string(t, Some(i)).as_slice())
-            }
-            ast::LitUint(u, t) => {
-                word(&mut self.s,
-                     ast_util::uint_ty_to_string(t, Some(u)).as_slice())
-            }
-            ast::LitIntUnsuffixed(i) => {
-                word(&mut self.s, format!("{}", i).as_slice())
+                match t {
+                    ast::SignedIntLit(st, ast::Plus) => {
+                        word(&mut self.s,
+                             ast_util::int_ty_to_string(st, Some(i as i64)).as_slice())
+                    }
+                    ast::SignedIntLit(st, ast::Minus) => {
+                        word(&mut self.s,
+                             ast_util::int_ty_to_string(st, Some(-(i as i64))).as_slice())
+                    }
+                    ast::UnsignedIntLit(ut) => {
+                        word(&mut self.s, ast_util::uint_ty_to_string(ut, Some(i)).as_slice())
+                    }
+                    ast::UnsuffixedIntLit(ast::Plus) => {
+                        word(&mut self.s, format!("{}", i).as_slice())
+                    }
+                    ast::UnsuffixedIntLit(ast::Minus) => {
+                        word(&mut self.s, format!("-{}", i).as_slice())
+                    }
+                }
             }
             ast::LitFloat(ref f, t) => {
                 word(&mut self.s,
