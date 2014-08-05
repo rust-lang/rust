@@ -479,7 +479,10 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
     return cmd;
 
     fn append_arg(cmd: &mut String, arg: &str) {
-        let quote = arg.chars().any(|c| c == ' ' || c == '\t');
+        // If an argument has 0 characters then we need to quote it to ensure
+        // that it actually gets passed through on the command line or otherwise
+        // it will be dropped entirely when parsed on the other end.
+        let quote = arg.chars().any(|c| c == ' ' || c == '\t') || arg.len() == 0;
         if quote {
             cmd.push_char('"');
         }
