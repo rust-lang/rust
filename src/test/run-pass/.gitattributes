@@ -1,1 +1,2 @@
 lexer-crlf-line-endings-string-literal-doc-comment.rs -text
+issue-16278.rs -text
