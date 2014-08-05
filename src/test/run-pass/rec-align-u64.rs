@@ -48,6 +48,7 @@ mod m {
     }
 
     #[cfg(target_arch = "x86_64")]
+    #[cfg(target_arch = "arm")]
     pub mod m {
         pub fn align() -> uint { 8u }
         pub fn size() -> uint { 16u }
