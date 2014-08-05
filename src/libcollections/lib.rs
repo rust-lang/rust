@@ -19,9 +19,11 @@
 //! do. As such, we strive to provide quality documentation on the absolute and
 //! relative strengths and weaknesses of each collection.
 //!
-//! When in doubt, we recommend first considering `Vec`, `RingBuf`, `HashMap`, and
-//! `HashSet` for the task, as their performance is excellent both in theoretical
-//! and practical terms. These collections are easily the most commonly used ones by
+//! When in doubt, we recommend first considering [`Vec`](../vec/struct.Vec.html),
+//! [`RingBuf`](struct.RingBuf.html), [`HashMap`](hashmap/struct.HashMap.html), and
+//! [`HashSet`](hashmap/struct.HashSet.html) for the task, as their performance is
+//! excellent both in theoretical and practical terms.
+//! These collections are easily the most commonly used ones by
 //! imperative programmers, and can often be acceptable even when they aren't the
 //! *best* choice. Other collections fill important but potentially subtle niches,
 //! and the importance of knowing when they are more or less appropriate cannot be
@@ -120,7 +122,7 @@
 //! operations in practice have poor worst-case times, due to rare degenerate
 //! behaviors.
 //!
-//! `Vec`'s push operation usually takes `O(1)` time, but occasionally takes `O(n)` time,
+//! Vec's push operation usually takes `O(1)` time, but occasionally takes `O(n)` time,
 //! and so takes `O(n)` worst-case time.
 //!
 //! ### Expected Time
@@ -185,7 +187,8 @@
 //! This penalty is not reflected in asymptotic analysis, precisely *because* it is
 //! a constant.
 //!
-//! Similarly, `DList` appears to be better than `Vec` at many operations, and even
+//! Similarly, [`DList`](struct.DList.html) appears to be better than `Vec`
+//! at many operations, and even
 //! provides strong *worst-case* guarantees on operations like `push`, where `Vec`
 //! only provides strong *amortized* guarantees. However, in practice `Vec` is
 //! expected to *substantially* outperform DList over any large sequence of
