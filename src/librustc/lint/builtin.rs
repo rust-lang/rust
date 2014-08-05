@@ -135,7 +135,7 @@ impl LintPass for TypeLimits {
                 match expr.node  {
                     ast::ExprLit(lit) => {
                         match lit.node {
-                            ast::LitUint(..) => {
+                            ast::LitInt(_, ast::UnsignedIntLit(_)) => {
                                 cx.span_lint(UNSIGNED_NEGATE, e.span,
                                              "negation of unsigned int literal may \
                                              be unintentional");
@@ -177,15 +177,25 @@ impl LintPass for TypeLimits {
                         } else { t };
                         let (min, max) = int_ty_range(int_type);
                         let mut lit_val: i64 = match lit.node {
-                            ast::LitInt(v, _) => v,
-                            ast::LitUint(v, _) => v as i64,
-                            ast::LitIntUnsuffixed(v) => v,
+                            ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
+                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
+                                if v > i64::MAX as u64{
+                                    cx.span_lint(TYPE_OVERFLOW, e.span,
+                                                 "literal out of range for its type");
+                                    return;
+                                }
+                                v as i64
+                            }
+                            ast::LitInt(v, ast::SignedIntLit(_, ast::Minus)) |
+                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Minus)) => {
+                                -(v as i64)
+                            }
                             _ => fail!()
                         };
                         if self.negated_expr_id == e.id {
                             lit_val *= -1;
                         }
-                        if  lit_val < min || lit_val > max {
+                        if lit_val < min || lit_val > max {
                             cx.span_lint(TYPE_OVERFLOW, e.span,
                                          "literal out of range for its type");
                         }
@@ -197,9 +207,7 @@ impl LintPass for TypeLimits {
                         let (min, max) = uint_ty_range(uint_type);
                         let lit_val: u64 = match lit.node {
                             ast::LitByte(_v) => return,  // _v is u8, within range by definition
-                            ast::LitInt(v, _) => v as u64,
-                            ast::LitUint(v, _) => v,
-                            ast::LitIntUnsuffixed(v) => v as u64,
+                            ast::LitInt(v, _) => v,
                             _ => fail!()
                         };
                         if  lit_val < min || lit_val > max {
@@ -294,9 +302,10 @@ impl LintPass for TypeLimits {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i64 = match lit.node {
                         ast::ExprLit(li) => match li.node {
-                            ast::LitInt(v, _) => v,
-                            ast::LitUint(v, _) => v as i64,
-                            ast::LitIntUnsuffixed(v) => v,
+                            ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
+                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => v as i64,
+                            ast::LitInt(v, ast::SignedIntLit(_, ast::Minus)) |
+                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Minus)) => -(v as i64),
                             _ => return true
                         },
                         _ => fail!()
@@ -307,9 +316,7 @@ impl LintPass for TypeLimits {
                     let (min, max): (u64, u64) = uint_ty_range(uint_ty);
                     let lit_val: u64 = match lit.node {
                         ast::ExprLit(li) => match li.node {
-                            ast::LitInt(v, _) => v as u64,
-                            ast::LitUint(v, _) => v,
-                            ast::LitIntUnsuffixed(v) => v as u64,
+                            ast::LitInt(v, _) => v,
                             _ => return true
                         },
                         _ => fail!()

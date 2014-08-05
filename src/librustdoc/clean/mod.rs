@@ -1947,8 +1947,6 @@ fn lit_to_string(lit: &ast::Lit) -> String {
         },
         ast::LitChar(c) => format!("'{}'", c),
         ast::LitInt(i, _t) => i.to_string(),
-        ast::LitUint(u, _t) => u.to_string(),
-        ast::LitIntUnsuffixed(i) => i.to_string(),
         ast::LitFloat(ref f, _t) => f.get().to_string(),
         ast::LitFloatUnsuffixed(ref f) => f.get().to_string(),
         ast::LitBool(b) => b.to_string(),

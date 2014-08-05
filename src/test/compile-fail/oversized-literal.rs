@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -D type-overflow
-
-fn main() { println!("{}", 300u8); } //~ error: literal out of range for its type
+fn main() {
+    println!("{}", 18446744073709551616u64);  //~ error: int literal is too large
+}
