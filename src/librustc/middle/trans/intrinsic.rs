@@ -425,6 +425,12 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
             with_overflow_intrinsic(bcx, "llvm.umul.with.overflow.i64", ret_ty,
                                     *llargs.get(0), *llargs.get(1)),
 
+        (_, "return_address") => {
+            PointerCast(bcx,
+                        bcx.fcx.llretptr.get().unwrap(),
+                        Type::i8p(bcx.ccx()))
+        }
+
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
         (_, name) if name.starts_with("atomic_") => {
