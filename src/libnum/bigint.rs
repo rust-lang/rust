@@ -1376,7 +1376,7 @@ impl BigInt {
         if buf.is_empty() { return None; }
         let mut sign  = Plus;
         let mut start = 0;
-        if buf[0] == ('-' as u8) {
+        if buf[0] == b'-' {
             sign  = Minus;
             start = 1;
         }

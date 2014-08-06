@@ -89,8 +89,8 @@ impl<'a> ToBase64 for &'a [u8] {
             match config.line_length {
                 Some(line_length) =>
                     if cur_length >= line_length {
-                        v.push('\r' as u8);
-                        v.push('\n' as u8);
+                        v.push(b'\r');
+                        v.push(b'\n');
                         cur_length = 0;
                     },
                 None => ()
@@ -114,8 +114,8 @@ impl<'a> ToBase64 for &'a [u8] {
             match config.line_length {
                 Some(line_length) =>
                     if cur_length >= line_length {
-                        v.push('\r' as u8);
-                        v.push('\n' as u8);
+                        v.push(b'\r');
+                        v.push(b'\n');
                     },
                 None => ()
             }
@@ -130,8 +130,8 @@ impl<'a> ToBase64 for &'a [u8] {
                 v.push(bytes[((n >> 18) & 63) as uint]);
                 v.push(bytes[((n >> 12) & 63) as uint]);
                 if config.pad {
-                    v.push('=' as u8);
-                    v.push('=' as u8);
+                    v.push(b'=');
+                    v.push(b'=');
                 }
             }
             2 => {
@@ -141,7 +141,7 @@ impl<'a> ToBase64 for &'a [u8] {
                 v.push(bytes[((n >> 12) & 63) as uint]);
                 v.push(bytes[((n >> 6 ) & 63) as uint]);
                 if config.pad {
-                    v.push('=' as u8);
+                    v.push(b'=');
                 }
             }
             _ => fail!("Algebra is broken, please alert the math police")

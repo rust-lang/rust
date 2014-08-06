@@ -161,12 +161,12 @@ impl<'a> Parser<'a> {
         fn parse_digit(c: char, radix: u8) -> Option<u8> {
             let c = c as u8;
             // assuming radix is either 10 or 16
-            if c >= '0' as u8 && c <= '9' as u8 {
-                Some(c - '0' as u8)
-            } else if radix > 10 && c >= 'a' as u8 && c < 'a' as u8 + (radix - 10) {
-                Some(c - 'a' as u8 + 10)
-            } else if radix > 10 && c >= 'A' as u8 && c < 'A' as u8 + (radix - 10) {
-                Some(c - 'A' as u8 + 10)
+            if c >= b'0' && c <= b'9' {
+                Some(c - b'0')
+            } else if radix > 10 && c >= b'a' && c < b'a' + (radix - 10) {
+                Some(c - b'a' + 10)
+            } else if radix > 10 && c >= b'A' && c < b'A' + (radix - 10) {
+                Some(c - b'A' + 10)
             } else {
                 None
             }

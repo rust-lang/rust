@@ -502,7 +502,7 @@ pub mod builtin {
     ///
     /// ```
     /// let rust = bytes!("r", 'u', "st", 255);
-    /// assert_eq!(rust[1], 'u' as u8);
+    /// assert_eq!(rust[1], b'u');
     /// assert_eq!(rust[4], 255);
     /// ```
     #[macro_export]

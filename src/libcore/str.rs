@@ -1755,7 +1755,7 @@ impl<'a> StrSlice<'a> for &'a str {
     fn lines_any(&self) -> AnyLines<'a> {
         self.lines().map(|line| {
             let l = line.len();
-            if l > 0 && line.as_bytes()[l - 1] == '\r' as u8 { line.slice(0, l - 1) }
+            if l > 0 && line.as_bytes()[l - 1] == b'\r' { line.slice(0, l - 1) }
             else { line }
         })
     }
