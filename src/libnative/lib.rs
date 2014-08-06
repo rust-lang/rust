@@ -137,7 +137,7 @@ pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
     task.name = Some(str::Slice("<main>"));
     drop(task.run(|| {
         unsafe {
-            rt::stack::record_stack_bounds(my_stack_bottom, my_stack_top);
+            rt::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
         }
         exit_code = Some(run(main.take_unwrap()));
     }).destroy());

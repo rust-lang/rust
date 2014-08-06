@@ -105,11 +105,11 @@ impl Context {
             // invalid for the current task. Lucky for us `rust_swap_registers`
             // is a C function so we don't have to worry about that!
             match in_context.stack_bounds {
-                Some((lo, hi)) => stack::record_stack_bounds_green(lo, hi),
+                Some((lo, hi)) => stack::record_rust_managed_stack_bounds(lo, hi),
                 // If we're going back to one of the original contexts or
                 // something that's possibly not a "normal task", then reset
                 // the stack limit to 0 to make morestack never fail
-                None => stack::record_stack_bounds_green(0, uint::MAX),
+                None => stack::record_rust_managed_stack_bounds(0, uint::MAX),
             }
             rust_swap_registers(out_regs, in_regs)
         }

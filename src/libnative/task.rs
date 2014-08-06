@@ -84,7 +84,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc():Send) {
         let addr = &something_around_the_top_of_the_stack as *const int;
         let my_stack = addr as uint;
         unsafe {
-            stack::record_stack_bounds(my_stack - stack + 1024, my_stack);
+            stack::record_os_managed_stack_bounds(my_stack - stack + 1024, my_stack);
         }
         let mut ops = ops;
         ops.stack_bounds = (my_stack - stack + 1024, my_stack);
