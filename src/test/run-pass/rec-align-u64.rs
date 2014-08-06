@@ -62,6 +62,12 @@ mod m {
         pub fn align() -> uint { 8u }
         pub fn size() -> uint { 16u }
     }
+
+    #[cfg(target_arch = "x86_64")]
+    pub mod m {
+        pub fn align() -> uint { 8u }
+        pub fn size() -> uint { 16u }
+    }
 }
 
 #[cfg(target_os = "android")]

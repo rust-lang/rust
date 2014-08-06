@@ -52,6 +52,15 @@ mod m {
             assert_eq!(::rusti::min_align_of::<u64>(), 8u);
         }
     }
+
+    #[main]
+    #[cfg(target_arch = "x86_64")]
+    pub fn main() {
+        unsafe {
+            assert_eq!(::rusti::pref_align_of::<u64>(), 8u);
+            assert_eq!(::rusti::min_align_of::<u64>(), 8u);
+        }
+    }
 }
 
 #[cfg(target_os = "android")]
