@@ -68,7 +68,7 @@ pub fn pat_is_binding(dm: &resolve::DefMap, pat: &Pat) -> bool {
 pub fn pat_is_binding_or_wild(dm: &resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
         PatIdent(..) => pat_is_binding(dm, pat),
-        PatWild | PatWildMulti => true,
+        PatWild(_) => true,
         _ => false
     }
 }
@@ -116,7 +116,7 @@ pub fn simple_identifier<'a>(pat: &'a Pat) -> Option<&'a Ident> {
 }
 
 pub fn wild() -> Gc<Pat> {
-    box (GC) Pat { id: 0, node: PatWild, span: DUMMY_SP }
+    box (GC) Pat { id: 0, node: PatWild(PatWildSingle), span: DUMMY_SP }
 }
 
 pub fn def_to_path(tcx: &ty::ctxt, id: DefId) -> Path {

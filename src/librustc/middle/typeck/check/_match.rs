@@ -412,7 +412,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
     let tcx = pcx.fcx.ccx.tcx;
 
     match pat.node {
-      ast::PatWild | ast::PatWildMulti => {
+      ast::PatWild(_) => {
         fcx.write_ty(pat.id, expected);
       }
       ast::PatLit(ref lt) => {

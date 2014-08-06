@@ -594,7 +594,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
             pats: vec!(box(GC) ast::Pat{
                 id: ast::DUMMY_NODE_ID,
                 span: self.sp,
-                node: ast::PatWild,
+                node: ast::PatWild(ast::PatWildSingle),
             }),
             guard: None,
             body: body,
