@@ -125,7 +125,7 @@ pub mod marker {
     ///
     /// The type system would currently infer that the value of
     /// the type parameter `T` is irrelevant, and hence a `S<int>` is
-    /// a subtype of `S<~[int]>` (or, for that matter, `S<U>` for
+    /// a subtype of `S<Box<int>>` (or, for that matter, `S<U>` for
     /// any `U`). But this is incorrect because `get()` converts the
     /// `*()` into a `*T` and reads from it. Therefore, we should include the
     /// a marker field `CovariantType<T>` to inform the type checker that
@@ -166,7 +166,7 @@ pub mod marker {
     ///
     /// The type system would currently infer that the value of
     /// the type parameter `T` is irrelevant, and hence a `S<int>` is
-    /// a subtype of `S<~[int]>` (or, for that matter, `S<U>` for
+    /// a subtype of `S<Box<int>>` (or, for that matter, `S<U>` for
     /// any `U`). But this is incorrect because `get()` converts the
     /// `*()` into a `fn(T)` and then passes a value of type `T` to it.
     ///
