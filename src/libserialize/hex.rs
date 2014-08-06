@@ -113,9 +113,9 @@ impl<'a> FromHex for &'a str {
             buf <<= 4;
 
             match byte as char {
-                'A'..'F' => buf |= byte - ('A' as u8) + 10,
-                'a'..'f' => buf |= byte - ('a' as u8) + 10,
-                '0'..'9' => buf |= byte - ('0' as u8),
+                'A'..'F' => buf |= byte - b'A' + 10,
+                'a'..'f' => buf |= byte - b'a' + 10,
+                '0'..'9' => buf |= byte - b'0',
                 ' '|'\r'|'\n'|'\t' => {
                     buf >>= 4;
                     continue
