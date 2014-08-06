@@ -1103,7 +1103,7 @@ pub trait Writer {
     /// that the `write` method is used specifically instead.
     #[inline]
     fn write_line(&mut self, s: &str) -> IoResult<()> {
-        self.write_str(s).and_then(|()| self.write(['\n' as u8]))
+        self.write_str(s).and_then(|()| self.write([b'\n']))
     }
 
     /// Write a single char, encoded as UTF-8.
@@ -1442,7 +1442,7 @@ pub trait Buffer: Reader {
     /// Additionally, this function can fail if the line of input read is not a
     /// valid UTF-8 sequence of bytes.
     fn read_line(&mut self) -> IoResult<String> {
-        self.read_until('\n' as u8).and_then(|line|
+        self.read_until(b'\n').and_then(|line|
             match String::from_utf8(line) {
                 Ok(s)  => Ok(s),
                 Err(_) => Err(standard_error(InvalidInput)),

@@ -1457,7 +1457,7 @@ mod tests {
             109
         ];
         assert_eq!("".as_bytes(), &[]);
-        assert_eq!("abc".as_bytes(), &['a' as u8, 'b' as u8, 'c' as u8]);
+        assert_eq!("abc".as_bytes(), b"abc");
         assert_eq!("ศไทย中华Việt Nam".as_bytes(), v.as_slice());
     }
 
@@ -1475,11 +1475,11 @@ mod tests {
     fn test_as_ptr() {
         let buf = "hello".as_ptr();
         unsafe {
-            assert_eq!(*buf.offset(0), 'h' as u8);
-            assert_eq!(*buf.offset(1), 'e' as u8);
-            assert_eq!(*buf.offset(2), 'l' as u8);
-            assert_eq!(*buf.offset(3), 'l' as u8);
-            assert_eq!(*buf.offset(4), 'o' as u8);
+            assert_eq!(*buf.offset(0), b'h');
+            assert_eq!(*buf.offset(1), b'e');
+            assert_eq!(*buf.offset(2), b'l');
+            assert_eq!(*buf.offset(3), b'l');
+            assert_eq!(*buf.offset(4), b'o');
         }
     }
 

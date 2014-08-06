@@ -1131,8 +1131,8 @@ impl<'a> StringReader<'a> {
 
     fn read_one_line_comment(&mut self) -> String {
         let val = self.read_to_eol();
-        assert!((val.as_bytes()[0] == '/' as u8 && val.as_bytes()[1] == '/' as u8)
-             || (val.as_bytes()[0] == '#' as u8 && val.as_bytes()[1] == '!' as u8));
+        assert!((val.as_bytes()[0] == b'/' && val.as_bytes()[1] == b'/')
+             || (val.as_bytes()[0] == b'#' && val.as_bytes()[1] == b'!'));
         return val;
     }
 

@@ -1040,7 +1040,7 @@ mod tests {
     fn test_push_bytes() {
         let mut s = String::from_str("ABC");
         unsafe {
-            s.push_bytes([ 'D' as u8 ]);
+            s.push_bytes([b'D']);
         }
         assert_eq!(s.as_slice(), "ABCD");
     }

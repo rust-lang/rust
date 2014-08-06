@@ -237,7 +237,7 @@ impl GenericPath for Path {
         match self.sepidx {
             None if b"." == self.repr.as_slice() => false,
             None => {
-                self.repr = vec!['.' as u8];
+                self.repr = vec![b'.'];
                 self.sepidx = None;
                 true
             }
