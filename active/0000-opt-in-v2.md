@@ -252,7 +252,89 @@ converts a type `T` from being `Sendable` to something `Sharable`:
 
     unsafe impl<T:Send> Send for Mutex<T> { }
     unsafe impl<T:Send> Share for Mutex<T> { }
-    
+
+## The `Copy` and `Sized` traits
+
+The final two builtin traits are `Copy` and `Share`. This RFC does not
+propose any changes to those two traits but rather relies on the
+specification from [the original opt-in RFC](0003-opt-in-builtin-traits.md).
+
+### Controlling copy vs move with the `Copy` trait
+
+The `Copy` trait is "opt-in" for user-declared structs and enums. A
+struct or enum type is considered to implement the `Copy` trait only
+if it implements the `Copy` trait.  This means that structs and enums
+would *move by default* unless their type is explicitly declared to be
+`Copy`. So, for example, the following code would be in error:
+
+    struct Point { x: int, y: int }
+    ...
+    let p = Point { x: 1, y: 2 };
+    let q = p;  // moves p
+    print(p.x); // ERROR
+
+To allow that example, one would have to impl `Copy` for `Point`:
+
+    struct Point { x: int, y: int }
+    impl Copy for Point { }
+    ...
+    let p = Point { x: 1, y: 2 };
+    let q = p;  // copies p, because Point is Pod
+    print(p.x); // OK
+
+Effectively, there is a three step ladder for types:
+
+1. If you do nothing, your type is *linear*, meaning that it moves
+   from place to place and can never be copied in any way. (We need a
+   better name for that.)
+2. If you implement `Clone`, your type is *cloneable*, meaning that it
+   moves from place to place, but it can be explicitly cloned. This is
+   suitable for cases where copying is expensive.
+3. If you implement `Copy`, your type is *copyable*, meaning that
+   it is just copied by default without the need for an explicit
+   clone.  This is suitable for small bits of data like ints or
+   points.
+
+What is nice about this change is that when a type is defined, the
+user makes an *explicit choice* between these three options.
+
+### Determining whether a type is `Sized`
+
+Per the DST specification, the array types `[T]` and object types like
+`Trait` are unsized, as are any structs that embed one of those
+types. The `Sized` trait can never be explicitly implemented and
+membership in the trait is always automatically determined.
+
+### Matching and coherence for the builtin types `Copy` and `Sized`
+
+In general, determining whether a type implements a builtin trait can
+follow the existing trait matching algorithm, but it will have to be
+somewhat specialized. The problem is that we are somewhat limited in
+the kinds of impls that we can write, so some of the implementations
+we would want must be "hard-coded".
+
+Specifically we are limited around tuples, fixed-length array types,
+proc types, closure types, and trait types:
+
+- *Fixed-length arrays:* A fixed-length array `[T, ..n]` is `Copy`
+  if `T` is `Copy`. It is always `Sized` as `T` is required to be `Sized`.
+- *Tuples*: A tuple `(T_0, ..., T_n)` is `Copy/Sized` depending if,
+  for all `i`, `T_i` is `Copy/Sized`.
+- *Trait objects* (including procs and closures): A trait object type
+  `Trait:K` (assuming DST here ;) is never `Copy` nor `Sized`.
+
+We cannot currently express the above conditions using impls. We may
+at some point in the future grow the ability to express some of them.
+For now, though, these "impls" will be hardcoded into the algorithm as
+if they were written in libstd.
+
+Per the usual coherence rules, since we will have the above impls in
+`libstd`, and we will have impls for types like tuples and
+fixed-length arrays baked in, the only impls that end users are
+permitted to write are impls for struct and enum types that they
+define themselves. Although this rule is in the general spirit of the
+coherence checks, it will have to be written specially.
+
 # Design discussion
 
 #### Why unsafe traits
@@ -358,6 +440,31 @@ managed data. We can summarize this in a trait `GcSafe` as follows:
     
     // But guardians are, even if `T` has drop.
     impl<T> GcSafe for Guardian<T> { }
+
+#### Why are `Copy` and `Sized` different?
+
+The `Copy` and `Sized` traits remain builtin to the compiler. This
+makes sense because they are intimately tied to analyses the compiler
+performs. For example, the running of destructors and tracking of
+moves requires knowing which types are `Copy`. Similarly, the
+allocation of stack frames need to know whether types are fully
+`Sized`. In contrast, sendability and sharability has been fully
+exported to libraries at this point.
+
+In addition, opting in to `Copy` makes sense for several reasons:
+
+- Experience has shown that "data-like structs", for which `Copy` is
+  most appropriate, are a very small percentage of the total.
+- Changing a public API from being copyable to being only movable has
+  a outsized impact on users of the API. It is common however that as
+  APIs evolve they will come to require owned data (like a `Vec`),
+  even if they do not initially, and hence will change from being
+  copyable to only movable. Opting in to `Copy` is a way of saying
+  that you never foresee this coming to pass.
+- Often it is useful to create linear "tokens" that do not themselves
+  have data but represent permissions. This can be done today using
+  markers but it is awkward. It becomes much more natural under this
+  proposal.
 
 # Drawbacks
 
