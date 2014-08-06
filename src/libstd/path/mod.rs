@@ -351,7 +351,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         match self.filename() {
             None => None,
             Some(name) => Some({
-                let dot = '.' as u8;
+                let dot = b'.';
                 match name.rposition_elem(&dot) {
                     None | Some(0) => name,
                     Some(1) if name == b".." => name,
@@ -398,7 +398,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         match self.filename() {
             None => None,
             Some(name) => {
-                let dot = '.' as u8;
+                let dot = b'.';
                 match name.rposition_elem(&dot) {
                     None | Some(0) => None,
                     Some(1) if name == b".." => None,
@@ -474,7 +474,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         assert!(!contains_nul(&extension));
 
         let val = self.filename().and_then(|name| {
-            let dot = '.' as u8;
+            let dot = b'.';
             let extlen = extension.container_as_bytes().len();
             match (name.rposition_elem(&dot), extlen) {
                 (None, 0) | (Some(0), 0) => None,

@@ -372,7 +372,7 @@ impl Matches {
 }
 
 fn is_arg(arg: &str) -> bool {
-    arg.len() > 1 && arg.as_bytes()[0] == '-' as u8
+    arg.len() > 1 && arg.as_bytes()[0] == b'-'
 }
 
 fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
@@ -555,7 +555,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
         } else {
             let mut names;
             let mut i_arg = None;
-            if cur.as_bytes()[1] == '-' as u8 {
+            if cur.as_bytes()[1] == b'-' {
                 let tail = cur.as_slice().slice(2, curlen);
                 let tail_eq: Vec<&str> = tail.split('=').collect();
                 if tail_eq.len() <= 1 {

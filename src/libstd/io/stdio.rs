@@ -239,7 +239,7 @@ pub fn print(s: &str) {
 /// `\n` character is printed to the console after the string.
 pub fn println(s: &str) {
     with_task_stdout(|io| {
-        io.write(s.as_bytes()).and_then(|()| io.write(['\n' as u8]))
+        io.write(s.as_bytes()).and_then(|()| io.write([b'\n']))
     })
 }
 

@@ -138,12 +138,10 @@ impl_NumStrConv_Integer!(u64)
 
 
 // Special value strings as [u8] consts.
-static INF_BUF:          [u8, ..3] = ['i' as u8, 'n' as u8, 'f' as u8];
-static POS_INF_BUF: [u8, ..4] = ['+' as u8, 'i' as u8, 'n' as u8,
-                                      'f' as u8];
-static NEG_INF_BUF: [u8, ..4] = ['-' as u8, 'i' as u8, 'n' as u8,
-                                      'f' as u8];
-static NAN_BUF:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
+static INF_BUF:     [u8, ..3] = [b'i', b'n', b'f'];
+static POS_INF_BUF: [u8, ..4] = [b'+', b'i', b'n', b'f'];
+static NEG_INF_BUF: [u8, ..4] = [b'-', b'i', b'n', b'f'];
+static NAN_BUF:     [u8, ..3] = [b'N', b'a', b'N'];
 
 /**
  * Converts an integral number to its string representation as a byte vector.
@@ -201,8 +199,8 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
             current_digit_signed
         };
         buf[cur] = match current_digit.to_u8().unwrap() {
-            i @ 0..9 => '0' as u8 + i,
-            i        => 'a' as u8 + (i - 10),
+            i @ 0..9 => b'0' + i,
+            i        => b'a' + (i - 10),
         };
         cur += 1;
 
@@ -213,8 +211,8 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
 
     // Decide what sign to put in front
     match sign {
-        SignNeg | SignAll if neg => { f('-' as u8); }
-        SignAll => { f('+' as u8); }
+        SignNeg | SignAll if neg => { f(b'-'); }
+        SignAll => { f(b'+'); }
         _ => ()
     }
 
@@ -350,10 +348,10 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
     // Decide what sign to put in front
     match sign {
         SignNeg | SignAll if neg => {
-            buf.push('-' as u8);
+            buf.push(b'-');
         }
         SignAll => {
-            buf.push('+' as u8);
+            buf.push(b'+');
         }
         _ => ()
     }
@@ -368,7 +366,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
     // Now emit the fractional part, if any
     deccum = num.fract();
     if deccum != _0 || (limit_digits && exact && digit_count > 0) {
-        buf.push('.' as u8);
+        buf.push(b'.');
         let mut dig = 0u;
 
         // calculate new digits while
@@ -415,14 +413,14 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
                     // If reached left end of number, have to
                     // insert additional digit:
                     if i < 0
-                    || *buf.get(i as uint) == '-' as u8
-                    || *buf.get(i as uint) == '+' as u8 {
+                    || *buf.get(i as uint) == b'-'
+                    || *buf.get(i as uint) == b'+' {
                         buf.insert((i + 1) as uint, value2ascii(1));
                         break;
                     }
 
                     // Skip the '.'
-                    if *buf.get(i as uint) == '.' as u8 { i -= 1; continue; }
+                    if *buf.get(i as uint) == b'.' { i -= 1; continue; }
 
                     // Either increment the digit,
                     // or set to 0 if max and carry the 1.
@@ -448,14 +446,14 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
         let mut i = buf_max_i;
 
         // discover trailing zeros of fractional part
-        while i > start_fractional_digits && *buf.get(i) == '0' as u8 {
+        while i > start_fractional_digits && *buf.get(i) == b'0' {
             i -= 1;
         }
 
         // Only attempt to truncate digits if buf has fractional digits
         if i >= start_fractional_digits {
             // If buf ends with '.', cut that too.
-            if *buf.get(i) == '.' as u8 { i -= 1 }
+            if *buf.get(i) == b'.' { i -= 1 }
 
             // only resize buf if we actually remove digits
             if i < buf_max_i {
@@ -465,7 +463,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
     } // If exact and trailing '.', just cut that
     else {
         let max_i = buf.len() - 1;
-        if *buf.get(max_i) == '.' as u8 {
+        if *buf.get(max_i) == b'.' {
             buf = Vec::from_slice(buf.slice(0, max_i));
         }
     }
