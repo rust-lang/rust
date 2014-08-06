@@ -54,6 +54,13 @@ macro_rules! iotest (
 )
 
 /// Get a port number, starting at 9600, for use in tests
+#[cfg(not(stage0))]
+pub fn next_test_port() -> u16 {
+    static mut next_offset: AtomicUint = INIT_ATOMIC_UINT;
+    base_port() + next_offset.fetch_add(1, Relaxed) as u16
+}
+/// dox
+#[cfg(stage0)]
 pub fn next_test_port() -> u16 {
     static mut next_offset: AtomicUint = INIT_ATOMIC_UINT;
     unsafe {
@@ -62,6 +69,24 @@ pub fn next_test_port() -> u16 {
 }
 
 /// Get a temporary path which could be the location of a unix socket
+#[cfg(not(stage0))]
+pub fn next_test_unix() -> Path {
+    static mut COUNT: AtomicUint = INIT_ATOMIC_UINT;
+    // base port and pid are an attempt to be unique between multiple
+    // test-runners of different configurations running on one
+    // buildbot, the count is to be unique within this executable.
+    let string = format!("rust-test-unix-path-{}-{}-{}",
+                         base_port(),
+                         unsafe {libc::getpid()},
+                         COUNT.fetch_add(1, Relaxed));
+    if cfg!(unix) {
+        os::tmpdir().join(string)
+    } else {
+        Path::new(format!("{}{}", r"\\.\pipe\", string))
+    }
+}
+/// dox
+#[cfg(stage0)]
 pub fn next_test_unix() -> Path {
     static mut COUNT: AtomicUint = INIT_ATOMIC_UINT;
     // base port and pid are an attempt to be unique between multiple

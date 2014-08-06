@@ -341,11 +341,11 @@ mod test {
         let mut multi = MultiWriter::new(vec!(box TestWriter as Box<Writer>,
                                               box TestWriter as Box<Writer>));
         multi.write([1, 2, 3]).unwrap();
-        assert_eq!(2, unsafe { writes });
-        assert_eq!(0, unsafe { flushes });
+        assert_eq!(2, writes);
+        assert_eq!(0, flushes);
         multi.flush().unwrap();
-        assert_eq!(2, unsafe { writes });
-        assert_eq!(2, unsafe { flushes });
+        assert_eq!(2, writes);
+        assert_eq!(2, flushes);
     }
 
     #[test]

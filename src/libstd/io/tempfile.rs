@@ -37,6 +37,30 @@ impl TempDir {
     /// deleted once the returned wrapper is destroyed.
     ///
     /// If no directory can be created, None is returned.
+    #[cfg(not(stage0))]
+    pub fn new_in(tmpdir: &Path, suffix: &str) -> Option<TempDir> {
+        if !tmpdir.is_absolute() {
+            return TempDir::new_in(&os::make_absolute(tmpdir), suffix);
+        }
+
+        static mut CNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
+
+        for _ in range(0u, 1000) {
+            let filename =
+                format!("rs-{}-{}-{}",
+                        unsafe { libc::getpid() },
+                        CNT.fetch_add(1, atomics::SeqCst),
+                        suffix);
+            let p = tmpdir.join(filename);
+            match fs::mkdir(&p, io::UserRWX) {
+                Err(..) => {}
+                Ok(()) => return Some(TempDir { path: Some(p), disarmed: false })
+            }
+        }
+        None
+    }
+    /// dox
+    #[cfg(stage0)]
     pub fn new_in(tmpdir: &Path, suffix: &str) -> Option<TempDir> {
         if !tmpdir.is_absolute() {
             return TempDir::new_in(&os::make_absolute(tmpdir), suffix);

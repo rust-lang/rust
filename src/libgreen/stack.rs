@@ -157,6 +157,23 @@ impl StackPool {
     }
 }
 
+#[cfg(not(stage0))]
+fn max_cached_stacks() -> uint {
+    static mut AMT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
+    match AMT.load(atomics::SeqCst) {
+        0 => {}
+        n => return n - 1,
+    }
+    let amt = getenv("RUST_MAX_CACHED_STACKS").and_then(|s| from_str(s.as_slice()));
+    // This default corresponds to 20M of cache per scheduler (at the
+    // default size).
+    let amt = amt.unwrap_or(10);
+    // 0 is our sentinel value, so ensure that we'll never see 0 after
+    // initialization has run
+    AMT.store(amt + 1, atomics::SeqCst);
+    return amt;
+}
+#[cfg(stage0)]
 fn max_cached_stacks() -> uint {
     static mut AMT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
     match unsafe { AMT.load(atomics::SeqCst) } {

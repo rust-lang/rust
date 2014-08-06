@@ -27,6 +27,23 @@ pub use self::imp::write;
 
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
+#[cfg(not(stage0))]
+pub fn log_enabled() -> bool {
+    static mut ENABLED: atomics::AtomicInt = atomics::INIT_ATOMIC_INT;
+    match ENABLED.load(atomics::SeqCst) {
+        1 => return false,
+        2 => return true,
+        _ => {}
+    }
+
+    let val = match os::getenv("RUST_BACKTRACE") {
+        Some(..) => 2,
+        None => 1,
+    };
+    ENABLED.store(val, atomics::SeqCst);
+    val == 2
+}
+#[cfg(stage0)]
 pub fn log_enabled() -> bool {
     static mut ENABLED: atomics::AtomicInt = atomics::INIT_ATOMIC_INT;
     unsafe {

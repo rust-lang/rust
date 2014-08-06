@@ -32,11 +32,9 @@ use mutex::{StaticMutex, MUTEX_INIT};
 ///
 /// static mut START: Once = ONCE_INIT;
 ///
-/// unsafe {
-///     START.doit(|| {
-///         // run initialization here
-///     });
-/// }
+/// START.doit(|| {
+///     // run initialization here
+/// });
 /// ```
 pub struct Once {
     mutex: StaticMutex,

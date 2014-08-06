@@ -40,6 +40,21 @@ pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
     (cfg!(target_os="macos")) && running_on_valgrind()
 }
 
+#[cfg(not(stage0))]
+pub fn min_stack() -> uint {
+    static mut MIN: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
+    match MIN.load(atomics::SeqCst) {
+        0 => {}
+        n => return n - 1,
+    }
+    let amt = os::getenv("RUST_MIN_STACK").and_then(|s| from_str(s.as_slice()));
+    let amt = amt.unwrap_or(2 * 1024 * 1024);
+    // 0 is our sentinel value, so ensure that we'll never see 0 after
+    // initialization has run
+    MIN.store(amt + 1, atomics::SeqCst);
+    return amt;
+}
+#[cfg(stage0)]
 pub fn min_stack() -> uint {
     static mut MIN: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
     match unsafe { MIN.load(atomics::SeqCst) } {

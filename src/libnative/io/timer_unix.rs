@@ -202,6 +202,24 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 }
 
 impl Timer {
+    #[cfg(not(stage0))]
+    pub fn new() -> IoResult<Timer> {
+        HELPER.boot(|| {}, helper);
+
+        static mut ID: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
+        let id = ID.fetch_add(1, atomics::Relaxed);
+        Ok(Timer {
+            id: id,
+            inner: Some(box Inner {
+                cb: None,
+                interval: 0,
+                target: 0,
+                repeat: false,
+                id: id,
+            })
+        })
+    }
+    #[cfg(stage0)]
     pub fn new() -> IoResult<Timer> {
         // See notes above regarding using int return value
         // instead of ()
@@ -233,6 +251,18 @@ impl Timer {
         }
     }
 
+    #[cfg(not(stage0))]
+    fn inner(&mut self) -> Box<Inner> {
+        match self.inner.take() {
+            Some(i) => i,
+            None => {
+                let (tx, rx) = channel();
+                HELPER.send(RemoveTimer(self.id, tx));
+                rx.recv()
+            }
+        }
+    }
+    #[cfg(stage0)]
     fn inner(&mut self) -> Box<Inner> {
         match self.inner.take() {
             Some(i) => i,
@@ -254,6 +284,7 @@ impl rtio::RtioTimer for Timer {
         Timer::sleep(msecs);
     }
 
+    #[allow(unused_unsafe)] // NOTE: remove after a stage0 snap
     fn oneshot(&mut self, msecs: u64, cb: Box<rtio::Callback + Send>) {
         let now = now();
         let mut inner = self.inner();
@@ -266,6 +297,7 @@ impl rtio::RtioTimer for Timer {
         unsafe { HELPER.send(NewTimer(inner)); }
     }
 
+    #[allow(unused_unsafe)] // NOTE: remove after a stage0 snap
     fn period(&mut self, msecs: u64, cb: Box<rtio::Callback + Send>) {
         let now = now();
         let mut inner = self.inner();

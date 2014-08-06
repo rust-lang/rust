@@ -124,6 +124,7 @@ use std::mem;
 use std::os;
 use std::rt;
 use std::slice;
+use std::sync::atomics;
 use std::sync::{Once, ONCE_INIT};
 
 use directive::LOG_LEVEL_NAMES;
@@ -141,7 +142,7 @@ static DEFAULT_LOG_LEVEL: u32 = 1;
 /// An unsafe constant that is the maximum logging level of any module
 /// specified. This is the first line of defense to determining whether a
 /// logging statement should be run.
-static mut LOG_LEVEL: u32 = MAX_LOG_LEVEL;
+static mut LOG_LEVEL: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
 
 static mut DIRECTIVES: *const Vec<directive::LogDirective> =
     0 as *const Vec<directive::LogDirective>;
@@ -242,7 +243,29 @@ pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
 /// safely
 #[doc(hidden)]
 #[inline(always)]
-pub fn log_level() -> u32 { unsafe { LOG_LEVEL } }
+#[cfg(not(stage0))]
+pub fn log_level() -> u32 {
+    // We need accessing the log level to be as fast as possible, so we want to
+    // use as relaxed of an ordering as possible. Once the log level has been
+    // initialized one, it will never change. The default log level also
+    // indicates that we *must* log everything (or at least attempt to run
+    // initialization).
+    //
+    // For this reason, we do a relaxed load here. It can either read the
+    // initial value of LOG_LEVEL in which case the more expensive check will be
+    // run. It could also read the updated value of LOG_LEVEL in which case it
+    // reads the correct value.
+    //
+    // Also note that the log level stored is the real log level plus 1 so the
+    // static initialization of 0 indicates that "everything must be logged"
+    LOG_LEVEL.load(atomics::Relaxed) as u32 - 1
+}
+
+/// dox
+#[doc(hidden)]
+#[inline(always)]
+#[cfg(stage0)]
+pub fn log_level() -> u32 { unsafe { LOG_LEVEL.load(atomics::Relaxed) as u32 - 1 } }
 
 /// Replaces the task-local logger with the specified logger, returning the old
 /// logger.
@@ -282,6 +305,26 @@ pub struct LogLocation {
 /// logging. This is the second layer of defense about determining whether a
 /// module's log statement should be emitted or not.
 #[doc(hidden)]
+#[cfg(not(stage0))]
+pub fn mod_enabled(level: u32, module: &str) -> bool {
+    static mut INIT: Once = ONCE_INIT;
+    INIT.doit(init);
+
+    // It's possible for many threads to be in this function, but only one of
+    // them will peform the global initialization. All of them will need to
+    // check again to whether they should really be here or not. Hence, despite
+    // this check being expanded manually in the logging macro, this function
+    // checks the log level again.
+    if level > log_level() { return false }
+
+    // This assertion should never get tripped unless we're in an at_exit
+    // handler after logging has been torn down and a logging attempt was made.
+    assert!(!DIRECTIVES.is_null());
+
+    enabled(level, module, unsafe { (*DIRECTIVES).iter() })
+}
+/// dox
+#[cfg(stage0)]
 pub fn mod_enabled(level: u32, module: &str) -> bool {
     static mut INIT: Once = ONCE_INIT;
     unsafe { INIT.doit(init); }
@@ -291,7 +334,7 @@ pub fn mod_enabled(level: u32, module: &str) -> bool {
     // again to whether they should really be here or not. Hence, despite this
     // check being expanded manually in the logging macro, this function checks
     // the log level again.
-    if level > unsafe { LOG_LEVEL } { return false }
+    if level > log_level() { return false }
 
     // This assertion should never get tripped unless we're in an at_exit
     // handler after logging has been torn down and a logging attempt was made.
@@ -320,6 +363,7 @@ fn enabled(level: u32,
 ///
 /// This is not threadsafe at all, so initialization os performed through a
 /// `Once` primitive (and this function is called from that primitive).
+#[allow(unused_unsafe)] // NOTE: remove after a stage0 snap
 fn init() {
     let mut directives = match os::getenv("RUST_LOG") {
         Some(spec) => directive::parse_logging_spec(spec.as_slice()),
@@ -340,8 +384,10 @@ fn init() {
     };
 
     unsafe {
-        LOG_LEVEL = max_level;
+        LOG_LEVEL.store(max_level as uint + 1, atomics::SeqCst);
+    }
 
+    unsafe {
         assert!(DIRECTIVES.is_null());
         DIRECTIVES = mem::transmute(box directives);
 

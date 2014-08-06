@@ -207,10 +207,17 @@ pub mod compiled {
 
     /// Check whether there is a thread-local pointer installed.
     #[inline(never)] // see comments above
+    #[cfg(stage0)]
     pub fn exists() -> bool {
         unsafe {
             RT_TLS_PTR.is_not_null()
         }
+    }
+    /// Check whether there is a thread-local pointer installed.
+    #[inline(never)] // see comments above
+    #[cfg(not(stage0))]
+    pub fn exists() -> bool {
+        RT_TLS_PTR.is_not_null()
     }
 
     #[inline(never)] // see comments above
@@ -373,25 +380,40 @@ pub mod native {
     }
 
     #[inline]
-    #[cfg(not(test))]
+    #[cfg(not(test), stage0)]
     #[allow(visible_private_types)]
     pub fn maybe_tls_key() -> Option<tls::Key> {
         unsafe {
-            // NB: This is a little racy because, while the key is
-            // initialized under a mutex and it's assumed to be initialized
-            // in the Scheduler ctor by any thread that needs to use it,
-            // we are not accessing the key under a mutex.  Threads that
-            // are not using the new Scheduler but still *want to check*
-            // whether they are running under a new Scheduler may see a 0
-            // value here that is in the process of being initialized in
-            // another thread. I think this is fine since the only action
-            // they could take if it was initialized would be to check the
-            // thread-local value and see that it's not set.
+            // NB: This could lead to undefined behavior because it is an
+            // unsynchronized read of a global, but it's generally undefined to
+            // boot the runtime as you start using it.
+            //
+            // This global is written immediately on program startup (before all
+            // usage of it), so all proper usage of the runtime will not invoke
+            // undefined behvaior here.
             if RT_TLS_KEY != -1 {
                 return Some(RT_TLS_KEY);
             } else {
                 return None;
             }
+        }
+    }
+
+    #[inline]
+    #[cfg(not(test), not(stage0))]
+    #[allow(visible_private_types)]
+    pub fn maybe_tls_key() -> Option<tls::Key> {
+        // NB: This could lead to undefined behavior because it is an
+        // unsynchronized read of a global, but it's generally undefined to boot
+        // the runtime as you start using it.
+        //
+        // This global is written immediately on program startup (before all
+        // usage of it), so all proper usage of the runtime will not invoke
+        // undefined behvaior here.
+        if RT_TLS_KEY != -1 {
+            return Some(RT_TLS_KEY);
+        } else {
+            return None;
         }
     }
 

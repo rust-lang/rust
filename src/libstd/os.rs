@@ -1082,12 +1082,22 @@ static mut EXIT_STATUS: AtomicInt = INIT_ATOMIC_INT;
  *
  * Note that this is not synchronized against modifications of other threads.
  */
+#[cfg(not(stage0))]
+pub fn set_exit_status(code: int) {
+    EXIT_STATUS.store(code, SeqCst)
+}
+#[cfg(stage0)]
 pub fn set_exit_status(code: int) {
     unsafe { EXIT_STATUS.store(code, SeqCst) }
 }
 
 /// Fetches the process's current exit code. This defaults to 0 and can change
 /// by calling `set_exit_status`.
+#[cfg(not(stage0))]
+pub fn get_exit_status() -> int {
+    EXIT_STATUS.load(SeqCst)
+}
+#[cfg(stage0)]
 pub fn get_exit_status() -> int {
     unsafe { EXIT_STATUS.load(SeqCst) }
 }

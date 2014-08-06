@@ -34,14 +34,30 @@ impl Drop for Token {
 
 /// Increment the number of live tasks, returning a token which will decrement
 /// the count when dropped.
+#[cfg(stage0)]
 pub fn increment() -> Token {
     let _ = unsafe { TASK_COUNT.fetch_add(1, atomics::SeqCst) };
     Token { _private: () }
 }
+#[cfg(not(stage0))]
+pub fn increment() -> Token {
+    let _ = TASK_COUNT.fetch_add(1, atomics::SeqCst);
+    Token { _private: () }
+}
 
+#[cfg(stage0)]
 pub fn decrement() {
     unsafe {
         if TASK_COUNT.fetch_sub(1, atomics::SeqCst) == 1 {
+            let guard = TASK_LOCK.lock();
+            guard.signal();
+        }
+    }
+}
+#[cfg(not(stage0))]
+pub fn decrement() {
+    if TASK_COUNT.fetch_sub(1, atomics::SeqCst) == 1 {
+        unsafe {
             let guard = TASK_LOCK.lock();
             guard.signal();
         }
