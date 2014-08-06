@@ -947,7 +947,7 @@ impl<'a> LookupContext<'a> {
     // [T, ..len] -> [T] or &[T] or &&[T]
     fn auto_unsize_vec(&self, ty: ty::t, autoderefs: uint, len: uint) -> Option<MethodCallee> {
         let tcx = self.tcx();
-        debug!("auto_unsize_vec {}", ppaux::ty_to_str(tcx, ty));
+        debug!("auto_unsize_vec {}", ppaux::ty_to_string(tcx, ty));
 
         // First try to borrow to an unsized vec.
         let entry = self.search_for_some_kind_of_autorefd_method(
@@ -1330,7 +1330,7 @@ impl<'a> LookupContext<'a> {
         match self.fcx.mk_subty(false, infer::Misc(span),
                                 rcvr_ty, transformed_self_ty) {
             Ok(_) => {}
-            Err(e) => {
+            Err(_) => {
                 self.bug(format!(
                         "{} was a subtype of {} but now is not?",
                         self.ty_to_string(rcvr_ty),

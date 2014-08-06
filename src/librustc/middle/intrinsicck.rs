@@ -92,7 +92,7 @@ impl<'a> IntrinsicCheckingVisitor<'a> {
         }
     }
 
-    fn check_transmute(&self, span: Span, from: ty::t, to: ty::t) {
+    fn check_transmute(&self, span: Span, from: ty::t, to: ty::t, id: ast::NodeId) {
         if type_size_is_affected_by_type_parameters(self.tcx, from) {
             span_err!(self.tcx.sess, span, E0139,
                       "cannot transmute from a type that contains type parameters");
@@ -106,6 +106,7 @@ impl<'a> IntrinsicCheckingVisitor<'a> {
             span: span,
             from: from,
             to: to,
+            id: id,
         };
         self.tcx.transmute_restrictions.borrow_mut().push(restriction);
     }
@@ -123,7 +124,7 @@ impl<'a> Visitor<()> for IntrinsicCheckingVisitor<'a> {
                                     if bare_fn_ty.abi == RustIntrinsic => {
                                 let from = *bare_fn_ty.sig.inputs.get(0);
                                 let to = bare_fn_ty.sig.output;
-                                self.check_transmute(expr.span, from, to);
+                                self.check_transmute(expr.span, from, to, expr.id);
                             }
                             _ => {
                                 self.tcx

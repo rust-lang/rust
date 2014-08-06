@@ -214,7 +214,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
 }
 
 pub fn deref_kind(tcx: &ty::ctxt, t: ty::t) -> deref_kind {
-    debug!("deref_kind {}", ty_to_str(tcx, t));
+    debug!("deref_kind {}", ty_to_string(tcx, t));
     match opt_deref_kind(t) {
       Some(k) => k,
       None => {

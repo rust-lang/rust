@@ -970,6 +970,7 @@ fn trans_args_under_call_abi<'a>(
             let repr_ptr = &*repr;
             for i in range(0, field_types.len()) {
                 let arg_datum = tuple_lvalue_datum.get_element(
+                    bcx,
                     *field_types.get(i),
                     |srcval| {
                         adt::trans_field_ptr(bcx, repr_ptr, srcval, 0, i)

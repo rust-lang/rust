@@ -15,6 +15,7 @@
 
 use llvm::ValueRef;
 use middle::trans::base::*;
+use middle::trans::build::Load;
 use middle::trans::common::*;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
@@ -119,10 +120,10 @@ pub fn lvalue_scratch_datum<'a, A>(bcx: &'a Block<'a>,
      * does not dominate the end of `scope`.
      */
 
-    let llty = type_of::type_of(bcx.ccx(), ty);
     let scratch = if zero {
-        alloca_zeroed(bcx, llty, name)
+        alloca_zeroed(bcx, ty, name)
     } else {
+        let llty = type_of::type_of(bcx.ccx(), ty);
         alloca(bcx, llty, name)
     };
 
@@ -524,7 +525,7 @@ impl Datum<Lvalue> {
             }
             _ => bcx.tcx().sess.bug(
                 format!("Unexpected unsized type in get_element: {}",
-                        bcx.ty_to_str(self.ty)).as_slice())
+                        bcx.ty_to_string(self.ty)).as_slice())
         };
         Datum {
             val: val,

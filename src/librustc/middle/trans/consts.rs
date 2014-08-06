@@ -116,7 +116,7 @@ fn const_vec(cx: &CrateContext, e: &ast::Expr,
     (v, llunitty, inlineable.iter().fold(true, |a, &b| a && b))
 }
 
-pub fn const_addr_of(cx: &CrateContext, cv: ValueRef) -> ValueRef {
+pub fn const_addr_of(cx: &CrateContext, cv: ValueRef, mutbl: ast::Mutability) -> ValueRef {
     unsafe {
         let gv = "const".with_c_str(|name| {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(cv).to_ref(), name)
@@ -279,7 +279,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                         }
                                         _ => cx.sess().span_bug(e.span,
                                             format!("unimplemented type in const unsize: {}",
-                                                    ty_to_str(cx.tcx(), ty)).as_slice())
+                                                    ty_to_string(cx.tcx(), ty)).as_slice())
                                     }
                                 }
                                 _ => {
@@ -455,7 +455,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                       _ => cx.sess().span_bug(base.span,
                                               format!("index-expr base must be a vector \
                                                        or string type, found {}",
-                                                      ty_to_str(cx.tcx(), bt)).as_slice())
+                                                      ty_to_string(cx.tcx(), bt)).as_slice())
                   },
                   ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
                       ty::ty_vec(_, Some(u)) => {
@@ -464,12 +464,12 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                       _ => cx.sess().span_bug(base.span,
                                               format!("index-expr base must be a vector \
                                                        or string type, found {}",
-                                                      ty_to_str(cx.tcx(), bt)).as_slice())
+                                                      ty_to_string(cx.tcx(), bt)).as_slice())
                   },
                   _ => cx.sess().span_bug(base.span,
                                           format!("index-expr base must be a vector \
                                                    or string type, found {}",
-                                                  ty_to_str(cx.tcx(), bt)).as_slice())
+                                                  ty_to_string(cx.tcx(), bt)).as_slice())
               };
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;

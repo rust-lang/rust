@@ -74,6 +74,9 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     if simple && !ty::type_is_fat_ptr(tcx, ty) {
         return true;
     }
+    if !ty::type_is_sized(tcx, ty) {
+        return false;
+    }
     match ty::get(ty).sty {
         ty::ty_bot => true,
         ty::ty_struct(..) | ty::ty_enum(..) | ty::ty_tup(..) |

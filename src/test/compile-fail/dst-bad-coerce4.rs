@@ -10,7 +10,7 @@
 
 // Attempt to coerce from unsized to sized.
 
-struct Fat<type T> {
+struct Fat<Sized? T> {
     ptr: T
 }
 
@@ -18,5 +18,5 @@ pub fn main() {
     // With a vec of ints.
     let f1: &Fat<[int]> = &Fat { ptr: [1, 2, 3] };
     let f2: &Fat<[int, ..3]> = f1;
-    //~^ ERROR  mismatched types: expected `&Fat<[int, .. 3]>` but found `&Fat<[int]>`
+    //~^ ERROR mismatched types: expected `&Fat<[int, .. 3]>`, found `&Fat<[int]>`
 }

@@ -342,7 +342,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
     #[cfg(not(stage0))]
     fn visit_evec_fixed(&mut self, n: uint, sz: uint, _align: uint,
-                        inner: *TyDesc) -> bool {
+                        inner: *const TyDesc) -> bool {
         let assumed_size = if sz == 0 { n } else { sz };
         self.get::<()>(|this, b| {
             this.write_vec_range(b, assumed_size, inner)

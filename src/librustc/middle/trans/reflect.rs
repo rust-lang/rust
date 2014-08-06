@@ -66,7 +66,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
     pub fn c_size_and_align(&mut self, t: ty::t) -> Vec<ValueRef> {
         let tr = type_of(self.bcx.ccx(), t);
         let s = machine::llsize_of_real(self.bcx.ccx(), tr);
-        let a = machine::llalign_of_min(self.bcx.ccx(), tr);
+        let a = align_of(self.bcx.ccx(), t);
         return vec!(self.c_uint(s as uint),
              self.c_uint(a as uint));
     }
@@ -94,7 +94,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
             ty::MethodTraitItem(ref method) => (*method).clone(),
         };
         let mth_ty = ty::mk_bare_fn(tcx, method.fty.clone());
-        debug!("Emit call visit method: visit_{}: {}", ty_name, ty_to_str(tcx, mth_ty));
+        debug!("Emit call visit method: visit_{}: {}", ty_name, ty_to_string(tcx, mth_ty));
         let v = self.visitor_val;
         debug!("passing {} args:", args.len());
         let mut bcx = self.bcx;
@@ -154,8 +154,11 @@ impl<'a, 'b> Reflector<'a, 'b> {
               // Unfortunately we can't do anything here because at runtime we
               // pass around the value by pointer (*u8). But unsized pointers are
               // fat and so we can't just cast them to *u8 and back. So we have
-              // to work with the pointer directly (see ty_rptr/ty_uniq). See
-              // ty_struct for where this causes issues.
+              // to work with the pointer directly (see ty_rptr/ty_uniq).
+              fail!("Can't reflect unsized type")
+          }
+          // FIXME(15049) Reflection for unsized structs.
+          ty::ty_struct(..) if !ty::type_is_sized(bcx.tcx(), t) => {
               fail!("Can't reflect unsized type")
           }
 
@@ -278,12 +281,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
               // because we cannot reflect unsized types (see note above). We
               // just pretend the unsized field does not exist and print nothing.
               // This is sub-optimal.
-              let len = if ty::type_is_sized(tcx, t) {
-                  fields.len()
-              } else {
-                  assert!(fields.len() > 0);
-                  fields.len() - 1
-              };
+              let len = fields.len();
 
               let extra = (vec!(
                   self.c_slice(
@@ -294,14 +292,12 @@ impl<'a, 'b> Reflector<'a, 'b> {
               )).append(self.c_size_and_align(t).as_slice());
               self.bracketed("class", extra.as_slice(), |this| {
                   for (i, field) in fields.iter().enumerate() {
-                      if ty::type_is_sized(tcx, field.mt.ty) {
-                          let extra = (vec!(
-                            this.c_uint(i),
-                            this.c_slice(token::get_ident(field.ident)),
-                            this.c_bool(named_fields)
-                          )).append(this.c_mt(&field.mt).as_slice());
-                          this.visit("class_field", extra.as_slice());
-                      }
+                      let extra = (vec!(
+                        this.c_uint(i),
+                        this.c_slice(token::get_ident(field.ident)),
+                        this.c_bool(named_fields)
+                      )).append(this.c_mt(&field.mt).as_slice());
+                      this.visit("class_field", extra.as_slice());
                   }
               })
           }

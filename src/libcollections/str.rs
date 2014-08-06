@@ -1971,7 +1971,7 @@ mod tests {
         use std::iter::order;
         // official Unicode test data
         // from http://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt
-        let test_same = [
+        let test_same: [(_, &[_]), .. 325] = [
             ("\u0020\u0020", &["\u0020", "\u0020"]), ("\u0020\u0308\u0020", &["\u0020\u0308",
             "\u0020"]), ("\u0020\u000D", &["\u0020", "\u000D"]), ("\u0020\u0308\u000D",
             &["\u0020\u0308", "\u000D"]), ("\u0020\u000A", &["\u0020", "\u000A"]),
@@ -2180,7 +2180,7 @@ mod tests {
             ("\u0646\u200D\u0020", &["\u0646\u200D", "\u0020"]),
         ];
 
-        let test_diff = [
+        let test_diff: [(_, &[_], &[_]), .. 23] = [
             ("\u0020\u0903", &["\u0020\u0903"], &["\u0020", "\u0903"]), ("\u0020\u0308\u0903",
             &["\u0020\u0308\u0903"], &["\u0020\u0308", "\u0903"]), ("\u000D\u0308\u0903",
             &["\u000D", "\u0308\u0903"], &["\u000D", "\u0308", "\u0903"]), ("\u000A\u0308\u0903",
@@ -2229,9 +2229,11 @@ mod tests {
         // test the indices iterators
         let s = "a̐éö̲\r\n";
         let gr_inds = s.grapheme_indices(true).collect::<Vec<(uint, &str)>>();
-        assert_eq!(gr_inds.as_slice(), &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")]);
+        let b: &[_] = &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
+        assert_eq!(gr_inds.as_slice(), b);
         let gr_inds = s.grapheme_indices(true).rev().collect::<Vec<(uint, &str)>>();
-        assert_eq!(gr_inds.as_slice(), &[(11, "\r\n"), (6, "ö̲"), (3, "é"), (0u, "a̐")]);
+        let b: &[_] = &[(11, "\r\n"), (6, "ö̲"), (3, "é"), (0u, "a̐")];
+        assert_eq!(gr_inds.as_slice(), b);
         let mut gr_inds = s.grapheme_indices(true);
         let e1 = gr_inds.size_hint();
         assert_eq!(e1, (1, Some(13)));
@@ -2243,7 +2245,8 @@ mod tests {
         // make sure the reverse iterator does the right thing with "\n" at beginning of string
         let s = "\n\r\n\r";
         let gr = s.graphemes(true).rev().collect::<Vec<&str>>();
-        assert_eq!(gr.as_slice(), &["\r", "\r\n", "\n"]);
+        let b: &[_] = &["\r", "\r\n", "\n"];
+        assert_eq!(gr.as_slice(), b);
     }
 
     #[test]

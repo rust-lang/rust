@@ -497,7 +497,7 @@ pub fn trans_fail<'a>(
     let filename = C_str_slice(ccx, filename);
     let line = C_int(ccx, loc.line as int);
     let expr_file_line_const = C_struct(ccx, &[v_str, filename, line], false);
-    let expr_file_line = consts::const_addr_of(ccx, expr_file_line_const);
+    let expr_file_line = consts::const_addr_of(ccx, expr_file_line_const, ast::MutImmutable);
     let args = vec!(expr_file_line);
     let did = langcall(bcx, Some(sp), "", FailFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
@@ -525,7 +525,7 @@ pub fn trans_fail_bounds_check<'a>(
     let filename = C_str_slice(ccx,  filename);
     let line = C_int(ccx, loc.line as int);
     let file_line_const = C_struct(ccx, &[filename, line], false);
-    let file_line = consts::const_addr_of(ccx, file_line_const);
+    let file_line = consts::const_addr_of(ccx, file_line_const, ast::MutImmutable);
     let args = vec!(file_line, index, len);
     let did = langcall(bcx, Some(sp), "", FailBoundsCheckFnLangItem);
     let bcx = callee::trans_lang_call(bcx,

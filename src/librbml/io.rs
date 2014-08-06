@@ -96,7 +96,8 @@ impl Writer for SeekableMemWriter {
             let (left, right) = if cap <= buf.len() {
                 (buf.slice_to(cap), buf.slice_from(cap))
             } else {
-                (buf, &[])
+                let result: (_, &[_]) = (buf, &[]);
+                result
             };
 
             // Do the necessary writes
@@ -142,24 +143,29 @@ mod tests {
         writer.write([1, 2, 3]).unwrap();
         writer.write([4, 5, 6, 7]).unwrap();
         assert_eq!(writer.tell(), Ok(8));
-        assert_eq!(writer.get_ref(), &[0, 1, 2, 3, 4, 5, 6, 7]);
+        let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
+        assert_eq!(writer.get_ref(), b);
 
         writer.seek(0, io::SeekSet).unwrap();
         assert_eq!(writer.tell(), Ok(0));
         writer.write([3, 4]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 3, 4, 5, 6, 7]);
+        let b: &[_] = &[3, 4, 2, 3, 4, 5, 6, 7];
+        assert_eq!(writer.get_ref(), b);
 
         writer.seek(1, io::SeekCur).unwrap();
         writer.write([0, 1]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 7]);
+        let b: &[_] = &[3, 4, 2, 0, 1, 5, 6, 7];
+        assert_eq!(writer.get_ref(), b);
 
         writer.seek(-1, io::SeekEnd).unwrap();
         writer.write([1, 2]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 1, 2]);
+        let b: &[_] = &[3, 4, 2, 0, 1, 5, 6, 1, 2];
+        assert_eq!(writer.get_ref(), b);
 
         writer.seek(1, io::SeekEnd).unwrap();
         writer.write([1]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1]);
+        let b: &[_] = &[3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1];
+        assert_eq!(writer.get_ref(), b);
     }
 
     #[test]

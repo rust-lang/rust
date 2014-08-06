@@ -46,9 +46,11 @@ pub trait UnicodeStrSlice<'a> {
     ///
     /// ```rust
     /// let gr1 = "a\u0310e\u0301o\u0308\u0332".graphemes(true).collect::<Vec<&str>>();
-    /// assert_eq!(gr1.as_slice(), &["a\u0310", "e\u0301", "o\u0308\u0332"]);
+    /// let b: &[_] = &["a\u0310", "e\u0301", "o\u0308\u0332"];
+    /// assert_eq!(gr1.as_slice(), b);
     /// let gr2 = "a\r\nb🇷🇺🇸🇹".graphemes(true).collect::<Vec<&str>>();
-    /// assert_eq!(gr2.as_slice(), &["a", "\r\n", "b", "🇷🇺🇸🇹"]);
+    /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
+    /// assert_eq!(gr2.as_slice(), b);
     /// ```
     fn graphemes(&self, is_extended: bool) -> Graphemes<'a>;
 
@@ -59,7 +61,8 @@ pub trait UnicodeStrSlice<'a> {
     ///
     /// ```rust
     /// let gr_inds = "a̐éö̲\r\n".grapheme_indices(true).collect::<Vec<(uint, &str)>>();
-    /// assert_eq!(gr_inds.as_slice(), &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")]);
+    /// let b: &[_] = &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
+    /// assert_eq!(gr_inds.as_slice(), b);
     /// ```
     fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices<'a>;
 

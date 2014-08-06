@@ -199,8 +199,8 @@ impl<'f> Coerce<'f> {
         }
     }
 
-    pub fn unpack_actual_value(&self, a: ty::t, f: |&ty::sty| -> CoerceResult)
-                               -> CoerceResult {
+    pub fn unpack_actual_value<T>(&self, a: ty::t, f: |&ty::sty| -> T)
+                                  -> T {
         match resolve_type(self.get_ref().infcx, None,
                            a, try_resolve_tvar_shallow) {
             Ok(t) => {
@@ -306,7 +306,7 @@ impl<'f> Coerce<'f> {
 
         let sty_b = &ty::get(b).sty;
         match (sty_a, sty_b) {
-            (&ty::ty_uniq(t_a), &ty::ty_rptr(_, mt_b)) => Err(ty::terr_mismatch),
+            (&ty::ty_uniq(_), &ty::ty_rptr(..)) => Err(ty::terr_mismatch),
             (&ty::ty_rptr(_, ty::mt{ty: t_a, ..}), &ty::ty_rptr(_, mt_b)) => {
                 self.unpack_actual_value(t_a, |sty_a| {
                     match self.unsize_ty(sty_a, mt_b.ty) {
@@ -381,8 +381,8 @@ impl<'f> Coerce<'f> {
                   if did_a == did_b => {
                     debug!("unsizing a struct");
                     // Try unsizing each type param in turn to see if we end up with ty_b.
-                    let ty_substs_a = substs_a.types.get_vec(subst::TypeSpace);
-                    let ty_substs_b = substs_b.types.get_vec(subst::TypeSpace);
+                    let ty_substs_a = substs_a.types.get_slice(subst::TypeSpace);
+                    let ty_substs_b = substs_b.types.get_slice(subst::TypeSpace);
                     assert!(ty_substs_a.len() == ty_substs_b.len());
 
                     let sub = Sub(self.get_ref().clone());
@@ -397,7 +397,7 @@ impl<'f> Coerce<'f> {
                             Some((new_tp, k)) => {
                                 // Check that the whole types match.
                                 let mut new_substs = substs_a.clone();
-                                *new_substs.types.get_mut_vec(subst::TypeSpace).get_mut(i) = new_tp;
+                                new_substs.types.get_mut_slice(subst::TypeSpace)[i] = new_tp;
                                 let ty = ty::mk_struct(tcx, did_a, new_substs);
                                 if self.get_ref().infcx.try(|| sub.tys(ty, ty_b)).is_err() {
                                     debug!("Unsized type parameter '{}', but still \
@@ -439,8 +439,7 @@ impl<'f> Coerce<'f> {
         let r_a = self.get_ref().infcx.next_region_var(coercion);
 
         let a_borrowed = match *sty_a {
-            ty::ty_uniq(ty) => return Err(ty::terr_mismatch),
-            ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
+            ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
                 ty::ty_trait(box ty::TyTrait {
                         def_id,
                         ref substs,

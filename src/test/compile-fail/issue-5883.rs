@@ -16,7 +16,7 @@ struct Struct {
 
 fn new_struct(r: A) -> Struct {
     //~^ ERROR variable `r` has dynamically sized type `A`
-    Struct { r: r }
+    Struct { r: r } //~ ERROR trying to initialise a dynamically sized struct
 }
 
 trait Curve {}

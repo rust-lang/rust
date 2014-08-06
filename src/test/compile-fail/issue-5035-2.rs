@@ -9,6 +9,8 @@
 // except according to those terms.
 
 trait I {}
-type K = I; //~ ERROR: reference to trait
+type K = I;
+
+fn foo(_x: K) {} //~ ERROR: variable `_x` has dynamically sized type `I`
 
 fn main() {}

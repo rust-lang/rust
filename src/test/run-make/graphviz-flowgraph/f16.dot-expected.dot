@@ -29,7 +29,7 @@ digraph block {
     N27[label="expr y"];
     N28[label="expr y -= 1i"];
     N29[label="block {\l    if x == 1i { continue \'outer ; \"unreachable\"; }\l    if y >= 1i { break ; \"unreachable\"; }\l    y -= 1i;\l}\l"];
-    N30[label="expr 1"];
+    N30[label="expr 1i"];
     N31[label="expr y"];
     N32[label="expr y -= 1i"];
     N33[label="expr 1i"];

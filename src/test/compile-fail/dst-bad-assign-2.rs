@@ -10,7 +10,7 @@
 
 // Forbid assignment into a dynamically sized type.
 
-struct Fat<type T> {
+struct Fat<Sized? T> {
     f1: int,
     f2: &'static str,
     ptr: T

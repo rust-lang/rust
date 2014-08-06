@@ -119,6 +119,17 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                             "s"
                         }).as_slice());
         }
+        if ty::type_is_fat_ptr(ccx.tcx(), transmute_restriction.to) ||
+           ty::type_is_fat_ptr(ccx.tcx(), transmute_restriction.from) {
+            ccx.sess()
+               .add_lint(::lint::builtin::TRANSMUTE_FAT_PTR,
+                         transmute_restriction.id,
+                         transmute_restriction.span,
+                         format!("Transmuting fat pointer types; {} to {}.\
+                                  Beware of relying on the compiler's representation",
+                                 ty_to_string(ccx.tcx(), transmute_restriction.from),
+                                 ty_to_string(ccx.tcx(), transmute_restriction.to)));
+        }
     }
     ccx.sess().abort_if_errors();
 }
@@ -227,8 +238,7 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
         }
         (_, "min_align_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_uint(ccx, machine::llalign_of_min(ccx, lltp_ty) as uint)
+            C_uint(ccx, type_of::align_of(ccx, tp_ty) as uint)
         }
         (_, "pref_align_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
@@ -542,7 +552,7 @@ fn copy_intrinsic(bcx: &Block, allow_overlap: bool, volatile: bool,
                   tp_ty: ty::t, dst: ValueRef, src: ValueRef, count: ValueRef) -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
-    let align = C_i32(ccx, machine::llalign_of_min(ccx, lltp_ty) as i32);
+    let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
     let size = machine::llsize_of(ccx, lltp_ty);
     let int_size = machine::llbitsize_of_real(ccx, ccx.int_type);
     let name = if allow_overlap {
@@ -571,7 +581,7 @@ fn memset_intrinsic(bcx: &Block, volatile: bool, tp_ty: ty::t,
                     dst: ValueRef, val: ValueRef, count: ValueRef) -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
-    let align = C_i32(ccx, machine::llalign_of_min(ccx, lltp_ty) as i32);
+    let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
     let size = machine::llsize_of(ccx, lltp_ty);
     let name = if machine::llbitsize_of_real(ccx, ccx.int_type) == 32 {
         "llvm.memset.p0i8.i32"
