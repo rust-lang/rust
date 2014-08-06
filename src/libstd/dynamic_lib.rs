@@ -114,7 +114,7 @@ impl DynamicLibrary {
     }
 
     fn separator() -> u8 {
-        if cfg!(windows) {';' as u8} else {':' as u8}
+        if cfg!(windows) {b';'} else {b':'}
     }
 
     /// Returns the current search path for dynamic libraries being used by this

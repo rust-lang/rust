@@ -737,12 +737,12 @@ impl Path {
             let mut comps = comps;
             match (comps.is_some(),prefix) {
                 (false, Some(DiskPrefix)) => {
-                    if s.as_bytes()[0] >= 'a' as u8 && s.as_bytes()[0] <= 'z' as u8 {
+                    if s.as_bytes()[0] >= b'a' && s.as_bytes()[0] <= b'z' {
                         comps = Some(vec![]);
                     }
                 }
                 (false, Some(VerbatimDiskPrefix)) => {
-                    if s.as_bytes()[4] >= 'a' as u8 && s.as_bytes()[0] <= 'z' as u8 {
+                    if s.as_bytes()[4] >= b'a' && s.as_bytes()[0] <= b'z' {
                         comps = Some(vec![]);
                     }
                 }
@@ -1010,7 +1010,7 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
             } else {
                 // \\?\path
                 let idx = path.find('\\');
-                if idx == Some(2) && path.as_bytes()[1] == ':' as u8 {
+                if idx == Some(2) && path.as_bytes()[1] == b':' {
                     let c = path.as_bytes()[0];
                     if c.is_ascii() && (c as char).is_alphabetic() {
                         // \\?\C:\ path
@@ -1033,7 +1033,7 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
             }
             _ => ()
         }
-    } else if path.len() > 1 && path.as_bytes()[1] == ':' as u8 {
+    } else if path.len() > 1 && path.as_bytes()[1] == b':' {
         // C:
         let c = path.as_bytes()[0];
         if c.is_ascii() && (c as char).is_alphabetic() {

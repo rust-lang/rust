@@ -119,7 +119,7 @@ impl Ascii {
     /// Check if the character is a space or horizontal tab
     #[inline]
     pub fn is_blank(&self) -> bool {
-        self.chr == ' ' as u8 || self.chr == '\t' as u8
+        self.chr == b' ' || self.chr == b'\t'
     }
 
     /// Check if the character is a control character
@@ -150,7 +150,7 @@ impl Ascii {
     /// Checks if the character is lowercase
     #[inline]
     pub fn is_lowercase(&self) -> bool {
-        (self.chr - 'a' as u8) < 26
+        (self.chr - b'a') < 26
     }
 
     #[inline]
@@ -163,7 +163,7 @@ impl Ascii {
     /// Checks if the character is uppercase
     #[inline]
     pub fn is_uppercase(&self) -> bool {
-        (self.chr - 'A' as u8) < 26
+        (self.chr - b'A') < 26
     }
 
     /// Checks if the character is punctuation
@@ -175,7 +175,7 @@ impl Ascii {
     /// Checks if the character is a valid hex digit
     #[inline]
     pub fn is_hex(&self) -> bool {
-        self.is_digit() || ((self.chr | 32u8) - 'a' as u8) < 6
+        self.is_digit() || ((self.chr | 32u8) - b'a') < 6
     }
 }
 
@@ -792,13 +792,13 @@ mod tests {
 
     #[test]
     fn test_to_string() {
-        let s = Ascii{ chr: 't' as u8 }.to_string();
+        let s = Ascii{ chr: b't' }.to_string();
         assert_eq!(s, "t".to_string());
     }
 
     #[test]
     fn test_show() {
-        let c = Ascii { chr: 't' as u8 };
+        let c = Ascii { chr: b't' };
         assert_eq!(format!("{}", c), "t".to_string());
     }
 }

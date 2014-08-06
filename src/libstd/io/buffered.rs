@@ -248,7 +248,7 @@ impl<W: Writer> LineBufferedWriter<W> {
 
 impl<W: Writer> Writer for LineBufferedWriter<W> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        match buf.iter().rposition(|&b| b == '\n' as u8) {
+        match buf.iter().rposition(|&b| b == b'\n') {
             Some(i) => {
                 try!(self.inner.write(buf.slice_to(i + 1)));
                 try!(self.inner.flush());
@@ -524,15 +524,15 @@ mod test {
         assert_eq!(writer.get_ref().get_ref(), &[]);
         writer.flush().unwrap();
         assert_eq!(writer.get_ref().get_ref(), &[0, 1]);
-        writer.write([0, '\n' as u8, 1, '\n' as u8, 2]).unwrap();
+        writer.write([0, b'\n', 1, b'\n', 2]).unwrap();
         assert_eq!(writer.get_ref().get_ref(),
-                   &[0, 1, 0, '\n' as u8, 1, '\n' as u8]);
+                   &[0, 1, 0, b'\n', 1, b'\n']);
         writer.flush().unwrap();
         assert_eq!(writer.get_ref().get_ref(),
-                   &[0, 1, 0, '\n' as u8, 1, '\n' as u8, 2]);
-        writer.write([3, '\n' as u8]).unwrap();
+                   &[0, 1, 0, b'\n', 1, b'\n', 2]);
+        writer.write([3, b'\n']).unwrap();
         assert_eq!(writer.get_ref().get_ref(),
-            &[0, 1, 0, '\n' as u8, 1, '\n' as u8, 2, 3, '\n' as u8]);
+            &[0, 1, 0, b'\n', 1, b'\n', 2, 3, b'\n']);
     }
 
     #[test]
@@ -579,7 +579,7 @@ mod test {
 
     #[test]
     fn test_chars() {
-        let buf = [195u8, 159u8, 'a' as u8];
+        let buf = [195u8, 159u8, b'a'];
         let mut reader = BufferedReader::with_capacity(1, BufReader::new(buf));
         let mut it = reader.chars();
         assert_eq!(it.next(), Some(Ok('ß')));
