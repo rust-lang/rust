@@ -266,7 +266,7 @@
 
     <define-regex id="common_escape" extended="true">
       '|"|
-      \\|n|r|t|
+      \\|n|r|t|0|
       x\%{hex_digit}{2}|
       u\%{hex_digit}{4}|
       U\%{hex_digit}{8}

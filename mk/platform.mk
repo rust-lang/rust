@@ -377,7 +377,7 @@ RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabi :=
 # mipsel-linux configuration
 CC_mipsel-linux=mipsel-linux-gcc
 CXX_mipsel-linux=mipsel-linux-g++
-CPP_mipsel-linux=mipsel-linux-gcc 
+CPP_mipsel-linux=mipsel-linux-gcc
 AR_mipsel-linux=mipsel-linux-ar
 CFG_LIB_NAME_mipsel-linux=lib$(1).so
 CFG_STATIC_LIB_NAME_mipsel-linux=lib$(1).a
@@ -641,7 +641,7 @@ define CFG_MAKE_TOOLCHAIN
 	CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
 	CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
 	AR_$(1)=$(CROSS_PREFIX_$(1))$(AR_$(1))
-	RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(CXX_$(1))) \
+	RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(CC_$(1))) \
 	    -C ar=$$(call FIND_COMPILER,$$(AR_$(1))) $(RUSTC_CROSS_FLAGS_$(1))
 
 	RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
