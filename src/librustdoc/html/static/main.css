@@ -123,6 +123,7 @@ code, pre {
 .docblock code {
     background-color: #F5F5F5;
     border-radius: 3px;
+    padding: 0 0.2em;
 }
 pre {
     background-color: #F5F5F5;
