@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Collections types
+//!
 //! Rust's standard collections library provides several structures for organizing
 //! and querying data. Choosing the right collection for the right job is a non-
 //! trivial and important part of writing any good program. While Rust strives to
@@ -68,10 +70,14 @@
 //! While the functions in Big-Oh notation can have arbitrary complexity, by
 //! convention the function `g(x)` in `O(g(x))` should be written as simply as
 //! possible, and is expected to be as tight as possible. For instance, `2x` is
-//! `O(3x^2 + 5x - 2)`, but we would generally simplify the expression to only the
-//! dominant factor, with constants stripped away. In this case, `x^2` grows the
-//! fastest, and so we would simply say `2x` is `O(x^2)`. Similarly, although `2x`
-//! *is* `O(x^2)`, this is needlessly weak. We would instead prefer to provide the
+//! <code>O(3x<sup>2</sup> + 5x - 2)</code>,
+//! but we would generally simplify the expression to only the
+//! dominant factor, with constants stripped away. In this case,
+//! `<code>x<sup>2</sup></code> grows the
+//! fastest, and so we would simply say `2x` is
+//! <code>O(x<sup>2</sup>)</code>. Similarly, although `2x`
+//! *is* <code>O(x<sup>2</sup>)</code>, this is needlessly weak.
+//! We would instead prefer to provide the
 //! stronger bound `O(x)`.
 //!
 //! Several functions occur very often in Big-Oh notation, and so we note them here
@@ -80,19 +86,19 @@
 //! * `O(1)` - *Constant*: The performance of the operation is effectively
 //! independent of context. This is usually *very* cheap.
 //!
-//! * `O(logn)` - *Logarithmic*: Performance scales with the logarithm of `n`.
+//! * `O(log n)` - *Logarithmic*: Performance scales with the logarithm of `n`.
 //! This is usually cheap.
 //!
 //! * `O(n)` - *Linear*: Performance scales proportionally to `n`.
 //! This is considered expensive, but tractable.
 //!
-//! * `O(nlogn)`: Performance scales a bit worse than linear.
+//! * `O(n log n)`: Performance scales a bit worse than linear.
 //! Not to be done frequently if possible.
 //!
-//! * `O(n^2)` - *Quadratic*: Performance scales with the square of `n`.
+//! * <code>O(n<sup>2</sup>)</code> - *Quadratic*: Performance scales with the square of `n`.
 //! This is considered very expensive, and is potentially catastrophic for large inputs.
 //!
-//! * `O(2^n)` - *Exponential*: Performance scales exponentially with `n`.
+//! * <code>O(2<sup>n</sup>)</code> - *Exponential*: Performance scales exponentially with `n`.
 //! This is considered intractable for anything but very small inputs.
 //!
 //! ## Time Complexity
@@ -111,7 +117,7 @@
 //! case*. For some operations, the worst-case may be rare and very large. For other
 //! operations, it may be the most common, with rare "fast" events.
 //!
-//! For instance, if an operation sometimes takes `O(1)`, `O(logn)`, or `O(n)` time,
+//! For instance, if an operation sometimes takes `O(1)`, `O(log n)`, or `O(n)` time,
 //! we simply say it takes `O(n)` worst-case time, since `O(n)` is the largest.
 //!
 //! Worst-case analysis is often the easiest to perform, and is always applicable to
@@ -132,9 +138,10 @@
 //! takes *on average*. The operation may take much more or less time on any given
 //! input, or even on different calls on the same input.
 //!
-//! For instance, if an operation takes `O(nlogn)` time *with high probability*, but
-//! very rarely takes `O(n^2)` time, then the operation takes `O(nlogn)` expected
-//! time, even though it has a worst-case time of `O(n^2)`. `QuickSort` is the
+//! For instance, if an operation takes `O(n log n)` time *with high probability*, but
+//! very rarely takes <code>O(n<sup>2</sup>)</code> time,
+//! then the operation takes `O(n log n)` expected time, even though it has a worst-case time
+//! of <code>O(n<sup>2</sup>)</code>. `QuickSort` is the
 //! canonical randomized operation, with exactly this performance analysis.
 //!
 //! ### Amortized Time
@@ -162,7 +169,8 @@
 //!
 //! However, space consumption can be important in resource constrained
 //! environments, or just when working on large datasets. An operation that takes
-//! `O(n^2)` time on a large data set might be unfortunate, but consuming `O(n^2)`
+//! <code>O(n<sup>2</sup>)</code> time on a large dataset might be unfortunate,
+//! but consuming <code>O(n<sup>2</sup>)</code>
 //! extra space to do it, even if only temporary, might prove catastrophic. If the
 //! extra space consumed is greater than `O(1)`, it is also likely allocated on the
 //! heap, which is generally an expensive operation. Knowing this can help give
