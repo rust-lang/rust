@@ -198,11 +198,11 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
     // Decide what sign to put in front
     match sign {
         SignNeg | SignAll if neg => {
-            buf[end] = '-' as u8;
+            buf[end] = b'-';
             end += 1;
         }
         SignAll => {
-            buf[end] = '+' as u8;
+            buf[end] = b'+';
             end += 1;
         }
         _ => ()
@@ -218,7 +218,7 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
     // Now emit the fractional part, if any
     deccum = num.fract();
     if deccum != _0 || (limit_digits && exact && digit_count > 0) {
-        buf[end] = '.' as u8;
+        buf[end] = b'.';
         end += 1;
         let mut dig = 0u;
 
@@ -269,8 +269,8 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
                     // If reached left end of number, have to
                     // insert additional digit:
                     if i < 0
-                    || buf[i as uint] == '-' as u8
-                    || buf[i as uint] == '+' as u8 {
+                    || buf[i as uint] == b'-'
+                    || buf[i as uint] == b'+' {
                         for j in range(i as uint + 1, end).rev() {
                             buf[j + 1] = buf[j];
                         }
@@ -280,7 +280,7 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
                     }
 
                     // Skip the '.'
-                    if buf[i as uint] == '.' as u8 { i -= 1; continue; }
+                    if buf[i as uint] == b'.' { i -= 1; continue; }
 
                     // Either increment the digit,
                     // or set to 0 if max and carry the 1.
@@ -306,14 +306,14 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
         let mut i = buf_max_i;
 
         // discover trailing zeros of fractional part
-        while i > start_fractional_digits && buf[i] == '0' as u8 {
+        while i > start_fractional_digits && buf[i] == b'0' {
             i -= 1;
         }
 
         // Only attempt to truncate digits if buf has fractional digits
         if i >= start_fractional_digits {
             // If buf ends with '.', cut that too.
-            if buf[i] == '.' as u8 { i -= 1 }
+            if buf[i] == b'.' { i -= 1 }
 
             // only resize buf if we actually remove digits
             if i < buf_max_i {
@@ -323,7 +323,7 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
     } // If exact and trailing '.', just cut that
     else {
         let max_i = end - 1;
-        if buf[max_i] == '.' as u8 {
+        if buf[max_i] == b'.' {
             end = max_i;
         }
     }
