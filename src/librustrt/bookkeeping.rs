@@ -18,12 +18,12 @@
 //! each respective runtime to make sure that they call increment() and
 //! decrement() manually.
 
-use core::atomics;
+use core::atomic;
 use core::ops::Drop;
 
 use mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
-static mut TASK_COUNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
+static mut TASK_COUNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 static mut TASK_LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
 pub struct Token { _private: () }
@@ -35,13 +35,13 @@ impl Drop for Token {
 /// Increment the number of live tasks, returning a token which will decrement
 /// the count when dropped.
 pub fn increment() -> Token {
-    let _ = unsafe { TASK_COUNT.fetch_add(1, atomics::SeqCst) };
+    let _ = unsafe { TASK_COUNT.fetch_add(1, atomic::SeqCst) };
     Token { _private: () }
 }
 
 pub fn decrement() {
     unsafe {
-        if TASK_COUNT.fetch_sub(1, atomics::SeqCst) == 1 {
+        if TASK_COUNT.fetch_sub(1, atomic::SeqCst) == 1 {
             let guard = TASK_LOCK.lock();
             guard.signal();
         }
@@ -53,7 +53,7 @@ pub fn decrement() {
 pub fn wait_for_other_tasks() {
     unsafe {
         let guard = TASK_LOCK.lock();
-        while TASK_COUNT.load(atomics::SeqCst) > 0 {
+        while TASK_COUNT.load(atomic::SeqCst) > 0 {
             guard.wait();
         }
     }

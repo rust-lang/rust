@@ -16,7 +16,7 @@
 //! loop if no other one is provided (and M:N scheduling is desired).
 
 use alloc::arc::Arc;
-use std::sync::atomics;
+use std::sync::atomic;
 use std::mem;
 use std::rt::rtio::{EventLoop, IoFactory, RemoteCallback};
 use std::rt::rtio::{PausableIdleCallback, Callback};
@@ -33,7 +33,7 @@ struct BasicLoop {
     next_remote: uint,
     messages: Arc<Exclusive<Vec<Message>>>,
     idle: Option<Box<Callback + Send>>,
-    idle_active: Option<Arc<atomics::AtomicBool>>,
+    idle_active: Option<Arc<atomic::AtomicBool>>,
 }
 
 enum Message { RunRemote(uint), RemoveRemote(uint) }
@@ -89,7 +89,7 @@ impl BasicLoop {
     fn idle(&mut self) {
         match self.idle {
             Some(ref mut idle) => {
-                if self.idle_active.get_ref().load(atomics::SeqCst) {
+                if self.idle_active.get_ref().load(atomic::SeqCst) {
                     idle.call();
                 }
             }
@@ -98,7 +98,7 @@ impl BasicLoop {
     }
 
     fn has_idle(&self) -> bool {
-        self.idle.is_some() && self.idle_active.get_ref().load(atomics::SeqCst)
+        self.idle.is_some() && self.idle_active.get_ref().load(atomic::SeqCst)
     }
 }
 
@@ -136,7 +136,7 @@ impl EventLoop for BasicLoop {
                               -> Box<PausableIdleCallback + Send> {
         rtassert!(self.idle.is_none());
         self.idle = Some(cb);
-        let a = Arc::new(atomics::AtomicBool::new(true));
+        let a = Arc::new(atomic::AtomicBool::new(true));
         self.idle_active = Some(a.clone());
         box BasicPausable { active: a } as Box<PausableIdleCallback + Send>
     }
@@ -183,21 +183,21 @@ impl Drop for BasicRemote {
 }
 
 struct BasicPausable {
-    active: Arc<atomics::AtomicBool>,
+    active: Arc<atomic::AtomicBool>,
 }
 
 impl PausableIdleCallback for BasicPausable {
     fn pause(&mut self) {
-        self.active.store(false, atomics::SeqCst);
+        self.active.store(false, atomic::SeqCst);
     }
     fn resume(&mut self) {
-        self.active.store(true, atomics::SeqCst);
+        self.active.store(true, atomic::SeqCst);
     }
 }
 
 impl Drop for BasicPausable {
     fn drop(&mut self) {
-        self.active.store(false, atomics::SeqCst);
+        self.active.store(false, atomic::SeqCst);
     }
 }
 

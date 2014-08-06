@@ -41,7 +41,7 @@
 //!
 //! ```
 //! use std::sync::Arc;
-//! use std::sync::atomics::{AtomicUint, SeqCst};
+//! use std::sync::atomic::{AtomicUint, SeqCst};
 //! use std::task::deschedule;
 //!
 //! fn main() {
@@ -67,7 +67,7 @@
 //!
 //! ```
 //! use std::sync::Arc;
-//! use std::sync::atomics::{AtomicOption, SeqCst};
+//! use std::sync::atomic::{AtomicOption, SeqCst};
 //!
 //! fn main() {
 //!     struct BigObject;
@@ -91,7 +91,7 @@
 //! Keep a global count of live tasks:
 //!
 //! ```
-//! use std::sync::atomics::{AtomicUint, SeqCst, INIT_ATOMIC_UINT};
+//! use std::sync::atomic::{AtomicUint, SeqCst, INIT_ATOMIC_UINT};
 //!
 //! static mut GLOBAL_TASK_COUNT: AtomicUint = INIT_ATOMIC_UINT;
 //!
@@ -106,16 +106,18 @@ use core::prelude::*;
 use alloc::boxed::Box;
 use core::mem;
 
-pub use core::atomics::{AtomicBool, AtomicInt, AtomicUint, AtomicPtr};
-pub use core::atomics::{Ordering, Relaxed, Release, Acquire, AcqRel, SeqCst};
-pub use core::atomics::{INIT_ATOMIC_BOOL, INIT_ATOMIC_INT, INIT_ATOMIC_UINT};
-pub use core::atomics::fence;
+pub use core::atomic::{AtomicBool, AtomicInt, AtomicUint, AtomicPtr};
+pub use core::atomic::{Ordering, Relaxed, Release, Acquire, AcqRel, SeqCst};
+pub use core::atomic::{INIT_ATOMIC_BOOL, INIT_ATOMIC_INT, INIT_ATOMIC_UINT};
+pub use core::atomic::fence;
 
 /// An atomic, nullable unique pointer
 ///
 /// This can be used as the concurrency primitive for operations that transfer
 /// owned heap objects across tasks.
 #[unsafe_no_drop_flag]
+#[deprecated = "no longer used; will eventually be replaced by a higher-level\
+                concept like MVar"]
 pub struct AtomicOption<T> {
     p: AtomicUint,
 }
@@ -227,4 +229,3 @@ mod test {
         assert!(p.take(SeqCst) == Some(box 2));
     }
 }
-

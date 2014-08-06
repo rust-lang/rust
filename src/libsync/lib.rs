@@ -49,7 +49,7 @@ pub use raw::{Semaphore, SemaphoreGuard};
 
 // Core building blocks for all primitives in this crate
 
-pub mod atomics;
+pub mod atomic;
 
 // Concurrent data structures
 
