@@ -11,6 +11,7 @@
 ; Rust's try-catch
 ; When f(...) returns normally, the return value is null.
 ; When f(...) throws, the return value is a pointer to the caught exception object.
+
 ; See also: librustrt/unwind.rs
 
 define i8* @rust_try(void (i8*,i8*)* %f, i8* %fptr, i8* %env) {
@@ -25,7 +26,7 @@ normal:
 catch:
     landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @rust_eh_personality_catch to i8*)
         catch i8* null
-    ; execution will never reach here because rust_try_inner's landing pad does not resume unwinds
+    ; rust_try_inner's landing pad does not resume unwinds, so execution will never reach here
     ret i8* null
 }
 
