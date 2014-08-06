@@ -492,6 +492,26 @@ things in the future.
   assumptions could be invalidated, but no compilation errors will
   result (the impl was already declared as unsafe, after all).
 
+# Phasing
+
+Many of the mechanisms described in this RFC are not needed
+immediately.  Therefore, we would like to implement a minimal
+"forwards compatible" set of changes now and then leave the remaining
+work for after the 1.0 release. The builtin rules that the compiler
+currently implements for send and share are quite close to what is
+proposed in this RFC. The major change is that unsafe pointers and the
+`UnsafeCell` type are currently considered sendable.
+
+Therefore, to be forwards compatible in the short term, we can use the
+same hybrid of builtin and explicit impls for `Send` and `Share` that
+we use for `Copy`, with the rule that unsafe pointers and `UnsafeCell`
+are not considered sendable. We must also implement the `unsafe trait`
+and `unsafe impl` concept.
+
+What this means in practice is that using `*const T`, `*mut T`, and
+`UnsafeCell` will make a type `T` non-sendable and non-sharable, and
+`T` must then explicitly implement `Send` or `Share`.
+
 # Unresolved questions
 
 - The terminology of "unsafe trait" seems somewhat misleading, since
@@ -500,9 +520,12 @@ things in the future.
   `trusted trait`, which might dovetail with the use of `trusted` to
   specify a trusted block of code. If we did use `trusted trait`, it
   seems that all impls would also have to be `trusted impl`.
-
 - Perhaps we should declare a trait as a "default trait" directly,
   rather than using the `impl Drop for ..` syntax. I don't know
   precisely what syntax to use, though.
-  
-  
+- Currently, there are special rules relating to object types and
+  the builtin traits. If the "builtin" traits are no longer builtin,
+  we will have to generalize object types to be simply a set of trait
+  references. This is already planned but merits a second RFC. Note
+  that no changes here are required for the 1.0, since the phasing
+  plan dictates that builtin traits remain special until after 1.0.
