@@ -742,10 +742,13 @@ impl<'a> SourceCollector<'a> {
         let mut w = BufferedWriter::new(try!(File::create(&cur)));
 
         let title = format!("{} -- source", cur.filename_display());
+        let desc = format!("Source to the Rust file `{}`.", filename);
         let page = layout::Page {
             title: title.as_slice(),
             ty: "source",
             root_path: root_path.as_slice(),
+            description: desc.as_slice(),
+            keywords: get_basic_keywords(),
         };
         try!(layout::render(&mut w as &mut Writer, &self.cx.layout,
                             &page, &(""), &Source(contents)));
@@ -1072,10 +1075,14 @@ impl Context {
             try!(stability.encode(&mut json::Encoder::new(&mut json_out)));
 
             let title = stability.name.clone().append(" - Stability dashboard");
+            let desc = format!("API stability overview for the Rust `{}` crate.",
+                               this.layout.krate);
             let page = layout::Page {
                 ty: "mod",
                 root_path: this.root_path.as_slice(),
                 title: title.as_slice(),
+                description: desc.as_slice(),
+                keywords: get_basic_keywords(),
             };
             let html_dst = &this.dst.join("stability.html");
             let mut html_out = BufferedWriter::new(try!(File::create(html_dst)));
@@ -1120,10 +1127,25 @@ impl Context {
                 title.push_str(it.name.get_ref().as_slice());
             }
             title.push_str(" - Rust");
+            let tyname = shortty(it).to_static_str();
+            let is_crate = match it.inner {
+                clean::ModuleItem(clean::Module { items: _, is_crate: true }) => true,
+                _ => false
+            };
+            let desc = if is_crate {
+                format!("API documentation for the Rust `{}` crate.",
+                        cx.layout.krate)
+            } else {
+                format!("API documentation for the Rust `{}` {} in crate `{}`.",
+                        it.name.get_ref(), tyname, cx.layout.krate)
+            };
+            let keywords = make_item_keywords(it);
             let page = layout::Page {
-                ty: shortty(it).to_static_str(),
+                ty: tyname,
                 root_path: cx.root_path.as_slice(),
                 title: title.as_slice(),
+                description: desc.as_slice(),
+                keywords: keywords.as_slice(),
             };
 
             markdown::reset_headers();
@@ -1311,7 +1333,7 @@ impl<'a> fmt::Show for Item<'a> {
         // Write stability dashboard link
         match self.item.inner {
             clean::ModuleItem(ref m) if m.is_crate => {
-                try!(write!(fmt, "<a href='stability.html'>[stability dashboard]</a> "));
+                try!(write!(fmt, "<a href='stability.html'>[stability]</a> "));
             }
             _ => {}
         };
@@ -2151,4 +2173,12 @@ fn ignore_private_item(it: &clean::Item) -> bool {
         clean::PrimitiveItem(..) => it.visibility != Some(ast::Public),
         _ => false,
     }
+}
+
+fn get_basic_keywords() -> &'static str {
+    "rust, rustlang, rust-lang"
+}
+
+fn make_item_keywords(it: &clean::Item) -> String {
+    format!("{}, {}", get_basic_keywords(), it.name.get_ref())
 }
