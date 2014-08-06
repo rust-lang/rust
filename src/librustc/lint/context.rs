@@ -576,7 +576,7 @@ impl<'a> Visitor<()> for Context<'a> {
         run_lints!(self, check_lifetime_ref, lt);
     }
 
-    fn visit_lifetime_decl(&mut self, lt: &ast::Lifetime, _: ()) {
+    fn visit_lifetime_decl(&mut self, lt: &ast::LifetimeDef, _: ()) {
         run_lints!(self, check_lifetime_decl, lt);
     }
 
