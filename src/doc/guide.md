@@ -3295,7 +3295,7 @@ fn times_four(x: int) -> int { x * 4 }
 #[cfg(test)]
 mod test {
     use super::add_three;
-    use super::add_four;
+    use super::times_four;
 
     #[test]
     fn test_add_three() {
@@ -3344,7 +3344,7 @@ about yet, and that's these lines:
 
 ```{rust,ignore}
 use super::add_three;
-use super::add_four;
+use super::times_four;
 ```
 
 Because we've made a nested module, we can import functions from the parent
