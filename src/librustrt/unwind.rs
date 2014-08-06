@@ -220,12 +220,19 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 //
 // This is pretty close to Rust's exception handling approach, except that Rust
 // does have a single "catch-all" handler at the bottom of each task's stack.
-// So we have two versions:
+// So we have two versions of the personality routine:
 // - rust_eh_personality, used by all cleanup landing pads, which never catches,
 //   so the behavior of __gcc_personality_v0 is perfectly adequate there, and
 // - rust_eh_personality_catch, used only by rust_try(), which always catches.
-//   This is achieved by overriding the return value in search phase to always
-//   say "catch!".
+//
+// Note, however, that for implementation simplicity, rust_eh_personality_catch
+// lacks code to install a landing pad, so in order to obtain exception object
+// pointer (which it needs to return upstream), rust_try() employs another trick:
+// it calls into the nested rust_try_inner(), whose landing pad does not resume
+// unwinds.  Instead, it extracts the exception pointer and performs a "normal"
+// return.
+//
+// See also: rt/rust_try.ll
 
 #[cfg(not(target_arch = "arm"), not(windows, target_arch = "x86_64"), not(test))]
 #[doc(hidden)]
@@ -334,7 +341,8 @@ pub mod eabi {
 
 // ARM EHABI uses a slightly different personality routine signature,
 // but otherwise works the same.
-#[cfg(target_arch = "arm", not(target_os = "ios", not(test)))]
+#[cfg(target_arch = "arm", not(target_os = "ios"), not(test))]
+#[doc(hidden)]
 #[allow(visible_private_types)]
 pub mod eabi {
     use uw = libunwind;
@@ -384,10 +392,9 @@ pub mod eabi {
 // with an "API translator" layer (_GCC_specific_handler).
 
 #[cfg(windows, target_arch = "x86_64", not(test))]
+#[doc(hidden)]
 #[allow(visible_private_types)]
 #[allow(non_camel_case_types)]
-#[allow(unused_variable)]
-#[allow(uppercase_variables)]
 pub mod eabi {
     use uw = libunwind;
     use libc::{c_void, c_int};
