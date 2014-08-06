@@ -182,7 +182,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
                     // Mutable slices are allowed.
                     ExprVec(_) => {}
                     _ => span_err!(v.tcx.sess, e.span, E0017,
-                                   "references in constants may only refer to immutable values");
+                                   "references in constants may only refer to immutable values")
 
                 }
           },

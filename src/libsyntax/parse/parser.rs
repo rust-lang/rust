@@ -61,7 +61,7 @@ use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause, WherePredicate};
 use ast;
-use ast_util::{as_prec, ident_to_path, lit_is_str, operator_prec};
+use ast_util::{as_prec, ident_to_path, operator_prec};
 use ast_util;
 use attr;
 use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
@@ -2577,21 +2577,24 @@ impl<'a> Parser<'a> {
             ex = self.mk_unary(UnUniq, e);
           }
           token::IDENT(_, _) => {
-              if self.is_keyword(keywords::Box) {
-                self.bump();
+            if !self.is_keyword(keywords::Box) {
+                return self.parse_dot_or_call_expr();
+            }
 
-                // Check for a place: `box(PLACE) EXPR`.
-                if self.eat(&token::LPAREN) {
-                    // Support `box() EXPR` as the default.
-                    if !self.eat(&token::RPAREN) {
-                        let place = self.parse_expr();
-                        self.expect(&token::RPAREN);
-                        let subexpression = self.parse_prefix_expr();
-                        hi = subexpression.span.hi;
-                        ex = ExprBox(place, subexpression);
-                        return self.mk_expr(lo, hi, ex);
-                    }
+            self.bump();
+
+            // Check for a place: `box(PLACE) EXPR`.
+            if self.eat(&token::LPAREN) {
+                // Support `box() EXPR` as the default.
+                if !self.eat(&token::RPAREN) {
+                    let place = self.parse_expr();
+                    self.expect(&token::RPAREN);
+                    let subexpression = self.parse_prefix_expr();
+                    hi = subexpression.span.hi;
+                    ex = ExprBox(place, subexpression);
+                    return self.mk_expr(lo, hi, ex);
                 }
+            }
 
             // Otherwise, we use the unique pointer default.
             let subexpression = self.parse_prefix_expr();

@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME(15049) Re-enable this test.
+// ignore-test
 // Test that structs with unsized fields work with {:?} reflection.
 
 extern crate debug;
 
-struct Fat<type T> {
+struct Fat<Sized? T> {
     f1: int,
     f2: &'static str,
     ptr: T

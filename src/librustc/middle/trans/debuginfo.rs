@@ -56,10 +56,11 @@ This file consists of three conceptual sections:
 ## Recursive Types
 
 Some kinds of types, such as structs and enums can be recursive. That means that
-the type definition of some type X refers to some other type which in turn (transitively)
-refers to X. This introduces cycles into the type referral graph. A naive algorithm doing
-an on-demand, depth-first traversal of this graph when describing types, can get trapped
-in an endless loop when it reaches such a cycle.
+the type definition of some type X refers to some other type which in turn
+(transitively) refers to X. This introduces cycles into the type referral graph.
+A naive algorithm doing an on-demand, depth-first traversal of this graph when
+describing types, can get trapped in an endless loop when it reaches such a
+cycle.
 
 For example, the following simple type for a singly-linked list...
 
@@ -2798,25 +2799,33 @@ fn subroutine_type_metadata(cx: &CrateContext,
         false);
 }
 
+// FIXME(1563) This is all a bit of a hack because 'trait pointer' is an ill-
+// defined concept. For the case of an actual trait pointer (i.e., Box<Trait>,
+// &Trait), trait_object_type should be the whole thing (e.g, Box<Trait>) and
+// trait_type should be the actual trait (e.g., Trait). Where the trait is part
+// of a DST struct, there is no trait_object_type and the results of this
+// function will be a little bit weird.
 fn trait_pointer_metadata(cx: &CrateContext,
-                          trait_object_type: ty::t,
+                          trait_type: ty::t,
+                          trait_object_type: Option<ty::t>,
                           unique_type_id: UniqueTypeId)
                        -> DIType {
     // The implementation provided here is a stub. It makes sure that the trait
     // type is assigned the correct name, size, namespace, and source location.
     // But it does not describe the trait's methods.
 
-    let def_id = match ty::get(trait_object_type).sty {
+    let def_id = match ty::get(trait_type).sty {
         ty::ty_trait(box ty::TyTrait { def_id, .. }) => def_id,
         _ => {
-            let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_object_type);
+            let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_type);
             cx.sess().bug(format!("debuginfo: Unexpected trait-object type in \
                                    trait_pointer_metadata(): {}",
                                    pp_type_name.as_slice()).as_slice());
         }
     };
 
-    let trait_pointer_type_name =
+    let trait_object_type = trait_object_type.unwrap_or(trait_type);
+    let trait_type_name =
         compute_debuginfo_type_name(cx, trait_object_type, false);
 
     let (containing_scope, _) = get_namespace_and_span_for_item(cx, def_id);
@@ -2824,8 +2833,8 @@ fn trait_pointer_metadata(cx: &CrateContext,
     let trait_llvm_type = type_of::type_of(cx, trait_object_type);
 
     composite_type_metadata(cx,
-                            trait_pointer_llvm_type,
-                            trait_pointer_type_name.as_slice(),
+                            trait_llvm_type,
+                            trait_type_name.as_slice(),
                             unique_type_id,
                             [],
                             containing_scope,
@@ -2897,7 +2906,7 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_str => fixed_vec_metadata(cx, unique_type_id, ty::mk_i8(), 0, usage_site_span),
         ty::ty_trait(..) => {
             MetadataCreationResult::new(
-                        trait_pointer_metadata(cx, t, unique_type_id),
+                        trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
         }
         ty::ty_uniq(ty) | ty::ty_ptr(ty::mt{ty, ..}) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
@@ -2910,7 +2919,7 @@ fn type_metadata(cx: &CrateContext,
                 }
                 ty::ty_trait(..) => {
                     MetadataCreationResult::new(
-                        trait_pointer_metadata(cx, ty, unique_type_id),
+                        trait_pointer_metadata(cx, ty, Some(t), unique_type_id),
                         false)
                 }
                 _ => {
@@ -3698,7 +3707,7 @@ fn push_debuginfo_type_name(cx: &CrateContext,
 
             push_debuginfo_type_name(cx, inner_type, true, output);
         },
-        ty::ty_vec(ty::mt { ty: inner_type, .. }, optional_length) => {
+        ty::ty_vec(inner_type, optional_length) => {
             output.push_char('[');
             push_debuginfo_type_name(cx, inner_type, true, output);
 
@@ -3811,6 +3820,7 @@ fn push_debuginfo_type_name(cx: &CrateContext,
         }
         ty::ty_err      |
         ty::ty_infer(_) |
+        ty::ty_open(_) |
         ty::ty_param(_) => {
             cx.sess().bug(format!("debuginfo: Trying to create type name for \
                 unexpected type: {}", ppaux::ty_to_string(cx.tcx(), t)).as_slice());

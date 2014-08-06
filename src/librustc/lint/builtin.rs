@@ -1556,6 +1556,9 @@ declare_lint!(pub UNKNOWN_CRATE_TYPE, Deny,
 declare_lint!(pub VARIANT_SIZE_DIFFERENCE, Allow,
               "detects enums with widely varying variant sizes")
 
+declare_lint!(pub TRANSMUTE_FAT_PTR, Allow,
+              "detects transmutes of fat pointers")
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 pub struct HardwiredLints;

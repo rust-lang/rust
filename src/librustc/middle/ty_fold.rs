@@ -273,6 +273,18 @@ impl TypeFoldable for ty::Generics {
     }
 }
 
+impl TypeFoldable for ty::UnsizeKind {
+    fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> ty::UnsizeKind {
+        match *self {
+            ty::UnsizeLength(len) => ty::UnsizeLength(len),
+            ty::UnsizeStruct(box ref k, n) => ty::UnsizeStruct(box k.fold_with(folder), n),
+            ty::UnsizeVtable(bounds, def_id, ref substs) => {
+                ty::UnsizeVtable(bounds.fold_with(folder), def_id, substs.fold_with(folder))
+            }
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // "super" routines: these are the default implementations for TypeFolder.
 //
@@ -425,11 +437,11 @@ pub fn super_fold_autoref<T:TypeFolder>(this: &mut T,
     match *autoref {
         ty::AutoPtr(r, m, None) => ty::AutoPtr(this.fold_region(r), m, None),
         ty::AutoPtr(r, m, Some(ref a)) => {
-            ty::AutoPtr(this.fold_region(r), m, Some(box super_fold_autoref(this, a.clone())))
+            ty::AutoPtr(this.fold_region(r), m, Some(box super_fold_autoref(this, &**a)))
         }
         ty::AutoUnsafe(m) => ty::AutoUnsafe(m),
-        ty::AutoUnsize(ref k) => ty::AutoUnsize(k.clone()),
-        ty::AutoUnsizeUniq(ref k) => ty::AutoUnsizeUniq(k.clone()),
+        ty::AutoUnsize(ref k) => ty::AutoUnsize(k.fold_with(this)),
+        ty::AutoUnsizeUniq(ref k) => ty::AutoUnsizeUniq(k.fold_with(this)),
     }
 }
 

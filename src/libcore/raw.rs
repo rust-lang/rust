@@ -58,8 +58,8 @@ pub struct TraitObject {
 }
 #[cfg(not(stage0))]
 pub struct TraitObject {
-    pub data: *(),
-    pub vtable: *(),
+    pub data: *mut (),
+    pub vtable: *mut (),
 }
 
 /// This trait is meant to map equivalences between raw structs and their

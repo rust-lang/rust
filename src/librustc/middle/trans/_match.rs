@@ -280,7 +280,7 @@ fn trans_opt<'a>(mut bcx: &'a Block<'a>, o: &Opt) -> opt_result<'a> {
     match *o {
         lit(lit_expr) => {
             let lit_ty = ty::node_id_to_type(bcx.tcx(), lit_expr.id);
-            let (llval, _) = consts::const_expr(ccx, &*lit_expr, true);
+            let (llval, _, _) = consts::const_expr(ccx, &*lit_expr, true);
             let lit_datum = immediate_rvalue(llval, lit_ty);
             let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
             return single_result(Result::new(bcx, lit_datum.val));

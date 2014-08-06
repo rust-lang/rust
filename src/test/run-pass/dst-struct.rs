@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Fat<type T> {
+struct Fat<Sized? T> {
     f1: int,
     f2: &'static str,
     ptr: T

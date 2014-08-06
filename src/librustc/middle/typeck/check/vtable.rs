@@ -810,7 +810,6 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                     }
                 }
                 AutoDerefRef(ref adj) => {
-                    assert!(!ty::adjust_is_object(adjustment));
                     for autoderef in range(0, adj.autoderefs) {
                         let method_call = MethodCall::autoderef(ex.id, autoderef);
                         match fcx.inh.method_map.borrow().find(&method_call) {
@@ -831,9 +830,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                         }
                     }
                 }
-                _ => {
-                    assert!(!ty::adjust_is_object(adjustment));
-                }
+                _ => {}
             }
         }
         None => {}
@@ -867,27 +864,21 @@ fn trait_cast_types(fcx: &FnCtxt,
                 }
                 &ty::UnsizeStruct(box ref k, tp_index) => match ty::get(src_ty).sty {
                     ty::ty_struct(_, ref substs) => {
-                        let ty_substs = substs.types.get_vec(subst::TypeSpace);
-                        let field_ty = *ty_substs.get(tp_index);
-                        let field_ty = structurally_resolved_type(fcx, sp, field_ty);
+                        let ty_substs = substs.types.get_slice(subst::TypeSpace);
+                        let field_ty = structurally_resolved_type(fcx, sp, ty_substs[tp_index]);
                         trait_cast_types_unsize(fcx, k, field_ty, sp)
                     }
                     _ => fail!("Failed to find a ty_struct to correspond with \
                                 UnsizeStruct whilst walking adjustment. Found {}",
-                                ppaux::ty_to_str(fcx.tcx(), src_ty))
+                                ppaux::ty_to_string(fcx.tcx(), src_ty))
                 },
                 _ => None
             }
         }
 
         match autoref {
-            &ty::AutoUnsize(ref k) => trait_cast_types_unsize(fcx, k, src_ty, sp),
-            &ty::AutoUnsizeUniq(ref k) => match k {
-                &ty::UnsizeVtable(bounds, def_id, ref substs) => {
-                    Some((src_ty, ty::mk_trait(fcx.tcx(), def_id, substs.clone(), bounds)))
-                }
-                _ => None
-            },
+            &ty::AutoUnsize(ref k) |
+            &ty::AutoUnsizeUniq(ref k) => trait_cast_types_unsize(fcx, k, src_ty, sp),
             &ty::AutoPtr(_, _, Some(box ref autoref)) => {
                 trait_cast_types_autoref(fcx, autoref, src_ty, sp)
             }

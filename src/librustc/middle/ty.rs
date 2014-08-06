@@ -302,26 +302,23 @@ pub enum AutoRef {
     AutoUnsafe(ast::Mutability),
 }
 
-// Ugly little helper function. The bool in the returned tuple is true if there
-// is an 'unsize to trait object' adjustment at the bottom of the adjustment. If
-// that is surrounded by an AutoPtr, then we also return the region of the
-// AutoPtr (in the third argument). The second bool is true if the adjustment is
-// unique.
+// Ugly little helper function. The first bool in the returned tuple is true if
+// there is an 'unsize to trait object' adjustment at the bottom of the
+// adjustment. If that is surrounded by an AutoPtr, then we also return the
+// region of the AutoPtr (in the third argument). The second bool is true if the
+// adjustment is unique.
 fn autoref_object_region(autoref: &AutoRef) -> (bool, bool, Option<Region>) {
-    fn unsize_kind_region(k: &UnsizeKind) -> (bool, bool, Option<Region>) {
+    fn unsize_kind_is_object(k: &UnsizeKind) -> bool {
         match k {
-            &UnsizeVtable(..) => (true, false, None),
-            &UnsizeStruct(box ref k, _) => unsize_kind_region(k),
-            _ => (false, false, None)
+            &UnsizeVtable(..) => true,
+            &UnsizeStruct(box ref k, _) => unsize_kind_is_object(k),
+            _ => false
         }
     }
 
     match autoref {
-        &AutoUnsize(ref k) => unsize_kind_region(k),
-        &AutoUnsizeUniq(ref k) => match k {
-            &UnsizeVtable(..) => (true, true, None),
-            _ => (false, false, None)
-        },
+        &AutoUnsize(ref k) => (unsize_kind_is_object(k), false, None),
+        &AutoUnsizeUniq(ref k) => (unsize_kind_is_object(k), true, None),
         &AutoPtr(adj_r, _, Some(box ref autoref)) => {
             let (b, u, r) = autoref_object_region(autoref);
             if r.is_some() || u {
@@ -407,6 +404,8 @@ pub struct TransmuteRestriction {
     pub from: t,
     /// The type being transmuted to.
     pub to: t,
+    /// NodeIf of the transmute intrinsic.
+    pub id: ast::NodeId,
 }
 
 /// The data structure to keep track of all the information that typechecker
@@ -1765,7 +1764,7 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
     }
     match get(ty).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-        ty_str | ty_infer(_) | ty_param(_) | ty_unboxed_closure(_) | ty_err => {}
+        ty_str | ty_infer(_) | ty_param(_) | ty_unboxed_closure(_, _) | ty_err => {}
         ty_box(ty) | ty_uniq(ty) | ty_vec(ty, _) | ty_open(ty) => maybe_walk_ty(ty, f),
         ty_ptr(ref tm) | ty_rptr(_, ref tm) => {
             maybe_walk_ty(tm.ty, f);
@@ -2941,12 +2940,12 @@ pub fn unsized_part_of_type(cx: &ctxt, ty: t) -> t {
         ty_str | ty_trait(..) | ty_vec(..) => ty,
         ty_struct(_, ref substs) => {
             // Exactly one of the type parameters must be unsized.
-            for tp in substs.types.get_vec(subst::TypeSpace).iter() {
+            for tp in substs.types.get_slice(subst::TypeSpace).iter() {
                 if !type_is_sized(cx, *tp) {
                     return unsized_part_of_type(cx, *tp);
                 }
             }
-            fail!("Unsized struct type with no unsized type params?");
+            fail!("Unsized struct type with no unsized type params? {}", ty_to_string(cx, ty));
         }
         _ => {
             assert!(type_is_sized(cx, ty),
@@ -2990,11 +2989,21 @@ pub fn deref(t: t, explicit: bool) -> Option<mt> {
     }
 }
 
+pub fn deref_or_dont(t: t) -> t {
+    match get(t).sty {
+        ty_box(ty) | ty_uniq(ty) => {
+            ty
+        },
+        ty_rptr(_, mt) | ty_ptr(mt) => mt.ty,
+        _ => t
+    }
+}
+
 pub fn close_type(cx: &ctxt, t: t) -> t {
     match get(t).sty {
         ty_open(t) => mk_rptr(cx, ReStatic, mt {ty: t, mutbl:ast::MutImmutable}),
         _ => cx.sess.bug(format!("Trying to close a non-open type {}",
-                                 ty_to_str(cx, t)).as_slice())
+                                 ty_to_string(cx, t)).as_slice())
     }
 }
 
@@ -3027,9 +3036,9 @@ pub fn index(ty: t) -> Option<t> {
 // This is exactly the same as the above, except it supports strings,
 // which can't actually be indexed.
 pub fn array_element_ty(t: t) -> Option<t> {
-    match get(ty).sty {
+    match get(t).sty {
         ty_vec(t, _) => Some(t),
-        ty_str => Some(ty: mk_u8()),
+        ty_str => Some(mk_u8()),
         _ => None
     }
 }
@@ -3361,20 +3370,19 @@ pub fn unsize_ty(cx: &ctxt,
             }
             _ => cx.sess.span_bug(span,
                                   format!("UnsizeLength with bad sty: {}",
-                                          ty_to_str(cx, ty)).as_slice())
+                                          ty_to_string(cx, ty)).as_slice())
         },
         &UnsizeStruct(box ref k, tp_index) => match get(ty).sty {
             ty_struct(did, ref substs) => {
-                let ty_substs = substs.types.get_vec(subst::TypeSpace);
-                let old_ty = ty_substs.get(tp_index);
-                let new_ty = unsize_ty(cx, *old_ty, k, span);
+                let ty_substs = substs.types.get_slice(subst::TypeSpace);
+                let new_ty = unsize_ty(cx, ty_substs[tp_index], k, span);
                 let mut unsized_substs = substs.clone();
-                *unsized_substs.types.get_mut_vec(subst::TypeSpace).get_mut(tp_index) = new_ty;
+                unsized_substs.types.get_mut_slice(subst::TypeSpace)[tp_index] = new_ty;
                 mk_struct(cx, did, unsized_substs)
             }
             _ => cx.sess.span_bug(span,
                                   format!("UnsizeStruct with bad sty: {}",
-                                          ty_to_str(cx, ty)).as_slice())
+                                          ty_to_string(cx, ty)).as_slice())
         },
         &UnsizeVtable(bounds, def_id, ref substs) => {
             mk_trait(cx, def_id, substs.clone(), bounds)
@@ -5333,6 +5341,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_tup(_) |
             ty_param(_) |
             ty_infer(_) |
+            ty_open(_) |
             ty_err => {}
         }
     })

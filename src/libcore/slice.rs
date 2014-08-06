@@ -1649,6 +1649,27 @@ impl<'a,T:PartialEq, V: Slice<T>> Equiv<V> for &'a [T] {
 }
 
 #[unstable = "waiting for DST"]
+impl<'a,T:PartialEq> PartialEq for &'a mut [T] {
+    fn eq(&self, other: & &'a mut [T]) -> bool {
+        self.len() == other.len() &&
+        order::eq(self.iter(), other.iter())
+    }
+    fn ne(&self, other: & &'a mut [T]) -> bool {
+        self.len() != other.len() ||
+        order::ne(self.iter(), other.iter())
+    }
+}
+
+#[unstable = "waiting for DST"]
+impl<'a,T:Eq> Eq for &'a mut [T] {}
+
+#[unstable = "waiting for DST"]
+impl<'a,T:PartialEq, V: Slice<T>> Equiv<V> for &'a mut [T] {
+    #[inline]
+    fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
+}
+
+#[unstable = "waiting for DST"]
 impl<'a,T:Ord> Ord for &'a [T] {
     fn cmp(&self, other: & &'a [T]) -> Ordering {
         order::cmp(self.iter(), other.iter())

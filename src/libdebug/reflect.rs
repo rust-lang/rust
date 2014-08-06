@@ -251,7 +251,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
     #[cfg(not(stage0))]
     fn visit_evec_fixed(&mut self, n: uint, sz: uint, align: uint,
-                        inner: *TyDesc) -> bool {
+                        inner: *const TyDesc) -> bool {
         self.align(align);
         if ! self.inner.visit_evec_fixed(n, sz, align, inner) {
             return false;

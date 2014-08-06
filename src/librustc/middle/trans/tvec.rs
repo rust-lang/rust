@@ -17,6 +17,7 @@ use middle::lang_items::StrDupUniqFnLangItem;
 use middle::trans::base::*;
 use middle::trans::base;
 use middle::trans::build::*;
+use middle::trans::callee;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
@@ -162,7 +163,7 @@ pub fn trans_slice_vec<'a>(bcx: &'a Block<'a>,
     // Handle the &[...] case:
     let vt = vec_types_from_expr(bcx, content_expr);
     let count = elements_required(bcx, content_expr);
-    debug!("    vt={}, count={:?}", vt.to_str(ccx), count);
+    debug!("    vt={}, count={:?}", vt.to_string(ccx), count);
     let llcount = C_uint(ccx, count);
 
     let fixed_ty = ty::mk_vec(bcx.tcx(),
@@ -173,7 +174,8 @@ pub fn trans_slice_vec<'a>(bcx: &'a Block<'a>,
     let llfixed = if count == 0 {
         // Just create a zero-sized alloca to preserve
         // the non-null invariant of the inner slice ptr
-        base::arrayalloca(bcx, vt.llunit_ty, llcount)
+        let llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
+        BitCast(bcx, llfixed, llfixed_ty)
     } else {
         // Make a fixed-length backing array and allocate it on the stack.
         let llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
@@ -231,26 +233,55 @@ pub fn trans_uniq_vec<'a>(bcx: &'a Block<'a>,
                           content_expr: &ast::Expr)
                           -> DatumBlock<'a, Expr> {
     /*!
-     * ~[...] and "...".to_string() allocate boxes in the exchange heap and write
+     * Box<[...]> and "...".to_string() allocate boxes in the exchange heap and write
      * the array elements into them.
      */
 
-    debug!("trans_uniq_vec(vstore_expr={})", bcx.expr_to_string(uniq_expr));
+    debug!("trans_uniq_vec(uniq_expr={})", bcx.expr_to_string(uniq_expr));
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
 
+    // Handle "".to_string().
+    match content_expr.node {
+        ast::ExprLit(lit) => {
+            match lit.node {
+                ast::LitStr(ref s, _) => {
+                    let llptrval = C_cstr(ccx, (*s).clone(), false);
+                    let llptrval = PointerCast(bcx, llptrval, Type::i8p(ccx));
+                    let llsizeval = C_uint(ccx, s.get().len());
+                    let typ = ty::mk_uniq(bcx.tcx(), ty::mk_str(bcx.tcx()));
+                    let lldestval = rvalue_scratch_datum(bcx,
+                                                         typ,
+                                                         "");
+                    let alloc_fn = langcall(bcx,
+                                            Some(lit.span),
+                                            "",
+                                            StrDupUniqFnLangItem);
+                    let bcx = callee::trans_lang_call(
+                        bcx,
+                        alloc_fn,
+                        [ llptrval, llsizeval ],
+                        Some(expr::SaveIn(lldestval.val))).bcx;
+                    return DatumBlock::new(bcx, lldestval).to_expr_datumblock();
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+
     let vt = vec_types_from_expr(bcx, content_expr);
     let count = elements_required(bcx, content_expr);
-    debug!("    vt={}, count={:?}", vt.to_str(ccx), count);
+    debug!("    vt={}, count={:?}", vt.to_string(ccx), count);
     let vec_ty = node_id_type(bcx, uniq_expr.id);
 
     let unit_sz = nonzero_llsize_of(ccx, type_of::type_of(ccx, vt.unit_ty));
-    let fill = Mul(bcx, C_uint(ccx, count), unit_sz);
-    let alloc = if count < 4u {
-        Mul(bcx, C_int(ccx, 4), unit_sz)
+    let llcount = if count < 4u {
+        C_int(ccx, 4)
     } else {
-        fill
+        C_uint(ccx, count)
     };
+    let alloc = Mul(bcx, llcount, unit_sz);
     let llty_ptr = type_of::type_of(ccx, vt.unit_ty).ptr_to();
     let align = C_uint(ccx, 8);
     let Result { bcx: bcx, val: dataptr } = malloc_raw_dyn(bcx,
@@ -268,7 +299,7 @@ pub fn trans_uniq_vec<'a>(bcx: &'a Block<'a>,
                             dataptr, cleanup::HeapExchange, vt.unit_ty);
 
         debug!("    alloc_uniq_vec() returned dataptr={}, len={}",
-               bcx.val_to_str(dataptr), count);
+               bcx.val_to_string(dataptr), count);
 
         let bcx = write_content(bcx, &vt, uniq_expr,
                                 content_expr, SaveIn(dataptr));

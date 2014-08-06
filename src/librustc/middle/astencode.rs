@@ -1029,6 +1029,8 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
     }
 
     fn emit_autoref(&mut self, ecx: &e::EncodeContext, autoref: &ty::AutoRef) {
+        use serialize::Encoder;
+
         self.emit_enum("AutoRef", |this| {
             match autoref {
                 &ty::AutoPtr(r, m, None) => {
@@ -1067,6 +1069,8 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
     }
 
     fn emit_auto_deref_ref(&mut self, ecx: &e::EncodeContext, auto_deref_ref: &ty::AutoDerefRef) {
+        use serialize::Encoder;
+
         self.emit_struct("AutoDerefRef", 2, |this| {
             this.emit_struct_field("autoderefs", 0, |this| auto_deref_ref.autoderefs.encode(this));
             this.emit_struct_field("autoref", 1, |this| {
@@ -1081,6 +1085,8 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
     }
 
     fn emit_unsize_kind(&mut self, ecx: &e::EncodeContext, uk: &ty::UnsizeKind) {
+        use serialize::Encoder;
+
         self.emit_enum("UnsizeKind", |this| {
             match *uk {
                 ty::UnsizeLength(len) => {
@@ -1286,7 +1292,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             _ if ty::adjust_is_object(adjustment) => {
                 let method_call = MethodCall::autoobject(id);
                 for &method in tcx.method_map.borrow().find(&method_call).iter() {
-                    rbml_w.tag(c::tag_table_method_map, |ebml_w| {
+                    rbml_w.tag(c::tag_table_method_map, |rbml_w| {
                         rbml_w.id(id);
                         rbml_w.tag(c::tag_table_val, |rbml_w| {
                             encode_method_callee(ecx, rbml_w, method_call.adjustment, method)
@@ -1297,7 +1303,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                 for &dr in tcx.vtable_map.borrow().find(&method_call).iter() {
                     rbml_w.tag(c::tag_table_vtable_map, |rbml_w| {
                         rbml_w.id(id);
-                        rbml_w.tag(c::tag_table_val, |ebml_w| {
+                        rbml_w.tag(c::tag_table_val, |rbml_w| {
                             encode_vtable_res_with_key(ecx, rbml_w, method_call.adjustment, dr);
                         })
                     })
@@ -1336,7 +1342,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         rbml_w.tag(c::tag_table_adjustments, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_auto_adjustment(ecx, adj);
+                rbml_w.emit_auto_adjustment(ecx, adjustment);
             })
         })
     }

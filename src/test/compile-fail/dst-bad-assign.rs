@@ -10,7 +10,7 @@
 
 // Forbid assignment into a dynamically sized type.
 
-struct Fat<type T> {
+struct Fat<Sized? T> {
     f1: int,
     f2: &'static str,
     ptr: T
@@ -42,5 +42,5 @@ pub fn main() {
     // Assignment.
     let f5: &mut Fat<ToBar> = &mut Fat { f1: 5, f2: "some str", ptr: Bar1 {f :42} };
     let z: Box<ToBar> = box Bar1 {f: 36};
-    f5.ptr = Bar1 {f: 36}; //~ ERROR mismatched types: expected `ToBar` but found `Bar1`
+    f5.ptr = Bar1 {f: 36}; //~ ERROR mismatched types: expected `ToBar`, found `Bar1`
 }

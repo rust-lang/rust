@@ -1149,7 +1149,7 @@ fn check_cast(fcx: &FnCtxt,
     if ty::type_is_scalar(t_1) {
         // Supply the type as a hint so as to influence integer
         // literals and other things that might care.
-        check_expr_with_hint(fcx, e, t_1)
+        check_expr_with_expectation(fcx, e, ExpectCastableToType(t_1))
     } else {
         check_expr(fcx, e)
     }
@@ -2033,7 +2033,6 @@ fn check_argument_types(fcx: &FnCtxt,
                 }
 
                 check_expr_coercable_to_type(fcx, &**arg, formal_ty);
-
             }
         }
     }
@@ -2428,12 +2427,12 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 // 'else' branch.
                 let expected = match expected.only_has_type() {
                     ExpectHasType(ety) => {
-                        match infer::resolve_type(fcx.infcx(), ety, force_tvar) {
+                        match infer::resolve_type(fcx.infcx(), Some(sp), ety, force_tvar) {
                             Ok(rty) if !ty::type_is_ty_var(rty) => ExpectHasType(rty),
                             _ => NoExpectation
                         }
                     }
-                    None => None
+                    _ => NoExpectation
                 };
                 check_block_with_expected(fcx, then_blk, expected);
                 let then_ty = fcx.node_ty(then_blk.id);
@@ -3067,23 +3066,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
     type ExprCheckerWithTy = fn(&FnCtxt, &ast::Expr, ty::t);
 
-    fn check_fn_for_vec_elements_expected(fcx: &FnCtxt,
-                                          expected: Expectation)
-                                         -> (ExprCheckerWithTy, ty::t) {
-        let tcx = fcx.ccx.tcx;
-        let (coerce, t) = match expected {
-            // If we're given an expected type, we can try to coerce to it
-            ExpectHasType(t) if ty::type_is_vec(t) => (true, ty::sequence_element_type(tcx, t)),
-            // Otherwise we just leave the type to be resolved later
-            _ => (false, fcx.infcx().next_ty_var())
-        };
-        if coerce {
-            (check_expr_coercable_to_type, t)
-        } else {
-            (check_expr_has_type, t)
-        }
-    }
-
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
     match expr.node {
@@ -3157,7 +3139,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         }
       }
       ast::ExprUnary(unop, ref oprnd) => {
-        let expected = expected.only_has_type();
         let expected_inner = expected.map(fcx, |sty| {
             match unop {
                 ast::UnBox | ast::UnUniq => match *sty {
@@ -3328,7 +3309,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             }
           },
           Some(ref e) => {
-              //check_expr_has_type(fcx, e, ret_ty);
               check_expr_coercable_to_type(fcx, &**e, ret_ty);
           }
         }
@@ -3483,12 +3463,15 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         check_cast(fcx, &**e, &**t, id, expr.span);
       }
       ast::ExprVec(ref args) => {
-        let uty = unpack_expected(
-            fcx, expected,
-            |sty| match *sty {
-                ty::ty_vec(ty, _) => Some(ty),
-                _ => None
-        });
+        let uty = match expected {
+            ExpectHasType(uty) => {
+                match ty::get(uty).sty {
+                        ty::ty_vec(ty, _) => Some(ty),
+                        _ => None
+                }
+            }
+            _ => None
+        };
 
         let typ = match uty {
             Some(uty) => {
@@ -3512,12 +3495,15 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         check_expr_has_type(fcx, &**count_expr, ty::mk_uint());
         let count = ty::eval_repeat_count(fcx, &**count_expr);
 
-        let uty = unpack_expected(
-            fcx, expected,
-            |sty| match *sty {
-                ty::ty_vec(ty, _) => Some(ty),
-                _ => None
-        });
+        let uty = match expected {
+            ExpectHasType(uty) => {
+                match ty::get(uty).sty {
+                        ty::ty_vec(ty, _) => Some(ty),
+                        _ => None
+                }
+            }
+            _ => None
+        };
 
         let (element_ty, t) = match uty {
             Some(uty) => {
@@ -3552,17 +3538,14 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         let mut err_field = false;
 
         let elt_ts = elts.iter().enumerate().map(|(i, e)| {
-            let opt_hint = match flds {
-                Some(ref fs) if i < fs.len() => ExpectHasType(*fs.get(i)),
-                _ => NoExpectation
-            };
-            let t = match opt_hint {
-                ExpectHasType(ety) => {
+            let t = match flds {
+                Some(ref fs) if i < fs.len() => {
+                    let ety = *fs.get(i);
                     check_expr_coercable_to_type(fcx, &**e, ety);
                     ety
                 }
                 _ => {
-                    check_expr_with_expectation(fcx, &**e, opt_hint);
+                    check_expr_with_expectation(fcx, &**e, NoExpectation);
                     fcx.expr_ty(&**e)
                 }
             };
@@ -3942,42 +3925,42 @@ fn check_block_with_expected(fcx: &FnCtxt,
         }
         match blk.expr {
             None => if any_err {
-                fcx.write_error(blk.id);
-            }
-            else if any_bot {
-                fcx.write_bot(blk.id);
-            }
-            else  {
-                fcx.write_nil(blk.id);
-            },
-          Some(e) => {
-            if any_bot && !warned {
-                fcx.ccx
-                   .tcx
-                   .sess
-                   .add_lint(lint::builtin::UNREACHABLE_CODE,
-                             e.id,
-                             e.span,
-                             "unreachable expression".to_string());
-            }
-            let ety = match expected {
-                ExpectHasType(ety) => {
-                    check_expr_coercable_to_type(fcx, &*e, ety);
-                    ety
+                    fcx.write_error(blk.id);
                 }
-                _ => {
-                    check_expr_with_expectation(fcx, &*e, expected);
-                    fcx.expr_ty(e)
+                else if any_bot {
+                    fcx.write_bot(blk.id);
                 }
-            };
+                else  {
+                    fcx.write_nil(blk.id);
+                },
+            Some(e) => {
+                if any_bot && !warned {
+                    fcx.ccx
+                       .tcx
+                       .sess
+                       .add_lint(lint::builtin::UNREACHABLE_CODE,
+                                 e.id,
+                                 e.span,
+                                 "unreachable expression".to_string());
+                }
+                let ety = match expected {
+                    ExpectHasType(ety) => {
+                        check_expr_coercable_to_type(fcx, &*e, ety);
+                        ety
+                    }
+                    _ => {
+                        check_expr_with_expectation(fcx, &*e, expected);
+                        fcx.expr_ty(&*e)
+                    }
+                };
 
-            fcx.write_ty(blk.id, ety);
-            if any_err {
-                fcx.write_error(blk.id);
-            } else if any_bot {
-                fcx.write_bot(blk.id);
+                fcx.write_ty(blk.id, ety);
+                if any_err {
+                    fcx.write_error(blk.id);
+                } else if any_bot {
+                    fcx.write_bot(blk.id);
+                }
             }
-          }
         };
     });
 

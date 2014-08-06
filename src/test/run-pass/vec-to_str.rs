@@ -9,9 +9,9 @@
 // except according to those terms.
 
 pub fn main() {
-    assert_eq!((vec!(0, 1)).to_string(), "[0, 1]".to_string());
+    assert_eq!((vec!(0i, 1)).to_string(), "[0, 1]".to_string());
 
-    let foo = vec!(3, 4);
+    let foo = vec!(3i, 4);
     let bar: &[int] = &[4, 5];
 
     assert_eq!(foo.to_string(), "[3, 4]".to_string());

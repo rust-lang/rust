@@ -530,7 +530,10 @@ impl<T> Slice<T> for Option<T> {
     fn as_slice<'a>(&'a self) -> &'a [T] {
         match *self {
             Some(ref x) => slice::ref_slice(x),
-            None => &[]
+            None => {
+                let result: &[_] = &[];
+                result
+            }
         }
     }
 }

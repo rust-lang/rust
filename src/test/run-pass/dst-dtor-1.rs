@@ -8,24 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Attempt to change the mutability as well as unsizing.
-
-struct Fat<Sized? T> {
-    ptr: T
-}
+static mut DROP_RAN: bool = false;
 
 struct Foo;
-trait Bar {}
-impl Bar for Foo {}
+impl Drop for Foo {
+    fn drop(&mut self) {
+        unsafe { DROP_RAN = true; }
+    }
+}
+
+trait Trait {}
+impl Trait for Foo {}
+
+struct Fat<Sized? T> {
+    f: T
+}
 
 pub fn main() {
-    // With a vec of ints.
-    let f1 = Fat { ptr: [1, 2, 3] };
-    let f2: &Fat<[int, ..3]> = &f1;
-    let f3: &mut Fat<[int]> = f2; //~ ERROR cannot borrow immutable dereference
-
-    // With a trait.
-    let f1 = Fat { ptr: Foo };
-    let f2: &Fat<Foo> = &f1;
-    let f3: &mut Fat<Bar> = f2; //~ ERROR cannot borrow immutable dereference
+    {
+        let _x: Box<Fat<Trait>> = box Fat { f: Foo };
+    }
+    unsafe {
+        assert!(DROP_RAN);
+    }
 }
