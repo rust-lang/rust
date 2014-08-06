@@ -118,6 +118,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                             ty::MethodTraitItem(method) => {
                                 self.check_def_id(method.def_id);
                             }
+                            ty::TypeTraitItem(typedef) => {
+                                self.check_def_id(typedef.def_id);
+                            }
                         }
                     }
                 }
@@ -226,6 +229,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     ast::MethodImplItem(ref method) => {
                         visit::walk_block(self, method.pe_body());
                     }
+                    ast::TypeImplItem(_) => {}
                 }
             }
             ast_map::NodeForeignItem(foreign_item) => {
@@ -341,6 +345,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
                         ast::MethodImplItem(ref method) => {
                             self.worklist.push(method.id);
                         }
+                        ast::TypeImplItem(_) => {}
                     }
                 }
             }
@@ -544,7 +549,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
             ast::ProvidedMethod(ref method) => {
                 visit::walk_block(self, &*method.pe_body())
             }
-            ast::RequiredMethod(_) => ()
+            ast::RequiredMethod(_) => {}
+            ast::TypeTraitItem(_) => {}
         }
     }
 }

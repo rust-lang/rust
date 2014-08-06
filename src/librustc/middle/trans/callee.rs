@@ -203,7 +203,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 datum_callee(bcx, ref_expr)
             }
             def::DefMod(..) | def::DefForeignMod(..) | def::DefTrait(..) |
-            def::DefTy(..) | def::DefPrimTy(..) |
+            def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
             def::DefUse(..) | def::DefTyParamBinder(..) |
             def::DefRegion(..) | def::DefLabel(..) | def::DefTyParam(..) |
             def::DefSelfTy(..) | def::DefMethod(..) => {
@@ -457,6 +457,10 @@ pub fn trans_fn_ref_with_substs(
                            first_subst.repr(tcx), new_substs.repr(tcx));
 
                     (true, source_id, new_substs)
+                }
+                ty::TypeTraitItem(_) => {
+                    bcx.tcx().sess.bug("trans_fn_ref_with_vtables() tried \
+                                        to translate an associated type?!")
                 }
             }
         }

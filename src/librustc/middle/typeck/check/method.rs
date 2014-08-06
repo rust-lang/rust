@@ -226,6 +226,7 @@ fn get_method_index(tcx: &ty::ctxt,
             for trait_item in trait_items.iter() {
                 match *trait_item {
                     ty::MethodTraitItem(_) => method_count += 1,
+                    ty::TypeTraitItem(_) => {}
                 }
             }
             true
@@ -531,6 +532,11 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                                                                .clone();
         let method = match trait_item {
             ty::MethodTraitItem(method) => method,
+            ty::TypeTraitItem(_) => {
+                self.tcx().sess.bug(
+                    "push_unboxed_closure_call_candidates_if_applicable(): \
+                     unexpected associated type in function trait")
+            }
         };
 
         // Make sure it has the right name!
@@ -730,11 +736,16 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                         m.explicit_self != ty::StaticExplicitSelfCategory &&
                         m.ident.name == self.m_name
                     }
+                    ty::TypeTraitItem(_) => false,
                 }
             }) {
                 Some(pos) => {
                     let method = match *trait_items.get(pos) {
                         ty::MethodTraitItem(ref method) => (*method).clone(),
+                        ty::TypeTraitItem(_) => {
+                            tcx.sess.bug("typechecking associated type as \
+                                          though it were a method")
+                        }
                     };
 
                     match mk_cand(self,
@@ -812,7 +823,10 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                                          m.ident().name == self.m_name
                                      }) {
             Some(ty::MethodTraitItem(method)) => method,
-            None => { return; } // No method with the right name.
+            Some(ty::TypeTraitItem(_)) | None => {
+                // No method with the right name.
+                return
+            }
         };
 
         // determine the `self` of the impl with fresh
@@ -1575,7 +1589,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                     // If we're reporting statics, we want to report the trait
                     // definition if possible, rather than an impl
                     match ty::trait_item_of_item(self.tcx(), impl_did) {
-                        None => {
+                        None | Some(TypeTraitItemId(_)) => {
                             debug!("(report candidate) No trait method \
                                     found");
                             impl_did

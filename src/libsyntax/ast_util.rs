@@ -213,6 +213,62 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
     token::gensym_ident(pretty.as_slice())
 }
 
+pub fn trait_method_to_ty_method(method: &Method) -> TypeMethod {
+    match method.node {
+        MethDecl(ident,
+                 ref generics,
+                 abi,
+                 ref explicit_self,
+                 fn_style,
+                 ref decl,
+                 _,
+                 vis) => {
+            TypeMethod {
+                ident: ident,
+                attrs: method.attrs.clone(),
+                fn_style: fn_style,
+                decl: (*decl).clone(),
+                generics: generics.clone(),
+                explicit_self: (*explicit_self).clone(),
+                id: method.id,
+                span: method.span,
+                vis: vis,
+                abi: abi,
+            }
+        },
+        MethMac(_) => fail!("expected non-macro method declaration")
+    }
+}
+
+/// extract a TypeMethod from a TraitItem. if the TraitItem is
+/// a default, pull out the useful fields to make a TypeMethod
+//
+// NB: to be used only after expansion is complete, and macros are gone.
+pub fn trait_item_to_ty_method(method: &TraitItem) -> TypeMethod {
+    match *method {
+        RequiredMethod(ref m) => (*m).clone(),
+        ProvidedMethod(ref m) => trait_method_to_ty_method(&**m),
+        TypeTraitItem(_) => {
+            fail!("trait_method_to_ty_method(): expected method but found \
+                   typedef")
+        }
+    }
+}
+
+pub fn split_trait_methods(trait_methods: &[TraitItem])
+                           -> (Vec<TypeMethod>, Vec<P<Method>> ) {
+    let mut reqd = Vec::new();
+    let mut provd = Vec::new();
+    for trt_method in trait_methods.iter() {
+        match *trt_method {
+            RequiredMethod(ref tm) => reqd.push((*tm).clone()),
+            ProvidedMethod(ref m) => provd.push((*m).clone()),
+            TypeTraitItem(_) => {}
+        }
+    };
+    (reqd, provd)
+}
+
 pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
     match field.node.kind {
         ast::NamedField(_, v) | ast::UnnamedField(v) => v
@@ -471,6 +527,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         match *tm {
             ast::RequiredMethod(ref m) => self.operation.visit_id(m.id),
             ast::ProvidedMethod(ref m) => self.operation.visit_id(m.id),
+            ast::TypeTraitItem(ref typ) => self.operation.visit_id(typ.id),
         }
         visit::walk_trait_item(self, tm);
     }
