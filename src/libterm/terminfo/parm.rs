@@ -301,12 +301,12 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             SetVar => {
                 if cur >= 'A' && cur <= 'Z' {
                     if stack.len() > 0 {
-                        let idx = (cur as u8) - ('A' as u8);
+                        let idx = (cur as u8) - b'A';
                         vars.sta[idx as uint] = stack.pop().unwrap();
                     } else { return Err("stack is empty".to_string()) }
                 } else if cur >= 'a' && cur <= 'z' {
                     if stack.len() > 0 {
-                        let idx = (cur as u8) - ('a' as u8);
+                        let idx = (cur as u8) - b'a';
                         vars.dyn[idx as uint] = stack.pop().unwrap();
                     } else { return Err("stack is empty".to_string()) }
                 } else {
@@ -315,10 +315,10 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             },
             GetVar => {
                 if cur >= 'A' && cur <= 'Z' {
-                    let idx = (cur as u8) - ('A' as u8);
+                    let idx = (cur as u8) - b'A';
                     stack.push(vars.sta[idx as uint].clone());
                 } else if cur >= 'a' && cur <= 'z' {
-                    let idx = (cur as u8) - ('a' as u8);
+                    let idx = (cur as u8) - b'a';
                     stack.push(vars.dyn[idx as uint].clone());
                 } else {
                     return Err("bad variable name in %g".to_string());
@@ -505,26 +505,25 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
             if flags.precision > s.len() {
                 let mut s_ = Vec::with_capacity(flags.precision);
                 let n = flags.precision - s.len();
-                s_.grow(n, &('0' as u8));
+                s_.grow(n, &b'0');
                 s_.push_all_move(s);
                 s = s_;
             }
             assert!(!s.is_empty(), "string conversion produced empty result");
             match op {
                 FormatDigit => {
-                    if flags.space && !(s[0] == '-' as u8 ||
-                                        s[0] == '+' as u8) {
-                        s.insert(0, ' ' as u8);
+                    if flags.space && !(s[0] == b'-' || s[0] == b'+' ) {
+                        s.insert(0, b' ');
                     }
                 }
                 FormatOctal => {
-                    if flags.alternate && s[0] != '0' as u8 {
-                        s.insert(0, '0' as u8);
+                    if flags.alternate && s[0] != b'0' {
+                        s.insert(0, b'0');
                     }
                 }
                 FormatHex => {
                     if flags.alternate {
-                        let s_ = replace(&mut s, vec!('0' as u8, 'x' as u8));
+                        let s_ = replace(&mut s, vec!(b'0', b'x'));
                         s.push_all_move(s_);
                     }
                 }
@@ -536,7 +535,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                          .move_iter()
                          .collect();
                     if flags.alternate {
-                        let s_ = replace(&mut s, vec!('0' as u8, 'X' as u8));
+                        let s_ = replace(&mut s, vec!(b'0', b'X'));
                         s.push_all_move(s_);
                     }
                 }
@@ -563,10 +562,10 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
     if flags.width > s.len() {
         let n = flags.width - s.len();
         if flags.left {
-            s.grow(n, &(' ' as u8));
+            s.grow(n, &b' ');
         } else {
             let mut s_ = Vec::with_capacity(flags.width);
-            s_.grow(n, &(' ' as u8));
+            s_.grow(n, &b' ');
             s_.push_all_move(s);
             s = s_;
         }
@@ -655,15 +654,15 @@ mod test {
             let s = format!("%{{1}}%{{2}}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), vec!('0' as u8 + bs[0]));
+            assert_eq!(res.unwrap(), vec!(b'0' + bs[0]));
             let s = format!("%{{1}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), vec!('0' as u8 + bs[1]));
+            assert_eq!(res.unwrap(), vec!(b'0' + bs[1]));
             let s = format!("%{{2}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), vec!('0' as u8 + bs[2]));
+            assert_eq!(res.unwrap(), vec!(b'0' + bs[2]));
         }
     }
 
