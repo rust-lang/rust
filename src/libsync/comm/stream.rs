@@ -26,7 +26,7 @@ use rustrt::local::Local;
 use rustrt::task::{Task, BlockedTask};
 use rustrt::thread::Thread;
 
-use atomics;
+use atomic;
 use comm::Receiver;
 use spsc = spsc_queue;
 
@@ -39,11 +39,11 @@ static MAX_STEALS: int = 1 << 20;
 pub struct Packet<T> {
     queue: spsc::Queue<Message<T>>, // internal queue for all message
 
-    cnt: atomics::AtomicInt, // How many items are on this channel
+    cnt: atomic::AtomicInt, // How many items are on this channel
     steals: int, // How many times has a port received without blocking?
-    to_wake: atomics::AtomicUint, // Task to wake up
+    to_wake: atomic::AtomicUint, // Task to wake up
 
-    port_dropped: atomics::AtomicBool, // flag if the channel has been destroyed.
+    port_dropped: atomic::AtomicBool, // flag if the channel has been destroyed.
 }
 
 pub enum Failure<T> {
@@ -76,11 +76,11 @@ impl<T: Send> Packet<T> {
         Packet {
             queue: unsafe { spsc::Queue::new(128) },
 
-            cnt: atomics::AtomicInt::new(0),
+            cnt: atomic::AtomicInt::new(0),
             steals: 0,
-            to_wake: atomics::AtomicUint::new(0),
+            to_wake: atomic::AtomicUint::new(0),
 
-            port_dropped: atomics::AtomicBool::new(false),
+            port_dropped: atomic::AtomicBool::new(false),
         }
     }
 
@@ -89,7 +89,7 @@ impl<T: Send> Packet<T> {
         // If the other port has deterministically gone away, then definitely
         // must return the data back up the stack. Otherwise, the data is
         // considered as being sent.
-        if self.port_dropped.load(atomics::SeqCst) { return Err(t) }
+        if self.port_dropped.load(atomic::SeqCst) { return Err(t) }
 
         match self.do_send(Data(t)) {
             UpSuccess | UpDisconnected => {},
@@ -100,14 +100,14 @@ impl<T: Send> Packet<T> {
     pub fn upgrade(&mut self, up: Receiver<T>) -> UpgradeResult {
         // If the port has gone away, then there's no need to proceed any
         // further.
-        if self.port_dropped.load(atomics::SeqCst) { return UpDisconnected }
+        if self.port_dropped.load(atomic::SeqCst) { return UpDisconnected }
 
         self.do_send(GoUp(up))
     }
 
     fn do_send(&mut self, t: Message<T>) -> UpgradeResult {
         self.queue.push(t);
-        match self.cnt.fetch_add(1, atomics::SeqCst) {
+        match self.cnt.fetch_add(1, atomic::SeqCst) {
             // As described in the mod's doc comment, -1 == wakeup
             -1 => UpWoke(self.take_to_wake()),
             // As as described before, SPSC queues must be >= -2
@@ -121,7 +121,7 @@ impl<T: Send> Packet<T> {
             // will never remove this data. We can only have at most one item to
             // drain (the port drains the rest).
             DISCONNECTED => {
-                self.cnt.store(DISCONNECTED, atomics::SeqCst);
+                self.cnt.store(DISCONNECTED, atomic::SeqCst);
                 let first = self.queue.pop();
                 let second = self.queue.pop();
                 assert!(second.is_none());
@@ -140,8 +140,8 @@ impl<T: Send> Packet<T> {
 
     // Consumes ownership of the 'to_wake' field.
     fn take_to_wake(&mut self) -> BlockedTask {
-        let task = self.to_wake.load(atomics::SeqCst);
-        self.to_wake.store(0, atomics::SeqCst);
+        let task = self.to_wake.load(atomic::SeqCst);
+        self.to_wake.store(0, atomic::SeqCst);
         assert!(task != 0);
         unsafe { BlockedTask::cast_from_uint(task) }
     }
@@ -150,15 +150,15 @@ impl<T: Send> Packet<T> {
     // back if it shouldn't sleep. Note that this is the location where we take
     // steals into account.
     fn decrement(&mut self, task: BlockedTask) -> Result<(), BlockedTask> {
-        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+        assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
         let n = unsafe { task.cast_to_uint() };
-        self.to_wake.store(n, atomics::SeqCst);
+        self.to_wake.store(n, atomic::SeqCst);
 
         let steals = self.steals;
         self.steals = 0;
 
-        match self.cnt.fetch_sub(1 + steals, atomics::SeqCst) {
-            DISCONNECTED => { self.cnt.store(DISCONNECTED, atomics::SeqCst); }
+        match self.cnt.fetch_sub(1 + steals, atomic::SeqCst) {
+            DISCONNECTED => { self.cnt.store(DISCONNECTED, atomic::SeqCst); }
             // If we factor in our steals and notice that the channel has no
             // data, we successfully sleep
             n => {
@@ -167,7 +167,7 @@ impl<T: Send> Packet<T> {
             }
         }
 
-        self.to_wake.store(0, atomics::SeqCst);
+        self.to_wake.store(0, atomic::SeqCst);
         Err(unsafe { BlockedTask::cast_from_uint(n) })
     }
 
@@ -214,9 +214,9 @@ impl<T: Send> Packet<T> {
             // adding back in whatever we couldn't factor into steals.
             Some(data) => {
                 if self.steals > MAX_STEALS {
-                    match self.cnt.swap(0, atomics::SeqCst) {
+                    match self.cnt.swap(0, atomic::SeqCst) {
                         DISCONNECTED => {
-                            self.cnt.store(DISCONNECTED, atomics::SeqCst);
+                            self.cnt.store(DISCONNECTED, atomic::SeqCst);
                         }
                         n => {
                             let m = cmp::min(n, self.steals);
@@ -234,7 +234,7 @@ impl<T: Send> Packet<T> {
             }
 
             None => {
-                match self.cnt.load(atomics::SeqCst) {
+                match self.cnt.load(atomic::SeqCst) {
                     n if n != DISCONNECTED => Err(Empty),
 
                     // This is a little bit of a tricky case. We failed to pop
@@ -263,7 +263,7 @@ impl<T: Send> Packet<T> {
     pub fn drop_chan(&mut self) {
         // Dropping a channel is pretty simple, we just flag it as disconnected
         // and then wakeup a blocker if there is one.
-        match self.cnt.swap(DISCONNECTED, atomics::SeqCst) {
+        match self.cnt.swap(DISCONNECTED, atomic::SeqCst) {
             -1 => { self.take_to_wake().wake().map(|t| t.reawaken()); }
             DISCONNECTED => {}
             n => { assert!(n >= 0); }
@@ -290,7 +290,7 @@ impl<T: Send> Packet<T> {
         // sends are gated on this flag, so we're immediately guaranteed that
         // there are a bounded number of active sends that we'll have to deal
         // with.
-        self.port_dropped.store(true, atomics::SeqCst);
+        self.port_dropped.store(true, atomic::SeqCst);
 
         // Now that we're guaranteed to deal with a bounded number of senders,
         // we need to drain the queue. This draining process happens atomically
@@ -303,7 +303,7 @@ impl<T: Send> Packet<T> {
         let mut steals = self.steals;
         while {
             let cnt = self.cnt.compare_and_swap(
-                            steals, DISCONNECTED, atomics::SeqCst);
+                            steals, DISCONNECTED, atomic::SeqCst);
             cnt != DISCONNECTED && cnt != steals
         } {
             loop {
@@ -348,9 +348,9 @@ impl<T: Send> Packet<T> {
 
     // increment the count on the channel (used for selection)
     fn bump(&mut self, amt: int) -> int {
-        match self.cnt.fetch_add(amt, atomics::SeqCst) {
+        match self.cnt.fetch_add(amt, atomic::SeqCst) {
             DISCONNECTED => {
-                self.cnt.store(DISCONNECTED, atomics::SeqCst);
+                self.cnt.store(DISCONNECTED, atomic::SeqCst);
                 DISCONNECTED
             }
             n => n
@@ -400,7 +400,7 @@ impl<T: Send> Packet<T> {
         // of time until the data is actually sent.
         if was_upgrade {
             assert_eq!(self.steals, 0);
-            assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+            assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
             return Ok(true)
         }
 
@@ -413,7 +413,7 @@ impl<T: Send> Packet<T> {
         // If we were previously disconnected, then we know for sure that there
         // is no task in to_wake, so just keep going
         let has_data = if prev == DISCONNECTED {
-            assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+            assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
             true // there is data, that data is that we're disconnected
         } else {
             let cur = prev + steals + 1;
@@ -436,7 +436,7 @@ impl<T: Send> Packet<T> {
             if prev < 0 {
                 self.take_to_wake().trash();
             } else {
-                while self.to_wake.load(atomics::SeqCst) != 0 {
+                while self.to_wake.load(atomic::SeqCst) != 0 {
                     Thread::yield_now();
                 }
             }
@@ -475,7 +475,7 @@ impl<T: Send> Drop for Packet<T> {
         // disconnection, but also a proper fence before the read of
         // `to_wake`, so this assert cannot be removed with also removing
         // the `to_wake` assert.
-        assert_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
-        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+        assert_eq!(self.cnt.load(atomic::SeqCst), DISCONNECTED);
+        assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
     }
 }

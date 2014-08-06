@@ -37,7 +37,7 @@
 
 use core::prelude::*;
 
-use core::atomics;
+use core::atomic;
 use core::mem;
 use core::cell::UnsafeCell;
 
@@ -45,16 +45,16 @@ use core::cell::UnsafeCell;
 // initialization.
 
 pub struct Node<T> {
-    pub next: atomics::AtomicUint,
+    pub next: atomic::AtomicUint,
     pub data: T,
 }
 
 pub struct DummyNode {
-    pub next: atomics::AtomicUint,
+    pub next: atomic::AtomicUint,
 }
 
 pub struct Queue<T> {
-    pub head: atomics::AtomicUint,
+    pub head: atomic::AtomicUint,
     pub tail: UnsafeCell<*mut Node<T>>,
     pub stub: DummyNode,
 }
@@ -62,26 +62,26 @@ pub struct Queue<T> {
 impl<T: Send> Queue<T> {
     pub fn new() -> Queue<T> {
         Queue {
-            head: atomics::AtomicUint::new(0),
+            head: atomic::AtomicUint::new(0),
             tail: UnsafeCell::new(0 as *mut Node<T>),
             stub: DummyNode {
-                next: atomics::AtomicUint::new(0),
+                next: atomic::AtomicUint::new(0),
             },
         }
     }
 
     pub unsafe fn push(&self, node: *mut Node<T>) {
-        (*node).next.store(0, atomics::Release);
-        let prev = self.head.swap(node as uint, atomics::AcqRel);
+        (*node).next.store(0, atomic::Release);
+        let prev = self.head.swap(node as uint, atomic::AcqRel);
 
         // Note that this code is slightly modified to allow static
         // initialization of these queues with rust's flavor of static
         // initialization.
         if prev == 0 {
-            self.stub.next.store(node as uint, atomics::Release);
+            self.stub.next.store(node as uint, atomic::Release);
         } else {
             let prev = prev as *mut Node<T>;
-            (*prev).next.store(node as uint, atomics::Release);
+            (*prev).next.store(node as uint, atomic::Release);
         }
     }
 
@@ -103,26 +103,26 @@ impl<T: Send> Queue<T> {
         let mut tail = if !tail.is_null() {tail} else {
             mem::transmute(&self.stub)
         };
-        let mut next = (*tail).next(atomics::Relaxed);
+        let mut next = (*tail).next(atomic::Relaxed);
         if tail as uint == &self.stub as *const DummyNode as uint {
             if next.is_null() {
                 return None;
             }
             *self.tail.get() = next;
             tail = next;
-            next = (*next).next(atomics::Relaxed);
+            next = (*next).next(atomic::Relaxed);
         }
         if !next.is_null() {
             *self.tail.get() = next;
             return Some(tail);
         }
-        let head = self.head.load(atomics::Acquire) as *mut Node<T>;
+        let head = self.head.load(atomic::Acquire) as *mut Node<T>;
         if tail != head {
             return None;
         }
         let stub = mem::transmute(&self.stub);
         self.push(stub);
-        next = (*tail).next(atomics::Relaxed);
+        next = (*tail).next(atomic::Relaxed);
         if !next.is_null() {
             *self.tail.get() = next;
             return Some(tail);
@@ -135,10 +135,10 @@ impl<T: Send> Node<T> {
     pub fn new(t: T) -> Node<T> {
         Node {
             data: t,
-            next: atomics::AtomicUint::new(0),
+            next: atomic::AtomicUint::new(0),
         }
     }
-    pub unsafe fn next(&self, ord: atomics::Ordering) -> *mut Node<T> {
+    pub unsafe fn next(&self, ord: atomic::Ordering) -> *mut Node<T> {
         mem::transmute::<uint, *mut Node<T>>(self.next.load(ord))
     }
 }

@@ -46,7 +46,7 @@ use alloc::boxed::Box;
 use core::mem;
 use core::cell::UnsafeCell;
 
-use atomics::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
+use atomic::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
 
 /// A result of the `pop` function.
 pub enum PopResult<T> {

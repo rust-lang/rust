@@ -16,7 +16,7 @@
 use core::prelude::*;
 
 use core::int;
-use core::atomics;
+use core::atomic;
 
 use mutex::{StaticMutex, MUTEX_INIT};
 
@@ -40,15 +40,15 @@ use mutex::{StaticMutex, MUTEX_INIT};
 /// ```
 pub struct Once {
     mutex: StaticMutex,
-    cnt: atomics::AtomicInt,
-    lock_cnt: atomics::AtomicInt,
+    cnt: atomic::AtomicInt,
+    lock_cnt: atomic::AtomicInt,
 }
 
 /// Initialization value for static `Once` values.
 pub static ONCE_INIT: Once = Once {
     mutex: MUTEX_INIT,
-    cnt: atomics::INIT_ATOMIC_INT,
-    lock_cnt: atomics::INIT_ATOMIC_INT,
+    cnt: atomic::INIT_ATOMIC_INT,
+    lock_cnt: atomic::INIT_ATOMIC_INT,
 };
 
 impl Once {
@@ -63,7 +63,7 @@ impl Once {
     /// has run and completed (it may not be the closure specified).
     pub fn doit(&self, f: ||) {
         // Optimize common path: load is much cheaper than fetch_add.
-        if self.cnt.load(atomics::SeqCst) < 0 {
+        if self.cnt.load(atomic::SeqCst) < 0 {
             return
         }
 
@@ -94,11 +94,11 @@ impl Once {
         // calling `doit` will return immediately before the initialization has
         // completed.
 
-        let prev = self.cnt.fetch_add(1, atomics::SeqCst);
+        let prev = self.cnt.fetch_add(1, atomic::SeqCst);
         if prev < 0 {
             // Make sure we never overflow, we'll never have int::MIN
             // simultaneous calls to `doit` to make this value go back to 0
-            self.cnt.store(int::MIN, atomics::SeqCst);
+            self.cnt.store(int::MIN, atomic::SeqCst);
             return
         }
 
@@ -106,15 +106,15 @@ impl Once {
         // otherwise we run the job and record how many people will try to grab
         // this lock
         let guard = self.mutex.lock();
-        if self.cnt.load(atomics::SeqCst) > 0 {
+        if self.cnt.load(atomic::SeqCst) > 0 {
             f();
-            let prev = self.cnt.swap(int::MIN, atomics::SeqCst);
-            self.lock_cnt.store(prev, atomics::SeqCst);
+            let prev = self.cnt.swap(int::MIN, atomic::SeqCst);
+            self.lock_cnt.store(prev, atomic::SeqCst);
         }
         drop(guard);
 
         // Last one out cleans up after everyone else, no leaks!
-        if self.lock_cnt.fetch_add(-1, atomics::SeqCst) == 1 {
+        if self.lock_cnt.fetch_add(-1, atomic::SeqCst) == 1 {
             unsafe { self.mutex.destroy() }
         }
     }

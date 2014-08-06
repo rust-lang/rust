@@ -14,7 +14,7 @@ extern crate test;
 extern crate libc;
 
 mod any;
-mod atomics;
+mod atomic;
 mod cell;
 mod char;
 mod cmp;
