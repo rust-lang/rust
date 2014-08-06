@@ -21,6 +21,7 @@ use std::gc::Gc;
 use std::io::File;
 use std::rc::Rc;
 use std::str;
+use std::iter;
 
 pub mod lexer;
 pub mod parser;
@@ -327,7 +328,7 @@ pub fn str_lit(lit: &str) -> String {
     let error = |i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a>(it: &mut ::std::iter::Peekable<(uint, char), ::std::str::CharOffsets<'a>>) {
+    fn eat<'a>(it: &mut iter::Peekable<(uint, char), str::CharOffsets<'a>>) {
         loop {
             match it.peek().map(|x| x.val1()) {
                 Some(' ') | Some('\n') | Some('\r') | Some('\t') => {
@@ -471,35 +472,54 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
     // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
     let error = |i| format!("lexer should have rejected {} at {}", lit, i);
 
+    /// Eat everything up to a non-whitespace
+    fn eat<'a, I: Iterator<(uint, u8)>>(it: &mut iter::Peekable<(uint, u8), I>) {
+        loop {
+            match it.peek().map(|x| x.val1()) {
+                Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') => {
+                    it.next();
+                },
+                _ => { break; }
+            }
+        }
+    }
+
     // binary literals *must* be ASCII, but the escapes don't have to be
-    let mut chars = lit.as_bytes().iter().enumerate().peekable();
+    let mut chars = lit.bytes().enumerate().peekable();
     loop {
         match chars.next() {
-            Some((i, &c)) => {
-                if c == b'\\' {
-                    if *chars.peek().expect(error(i).as_slice()).val1() == b'\n' {
-                        loop {
-                            // eat everything up to a non-whitespace
-                            match chars.peek().map(|x| *x.val1()) {
-                                Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') => {
-                                    chars.next();
-                                },
-                                _ => { break; }
-                            }
+            Some((i, b'\\')) => {
+                let em = error(i);
+                match chars.peek().expect(em.as_slice()).val1() {
+                    b'\n' => eat(&mut chars),
+                    b'\r' => {
+                        chars.next();
+                        if chars.peek().expect(em.as_slice()).val1() != b'\n' {
+                            fail!("lexer accepted bare CR");
                         }
-                    } else {
+                        eat(&mut chars);
+                    }
+                    _ => {
                         // otherwise, a normal escape
                         let (c, n) = byte_lit(lit.slice_from(i));
-                        for _ in range(0, n - 1) { // we don't need to move past the first \
+                        // we don't need to move past the first \
+                        for _ in range(0, n - 1) {
                             chars.next();
                         }
                         res.push(c);
                     }
-                } else {
-                    res.push(c);
                 }
             },
-            None => { break; }
+            Some((i, b'\r')) => {
+                let em = error(i);
+                if chars.peek().expect(em.as_slice()).val1() != b'\n' {
+                    fail!("lexer accepted bare CR");
+                }
+                chars.next();
+                res.push(b'\n');
+            }
+            Some((_, c)) => res.push(c),
+            None => break,
         }
     }
 

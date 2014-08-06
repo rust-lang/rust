@@ -136,10 +136,11 @@ mod imp {
     use rand::Rng;
     use result::{Ok, Err};
     use rt::stack;
-    use self::libc::{c_ulong, DWORD, BYTE, LPCSTR, BOOL};
+    use self::libc::{DWORD, BYTE, LPCSTR, BOOL};
+    use self::libc::types::os::arch::extra::{LONG_PTR};
     use slice::MutableVector;
 
-    type HCRYPTPROV = c_ulong;
+    type HCRYPTPROV = LONG_PTR;
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
