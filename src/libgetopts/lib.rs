@@ -115,9 +115,9 @@ pub enum Name {
 pub enum HasArg {
     /// The option requires an argument.
     Yes,
-    /// The option is just a flag, therefore no argument.
+    /// The option takes no argument.
     No,
-    /// The option argument is optional and it could or not exist.
+    /// The option argument is optional.
     Maybe,
 }
 
@@ -126,9 +126,9 @@ pub enum HasArg {
 pub enum Occur {
     /// The option occurs once.
     Req,
-    /// The option could or not occur.
+    /// The option occurs at most once.
     Optional,
-    /// The option occurs once or multiple times.
+    /// The option occurs zero or more times.
     Multi,
 }
 
