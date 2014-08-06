@@ -120,6 +120,10 @@ code, pre {
     font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
     white-space: pre-wrap;
 }
+.docblock code {
+    background-color: #F5F5F5;
+    border-radius: 3px;
+}
 pre {
     background-color: #F5F5F5;
     padding: 14px;
