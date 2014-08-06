@@ -159,7 +159,7 @@ fn gen_text(n: uint) -> String {
                        .collect::<Vec<u8>>();
     for (i, b) in bytes.mut_iter().enumerate() {
         if i % 20 == 0 {
-            *b = '\n' as u8
+            *b = b'\n'
         }
     }
     String::from_utf8(bytes).unwrap()
