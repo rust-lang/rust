@@ -63,7 +63,7 @@ use alloc::boxed::Box;
 use collections::string::String;
 use collections::vec::Vec;
 use core::any::Any;
-use core::atomics;
+use core::atomic;
 use core::cmp;
 use core::fmt;
 use core::intrinsics;
@@ -91,16 +91,16 @@ pub type Callback = fn(msg: &Any + Send, file: &'static str, line: uint);
 //
 // For more information, see below.
 static MAX_CALLBACKS: uint = 16;
-static mut CALLBACKS: [atomics::AtomicUint, ..MAX_CALLBACKS] =
-        [atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
-         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
-         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
-         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
-         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
-         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
-         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
-         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT];
-static mut CALLBACK_CNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
+static mut CALLBACKS: [atomic::AtomicUint, ..MAX_CALLBACKS] =
+        [atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
+         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
+         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
+         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
+         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
+         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
+         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
+         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT];
+static mut CALLBACK_CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 
 impl Unwinder {
     pub fn new() -> Unwinder {
@@ -469,11 +469,11 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
     // callback. Additionally, CALLBACK_CNT may briefly be higher than
     // MAX_CALLBACKS, so we're sure to clamp it as necessary.
     let callbacks = unsafe {
-        let amt = CALLBACK_CNT.load(atomics::SeqCst);
+        let amt = CALLBACK_CNT.load(atomic::SeqCst);
         CALLBACKS.slice_to(cmp::min(amt, MAX_CALLBACKS))
     };
     for cb in callbacks.iter() {
-        match cb.load(atomics::SeqCst) {
+        match cb.load(atomic::SeqCst) {
             0 => {}
             n => {
                 let f: Callback = unsafe { mem::transmute(n) };
@@ -521,18 +521,18 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
 /// currently possible to unregister a callback once it has been registered.
 #[experimental]
 pub unsafe fn register(f: Callback) -> bool {
-    match CALLBACK_CNT.fetch_add(1, atomics::SeqCst) {
+    match CALLBACK_CNT.fetch_add(1, atomic::SeqCst) {
         // The invocation code has knowledge of this window where the count has
         // been incremented, but the callback has not been stored. We're
         // guaranteed that the slot we're storing into is 0.
         n if n < MAX_CALLBACKS => {
-            let prev = CALLBACKS[n].swap(mem::transmute(f), atomics::SeqCst);
+            let prev = CALLBACKS[n].swap(mem::transmute(f), atomic::SeqCst);
             rtassert!(prev == 0);
             true
         }
         // If we accidentally bumped the count too high, pull it back.
         _ => {
-            CALLBACK_CNT.store(MAX_CALLBACKS, atomics::SeqCst);
+            CALLBACK_CNT.store(MAX_CALLBACKS, atomic::SeqCst);
             false
         }
     }

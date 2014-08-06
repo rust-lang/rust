@@ -28,7 +28,7 @@ use rustrt::mutex::NativeMutex;
 use rustrt::task::{Task, BlockedTask};
 use rustrt::thread::Thread;
 
-use atomics;
+use atomic;
 use mpsc = mpsc_queue;
 
 static DISCONNECTED: int = int::MIN;
@@ -40,17 +40,17 @@ static MAX_STEALS: int = 1 << 20;
 
 pub struct Packet<T> {
     queue: mpsc::Queue<T>,
-    cnt: atomics::AtomicInt, // How many items are on this channel
+    cnt: atomic::AtomicInt, // How many items are on this channel
     steals: int, // How many times has a port received without blocking?
-    to_wake: atomics::AtomicUint, // Task to wake up
+    to_wake: atomic::AtomicUint, // Task to wake up
 
     // The number of channels which are currently using this packet.
-    channels: atomics::AtomicInt,
+    channels: atomic::AtomicInt,
 
     // See the discussion in Port::drop and the channel send methods for what
     // these are used for
-    port_dropped: atomics::AtomicBool,
-    sender_drain: atomics::AtomicInt,
+    port_dropped: atomic::AtomicBool,
+    sender_drain: atomic::AtomicInt,
 
     // this lock protects various portions of this implementation during
     // select()
@@ -68,12 +68,12 @@ impl<T: Send> Packet<T> {
     pub fn new() -> Packet<T> {
         let p = Packet {
             queue: mpsc::Queue::new(),
-            cnt: atomics::AtomicInt::new(0),
+            cnt: atomic::AtomicInt::new(0),
             steals: 0,
-            to_wake: atomics::AtomicUint::new(0),
-            channels: atomics::AtomicInt::new(2),
-            port_dropped: atomics::AtomicBool::new(false),
-            sender_drain: atomics::AtomicInt::new(0),
+            to_wake: atomic::AtomicUint::new(0),
+            channels: atomic::AtomicInt::new(2),
+            port_dropped: atomic::AtomicBool::new(false),
+            sender_drain: atomic::AtomicInt::new(0),
             select_lock: unsafe { NativeMutex::new() },
         };
         return p;
@@ -96,11 +96,11 @@ impl<T: Send> Packet<T> {
     pub fn inherit_blocker(&mut self, task: Option<BlockedTask>) {
         match task {
             Some(task) => {
-                assert_eq!(self.cnt.load(atomics::SeqCst), 0);
-                assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+                assert_eq!(self.cnt.load(atomic::SeqCst), 0);
+                assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
                 self.to_wake.store(unsafe { task.cast_to_uint() },
-                                   atomics::SeqCst);
-                self.cnt.store(-1, atomics::SeqCst);
+                                   atomic::SeqCst);
+                self.cnt.store(-1, atomic::SeqCst);
 
                 // This store is a little sketchy. What's happening here is
                 // that we're transferring a blocker from a oneshot or stream
@@ -138,7 +138,7 @@ impl<T: Send> Packet<T> {
 
     pub fn send(&mut self, t: T) -> Result<(), T> {
         // See Port::drop for what's going on
-        if self.port_dropped.load(atomics::SeqCst) { return Err(t) }
+        if self.port_dropped.load(atomic::SeqCst) { return Err(t) }
 
         // Note that the multiple sender case is a little trickier
         // semantically than the single sender case. The logic for
@@ -165,12 +165,12 @@ impl<T: Send> Packet<T> {
         // preflight check serves as the definitive "this will never be
         // received". Once we get beyond this check, we have permanently
         // entered the realm of "this may be received"
-        if self.cnt.load(atomics::SeqCst) < DISCONNECTED + FUDGE {
+        if self.cnt.load(atomic::SeqCst) < DISCONNECTED + FUDGE {
             return Err(t)
         }
 
         self.queue.push(t);
-        match self.cnt.fetch_add(1, atomics::SeqCst) {
+        match self.cnt.fetch_add(1, atomic::SeqCst) {
             -1 => {
                 self.take_to_wake().wake().map(|t| t.reawaken());
             }
@@ -187,9 +187,9 @@ impl<T: Send> Packet<T> {
             n if n < DISCONNECTED + FUDGE => {
                 // see the comment in 'try' for a shared channel for why this
                 // window of "not disconnected" is ok.
-                self.cnt.store(DISCONNECTED, atomics::SeqCst);
+                self.cnt.store(DISCONNECTED, atomic::SeqCst);
 
-                if self.sender_drain.fetch_add(1, atomics::SeqCst) == 0 {
+                if self.sender_drain.fetch_add(1, atomic::SeqCst) == 0 {
                     loop {
                         // drain the queue, for info on the thread yield see the
                         // discussion in try_recv
@@ -202,7 +202,7 @@ impl<T: Send> Packet<T> {
                         }
                         // maybe we're done, if we're not the last ones
                         // here, then we need to go try again.
-                        if self.sender_drain.fetch_sub(1, atomics::SeqCst) == 1 {
+                        if self.sender_drain.fetch_sub(1, atomic::SeqCst) == 1 {
                             break
                         }
                     }
@@ -242,15 +242,15 @@ impl<T: Send> Packet<T> {
 
     // Essentially the exact same thing as the stream decrement function.
     fn decrement(&mut self, task: BlockedTask) -> Result<(), BlockedTask> {
-        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+        assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
         let n = unsafe { task.cast_to_uint() };
-        self.to_wake.store(n, atomics::SeqCst);
+        self.to_wake.store(n, atomic::SeqCst);
 
         let steals = self.steals;
         self.steals = 0;
 
-        match self.cnt.fetch_sub(1 + steals, atomics::SeqCst) {
-            DISCONNECTED => { self.cnt.store(DISCONNECTED, atomics::SeqCst); }
+        match self.cnt.fetch_sub(1 + steals, atomic::SeqCst) {
+            DISCONNECTED => { self.cnt.store(DISCONNECTED, atomic::SeqCst); }
             // If we factor in our steals and notice that the channel has no
             // data, we successfully sleep
             n => {
@@ -259,7 +259,7 @@ impl<T: Send> Packet<T> {
             }
         }
 
-        self.to_wake.store(0, atomics::SeqCst);
+        self.to_wake.store(0, atomic::SeqCst);
         Err(unsafe { BlockedTask::cast_from_uint(n) })
     }
 
@@ -311,9 +311,9 @@ impl<T: Send> Packet<T> {
             // might decrement steals.
             Some(data) => {
                 if self.steals > MAX_STEALS {
-                    match self.cnt.swap(0, atomics::SeqCst) {
+                    match self.cnt.swap(0, atomic::SeqCst) {
                         DISCONNECTED => {
-                            self.cnt.store(DISCONNECTED, atomics::SeqCst);
+                            self.cnt.store(DISCONNECTED, atomic::SeqCst);
                         }
                         n => {
                             let m = cmp::min(n, self.steals);
@@ -330,7 +330,7 @@ impl<T: Send> Packet<T> {
             // See the discussion in the stream implementation for why we try
             // again.
             None => {
-                match self.cnt.load(atomics::SeqCst) {
+                match self.cnt.load(atomic::SeqCst) {
                     n if n != DISCONNECTED => Err(Empty),
                     _ => {
                         match self.queue.pop() {
@@ -348,20 +348,20 @@ impl<T: Send> Packet<T> {
     // Prepares this shared packet for a channel clone, essentially just bumping
     // a refcount.
     pub fn clone_chan(&mut self) {
-        self.channels.fetch_add(1, atomics::SeqCst);
+        self.channels.fetch_add(1, atomic::SeqCst);
     }
 
     // Decrement the reference count on a channel. This is called whenever a
     // Chan is dropped and may end up waking up a receiver. It's the receiver's
     // responsibility on the other end to figure out that we've disconnected.
     pub fn drop_chan(&mut self) {
-        match self.channels.fetch_sub(1, atomics::SeqCst) {
+        match self.channels.fetch_sub(1, atomic::SeqCst) {
             1 => {}
             n if n > 1 => return,
             n => fail!("bad number of channels left {}", n),
         }
 
-        match self.cnt.swap(DISCONNECTED, atomics::SeqCst) {
+        match self.cnt.swap(DISCONNECTED, atomic::SeqCst) {
             -1 => { self.take_to_wake().wake().map(|t| t.reawaken()); }
             DISCONNECTED => {}
             n => { assert!(n >= 0); }
@@ -371,11 +371,11 @@ impl<T: Send> Packet<T> {
     // See the long discussion inside of stream.rs for why the queue is drained,
     // and why it is done in this fashion.
     pub fn drop_port(&mut self) {
-        self.port_dropped.store(true, atomics::SeqCst);
+        self.port_dropped.store(true, atomic::SeqCst);
         let mut steals = self.steals;
         while {
             let cnt = self.cnt.compare_and_swap(
-                            steals, DISCONNECTED, atomics::SeqCst);
+                            steals, DISCONNECTED, atomic::SeqCst);
             cnt != DISCONNECTED && cnt != steals
         } {
             // See the discussion in 'try_recv' for why we yield
@@ -391,8 +391,8 @@ impl<T: Send> Packet<T> {
 
     // Consumes ownership of the 'to_wake' field.
     fn take_to_wake(&mut self) -> BlockedTask {
-        let task = self.to_wake.load(atomics::SeqCst);
-        self.to_wake.store(0, atomics::SeqCst);
+        let task = self.to_wake.load(atomic::SeqCst);
+        self.to_wake.store(0, atomic::SeqCst);
         assert!(task != 0);
         unsafe { BlockedTask::cast_from_uint(task) }
     }
@@ -407,15 +407,15 @@ impl<T: Send> Packet<T> {
     // This is different than the stream version because there's no need to peek
     // at the queue, we can just look at the local count.
     pub fn can_recv(&mut self) -> bool {
-        let cnt = self.cnt.load(atomics::SeqCst);
+        let cnt = self.cnt.load(atomic::SeqCst);
         cnt == DISCONNECTED || cnt - self.steals > 0
     }
 
     // increment the count on the channel (used for selection)
     fn bump(&mut self, amt: int) -> int {
-        match self.cnt.fetch_add(amt, atomics::SeqCst) {
+        match self.cnt.fetch_add(amt, atomic::SeqCst) {
             DISCONNECTED => {
-                self.cnt.store(DISCONNECTED, atomics::SeqCst);
+                self.cnt.store(DISCONNECTED, atomic::SeqCst);
                 DISCONNECTED
             }
             n => n
@@ -460,13 +460,13 @@ impl<T: Send> Packet<T> {
         // the channel count and figure out what we should do to make it
         // positive.
         let steals = {
-            let cnt = self.cnt.load(atomics::SeqCst);
+            let cnt = self.cnt.load(atomic::SeqCst);
             if cnt < 0 && cnt != DISCONNECTED {-cnt} else {0}
         };
         let prev = self.bump(steals + 1);
 
         if prev == DISCONNECTED {
-            assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+            assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
             true
         } else {
             let cur = prev + steals + 1;
@@ -474,7 +474,7 @@ impl<T: Send> Packet<T> {
             if prev < 0 {
                 self.take_to_wake().trash();
             } else {
-                while self.to_wake.load(atomics::SeqCst) != 0 {
+                while self.to_wake.load(atomic::SeqCst) != 0 {
                     Thread::yield_now();
                 }
             }
@@ -495,8 +495,8 @@ impl<T: Send> Drop for Packet<T> {
         // disconnection, but also a proper fence before the read of
         // `to_wake`, so this assert cannot be removed with also removing
         // the `to_wake` assert.
-        assert_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
-        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
-        assert_eq!(self.channels.load(atomics::SeqCst), 0);
+        assert_eq!(self.cnt.load(atomic::SeqCst), DISCONNECTED);
+        assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
+        assert_eq!(self.channels.load(atomic::SeqCst), 0);
     }
 }

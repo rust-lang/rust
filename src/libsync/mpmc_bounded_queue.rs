@@ -37,7 +37,7 @@ use collections::Vec;
 use core::num::next_power_of_two;
 use core::cell::UnsafeCell;
 
-use atomics::{AtomicUint,Relaxed,Release,Acquire};
+use atomic::{AtomicUint,Relaxed,Release,Acquire};
 
 struct Node<T> {
     sequence: AtomicUint,

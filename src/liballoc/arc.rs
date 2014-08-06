@@ -13,7 +13,7 @@
 //! Concurrency-enabled mechanisms for sharing mutable and/or immutable state
 //! between tasks.
 
-use core::atomics;
+use core::atomic;
 use core::clone::Clone;
 use core::kinds::{Share, Send};
 use core::mem::{min_align_of, size_of, drop};
@@ -71,8 +71,8 @@ pub struct Weak<T> {
 }
 
 struct ArcInner<T> {
-    strong: atomics::AtomicUint,
-    weak: atomics::AtomicUint,
+    strong: atomic::AtomicUint,
+    weak: atomic::AtomicUint,
     data: T,
 }
 
@@ -84,8 +84,8 @@ impl<T: Share + Send> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
         let x = box ArcInner {
-            strong: atomics::AtomicUint::new(1),
-            weak: atomics::AtomicUint::new(1),
+            strong: atomic::AtomicUint::new(1),
+            weak: atomic::AtomicUint::new(1),
             data: data,
         };
         Arc { _ptr: unsafe { mem::transmute(x) } }
@@ -109,7 +109,7 @@ impl<T: Share + Send> Arc<T> {
     #[experimental = "Weak pointers may not belong in this module."]
     pub fn downgrade(&self) -> Weak<T> {
         // See the clone() impl for why this is relaxed
-        self.inner().weak.fetch_add(1, atomics::Relaxed);
+        self.inner().weak.fetch_add(1, atomic::Relaxed);
         Weak { _ptr: self._ptr }
     }
 }
@@ -134,7 +134,7 @@ impl<T: Share + Send> Clone for Arc<T> {
         // another must already provide any required synchronization.
         //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        self.inner().strong.fetch_add(1, atomics::Relaxed);
+        self.inner().strong.fetch_add(1, atomic::Relaxed);
         Arc { _ptr: self._ptr }
     }
 }
@@ -159,8 +159,8 @@ impl<T: Send + Share + Clone> Arc<T> {
         // Note that we hold a strong reference, which also counts as
         // a weak reference, so we only clone if there is an
         // additional reference of either kind.
-        if self.inner().strong.load(atomics::SeqCst) != 1 ||
-           self.inner().weak.load(atomics::SeqCst) != 1 {
+        if self.inner().strong.load(atomic::SeqCst) != 1 ||
+           self.inner().weak.load(atomic::SeqCst) != 1 {
             *self = Arc::new(self.deref().clone())
         }
         // This unsafety is ok because we're guaranteed that the pointer
@@ -185,7 +185,7 @@ impl<T: Share + Send> Drop for Arc<T> {
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
         // same logic applies to the below `fetch_sub` to the `weak` count.
-        if self.inner().strong.fetch_sub(1, atomics::Release) != 1 { return }
+        if self.inner().strong.fetch_sub(1, atomic::Release) != 1 { return }
 
         // This fence is needed to prevent reordering of use of the data and
         // deletion of the data. Because it is marked `Release`, the
@@ -204,14 +204,14 @@ impl<T: Share + Send> Drop for Arc<T> {
         // and an "acquire" operation before deleting the object.
         //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        atomics::fence(atomics::Acquire);
+        atomic::fence(atomic::Acquire);
 
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
         unsafe { drop(ptr::read(&self.inner().data)); }
 
-        if self.inner().weak.fetch_sub(1, atomics::Release) == 1 {
-            atomics::fence(atomics::Acquire);
+        if self.inner().weak.fetch_sub(1, atomic::Release) == 1 {
+            atomic::fence(atomic::Acquire);
             unsafe { deallocate(self._ptr as *mut u8, size_of::<ArcInner<T>>(),
                                 min_align_of::<ArcInner<T>>()) }
         }
@@ -230,9 +230,9 @@ impl<T: Share + Send> Weak<T> {
         // fetch_add because once the count hits 0 is must never be above 0.
         let inner = self.inner();
         loop {
-            let n = inner.strong.load(atomics::SeqCst);
+            let n = inner.strong.load(atomic::SeqCst);
             if n == 0 { return None }
-            let old = inner.strong.compare_and_swap(n, n + 1, atomics::SeqCst);
+            let old = inner.strong.compare_and_swap(n, n + 1, atomic::SeqCst);
             if old == n { return Some(Arc { _ptr: self._ptr }) }
         }
     }
@@ -249,7 +249,7 @@ impl<T: Share + Send> Clone for Weak<T> {
     #[inline]
     fn clone(&self) -> Weak<T> {
         // See comments in Arc::clone() for why this is relaxed
-        self.inner().weak.fetch_add(1, atomics::Relaxed);
+        self.inner().weak.fetch_add(1, atomic::Relaxed);
         Weak { _ptr: self._ptr }
     }
 }
@@ -264,8 +264,8 @@ impl<T: Share + Send> Drop for Weak<T> {
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about
         // the memory orderings
-        if self.inner().weak.fetch_sub(1, atomics::Release) == 1 {
-            atomics::fence(atomics::Acquire);
+        if self.inner().weak.fetch_sub(1, atomic::Release) == 1 {
+            atomic::fence(atomic::Acquire);
             unsafe { deallocate(self._ptr as *mut u8, size_of::<ArcInner<T>>(),
                                 min_align_of::<ArcInner<T>>()) }
         }
@@ -281,13 +281,13 @@ mod tests {
     use std::mem::drop;
     use std::ops::Drop;
     use std::option::{Option, Some, None};
-    use std::sync::atomics;
+    use std::sync::atomic;
     use std::task;
     use std::vec::Vec;
     use super::{Arc, Weak};
     use std::sync::Mutex;
 
-    struct Canary(*mut atomics::AtomicUint);
+    struct Canary(*mut atomic::AtomicUint);
 
     impl Drop for Canary
     {
@@ -295,7 +295,7 @@ mod tests {
             unsafe {
                 match *self {
                     Canary(c) => {
-                        (*c).fetch_add(1, atomics::SeqCst);
+                        (*c).fetch_add(1, atomic::SeqCst);
                     }
                 }
             }
@@ -413,20 +413,20 @@ mod tests {
 
     #[test]
     fn drop_arc() {
-        let mut canary = atomics::AtomicUint::new(0);
-        let x = Arc::new(Canary(&mut canary as *mut atomics::AtomicUint));
+        let mut canary = atomic::AtomicUint::new(0);
+        let x = Arc::new(Canary(&mut canary as *mut atomic::AtomicUint));
         drop(x);
-        assert!(canary.load(atomics::Acquire) == 1);
+        assert!(canary.load(atomic::Acquire) == 1);
     }
 
     #[test]
     fn drop_arc_weak() {
-        let mut canary = atomics::AtomicUint::new(0);
-        let arc = Arc::new(Canary(&mut canary as *mut atomics::AtomicUint));
+        let mut canary = atomic::AtomicUint::new(0);
+        let arc = Arc::new(Canary(&mut canary as *mut atomic::AtomicUint));
         let arc_weak = arc.downgrade();
-        assert!(canary.load(atomics::Acquire) == 0);
+        assert!(canary.load(atomic::Acquire) == 0);
         drop(arc);
-        assert!(canary.load(atomics::Acquire) == 1);
+        assert!(canary.load(atomic::Acquire) == 1);
         drop(arc_weak);
     }
 }

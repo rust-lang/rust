@@ -18,7 +18,7 @@ use core::prelude::*;
 use alloc::arc::Arc;
 use alloc::boxed::{BoxAny, Box};
 use core::any::Any;
-use core::atomics::{AtomicUint, SeqCst};
+use core::atomic::{AtomicUint, SeqCst};
 use core::iter::Take;
 use core::kinds::marker;
 use core::mem;
