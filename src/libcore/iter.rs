@@ -481,13 +481,11 @@ pub trait Iterator<A> {
     /// ```
     #[inline]
     fn nth(&mut self, mut n: uint) -> Option<A> {
-        loop {
-            match self.next() {
-                Some(x) => if n == 0 { return Some(x) },
-                None => return None
-            }
+        for x in *self {
+            if n == 0 { return Some(x) }
             n -= 1;
         }
+        None
     }
 
     /// Loops through the entire iterator, returning the last element of the
@@ -518,11 +516,8 @@ pub trait Iterator<A> {
     #[inline]
     fn fold<B>(&mut self, init: B, f: |B, A| -> B) -> B {
         let mut accum = init;
-        loop {
-            match self.next() {
-                Some(x) => { accum = f(accum, x); }
-                None    => { break; }
-            }
+        for x in *self {
+            accum = f(accum, x);
         }
         accum
     }
@@ -720,21 +715,10 @@ pub trait ExactSize<A> : DoubleEndedIterator<A> {
     /// If no element matches, None is returned.
     #[inline]
     fn rposition(&mut self, predicate: |A| -> bool) -> Option<uint> {
-        let (lower, upper) = self.size_hint();
-        assert!(upper == Some(lower));
-        let mut i = lower;
-        loop {
-            match self.next_back() {
-                None => break,
-                Some(x) => {
-                    i = match i.checked_sub(&1) {
-                        Some(x) => x,
-                        None => fail!("rposition: incorrect ExactSize")
-                    };
-                    if predicate(x) {
-                        return Some(i)
-                    }
-                }
+        let len = self.len();
+        for i in range(0, len).rev() {
+            if predicate(self.next_back().expect("rposition: incorrect ExactSize")) {
+                return Some(i);
             }
         }
         None
@@ -744,7 +728,7 @@ pub trait ExactSize<A> : DoubleEndedIterator<A> {
     /// Return the exact length of the iterator.
     fn len(&self) -> uint {
         let (lower, upper) = self.size_hint();
-        assert!(upper == Some(lower));
+        assert_eq!(upper, Some(lower));
         lower
     }
 }
@@ -1330,18 +1314,12 @@ impl<'a, A, T: Iterator<A>> Iterator<A> for Filter<'a, A, T> {
 impl<'a, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Filter<'a, A, T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        loop {
-            match self.iter.next_back() {
-                None => return None,
-                Some(x) => {
-                    if (self.predicate)(&x) {
-                        return Some(x);
-                    } else {
-                        continue
-                    }
-                }
+        for x in self.iter.by_ref().rev() {
+            if (self.predicate)(&x) {
+                return Some(x);
             }
         }
+        None
     }
 }
 
@@ -1375,17 +1353,13 @@ impl<'a, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B>
 for FilterMap<'a, A, B, T> {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
-        loop {
-            match self.iter.next_back() {
-                None => return None,
-                Some(x) => {
-                    match (self.f)(x) {
-                        Some(y) => return Some(y),
-                        None => ()
-                    }
-                }
+        for x in self.iter.by_ref().rev() {
+            match (self.f)(x) {
+                Some(y) => return Some(y),
+                None => ()
             }
         }
+        None
     }
 }
 
@@ -1507,25 +1481,13 @@ pub struct SkipWhile<'a, A, T> {
 impl<'a, A, T: Iterator<A>> Iterator<A> for SkipWhile<'a, A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let mut next = self.iter.next();
-        if self.flag {
-            next
-        } else {
-            loop {
-                match next {
-                    Some(x) => {
-                        if (self.predicate)(&x) {
-                            next = self.iter.next();
-                            continue
-                        } else {
-                            self.flag = true;
-                            return Some(x)
-                        }
-                    }
-                    None => return None
-                }
+        for x in self.iter {
+            if self.flag || !(self.predicate)(&x) {
+                self.flag = true;
+                return Some(x);
             }
         }
+        None
     }
 
     #[inline]
