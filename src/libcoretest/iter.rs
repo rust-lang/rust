@@ -14,6 +14,8 @@ use core::uint;
 use core::cmp;
 use core::num;
 
+use test::Bencher;
+
 #[test]
 fn test_lt() {
     let empty: [int, ..0] = [];
@@ -270,6 +272,7 @@ fn test_iterator_nth() {
     for i in range(0u, v.len()) {
         assert_eq!(v.iter().nth(i).unwrap(), &v[i]);
     }
+    assert_eq!(v.iter().nth(v.len()), None);
 }
 
 #[test]
@@ -841,4 +844,32 @@ fn test_iterate() {
     assert_eq!(it.next(), Some(2u));
     assert_eq!(it.next(), Some(4u));
     assert_eq!(it.next(), Some(8u));
+}
+
+#[bench]
+fn bench_rposition(b: &mut Bencher) {
+    let it: Vec<uint> = range(0u, 300).collect();
+    b.iter(|| {
+        it.iter().rposition(|&x| x <= 150);
+    });
+}
+
+#[bench]
+fn bench_skip_while(b: &mut Bencher) {
+    b.iter(|| {
+        let it = range(0u, 100);
+        let mut sum = 0;
+        it.skip_while(|&x| { sum += x; sum < 4000 }).all(|_| true);
+    });
+}
+
+#[bench]
+fn bench_multiple_take(b: &mut Bencher) {
+    let mut it = range(0u, 42).cycle();
+    b.iter(|| {
+        let n = it.next().unwrap();
+        for m in range(0u, n) {
+            it.take(it.next().unwrap()).all(|_| true);
+        }
+    });
 }
