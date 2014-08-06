@@ -165,11 +165,11 @@ impl<'a> ReprVisitor<'a> {
     }
 
     pub fn write_escaped_slice(&mut self, slice: &str) -> bool {
-        try!(self, self.writer.write(['"' as u8]));
+        try!(self, self.writer.write([b'"']));
         for ch in slice.chars() {
             if !self.write_escaped_char(ch, true) { return false }
         }
-        try!(self, self.writer.write(['"' as u8]));
+        try!(self, self.writer.write([b'"']));
         true
     }
 
@@ -188,7 +188,7 @@ impl<'a> ReprVisitor<'a> {
                            inner: *const TyDesc) -> bool {
         let mut p = ptr as *const u8;
         let (sz, al) = unsafe { ((*inner).size, (*inner).align) };
-        try!(self, self.writer.write(['[' as u8]));
+        try!(self, self.writer.write([b'[']));
         let mut first = true;
         let mut left = len;
         // unit structs have 0 size, and don't loop forever.
@@ -203,7 +203,7 @@ impl<'a> ReprVisitor<'a> {
             p = align(unsafe { p.offset(sz as int) as uint }, al) as *const u8;
             left -= dec;
         }
-        try!(self, self.writer.write([']' as u8]));
+        try!(self, self.writer.write([b']']));
         true
     }
 
@@ -263,9 +263,9 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
     fn visit_char(&mut self) -> bool {
         self.get::<char>(|this, &ch| {
-            try!(this, this.writer.write(['\'' as u8]));
+            try!(this, this.writer.write([b'\'']));
             if !this.write_escaped_char(ch, false) { return false }
-            try!(this, this.writer.write(['\'' as u8]));
+            try!(this, this.writer.write([b'\'']));
             true
         })
     }
@@ -310,7 +310,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
     }
 
     fn visit_rptr(&mut self, mtbl: uint, inner: *const TyDesc) -> bool {
-        try!(self, self.writer.write(['&' as u8]));
+        try!(self, self.writer.write([b'&']));
         self.write_mut_qualifier(mtbl);
         self.get::<*const u8>(|this, p| {
             this.visit_ptr_inner(*p, inner)
@@ -319,7 +319,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
     fn visit_evec_slice(&mut self, mtbl: uint, inner: *const TyDesc) -> bool {
         self.get::<raw::Slice<()>>(|this, s| {
-            try!(this, this.writer.write(['&' as u8]));
+            try!(this, this.writer.write([b'&']));
             this.write_mut_qualifier(mtbl);
             let size = unsafe {
                 if (*inner).size == 0 { 1 } else { (*inner).size }
@@ -338,7 +338,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
     fn visit_enter_rec(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
-        try!(self, self.writer.write(['{' as u8]));
+        try!(self, self.writer.write([b'{']));
         true
     }
 
@@ -356,7 +356,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
     fn visit_leave_rec(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
-        try!(self, self.writer.write(['}' as u8]));
+        try!(self, self.writer.write([b'}']));
         true
     }
 
@@ -365,9 +365,9 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         try!(self, self.writer.write(name.as_bytes()));
         if n_fields != 0 {
             if named_fields {
-                try!(self, self.writer.write(['{' as u8]));
+                try!(self, self.writer.write([b'{']));
             } else {
-                try!(self, self.writer.write(['(' as u8]));
+                try!(self, self.writer.write([b'(']));
             }
         }
         true
@@ -390,9 +390,9 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
                          _sz: uint, _align: uint) -> bool {
         if n_fields != 0 {
             if named_fields {
-                try!(self, self.writer.write(['}' as u8]));
+                try!(self, self.writer.write([b'}']));
             } else {
-                try!(self, self.writer.write([')' as u8]));
+                try!(self, self.writer.write([b')']));
             }
         }
         true
@@ -400,7 +400,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
     fn visit_enter_tup(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
-        try!(self, self.writer.write(['(' as u8]));
+        try!(self, self.writer.write([b'(']));
         true
     }
 
@@ -415,9 +415,9 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
     fn visit_leave_tup(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
         if _n_fields == 1 {
-            try!(self, self.writer.write([',' as u8]));
+            try!(self, self.writer.write([b',']));
         }
-        try!(self, self.writer.write([')' as u8]));
+        try!(self, self.writer.write([b')']));
         true
     }
 
@@ -455,7 +455,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         if write {
             try!(self, self.writer.write(name.as_bytes()));
             if n_fields > 0 {
-                try!(self, self.writer.write(['(' as u8]));
+                try!(self, self.writer.write([b'(']));
             }
         }
         true
@@ -487,7 +487,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         match self.var_stk[self.var_stk.len() - 1] {
             Matched => {
                 if n_fields > 0 {
-                    try!(self, self.writer.write([')' as u8]));
+                    try!(self, self.writer.write([b')']));
                 }
             }
             _ => ()
