@@ -44,7 +44,7 @@ static DEFAULT_STACK_SIZE: uint = 1024 * 1024;
 #[no_split_stack]
 extern fn thread_start(main: *mut libc::c_void) -> imp::rust_thread_return {
     unsafe {
-        stack::record_stack_bounds(0, uint::MAX);
+        stack::record_os_managed_stack_bounds(0, uint::MAX);
         let f: Box<proc()> = mem::transmute(main);
         (*f)();
         mem::transmute(0 as imp::rust_thread_return)
