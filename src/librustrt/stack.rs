@@ -124,8 +124,23 @@ extern fn stack_exhausted() {
     }
 }
 
+// Windows maintains a record of upper and lower stack bounds in the Thread Information
+// Block (TIB), and some syscalls do check that addresses which are supposed to be in
+// the stack, indeed lie between these two values.
+// (See https://github.com/rust-lang/rust/issues/3445#issuecomment-26114839)
+//
+// When using Rust-managed stacks (libgreen), we must maintain these values accordingly.
+// For OS-managed stacks (libnative), we let the OS manage them for us.
+//
+// On all other platforms both variants behave identically.
+
 #[inline(always)]
-pub unsafe fn record_stack_bounds(stack_lo: uint, stack_hi: uint) {
+pub unsafe fn record_os_managed_stack_bounds(stack_lo: uint, _stack_hi: uint) {
+    record_sp_limit(stack_lo + RED_ZONE);
+}
+
+#[inline(always)]
+pub unsafe fn record_rust_managed_stack_bounds(stack_lo: uint, stack_hi: uint) {
     // When the old runtime had segmented stacks, it used a calculation that was
     // "limit + RED_ZONE + FUDGE". The red zone was for things like dynamic
     // symbol resolution, llvm function calls, etc. In theory this red zone
@@ -138,16 +153,17 @@ pub unsafe fn record_stack_bounds(stack_lo: uint, stack_hi: uint) {
 
     return target_record_stack_bounds(stack_lo, stack_hi);
 
-    #[cfg(not(windows))] #[cfg(not(target_arch = "x86_64"))] #[inline(always)]
+    #[cfg(not(windows))] #[inline(always)]
     unsafe fn target_record_stack_bounds(_stack_lo: uint, _stack_hi: uint) {}
+
+    #[cfg(windows, target_arch = "x86")] #[inline(always)]
+    unsafe fn target_record_stack_bounds(stack_lo: uint, stack_hi: uint) {
+        // stack range is at TIB: %fs:0x04 (top) and %fs:0x08 (bottom)
+        asm!("mov $0, %fs:0x04" :: "r"(stack_hi) :: "volatile");
+        asm!("mov $0, %fs:0x08" :: "r"(stack_lo) :: "volatile");
+    }
     #[cfg(windows, target_arch = "x86_64")] #[inline(always)]
     unsafe fn target_record_stack_bounds(stack_lo: uint, stack_hi: uint) {
-        // Windows compiles C functions which may check the stack bounds. This
-        // means that if we want to perform valid FFI on windows, then we need
-        // to ensure that the stack bounds are what they truly are for this
-        // task. More info can be found at:
-        //   https://github.com/rust-lang/rust/issues/3445#issuecomment-26114839
-        //
         // stack range is at TIB: %gs:0x08 (top) and %gs:0x10 (bottom)
         asm!("mov $0, %gs:0x08" :: "r"(stack_hi) :: "volatile");
         asm!("mov $0, %gs:0x10" :: "r"(stack_lo) :: "volatile");

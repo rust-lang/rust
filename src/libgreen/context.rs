@@ -13,6 +13,8 @@ use std::uint;
 use std::mem::transmute;
 use std::rt::stack;
 use std::raw;
+#[cfg(target_arch = "x86_64")]
+use std::simd;
 
 // FIXME #7761: Registers is boxed so that it is 16-byte aligned, for storing
 // SSE regs.  It would be marginally better not to do this. In C++ we
@@ -103,11 +105,11 @@ impl Context {
             // invalid for the current task. Lucky for us `rust_swap_registers`
             // is a C function so we don't have to worry about that!
             match in_context.stack_bounds {
-                Some((lo, hi)) => stack::record_stack_bounds(lo, hi),
+                Some((lo, hi)) => stack::record_rust_managed_stack_bounds(lo, hi),
                 // If we're going back to one of the original contexts or
                 // something that's possibly not a "normal task", then reset
                 // the stack limit to 0 to make morestack never fail
-                None => stack::record_stack_bounds(0, uint::MAX),
+                None => stack::record_rust_managed_stack_bounds(0, uint::MAX),
             }
             rust_swap_registers(out_regs, in_regs)
         }
@@ -186,14 +188,30 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 // windows requires saving more registers (both general and XMM), so the windows
 // register context must be larger.
 #[cfg(windows, target_arch = "x86_64")]
-type Registers = [uint, ..34];
+struct Registers {
+    gpr:[uint, ..14],
+    _xmm:[simd::u32x4, ..10]
+}
 #[cfg(not(windows), target_arch = "x86_64")]
-type Registers = [uint, ..22];
+struct Registers {
+    gpr:[uint, ..10],
+    _xmm:[simd::u32x4, ..6]
+}
 
 #[cfg(windows, target_arch = "x86_64")]
-fn new_regs() -> Box<Registers> { box() ([0, .. 34]) }
+fn new_regs() -> Box<Registers> {
+    box() Registers {
+        gpr:[0,..14],
+        _xmm:[simd::u32x4(0,0,0,0),..10]
+    }
+}
 #[cfg(not(windows), target_arch = "x86_64")]
-fn new_regs() -> Box<Registers> { box() ([0, .. 22]) }
+fn new_regs() -> Box<Registers> {
+    box() Registers {
+        gpr:[0,..10],
+        _xmm:[simd::u32x4(0,0,0,0),..6]
+    }
+}
 
 #[cfg(target_arch = "x86_64")]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
@@ -222,20 +240,20 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 
     // These registers are frobbed by rust_bootstrap_green_task into the right
     // location so we can invoke the "real init function", `fptr`.
-    regs[RUSTRT_R12] = arg as uint;
-    regs[RUSTRT_R13] = procedure.code as uint;
-    regs[RUSTRT_R14] = procedure.env as uint;
-    regs[RUSTRT_R15] = fptr as uint;
+    regs.gpr[RUSTRT_R12] = arg as uint;
+    regs.gpr[RUSTRT_R13] = procedure.code as uint;
+    regs.gpr[RUSTRT_R14] = procedure.env as uint;
+    regs.gpr[RUSTRT_R15] = fptr as uint;
 
     // These registers are picked up by the regular context switch paths. These
     // will put us in "mostly the right context" except for frobbing all the
     // arguments to the right place. We have the small trampoline code inside of
     // rust_bootstrap_green_task to do that.
-    regs[RUSTRT_RSP] = sp as uint;
-    regs[RUSTRT_IP] = rust_bootstrap_green_task as uint;
+    regs.gpr[RUSTRT_RSP] = sp as uint;
+    regs.gpr[RUSTRT_IP] = rust_bootstrap_green_task as uint;
 
     // Last base pointer on the stack should be 0
-    regs[RUSTRT_RBP] = 0;
+    regs.gpr[RUSTRT_RBP] = 0;
 }
 
 #[cfg(target_arch = "arm")]
