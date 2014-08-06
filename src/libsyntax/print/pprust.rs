@@ -2082,8 +2082,24 @@ impl<'a> State<'a> {
     }
 
     pub fn print_lifetime(&mut self,
-                          lifetime: &ast::Lifetime) -> IoResult<()> {
+                          lifetime: &ast::Lifetime)
+                          -> IoResult<()>
+    {
         self.print_name(lifetime.name)
+    }
+
+    pub fn print_lifetime_def(&mut self,
+                              lifetime: &ast::LifetimeDef)
+                              -> IoResult<()>
+    {
+        try!(self.print_lifetime(&lifetime.lifetime));
+        let mut sep = ":";
+        for v in lifetime.bounds.iter() {
+            try!(word(&mut self.s, sep));
+            try!(self.print_lifetime(v));
+            sep = "+";
+        }
+        Ok(())
     }
 
     pub fn print_generics(&mut self,
@@ -2102,7 +2118,7 @@ impl<'a> State<'a> {
                 |s, &idx| {
                     if idx < generics.lifetimes.len() {
                         let lifetime = generics.lifetimes.get(idx);
-                        s.print_lifetime(lifetime)
+                        s.print_lifetime_def(lifetime)
                     } else {
                         let idx = idx - generics.lifetimes.len();
                         let param = generics.ty_params.get(idx);

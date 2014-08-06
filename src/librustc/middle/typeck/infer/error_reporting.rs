@@ -976,10 +976,13 @@ impl<'a> Rebuilder<'a> {
                         -> ast::Generics {
         let mut lifetimes = Vec::new();
         for lt in add.iter() {
-            lifetimes.push(*lt);
+            lifetimes.push(ast::LifetimeDef { lifetime: *lt,
+                                              bounds: Vec::new() });
         }
         for lt in generics.lifetimes.iter() {
-            if keep.contains(&lt.name) || !remove.contains(&lt.name) {
+            if keep.contains(&lt.lifetime.name) ||
+                !remove.contains(&lt.lifetime.name)
+            {
                 lifetimes.push((*lt).clone());
             }
         }
@@ -1439,7 +1442,7 @@ impl Resolvable for Rc<ty::TraitRef> {
 
 fn lifetimes_in_scope(tcx: &ty::ctxt,
                       scope_id: ast::NodeId)
-                      -> Vec<ast::Lifetime> {
+                      -> Vec<ast::LifetimeDef> {
     let mut taken = Vec::new();
     let parent = tcx.map.get_parent(scope_id);
     let method_id_opt = match tcx.map.find(parent) {
@@ -1486,10 +1489,10 @@ struct LifeGiver {
 }
 
 impl LifeGiver {
-    fn with_taken(taken: &[ast::Lifetime]) -> LifeGiver {
+    fn with_taken(taken: &[ast::LifetimeDef]) -> LifeGiver {
         let mut taken_ = HashSet::new();
         for lt in taken.iter() {
-            let lt_name = token::get_name(lt.name).get().to_string();
+            let lt_name = token::get_name(lt.lifetime.name).get().to_string();
             taken_.insert(lt_name);
         }
         LifeGiver {
