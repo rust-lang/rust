@@ -1153,6 +1153,11 @@ pub fn create_function_debug_context(cx: &CrateContext,
                      method.span,
                      true)
                 }
+                ast::TypeImplItem(ref typedef) => {
+                    cx.sess().span_bug(typedef.span,
+                                       "create_function_debug_context() \
+                                        called on associated type?!")
+                }
             }
         }
         ast_map::NodeExpr(ref expr) => {

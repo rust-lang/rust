@@ -22,7 +22,7 @@ use syntax::ast::Public;
 
 use clean::{Crate, Item, ModuleItem, Module, StructItem, Struct, EnumItem, Enum};
 use clean::{ImplItem, Impl, Trait, TraitItem, ProvidedMethod, RequiredMethod};
-use clean::{ViewItemItem, PrimitiveItem};
+use clean::{TypeTraitItem, ViewItemItem, PrimitiveItem};
 
 #[deriving(Zero, Encodable, Decodable, PartialEq, Eq)]
 /// The counts for each stability level.
@@ -131,7 +131,8 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
             fn extract_item<'a>(trait_item: &'a TraitItem) -> &'a Item {
                 match *trait_item {
                     ProvidedMethod(ref item) |
-                    RequiredMethod(ref item) => item
+                    RequiredMethod(ref item) |
+                    TypeTraitItem(ref item) => item
                 }
             }
             let subcounts = trait_items.iter()

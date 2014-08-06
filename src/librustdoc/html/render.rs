@@ -1512,6 +1512,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 clean::ForeignStaticItem(..)   => ("ffi-statics", "Foreign Statics"),
                 clean::MacroItem(..)           => ("macros", "Macros"),
                 clean::PrimitiveItem(..)       => ("primitives", "Primitive Types"),
+                clean::AssociatedTypeItem(..)  => ("associated-types", "Associated Types"),
             };
             try!(write!(w,
                         "<h2 id='{id}' class='section-header'>\

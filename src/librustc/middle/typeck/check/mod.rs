@@ -126,7 +126,7 @@ use std::mem::replace;
 use std::rc::Rc;
 use std::slice;
 use syntax::abi;
-use syntax::ast::{ProvidedMethod, RequiredMethod};
+use syntax::ast::{ProvidedMethod, RequiredMethod, TypeTraitItem};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, PostExpansionMethod};
@@ -765,6 +765,9 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                 ast::MethodImplItem(ref m) => {
                     check_method_body(ccx, &impl_pty.generics, &**m);
                 }
+                ast::TypeImplItem(_) => {
+                    // Nothing to do here.
+                }
             }
         }
 
@@ -792,6 +795,9 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                 }
                 ProvidedMethod(ref m) => {
                     check_method_body(ccx, &trait_def.generics, &**m);
+                }
+                TypeTraitItem(_) => {
+                    // Nothing to do.
                 }
             }
         }
@@ -898,6 +904,20 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                                                     &**trait_method_ty,
                                                     &impl_trait_ref.substs);
                             }
+                            _ => {
+                                // This is span_bug as it should have already been
+                                // caught in resolve.
+                                tcx.sess
+                                   .span_bug(impl_method.span,
+                                             format!("item `{}` is of a \
+                                                      different kind from \
+                                                      its trait `{}`",
+                                                     token::get_ident(
+                                                        impl_item_ty.ident()),
+                                                     pprust::path_to_string(
+                                                        &ast_trait_ref.path))
+                                             .as_slice());
+                            }
                         }
                     }
                     None => {
@@ -913,10 +933,57 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                     }
                 }
             }
+            ast::TypeImplItem(ref typedef) => {
+                let typedef_def_id = local_def(typedef.id);
+                let typedef_ty = ty::impl_or_trait_item(ccx.tcx,
+                                                        typedef_def_id);
+
+                // If this is an impl of an associated type, find the
+                // corresponding type definition in the trait.
+                let opt_associated_type =
+                    trait_items.iter()
+                               .find(|ti| {
+                                   ti.ident().name == typedef_ty.ident().name
+                               });
+                match opt_associated_type {
+                    Some(associated_type) => {
+                        match (associated_type, &typedef_ty) {
+                            (&ty::TypeTraitItem(_),
+                             &ty::TypeTraitItem(_)) => {}
+                            _ => {
+                                // This is `span_bug` as it should have
+                                // already been caught in resolve.
+                                tcx.sess
+                                   .span_bug(typedef.span,
+                                             format!("item `{}` is of a \
+                                                      different kind from \
+                                                      its trait `{}`",
+                                                     token::get_ident(
+                                                        typedef_ty.ident()),
+                                                     pprust::path_to_string(
+                                                        &ast_trait_ref.path))
+                                             .as_slice());
+                            }
+                        }
+                    }
+                    None => {
+                        // This is `span_bug` as it should have already been
+                        // caught in resolve.
+                        tcx.sess.span_bug(
+                            typedef.span,
+                            format!(
+                                "associated type `{}` is not a member of \
+                                 trait `{}`",
+                                token::get_ident(typedef_ty.ident()),
+                                pprust::path_to_string(
+                                    &ast_trait_ref.path)).as_slice());
+                    }
+                }
+            }
         }
     }
 
-    // Check for missing methods from trait
+    // Check for missing items from trait
     let provided_methods = ty::provided_trait_methods(tcx,
                                                       impl_trait_ref.def_id);
     let mut missing_methods = Vec::new();
@@ -929,6 +996,7 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                             ast::MethodImplItem(ref m) => {
                                 m.pe_ident().name == trait_method.ident.name
                             }
+                            ast::TypeImplItem(_) => false,
                         }
                     });
                 let is_provided =
@@ -940,12 +1008,27 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                                 token::get_ident(trait_method.ident)));
                 }
             }
+            ty::TypeTraitItem(ref associated_type) => {
+                let is_implemented = impl_items.iter().any(|ii| {
+                    match *ii {
+                        ast::TypeImplItem(ref typedef) => {
+                            typedef.ident.name == associated_type.ident.name
+                        }
+                        ast::MethodImplItem(_) => false,
+                    }
+                });
+                if !is_implemented {
+                    missing_methods.push(
+                        format!("`{}`",
+                                token::get_ident(associated_type.ident)));
+                }
+            }
         }
     }
 
     if !missing_methods.is_empty() {
         span_err!(tcx.sess, impl_span, E0046,
-            "not all trait methods implemented, missing: {}",
+            "not all trait items implemented, missing: {}",
             missing_methods.connect(", "));
     }
 }
@@ -969,7 +1052,8 @@ fn compare_impl_method(tcx: &ty::ctxt,
                        impl_m_body_id: ast::NodeId,
                        trait_m: &ty::Method,
                        trait_to_impl_substs: &subst::Substs) {
-    debug!("compare_impl_method()");
+    debug!("compare_impl_method(trait_to_impl_substs={})",
+           trait_to_impl_substs.repr(tcx));
     let infcx = infer::new_infer_ctxt(tcx);
 
     // Try to give more informative error messages about self typing
@@ -1138,11 +1222,13 @@ fn compare_impl_method(tcx: &ty::ctxt,
         // FIXME(pcwalton): We could be laxer here regarding sub- and super-
         // traits, but I doubt that'll be wanted often, so meh.
         for impl_trait_bound in impl_param_def.bounds.trait_bounds.iter() {
+            debug!("compare_impl_method(): impl-trait-bound subst");
             let impl_trait_bound =
                 impl_trait_bound.subst(tcx, &impl_to_skol_substs);
 
             let mut ok = false;
             for trait_bound in trait_param_def.bounds.trait_bounds.iter() {
+                debug!("compare_impl_method(): trait-bound subst");
                 let trait_bound =
                     trait_bound.subst(tcx, &trait_to_skol_substs);
                 let infcx = infer::new_infer_ctxt(tcx);
@@ -1185,6 +1271,9 @@ fn compare_impl_method(tcx: &ty::ctxt,
     // other words, anyone expecting to call a method with the type
     // from the trait, can safely call a method with the type from the
     // impl instead.
+    debug!("checking trait method for compatibility: impl ty {}, trait ty {}",
+           impl_fty.repr(tcx),
+           trait_fty.repr(tcx));
     match infer::mk_subty(&infcx, false, infer::MethodCompatCheck(impl_m_span),
                           impl_fty, trait_fty) {
         Ok(()) => {}
@@ -1512,6 +1601,21 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn ty_infer(&self, _span: Span) -> ty::t {
         self.infcx().next_ty_var()
+    }
+
+    fn associated_types_of_trait_are_valid(&self, _: ty::t, _: ast::DefId)
+                                           -> bool {
+        false
+    }
+
+    fn associated_type_binding(&self,
+                               span: Span,
+                               _: Option<ty::t>,
+                               _: ast::DefId,
+                               _: ast::DefId)
+                               -> ty::t {
+        self.tcx().sess.span_err(span, "unsupported associated type binding");
+        ty::mk_err()
     }
 }
 
@@ -4938,6 +5042,7 @@ pub fn polytype_for_def(fcx: &FnCtxt,
       }
       def::DefTrait(_) |
       def::DefTy(..) |
+      def::DefAssociatedTy(..) |
       def::DefPrimTy(_) |
       def::DefTyParam(..)=> {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value, found type");
@@ -5048,6 +5153,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
         def::DefVariant(..) |
         def::DefTyParamBinder(..) |
         def::DefTy(..) |
+        def::DefAssociatedTy(..) |
         def::DefTrait(..) |
         def::DefPrimTy(..) |
         def::DefTyParam(..) => {

@@ -197,6 +197,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 match *trait_method {
                     ast::RequiredMethod(_) => false,
                     ast::ProvidedMethod(_) => true,
+                    ast::TypeTraitItem(_) => false,
                 }
             }
             Some(ast_map::NodeImplItem(impl_item)) => {
@@ -225,6 +226,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             }
                         }
                     }
+                    ast::TypeImplItem(_) => false,
                 }
             }
             Some(_) => false,
@@ -327,8 +329,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         // Keep going, nothing to get exported
                     }
                     ast::ProvidedMethod(ref method) => {
-                        visit::walk_block(self, &*method.pe_body())
+                        visit::walk_block(self, &*method.pe_body());
                     }
+                    ast::TypeTraitItem(_) => {}
                 }
             }
             ast_map::NodeImplItem(impl_item) => {
@@ -339,6 +342,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             visit::walk_block(self, method.pe_body())
                         }
                     }
+                    ast::TypeImplItem(_) => {}
                 }
             }
             // Nothing to recurse on for these

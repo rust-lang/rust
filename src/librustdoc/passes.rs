@@ -175,6 +175,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             // Primitives are never stripped
             clean::PrimitiveItem(..) => {}
+
+            // Associated types are never stripped
+            clean::AssociatedTypeItem(..) => {}
         }
 
         let fastreturn = match i.inner {

@@ -630,6 +630,10 @@ fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef
     assert_eq!(next(st), '|');
     let index = parse_uint(st);
     assert_eq!(next(st), '|');
+    let associated_with = parse_opt(st, |st| {
+        parse_def(st, NominalType, |x,y| conv(x,y))
+    });
+    assert_eq!(next(st), '|');
     let bounds = parse_bounds(st, |x,y| conv(x,y));
     let default = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)));
 
@@ -638,6 +642,7 @@ fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef
         def_id: def_id,
         space: space,
         index: index,
+        associated_with: associated_with,
         bounds: bounds,
         default: default
     }
