@@ -229,7 +229,7 @@ impl DummyResult {
     pub fn raw_pat(sp: Span) -> Gc<ast::Pat> {
         box(GC) ast::Pat {
             id: ast::DUMMY_NODE_ID,
-            node: ast::PatWild,
+            node: ast::PatWild(ast::PatWildSingle),
             span: sp,
         }
     }
