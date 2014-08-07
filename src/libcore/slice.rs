@@ -773,7 +773,7 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
 }
 
 /// Extension methods for vectors contain `PartialEq` elements.
-pub trait ImmutableEqSlice<T:PartialEq> {
+pub trait ImmutablePartialEqSlice<T:PartialEq> {
     /// Find the first index containing a matching value
     fn position_elem(&self, t: &T) -> Option<uint>;
 
@@ -790,7 +790,7 @@ pub trait ImmutableEqSlice<T:PartialEq> {
     fn ends_with(&self, needle: &[T]) -> bool;
 }
 
-impl<'a,T:PartialEq> ImmutableEqSlice<T> for &'a [T] {
+impl<'a,T:PartialEq> ImmutablePartialEqSlice<T> for &'a [T] {
     #[inline]
     fn position_elem(&self, x: &T) -> Option<uint> {
         self.iter().position(|y| *x == *y)

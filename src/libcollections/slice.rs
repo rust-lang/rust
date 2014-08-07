@@ -98,7 +98,7 @@ use {Collection, MutableSeq};
 use vec::Vec;
 
 pub use core::slice::{ref_slice, mut_ref_slice, Splits, Windows};
-pub use core::slice::{Chunks, Slice, ImmutableSlice, ImmutableEqSlice};
+pub use core::slice::{Chunks, Slice, ImmutableSlice, ImmutablePartialEqSlice};
 pub use core::slice::{ImmutableOrdSlice, MutableSlice, Items, MutItems};
 pub use core::slice::{MutSplits, MutChunks};
 pub use core::slice::{bytes, MutableCloneableSlice};
