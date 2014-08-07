@@ -51,6 +51,7 @@ use raw::{Repr};
 // Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
 use RawSlice = raw::Slice;
 
+
 //
 // Extension traits
 //
@@ -205,7 +206,24 @@ pub trait ImmutableSlice<'a, T> {
      * Returns the index where the comparator returned `Equal`, or `None` if
      * not found.
      */
+    #[deprecated = "use binary_search"]
     fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint>;
+
+    /**
+     * Binary search a sorted vector with a comparator function.
+     *
+     * The comparator function should implement an order consistent
+     * with the sort order of the underlying vector, returning an
+     * order code that indicates whether its argument is `Less`,
+     * `Equal` or `Greater` the desired target.
+     *
+     * If the value is found then `Found` is returned, containing the
+     * index of the matching element; if the value is not found then
+     * `NotFound` is returned, containing the index where a matching
+     * element could be inserted while maintaining sorted order.
+     */
+    #[unstable]
+    fn binary_search(&self, f: |&T| -> Ordering) -> BinarySearchResult;
 
     /**
      * Returns an immutable reference to the first element in this slice
@@ -377,6 +395,7 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
     }
 
 
+    #[deprecated = "use binary_search"]
     fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint> {
         let mut base : uint = 0;
         let mut lim : uint = self.len();
@@ -394,6 +413,26 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
             lim >>= 1;
         }
         return None;
+    }
+
+    #[unstable]
+    fn binary_search(&self, f: |&T| -> Ordering) -> BinarySearchResult {
+        let mut base : uint = 0;
+        let mut lim : uint = self.len();
+
+        while lim != 0 {
+            let ix = base + (lim >> 1);
+            match f(&self[ix]) {
+                Equal => return Found(ix),
+                Less => {
+                    base = ix + 1;
+                    lim -= 1;
+                }
+                Greater => ()
+            }
+            lim >>= 1;
+        }
+        return NotFound(base);
     }
 
     fn shift_ref(&mut self) -> Option<&'a T> {
@@ -826,12 +865,30 @@ pub trait ImmutableOrdSlice<T: Ord> {
      *
      * Returns the index of the element or None if not found.
      */
+    #[deprecated = "use binary_search_elem"]
     fn bsearch_elem(&self, x: &T) -> Option<uint>;
+
+    /**
+     * Binary search a sorted vector for a given element.
+     *
+     * If the value is found then `Found` is returned, containing the
+     * index of the matching element; if the value is not found then
+     * `NotFound` is returned, containing the index where a matching
+     * element could be inserted while maintaining sorted order.
+     */
+    #[unstable]
+    fn binary_search_elem(&self, x: &T) -> BinarySearchResult;
 }
 
 impl<'a, T: Ord> ImmutableOrdSlice<T> for &'a [T] {
+    #[deprecated = "use binary_search_elem"]
     fn bsearch_elem(&self, x: &T) -> Option<uint> {
         self.bsearch(|p| p.cmp(x))
+    }
+
+    #[unstable]
+    fn binary_search_elem(&self, x: &T) -> BinarySearchResult {
+        self.binary_search(|p| p.cmp(x))
     }
 }
 
@@ -1335,6 +1392,41 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunks<'a, T> {
     }
 }
 
+
+
+/// The result of calling `binary_search`.
+///
+/// `Found` means the search succeeded, and the contained value is the
+/// index of the matching element. `NotFound` means the search
+/// succeeded, and the contained value is an index where a matching
+/// value could be inserted while maintaining sort order.
+#[deriving(PartialEq, Show)]
+pub enum BinarySearchResult {
+    /// The index of the found value.
+    Found(uint),
+    /// The index where the value should have been found.
+    NotFound(uint)
+}
+
+impl BinarySearchResult {
+    /// Converts a `Found` to `Some`, `NotFound` to `None`.
+    /// Similar to `Result::ok`.
+    pub fn found(&self) -> Option<uint> {
+        match *self {
+            Found(i) => Some(i),
+            NotFound(_) => None
+        }
+    }
+
+    /// Convert a `Found` to `None`, `NotFound` to `Some`.
+    /// Similar to `Result::err`.
+    pub fn not_found(&self) -> Option<uint> {
+        match *self {
+            Found(_) => None,
+            NotFound(i) => Some(i)
+        }
+    }
+}
 
 
 
