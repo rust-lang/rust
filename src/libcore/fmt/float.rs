@@ -17,7 +17,7 @@ use iter::{range, DoubleEndedIterator};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive, Primitive};
 use num::{Zero, One, cast};
 use result::Ok;
-use slice::{ImmutableVector, MutableVector};
+use slice::{ImmutableSlice, MutableSlice};
 use slice;
 use str::StrSlice;
 

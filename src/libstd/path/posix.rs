@@ -22,7 +22,7 @@ use option::{Option, None, Some};
 use str::Str;
 use str;
 use slice::{CloneableVector, Splits, Vector, VectorVector,
-            ImmutableEqVector, ImmutableVector};
+            ImmutableEqSlice, ImmutableSlice};
 use vec::Vec;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};

@@ -258,7 +258,7 @@ mod imp {
     pub fn write(w: &mut Writer) -> IoResult<()> {
         use iter::{Iterator, range};
         use result;
-        use slice::{MutableVector};
+        use slice::{MutableSlice};
 
         extern {
             fn backtrace(buf: *mut *mut libc::c_void,
@@ -398,7 +398,7 @@ mod imp {
         use path::GenericPath;
         use ptr::RawPtr;
         use ptr;
-        use slice::{ImmutableVector, MutableVector};
+        use slice::{ImmutableSlice, MutableSlice};
 
         ////////////////////////////////////////////////////////////////////////
         // libbacktrace.h API
@@ -670,7 +670,7 @@ mod imp {
     use path::Path;
     use result::{Ok, Err};
     use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
-    use slice::ImmutableVector;
+    use slice::ImmutableSlice;
     use str::StrSlice;
     use dynamic_lib::DynamicLibrary;
 

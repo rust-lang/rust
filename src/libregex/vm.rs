@@ -35,7 +35,7 @@
 
 use std::cmp;
 use std::mem;
-use std::slice::MutableVector;
+use std::slice::MutableSlice;
 use compile::{
     Program,
     Match, OneChar, CharClass, Any, EmptyBegin, EmptyEnd, EmptyWordBoundary,

@@ -30,7 +30,7 @@ use iter::range;
 use num::{CheckedMul, Saturating};
 use option::{Option, None, Some};
 use raw::Repr;
-use slice::ImmutableVector;
+use slice::ImmutableSlice;
 use slice;
 use uint;
 
@@ -964,7 +964,7 @@ pub mod raw {
     use collections::Collection;
     use ptr::RawPtr;
     use raw::Slice;
-    use slice::{ImmutableVector};
+    use slice::{ImmutableSlice};
     use str::{is_utf8, StrSlice};
 
     /// Converts a slice of bytes to a string slice without checking

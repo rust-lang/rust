@@ -24,7 +24,7 @@ use core::ptr;
 use core::uint;
 
 use {Collection, Mutable, MutableSeq};
-use slice::{MutableOrdVector, MutableVectorAllocating, CloneableVector};
+use slice::{MutableOrdSlice, MutableSliceAllocating, CloneableVector};
 use slice::{Items, MutItems};
 
 
