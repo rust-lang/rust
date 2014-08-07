@@ -328,7 +328,7 @@ fn acquire_input(input: &str,
 fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
     let mut externs = HashMap::new();
     for arg in matches.opt_strs("extern").iter() {
-        let mut parts = arg.as_slice().splitn('=', 1);
+        let mut parts = arg.as_slice().splitn(1, '=');
         let name = match parts.next() {
             Some(s) => s,
             None => {

@@ -341,7 +341,7 @@ impl<T: FromStr + Clone + Integer + PartialOrd>
     FromStr for Ratio<T> {
     /// Parses `numer/denom` or just `numer`.
     fn from_str(s: &str) -> Option<Ratio<T>> {
-        let mut split = s.splitn('/', 1);
+        let mut split = s.splitn(1, '/');
 
         let num = split.next().and_then(|n| FromStr::from_str(n));
         let den = split.next().or(Some("1")).and_then(|d| FromStr::from_str(d));
@@ -357,7 +357,7 @@ impl<T: FromStrRadix + Clone + Integer + PartialOrd>
     FromStrRadix for Ratio<T> {
     /// Parses `numer/denom` where the numbers are in base `radix`.
     fn from_str_radix(s: &str, radix: uint) -> Option<Ratio<T>> {
-        let split: Vec<&str> = s.splitn('/', 1).collect();
+        let split: Vec<&str> = s.splitn(1, '/').collect();
         if split.len() < 2 {
             None
         } else {
