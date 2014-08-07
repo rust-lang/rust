@@ -35,7 +35,6 @@
 
 use std::cmp;
 use std::mem;
-use std::slice;
 use std::slice::MutableSlice;
 use compile::{
     Program,

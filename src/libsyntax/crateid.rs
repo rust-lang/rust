@@ -51,7 +51,7 @@ impl fmt::Show for CrateId {
 
 impl FromStr for CrateId {
     fn from_str(s: &str) -> Option<CrateId> {
-        let pieces: Vec<&str> = s.splitn('#', 1).collect();
+        let pieces: Vec<&str> = s.splitn(1, '#').collect();
         let path = pieces.get(0).to_string();
 
         if path.as_slice().starts_with("/") || path.as_slice().ends_with("/") ||
@@ -60,7 +60,7 @@ impl FromStr for CrateId {
         }
 
         let path_pieces: Vec<&str> = path.as_slice()
-                                         .rsplitn('/', 1)
+                                         .rsplitn(1, '/')
                                          .collect();
         let inferred_name = *path_pieces.get(0);
 
@@ -68,7 +68,7 @@ impl FromStr for CrateId {
             (inferred_name.to_string(), None)
         } else {
             let hash_pieces: Vec<&str> = pieces.get(1)
-                                               .splitn(':', 1)
+                                               .splitn(1, ':')
                                                .collect();
             let (hash_name, hash_version) = if hash_pieces.len() == 1 {
                 ("", *hash_pieces.get(0))

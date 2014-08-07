@@ -353,7 +353,7 @@ pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
 {
     let mut cg = basic_codegen_options();
     for option in matches.opt_strs("C").move_iter() {
-        let mut iter = option.as_slice().splitn('=', 1);
+        let mut iter = option.as_slice().splitn(1, '=');
         let key = iter.next().unwrap();
         let value = iter.next();
         let option_to_lookup = key.replace("-", "_");
@@ -750,7 +750,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let mut externs = HashMap::new();
     for arg in matches.opt_strs("extern").iter() {
-        let mut parts = arg.as_slice().splitn('=', 1);
+        let mut parts = arg.as_slice().splitn(1, '=');
         let name = match parts.next() {
             Some(s) => s,
             None => early_error("--extern value must not be empty"),
