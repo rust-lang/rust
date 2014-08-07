@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -24,6 +24,7 @@ use middle::trans::type_of::*;
 use middle::trans::type_of;
 use middle::ty::FnSig;
 use middle::ty;
+use middle::subst::Subst;
 use std::cmp;
 use libc::c_uint;
 use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
@@ -525,6 +526,26 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
 // inline the one into the other. Of course we could just generate the
 // correct code in the first place, but this is much simpler.
 
+pub fn decl_rust_fn_with_foreign_abi(ccx: &CrateContext,
+                                     t: ty::t,
+                                     name: &str)
+                                     -> ValueRef {
+    let tys = foreign_types_for_fn_ty(ccx, t);
+    let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
+    let cconv = match ty::get(t).sty {
+        ty::ty_bare_fn(ref fn_ty) => {
+            let c = llvm_calling_convention(ccx, fn_ty.abi);
+            c.unwrap_or(llvm::CCallConv)
+        }
+        _ => fail!("expected bare fn in decl_rust_fn_with_foreign_abi")
+    };
+    let llfn = base::decl_fn(ccx, name, cconv, llfn_ty, ty::mk_nil());
+    add_argument_attributes(&tys, llfn);
+    debug!("decl_rust_fn_with_foreign_abi(llfn_ty={}, llfn={})",
+           ccx.tn.type_to_string(llfn_ty), ccx.tn.val_to_string(llfn));
+    llfn
+}
+
 pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
                                          sp: Span,
                                          sym: String,
@@ -554,31 +575,39 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                                       body: &ast::Block,
                                       attrs: &[ast::Attribute],
                                       llwrapfn: ValueRef,
-                                      id: ast::NodeId) {
+                                      param_substs: &param_substs,
+                                      id: ast::NodeId,
+                                      hash: Option<&str>) {
     let _icx = push_ctxt("foreign::build_foreign_fn");
-    let tys = foreign_types_for_id(ccx, id);
+
+    let fnty = ty::node_id_to_type(ccx.tcx(), id);
+    let mty = fnty.subst(ccx.tcx(), &param_substs.substs);
+    let tys = foreign_types_for_fn_ty(ccx, mty);
 
     unsafe { // unsafe because we call LLVM operations
         // Build up the Rust function (`foo0` above).
-        let llrustfn = build_rust_fn(ccx, decl, body, attrs, id);
+        let llrustfn = build_rust_fn(ccx, decl, body, param_substs, attrs, id, hash);
 
         // Build up the foreign wrapper (`foo` above).
-        return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys, id);
+        return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys, mty);
     }
 
     fn build_rust_fn(ccx: &CrateContext,
                      decl: &ast::FnDecl,
                      body: &ast::Block,
+                     param_substs: &param_substs,
                      attrs: &[ast::Attribute],
-                     id: ast::NodeId)
+                     id: ast::NodeId,
+                     hash: Option<&str>)
                      -> ValueRef {
         let _icx = push_ctxt("foreign::foreign::build_rust_fn");
         let tcx = ccx.tcx();
-        let t = ty::node_id_to_type(tcx, id);
+        let t = ty::node_id_to_type(tcx, id).subst(
+            ccx.tcx(), &param_substs.substs);
 
         let ps = ccx.tcx.map.with_path(id, |path| {
             let abi = Some(ast_map::PathName(special_idents::clownshoe_abi.name));
-            link::mangle(path.chain(abi.move_iter()), None)
+            link::mangle(path.chain(abi.move_iter()), hash)
         });
 
         // Compute the type that the function would have if it were just a
@@ -601,8 +630,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
 
         let llfn = base::decl_internal_rust_fn(ccx, t, ps.as_slice());
         base::set_llvm_fn_attrs(attrs, llfn);
-        base::trans_fn(ccx, decl, body, llfn, &param_substs::empty(), id, [],
-                       TranslateItems);
+        base::trans_fn(ccx, decl, body, llfn, param_substs, id, [], TranslateItems);
         llfn
     }
 
@@ -610,12 +638,10 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                             llrustfn: ValueRef,
                             llwrapfn: ValueRef,
                             tys: &ForeignTypes,
-                            id: ast::NodeId) {
+                            t: ty::t) {
         let _icx = push_ctxt(
             "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
         let tcx = ccx.tcx();
-
-        let t = ty::node_id_to_type(tcx, id);
 
         debug!("build_wrap_fn(llrustfn={}, llwrapfn={}, t={})",
                ccx.tn.val_to_string(llrustfn),
