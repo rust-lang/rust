@@ -348,7 +348,7 @@ impl<T: Clone> Vec<T> {
             unsafe {
                 ptr::write(
                     self.as_mut_slice().unsafe_mut_ref(len),
-                    other.unsafe_ref(i).clone());
+                    other.unsafe_get(i).clone());
                 self.set_len(len + 1);
             }
         }
@@ -703,7 +703,7 @@ impl<T> Vec<T> {
                 // decrement len before the read(), so a failure on Drop doesn't
                 // re-drop the just-failed value.
                 self.len -= 1;
-                ptr::read(self.as_slice().unsafe_ref(self.len));
+                ptr::read(self.as_slice().unsafe_get(self.len));
             }
         }
     }
@@ -1605,7 +1605,7 @@ impl<T> MutableSeq<T> for Vec<T> {
         } else {
             unsafe {
                 self.len -= 1;
-                Some(ptr::read(self.as_slice().unsafe_ref(self.len())))
+                Some(ptr::read(self.as_slice().unsafe_get(self.len())))
             }
         }
     }
