@@ -1392,7 +1392,7 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
     // to the default arm.
     let has_default = arms.last().map_or(false, |arm| {
         arm.pats.len() == 1
-        && arm.pats.last().unwrap().node == ast::PatWild
+        && arm.pats.last().unwrap().node == ast::PatWild(ast::PatWildSingle)
     });
 
     compile_submatch(bcx, matches.as_slice(), [discr_datum.val], &chk, has_default);
@@ -1762,7 +1762,7 @@ fn bind_irrefutable_pat<'a>(
         ast::PatMac(..) => {
             bcx.sess().span_bug(pat.span, "unexpanded macro");
         }
-        ast::PatWild | ast::PatWildMulti | ast::PatLit(_) | ast::PatRange(_, _) => ()
+        ast::PatWild(_) | ast::PatLit(_) | ast::PatRange(_, _) => ()
     }
     return bcx;
 }

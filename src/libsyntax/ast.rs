@@ -324,9 +324,19 @@ pub enum BindingMode {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum Pat_ {
-    PatWild,
+pub enum PatWildKind {
+    /// Represents the wildcard pattern `_`
+    PatWildSingle,
+
+    /// Represents the wildcard pattern `..`
     PatWildMulti,
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum Pat_ {
+    /// Represents a wildcard pattern (either `_` or `..`)
+    PatWild(PatWildKind),
+
     /// A PatIdent may either be a new bound variable,
     /// or a nullary enum (in which case the third field
     /// is None).

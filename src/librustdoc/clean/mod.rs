@@ -1959,8 +1959,8 @@ fn name_from_pat(p: &ast::Pat) -> String {
     debug!("Trying to get a name from pattern: {:?}", p);
 
     match p.node {
-        PatWild => "_".to_string(),
-        PatWildMulti => "..".to_string(),
+        PatWild(PatWildSingle) => "_".to_string(),
+        PatWild(PatWildMulti) => "..".to_string(),
         PatIdent(_, ref p, _) => token::get_ident(p.node).get().to_string(),
         PatEnum(ref p, _) => path_to_string(p),
         PatStruct(ref name, ref fields, etc) => {

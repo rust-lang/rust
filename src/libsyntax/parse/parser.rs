@@ -39,7 +39,7 @@ use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal}
 use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
 use ast::{NamedField, UnNeg, NoReturn, UnNot, P, Pat, PatEnum};
 use ast::{PatIdent, PatLit, PatRange, PatRegion, PatStruct};
-use ast::{PatTup, PatBox, PatWild, PatWildMulti};
+use ast::{PatTup, PatBox, PatWild, PatWildMulti, PatWildSingle};
 use ast::{BiRem, Required};
 use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
@@ -2822,7 +2822,7 @@ impl<'a> Parser<'a> {
                 if self.token == token::COMMA || self.token == token::RBRACKET {
                     slice = Some(box(GC) ast::Pat {
                         id: ast::DUMMY_NODE_ID,
-                        node: PatWildMulti,
+                        node: PatWild(PatWildMulti),
                         span: self.span,
                     })
                 } else {
@@ -2920,7 +2920,7 @@ impl<'a> Parser<'a> {
             // parse _
           token::UNDERSCORE => {
             self.bump();
-            pat = PatWild;
+            pat = PatWild(PatWildSingle);
             hi = self.last_span.hi;
             return box(GC) ast::Pat {
                 id: ast::DUMMY_NODE_ID,

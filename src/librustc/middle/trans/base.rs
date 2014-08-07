@@ -1032,7 +1032,7 @@ pub fn store_ty(cx: &Block, v: ValueRef, dst: ValueRef, t: ty::t) {
 
 pub fn ignore_lhs(_bcx: &Block, local: &ast::Local) -> bool {
     match local.pat.node {
-        ast::PatWild => true, _ => false
+        ast::PatWild(ast::PatWildSingle) => true, _ => false
     }
 }
 

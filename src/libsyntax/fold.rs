@@ -969,8 +969,7 @@ pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> SmallVector<Gc
 pub fn noop_fold_pat<T: Folder>(p: Gc<Pat>, folder: &mut T) -> Gc<Pat> {
     let id = folder.new_id(p.id);
     let node = match p.node {
-        PatWild => PatWild,
-        PatWildMulti => PatWildMulti,
+        PatWild(k) => PatWild(k),
         PatIdent(binding_mode, ref pth1, ref sub) => {
             PatIdent(binding_mode,
                      Spanned{span: folder.new_span(pth1.span),
