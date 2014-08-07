@@ -197,9 +197,9 @@ impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
 
     fn unwrap(self) -> T { self.out }
 
-    fn get_ref<'a>(&'a self) -> &'a T { &self.out }
+    fn as_inner(&self) -> &T { &self.out }
 
-    fn get_mut<'a>(&'a mut self) -> &'a mut T { &mut self.out }
+    fn as_inner_mut(&mut self) -> &mut T { &mut self.out }
 }
 
 impl<T: Writer> TerminfoTerminal<T> {
@@ -220,4 +220,3 @@ impl<T: Writer> Writer for TerminfoTerminal<T> {
         self.out.flush()
     }
 }
-
