@@ -293,13 +293,12 @@ def emit_bsearch_range_table(f):
     f.write("""
 fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
     use core::cmp::{Equal, Less, Greater};
-    use core::slice::ImmutableVector;
-    use core::option::None;
-    r.bsearch(|&(lo,hi)| {
+    use core::slice::ImmutableSlice;
+    r.binary_search(|&(lo,hi)| {
         if lo <= c && c <= hi { Equal }
         else if hi < c { Less }
         else { Greater }
-    }) != None
+    }).found().is_some()
 }\n
 """)
 
@@ -352,9 +351,10 @@ def emit_conversions_module(f, lowerupper, upperlower):
     f.write("pub mod conversions {")
     f.write("""
     use core::cmp::{Equal, Less, Greater};
-    use core::slice::ImmutableVector;
+    use core::slice::ImmutableSlice;
     use core::tuple::Tuple2;
     use core::option::{Option, Some, None};
+    use core::slice;
 
     pub fn to_lower(c: char) -> char {
         match bsearch_case_table(c, LuLl_table) {
@@ -371,11 +371,14 @@ def emit_conversions_module(f, lowerupper, upperlower):
     }
 
     fn bsearch_case_table(c: char, table: &'static [(char, char)]) -> Option<uint> {
-        table.bsearch(|&(key, _)| {
+        match table.binary_search(|&(key, _)| {
             if c == key { Equal }
             else if key < c { Less }
             else { Greater }
-        })
+        }) {
+            slice::Found(i) => Some(i),
+            slice::NotFound(_) => None,
+        }
     }
 
 """)
@@ -387,8 +390,8 @@ def emit_conversions_module(f, lowerupper, upperlower):
 
 def emit_grapheme_module(f, grapheme_table, grapheme_cats):
     f.write("""pub mod grapheme {
-    use core::option::{Some, None};
-    use core::slice::ImmutableVector;
+    use core::slice::ImmutableSlice;
+    use core::slice;
 
     #[allow(non_camel_case_types)]
     #[deriving(Clone)]
@@ -400,16 +403,16 @@ def emit_grapheme_module(f, grapheme_table, grapheme_cats):
 
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, GraphemeCat)]) -> GraphemeCat {
         use core::cmp::{Equal, Less, Greater};
-        match r.bsearch(|&(lo, hi, _)| {
+        match r.binary_search(|&(lo, hi, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            Some(idx) => {
+            slice::Found(idx) => {
                 let (_, _, cat) = r[idx];
                 cat
             }
-            None => GC_Any
+            slice::NotFound(_) => GC_Any
         }
     }
 
@@ -427,20 +430,21 @@ def emit_grapheme_module(f, grapheme_table, grapheme_cats):
 def emit_charwidth_module(f, width_table):
     f.write("pub mod charwidth {\n")
     f.write("    use core::option::{Option, Some, None};\n")
-    f.write("    use core::slice::ImmutableVector;\n")
+    f.write("    use core::slice::ImmutableSlice;\n")
+    f.write("    use core::slice;\n")
     f.write("""
     fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {
         use core::cmp::{Equal, Less, Greater};
-        match r.bsearch(|&(lo, hi, _, _)| {
+        match r.binary_search(|&(lo, hi, _, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            Some(idx) => {
+            slice::Found(idx) => {
                 let (_, _, r_ncjk, r_cjk) = r[idx];
                 if is_cjk { r_cjk } else { r_ncjk }
             }
-            None => 1
+            slice::NotFound(_) => 1
         }
     }
 """)
@@ -525,19 +529,19 @@ def emit_norm_module(f, canon, compat, combine, norm_props):
 
     f.write("""
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
-        use core::option::{Some, None};
         use core::cmp::{Equal, Less, Greater};
-        use core::slice::ImmutableVector;
-        match r.bsearch(|&(lo, hi, _)| {
+        use core::slice::ImmutableSlice;
+        use core::slice;
+        match r.binary_search(|&(lo, hi, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            Some(idx) => {
+            slice::Found(idx) => {
                 let (_, _, result) = r[idx];
                 result
             }
-            None => 0
+            slice::NotFound(_) => 0
         }
     }\n
 """)

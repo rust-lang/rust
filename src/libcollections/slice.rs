@@ -102,6 +102,7 @@ pub use core::slice::{Chunks, Slice, ImmutableSlice, ImmutablePartialEqSlice};
 pub use core::slice::{ImmutableOrdSlice, MutableSlice, Items, MutItems};
 pub use core::slice::{MutSplits, MutChunks};
 pub use core::slice::{bytes, MutableCloneableSlice};
+pub use core::slice::{BinarySearchResult, Found, NotFound};
 
 // Functional utilities
 
