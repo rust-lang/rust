@@ -163,10 +163,12 @@ pub trait ImmutableSlice<'a, T> {
     /// Returns all but the first element of a vector
     fn tail(&self) -> &'a [T];
     /// Returns all but the first `n' elements of a vector
+    #[deprecated = "use slice_from"]
     fn tailn(&self, n: uint) -> &'a [T];
     /// Returns all but the last element of a vector
     fn init(&self) -> &'a [T];
     /// Returns all but the last `n' elements of a vector
+    #[deprecated = "use slice_to but note the arguments are different"]
     fn initn(&self, n: uint) -> &'a [T];
     /// Returns the last element of a vector, or `None` if it is empty.
     fn last(&self) -> Option<&'a T>;
@@ -339,6 +341,7 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
     fn tail(&self) -> &'a [T] { self.slice(1, self.len()) }
 
     #[inline]
+    #[deprecated = "use slice_from"]
     fn tailn(&self, n: uint) -> &'a [T] { self.slice(n, self.len()) }
 
     #[inline]
@@ -347,6 +350,7 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
     }
 
     #[inline]
+    #[deprecated = "use slice_to but note the arguments are different"]
     fn initn(&self, n: uint) -> &'a [T] {
         self.slice(0, self.len() - n)
     }
