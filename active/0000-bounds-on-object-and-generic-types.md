@@ -19,7 +19,7 @@
 
 Currently, the type system is not supposed to allow references to
 escape into object types. However, there are various bugs where it
-fails to prevent this from hapenning. Moreover, it is very useful (and
+fails to prevent this from happening. Moreover, it is very useful (and
 frequently necessary) to store a reference into an object. Moreover,
 the current treatment of generic types is in some cases naive and not
 obviously sound.
@@ -105,7 +105,6 @@ Here are some examples:
 
     trait IsStatic : 'static { }
     trait Is<'a> : 'a { }
-    trait IsNothing { }
     
     // Type               Bounds
     // IsStatic           'static
@@ -124,11 +123,11 @@ default lifetime using the normal rules:
         Box<Writer+Send>, // OK: Send implies 'static
         &'a Writer,       // Error: try &'a (Writer+'a)
     }
-    
+
     fn foo(a: Box<Writer>, // OK: Sugar for Box<Writer+'a> where 'a fresh
-           b: &Writer)     // OK: Sugar for &'a (Writer+'b) where 'a, 'b fresh
+           b: &Writer)     // OK: Sugar for &'b (Writer+'c) where 'b, 'c fresh
     { ... }
-    
+
 This kind of annotation can seem a bit tedious when using object types
 extensively, though type aliases can help quite a bit:
 
@@ -137,6 +136,9 @@ extensively, though type aliases can help quite a bit:
 
 The unresolved questions section discussed possibles ways to lighten
 the burden.
+
+See Appendix B for the motivation on why object types are permitted to
+have exactly one lifetime bound.
 
 ## Specifying relations between lifetimes
 
@@ -155,10 +157,10 @@ them explicitly (and necessary in some cases, see below).
 A *lifetime bound* is written `'a:'b` and it means that "`'a` outlives
 `'b`". For example, if `foo` were declared like so:
 
-    fn foo<'a, 'b:'a>(...) { ... }
+    fn foo<'x, 'y:'x>(...) { ... }
     
-that would indicate that the lifetime '`a` was shorter than (or equal
-to) `'b`.
+that would indicate that the lifetime '`x` was shorter than (or equal
+to) `'y`.
   
 ## The "type must outlive" and well-formedness relation
 
@@ -229,7 +231,7 @@ The compiler will infer lifetime bounds on both type parameters and
 region parameters as follows. Within a function or method, we apply
 the wellformedness function `WF` to each function or parameter type.
 This yields up a set of relations that must hold. The idea here is
-that the caller could have type checked unless the types of the
+that the caller could not have type checked unless the types of the
 arguments were well-formed, so that implies that the callee can assume
 that those well-formedness constraints hold.
 
@@ -291,7 +293,7 @@ This RFC has a lot of details. The main implications for end users are:
            arena: &'global Arena
        }
        
-       struct LocalConenxt<'local, 'global:'local> {
+       struct LocalContext<'local, 'global:'local> {
            x: &'local mut Context<'global>
        }
        
@@ -345,6 +347,9 @@ traverse the type hierarchy deeply to find its origin. This could
 potentially be addressed with better error messages, though our track
 record for lifetime error messages is not very good so far.
 
+Also, there is a potential interaction between this sort of inference
+and the description of default trait bounds below.
+
 ## Default trait bounds
 
 When referencing a trait object, it is almost *always* the case that one follows
@@ -358,12 +363,17 @@ certain fixed patterns:
 You might think that we should simply provide some kind of defaults
 that are sensitive to where the `Trait` appears. The same is probably
 true of struct type parameters (in other words, `&'a SomeStruct<'a>`
-is a very comon pattern).
+is a very common pattern).
 
 However, there are complications:
 
-- What about a type like `struct Ref<'a, T> { x: &'a T }`? `Ref<'a, Trait>`
-  should really work the same way as `&'a Trait`.
+- What about a type like `struct Ref<'a, T:'a> { x: &'a T }`? `Ref<'a,
+  Trait>` should really work the same way as `&'a Trait`. One way that
+  I can see to do this is to drive the defaulting based on the default
+  trait bounds of the `T` type parameter -- but if we do that, it is
+  both a non-local default (you have to consult the definition of
+  `Ref`) and interacts with the potential inference described in the
+  previous section.
 - There *are* reasons to want a type like `Box<Trait+'a>`. For example,
   the macro parser includes a function like:
   
@@ -422,3 +432,39 @@ lifetime `'a` yields a list of `'b:'c` or `X:'d` pairs. For each pair
 
 We can then say that `T outlives 'a` if all lifetime relations
 returned by `WF(T:'a)` hold.
+
+# Appendix B: Why object types must have exactly one bound
+
+The motivation is that handling multiple bounds is overwhelmingly
+complicated to reason about and implement. In various places,
+constraints arise of the form `all i. exists j. R[i] <= R[j]`, where
+`R` is a list of lifetimes. This is challenging for lifetime
+inference, since there are many options for it to choose from, and
+thus inference is no longer a fixed-point iteration. Moreover, it
+doesn't seem to add any particular expressiveness.
+
+The places where this becomes important	are:
+
+- Checking lifetime bounds when data is closed over into an object type
+- Subtyping between object types, which would most naturally be
+  contravariant in the lifetime bound
+
+Similarly, requiring that the "master" bound on object lifetimes outlives
+all other bounds also aids inference. Now, given a type like the
+following:
+
+    trait Foo<'a> : 'a { }
+    trait Bar<'b> : 'b { }
+    
+    ...
+    
+    let x: Box<Foo<'a>+Bar<'b>>
+
+the inference engine can create a fresh lifetime variable `'0` for the
+master bound and then say that `'0:'a` and `'0:'b`. Without the
+requirement that `'0` be a master bound, it would be somewhat unclear
+how `'0` relates to `'a` and `'b` (in fact, there would be no
+necessary relation). But if there is no necessary relation, then when
+closing over data, one would have to ensure that the closed over data
+outlives *all* derivable lifetime bounds, which again creates a
+constraint of the form `all i. exists j.`.
