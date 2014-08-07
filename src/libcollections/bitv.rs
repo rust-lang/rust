@@ -1075,6 +1075,8 @@ impl BitvSet {
         bitv.reserve(size)
     }
 
+    /// Deprecated. Use `into_bitv` instead.
+    ///
     /// Consume this set to return the underlying bit vector.
     ///
     /// # Example
@@ -1090,11 +1092,33 @@ impl BitvSet {
     /// assert!(bv.eq_vec([true, false, false, true]));
     /// ```
     #[inline]
+    #[deprecated = "use into_bitv instead"]
     pub fn unwrap(self) -> Bitv {
+        self.into_bitv()
+    }
+
+    /// Consume this set to return the underlying bit vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    ///
+    /// let mut s = BitvSet::new();
+    /// s.insert(0);
+    /// s.insert(3);
+    ///
+    /// let bv = s.into_bitv();
+    /// assert!(bv.eq_vec([true, false, false, true]));
+    /// ```
+    #[inline]
+    pub fn into_bitv(self) -> Bitv {
         let BitvSet(bitv) = self;
         bitv
     }
 
+    /// Deprecated. Use `as_bitv` instead.
+    ///
     /// Return a reference to the underlying bit vector.
     ///
     /// # Example
@@ -1109,11 +1133,32 @@ impl BitvSet {
     /// assert_eq!(bv[0], true);
     /// ```
     #[inline]
-    pub fn get_ref<'a>(&'a self) -> &'a Bitv {
+    #[deprecated = "use as_bitv instead"]
+    pub fn get_ref(&self) -> &Bitv {
+        self.as_bitv()
+    }
+
+    /// Return a reference to the underlying bit vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    ///
+    /// let mut s = BitvSet::new();
+    /// s.insert(0);
+    ///
+    /// let bv = s.as_bitv();
+    /// assert_eq!(bv[0], true);
+    /// ```
+    #[inline]
+    pub fn as_bitv(&self) -> &Bitv {
         let &BitvSet(ref bitv) = self;
         bitv
     }
 
+    /// Deprecated. Use `as_bitv_mut` instead.
+    ///
     /// Return a mutable reference to the underlying bit vector.
     ///
     /// # Example
@@ -1132,7 +1177,30 @@ impl BitvSet {
     /// assert_eq!(s.contains(&0), false);
     /// ```
     #[inline]
-    pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut Bitv {
+    #[deprecated = "use as_bitv_mut instead"]
+    pub fn get_mut_ref(&mut self) -> &mut Bitv {
+        self.as_bitv_mut()
+    }
+
+    /// Return a mutable reference to the underlying bit vector.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BitvSet;
+    ///
+    /// let mut s = BitvSet::new();
+    /// s.insert(0);
+    /// assert_eq!(s.contains(&0), true);
+    /// {
+    ///     // Will free the set during bv's lifetime
+    ///     let bv = s.as_bitv_mut();
+    ///     bv.set(0, false);
+    /// }
+    /// assert_eq!(s.contains(&0), false);
+    /// ```
+    #[inline]
+    pub fn as_bitv_mut(&mut self) -> &mut Bitv {
         let &BitvSet(ref mut bitv) = self;
         bitv
     }
