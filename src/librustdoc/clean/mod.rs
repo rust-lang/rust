@@ -614,6 +614,12 @@ impl Clean<Lifetime> for ast::Lifetime {
     }
 }
 
+impl Clean<Lifetime> for ast::LifetimeDef {
+    fn clean(&self) -> Lifetime {
+        Lifetime(token::get_name(self.lifetime.name).get().to_string())
+    }
+}
+
 impl Clean<Lifetime> for ty::RegionParameterDef {
     fn clean(&self) -> Lifetime {
         Lifetime(token::get_name(self.name).get().to_string())

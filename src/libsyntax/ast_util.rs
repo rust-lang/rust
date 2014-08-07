@@ -369,7 +369,7 @@ impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
             self.operation.visit_id(type_parameter.id)
         }
         for lifetime in generics.lifetimes.iter() {
-            self.operation.visit_id(lifetime.id)
+            self.operation.visit_id(lifetime.lifetime.id)
         }
     }
 }

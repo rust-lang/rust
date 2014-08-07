@@ -410,8 +410,8 @@ mod svh_visitor {
             SawLifetimeRef(content(l.name)).hash(self.st);
         }
 
-        fn visit_lifetime_decl(&mut self, l: &Lifetime, _: E) {
-            SawLifetimeDecl(content(l.name)).hash(self.st);
+        fn visit_lifetime_decl(&mut self, l: &LifetimeDef, _: E) {
+            SawLifetimeDecl(content(l.lifetime.name)).hash(self.st);
         }
 
         // We do recursively walk the bodies of functions/methods
