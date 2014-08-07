@@ -30,7 +30,7 @@ use option::{Some, None};
 use boxed::Box;
 use result::{Ok, Err};
 use rt::rtio::{IoFactory, LocalIo, RtioSignal, Callback};
-use slice::ImmutableVector;
+use slice::ImmutableSlice;
 use vec::Vec;
 
 /// Signals that can be sent and received

@@ -75,7 +75,7 @@ use str;
 use str::{MaybeOwned, Str, StrSlice};
 use string::String;
 use slice::Vector;
-use slice::{ImmutableEqVector, ImmutableVector};
+use slice::{ImmutableEqSlice, ImmutableSlice};
 use vec::Vec;
 
 /// Typedef for POSIX file paths.

@@ -894,7 +894,7 @@ mod tests {
     use {Collection, MutableSeq};
 
     use super::*;
-    use std::slice::{Vector, ImmutableVector};
+    use std::slice::{Vector, ImmutableSlice};
     use string::String;
     use vec::Vec;
 

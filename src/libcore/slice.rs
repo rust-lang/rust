@@ -54,7 +54,7 @@ use raw::{Repr, Slice};
 //
 
 /// Extension methods for vectors
-pub trait ImmutableVector<'a, T> {
+pub trait ImmutableSlice<'a, T> {
     /**
      * Returns a slice of self spanning the interval [`start`, `end`).
      *
@@ -234,7 +234,7 @@ pub trait ImmutableVector<'a, T> {
     fn pop_ref(&mut self) -> Option<&'a T>;
 }
 
-impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
+impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
     #[inline]
     fn slice(&self, start: uint, end: uint) -> &'a [T] {
         assert!(start <= end);
@@ -401,7 +401,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
 
 /// Extension methods for vectors such that their elements are
 /// mutable.
-pub trait MutableVector<'a, T> {
+pub trait MutableSlice<'a, T> {
     /// Returns a mutable reference to the element at the given index,
     /// or `None` if the index is out of bounds
     fn get_mut(self, index: uint) -> Option<&'a mut T>;
@@ -607,7 +607,7 @@ pub trait MutableVector<'a, T> {
     unsafe fn copy_memory(self, src: &[T]);
 }
 
-impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
+impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
     #[inline]
     fn get_mut(self, index: uint) -> Option<&'a mut T> {
         if index < self.len() { Some(&mut self[index]) } else { None }
@@ -755,7 +755,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 }
 
 /// Extension methods for vectors contain `PartialEq` elements.
-pub trait ImmutableEqVector<T:PartialEq> {
+pub trait ImmutableEqSlice<T:PartialEq> {
     /// Find the first index containing a matching value
     fn position_elem(&self, t: &T) -> Option<uint>;
 
@@ -772,7 +772,7 @@ pub trait ImmutableEqVector<T:PartialEq> {
     fn ends_with(&self, needle: &[T]) -> bool;
 }
 
-impl<'a,T:PartialEq> ImmutableEqVector<T> for &'a [T] {
+impl<'a,T:PartialEq> ImmutableEqSlice<T> for &'a [T] {
     #[inline]
     fn position_elem(&self, x: &T) -> Option<uint> {
         self.iter().position(|y| *x == *y)
@@ -802,7 +802,7 @@ impl<'a,T:PartialEq> ImmutableEqVector<T> for &'a [T] {
 }
 
 /// Extension methods for vectors containing `Ord` elements.
-pub trait ImmutableOrdVector<T: Ord> {
+pub trait ImmutableOrdSlice<T: Ord> {
     /**
      * Binary search a sorted vector for a given element.
      *
@@ -811,14 +811,14 @@ pub trait ImmutableOrdVector<T: Ord> {
     fn bsearch_elem(&self, x: &T) -> Option<uint>;
 }
 
-impl<'a, T: Ord> ImmutableOrdVector<T> for &'a [T] {
+impl<'a, T: Ord> ImmutableOrdSlice<T> for &'a [T] {
     fn bsearch_elem(&self, x: &T) -> Option<uint> {
         self.bsearch(|p| p.cmp(x))
     }
 }
 
 /// Trait for &[T] where T is Cloneable
-pub trait MutableCloneableVector<T> {
+pub trait MutableCloneableSlice<T> {
     /// Copies as many elements from `src` as it can into `self` (the
     /// shorter of `self.len()` and `src.len()`). Returns the number
     /// of elements copied.
@@ -826,7 +826,7 @@ pub trait MutableCloneableVector<T> {
     /// # Example
     ///
     /// ```rust
-    /// use std::slice::MutableCloneableVector;
+    /// use std::slice::MutableCloneableSlice;
     ///
     /// let mut dst = [0i, 0, 0];
     /// let src = [1i, 2];
@@ -841,7 +841,7 @@ pub trait MutableCloneableVector<T> {
     fn copy_from(self, &[T]) -> uint;
 }
 
-impl<'a, T:Clone> MutableCloneableVector<T> for &'a mut [T] {
+impl<'a, T:Clone> MutableCloneableSlice<T> for &'a mut [T] {
     #[inline]
     fn copy_from(self, src: &[T]) -> uint {
         for (a, b) in self.mut_iter().zip(src.iter()) {
@@ -1413,7 +1413,7 @@ pub mod raw {
 pub mod bytes {
     use collections::Collection;
     use ptr;
-    use slice::MutableVector;
+    use slice::MutableSlice;
 
     /// A trait for operations on mutable `[u8]`s.
     pub trait MutableByteVector {
