@@ -8,10 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[no_mangle]
+pub extern "C" fn foo() -> i32 { 3 }
+
+#[no_mangle]
+pub extern "C" fn bar() -> i32 { 5 }
+
+#[link(name = "test", kind = "static")]
 extern {
-    fn foo<T>(); //~ ERROR foreign items may not have type parameters
+    fn add() -> i32;
 }
 
 fn main() {
-    foo::<i32>();
+    let back = unsafe { add() };
+    assert_eq!(8, back);
 }
