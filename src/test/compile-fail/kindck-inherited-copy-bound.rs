@@ -8,18 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let mut x = Some(1);
-    let mut p: proc(&mut Option<int>) = proc(_) {};
-    match x {
-        Some(ref y) => { //~ ERROR does not live long enough
-            p = proc(z: &mut Option<int>) {
-                *z = None;
-                let _ = y;
-            };
-        }
-        None => {}
-    }
-    p(&mut x);
+// Test that Copy bounds inherited by trait are checked.
+
+use std::any::Any;
+use std::any::AnyRefExt;
+
+trait Foo : Copy {
 }
 
+impl<T:Copy> Foo for T {
+}
+
+fn take_param<T:Foo>(foo: &T) { }
+
+fn main() {
+    let x = box 3i;
+    take_param(&x); //~ ERROR does not fulfill `Copy`
+
+    let y = &x;
+    let z = &x as &Foo; //~ ERROR does not fulfill `Copy`
+}

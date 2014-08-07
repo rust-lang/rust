@@ -9,7 +9,6 @@
 // except according to those terms.
 
 /*!
- *
  * # Lattice Variables
  *
  * This file contains generic code for operating on inference variables
@@ -343,7 +342,7 @@ pub trait TyLatticeDir {
 }
 
 impl<'f> LatticeDir for Lub<'f> {
-    fn combine_fields<'a>(&'a self) -> CombineFields<'a> { self.get_ref().clone() }
+    fn combine_fields<'a>(&'a self) -> CombineFields<'a> { self.fields.clone() }
     fn bnd<T:Clone>(&self, b: &Bounds<T>) -> Option<T> { b.ub.clone() }
     fn with_bnd<T:Clone>(&self, b: &Bounds<T>, t: T) -> Bounds<T> {
         Bounds { ub: Some(t), ..(*b).clone() }
@@ -357,7 +356,7 @@ impl<'f> TyLatticeDir for Lub<'f> {
 }
 
 impl<'f> LatticeDir for Glb<'f> {
-    fn combine_fields<'a>(&'a self) -> CombineFields<'a> { self.get_ref().clone() }
+    fn combine_fields<'a>(&'a self) -> CombineFields<'a> { self.fields.clone() }
     fn bnd<T:Clone>(&self, b: &Bounds<T>) -> Option<T> { b.lb.clone() }
     fn with_bnd<T:Clone>(&self, b: &Bounds<T>, t: T) -> Bounds<T> {
         Bounds { lb: Some(t), ..(*b).clone() }

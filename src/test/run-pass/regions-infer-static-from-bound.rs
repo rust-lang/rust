@@ -8,18 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let mut x = Some(1);
-    let mut p: proc(&mut Option<int>) = proc(_) {};
-    match x {
-        Some(ref y) => { //~ ERROR does not live long enough
-            p = proc(z: &mut Option<int>) {
-                *z = None;
-                let _ = y;
-            };
-        }
-        None => {}
-    }
-    p(&mut x);
-}
+// Check that a 'static bound influences the lifetime we infer for a borrow.
+// This test should compile.
 
+static i: uint = 3;
+fn foo1<T:Send>(t: T) { }
+fn foo2<T:'static>(t: T) { }
+pub fn main() {
+    foo1(&i);
+    foo2(&i);
+}

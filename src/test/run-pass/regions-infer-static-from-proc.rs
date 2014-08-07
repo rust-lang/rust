@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let mut x = Some(1);
-    let mut p: proc(&mut Option<int>) = proc(_) {};
-    match x {
-        Some(ref y) => { //~ ERROR does not live long enough
-            p = proc(z: &mut Option<int>) {
-                *z = None;
-                let _ = y;
-            };
-        }
-        None => {}
-    }
-    p(&mut x);
-}
+// Check that the 'static bound on a proc influences lifetimes of
+// region variables contained within (otherwise, region inference will
+// give `x` a very short lifetime).
 
+static i: uint = 3;
+fn foo(_: proc():'static) {}
+fn read(_: uint) { }
+pub fn main() {
+    let x = &i;
+    foo(proc() {
+        read(*x);
+    });
+}

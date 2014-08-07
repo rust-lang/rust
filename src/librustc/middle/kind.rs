@@ -11,13 +11,14 @@
 
 use middle::freevars::freevar_entry;
 use middle::freevars;
+use mc = middle::mem_categorization;
 use middle::subst;
 use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
 use middle::typeck;
 use middle::typeck::{MethodCall, NoAdjustment};
-use util::ppaux::{Repr, ty_to_string};
+use util::ppaux::{ty_to_string};
 use util::ppaux::UserString;
 
 use syntax::ast::*;
@@ -26,6 +27,7 @@ use syntax::codemap::Span;
 use syntax::print::pprust::{expr_to_string, ident_to_string};
 use syntax::{visit};
 use syntax::visit::Visitor;
+use std::rc::Rc;
 
 // Kind analysis pass.
 //
@@ -134,10 +136,11 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
     debug!("checking impl with self type {}", ty::get(self_ty).sty);
-    check_builtin_bounds(cx, self_ty, trait_def.bounds, |missing| {
+    check_builtin_bounds(cx, self_ty, trait_def.bounds, [], |missing| {
         span_err!(cx.tcx.sess, self_type.span, E0142,
                   "the type `{}', which does not fulfill `{}`, cannot implement this trait",
-                  ty_to_string(cx.tcx, self_ty), missing.user_string(cx.tcx));
+                  ty_to_string(cx.tcx, self_ty),
+                  missing.user_string(cx.tcx));
         span_note!(cx.tcx.sess, self_type.span,
                    "types implementing this trait must fulfill `{}`",
                    trait_def.bounds.user_string(cx.tcx));
@@ -261,7 +264,20 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     debug!("kind::check_expr({})", expr_to_string(e));
 
     // Handle any kind bounds on type parameters
-    check_bounds_on_type_parameters(cx, e);
+    mc::each_type_parameters_and_def(cx.tcx, e, |type_param_ty, type_param_def| {
+        check_typaram_bounds(cx, e.span, type_param_ty, type_param_def)
+    });
+
+    // If this node is a method call (or overloaded op), check the
+    // vtable.
+    {
+        let vtable_map = cx.tcx.vtable_map.borrow();
+        let vtable_res = match vtable_map.find(&MethodCall::expr(e.id)) {
+            None => return,
+            Some(vtable_res) => vtable_res,
+        };
+        check_type_parameter_bounds_in_vtable_result(cx, e.span, vtable_res);
+    }
 
     match e.node {
         ExprBox(ref loc, ref interior) => {
@@ -320,88 +336,6 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     }
 
     visit::walk_expr(cx, e, ());
-}
-
-fn check_bounds_on_type_parameters(cx: &mut Context, e: &Expr) {
-    let method_map = cx.tcx.method_map.borrow();
-    let method_call = typeck::MethodCall::expr(e.id);
-    let method = method_map.find(&method_call);
-
-    // Find the values that were provided (if any)
-    let item_substs = cx.tcx.item_substs.borrow();
-    let (types, is_object_call) = match method {
-        Some(method) => {
-            let is_object_call = match method.origin {
-                typeck::MethodObject(..) => true,
-                typeck::MethodStatic(..) |
-                typeck::MethodStaticUnboxedClosure(..) |
-                typeck::MethodParam(..) => false
-            };
-            (&method.substs.types, is_object_call)
-        }
-        None => {
-            match item_substs.find(&e.id) {
-                None => { return; }
-                Some(s) => { (&s.substs.types, false) }
-            }
-        }
-    };
-
-    // Find the relevant type parameter definitions
-    let def_map = cx.tcx.def_map.borrow();
-    let type_param_defs = match e.node {
-        ExprPath(_) => {
-            let did = def_map.get_copy(&e.id).def_id();
-            ty::lookup_item_type(cx.tcx, did).generics.types.clone()
-        }
-        _ => {
-            // Type substitutions should only occur on paths and
-            // method calls, so this needs to be a method call.
-
-            // Even though the callee_id may have been the id with
-            // node_type_substs, e.id is correct here.
-            match method {
-                Some(method) => {
-                    ty::method_call_type_param_defs(cx.tcx, method.origin)
-                }
-                None => {
-                    cx.tcx.sess.span_bug(e.span,
-                                         "non path/method call expr has type substs??");
-                }
-            }
-        }
-    };
-
-    // Check that the value provided for each definition meets the
-    // kind requirements
-    for type_param_def in type_param_defs.iter() {
-        let ty = *types.get(type_param_def.space, type_param_def.index);
-
-        // If this is a call to an object method (`foo.bar()` where
-        // `foo` has a type like `Trait`), then the self type is
-        // unknown (after all, this is a virtual call). In that case,
-        // we will have put a ty_err in the substitutions, and we can
-        // just skip over validating the bounds (because the bounds
-        // would have been enforced when the object instance was
-        // created).
-        if is_object_call && type_param_def.space == subst::SelfSpace {
-            assert_eq!(type_param_def.index, 0);
-            assert!(ty::type_is_error(ty));
-            continue;
-        }
-
-        debug!("type_param_def space={} index={} ty={}",
-               type_param_def.space, type_param_def.index, ty.repr(cx.tcx));
-        check_typaram_bounds(cx, e.span, ty, type_param_def)
-    }
-
-    // Check the vtable.
-    let vtable_map = cx.tcx.vtable_map.borrow();
-    let vtable_res = match vtable_map.find(&method_call) {
-        None => return,
-        Some(vtable_res) => vtable_res,
-    };
-    check_type_parameter_bounds_in_vtable_result(cx, e.span, vtable_res);
 }
 
 fn check_type_parameter_bounds_in_vtable_result(
@@ -490,14 +424,15 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
 pub fn check_builtin_bounds(cx: &Context,
                             ty: ty::t,
                             bounds: ty::BuiltinBounds,
+                            traits: &[Rc<ty::TraitRef>],
                             any_missing: |ty::BuiltinBounds|) {
     let kind = ty::type_contents(cx.tcx, ty);
     let mut missing = ty::empty_builtin_bounds();
-    for bound in bounds.iter() {
+    ty::each_inherited_builtin_bound(cx.tcx, bounds, traits, |bound| {
         if !kind.meets_bound(cx.tcx, bound) {
             missing.add(bound);
         }
-    }
+    });
     if !missing.is_empty() {
         any_missing(missing);
     }
@@ -507,9 +442,12 @@ pub fn check_typaram_bounds(cx: &Context,
                             sp: Span,
                             ty: ty::t,
                             type_param_def: &ty::TypeParameterDef) {
+    debug!("check_typaram_bounds(ty={}, type_param_def={}, sp={})",
+           ty.repr(cx.tcx), type_param_def.repr(cx.tcx), sp.repr(cx.tcx));
     check_builtin_bounds(cx,
                          ty,
                          type_param_def.bounds.builtin_bounds,
+                         type_param_def.bounds.trait_bounds.as_slice(),
                          |missing| {
         span_err!(cx.tcx.sess, sp, E0144,
                   "instantiating a type parameter with an incompatible type \
@@ -522,7 +460,7 @@ pub fn check_typaram_bounds(cx: &Context,
 pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
                             bounds: ty::BuiltinBounds, referenced_ty: Option<ty::t>)
 {
-    check_builtin_bounds(cx, ty, bounds, |missing| {
+    check_builtin_bounds(cx, ty, bounds, [], |missing| {
         // Will be Some if the freevar is implicitly borrowed (stack closure).
         // Emit a less mysterious error message in this case.
         match referenced_ty {
@@ -547,7 +485,7 @@ pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
 
 pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
                                bounds: ty::BuiltinBounds) {
-    check_builtin_bounds(cx, ty, bounds, |missing| {
+    check_builtin_bounds(cx, ty, bounds, [], |missing| {
         span_err!(cx.tcx.sess, sp, E0147,
             "cannot pack type `{}`, which does not fulfill `{}`, as a trait bounded by {}",
             ty_to_string(cx.tcx, ty),

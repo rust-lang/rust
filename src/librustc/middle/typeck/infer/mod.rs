@@ -161,6 +161,9 @@ pub enum SubregionOrigin {
     // Closure bound must not outlive captured free variables
     FreeVariable(Span, ast::NodeId),
 
+    // Proc upvars must be 'static
+    ProcCapture(Span, ast::NodeId),
+
     // Index into slice must be within its lifetime
     IndexSlice(Span),
 
@@ -194,6 +197,10 @@ pub enum SubregionOrigin {
 
     // An auto-borrow that does not enclose the expr where it occurs
     AutoBorrow(Span),
+
+    // Type parameter requires type to have certain lifetime
+    // (typically 'static).
+    TypeParameterBound(ast::Ident, Span),
 }
 
 /// Reasons to create a region inference variable
@@ -519,13 +526,13 @@ impl<'a> InferCtxt<'a> {
 
         self.type_unification_table
             .borrow_mut()
-            .rollback_to(self.tcx, type_snapshot);
+            .rollback_to(type_snapshot);
         self.int_unification_table
             .borrow_mut()
-            .rollback_to(self.tcx, int_snapshot);
+            .rollback_to(int_snapshot);
         self.float_unification_table
             .borrow_mut()
-            .rollback_to(self.tcx, float_snapshot);
+            .rollback_to(float_snapshot);
         self.region_vars
             .rollback_to(region_vars_snapshot);
     }
@@ -894,6 +901,7 @@ impl SubregionOrigin {
             InvokeClosure(a) => a,
             DerefPointer(a) => a,
             FreeVariable(a, _) => a,
+            ProcCapture(a, _) => a,
             IndexSlice(a) => a,
             RelateObjectBound(a) => a,
             Reborrow(a) => a,
@@ -905,6 +913,7 @@ impl SubregionOrigin {
             CallReturn(a) => a,
             AddrOf(a) => a,
             AutoBorrow(a) => a,
+            TypeParameterBound(_, a) => a,
         }
     }
 }
@@ -927,6 +936,9 @@ impl Repr for SubregionOrigin {
             FreeVariable(a, b) => {
                 format!("FreeVariable({}, {})", a.repr(tcx), b)
             }
+            ProcCapture(a, b) => {
+                format!("ProcCapture({}, {})", a.repr(tcx), b)
+            }
             IndexSlice(a) => {
                 format!("IndexSlice({})", a.repr(tcx))
             }
@@ -948,6 +960,8 @@ impl Repr for SubregionOrigin {
             CallReturn(a) => format!("CallReturn({})", a.repr(tcx)),
             AddrOf(a) => format!("AddrOf({})", a.repr(tcx)),
             AutoBorrow(a) => format!("AutoBorrow({})", a.repr(tcx)),
+            TypeParameterBound(a,b) => format!("TypeParameterBound({},{})",
+                                               a.repr(tcx), b.repr(tcx)),
         }
     }
 }

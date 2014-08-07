@@ -257,7 +257,7 @@ impl<'f> Coerce<'f> {
         let a_borrowed = ty::mk_rptr(self.get_ref().infcx.tcx,
                                      r_borrow,
                                      mt {ty: inner_ty, mutbl: mt_b.mutbl});
-        if_ok!(sub.tys(a_borrowed, b));
+        try!(sub.tys(a_borrowed, b));
         Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 1,
             autoref: Some(AutoPtr(r_borrow, mt_b.mutbl))
@@ -309,7 +309,7 @@ impl<'f> Coerce<'f> {
 
         let a_borrowed = ty::mk_slice(self.get_ref().infcx.tcx, r_borrow,
                                       mt {ty: ty_inner, mutbl: mutbl_b});
-        if_ok!(sub.tys(a_borrowed, b));
+        try!(sub.tys(a_borrowed, b));
         Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
             autoref: Some(AutoBorrowVec(r_borrow, mutbl_b))
@@ -350,7 +350,7 @@ impl<'f> Coerce<'f> {
             }
         };
 
-        if_ok!(self.subtype(a_borrowed, b));
+        try!(self.subtype(a_borrowed, b));
         Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
             autoref: Some(AutoBorrowObj(r_a, b_mutbl))
@@ -404,7 +404,7 @@ impl<'f> Coerce<'f> {
                                                 sig: fn_ty_a.sig.clone(),
                                                 .. *fn_ty_b
                                            });
-            if_ok!(self.subtype(a_closure, b));
+            try!(self.subtype(a_closure, b));
             Ok(Some(adj))
         })
     }
@@ -428,7 +428,7 @@ impl<'f> Coerce<'f> {
 
         // check that the types which they point at are compatible
         let a_unsafe = ty::mk_ptr(self.get_ref().infcx.tcx, mt_a);
-        if_ok!(self.subtype(a_unsafe, b));
+        try!(self.subtype(a_unsafe, b));
 
         // although references and unsafe ptrs have the same
         // representation, we still register an AutoDerefRef so that

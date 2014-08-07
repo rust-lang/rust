@@ -8,18 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let mut x = Some(1);
-    let mut p: proc(&mut Option<int>) = proc(_) {};
-    match x {
-        Some(ref y) => { //~ ERROR does not live long enough
-            p = proc(z: &mut Option<int>) {
-                *z = None;
-                let _ = y;
-            };
-        }
-        None => {}
-    }
-    p(&mut x);
+// Test an edge case in region inference: the lifetime of the borrow
+// of `*x` must be extended to at least 'a.
+
+fn foo<'a,'b>(x: &'a &'b mut int) -> &'a int {
+    let y = &*x; // should be inferred to have type &'a &'b mut int...
+
+    // ...because if we inferred, say, &'x &'b mut int where 'x <= 'a,
+    // this reborrow would be illegal:
+    &**y
 }
 
+pub fn main() {
+    /* Just want to know that it compiles. */
+}

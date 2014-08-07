@@ -512,6 +512,19 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     sub,
                     "");
             }
+            infer::ProcCapture(span, id) => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!("captured variable `{}` must be 'static \
+                             to be captured in a proc",
+                            ty::local_var_name_str(self.tcx, id).get())
+                        .as_slice());
+                note_and_explain_region(
+                    self.tcx,
+                    "captured variable is only valid for ",
+                    sup,
+                    "");
+            }
             infer::IndexSlice(span) => {
                 self.tcx.sess.span_err(span,
                                        "index of slice outside its lifetime");
@@ -616,6 +629,23 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                 note_and_explain_region(
                     self.tcx,
                     "but the referenced data is only valid for ",
+                    sup,
+                    "");
+            }
+            infer::TypeParameterBound(ident, span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!("type parameter `{}` instantiated \
+                             with a type whose lifetime is too short",
+                            ident.user_string(self.tcx)).as_slice());
+                note_and_explain_region(
+                    self.tcx,
+                    "the type parameter requires ",
+                    sub,
+                    "...");
+                note_and_explain_region(
+                    self.tcx,
+                    "...but the type is only valid for ",
                     sup,
                     "");
             }
@@ -1259,11 +1289,11 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                         bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
             }
             infer::EarlyBoundRegion(_, name) => {
-                format!(" for lifetime parameter `{}",
+                format!(" for lifetime parameter `{}`",
                         token::get_name(name).get())
             }
             infer::BoundRegionInCoherence(name) => {
-                format!(" for lifetime parameter `{} in coherence check",
+                format!(" for lifetime parameter `{}` in coherence check",
                         token::get_name(name).get())
             }
             infer::UpvarRegion(ref upvar_id, _) => {
@@ -1364,6 +1394,15 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                                 self.tcx,
                                 id).get().to_string()).as_slice());
             }
+            infer::ProcCapture(span, id) => {
+                self.tcx.sess.span_note(
+                    span,
+                    format!("...so that captured variable `{}` \
+                            is 'static",
+                            ty::local_var_name_str(
+                                self.tcx,
+                                id).get()).as_slice());
+            }
             infer::IndexSlice(span) => {
                 self.tcx.sess.span_note(
                     span,
@@ -1399,7 +1438,7 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
             infer::AutoBorrow(span) => {
                 self.tcx.sess.span_note(
                     span,
-                    "...so that automatically reference is valid \
+                    "...so that auto-reference is valid \
                      at the time of borrow");
             }
             infer::BindingTypeIsNotValidAtDecl(span) => {
@@ -1412,6 +1451,13 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                     span,
                     "...so that the pointer does not outlive the \
                     data it points at");
+            }
+            infer::TypeParameterBound(ident, span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    format!("...so that the type parameter `{}` meets its \
+                             declared bounds",
+                            ident.user_string(self.tcx)).as_slice());
             }
         }
     }
