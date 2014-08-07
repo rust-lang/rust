@@ -173,7 +173,13 @@ pub trait ImmutableSlice<'a, T> {
 
     /// Returns a pointer to the element at the given index, without doing
     /// bounds checking.
+    #[deprecated = "renamed to `unsafe_get`"]
     unsafe fn unsafe_ref(self, index: uint) -> &'a T;
+
+    /// Returns a pointer to the element at the given index, without doing
+    /// bounds checking.
+    #[unstable]
+    unsafe fn unsafe_get(self, index: uint) -> &'a T;
 
     /**
      * Returns an unsafe pointer to the vector's buffer
@@ -351,7 +357,13 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
     }
 
     #[inline]
+    #[deprecated = "renamed to `unsafe_get`"]
     unsafe fn unsafe_ref(self, index: uint) -> &'a T {
+        transmute(self.repr().data.offset(index as int))
+    }
+
+    #[inline]
+    unsafe fn unsafe_get(self, index: uint) -> &'a T {
         transmute(self.repr().data.offset(index as int))
     }
 
