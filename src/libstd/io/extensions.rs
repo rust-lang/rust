@@ -21,7 +21,7 @@ use option::{Option, Some, None};
 use result::{Ok, Err};
 use io;
 use io::{IoError, IoResult, Reader};
-use slice::{ImmutableSlice, Vector};
+use slice::{ImmutableSlice, Slice};
 use ptr::RawPtr;
 
 /// An iterator that reads a single byte on each iteration,

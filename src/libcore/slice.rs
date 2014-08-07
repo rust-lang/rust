@@ -47,7 +47,9 @@ use ptr::RawPtr;
 use mem;
 use mem::size_of;
 use kinds::marker;
-use raw::{Repr, Slice};
+use raw::{Repr};
+// Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
+use RawSlice = raw::Slice;
 
 //
 // Extension traits
@@ -240,7 +242,7 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         unsafe {
-            transmute(Slice {
+            transmute(RawSlice {
                     data: self.as_ptr().offset(start as int),
                     len: (end - start)
                 })
@@ -380,7 +382,7 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
 
     fn shift_ref(&mut self) -> Option<&'a T> {
         unsafe {
-            let s: &mut Slice<T> = transmute(self);
+            let s: &mut RawSlice<T> = transmute(self);
             match raw::shift_ptr(s) {
                 Some(p) => Some(&*p),
                 None => None
@@ -390,7 +392,7 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
 
     fn pop_ref(&mut self) -> Option<&'a T> {
         unsafe {
-            let s: &mut Slice<T> = transmute(self);
+            let s: &mut RawSlice<T> = transmute(self);
             match raw::pop_ptr(s) {
                 Some(p) => Some(&*p),
                 None => None
@@ -620,7 +622,7 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         unsafe {
-            transmute(Slice {
+            transmute(RawSlice {
                     data: self.as_mut_ptr().offset(start as int) as *const T,
                     len: (end - start)
                 })
@@ -685,7 +687,7 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
 
     fn mut_shift_ref(&mut self) -> Option<&'a mut T> {
         unsafe {
-            let s: &mut Slice<T> = transmute(self);
+            let s: &mut RawSlice<T> = transmute(self);
             match raw::shift_ptr(s) {
                 // FIXME #13933: this `&` -> `&mut` cast is a little
                 // dubious
@@ -697,7 +699,7 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
 
     fn mut_pop_ref(&mut self) -> Option<&'a mut T> {
         unsafe {
-            let s: &mut Slice<T> = transmute(self);
+            let s: &mut RawSlice<T> = transmute(self);
             match raw::pop_ptr(s) {
                 // FIXME #13933: this `&` -> `&mut` cast is a little
                 // dubious
@@ -859,12 +861,12 @@ impl<'a, T:Clone> MutableCloneableSlice<T> for &'a mut [T] {
 //
 
 /// Any vector that can be represented as a slice.
-pub trait Vector<T> {
+pub trait Slice<T> {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a [T];
 }
 
-impl<'a,T> Vector<T> for &'a [T] {
+impl<'a,T> Slice<T> for &'a [T] {
     #[inline(always)]
     fn as_slice<'a>(&'a self) -> &'a [T] { *self }
 }
@@ -1323,7 +1325,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunks<'a, T> {
  */
 pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     unsafe {
-        transmute(Slice { data: s, len: 1 })
+        transmute(RawSlice { data: s, len: 1 })
     }
 }
 
@@ -1333,7 +1335,7 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
         let ptr: *const A = transmute(s);
-        transmute(Slice { data: ptr, len: 1 })
+        transmute(RawSlice { data: ptr, len: 1 })
     }
 }
 
@@ -1460,7 +1462,7 @@ impl<'a,T:PartialEq> PartialEq for &'a [T] {
 
 impl<'a,T:Eq> Eq for &'a [T] {}
 
-impl<'a,T:PartialEq, V: Vector<T>> Equiv<V> for &'a [T] {
+impl<'a,T:PartialEq, V: Slice<T>> Equiv<V> for &'a [T] {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }

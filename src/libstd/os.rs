@@ -45,7 +45,7 @@ use path::{Path, GenericPath, BytesContainer};
 use ptr::RawPtr;
 use ptr;
 use result::{Err, Ok, Result};
-use slice::{Vector, ImmutableSlice, MutableSlice, ImmutableEqSlice};
+use slice::{Slice, ImmutableSlice, MutableSlice, ImmutableEqSlice};
 use str::{Str, StrSlice, StrAllocating};
 use string::String;
 use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
