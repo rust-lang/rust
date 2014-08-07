@@ -1318,7 +1318,7 @@ impl<T> Vec<T> {
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all elements `e` such that `f(&e)` returns false.
-    /// This method operates in place and preserves the order the retained elements.
+    /// This method operates in place and preserves the order of the retained elements.
     ///
     /// # Example
     ///
