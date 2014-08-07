@@ -39,8 +39,8 @@ macro_rules! try_opt(
 #[deriving(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration {
     days: i32,
-    secs: u32,
-    nanos: u32,
+    secs: u32,  // Always < SECS_PER_DAY
+    nanos: u32, // Always < NANOS_PR_SECOND
 }
 
 /// The minimum possible `Duration`.
@@ -81,18 +81,13 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of days.
     /// Equivalent to `Duration::new(days, 0, 0)`.
-    ///
-    /// Fails when the duration is out of bounds.
     #[inline]
     pub fn days(days: i32) -> Duration {
-        let days = days.to_i32().expect("Duration::days out of bounds");
         Duration { days: days, secs: 0, nanos: 0 }
     }
 
     /// Makes a new `Duration` with given number of hours.
     /// Equivalent to `Duration::new(0, hours * 3600, 0)` with overflow checks.
-    ///
-    /// Fails when the duration is out of bounds.
     #[inline]
     pub fn hours(hours: i32) -> Duration {
         let (days, hours) = div_mod_floor(hours, (SECS_PER_DAY / 3600));
@@ -102,8 +97,6 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of minutes.
     /// Equivalent to `Duration::new(0, mins * 60, 0)` with overflow checks.
-    ///
-    /// Fails when the duration is out of bounds.
     #[inline]
     pub fn minutes(mins: i32) -> Duration {
         let (days, mins) = div_mod_floor(mins, (SECS_PER_DAY / 60));
@@ -113,8 +106,6 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of seconds.
     /// Equivalent to `Duration::new(0, secs, 0)`.
-    ///
-    /// Fails when the duration is out of bounds.
     #[inline]
     pub fn seconds(secs: i32) -> Duration {
         let (days, secs) = div_mod_floor(secs, SECS_PER_DAY);
@@ -123,8 +114,6 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of milliseconds.
     /// Equivalent to `Duration::new(0, 0, millis * 1_000_000)` with overflow checks.
-    ///
-    /// Fails when the duration is out of bounds.
     #[inline]
     pub fn milliseconds(millis: i32) -> Duration {
         let (secs, millis) = div_mod_floor(millis, (NANOS_PER_SEC / 1_000_000));
@@ -134,8 +123,6 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of microseconds.
     /// Equivalent to `Duration::new(0, 0, micros * 1_000)` with overflow checks.
-    ///
-    /// Fails when the duration is out of bounds.
     #[inline]
     pub fn microseconds(micros: i32) -> Duration {
         let (secs, micros) = div_mod_floor(micros, (NANOS_PER_SEC / 1_000));
@@ -145,8 +132,6 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of nanoseconds.
     /// Equivalent to `Duration::new(0, 0, nanos)`.
-    ///
-    /// Fails when the duration is out of bounds.
     #[inline]
     pub fn nanoseconds(nanos: i32) -> Duration {
         let (secs, nanos) = div_mod_floor(nanos, NANOS_PER_SEC);
