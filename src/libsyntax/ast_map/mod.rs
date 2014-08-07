@@ -11,7 +11,7 @@
 use abi;
 use ast::*;
 use ast_util;
-use codemap::Span;
+use codemap::{Span, Spanned};
 use fold::Folder;
 use fold;
 use parse::token;
@@ -203,6 +203,10 @@ pub struct Map {
 }
 
 impl Map {
+    fn entry_count(&self) -> uint {
+        self.map.borrow().len()
+    }
+
     fn find_entry(&self, id: NodeId) -> Option<MapEntry> {
         let map = self.map.borrow();
         if map.len() > id as uint {
@@ -405,6 +409,20 @@ impl Map {
         f(attrs)
     }
 
+    /// Returns an iterator that yields the node id's with paths that
+    /// match `parts`.  (Requires `parts` is non-empty.)
+    ///
+    /// For example, if given `parts` equal to `["bar", "quux"]`, then
+    /// the iterator will produce node id's for items with paths
+    /// such as `foo::bar::quux`, `bar::quux`, `other::bar::quux`, and
+    /// any other such items it can find in the map.
+    pub fn nodes_matching_suffix<'a, S:Str>(&'a self, parts: &'a [S]) -> NodesMatchingSuffix<'a,S> {
+        NodesMatchingSuffix { map: self,
+                              item_name: parts.last().unwrap(),
+                              where: parts.slice_to(parts.len() - 1),
+                              idx: 0 }
+    }
+
     pub fn opt_span(&self, id: NodeId) -> Option<Span> {
         let sp = match self.find(id) {
             Some(NodeItem(item)) => item.span,
@@ -435,6 +453,119 @@ impl Map {
 
     pub fn node_to_string(&self, id: NodeId) -> String {
         node_id_to_string(self, id)
+    }
+}
+
+pub struct NodesMatchingSuffix<'a, S> {
+    map: &'a Map,
+    item_name: &'a S,
+    where: &'a [S],
+    idx: NodeId,
+}
+
+impl<'a,S:Str> NodesMatchingSuffix<'a,S> {
+    /// Returns true only if some suffix of the module path for parent
+    /// matches `self.where`.
+    ///
+    /// In other words: let `[x_0,x_1,...,x_k]` be `self.where`;
+    /// returns true if parent's path ends with the suffix
+    /// `x_0::x_1::...::x_k`.
+    fn suffix_matches(&self, parent: NodeId) -> bool {
+        let mut cursor = parent;
+        for part in self.where.iter().rev() {
+            let (mod_id, mod_name) = match find_first_mod_parent(self.map, cursor) {
+                None => return false,
+                Some((node_id, name)) => (node_id, name),
+            };
+            if part.as_slice() != mod_name.as_str() {
+                return false;
+            }
+            cursor = self.map.get_parent(mod_id);
+        }
+        return true;
+
+        // Finds the first mod in parent chain for `id`, along with
+        // that mod's name.
+        //
+        // If `id` itself is a mod named `m` with parent `p`, then
+        // returns `Some(id, m, p)`.  If `id` has no mod in its parent
+        // chain, then returns `None`.
+        fn find_first_mod_parent<'a>(map: &'a Map, mut id: NodeId) -> Option<(NodeId, Name)> {
+            loop {
+                match map.find(id) {
+                    None => return None,
+                    Some(NodeItem(item)) if item_is_mod(&*item) =>
+                        return Some((id, item.ident.name)),
+                    _ => {}
+                }
+                let parent = map.get_parent(id);
+                if parent == id { return None }
+                id = parent;
+            }
+
+            fn item_is_mod(item: &Item) -> bool {
+                match item.node {
+                    ItemMod(_) => true,
+                    _ => false,
+                }
+            }
+        }
+    }
+
+    // We are looking at some node `n` with a given name and parent
+    // id; do their names match what I am seeking?
+    fn matches_names(&self, parent_of_n: NodeId, name: Name) -> bool {
+        name.as_str() == self.item_name.as_slice() &&
+            self.suffix_matches(parent_of_n)
+    }
+}
+
+impl<'a,S:Str> Iterator<NodeId> for NodesMatchingSuffix<'a,S> {
+    fn next(&mut self) -> Option<NodeId> {
+        loop {
+            let idx = self.idx;
+            if idx as uint >= self.map.entry_count() {
+                return None;
+            }
+            self.idx += 1;
+            let (p, name) = match self.map.find_entry(idx) {
+                Some(EntryItem(p, n))        => (p, n.name()),
+                Some(EntryForeignItem(p, n)) => (p, n.name()),
+                Some(EntryTraitMethod(p, n)) => (p, n.name()),
+                Some(EntryMethod(p, n))      => (p, n.name()),
+                Some(EntryVariant(p, n))     => (p, n.name()),
+                _ => continue,
+            };
+            if self.matches_names(p, name) {
+                return Some(idx)
+            }
+        }
+    }
+}
+
+trait Named {
+    fn name(&self) -> Name;
+}
+
+impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() } }
+
+impl Named for Item { fn name(&self) -> Name { self.ident.name } }
+impl Named for ForeignItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for Variant_ { fn name(&self) -> Name { self.name.name } }
+impl Named for TraitMethod {
+    fn name(&self) -> Name {
+        match *self {
+            Required(ref tm) => tm.ident.name,
+            Provided(m) => m.name(),
+        }
+    }
+}
+impl Named for Method {
+    fn name(&self) -> Name {
+        match self.node {
+            MethDecl(i, _, _, _, _, _, _, _) => i.name,
+            MethMac(_) => fail!("encountered unexpanded method macro."),
+        }
     }
 }
 
