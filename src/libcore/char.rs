@@ -271,7 +271,7 @@ pub trait Char {
     /// # Failure
     ///
     /// Fails if given a radix > 36.
-    fn from_digit(num: uint, radix: uint) -> Option<char>;
+    fn from_digit(num: uint, radix: uint) -> Option<Self>;
 
     /// Returns the hexadecimal Unicode escape of a character.
     ///
