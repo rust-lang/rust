@@ -1026,7 +1026,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
         op(self, cmt.clone(), pat);
 
         match pat.node {
-          ast::PatWild | ast::PatWildMulti => {
+          ast::PatWild(_) => {
             // _
           }
 
