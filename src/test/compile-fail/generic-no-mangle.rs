@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern {
-    fn foo<T>(); //~ ERROR foreign items may not have type parameters
-}
+// ignore-test this should fail to compile (#15844)
 
-fn main() {
-    foo::<i32>();
-}
+#[no_mangle]
+fn foo<T>() {} //~ ERROR generic functions must be mangled
+
+#[no_mangle]
+extern fn foo<T>() {} //~ ERROR generic functions must be mangled
+

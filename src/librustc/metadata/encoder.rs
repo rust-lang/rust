@@ -1755,7 +1755,8 @@ fn encode_reachable_extern_fns(ecx: &EncodeContext, rbml_w: &mut Encoder) {
         match ecx.tcx.map.find(*id) {
             Some(ast_map::NodeItem(i)) => {
                 match i.node {
-                    ast::ItemFn(_, _, abi, _, _) if abi != abi::Rust => {
+                    ast::ItemFn(_, _, abi, ref generics, _)
+                                if abi != abi::Rust && !generics.is_type_parameterized() => {
                         rbml_w.wr_tagged_u32(tag_reachable_extern_fn_id, *id);
                     }
                     _ => {}
