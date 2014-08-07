@@ -76,7 +76,7 @@ OS X, the install page provides links to native installers.
 > the precise details of which are not discussed here.
 
 For Linux and OS X, the install page provides links to binary tarballs.
-To install the Rust compiler from the from a binary tarball, download
+To install the Rust compiler from a binary tarball, download
 the binary package, extract it, and execute the `install.sh` script in
 the root directory of the package.
 
