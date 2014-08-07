@@ -320,7 +320,7 @@ pub fn open(path: &CString, fm: rtio::FileMode, fa: rtio::FileAccess)
                           dwFlagsAndAttributes,
                           ptr::mut_null())
     };
-    if handle == libc::INVALID_HANDLE_VALUE as libc::HANDLE {
+    if handle == libc::INVALID_HANDLE_VALUE {
         Err(super::last_error())
     } else {
         let fd = unsafe {
@@ -368,7 +368,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
         let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
         let find_handle = libc::FindFirstFileW(path.as_ptr(),
                                                wfd_ptr as libc::HANDLE);
-        if find_handle as libc::c_int != libc::INVALID_HANDLE_VALUE {
+        if find_handle != libc::INVALID_HANDLE_VALUE {
             let mut paths = vec!();
             let mut more_files = 1 as libc::c_int;
             while more_files != 0 {
@@ -440,7 +440,7 @@ pub fn readlink(p: &CString) -> IoResult<CString> {
                           libc::FILE_ATTRIBUTE_NORMAL,
                           ptr::mut_null())
     };
-    if handle as int == libc::INVALID_HANDLE_VALUE as int {
+    if handle == libc::INVALID_HANDLE_VALUE {
         return Err(super::last_error())
     }
     // Specify (sz - 1) because the documentation states that it's the size
