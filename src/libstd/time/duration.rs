@@ -50,25 +50,6 @@ pub static MAX: Duration = Duration { days: MAX_DAYS, secs: SECS_PER_DAY as u32 
                                       nanos: NANOS_PER_SEC as u32 - 1 };
 
 impl Duration {
-    /// Makes a new `Duration` with given number of days, seconds and nanoseconds.
-    ///
-    /// Fails when the duration is out of bounds.
-    #[inline]
-    pub fn new(days: i32, secs: i32, nanos: i32) -> Duration {
-        Duration::new_opt(days, secs, nanos).expect("Duration::new out of bounds")
-    }
-
-    /// Makes a new `Duration` with given number of days, seconds and nanoseconds.
-    ///
-    /// Returns `None` when the duration is out of bounds.
-    pub fn new_opt(days: i32, secs: i32, nanos: i32) -> Option<Duration> {
-        let (secs_, nanos) = div_mod_floor(nanos, NANOS_PER_SEC);
-        let secs = try_opt!(secs.checked_add(&secs_));
-        let (days_, secs) = div_mod_floor(secs, SECS_PER_DAY);
-        let days = try_opt!(days.checked_add(&days_).and_then(|v| v.to_i32()));
-        Some(Duration { days: days, secs: secs as u32, nanos: nanos as u32 })
-    }
-
     /// Makes a new `Duration` with given number of weeks.
     /// Equivalent to `Duration::new(weeks * 7, 0, 0)` with overflow checks.
     ///
@@ -136,14 +117,6 @@ impl Duration {
     pub fn nanoseconds(nanos: i32) -> Duration {
         let (secs, nanos) = div_mod_floor(nanos, NANOS_PER_SEC);
         Duration { nanos: nanos as u32, ..Duration::seconds(secs) }
-    }
-
-    /// Returns a tuple of the number of days, (non-leap) seconds and nanoseconds in the duration.
-    /// Note that the number of seconds and nanoseconds are always positive,
-    /// so that for example `-Duration::seconds(3)` has -1 days and 86,397 seconds.
-    #[inline]
-    pub fn to_tuple(&self) -> (i32, u32, u32) {
-        (self.days, self.secs, self.nanos)
     }
 
     /// Same as `to_tuple` but returns a tuple compatible to `to_negated_tuple`.
@@ -514,8 +487,6 @@ mod tests {
         assert_eq!(Duration::seconds(86401).num_days(), 1);
         assert_eq!(Duration::seconds(-86399).num_days(), 0);
         assert_eq!(Duration::seconds(-86401).num_days(), -1);
-        assert_eq!(Duration::new(1, 2, 3_004_005).num_days(), 1);
-        assert_eq!(Duration::new(-1, -2, -3_004_005).num_days(), -1);
         assert_eq!(Duration::days(i32::MAX).num_days(), i32::MAX);
         assert_eq!(Duration::days(i32::MIN).num_days(), i32::MIN);
         assert_eq!(MAX.num_days(), MAX_DAYS);
@@ -532,8 +503,6 @@ mod tests {
         assert_eq!(Duration::milliseconds(1001).num_seconds(), 1);
         assert_eq!(Duration::milliseconds(-999).num_seconds(), 0);
         assert_eq!(Duration::milliseconds(-1001).num_seconds(), -1);
-        assert_eq!(Duration::new(1, 2, 3_004_005).num_seconds(), 86402);
-        assert_eq!(Duration::new(-1, -2, -3_004_005).num_seconds(), -86402);
         assert_eq!(Duration::seconds(i32::MAX).num_seconds(), i32::MAX as i64);
         assert_eq!(Duration::seconds(i32::MIN).num_seconds(), i32::MIN as i64);
         assert_eq!(MAX.num_seconds(), (MAX_DAYS as i64 + 1) * 86400 - 1);
@@ -550,8 +519,6 @@ mod tests {
         assert_eq!(Duration::microseconds(1001).num_milliseconds(), 1);
         assert_eq!(Duration::microseconds(-999).num_milliseconds(), 0);
         assert_eq!(Duration::microseconds(-1001).num_milliseconds(), -1);
-        assert_eq!(Duration::new(1, 2, 3_004_005).num_milliseconds(), 86402_003);
-        assert_eq!(Duration::new(-1, -2, -3_004_005).num_milliseconds(), -86402_003);
         assert_eq!(Duration::milliseconds(i32::MAX).num_milliseconds(), i32::MAX as i64);
         assert_eq!(Duration::milliseconds(i32::MIN).num_milliseconds(), i32::MIN as i64);
         assert_eq!(MAX.num_milliseconds(), (MAX_DAYS as i64 + 1) * 86400_000 - 1);
@@ -568,8 +535,6 @@ mod tests {
         assert_eq!(Duration::nanoseconds(1001).num_microseconds(), Some(1));
         assert_eq!(Duration::nanoseconds(-999).num_microseconds(), Some(0));
         assert_eq!(Duration::nanoseconds(-1001).num_microseconds(), Some(-1));
-        assert_eq!(Duration::new(1, 2, 3_004_005).num_microseconds(), Some(86402_003_004));
-        assert_eq!(Duration::new(-1, -2, -3_004_005).num_microseconds(), Some(-86402_003_004));
         assert_eq!(Duration::microseconds(i32::MAX).num_microseconds(), Some(i32::MAX as i64));
         assert_eq!(Duration::microseconds(i32::MIN).num_microseconds(), Some(i32::MIN as i64));
         assert_eq!(MAX.num_microseconds(), None);
@@ -591,8 +556,6 @@ mod tests {
         assert_eq!(d.num_nanoseconds(), Some(0));
         assert_eq!(Duration::nanoseconds(1).num_nanoseconds(), Some(1));
         assert_eq!(Duration::nanoseconds(-1).num_nanoseconds(), Some(-1));
-        assert_eq!(Duration::new(1, 2, 3_004_005).num_nanoseconds(), Some(86402_003_004_005));
-        assert_eq!(Duration::new(-1, -2, -3_004_005).num_nanoseconds(), Some(-86402_003_004_005));
         assert_eq!(Duration::nanoseconds(i32::MAX).num_nanoseconds(), Some(i32::MAX as i64));
         assert_eq!(Duration::nanoseconds(i32::MIN).num_nanoseconds(), Some(i32::MIN as i64));
         assert_eq!(MAX.num_nanoseconds(), None);
