@@ -97,33 +97,60 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        out: Box<io::Writer>,
                        ann: &'a PpAnn,
                        is_expanded: bool) -> IoResult<()> {
-    let (cmnts, lits) = comments::gather_comments_and_literals(
-        span_diagnostic,
-        filename,
-        input
-    );
-    let mut s = State {
-        s: pp::mk_printer(out, default_columns),
-        cm: Some(cm),
-        comments: Some(cmnts),
-        // If the code is post expansion, don't use the table of
-        // literals, since it doesn't correspond with the literals
-        // in the AST anymore.
-        literals: if is_expanded {
-            None
-        } else {
-            Some(lits)
-        },
-        cur_cmnt_and_lit: CurrentCommentAndLiteral {
-            cur_cmnt: 0,
-            cur_lit: 0
-        },
-        boxes: Vec::new(),
-        ann: ann
-    };
+    let mut s = State::new_from_input(cm,
+                                      span_diagnostic,
+                                      filename,
+                                      input,
+                                      out,
+                                      ann,
+                                      is_expanded);
     try!(s.print_mod(&krate.module, krate.attrs.as_slice()));
     try!(s.print_remaining_comments());
     eof(&mut s.s)
+}
+
+impl<'a> State<'a> {
+    pub fn new_from_input(cm: &'a CodeMap,
+                          span_diagnostic: &diagnostic::SpanHandler,
+                          filename: String,
+                          input: &mut io::Reader,
+                          out: Box<io::Writer>,
+                          ann: &'a PpAnn,
+                          is_expanded: bool) -> State<'a> {
+        let (cmnts, lits) = comments::gather_comments_and_literals(
+            span_diagnostic,
+            filename,
+            input);
+
+        State::new(
+            cm,
+            out,
+            ann,
+            Some(cmnts),
+            // If the code is post expansion, don't use the table of
+            // literals, since it doesn't correspond with the literals
+            // in the AST anymore.
+            if is_expanded { None } else { Some(lits) })
+    }
+
+    pub fn new(cm: &'a CodeMap,
+               out: Box<io::Writer>,
+               ann: &'a PpAnn,
+               comments: Option<Vec<comments::Comment>>,
+               literals: Option<Vec<comments::Literal>>) -> State<'a> {
+        State {
+            s: pp::mk_printer(out, default_columns),
+            cm: Some(cm),
+            comments: comments,
+            literals: literals,
+            cur_cmnt_and_lit: CurrentCommentAndLiteral {
+                cur_cmnt: 0,
+                cur_lit: 0
+            },
+            boxes: Vec::new(),
+            ann: ann
+        }
+    }
 }
 
 pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
