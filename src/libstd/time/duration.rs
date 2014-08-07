@@ -16,7 +16,7 @@ use {fmt, i32};
 use ops::{Add, Sub, Mul, Div, Neg};
 use option::{Option, Some, None};
 use num;
-use num::{CheckedAdd, CheckedMul, ToPrimitive};
+use num::{CheckedAdd, CheckedMul};
 use result::{Result, Ok, Err};
 
 

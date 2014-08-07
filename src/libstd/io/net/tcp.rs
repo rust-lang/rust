@@ -109,7 +109,7 @@ impl TcpStream {
     pub fn connect_timeout(addr: SocketAddr,
                            timeout: Duration) -> IoResult<TcpStream> {
         if timeout <= Duration::milliseconds(0) {
-            return standard_error(TimedOut);
+            return Err(standard_error(TimedOut));
         }
 
         let SocketAddr { ip, port } = addr;
