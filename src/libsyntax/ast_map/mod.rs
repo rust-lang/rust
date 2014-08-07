@@ -21,6 +21,7 @@ use util::small_vector::SmallVector;
 use std::cell::RefCell;
 use std::fmt;
 use std::gc::{Gc, GC};
+use std::io::IoResult;
 use std::iter;
 use std::slice;
 
@@ -817,6 +818,34 @@ pub fn map_decoded_item<F: FoldOps>(map: &Map,
     })));
 
     ii
+}
+
+pub trait NodePrinter {
+    fn print_node(&mut self, node: &Node) -> IoResult<()>;
+}
+
+impl<'a> NodePrinter for pprust::State<'a> {
+    fn print_node(&mut self, node: &Node) -> IoResult<()> {
+        match *node {
+            NodeItem(a)        => self.print_item(&*a),
+            NodeForeignItem(a) => self.print_foreign_item(&*a),
+            NodeTraitMethod(a) => self.print_trait_method(&*a),
+            NodeMethod(a)      => self.print_method(&*a),
+            NodeVariant(a)     => self.print_variant(&*a),
+            NodeExpr(a)        => self.print_expr(&*a),
+            NodeStmt(a)        => self.print_stmt(&*a),
+            NodePat(a)         => self.print_pat(&*a),
+            NodeBlock(a)       => self.print_block(&*a),
+            NodeLifetime(a)    => self.print_lifetime(&*a),
+
+            // these cases do not carry enough information in the
+            // ast_map to reconstruct their full structure for pretty
+            // printing.
+            NodeLocal(_)       => fail!("cannot print isolated Local"),
+            NodeArg(_)         => fail!("cannot print isolated Arg"),
+            NodeStructCtor(_)  => fail!("cannot print isolated StructCtor"),
+        }
+    }
 }
 
 fn node_id_to_string(map: &Map, id: NodeId) -> String {
