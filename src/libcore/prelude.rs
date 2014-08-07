@@ -63,4 +63,4 @@ pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
 pub use slice::{ImmutableEqSlice, ImmutableOrdSlice};
 pub use slice::{MutableSlice};
-pub use slice::{Vector, ImmutableSlice};
+pub use slice::{Slice, ImmutableSlice};

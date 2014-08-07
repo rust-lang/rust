@@ -13,7 +13,8 @@
 use core::prelude::*;
 
 use alloc::heap::{allocate, reallocate, deallocate};
-use core::raw::Slice;
+use RawSlice = core::raw::Slice;
+use core::slice::Slice;
 use core::cmp::max;
 use core::default::Default;
 use core::fmt;
@@ -506,7 +507,7 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 
 impl<T: Eq> Eq for Vec<T> {}
 
-impl<T: PartialEq, V: Vector<T>> Equiv<V> for Vec<T> {
+impl<T: PartialEq, V: Slice<T>> Equiv<V> for Vec<T> {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
@@ -720,7 +721,7 @@ impl<T> Vec<T> {
     #[inline]
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
-            mem::transmute(Slice {
+            mem::transmute(RawSlice {
                 data: self.as_mut_ptr() as *const T,
                 len: self.len,
             })
@@ -1502,7 +1503,7 @@ impl<T:PartialEq> Vec<T> {
     }
 }
 
-impl<T> Vector<T> for Vec<T> {
+impl<T> Slice<T> for Vec<T> {
     /// Work with `self` as a slice.
     ///
     /// # Example
@@ -1515,11 +1516,11 @@ impl<T> Vector<T> for Vec<T> {
     /// ```
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a [T] {
-        unsafe { mem::transmute(Slice { data: self.as_ptr(), len: self.len }) }
+        unsafe { mem::transmute(RawSlice { data: self.as_ptr(), len: self.len }) }
     }
 }
 
-impl<T: Clone, V: Vector<T>> Add<V, Vec<T>> for Vec<T> {
+impl<T: Clone, V: Slice<T>> Add<V, Vec<T>> for Vec<T> {
     #[inline]
     fn add(&self, rhs: &V) -> Vec<T> {
         let mut res = Vec::with_capacity(self.len() + rhs.as_slice().len());

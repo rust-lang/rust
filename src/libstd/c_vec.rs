@@ -43,7 +43,7 @@ use option::{Option, Some, None};
 use ptr::RawPtr;
 use ptr;
 use raw;
-use slice::Vector;
+use slice::Slice;
 
 /// The type representing a foreign chunk of memory
 pub struct CVec<T> {
@@ -145,7 +145,7 @@ impl<T> CVec<T> {
     }
 }
 
-impl<T> Vector<T> for CVec<T> {
+impl<T> Slice<T> for CVec<T> {
     /// View the stored data as a slice.
     fn as_slice<'a>(&'a self) -> &'a [T] {
         unsafe {
