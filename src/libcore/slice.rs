@@ -840,6 +840,12 @@ pub trait MutableCloneableSlice<T> {
     /// Copies as many elements from `src` as it can into `self` (the
     /// shorter of `self.len()` and `src.len()`). Returns the number
     /// of elements copied.
+    #[deprecated = "renamed to clone_from_slice"]
+    fn copy_from(self, s: &[T]) -> uint { self.clone_from_slice(s) }
+
+    /// Copies as many elements from `src` as it can into `self` (the
+    /// shorter of `self.len()` and `src.len()`). Returns the number
+    /// of elements copied.
     ///
     /// # Example
     ///
@@ -856,12 +862,12 @@ pub trait MutableCloneableSlice<T> {
     /// assert!(dst.copy_from(src2) == 3);
     /// assert!(dst == [3i, 4, 5]);
     /// ```
-    fn copy_from(self, &[T]) -> uint;
+    fn clone_from_slice(self, &[T]) -> uint;
 }
 
 impl<'a, T:Clone> MutableCloneableSlice<T> for &'a mut [T] {
     #[inline]
-    fn copy_from(self, src: &[T]) -> uint {
+    fn clone_from_slice(self, src: &[T]) -> uint {
         for (a, b) in self.mut_iter().zip(src.iter()) {
             a.clone_from(b);
         }
