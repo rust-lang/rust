@@ -75,7 +75,7 @@ impl UnixStream {
     pub fn connect_timeout<P: ToCStr>(path: &P,
                                       timeout: Duration) -> IoResult<UnixStream> {
         if timeout <= Duration::milliseconds(0) {
-            return standard_error(TimedOut);
+            return Err(standard_error(TimedOut));
         }
 
         LocalIo::maybe_raise(|io| {
