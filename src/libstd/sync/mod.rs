@@ -10,7 +10,7 @@
 
 //! Useful synchronization primitives
 //!
-//! This modules contains useful safe and unsafe synchronization primitives.
+//! This module contains useful safe and unsafe synchronization primitives.
 //! Most of the primitives in this module do not provide any sort of locking
 //! and/or blocking at all, but rather provide the necessary tools to build
 //! other types of concurrent primitives.
