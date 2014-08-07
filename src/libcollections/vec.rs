@@ -912,8 +912,9 @@ impl<T> Vec<T> {
     /// assert!(vec.tailn(2) == [3, 4]);
     /// ```
     #[inline]
+    #[deprecated = "use slice_from"]
     pub fn tailn<'a>(&'a self, n: uint) -> &'a [T] {
-        self.as_slice().tailn(n)
+        self.as_slice().slice_from(n)
     }
 
     /// Returns a reference to the last element of a vector, or `None` if it is
