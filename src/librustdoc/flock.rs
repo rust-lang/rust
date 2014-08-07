@@ -197,7 +197,7 @@ mod imp {
                                   libc::FILE_ATTRIBUTE_NORMAL,
                                   ptr::mut_null())
             };
-            if handle as uint == libc::INVALID_HANDLE_VALUE as uint {
+            if handle == libc::INVALID_HANDLE_VALUE {
                 fail!("create file error: {}", os::last_os_error());
             }
             let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };

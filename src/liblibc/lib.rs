@@ -1142,8 +1142,7 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use types::os::arch::c95::{c_short, time_t,
-                                                 c_long};
+                use types::os::arch::c95::{c_short, time_t, c_long};
                 use types::os::arch::extra::{int64, time64_t};
                 use types::os::arch::posix88::{dev_t, ino_t};
 
@@ -1947,7 +1946,7 @@ pub mod consts {
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
-            use types::os::arch::extra::{WORD, DWORD, BOOL};
+            use types::os::arch::extra::{WORD, DWORD, BOOL, HANDLE};
 
             pub static TRUE : BOOL = 1;
             pub static FALSE : BOOL = 0;
@@ -1976,7 +1975,7 @@ pub mod consts {
             pub static ERROR_IO_PENDING: c_int = 997;
             pub static ERROR_FILE_INVALID : c_int = 1006;
             pub static ERROR_NOT_FOUND: c_int = 1168;
-            pub static INVALID_HANDLE_VALUE : c_int = -1;
+            pub static INVALID_HANDLE_VALUE: HANDLE = -1 as HANDLE;
 
             pub static DELETE : DWORD = 0x00010000;
             pub static READ_CONTROL : DWORD = 0x00020000;
