@@ -4711,4 +4711,75 @@ fail.
 
 # Macros
 
+One of Rust's most advanced features is is system of **macro**s. While
+functions allow you to provide abstractions over values and operations, macros
+allow you to provide abstractions over syntax. Do you wish Rust had the ability
+to do something that it can't currently do? You may be able to write a macro
+to extend Rust's capabilities.
+
+You've already used one macro extensively: `println!`.  When we invoke
+a Rust macro, we need to use the exclamation mark (`!`). There's two reasons
+that this is true: the first is that it makes it clear when you're using a
+macro. The second is that macros allow for flexible syntax, and so Rust must
+be able to tell where a macro starts and ends. The `!(...)` helps with this.
+
+An example of even more advanced macro usage is in Rust's `regex` crate.  This
+implements **regular expressions* for Rust. Regular expressions provide a
+powerful way to determine if a string matches a certain pattern, but they also
+have their own syntax. Therefore, they're a perfect fit for Rust's macros.
+
+Here's an example of using a regular expression in Rust:
+
+```{rust}
+#![feature(phase)]
+#[phase(plugin)]
+extern crate regex_macros;
+extern crate regex;
+
+fn main() {
+    let re = regex!(r"^\d{4}-\d{2}-\d{2}$");
+    println!("Does our expression match? {}", re.is_match("2014-01-01"));
+}
+```
+
+This will print "Does our expression match? true". Now, we won't learn
+everything there is to know about regular expressions in this tutorial. We can
+consult [the regex crate's documentation](/regex/index.html) for more on that
+later. For now, here's the important parts:
+
+```{rust}
+#![feature(phase)]
+#[phase(plugin)]
+extern crate regex_macros;
+# fn main() {}
+```
+
+These attributes allow the `regex_macros` crate to actually hook in to the
+compiler itself and extend it with the regular expression syntax. Macros
+are serious business!
+
+Next, let's look at the actual invocation:
+
+```{rust}
+# #![feature(phase)]
+# #[phase(plugin)]
+# extern crate regex_macros;
+# extern crate regex;
+# fn main() {
+let re = regex!(r"^\d{4}-\d{2}-\d{2}$");
+# }
+```
+
+The `regex!` macro allows us to define a macro. inside of the `()`s, we have a
+`r""` construct. This is a 'raw' string literal, that does no escaping of its
+contents.  This is a Rust feature, not a macros feature. Finally, the rest of
+the insides, which is the regular expression itself. This regular expression
+roughly translates to "four digits, followed by a hypen, followed by two
+digits, followed by a hypen, followed by two digits."
+
+For more on macros, please consult [the Macros Guide](/guide-macros.html).
+Macros are a very advanced and still slightly experimental feature, and don't
+require a deep understanding to use. The Guide can help you if you want to
+write your own.
+
 # Unsafe
