@@ -174,7 +174,9 @@ impl<'a> Ty<'a> {
                 let self_params = self_generics.ty_params.map(|ty_param| {
                     cx.ty_ident(span, ty_param.ident)
                 });
-                let lifetimes = self_generics.lifetimes.clone();
+                let lifetimes = self_generics.lifetimes.iter()
+                                                       .map(|d| d.lifetime)
+                                                       .collect();
 
                 cx.path_all(span, false, vec!(self_ty), lifetimes,
                             self_params.into_vec())
@@ -200,7 +202,7 @@ fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str,
     cx.typaram(span, cx.ident_of(name), bounds, unbound, None)
 }
 
-fn mk_generics(lifetimes: Vec<ast::Lifetime>, ty_params: Vec<ast::TyParam> ) -> Generics {
+fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam> ) -> Generics {
     Generics {
         lifetimes: lifetimes,
         ty_params: OwnedSlice::from_vec(ty_params)
@@ -210,7 +212,7 @@ fn mk_generics(lifetimes: Vec<ast::Lifetime>, ty_params: Vec<ast::TyParam> ) -> 
 /// Lifetimes and bounds on type parameters
 #[deriving(Clone)]
 pub struct LifetimeBounds<'a> {
-    pub lifetimes: Vec<&'a str>,
+    pub lifetimes: Vec<(&'a str, Vec<&'a str>)>,
     pub bounds: Vec<(&'a str, Option<ast::TyParamBound>, Vec<Path<'a>>)>,
 }
 
@@ -226,8 +228,11 @@ impl<'a> LifetimeBounds<'a> {
                        self_ty: Ident,
                        self_generics: &Generics)
                        -> Generics {
-        let lifetimes = self.lifetimes.iter().map(|lt| {
-            cx.lifetime(span, cx.ident_of(*lt).name)
+        let lifetimes = self.lifetimes.iter().map(|&(ref lt, ref bounds)| {
+            let bounds =
+                bounds.iter().map(
+                    |b| cx.lifetime(span, cx.ident_of(*b).name)).collect();
+            cx.lifetime_def(span, cx.ident_of(*lt).name, bounds)
         }).collect();
         let ty_params = self.bounds.iter().map(|t| {
             match t {

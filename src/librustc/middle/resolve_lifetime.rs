@@ -59,10 +59,10 @@ struct LifetimeContext<'a> {
 enum ScopeChain<'a> {
     /// EarlyScope(i, ['a, 'b, ...], s) extends s with early-bound
     /// lifetimes, assigning indexes 'a => i, 'b => i+1, ... etc.
-    EarlyScope(subst::ParamSpace, &'a Vec<ast::Lifetime>, Scope<'a>),
+    EarlyScope(subst::ParamSpace, &'a Vec<ast::LifetimeDef>, Scope<'a>),
     /// LateScope(binder_id, ['a, 'b, ...], s) extends s with late-bound
     /// lifetimes introduced by the declaration binder_id.
-    LateScope(ast::NodeId, &'a Vec<ast::Lifetime>, Scope<'a>),
+    LateScope(ast::NodeId, &'a Vec<ast::LifetimeDef>, Scope<'a>),
     /// lifetimes introduced by items within a code block are scoped
     /// to that block.
     BlockScope(ast::NodeId, Scope<'a>),
@@ -136,7 +136,7 @@ impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
         fn push_fn_scope(this: &mut LifetimeContext,
                          ty: &ast::Ty,
                          scope: Scope,
-                         lifetimes: &Vec<ast::Lifetime>) {
+                         lifetimes: &Vec<ast::LifetimeDef>) {
             let scope1 = LateScope(ty.id, lifetimes, scope);
             this.check_lifetime_names(lifetimes);
             debug!("pushing fn scope id={} due to type", ty.id);
@@ -216,7 +216,7 @@ impl<'a> LifetimeContext<'a> {
             walk(self, &scope1)
         } else {
             let (early, late) = generics.lifetimes.clone().partition(
-                |l| referenced_idents.iter().any(|&i| i == l.name));
+                |l| referenced_idents.iter().any(|&i| i == l.lifetime.name));
 
             let scope1 = EarlyScope(subst::FnSpace, &early, scope);
             let scope2 = LateScope(n, &late, &scope1);
@@ -334,29 +334,39 @@ impl<'a> LifetimeContext<'a> {
                     token::get_name(lifetime_ref.name)).as_slice());
     }
 
-    fn check_lifetime_names(&self, lifetimes: &Vec<ast::Lifetime>) {
+    fn check_lifetime_names(&self, lifetimes: &Vec<ast::LifetimeDef>) {
         for i in range(0, lifetimes.len()) {
             let lifetime_i = lifetimes.get(i);
 
             let special_idents = [special_idents::static_lifetime];
             for lifetime in lifetimes.iter() {
-                if special_idents.iter().any(|&i| i.name == lifetime.name) {
+                if special_idents.iter().any(|&i| i.name == lifetime.lifetime.name) {
                     self.sess.span_err(
-                        lifetime.span,
+                        lifetime.lifetime.span,
                         format!("illegal lifetime parameter name: `{}`",
-                                token::get_name(lifetime.name)).as_slice());
+                                token::get_name(lifetime.lifetime.name))
+                            .as_slice());
                 }
             }
 
             for j in range(i + 1, lifetimes.len()) {
                 let lifetime_j = lifetimes.get(j);
 
-                if lifetime_i.name == lifetime_j.name {
+                if lifetime_i.lifetime.name == lifetime_j.lifetime.name {
                     self.sess.span_err(
-                        lifetime_j.span,
+                        lifetime_j.lifetime.span,
                         format!("lifetime name `{}` declared twice in \
                                 the same scope",
-                                token::get_name(lifetime_j.name)).as_slice());
+                                token::get_name(lifetime_j.lifetime.name))
+                            .as_slice());
+                }
+            }
+
+            for bound in lifetime_i.bounds.iter() {
+                if !self.sess.features.issue_5723_bootstrap.get() {
+                    self.sess.span_err(
+                        bound.span,
+                        "region bounds require `issue_5723_bootstrap`");
                 }
             }
         }
@@ -379,12 +389,12 @@ impl<'a> LifetimeContext<'a> {
     }
 }
 
-fn search_lifetimes(lifetimes: &Vec<ast::Lifetime>,
+fn search_lifetimes(lifetimes: &Vec<ast::LifetimeDef>,
                     lifetime_ref: &ast::Lifetime)
                     -> Option<(uint, ast::NodeId)> {
     for (i, lifetime_decl) in lifetimes.iter().enumerate() {
-        if lifetime_decl.name == lifetime_ref.name {
-            return Some((i, lifetime_decl.id));
+        if lifetime_decl.lifetime.name == lifetime_ref.name {
+            return Some((i, lifetime_decl.lifetime.id));
         }
     }
     return None;
@@ -392,15 +402,15 @@ fn search_lifetimes(lifetimes: &Vec<ast::Lifetime>,
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::Lifetime> {
+pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::LifetimeDef> {
     let referenced_idents = free_lifetimes(&generics.ty_params);
     if referenced_idents.is_empty() {
         return Vec::new();
     }
 
     generics.lifetimes.iter()
-        .filter(|l| referenced_idents.iter().any(|&i| i == l.name))
-        .map(|l| *l)
+        .filter(|l| referenced_idents.iter().any(|&i| i == l.lifetime.name))
+        .map(|l| (*l).clone())
         .collect()
 }
 

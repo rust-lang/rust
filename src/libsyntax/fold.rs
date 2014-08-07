@@ -163,6 +163,10 @@ pub trait Folder {
         noop_fold_lifetime(l, self)
     }
 
+    fn fold_lifetime_def(&mut self, l: &LifetimeDef) -> LifetimeDef {
+        noop_fold_lifetime_def(l, self)
+    }
+
     fn fold_attribute(&mut self, at: Attribute) -> Attribute {
         noop_fold_attribute(at, self)
     }
@@ -185,6 +189,10 @@ pub trait Folder {
 
     fn fold_lifetimes(&mut self, lts: &[Lifetime]) -> Vec<Lifetime> {
         noop_fold_lifetimes(lts, self)
+    }
+
+    fn fold_lifetime_defs(&mut self, lts: &[LifetimeDef]) -> Vec<LifetimeDef> {
+        noop_fold_lifetime_defs(lts, self)
     }
 
     fn fold_ty_param(&mut self, tp: &TyParam) -> TyParam {
@@ -337,7 +345,7 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                 onceness: f.onceness,
                 bounds: fld.fold_opt_bounds(&f.bounds),
                 decl: fld.fold_fn_decl(&*f.decl),
-                lifetimes: f.lifetimes.iter().map(|l| fld.fold_lifetime(l)).collect(),
+                lifetimes: fld.fold_lifetime_defs(f.lifetimes.as_slice()),
             }, fld.fold_opt_lifetime(region))
         }
         TyProc(ref f) => {
@@ -346,12 +354,12 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                 onceness: f.onceness,
                 bounds: fld.fold_opt_bounds(&f.bounds),
                 decl: fld.fold_fn_decl(&*f.decl),
-                lifetimes: f.lifetimes.iter().map(|l| fld.fold_lifetime(l)).collect(),
+                lifetimes: fld.fold_lifetime_defs(f.lifetimes.as_slice()),
             })
         }
         TyBareFn(ref f) => {
             TyBareFn(box(GC) BareFnTy {
-                lifetimes: f.lifetimes.iter().map(|l| fld.fold_lifetime(l)).collect(),
+                lifetimes: fld.fold_lifetime_defs(f.lifetimes.as_slice()),
                 fn_style: f.fn_style,
                 abi: f.abi,
                 decl: fld.fold_fn_decl(&*f.decl)
@@ -665,8 +673,21 @@ pub fn noop_fold_lifetime<T: Folder>(l: &Lifetime, fld: &mut T) -> Lifetime {
     }
 }
 
+pub fn noop_fold_lifetime_def<T: Folder>(l: &LifetimeDef, fld: &mut T)
+                                         -> LifetimeDef
+{
+    LifetimeDef {
+        lifetime: fld.fold_lifetime(&l.lifetime),
+        bounds: fld.fold_lifetimes(l.bounds.as_slice()),
+    }
+}
+
 pub fn noop_fold_lifetimes<T: Folder>(lts: &[Lifetime], fld: &mut T) -> Vec<Lifetime> {
     lts.iter().map(|l| fld.fold_lifetime(l)).collect()
+}
+
+pub fn noop_fold_lifetime_defs<T: Folder>(lts: &[LifetimeDef], fld: &mut T) -> Vec<LifetimeDef> {
+    lts.iter().map(|l| fld.fold_lifetime_def(l)).collect()
 }
 
 pub fn noop_fold_opt_lifetime<T: Folder>(o_lt: &Option<Lifetime>, fld: &mut T)
@@ -676,7 +697,7 @@ pub fn noop_fold_opt_lifetime<T: Folder>(o_lt: &Option<Lifetime>, fld: &mut T)
 
 pub fn noop_fold_generics<T: Folder>(generics: &Generics, fld: &mut T) -> Generics {
     Generics {ty_params: fld.fold_ty_params(generics.ty_params.as_slice()),
-              lifetimes: fld.fold_lifetimes(generics.lifetimes.as_slice())}
+              lifetimes: fld.fold_lifetime_defs(generics.lifetimes.as_slice())}
 }
 
 pub fn noop_fold_struct_def<T: Folder>(struct_def: Gc<StructDef>,

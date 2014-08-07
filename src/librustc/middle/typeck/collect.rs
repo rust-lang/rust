@@ -804,9 +804,10 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
             generics.lifetimes
                     .iter()
                     .enumerate()
-                    .map(|(i, def)| ty::ReEarlyBound(def.id,
+                    .map(|(i, def)| ty::ReEarlyBound(def.lifetime.id,
                                                      subst::TypeSpace,
-                                                     i, def.name))
+                                                     i,
+                                                     def.lifetime.name))
                     .collect();
 
         let types =
@@ -1073,7 +1074,7 @@ fn add_unsized_bound(ccx: &CrateCtxt,
 
 fn ty_generics(ccx: &CrateCtxt,
                space: subst::ParamSpace,
-               lifetimes: &Vec<ast::Lifetime>,
+               lifetimes: &Vec<ast::LifetimeDef>,
                types: &OwnedSlice<ast::TyParam>,
                base_generics: ty::Generics)
                -> ty::Generics
@@ -1081,10 +1082,10 @@ fn ty_generics(ccx: &CrateCtxt,
     let mut result = base_generics;
 
     for (i, l) in lifetimes.iter().enumerate() {
-        let def = ty::RegionParameterDef { name: l.name,
+        let def = ty::RegionParameterDef { name: l.lifetime.name,
                                            space: space,
                                            index: i,
-                                           def_id: local_def(l.id) };
+                                           def_id: local_def(l.lifetime.id) };
         debug!("ty_generics: def for region param: {}", def);
         result.regions.push(space, def);
     }

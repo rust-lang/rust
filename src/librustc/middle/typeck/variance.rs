@@ -358,7 +358,8 @@ impl<'a> Visitor<()> for TermsContext<'a> {
             ast::ItemStruct(_, ref generics) |
             ast::ItemTrait(ref generics, _, _, _) => {
                 for (i, p) in generics.lifetimes.iter().enumerate() {
-                    self.add_inferred(item.id, RegionParam, TypeSpace, i, p.id);
+                    let id = p.lifetime.id;
+                    self.add_inferred(item.id, RegionParam, TypeSpace, i, id);
                 }
                 for (i, p) in generics.ty_params.iter().enumerate() {
                     self.add_inferred(item.id, TypeParam, TypeSpace, i, p.id);
