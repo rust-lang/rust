@@ -1257,7 +1257,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
     for i in decl.inputs.iter() {
         match (*i).pat.node {
             ast::PatIdent(_, _, _) => (),
-            ast::PatWild => (),
+            ast::PatWild(ast::PatWildSingle) => (),
             _ => {
                 span_err!(ccx.tcx.sess, (*i).pat.span, E0130,
                           "patterns aren't allowed in foreign function declarations");

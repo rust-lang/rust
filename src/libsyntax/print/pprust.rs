@@ -1732,8 +1732,8 @@ impl<'a> State<'a> {
         /* Pat isn't normalized, but the beauty of it
          is that it doesn't matter */
         match pat.node {
-            ast::PatWild => try!(word(&mut self.s, "_")),
-            ast::PatWildMulti => try!(word(&mut self.s, "..")),
+            ast::PatWild(ast::PatWildSingle) => try!(word(&mut self.s, "_")),
+            ast::PatWild(ast::PatWildMulti) => try!(word(&mut self.s, "..")),
             ast::PatIdent(binding_mode, ref path1, sub) => {
                 match binding_mode {
                     ast::BindByRef(mutbl) => {
@@ -1822,7 +1822,7 @@ impl<'a> State<'a> {
                 for p in slice.iter() {
                     if !before.is_empty() { try!(self.word_space(",")); }
                     match **p {
-                        ast::Pat { node: ast::PatWildMulti, .. } => {
+                        ast::Pat { node: ast::PatWild(ast::PatWildMulti), .. } => {
                             // this case is handled by print_pat
                         }
                         _ => try!(word(&mut self.s, "..")),

@@ -763,7 +763,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         box(GC) ast::Pat { id: ast::DUMMY_NODE_ID, node: pat, span: span }
     }
     fn pat_wild(&self, span: Span) -> Gc<ast::Pat> {
-        self.pat(span, ast::PatWild)
+        self.pat(span, ast::PatWild(ast::PatWildSingle))
     }
     fn pat_lit(&self, span: Span, expr: Gc<ast::Expr>) -> Gc<ast::Pat> {
         self.pat(span, ast::PatLit(expr))
