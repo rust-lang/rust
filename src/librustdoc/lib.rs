@@ -37,6 +37,7 @@ use externalfiles::ExternalHtml;
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
 
+pub mod frontmatter;
 pub mod clean;
 pub mod core;
 pub mod doctree;
