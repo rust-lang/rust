@@ -48,7 +48,7 @@ use ptr::RawPtr;
 use mem;
 use mem::size_of;
 use kinds::marker;
-use raw::{Repr};
+use raw::Repr;
 // Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
 use RawSlice = raw::Slice;
 
@@ -227,19 +227,17 @@ pub trait ImmutableSlice<'a, T> {
     #[deprecated = "use binary_search"]
     fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint>;
 
-    /**
-     * Binary search a sorted vector with a comparator function.
-     *
-     * The comparator function should implement an order consistent
-     * with the sort order of the underlying vector, returning an
-     * order code that indicates whether its argument is `Less`,
-     * `Equal` or `Greater` the desired target.
-     *
-     * If the value is found then `Found` is returned, containing the
-     * index of the matching element; if the value is not found then
-     * `NotFound` is returned, containing the index where a matching
-     * element could be inserted while maintaining sorted order.
-     */
+    /// Binary search a sorted vector with a comparator function.
+    ///
+    /// The comparator function should implement an order consistent
+    /// with the sort order of the underlying vector, returning an
+    /// order code that indicates whether its argument is `Less`,
+    /// `Equal` or `Greater` the desired target.
+    ///
+    /// If the value is found then `Found` is returned, containing the
+    /// index of the matching element; if the value is not found then
+    /// `NotFound` is returned, containing the index where a matching
+    /// element could be inserted while maintaining sorted order.
     #[unstable]
     fn binary_search(&self, f: |&T| -> Ordering) -> BinarySearchResult;
 
