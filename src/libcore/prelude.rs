@@ -29,7 +29,7 @@
 //! ```
 
 // Reexported core operators
-pub use kinds::{Copy, Send, Sized, Share};
+pub use kinds::{Copy, Send, Sized, Sync};
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Drop, Deref, DerefMut};

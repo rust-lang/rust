@@ -28,11 +28,11 @@ struct Foo<'a> {
     a: ||: 'a,
     b: ||: 'static,
     c: <'b>||: 'a,
-    d: ||: 'a + Share,
-    e: <'b>|int|: 'a + Share -> &'b f32,
+    d: ||: 'a + Sync,
+    e: <'b>|int|: 'a + Sync -> &'b f32,
     f: proc(),
-    g: proc(): 'static + Share,
-    h: proc<'b>(int): Share -> &'b f32,
+    g: proc(): 'static + Sync,
+    h: proc<'b>(int): Sync -> &'b f32,
 }
 
 fn f<'a>(a: &'a int, f: <'b>|&'b int| -> &'b int) -> &'a int {
@@ -54,14 +54,14 @@ fn bar<'b>() {
     foo::<|| -> ()>();
     foo::<||:>();
     foo::<||:'b>();
-    foo::<||:'b + Share>();
-    foo::<||:Share>();
-    foo::< <'a>|int, f32, &'a int|:'b + Share -> &'a int>();
+    foo::<||:'b + Sync>();
+    foo::<||:Sync>();
+    foo::< <'a>|int, f32, &'a int|:'b + Sync -> &'a int>();
     foo::<proc()>();
     foo::<proc() -> ()>();
     foo::<proc():'static>();
-    foo::<proc():Share>();
-    foo::<proc<'a>(int, f32, &'a int):'static + Share -> &'a int>();
+    foo::<proc():Sync>();
+    foo::<proc<'a>(int, f32, &'a int):'static + Sync -> &'a int>();
 
     foo::<<'a>||>();
 

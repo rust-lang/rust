@@ -11,13 +11,13 @@
 // Tests (negatively) the ability for the Self type in default methods
 // to use capabilities granted by builtin kinds as supertraits.
 
-trait Foo : Share {
+trait Foo : Sync {
     fn foo(self, mut chan: Sender<Self>) {
         chan.send(self); //~ ERROR does not fulfill `Send`
     }
 }
 
-impl <T: Share> Foo for T { }
+impl <T: Sync> Foo for T { }
 
 fn main() {
     let (tx, rx) = channel();

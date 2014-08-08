@@ -25,7 +25,7 @@
 //!
 //! [1]: http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync
 //!
-//! Atomic variables are safe to share between threads (they implement `Share`)
+//! Atomic variables are safe to share between threads (they implement `Sync`)
 //! but they do not themselves provide the mechanism for sharing. The most
 //! common way to share an atomic variable is to put it into an `Arc` (an
 //! atomically-reference-counted shared pointer).
