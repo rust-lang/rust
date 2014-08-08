@@ -16,6 +16,8 @@
 // instead of in std.
 
 #![feature(macro_rules)]
+#![reexport_test_harness_main = "test_main"]
+
 extern crate libc;
 
 extern crate native;
@@ -55,7 +57,7 @@ macro_rules! iotest (
 
 #[cfg(test)] #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, __test::main)
+    green::start(argc, argv, rustuv::event_loop, test_main)
 }
 
 iotest!(fn test_destroy_once() {
