@@ -48,6 +48,8 @@ via `close` and `delete` methods.
 #![deny(unused_result, unused_must_use)]
 #![allow(visible_private_types)]
 
+#![reexport_test_harness_main = "test_main"]
+
 #[cfg(test)] extern crate green;
 #[cfg(test)] extern crate debug;
 #[cfg(test)] extern crate realrustuv = "rustuv";
@@ -76,13 +78,9 @@ pub use self::timer::TimerWatcher;
 pub use self::tty::TtyWatcher;
 
 // Run tests with libgreen instead of libnative.
-//
-// FIXME: This egregiously hacks around starting the test runner in a different
-//        threading mode than the default by reaching into the auto-generated
-//        '__test' module.
 #[cfg(test)] #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, event_loop, __test::main)
+    green::start(argc, argv, event_loop, test_main)
 }
 
 mod macros;
