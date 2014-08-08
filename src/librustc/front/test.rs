@@ -51,6 +51,7 @@ struct TestCtxt<'a> {
     ext_cx: ExtCtxt<'a>,
     testfns: Vec<Test>,
     reexport_mod_ident: ast::Ident,
+    reexport_test_harness_main: Option<InternedString>,
     is_test_crate: bool,
     config: ast::CrateConfig,
 }
@@ -64,8 +65,16 @@ pub fn modify_for_testing(sess: &Session,
     // command line options.
     let should_test = attr::contains_name(krate.config.as_slice(), "test");
 
+    // Check for #[reexport_test_harness_main = "some_name"] which
+    // creates a `use some_name = __test::main;`. This needs to be
+    // unconditional, so that the attribute is still marked as used in
+    // non-test builds.
+    let reexport_test_harness_main =
+        attr::first_attr_value_str_by_name(krate.attrs.as_slice(),
+                                           "reexport_test_harness_main");
+
     if should_test {
-        generate_test_harness(sess, krate)
+        generate_test_harness(sess, reexport_test_harness_main, krate)
     } else {
         strip_test_functions(krate)
     }
@@ -79,14 +88,17 @@ struct TestHarnessGenerator<'a> {
 
 impl<'a> fold::Folder for TestHarnessGenerator<'a> {
     fn fold_crate(&mut self, c: ast::Crate) -> ast::Crate {
-        let folded = fold::noop_fold_crate(c, self);
+        let mut folded = fold::noop_fold_crate(c, self);
 
         // Add a special __test module to the crate that will contain code
         // generated for the test harness
-        ast::Crate {
-            module: add_test_module(&self.cx, &folded.module),
-            .. folded
+        let (mod_, reexport) = mk_test_module(&self.cx, &self.cx.reexport_test_harness_main);
+        folded.module.items.push(mod_);
+        match reexport {
+            Some(re) => folded.module.view_items.push(re),
+            None => {}
         }
+        folded
     }
 
     fn fold_item(&mut self, i: Gc<ast::Item>) -> SmallVector<Gc<ast::Item>> {
@@ -196,7 +208,9 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
     }
 }
 
-fn generate_test_harness(sess: &Session, krate: ast::Crate) -> ast::Crate {
+fn generate_test_harness(sess: &Session,
+                         reexport_test_harness_main: Option<InternedString>,
+                         krate: ast::Crate) -> ast::Crate {
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         ext_cx: ExtCtxt::new(&sess.parse_sess, sess.opts.cfg.clone(),
@@ -207,6 +221,7 @@ fn generate_test_harness(sess: &Session, krate: ast::Crate) -> ast::Crate {
         path: Vec::new(),
         testfns: Vec::new(),
         reexport_mod_ident: token::gensym_ident("__test_reexports"),
+        reexport_test_harness_main: reexport_test_harness_main,
         is_test_crate: is_test_crate(&krate),
         config: krate.config.clone(),
     };
@@ -314,14 +329,6 @@ fn should_fail(i: Gc<ast::Item>) -> bool {
     attr::contains_name(i.attrs.as_slice(), "should_fail")
 }
 
-fn add_test_module(cx: &TestCtxt, m: &ast::Mod) -> ast::Mod {
-    let testmod = mk_test_module(cx);
-    ast::Mod {
-        items: m.items.clone().append_one(testmod),
-        ..(*m).clone()
-    }
-}
-
 /*
 
 We're going to be building a module that looks more or less like:
@@ -359,7 +366,8 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     }
 }
 
-fn mk_test_module(cx: &TestCtxt) -> Gc<ast::Item> {
+fn mk_test_module(cx: &TestCtxt, reexport_test_harness_main: &Option<InternedString>)
+                  -> (Gc<ast::Item>, Option<ast::ViewItem>) {
     // Link to test crate
     let view_items = vec!(mk_std(cx));
 
@@ -383,18 +391,35 @@ fn mk_test_module(cx: &TestCtxt) -> Gc<ast::Item> {
     };
     let item_ = ast::ItemMod(testmod);
 
+    let mod_ident = token::gensym_ident("__test");
     let item = ast::Item {
-        ident: token::gensym_ident("__test"),
+        ident: mod_ident,
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: item_,
         vis: ast::Public,
         span: DUMMY_SP,
-     };
+    };
+    let reexport = reexport_test_harness_main.as_ref().map(|s| {
+        // building `use <ident> = __test::main`
+        let reexport_ident = token::str_to_ident(s.get());
+
+        let use_path =
+            nospan(ast::ViewPathSimple(reexport_ident,
+                                       path_node(vec![mod_ident, token::str_to_ident("main")]),
+                                       ast::DUMMY_NODE_ID));
+
+        ast::ViewItem {
+            node: ast::ViewItemUse(box(GC) use_path),
+            attrs: vec![],
+            vis: ast::Inherited,
+            span: DUMMY_SP
+        }
+    });
 
     debug!("Synthetic test module:\n{}\n", pprust::item_to_string(&item));
 
-    box(GC) item
+    (box(GC) item, reexport)
 }
 
 fn nospan<T>(t: T) -> codemap::Spanned<T> {
