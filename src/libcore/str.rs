@@ -1030,9 +1030,6 @@ pub mod traits {
     use option::{Option, Some};
     use str::{Str, StrSlice, eq_slice};
 
-    #[cfg(stage0)]
-    use option::None;   // NOTE(stage0): Remove after snapshot.
-
     impl<'a> Ord for &'a str {
         #[inline]
         fn cmp(&self, other: & &'a str) -> Ordering {

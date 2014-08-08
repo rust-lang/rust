@@ -523,22 +523,6 @@ pub fn begin_unwind_fmt(msg: &fmt::Arguments, file_line: &(&'static str, uint)) 
 }
 
 /// This is the entry point of unwinding for fail!() and assert!().
-#[cfg(stage0)]
-#[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
-pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! {
-    // Note that this should be the only allocation performed in this code path.
-    // Currently this means that fail!() on OOM will invoke this code path,
-    // but then again we're not really ready for failing on OOM anyway. If
-    // we do start doing this, then we should propagate this allocation to
-    // be performed in the parent of this task instead of the task that's
-    // failing.
-
-    // see below for why we do the `Any` coercion here.
-    begin_unwind_inner(box msg, &(file, line))
-}
-
-/// This is the entry point of unwinding for fail!() and assert!().
-#[cfg(not(stage0))]
 #[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
 pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, uint)) -> ! {
     // Note that this should be the only allocation performed in this code path.
