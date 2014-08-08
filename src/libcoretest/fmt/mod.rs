@@ -8,4 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::ascii::{Ascii, AsciiCast};
+
 mod num;
+
+#[test]
+fn test_to_string() {
+    let s = b't'.to_ascii().to_string();
+    assert_eq!(s, "t".to_string());
+}
+
+#[test]
+fn test_show() {
+    let c = b't'.to_ascii();
+    assert_eq!(format!("{}", c), "t".to_string());
+}

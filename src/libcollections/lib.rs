@@ -53,6 +53,7 @@ pub use vec::Vec;
 
 mod macros;
 
+pub mod ascii;
 pub mod bitv;
 pub mod btree;
 pub mod dlist;
