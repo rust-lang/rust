@@ -1592,10 +1592,11 @@ mod test {
         let tmpdir = tmpdir();
         let path = tmpdir.join("a");
         check!(File::create(&path));
-
-        check!(change_file_times(&path, 1000, 2000));
-        assert_eq!(check!(path.stat()).accessed, 1000);
-        assert_eq!(check!(path.stat()).modified, 2000);
+        // These numbers have to be bigger than the time in the day to account for timezones
+        // Windows in particular will fail in certain timezones with small enough values
+        check!(change_file_times(&path, 100000, 200000));
+        assert_eq!(check!(path.stat()).accessed, 100000);
+        assert_eq!(check!(path.stat()).modified, 200000);
     })
 
     iotest!(fn utime_noexist() {

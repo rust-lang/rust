@@ -28,6 +28,7 @@ pub static ENABLE_PROCESSED_INPUT: libc::DWORD = 0x1;
 pub static ENABLE_QUICK_EDIT_MODE: libc::DWORD = 0x40;
 
 #[repr(C)]
+#[cfg(target_arch = "x86")]
 pub struct WSADATA {
     pub wVersion: libc::WORD,
     pub wHighVersion: libc::WORD,
@@ -36,6 +37,17 @@ pub struct WSADATA {
     pub iMaxSockets: u16,
     pub iMaxUdpDg: u16,
     pub lpVendorInfo: *mut u8,
+}
+#[repr(C)]
+#[cfg(target_arch = "x86_64")]
+pub struct WSADATA {
+    pub wVersion: libc::WORD,
+    pub wHighVersion: libc::WORD,
+    pub iMaxSockets: u16,
+    pub iMaxUdpDg: u16,
+    pub lpVendorInfo: *mut u8,
+    pub szDescription: [u8, ..WSADESCRIPTION_LEN + 1],
+    pub szSystemStatus: [u8, ..WSASYS_STATUS_LEN + 1],
 }
 
 pub type LPWSADATA = *mut WSADATA;
