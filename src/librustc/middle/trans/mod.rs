@@ -31,6 +31,7 @@ pub mod meth;
 pub mod cabi;
 pub mod cabi_x86;
 pub mod cabi_x86_64;
+pub mod cabi_x86_win64;
 pub mod cabi_arm;
 pub mod cabi_mips;
 pub mod foreign;

@@ -13,10 +13,12 @@ use std::option;
 use middle::trans::context::CrateContext;
 use middle::trans::cabi_x86;
 use middle::trans::cabi_x86_64;
+use middle::trans::cabi_x86_win64;
 use middle::trans::cabi_arm;
 use middle::trans::cabi_mips;
 use middle::trans::type_::Type;
 use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel};
+use syntax::abi::{OsWin32};
 
 #[deriving(Clone, PartialEq)]
 pub enum ArgKind {
@@ -107,7 +109,12 @@ pub fn compute_abi_info(ccx: &CrateContext,
                         ret_def: bool) -> FnType {
     match ccx.sess().targ_cfg.arch {
         X86 => cabi_x86::compute_abi_info(ccx, atys, rty, ret_def),
-        X86_64 => cabi_x86_64::compute_abi_info(ccx, atys, rty, ret_def),
+        X86_64 =>
+            if ccx.sess().targ_cfg.os == OsWin32 {
+                cabi_x86_win64::compute_abi_info(ccx, atys, rty, ret_def)
+            } else {
+                cabi_x86_64::compute_abi_info(ccx, atys, rty, ret_def)
+            },
         Arm => cabi_arm::compute_abi_info(ccx, atys, rty, ret_def),
         Mips => cabi_mips::compute_abi_info(ccx, atys, rty, ret_def),
         Mipsel => cabi_mips::compute_abi_info(ccx, atys, rty, ret_def),
