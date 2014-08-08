@@ -1756,6 +1756,8 @@ pub mod raw {
 //     of type `T`.
 //
 // (g) The size of `T` and `U` is equal and non-zero.
+//
+// (h) The `min_align_of` of `T` and `U` is equal.
 
 pub struct PartialVec<T,U> {
     vec: Vec<T>,
@@ -1773,12 +1775,14 @@ impl<T,U> PartialVec<T,U> {
     ///
     /// Fails if `T` and `U` have differing sizes or are zero-sized.
     pub fn from_vec(mut vec: Vec<T>) -> PartialVec<T,U> {
-        // FIXME: Assert that the types `T` and `U` have the same size.
+        // FIXME: Assert statically that the types `T` and `U` have the same
+        // size.
         //
-        // These asserts make sure (g) is satisfied.
+        // These asserts make sure (g) and (h) are satisfied.
         assert!(mem::size_of::<T>() != 0);
         assert!(mem::size_of::<U>() != 0);
         assert!(mem::size_of::<T>() == mem::size_of::<U>());
+        assert!(mem::min_align_of::<T>() == mem::min_align_of::<U>());
 
         let start = vec.as_mut_ptr();
 
