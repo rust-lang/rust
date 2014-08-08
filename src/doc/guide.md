@@ -532,7 +532,7 @@ in the middle of a string." We add a comma, and then `x`, to indicate that we
 want `x` to be the value we're interpolating. The comma is used to separate
 arguments we pass to functions and macros, if you're passing more than one.
 
-When you just use the double curly braces, Rust will attempt to display the
+When you just use the curly braces, Rust will attempt to display the
 value in a meaningful way by checking out its type. If you want to specify the
 format in a more detailed manner, there are a [wide number of options
 available](/std/fmt/index.html). For now, we'll just stick to the default:
