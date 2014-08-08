@@ -1400,6 +1400,20 @@ fn link_args(cmd: &mut Command,
         cmd.arg("-Wl,--gc-sections");
     }
 
+    let used_link_args = sess.cstore.get_used_link_args().borrow();
+
+    // Dynamically linked executables can be compiled as position independent if the default
+    // relocation model of position independent code is not changed. This is a requirement to take
+    // advantage of ASLR, as otherwise the functions in the executable are not randomized and can
+    // be used during an exploit of a vulnerability in any code.
+    if sess.targ_cfg.os == abi::OsLinux {
+        let mut args = sess.opts.cg.link_args.iter().chain(used_link_args.iter());
+        if !dylib && sess.opts.cg.relocation_model.as_slice() == "pic" &&
+            !args.any(|x| x.as_slice() == "-static") {
+            cmd.arg("-pie");
+        }
+    }
+
     if sess.targ_cfg.os == abi::OsLinux || sess.targ_cfg.os == abi::OsDragonfly {
         // GNU-style linkers will use this to omit linking to libraries which
         // don't actually fulfill any relocations, but only for libraries which
@@ -1568,9 +1582,7 @@ fn link_args(cmd: &mut Command,
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
     cmd.args(sess.opts.cg.link_args.as_slice());
-    for arg in sess.cstore.get_used_link_args().borrow().iter() {
-        cmd.arg(arg.as_slice());
-    }
+    cmd.args(used_link_args.as_slice());
 }
 
 // # Native library linking
