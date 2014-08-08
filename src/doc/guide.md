@@ -379,7 +379,7 @@ of your time with Rust.
 The first thing we'll learn about are 'variable bindings.' They look like this:
 
 ```{rust}
-let x = 5i;
+let x = 5;
 ```
 
 In many languages, this is called a 'variable.' But Rust's variable bindings
