@@ -214,7 +214,7 @@ pub static DUMMY_NODE_ID: NodeId = -1;
 /// The AST represents all type param bounds as types.
 /// typeck::collect::compute_bounds matches these against
 /// the "special" built-in traits (see middle::lang_items) and
-/// detects Copy, Send and Share.
+/// detects Copy, Send and Sync.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum TyParamBound {
     TraitTyParamBound(TraitRef),

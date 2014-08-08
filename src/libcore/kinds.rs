@@ -20,6 +20,9 @@ by the compiler automatically for the types to which they apply.
 
 */
 
+#[deprecated = "This has been renamed to Sync"]
+pub use Share = self::Sync;
+
 /// Types able to be transferred across task boundaries.
 #[lang="send"]
 pub trait Send {
@@ -40,32 +43,32 @@ pub trait Copy {
 
 /// Types that can be safely shared between tasks when aliased.
 ///
-/// The precise definition is: a type `T` is `Share` if `&T` is
+/// The precise definition is: a type `T` is `Sync` if `&T` is
 /// thread-safe. In other words, there is no possibility of data races
 /// when passing `&T` references between tasks.
 ///
 /// As one would expect, primitive types like `u8` and `f64` are all
-/// `Share`, and so are simple aggregate types containing them (like
-/// tuples, structs and enums). More instances of basic `Share` types
+/// `Sync`, and so are simple aggregate types containing them (like
+/// tuples, structs and enums). More instances of basic `Sync` types
 /// include "immutable" types like `&T` and those with simple
 /// inherited mutability, such as `Box<T>`, `Vec<T>` and most other
-/// collection types. (Generic parameters need to be `Share` for their
-/// container to be `Share`.)
+/// collection types. (Generic parameters need to be `Sync` for their
+/// container to be `Sync`.)
 ///
 /// A somewhat surprising consequence of the definition is `&mut T` is
-/// `Share` (if `T` is `Share`) even though it seems that it might
+/// `Sync` (if `T` is `Sync`) even though it seems that it might
 /// provide unsynchronised mutation. The trick is a mutable reference
 /// stored in an aliasable reference (that is, `& &mut T`) becomes
 /// read-only, as if it were a `& &T`, hence there is no risk of a data
 /// race.
 ///
-/// Types that are not `Share` are those that have "interior
+/// Types that are not `Sync` are those that have "interior
 /// mutability" in a non-thread-safe way, such as `Cell` and `RefCell`
 /// in `std::cell`. These types allow for mutation of their contents
 /// even when in an immutable, aliasable slot, e.g. the contents of
 /// `&Cell<T>` can be `.set`, and do not ensure data races are
-/// impossible, hence they cannot be `Share`. A higher level example
-/// of a non-`Share` type is the reference counted pointer
+/// impossible, hence they cannot be `Sync`. A higher level example
+/// of a non-`Sync` type is the reference counted pointer
 /// `std::rc::Rc`, because any reference `&Rc<T>` can clone a new
 /// reference, which modifies the reference counts in a non-atomic
 /// way.
@@ -73,18 +76,25 @@ pub trait Copy {
 /// For cases when one does need thread-safe interior mutability,
 /// types like the atomics in `std::sync` and `Mutex` & `RWLock` in
 /// the `sync` crate do ensure that any mutation cannot cause data
-/// races.  Hence these types are `Share`.
+/// races.  Hence these types are `Sync`.
 ///
 /// Users writing their own types with interior mutability (or anything
-/// else that is not thread-safe) should use the `NoShare` marker type
+/// else that is not thread-safe) should use the `NoSync` marker type
 /// (from `std::kinds::marker`) to ensure that the compiler doesn't
-/// consider the user-defined type to be `Share`.  Any types with
+/// consider the user-defined type to be `Sync`.  Any types with
 /// interior mutability must also use the `std::cell::UnsafeCell` wrapper
 /// around the value(s) which can be mutated when behind a `&`
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
+#[lang="sync"]
+#[cfg(not(stage0))]
+pub trait Sync {
+    // Empty
+}
+/// dox
 #[lang="share"]
-pub trait Share {
+#[cfg(stage0)]
+pub trait Sync {
     // Empty
 }
 
@@ -94,7 +104,6 @@ pub trait Share {
 /// implemented using unsafe code. In that case, you may want to embed
 /// some of the marker types below into your type.
 pub mod marker {
-
     /// A marker type whose type parameter `T` is considered to be
     /// covariant with respect to the type itself. This is (typically)
     /// used to indicate that an instance of the type `T` is being stored
@@ -266,12 +275,12 @@ pub mod marker {
     #[deriving(PartialEq,Clone)]
     pub struct NoCopy;
 
-    /// A type which is considered "not shareable", meaning that
+    /// A type which is considered "not sync", meaning that
     /// its contents are not threadsafe, hence they cannot be
     /// shared between tasks.
     #[lang="no_share_bound"]
     #[deriving(PartialEq,Clone)]
-    pub struct NoShare;
+    pub struct NoSync;
 
     /// A type which is considered managed by the GC. This is typically
     /// embedded in other types.

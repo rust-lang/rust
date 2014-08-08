@@ -165,7 +165,7 @@ use option::{None, Option, Some};
 #[unstable = "likely to be renamed; otherwise stable"]
 pub struct Cell<T> {
     value: UnsafeCell<T>,
-    noshare: marker::NoShare,
+    noshare: marker::NoSync,
 }
 
 #[stable]
@@ -174,7 +174,7 @@ impl<T:Copy> Cell<T> {
     pub fn new(value: T) -> Cell<T> {
         Cell {
             value: UnsafeCell::new(value),
-            noshare: marker::NoShare,
+            noshare: marker::NoSync,
         }
     }
 
@@ -213,7 +213,7 @@ pub struct RefCell<T> {
     value: UnsafeCell<T>,
     borrow: Cell<BorrowFlag>,
     nocopy: marker::NoCopy,
-    noshare: marker::NoShare,
+    noshare: marker::NoSync,
 }
 
 // Values [1, MAX-1] represent the number of `Ref` active
@@ -230,7 +230,7 @@ impl<T> RefCell<T> {
             value: UnsafeCell::new(value),
             borrow: Cell::new(UNUSED),
             nocopy: marker::NoCopy,
-            noshare: marker::NoShare,
+            noshare: marker::NoSync,
         }
     }
 
@@ -430,7 +430,7 @@ impl<'b, T> DerefMut<T> for RefMut<'b, T> {
 ///
 /// struct NotThreadSafe<T> {
 ///     value: UnsafeCell<T>,
-///     marker: marker::NoShare
+///     marker: marker::NoSync
 /// }
 /// ```
 ///

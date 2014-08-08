@@ -12,7 +12,7 @@
 // than the traits require.
 
 trait A {
-  fn b<C:Share,D>(x: C) -> C;
+  fn b<C:Sync,D>(x: C) -> C;
 }
 
 struct E {

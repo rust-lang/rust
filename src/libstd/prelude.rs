@@ -40,7 +40,7 @@
 #![experimental]
 
 // Reexported core operators
-#[doc(no_inline)] pub use kinds::{Copy, Send, Sized, Share};
+#[doc(no_inline)] pub use kinds::{Copy, Send, Sized, Sync};
 #[doc(no_inline)] pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 #[doc(no_inline)] pub use ops::{BitAnd, BitOr, BitXor};
 #[doc(no_inline)] pub use ops::{Drop, Deref, DerefMut};

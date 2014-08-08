@@ -18,17 +18,17 @@ struct arc_destruct<T> {
 }
 
 #[unsafe_destructor]
-impl<T: Share> Drop for arc_destruct<T> {
+impl<T: Sync> Drop for arc_destruct<T> {
     fn drop(&mut self) {}
 }
 
-fn arc_destruct<T: Share>(data: int) -> arc_destruct<T> {
+fn arc_destruct<T: Sync>(data: int) -> arc_destruct<T> {
     arc_destruct {
         _data: data
     }
 }
 
-fn arc<T: Share>(_data: T) -> arc_destruct<T> {
+fn arc<T: Sync>(_data: T) -> arc_destruct<T> {
     arc_destruct(0)
 }
 
