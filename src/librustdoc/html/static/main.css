@@ -252,8 +252,19 @@ nav.sub {
 .docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
 
 .content .out-of-band {
-    float: right;
     font-size: 23px;
+    width: 40%;
+    margin: 0px;
+    padding: 0px;
+    text-align: right;
+    display: inline-block;
+}
+
+.content .in-band {
+    width: 60%;
+    margin: 0px;
+    padding: 0px;
+    display: inline-block;
 }
 
 .content table {
@@ -282,8 +293,8 @@ nav.sub {
 }
 .content .multi-column li { width: 100%; display: inline-block; }
 
-.content .method { 
-    font-size: 1em; 
+.content .method {
+    font-size: 1em;
     position: relative;
 }
 .content .methods .docblock { margin-left: 40px; }
@@ -455,8 +466,8 @@ pre.rust { position: relative; }
     top: 0;
     right: 10px;
     font-size: 150%;
-    -webkit-transform: scaleX(-1); 
-    transform: scaleX(-1); 
+    -webkit-transform: scaleX(-1);
+    transform: scaleX(-1);
 }
 
 .methods .section-header {
@@ -468,22 +479,6 @@ pre.rust { position: relative; }
 }
 .section-header:hover a:after {
     content: '\2002\00a7\2002';
-}
-
-/* Media Queries */
-
-@media (max-width: 700px) {
-    .sidebar {
-        display: none;
-    }
-
-    .content {
-        margin-left: 0px;
-    }
-
-    nav.sub {
-        margin: 0 auto;
-    }
 }
 
 .collapse-toggle {
@@ -517,4 +512,60 @@ pre.rust { position: relative; }
 .toggle-label {
     color: #999;
     font-style: italic;
+}
+
+
+
+/* Media Queries */
+
+@media (max-width: 700px) {
+    body {
+        padding-top: 0px;
+    }
+
+    .sidebar {
+        height: 40px;
+        min-height: 40px;
+        width: 100%;
+        margin: 0px;
+        padding: 0px;
+        position: static;
+    }
+
+    .sidebar .location {
+        float: left;
+        margin: 0px;
+        padding: 5px;
+        width: 60%;
+        background: inherit;
+        text-align: left;
+        font-size: 24px;
+    }
+
+    .sidebar img {
+        width: 35px;
+        margin-top: 5px;
+        margin-bottom: 0px;
+        float: left;
+    }
+
+    nav.sub {
+        margin: 0 auto;
+    }
+
+    .sidebar .block {
+        display: none;
+    }
+
+    .content {
+        margin-left: 0px;
+    }
+
+    .toggle-wrapper > .collapse-toggle {
+        left: 0px;
+    }
+
+    .toggle-wrapper {
+        height: 1.5em;
+    }
 }
