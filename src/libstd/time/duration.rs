@@ -119,7 +119,10 @@ impl Duration {
         Duration { nanos: nanos as u32, ..Duration::seconds(secs) }
     }
 
-    /// Same as `to_tuple` but returns a tuple compatible to `to_negated_tuple`.
+    /// Returns a tuple of the number of days, (non-leap) seconds and
+    /// nanoseconds in the duration.  Note that the number of seconds
+    /// and nanoseconds are always positive, so that for example
+    /// `-Duration::seconds(3)` has -1 days and 86,397 seconds.
     #[inline]
     fn to_tuple_64(&self) -> (i64, u32, u32) {
         (self.days as i64, self.secs, self.nanos)
@@ -170,7 +173,7 @@ impl Duration {
         self.num_seconds() / 60
     }
 
-    /// Returns the total number of (non-leap) whole seconds in the duration.
+    /// Returns the total number of whole seconds in the duration.
     pub fn num_seconds(&self) -> i64 {
         // cannot overflow, 2^32 * 86400 < 2^64
         fn secs((days, secs, _): (i64, u32, u32)) -> i64 {
