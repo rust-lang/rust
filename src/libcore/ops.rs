@@ -771,7 +771,6 @@ pub trait FnOnce<Args,Result> {
 
 macro_rules! def_fn_mut(
     ($($args:ident)*) => (
-        #[cfg(not(stage0))]
         impl<Result$(,$args)*>
         FnMut<($($args,)*),Result>
         for extern "Rust" fn($($args: $args,)*) -> Result {

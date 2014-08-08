@@ -19,9 +19,6 @@ use mem::transmute;
 use option::{None, Option, Some};
 use iter::range_step;
 
-#[cfg(stage0)]
-use iter::Iterator; // NOTE(stage0): Remove after snapshot.
-
 // UTF-8 ranges and tags for encoding characters
 static TAG_CONT: u8    = 0b1000_0000u8;
 static TAG_TWO_B: u8   = 0b1100_0000u8;

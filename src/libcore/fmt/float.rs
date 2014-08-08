@@ -21,11 +21,6 @@ use slice::{ImmutableVector, MutableVector};
 use slice;
 use str::StrSlice;
 
-#[cfg(stage0)]
-use iter::Iterator;         // NOTE(stage0): Remove after snapshot.
-#[cfg(stage0)]
-use option::{Some, None};   // NOTE(stage0): Remove after snapshot.
-
 /// A flag that specifies whether to use exponential (scientific) notation.
 pub enum ExponentFormat {
     /// Do not use exponential notation.
