@@ -1345,10 +1345,11 @@ checked_impl!(CheckedMul, checked_mul, i16, intrinsics::i16_mul_with_overflow)
 checked_impl!(CheckedMul, checked_mul, i32, intrinsics::i32_mul_with_overflow)
 checked_impl!(CheckedMul, checked_mul, i64, intrinsics::i64_mul_with_overflow)
 
-/// Performs division that returns `None` instead of wrapping around on underflow or overflow.
+/// Performs division that returns `None` instead of failing on division by zero and instead of
+/// wrapping around on underflow and overflow.
 pub trait CheckedDiv: Div<Self, Self> {
-    /// Divides two numbers, checking for underflow or overflow. If underflow or overflow happens,
-    /// `None` is returned.
+    /// Divides two numbers, checking for underflow, overflow and division by zero. If any of that
+    /// happens, / `None` is returned.
     ///
     /// # Example
     ///
@@ -1356,6 +1357,7 @@ pub trait CheckedDiv: Div<Self, Self> {
     /// use std::num::CheckedDiv;
     /// assert_eq!((-127i8).checked_div(&-1), Some(127));
     /// assert_eq!((-128i8).checked_div(&-1), None);
+    /// assert_eq!((1i8).checked_div(&0), None);
     /// ```
     fn checked_div(&self, v: &Self) -> Option<Self>;
 }
