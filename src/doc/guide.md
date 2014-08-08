@@ -517,7 +517,7 @@ note: in expansion of format_args!
 <std macros>:1:1: 3:2 note: in expansion of println!
 src/hello_world.rs:4:5: 4:42 note: expansion site
 error: aborting due to previous error
-Could not execute process `rustc src/hello_world.rs --crate-type bin --out-dir /home/you/projects/hello_world/target -L /home/you/projects/hello_world/target -L /home/you/projects/hello_world/target/deps` (status=101)
+Could not compile `hello_world`.
 ```
 
 Rust will not let us use a value that has not been initialized. So why let us
