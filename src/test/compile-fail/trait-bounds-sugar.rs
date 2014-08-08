@@ -19,11 +19,11 @@ fn a(_x: Box<Foo+Send>) {
 fn b(_x: &'static Foo) { // should be same as &'static Foo+'static
 }
 
-fn c(x: Box<Foo+Share>) {
+fn c(x: Box<Foo+Sync>) {
     a(x); //~ ERROR expected bounds `Send`
 }
 
-fn d(x: &'static Foo+Share) {
+fn d(x: &'static Foo+Sync) {
     b(x); //~ ERROR expected bounds `'static`
 }
 

@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn test<T: Share>() {}
+fn test<T: Sync>() {}
 
 fn main() {
-    test::<Sender<int>>();        //~ ERROR: does not fulfill `Share`
-    test::<Receiver<int>>();        //~ ERROR: does not fulfill `Share`
-    test::<Sender<int>>();  //~ ERROR: does not fulfill `Share`
+    test::<Sender<int>>();        //~ ERROR: does not fulfill `Sync`
+    test::<Receiver<int>>();        //~ ERROR: does not fulfill `Sync`
+    test::<Sender<int>>();  //~ ERROR: does not fulfill `Sync`
 }
