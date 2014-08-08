@@ -359,13 +359,13 @@ fn spawn_process_os(cfg: ProcessConfig,
                                               libc::OPEN_EXISTING,
                                               0,
                                               ptr::mut_null());
-                    if *slot == INVALID_HANDLE_VALUE as libc::HANDLE {
+                    if *slot == INVALID_HANDLE_VALUE {
                         return Err(super::last_error())
                     }
                 }
                 Some(ref fd) => {
                     let orig = get_osfhandle(fd.fd()) as HANDLE;
-                    if orig == INVALID_HANDLE_VALUE as HANDLE {
+                    if orig == INVALID_HANDLE_VALUE {
                         return Err(super::last_error())
                     }
                     if DuplicateHandle(cur_proc, orig, cur_proc, slot,
@@ -450,9 +450,9 @@ fn zeroed_startupinfo() -> libc::types::os::arch::extra::STARTUPINFO {
         wShowWindow: 0,
         cbReserved2: 0,
         lpReserved2: ptr::mut_null(),
-        hStdInput: libc::INVALID_HANDLE_VALUE as libc::HANDLE,
-        hStdOutput: libc::INVALID_HANDLE_VALUE as libc::HANDLE,
-        hStdError: libc::INVALID_HANDLE_VALUE as libc::HANDLE,
+        hStdInput: libc::INVALID_HANDLE_VALUE,
+        hStdOutput: libc::INVALID_HANDLE_VALUE,
+        hStdError: libc::INVALID_HANDLE_VALUE,
     }
 }
 
