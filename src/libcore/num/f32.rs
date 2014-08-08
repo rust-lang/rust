@@ -293,7 +293,7 @@ impl Float for f32 {
     #[inline]
     fn frac_pi_8() -> f32 { consts::FRAC_PI_8 }
 
-    /// 1 .0/ pi
+    /// 1.0 / pi
     #[inline]
     fn frac_1_pi() -> f32 { consts::FRAC_1_PI }
 
