@@ -385,188 +385,20 @@ The grammar for a `where` clause would be as follows (BNF):
 
 The meaning of a where clause is fairly straightforward. Each bound in
 the where clause must be proven by the caller after substitution of
-the parameter types. This is true even for "trivial" cases where the
-self-type does not refer to any of the type parameters:
+the parameter types.
+
+One interesting case concerns trivial where clauses where the
+self-type does not refer to any of the type parameters, such as the
+following:
 
     fn foo()
         where int : Eq
     { ... }
 
-In this case, `foo()` will assume that `int : Eq`, even if it does
-not.  The caller is then responsibile for checking that this clause
-holds.  Therefore, given the following two functions, an error is
-reported in `bar()`, not `foo()`:
-
-    fn foo()
-        where Box<int> : Copy // Not true, but oh well.
-    { ... }
-    
-    fn bar() {
-        foo(); // Error: no impl of Copy for Box<int>
-    }
-    
-The reason for verifying such cases at the caller is to support the
-"role reversal" patterns described below for multidispatch traits.
-
-# Discussion
-
-### A multidispatch pattern for operator traits
-
-This section describes a possible way to model multidispatch
-traits. The only change to the existing trait system that is required
-is `where` clauses. I want to emphasize that no matter what form
-multidispatch traits take (other than double dispatch), where clauses
-are necessary, because there is a need to be able to specify a
-constraint where some of the types are known but others are not (e.g.,
-`(int, T)
-: Add`).
-
-To explain the pattern, let's use the `Add` trait. We will ignore the
-fact that `Add` is linked to the binary operator `+` and instead
-assume that one wishes to invoke its `add()` method
-directly. Conceptually, the trait `Add` has two input type parameters
-(`L` and `R`) and one output type parameter `S`. When declaring the
-trait `Add`, though, we will put all those parameters together into
-the output type parameter list:
-
-    trait Add<L,R,S> {
-        fn add(left: &L, right: &R) -> S;
-    }
-
-Note that the `Self` type is *completely unused* in this signature.
-The idea is that, by convention, `Add` will always be implemented for
-a tuple `(L, R)` where `L` and `R` are the same types that appear
-in the output parameter list:
-
-    // The general pattern:
-    impl Add<MyL,MyR,MyS> for (MyL,MyR) { ... }
-    
-    // Some examples:
-    impl Add<int,int,int> for (int,int) { ... }
-    impl Add<uint,uint,uint> for (uint,uint) { ... }
-    impl Add<int,Complex,Complex> for (int,Complex) { ... }
-    impl Add<Complex,Complex,Complex> for (Complex,Complex) { ... }
-    impl Add<Complex,int,Complex> for (Complex,int) { ... }
-
-You'll note that implementing the `Add` trait is somewhat non-DRY.
-Since there are relatively few *impls* of the `Add` trait (as compared
-to *uses*), I consider this acceptable.
-
-This definition of the `Add` trait is sufficient to write code, but
-unfortunately if we do nothing else than actually *using* the `Add`
-trait is very awkward. For example, a function to reduce a list by
-adding its members might look like:
-
-    fn reduce<T:Clone>(xs: &[T]) -> T
-        where (T,T) : Add<T,T,T>
-           // ^~~~~~~~~~~~~~~~~~ Note: non-DRY
-    {
-        let mut accum = xs[0].clone();
-        for x in xs.slice_from(1) {
-            accum = <(T,T) as Add>::add(&accum, &x);
-            //      ^~~~~~~~~~~~~ UFCS syntax.
-        }
-    }
-
-As you can see, since there is no actual *receiver* of type `(T,T)`,
-we must use the general UFCS syntax to invoke `add`: this is true even
-though the values of its parameters should in theory tell us
-everything we need to know. The reason for this comes back to our
-trick in which we repeated the same type for `L` twice: once in the
-input type parameter list and once in the output type parameter list.
-A call like `Add::add(&accum, &x)` tells us the value of the *output
-type parameter* `L` but says nothing about the self type (that is, the
-compiler doesn't know that the input type is always -- by convention
--- the tuple `(L,R)`).
-
-We can resolve this usability problem by adding a special impl of
-`Add` for the unit type along with one standalone fn per method:
-
-    impl<L,R,S> Add<L,R,S> for ()
-        where (L,R) : Add<L,R,S>
-    {
-        fn add(left: &L, right: &R) -> S {
-            <(L,R) as Add>::add(left, right)
-        }
-    }
-    
-Using this impl allows us to improve our reduce function:    
-
-    fn reduce<T:Clone>(xs: &[T]) -> T
-        where () : Add<T,T,T>
-        //    ^~~~~~~~~~~~~~~ Note: DRY
-    {
-        let mut accum = xs[0].clone();
-        for x in xs.slice_from(1) {
-            accum = <() as Add>::add(&accum, &x);
-            //      ^~~~~~~~~~~ Note: better but...
-        }
-    }
-    
-Now the `where` clause is DRY, which is nice, but the invocation still
-requires a somewhat verbose UFCS form. To improve that, we can define
-a standalone function `add` that accompanies the trait, like so:
-    
-    fn add<L,R,S>(left: &L, right: &R) -> S
-        where () : Add<L,R,S>
-    {
-        <() as Add>::add(left, right)
-    }
-
-That in turn allows us to rewrite the `reduce()` function like so:
-
-    fn reduce<T:Clone>(xs: &[T]) -> T
-        where () : Add<T,T,T>
-    {
-        let mut accum = xs[0].clone();
-        for x in xs.slice_from(1) {
-            accum = add(&accum, &x);
-        }
-    }
-
-Now that's really quite clean!
-
-Putting it all together, the pattern for defining a multidispatch
-`Add` trait looks like:
-
-    // Define trait with input/output type parameters lumped together:
-    trait Add<L,R,S> {
-        fn add(left: &L, right: &R) -> S;
-    }
-
-    // One impl of `Add` for the unit type:
-    impl<L,R,S> Add<L,R,S> for ()
-        where (L,R) : Add<L,R,S>
-    {
-        fn add(left: &L, right: &R) -> S {
-            <(L,R) as Add>::add(left, right)
-        }
-    }
-    
-    // One standalone fn per method:
-    fn add<L,R,S>(left: &L, right: &R) -> S
-        where () : Add<L,R,S>
-    {
-        <() as Add>::add(left, right)
-    }
-    
-Originally, I had planned a more complicated multidispatch proposal
-that would permit a syntax like the following:
-
-    trait Add<S> for (L,R) {
-        fn add(left: &L, right: &R) -> S;
-    }
-    
-This would imply that all impls of `Add` must be on a pair of types
-and similarly that all bounds on add must be defined over a pair of
-types. I decided that it may not be worth adding such a thing in the
-1.0 timespan, given that multidispatch is rarely needed, and that the
-above pattern is equally expressive. *Regardless,* both versions rely
-on the idea of defining a trait over a tuple of types, and hence
-require a `where` clause to function.
-
-*Note:* Of course, the actual `Add` trait doesn't need quite as much
-machinery to make it nice to use, since one can always write `a + b`.
+Where clauses like these are considered an error. They have no
+particular meaning, since the callee knows all types involved. This is
+a conservative choice: if we find that we do desire a particular
+interpretation for them, we can always make them legal later.
 
 # Drawbacks
 
@@ -609,16 +441,6 @@ the use of `:` as a trait-bound separator:
     {
         1 + c
     }
-
-# Unresolved questions
-
-- Should we remove support for `where` clauses where the self type
-  contains no type parameters?
-
-Currently such bounds are permitted in order to support patterns like
-`() : Add<int,T,T>`, where `T` is really acting like an input type
-parameter even though it appears in output position. Such patterns are
-a bit confusing but potentially useful.
 
 [bp]: http://smallcultfollowing.com/babysteps/blog/2012/10/04/refining-traits-slash-impls/
 [comparison]: http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.110.122
