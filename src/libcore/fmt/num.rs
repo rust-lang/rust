@@ -20,11 +20,6 @@ use iter::DoubleEndedIterator;
 use num::{Int, cast, zero};
 use slice::{ImmutableVector, MutableVector};
 
-#[cfg(stage0)]
-use iter::Iterator;         // NOTE(stage0): Remove after snapshot.
-#[cfg(stage0)]
-use option::{Some, None};   // NOTE(stage0): Remove after snapshot.
-
 /// A type that represents a specific radix
 #[doc(hidden)]
 trait GenericRadix {

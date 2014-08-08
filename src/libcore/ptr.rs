@@ -95,9 +95,6 @@ use option::{Some, None, Option};
 
 use cmp::{PartialEq, Eq, PartialOrd, Equiv, Ordering, Less, Equal, Greater};
 
-#[cfg(stage0)]
-use iter::Iterator; // NOTE(stage0): Remove after snapshot.
-
 pub use intrinsics::copy_memory;
 pub use intrinsics::copy_nonoverlapping_memory;
 pub use intrinsics::set_memory;
