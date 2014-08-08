@@ -13,15 +13,14 @@
 
 #![macro_escape]
 
-use std::fmt;
-
 // Indicates whether we should perform expensive sanity checks, including rtassert!
 // FIXME: Once the runtime matures remove the `true` below to turn off rtassert, etc.
 pub static ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) || cfg!(rtassert);
 
 macro_rules! rterrln (
     ($($arg:tt)*) => ( {
-        format_args!(::macros::dumb_println, $($arg)*)
+        use std::io::stdio;
+        format_args!(stdio::println_args, $($arg)*)
     } )
 )
 
@@ -50,12 +49,6 @@ macro_rules! rtabort (
         ::macros::abort(format!($($arg)*).as_slice());
     } )
 )
-
-pub fn dumb_println(args: &fmt::Arguments) {
-    use std::rt;
-    let mut w = rt::Stderr;
-    let _ = writeln!(&mut w, "{}", args);
-}
 
 pub fn abort(msg: &str) -> ! {
     let msg = if !msg.is_empty() { msg } else { "aborted" };
