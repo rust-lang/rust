@@ -3822,9 +3822,499 @@ incredibly powerful.  Next, let's look at one of those things: iterators.
 
 # Generics
 
+Sometimes, when writing a function or data type, we may want it to work for
+multiple types of arguments. For example, remember our `OptionalInt` type?
+
+```{rust}
+enum OptionalInt {
+    Value(int),
+    Missing,
+}
+```
+
+If we wanted to also have an `OptionalFloat64`, we would need a new enum:
+
+```{rust}
+enum OptionalFloat64 {
+    Valuef64(f64),
+    Missingf64,
+}
+```
+
+This is really unfortunate. Luckily, Rust has a feature that gives us a better
+way: generics. Generics are called **parametric polymorphism** in type theory,
+which means that they are types or functions that have multiple forms ("poly"
+is multiple, "morph" is form) over a given parameter ("parametric").
+
+Anyway, enough with type theory declarations, let's check out the generic form
+of `OptionalInt`. It is actually provided by Rust itself, and looks like this:
+
+```rust
+enum Option<T> {
+    Some(T),
+    None,
+}
+```
+
+The `<T>` part, which you've seen a few times before, indicates that this is
+a generic data type. Inside the declaration of our enum, wherever we see a `T`,
+we substitute that type for the same type used in the generic. Here's an
+example of using `Option<T>`, with some extra type annotations:
+
+```{rust}
+let x: Option<int> = Some(5i);
+```
+
+In the type declaration, we say `Option<int>`. Note how similar this looks to
+`Option<T>`. So, in this particular `Option`, `T` has the value of `int`. On
+the right hand side of the binding, we do make a `Some(T)`, where `T` is `5i`.
+Since that's an `int`, the two sides match, and Rust is happy. If they didn't
+match, we'd get an error:
+
+```{rust,ignore}
+let x: Option<f64> = Some(5i);
+// error: mismatched types: expected `core::option::Option<f64>`
+// but found `core::option::Option<int>` (expected f64 but found int)
+```
+
+That doesn't mean we can't make `Option<T>`s that hold an `f64`! They just have to
+match up:
+
+```{rust}
+let x: Option<int> = Some(5i);
+let y: Option<f64> = Some(5.0f64);
+```
+
+This is just fine. One definition, multiple uses.
+
+Generics don't have to only be generic over one type. Consider Rust's built-in
+`Result<T, E>` type:
+
+```{rust}
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+```
+
+This type is generic over _two_ types: `T` and `E`. By the way, the capital letters
+can be any letter you'd like. We could define `Result<T, E>` as:
+
+```{rust}
+enum Result<H, N> {
+    Ok(H),
+    Err(N),
+}
+```
+
+if we wanted to. Convention says that the first generic parameter should be
+`T`, for 'type,' and that we use `E` for 'error.' Rust doesn't care, however.
+
+The `Result<T, E>` type is intended to
+be used to return the result of a computation, and to have the ability to
+return an error if it didn't work out. Here's an example:
+
+```{rust}
+let x: Result<f64, String> = Ok(2.3f64);
+let y: Result<f64, String> = Err("There was an error.".to_string());
+```
+
+This particular Result will return an `f64` if there's a success, and a
+`String` if there's a failure. Let's write a function that uses `Result<T, E>`:
+
+```{rust}
+fn inverse(x: f64) -> Result<f64, String> {
+    if x == 0.0f64 { return Err("x cannot be zero!".to_string()); }
+
+    Ok(1.0f64 / x)
+}
+```
+
+We don't want to take the inverse of zero, so we check to make sure that we
+weren't passed one. If we weren't, then we return an `Err`, with a message. If
+it's okay, we return an `Ok`, with the answer.
+
+Why does this matter? Well, remember how `match` does exhaustive matches?
+Here's how this function gets used:
+
+```{rust}
+# fn inverse(x: f64) -> Result<f64, String> {
+#     if x == 0.0f64 { return Err("x cannot be zero!".to_string()); }
+#     Ok(1.0f64 / x)
+# }
+let x = inverse(25.0f64);
+
+match x {
+    Ok(x) => println!("The inverse of 25 is {}", x),
+    Err(msg) => println!("Error: {}", msg),
+}
+```
+
+The `match` enforces that we handle the `Err` case. In addition, because the
+answer is wrapped up in an `Ok`, we can't just use the result without doing
+the match:
+
+```{rust,ignore}
+let x = inverse(25.0f64);
+println!("{}", x + 2.0f64); // error: binary operation `+` cannot be applied 
+           // to type `core::result::Result<f64,collections::string::String>`
+```
+
+This function is great, but there's one other problem: it only works for 64 bit
+floating point values. What if we wanted to handle 32 bit floating point as
+well? We'd have to write this:
+
+```{rust}
+fn inverse32(x: f32) -> Result<f32, String> {
+    if x == 0.0f32 { return Err("x cannot be zero!".to_string()); }
+
+    Ok(1.0f32 / x)
+}
+```
+
+Bummer. What we need is a **generic function**. Luckily, we can write one!
+However, it won't _quite_ work yet. Before we get into that, let's talk syntax.
+A generic version of `inverse` would look something like this:
+
+```{rust,ignore}
+fn inverse<T>(x: T) -> Result<T, String> {
+    if x == 0.0 { return Err("x cannot be zero!".to_string()); }
+
+    Ok(1.0 / x)
+}
+```
+
+Just like how we had `Option<T>`, we use a similar syntax for `inverse<T>`.
+We can then use `T` inside the rest of the signature: `x` has type `T`, and half
+of the `Result` has type `T`. However, if we try to compile that example, we'll get
+an error:
+
+```{notrust,ignore}
+error: binary operation `==` cannot be applied to type `T`
+```
+
+Because `T` can be _any_ type, it may be a type that doesn't implement `==`,
+and therefore, the first line would be wrong. What do we do?
+
+To fix this example, we need to learn about another Rust feature: traits.
+
 # Traits
 
-# Operators and built-in Traits
+Do you remember the `impl` keyword, used to call a function with method
+syntax?
+
+```{rust}
+struct Circle {
+    x: f64,
+    y: f64,
+    radius: f64,
+}
+
+impl Circle {
+    fn area(&self) -> f64 {
+        std::f64::consts::PI * (self.radius * self.radius)
+    }
+}
+```
+
+Traits are similar, except that we define a trait with just the method
+signature, then implement the trait for that struct. Like this:
+
+```{rust}
+struct Circle {
+    x: f64,
+    y: f64,
+    radius: f64,
+}
+
+trait HasArea {
+    fn area(&self) -> f64;
+}
+
+impl HasArea for Circle {
+    fn area(&self) -> f64 {
+        std::f64::consts::PI * (self.radius * self.radius)
+    }
+}
+```
+
+As you can see, the `trait` block looks very similar to the `impl` block,
+but we don't define a body, just a type signature. When we `impl` a trait,
+we use `impl Trait for Item`, rather than just `impl Item`.
+
+So what's the big deal? Remember the error we were getting with our generic
+`inverse` function?
+
+```{notrust,ignore}
+error: binary operation `==` cannot be applied to type `T`
+```
+
+We can use traits to constrain our generics. Consider this function, which
+does not compile, and gives us a similar error:
+
+```{rust,ignore}
+fn print_area<T>(shape: T) {
+    println!("This shape has an area of {}", shape.area());
+}
+```
+
+Rust complains:
+
+```{notrust,ignore}
+error: type `T` does not implement any method in scope named `area`
+```
+
+Because `T` can be any type, we can't be sure that it implements the `area`
+method. But we can add a **trait constraint** to our generic `T`, ensuring
+that it does:
+
+```{rust}
+# trait HasArea {
+#     fn area(&self) -> f64;
+# }
+fn print_area<T: HasArea>(shape: T) {
+    println!("This shape has an area of {}", shape.area());
+}
+```
+
+The syntax `<T: HasArea>` means `any type that implements the HasArea trait`.
+Because traits define function type signatures, we can be sure that any type
+which implements `HasArea` will have an `.area()` method.
+
+Here's an extended example of how this works:
+
+```{rust}
+trait HasArea {
+    fn area(&self) -> f64;
+}
+
+struct Circle {
+    x: f64,
+    y: f64,
+    radius: f64,
+}
+
+impl HasArea for Circle {
+    fn area(&self) -> f64 {
+        std::f64::consts::PI * (self.radius * self.radius)
+    }
+}
+
+struct Square {
+    x: f64,
+    y: f64,
+    side: f64,
+}
+
+impl HasArea for Square {
+    fn area(&self) -> f64 {
+        self.side * self.side
+    }
+}
+
+fn print_area<T: HasArea>(shape: T) {
+    println!("This shape has an area of {}", shape.area());
+}
+
+fn main() {
+    let c = Circle {
+        x: 0.0f64,
+        y: 0.0f64,
+        radius: 1.0f64,
+    };
+
+    let s = Square {
+        x: 0.0f64,
+        y: 0.0f64,
+        side: 1.0f64,
+    };
+
+    print_area(c);
+    print_area(s);
+}
+```
+
+This program outputs:
+
+```{notrust,ignore}
+This shape has an area of 3.141593
+This shape has an area of 1
+```
+
+As you can see, `print_area` is now generic, but also ensures that we
+have passed in the correct types. If we pass in an incorrect type:
+
+```{rust,ignore}
+print_area(5i);
+```
+
+We get a compile-time error:
+
+```{notrust,ignore}
+error: failed to find an implementation of trait main::HasArea for int
+```
+
+So far, we've only added trait implementations to structs, but you can
+implement a trait for any type. So technically, we _could_ implement
+`HasArea` for `int`:
+
+```{rust}
+trait HasArea {
+    fn area(&self) -> f64;
+}
+
+impl HasArea for int {
+    fn area(&self) -> f64 {
+        println!("this is silly");
+
+        *self as f64
+    }
+}
+
+5i.area();
+```
+
+It is considered poor style to implement methods on such primitive types, even
+though it is possible.
+
+This may seem like the Wild West, but there are two other restrictions around
+implementing traits that prevent this from getting out of hand. First, traits
+must be `use`d in any scope where you wish to use the trait's method. So for
+example, this does not work:
+
+```{rust,ignore}
+mod shapes {
+    use std::f64::consts;
+
+    trait HasArea {
+        fn area(&self) -> f64;
+    }
+
+    struct Circle {
+        x: f64,
+        y: f64,
+        radius: f64,
+    }
+
+    impl HasArea for Circle {
+        fn area(&self) -> f64 {
+            consts::PI * (self.radius * self.radius)
+        }
+    }
+}
+
+fn main() {
+    let c = shapes::Circle {
+        x: 0.0f64,
+        y: 0.0f64,
+        radius: 1.0f64,
+    };
+
+    println!("{}", c.area());
+}
+```
+
+Now that we've moved the structs and traits into their own module, we get an
+error:
+
+```{notrust,ignore}
+error: type `shapes::Circle` does not implement any method in scope named `area`
+```
+
+If we add a `use` line right above `main` and make the right things public,
+everything is fine:
+
+```{rust}
+use shapes::HasArea;
+
+mod shapes {
+    use std::f64::consts;
+
+    pub trait HasArea {
+        fn area(&self) -> f64;
+    }
+
+    pub struct Circle {
+        pub x: f64,
+        pub y: f64,
+        pub radius: f64,
+    }
+
+    impl HasArea for Circle {
+        fn area(&self) -> f64 {
+            consts::PI * (self.radius * self.radius)
+        }
+    }
+}
+
+
+fn main() {
+    let c = shapes::Circle {
+        x: 0.0f64,
+        y: 0.0f64,
+        radius: 1.0f64,
+    };
+
+    println!("{}", c.area());
+}
+```
+
+This means that even if someone does something bad like add methods to `int`,
+it won't affect you, unless you `use` that trait.
+
+There's one more restriction on implementing traits. Either the trait or the
+type you're writing the `impl` for must be inside your crate. So, we could
+implement the `HasArea` type for `int`, because `HasArea` is in our crate.  But
+if we tried to implement `Float`, a trait provided by Rust, for `int`, we could
+not, because both the trait and the type aren't in our crate.
+
+One last thing about traits: generic functions with a trait bound use
+**monomorphization** ("mono": one, "morph": form), so they are statically
+dispatched. What's that mean? Well, let's take a look at `print_area` again:
+
+```{rust,ignore}
+fn print_area<T: HasArea>(shape: T) {
+    println!("This shape has an area of {}", shape.area());
+}
+
+fn main() {
+    let c = Circle { ... };
+
+    let s = Square { ... };
+
+    print_area(c);
+    print_area(s);
+}
+```
+
+When we use this trait with `Circle` and `Square`, Rust ends up generating
+two different functions with the concrete type, and replacing the call sites with
+calls to the concrete implementations. In other words, you get something like
+this:
+
+```{rust,ignore}
+fn __print_area_circle(shape: Circle) {
+    println!("This shape has an area of {}", shape.area());
+}
+
+fn __print_area_square(shape: Square) {
+    println!("This shape has an area of {}", shape.area());
+}
+
+fn main() {
+    let c = Circle { ... };
+
+    let s = Square { ... };
+
+    __print_area_circle(c);
+    __print_area_square(s);
+}
+```
+
+The names don't actually change to this, it's just for illustration. But
+as you can see, there's no overhead of deciding which version to call here,
+hence 'statically dispatched.' The downside is that we have two copies of
+the same function, so our binary is a little bit larger.
 
 # Tasks
 
