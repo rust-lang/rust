@@ -223,7 +223,7 @@ impl UnixStream {
                 libc::FILE_FLAG_OVERLAPPED,
                 ptr::mut_null())
         };
-        if result != libc::INVALID_HANDLE_VALUE as libc::HANDLE {
+        if result != libc::INVALID_HANDLE_VALUE {
             return Some(result)
         }
 
@@ -238,7 +238,7 @@ impl UnixStream {
                     libc::FILE_FLAG_OVERLAPPED,
                     ptr::mut_null())
             };
-            if result != libc::INVALID_HANDLE_VALUE as libc::HANDLE {
+            if result != libc::INVALID_HANDLE_VALUE {
                 return Some(result)
             }
         }
@@ -253,7 +253,7 @@ impl UnixStream {
                     libc::FILE_FLAG_OVERLAPPED,
                     ptr::mut_null())
             };
-            if result != libc::INVALID_HANDLE_VALUE as libc::HANDLE {
+            if result != libc::INVALID_HANDLE_VALUE {
                 return Some(result)
             }
         }
@@ -565,7 +565,7 @@ impl UnixListener {
         // and such.
         let addr_v = try!(to_utf16(addr));
         let ret = unsafe { pipe(addr_v.as_ptr(), true) };
-        if ret == libc::INVALID_HANDLE_VALUE as libc::HANDLE {
+        if ret == libc::INVALID_HANDLE_VALUE {
             Err(super::last_error())
         } else {
             Ok(UnixListener { handle: ret, name: addr.clone() })
@@ -680,7 +680,7 @@ impl UnixAcceptor {
         // create a second server pipe. If this fails, we disconnect the
         // connected client and return an error (see comments above).
         let new_handle = unsafe { pipe(name.as_ptr(), false) };
-        if new_handle == libc::INVALID_HANDLE_VALUE as libc::HANDLE {
+        if new_handle == libc::INVALID_HANDLE_VALUE {
             let ret = Err(super::last_error());
             // If our disconnection fails, then there's not really a whole lot
             // that we can do, so fail the task.

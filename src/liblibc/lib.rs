@@ -1142,18 +1142,16 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use types::os::arch::c95::{c_short, time_t, suseconds_t,
-                                                 c_long};
+                use types::os::arch::c95::{c_short, time_t, c_long};
                 use types::os::arch::extra::{int64, time64_t};
                 use types::os::arch::posix88::{dev_t, ino_t};
-                use types::os::arch::posix88::mode_t;
 
                 // pub Note: this is the struct called stat64 in win32. Not stat,
                 // nor stati64.
                 pub struct stat {
                     pub st_dev: dev_t,
                     pub st_ino: ino_t,
-                    pub st_mode: mode_t,
+                    pub st_mode: u16,
                     pub st_nlink: c_short,
                     pub st_uid: c_short,
                     pub st_gid: c_short,
@@ -1171,8 +1169,8 @@ pub mod types {
                 }
 
                 pub struct timeval {
-                    pub tv_sec: time_t,
-                    pub tv_usec: suseconds_t,
+                    pub tv_sec: c_long,
+                    pub tv_usec: c_long,
                 }
 
                 pub struct timespec {
@@ -1186,7 +1184,7 @@ pub mod types {
             pub mod bsd44 {
                 use types::os::arch::c95::{c_char, c_int, c_uint, size_t};
 
-                pub type SOCKET = c_uint;
+                pub type SOCKET = uint;
                 pub type socklen_t = c_int;
                 pub type sa_family_t = u16;
                 pub type in_port_t = u16;
@@ -1197,6 +1195,7 @@ pub mod types {
                 }
                 pub struct sockaddr_storage {
                     pub ss_family: sa_family_t,
+                    pub __ss_pad1: [u8, ..6],
                     pub __ss_align: i64,
                     pub __ss_pad2: [u8, ..112],
                 }
@@ -1293,12 +1292,9 @@ pub mod types {
             pub mod posix88 {
                 pub type off_t = i32;
                 pub type dev_t = u32;
-                pub type ino_t = i16;
+                pub type ino_t = u16;
 
-                #[cfg(target_arch = "x86")]
-                pub type pid_t = i32;
-                #[cfg(target_arch = "x86_64")]
-                pub type pid_t = i64;
+                pub type pid_t = u32;
 
                 pub type useconds_t = u32;
                 pub type mode_t = u16;
@@ -1415,7 +1411,7 @@ pub mod types {
                     pub dwPageSize: DWORD,
                     pub lpMinimumApplicationAddress: LPVOID,
                     pub lpMaximumApplicationAddress: LPVOID,
-                    pub dwActiveProcessorMask: DWORD,
+                    pub dwActiveProcessorMask: uint,
                     pub dwNumberOfProcessors: DWORD,
                     pub dwProcessorType: DWORD,
                     pub dwAllocationGranularity: DWORD,
@@ -1950,7 +1946,7 @@ pub mod consts {
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
-            use types::os::arch::extra::{WORD, DWORD, BOOL};
+            use types::os::arch::extra::{WORD, DWORD, BOOL, HANDLE};
 
             pub static TRUE : BOOL = 1;
             pub static FALSE : BOOL = 0;
@@ -1979,7 +1975,7 @@ pub mod consts {
             pub static ERROR_IO_PENDING: c_int = 997;
             pub static ERROR_FILE_INVALID : c_int = 1006;
             pub static ERROR_NOT_FOUND: c_int = 1168;
-            pub static INVALID_HANDLE_VALUE : c_int = -1;
+            pub static INVALID_HANDLE_VALUE: HANDLE = -1 as HANDLE;
 
             pub static DELETE : DWORD = 0x00010000;
             pub static READ_CONTROL : DWORD = 0x00020000;
