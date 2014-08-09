@@ -306,6 +306,29 @@ impl MutabilityCategory {
         }
     }
 
+    fn from_def(def: &def::Def) -> MutabilityCategory {
+        match *def {
+            def::DefFn(..) | def::DefStaticMethod(..) | def::DefSelfTy(..) |
+            def::DefMod(..) | def::DefForeignMod(..) | def::DefVariant(..) |
+            def::DefTy(..) | def::DefTrait(..) | def::DefPrimTy(..) |
+            def::DefTyParam(..) | def::DefUse(..) | def::DefStruct(..) |
+            def::DefTyParamBinder(..) | def::DefRegion(..) | def::DefLabel(..) |
+            def::DefMethod(..) => fail!("no MutabilityCategory for def: {}", *def),
+
+            def::DefStatic(_, false) => McImmutable,
+            def::DefStatic(_, true) => McDeclared,
+
+            def::DefArg(_, binding_mode) |
+            def::DefBinding(_, binding_mode) |
+            def::DefLocal(_, binding_mode)  => match binding_mode {
+                ast::BindByValue(ast::MutMutable) => McDeclared,
+                _ => McImmutable
+            },
+
+            def::DefUpvar(_, def, _, _) => MutabilityCategory::from_def(&*def)
+        }
+    }
+
     pub fn inherit(&self) -> MutabilityCategory {
         match *self {
             McImmutable => McImmutable,
@@ -503,8 +526,8 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
           def::DefStaticMethod(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
-          def::DefMod(_) | def::DefForeignMod(_) | def::DefStatic(_, false) |
-          def::DefUse(_) | def::DefTrait(_) | def::DefTy(_) | def::DefPrimTy(_) |
+          def::DefMod(_) | def::DefForeignMod(_) | def::DefUse(_) |
+          def::DefTrait(_) | def::DefTy(_) | def::DefPrimTy(_) |
           def::DefTyParam(..) | def::DefTyParamBinder(..) | def::DefRegion(_) |
           def::DefLabel(_) | def::DefSelfTy(..) | def::DefMethod(..) => {
               Ok(Rc::new(cmt_ {
@@ -516,30 +539,25 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
               }))
           }
 
-          def::DefStatic(_, true) => {
+          def::DefStatic(_, _) => {
               Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,
                   cat:cat_static_item,
-                  mutbl: McDeclared,
+                  mutbl: MutabilityCategory::from_def(&def),
                   ty:expr_ty
               }))
           }
 
-          def::DefArg(vid, binding_mode) => {
+          def::DefArg(vid, _) => {
             // Idea: make this could be rewritten to model by-ref
             // stuff as `&const` and `&mut`?
 
-            // m: mutability of the argument
-            let m = match binding_mode {
-                ast::BindByValue(ast::MutMutable) => McDeclared,
-                _ => McImmutable
-            };
             Ok(Rc::new(cmt_ {
                 id: id,
                 span: span,
                 cat: cat_arg(vid),
-                mutbl: m,
+                mutbl: MutabilityCategory::from_def(&def),
                 ty:expr_ty
             }))
           }
@@ -564,7 +582,6 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                       if var_is_refd {
                           self.cat_upvar(id, span, var_id, fn_node_id)
                       } else {
-                          // FIXME #2152 allow mutation of moved upvars
                           Ok(Rc::new(cmt_ {
                               id:id,
                               span:span,
@@ -573,13 +590,12 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                                   onceness: closure_ty.onceness,
                                   capturing_proc: fn_node_id,
                               }),
-                              mutbl:McImmutable,
+                              mutbl: MutabilityCategory::from_def(&def),
                               ty:expr_ty
                           }))
                       }
                   }
                   ty::ty_unboxed_closure(_) => {
-                      // FIXME #2152 allow mutation of moved upvars
                       Ok(Rc::new(cmt_ {
                           id: id,
                           span: span,
@@ -588,7 +604,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                               onceness: ast::Many,
                               capturing_proc: fn_node_id,
                           }),
-                          mutbl: McImmutable,
+                          mutbl: MutabilityCategory::from_def(&def),
                           ty: expr_ty
                       }))
                   }
@@ -602,19 +618,14 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
               }
           }
 
-          def::DefLocal(vid, binding_mode) |
-          def::DefBinding(vid, binding_mode) => {
+          def::DefLocal(vid, _) |
+          def::DefBinding(vid, _) => {
             // by-value/by-ref bindings are local variables
-            let m = match binding_mode {
-                ast::BindByValue(ast::MutMutable) => McDeclared,
-                _ => McImmutable
-            };
-
             Ok(Rc::new(cmt_ {
                 id: id,
                 span: span,
                 cat: cat_local(vid),
-                mutbl: m,
+                mutbl: MutabilityCategory::from_def(&def),
                 ty: expr_ty
             }))
           }
