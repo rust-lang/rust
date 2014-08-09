@@ -99,11 +99,11 @@ fn run_compiler(args: &[String]) {
         parse_pretty(&sess, a.as_slice())
     });
     match pretty {
-        Some::<PpMode>(ppm) => {
-            driver::pretty_print_input(sess, cfg, &input, ppm, ofile);
+        Some((ppm, opt_uii)) => {
+            driver::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
             return;
         }
-        None::<PpMode> => {/* continue */ }
+        None => {/* continue */ }
     }
 
     let r = matches.opt_strs("Z");
@@ -340,42 +340,41 @@ fn print_crate_info(sess: &Session,
     }
 }
 
-pub enum PpMode {
+#[deriving(PartialEq, Show)]
+pub enum PpSourceMode {
     PpmNormal,
     PpmExpanded,
     PpmTyped,
     PpmIdentified,
     PpmExpandedIdentified,
-    PpmFlowGraph(ast::NodeId),
 }
 
-pub fn parse_pretty(sess: &Session, name: &str) -> PpMode {
+#[deriving(PartialEq, Show)]
+pub enum PpMode {
+    PpmSource(PpSourceMode),
+    PpmFlowGraph,
+}
+
+fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<driver::UserIdentifiedItem>) {
     let mut split = name.splitn('=', 1);
     let first = split.next().unwrap();
     let opt_second = split.next();
-    match (opt_second, first) {
-        (None, "normal")       => PpmNormal,
-        (None, "expanded")     => PpmExpanded,
-        (None, "typed")        => PpmTyped,
-        (None, "expanded,identified") => PpmExpandedIdentified,
-        (None, "identified")   => PpmIdentified,
-        (arg, "flowgraph") => {
-             match arg.and_then(from_str) {
-                 Some(id) => PpmFlowGraph(id),
-                 None => {
-                     sess.fatal(format!("`pretty flowgraph=<nodeid>` needs \
-                                         an integer <nodeid>; got {}",
-                                        arg.unwrap_or("nothing")).as_slice())
-                 }
-             }
-        }
+    let first = match first {
+        "normal"       => PpmSource(PpmNormal),
+        "expanded"     => PpmSource(PpmExpanded),
+        "typed"        => PpmSource(PpmTyped),
+        "expanded,identified" => PpmSource(PpmExpandedIdentified),
+        "identified"   => PpmSource(PpmIdentified),
+        "flowgraph"    => PpmFlowGraph,
         _ => {
             sess.fatal(format!(
                 "argument to `pretty` must be one of `normal`, \
                  `expanded`, `flowgraph=<nodeid>`, `typed`, `identified`, \
                  or `expanded,identified`; got {}", name).as_slice());
         }
-    }
+    };
+    let opt_second = opt_second.and_then::<driver::UserIdentifiedItem>(from_str);
+    (first, opt_second)
 }
 
 fn parse_crate_attrs(sess: &Session, input: &Input) ->
