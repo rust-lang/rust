@@ -1427,11 +1427,6 @@ for x in range(0i, 10i) {
 
 Both `continue` and `break` are valid in both kinds of loops.
 
-We have now learned all of the most basic Rust concepts. We're ready to start
-building our guessing game, but we need to know how to do one last thing first:
-get input from the keyboard. You can't have a guessing game without the ability
-to guess!
-
 # Strings
 
 Strings are an important concept for any programmer to master. Rust's string
@@ -1511,6 +1506,11 @@ than you are used to, if you come from a scripting language, but when the
 low-level details matter, they really matter. Just remember that `String`s
 allocate memory and control their data, while `&str`s are a reference to
 another string, and you'll be all set.
+
+We have now learned all of the most basic Rust concepts. We're ready to start
+building our guessing game, but we need to know how to do one last thing first:
+get input from the keyboard. You can't have a guessing game without the ability
+to guess!
 
 # Standard Input
 
