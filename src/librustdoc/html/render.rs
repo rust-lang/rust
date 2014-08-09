@@ -1914,7 +1914,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
             }
 
             if fields_stripped {
-                try!(write!(w, "    // some fields omitted\n{}", tab));
+                try!(write!(w, "    // private fields omitted\n{}", tab));
             }
             try!(write!(w, "}}"));
         }
