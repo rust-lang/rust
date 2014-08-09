@@ -197,6 +197,10 @@ pub mod write {
                              (sess.targ_cfg.os == abi::OsMacos &&
                               sess.targ_cfg.arch == abi::X86_64);
 
+            let any_library = sess.crate_types.borrow().iter().any(|ty| {
+                *ty != config::CrateTypeExecutable
+            });
+
             // OSX has -dead_strip, which doesn't rely on ffunction_sections
             // FIXME(#13846) this should be enabled for windows
             let ffunction_sections = sess.targ_cfg.os != abi::OsMacos &&
@@ -249,6 +253,7 @@ pub mod write {
                             true /* EnableSegstk */,
                             use_softfp,
                             no_fp_elim,
+                            !any_library && reloc_model == llvm::RelocPIC,
                             ffunction_sections,
                             fdata_sections,
                         )
