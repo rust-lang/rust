@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::fold::Folder;
-use syntax::{ast, fold, attr};
-use syntax::codemap;
+use fold::Folder;
+use {ast, fold, attr};
+use codemap;
 
 use std::gc::{Gc, GC};
 
