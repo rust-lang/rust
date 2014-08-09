@@ -164,7 +164,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                   if abi != abi::Rust {
                       foreign::trans_rust_fn_with_foreign_abi(
                           ccx, &**decl, &**body, [], d, &psubsts, fn_id.node,
-                          Some(hash.as_slice()));
+                          Some(hash.as_slice()), IgnoreItems);
                   } else {
                       trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, [],
                                IgnoreItems);
