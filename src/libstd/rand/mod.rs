@@ -89,10 +89,6 @@
 //! use std::rand;
 //! use std::rand::distributions::{IndependentSample, Range};
 //!
-//! fn dist(x: f64, y: f64) -> f64 {
-//!    (x*x + y*y).sqrt()
-//! }
-//!
 //! fn main() {
 //!    let between = Range::new(-1f64, 1.);
 //!    let mut rng = rand::task_rng();
@@ -103,7 +99,7 @@
 //!    for _ in range(0u, total) {
 //!        let a = between.ind_sample(&mut rng);
 //!        let b = between.ind_sample(&mut rng);
-//!        if dist(a, b) <= 1. {
+//!        if a*a + b*b <= 1. {
 //!            in_circle += 1;
 //!        }
 //!    }
