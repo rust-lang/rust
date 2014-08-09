@@ -353,6 +353,7 @@ pub enum CodeGenOptLevel {
     CodeGenLevelAggressive = 3,
 }
 
+#[deriving(PartialEq)]
 #[repr(C)]
 pub enum RelocMode {
     RelocDefault = 0,
@@ -1907,6 +1908,7 @@ extern {
                                        EnableSegstk: bool,
                                        UseSoftFP: bool,
                                        NoFramePointerElim: bool,
+                                       PositionIndependentExecutable: bool,
                                        FunctionSections: bool,
                                        DataSections: bool) -> TargetMachineRef;
     pub fn LLVMRustDisposeTargetMachine(T: TargetMachineRef);
