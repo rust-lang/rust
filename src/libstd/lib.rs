@@ -114,6 +114,8 @@
 #![allow(deprecated)]
 #![deny(missing_doc)]
 
+#![reexport_test_harness_main = "test_main"]
+
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top
 // of
@@ -186,13 +188,9 @@ pub use unicode::char;
 pub use core_sync::comm;
 
 // Run tests with libgreen instead of libnative.
-//
-// FIXME: This egregiously hacks around starting the test runner in a different
-//        threading mode than the default by reaching into the auto-generated
-//        '__test' module.
 #[cfg(test)] #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, __test::main)
+    green::start(argc, argv, rustuv::event_loop, test_main)
 }
 
 /* Exported macros */
