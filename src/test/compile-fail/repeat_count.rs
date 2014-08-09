@@ -23,4 +23,6 @@ fn main() {
     //~^ ERROR: expected `uint` but found `&'static str`
     let f = [0, ..-4];
     //~^ ERROR expected positive integer for repeat count but found negative integer
+    let f = [0u, ..-1];
+    //~^ ERROR expected positive integer for repeat count but found negative integer
 }
