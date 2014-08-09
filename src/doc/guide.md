@@ -1432,6 +1432,86 @@ building our guessing game, but we need to know how to do one last thing first:
 get input from the keyboard. You can't have a guessing game without the ability
 to guess!
 
+# Strings
+
+Strings are an important concept for any programmer to master. Rust's string
+handling system is a bit different than in other languages, due to its systems
+focus. Any time you have a data structure of variable size, things can get
+tricky, and strings are a re-sizable data structure. That said, Rust's strings
+also work differently than in some other systems languages, such as C.
+
+Let's dig into the details. A **string** is a sequence of unicode scalar values
+encoded as a stream of UTF-8 bytes. All strings are guaranteed to be
+validly-encoded UTF-8 sequences. Additionally, strings are not null-terminated
+and can contain null bytes.
+
+Rust has two main types of strings: `&str` and `String`.
+
+The first kind is a `&str`. This is pronounced a 'string slice.' String literals
+are of the type `&str`:
+
+```{rust}
+let string = "Hello there.";
+```
+
+This string is statically allocated, meaning that it's saved inside our
+compiled program, and exists for the entire duration it runs. The `string`
+binding is a reference to this statically allocated string. String slices
+have a fixed size, and cannot be mutated.
+
+A `String`, on the other hand, is an in-memory string.  This string is
+growable, and is also guaranteed to be UTF-8.
+
+```{rust}
+let mut s = "Hello".to_string();
+println!("{}", s);
+
+s.push_str(", world.");
+println!("{}", s);
+```
+
+You can coerce a `String` into a `&str` with the `as_slice()` method:
+
+```{rust}
+fn takes_slice(slice: &str) {
+    println!("Got: {}", slice);
+}
+
+fn main() {
+    let s = "Hello".to_string();
+    takes_slice(s.as_slice());
+}
+```
+
+To compare a String to a constant string, prefer `as_slice()`...
+
+```{rust}
+fn compare(string: String) {
+    if string.as_slice() == "Hello" {
+        println!("yes");
+    }
+}
+```
+
+... over `to_string()`:
+
+```{rust}
+fn compare(string: String) {
+    if string == "Hello".to_string() {
+        println!("yes");
+    }
+}
+```
+
+Converting a `String` to a `&str` is cheap, but converting the `&str` to a
+`String` involves allocating memory. No reason to do that unless you have to!
+
+That's the basics of strings in Rust! They're probably a bit more complicated
+than you are used to, if you come from a scripting language, but when the
+low-level details matter, they really matter. Just remember that `String`s
+allocate memory and control their data, while `&str`s are a reference to
+another string, and you'll be all set.
+
 # Standard Input
 
 Getting input from the keyboard is pretty easy, but uses some things
@@ -3614,6 +3694,94 @@ guide](http://doc.rust-lang.org/guide-pointers.html#rc-and-arc).
 
 # Patterns
 
+# Method Syntax
+
+Functions are great, but if you want to call a bunch of them on some data, it
+can be awkward. Consider this code:
+
+```{rust,ignore}
+baz(bar(foo(x)));
+```
+
+We would read this left-to right, and so we see 'baz bar foo.' But this isn't the
+order that the functions would get called in, that's inside-out: 'foo bar baz.'
+Wouldn't it be nice if we could do this instead?
+
+```{rust,ignore}
+x.foo().bar().baz();
+```
+
+Luckily, as you may have guessed with the leading question, you can! Rust provides
+the ability to use this **method call syntax** via the `impl` keyword.
+
+Here's how it works:
+
+```
+struct Circle {
+    x: f64,
+    y: f64,
+    radius: f64,
+}
+
+impl Circle {
+    fn area(&self) -> f64 {
+        std::f64::consts::PI * (self.radius * self.radius)
+    }
+}
+
+fn main() {
+    let c = Circle { x: 0.0, y: 0.0, radius: 2.0 };
+    println!("{}", c.area());
+}
+```
+
+This will print `12.566371`.
+
+We've made a struct that represents a circle. We then write an `impl` block,
+and inside it, define a method, `area`. Methods take a  special first
+parameter, `&self`. There are three variants: `self`, `&self`, and `&mut self`.
+You can think of this first parameter as being the `x` in `x.foo()`. The three
+variants correspond to the three kinds of thing `x` could be: `self` if it's
+just a value on the stack, `&self` if it's a reference, and `&mut self` if it's
+a mutable reference. We should default to using `&self`, as it's the most
+common.
+
+Finally, as you may remember, the value of the area of a circle is `π*r²`.
+Because we took the `&self` parameter to `area`, we can use it just like any
+other parameter. Because we know it's a `Circle`, we can access the `radius`
+just like we would with any other struct. An import of π and some
+multiplications later, and we have our area.
+
+You can also define methods that do not take a `self` parameter. Here's a
+pattern that's very common in Rust code:
+
+```
+struct Circle {
+    x: f64,
+    y: f64,
+    radius: f64,
+}
+
+impl Circle {
+    fn new(x: f64, y: f64, radius: f64) -> Circle {
+        Circle {
+            x: x,
+            y: y,
+            radius: radius,
+        }
+    }
+}
+
+fn main() {
+    let c = Circle::new(0.0, 0.0, 2.0);
+}
+```
+
+This **static method** builds a new `Circle` for us. Note that static methods
+are called with the `Struct::method()` syntax, rather than the `ref.method()`
+syntax.
+
+
 # Closures
 
 So far, we've made lots of functions in Rust. But we've given them all names.
@@ -4317,6 +4485,152 @@ hence 'statically dispatched.' The downside is that we have two copies of
 the same function, so our binary is a little bit larger.
 
 # Tasks
+
+Concurrency and parallelism are topics that are of increasing interest to a
+broad subsection of software developers. Modern computers are often multi-core,
+to the point that even embedded devices like cell phones have more than one
+processor. Rust's semantics lend themselves very nicely to solving a number of
+issues that programmers have with concurrency. Many concurrency errors that are
+runtime errors in other languages are compile-time errors in Rust.
+
+Rust's concurrency primitive is called a **task**. Tasks are lightweight, and
+do not share memory in an unsafe manner, preferring message passing to
+communicate.  It's worth noting that tasks are implemented as a library, and
+not part of the language.  This means that in the future, other concurrency
+libraries can be written for Rust to help in specific scenarios.  Here's an
+example of creating a task:
+
+```{rust}
+spawn(proc() {
+    println!("Hello from a task!");
+});
+```
+
+The `spawn` function takes a proc as an argument, and runs that proc in a new
+task. A proc takes ownership of its entire environment, and so any variables
+that you use inside the proc will not be usable afterward:
+
+```{rust,ignore}
+let mut x = vec![1i, 2i, 3i];
+
+spawn(proc() {
+    println!("The value of x[0] is: {}", x[0]);
+});
+
+println!("The value of x[0] is: {}", x[0]); // error: use of moved value: `x`
+```
+
+`x` is now owned by the proc, and so we can't use it anymore. Many other
+languages would let us do this, but it's not safe to do so. Rust's type system
+catches the error.
+
+If tasks were only able to capture these values, they wouldn't be very useful.
+Luckily, tasks can communicate with each other through **channel**s. Channels
+work like this:
+
+```{rust}
+let (tx, rx) = channel();
+
+spawn(proc() {
+    tx.send("Hello from a task!".to_string());
+});
+
+let message = rx.recv();
+println!("{}", message);
+```
+
+The `channel()` function returns two endpoints: a `Receiver<T>` and a
+`Sender<T>`. You can use the `.send()` method on the `Sender<T>` end, and
+receive the message on the `Receiver<T>` side with the `recv()` method.  This
+method blocks until it gets a message. There's a similar method, `.try_recv()`,
+which returns an `Option<T>` and does not block.
+
+If you want to send messages to the task as well, create two channels!
+
+```{rust}
+let (tx1, rx1) = channel();
+let (tx2, rx2) = channel();
+
+spawn(proc() {
+    tx1.send("Hello from a task!".to_string());
+    let message = rx2.recv();
+    println!("{}", message);
+});
+
+let message = rx1.recv();
+println!("{}", message);
+
+tx2.send("Goodbye from main!".to_string());
+```
+
+The proc has one sending end and one receiving end, and the main task has one
+of each as well. Now they can talk back and forth in whatever way they wish.
+
+Notice as well that because `Sender` and `Receiver` are generic, while you can
+pass any kind of information through the channel, the ends are strongly typed.
+If you try to pass a string, and then an integer, Rust will complain.
+
+## Futures
+
+With these basic primitives, many different concurrency patterns can be
+developed. Rust includes some of these types in its standard library. For
+example, if you wish to compute some value in the background, `Future` is
+a useful thing to use:
+
+```{rust}
+use std::sync::Future;
+
+let mut delayed_value = Future::spawn(proc() {
+    // just return anything for examples' sake
+
+    12345i
+});
+println!("value = {}", delayed_value.get());
+```
+
+Calling `Future::spawn` works just like `spawn()`: it takes a proc. In this
+case, though, you don't need to mess with the channel: just have the proc
+return the value.
+
+`Future::spawn` will return a value which we can bind with `let`. It needs
+to be mutable, because once the value is computed, it saves a copy of the
+value, and if it were immutable, it couldn't update itself.
+
+The proc will go on processing in the background, and when we need the final
+value, we can call `get()` on it. This will block until the result is done,
+but if it's finished computing in the background, we'll just get the value
+immediately.
+
+## Success and failure
+
+Tasks don't always succeed, they can also fail. A task that wishes to fail
+can call the `fail!` macro, passing a message:
+
+```{rust}
+spawn(proc() {
+    fail!("Nope.");
+});
+```
+
+If a task fails, it is not possible for it to recover. However, it can
+notify other tasks that it has failed. We can do this with `task::try`:
+
+```{rust}
+use std::task;
+use std::rand;
+
+let result = task::try(proc() {
+    if rand::random() {
+        println!("OK");
+    } else {
+        fail!("oops!");
+    }
+});
+```
+
+This task will randomly fail or succeed. `task::try` returns a `Result`
+type, so we can handle the response like any other computation that may
+fail.
 
 # Macros
 

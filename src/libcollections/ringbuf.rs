@@ -403,11 +403,11 @@ impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
 fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut Vec<Option<T>>) {
     assert_eq!(nelts, elts.len());
     let lo = *loptr;
-    let newlen = nelts * 2;
-    elts.reserve(newlen);
+    elts.reserve(nelts * 2);
+    let newlen = elts.capacity();
 
     /* fill with None */
-    for _ in range(elts.len(), elts.capacity()) {
+    for _ in range(elts.len(), newlen) {
         elts.push(None);
     }
 
@@ -748,6 +748,47 @@ mod tests {
         let mut d = RingBuf::with_capacity(50);
         d.push_back(1i);
         assert_eq!(d.len(), 1);
+    }
+
+    #[test]
+    fn test_with_capacity_non_power_two() {
+        let mut d3 = RingBuf::with_capacity(3);
+        d3.push(1i);
+
+        // X = None, | = lo
+        // [|1, X, X]
+        assert_eq!(d3.pop_front(), Some(1));
+        // [X, |X, X]
+        assert_eq!(d3.front(), None);
+
+        // [X, |3, X]
+        d3.push(3);
+        // [X, |3, 6]
+        d3.push(6);
+        // [X, X, |6]
+        assert_eq!(d3.pop_front(), Some(3));
+
+        // Pushing the lo past half way point to trigger
+        // the 'B' scenario for growth
+        // [9, X, |6]
+        d3.push(9);
+        // [9, 12, |6]
+        d3.push(12);
+
+        d3.push(15);
+        // There used to be a bug here about how the
+        // RingBuf made growth assumptions about the
+        // underlying Vec which didn't hold and lead
+        // to corruption.
+        // (Vec grows to next power of two)
+        //good- [9, 12, 15, X, X, X, X, |6]
+        //bug-  [15, 12, X, X, X, |6, X, X]
+        assert_eq!(d3.pop_front(), Some(6));
+
+        // Which leads us to the following state which
+        // would be a failure case.
+        //bug-  [15, 12, X, X, X, X, |X, X]
+        assert_eq!(d3.front(), Some(&9));
     }
 
     #[test]

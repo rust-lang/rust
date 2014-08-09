@@ -21,9 +21,6 @@ use path::{Path, GenericPath};
 use result::{Ok, Err};
 use sync::atomic;
 
-#[cfg(stage0)]
-use iter::Iterator; // NOTE(stage0): Remove after snapshot.
-
 /// A wrapper for a path to temporary directory implementing automatic
 /// scope-based deletion.
 pub struct TempDir {

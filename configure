@@ -557,13 +557,21 @@ fi
 
 if [ ! -z "$CFG_ENABLE_LOCAL_RUST" ]
 then
-    if [ ! -f ${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF} ]
+    system_rustc=$(which rustc)
+    if [ -f ${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF} ]
     then
-        err "no local rust to use"
+        : # everything already configured
+    elif [ -n "$system_rustc" ]
+    then
+        # we assume that rustc is in a /bin directory
+        CFG_LOCAL_RUST_ROOT=${system_rustc%/bin/rustc}
     else
-        LRV=`${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF} --version`
-        step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: $LRV"
+        err "no local rust to use"
     fi
+
+    LRV=`${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF} --version`
+    step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: $LRV"
+    putvar CFG_LOCAL_RUST_ROOT
 fi
 
 # Force freebsd to build with clang; gcc doesn't like us there
