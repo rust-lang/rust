@@ -370,10 +370,9 @@
         function getQuery() {
             var matches, type, query = $('.search-input').val();
 
-            matches = query.match(/^(fn|mod|str(uct)?|enum|trait|t(ype)?d(ef)?)\s*:\s*/i);
+            matches = query.match(/^(fn|mod|struct|enum|trait|t(ype)?d(ef)?)\s*:\s*/i);
             if (matches) {
                 type = matches[1].replace(/^td$/, 'typedef')
-                                 .replace(/^str$/, 'struct')
                                  .replace(/^tdef$/, 'typedef')
                                  .replace(/^typed$/, 'typedef');
                 query = query.substring(matches[0].length);
