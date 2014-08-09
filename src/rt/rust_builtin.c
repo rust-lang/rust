@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/* Foreign builtins. */
-
-#include "valgrind/valgrind.h"
-
 #include <stdint.h>
 #include <time.h>
 #include <string.h>
@@ -40,6 +36,10 @@
 #include <crt_externs.h>
 #endif
 #endif
+
+/* Foreign builtins. */
+//include valgrind.h after stdint.h so that uintptr_t is defined for msys2 w64
+#include "valgrind/valgrind.h"
 
 #ifdef __ANDROID__
 time_t
