@@ -18,6 +18,7 @@
 
 #![feature(macro_rules, globs)]
 #![allow(experimental)]
+#![reexport_test_harness_main = "test_main"]
 
 extern crate native;
 extern crate green;
@@ -25,7 +26,7 @@ extern crate rustuv;
 
 #[cfg(test)] #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
-    green::start(argc, argv, rustuv::event_loop, __test::main)
+    green::start(argc, argv, rustuv::event_loop, test_main)
 }
 
 macro_rules! iotest (
