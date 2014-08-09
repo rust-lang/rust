@@ -368,7 +368,8 @@
         }
 
         function getQuery() {
-            var matches, type, query = $('.search-input').val();
+            var matches, type, query, raw = $('.search-input').val();
+            query = raw;
 
             matches = query.match(/^(fn|mod|struct|enum|trait|t(ype)?d(ef)?)\s*:\s*/i);
             if (matches) {
@@ -379,6 +380,7 @@
             }
 
             return {
+                raw: raw,
                 query: query,
                 type: type,
                 id: query + type,
@@ -534,10 +536,10 @@
             if (browserSupportsHistoryApi()) {
                 if (!history.state && !params.search) {
                     history.pushState(query, "", "?search=" +
-                                                encodeURIComponent(query.query));
+                                                encodeURIComponent(query.raw));
                 } else {
                     history.replaceState(query, "", "?search=" +
-                                                encodeURIComponent(query.query));
+                                                encodeURIComponent(query.raw));
                 }
             }
 
