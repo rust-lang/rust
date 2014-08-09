@@ -120,9 +120,16 @@ pub fn main() {
     // So, in summary, it is unknown why this is necessary, what it is
     // preventing, or what the actual bug is. In the meantime, this allows
     // --test to work on windows, which seems good, right? Fun times.
+    let (tx, rx) = channel();
     spawn(proc() {
         std::os::set_exit_status(main_args(std::os::args().as_slice()));
+        tx.send(());
     });
+
+    // If the task failed, set an error'd exit status
+    if rx.recv_opt().is_err() {
+        std::os::set_exit_status(std::rt::DEFAULT_ERROR_CODE);
+    }
 }
 
 pub fn opts() -> Vec<getopts::OptGroup> {
