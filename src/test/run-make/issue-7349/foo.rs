@@ -15,7 +15,16 @@ fn outer<T>() {
     }
 }
 
+extern "C" fn outer_foreign<T>() {
+    #[allow(dead_code)]
+    fn inner() -> uint {
+        11235813
+    }
+}
+
 fn main() {
     outer::<int>();
     outer::<uint>();
+    outer_foreign::<int>();
+    outer_foreign::<uint>();
 }

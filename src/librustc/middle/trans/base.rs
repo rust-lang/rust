@@ -1932,7 +1932,8 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                                                         llfn,
                                                         &param_substs::empty(),
                                                         item.id,
-                                                        None);
+                                                        None,
+                                                        TranslateItems);
             } else {
                 trans_fn(ccx,
                          &**decl,
