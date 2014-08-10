@@ -173,6 +173,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
           ExprAddrOf(MutImmutable, _) |
           ExprParen(..) |
           ExprField(..) |
+          ExprTupField(..) |
           ExprIndex(..) |
           ExprTup(..) |
           ExprRepeat(..) |

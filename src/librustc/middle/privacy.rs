@@ -819,6 +819,14 @@ impl<'a, 'tcx> Visitor<()> for PrivacyVisitor<'a, 'tcx> {
                     _ => {}
                 }
             }
+            ast::ExprTupField(ref base, idx, _) => {
+                match ty::get(ty::expr_ty_adjusted(self.tcx, &**base)).sty {
+                    ty::ty_struct(id, _) => {
+                        self.check_field(expr.span, id, UnnamedField(idx.node));
+                    }
+                    _ => {}
+                }
+            }
             ast::ExprMethodCall(ident, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
                 match self.tcx.method_map.borrow().find(&method_call) {

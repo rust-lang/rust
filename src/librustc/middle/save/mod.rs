@@ -1314,6 +1314,34 @@ impl<'l, 'tcx> Visitor<DxrVisitorEnv> for DxrVisitor<'l, 'tcx> {
                                             "Expected struct type, but not ty_struct"),
                 }
             },
+            ast::ExprTupField(sub_ex, idx, _) => {
+                if generated_code(sub_ex.span) {
+                    return
+                }
+
+                self.visit_expr(&*sub_ex, e);
+
+                let t = ty::expr_ty_adjusted(&self.analysis.ty_cx, &*sub_ex);
+                let t_box = ty::get(t);
+                match t_box.sty {
+                    ty::ty_struct(def_id, _) => {
+                        let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
+                        for (i, f) in fields.iter().enumerate() {
+                            if i == idx.node {
+                                let sub_span = self.span.span_for_last_ident(ex.span);
+                                self.fmt.ref_str(recorder::VarRef,
+                                                 ex.span,
+                                                 sub_span,
+                                                 f.id,
+                                                 e.cur_scope);
+                                break;
+                            }
+                        }
+                    },
+                    _ => self.sess.span_bug(ex.span,
+                                            "Expected struct type, but not ty_struct"),
+                }
+            },
             ast::ExprFnBlock(_, decl, body) => {
                 if generated_code(body.span) {
                     return

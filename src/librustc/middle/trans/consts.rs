@@ -440,6 +440,13 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                   (adt::const_get_field(cx, &*brepr, bv, discr, ix), inlineable)
               })
           }
+          ast::ExprTupField(ref base, idx, _) => {
+              let (bv, inlineable, bt) = const_expr(cx, &**base, is_local);
+              let brepr = adt::represent_type(cx, bt);
+              expr::with_field_tys(cx.tcx(), bt, None, |discr, _| {
+                  (adt::const_get_field(cx, &*brepr, bv, discr, idx.node), inlineable)
+              })
+          }
 
           ast::ExprIndex(ref base, ref index) => {
               let (bv, inlineable, bt) = const_expr(cx, &**base, is_local);

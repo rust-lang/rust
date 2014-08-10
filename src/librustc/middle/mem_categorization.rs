@@ -465,6 +465,11 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             Ok(self.cat_field(expr, base_cmt, f_name.node, expr_ty))
           }
 
+          ast::ExprTupField(ref base, idx, _) => {
+            let base_cmt = if_ok!(self.cat_expr(&**base));
+            Ok(self.cat_tup_field(expr, base_cmt, idx.node, expr_ty))
+          }
+
           ast::ExprIndex(ref base, _) => {
             let method_call = typeck::MethodCall::expr(expr.id());
             match self.typer.node_method_ty(method_call) {
@@ -733,6 +738,21 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             span: node.span(),
             mutbl: base_cmt.mutbl.inherit(),
             cat: cat_interior(base_cmt, InteriorField(NamedField(f_name.name))),
+            ty: f_ty
+        })
+    }
+
+    pub fn cat_tup_field<N:ast_node>(&self,
+                                     node: &N,
+                                     base_cmt: cmt,
+                                     f_idx: uint,
+                                     f_ty: ty::t)
+                                     -> cmt {
+        Rc::new(cmt_ {
+            id: node.id(),
+            span: node.span(),
+            mutbl: base_cmt.mutbl.inherit(),
+            cat: cat_interior(base_cmt, InteriorField(PositionalField(f_idx))),
             ty: f_ty
         })
     }
