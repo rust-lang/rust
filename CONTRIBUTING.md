@@ -16,7 +16,8 @@ please do two things:
 
 2. Run the full Rust test suite with the `make check` command.  You're
    not off the hook even if you just stick to documentation; code
-   examples in the docs are tested as well!
+   examples in the docs are tested as well! Although for simple
+   wording or grammar fixes, this is probably unnecessary.
 
 Pull requests will be treated as "review requests", and we will give
 feedback we expect to see corrected on
