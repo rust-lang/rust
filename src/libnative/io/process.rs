@@ -80,7 +80,7 @@ impl Process {
                 rtio::Ignored => { ret.push(None); Ok(None) }
                 rtio::InheritFd(fd) => {
                     ret.push(None);
-                    Ok(Some(file::FileDesc::new(fd, true)))
+                    Ok(Some(file::FileDesc::new(fd, false)))
                 }
                 rtio::CreatePipe(readable, _writable) => {
                     let (reader, writer) = try!(pipe());
