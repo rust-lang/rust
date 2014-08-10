@@ -14,6 +14,7 @@
 #![allow(non_camel_case_types)]
 
 use middle::def;
+use middle::mem_categorization::Typer;
 use middle::resolve;
 use middle::ty;
 use util::nodemap::{DefIdSet, NodeMap, NodeSet};
@@ -147,11 +148,8 @@ pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[freevar_entry]| 
     }
 }
 
-pub fn get_capture_mode(tcx: &ty::ctxt,
-                        closure_expr_id: ast::NodeId)
-                        -> CaptureMode
-{
-    let fn_ty = ty::node_id_to_type(tcx, closure_expr_id);
+pub fn get_capture_mode<T: Typer>(tcx: &T, closure_expr_id: ast::NodeId) -> CaptureMode {
+    let fn_ty = tcx.node_ty(closure_expr_id).ok().expect("couldn't find closure ty?");
     match ty::ty_closure_store(fn_ty) {
         ty::RegionTraitStore(..) => CaptureByRef,
         ty::UniqTraitStore => CaptureByValue
