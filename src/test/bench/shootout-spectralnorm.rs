@@ -36,8 +36,8 @@ fn dot(v: &[f64], u: &[f64]) -> f64 {
 
 fn mult(v: Arc<RWLock<Vec<f64>>>, out: Arc<RWLock<Vec<f64>>>,
         f: fn(&Vec<f64>, uint) -> f64) {
-    // We lanch in different tasks the work to be done.  To finish
-    // this fuction, we need to wait for the completion of every
+    // We launch in different tasks the work to be done.  To finish
+    // this function, we need to wait for the completion of every
     // tasks.  To do that, we give to each tasks a wait_chan that we
     // drop at the end of the work.  At the end of this function, we
     // wait until the channel hang up.

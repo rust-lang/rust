@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Test that we correctly infer variance for region parameters in
-// case that involve multiple intracrate types.
+// case that involve multiple intricate types.
 // Try enums too.
 
 #[rustc_variance]

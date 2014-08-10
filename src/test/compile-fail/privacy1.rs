@@ -15,7 +15,7 @@
 pub trait Sized {}
 
 mod bar {
-    // shouln't bring in too much
+    // shouldn't bring in too much
     pub use self::glob::*;
 
     // can't publicly re-export private items
