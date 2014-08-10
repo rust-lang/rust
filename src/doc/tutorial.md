@@ -1133,6 +1133,16 @@ let xs = Cons(1, box Cons(2, box Cons(3, box Nil)));
 let ys = xs; // copies `Cons(u32, pointer)` shallowly
 ~~~
 
+> *Note:* Names like `xs` and `ys` are a naming
+> convention for collection-like data structures
+> (like our `List`). These collections are given 
+> names appended with 's' to signify plurality, 
+> i.e. that the data structure stores multiple 
+> elements.  For example, `xs` in this case can 
+> be read as "a list of ex-es", where "x" here 
+> are elements of type `u32`.
+
+
 Rust will consider a shallow copy of a type with a destructor like `List` to
 *move ownership* of the value. After a value has been moved, the source
 location cannot be used unless it is reinitialized.
