@@ -71,6 +71,7 @@ LLVMRustCreateTargetMachine(const char *triple,
                             bool EnableSegmentedStacks,
                             bool UseSoftFloat,
                             bool NoFramePointerElim,
+                            bool PositionIndependentExecutable,
                             bool FunctionSections,
                             bool DataSections) {
     std::string Error;
@@ -83,6 +84,7 @@ LLVMRustCreateTargetMachine(const char *triple,
     }
 
     TargetOptions Options;
+    Options.PositionIndependentExecutable = PositionIndependentExecutable;
     Options.NoFramePointerElim = NoFramePointerElim;
 #if LLVM_VERSION_MINOR < 5
     Options.EnableSegmentedStacks = EnableSegmentedStacks;
