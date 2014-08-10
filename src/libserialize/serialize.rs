@@ -571,8 +571,6 @@ impl<E, D: Decoder<E>, T: Decodable<D, E>> Decodable<D, E> for RefCell<T> {
 
 // ___________________________________________________________________________
 // Helper routines
-//
-// In some cases, these should eventually be coded as traits.
 
 pub trait EncoderHelpers<E> {
     fn emit_from_vec<T>(&mut self,
