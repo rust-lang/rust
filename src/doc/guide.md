@@ -1769,7 +1769,7 @@ Check out the generated `Cargo.toml`:
 [package]
 
 name = "guessing_game"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Your Name <you@example.com>"]
 ```
 
@@ -1788,7 +1788,7 @@ Let's try compiling what Cargo gave us:
 
 ```{bash}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:/home/you/projects/guessing_game)
 $
 ```
 
@@ -1901,7 +1901,7 @@ Let's try to compile this using `cargo build`:
 
 ```{notrust,no_run}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:/home/you/projects/guessing_game)
 src/main.rs:7:26: 7:34 error: the type of this value must be known in this context
 src/main.rs:7     let secret_number = (rand::random() % 100i) + 1i;
                                        ^~~~~~~~
@@ -1949,7 +1949,7 @@ fn main() {
 
 ```{notrust,ignore}
 $ cargo build
-  Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+  Compiling guessing_game v0.0.1 (file:/home/you/projects/guessing_game)
 $
 ```
 
@@ -2008,8 +2008,8 @@ And trying it out:
 
 ```{notrust,ignore}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-$ ./target/guessing_game
+   Compiling guessing_game v0.0.1 (file:/home/you/projects/guessing_game)
+$ ./target/guessing_game 
 Guess the number!
 The secret number is: 57
 Please input your guess.
@@ -2063,7 +2063,7 @@ If we try to compile, we'll get some errors:
 
 ```{notrust,ignore}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:/home/you/projects/guessing_game)
 src/main.rs:20:15: 20:20 error: mismatched types: expected `int` but found `collections::string::String` (expected int but found struct collections::string::String)
 src/main.rs:20     match cmp(input, secret_number) {
                              ^~~~~
@@ -2117,7 +2117,7 @@ And try compiling again:
 
 ```{notrust,ignore}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:/home/you/projects/guessing_game)
 src/main.rs:20:15: 20:20 error: mismatched types: expected `uint` but found `collections::string::String` (expected uint but found struct collections::string::String)
 src/main.rs:20     match cmp(input, secret_number) {
                              ^~~~~
@@ -2220,7 +2220,7 @@ Let's try it out!
 
 ```{notrust,ignore}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:/home/you/projects/guessing_game)
 src/main.rs:22:15: 22:24 error: mismatched types: expected `uint` but found `core::option::Option<uint>` (expected uint but found enum core::option::Option)
 src/main.rs:22     match cmp(input_num, secret_number) {
                              ^~~~~~~~~
@@ -2345,8 +2345,8 @@ Let's try it!
 
 ```{notrust,ignore}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-$ ./target/guessing_game
+   Compiling guessing_game v0.0.1 (file:/home/you/projects/guessing_game)
+$ ./target/guessing_game 
 Guess the number!
 The secret number is: 58
 Please input your guess.
@@ -2423,8 +2423,8 @@ that `return`? If we give a non-number answer, we'll `return` and quit. Observe:
 
 ```{notrust,ignore}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-$ ./target/guessing_game
+   Compiling guessing_game v0.0.1 (file:/home/you/projects/guessing_game)
+$ ./target/guessing_game 
 Guess the number!
 The secret number is: 59
 Please input your guess.
@@ -2556,8 +2556,8 @@ Now we should be good! Let's try:
 
 ```{rust,ignore}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-$ ./target/guessing_game
+   Compiling guessing_game v0.0.1 (file:/home/you/projects/guessing_game)
+$ ./target/guessing_game 
 Guess the number!
 The secret number is: 61
 Please input your guess.
