@@ -1780,7 +1780,7 @@ Finally, Cargo generated a hello, world for us. Check out `src/main.rs`:
 
 ```{rust}
 fn main() {
-    println!("Hello world!");
+    println!("Hello, world!");
 }
 ```
 
