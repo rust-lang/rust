@@ -539,7 +539,7 @@ pub struct UpvarId {
     pub closure_expr_id: ast::NodeId,
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,
@@ -634,7 +634,7 @@ pub enum BorrowKind {
  *   the closure, so sometimes it is necessary for them to be larger
  *   than the closure lifetime itself.
  */
-#[deriving(PartialEq, Clone)]
+#[deriving(PartialEq, Clone, Encodable, Decodable)]
 pub struct UpvarBorrow {
     pub kind: BorrowKind,
     pub region: ty::Region,

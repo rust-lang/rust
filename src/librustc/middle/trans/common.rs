@@ -16,6 +16,7 @@ use driver::session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef};
 use llvm::{True, False, Bool};
+use mc = middle::mem_categorization;
 use middle::def;
 use middle::lang_items::LangItem;
 use middle::subst;
@@ -478,6 +479,36 @@ impl<'a> Block<'a> {
     pub fn to_str(&self) -> String {
         let blk: *const Block = self;
         format!("[block {}]", blk)
+    }
+}
+
+impl<'a> mc::Typer for Block<'a> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+        self.tcx()
+    }
+
+    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<ty::t> {
+        Ok(node_id_type(self, id))
+    }
+
+    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t> {
+        self.tcx().method_map.borrow().find(&method_call).map(|method| method.ty)
+    }
+
+    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
+        &self.tcx().adjustments
+    }
+
+    fn is_method_call(&self, id: ast::NodeId) -> bool {
+        self.tcx().method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
+    }
+
+    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId> {
+        self.tcx().region_maps.temporary_scope(rvalue_id)
+    }
+
+    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
+        self.tcx().upvar_borrow_map.borrow().get_copy(&upvar_id)
     }
 }
 

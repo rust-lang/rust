@@ -18,6 +18,7 @@ use driver::session::Session;
 use metadata::decoder;
 use middle::def;
 use e = metadata::encoder;
+use middle::freevars;
 use middle::freevars::freevar_entry;
 use middle::region;
 use metadata::tydecode;
@@ -551,6 +552,15 @@ impl tr for freevar_entry {
     }
 }
 
+impl tr for ty::UpvarBorrow {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> ty::UpvarBorrow {
+        ty::UpvarBorrow {
+            kind: self.kind,
+            region: self.region.tr(xcx)
+        }
+    }
+}
+
 // ______________________________________________________________________
 // Encoding and decoding of MethodCallee
 
@@ -1061,7 +1071,29 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                     Ok(encode_freevar_entry(rbml_w, fv_entry))
                 });
             })
-        })
+        });
+
+        for freevar in fv.iter() {
+            match freevars::get_capture_mode(tcx, id) {
+                freevars::CaptureByRef => {
+                    rbml_w.tag(c::tag_table_upvar_borrow_map, |rbml_w| {
+                        rbml_w.id(id);
+                        rbml_w.tag(c::tag_table_val, |rbml_w| {
+                            let var_id = freevar.def.def_id().node;
+                            let upvar_id = ty::UpvarId {
+                                var_id: var_id,
+                                closure_expr_id: id
+                            };
+                            let upvar_borrow = tcx.upvar_borrow_map.borrow()
+                                                  .get_copy(&upvar_id);
+                            var_id.encode(rbml_w);
+                            upvar_borrow.encode(rbml_w);
+                        })
+                    })
+                }
+                _ => {}
+            }
+        }
     }
 
     let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
@@ -1467,6 +1499,15 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                             Ok(val_dsr.read_freevar_entry(xcx))
                         }).unwrap().move_iter().collect();
                         dcx.tcx.freevars.borrow_mut().insert(id, fv_info);
+                    }
+                    c::tag_table_upvar_borrow_map => {
+                        let var_id: ast::NodeId = Decodable::decode(val_dsr).unwrap();
+                        let upvar_id = ty::UpvarId {
+                            var_id: xcx.tr_id(var_id),
+                            closure_expr_id: id
+                        };
+                        let ub: ty::UpvarBorrow = Decodable::decode(val_dsr).unwrap();
+                        dcx.tcx.upvar_borrow_map.borrow_mut().insert(upvar_id, ub.tr(xcx));
                     }
                     c::tag_table_tcache => {
                         let pty = val_dsr.read_polytype(xcx);
