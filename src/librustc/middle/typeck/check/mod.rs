@@ -2603,6 +2603,16 @@ pub fn lookup_field_ty(tcx: &ty::ctxt,
     o_field.map(|f| ty::lookup_field_type(tcx, class_id, f.id, substs))
 }
 
+pub fn lookup_tup_field_ty(tcx: &ty::ctxt,
+                           class_id: ast::DefId,
+                           items: &[ty::field_ty],
+                           idx: uint,
+                           substs: &subst::Substs) -> Option<ty::t> {
+
+    let o_field = if idx < items.len() { Some(&items[idx]) } else { None };
+    o_field.map(|f| ty::lookup_field_type(tcx, class_id, f.id, substs))
+}
+
 // Controls whether the arguments are automatically referenced. This is useful
 // for overloaded binary and unary operators.
 pub enum DerefArgs {
@@ -3282,6 +3292,68 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     expr_t, None);
             }
         }
+
+        fcx.write_error(expr.id);
+    }
+
+    // Check tuple index expressions
+    fn check_tup_field(fcx: &FnCtxt,
+                       expr: &ast::Expr,
+                       lvalue_pref: LvaluePreference,
+                       base: &ast::Expr,
+                       idx: codemap::Spanned<uint>,
+                       _tys: &[ast::P<ast::Ty>]) {
+        let tcx = fcx.ccx.tcx;
+        check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
+        let expr_t = structurally_resolved_type(fcx, expr.span,
+                                                fcx.expr_ty(base));
+        let mut tuple_like = false;
+        // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
+        let (_, autoderefs, field_ty) =
+            autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
+                match ty::get(base_t).sty {
+                    ty::ty_struct(base_id, ref substs) => {
+                        tuple_like = ty::is_tuple_struct(tcx, base_id);
+                        if tuple_like {
+                            debug!("tuple struct named {}", ppaux::ty_to_string(tcx, base_t));
+                            let fields = ty::lookup_struct_fields(tcx, base_id);
+                            lookup_tup_field_ty(tcx, base_id, fields.as_slice(),
+                                                idx.node, &(*substs))
+                        } else {
+                            None
+                        }
+                    }
+                    ty::ty_tup(ref v) => {
+                        tuple_like = true;
+                        if idx.node < v.len() { Some(v[idx.node]) } else { None }
+                    }
+                    _ => None
+                }
+            });
+        match field_ty {
+            Some(field_ty) => {
+                fcx.write_ty(expr.id, field_ty);
+                fcx.write_autoderef_adjustment(base.id, autoderefs);
+                return;
+            }
+            None => {}
+        }
+        fcx.type_error_message(
+            expr.span,
+            |actual| {
+                if tuple_like {
+                    format!("attempted out-of-bounds tuple index `{}` on \
+                                    type `{}`",
+                                   idx.node,
+                                   actual)
+                } else {
+                    format!("attempted tuple index `{}` on type `{}`, but the \
+                                     type was not a tuple or tuple struct",
+                                    idx.node,
+                                    actual)
+                }
+            },
+            expr_t, None);
 
         fcx.write_error(expr.id);
     }
@@ -4064,6 +4136,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       }
       ast::ExprField(ref base, ref field, ref tys) => {
         check_field(fcx, expr, lvalue_pref, &**base, field, tys.as_slice());
+      }
+      ast::ExprTupField(ref base, idx, ref tys) => {
+        check_tup_field(fcx, expr, lvalue_pref, &**base, idx, tys.as_slice());
       }
       ast::ExprIndex(ref base, ref idx) => {
           check_expr_with_lvalue_pref(fcx, &**base, lvalue_pref);

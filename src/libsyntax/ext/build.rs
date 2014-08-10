@@ -120,6 +120,8 @@ pub trait AstBuilder {
     fn expr_mut_addr_of(&self, sp: Span, e: Gc<ast::Expr>) -> Gc<ast::Expr>;
     fn expr_field_access(&self, span: Span, expr: Gc<ast::Expr>,
                          ident: ast::Ident) -> Gc<ast::Expr>;
+    fn expr_tup_field_access(&self, sp: Span, expr: Gc<ast::Expr>,
+                             idx: uint) -> Gc<ast::Expr>;
     fn expr_call(&self, span: Span, expr: Gc<ast::Expr>,
                  args: Vec<Gc<ast::Expr>>) -> Gc<ast::Expr>;
     fn expr_call_ident(&self, span: Span, id: ast::Ident,
@@ -604,6 +606,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
         let id = Spanned { node: ident, span: field_span };
         self.expr(sp, ast::ExprField(expr, id, Vec::new()))
+    }
+    fn expr_tup_field_access(&self, sp: Span, expr: Gc<ast::Expr>, idx: uint) -> Gc<ast::Expr> {
+        let field_span = Span {
+            lo: sp.lo - Pos::from_uint(idx.to_string().len()),
+            hi: sp.hi,
+            expn_info: sp.expn_info,
+        };
+
+        let id = Spanned { node: idx, span: field_span };
+        self.expr(sp, ast::ExprTupField(expr, id, Vec::new()))
     }
     fn expr_addr_of(&self, sp: Span, e: Gc<ast::Expr>) -> Gc<ast::Expr> {
         self.expr(sp, ast::ExprAddrOf(ast::MutImmutable, e))

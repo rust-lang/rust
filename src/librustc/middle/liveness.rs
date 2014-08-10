@@ -511,7 +511,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       }
 
       // otherwise, live nodes are not required:
-      ExprIndex(..) | ExprField(..) | ExprVec(..) |
+      ExprIndex(..) | ExprField(..) | ExprTupField(..) | ExprVec(..) |
       ExprCall(..) | ExprMethodCall(..) | ExprTup(..) |
       ExprBinary(..) | ExprAddrOf(..) |
       ExprCast(..) | ExprUnary(..) | ExprBreak(_) |
@@ -965,6 +965,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.propagate_through_expr(&**e, succ)
           }
 
+          ExprTupField(ref e, _, _) => {
+              self.propagate_through_expr(&**e, succ)
+          }
+
           ExprFnBlock(_, _, ref blk) |
           ExprProc(_, ref blk) |
           ExprUnboxedFn(_, _, _, ref blk) => {
@@ -1271,6 +1275,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match expr.node {
             ExprPath(_) => succ,
             ExprField(ref e, _, _) => self.propagate_through_expr(&**e, succ),
+            ExprTupField(ref e, _, _) => self.propagate_through_expr(&**e, succ),
             _ => self.propagate_through_expr(expr, succ)
         }
     }
@@ -1445,7 +1450,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       // no correctness conditions related to liveness
       ExprCall(..) | ExprMethodCall(..) | ExprIf(..) | ExprMatch(..) |
       ExprWhile(..) | ExprLoop(..) | ExprIndex(..) | ExprField(..) |
-      ExprVec(..) | ExprTup(..) | ExprBinary(..) |
+      ExprTupField(..) | ExprVec(..) | ExprTup(..) | ExprBinary(..) |
       ExprCast(..) | ExprUnary(..) | ExprRet(..) | ExprBreak(..) |
       ExprAgain(..) | ExprLit(_) | ExprBlock(..) |
       ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |

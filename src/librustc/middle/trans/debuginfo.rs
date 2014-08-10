@@ -3457,6 +3457,7 @@ fn populate_scope_map(cx: &CrateContext,
             ast::ExprCast(ref sub_exp, _)     |
             ast::ExprAddrOf(_, ref sub_exp)  |
             ast::ExprField(ref sub_exp, _, _) |
+            ast::ExprTupField(ref sub_exp, _, _) |
             ast::ExprParen(ref sub_exp) =>
                 walk_expr(cx, &**sub_exp, scope_stack, scope_map),
 
