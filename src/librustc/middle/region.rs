@@ -779,6 +779,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
                 ast::ExprAddrOf(_, ref subexpr) |
                 ast::ExprUnary(ast::UnDeref, ref subexpr) |
                 ast::ExprField(ref subexpr, _, _) |
+                ast::ExprTupField(ref subexpr, _, _) |
                 ast::ExprIndex(ref subexpr, _) |
                 ast::ExprParen(ref subexpr) => {
                     let subexpr: &'a Gc<Expr> = subexpr; // FIXME(#11586)

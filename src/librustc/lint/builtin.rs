@@ -1056,6 +1056,7 @@ impl UnnecessaryParens {
                 ast::ExprUnary(_, ref x) |
                 ast::ExprCast(ref x, _) |
                 ast::ExprField(ref x, _, _) |
+                ast::ExprTupField(ref x, _, _) |
                 ast::ExprIndex(ref x, _) => {
                     // &X { y: 1 }, X { y: 1 }.y
                     contains_exterior_struct_lit(&**x)

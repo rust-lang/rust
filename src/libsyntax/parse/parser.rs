@@ -23,7 +23,7 @@ use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, Explicit
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
-use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
+use ast::{ExprField, ExprTupField, ExprFnBlock, ExprIf, ExprIndex};
 use ast::{ExprLit, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary, ExprUnboxedFn};
@@ -1937,6 +1937,11 @@ impl<'a> Parser<'a> {
         ExprField(expr, ident, tys)
     }
 
+    pub fn mk_tup_field(&mut self, expr: Gc<Expr>, idx: codemap::Spanned<uint>,
+                    tys: Vec<P<Ty>>) -> ast::Expr_ {
+        ExprTupField(expr, idx, tys)
+    }
+
     pub fn mk_assign_op(&mut self, binop: ast::BinOp,
                         lhs: Gc<Expr>, rhs: Gc<Expr>) -> ast::Expr_ {
         ExprAssignOp(binop, lhs, rhs)
@@ -2285,6 +2290,41 @@ impl<'a> Parser<'a> {
                             e = self.mk_expr(lo, hi, field)
                         }
                     }
+                  }
+                  token::LIT_INTEGER(n) => {
+                    let index = n.as_str();
+                    let dot = self.last_span.hi;
+                    hi = self.span.hi;
+                    self.bump();
+                    let (_, tys) = if self.eat(&token::MOD_SEP) {
+                        self.expect_lt();
+                        self.parse_generic_values_after_lt()
+                    } else {
+                        (Vec::new(), Vec::new())
+                    };
+
+                    let num = from_str::<uint>(index);
+                    match num {
+                        Some(n) => {
+                            let id = spanned(dot, hi, n);
+                            let field = self.mk_tup_field(e, id, tys);
+                            e = self.mk_expr(lo, hi, field);
+                        }
+                        None => {
+                            let last_span = self.last_span;
+                            self.span_err(last_span, "invalid tuple or tuple struct index");
+                        }
+                    }
+                  }
+                  token::LIT_FLOAT(n) => {
+                    self.bump();
+                    let last_span = self.last_span;
+                    self.span_err(last_span,
+                                  format!("unexpected token: `{}`", n.as_str()).as_slice());
+                    self.span_note(last_span,
+                                   "try parenthesizing the first index; e.g., `(foo.0).1`");
+                    self.abort_if_errors();
+
                   }
                   _ => self.unexpected()
                 }

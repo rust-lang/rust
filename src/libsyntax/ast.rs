@@ -540,6 +540,7 @@ pub enum Expr_ {
     ExprAssign(Gc<Expr>, Gc<Expr>),
     ExprAssignOp(BinOp, Gc<Expr>, Gc<Expr>),
     ExprField(Gc<Expr>, SpannedIdent, Vec<P<Ty>>),
+    ExprTupField(Gc<Expr>, Spanned<uint>, Vec<P<Ty>>),
     ExprIndex(Gc<Expr>, Gc<Expr>),
 
     /// Variable reference, possibly containing `::` and/or

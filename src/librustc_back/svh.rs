@@ -222,6 +222,7 @@ mod svh_visitor {
 
         SawExprLoop(Option<token::InternedString>),
         SawExprField(token::InternedString),
+        SawExprTupField(uint),
         SawExprBreak(Option<token::InternedString>),
         SawExprAgain(Option<token::InternedString>),
 
@@ -276,6 +277,7 @@ mod svh_visitor {
             ExprAssign(..)           => SawExprAssign,
             ExprAssignOp(op, _, _)   => SawExprAssignOp(op),
             ExprField(_, id, _)      => SawExprField(content(id.node)),
+            ExprTupField(_, id, _)   => SawExprTupField(id.node),
             ExprIndex(..)            => SawExprIndex,
             ExprPath(..)             => SawExprPath,
             ExprAddrOf(m, _)         => SawExprAddrOf(m),
