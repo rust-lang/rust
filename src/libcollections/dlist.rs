@@ -583,25 +583,29 @@ impl<T> DList<T> {
         MoveItems{list: self}
     }
 
-    /// Provide an iterator-like object for seeking back and forth in the list
+    /// Provide an iterator-like object for seeking back and forth in the list.
+    /// The seek head starts out pointing before the head of the list.
     pub fn seeker <'a> (&'a self) -> SeekItems<'a, T> {
         SeekItems{head: as_ref(&self.list_head), state: LeftOfHead}
     }
 
     /// Provide an iterator-like object for seeking back and forth in the list
     /// with the ability to insert/delete nodes.
+    /// The seek head starts out pointing before the head of the list.
     pub fn mut_seeker <'a> (&'a mut self) -> MutSeekItems<'a, T> {
         let head_raw = self.head_raw();
         MutSeekItems{head: head_raw, list: self, state: LeftOfHead}
     }
 
-    /// Provide an iterator-like object for seeking back and forth in the list
+    /// Provide an iterator-like object for seeking back and forth in the list.
+    /// The seek head starts out pointing after the tail of the list.
     pub fn seeker_back <'a> (&'a self) -> SeekItems<'a, T> {
         SeekItems{head: self.list_tail.resolve_immut(), state: RightOfHead}
     }
 
     /// Provide an iterator-like object for seeking back and forth in the list
     /// with the ability to insert/delete nodes.
+    /// The seek head starts out pointing after the tail of the list.
     pub fn mut_seeker_back <'a> (&'a mut self) -> MutSeekItems<'a, T> {
         MutSeekItems{head: self.list_tail, list: self, state: RightOfHead}
     }
