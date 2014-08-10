@@ -15,7 +15,7 @@ pub fn main() {
 
     for i in range(0u, 3) {
         // ensure that the borrow in this alt
-        // does not inferfere with the swap
+        // does not interfere with the swap
         // below.  note that it would it you
         // naively borrowed &x for the lifetime
         // of the variable x, as we once did

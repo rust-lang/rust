@@ -11,7 +11,7 @@
 
 use std::hash::hash;
 
-// testing mulptiple separate deriving attributes
+// testing multiple separate deriving attributes
 #[deriving(PartialEq)]
 #[deriving(Clone)]
 #[deriving(Hash)]
