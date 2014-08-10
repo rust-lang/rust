@@ -10,7 +10,7 @@
 
 #![allow(unnecessary_allocation)]
 
-// Tests for a previous bug that occured due to an interaction
+// Tests for a previous bug that occurred due to an interaction
 // between struct field initialization and the auto-coercion
 // from a vector to a slice. The drop glue was being invoked on
 // the temporary slice with a wrong type, triggering an LLVM assert.

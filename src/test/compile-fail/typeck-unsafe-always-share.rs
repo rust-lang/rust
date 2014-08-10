@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Verify that UnsafeCell is *always* sync regardles `T` is sync.
+// Verify that UnsafeCell is *always* sync regardless if `T` is sync.
 
 // ignore-tidy-linelength
 

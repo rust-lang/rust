@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Verify that managed pointers scope is treated like ownoed pointers.
-// regresion test for #11586
+// Verify that managed pointers scope is treated like owned pointers.
+// regression test for #11586
 
 
 use std::gc::{GC, Gc};

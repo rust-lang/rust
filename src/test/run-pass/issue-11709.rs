@@ -12,7 +12,7 @@
 
 // Don't fail on blocks without results
 // There are several tests in this run-pass that raised
-// when this bug was oppened. The cases where the compiler
+// when this bug was opened. The cases where the compiler
 // failed before the fix have a comment.
 
 struct S {x:()}
