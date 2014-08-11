@@ -1479,20 +1479,20 @@ impl LintPass for Stability {
             _ => return
         };
 
-        // stability attributes are promises made across crates; do not
-        // check anything for crate-local usage.
-        if ast_util::is_local(id) { return }
-
         let stability = stability::lookup(cx.tcx, id);
+        let cross_crate = !ast_util::is_local(id);
+
+        // stability attributes are promises made across crates; only
+        // check DEPRECATED for crate-local usage.
         let (lint, label) = match stability {
             // no stability attributes == Unstable
-            None => (UNSTABLE, "unmarked"),
-            Some(attr::Stability { level: attr::Unstable, .. }) =>
-                    (UNSTABLE, "unstable"),
-            Some(attr::Stability { level: attr::Experimental, .. }) =>
-                    (EXPERIMENTAL, "experimental"),
+            None if cross_crate => (UNSTABLE, "unmarked"),
+            Some(attr::Stability { level: attr::Unstable, .. }) if cross_crate =>
+                (UNSTABLE, "unstable"),
+            Some(attr::Stability { level: attr::Experimental, .. }) if cross_crate =>
+                (EXPERIMENTAL, "experimental"),
             Some(attr::Stability { level: attr::Deprecated, .. }) =>
-                    (DEPRECATED, "deprecated"),
+                (DEPRECATED, "deprecated"),
             _ => return
         };
 
