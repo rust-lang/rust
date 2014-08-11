@@ -34,7 +34,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os)
                 -n8:16:32".to_string()
           }
 
-          abi::OsWin32 => {
+          abi::OsWindows => {
             "e-p:32:32-f64:64:64-i64:64:64-f80:32:32-n8:16:32".to_string()
           }
 
