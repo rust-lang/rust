@@ -39,7 +39,7 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // FIXME(#13725) windows needs fixing.
-// ignore-win32
+// ignore-windows
 // ignore-stage1
 // ignore-cross-compile #12102
 
