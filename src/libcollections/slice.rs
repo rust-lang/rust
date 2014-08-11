@@ -190,7 +190,7 @@ impl Iterator<(uint, uint)> for ElementSwaps {
         let max = self.sdir.iter().map(|&x| x).enumerate()
                            .filter(|&(i, sd)|
                                 new_pos(i, sd.dir) < self.sdir.len() &&
-                                self.sdir.get(new_pos(i, sd.dir)).size < sd.size)
+                                self.sdir[new_pos(i, sd.dir)].size < sd.size)
                            .max_by(|&(_, sd)| sd.size);
         match max {
             Some((i, sd)) => {

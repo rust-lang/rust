@@ -261,7 +261,7 @@ impl<T: Ord> PriorityQueue<T> {
     ///
     /// ```
     pub fn top<'a>(&'a self) -> Option<&'a T> {
-        if self.is_empty() { None } else { Some(self.data.get(0)) }
+        if self.is_empty() { None } else { Some(&self.data[0]) }
     }
 
     #[deprecated="renamed to `top`"]
@@ -473,7 +473,7 @@ impl<T: Ord> PriorityQueue<T> {
 
             while pos > start {
                 let parent = (pos - 1) >> 1;
-                if new > *self.data.get(parent) {
+                if new > self.data[parent] {
                     let x = replace(self.data.get_mut(parent), zeroed());
                     ptr::write(self.data.get_mut(pos), x);
                     pos = parent;
@@ -493,7 +493,7 @@ impl<T: Ord> PriorityQueue<T> {
             let mut child = 2 * pos + 1;
             while child < end {
                 let right = child + 1;
-                if right < end && !(*self.data.get(child) > *self.data.get(right)) {
+                if right < end && !(self.data[child] > self.data[right]) {
                     child = right;
                 }
                 let x = replace(self.data.get_mut(child), zeroed());
