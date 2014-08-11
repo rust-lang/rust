@@ -669,7 +669,7 @@ impl String {
     /// }
     /// ```
     pub unsafe fn shift_byte(&mut self) -> Option<u8> {
-        self.vec.shift()
+        self.vec.remove(0)
     }
 
     /// Removes the first character from the string buffer and returns it.

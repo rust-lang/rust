@@ -264,7 +264,7 @@ impl Bitv {
         assert!(i < self.nbits);
         let w = i / uint::BITS;
         let b = i % uint::BITS;
-        let x = self.storage.get(w) & (1 << b);
+        let x = self.storage[w] & (1 << b);
         x != 0
     }
 
@@ -289,8 +289,8 @@ impl Bitv {
         let w = i / uint::BITS;
         let b = i % uint::BITS;
         let flag = 1 << b;
-        *self.storage.get_mut(w) = if x { *self.storage.get(w) | flag }
-                          else { *self.storage.get(w) & !flag };
+        *self.storage.get_mut(w) = if x { self.storage[w] | flag }
+                          else { self.storage[w] & !flag };
     }
 
     /// Set all bits to 1.
@@ -827,7 +827,7 @@ impl Clone for Bitv {
     fn clone_from(&mut self, source: &Bitv) {
         self.nbits = source.nbits;
         self.storage.reserve(source.storage.len());
-        for (i, w) in self.storage.mut_iter().enumerate() { *w = *source.storage.get(i); }
+        for (i, w) in self.storage.mut_iter().enumerate() { *w = source.storage[i]; }
     }
 }
 
@@ -1146,7 +1146,7 @@ impl BitvSet {
         self_bitv.reserve(other_bitv.capacity());
         // Apply values
         for (i, w) in other_bitv.mask_words(0) {
-            let old = *self_bitv.storage.get(i);
+            let old = self_bitv.storage[i];
             let new = f(old, w);
             *self_bitv.storage.get_mut(i) = new;
         }
@@ -1573,10 +1573,10 @@ impl<'a> Iterator<uint> for TwoBitPositions<'a> {
                 // one Bitv might be longer than the other
                 let word_idx = self.next_idx / uint::BITS;
                 let w1 = if word_idx < s_bitv.storage.len() {
-                             *s_bitv.storage.get(word_idx)
+                             s_bitv.storage[word_idx]
                          } else { 0 };
                 let w2 = if word_idx < o_bitv.storage.len() {
-                             *o_bitv.storage.get(word_idx)
+                             o_bitv.storage[word_idx]
                          } else { 0 };
                 self.current_word = (self.merge)(w1, w2);
             }

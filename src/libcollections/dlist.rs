@@ -654,7 +654,7 @@ impl<A> Iterator<A> for MoveItems<A> {
 
 impl<A> DoubleEndedIterator<A> for MoveItems<A> {
     #[inline]
-    fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
+    fn next_back(&mut self) -> Option<A> { self.list.pop() }
 }
 
 impl<A> FromIterator<A> for DList<A> {
@@ -667,7 +667,7 @@ impl<A> FromIterator<A> for DList<A> {
 
 impl<A> Extendable<A> for DList<A> {
     fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
-        for elt in iterator { self.push_back(elt); }
+        for elt in iterator { self.push(elt); }
     }
 }
 
