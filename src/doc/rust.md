@@ -1870,13 +1870,13 @@ type int8_t = i8;
 - `crate_id` - specify the this crate's crate ID.
 - `crate_type` - see [linkage](#linkage).
 - `feature` - see [compiler features](#compiler-features).
+- `no_builtins` - disable optimizing certain code patterns to invocations of
+                  library functions that are assumed to exist
 - `no_main` - disable emitting the `main` symbol. Useful when some other
   object being linked to defines `main`.
 - `no_start` - disable linking to the `native` crate, which specifies the
   "start" language item.
 - `no_std` - disable linking to the `std` crate.
-- `no_builtins` - disable optimizing certain code patterns to invocations of
-                  library functions that are assumed to exist
 
 ### Module-only attributes
 
@@ -1890,10 +1890,10 @@ type int8_t = i8;
 
 ### Function-only attributes
 
-- `plugin_registrar` - mark this function as the registration point for
-  compiler plugins, such as loadable syntax extensions.
 - `main` - indicates that this function should be passed to the entry point,
   rather than the function in the crate root named `main`.
+- `plugin_registrar` - mark this function as the registration point for
+  compiler plugins, such as loadable syntax extensions.
 - `start` - indicates that this function should be used as the entry point,
   overriding the "start" language item.  See the "start" [language
   item](#language-items) for more details.
@@ -1932,6 +1932,12 @@ interpreted:
   symbol for this item to its identifier.
 - `packed` - on structs or enums, eliminate any padding that would be used to
   align fields.
+- `phase` - on `extern crate` statements, allows specifying which "phase" of
+  compilation the crate should be loaded for. Currently, there are two
+  choices: `link` and `plugin`. `link` is the default. `plugin` will load the
+  crate at compile-time and use any syntax extensions or lints that the crate
+  defines. They can both be specified, `#[phase(link, plugin)]` to use a crate
+  both at runtime and compiletime.
 - `repr` - on C-like enums, this sets the underlying type used for
   representation. Useful for FFI. Takes one argument, which is the primitive
   type this enum should be represented for, or `C`, which specifies that it
@@ -1949,12 +1955,6 @@ interpreted:
 - `unsafe_no_drop_flag` - on structs, remove the flag that prevents
   destructors from being run twice. Destructors might be run multiple times on
   the same object with this attribute.
-- `phase` - on `extern crate` statements, allows specifying which "phase" of
-  compilation the crate should be loaded for. Currently, there are two
-  choices: `link` and `plugin`. `link` is the default. `plugin` will load the
-  crate at compile-time and use any syntax extensions or lints that the crate
-  defines. They can both be specified, `#[phase(link, plugin)]` to use a crate
-  both at runtime and compiletime.
 
 ### Conditional compilation
 
@@ -2021,12 +2021,12 @@ which the attribute applies.
 
 For any lint check `C`:
 
- * `warn(C)` warns about violations of `C` but continues compilation,
- * `deny(C)` signals an error after encountering a violation of `C`,
  * `allow(C)` overrides the check for `C` so that violations will go
     unreported,
+ * `deny(C)` signals an error after encountering a violation of `C`,
  * `forbid(C)` is the same as `deny(C)`, but also forbids changing the lint
-    level afterwards.
+    level afterwards,
+ * `warn(C)` warns about violations of `C` but continues compilation.
 
 The lint checks supported by the compiler can be found via `rustc -W help`,
 along with their default settings.
@@ -2105,16 +2105,16 @@ A complete list of the built-in language items follows:
 
 #### Built-in Traits
 
+* `copy`
+  : Types that do not move ownership when used by-value.
+* `drop`
+  : Have destructors.
 * `send`
   : Able to be sent across task boundaries.
 * `sized`
   : Has a size known at compile time.
-* `copy`
-  : Types that do not move ownership when used by-value.
 * `sync`
   : Able to be safely shared between tasks when aliased.
-* `drop`
-  : Have destructors.
 
 #### Operators
 
@@ -2166,10 +2166,10 @@ These are functions:
 
 #### Types
 
-* `unsafe`
-  : A type whose contents can be mutated through an immutable reference
 * `type_id`
   : The type returned by the `type_id` intrinsic.
+* `unsafe`
+  : A type whose contents can be mutated through an immutable reference
 
 #### Marker types
 
@@ -2276,12 +2276,12 @@ Supported traits for `deriving` are:
 * Comparison traits: `PartialEq`, `Eq`, `PartialOrd`, `Ord`.
 * Serialization: `Encodable`, `Decodable`. These require `serialize`.
 * `Clone`, to create `T` from `&T` via a copy.
+* `Default`, to create an empty instance of a data type.
+* `FromPrimitive`, to create an instance from a numeric primitive.
 * `Hash`, to iterate over the bytes in a data type.
 * `Rand`, to create a random instance of a data type.
-* `Default`, to create an empty instance of a data type.
-* `Zero`, to create a zero instance of a numeric data type.
-* `FromPrimitive`, to create an instance from a numeric primitive.
 * `Show`, to format a value using the `{}` formatter.
+* `Zero`, to create a zero instance of a numeric data type.
 
 ### Stability
 
@@ -2375,6 +2375,40 @@ considered off, and using the features will result in a compiler error.
 
 The currently implemented features of the reference compiler are:
 
+* `asm` - The `asm!` macro provides a means for inline assembly. This is often
+          useful, but the exact syntax for this feature along with its semantics
+          are likely to change, so this macro usage must be opted into.
+
+* `concat_idents` - Allows use of the `concat_idents` macro, which is in many
+                    ways insufficient for concatenating identifiers, and may
+                    be removed entirely for something more wholsome.
+
+* `default_type_params` - Allows use of default type parameters. The future of
+                          this feature is uncertain.
+
+* `globs` - Importing everything in a module through `*`. This is currently a
+            large source of bugs in name resolution for Rust, and it's not clear
+            whether this will continue as a feature or not. For these reasons,
+            the glob import statement has been hidden behind this feature flag.
+
+* `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
+                 are inherently unstable and no promise about them is made.
+
+* `lang_items` - Allows use of the `#[lang]` attribute. Like `intrinsics`,
+                 lang items are inherently unstable and no promise about
+                 them is made.
+
+* `link_args` - This attribute is used to specify custom flags to the linker,
+                but usage is strongly discouraged. The compiler's usage of the
+                system linker is not guaranteed to continue in the future, and
+                if the system linker is not used then specifying custom flags
+                doesn't have much meaning.
+
+* `linkage` - Allows use of the `linkage` attribute, which is not portable.
+
+* `log_syntax` - Allows use of the `log_syntax` macro attribute, which is a
+                 nasty hack that will certainly be removed.
+
 * `macro_rules` - The definition of new macros. This does not encompass
                   macro-invocation, that is always enabled by default, this only
                   covers the definition of new macros. There are currently
@@ -2383,26 +2417,6 @@ The currently implemented features of the reference compiler are:
                   location in which they are defined. Macro definitions are
                   likely to change slightly in the future, so they are currently
                   hidden behind this feature.
-
-* `globs` - Importing everything in a module through `*`. This is currently a
-            large source of bugs in name resolution for Rust, and it's not clear
-            whether this will continue as a feature or not. For these reasons,
-            the glob import statement has been hidden behind this feature flag.
-
-* `struct_variant` - Structural enum variants (those with named fields). It is
-                     currently unknown whether this style of enum variant is as
-                     fully supported as the tuple-forms, and it's not certain
-                     that this style of variant should remain in the language.
-                     For now this style of variant is hidden behind a feature
-                     flag.
-
-* `once_fns` - Onceness guarantees a closure is only executed once. Defining a
-               closure as `once` is unlikely to be supported going forward. So
-               they are hidden behind this feature until they are to be removed.
-
-* `asm` - The `asm!` macro provides a means for inline assembly. This is often
-          useful, but the exact syntax for this feature along with its semantics
-          are likely to change, so this macro usage must be opted into.
 
 * `managed_boxes` - Usage of `@` is gated due to many
                     planned changes to this feature. In the past, this has meant
@@ -2417,20 +2431,14 @@ The currently implemented features of the reference compiler are:
                        now until the specification of identifiers is fully
                        fleshed out.
 
-* `thread_local` - The usage of the `#[thread_local]` attribute is experimental
-                   and should be seen as unstable. This attribute is used to
-                   declare a `static` as being unique per-thread leveraging
-                   LLVM's implementation which works in concert with the kernel
-                   loader and dynamic linker. This is not necessarily available
-                   on all platforms, and usage of it is discouraged (rust
-                   focuses more on task-local data instead of thread-local
-                   data).
+* `once_fns` - Onceness guarantees a closure is only executed once. Defining a
+               closure as `once` is unlikely to be supported going forward. So
+               they are hidden behind this feature until they are to be removed.
 
-* `link_args` - This attribute is used to specify custom flags to the linker,
-                but usage is strongly discouraged. The compiler's usage of the
-                system linker is not guaranteed to continue in the future, and
-                if the system linker is not used then specifying custom flags
-                doesn't have much meaning.
+* `overloaded_calls` - Allow implementing the `Fn*` family of traits on user
+                       types, allowing overloading the call operator (`()`).
+                       This feature may still undergo changes before being
+                       stabilized.
 
 * `phase` - Usage of the `#[phase]` attribute allows loading compiler plugins
             for custom lints or syntax extensions. The implementation is considered
@@ -2442,55 +2450,47 @@ The currently implemented features of the reference compiler are:
                        in need of a overhaul, and it is not clear that plugins
                        defined using this will continue to work.
 
-* `log_syntax` - Allows use of the `log_syntax` macro attribute, which is a
-                 nasty hack that will certainly be removed.
-
-* `trace_macros` - Allows use of the `trace_macros` macro, which is a nasty
-                   hack that will certainly be removed.
-
-* `concat_idents` - Allows use of the `concat_idents` macro, which is in many
-                    ways insufficient for concatenating identifiers, and may
-                    be removed entirely for something more wholsome.
-
-* `unsafe_destructor` - Allows use of the `#[unsafe_destructor]` attribute,
-                        which is considered wildly unsafe and will be
-                        obsoleted by language improvements.
-
-* `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
-                 are inherently unstable and no promise about them is made.
-
-* `lang_items` - Allows use of the `#[lang]` attribute. Like `intrinsics`,
-                 lang items are inherently unstable and no promise about
-                 them is made.
-
-* `simd` - Allows use of the `#[simd]` attribute, which is overly simple and
-           not the SIMD interface we want to expose in the long term.
-
-* `default_type_params` - Allows use of default type parameters. The future of
-                          this feature is uncertain.
-
 * `quote` - Allows use of the `quote_*!` family of macros, which are
             implemented very poorly and will likely change significantly
             with a proper implementation.
 
-* `linkage` - Allows use of the `linkage` attribute, which is not portable.
+* `rustc_diagnostic_macros`- A mysterious feature, used in the implementation
+                             of rustc, not meant for mortals.
+
+* `simd` - Allows use of the `#[simd]` attribute, which is overly simple and
+           not the SIMD interface we want to expose in the long term.
 
 * `struct_inherit` - Allows using struct inheritance, which is barely
                      implemented and will probably be removed. Don't use this.
 
-* `overloaded_calls` - Allow implementing the `Fn*` family of traits on user
-                       types, allowing overloading the call operator (`()`).
-                       This feature may still undergo changes before being
-                       stabilized.
+* `struct_variant` - Structural enum variants (those with named fields). It is
+                     currently unknown whether this style of enum variant is as
+                     fully supported as the tuple-forms, and it's not certain
+                     that this style of variant should remain in the language.
+                     For now this style of variant is hidden behind a feature
+                     flag.
+
+* `thread_local` - The usage of the `#[thread_local]` attribute is experimental
+                   and should be seen as unstable. This attribute is used to
+                   declare a `static` as being unique per-thread leveraging
+                   LLVM's implementation which works in concert with the kernel
+                   loader and dynamic linker. This is not necessarily available
+                   on all platforms, and usage of it is discouraged (rust
+                   focuses more on task-local data instead of thread-local
+                   data).
+
+* `trace_macros` - Allows use of the `trace_macros` macro, which is a nasty
+                   hack that will certainly be removed.
 
 * `unboxed_closure_sugar` - Allows using `|Foo| -> Bar` as a trait bound
                             meaning one of the `Fn` traits.  Still
                             experimental.
 
-* `rustc_diagnostic_macros`- A mysterious feature, used in the implementation
-                             of rustc, not meant for mortals.
-
 * `unboxed_closures` - A work in progress feature with many known bugs.
+
+* `unsafe_destructor` - Allows use of the `#[unsafe_destructor]` attribute,
+                        which is considered wildly unsafe and will be
+                        obsoleted by language improvements.
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about #[feature] directives which enabled
