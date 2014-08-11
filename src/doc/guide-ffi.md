@@ -510,7 +510,7 @@ Rust guarantees that the layout of a `struct` is compatible with the platform's 
 A `#[packed]` attribute is available, which will lay out the struct members without padding.
 However, there are currently no guarantees about the layout of an `enum`.
 
-Rust's owned and managed boxes use non-nullable pointers as handles which point to the contained
+Rust's boxes use non-nullable pointers as handles which point to the contained
 object. However, they should not be manually created because they are managed by internal
 allocators. References can safely be assumed to be non-nullable pointers directly to the
 type. However, breaking the borrow checking or mutability rules is not guaranteed to be safe, so
@@ -527,7 +527,7 @@ the `libc` module, and Rust links against `libc` and `libm` by default.
 # The "nullable pointer optimization"
 
 Certain types are defined to not be `null`. This includes references (`&T`,
-`&mut T`), owning pointers (`~T`), and function pointers (`extern "abi"
+`&mut T`), boxes (`Box<T>`), and function pointers (`extern "abi"
 fn()`). When interfacing with C, pointers that might be null are often used.
 As a special case, a generic `enum` that contains exactly two variants, one of
 which contains no data and the other containing a single field, is eligible
