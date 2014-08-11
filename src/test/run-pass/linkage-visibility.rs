@@ -10,7 +10,7 @@
 
 // aux-build:linkage-visibility.rs
 // ignore-android: FIXME(#10379)
-// ignore-win32: std::dynamic_lib does not work on win32 well
+// ignore-windows: std::dynamic_lib does not work on win32 well
 
 extern crate foo = "linkage-visibility";
 
