@@ -28,7 +28,7 @@ if not src_dir:
   raise Exception("missing env var CFG_SRC_DIR")
 
 snapshotfile = os.path.join(src_dir, "src", "snapshots.txt")
-download_url_base = "http://static.rust-lang.org/stage0-snapshots"
+download_url_base = "https://static.rust-lang.org/stage0-snapshots"
 download_dir_base = "dl"
 download_unpack_base = os.path.join(download_dir_base, "unpack")
 
