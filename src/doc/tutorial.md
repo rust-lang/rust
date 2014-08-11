@@ -114,7 +114,7 @@ If you've fulfilled those prerequisites, something along these lines
 should work.
 
 ~~~~console
-$ curl -O http://static.rust-lang.org/dist/rust-nightly.tar.gz
+$ curl -O https://static.rust-lang.org/dist/rust-nightly.tar.gz
 $ tar -xzf rust-nightly.tar.gz
 $ cd rust-nightly
 $ ./configure
@@ -131,8 +131,8 @@ When complete, `make install` will place several programs into
 `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
 API-documentation tool.
 
-[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz
-[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe
+[tarball]: https://static.rust-lang.org/dist/rust-nightly.tar.gz
+[win-exe]: https://static.rust-lang.org/dist/rust-nightly-install.exe
 
 ## Compiling your first program
 
