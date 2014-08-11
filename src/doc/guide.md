@@ -2090,7 +2090,7 @@ In this case, I happen to prefer the latter, and in the `random()` case, I prefe
 the former. I think the nested `<>`s make the first option especially ugly and
 a bit harder to read.
 
-Anyway, with us now convering our input to a number, our code looks like this:
+Anyway, with us now converting our input to a number, our code looks like this:
 
 ```{rust,ignore}
 use std::io;
