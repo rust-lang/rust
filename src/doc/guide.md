@@ -1341,7 +1341,7 @@ computer science: naming things, cache invalidation, and off-by-one errors."
 The joke, of course, being that the setup says "two hard problems" but then
 lists three things. This happens quite a bit with "C style" `for` loops.
 
-We'll talk more about `for` when we cover **vector**s, later in the Guide.
+We'll talk more about `for` when we cover **iterator**s, later in the Guide.
 
 ## `while`
 
@@ -1427,11 +1427,6 @@ for x in range(0i, 10i) {
 
 Both `continue` and `break` are valid in both kinds of loops.
 
-We have now learned all of the most basic Rust concepts. We're ready to start
-building our guessing game, but we need to know how to do one last thing first:
-get input from the keyboard. You can't have a guessing game without the ability
-to guess!
-
 # Strings
 
 Strings are an important concept for any programmer to master. Rust's string
@@ -1511,6 +1506,76 @@ than you are used to, if you come from a scripting language, but when the
 low-level details matter, they really matter. Just remember that `String`s
 allocate memory and control their data, while `&str`s are a reference to
 another string, and you'll be all set.
+
+# Vectors
+
+Like many programming languages, Rust has a list type for when you want a list
+of things. But similar to strings, Rust has different types to represent this
+idea: `Vec<T>` (a 'vector'), `[T, .. N]` (an 'array'), and `&[T]` (a 'slice').
+Whew!
+
+Vectors are similar to `String`s: they have a dynamic length, and they
+allocate enough memory to fit. You can create a vector with the `vec!` macro:
+
+```{rust}
+let nums = vec![1i, 2i, 3i];
+```
+
+Notice that unlike the `println!` macro we've used in the past, we use square
+brackets (`[]`) with `vec!`. Rust allows you to use either in either situation,
+this is just convention.
+
+You can create an array with just square brackets:
+
+```{rust}
+let nums = [1i, 2i, 3i];
+```
+
+So what's the difference? An array has a fixed size, so you can't add or
+subtract elements:
+
+```{rust,ignore}
+let mut nums = vec![1i, 2i, 3i];
+nums.push(4i); // works
+
+let mut nums = [1i, 2i, 3i];
+nums.push(4i); //  error: type `[int, .. 3]` does not implement any method
+               // in scope named `push`
+```
+
+The `push()` method lets you append a value to the end of the vector. But
+since arrays have fixed sizes, adding an element doesn't make any sense.
+You can see how it has the exact type in the error message: `[int, .. 3]`.
+An array of `int`s, with length 3.
+
+Similar to `&str`, a slice is a reference to another array. We can get a
+slice from a vector by using the `as_slice()` method:
+
+```{rust}
+let vec = vec![1i, 2i, 3i];
+let slice = vec.as_slice();
+```
+
+All three types implement an `iter()` method, which returns an iterator. We'll
+talk more about the details of iterators later, but for now, the `iter()` method
+allows you to write a `for` loop that prints out the contents of a vector, array,
+or slice:
+
+```{rust}
+let vec = vec![1i, 2i, 3i];
+
+for i in vec.iter() {
+    println!("{}", i);
+}
+```
+
+This code will print each number in order, on its own line.
+
+There's a whole lot more to vectors, but that's enough to get started. We have
+now learned all of the most basic Rust concepts. We're ready to start building
+our guessing game, but we need to know how to do one last thing first: get
+input from the keyboard. You can't have a guessing game without the ability to
+guess!
 
 # Standard Input
 
