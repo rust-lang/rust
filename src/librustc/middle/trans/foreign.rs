@@ -630,7 +630,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
 
         let llfn = base::decl_internal_rust_fn(ccx, t, ps.as_slice());
         base::set_llvm_fn_attrs(attrs, llfn);
-        base::trans_fn(ccx, decl, body, llfn, param_substs, id, [], TranslateItems);
+        base::trans_fn(ccx, decl, body, llfn, param_substs, id, []);
         llfn
     }
 
