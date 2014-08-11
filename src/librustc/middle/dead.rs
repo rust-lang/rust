@@ -26,7 +26,6 @@ use syntax::ast_util::{local_def, is_local, PostExpansionMethod};
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap;
-use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 
@@ -412,10 +411,7 @@ struct DeadVisitor<'a> {
 
 impl<'a> DeadVisitor<'a> {
     fn should_warn_about_field(&mut self, node: &ast::StructField_) -> bool {
-        let (is_named, has_leading_underscore) = match node.ident() {
-            Some(ref ident) => (true, token::get_ident(*ident).get().as_bytes()[0] == ('_' as u8)),
-            _ => (false, false)
-        };
+        let is_named = node.ident().is_some();
         let field_type = ty::node_id_to_type(self.tcx, node.id);
         let is_marker_field = match ty::ty_to_def_id(field_type) {
             Some(def_id) => self.tcx.lang_items.items().any(|(_, item)| *item == Some(def_id)),
@@ -423,7 +419,6 @@ impl<'a> DeadVisitor<'a> {
         };
         is_named
             && !self.symbol_is_live(node.id, None)
-            && !has_leading_underscore
             && !is_marker_field
             && !has_allow_dead_code_or_lang_attr(node.attrs.as_slice())
     }
@@ -468,13 +463,15 @@ impl<'a> DeadVisitor<'a> {
                       id: ast::NodeId,
                       span: codemap::Span,
                       ident: ast::Ident) {
-        self.tcx
-            .sess
-            .add_lint(lint::builtin::DEAD_CODE,
-                      id,
-                      span,
-                      format!("code is never used: `{}`",
-                              token::get_ident(ident)));
+        let name = ident.as_str();
+        if !name.starts_with("_") {
+            self.tcx
+                .sess
+                .add_lint(lint::builtin::DEAD_CODE,
+                          id,
+                          span,
+                          format!("code is never used: `{}`", name));
+        }
     }
 }
 
