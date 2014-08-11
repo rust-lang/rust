@@ -87,15 +87,33 @@ pub fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<UserIdentifie
 // (The `use_once_payload` is working around the current lack of once
 // functions in the compiler.)
 
-trait CratePrinter {
+impl PpSourceMode {
     /// Constructs a `PrinterSupport` object and passes it to `f`.
     fn call_with_pp_support<A,B>(&self,
                                  sess: Session,
                                  krate: &ast::Crate,
                                  ast_map: Option<ast_map::Map>,
                                  id: String,
-                                 use_once_payload: B,
-                                 f: |&PrinterSupport, B| -> A) -> A;
+                                 payload: B,
+                                 f: |&PrinterSupport, B| -> A) -> A {
+        match *self {
+            PpmNormal | PpmExpanded => {
+                let annotation = NoAnn { sess: sess, ast_map: ast_map };
+                f(&annotation, payload)
+            }
+
+            PpmIdentified | PpmExpandedIdentified => {
+                let annotation = IdentifiedAnnotation { sess: sess, ast_map: ast_map };
+                f(&annotation, payload)
+            }
+            PpmTyped => {
+                let ast_map = ast_map.expect("--pretty=typed missing ast_map");
+                let analysis = driver::phase_3_run_analysis_passes(sess, krate, ast_map, id);
+                let annotation = TypedAnnotation { analysis: analysis };
+                f(&annotation, payload)
+            }
+        }
+    }
 }
 
 trait SessionCarrier {
@@ -336,34 +354,6 @@ impl UserIdentifiedItem {
 
         assert!(seen == 1);
         return saw_node;
-    }
-}
-
-impl CratePrinter for PpSourceMode {
-    fn call_with_pp_support<A,B>(&self,
-                                 sess: Session,
-                                 krate: &ast::Crate,
-                                 ast_map: Option<ast_map::Map>,
-                                 id: String,
-                                 payload: B,
-                                 f: |&PrinterSupport, B| -> A) -> A {
-        match *self {
-            PpmNormal | PpmExpanded => {
-                let annotation = NoAnn { sess: sess, ast_map: ast_map };
-                f(&annotation, payload)
-            }
-
-            PpmIdentified | PpmExpandedIdentified => {
-                let annotation = IdentifiedAnnotation { sess: sess, ast_map: ast_map };
-                f(&annotation, payload)
-            }
-            PpmTyped => {
-                let ast_map = ast_map.expect("--pretty=typed missing ast_map");
-                let analysis = driver::phase_3_run_analysis_passes(sess, krate, ast_map, id);
-                let annotation = TypedAnnotation { analysis: analysis };
-                f(&annotation, payload)
-            }
-        }
     }
 }
 
