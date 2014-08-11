@@ -38,7 +38,7 @@ pub fn parse_logging_spec(spec: &str) -> Vec<LogDirective> {
     for s in spec.split(',') {
         if s.len() == 0 { continue }
         let mut parts = s.split('=');
-        let (log_level, name) = match (parts.next(), parts.next(), parts.next()) {
+        let (log_level, name) = match (parts.next(), parts.next().map(|s| s.trim()), parts.next()) {
             (Some(part0), None, None) => {
                 // if the single argument is a log-level string or number,
                 // treat that as a global fallback
@@ -47,6 +47,7 @@ pub fn parse_logging_spec(spec: &str) -> Vec<LogDirective> {
                     None => (::MAX_LOG_LEVEL, Some(part0)),
                 }
             }
+            (Some(part0), Some(""), None) => (::MAX_LOG_LEVEL, Some(part0)),
             (Some(part0), Some(part1), None) => {
                 match parse_log_level(part1) {
                     Some(num) => (num, Some(part0)),
@@ -118,6 +119,16 @@ mod tests {
         assert_eq!(dirs.len(), 1);
         assert_eq!(dirs[0].name, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, ::WARN);
+    }
+
+    #[test]
+    fn parse_logging_spec_empty_log_level() {
+        // test parse_logging_spec with '' as log level
+        let dirs = parse_logging_spec("crate1::mod1=wrong,crate2=");
+        let dirs = dirs.as_slice();
+        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs[0].name, Some("crate2".to_string()));
+        assert_eq!(dirs[0].level, ::MAX_LOG_LEVEL);
     }
 
     #[test]
