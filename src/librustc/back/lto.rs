@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use super::link;
+use super::write;
 use driver::session;
 use driver::config;
 use llvm;
@@ -119,9 +120,9 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                     ptr as *const libc::c_char,
                                                     bc_decoded.len() as libc::size_t) {
-                link::llvm_err(sess,
-                               format!("failed to load bc of `{}`",
-                                       name.as_slice()));
+                write::llvm_err(sess,
+                                format!("failed to load bc of `{}`",
+                                        name.as_slice()));
             }
         });
     }
