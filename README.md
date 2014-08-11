@@ -32,7 +32,7 @@ documentation.
 
     To build from the [tarball] do:
 
-        $ curl -O http://static.rust-lang.org/dist/rust-nightly.tar.gz
+        $ curl -O https://static.rust-lang.org/dist/rust-nightly.tar.gz
         $ tar -xzf rust-nightly.tar.gz
         $ cd rust-nightly
 
@@ -75,7 +75,7 @@ To easily build on windows we can use [MSYS2](http://sourceforge.net/projects/ms
         $ make && make install
 
 [repo]: https://github.com/rust-lang/rust
-[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz
+[tarball]: https://static.rust-lang.org/dist/rust-nightly.tar.gz
 [tutorial]: http://doc.rust-lang.org/tutorial.html
 
 ## Notes

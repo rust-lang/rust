@@ -32,21 +32,21 @@ Linux or a Mac, all you need to do is this (note that you don't need to type
 in the `$`s, they just indicate the start of each command):
 
 ```{ignore}
-$ curl -s http://www.rust-lang.org/rustup.sh | sudo sh
+$ curl -s https://static.rust-lang.org/rustup.sh | sudo sh
 ```
 
 (If you're concerned about `curl | sudo sh`, please keep reading. Disclaimer
 below.)
 
 If you're on Windows, please [download this .exe and run
-it](http://static.rust-lang.org/dist/rust-nightly-install.exe).
+it](https://static.rust-lang.org/dist/rust-nightly-install.exe).
 
 If you decide you don't want Rust anymore, we'll be a bit sad, but that's okay.
 Not every programming language is great for everyone. Just pass an argument to
 the script:
 
 ```{ignore}
-$ curl -s http://www.rust-lang.org/rustup.sh | sudo sh -s -- --uninstall
+$ curl -s https://static.rust-lang.org/rustup.sh | sudo sh -s -- --uninstall
 ```
 
 If you used the Windows installer, just re-run the `.exe` and it will give you
