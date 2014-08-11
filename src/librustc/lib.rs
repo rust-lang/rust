@@ -69,6 +69,7 @@ pub mod back {
 
     pub mod link;
     pub mod lto;
+    pub mod write;
 
 }
 
