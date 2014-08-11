@@ -58,7 +58,8 @@ pub mod file;
 #[path = "timer_unix.rs"]
 pub mod timer;
 
-#[cfg(target_os = "win32")]
+#[cfg(target_os = "windows")]
+#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 #[path = "timer_win32.rs"]
 pub mod timer;
 

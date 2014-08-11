@@ -55,7 +55,8 @@ mod m {
     }
 }
 
-#[cfg(target_os = "win32")]
+#[cfg(target_os = "windows")]
+#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 mod m {
     #[cfg(target_arch = "x86")]
     pub mod m {
