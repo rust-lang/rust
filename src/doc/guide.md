@@ -27,7 +27,7 @@ Sound good? Let's go!
 # Installing Rust
 
 The first step to using Rust is to install it! There are a number of ways to
-install Rust, but the easiest is to use the the `rustup` script. If you're on
+install Rust, but the easiest is to use the `rustup` script. If you're on
 Linux or a Mac, all you need to do is this (note that you don't need to type
 in the `$`s, they just indicate the start of each command):
 
@@ -120,7 +120,7 @@ to make a projects directory in my home directory, and keep all my projects
 there. Rust does not care where your code lives.
 
 This actually leads to one other concern we should address: this tutorial will
-assume that you have basic familiarity with the command-line. Rust does not
+assume that you have basic familiarity with the command line. Rust does not
 require that you know a whole ton about the command line, but until the
 language is in a more finished state, IDE support is spotty. Rust makes no
 specific demands on your editing tooling, or where your code lives.
@@ -452,7 +452,7 @@ what you need, so it's not verboten.
 
 Let's get back to bindings. Rust variable bindings have one more aspect that
 differs from other languages: bindings are required to be initialized with a
-value before you're allowed to use it. If we try...
+value before you're allowed to use them. If we try...
 
 ```{ignore}
 let x;
@@ -2281,7 +2281,7 @@ change that by adding loops!
 
 ## Looping
 
-As we already discussed, the `loop` key word gives us an infinite loop. So
+As we already discussed, the `loop` keyword gives us an infinite loop. So
 let's add that in:
 
 ```{rust,no_run}
@@ -4099,7 +4099,7 @@ fn inverse(x: f64) -> Result<f64, String> {
 ```
 
 We don't want to take the inverse of zero, so we check to make sure that we
-weren't passed one. If we weren't, then we return an `Err`, with a message. If
+weren't passed zero. If we were, then we return an `Err`, with a message. If
 it's okay, we return an `Ok`, with the answer.
 
 Why does this matter? Well, remember how `match` does exhaustive matches?
