@@ -244,6 +244,16 @@ pub trait Folder {
         noop_fold_field(field, self)
     }
 
+    fn fold_where_clause(&mut self, where_clause: &WhereClause)
+                         -> WhereClause {
+        noop_fold_where_clause(where_clause, self)
+    }
+
+    fn fold_where_predicate(&mut self, where_predicate: &WherePredicate)
+                            -> WherePredicate {
+        noop_fold_where_predicate(where_predicate, self)
+    }
+
 // Helper methods:
 
     fn map_exprs(&self, f: |Gc<Expr>| -> Gc<Expr>,
@@ -698,8 +708,37 @@ pub fn noop_fold_opt_lifetime<T: Folder>(o_lt: &Option<Lifetime>, fld: &mut T)
 }
 
 pub fn noop_fold_generics<T: Folder>(generics: &Generics, fld: &mut T) -> Generics {
-    Generics {ty_params: fld.fold_ty_params(generics.ty_params.as_slice()),
-              lifetimes: fld.fold_lifetime_defs(generics.lifetimes.as_slice())}
+    Generics {
+        ty_params: fld.fold_ty_params(generics.ty_params.as_slice()),
+        lifetimes: fld.fold_lifetime_defs(generics.lifetimes.as_slice()),
+        where_clause: fld.fold_where_clause(&generics.where_clause),
+    }
+}
+
+pub fn noop_fold_where_clause<T: Folder>(
+                              where_clause: &WhereClause,
+                              fld: &mut T)
+                              -> WhereClause {
+    WhereClause {
+        id: fld.new_id(where_clause.id),
+        predicates: where_clause.predicates.iter().map(|predicate| {
+            fld.fold_where_predicate(predicate)
+        }).collect(),
+    }
+}
+
+pub fn noop_fold_where_predicate<T: Folder>(
+                                 predicate: &WherePredicate,
+                                 fld: &mut T)
+                                 -> WherePredicate {
+    WherePredicate {
+        id: fld.new_id(predicate.id),
+        span: fld.new_span(predicate.span),
+        ident: fld.fold_ident(predicate.ident),
+        bounds: predicate.bounds.map(|x| {
+            fld.fold_ty_param_bound(x)
+        }),
+    }
 }
 
 pub fn noop_fold_struct_def<T: Folder>(struct_def: Gc<StructDef>,

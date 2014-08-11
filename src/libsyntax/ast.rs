@@ -245,6 +245,7 @@ pub struct TyParam {
 pub struct Generics {
     pub lifetimes: Vec<LifetimeDef>,
     pub ty_params: OwnedSlice<TyParam>,
+    pub where_clause: WhereClause,
 }
 
 impl Generics {
@@ -259,9 +260,23 @@ impl Generics {
     }
 }
 
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct WhereClause {
+    pub id: NodeId,
+    pub predicates: Vec<WherePredicate>,
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct WherePredicate {
+    pub id: NodeId,
+    pub span: Span,
+    pub ident: Ident,
+    pub bounds: OwnedSlice<TyParamBound>,
+}
+
 /// The set of MetaItems that define the compilation environment of the crate,
 /// used to drive conditional compilation
-pub type CrateConfig = Vec<Gc<MetaItem>> ;
+pub type CrateConfig = Vec<Gc<MetaItem>>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Crate {

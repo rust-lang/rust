@@ -781,6 +781,7 @@ impl<'a> Rebuilder<'a> {
         let mut inputs = self.fn_decl.inputs.clone();
         let mut output = self.fn_decl.output;
         let mut ty_params = self.generics.ty_params.clone();
+        let where_clause = self.generics.where_clause.clone();
         let mut kept_lifetimes = HashSet::new();
         for sr in self.same_regions.iter() {
             self.cur_anon.set(0);
@@ -807,7 +808,8 @@ impl<'a> Rebuilder<'a> {
                                              &fresh_lifetimes,
                                              &kept_lifetimes,
                                              &all_region_names,
-                                             ty_params);
+                                             ty_params,
+                                             where_clause);
         let new_fn_decl = ast::FnDecl {
             inputs: inputs,
             output: output,
@@ -981,7 +983,8 @@ impl<'a> Rebuilder<'a> {
                         add: &Vec<ast::Lifetime>,
                         keep: &HashSet<ast::Name>,
                         remove: &HashSet<ast::Name>,
-                        ty_params: OwnedSlice<ast::TyParam>)
+                        ty_params: OwnedSlice<ast::TyParam>,
+                        where_clause: ast::WhereClause)
                         -> ast::Generics {
         let mut lifetimes = Vec::new();
         for lt in add.iter() {
@@ -990,14 +993,14 @@ impl<'a> Rebuilder<'a> {
         }
         for lt in generics.lifetimes.iter() {
             if keep.contains(&lt.lifetime.name) ||
-                !remove.contains(&lt.lifetime.name)
-            {
+                !remove.contains(&lt.lifetime.name) {
                 lifetimes.push((*lt).clone());
             }
         }
         ast::Generics {
             lifetimes: lifetimes,
-            ty_params: ty_params
+            ty_params: ty_params,
+            where_clause: where_clause,
         }
     }
 
