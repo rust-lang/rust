@@ -93,7 +93,7 @@ pub struct Struct {
     pub generics: ast::Generics,
     pub attrs: Vec<ast::Attribute>,
     pub fields: Vec<ast::StructField>,
-    pub where: Span,
+    pub whence: Span,
 }
 
 pub struct Enum {
@@ -103,7 +103,7 @@ pub struct Enum {
     pub generics: ast::Generics,
     pub attrs: Vec<ast::Attribute>,
     pub id: NodeId,
-    pub where: Span,
+    pub whence: Span,
     pub name: Ident,
 }
 
@@ -114,7 +114,7 @@ pub struct Variant {
     pub id: ast::NodeId,
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
-    pub where: Span,
+    pub whence: Span,
 }
 
 pub struct Function {
@@ -125,7 +125,7 @@ pub struct Function {
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
     pub fn_style: ast::FnStyle,
-    pub where: Span,
+    pub whence: Span,
     pub generics: ast::Generics,
 }
 
@@ -135,7 +135,7 @@ pub struct Typedef {
     pub name: Ident,
     pub id: ast::NodeId,
     pub attrs: Vec<ast::Attribute>,
-    pub where: Span,
+    pub whence: Span,
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
 }
@@ -149,7 +149,7 @@ pub struct Static {
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
     pub id: ast::NodeId,
-    pub where: Span,
+    pub whence: Span,
 }
 
 pub struct Trait {
@@ -159,7 +159,7 @@ pub struct Trait {
     pub parents: Vec<ast::TraitRef>,
     pub attrs: Vec<ast::Attribute>,
     pub id: ast::NodeId,
-    pub where: Span,
+    pub whence: Span,
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
 }
@@ -170,7 +170,7 @@ pub struct Impl {
     pub for_: ast::P<ast::Ty>,
     pub items: Vec<ast::ImplItem>,
     pub attrs: Vec<ast::Attribute>,
-    pub where: Span,
+    pub whence: Span,
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
     pub id: ast::NodeId,
@@ -180,7 +180,7 @@ pub struct Macro {
     pub name: Ident,
     pub id: ast::NodeId,
     pub attrs: Vec<ast::Attribute>,
-    pub where: Span,
+    pub whence: Span,
     pub stab: Option<attr::Stability>,
 }
 

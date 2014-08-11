@@ -1053,6 +1053,10 @@ mod test {
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: Vec::new(),
                                         ty_params: OwnedSlice::empty(),
+                                        where_clause: ast::WhereClause {
+                                            id: ast::DUMMY_NODE_ID,
+                                            predicates: Vec::new(),
+                                        }
                                     },
                                     ast::P(ast::Block {
                                         view_items: Vec::new(),

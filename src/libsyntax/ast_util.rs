@@ -320,8 +320,14 @@ pub fn operator_prec(op: ast::BinOp) -> uint {
 pub static as_prec: uint = 12u;
 
 pub fn empty_generics() -> Generics {
-    Generics {lifetimes: Vec::new(),
-              ty_params: OwnedSlice::empty()}
+    Generics {
+        lifetimes: Vec::new(),
+        ty_params: OwnedSlice::empty(),
+        where_clause: WhereClause {
+            id: DUMMY_NODE_ID,
+            predicates: Vec::new(),
+        }
+    }
 }
 
 // ______________________________________________________________________

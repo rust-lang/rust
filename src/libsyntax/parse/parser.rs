@@ -60,7 +60,7 @@ use ast::{UnboxedClosureKind, UnboxedFnTy, UnboxedFnTyParamBound};
 use ast::{UnnamedField, UnsafeBlock};
 use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
-use ast::Visibility;
+use ast::{Visibility, WhereClause, WherePredicate};
 use ast;
 use ast_util::{as_prec, ident_to_path, lit_is_str, operator_prec};
 use ast_util;
@@ -1264,13 +1264,15 @@ impl<'a> Parser<'a> {
             let style = p.parse_fn_style();
             let ident = p.parse_ident();
 
-            let generics = p.parse_generics();
+            let mut generics = p.parse_generics();
 
             let (explicit_self, d) = p.parse_fn_decl_with_self(|p| {
                 // This is somewhat dubious; We don't want to allow argument
                 // names to be left off if there is a definition...
                 p.parse_arg_general(false)
             });
+
+            p.parse_where_clause(&mut generics);
 
             let hi = p.last_span.hi;
             match p.token {
@@ -3742,7 +3744,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse a set of optional generic type parameter declarations
+    /// Parse a set of optional generic type parameter declarations. Where
+    /// clauses are not parsed here, and must be added later via
+    /// `parse_where_clause()`.
+    ///
     /// matches generics = ( ) | ( < > ) | ( < typaramseq ( , )? > ) | ( < lifetimes ( , )? > )
     ///                  | ( < lifetimes , typaramseq ( , )? > )
     /// where   typaramseq = ( typaram ) | ( typaram , typaramseq )
@@ -3762,7 +3767,14 @@ impl<'a> Parser<'a> {
                 }
                 ty_param
             });
-            ast::Generics { lifetimes: lifetime_defs, ty_params: ty_params }
+            ast::Generics {
+                lifetimes: lifetime_defs,
+                ty_params: ty_params,
+                where_clause: WhereClause {
+                    id: ast::DUMMY_NODE_ID,
+                    predicates: Vec::new(),
+                }
+            }
         } else {
             ast_util::empty_generics()
         }
@@ -3785,6 +3797,52 @@ impl<'a> Parser<'a> {
             let span = self.span;
             self.span_fatal(span, "lifetime parameters must be declared \
                                         prior to type parameters");
+        }
+    }
+
+    /// Parses an optional `where` clause and places it in `generics`.
+    fn parse_where_clause(&mut self, generics: &mut ast::Generics) {
+        if !self.eat_keyword(keywords::Where) {
+            return
+        }
+
+        let mut parsed_something = false;
+        loop {
+            let lo = self.span.lo;
+            let ident = match self.token {
+                token::IDENT(..) => self.parse_ident(),
+                _ => break,
+            };
+            self.expect(&token::COLON);
+
+            let (_, bounds) = self.parse_ty_param_bounds(false);
+            let hi = self.span.hi;
+            let span = mk_sp(lo, hi);
+
+            if bounds.len() == 0 {
+                self.span_err(span,
+                              "each predicate in a `where` clause must have \
+                               at least one bound in it");
+            }
+
+            generics.where_clause.predicates.push(ast::WherePredicate {
+                id: ast::DUMMY_NODE_ID,
+                span: span,
+                ident: ident,
+                bounds: bounds,
+            });
+            parsed_something = true;
+
+            if !self.eat(&token::COMMA) {
+                break
+            }
+        }
+
+        if !parsed_something {
+            let last_span = self.last_span;
+            self.span_err(last_span,
+                          "a `where` clause must have at least one predicate \
+                           in it");
         }
     }
 
@@ -4143,8 +4201,9 @@ impl<'a> Parser<'a> {
 
     /// Parse an item-position function declaration.
     fn parse_item_fn(&mut self, fn_style: FnStyle, abi: abi::Abi) -> ItemInfo {
-        let (ident, generics) = self.parse_fn_header();
+        let (ident, mut generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(false);
+        self.parse_where_clause(&mut generics);
         let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         (ident, ItemFn(decl, fn_style, abi, generics, body), Some(inner_attrs))
     }
@@ -4200,10 +4259,11 @@ impl<'a> Parser<'a> {
                 };
                 let fn_style = self.parse_fn_style();
                 let ident = self.parse_ident();
-                let generics = self.parse_generics();
+                let mut generics = self.parse_generics();
                 let (explicit_self, decl) = self.parse_fn_decl_with_self(|p| {
                         p.parse_arg()
                     });
+                self.parse_where_clause(&mut generics);
                 let (inner_attrs, body) = self.parse_inner_attrs_and_block();
                 let new_attrs = attrs.append(inner_attrs.as_slice());
                 (ast::MethDecl(ident,
@@ -4228,7 +4288,7 @@ impl<'a> Parser<'a> {
     /// Parse trait Foo { ... }
     fn parse_item_trait(&mut self) -> ItemInfo {
         let ident = self.parse_ident();
-        let tps = self.parse_generics();
+        let mut tps = self.parse_generics();
         let sized = self.parse_for_sized();
 
         // Parse traits, if necessary.
@@ -4239,6 +4299,8 @@ impl<'a> Parser<'a> {
         } else {
             traits = Vec::new();
         }
+
+        self.parse_where_clause(&mut tps);
 
         let meths = self.parse_trait_methods();
         (ident, ItemTrait(tps, sized, traits, meths), None)
@@ -4261,7 +4323,7 @@ impl<'a> Parser<'a> {
     ///    impl<T> ToString for ~[T] { ... }
     fn parse_item_impl(&mut self) -> ItemInfo {
         // First, parse type parameters if necessary.
-        let generics = self.parse_generics();
+        let mut generics = self.parse_generics();
 
         // Special case: if the next identifier that follows is '(', don't
         // allow this to be parsed as a trait.
@@ -4297,6 +4359,7 @@ impl<'a> Parser<'a> {
             None
         };
 
+        self.parse_where_clause(&mut generics);
         let (impl_items, attrs) = self.parse_impl_items();
 
         let ident = ast_util::impl_pretty_name(&opt_trait, &*ty);
@@ -4326,7 +4389,7 @@ impl<'a> Parser<'a> {
     /// Parse struct Foo { ... }
     fn parse_item_struct(&mut self, is_virtual: bool) -> ItemInfo {
         let class_name = self.parse_ident();
-        let generics = self.parse_generics();
+        let mut generics = self.parse_generics();
 
         let super_struct = if self.eat(&token::COLON) {
             let ty = self.parse_ty(true);
@@ -4342,6 +4405,8 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+
+        self.parse_where_clause(&mut generics);
 
         let mut fields: Vec<StructField>;
         let is_tuple_like;
@@ -4683,8 +4748,9 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         self.expect_keyword(keywords::Fn);
 
-        let (ident, generics) = self.parse_fn_header();
+        let (ident, mut generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(true);
+        self.parse_where_clause(&mut generics);
         let hi = self.span.hi;
         self.expect(&token::SEMI);
         box(GC) ast::ForeignItem { ident: ident,
@@ -4834,7 +4900,8 @@ impl<'a> Parser<'a> {
     /// Parse type Foo = Bar;
     fn parse_item_type(&mut self) -> ItemInfo {
         let ident = self.parse_ident();
-        let tps = self.parse_generics();
+        let mut tps = self.parse_generics();
+        self.parse_where_clause(&mut tps);
         self.expect(&token::EQ);
         let ty = self.parse_ty(true);
         self.expect(&token::SEMI);
@@ -4925,7 +4992,8 @@ impl<'a> Parser<'a> {
     /// Parse an "enum" declaration
     fn parse_item_enum(&mut self) -> ItemInfo {
         let id = self.parse_ident();
-        let generics = self.parse_generics();
+        let mut generics = self.parse_generics();
+        self.parse_where_clause(&mut generics);
         self.expect(&token::LBRACE);
 
         let enum_definition = self.parse_enum_def(&generics);
