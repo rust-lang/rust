@@ -42,6 +42,7 @@ pub enum PpSourceMode {
     PpmTyped,
     PpmIdentified,
     PpmExpandedIdentified,
+    PpmExpandedHygiene,
 }
 
 #[deriving(PartialEq, Show)]
@@ -59,6 +60,7 @@ pub fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<UserIdentifie
         "expanded"     => PpmSource(PpmExpanded),
         "typed"        => PpmSource(PpmTyped),
         "expanded,identified" => PpmSource(PpmExpandedIdentified),
+        "expanded,hygiene" => PpmSource(PpmExpandedHygiene),
         "identified"   => PpmSource(PpmIdentified),
         "flowgraph"    => PpmFlowGraph,
         _ => {
@@ -104,6 +106,10 @@ impl PpSourceMode {
 
             PpmIdentified | PpmExpandedIdentified => {
                 let annotation = IdentifiedAnnotation { sess: sess, ast_map: ast_map };
+                f(&annotation, payload)
+            }
+            PpmExpandedHygiene => {
+                let annotation = HygieneAnnotation { sess: sess, ast_map: ast_map };
                 f(&annotation, payload)
             }
             PpmTyped => {
@@ -191,6 +197,8 @@ impl pprust::PpAnn for IdentifiedAnnotation {
             s: &mut pprust::State,
             node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
+            pprust::NodeIdent(_) | pprust::NodeName(_) => Ok(()),
+
             pprust::NodeItem(item) => {
                 try!(pp::space(&mut s.s));
                 s.synth_comment(item.id.to_string())
@@ -211,6 +219,46 @@ impl pprust::PpAnn for IdentifiedAnnotation {
         }
     }
 }
+
+struct HygieneAnnotation {
+    sess: Session,
+    ast_map: Option<ast_map::Map>,
+}
+
+impl PrinterSupport for HygieneAnnotation {
+    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self as &pprust::PpAnn }
+}
+
+impl SessionCarrier for HygieneAnnotation {
+    fn sess<'a>(&'a self) -> &'a Session { &self.sess }
+}
+
+impl AstMapCarrier for HygieneAnnotation {
+    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map> {
+        self.ast_map.as_ref()
+    }
+}
+
+impl pprust::PpAnn for HygieneAnnotation {
+    fn post(&self,
+            s: &mut pprust::State,
+            node: pprust::AnnNode) -> io::IoResult<()> {
+        match node {
+            pprust::NodeIdent(&ast::Ident { name: ast::Name(nm), ctxt }) => {
+                try!(pp::space(&mut s.s));
+                // FIXME #16420: this doesn't display the connections
+                // between syntax contexts
+                s.synth_comment(format!("{}#{}", nm, ctxt))
+            }
+            pprust::NodeName(&ast::Name(nm)) => {
+                try!(pp::space(&mut s.s));
+                s.synth_comment(nm.to_string())
+            }
+            _ => Ok(())
+        }
+    }
+}
+
 
 struct TypedAnnotation {
     analysis: CrateAnalysis,
@@ -364,6 +412,7 @@ fn needs_ast_map(ppm: &PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
 
         PpmSource(PpmExpanded) |
         PpmSource(PpmExpandedIdentified) |
+        PpmSource(PpmExpandedHygiene) |
         PpmSource(PpmTyped) |
         PpmFlowGraph => true
     }
@@ -376,6 +425,7 @@ fn needs_expansion(ppm: &PpMode) -> bool {
 
         PpmSource(PpmExpanded) |
         PpmSource(PpmExpandedIdentified) |
+        PpmSource(PpmExpandedHygiene) |
         PpmSource(PpmTyped) |
         PpmFlowGraph => true
     }
