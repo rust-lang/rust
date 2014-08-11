@@ -1122,7 +1122,7 @@ pub fn memcpy_ty(bcx: &Block, dst: ValueRef, src: ValueRef, t: ty::t) {
         let llalign = llalign_of_min(ccx, llty);
         call_memcpy(bcx, dst, src, llsz, llalign as u32);
     } else {
-        Store(bcx, Load(bcx, src), dst);
+        store_ty(bcx, Load(bcx, src), dst, t);
     }
 }
 
@@ -1546,7 +1546,7 @@ pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block, retty: ty::t) {
 
     let retslot = Load(ret_cx, fcx.llretslotptr.get().unwrap());
     let retptr = Value(retslot);
-    let retval = match retptr.get_dominating_store(ret_cx) {
+    match retptr.get_dominating_store(ret_cx) {
         // If there's only a single store to the ret slot, we can directly return
         // the value that was stored and omit the store and the alloca
         Some(s) => {
@@ -1557,21 +1557,28 @@ pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block, retty: ty::t) {
                 retptr.erase_from_parent();
             }
 
-            if ty::type_is_bool(retty) {
+            let retval = if ty::type_is_bool(retty) {
                 Trunc(ret_cx, retval, Type::i1(fcx.ccx))
             } else {
                 retval
+            };
+
+            if fcx.caller_expects_out_pointer {
+                store_ty(ret_cx, retval, get_param(fcx.llfn, 0), retty);
+                return RetVoid(ret_cx);
+            } else {
+                return Ret(ret_cx, retval);
             }
         }
-        // Otherwise, load the return value from the ret slot
-        None => load_ty(ret_cx, retslot, retty)
-    };
-
-    if fcx.caller_expects_out_pointer {
-        store_ty(ret_cx, retval, get_param(fcx.llfn, 0), retty);
-        RetVoid(ret_cx);
-    } else {
-        Ret(ret_cx, retval);
+        // Otherwise, copy the return value to the ret slot
+        None => {
+            if fcx.caller_expects_out_pointer {
+                memcpy_ty(ret_cx, get_param(fcx.llfn, 0), retslot, retty);
+                return RetVoid(ret_cx);
+            } else {
+                return Ret(ret_cx, load_ty(ret_cx, retslot, retty));
+            }
+        }
     }
 }
 
