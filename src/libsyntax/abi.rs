@@ -147,7 +147,7 @@ impl fmt::Show for Os {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             OsLinux => "linux".fmt(f),
-            OsWindows => "win32".fmt(f),
+            OsWindows => "windows".fmt(f),
             OsMacos => "macos".fmt(f),
             OsiOS => "ios".fmt(f),
             OsAndroid => "android".fmt(f),

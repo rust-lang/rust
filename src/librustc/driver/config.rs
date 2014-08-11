@@ -390,7 +390,7 @@ pub fn default_lib_output() -> CrateType {
 
 pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let tos = match sess.targ_cfg.os {
-        abi::OsWindows =>   InternedString::new("win32"),
+        abi::OsWindows =>   InternedString::new("windows"),
         abi::OsMacos =>     InternedString::new("macos"),
         abi::OsLinux =>     InternedString::new("linux"),
         abi::OsAndroid =>   InternedString::new("android"),
@@ -454,6 +454,7 @@ pub fn get_os(triple: &str) -> Option<abi::Os> {
 static os_names : &'static [(&'static str, abi::Os)] = &[
     ("mingw32",   abi::OsWindows),
     ("win32",     abi::OsWindows),
+    ("windows",   abi::OsWindows),
     ("darwin",    abi::OsMacos),
     ("android",   abi::OsAndroid),
     ("linux",     abi::OsLinux),
