@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:called `Result::unwrap()` on an `Err` value
+// error-pattern:called `Result::assert()` on an `Err` value
 
 extern crate debug;
 
 use std::result;
 
 fn main() {
-    println!("{:?}", result::Err::<int,String>("kitty".to_string()).unwrap());
+    println!("{:?}", result::Err::<int,String>("kitty".to_string()).assert());
 }

@@ -145,7 +145,7 @@ pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
         rtdebug!("caught {}", (*my_ep).uwe.exception_class);
         let cause = (*my_ep).cause.take();
         uw::_Unwind_DeleteException(ep);
-        Err(cause.unwrap())
+        Err(cause.assert())
     };
 
     extern fn try_fn(code: *mut c_void, env: *mut c_void) {
@@ -519,7 +519,7 @@ pub fn begin_unwind_fmt(msg: &fmt::Arguments, file_line: &(&'static str, uint)) 
     let mut v = Vec::new();
     let _ = write!(&mut VecWriter { v: &mut v }, "{}", msg);
 
-    begin_unwind_inner(box String::from_utf8(v).unwrap(), file_line)
+    begin_unwind_inner(box String::from_utf8(v).assert(), file_line)
 }
 
 /// This is the entry point of unwinding for fail!() and assert!().

@@ -40,15 +40,15 @@ struct Noise2DContext {
 
 impl Noise2DContext {
     fn new() -> Noise2DContext {
-        let mut rng = StdRng::new().unwrap();
+        let mut rng = StdRng::new().assert();
 
         let mut rgradients = [Vec2 { x: 0.0, y: 0.0 }, ..256];
-        for x in rgradients.mut_iter() {
+        for x in rgradients.iter_mut() {
             *x = random_gradient(&mut rng);
         }
 
         let mut permutations = [0i32, ..256];
-        for (i, x) in permutations.mut_iter().enumerate() {
+        for (i, x) in permutations.iter_mut().enumerate() {
             *x = i as i32;
         }
         rng.shuffle(permutations);

@@ -126,7 +126,7 @@ pub fn def_to_path(tcx: &ty::ctxt, id: DefId) -> Path {
             identifier: Ident::new(elem.name()),
             lifetimes: vec!(),
             types: OwnedSlice::empty()
-        }).move_iter().collect(),
+        }).iter_owned().collect(),
         span: DUMMY_SP,
     })
 }

@@ -352,9 +352,9 @@ cgoptions!(
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
 {
     let mut cg = basic_codegen_options();
-    for option in matches.opt_strs("C").move_iter() {
+    for option in matches.opt_strs("C").iter_owned() {
         let mut iter = option.as_slice().splitn('=', 1);
-        let key = iter.next().unwrap();
+        let key = iter.next().assert();
         let value = iter.next();
         let option_to_lookup = key.replace("-", "_");
         let mut found = false;
@@ -442,7 +442,7 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
     if sess.opts.test {
         append_configuration(&mut user_cfg, InternedString::new("test"))
     }
-    user_cfg.move_iter().collect::<Vec<_>>().append(default_cfg.as_slice())
+    user_cfg.iter_owned().collect::<Vec<_>>().append(default_cfg.as_slice())
 }
 
 pub fn get_os(triple: &str) -> Option<abi::Os> {
@@ -585,7 +585,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
-    cfgspecs.move_iter().map(|s| {
+    cfgspecs.iter_owned().map(|s| {
         parse::parse_meta_from_source_str("cfgspec".to_string(),
                                           s.to_string(),
                                           Vec::new(),
@@ -607,7 +607,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let mut describe_lints = false;
 
     for &level in [lint::Allow, lint::Warn, lint::Deny, lint::Forbid].iter() {
-        for lint_name in matches.opt_strs(level.as_str()).move_iter() {
+        for lint_name in matches.opt_strs(level.as_str()).iter_owned() {
             if lint_name.as_slice() == "help" {
                 describe_lints = true;
             } else {

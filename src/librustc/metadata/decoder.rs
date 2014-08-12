@@ -62,7 +62,7 @@ fn lookup_hash<'a>(d: rbml::Doc<'a>, eq_fn: |&[u8]| -> bool,
     let table = reader::get_doc(index, tag_index_table);
     let hash_pos = table.start + (hash % 256 * 4) as uint;
     let pos = u64_from_be_bytes(d.data, hash_pos, 4) as uint;
-    let tagged_doc = reader::doc_at(d.data, pos).unwrap();
+    let tagged_doc = reader::doc_at(d.data, pos).assert();
 
     let belt = tag_index_buckets_bucket_elt;
 
@@ -70,7 +70,7 @@ fn lookup_hash<'a>(d: rbml::Doc<'a>, eq_fn: |&[u8]| -> bool,
     reader::tagged_docs(tagged_doc.doc, belt, |elt| {
         let pos = u64_from_be_bytes(elt.data, elt.start, 4) as uint;
         if eq_fn(elt.data.slice(elt.start + 4, elt.end)) {
-            ret = Some(reader::doc_at(d.data, pos).unwrap().doc);
+            ret = Some(reader::doc_at(d.data, pos).assert().doc);
             false
         } else {
             true
@@ -423,7 +423,7 @@ pub fn get_stability(cdata: Cmd, id: ast::NodeId) -> Option<attr::Stability> {
     let item = lookup_item(id, cdata.data());
     reader::maybe_get_doc(item, tag_items_data_item_stability).map(|doc| {
         let mut decoder = reader::Decoder::new(doc);
-        Decodable::decode(&mut decoder).unwrap()
+        Decodable::decode(&mut decoder).assert()
     })
 }
 
@@ -831,7 +831,7 @@ pub fn get_item_variances(cdata: Cmd, id: ast::NodeId) -> ty::ItemVariances {
     let item_doc = lookup_item(id, data);
     let variance_doc = reader::get_doc(item_doc, tag_item_variances);
     let mut decoder = reader::Decoder::new(variance_doc);
-    Decodable::decode(&mut decoder).unwrap()
+    Decodable::decode(&mut decoder).assert()
 }
 
 pub fn get_provided_trait_methods(intr: Rc<IdentInterner>, cdata: Cmd,
@@ -1045,7 +1045,7 @@ fn get_meta_items(md: rbml::Doc) -> Vec<Gc<ast::MetaItem>> {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = token::intern_and_get_ident(nd.as_str_slice());
         let subitems = get_meta_items(meta_item_doc);
-        items.push(attr::mk_list_item(n, subitems.move_iter().collect()));
+        items.push(attr::mk_list_item(n, subitems.iter_owned().collect()));
         true
     });
     return items;
@@ -1259,7 +1259,7 @@ pub fn get_native_libraries(cdata: Cmd)
         let kind_doc = reader::get_doc(lib_doc, tag_native_libraries_kind);
         let name_doc = reader::get_doc(lib_doc, tag_native_libraries_name);
         let kind: cstore::NativeLibaryKind =
-            FromPrimitive::from_u32(reader::doc_as_u32(kind_doc)).unwrap();
+            FromPrimitive::from_u32(reader::doc_as_u32(kind_doc)).assert();
         let name = name_doc.as_str().to_string();
         result.push((kind, name));
         true
@@ -1269,7 +1269,7 @@ pub fn get_native_libraries(cdata: Cmd)
 
 pub fn get_plugin_registrar_fn(data: &[u8]) -> Option<ast::NodeId> {
     reader::maybe_get_doc(rbml::Doc::new(data), tag_plugin_registrar_fn)
-        .map(|doc| FromPrimitive::from_u32(reader::doc_as_u32(doc)).unwrap())
+        .map(|doc| FromPrimitive::from_u32(reader::doc_as_u32(doc)).assert())
 }
 
 pub fn get_exported_macros(data: &[u8]) -> Vec<String> {
@@ -1293,9 +1293,9 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
     debug!("found dylib deps: {}", formats.as_str_slice());
     for spec in formats.as_str_slice().split(',') {
         if spec.len() == 0 { continue }
-        let cnum = spec.split(':').nth(0).unwrap();
-        let link = spec.split(':').nth(1).unwrap();
-        let cnum = from_str(cnum).unwrap();
+        let cnum = spec.split(':').nth(0).assert();
+        let link = spec.split(':').nth(1).assert();
+        let cnum = from_str(cnum).assert();
         let cnum = match cdata.cnum_map.find(&cnum) {
             Some(&n) => n,
             None => fail!("didn't find a crate in the cnum_map")
@@ -1316,7 +1316,7 @@ pub fn get_missing_lang_items(cdata: Cmd)
     let mut result = Vec::new();
     reader::tagged_docs(items, tag_lang_items_missing, |missing_doc| {
         let item: lang_items::LangItem =
-            FromPrimitive::from_u32(reader::doc_as_u32(missing_doc)).unwrap();
+            FromPrimitive::from_u32(reader::doc_as_u32(missing_doc)).assert();
         result.push(item);
         true
     });

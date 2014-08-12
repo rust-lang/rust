@@ -1135,11 +1135,11 @@ let ys = xs; // copies `Cons(u32, pointer)` shallowly
 
 > *Note:* Names like `xs` and `ys` are a naming
 > convention for collection-like data structures
-> (like our `List`). These collections are given 
-> names appended with 's' to signify plurality, 
-> i.e. that the data structure stores multiple 
-> elements.  For example, `xs` in this case can 
-> be read as "a list of ex-es", where "x" here 
+> (like our `List`). These collections are given
+> names appended with 's' to signify plurality,
+> i.e. that the data structure stores multiple
+> elements.  For example, `xs` in this case can
+> be read as "a list of ex-es", where "x" here
 > are elements of type `u32`.
 
 
@@ -1648,7 +1648,7 @@ numbers.push(4);
 numbers.push(5);
 
 // The type of a unique vector is written as `Vec<int>`
-let more_numbers: Vec<int> = numbers.move_iter().map(|i| i+1).collect();
+let more_numbers: Vec<int> = numbers.iter_owned().map(|i| i+1).collect();
 
 // The original `numbers` value can no longer be used, due to move semantics.
 
@@ -1692,7 +1692,7 @@ alter the length.
 
 ~~~
 let mut xs = [1i, 2i, 3i];
-let view = xs.mut_slice(0, 2);
+let view = xs.slice_mut(0, 2);
 view[0] = 5;
 
 // The type of a mutable slice is written as `&mut [T]`

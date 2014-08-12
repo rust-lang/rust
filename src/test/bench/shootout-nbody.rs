@@ -72,11 +72,11 @@ fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: int) {
     for _ in range(0, steps) {
         let mut b_slice = bodies.as_mut_slice();
         loop {
-            let bi = match b_slice.mut_shift_ref() {
+            let bi = match b_slice.shift_mut() {
                 Some(bi) => bi,
                 None => break
             };
-            for bj in b_slice.mut_iter() {
+            for bj in b_slice.iter_mut() {
                 let dx = bi.x - bj.x;
                 let dy = bi.y - bj.y;
                 let dz = bi.z - bj.z;

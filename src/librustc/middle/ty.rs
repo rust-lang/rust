@@ -2339,7 +2339,7 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
                 seen.push(did);
                 let fields = struct_fields(cx, did, substs);
                 let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
-                seen.pop().unwrap();
+                seen.pop().assert();
                 r
             }
 
@@ -2365,7 +2365,7 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
                         type_requires(cx, seen, r_ty, sty)
                     })
                 });
-                seen.pop().unwrap();
+                seen.pop().assert();
                 r
             }
         };

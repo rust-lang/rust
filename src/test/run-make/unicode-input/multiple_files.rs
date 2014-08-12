@@ -29,7 +29,7 @@ fn random_char() -> char {
         _ => (0x10400, 0x1044f)
     };
 
-    char::from_u32(rng.gen_range(lo, hi + 1)).unwrap()
+    char::from_u32(rng.gen_range(lo, hi + 1)).assert()
 }
 
 fn main() {
@@ -39,14 +39,14 @@ fn main() {
 
     let main_file = tmpdir.join("unicode_input_multiple_files_main.rs");
     {
-        let _ = File::create(&main_file).unwrap()
+        let _ = File::create(&main_file).assert()
             .write_str("mod unicode_input_multiple_files_chars;");
     }
 
     for _ in range(0u, 100) {
         {
             let randoms = tmpdir.join("unicode_input_multiple_files_chars.rs");
-            let mut w = File::create(&randoms).unwrap();
+            let mut w = File::create(&randoms).assert();
             for _ in range(0u, 30) {
                 let _ = w.write_char(random_char());
             }
@@ -59,8 +59,8 @@ fn main() {
                              .arg(format!("{} {}",
                                           rustc,
                                           main_file.as_str()
-                                                   .unwrap()).as_slice())
-                             .output().unwrap();
+                                                   .assert()).as_slice())
+                             .output().assert();
         let err = String::from_utf8_lossy(result.error.as_slice());
 
         // positive test so that this test will be updated when the

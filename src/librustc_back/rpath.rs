@@ -47,7 +47,7 @@ pub fn get_rpath_flags(config: RPathConfig) -> Vec<String> {
     debug!("preparing the RPATH!");
 
     let libs = config.used_crates.clone();
-    let libs = libs.move_iter().filter_map(|(_, l)| {
+    let libs = libs.iter_owned().filter_map(|(_, l)| {
         l.map(|p| p.clone())
     }).collect::<Vec<_>>();
 
@@ -117,9 +117,9 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig,
         abi::OsWin32 | abi::OsiOS => unreachable!()
     };
 
-    let mut lib = (config.realpath)(&os::make_absolute(lib)).unwrap();
+    let mut lib = (config.realpath)(&os::make_absolute(lib)).assert();
     lib.pop();
-    let mut output = (config.realpath)(&os::make_absolute(&config.out_filename)).unwrap();
+    let mut output = (config.realpath)(&os::make_absolute(&config.out_filename)).assert();
     output.pop();
     let relative = lib.path_relative_from(&output);
     let relative = relative.expect("could not create rpath relative to output");

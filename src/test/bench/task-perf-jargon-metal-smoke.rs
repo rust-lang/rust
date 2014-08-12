@@ -45,11 +45,11 @@ fn main() {
     } else if args.len() <= 1 {
         vec!("".to_string(), "100".to_string())
     } else {
-        args.clone().move_iter().collect()
+        args.clone().iter_owned().collect()
     };
 
     let (tx, rx) = channel();
-    child_generation(from_str::<uint>(args.get(1).as_slice()).unwrap(), tx);
+    child_generation(from_str::<uint>(args.get(1).as_slice()).assert(), tx);
     if rx.recv_opt().is_err() {
         fail!("it happened when we slumbered");
     }

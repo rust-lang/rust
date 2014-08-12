@@ -53,7 +53,7 @@ impl BasicLoop {
     /// Process everything in the work queue (continually)
     fn work(&mut self) {
         while self.work.len() > 0 {
-            for work in mem::replace(&mut self.work, vec![]).move_iter() {
+            for work in mem::replace(&mut self.work, vec![]).iter_owned() {
                 work();
             }
         }
@@ -63,7 +63,7 @@ impl BasicLoop {
         let messages = unsafe {
             mem::replace(&mut *self.messages.lock(), Vec::new())
         };
-        for message in messages.move_iter() {
+        for message in messages.iter_owned() {
             self.message(message);
         }
     }
@@ -71,14 +71,14 @@ impl BasicLoop {
     fn message(&mut self, message: Message) {
         match message {
             RunRemote(i) => {
-                match self.remotes.mut_iter().find(|& &(id, _)| id == i) {
+                match self.remotes.iter_mut().find(|& &(id, _)| id == i) {
                     Some(&(_, ref mut f)) => f.call(),
                     None => unreachable!()
                 }
             }
             RemoveRemote(i) => {
                 match self.remotes.iter().position(|&(id, _)| id == i) {
-                    Some(i) => { self.remotes.remove(i).unwrap(); }
+                    Some(i) => { self.remotes.remove(i).assert(); }
                     None => unreachable!()
                 }
             }
@@ -89,7 +89,7 @@ impl BasicLoop {
     fn idle(&mut self) {
         match self.idle {
             Some(ref mut idle) => {
-                if self.idle_active.get_ref().load(atomic::SeqCst) {
+                if self.idle_active.as_ref().assert().load(atomic::SeqCst) {
                     idle.call();
                 }
             }
@@ -98,7 +98,7 @@ impl BasicLoop {
     }
 
     fn has_idle(&self) -> bool {
-        self.idle.is_some() && self.idle_active.get_ref().load(atomic::SeqCst)
+        self.idle.is_some() && self.idle_active.as_ref().assert().load(atomic::SeqCst)
     }
 }
 

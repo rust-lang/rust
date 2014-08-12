@@ -650,10 +650,10 @@ impl<'a> MethodDef<'a> {
             _ => Some(ast::Arg::new_self(trait_.span, ast::MutImmutable, special_idents::self_))
         };
         let args = {
-            let args = arg_types.move_iter().map(|(name, ty)| {
+            let args = arg_types.iter_owned().map(|(name, ty)| {
                     cx.arg(trait_.span, name, ty)
                 });
-            self_arg.move_iter().chain(args).collect()
+            self_arg.iter_owned().chain(args).collect()
         };
 
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
@@ -1253,7 +1253,7 @@ impl<'a> TraitDef<'a> {
         let pattern = if struct_type == Record {
             let field_pats = subpats.iter().zip(ident_expr.iter()).map(|(&pat, &(_, id, _))| {
                 // id is guaranteed to be Some
-                ast::FieldPat { ident: id.unwrap(), pat: pat }
+                ast::FieldPat { ident: id.assert(), pat: pat }
             }).collect();
             cx.pat_struct(self.span, matching_path, field_pats)
         } else {

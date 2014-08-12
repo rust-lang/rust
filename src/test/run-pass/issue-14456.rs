@@ -38,9 +38,9 @@ fn main() {
 }
 
 fn child() {
-    io::stdout().write_line("foo").unwrap();
-    io::stderr().write_line("bar").unwrap();
-    assert_eq!(io::stdin().read_line().err().unwrap().kind, io::EndOfFile);
+    io::stdout().write_line("foo").assert();
+    io::stderr().write_line("bar").assert();
+    assert_eq!(io::stdin().read_line().err().assert().kind, io::EndOfFile);
 }
 
 fn test() {
@@ -49,7 +49,7 @@ fn test() {
                                      .stdin(process::Ignored)
                                      .stdout(process::Ignored)
                                      .stderr(process::Ignored)
-                                     .spawn().unwrap();
-    assert!(p.wait().unwrap().success());
+                                     .spawn().assert();
+    assert!(p.wait().assert().success());
 }
 

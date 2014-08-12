@@ -56,8 +56,8 @@ fn run(args: &[String]) {
     let (to_parent, from_child) = channel();
     let (to_child, from_parent) = channel();
 
-    let size = from_str::<uint>(args[1].as_slice()).unwrap();
-    let workers = from_str::<uint>(args[2].as_slice()).unwrap();
+    let size = from_str::<uint>(args[1].as_slice()).assert();
+    let workers = from_str::<uint>(args[2].as_slice()).assert();
     let num_bytes = 100;
     let start = time::precise_time_s();
     let mut worker_results = Vec::new();
@@ -75,8 +75,8 @@ fn run(args: &[String]) {
         server(&from_parent, &to_parent);
     });
 
-    for r in worker_results.move_iter() {
-        r.unwrap();
+    for r in worker_results.iter_owned() {
+        r.assert();
     }
 
     //println!("sending stop message");
@@ -99,7 +99,7 @@ fn main() {
     } else if args.len() <= 1u {
         vec!("".to_string(), "10000".to_string(), "4".to_string())
     } else {
-        args.move_iter().map(|x| x.to_string()).collect()
+        args.iter_owned().map(|x| x.to_string()).collect()
     };
 
     println!("{}", args);

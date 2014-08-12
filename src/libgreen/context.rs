@@ -170,12 +170,12 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
     // x86 has interesting stack alignment requirements, so do some alignment
     // plus some offsetting to figure out what the actual stack should be.
     let sp = align_down(sp);
-    let sp = mut_offset(sp, -4);
+    let sp = offset_mut(sp, -4);
 
-    unsafe { *mut_offset(sp, 2) = procedure.env as uint };
-    unsafe { *mut_offset(sp, 1) = procedure.code as uint };
-    unsafe { *mut_offset(sp, 0) = arg as uint };
-    let sp = mut_offset(sp, -1);
+    unsafe { *offset_mut(sp, 2) = procedure.env as uint };
+    unsafe { *offset_mut(sp, 1) = procedure.code as uint };
+    unsafe { *offset_mut(sp, 0) = arg as uint };
+    let sp = offset_mut(sp, -1);
     unsafe { *sp = 0 }; // The final return address
 
     regs.esp = sp as u32;
@@ -228,7 +228,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
     static RUSTRT_R15: uint = 7;
 
     let sp = align_down(sp);
-    let sp = mut_offset(sp, -1);
+    let sp = offset_mut(sp, -1);
 
     // The final return address. 0 indicates the bottom of the stack
     unsafe { *sp = 0; }
@@ -269,7 +269,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 
     let sp = align_down(sp);
     // sp of arm eabi is 8-byte aligned
-    let sp = mut_offset(sp, -2);
+    let sp = offset_mut(sp, -2);
 
     // The final return address. 0 indicates the bottom of the stack
     unsafe { *sp = 0; }
@@ -299,7 +299,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
                          procedure: raw::Procedure, sp: *mut uint) {
     let sp = align_down(sp);
     // sp of mips o32 is 8-byte aligned
-    let sp = mut_offset(sp, -2);
+    let sp = offset_mut(sp, -2);
 
     // The final return address. 0 indicates the bottom of the stack
     unsafe { *sp = 0; }
@@ -317,9 +317,9 @@ fn align_down(sp: *mut uint) -> *mut uint {
     sp as *mut uint
 }
 
-// ptr::mut_offset is positive ints only
+// ptr::offset_mut is positive ints only
 #[inline]
-pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
+pub fn offset_mut<T>(ptr: *mut T, count: int) -> *mut T {
     use std::mem::size_of;
     (ptr as int + count * (size_of::<T>() as int)) as *mut T
 }

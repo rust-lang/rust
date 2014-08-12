@@ -38,17 +38,17 @@ fn main() {
 fn test() {
     // If we're the parent, copy our own binary to a tempr directory, and then
     // make it executable.
-    let dir = TempDir::new("mytest").unwrap();
-    let me = os::self_exe_name().unwrap();
+    let dir = TempDir::new("mytest").assert();
+    let me = os::self_exe_name().assert();
     let dest = dir.path().join(format!("mytest{}", os::consts::EXE_SUFFIX));
-    fs::copy(&me, &dest).unwrap();
+    fs::copy(&me, &dest).assert();
 
     // Append the temp directory to our own PATH.
     let mut path = os::split_paths(os::getenv("PATH").unwrap_or(String::new()));
     path.push(dir.path().clone());
-    let path = os::join_paths(path.as_slice()).unwrap();
+    let path = os::join_paths(path.as_slice()).assert();
 
     Command::new("mytest").env("PATH", path.as_slice())
                           .arg("child")
-                          .spawn().unwrap();
+                          .spawn().assert();
 }

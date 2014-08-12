@@ -125,7 +125,7 @@ impl AttributeMethods for Attribute {
     /// non-sugared doc attributes.)
     fn desugar_doc(&self) -> Attribute {
         if self.node.is_sugared_doc {
-            let comment = self.value_str().unwrap();
+            let comment = self.value_str().assert();
             let meta = mk_name_value_item_str(
                 InternedString::new("doc"),
                 token::intern_and_get_ident(strip_doc_comment_decoration(
@@ -254,7 +254,7 @@ pub fn sort_meta_items(items: &[Gc<MetaItem>]) -> Vec<Gc<MetaItem>> {
     v.sort_by(|&(ref a, _), &(ref b, _)| a.cmp(b));
 
     // There doesn't seem to be a more optimal way to do this
-    v.move_iter().map(|(_, m)| {
+    v.iter_owned().map(|(_, m)| {
         match m.node {
             MetaList(ref n, ref mis) => {
                 box(GC) Spanned {

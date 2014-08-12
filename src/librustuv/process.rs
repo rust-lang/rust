@@ -60,7 +60,7 @@ impl Process {
         let mut ret_io = Vec::with_capacity(io.len());
         unsafe {
             stdio.set_len(io.len());
-            for (slot, other) in stdio.mut_iter().zip(io.iter()) {
+            for (slot, other) in stdio.iter_mut().zip(io.iter()) {
                 let io = set_stdio(slot as *mut uvll::uv_stdio_container_t, other,
                                    io_loop);
                 ret_io.push(io);
@@ -297,7 +297,7 @@ impl rtio::RtioProcess for Process {
             self.timer = Some(timer);
         }
 
-        let timer = self.timer.get_mut_ref();
+        let timer = self.timer.as_mut().assert();
         timer.stop();
         timer.start(timer_cb, ms, 0);
         self.timeout_state = TimeoutPending;

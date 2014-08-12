@@ -1048,7 +1048,7 @@ fn add_unsized_bound(ccx: &CrateCtxt,
         }
         _ if kind_id.is_ok() => {
             ty::try_add_builtin_trait(ccx.tcx,
-                                      kind_id.unwrap(),
+                                      kind_id.assert(),
                                       bounds);
         }
         // No lang item for Sized, so we can't add it as a bound.

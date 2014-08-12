@@ -98,7 +98,7 @@ pub fn expand_register_diagnostic(ecx: &mut ExtCtxt, span: Span,
     let sym = Ident::new(token::gensym((
         "__register_diagnostic_".to_string() + token::get_ident(*code).get()
     ).as_slice()));
-    MacItem::new(quote_item!(ecx, mod $sym {}).unwrap())
+    MacItem::new(quote_item!(ecx, mod $sym {}).assert())
 }
 
 pub fn expand_build_diagnostic_array(ecx: &mut ExtCtxt, span: Span,
@@ -129,5 +129,5 @@ pub fn expand_build_diagnostic_array(ecx: &mut ExtCtxt, span: Span,
     });
     MacItem::new(quote_item!(ecx,
         pub static $name: [(&'static str, &'static str), ..$count] = $expr;
-    ).unwrap())
+    ).assert())
 }

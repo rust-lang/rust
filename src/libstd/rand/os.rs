@@ -271,7 +271,7 @@ mod test {
 
     #[test]
     fn test_os_rng() {
-        let mut r = OsRng::new().unwrap();
+        let mut r = OsRng::new().assert();
 
         r.next_u32();
         r.next_u64();
@@ -293,7 +293,7 @@ mod test {
 
                 // deschedule to attempt to interleave things as much
                 // as possible (XXX: is this a good test?)
-                let mut r = OsRng::new().unwrap();
+                let mut r = OsRng::new().assert();
                 task::deschedule();
                 let mut v = [0u8, .. 1000];
 

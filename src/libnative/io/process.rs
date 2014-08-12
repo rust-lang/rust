@@ -312,7 +312,7 @@ fn spawn_process_os(cfg: ProcessConfig,
             if b"PATH" != key.as_bytes_no_nul() { continue }
 
             // Split the value and test each path to see if the program exists.
-            for path in os::split_paths(v.as_bytes_no_nul()).move_iter() {
+            for path in os::split_paths(v.as_bytes_no_nul()).iter_owned() {
                 let path = path.join(cfg.program.as_bytes_no_nul())
                                .with_extension(os::consts::EXE_EXTENSION);
                 if path.exists() {
@@ -346,7 +346,7 @@ fn spawn_process_os(cfg: ProcessConfig,
                     let size = mem::size_of::<libc::SECURITY_ATTRIBUTES>();
                     let mut sa = libc::SECURITY_ATTRIBUTES {
                         nLength: size as libc::DWORD,
-                        lpSecurityDescriptor: ptr::mut_null(),
+                        lpSecurityDescriptor: ptr::null_mut(),
                         bInheritHandle: 1,
                     };
                     let filename: Vec<u16> = "NUL".utf16_units().collect();
@@ -358,7 +358,7 @@ fn spawn_process_os(cfg: ProcessConfig,
                                               &mut sa,
                                               libc::OPEN_EXISTING,
                                               0,
-                                              ptr::mut_null());
+                                              ptr::null_mut());
                     if *slot == INVALID_HANDLE_VALUE {
                         return Err(super::last_error())
                     }
@@ -398,8 +398,8 @@ fn spawn_process_os(cfg: ProcessConfig,
                 cmd_str = cmd_str.append_one(0);
                 let created = CreateProcessW(ptr::null(),
                                              cmd_str.as_mut_ptr(),
-                                             ptr::mut_null(),
-                                             ptr::mut_null(),
+                                             ptr::null_mut(),
+                                             ptr::null_mut(),
                                              TRUE,
                                              flags, envp, dirp,
                                              &mut si, &mut pi);
@@ -436,9 +436,9 @@ fn spawn_process_os(cfg: ProcessConfig,
 fn zeroed_startupinfo() -> libc::types::os::arch::extra::STARTUPINFO {
     libc::types::os::arch::extra::STARTUPINFO {
         cb: 0,
-        lpReserved: ptr::mut_null(),
-        lpDesktop: ptr::mut_null(),
-        lpTitle: ptr::mut_null(),
+        lpReserved: ptr::null_mut(),
+        lpDesktop: ptr::null_mut(),
+        lpTitle: ptr::null_mut(),
         dwX: 0,
         dwY: 0,
         dwXSize: 0,
@@ -449,7 +449,7 @@ fn zeroed_startupinfo() -> libc::types::os::arch::extra::STARTUPINFO {
         dwFlags: 0,
         wShowWindow: 0,
         cbReserved2: 0,
-        lpReserved2: ptr::mut_null(),
+        lpReserved2: ptr::null_mut(),
         hStdInput: libc::INVALID_HANDLE_VALUE,
         hStdOutput: libc::INVALID_HANDLE_VALUE,
         hStdError: libc::INVALID_HANDLE_VALUE,
@@ -459,8 +459,8 @@ fn zeroed_startupinfo() -> libc::types::os::arch::extra::STARTUPINFO {
 #[cfg(windows)]
 fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMATION {
     libc::types::os::arch::extra::PROCESS_INFORMATION {
-        hProcess: ptr::mut_null(),
-        hThread: ptr::mut_null(),
+        hProcess: ptr::null_mut(),
+        hThread: ptr::null_mut(),
         dwProcessId: 0,
         dwThreadId: 0
     }
@@ -595,7 +595,7 @@ fn spawn_process_os(cfg: ProcessConfig,
                     Err(..) => {
                         Ok(SpawnProcessResult {
                             pid: pid,
-                            handle: ptr::mut_null()
+                            handle: ptr::null_mut()
                         })
                     }
                     Ok(..) => fail!("short read on the cloexec pipe"),
@@ -795,8 +795,8 @@ fn with_envp<T>(env: Option<&[(&CString, &CString)]>, cb: |*mut c_void| -> T) ->
 
             for pair in env.iter() {
                 let kv = format!("{}={}",
-                                 pair.ref0().as_str().unwrap(),
-                                 pair.ref1().as_str().unwrap());
+                                 pair.ref0().as_str().assert(),
+                                 pair.ref1().as_str().assert());
                 blk.extend(kv.as_slice().utf16_units());
                 blk.push(0);
             }
@@ -805,7 +805,7 @@ fn with_envp<T>(env: Option<&[(&CString, &CString)]>, cb: |*mut c_void| -> T) ->
 
             cb(blk.as_mut_ptr() as *mut c_void)
         }
-        _ => cb(ptr::mut_null())
+        _ => cb(ptr::null_mut())
     }
 }
 
@@ -1010,8 +1010,8 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
         unsafe {
             let mut pipes = [0, ..2];
             assert_eq!(libc::pipe(pipes.as_mut_ptr()), 0);
-            util::set_nonblocking(pipes[0], true).ok().unwrap();
-            util::set_nonblocking(pipes[1], true).ok().unwrap();
+            util::set_nonblocking(pipes[0], true).ok().assert();
+            util::set_nonblocking(pipes[1], true).ok().assert();
             WRITE_FD = pipes[1];
 
             let mut old: c::sigaction = mem::zeroed();
@@ -1027,7 +1027,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
     fn waitpid_helper(input: libc::c_int,
                       messages: Receiver<Req>,
                       (read_fd, old): (libc::c_int, c::sigaction)) {
-        util::set_nonblocking(input, true).ok().unwrap();
+        util::set_nonblocking(input, true).ok().assert();
         let mut set: c::fd_set = unsafe { mem::zeroed() };
         let mut tv: libc::timeval;
         let mut active = Vec::<(libc::pid_t, Sender<rtio::ProcessExit>, u64)>::new();
@@ -1049,14 +1049,14 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
                     tv = util::ms_to_timeval(ms);
                     (&mut tv as *mut _, idx)
                 }
-                None => (ptr::mut_null(), -1),
+                None => (ptr::null_mut(), -1),
             };
 
             // Wait for something to happen
             c::fd_set(&mut set, input);
             c::fd_set(&mut set, read_fd);
-            match unsafe { c::select(max, &mut set, ptr::mut_null(),
-                                     ptr::mut_null(), p) } {
+            match unsafe { c::select(max, &mut set, ptr::null_mut(),
+                                     ptr::null_mut(), p) } {
                 // interrupted, retry
                 -1 if os::errno() == libc::EINTR as int => continue,
 
@@ -1128,7 +1128,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
         // Once this helper thread is done, we re-register the old sigchld
         // handler and close our intermediate file descriptors.
         unsafe {
-            assert_eq!(c::sigaction(c::SIGCHLD, &old, ptr::mut_null()), 0);
+            assert_eq!(c::sigaction(c::SIGCHLD, &old, ptr::null_mut()), 0);
             let _ = libc::close(read_fd);
             let _ = libc::close(WRITE_FD);
             WRITE_FD = -1;

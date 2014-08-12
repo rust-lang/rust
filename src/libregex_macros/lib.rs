@@ -283,7 +283,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
                     t.groups[1] = groups[1];
                 }
                 Submatches => {
-                    for (slot, val) in t.groups.mut_iter().zip(groups.iter()) {
+                    for (slot, val) in t.groups.iter_mut().zip(groups.iter()) {
                         *slot = *val;
                     }
                 }
@@ -449,7 +449,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
                                 return StepMatch
                             }
                             Submatches => {
-                                for (slot, val) in groups.mut_iter().zip(caps.iter()) {
+                                for (slot, val) in groups.iter_mut().zip(caps.iter()) {
                                     *slot = *val;
                                 }
                                 return StepMatch
@@ -479,9 +479,9 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
                     let casei = flags & FLAG_NOCASE > 0;
                     let get_char =
                         if casei {
-                            quote_expr!(self.cx, self.chars.prev.unwrap().to_uppercase())
+                            quote_expr!(self.cx, self.chars.prev.assert().to_uppercase())
                         } else {
-                            quote_expr!(self.cx, self.chars.prev.unwrap())
+                            quote_expr!(self.cx, self.chars.prev.assert())
                         };
                     let negcond =
                         if negate {

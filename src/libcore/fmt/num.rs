@@ -37,25 +37,25 @@ trait GenericRadix {
         // The radix can be as low as 2, so we need a buffer of at least 64
         // characters for a base 2 number.
         let mut buf = [0u8, ..64];
-        let base = cast(self.base()).unwrap();
+        let base = cast(self.base()).assert();
         let mut curr = buf.len();
         let is_positive = x >= zero();
         if is_positive {
             // Accumulate each digit of the number from the least significant
             // to the most significant figure.
-            for byte in buf.mut_iter().rev() {
+            for byte in buf.iter_mut().rev() {
                 let n = x % base;                         // Get the current place value.
                 x = x / base;                             // Deaccumulate the number.
-                *byte = self.digit(cast(n).unwrap());     // Store the digit in the buffer.
+                *byte = self.digit(cast(n).assert());     // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero() { break; }                 // No more digits left to accumulate.
             }
         } else {
             // Do the same as above, but accounting for two's complement.
-            for byte in buf.mut_iter().rev() {
+            for byte in buf.iter_mut().rev() {
                 let n = -(x % base);                      // Get the current place value.
                 x = x / base;                             // Deaccumulate the number.
-                *byte = self.digit(cast(n).unwrap());     // Store the digit in the buffer.
+                *byte = self.digit(cast(n).assert());     // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero() { break; }                 // No more digits left to accumulate.
             }

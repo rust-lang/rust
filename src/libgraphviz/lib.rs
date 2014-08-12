@@ -56,7 +56,7 @@ struct Edges(Vec<Ed>);
 
 pub fn render_to<W:Writer>(output: &mut W) {
     let edges = Edges(vec!((0,1), (0,2), (1,3), (2,3), (3,4), (4,4)));
-    dot::render(&edges, output).unwrap()
+    dot::render(&edges, output).assert()
 }
 
 impl<'a> dot::Labeller<'a, Nd, Ed> for Edges {
@@ -159,7 +159,7 @@ pub fn render_to<W:Writer>(output: &mut W) {
     let edges = vec!((0,1), (0,2), (1,3), (2,3));
     let graph = Graph { nodes: nodes, edges: edges };
 
-    dot::render(&graph, output).unwrap()
+    dot::render(&graph, output).assert()
 }
 
 impl<'a> dot::Labeller<'a, Nd, Ed<'a>> for Graph {
@@ -215,7 +215,7 @@ pub fn render_to<W:Writer>(output: &mut W) {
     let edges = vec!((0,1), (0,2), (1,3), (2,3));
     let graph = Graph { nodes: nodes, edges: edges };
 
-    dot::render(&graph, output).unwrap()
+    dot::render(&graph, output).assert()
 }
 
 impl<'a> dot::Labeller<'a, Nd<'a>, Ed<'a>> for Graph {
@@ -355,7 +355,7 @@ impl<'a> Id<'a> {
         let name = name.into_maybe_owned();
         {
             let mut chars = name.as_slice().chars();
-            assert!(is_letter_or_underscore(chars.next().unwrap()));
+            assert!(is_letter_or_underscore(chars.next().assert()));
             assert!(chars.all(is_constituent));
         }
         return Id{ name: name };
@@ -588,12 +588,12 @@ mod tests {
         fn to_opt_strs(self) -> Vec<Option<&'static str>> {
             match self {
                 UnlabelledNodes(len)
-                    => Vec::from_elem(len, None).move_iter().collect(),
+                    => Vec::from_elem(len, None).iter_owned().collect(),
                 AllNodesLabelled(lbls)
-                    => lbls.move_iter().map(
+                    => lbls.iter_owned().map(
                         |l|Some(l)).collect(),
                 SomeNodesLabelled(lbls)
-                    => lbls.move_iter().collect(),
+                    => lbls.iter_owned().collect(),
             }
         }
     }
@@ -689,8 +689,8 @@ mod tests {
 
     fn test_input(g: LabelledGraph) -> IoResult<String> {
         let mut writer = MemWriter::new();
-        render(&g, &mut writer).unwrap();
-        let mut r = BufReader::new(writer.get_ref());
+        render(&g, &mut writer).assert();
+        let mut r = BufReader::new(writer.as_ref().assert());
         r.read_to_string()
     }
 
@@ -702,7 +702,7 @@ mod tests {
     fn empty_graph() {
         let labels : Trivial = UnlabelledNodes(0);
         let r = test_input(LabelledGraph::new("empty_graph", labels, vec!()));
-        assert_eq!(r.unwrap().as_slice(),
+        assert_eq!(r.assert().as_slice(),
 r#"digraph empty_graph {
 }
 "#);
@@ -712,7 +712,7 @@ r#"digraph empty_graph {
     fn single_node() {
         let labels : Trivial = UnlabelledNodes(1);
         let r = test_input(LabelledGraph::new("single_node", labels, vec!()));
-        assert_eq!(r.unwrap().as_slice(),
+        assert_eq!(r.assert().as_slice(),
 r#"digraph single_node {
     N0[label="N0"];
 }
@@ -724,7 +724,7 @@ r#"digraph single_node {
         let labels : Trivial = UnlabelledNodes(2);
         let result = test_input(LabelledGraph::new("single_edge", labels,
                                                    vec!(edge(0, 1, "E"))));
-        assert_eq!(result.unwrap().as_slice(),
+        assert_eq!(result.assert().as_slice(),
 r#"digraph single_edge {
     N0[label="N0"];
     N1[label="N1"];
@@ -738,7 +738,7 @@ r#"digraph single_edge {
         let labels : Trivial = UnlabelledNodes(1);
         let r = test_input(LabelledGraph::new("single_cyclic_node", labels,
                                               vec!(edge(0, 0, "E"))));
-        assert_eq!(r.unwrap().as_slice(),
+        assert_eq!(r.assert().as_slice(),
 r#"digraph single_cyclic_node {
     N0[label="N0"];
     N0 -> N0[label="E"];
@@ -753,7 +753,7 @@ r#"digraph single_cyclic_node {
             "hasse_diagram", labels,
             vec!(edge(0, 1, ""), edge(0, 2, ""),
                  edge(1, 3, ""), edge(2, 3, ""))));
-        assert_eq!(r.unwrap().as_slice(),
+        assert_eq!(r.assert().as_slice(),
 r#"digraph hasse_diagram {
     N0[label="{x,y}"];
     N1[label="{x}"];
@@ -788,11 +788,11 @@ r#"digraph hasse_diagram {
             vec!(edge(0, 1, "then"), edge(0, 2, "else"),
                  edge(1, 3, ";"),    edge(2, 3, ";"   )));
 
-        render(&g, &mut writer).unwrap();
-        let mut r = BufReader::new(writer.get_ref());
+        render(&g, &mut writer).assert();
+        let mut r = BufReader::new(writer.as_ref().assert());
         let r = r.read_to_string();
 
-        assert_eq!(r.unwrap().as_slice(),
+        assert_eq!(r.assert().as_slice(),
 r#"digraph syntax_tree {
     N0[label="if test {\l    branch1\l} else {\l    branch2\l}\lafterward\l"];
     N1[label="branch1"];

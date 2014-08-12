@@ -416,11 +416,11 @@ impl<'a> Context<'a> {
                 (file.slice(rlib_prefix.len(), file.len() - ".rlib".len()),
                  true)
             } else if dypair.map_or(false, |(_, suffix)| {
-                file.starts_with(dylib_prefix.get_ref().as_slice()) &&
+                file.starts_with(dylib_prefix.as_ref().assert().as_slice()) &&
                 file.ends_with(suffix)
             }) {
-                let (_, suffix) = dypair.unwrap();
-                let dylib_prefix = dylib_prefix.get_ref().as_slice();
+                let (_, suffix) = dypair.assert();
+                let dylib_prefix = dylib_prefix.as_ref().assert().as_slice();
                 (file.slice(dylib_prefix.len(), file.len() - suffix.len()),
                  false)
             } else {
@@ -432,9 +432,9 @@ impl<'a> Context<'a> {
             });
             let (ref mut rlibs, ref mut dylibs) = *slot;
             if rlib {
-                rlibs.insert(fs::realpath(path).unwrap());
+                rlibs.insert(fs::realpath(path).assert());
             } else {
-                dylibs.insert(fs::realpath(path).unwrap());
+                dylibs.insert(fs::realpath(path).assert());
             }
             FileMatches
         });
@@ -448,7 +448,7 @@ impl<'a> Context<'a> {
         // libraries corresponds to the crate id and hash criteria that this
         // search is being performed for.
         let mut libraries = Vec::new();
-        for (_hash, (rlibs, dylibs)) in candidates.move_iter() {
+        for (_hash, (rlibs, dylibs)) in candidates.iter_owned() {
             let mut metadata = None;
             let rlib = self.extract_one(rlibs, "rlib", &mut metadata);
             let dylib = self.extract_one(dylibs, "dylib", &mut metadata);
@@ -469,7 +469,7 @@ impl<'a> Context<'a> {
         // libraries or not.
         match libraries.len() {
             0 => None,
-            1 => Some(libraries.move_iter().next().unwrap()),
+            1 => Some(libraries.iter_owned().next().assert()),
             _ => {
                 self.sess.span_err(self.span,
                     format!("multiple matching crates for `{}`",
@@ -520,11 +520,11 @@ impl<'a> Context<'a> {
             if m.len() == 0 {
                 return None
             } else if m.len() == 1 {
-                return Some(m.move_iter().next().unwrap())
+                return Some(m.iter_owned().next().assert())
             }
         }
 
-        for lib in m.move_iter() {
+        for lib in m.iter_owned() {
             info!("{} reading metadata from: {}", flavor, lib.display());
             let metadata = match get_metadata_section(self.os, &lib) {
                 Ok(blob) => {
@@ -548,7 +548,7 @@ impl<'a> Context<'a> {
                                            self.crate_name).as_slice());
                 self.sess.span_note(self.span,
                                     format!(r"candidate #1: {}",
-                                            ret.get_ref()
+                                            ret.as_ref().assert()
                                                .display()).as_slice());
                 error = 1;
                 ret = None;
@@ -642,7 +642,7 @@ impl<'a> Context<'a> {
                                  loc.display()).as_slice());
                 return false;
             }
-            let file = loc.filename_str().unwrap();
+            let file = loc.filename_str().assert();
             if file.starts_with("lib") && file.ends_with(".rlib") {
                 return true
             } else {
@@ -665,7 +665,7 @@ impl<'a> Context<'a> {
         let mut rlibs = HashSet::new();
         let mut dylibs = HashSet::new();
         for loc in locs {
-            if loc.filename_str().unwrap().ends_with(".rlib") {
+            if loc.filename_str().assert().ends_with(".rlib") {
                 rlibs.insert(loc.clone());
             } else {
                 dylibs.insert(loc.clone());
@@ -737,7 +737,7 @@ fn get_metadata_section_imp(os: abi::Os, filename: &Path) -> Result<MetadataBlob
     if !filename.exists() {
         return Err(format!("no such file: '{}'", filename.display()));
     }
-    if filename.filename_str().unwrap().ends_with(".rlib") {
+    if filename.filename_str().assert().ends_with(".rlib") {
         // Use ArchiveRO for speed here, it's backed by LLVM and uses mmap
         // internally to read the file. We also avoid even using a memcpy by
         // just keeping the archive along while the metadata is in use.

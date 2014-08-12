@@ -28,7 +28,7 @@ fn main() {
     let my_args = os::args();
     let my_cwd  = os::getcwd();
     let my_env  = os::env();
-    let my_path = Path::new(os::self_exe_name().unwrap());
+    let my_path = Path::new(os::self_exe_name().assert());
     let my_dir  = my_path.dir_path();
     let my_ext  = my_path.extension_str().unwrap_or("");
 
@@ -59,7 +59,7 @@ fn main() {
                         .arg(arg)
                         .cwd(&cwd)
                         .env_set_all(my_env.append_one(env).as_slice())
-                        .spawn().unwrap().wait_with_output().unwrap();
+                        .spawn().assert().wait_with_output().assert();
 
         // display the output
         assert!(io::stdout().write(p.output.as_slice()).is_ok());

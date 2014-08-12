@@ -739,14 +739,14 @@ impl <'l> DxrVisitor<'l> {
                     match provenence {
                         def::FromTrait(def_id) =>
                             Some(ty::trait_methods(&self.analysis.ty_cx, def_id)
-                                .iter().find(|mr| mr.ident.name == m.ident.name).unwrap().def_id),
+                                .iter().find(|mr| mr.ident.name == m.ident.name).assert().def_id),
                         def::FromImpl(def_id) => {
                             let impl_methods = self.analysis.ty_cx.impl_methods.borrow();
                             Some(*impl_methods.get(&def_id)
                                 .iter().find(|mr|
                                     ty::method(
                                         &self.analysis.ty_cx, **mr).ident.name == m.ident.name)
-                                .unwrap())
+                                .assert())
                         }
                     }
                 } else {

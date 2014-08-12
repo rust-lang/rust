@@ -362,7 +362,7 @@ impl Task {
     /// caller.
     pub fn take_runtime(&mut self) -> Box<Runtime + Send> {
         assert!(self.imp.is_some());
-        self.imp.take().unwrap()
+        self.imp.take().assert()
     }
 
     /// Attempts to extract the runtime as a specific type. If the runtime does
@@ -384,7 +384,7 @@ impl Task {
         //      function, and I would be saddened if more usage of the function
         //      crops up.
         unsafe {
-            let imp = self.imp.take_unwrap();
+            let imp = self.imp.take().assert();
             let vtable = mem::transmute::<_, &raw::TraitObject>(&imp).vtable;
             match imp.wrap().downcast::<T>() {
                 Ok(t) => Some(t),
@@ -407,7 +407,7 @@ impl Task {
     pub fn spawn_sibling(mut self: Box<Task>,
                          opts: TaskOpts,
                          f: proc(): Send) {
-        let ops = self.imp.take_unwrap();
+        let ops = self.imp.take().assert();
         ops.spawn_sibling(self, opts, f)
     }
 
@@ -417,7 +417,7 @@ impl Task {
     pub fn deschedule(mut self: Box<Task>,
                       amt: uint,
                       f: |BlockedTask| -> ::core::result::Result<(), BlockedTask>) {
-        let ops = self.imp.take_unwrap();
+        let ops = self.imp.take().assert();
         ops.deschedule(amt, self, f)
     }
 
@@ -425,7 +425,7 @@ impl Task {
     /// current task can accept a change in scheduling. This function can only
     /// be called on tasks that were previously blocked in `deschedule`.
     pub fn reawaken(mut self: Box<Task>) {
-        let ops = self.imp.take_unwrap();
+        let ops = self.imp.take().assert();
         ops.reawaken(self);
     }
 
@@ -433,14 +433,14 @@ impl Task {
     /// eventually return, but possibly not immediately. This is used as an
     /// opportunity to allow other tasks a chance to run.
     pub fn yield_now(mut self: Box<Task>) {
-        let ops = self.imp.take_unwrap();
+        let ops = self.imp.take().assert();
         ops.yield_now(self);
     }
 
     /// Similar to `yield_now`, except that this function may immediately return
     /// without yielding (depending on what the runtime decides to do).
     pub fn maybe_yield(mut self: Box<Task>) {
-        let ops = self.imp.take_unwrap();
+        let ops = self.imp.take().assert();
         ops.maybe_yield(self);
     }
 
@@ -448,20 +448,20 @@ impl Task {
     /// stored in the task's runtime. This factory may not always be available,
     /// which is why the return type is `Option`
     pub fn local_io<'a>(&'a mut self) -> Option<LocalIo<'a>> {
-        self.imp.get_mut_ref().local_io()
+        self.imp.as_mut().assert().local_io()
     }
 
     /// Returns the stack bounds for this task in (lo, hi) format. The stack
     /// bounds may not be known for all tasks, so the return value may be
     /// `None`.
     pub fn stack_bounds(&self) -> (uint, uint) {
-        self.imp.get_ref().stack_bounds()
+        self.imp.as_ref().assert().stack_bounds()
     }
 
     /// Returns whether it is legal for this task to block the OS thread that it
     /// is running on.
     pub fn can_block(&self) -> bool {
-        self.imp.get_ref().can_block()
+        self.imp.as_ref().assert().can_block()
     }
 
     /// Consume this task, flagging it as a candidate for destruction.
@@ -591,10 +591,10 @@ mod test {
     fn tls() {
         local_data_key!(key: Gc<String>)
         key.replace(Some(box(GC) "data".to_string()));
-        assert_eq!(key.get().unwrap().as_slice(), "data");
+        assert_eq!(key.get().assert().as_slice(), "data");
         local_data_key!(key2: Gc<String>)
         key2.replace(Some(box(GC) "data".to_string()));
-        assert_eq!(key2.get().unwrap().as_slice(), "data");
+        assert_eq!(key2.get().assert().as_slice(), "data");
     }
 
     #[test]
@@ -610,7 +610,7 @@ mod test {
     #[test]
     fn rng() {
         use std::rand::{StdRng, Rng};
-        let mut r = StdRng::new().ok().unwrap();
+        let mut r = StdRng::new().ok().assert();
         let _ = r.next_u32();
     }
 
@@ -662,7 +662,7 @@ mod test {
     #[test]
     fn block_and_wake() {
         let task = box Task::new();
-        let mut task = BlockedTask::block(task).wake().unwrap();
+        let mut task = BlockedTask::block(task).wake().assert();
         task.drop();
     }
 }

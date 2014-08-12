@@ -228,7 +228,7 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
 
         let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
         let (start, end) = self.compute_id_range(cfgidx);
-        let gens = self.gens.mut_slice(start, end);
+        let gens = self.gens.slice_mut(start, end);
         set_bit(gens, bit);
     }
 
@@ -241,14 +241,14 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
 
         let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
         let (start, end) = self.compute_id_range(cfgidx);
-        let kills = self.kills.mut_slice(start, end);
+        let kills = self.kills.slice_mut(start, end);
         set_bit(kills, bit);
     }
 
     fn apply_gen_kill(&self, cfgidx: CFGIndex, bits: &mut [uint]) {
         //! Applies the gen and kill sets for `cfgidx` to `bits`
         debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [before]",
-               self.analysis_name, cfgidx, mut_bits_to_string(bits));
+               self.analysis_name, cfgidx, bits_to_string_mut(bits));
         assert!(self.bits_per_id > 0);
 
         let (start, end) = self.compute_id_range(cfgidx);
@@ -258,7 +258,7 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         bitwise(bits, kills, &Subtract);
 
         debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [after]",
-               self.analysis_name, cfgidx, mut_bits_to_string(bits));
+               self.analysis_name, cfgidx, bits_to_string_mut(bits));
     }
 
     fn compute_id_range(&self, cfgidx: CFGIndex) -> (uint, uint) {
@@ -414,12 +414,12 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
             }
 
             if changed {
-                let bits = self.kills.mut_slice(start, end);
+                let bits = self.kills.slice_mut(start, end);
                 debug!("{:s} add_kills_from_flow_exits flow_exit={} bits={} [before]",
-                       self.analysis_name, flow_exit, mut_bits_to_string(bits));
+                       self.analysis_name, flow_exit, bits_to_string_mut(bits));
                 bits.copy_from(orig_kills.as_slice());
                 debug!("{:s} add_kills_from_flow_exits flow_exit={} bits={} [after]",
-                       self.analysis_name, flow_exit, mut_bits_to_string(bits));
+                       self.analysis_name, flow_exit, bits_to_string_mut(bits));
             }
             true
         });
@@ -453,7 +453,7 @@ impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
 
         debug!("Dataflow result for {:s}:", self.analysis_name);
         debug!("{}", {
-            self.pretty_print_to(box io::stderr(), blk).unwrap();
+            self.pretty_print_to(box io::stderr(), blk).assert();
             ""
         });
     }
@@ -497,7 +497,7 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
 
     fn reset(&mut self, bits: &mut [uint]) {
         let e = if self.dfcx.oper.initial_value() {uint::MAX} else {0};
-        for b in bits.mut_iter() {
+        for b in bits.iter_mut() {
             *b = e;
         }
     }
@@ -524,7 +524,7 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
         let (start, end) = self.dfcx.compute_id_range(cfgidx);
         let changed = {
             // (scoping mutable borrow of self.dfcx.on_entry)
-            let on_entry = self.dfcx.on_entry.mut_slice(start, end);
+            let on_entry = self.dfcx.on_entry.slice_mut(start, end);
             bitwise(on_entry, pred_bits, &self.dfcx.oper)
         };
         if changed {
@@ -536,7 +536,7 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
     }
 }
 
-fn mut_bits_to_string(words: &mut [uint]) -> String {
+fn bits_to_string_mut(words: &mut [uint]) -> String {
     bits_to_string(words)
 }
 
@@ -565,7 +565,7 @@ fn bitwise<Op:BitwiseOperator>(out_vec: &mut [uint],
                                op: &Op) -> bool {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
-    for (out_elt, in_elt) in out_vec.mut_iter().zip(in_vec.iter()) {
+    for (out_elt, in_elt) in out_vec.iter_mut().zip(in_vec.iter()) {
         let old_val = *out_elt;
         let new_val = op.join(old_val, *in_elt);
         *out_elt = new_val;
@@ -576,7 +576,7 @@ fn bitwise<Op:BitwiseOperator>(out_vec: &mut [uint],
 
 fn set_bit(words: &mut [uint], bit: uint) -> bool {
     debug!("set_bit: words={} bit={}",
-           mut_bits_to_string(words), bit_str(bit));
+           bits_to_string_mut(words), bit_str(bit));
     let word = bit / uint::BITS;
     let bit_in_word = bit % uint::BITS;
     let bit_mask = 1 << bit_in_word;

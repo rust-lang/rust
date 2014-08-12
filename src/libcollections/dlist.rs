@@ -62,24 +62,32 @@ impl<'a, T> Clone for Items<'a, T> {
 }
 
 /// Double-ended mutable DList iterator
-pub struct MutItems<'a, T> {
+pub struct ItemsMut<'a, T> {
     list: &'a mut DList<T>,
     head: Rawlink<Node<T>>,
     tail: Rawlink<Node<T>>,
     nelem: uint,
 }
 
+/// Deprecated: renamed to `ItemsMut`.
+#[deprecated = "renamed to ItemsMut"]
+pub type MutItems<'a, T> = ItemsMut<'a, T>;
+
 /// DList consuming iterator
 #[deriving(Clone)]
-pub struct MoveItems<T> {
+pub struct ItemsOwned<T> {
     list: DList<T>
 }
+
+/// Deprecated: renamed to `ItemsOwned`.
+#[deprecated = "renamed to ItemsOwned"]
+pub type MoveItems<T> = ItemsOwned<T>;
 
 /// Rawlink is a type like Option<T> but for holding a raw pointer
 impl<T> Rawlink<T> {
     /// Like Option::None for Rawlink
     fn none() -> Rawlink<T> {
-        Rawlink{p: ptr::mut_null()}
+        Rawlink{p: ptr::null_mut()}
     }
 
     /// Like Option::Some for Rawlink
@@ -421,7 +429,7 @@ impl<T> DList<T> {
     /// ```
     pub fn insert_when(&mut self, elt: T, f: |&T, &T| -> bool) {
         {
-            let mut it = self.mut_iter();
+            let mut it = self.iter_mut();
             loop {
                 match it.peek_next() {
                     None => break,
@@ -440,7 +448,7 @@ impl<T> DList<T> {
     /// O(max(N, M))
     pub fn merge(&mut self, mut other: DList<T>, f: |&T, &T| -> bool) {
         {
-            let mut it = self.mut_iter();
+            let mut it = self.iter_mut();
             loop {
                 let take_a = match (it.peek_next(), other.front()) {
                     (_   , None) => return,
@@ -450,7 +458,7 @@ impl<T> DList<T> {
                 if take_a {
                     it.next();
                 } else {
-                    it.insert_next_node(other.pop_front_node().unwrap());
+                    it.insert_next_node(other.pop_front_node().assert());
                 }
             }
         }
@@ -460,18 +468,23 @@ impl<T> DList<T> {
 
     /// Provide a forward iterator
     #[inline]
-    pub fn iter<'a>(&'a self) -> Items<'a, T> {
+    pub fn iter(&self) -> Items<T> {
         Items{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
     }
 
+    /// Deprecated. Use `iter_mut` instead.
+    #[inline]
+    #[deprecated = "use iter_mut instead"]
+    pub fn mut_iter(&mut self) -> ItemsMut<T> { self.iter_mut() }
+
     /// Provide a forward iterator with mutable references
     #[inline]
-    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
+    pub fn iter_mut(&mut self) -> ItemsMut<T> {
         let head_raw = match self.list_head {
             Some(ref mut h) => Rawlink::some(&mut **h),
             None => Rawlink::none(),
         };
-        MutItems{
+        ItemsMut{
             nelem: self.len(),
             head: head_raw,
             tail: self.list_tail,
@@ -479,11 +492,14 @@ impl<T> DList<T> {
         }
     }
 
+    /// Deprecated. Use `iter_owned` instead.
+    #[inline]
+    pub fn move_iter(self) -> ItemsOwned<T> { self.iter_owned() }
 
     /// Consume the list into an iterator yielding elements by value
     #[inline]
-    pub fn move_iter(self) -> MoveItems<T> {
-        MoveItems{list: self}
+    pub fn iter_owned(self) -> ItemsOwned<T> {
+        ItemsOwned{list: self}
     }
 }
 
@@ -555,7 +571,7 @@ impl<'a, A> DoubleEndedIterator<&'a A> for Items<'a, A> {
 
 impl<'a, A> ExactSize<&'a A> for Items<'a, A> {}
 
-impl<'a, A> Iterator<&'a mut A> for MutItems<'a, A> {
+impl<'a, A> Iterator<&'a mut A> for ItemsMut<'a, A> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut A> {
         if self.nelem == 0 {
@@ -577,7 +593,7 @@ impl<'a, A> Iterator<&'a mut A> for MutItems<'a, A> {
     }
 }
 
-impl<'a, A> DoubleEndedIterator<&'a mut A> for MutItems<'a, A> {
+impl<'a, A> DoubleEndedIterator<&'a mut A> for ItemsMut<'a, A> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut A> {
         if self.nelem == 0 {
@@ -591,7 +607,7 @@ impl<'a, A> DoubleEndedIterator<&'a mut A> for MutItems<'a, A> {
     }
 }
 
-impl<'a, A> ExactSize<&'a mut A> for MutItems<'a, A> {}
+impl<'a, A> ExactSize<&'a mut A> for ItemsMut<'a, A> {}
 
 /// Allow mutating the DList while iterating
 pub trait ListInsertion<A> {
@@ -604,8 +620,8 @@ pub trait ListInsertion<A> {
     fn peek_next<'a>(&'a mut self) -> Option<&'a mut A>;
 }
 
-// private methods for MutItems
-impl<'a, A> MutItems<'a, A> {
+// private methods for ItemsMut
+impl<'a, A> ItemsMut<'a, A> {
     fn insert_next_node(&mut self, mut ins_node: Box<Node<A>>) {
         // Insert before `self.head` so that it is between the
         // previously yielded element and self.head.
@@ -618,7 +634,7 @@ impl<'a, A> MutItems<'a, A> {
                     None => return self.list.push_front_node(ins_node),
                     Some(prev) => prev,
                 };
-                let node_own = prev_node.next.take_unwrap();
+                let node_own = prev_node.next.take().assert();
                 ins_node.next = link_with_prev(node_own, Rawlink::some(&mut *ins_node));
                 prev_node.next = link_with_prev(ins_node, Rawlink::some(prev_node));
                 self.list.length += 1;
@@ -627,7 +643,7 @@ impl<'a, A> MutItems<'a, A> {
     }
 }
 
-impl<'a, A> ListInsertion<A> for MutItems<'a, A> {
+impl<'a, A> ListInsertion<A> for ItemsMut<'a, A> {
     #[inline]
     fn insert_next(&mut self, elt: A) {
         self.insert_next_node(box Node::new(elt))
@@ -642,7 +658,7 @@ impl<'a, A> ListInsertion<A> for MutItems<'a, A> {
     }
 }
 
-impl<A> Iterator<A> for MoveItems<A> {
+impl<A> Iterator<A> for ItemsOwned<A> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.list.pop_front() }
 
@@ -652,7 +668,7 @@ impl<A> Iterator<A> for MoveItems<A> {
     }
 }
 
-impl<A> DoubleEndedIterator<A> for MoveItems<A> {
+impl<A> DoubleEndedIterator<A> for ItemsOwned<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
 }
@@ -795,14 +811,14 @@ mod tests {
         n.push_front(2i);
         n.push_front(3);
         {
-            assert_eq!(n.front().unwrap(), &3);
-            let x = n.front_mut().unwrap();
+            assert_eq!(n.front().assert(), &3);
+            let x = n.front_mut().assert();
             assert_eq!(*x, 3);
             *x = 0;
         }
         {
-            assert_eq!(n.back().unwrap(), &2);
-            let y = n.back_mut().unwrap();
+            assert_eq!(n.back().assert(), &2);
+            let y = n.back_mut().assert();
             assert_eq!(*y, 2);
             *y = 1;
         }
@@ -848,7 +864,7 @@ mod tests {
         check_links(&m);
         let sum = v.append(u.as_slice());
         assert_eq!(sum.len(), m.len());
-        for elt in sum.move_iter() {
+        for elt in sum.iter_owned() {
             assert_eq!(m.pop_front(), Some(elt))
         }
     }
@@ -872,7 +888,7 @@ mod tests {
         check_links(&m);
         let sum = u.append(v.as_slice());
         assert_eq!(sum.len(), m.len());
-        for elt in sum.move_iter() {
+        for elt in sum.iter_owned() {
             assert_eq!(m.pop_front(), Some(elt))
         }
     }
@@ -897,7 +913,7 @@ mod tests {
         m.rotate_backward(); check_links(&m);
         m.push_front(9); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(vec![3i,9,5,1,2], m.move_iter().collect());
+        assert_eq!(vec![3i,9,5,1,2], m.iter_owned().collect());
     }
 
     #[test]
@@ -911,7 +927,7 @@ mod tests {
         n.push_front(4i);
         let mut it = n.iter();
         assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next().unwrap(), &4);
+        assert_eq!(it.next().assert(), &4);
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert_eq!(it.next(), None);
     }
@@ -939,11 +955,11 @@ mod tests {
         n.push_front(6);
         let mut it = n.iter();
         assert_eq!(it.size_hint(), (3, Some(3)));
-        assert_eq!(it.next().unwrap(), &6);
+        assert_eq!(it.next().assert(), &6);
         assert_eq!(it.size_hint(), (2, Some(2)));
-        assert_eq!(it.next_back().unwrap(), &4);
+        assert_eq!(it.next_back().assert(), &4);
         assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next_back().unwrap(), &5);
+        assert_eq!(it.next_back().assert(), &5);
         assert_eq!(it.next_back(), None);
         assert_eq!(it.next(), None);
     }
@@ -959,7 +975,7 @@ mod tests {
         n.push_front(4i);
         let mut it = n.iter().rev();
         assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next().unwrap(), &4);
+        assert_eq!(it.next().assert(), &4);
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert_eq!(it.next(), None);
     }
@@ -968,16 +984,16 @@ mod tests {
     fn test_mut_iter() {
         let mut m = generate_test();
         let mut len = m.len();
-        for (i, elt) in m.mut_iter().enumerate() {
+        for (i, elt) in m.iter_mut().enumerate() {
             assert_eq!(i as int, *elt);
             len -= 1;
         }
         assert_eq!(len, 0);
         let mut n = DList::new();
-        assert!(n.mut_iter().next().is_none());
+        assert!(n.iter_mut().next().is_none());
         n.push_front(4i);
         n.push_back(5);
-        let mut it = n.mut_iter();
+        let mut it = n.iter_mut();
         assert_eq!(it.size_hint(), (2, Some(2)));
         assert!(it.next().is_some());
         assert!(it.next().is_some());
@@ -988,17 +1004,17 @@ mod tests {
     #[test]
     fn test_iterator_mut_double_end() {
         let mut n = DList::new();
-        assert!(n.mut_iter().next_back().is_none());
+        assert!(n.iter_mut().next_back().is_none());
         n.push_front(4i);
         n.push_front(5);
         n.push_front(6);
-        let mut it = n.mut_iter();
+        let mut it = n.iter_mut();
         assert_eq!(it.size_hint(), (3, Some(3)));
-        assert_eq!(*it.next().unwrap(), 6);
+        assert_eq!(*it.next().assert(), 6);
         assert_eq!(it.size_hint(), (2, Some(2)));
-        assert_eq!(*it.next_back().unwrap(), 4);
+        assert_eq!(*it.next_back().assert(), 4);
         assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(*it.next_back().unwrap(), 5);
+        assert_eq!(*it.next_back().assert(), 5);
         assert!(it.next_back().is_none());
         assert!(it.next().is_none());
     }
@@ -1008,7 +1024,7 @@ mod tests {
         let mut m = list_from(&[0i,2,4,6,8]);
         let len = m.len();
         {
-            let mut it = m.mut_iter();
+            let mut it = m.iter_mut();
             it.insert_next(-2);
             loop {
                 match it.next() {
@@ -1027,7 +1043,7 @@ mod tests {
         }
         check_links(&m);
         assert_eq!(m.len(), 3 + len * 2);
-        assert_eq!(m.move_iter().collect::<Vec<int>>(), vec![-2,0,1,2,3,4,5,6,7,8,9,0,1]);
+        assert_eq!(m.iter_owned().collect::<Vec<int>>(), vec![-2,0,1,2,3,4,5,6,7,8,9,0,1]);
     }
 
     #[test]
@@ -1038,7 +1054,7 @@ mod tests {
         m.merge(n, |a, b| a <= b);
         assert_eq!(m.len(), len);
         check_links(&m);
-        let res = m.move_iter().collect::<Vec<int>>();
+        let res = m.iter_owned().collect::<Vec<int>>();
         assert_eq!(res, vec![-1, 0, 0, 0, 1, 3, 5, 6, 7, 2, 7, 7, 9]);
     }
 
@@ -1054,19 +1070,19 @@ mod tests {
         m.push_back(4);
         m.insert_ordered(3);
         check_links(&m);
-        assert_eq!(vec![2,3,4], m.move_iter().collect::<Vec<int>>());
+        assert_eq!(vec![2,3,4], m.iter_owned().collect::<Vec<int>>());
     }
 
     #[test]
     fn test_mut_rev_iter() {
         let mut m = generate_test();
-        for (i, elt) in m.mut_iter().rev().enumerate() {
+        for (i, elt) in m.iter_mut().rev().enumerate() {
             assert_eq!((6-i) as int, *elt);
         }
         let mut n = DList::new();
-        assert!(n.mut_iter().rev().next().is_none());
+        assert!(n.iter_mut().rev().next().is_none());
         n.push_front(4i);
-        let mut it = n.mut_iter().rev();
+        let mut it = n.iter_mut().rev();
         assert!(it.next().is_some());
         assert!(it.next().is_none());
     }
@@ -1205,7 +1221,7 @@ mod tests {
         check_links(&m);
 
         let mut i = 0u;
-        for (a, &b) in m.move_iter().zip(v.iter()) {
+        for (a, &b) in m.iter_owned().zip(v.iter()) {
             i += 1;
             assert_eq!(a, b);
         }
@@ -1287,7 +1303,7 @@ mod tests {
         let v = &[0i, ..128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
-            assert!(m.mut_iter().count() == 128);
+            assert!(m.iter_mut().count() == 128);
         })
     }
     #[bench]
@@ -1303,7 +1319,7 @@ mod tests {
         let v = &[0i, ..128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
-            assert!(m.mut_iter().rev().count() == 128);
+            assert!(m.iter_mut().rev().count() == 128);
         })
     }
 }

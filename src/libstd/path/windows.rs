@@ -194,7 +194,7 @@ impl GenericPathUnsafe for Path {
     /// Fails if not valid UTF-8.
     #[inline]
     unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Path {
-        let (prefix, path) = Path::normalize_(path.container_as_str().unwrap());
+        let (prefix, path) = Path::normalize_(path.container_as_str().assert());
         assert!(!path.is_empty());
         let mut ret = Path{ repr: path, prefix: prefix, sepidx: None };
         ret.update_sepidx();
@@ -207,7 +207,7 @@ impl GenericPathUnsafe for Path {
     ///
     /// Fails if not valid UTF-8.
     unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T) {
-        let filename = filename.container_as_str().unwrap();
+        let filename = filename.container_as_str().assert();
         match self.sepidx_or_prefix_len() {
             None if ".." == self.repr.as_slice() => {
                 let mut s = String::with_capacity(3 + filename.len());
@@ -253,7 +253,7 @@ impl GenericPathUnsafe for Path {
     /// the new path is relative to. Otherwise, the new path will be treated
     /// as if it were absolute and will replace the receiver outright.
     unsafe fn push_unchecked<T: BytesContainer>(&mut self, path: T) {
-        let path = path.container_as_str().unwrap();
+        let path = path.container_as_str().assert();
         fn is_vol_abs(path: &str, prefix: Option<PathPrefix>) -> bool {
             // assume prefix is Some(DiskPrefix)
             let rest = path.slice_from(prefix_len(prefix));
@@ -376,7 +376,7 @@ impl GenericPath for Path {
 
     #[inline]
     fn dirname<'a>(&'a self) -> &'a [u8] {
-        self.dirname_str().unwrap().as_bytes()
+        self.dirname_str().assert().as_bytes()
     }
 
     /// See `GenericPath::dirname_str` for info.
@@ -436,7 +436,7 @@ impl GenericPath for Path {
     }
 
     fn dir_path(&self) -> Path {
-        unsafe { GenericPathUnsafe::new_unchecked(self.dirname_str().unwrap()) }
+        unsafe { GenericPathUnsafe::new_unchecked(self.dirname_str().assert()) }
     }
 
     #[inline]
@@ -516,8 +516,8 @@ impl GenericPath for Path {
                   is_vol_relative(self) != is_vol_relative(other) {
             false
         } else {
-            let mut ita = self.str_components().map(|x|x.unwrap());
-            let mut itb = other.str_components().map(|x|x.unwrap());
+            let mut ita = self.str_components().map(|x|x.assert());
+            let mut itb = other.str_components().map(|x|x.assert());
             if "." == self.repr.as_slice() {
                 return itb.next() != Some("..");
             }
@@ -564,8 +564,8 @@ impl GenericPath for Path {
                 None
             }
         } else {
-            let mut ita = self.str_components().map(|x|x.unwrap());
-            let mut itb = base.str_components().map(|x|x.unwrap());
+            let mut ita = self.str_components().map(|x|x.assert());
+            let mut itb = base.str_components().map(|x|x.assert());
             let mut comps = vec![];
 
             let a_verb = is_verbatim(self);
@@ -673,7 +673,7 @@ impl Path {
     pub fn components<'a>(&'a self) -> Components<'a> {
         fn convert<'a>(x: Option<&'a str>) -> &'a [u8] {
             #![inline]
-            x.unwrap().as_bytes()
+            x.assert().as_bytes()
         }
         self.str_components().map(convert)
     }
@@ -752,7 +752,7 @@ impl Path {
                 None => None,
                 Some(comps) => {
                     if prefix.is_some() && comps.is_empty() {
-                        match prefix.unwrap() {
+                        match prefix.assert() {
                             DiskPrefix => {
                                 let len = prefix_len(prefix) + is_abs as uint;
                                 let mut s = String::from_str(s.slice_to(len));
@@ -814,7 +814,7 @@ impl Path {
                             Some(_) => s.push_str(prefix_),
                             None => ()
                         }
-                        let mut it = comps.move_iter();
+                        let mut it = comps.iter_owned();
                         if !is_abs {
                             match it.next() {
                                 None => (),
@@ -1082,7 +1082,7 @@ fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool, Option
             };
             if (is_abs || has_abs_prefix) && comps.is_empty() { changed = true }
             else if comps.len() == n_up { comps.push(".."); n_up += 1 }
-            else { comps.pop().unwrap(); changed = true }
+            else { comps.pop().assert(); changed = true }
         } else { comps.push(comp) }
     }
     if !changed && !prefix_is_verbatim(prefix) {
@@ -1296,9 +1296,9 @@ mod tests {
     fn test_opt_paths() {
         assert!(Path::new_opt(b"foo\\bar\0") == None);
         assert!(Path::new_opt(b"foo\\bar\x80") == None);
-        t!(v: Path::new_opt(b"foo\\bar").unwrap(), b"foo\\bar");
+        t!(v: Path::new_opt(b"foo\\bar").assert(), b"foo\\bar");
         assert!(Path::new_opt("foo\\bar\0") == None);
-        t!(s: Path::new_opt("foo\\bar").unwrap(), "foo\\bar");
+        t!(s: Path::new_opt("foo\\bar").assert(), "foo\\bar");
     }
 
     #[test]
@@ -1610,7 +1610,7 @@ mod tests {
                     let left = $left;
                     assert!(p.as_str() == Some(left),
                         "`{}`.pop() failed; expected remainder `{}`, found `{}`",
-                        pstr, left, p.as_str().unwrap());
+                        pstr, left, p.as_str().assert());
                     assert!(result == $right);
                 }
             );
@@ -1751,7 +1751,7 @@ mod tests {
                     let exp = $res;
                     assert!(res.as_str() == Some(exp),
                             "`{}`.{}(\"{}\"): Expected `{}`, found `{}`",
-                            pstr, stringify!($op), arg, exp, res.as_str().unwrap());
+                            pstr, stringify!($op), arg, exp, res.as_str().assert());
                 }
             )
         )
@@ -1878,19 +1878,19 @@ mod tests {
                     let filename = $filename;
                     assert!(path.filename_str() == filename,
                             "`{}`.filename_str(): Expected `{:?}`, found `{:?}`",
-                            path.as_str().unwrap(), filename, path.filename_str());
+                            path.as_str().assert(), filename, path.filename_str());
                     let dirname = $dirname;
                     assert!(path.dirname_str() == dirname,
                             "`{}`.dirname_str(): Expected `{:?}`, found `{:?}`",
-                            path.as_str().unwrap(), dirname, path.dirname_str());
+                            path.as_str().assert(), dirname, path.dirname_str());
                     let filestem = $filestem;
                     assert!(path.filestem_str() == filestem,
                             "`{}`.filestem_str(): Expected `{:?}`, found `{:?}`",
-                            path.as_str().unwrap(), filestem, path.filestem_str());
+                            path.as_str().assert(), filestem, path.filestem_str());
                     let ext = $ext;
                     assert!(path.extension_str() == ext,
                             "`{}`.extension_str(): Expected `{:?}`, found `{:?}`",
-                            path.as_str().unwrap(), ext, path.extension_str());
+                            path.as_str().assert(), ext, path.extension_str());
                 }
             );
             (v: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
@@ -1944,16 +1944,16 @@ mod tests {
                     let (abs, vol, cwd, rel) = ($abs, $vol, $cwd, $rel);
                     let b = path.is_absolute();
                     assert!(b == abs, "Path '{}'.is_absolute(): expected {:?}, found {:?}",
-                            path.as_str().unwrap(), abs, b);
+                            path.as_str().assert(), abs, b);
                     let b = is_vol_relative(&path);
                     assert!(b == vol, "is_vol_relative('{}'): expected {:?}, found {:?}",
-                            path.as_str().unwrap(), vol, b);
+                            path.as_str().assert(), vol, b);
                     let b = is_cwd_relative(&path);
                     assert!(b == cwd, "is_cwd_relative('{}'): expected {:?}, found {:?}",
-                            path.as_str().unwrap(), cwd, b);
+                            path.as_str().assert(), cwd, b);
                     let b = path.is_relative();
                     assert!(b == rel, "Path '{}'.is_relativf(): expected {:?}, found {:?}",
-                            path.as_str().unwrap(), rel, b);
+                            path.as_str().assert(), rel, b);
                 }
             )
         )
@@ -1986,7 +1986,7 @@ mod tests {
                     let res = path.is_ancestor_of(&dest);
                     assert!(res == exp,
                             "`{}`.is_ancestor_of(`{}`): Expected {:?}, found {:?}",
-                            path.as_str().unwrap(), dest.as_str().unwrap(), exp, res);
+                            path.as_str().assert(), dest.as_str().assert(), exp, res);
                 }
             )
         )
@@ -2121,7 +2121,7 @@ mod tests {
                     let exp = $exp;
                     assert!(res.as_ref().and_then(|x| x.as_str()) == exp,
                             "`{}`.path_relative_from(`{}`): Expected {:?}, got {:?}",
-                            path.as_str().unwrap(), other.as_str().unwrap(), exp,
+                            path.as_str().assert(), other.as_str().assert(), exp,
                             res.as_ref().and_then(|x| x.as_str()));
                 }
             )
@@ -2250,11 +2250,11 @@ mod tests {
             (s: $path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    let comps = path.str_components().map(|x|x.unwrap())
+                    let comps = path.str_components().map(|x|x.assert())
                                 .collect::<Vec<&str>>();
                     let exp: &[&str] = $exp;
                     assert_eq!(comps.as_slice(), exp);
-                    let comps = path.str_components().rev().map(|x|x.unwrap())
+                    let comps = path.str_components().rev().map(|x|x.assert())
                                 .collect::<Vec<&str>>();
                     let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&str>>();
                     assert_eq!(comps, exp);

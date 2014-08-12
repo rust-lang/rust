@@ -107,8 +107,8 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
         })
     });
 
-    for res in precalc_futures.move_iter() {
-        let (rs, is) = res.unwrap();
+    for res in precalc_futures.iter_owned() {
+        let (rs, is) = res.assert();
         precalc_r.push_all_move(rs);
         precalc_i.push_all_move(is);
     }
@@ -135,8 +135,8 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
     });
 
     try!(writeln!(&mut out as &mut Writer, "P4\n{} {}", w, h));
-    for res in data.move_iter() {
-        try!(out.write(res.unwrap().as_slice()));
+    for res in data.iter_owned() {
+        try!(out.write(res.assert().as_slice()));
     }
     out.flush()
 }
@@ -197,7 +197,7 @@ fn main() {
                   which interferes with the test runner.");
         mandelbrot(1000, io::util::NullWriter)
     } else {
-        mandelbrot(from_str(args[1].as_slice()).unwrap(), io::stdout())
+        mandelbrot(from_str(args[1].as_slice()).assert(), io::stdout())
     };
-    res.unwrap();
+    res.assert();
 }

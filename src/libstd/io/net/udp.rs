@@ -48,7 +48,7 @@ use rt::rtio;
 /// match socket.recv_from(buf) {
 ///     Ok((amt, src)) => {
 ///         // Send a reply to the socket we received data from
-///         let buf = buf.mut_slice_to(amt);
+///         let buf = buf.slice_to_mut(amt);
 ///         buf.reverse();
 ///         socket.send_to(buf, src);
 ///     }
@@ -285,7 +285,7 @@ mod test {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
                     rx1.recv();
-                    client.send_to([99], server_ip).unwrap()
+                    client.send_to([99], server_ip).assert()
                 }
                 Err(..) => fail!()
             }
@@ -319,7 +319,7 @@ mod test {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
                     rx.recv();
-                    client.send_to([99], server_ip).unwrap()
+                    client.send_to([99], server_ip).assert()
                 }
                 Err(..) => fail!()
             }
@@ -354,7 +354,7 @@ mod test {
                     let client = box client;
                     let mut stream = client.connect(server_ip);
                     rx1.recv();
-                    stream.write([99]).unwrap();
+                    stream.write([99]).assert();
                 }
                 Err(..) => fail!()
             }
@@ -392,7 +392,7 @@ mod test {
                     let client = box client;
                     let mut stream = client.connect(server_ip);
                     rx1.recv();
-                    stream.write([99]).unwrap();
+                    stream.write([99]).assert();
                 }
                 Err(..) => fail!()
             }
@@ -422,13 +422,13 @@ mod test {
         let server = UdpSocket::bind(addr);
 
         assert!(server.is_ok());
-        let mut server = server.unwrap();
+        let mut server = server.assert();
 
         // Make sure socket_name gives
         // us the socket we binded to.
         let so_name = server.socket_name();
         assert!(so_name.is_ok());
-        assert_eq!(addr, so_name.unwrap());
+        assert_eq!(addr, so_name.assert());
     }
 
     iotest!(fn socket_name_ip4() {
@@ -442,15 +442,15 @@ mod test {
     iotest!(fn udp_clone_smoke() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
-        let mut sock1 = UdpSocket::bind(addr1).unwrap();
-        let sock2 = UdpSocket::bind(addr2).unwrap();
+        let mut sock1 = UdpSocket::bind(addr1).assert();
+        let sock2 = UdpSocket::bind(addr2).assert();
 
         spawn(proc() {
             let mut sock2 = sock2;
             let mut buf = [0, 0];
             assert_eq!(sock2.recv_from(buf), Ok((1, addr1)));
             assert_eq!(buf[0], 1);
-            sock2.send_to([2], addr1).unwrap();
+            sock2.send_to([2], addr1).assert();
         });
 
         let sock3 = sock1.clone();
@@ -460,7 +460,7 @@ mod test {
         spawn(proc() {
             let mut sock3 = sock3;
             rx1.recv();
-            sock3.send_to([1], addr2).unwrap();
+            sock3.send_to([1], addr2).assert();
             tx2.send(());
         });
         tx1.send(());
@@ -472,16 +472,16 @@ mod test {
     iotest!(fn udp_clone_two_read() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
-        let mut sock1 = UdpSocket::bind(addr1).unwrap();
-        let sock2 = UdpSocket::bind(addr2).unwrap();
+        let mut sock1 = UdpSocket::bind(addr1).assert();
+        let sock2 = UdpSocket::bind(addr2).assert();
         let (tx1, rx) = channel();
         let tx2 = tx1.clone();
 
         spawn(proc() {
             let mut sock2 = sock2;
-            sock2.send_to([1], addr1).unwrap();
+            sock2.send_to([1], addr1).assert();
             rx.recv();
-            sock2.send_to([2], addr1).unwrap();
+            sock2.send_to([2], addr1).assert();
             rx.recv();
         });
 
@@ -491,12 +491,12 @@ mod test {
         spawn(proc() {
             let mut sock3 = sock3;
             let mut buf = [0, 0];
-            sock3.recv_from(buf).unwrap();
+            sock3.recv_from(buf).assert();
             tx2.send(());
             done.send(());
         });
         let mut buf = [0, 0];
-        sock1.recv_from(buf).unwrap();
+        sock1.recv_from(buf).assert();
         tx1.send(());
 
         rx.recv();
@@ -505,8 +505,8 @@ mod test {
     iotest!(fn udp_clone_two_write() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
-        let mut sock1 = UdpSocket::bind(addr1).unwrap();
-        let sock2 = UdpSocket::bind(addr2).unwrap();
+        let mut sock1 = UdpSocket::bind(addr1).assert();
+        let sock2 = UdpSocket::bind(addr2).assert();
 
         let (tx, rx) = channel();
         let (serv_tx, serv_rx) = channel();
@@ -548,12 +548,12 @@ mod test {
     iotest!(fn recv_from_timeout() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
-        let mut a = UdpSocket::bind(addr1).unwrap();
+        let mut a = UdpSocket::bind(addr1).assert();
 
         let (tx, rx) = channel();
         let (tx2, rx2) = channel();
         spawn(proc() {
-            let mut a = UdpSocket::bind(addr2).unwrap();
+            let mut a = UdpSocket::bind(addr2).assert();
             assert_eq!(a.recv_from([0]), Ok((1, addr1)));
             assert_eq!(a.send_to([0], addr1), Ok(()));
             rx.recv();
@@ -564,8 +564,8 @@ mod test {
 
         // Make sure that reads time out, but writes can continue
         a.set_read_timeout(Some(20));
-        assert_eq!(a.recv_from([0]).err().unwrap().kind, TimedOut);
-        assert_eq!(a.recv_from([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(a.recv_from([0]).err().assert().kind, TimedOut);
+        assert_eq!(a.recv_from([0]).err().assert().kind, TimedOut);
         assert_eq!(a.send_to([0], addr2), Ok(()));
 
         // Cloned handles should be able to block
@@ -584,8 +584,8 @@ mod test {
     iotest!(fn send_to_timeout() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
-        let mut a = UdpSocket::bind(addr1).unwrap();
-        let _b = UdpSocket::bind(addr2).unwrap();
+        let mut a = UdpSocket::bind(addr1).assert();
+        let _b = UdpSocket::bind(addr2).assert();
 
         a.set_write_timeout(Some(1000));
         for _ in range(0u, 100) {

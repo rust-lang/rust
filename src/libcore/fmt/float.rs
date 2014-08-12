@@ -143,19 +143,19 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
     // otherwise as well.
     let mut buf = [0u8, ..1536];
     let mut end = 0;
-    let radix_gen: T = cast(radix as int).unwrap();
+    let radix_gen: T = cast(radix as int).assert();
 
     let (num, exp) = match exp_format {
         ExpNone => (num, 0i32),
         ExpDec | ExpBin if num == _0 => (num, 0i32),
         ExpDec | ExpBin => {
             let (exp, exp_base) = match exp_format {
-                ExpDec => (num.abs().log10().floor(), cast::<f64, T>(10.0f64).unwrap()),
-                ExpBin => (num.abs().log2().floor(), cast::<f64, T>(2.0f64).unwrap()),
+                ExpDec => (num.abs().log10().floor(), cast::<f64, T>(10.0f64).assert()),
+                ExpBin => (num.abs().log2().floor(), cast::<f64, T>(2.0f64).assert()),
                 ExpNone => fail!("unreachable"),
             };
 
-            (num / exp_base.powf(exp), cast::<T, i32>(exp).unwrap())
+            (num / exp_base.powf(exp), cast::<T, i32>(exp).assert())
         }
     };
 
@@ -175,8 +175,8 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
         deccum = deccum / radix_gen;
         deccum = deccum.trunc();
 
-        let c = char::from_digit(current_digit.to_int().unwrap() as uint, radix);
-        buf[end] = c.unwrap() as u8;
+        let c = char::from_digit(current_digit.to_int().assert() as uint, radix);
+        buf[end] = c.assert() as u8;
         end += 1;
 
         // No more digits to calculate for the non-fractional part -> break
@@ -203,7 +203,7 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
         _ => ()
     }
 
-    buf.mut_slice_to(end).reverse();
+    buf.slice_to_mut(end).reverse();
 
     // Remember start of the fractional digits.
     // Points one beyond end of buf if none get generated,
@@ -235,9 +235,9 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
             // See note in first loop.
             let current_digit = deccum.trunc().abs();
 
-            let c = char::from_digit(current_digit.to_int().unwrap() as uint,
+            let c = char::from_digit(current_digit.to_int().assert() as uint,
                                      radix);
-            buf[end] = c.unwrap() as u8;
+            buf[end] = c.assert() as u8;
             end += 1;
 
             // Decrease the deccumulator one fractional digit at a time
@@ -250,10 +250,10 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
         // round the remaining ones.
         if limit_digits && dig == digit_count {
             let ascii2value = |chr: u8| {
-                char::to_digit(chr as char, radix).unwrap()
+                char::to_digit(chr as char, radix).assert()
             };
             let value2ascii = |val: uint| {
-                char::from_digit(val, radix).unwrap() as u8
+                char::from_digit(val, radix).assert() as u8
             };
 
             let extra_digit = ascii2value(buf[end - 1]);
@@ -342,7 +342,7 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
 
             impl<'a> fmt::FormatWriter for Filler<'a> {
                 fn write(&mut self, bytes: &[u8]) -> fmt::Result {
-                    slice::bytes::copy_memory(self.buf.mut_slice_from(*self.end),
+                    slice::bytes::copy_memory(self.buf.slice_from_mut(*self.end),
                                               bytes);
                     *self.end += bytes.len();
                     Ok(())

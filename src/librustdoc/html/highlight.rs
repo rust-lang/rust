@@ -35,7 +35,7 @@ pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
          lexer::StringReader::new(&sess.span_diagnostic, fm),
          class,
          id,
-         &mut out).unwrap();
+         &mut out).assert();
     String::from_utf8_lossy(out.unwrap().as_slice()).into_string()
 }
 
@@ -63,7 +63,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
     loop {
         let next = lexer.next_token();
 
-        let snip = |sp| sess.span_diagnostic.cm.span_to_snippet(sp).unwrap();
+        let snip = |sp| sess.span_diagnostic.cm.span_to_snippet(sp).assert();
 
         if next.tok == t::EOF { break }
 
@@ -169,7 +169,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
 
         // as mentioned above, use the original source code instead of
         // stringifying this token
-        let snip = sess.span_diagnostic.cm.span_to_snippet(next.sp).unwrap();
+        let snip = sess.span_diagnostic.cm.span_to_snippet(next.sp).assert();
         if klass == "" {
             try!(write!(out, "{}", Escape(snip.as_slice())));
         } else {

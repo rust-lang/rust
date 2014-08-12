@@ -26,6 +26,6 @@ pub fn main() {
         let _b = Foo;
     });
 
-    let s = x.unwrap_err().downcast::<&'static str>().unwrap();
+    let s = x.assert_err().downcast::<&'static str>().assert();
     assert_eq!(s.as_slice(), "This failure should happen.");
 }

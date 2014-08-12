@@ -103,7 +103,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                 for (i, field) in fields.iter().enumerate() {
                     if i != 0 { format_string.push_str(","); }
 
-                    let name = token::get_ident(field.name.unwrap());
+                    let name = token::get_ident(field.name.assert());
                     format_string.push_str(" ");
                     format_string.push_str(name.get());
                     format_string.push_str(": {}");

@@ -45,9 +45,9 @@ impl PluginManager {
     pub fn load_plugin(&mut self, name: String) {
         let x = self.prefix.join(libname(name));
         let lib_result = dl::DynamicLibrary::open(Some(&x));
-        let lib = lib_result.unwrap();
+        let lib = lib_result.assert();
         unsafe {
-            let plugin = lib.symbol("rustdoc_plugin_entrypoint").unwrap();
+            let plugin = lib.symbol("rustdoc_plugin_entrypoint").assert();
             self.callbacks.push(mem::transmute::<*mut u8,PluginCallback>(plugin));
         }
         self.dylibs.push(lib);

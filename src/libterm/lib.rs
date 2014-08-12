@@ -22,15 +22,15 @@
 //! extern crate term;
 //!
 //! fn main() {
-//!     let mut t = term::stdout().unwrap();
+//!     let mut t = term::stdout().assert();
 //!
-//!     t.fg(term::color::GREEN).unwrap();
-//!     (write!(t, "hello, ")).unwrap();
+//!     t.fg(term::color::GREEN).assert();
+//!     (write!(t, "hello, ")).assert();
 //!
-//!     t.fg(term::color::RED).unwrap();
-//!     (writeln!(t, "world!")).unwrap();
+//!     t.fg(term::color::RED).assert();
+//!     (writeln!(t, "world!")).assert();
 //!
-//!     t.reset().unwrap();
+//!     t.reset().assert();
 //! }
 //! ```
 //!
@@ -244,9 +244,21 @@ pub trait Terminal<T: Writer>: Writer {
     /// Returns the contained stream, destroying the `Terminal`
     fn unwrap(self) -> T;
 
+    /// Deprecated. Use `as_inner` instead.
+    ///
     /// Gets an immutable reference to the stream inside
-    fn get_ref<'a>(&'a self) -> &'a T;
+    #[deprecated = "use as_inner instead"]
+    fn get_ref(&self) -> &T { self.as_inner() }
+
+    /// /// Deprecated. Use `as_inner_mut` instead.
+    ///
+    /// Gets a mutable reference to the stream inside
+    #[deprecated = "use as_inner_mut instead"]
+    fn get_mut(&mut self) -> &mut T { self.as_inner_mut() }
+
+    /// Gets an immutable reference to the stream inside
+    fn as_inner(&self) -> &T;
 
     /// Gets a mutable reference to the stream inside
-    fn get_mut<'a>(&'a mut self) -> &'a mut T;
+    fn as_inner_mut(&mut self) -> &mut T;
 }

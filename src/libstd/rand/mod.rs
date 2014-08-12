@@ -119,7 +119,7 @@
 //! // where the car is. The game host will never open the door with the car.
 //! fn game_host_open<R: Rng>(car: uint, choice: uint, rng: &mut R) -> uint {
 //!     let choices = free_doors(&[car, choice]);
-//!     rand::sample(rng, choices.move_iter(), 1)[0]
+//!     rand::sample(rng, choices.iter_owned(), 1)[0]
 //! }
 //!
 //! // Returns the door we switch to, given our current choice and
@@ -578,7 +578,7 @@ mod bench {
 
     #[bench]
     fn rand_xorshift(b: &mut Bencher) {
-        let mut rng: XorShiftRng = OsRng::new().unwrap().gen();
+        let mut rng: XorShiftRng = OsRng::new().assert().gen();
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
@@ -589,7 +589,7 @@ mod bench {
 
     #[bench]
     fn rand_isaac(b: &mut Bencher) {
-        let mut rng: IsaacRng = OsRng::new().unwrap().gen();
+        let mut rng: IsaacRng = OsRng::new().assert().gen();
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
@@ -600,7 +600,7 @@ mod bench {
 
     #[bench]
     fn rand_isaac64(b: &mut Bencher) {
-        let mut rng: Isaac64Rng = OsRng::new().unwrap().gen();
+        let mut rng: Isaac64Rng = OsRng::new().assert().gen();
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
@@ -611,7 +611,7 @@ mod bench {
 
     #[bench]
     fn rand_std(b: &mut Bencher) {
-        let mut rng = StdRng::new().unwrap();
+        let mut rng = StdRng::new().assert();
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();

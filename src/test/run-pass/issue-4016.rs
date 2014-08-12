@@ -16,9 +16,9 @@ use serialize::{json, Decodable};
 trait JD : Decodable<json::Decoder, json::DecoderError> { }
 
 fn exec<T: JD>() {
-    let doc = json::from_str("").unwrap();
+    let doc = json::from_str("").assert();
     let mut decoder = json::Decoder::new(doc);
-    let _v: T = Decodable::decode(&mut decoder).unwrap();
+    let _v: T = Decodable::decode(&mut decoder).assert();
     fail!()
 }
 

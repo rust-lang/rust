@@ -145,7 +145,7 @@ impl StackPool {
     pub fn take_stack(&mut self, min_size: uint) -> Stack {
         // Ideally this would be a binary search
         match self.stacks.iter().position(|s| min_size <= s.min_size) {
-            Some(idx) => self.stacks.swap_remove(idx).unwrap(),
+            Some(idx) => self.stacks.swap_remove(idx).assert(),
             None => Stack::new(min_size)
         }
     }

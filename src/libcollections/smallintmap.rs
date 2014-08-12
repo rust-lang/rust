@@ -163,7 +163,7 @@ impl<V:Clone> Clone for SmallIntMap<V> {
     #[inline]
     fn clone_from(&mut self, source: &SmallIntMap<V>) {
         self.v.reserve(source.v.len());
-        for (i, w) in self.v.mut_iter().enumerate() {
+        for (i, w) in self.v.iter_mut().enumerate() {
             *w = source.v[i].clone();
         }
     }
@@ -249,13 +249,16 @@ impl<V> SmallIntMap<V> {
     ///     println!("{}: {}", key, value);
     /// }
     /// ```
-    pub fn iter<'r>(&'r self) -> Entries<'r, V> {
+    pub fn iter(&self) -> Entries<V> {
         Entries {
             front: 0,
             back: self.v.len(),
             iter: self.v.iter()
         }
     }
+
+    /// Deprecated. Use `iter_mut` instead.
+    pub fn mut_iter(&mut self) -> EntriesMut<V> { self.iter_mut() }
 
     /// An iterator visiting all key-value pairs in ascending order by the keys,
     /// with mutable references to the values
@@ -271,7 +274,7 @@ impl<V> SmallIntMap<V> {
     /// map.insert(2, "b");
     /// map.insert(3, "c");
     ///
-    /// for (key, value) in map.mut_iter() {
+    /// for (key, value) in map.iter_mut() {
     ///     *value = "x";
     /// }
     ///
@@ -279,13 +282,18 @@ impl<V> SmallIntMap<V> {
     ///     assert_eq!(value, &"x");
     /// }
     /// ```
-    pub fn mut_iter<'r>(&'r mut self) -> MutEntries<'r, V> {
-        MutEntries {
+    pub fn iter_mut(&mut self) -> EntriesMut<V> {
+        EntriesMut {
             front: 0,
             back: self.v.len(),
-            iter: self.v.mut_iter()
+            iter: self.v.iter_mut()
         }
     }
+
+    /// Deprecated. Use `iter_owned` instead.
+    pub fn move_iter(&mut self)
+        -> FilterMap<(uint, Option<V>), (uint, V),
+                Enumerate<vec::MoveItems<Option<V>>>> { self.iter_owned() }
 
     /// Empties the map, moving all values into the specified closure.
     ///
@@ -300,16 +308,16 @@ impl<V> SmallIntMap<V> {
     /// map.insert(2, "b");
     ///
     /// // Not possible with .iter()
-    /// let vec: Vec<(uint, &str)> = map.move_iter().collect();
+    /// let vec: Vec<(uint, &str)> = map.iter_owned().collect();
     ///
     /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
     /// ```
-    pub fn move_iter(&mut self)
+    pub fn iter_owned(&mut self)
         -> FilterMap<(uint, Option<V>), (uint, V),
                 Enumerate<vec::MoveItems<Option<V>>>>
     {
         let values = replace(&mut self.v, vec!());
-        values.move_iter().enumerate().filter_map(|(i, v)| {
+        values.iter_owned().enumerate().filter_map(|(i, v)| {
             v.map(|v| (i, v))
         })
     }
@@ -480,14 +488,18 @@ double_ended_iterator!(impl Entries -> (uint, &'a T), get_ref)
 
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
-pub struct MutEntries<'a, T> {
+pub struct EntriesMut<'a, T> {
     front: uint,
     back: uint,
     iter: slice::MutItems<'a, Option<T>>
 }
 
-iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
-double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
+/// Deprecated: renamed to `EntriesMut`.
+#[deprecated = "renamed to EntriesMut"]
+pub type MutEntries<'a, T> = EntriesMut<'a, T>;
+
+iterator!(impl EntriesMut -> (uint, &'a mut T), get_mut_ref)
+double_ended_iterator!(impl EntriesMut -> (uint, &'a mut T), get_mut_ref)
 
 /// Forward iterator over the keys of a map
 pub type Keys<'a, T> =
@@ -570,9 +582,9 @@ mod test_map {
         map.update_with_key(3, 2, add_more_to_count);
 
         // check the total counts
-        assert_eq!(map.find(&3).unwrap(), &10);
-        assert_eq!(map.find(&5).unwrap(), &3);
-        assert_eq!(map.find(&9).unwrap(), &1);
+        assert_eq!(map.find(&3).assert(), &10);
+        assert_eq!(map.find(&5).assert(), &3);
+        assert_eq!(map.find(&9).assert(), &1);
 
         // sadly, no sevens were counted
         assert!(map.find(&7).is_none());
@@ -632,15 +644,15 @@ mod test_map {
 
         let mut it = m.iter();
         assert_eq!(it.size_hint(), (0, Some(11)));
-        assert_eq!(it.next().unwrap(), (0, &1));
+        assert_eq!(it.next().assert(), (0, &1));
         assert_eq!(it.size_hint(), (0, Some(10)));
-        assert_eq!(it.next().unwrap(), (1, &2));
+        assert_eq!(it.next().assert(), (1, &2));
         assert_eq!(it.size_hint(), (0, Some(9)));
-        assert_eq!(it.next().unwrap(), (3, &5));
+        assert_eq!(it.next().assert(), (3, &5));
         assert_eq!(it.size_hint(), (0, Some(7)));
-        assert_eq!(it.next().unwrap(), (6, &10));
+        assert_eq!(it.next().assert(), (6, &10));
         assert_eq!(it.size_hint(), (0, Some(4)));
-        assert_eq!(it.next().unwrap(), (10, &11));
+        assert_eq!(it.next().assert(), (10, &11));
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert!(it.next().is_none());
     }
@@ -657,8 +669,8 @@ mod test_map {
 
         assert_eq!(m.iter().size_hint(), (0, Some(11)));
         assert_eq!(m.iter().rev().size_hint(), (0, Some(11)));
-        assert_eq!(m.mut_iter().size_hint(), (0, Some(11)));
-        assert_eq!(m.mut_iter().rev().size_hint(), (0, Some(11)));
+        assert_eq!(m.iter_mut().size_hint(), (0, Some(11)));
+        assert_eq!(m.iter_mut().rev().size_hint(), (0, Some(11)));
     }
 
     #[test]
@@ -671,16 +683,16 @@ mod test_map {
         assert!(m.insert(6, 10));
         assert!(m.insert(10, 11));
 
-        for (k, v) in m.mut_iter() {
+        for (k, v) in m.iter_mut() {
             *v += k as int;
         }
 
         let mut it = m.iter();
-        assert_eq!(it.next().unwrap(), (0, &1));
-        assert_eq!(it.next().unwrap(), (1, &3));
-        assert_eq!(it.next().unwrap(), (3, &8));
-        assert_eq!(it.next().unwrap(), (6, &16));
-        assert_eq!(it.next().unwrap(), (10, &21));
+        assert_eq!(it.next().assert(), (0, &1));
+        assert_eq!(it.next().assert(), (1, &3));
+        assert_eq!(it.next().assert(), (3, &8));
+        assert_eq!(it.next().assert(), (6, &16));
+        assert_eq!(it.next().assert(), (10, &21));
         assert!(it.next().is_none());
     }
 
@@ -695,11 +707,11 @@ mod test_map {
         assert!(m.insert(10, 11));
 
         let mut it = m.iter().rev();
-        assert_eq!(it.next().unwrap(), (10, &11));
-        assert_eq!(it.next().unwrap(), (6, &10));
-        assert_eq!(it.next().unwrap(), (3, &5));
-        assert_eq!(it.next().unwrap(), (1, &2));
-        assert_eq!(it.next().unwrap(), (0, &1));
+        assert_eq!(it.next().assert(), (10, &11));
+        assert_eq!(it.next().assert(), (6, &10));
+        assert_eq!(it.next().assert(), (3, &5));
+        assert_eq!(it.next().assert(), (1, &2));
+        assert_eq!(it.next().assert(), (0, &1));
         assert!(it.next().is_none());
     }
 
@@ -713,16 +725,16 @@ mod test_map {
         assert!(m.insert(6, 10));
         assert!(m.insert(10, 11));
 
-        for (k, v) in m.mut_iter().rev() {
+        for (k, v) in m.iter_mut().rev() {
             *v += k as int;
         }
 
         let mut it = m.iter();
-        assert_eq!(it.next().unwrap(), (0, &1));
-        assert_eq!(it.next().unwrap(), (1, &3));
-        assert_eq!(it.next().unwrap(), (3, &8));
-        assert_eq!(it.next().unwrap(), (6, &16));
-        assert_eq!(it.next().unwrap(), (10, &21));
+        assert_eq!(it.next().assert(), (0, &1));
+        assert_eq!(it.next().assert(), (1, &3));
+        assert_eq!(it.next().assert(), (3, &8));
+        assert_eq!(it.next().assert(), (6, &16));
+        assert_eq!(it.next().assert(), (10, &21));
         assert!(it.next().is_none());
     }
 
@@ -731,7 +743,7 @@ mod test_map {
         let mut m = SmallIntMap::new();
         m.insert(1, box 2i);
         let mut called = false;
-        for (k, v) in m.move_iter() {
+        for (k, v) in m.iter_owned() {
             assert!(!called);
             called = true;
             assert_eq!(k, 1);

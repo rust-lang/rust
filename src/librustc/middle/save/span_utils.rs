@@ -256,7 +256,7 @@ impl<'a> SpanUtils<'a> {
             };
             if is_ident(&ts.tok) &&
                bracket_count == nesting {
-                result.push(self.make_sub_span(span, Some(ts.sp)).unwrap());
+                result.push(self.make_sub_span(span, Some(ts.sp)).assert());
             }
         }
     }

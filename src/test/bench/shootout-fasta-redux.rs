@@ -94,7 +94,7 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
 
         copy_memory(buf.as_mut_slice(), alu);
         let buf_len = buf.len();
-        copy_memory(buf.mut_slice(alu_len, buf_len),
+        copy_memory(buf.slice_mut(alu_len, buf_len),
                     alu.slice_to(LINE_LEN));
 
         let mut pos = 0;
@@ -117,7 +117,7 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
 fn make_lookup(a: &[AminoAcid]) -> [AminoAcid, ..LOOKUP_SIZE] {
     let mut lookup = [ NULL_AMINO_ACID, ..LOOKUP_SIZE ];
     let mut j = 0;
-    for (i, slot) in lookup.mut_iter().enumerate() {
+    for (i, slot) in lookup.iter_mut().enumerate() {
         while a[j].p < (i as f32) {
             j += 1;
         }
@@ -179,28 +179,28 @@ fn main() {
     let args = os::args();
     let args = args.as_slice();
     let n = if args.len() > 1 {
-        from_str::<uint>(args[1].as_slice()).unwrap()
+        from_str::<uint>(args[1].as_slice()).assert()
     } else {
         5
     };
 
     let mut out = stdout();
 
-    out.write_line(">ONE Homo sapiens alu").unwrap();
+    out.write_line(">ONE Homo sapiens alu").assert();
     {
         let mut repeat = RepeatFasta::new(ALU, &mut out);
-        repeat.make(n * 2).unwrap();
+        repeat.make(n * 2).assert();
     }
 
-    out.write_line(">TWO IUB ambiguity codes").unwrap();
+    out.write_line(">TWO IUB ambiguity codes").assert();
     let iub = sum_and_scale(IUB);
     let mut random = RandomFasta::new(&mut out, iub.as_slice());
-    random.make(n * 3).unwrap();
+    random.make(n * 3).assert();
 
-    random.out.write_line(">THREE Homo sapiens frequency").unwrap();
+    random.out.write_line(">THREE Homo sapiens frequency").assert();
     let homo_sapiens = sum_and_scale(HOMO_SAPIENS);
     random.lookup = make_lookup(homo_sapiens.as_slice());
-    random.make(n * 5).unwrap();
+    random.make(n * 5).assert();
 
-    random.out.write_str("\n").unwrap();
+    random.out.write_str("\n").assert();
 }

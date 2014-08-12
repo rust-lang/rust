@@ -24,7 +24,7 @@ fn make_complements() -> [u8, ..256] {
         ('H', 'D'), ('D', 'H'), ('B', 'V'), ('N', 'N'),
         ('\n', '\n')];
     let mut complements: [u8, ..256] = [0, ..256];
-    for (i, c) in complements.mut_iter().enumerate() {
+    for (i, c) in complements.iter_mut().enumerate() {
         *c = i as u8;
     }
     let lower = 'A' as u8 - 'a' as u8;
@@ -42,16 +42,16 @@ fn main() {
     } else {
         stdin().read_to_end()
     };
-    let mut data = data.unwrap();
+    let mut data = data.assert();
 
-    for seq in data.as_mut_slice().mut_split(|c| *c == '>' as u8) {
+    for seq in data.as_mut_slice().split_mut(|c| *c == '>' as u8) {
         // skip header and last \n
         let begin = match seq.iter().position(|c| *c == '\n' as u8) {
             None => continue,
             Some(c) => c
         };
         let len = seq.len();
-        let seq = seq.mut_slice(begin + 1, len - 1);
+        let seq = seq.slice_mut(begin + 1, len - 1);
 
         // arrange line breaks
         let len = seq.len();
@@ -64,9 +64,9 @@ fn main() {
         }
 
         // reverse complement, as
-        //    seq.reverse(); for c in seq.mut_iter() {*c = complements[*c]}
+        //    seq.reverse(); for c in seq.iter_mut() {*c = complements[*c]}
         // but faster:
-        let mut it = seq.mut_iter();
+        let mut it = seq.iter_mut();
         loop {
             match (it.next(), it.next_back()) {
                 (Some(front), Some(back)) => {
@@ -80,5 +80,5 @@ fn main() {
         }
     }
 
-    stdout().write(data.as_slice()).unwrap();
+    stdout().write(data.as_slice()).assert();
 }

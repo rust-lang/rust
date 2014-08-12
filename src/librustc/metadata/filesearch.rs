@@ -214,7 +214,7 @@ pub fn rust_path() -> Vec<Path> {
         env_rust_path.push(cwd.clone());
     }
     loop {
-        if { let f = cwd.filename(); f.is_none() || f.unwrap() == b".." } {
+        if { let f = cwd.filename(); f.is_none() || f.assert() == b".." } {
             break
         }
         cwd.set_filename(".rust");

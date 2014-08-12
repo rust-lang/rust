@@ -483,7 +483,7 @@ mod test {
             let result = FsRequest::open(local_loop(), &path_str.to_c_str(),
                                          create_flags as int, mode as int);
             assert!(result.is_ok());
-            let result = result.unwrap();
+            let result = result.assert();
             let fd = result.fd;
 
             // write
@@ -496,7 +496,7 @@ mod test {
             let result = FsRequest::open(local_loop(), &path_str.to_c_str(),
                                          read_flags as int, 0);
             assert!(result.is_ok());
-            let result = result.unwrap();
+            let result = result.assert();
             let fd = result.fd;
 
             // read
@@ -504,9 +504,9 @@ mod test {
             let result = FsRequest::read(l(), fd, read_mem.as_mut_slice(), 0);
             assert!(result.is_ok());
 
-            let nread = result.unwrap();
+            let nread = result.assert();
             assert!(nread > 0);
-            let read_str = str::from_utf8(read_mem.slice_to(nread as uint)).unwrap();
+            let read_str = str::from_utf8(read_mem.slice_to(nread as uint)).assert();
             assert_eq!(read_str, "hello");
         }
         // unlink
@@ -522,18 +522,18 @@ mod test {
 
         let result = FsRequest::open(local_loop(), path, create_flags, mode);
         assert!(result.is_ok());
-        let file = result.unwrap();
+        let file = result.assert();
 
         let result = FsRequest::write(l(), file.fd, "hello".as_bytes(), 0);
         assert!(result.is_ok());
 
         let result = FsRequest::stat(l(), path);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap().size, 5);
+        assert_eq!(result.assert().size, 5);
 
         let result = FsRequest::fstat(l(), file.fd);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap().size, 5);
+        assert_eq!(result.assert().size, 5);
 
         fn free<T>(_: T) {}
         free(file);

@@ -628,7 +628,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         let t: Option<T> = None;
         if BytesContainer::is_str(t) {
             for p in paths.iter() {
-                self.push(p.container_as_str().unwrap())
+                self.push(p.container_as_str().assert())
             }
         } else {
             for p in paths.iter() {
@@ -938,6 +938,6 @@ mod tests {
 
         let input = r"\foo\bar\baz";
         let path: WindowsPath = WindowsPath::new(input.to_c_str());
-        assert_eq!(path.as_str().unwrap(), input.as_slice());
+        assert_eq!(path.as_str().assert(), input.as_slice());
     }
 }

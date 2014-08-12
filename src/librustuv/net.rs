@@ -563,10 +563,10 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 wait_until_woken_after(&mut cx.task, &loop_, || {
                     unsafe { uvll::set_data_for_uv_handle(handle, &mut cx) }
                 });
-                match cx.result.take_unwrap() {
+                match cx.result.take().assert() {
                     (n, _) if n < 0 =>
                         Err(uv_error_to_io_error(UvError(n as c_int))),
-                    (n, addr) => Ok((n as uint, addr.unwrap()))
+                    (n, addr) => Ok((n as uint, addr.assert()))
                 }
             }
             n => Err(uv_error_to_io_error(UvError(n)))
@@ -624,7 +624,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         // here.
         let data = if guard.can_timeout {Some(Vec::from_slice(buf))} else {None};
         let uv_buf = if guard.can_timeout {
-            slice_to_uv_buf(data.get_ref().as_slice())
+            slice_to_uv_buf(data.as_ref().assert().as_slice())
         } else {
             slice_to_uv_buf(buf)
         };
@@ -1024,10 +1024,10 @@ mod test {
         let (tx, rx) = channel();
 
         spawn(proc() {
-            let listener = TcpListener::bind(local_loop(), addr).unwrap();
-            let mut acceptor = listener.listen().ok().unwrap();
+            let listener = TcpListener::bind(local_loop(), addr).assert();
+            let mut acceptor = listener.listen().ok().assert();
             tx.send(());
-            let mut stream = acceptor.accept().ok().unwrap();
+            let mut stream = acceptor.accept().ok().assert();
             let buf = [1, .. 2048];
             let mut total_bytes_written = 0;
             while total_bytes_written < MAX {
@@ -1038,11 +1038,11 @@ mod test {
         });
 
         rx.recv();
-        let mut stream = TcpWatcher::connect(local_loop(), addr, None).unwrap();
+        let mut stream = TcpWatcher::connect(local_loop(), addr, None).assert();
         let mut buf = [0, .. 2048];
         let mut total_bytes_read = 0;
         while total_bytes_read < MAX {
-            let nread = stream.read(buf).ok().unwrap();
+            let nread = stream.read(buf).ok().assert();
             total_bytes_read += nread;
             for i in range(0u, nread) {
                 assert_eq!(buf[i], 1);
@@ -1059,18 +1059,18 @@ mod test {
         let (tx, rx) = channel();
 
         spawn(proc() {
-            let mut client = UdpWatcher::bind(local_loop(), client_addr).unwrap();
+            let mut client = UdpWatcher::bind(local_loop(), client_addr).assert();
             rx.recv();
             assert!(client.send_to([1], server_addr).is_ok());
             assert!(client.send_to([2], server_addr).is_ok());
         });
 
-        let mut server = UdpWatcher::bind(local_loop(), server_addr).unwrap();
+        let mut server = UdpWatcher::bind(local_loop(), server_addr).assert();
         tx.send(());
         let mut buf1 = [0];
         let mut buf2 = [0];
-        let (nread1, src1) = server.recv_from(buf1).ok().unwrap();
-        let (nread2, src2) = server.recv_from(buf2).ok().unwrap();
+        let (nread1, src1) = server.recv_from(buf1).ok().assert();
+        let (nread2, src2) = server.recv_from(buf2).ok().assert();
         assert_eq!(nread1, 1);
         assert_eq!(nread2, 1);
         assert!(src1 == client_addr);
@@ -1092,8 +1092,8 @@ mod test {
 
         spawn(proc() {
             let l = local_loop();
-            let mut server_out = UdpWatcher::bind(l, server_out_addr).unwrap();
-            let mut server_in = UdpWatcher::bind(l, server_in_addr).unwrap();
+            let mut server_out = UdpWatcher::bind(l, server_out_addr).assert();
+            let mut server_in = UdpWatcher::bind(l, server_in_addr).assert();
             let (tx, rx) = (tx2, rx1);
             tx.send(());
             rx.recv();
@@ -1107,7 +1107,7 @@ mod test {
                 // check if the client has received enough
                 let res = server_in.recv_from(buf);
                 assert!(res.is_ok());
-                let (nread, src) = res.ok().unwrap();
+                let (nread, src) = res.ok().assert();
                 assert_eq!(nread, 1);
                 assert!(src == client_out_addr);
             }
@@ -1115,8 +1115,8 @@ mod test {
         });
 
         let l = local_loop();
-        let mut client_out = UdpWatcher::bind(l, client_out_addr).unwrap();
-        let mut client_in = UdpWatcher::bind(l, client_in_addr).unwrap();
+        let mut client_out = UdpWatcher::bind(l, client_out_addr).assert();
+        let mut client_in = UdpWatcher::bind(l, client_in_addr).assert();
         let (tx, rx) = (tx1, rx2);
         rx.recv();
         tx.send(());
@@ -1128,7 +1128,7 @@ mod test {
             // wait for data
             let res = client_in.recv_from(buf);
             assert!(res.is_ok());
-            let (nread, src) = res.ok().unwrap();
+            let (nread, src) = res.ok().assert();
             assert!(src == server_out_addr);
             total_bytes_recv += nread;
             for i in range(0u, nread) {
@@ -1146,20 +1146,20 @@ mod test {
 
         spawn(proc() {
             let rx = rx.recv();
-            let mut stream = TcpWatcher::connect(local_loop(), addr, None).unwrap();
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).ok().unwrap();
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).ok().unwrap();
+            let mut stream = TcpWatcher::connect(local_loop(), addr, None).assert();
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).ok().assert();
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).ok().assert();
             rx.recv();
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).ok().unwrap();
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).ok().unwrap();
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).ok().assert();
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).ok().assert();
             rx.recv();
         });
 
-        let listener = TcpListener::bind(local_loop(), addr).unwrap();
-        let mut acceptor = listener.listen().ok().unwrap();
+        let listener = TcpListener::bind(local_loop(), addr).assert();
+        let mut acceptor = listener.listen().ok().assert();
         let (tx2, rx2) = channel();
         tx.send(rx2);
-        let mut stream = acceptor.accept().ok().unwrap();
+        let mut stream = acceptor.accept().ok().assert();
         let mut buf = [0, .. 2048];
 
         let expected = 32;
@@ -1167,7 +1167,7 @@ mod test {
         let mut reads = 0u;
 
         while current < expected {
-            let nread = stream.read(buf).ok().unwrap();
+            let nread = stream.read(buf).ok().assert();
             for i in range(0u, nread) {
                 let val = buf[i] as uint;
                 assert_eq!(val, current % 8);
@@ -1187,11 +1187,11 @@ mod test {
         let addr = ::next_test_ip4();
 
         spawn(proc() {
-            let listener = TcpListener::bind(local_loop(), addr).unwrap();
-            let mut acceptor = listener.listen().ok().unwrap();
-            let mut stream = acceptor.accept().ok().unwrap();
+            let listener = TcpListener::bind(local_loop(), addr).assert();
+            let mut acceptor = listener.listen().ok().assert();
+            let mut stream = acceptor.accept().ok().assert();
             let mut buf = [0, .. 2048];
-            let nread = stream.read(buf).ok().unwrap();
+            let nread = stream.read(buf).ok().assert();
             assert_eq!(nread, 8);
             for i in range(0u, nread) {
                 assert_eq!(buf[i], i as u8);
@@ -1202,14 +1202,14 @@ mod test {
         while stream.is_err() {
             stream = TcpWatcher::connect(local_loop(), addr, None);
         }
-        stream.unwrap().write([0, 1, 2, 3, 4, 5, 6, 7]).ok().unwrap();
+        stream.assert().write([0, 1, 2, 3, 4, 5, 6, 7]).ok().assert();
     }
 
     #[should_fail] #[test]
     fn tcp_listener_fail_cleanup() {
         let addr = ::next_test_ip4();
-        let w = TcpListener::bind(local_loop(), addr).unwrap();
-        let _w = w.listen().ok().unwrap();
+        let w = TcpListener::bind(local_loop(), addr).assert();
+        let _w = w.listen().ok().assert();
         fail!();
     }
 
@@ -1219,20 +1219,20 @@ mod test {
         let addr = ::next_test_ip4();
 
         spawn(proc() {
-            let w = TcpListener::bind(local_loop(), addr).unwrap();
-            let mut w = w.listen().ok().unwrap();
+            let w = TcpListener::bind(local_loop(), addr).assert();
+            let mut w = w.listen().ok().assert();
             tx.send(());
-            drop(w.accept().ok().unwrap());
+            drop(w.accept().ok().assert());
         });
         rx.recv();
-        let _w = TcpWatcher::connect(local_loop(), addr, None).unwrap();
+        let _w = TcpWatcher::connect(local_loop(), addr, None).assert();
         fail!();
     }
 
     #[should_fail] #[test]
     fn udp_listener_fail_cleanup() {
         let addr = ::next_test_ip4();
-        let _w = UdpWatcher::bind(local_loop(), addr).unwrap();
+        let _w = UdpWatcher::bind(local_loop(), addr).assert();
         fail!();
     }
 
@@ -1245,7 +1245,7 @@ mod test {
         // the original task will force a homing operation back to this
         // scheduler.
         spawn(proc() {
-            let w = UdpWatcher::bind(local_loop(), addr).unwrap();
+            let w = UdpWatcher::bind(local_loop(), addr).assert();
             tx.send(w);
         });
 

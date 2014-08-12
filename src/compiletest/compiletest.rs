@@ -112,7 +112,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     }
 
     fn opt_path(m: &getopts::Matches, nm: &str) -> Path {
-        Path::new(m.opt_str(nm).unwrap())
+        Path::new(m.opt_str(nm).assert())
     }
 
     let filter = if !matches.free.is_empty() {
@@ -129,21 +129,21 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     };
 
     Config {
-        compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
-        run_lib_path: matches.opt_str("run-lib-path").unwrap(),
+        compile_lib_path: matches.opt_str("compile-lib-path").assert(),
+        run_lib_path: matches.opt_str("run-lib-path").assert(),
         rustc_path: opt_path(matches, "rustc-path"),
         clang_path: matches.opt_str("clang-path").map(|s| Path::new(s)),
         llvm_bin_path: matches.opt_str("llvm-bin-path").map(|s| Path::new(s)),
         src_base: opt_path(matches, "src-base"),
         build_base: opt_path(matches, "build-base"),
         aux_base: opt_path(matches, "aux-base"),
-        stage_id: matches.opt_str("stage-id").unwrap(),
+        stage_id: matches.opt_str("stage-id").assert(),
         mode: FromStr::from_str(matches.opt_str("mode")
-                                       .unwrap()
+                                       .assert()
                                        .as_slice()).expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
         filter: filter,
-        cfail_regex: Regex::new(errors::EXPECTED_PATTERN).unwrap(),
+        cfail_regex: Regex::new(errors::EXPECTED_PATTERN).assert(),
         logfile: matches.opt_str("logfile").map(|s| Path::new(s)),
         save_metrics: matches.opt_str("save-metrics").map(|s| Path::new(s)),
         ratchet_metrics:
@@ -257,7 +257,7 @@ pub fn run_tests(config: &Config) {
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
     io::test::raise_fd_limit();
-    let res = test::run_tests_console(&opts, tests.move_iter().collect());
+    let res = test::run_tests_console(&opts, tests.iter_owned().collect());
     match res {
         Ok(true) => {}
         Ok(false) => fail!("Some tests failed"),
@@ -290,7 +290,7 @@ pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
     debug!("making tests from {}",
            config.src_base.display());
     let mut tests = Vec::new();
-    let dirs = fs::readdir(&config.src_base).unwrap();
+    let dirs = fs::readdir(&config.src_base).assert();
     for file in dirs.iter() {
         let file = file.clone();
         debug!("inspecting file {}", file.display());
@@ -315,7 +315,7 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
           _ => vec!(".rc".to_string(), ".rs".to_string())
         };
     let invalid_prefixes = vec!(".".to_string(), "#".to_string(), "~".to_string());
-    let name = testfile.filename_str().unwrap();
+    let name = testfile.filename_str().assert();
 
     let mut valid = false;
 
@@ -362,7 +362,7 @@ pub fn make_test_name(config: &Config, testfile: &Path) -> test::TestName {
 pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let testfile = testfile.as_str().unwrap().to_string();
+    let testfile = testfile.as_str().assert().to_string();
     test::DynTestFn(proc() {
         runtest::run(config, testfile)
     })
@@ -371,7 +371,7 @@ pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
 pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let testfile = testfile.as_str().unwrap().to_string();
+    let testfile = testfile.as_str().assert().to_string();
     test::DynMetricFn(proc(mm) {
         runtest::run_metrics(config, testfile, mm)
     })

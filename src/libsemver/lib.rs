@@ -381,22 +381,22 @@ fn test_ne() {
 
 #[test]
 fn test_show() {
-    assert_eq!(format!("{}", parse("1.2.3").unwrap()),
+    assert_eq!(format!("{}", parse("1.2.3").assert()),
                "1.2.3".to_string());
-    assert_eq!(format!("{}", parse("1.2.3-alpha1").unwrap()),
+    assert_eq!(format!("{}", parse("1.2.3-alpha1").assert()),
                "1.2.3-alpha1".to_string());
-    assert_eq!(format!("{}", parse("1.2.3+build.42").unwrap()),
+    assert_eq!(format!("{}", parse("1.2.3+build.42").assert()),
                "1.2.3+build.42".to_string());
-    assert_eq!(format!("{}", parse("1.2.3-alpha1+42").unwrap()),
+    assert_eq!(format!("{}", parse("1.2.3-alpha1+42").assert()),
                "1.2.3-alpha1+42".to_string());
 }
 
 #[test]
 fn test_to_string() {
-    assert_eq!(parse("1.2.3").unwrap().to_string(), "1.2.3".to_string());
-    assert_eq!(parse("1.2.3-alpha1").unwrap().to_string(), "1.2.3-alpha1".to_string());
-    assert_eq!(parse("1.2.3+build.42").unwrap().to_string(), "1.2.3+build.42".to_string());
-    assert_eq!(parse("1.2.3-alpha1+42").unwrap().to_string(), "1.2.3-alpha1+42".to_string());
+    assert_eq!(parse("1.2.3").assert().to_string(), "1.2.3".to_string());
+    assert_eq!(parse("1.2.3-alpha1").assert().to_string(), "1.2.3-alpha1".to_string());
+    assert_eq!(parse("1.2.3+build.42").assert().to_string(), "1.2.3+build.42".to_string());
+    assert_eq!(parse("1.2.3-alpha1+42").assert().to_string(), "1.2.3-alpha1+42".to_string());
 }
 
 #[test]
@@ -453,8 +453,8 @@ fn test_spec_order() {
               "1.0.0"];
     let mut i = 1;
     while i < vs.len() {
-        let a = parse(vs[i-1]).unwrap();
-        let b = parse(vs[i]).unwrap();
+        let a = parse(vs[i-1]).assert();
+        let b = parse(vs[i]).assert();
         assert!(a < b);
         i += 1;
     }

@@ -48,7 +48,7 @@ impl<T> Drop for OwnedSlice<T> {
 
 impl<T> OwnedSlice<T> {
     pub fn empty() -> OwnedSlice<T> {
-        OwnedSlice  { data: ptr::mut_null(), len: 0 }
+        OwnedSlice  { data: ptr::null_mut(), len: 0 }
     }
 
     #[inline(never)]

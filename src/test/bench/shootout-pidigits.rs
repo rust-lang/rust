@@ -63,7 +63,7 @@ impl Context {
     }
 
     fn from_int(i: int) -> BigInt {
-        FromPrimitive::from_int(i).unwrap()
+        FromPrimitive::from_int(i).assert()
     }
 
     fn extract_digit(&self) -> int {
@@ -72,7 +72,7 @@ impl Context {
             (self.numer * Context::from_int(3) + self.accum)
             .div_rem(&self.denom);
         if r + self.numer >= self.denom {return -1;}
-        q.to_int().unwrap()
+        q.to_int().assert()
     }
 
     fn next_term(&mut self, k: int) {
@@ -122,7 +122,7 @@ fn main() {
     let n = if args.len() < 2 {
         512
     } else {
-        FromStr::from_str(args[1].as_slice()).unwrap()
+        FromStr::from_str(args[1].as_slice()).assert()
     };
     pidigits(n);
 }

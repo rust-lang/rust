@@ -89,18 +89,18 @@ impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
                 // msys terminal
                 return Some(TerminfoTerminal {out: out, ti: msys_terminfo(), num_colors: 8});
             }
-            debug!("error finding terminfo entry: {}", entry.err().unwrap());
+            debug!("error finding terminfo entry: {}", entry.err().assert());
             return None;
         }
 
-        let mut file = entry.unwrap();
+        let mut file = entry.assert();
         let ti = parse(&mut file, false);
         if ti.is_err() {
-            debug!("error parsing terminfo entry: {}", ti.unwrap_err());
+            debug!("error parsing terminfo entry: {}", ti.assert_err());
             return None;
         }
 
-        let inf = ti.unwrap();
+        let inf = ti.assert();
         let nc = if inf.strings.find_equiv(&("setaf")).is_some()
                  && inf.strings.find_equiv(&("setab")).is_some() {
                      inf.numbers.find_equiv(&("colors")).map_or(0, |&n| n)
@@ -115,11 +115,11 @@ impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
             let s = expand(self.ti
                                .strings
                                .find_equiv(&("setaf"))
-                               .unwrap()
+                               .assert()
                                .as_slice(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                try!(self.out.write(s.unwrap().as_slice()));
+                try!(self.out.write(s.assert().as_slice()));
                 return Ok(true)
             }
         }
@@ -132,11 +132,11 @@ impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
             let s = expand(self.ti
                                .strings
                                .find_equiv(&("setab"))
-                               .unwrap()
+                               .assert()
                                .as_slice(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                try!(self.out.write(s.unwrap().as_slice()));
+                try!(self.out.write(s.assert().as_slice()));
                 return Ok(true)
             }
         }
@@ -151,11 +151,11 @@ impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
                 let cap = cap_for_attr(attr);
                 let parm = self.ti.strings.find_equiv(&cap);
                 if parm.is_some() {
-                    let s = expand(parm.unwrap().as_slice(),
+                    let s = expand(parm.assert().as_slice(),
                                    [],
                                    &mut Variables::new());
                     if s.is_ok() {
-                        try!(self.out.write(s.unwrap().as_slice()));
+                        try!(self.out.write(s.assert().as_slice()));
                         return Ok(true)
                     }
                 }
@@ -190,16 +190,16 @@ impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
             expand(op.as_slice(), [], &mut Variables::new())
         });
         if s.is_ok() {
-            return self.out.write(s.unwrap().as_slice())
+            return self.out.write(s.assert().as_slice())
         }
         Ok(())
     }
 
     fn unwrap(self) -> T { self.out }
 
-    fn get_ref<'a>(&'a self) -> &'a T { &self.out }
+    fn as_inner(&self) -> &T { &self.out }
 
-    fn get_mut<'a>(&'a mut self) -> &'a mut T { &mut self.out }
+    fn as_inner_mut(&mut self) -> &mut T { &mut self.out }
 }
 
 impl<T: Writer> TerminfoTerminal<T> {
@@ -220,4 +220,3 @@ impl<T: Writer> Writer for TerminfoTerminal<T> {
         self.out.flush()
     }
 }
-

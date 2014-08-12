@@ -88,7 +88,7 @@ pub enum Req {
 pub fn now() -> u64 {
     unsafe {
         let mut now: libc::timeval = mem::zeroed();
-        assert_eq!(c::gettimeofday(&mut now, ptr::mut_null()), 0);
+        assert_eq!(c::gettimeofday(&mut now, ptr::null_mut()), 0);
         return (now.tv_sec as u64) * 1000 + (now.tv_usec as u64) / 1000;
     }
 }
@@ -119,7 +119,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
         let mut timer = match active.shift() {
             Some(timer) => timer, None => return
         };
-        let mut cb = timer.cb.take_unwrap();
+        let mut cb = timer.cb.take().assert();
         cb.call();
         if timer.repeat {
             timer.cb = Some(cb);
@@ -133,7 +133,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
     'outer: loop {
         let timeout = if active.len() == 0 {
             // Empty array? no timeout (wait forever for the next request)
-            ptr::mut_null()
+            ptr::null_mut()
         } else {
             let now = now();
             // If this request has already expired, then signal it and go
@@ -154,8 +154,8 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
         c::fd_set(&mut set, input);
         match unsafe {
-            c::select(input + 1, &mut set, ptr::mut_null(),
-                      ptr::mut_null(), timeout)
+            c::select(input + 1, &mut set, ptr::null_mut(),
+                      ptr::null_mut(), timeout)
         } {
             // timed out
             0 => signal(&mut active, &mut dead),
@@ -174,7 +174,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
                         Ok(RemoveTimer(id, ack)) => {
                             match dead.iter().position(|&(i, _)| id == i) {
                                 Some(i) => {
-                                    let (_, i) = dead.remove(i).unwrap();
+                                    let (_, i) = dead.remove(i).assert();
                                     ack.send(i);
                                     continue
                                 }
@@ -182,7 +182,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
                             }
                             let i = active.iter().position(|i| i.id == id);
                             let i = i.expect("no timer found");
-                            let t = active.remove(i).unwrap();
+                            let t = active.remove(i).assert();
                             ack.send(t);
                         }
                         Err(..) => break
@@ -191,7 +191,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
                 // drain the file descriptor
                 let mut buf = [0];
-                assert_eq!(fd.inner_read(buf).ok().unwrap(), 1);
+                assert_eq!(fd.inner_read(buf).ok().assert(), 1);
             }
 
             -1 if os::errno() == libc::EINTR as int => {}

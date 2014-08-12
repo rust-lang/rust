@@ -135,7 +135,7 @@ fn main() {
         // that their object is still alive, we need to call upgrade() on them
         // to turn them into a strong reference.  This returns an Option, which
         // contains a reference to our object if it still exists.
-        let gadget = gadget_opt.upgrade().unwrap();
+        let gadget = gadget_opt.upgrade().assert();
         println!("Gadget {} owned by {}", gadget.id, gadget.owner.name);
     }
 
@@ -272,7 +272,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 /// ```
 /// use std::rc::{mod, Rc};
 /// let mut x = Rc::new(3u);
-/// *rc::get_mut(&mut x).unwrap() = 4u;
+/// *rc::get_mut(&mut x).assert() = 4u;
 /// assert_eq!(*x, 4u);
 /// let _y = x.clone();
 /// assert!(rc::get_mut(&mut x).is_none());
@@ -591,7 +591,7 @@ mod tests {
     #[test]
     fn get_mut() {
         let mut x = Rc::new(3u);
-        *super::get_mut(&mut x).unwrap() = 4u;
+        *super::get_mut(&mut x).assert() = 4u;
         assert_eq!(*x, 4u);
         let y = x.clone();
         assert!(super::get_mut(&mut x).is_none());
@@ -654,7 +654,7 @@ mod tests {
         let cow1_weak = cow0.downgrade();
 
         assert!(75 == *cow0);
-        assert!(75 == *cow1_weak.upgrade().unwrap());
+        assert!(75 == *cow1_weak.upgrade().assert());
 
         *cow0.make_unique() += 1;
 

@@ -69,18 +69,18 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
 
     match cmd.spawn() {
         Ok(prog) => {
-            let o = prog.wait_with_output().unwrap();
+            let o = prog.wait_with_output().assert();
             if !o.status.success() {
                 handler.err(format!("{} failed with: {}",
                                  cmd,
                                  o.status).as_slice());
                 handler.note(format!("stdout ---\n{}",
                                   str::from_utf8(o.output
-                                                  .as_slice()).unwrap())
+                                                  .as_slice()).assert())
                           .as_slice());
                 handler.note(format!("stderr ---\n{}",
                                   str::from_utf8(o.error
-                                                  .as_slice()).unwrap())
+                                                  .as_slice()).assert())
                           .as_slice());
                 handler.abort_if_errors();
             }
@@ -146,7 +146,7 @@ impl<'a> Archive<'a> {
     /// Lists all files in an archive
     pub fn files(&self) -> Vec<String> {
         let output = run_ar(self.handler, &self.maybe_ar_prog, "t", None, [&self.dst]);
-        let output = str::from_utf8(output.output.as_slice()).unwrap();
+        let output = str::from_utf8(output.output.as_slice()).assert();
         // use lines_any because windows delimits output with `\r\n` instead of
         // just `\n`
         output.lines_any().map(|s| s.to_string()).collect()
@@ -162,7 +162,7 @@ impl<'a> ArchiveBuilder<'a> {
     fn new(archive: Archive<'a>) -> ArchiveBuilder<'a> {
         ArchiveBuilder {
             archive: archive,
-            work_dir: TempDir::new("rsar").unwrap(),
+            work_dir: TempDir::new("rsar").assert(),
             members: vec![],
             should_update_symbols: false,
         }
@@ -201,7 +201,7 @@ impl<'a> ArchiveBuilder<'a> {
 
     /// Adds an arbitrary file to this archive
     pub fn add_file(&mut self, file: &Path) -> io::IoResult<()> {
-        let filename = Path::new(file.filename().unwrap());
+        let filename = Path::new(file.filename().assert());
         let new_file = self.work_dir.path().join(&filename);
         try!(fs::copy(file, &new_file));
         self.members.push(filename);
@@ -271,7 +271,7 @@ impl<'a> ArchiveBuilder<'a> {
 
     fn add_archive(&mut self, archive: &Path, name: &str,
                    skip: &[&str]) -> io::IoResult<()> {
-        let loc = TempDir::new("rsar").unwrap();
+        let loc = TempDir::new("rsar").assert();
 
         // First, extract the contents of the archive to a temporary directory.
         // We don't unpack directly into `self.work_dir` due to the possibility
@@ -291,7 +291,7 @@ impl<'a> ArchiveBuilder<'a> {
         // re-created when we make a new archive anyway.
         let files = try!(fs::readdir(loc.path()));
         for file in files.iter() {
-            let filename = file.filename_str().unwrap();
+            let filename = file.filename_str().assert();
             if skip.iter().any(|s| *s == filename) { continue }
             if filename.contains(".SYMDEF") { continue }
 

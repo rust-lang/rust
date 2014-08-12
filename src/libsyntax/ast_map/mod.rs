@@ -352,7 +352,7 @@ impl Map {
 
     fn path_to_str_with_ident(&self, id: NodeId, i: Ident) -> String {
         self.with_path(id, |path| {
-            path_to_string(path.chain(Some(PathName(i.name)).move_iter()))
+            path_to_string(path.chain(Some(PathName(i.name)).iter_owned()))
         })
     }
 
@@ -419,7 +419,7 @@ impl Map {
     /// any other such items it can find in the map.
     pub fn nodes_matching_suffix<'a, S:Str>(&'a self, parts: &'a [S]) -> NodesMatchingSuffix<'a,S> {
         NodesMatchingSuffix { map: self,
-                              item_name: parts.last().unwrap(),
+                              item_name: parts.last().assert(),
                               where: parts.slice_to(parts.len() - 1),
                               idx: 0 }
     }

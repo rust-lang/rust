@@ -127,7 +127,13 @@ impl<N,E> Graph<N,E> {
         idx
     }
 
+    /// Deprecated: renamed to `node_data_mut`
+    #[deprecated = "renamed to node_data_mut"]
     pub fn mut_node_data<'a>(&'a mut self, idx: NodeIndex) -> &'a mut N {
+        self.node_data_mut(idx)
+    }
+
+    pub fn node_data_mut<'a>(&'a mut self, idx: NodeIndex) -> &'a mut N {
         &mut self.nodes.get_mut(idx.get()).data
     }
 
@@ -174,7 +180,13 @@ impl<N,E> Graph<N,E> {
         return idx;
     }
 
+    /// Deprecated: renamed to `edge_data_mut`
+    #[deprecated = "renamed to edge_data_mut"]
     pub fn mut_edge_data<'a>(&'a mut self, idx: EdgeIndex) -> &'a mut E {
+        self.edge_data_mut(idx)
+    }
+
+    pub fn edge_data_mut<'a>(&'a mut self, idx: EdgeIndex) -> &'a mut E {
         &mut self.edges.get_mut(idx.get()).data
     }
 

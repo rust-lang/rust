@@ -4494,14 +4494,14 @@ pub fn instantiate_path(fcx: &FnCtxt,
             for (i, lifetime) in segment.lifetimes.iter().enumerate() {
                 let r = ast_region_to_region(fcx.tcx(), lifetime);
                 if i < region_count {
-                    substs.mut_regions().push(space, r);
+                    substs.regions_mut().push(space, r);
                 } else if i == region_count {
                     span_err!(fcx.tcx().sess, lifetime.span, E0088,
                         "too many lifetime parameters provided: \
                          expected {} parameter(s) but found {} parameter(s)",
                         region_count,
                         segment.lifetimes.len());
-                    substs.mut_regions().truncate(space, 0);
+                    substs.regions_mut().truncate(space, 0);
                 }
             }
         }
@@ -4562,7 +4562,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
         // parameters, so we have to substitute as we go with the
         // partial substitution that we have built up.
         for i in range(provided_len, desired.len()) {
-            let default = desired[i].default.unwrap();
+            let default = desired[i].default.assert();
             let default = default.subst_spanned(fcx.tcx(), substs, Some(span));
             substs.types.push(space, default);
         }
@@ -4578,7 +4578,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
         defs: &VecPerParamSpace<ty::RegionParameterDef>,
         substs: &mut Substs)
     {
-        let provided_len = substs.mut_regions().len(space);
+        let provided_len = substs.regions_mut().len(space);
         let desired = defs.get_slice(space);
 
         // Enforced by `push_explicit_parameters_from_segment_to_substs()`.
@@ -4586,7 +4586,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
 
         // If nothing was provided, just use inference variables.
         if provided_len == 0 {
-            substs.mut_regions().replace(
+            substs.regions_mut().replace(
                 space,
                 fcx.infcx().region_vars_for_defs(span, desired));
             return;
@@ -4604,7 +4604,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
              but found {} parameter(s)",
             desired.len(), provided_len);
 
-        substs.mut_regions().replace(
+        substs.regions_mut().replace(
             space,
             fcx.infcx().region_vars_for_defs(span, desired));
     }
@@ -5023,4 +5023,3 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             });
     }
 }
-

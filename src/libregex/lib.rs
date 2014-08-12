@@ -283,7 +283,7 @@
 //! # extern crate regex; #[phase(plugin)] extern crate regex_macros;
 //! # fn main() {
 //! let re = regex!(r"(?i)a+(?-i)b+");
-//! let cap = re.captures("AaAaAbbBBBb").unwrap();
+//! let cap = re.captures("AaAaAbbBBBb").assert();
 //! assert_eq!(cap.at(0), "AaAaAbb");
 //! # }
 //! ```

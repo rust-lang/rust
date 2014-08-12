@@ -11,6 +11,6 @@
 use std::rc::Rc;
 
 pub fn main() {
-    let _x = Rc::new(vec!(1i, 2)).move_iter();
+    let _x = Rc::new(vec!(1i, 2)).iter_owned();
     //~^ ERROR cannot move out of dereference of `&`-pointer
 }

@@ -103,7 +103,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
     let mut root = os::getcwd();
     let pat_root = Path::new(pattern).root_path();
     if pat_root.is_some() {
-        if check_windows_verbatim(pat_root.get_ref()) {
+        if check_windows_verbatim(pat_root.as_ref().assert()) {
             // FIXME: How do we want to handle verbatim paths? I'm inclined to return nothing,
             // since we can't very well find all UNC shares with a 1-letter server name.
             return Paths {
@@ -113,7 +113,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
                 todo: Vec::new(),
             };
         }
-        root.push(pat_root.get_ref());
+        root.push(pat_root.as_ref().assert());
     }
 
     let root_len = pat_root.map_or(0u, |p| p.as_vec().len());
@@ -147,7 +147,7 @@ impl Iterator<Path> for Paths {
                 return None;
             }
 
-            let (path,idx) = self.todo.pop().unwrap();
+            let (path,idx) = self.todo.pop().assert();
             // idx -1: was already checked by fill_todo, maybe path was '.' or
             // '..' that we can't match here because of normalization.
             if idx == -1 as uint {
@@ -186,7 +186,7 @@ fn list_dir_sorted(path: &Path) -> Option<Vec<Path>> {
     match fs::readdir(path) {
         Ok(mut children) => {
             children.sort_by(|p1, p2| p2.filename().cmp(&p1.filename()));
-            Some(children.move_iter().collect())
+            Some(children.iter_owned().collect())
         }
         Err(..) => None
     }
@@ -400,7 +400,7 @@ impl Pattern {
                         }
 
                         let (some_c, next) = file.slice_shift_char();
-                        if require_literal(some_c.unwrap()) {
+                        if require_literal(some_c.assert()) {
                             return SubPatternDoesntMatch;
                         }
                         prev_char.set(some_c);
@@ -413,7 +413,7 @@ impl Pattern {
                     }
 
                     let (some_c, next) = file.slice_shift_char();
-                    let c = some_c.unwrap();
+                    let c = some_c.assert();
                     let matches = match *token {
                         AnyChar => {
                             !require_literal(c)
@@ -501,7 +501,7 @@ fn fill_todo(todo: &mut Vec<(Path, uint)>, patterns: &[Pattern], idx: uint, path
         None => {
             match list_dir_sorted(path) {
                 Some(entries) => {
-                    todo.extend(entries.move_iter().map(|x|(x, idx)));
+                    todo.extend(entries.iter_owned().map(|x|(x, idx)));
 
                     // Matching the special directory entries . and .. that refer to
                     // the current and parent directory respectively requires that
@@ -656,9 +656,9 @@ mod test {
         assert!(glob("//").next().is_some());
 
         // check windows absolute paths with host/device components
-        let root_with_device = os::getcwd().root_path().unwrap().join("*");
+        let root_with_device = os::getcwd().root_path().assert().join("*");
         // FIXME (#9639): This needs to handle non-utf8 paths
-        assert!(glob(root_with_device.as_str().unwrap()).next().is_some());
+        assert!(glob(root_with_device.as_str().assert()).next().is_some());
     }
 
     #[test]
@@ -880,7 +880,7 @@ mod test {
 
     #[test]
     fn test_matches_path() {
-        // on windows, (Path::new("a/b").as_str().unwrap() == "a\\b"), so this
+        // on windows, (Path::new("a/b").as_str().assert() == "a\\b"), so this
         // tests that / and \ are considered equivalent on windows
         assert!(Pattern::new("a/b").matches_path(&Path::new("a/b")));
     }

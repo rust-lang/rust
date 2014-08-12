@@ -107,7 +107,7 @@ impl Timer {
         unsafe { HELPER.boot(|| {}, helper) }
 
         let obj = unsafe {
-            imp::CreateWaitableTimerA(ptr::mut_null(), 0, ptr::null())
+            imp::CreateWaitableTimerA(ptr::null_mut(), 0, ptr::null())
         };
         if obj.is_null() {
             Err(super::last_error())
@@ -141,8 +141,8 @@ impl rtio::RtioTimer for Timer {
         // 100ns intervals, so we multiply by 10^4.
         let due = -(msecs as i64 * 10000) as libc::LARGE_INTEGER;
         assert_eq!(unsafe {
-            imp::SetWaitableTimer(self.obj, &due, 0, ptr::mut_null(),
-                                  ptr::mut_null(), 0)
+            imp::SetWaitableTimer(self.obj, &due, 0, ptr::null_mut(),
+                                  ptr::null_mut(), 0)
         }, 1);
 
         let _ = unsafe { imp::WaitForSingleObject(self.obj, libc::INFINITE) };
@@ -154,8 +154,8 @@ impl rtio::RtioTimer for Timer {
         // see above for the calculation
         let due = -(msecs as i64 * 10000) as libc::LARGE_INTEGER;
         assert_eq!(unsafe {
-            imp::SetWaitableTimer(self.obj, &due, 0, ptr::mut_null(),
-                                  ptr::mut_null(), 0)
+            imp::SetWaitableTimer(self.obj, &due, 0, ptr::null_mut(),
+                                  ptr::null_mut(), 0)
         }, 1);
 
         unsafe { HELPER.send(NewTimer(self.obj, cb, true)) }
@@ -169,7 +169,7 @@ impl rtio::RtioTimer for Timer {
         let due = -(msecs as i64 * 10000) as libc::LARGE_INTEGER;
         assert_eq!(unsafe {
             imp::SetWaitableTimer(self.obj, &due, msecs as libc::LONG,
-                                  ptr::mut_null(), ptr::mut_null(), 0)
+                                  ptr::null_mut(), ptr::null_mut(), 0)
         }, 1);
 
         unsafe { HELPER.send(NewTimer(self.obj, cb, false)) }

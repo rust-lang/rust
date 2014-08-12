@@ -70,8 +70,8 @@ fn fold_mod(cx: &mut Context, m: &ast::Mod) -> ast::Mod {
     let filtered_items: Vec<&Gc<ast::Item>> = m.items.iter()
             .filter(|a| item_in_cfg(cx, &***a))
             .collect();
-    let flattened_items = filtered_items.move_iter()
-            .flat_map(|&x| cx.fold_item(x).move_iter())
+    let flattened_items = filtered_items.iter_owned()
+            .flat_map(|&x| cx.fold_item(x).iter_owned())
             .collect();
     let filtered_view_items = m.view_items.iter().filter_map(|a| {
         filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
@@ -184,8 +184,8 @@ fn retain_stmt(cx: &mut Context, stmt: Gc<ast::Stmt>) -> bool {
 fn fold_block(cx: &mut Context, b: ast::P<ast::Block>) -> ast::P<ast::Block> {
     let resulting_stmts: Vec<&Gc<ast::Stmt>> =
         b.stmts.iter().filter(|&a| retain_stmt(cx, *a)).collect();
-    let resulting_stmts = resulting_stmts.move_iter()
-        .flat_map(|stmt| cx.fold_stmt(&**stmt).move_iter())
+    let resulting_stmts = resulting_stmts.iter_owned()
+        .flat_map(|stmt| cx.fold_stmt(&**stmt).iter_owned())
         .collect();
     let filtered_view_items = b.view_items.iter().filter_map(|a| {
         filter_view_item(cx, a).map(|x| cx.fold_view_item(x))

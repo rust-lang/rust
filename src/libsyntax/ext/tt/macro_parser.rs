@@ -275,7 +275,7 @@ pub fn parse(sess: &ParseSess,
                     if idx == len {
                         // pop from the matcher position
 
-                        let mut new_pos = ei.up.clone().unwrap();
+                        let mut new_pos = ei.up.clone().assert();
 
                         // update matches (the MBE "parse tree") by appending
                         // each tree as a subtree.
@@ -366,8 +366,8 @@ pub fn parse(sess: &ParseSess,
         if token_name_eq(&tok, &EOF) {
             if eof_eis.len() == 1u {
                 let mut v = Vec::new();
-                for dv in eof_eis.get_mut(0).matches.mut_iter() {
-                    v.push(dv.pop().unwrap());
+                for dv in eof_eis.get_mut(0).matches.iter_mut() {
+                    v.push(dv.pop().assert());
                 }
                 return Success(nameize(sess, ms, v.as_slice()));
             } else if eof_eis.len() > 1u {
@@ -397,13 +397,13 @@ pub fn parse(sess: &ParseSess,
             } else if next_eis.len() > 0u {
                 /* Now process the next token */
                 while next_eis.len() > 0u {
-                    cur_eis.push(next_eis.pop().unwrap());
+                    cur_eis.push(next_eis.pop().assert());
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
                 let mut rust_parser = Parser::new(sess, cfg.clone(), box rdr.clone());
 
-                let mut ei = bb_eis.pop().unwrap();
+                let mut ei = bb_eis.pop().assert();
                 match ei.elts.get(ei.idx).node {
                   MatchNonterminal(_, name, idx) => {
                     let name_string = token::get_ident(name);

@@ -24,11 +24,11 @@
 //! cache.put(2, 20);
 //! cache.put(3, 30);
 //! assert!(cache.get(&1).is_none());
-//! assert_eq!(*cache.get(&2).unwrap(), 20);
-//! assert_eq!(*cache.get(&3).unwrap(), 30);
+//! assert_eq!(*cache.get(&2).assert(), 20);
+//! assert_eq!(*cache.get(&3).assert(), 30);
 //!
 //! cache.put(2, 22);
-//! assert_eq!(*cache.get(&2).unwrap(), 22);
+//! assert_eq!(*cache.get(&2).assert(), 22);
 //!
 //! cache.put(6, 60);
 //! assert!(cache.get(&3).is_none());
@@ -84,8 +84,8 @@ impl<K, V> LruEntry<K, V> {
         LruEntry {
             key: k,
             value: v,
-            next: ptr::mut_null(),
-            prev: ptr::mut_null(),
+            next: ptr::null_mut(),
+            prev: ptr::null_mut(),
         }
     }
 }
@@ -346,7 +346,7 @@ mod tests {
 
     fn assert_opt_eq<V: PartialEq>(opt: Option<&V>, v: V) {
         assert!(opt.is_some());
-        assert!(opt.unwrap() == &v);
+        assert!(opt.assert() == &v);
     }
 
     #[test]
@@ -388,7 +388,7 @@ mod tests {
         assert_eq!(cache.len(), 2);
         let opt1 = cache.pop(&1);
         assert!(opt1.is_some());
-        assert_eq!(opt1.unwrap(), 10);
+        assert_eq!(opt1.assert(), 10);
         assert!(cache.get(&1).is_none());
         assert_eq!(cache.len(), 1);
     }

@@ -117,7 +117,7 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default>
 /// fn main() {
 ///     let rsdr = TickTockReseeder { tick: true };
 ///
-///     let inner = StdRng::new().unwrap();
+///     let inner = StdRng::new().assert();
 ///     let mut rng = ReseedingRng::new(inner, 10, rsdr);
 ///
 ///     // this will repeat, because it gets reseeded very regularly.

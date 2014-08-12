@@ -67,7 +67,7 @@ fn main() {
     } else {
         box io::stdin() as Box<io::Reader>
     };
-    let mut seq = rdr.read_to_string().unwrap();
+    let mut seq = rdr.read_to_string().assert();
     let ilen = seq.len();
 
     seq = regex!(">[^\n]*\n|\n").replace_all(seq.as_slice(), NoExpand(""));
@@ -89,7 +89,7 @@ fn main() {
             (regex!("Y"), "(c|t)"),
         ];
         let mut seq = seq;
-        for (re, replacement) in substs.move_iter() {
+        for (re, replacement) in substs.iter_owned() {
             seq = re.replace_all(seq.as_slice(), NoExpand(replacement));
         }
         seq.len()
@@ -107,7 +107,7 @@ fn main() {
         regex!("agggtaa[cgt]|[acg]ttaccct"),
     ];
     let (mut variant_strs, mut counts) = (vec!(), vec!());
-    for variant in variants.move_iter() {
+    for variant in variants.iter_owned() {
         let seq_arc_copy = seq_arc.clone();
         variant_strs.push(variant.to_string());
         counts.push(Future::spawn(proc() {

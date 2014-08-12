@@ -232,7 +232,7 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     match str::from_utf8(bytes.as_slice()) {
         Some(s) => {
             return string_to_filemap(sess, s.to_string(),
-                                     path.as_str().unwrap().to_string())
+                                     path.as_str().assert().to_string())
         }
         None => {
             err(format!("{} is not UTF-8 encoded", path.display()).as_slice())
@@ -394,7 +394,7 @@ pub fn raw_str_lit(lit: &str) -> String {
         match chars.next() {
             Some(c) => {
                 if c == '\r' {
-                    if *chars.peek().unwrap() != '\n' {
+                    if *chars.peek().assert() != '\n' {
                         fail!("lexer accepted bare CR");
                     }
                     chars.next();
@@ -535,7 +535,7 @@ pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
     debug!("parse_integer_lit: {}", s);
 
     if s.len() == 1 {
-        let n = (s.char_at(0)).to_digit(10).unwrap();
+        let n = (s.char_at(0)).to_digit(10).assert();
         return ast::LitInt(n as u64, ast::UnsuffixedIntLit(ast::Sign::new(n)));
     }
 
@@ -1045,19 +1045,19 @@ mod test {
 
         let name = "<source>".to_string();
         let source = "/// doc comment\r\nfn foo() {}".to_string();
-        let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
-        let doc = attr::first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
+        let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).assert();
+        let doc = attr::first_attr_value_str_by_name(item.attrs.as_slice(), "doc").assert();
         assert_eq!(doc.get(), "/// doc comment");
 
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
-        let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
+        let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).assert();
         let docs = item.attrs.iter().filter(|a| a.name().get() == "doc")
-                    .map(|a| a.value_str().unwrap().get().to_string()).collect::<Vec<_>>();
+                    .map(|a| a.value_str().assert().get().to_string()).collect::<Vec<_>>();
         assert_eq!(docs.as_slice(), &["/// doc comment".to_string(), "/// line 2".to_string()]);
 
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
-        let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();
-        let doc = attr::first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
+        let item = parse_item_from_source_str(name, source, Vec::new(), &sess).assert();
+        let doc = attr::first_attr_value_str_by_name(item.attrs.as_slice(), "doc").assert();
         assert_eq!(doc.get(), "/** doc comment\n *  with CRLF */");
     }
 }

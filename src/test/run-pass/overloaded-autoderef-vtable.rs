@@ -20,7 +20,7 @@ trait Helper<T> {
 
 impl<T> Helper<T> for Option<T> {
     fn helper_borrow(&self) -> &T {
-        self.as_ref().unwrap()
+        self.as_ref().assert()
     }
 }
 

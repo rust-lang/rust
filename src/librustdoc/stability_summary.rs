@@ -168,7 +168,7 @@ pub fn build(krate: &Crate) -> ModuleSummary {
             submodules: Vec::new(),
         },
         Some(ref item) => ModuleSummary {
-            name: krate.name.clone(), .. summarize_item(item).val1().unwrap()
+            name: krate.name.clone(), .. summarize_item(item).val1().assert()
         }
     }
 }

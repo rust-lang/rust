@@ -84,7 +84,7 @@ fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
             Ok(tty) => f(TTY(tty)),
             Err(_) => f(File(io.fs_from_raw_fd(fd, DontClose))),
         })
-    }).map_err(IoError::from_rtio_error).unwrap()
+    }).map_err(IoError::from_rtio_error).assert()
 }
 
 local_data_key!(local_stdout: Box<Writer + Send>)
@@ -391,7 +391,7 @@ mod tests {
             set_stdout(box w);
             println!("hello!");
         });
-        assert_eq!(r.read_to_string().unwrap(), "hello!\n".to_string());
+        assert_eq!(r.read_to_string().assert(), "hello!\n".to_string());
     })
 
     iotest!(fn capture_stderr() {
@@ -404,7 +404,7 @@ mod tests {
             ::realstd::io::stdio::set_stderr(box w);
             fail!("my special message");
         });
-        let s = r.read_to_string().unwrap();
+        let s = r.read_to_string().assert();
         assert!(s.as_slice().contains("my special message"));
     })
 }

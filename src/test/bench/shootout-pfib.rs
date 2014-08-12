@@ -82,8 +82,8 @@ fn stress(num_tasks: int) {
             stress_task(i);
         }));
     }
-    for r in results.move_iter() {
-        r.unwrap();
+    for r in results.iter_owned() {
+        r.assert();
     }
 }
 
@@ -94,7 +94,7 @@ fn main() {
     } else if args.len() <= 1u {
         vec!("".to_string(), "8".to_string())
     } else {
-        args.move_iter().map(|x| x.to_string()).collect()
+        args.iter_owned().map(|x| x.to_string()).collect()
     };
 
     let opts = parse_opts(args.clone());
@@ -102,7 +102,7 @@ fn main() {
     if opts.stress {
         stress(2);
     } else {
-        let max = uint::parse_bytes(args.get(1).as_bytes(), 10u).unwrap() as
+        let max = uint::parse_bytes(args.get(1).as_bytes(), 10u).assert() as
             int;
 
         let num_trials = 10;

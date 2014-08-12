@@ -44,7 +44,7 @@ impl<T> Collection for RingBuf<T> {
 impl<T> Mutable for RingBuf<T> {
     /// Clear the RingBuf, removing all values.
     fn clear(&mut self) {
-        for x in self.elts.mut_iter() { *x = None }
+        for x in self.elts.iter_mut() { *x = None }
         self.nelts = 0;
         self.lo = 0;
     }
@@ -249,9 +249,13 @@ impl<T> RingBuf<T> {
     /// buf.push(4);
     /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), &[&5, &3, &4]);
     /// ```
-    pub fn iter<'a>(&'a self) -> Items<'a, T> {
+    pub fn iter(&self) -> Items<T> {
         Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
     }
+
+    /// Deprecated. Use `iter_mut` instead.
+    #[deprecated = "use iter_mut instead"]
+    pub fn mut_iter(&mut self) -> ItemsMut<T> { self.iter_mut() }
 
     /// Front-to-back iterator which returns mutable values.
     ///
@@ -264,12 +268,12 @@ impl<T> RingBuf<T> {
     /// buf.push(5i);
     /// buf.push(3);
     /// buf.push(4);
-    /// for num in buf.mut_iter() {
+    /// for num in buf.iter_mut() {
     ///     *num = *num - 2;
     /// }
-    /// assert_eq!(buf.mut_iter().collect::<Vec<&mut int>>().as_slice(), &[&mut 3, &mut 1, &mut 2]);
+    /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>().as_slice(), &[&mut 3, &mut 1, &mut 2]);
     /// ```
-    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
+    pub fn iter_mut(&mut self) -> ItemsMut<T> {
         let start_index = raw_index(self.lo, self.elts.len(), 0);
         let end_index = raw_index(self.lo, self.elts.len(), self.nelts);
 
@@ -279,16 +283,16 @@ impl<T> RingBuf<T> {
             //    start_index to self.elts.len()
             // and then
             //    0 to end_index
-            let (temp, remaining1) = self.elts.mut_split_at(start_index);
-            let (remaining2, _) = temp.mut_split_at(end_index);
-            MutItems { remaining1: remaining1,
+            let (temp, remaining1) = self.elts.split_at_mut(start_index);
+            let (remaining2, _) = temp.split_at_mut(end_index);
+            ItemsMut { remaining1: remaining1,
                                  remaining2: remaining2,
                                  nelts: self.nelts }
         } else {
             // Items to iterate goes from start_index to end_index:
-            let (empty, elts) = self.elts.mut_split_at(0);
-            let remaining1 = elts.mut_slice(start_index, end_index);
-            MutItems { remaining1: remaining1,
+            let (empty, elts) = self.elts.split_at_mut(0);
+            let remaining1 = elts.slice_mut(start_index, end_index);
+            ItemsMut { remaining1: remaining1,
                                  remaining2: empty,
                                  nelts: self.nelts }
         }
@@ -311,7 +315,7 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
         }
         let raw_index = raw_index(self.lo, self.elts.len(), self.index);
         self.index += 1;
-        Some(self.elts[raw_index].get_ref())
+        Some(self.elts[raw_index].as_ref().assert())
     }
 
     #[inline]
@@ -329,7 +333,7 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
         }
         self.rindex -= 1;
         let raw_index = raw_index(self.lo, self.elts.len(), self.rindex);
-        Some(self.elts[raw_index].get_ref())
+        Some(self.elts[raw_index].as_ref().assert())
     }
 }
 
@@ -345,19 +349,19 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
             None
         } else {
             let raw_index = raw_index(self.lo, self.elts.len(), self.index + j);
-            Some(self.elts[raw_index].get_ref())
+            Some(self.elts[raw_index].as_ref().assert())
         }
     }
 }
 
 /// RingBuf mutable iterator
-pub struct MutItems<'a, T> {
+pub struct ItemsMut<'a, T> {
     remaining1: &'a mut [Option<T>],
     remaining2: &'a mut [Option<T>],
     nelts: uint,
 }
 
-impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
+impl<'a, T> Iterator<&'a mut T> for ItemsMut<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
@@ -370,7 +374,7 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
             &mut self.remaining2
         };
         self.nelts -= 1;
-        Some(r.mut_shift_ref().unwrap().get_mut_ref())
+        Some(r.shift_mut().assert().as_mut().assert())
     }
 
     #[inline]
@@ -379,7 +383,7 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a mut T> for ItemsMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
@@ -392,11 +396,11 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
             &mut self.remaining1
         };
         self.nelts -= 1;
-        Some(r.mut_pop_ref().unwrap().get_mut_ref())
+        Some(r.pop_mut().assert().as_mut().assert())
     }
 }
 
-impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
+impl<'a, T> ExactSize<&'a mut T> for ItemsMut<'a, T> {}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
@@ -530,9 +534,9 @@ mod tests {
         d.push_back(137);
         assert_eq!(d.len(), 4u);
         debug!("{:?}", d.front());
-        assert_eq!(*d.front().unwrap(), 42);
+        assert_eq!(*d.front().assert(), 42);
         debug!("{:?}", d.back());
-        assert_eq!(*d.back().unwrap(), 137);
+        assert_eq!(*d.back().assert(), 137);
         let mut i = d.pop_front();
         debug!("{:?}", i);
         assert_eq!(i, Some(42));
@@ -610,12 +614,12 @@ mod tests {
         assert_eq!(deq.len(), 3);
         deq.push_back(d.clone());
         assert_eq!(deq.len(), 4);
-        assert_eq!((*deq.front().unwrap()).clone(), b.clone());
-        assert_eq!((*deq.back().unwrap()).clone(), d.clone());
-        assert_eq!(deq.pop_front().unwrap(), b.clone());
-        assert_eq!(deq.pop_back().unwrap(), d.clone());
-        assert_eq!(deq.pop_back().unwrap(), c.clone());
-        assert_eq!(deq.pop_back().unwrap(), a.clone());
+        assert_eq!((*deq.front().assert()).clone(), b.clone());
+        assert_eq!((*deq.back().assert()).clone(), d.clone());
+        assert_eq!(deq.pop_front().assert(), b.clone());
+        assert_eq!(deq.pop_back().assert(), d.clone());
+        assert_eq!(deq.pop_back().assert(), c.clone());
+        assert_eq!(deq.pop_back().assert(), a.clone());
         assert_eq!(deq.len(), 0);
         deq.push_back(c.clone());
         assert_eq!(deq.len(), 1);
@@ -868,7 +872,7 @@ mod tests {
     #[test]
     fn test_mut_rev_iter_wrap() {
         let mut d = RingBuf::with_capacity(3);
-        assert!(d.mut_iter().rev().next().is_none());
+        assert!(d.iter_mut().rev().next().is_none());
 
         d.push_back(1i);
         d.push_back(2);
@@ -876,29 +880,29 @@ mod tests {
         assert_eq!(d.pop_front(), Some(1));
         d.push_back(4);
 
-        assert_eq!(d.mut_iter().rev().map(|x| *x).collect::<Vec<int>>(),
+        assert_eq!(d.iter_mut().rev().map(|x| *x).collect::<Vec<int>>(),
                    vec!(4, 3, 2));
     }
 
     #[test]
     fn test_mut_iter() {
         let mut d = RingBuf::new();
-        assert!(d.mut_iter().next().is_none());
+        assert!(d.iter_mut().next().is_none());
 
         for i in range(0u, 3) {
             d.push_front(i);
         }
 
-        for (i, elt) in d.mut_iter().enumerate() {
+        for (i, elt) in d.iter_mut().enumerate() {
             assert_eq!(*elt, 2 - i);
             *elt = i;
         }
 
         {
-            let mut it = d.mut_iter();
-            assert_eq!(*it.next().unwrap(), 0);
-            assert_eq!(*it.next().unwrap(), 1);
-            assert_eq!(*it.next().unwrap(), 2);
+            let mut it = d.iter_mut();
+            assert_eq!(*it.next().assert(), 0);
+            assert_eq!(*it.next().assert(), 1);
+            assert_eq!(*it.next().assert(), 2);
             assert!(it.next().is_none());
         }
     }
@@ -906,22 +910,22 @@ mod tests {
     #[test]
     fn test_mut_rev_iter() {
         let mut d = RingBuf::new();
-        assert!(d.mut_iter().rev().next().is_none());
+        assert!(d.iter_mut().rev().next().is_none());
 
         for i in range(0u, 3) {
             d.push_front(i);
         }
 
-        for (i, elt) in d.mut_iter().rev().enumerate() {
+        for (i, elt) in d.iter_mut().rev().enumerate() {
             assert_eq!(*elt, i);
             *elt = i;
         }
 
         {
-            let mut it = d.mut_iter().rev();
-            assert_eq!(*it.next().unwrap(), 0);
-            assert_eq!(*it.next().unwrap(), 1);
-            assert_eq!(*it.next().unwrap(), 2);
+            let mut it = d.iter_mut().rev();
+            assert_eq!(*it.next().assert(), 0);
+            assert_eq!(*it.next().assert(), 1);
+            assert_eq!(*it.next().assert(), 2);
             assert!(it.next().is_none());
         }
     }

@@ -155,15 +155,15 @@ impl<'a> State<'a> {
 
 pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
     let mut s = rust_printer(box MemWriter::new());
-    f(&mut s).unwrap();
-    eof(&mut s.s).unwrap();
+    f(&mut s).assert();
+    eof(&mut s.s).assert();
     unsafe {
         // FIXME(pcwalton): A nasty function to extract the string from an `io::Writer`
         // that we "know" to be a `MemWriter` that works around the lack of checked
         // downcasts.
         let (_, wr): (uint, Box<MemWriter>) = mem::transmute_copy(&s.s.out);
         let result =
-            String::from_utf8(Vec::from_slice(wr.get_ref().as_slice())).unwrap();
+            String::from_utf8(Vec::from_slice(wr.get_ref().as_slice())).assert();
         mem::forget(wr);
         result.to_string()
     }
@@ -302,7 +302,7 @@ impl<'a> State<'a> {
     }
 
     pub fn end(&mut self) -> IoResult<()> {
-        self.boxes.pop().unwrap();
+        self.boxes.pop().assert();
         pp::end(&mut self.s)
     }
 
@@ -1107,7 +1107,7 @@ impl<'a> State<'a> {
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(attr.span.lo));
         if attr.node.is_sugared_doc {
-            word(&mut self.s, attr.value_str().unwrap().get())
+            word(&mut self.s, attr.value_str().assert().get())
         } else {
             match attr.node.style {
                 ast::AttrInner => try!(word(&mut self.s, "#![")),
@@ -1451,13 +1451,13 @@ impl<'a> State<'a> {
                     try!(self.print_block_unclosed(&**body));
                 } else {
                     // we extract the block, so as not to create another set of boxes
-                    match body.expr.unwrap().node {
+                    match body.expr.assert().node {
                         ast::ExprBlock(blk) => {
                             try!(self.print_block_unclosed(&*blk));
                         }
                         _ => {
                             // this is a bare expression
-                            try!(self.print_expr(&*body.expr.unwrap()));
+                            try!(self.print_expr(&*body.expr.assert()));
                             try!(self.end()); // need to close a box
                         }
                     }
@@ -1481,13 +1481,13 @@ impl<'a> State<'a> {
                     try!(self.print_block_unclosed(&**body));
                 } else {
                     // we extract the block, so as not to create another set of boxes
-                    match body.expr.unwrap().node {
+                    match body.expr.assert().node {
                         ast::ExprBlock(ref blk) => {
                             try!(self.print_block_unclosed(&**blk));
                         }
                         _ => {
                             // this is a bare expression
-                            try!(self.print_expr(&*body.expr.unwrap()));
+                            try!(self.print_expr(&*body.expr.assert()));
                             try!(self.end()); // need to close a box
                         }
                     }
@@ -1509,13 +1509,13 @@ impl<'a> State<'a> {
                 assert!(body.stmts.is_empty());
                 assert!(body.expr.is_some());
                 // we extract the block, so as not to create another set of boxes
-                match body.expr.unwrap().node {
+                match body.expr.assert().node {
                     ast::ExprBlock(ref blk) => {
                         try!(self.print_block_unclosed(&**blk));
                     }
                     _ => {
                         // this is a bare expression
-                        try!(self.print_expr(&*body.expr.unwrap()));
+                        try!(self.print_expr(&*body.expr.assert()));
                         try!(self.end()); // need to close a box
                     }
                 }
@@ -2204,7 +2204,7 @@ impl<'a> State<'a> {
         match vp.node {
             ast::ViewPathSimple(ident, ref path, _) => {
                 // FIXME(#6993) can't compare identifiers directly here
-                if path.segments.last().unwrap().identifier.name != ident.name {
+                if path.segments.last().assert().identifier.name != ident.name {
                     try!(self.print_ident(ident));
                     try!(space(&mut self.s));
                     try!(self.word_space("="));

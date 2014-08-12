@@ -143,7 +143,7 @@ impl<Q: Send> Sem<Q> {
             /* for _ in range(0u, 1000) { task::deschedule(); } */
             // Need to wait outside the exclusive.
             if waiter_nobe.is_some() {
-                let _ = waiter_nobe.unwrap().recv();
+                let _ = waiter_nobe.assert().recv();
             }
         }
     }
@@ -259,7 +259,7 @@ impl<'a> Condvar<'a> {
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
             (|| {
-                let _ = wait_end.take_unwrap().recv();
+                let _ = wait_end.take().assert().recv();
             }).finally(|| {
                 // Reacquire the condvar.
                 match self.order {
@@ -318,7 +318,7 @@ impl<'a> Condvar<'a> {
                               condvar_id,
                               "cond.signal_on()",
                               || {
-                queue.take_unwrap().broadcast()
+                queue.take().assert().broadcast()
             })
         }
     }
@@ -804,14 +804,14 @@ mod tests {
         }
 
         // wait until all children get in the mutex
-        for rx in rxs.mut_iter() { rx.recv(); }
+        for rx in rxs.iter_mut() { rx.recv(); }
         {
             let lock = m.lock();
             let num_woken = lock.cond.broadcast();
             assert_eq!(num_woken, num_waiters);
         }
         // wait until all children wake up
-        for rx in rxs.mut_iter() { rx.recv(); }
+        for rx in rxs.iter_mut() { rx.recv(); }
     }
     #[test]
     fn test_mutex_cond_broadcast() {
@@ -1058,13 +1058,13 @@ mod tests {
         }
 
         // wait until all children get in the mutex
-        for rx in rxs.mut_iter() { let _ = rx.recv(); }
+        for rx in rxs.iter_mut() { let _ = rx.recv(); }
         lock_cond(&x, |cond| {
             let num_woken = cond.broadcast();
             assert_eq!(num_woken, num_waiters);
         });
         // wait until all children wake up
-        for rx in rxs.mut_iter() { let _ = rx.recv(); }
+        for rx in rxs.iter_mut() { let _ = rx.recv(); }
     }
     #[test]
     fn test_rwlock_cond_broadcast() {

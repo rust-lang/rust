@@ -70,14 +70,14 @@ iotest!(fn test_destroy_once() {
 
 #[cfg(unix)]
 pub fn sleeper() -> Process {
-    Command::new("sleep").arg("1000").spawn().unwrap()
+    Command::new("sleep").arg("1000").spawn().assert()
 }
 #[cfg(windows)]
 pub fn sleeper() -> Process {
     // There's a `timeout` command on windows, but it doesn't like having
     // its output piped, so instead just ping ourselves a few times with
     // gaps in between so we're sure this process is alive for awhile
-    Command::new("ping").arg("127.0.0.1").arg("-n").arg("1000").spawn().unwrap()
+    Command::new("ping").arg("127.0.0.1").arg("-n").arg("1000").spawn().assert()
 }
 
 iotest!(fn test_destroy_twice() {
@@ -102,19 +102,19 @@ pub fn test_destroy_actually_kills(force: bool) {
     static BLOCK_COMMAND: &'static str = "cmd";
 
     // this process will stay alive indefinitely trying to read from stdin
-    let mut p = Command::new(BLOCK_COMMAND).spawn().unwrap();
+    let mut p = Command::new(BLOCK_COMMAND).spawn().assert();
 
     assert!(p.signal(0).is_ok());
 
     if force {
-        p.signal_kill().unwrap();
+        p.signal_kill().assert();
     } else {
-        p.signal_exit().unwrap();
+        p.signal_exit().assert();
     }
 
     // Don't let this test time out, this should be quick
     let (tx, rx1) = channel();
-    let mut t = timer::Timer::new().unwrap();
+    let mut t = timer::Timer::new().assert();
     let rx2 = t.oneshot(1000);
     spawn(proc() {
         select! {
@@ -122,7 +122,7 @@ pub fn test_destroy_actually_kills(force: bool) {
             () = rx1.recv() => {}
         }
     });
-    match p.wait().unwrap() {
+    match p.wait().assert() {
         ExitStatus(..) => fail!("expected a signal"),
         ExitSignal(..) => tx.send(()),
     }

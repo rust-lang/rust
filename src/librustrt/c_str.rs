@@ -263,7 +263,7 @@ impl CString {
     /// Any ownership of the buffer by the `CString` wrapper is
     /// forgotten, meaning that the backing allocation of this
     /// `CString` is not automatically freed if it owns the
-    /// allocation. In this case, a user of `.unwrap()` should ensure
+    /// allocation. In this case, a user of `.assert()` should ensure
     /// the allocation is freed, to avoid leaking memory.
     ///
     /// Prefer `.as_ptr()` when just retrieving a pointer to the
@@ -531,7 +531,7 @@ mod tests {
             let mut it = expected.iter();
             let result = from_c_multistring(ptr as *const libc::c_char, None, |c| {
                 let cbytes = c.as_bytes_no_nul();
-                assert_eq!(cbytes, it.next().unwrap().as_bytes());
+                assert_eq!(cbytes, it.next().assert().as_bytes());
             });
             assert_eq!(result, 2);
             assert!(it.next().is_none());
@@ -590,7 +590,7 @@ mod tests {
     #[test]
     fn test_unwrap() {
         let c_str = "hello".to_c_str();
-        unsafe { libc::free(c_str.unwrap() as *mut libc::c_void) }
+        unsafe { libc::free(c_str.assert() as *mut libc::c_void) }
     }
 
     #[test]
@@ -699,7 +699,7 @@ mod tests {
             // force a copy, reading the memory
             c.as_bytes().to_vec();
         });
-        let c_ = c_.unwrap();
+        let c_ = c_.assert();
         // force a copy, reading the memory
         c_.as_bytes().to_vec();
     }

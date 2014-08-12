@@ -177,7 +177,7 @@ pub fn trans_static_method_callee(bcx: &Block,
             _ => fail!("callee is not a trait method")
         }
     } else {
-        csearch::get_item_path(bcx.tcx(), method_id).last().unwrap().name()
+        csearch::get_item_path(bcx.tcx(), method_id).last().assert().name()
     };
     debug!("trans_static_method_callee: method_id={:?}, expr_id={:?}, \
             name={}", method_id, expr_id, token::get_name(mname));
@@ -187,7 +187,7 @@ pub fn trans_static_method_callee(bcx: &Block,
         bcx.fcx,
         ccx.tcx.vtable_map.borrow().get(&vtable_key));
 
-    match *vtbls.get_self().unwrap().get(0) {
+    match *vtbls.get_self().assert().get(0) {
         typeck::vtable_static(impl_did, ref rcvr_substs, ref rcvr_origins) => {
             assert!(rcvr_substs.types.all(|t| !ty::type_needs_infer(*t)));
 
@@ -484,10 +484,10 @@ fn get_vtable(bcx: &Block,
     }
 
     // Not in the cache. Actually build it.
-    let methods = origins.move_iter().flat_map(|origin| {
+    let methods = origins.iter_owned().flat_map(|origin| {
         match origin {
             typeck::vtable_static(id, substs, sub_vtables) => {
-                emit_vtable_methods(bcx, id, substs, sub_vtables).move_iter()
+                emit_vtable_methods(bcx, id, substs, sub_vtables).iter_owned()
             }
             typeck::vtable_unboxed_closure(closure_def_id) => {
                 let callee_substs =
@@ -502,7 +502,7 @@ fn get_vtable(bcx: &Block,
                     callee_substs,
                     VecPerParamSpace::empty());
 
-                (vec!(llfn)).move_iter()
+                (vec!(llfn)).iter_owned()
             }
             _ => ccx.sess().bug("get_vtable: expected a static origin"),
         }
@@ -523,7 +523,7 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
                                           -> ValueRef {
     let _icx = push_ctxt("meth::make_vtable");
 
-    let components: Vec<_> = Some(drop_glue).move_iter().chain(ptrs).collect();
+    let components: Vec<_> = Some(drop_glue).iter_owned().chain(ptrs).collect();
 
     unsafe {
         let tbl = C_struct(ccx, components.as_slice(), false);
@@ -626,7 +626,7 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
             Some(&ty::AutoObject(..)) => MethodCall::autoobject(id),
             _ => MethodCall::expr(id)
         };
-        let vres = vtable_map.get(&method_call).get_self().unwrap();
+        let vres = vtable_map.get(&method_call).get_self().assert();
         resolve_param_vtables_under_param_substs(ccx.tcx(), bcx.fcx.param_substs, vres)
     };
     let vtable = get_vtable(bcx, v_ty, origins);

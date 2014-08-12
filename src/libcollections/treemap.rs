@@ -343,6 +343,12 @@ impl<K: Ord, V> TreeMap<K, V> {
         RevEntries{iter: self.iter()}
     }
 
+    /// Deprecated: renamed to `iter_mut`.
+    #[deprecated = "renamed to iter_mut"]
+    pub fn mut_iter<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
+        self.iter_mut()
+    }
+
     /// Get a lazy forward iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
@@ -356,7 +362,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// map.insert("b", 2i);
     ///
     /// // Add 10 until we find "b"
-    /// for (key, value) in map.mut_iter() {
+    /// for (key, value) in map.iter_mut() {
     ///     *value += 10;
     ///     if key == &"b" { break }
     /// }
@@ -365,14 +371,21 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(map.find(&"b"), Some(&12));
     /// assert_eq!(map.find(&"c"), Some(&3));
     /// ```
-    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
-        MutEntries {
+    pub fn iter_mut<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
+        EntriesMut {
             stack: vec!(),
-            node: mut_deref(&mut self.root),
+            node: deref_mut(&mut self.root),
             remaining_min: self.length,
             remaining_max: self.length
         }
     }
+
+    /// Deprecated: renamed to `rev_iter_mut`.
+    #[deprecated = "renamed to rev_iter_mut"]
+    pub fn mut_rev_iter<'a>(&'a mut self) -> RevEntriesMut<'a, K, V> {
+        self.rev_iter_mut()
+    }
+
     /// Get a lazy reverse iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
@@ -386,7 +399,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// map.insert("b", 2i);
     ///
     /// // Add 10 until we find "b"
-    /// for (key, value) in map.mut_rev_iter() {
+    /// for (key, value) in map.rev_iter_mut() {
     ///     *value += 10;
     ///     if key == &"b" { break }
     /// }
@@ -395,10 +408,15 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(map.find(&"b"), Some(&12));
     /// assert_eq!(map.find(&"c"), Some(&13));
     /// ```
-    pub fn mut_rev_iter<'a>(&'a mut self) -> RevMutEntries<'a, K, V> {
-        RevMutEntries{iter: self.mut_iter()}
+    pub fn rev_iter_mut<'a>(&'a mut self) -> RevEntriesMut<'a, K, V> {
+        RevEntriesMut{iter: self.iter_mut()}
     }
 
+    /// Deprecated: renamed to `iter_owned`.
+    #[deprecated = "renamed to iter_owned"]
+    pub fn move_iter(self) -> EntriesOwned<K, V> {
+        self.iter_owned()
+    }
 
     /// Get a lazy iterator that consumes the treemap, it is not usable
     /// after calling this.
@@ -413,16 +431,16 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// map.insert("b", 2i);
     ///
     /// // Not possible with a regular `.iter()`
-    /// let vec: Vec<(&str, int)> = map.move_iter().collect();
+    /// let vec: Vec<(&str, int)> = map.iter_owned().collect();
     /// assert_eq!(vec, vec![("a", 1), ("b", 2), ("c", 3)]);
     /// ```
-    pub fn move_iter(self) -> MoveEntries<K, V> {
+    pub fn iter_owned(self) -> EntriesOwned<K, V> {
         let TreeMap { root: root, length: length } = self;
         let stk = match root {
             None => vec!(),
             Some(box tn) => vec!(tn)
         };
-        MoveEntries {
+        EntriesOwned {
             stack: stk,
             remaining: length
         }
@@ -452,7 +470,7 @@ impl<K, V> TreeMap<K, V> {
     ///    ua_key.cmp(&k.as_slice())
     /// });
     ///
-    /// assert_eq!((*ua.unwrap()).as_slice(), "Curl-Rust/0.1");
+    /// assert_eq!((*ua.assert()).as_slice(), "Curl-Rust/0.1");
     /// ```
     #[inline]
     pub fn find_with<'a>(&'a self, f:|&K| -> Ordering) -> Option<&'a V> {
@@ -576,13 +594,19 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Get a lazy iterator that should be initialized using
     /// `traverse_left`/`traverse_right`/`traverse_complete`.
-    fn mut_iter_for_traversal<'a>(&'a mut self) -> MutEntries<'a, K, V> {
-        MutEntries {
+    fn iter_for_traversal_mut<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
+        EntriesMut {
             stack: vec!(),
-            node: mut_deref(&mut self.root),
+            node: deref_mut(&mut self.root),
             remaining_min: 0,
             remaining_max: self.length
         }
+    }
+
+    /// Deprecated: renamed to `lower_bound_mut`.
+    #[deprecated = "renamed to lower_bound_mut"]
+    pub fn mut_lower_bound<'a>(&'a mut self, k: &K) -> EntriesMut<'a, K, V> {
+        self.lower_bound_mut(k)
     }
 
     /// Return a lazy value iterator to the first key-value pair (with
@@ -602,11 +626,11 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// map.insert(6, "c");
     /// map.insert(8, "d");
     ///
-    /// assert_eq!(map.mut_lower_bound(&4).next(), Some((&4, &mut "b")));
-    /// assert_eq!(map.mut_lower_bound(&5).next(), Some((&6, &mut "c")));
-    /// assert_eq!(map.mut_lower_bound(&10).next(), None);
+    /// assert_eq!(map.lower_bound_mut(&4).next(), Some((&4, &mut "b")));
+    /// assert_eq!(map.lower_bound_mut(&5).next(), Some((&6, &mut "c")));
+    /// assert_eq!(map.lower_bound_mut(&10).next(), None);
     ///
-    /// for (key, value) in map.mut_lower_bound(&4) {
+    /// for (key, value) in map.lower_bound_mut(&4) {
     ///     *value = "changed";
     /// }
     ///
@@ -615,8 +639,14 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(map.find(&6), Some(&"changed"));
     /// assert_eq!(map.find(&8), Some(&"changed"));
     /// ```
-    pub fn mut_lower_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
-        bound_setup!(self.mut_iter_for_traversal(), k, true)
+    pub fn lower_bound_mut<'a>(&'a mut self, k: &K) -> EntriesMut<'a, K, V> {
+        bound_setup!(self.iter_for_traversal_mut(), k, true)
+    }
+
+    /// Deprecated: renamed to `upper_bound_mut`.
+    #[deprecated = "renamed to upper_bound_mut"]
+    pub fn mut_upper_bound<'a>(&'a mut self, k: &K) -> EntriesMut<'a, K, V> {
+        self.upper_bound_mut(k)
     }
 
     /// Return a lazy iterator to the first key-value pair (with the
@@ -636,11 +666,11 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// map.insert(6, "c");
     /// map.insert(8, "d");
     ///
-    /// assert_eq!(map.mut_upper_bound(&4).next(), Some((&6, &mut "c")));
-    /// assert_eq!(map.mut_upper_bound(&5).next(), Some((&6, &mut "c")));
-    /// assert_eq!(map.mut_upper_bound(&10).next(), None);
+    /// assert_eq!(map.upper_bound_mut(&4).next(), Some((&6, &mut "c")));
+    /// assert_eq!(map.upper_bound_mut(&5).next(), Some((&6, &mut "c")));
+    /// assert_eq!(map.upper_bound_mut(&10).next(), None);
     ///
-    /// for (key, value) in map.mut_upper_bound(&4) {
+    /// for (key, value) in map.upper_bound_mut(&4) {
     ///     *value = "changed";
     /// }
     ///
@@ -649,15 +679,15 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(map.find(&6), Some(&"changed"));
     /// assert_eq!(map.find(&8), Some(&"changed"));
     /// ```
-    pub fn mut_upper_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
-        bound_setup!(self.mut_iter_for_traversal(), k, false)
+    pub fn upper_bound_mut<'a>(&'a mut self, k: &K) -> EntriesMut<'a, K, V> {
+        bound_setup!(self.iter_for_traversal_mut(), k, false)
     }
 }
 
 /// Lazy forward iterator over a map
 pub struct Entries<'a, K, V> {
     stack: Vec<&'a TreeNode<K, V>>,
-    // See the comment on MutEntries; this is just to allow
+    // See the comment on EntriesMut; this is just to allow
     // code-sharing (for this immutable-values iterator it *could* very
     // well be Option<&'a TreeNode<K,V>>).
     node: *const TreeNode<K, V>,
@@ -672,7 +702,7 @@ pub struct RevEntries<'a, K, V> {
 
 /// Lazy forward iterator over a map that allows for the mutation of
 /// the values.
-pub struct MutEntries<'a, K, V> {
+pub struct EntriesMut<'a, K, V> {
     stack: Vec<&'a mut TreeNode<K, V>>,
     // Unfortunately, we require some unsafe-ness to get around the
     // fact that we would be storing a reference *into* one of the
@@ -698,11 +728,18 @@ pub struct MutEntries<'a, K, V> {
     remaining_max: uint
 }
 
+/// Deprecated: renamed to `EntriesMut`.
+#[deprecated = "renamed to EntriesMut"]
+pub type MutEntries<'a, K, V> = EntriesMut<'a, K, V>;
+
 /// Lazy backward iterator over a map
-pub struct RevMutEntries<'a, K, V> {
-    iter: MutEntries<'a, K, V>,
+pub struct RevEntriesMut<'a, K, V> {
+    iter: EntriesMut<'a, K, V>,
 }
 
+/// Deprecated: renamed to `RevEntriesMut`.
+#[deprecated = "renamed to RevEntriesMut"]
+pub type RevMutEntries<'a, K, V> = RevEntriesMut<'a, K, V>;
 
 /// TreeMap keys iterator
 pub type Keys<'a, K, V> =
@@ -751,7 +788,7 @@ macro_rules! define_iterator {
                         }
                         self.stack.push(node);
                     } else {
-                        let node = self.stack.pop().unwrap();
+                        let node = self.stack.pop().assert();
                         let next_node = if forward {
                             addr!(& $($addr_mut)* node.right)
                         } else {
@@ -769,7 +806,7 @@ macro_rules! define_iterator {
             }
 
             /// traverse_left, traverse_right and traverse_complete are
-            /// used to initialize Entries/MutEntries
+            /// used to initialize Entries/EntriesMut
             /// pointing to element inside tree structure.
             ///
             /// They should be used in following manner:
@@ -843,9 +880,9 @@ define_iterator! {
     addr_mut =
 }
 define_iterator! {
-    MutEntries,
-    RevMutEntries,
-    deref = mut_deref,
+    EntriesMut,
+    RevEntriesMut,
+    deref = deref_mut,
 
     addr_mut = mut
 }
@@ -860,26 +897,26 @@ fn deref<'a, K, V>(node: &'a Option<Box<TreeNode<K, V>>>) -> *const TreeNode<K, 
     }
 }
 
-fn mut_deref<K, V>(x: &mut Option<Box<TreeNode<K, V>>>)
+fn deref_mut<K, V>(x: &mut Option<Box<TreeNode<K, V>>>)
              -> *mut TreeNode<K, V> {
     match *x {
         Some(ref mut n) => {
             let n: &mut TreeNode<K, V> = &mut **n;
             n as *mut TreeNode<K, V>
         }
-        None => ptr::mut_null()
+        None => ptr::null_mut()
     }
 }
 
 
 
 /// Lazy forward iterator over a map that consumes the map while iterating
-pub struct MoveEntries<K, V> {
+pub struct EntriesOwned<K, V> {
     stack: Vec<TreeNode<K, V>>,
     remaining: uint
 }
 
-impl<K, V> Iterator<(K, V)> for MoveEntries<K,V> {
+impl<K, V> Iterator<(K, V)> for EntriesOwned<K,V> {
     #[inline]
     fn next(&mut self) -> Option<(K, V)> {
         while !self.stack.is_empty() {
@@ -889,7 +926,7 @@ impl<K, V> Iterator<(K, V)> for MoveEntries<K,V> {
                 left: left,
                 right: right,
                 level: level
-            } = self.stack.pop().unwrap();
+            } = self.stack.pop().assert();
 
             match left {
                 Some(box left) => {
@@ -1078,8 +1115,8 @@ impl<T: Ord> Set<T> for TreeSet<T> {
                 return false;
             }
 
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
+            let a1 = a.assert();
+            let b1 = b.assert();
 
             match b1.cmp(a1) {
                 Less => (),
@@ -1154,6 +1191,12 @@ impl<T: Ord> TreeSet<T> {
         RevSetItems{iter: self.map.rev_iter()}
     }
 
+    /// Deprecated: renamed to `iter_owned`.
+    #[deprecated = "renamed to iter_owned"]
+    pub fn move_iter(self) -> SetItemsOwned<T> {
+        self.iter_owned()
+    }
+
     /// Creates a consuming iterator, that is, one that moves each value out of the
     /// set in ascending order. The set cannot be used after calling this.
     ///
@@ -1164,12 +1207,12 @@ impl<T: Ord> TreeSet<T> {
     /// let set: TreeSet<int> = [1i, 4, 3, 5, 2].iter().map(|&x| x).collect();
     ///
     /// // Not possible with a regular `.iter()`
-    /// let v: Vec<int> = set.move_iter().collect();
+    /// let v: Vec<int> = set.iter_owned().collect();
     /// assert_eq!(v, vec![1, 2, 3, 4, 5]);
     /// ```
     #[inline]
-    pub fn move_iter(self) -> MoveSetItems<T> {
-        self.map.move_iter().map(|(value, _)| value)
+    pub fn iter_owned(self) -> SetItemsOwned<T> {
+        self.map.iter_owned().map(|(value, _)| value)
     }
 
     /// Get a lazy iterator pointing to the first value not less than `v` (greater or equal).
@@ -1319,7 +1362,11 @@ pub struct RevSetItems<'a, T> {
 }
 
 /// Lazy forward iterator over a set that consumes the set while iterating
-pub type MoveSetItems<T> = iter::Map<'static, (T, ()), T, MoveEntries<T, ()>>;
+pub type SetItemsOwned<T> = iter::Map<'static, (T, ()), T, EntriesOwned<T, ()>>;
+
+/// Deprecated: renamed to `SetItemsOwned`.
+#[deprecated = "renamed to SetItemsOwned"]
+pub type MoveSetItems<T> = SetItemsOwned<T>;
 
 /// Lazy iterator producing elements in the set difference (in-order)
 pub struct DifferenceItems<'a, T> {
@@ -1432,7 +1479,7 @@ impl<K: Ord, V> TreeNode<K, V> {
 // Remove left horizontal link by rotating right
 fn skew<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
     if node.left.as_ref().map_or(false, |x| x.level == node.level) {
-        let mut save = node.left.take_unwrap();
+        let mut save = node.left.take().assert();
         swap(&mut node.left, &mut save.right); // save.right now None
         swap(node, &mut save);
         node.right = Some(save);
@@ -1444,7 +1491,7 @@ fn skew<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
 fn split<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
     if node.right.as_ref().map_or(false,
       |x| x.right.as_ref().map_or(false, |y| y.level == node.level)) {
-        let mut save = node.right.take_unwrap();
+        let mut save = node.right.take().assert();
         swap(&mut node.right, &mut save.left); // save.left now None
         save.level += 1;
         swap(node, &mut save);
@@ -1527,7 +1574,7 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
     fn heir_swap<K: Ord, V>(node: &mut Box<TreeNode<K, V>>,
                                  child: &mut Option<Box<TreeNode<K, V>>>) {
         // *could* be done without recursion, but it won't borrow check
-        for x in child.mut_iter() {
+        for x in child.iter_mut() {
             if x.right.is_some() {
                 heir_swap(node, &mut x.right);
             } else {
@@ -1548,7 +1595,7 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
           Equal => {
             if save.left.is_some() {
                 if save.right.is_some() {
-                    let mut left = save.left.take_unwrap();
+                    let mut left = save.left.take().assert();
                     if left.right.is_some() {
                         heir_swap(save, &mut left.right);
                     } else {
@@ -1558,13 +1605,13 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
                     save.left = Some(left);
                     (remove(&mut save.left, key), true)
                 } else {
-                    let new = save.left.take_unwrap();
+                    let new = save.left.take().assert();
                     let box TreeNode{value, ..} = replace(save, new);
-                    *save = save.left.take_unwrap();
+                    *save = save.left.take().assert();
                     (Some(value), true)
                 }
             } else if save.right.is_some() {
-                let new = save.right.take_unwrap();
+                let new = save.right.take().assert();
                 let box TreeNode{value, ..} = replace(save, new);
                 (Some(value), true)
             } else {
@@ -1583,18 +1630,18 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
 
                 if right_level > save.level {
                     let save_level = save.level;
-                    for x in save.right.mut_iter() { x.level = save_level }
+                    for x in save.right.iter_mut() { x.level = save_level }
                 }
 
                 skew(save);
 
-                for right in save.right.mut_iter() {
+                for right in save.right.iter_mut() {
                     skew(right);
-                    for x in right.right.mut_iter() { skew(x) }
+                    for x in right.right.iter_mut() { skew(x) }
                 }
 
                 split(save);
-                for x in save.right.mut_iter() { split(x) }
+                for x in save.right.iter_mut() { split(x) }
             }
 
             return ret;
@@ -1736,7 +1783,7 @@ mod test_treemap {
         assert!(m.insert(5i, 2i));
         assert!(m.insert(2, 9));
         assert!(!m.insert(2, 11));
-        assert_eq!(m.find(&2).unwrap(), &11);
+        assert_eq!(m.find(&2).assert(), &11);
     }
 
     #[test]
@@ -1774,7 +1821,7 @@ mod test_treemap {
         assert_eq!(ctrl.is_empty(), map.is_empty());
         for x in ctrl.iter() {
             let &(ref k, ref v) = x;
-            assert!(map.find(k).unwrap() == v)
+            assert!(map.find(k).assert() == v)
         }
         for (map_k, map_v) in map.iter() {
             let mut found = false;
@@ -1854,7 +1901,7 @@ mod test_treemap {
 
             for _ in range(0u, 30) {
                 let r = rng.gen_range(0, ctrl.len());
-                let (key, _) = ctrl.remove(r).unwrap();
+                let (key, _) = ctrl.remove(r).assert();
                 assert!(map.remove(&key));
                 check_structure(&map);
                 check_equal(ctrl.as_slice(), &map);
@@ -1909,13 +1956,13 @@ mod test_treemap {
 
         for i in range(1i, 198i) {
             let mut lb_it = m.lower_bound(&i);
-            let (&k, &v) = lb_it.next().unwrap();
+            let (&k, &v) = lb_it.next().assert();
             let lb = i + i % 2;
             assert_eq!(lb, k);
             assert_eq!(lb * 2, v);
 
             let mut ub_it = m.upper_bound(&i);
-            let (&k, &v) = ub_it.next().unwrap();
+            let (&k, &v) = ub_it.next().assert();
             let ub = i + 2 - i % 2;
             assert_eq!(ub, k);
             assert_eq!(ub * 2, v);
@@ -1949,7 +1996,7 @@ mod test_treemap {
             assert!(m.insert(i, 100 * i));
         }
 
-        for (i, (&k, v)) in m.mut_iter().enumerate() {
+        for (i, (&k, v)) in m.iter_mut().enumerate() {
             *v += k * 10 + i; // 000 + 00 + 0, 100 + 10 + 1, ...
         }
 
@@ -1964,7 +2011,7 @@ mod test_treemap {
             assert!(m.insert(i, 100 * i));
         }
 
-        for (i, (&k, v)) in m.mut_rev_iter().enumerate() {
+        for (i, (&k, v)) in m.rev_iter_mut().enumerate() {
             *v += k * 10 + (9 - i); // 900 + 90 + (9 - 0), 800 + 80 + (9 - 1), ...
         }
 
@@ -1983,23 +2030,23 @@ mod test_treemap {
         }
 
         for i in range(1i, 199) {
-            let mut lb_it = m_lower.mut_lower_bound(&i);
-            let (&k, v) = lb_it.next().unwrap();
+            let mut lb_it = m_lower.lower_bound_mut(&i);
+            let (&k, v) = lb_it.next().assert();
             let lb = i + i % 2;
             assert_eq!(lb, k);
             *v -= k;
         }
         for i in range(0i, 198) {
-            let mut ub_it = m_upper.mut_upper_bound(&i);
-            let (&k, v) = ub_it.next().unwrap();
+            let mut ub_it = m_upper.upper_bound_mut(&i);
+            let (&k, v) = ub_it.next().assert();
             let ub = i + 2 - i % 2;
             assert_eq!(ub, k);
             *v -= k;
         }
 
-        assert!(m_lower.mut_lower_bound(&199).next().is_none());
+        assert!(m_lower.lower_bound_mut(&199).next().is_none());
 
-        assert!(m_upper.mut_upper_bound(&198).next().is_none());
+        assert!(m_upper.upper_bound_mut(&198).next().is_none());
 
         assert!(m_lower.iter().all(|(_, &x)| x == 0));
         assert!(m_upper.iter().all(|(_, &x)| x == 0));
@@ -2008,7 +2055,7 @@ mod test_treemap {
     #[test]
     fn test_keys() {
         let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
-        let map = vec.move_iter().collect::<TreeMap<int, char>>();
+        let map = vec.iter_owned().collect::<TreeMap<int, char>>();
         let keys = map.keys().map(|&k| k).collect::<Vec<int>>();
         assert_eq!(keys.len(), 3);
         assert!(keys.contains(&1));
@@ -2019,7 +2066,7 @@ mod test_treemap {
     #[test]
     fn test_values() {
         let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
-        let map = vec.move_iter().collect::<TreeMap<int, char>>();
+        let map = vec.iter_owned().collect::<TreeMap<int, char>>();
         let values = map.values().map(|&v| v).collect::<Vec<char>>();
         assert_eq!(values.len(), 3);
         assert!(values.contains(&'a'));
@@ -2109,11 +2156,11 @@ mod test_treemap {
         let m = m;
         let mut a = m.iter();
 
-        assert_eq!(a.next().unwrap(), (&x1, &y1));
-        assert_eq!(a.next().unwrap(), (&x2, &y2));
-        assert_eq!(a.next().unwrap(), (&x3, &y3));
-        assert_eq!(a.next().unwrap(), (&x4, &y4));
-        assert_eq!(a.next().unwrap(), (&x5, &y5));
+        assert_eq!(a.next().assert(), (&x1, &y1));
+        assert_eq!(a.next().assert(), (&x2, &y2));
+        assert_eq!(a.next().assert(), (&x3, &y3));
+        assert_eq!(a.next().assert(), (&x4, &y4));
+        assert_eq!(a.next().assert(), (&x5, &y5));
 
         assert!(a.next().is_none());
 
@@ -2323,7 +2370,7 @@ mod test_set {
         let s: TreeSet<int> = range(0i, 5).collect();
 
         let mut n = 0;
-        for x in s.move_iter() {
+        for x in s.iter_owned() {
             assert_eq!(x, n);
             n += 1;
         }
@@ -2331,9 +2378,9 @@ mod test_set {
 
     #[test]
     fn test_move_iter_size_hint() {
-        let s: TreeSet<int> = vec!(0i, 1).move_iter().collect();
+        let s: TreeSet<int> = vec!(0i, 1).iter_owned().collect();
 
-        let mut it = s.move_iter();
+        let mut it = s.iter_owned();
 
         assert_eq!(it.size_hint(), (2, Some(2)));
         assert!(it.next() != None);
@@ -2470,10 +2517,10 @@ mod test_set {
 
         // FIXME: #5801: this needs a type hint to compile...
         let result: Option<(&uint, & &'static str)> = z.next();
-        assert_eq!(result.unwrap(), (&5u, &("bar")));
+        assert_eq!(result.assert(), (&5u, &("bar")));
 
         let result: Option<(&uint, & &'static str)> = z.next();
-        assert_eq!(result.unwrap(), (&11u, &("foo")));
+        assert_eq!(result.assert(), (&11u, &("foo")));
 
         let result: Option<(&uint, & &'static str)> = z.next();
         assert!(result.is_none());

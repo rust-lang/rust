@@ -173,10 +173,10 @@ impl Ratio<BigInt> {
         if exponent < 0 {
             let one: BigInt = One::one();
             let denom: BigInt = one << ((-exponent) as uint);
-            let numer: BigUint = FromPrimitive::from_u64(mantissa).unwrap();
+            let numer: BigUint = FromPrimitive::from_u64(mantissa).assert();
             Some(Ratio::new(BigInt::from_biguint(bigint_sign, numer), denom))
         } else {
-            let mut numer: BigUint = FromPrimitive::from_u64(mantissa).unwrap();
+            let mut numer: BigUint = FromPrimitive::from_u64(mantissa).assert();
             numer = numer << (exponent as uint);
             Some(Ratio::from_integer(BigInt::from_biguint(bigint_sign, numer)))
         }
@@ -392,8 +392,8 @@ mod test {
 
     pub fn to_big(n: Rational) -> BigRational {
         Ratio::new(
-            FromPrimitive::from_int(n.numer).unwrap(),
-            FromPrimitive::from_int(n.denom).unwrap()
+            FromPrimitive::from_int(n.numer).assert(),
+            FromPrimitive::from_int(n.denom).assert()
         )
     }
 
@@ -682,10 +682,10 @@ mod test {
     #[test]
     fn test_from_float() {
         fn test<T: Float>(given: T, (numer, denom): (&str, &str)) {
-            let ratio: BigRational = Ratio::from_float(given).unwrap();
+            let ratio: BigRational = Ratio::from_float(given).assert();
             assert_eq!(ratio, Ratio::new(
-                FromStr::from_str(numer).unwrap(),
-                FromStr::from_str(denom).unwrap()));
+                FromStr::from_str(numer).assert(),
+                FromStr::from_str(denom).assert()));
         }
 
         // f32

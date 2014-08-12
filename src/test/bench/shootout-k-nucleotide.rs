@@ -87,7 +87,7 @@ impl Code {
         }
 
         result.reverse();
-        String::from_utf8(result).unwrap()
+        String::from_utf8(result).assert()
     }
 }
 
@@ -176,7 +176,7 @@ impl Table {
         }
 
         {
-            let entry = &mut *self.items.get_mut(index as uint).get_mut_ref();
+            let entry = &mut *self.items.get_mut(index as uint).as_mut().assert();
             if entry.code == key {
                 c.f(&mut **entry);
                 return;
@@ -278,12 +278,12 @@ fn print_occurrences(frequencies: &mut Table, occurrence: &'static str) {
 
 fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> Vec<u8> {
     let mut res = Vec::new();
-    for l in r.lines().map(|l| l.ok().unwrap())
+    for l in r.lines().map(|l| l.ok().assert())
         .skip_while(|l| key != l.as_slice().slice_to(key.len())).skip(1)
     {
         res.push_all(l.as_slice().trim().as_bytes());
     }
-    for b in res.mut_iter() {
+    for b in res.iter_mut() {
         *b = b.to_ascii().to_upper().to_byte();
     }
     res
@@ -307,10 +307,10 @@ fn main() {
         Future::spawn(proc() generate_frequencies(input.as_slice(), occ.len()))
     }).collect();
 
-    for (i, freq) in nb_freqs.move_iter() {
-        print_frequencies(&freq.unwrap(), i);
+    for (i, freq) in nb_freqs.iter_owned() {
+        print_frequencies(&freq.assert(), i);
     }
-    for (&occ, freq) in OCCURRENCES.iter().zip(occ_freqs.move_iter()) {
-        print_occurrences(&mut freq.unwrap(), occ);
+    for (&occ, freq) in OCCURRENCES.iter().zip(occ_freqs.iter_owned()) {
+        print_occurrences(&mut freq.assert(), occ);
     }
 }

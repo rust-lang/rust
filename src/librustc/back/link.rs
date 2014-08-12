@@ -428,7 +428,7 @@ pub mod write {
                     sess.note(format!("{}", &cmd).as_slice());
                     let mut note = prog.error.clone();
                     note.push_all(prog.output.as_slice());
-                    sess.note(str::from_utf8(note.as_slice()).unwrap());
+                    sess.note(str::from_utf8(note.as_slice()).assert());
                     sess.abort_if_errors();
                 }
             },
@@ -844,7 +844,7 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
 }
 
 pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> String {
-    mangle(path.chain(Some(gensym_name(flav)).move_iter()), None)
+    mangle(path.chain(Some(gensym_name(flav)).iter_owned()), None)
 }
 
 pub fn get_cc_prog(sess: &Session) -> String {
@@ -1039,7 +1039,7 @@ fn archive_search_paths(sess: &Session) -> Vec<Path> {
     // FIXME: Addl lib search paths are an unordered HashSet?
     // Shouldn't this search be done in some order?
     let addl_lib_paths: HashSet<Path> = sess.opts.addl_lib_search_paths.borrow().clone();
-    let mut search: Vec<Path> = addl_lib_paths.move_iter().collect();
+    let mut search: Vec<Path> = addl_lib_paths.iter_owned().collect();
     search.push_all(rustpath.as_slice());
     return search;
 }
@@ -1063,12 +1063,12 @@ fn link_rlib<'a>(sess: &'a Session,
         maybe_ar_prog: sess.opts.cg.ar.clone()
     };
     let mut ab = ArchiveBuilder::create(config);
-    ab.add_file(obj_filename).unwrap();
+    ab.add_file(obj_filename).assert();
 
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
             cstore::NativeStatic => {
-                ab.add_native_library(l.as_slice()).unwrap();
+                ab.add_native_library(l.as_slice()).assert();
             }
             cstore::NativeFramework | cstore::NativeUnknown => {}
         }
@@ -1125,7 +1125,7 @@ fn link_rlib<'a>(sess: &'a Session,
                     sess.abort_if_errors();
                 }
             }
-            ab.add_file(&metadata).unwrap();
+            ab.add_file(&metadata).assert();
             remove(sess, &metadata);
 
             // For LTO purposes, the bytecode of this library is also inserted
@@ -1168,7 +1168,7 @@ fn link_rlib<'a>(sess: &'a Session,
                 }
             };
 
-            ab.add_file(&bc_deflated_filename).unwrap();
+            ab.add_file(&bc_deflated_filename).assert();
             remove(sess, &bc_deflated_filename);
             if !sess.opts.cg.save_temps &&
                !sess.opts.output_types.contains(&OutputTypeBitcode) {
@@ -1226,8 +1226,8 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
         abi::OsMacos | abi::OsiOS => ab.build().extend(),
         _ => ab,
     };
-    ab.add_native_library("morestack").unwrap();
-    ab.add_native_library("compiler-rt").unwrap();
+    ab.add_native_library("morestack").assert();
+    ab.add_native_library("compiler-rt").assert();
 
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
     let mut all_native_libs = vec![];
@@ -1241,10 +1241,10 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
                 continue
             }
         };
-        ab.add_rlib(&p, name.as_slice(), sess.lto()).unwrap();
+        ab.add_rlib(&p, name.as_slice(), sess.lto()).assert();
 
         let native_libs = csearch::get_native_libraries(&sess.cstore, cnum);
-        all_native_libs.extend(native_libs.move_iter());
+        all_native_libs.extend(native_libs.iter_owned());
     }
 
     ab.update_symbols();
@@ -1302,7 +1302,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                 sess.note(format!("{}", &cmd).as_slice());
                 let mut output = prog.error.clone();
                 output.push_all(prog.output.as_slice());
-                sess.note(str::from_utf8(output.as_slice()).unwrap());
+                sess.note(str::from_utf8(output.as_slice()).assert());
                 sess.abort_if_errors();
             }
         },
@@ -1526,7 +1526,7 @@ fn link_args(cmd: &mut Command,
 
             if sess.opts.cg.rpath {
                 let mut v = Vec::from_slice("-Wl,-install_name,@rpath/".as_bytes());
-                v.push_all(out_filename.filename().unwrap());
+                v.push_all(out_filename.filename().assert());
                 cmd.arg(v.as_slice());
             }
         } else {
@@ -1701,13 +1701,13 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
             Some(t) => t,
             None => continue
         };
-        let src = sess.cstore.get_used_crate_source(cnum).unwrap();
+        let src = sess.cstore.get_used_crate_source(cnum).assert();
         match kind {
             cstore::RequireDynamic => {
-                add_dynamic_crate(cmd, sess, src.dylib.unwrap())
+                add_dynamic_crate(cmd, sess, src.dylib.assert())
             }
             cstore::RequireStatic => {
-                add_static_crate(cmd, sess, tmpdir, src.rlib.unwrap())
+                add_static_crate(cmd, sess, tmpdir, src.rlib.assert())
             }
         }
 
@@ -1740,12 +1740,12 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         // If we're not doing LTO, then our job is simply to just link
         // against the archive.
         if sess.lto() {
-            let name = cratepath.filename_str().unwrap();
+            let name = cratepath.filename_str().assert();
             let name = name.slice(3, name.len() - 5); // chop off lib/.rlib
             time(sess.time_passes(),
                  format!("altering {}.rlib", name).as_slice(),
                  (), |()| {
-                let dst = tmpdir.join(cratepath.filename().unwrap());
+                let dst = tmpdir.join(cratepath.filename().assert());
                 match fs::copy(&cratepath, &dst) {
                     Ok(..) => {}
                     Err(e) => {
@@ -1788,7 +1788,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         if !dir.is_empty() { cmd.arg("-L").arg(dir); }
 
         let mut v = Vec::from_slice("-l".as_bytes());
-        v.push_all(unlib(&sess.targ_cfg, cratepath.filestem().unwrap()));
+        v.push_all(unlib(&sess.targ_cfg, cratepath.filestem().assert()));
         cmd.arg(v.as_slice());
     }
 }
@@ -1822,7 +1822,7 @@ fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
     // we're just getting an ordering of crate numbers, we're not worried about
     // the paths.
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
-    for (cnum, _) in crates.move_iter() {
+    for (cnum, _) in crates.iter_owned() {
         let libs = csearch::get_native_libraries(&sess.cstore, cnum);
         for &(kind, ref lib) in libs.iter() {
             match kind {

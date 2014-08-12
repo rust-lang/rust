@@ -113,7 +113,7 @@ fn base_port() -> u16 {
 
     // FIXME (#9639): This needs to handle non-utf8 paths
     let path = os::getcwd();
-    let path_s = path.as_str().unwrap();
+    let path_s = path.as_str().assert();
 
     let mut final_base = base;
 
@@ -164,7 +164,7 @@ mod darwin_fd_limit {
     pub unsafe fn raise_fd_limit() {
         // The strategy here is to fetch the current resource limits, read the kern.maxfilesperproc
         // sysctl value, and bump the soft resource limit for maxfiles up to the sysctl value.
-        use ptr::mut_null;
+        use ptr::null_mut;
         use mem::size_of_val;
         use os::last_os_error;
 
@@ -173,7 +173,7 @@ mod darwin_fd_limit {
         let mut maxfiles: libc::c_int = 0;
         let mut size: libc::size_t = size_of_val(&maxfiles) as libc::size_t;
         if sysctl(&mut mib[0], 2, &mut maxfiles as *mut libc::c_int as *mut libc::c_void, &mut size,
-                  mut_null(), 0) != 0 {
+                  null_mut(), 0) != 0 {
             let err = last_os_error();
             fail!("raise_fd_limit: error calling sysctl: {}", err);
         }

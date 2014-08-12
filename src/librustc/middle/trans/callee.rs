@@ -760,7 +760,7 @@ pub fn trans_call_inner<'a>(
 
             return intrinsic::trans_intrinsic_call(bcx, node, callee_ty,
                                                    arg_cleanup_scope, args,
-                                                   dest.unwrap(), substs);
+                                                   dest.assert(), substs);
         }
         NamedTupleConstructor(substs, disr) => {
             assert!(dest.is_some());
@@ -768,7 +768,7 @@ pub fn trans_call_inner<'a>(
 
             let ctor_ty = callee_ty.subst(bcx.tcx(), &substs);
             return base::trans_named_tuple_constructor(bcx, ctor_ty, disr,
-                                                       args, dest.unwrap());
+                                                       args, dest.assert());
         }
     };
 
@@ -815,7 +815,7 @@ pub fn trans_call_inner<'a>(
         // Push the out-pointer if we use an out-pointer for this
         // return type, otherwise push "undef".
         if type_of::return_uses_outptr(ccx, ret_ty) {
-            llargs.push(opt_llretslot.unwrap());
+            llargs.push(opt_llretslot.assert());
         }
 
         // Push the environment (or a trait object's self).
@@ -878,7 +878,7 @@ pub fn trans_call_inner<'a>(
                          abi);
         fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
         bcx = foreign::trans_native_call(bcx, callee_ty,
-                                         llfn, opt_llretslot.unwrap(),
+                                         llfn, opt_llretslot.assert(),
                                          llargs.as_slice(), arg_tys);
     }
 

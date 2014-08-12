@@ -312,8 +312,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 lifetimes: Vec<ast::Lifetime>,
                 types: Vec<P<ast::Ty>> )
                 -> ast::Path {
-        let last_identifier = idents.pop().unwrap();
-        let mut segments: Vec<ast::PathSegment> = idents.move_iter()
+        let last_identifier = idents.pop().assert();
+        let mut segments: Vec<ast::PathSegment> = idents.iter_owned()
                                                       .map(|ident| {
             ast::PathSegment {
                 identifier: ident,
@@ -985,7 +985,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn variant(&self, span: Span, name: Ident, tys: Vec<P<ast::Ty>> ) -> ast::Variant {
-        let args = tys.move_iter().map(|ty| {
+        let args = tys.iter_owned().map(|ty| {
             ast::VariantArg { ty: ty, id: ast::DUMMY_NODE_ID }
         }).collect();
 
@@ -1100,7 +1100,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn view_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> ast::ViewItem {
-        let last = path.segments.last().unwrap().identifier;
+        let last = path.segments.last().assert().identifier;
         self.view_use_simple_(sp, vis, last, path)
     }
 

@@ -706,7 +706,7 @@ fn extract_vec_elems<'a>(
         }
     });
     if slice.is_some() {
-        let n = slice.unwrap();
+        let n = slice.assert();
         let slice_byte_offset = Mul(bcx, vt.llunit_size, C_uint(bcx.ccx(), n));
         let slice_begin = tvec::pointer_add_byte(bcx, base, slice_byte_offset);
         let slice_len_offset = C_uint(bcx.ccx(), elem_count - 1u);
@@ -1439,7 +1439,7 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
     // to the default arm.
     let has_default = arms.last().map_or(false, |arm| {
         arm.pats.len() == 1
-        && arm.pats.last().unwrap().node == ast::PatWild(ast::PatWildSingle)
+        && arm.pats.last().assert().node == ast::PatWild(ast::PatWildSingle)
     });
 
     compile_submatch(bcx, matches.as_slice(), [discr_datum.val], &chk, has_default);
@@ -1797,7 +1797,7 @@ fn bind_irrefutable_pat<'a>(
             );
             bcx = before
                 .iter().map(|v| Some(*v))
-                .chain(Some(*slice).move_iter())
+                .chain(Some(*slice).iter_owned())
                 .chain(after.iter().map(|v| Some(*v)))
                 .zip(extracted.vals.iter())
                 .fold(bcx, |bcx, (inner, elem)| {

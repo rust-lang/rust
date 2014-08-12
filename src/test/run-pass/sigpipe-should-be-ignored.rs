@@ -16,7 +16,7 @@ use std::io::PipeStream;
 use std::io::Command;
 
 fn test() {
-    let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
+    let os::Pipe { reader, writer } = unsafe { os::pipe().assert() };
     let reader = PipeStream::open(reader);
     let mut writer = PipeStream::open(writer);
     drop(reader);
@@ -32,6 +32,6 @@ fn main() {
     }
 
     let mut p = Command::new(args[0].as_slice())
-                        .arg("test").spawn().unwrap();
-    assert!(p.wait().unwrap().success());
+                        .arg("test").spawn().assert();
+    assert!(p.wait().assert().success());
 }

@@ -33,7 +33,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
         None => {
             if homedir.is_some() {
                 // ncurses compatibility;
-                dirs_to_search.push(homedir.unwrap().join(".terminfo"))
+                dirs_to_search.push(homedir.assert().join(".terminfo"))
             }
             match getenv("TERMINFO_DIRS") {
                 Some(dirs) => for i in dirs.as_slice().split(':') {
@@ -99,7 +99,7 @@ fn test_get_dbpath_for_term() {
     // FIXME (#9639): This needs to handle non-utf8 paths
     fn x(t: &str) -> String {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
-        p.as_str().unwrap().to_string()
+        p.as_str().assert().to_string()
     };
     assert!(x("screen") == "/usr/share/terminfo/s/screen".to_string());
     assert!(get_dbpath_for_term("") == None);
@@ -111,7 +111,7 @@ fn test_get_dbpath_for_term() {
 #[test]
 #[ignore(reason = "see test_get_dbpath_for_term")]
 fn test_open() {
-    open("screen").unwrap();
+    open("screen").assert();
     let t = open("nonexistent terminal that hopefully does not exist");
     assert!(t.is_err());
 }

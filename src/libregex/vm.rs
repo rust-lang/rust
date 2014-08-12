@@ -204,7 +204,7 @@ impl<'r, 't> Nfa<'r, 't> {
                         return StepMatch
                     }
                     Submatches => {
-                        for (slot, val) in groups.mut_iter().zip(caps.iter()) {
+                        for (slot, val) in groups.iter_mut().zip(caps.iter()) {
                             *slot = *val;
                         }
                         return StepMatch
@@ -218,7 +218,7 @@ impl<'r, 't> Nfa<'r, 't> {
             }
             CharClass(ref ranges, flags) => {
                 if self.chars.prev.is_some() {
-                    let c = self.chars.prev.unwrap();
+                    let c = self.chars.prev.assert();
                     let negate = flags & FLAG_NEGATED > 0;
                     let casei = flags & FLAG_NOCASE > 0;
                     let found = ranges.as_slice();
@@ -470,7 +470,7 @@ impl Threads {
                 *t.groups.get_mut(1) = groups[1];
             }
             (false, Submatches) => {
-                for (slot, val) in t.groups.mut_iter().zip(groups.iter()) {
+                for (slot, val) in t.groups.iter_mut().zip(groups.iter()) {
                     *slot = *val;
                 }
             }

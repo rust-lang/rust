@@ -44,38 +44,38 @@ fn runtest(me: &str) {
     template.env("IS_TEST", "1");
 
     // Make sure that the stack trace is printed
-    let p = template.clone().arg("fail").env("RUST_BACKTRACE", "1").spawn().unwrap();
-    let out = p.wait_with_output().unwrap();
+    let p = template.clone().arg("fail").env("RUST_BACKTRACE", "1").spawn().assert();
+    let out = p.wait_with_output().assert();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error.as_slice()).unwrap();
+    let s = str::from_utf8(out.error.as_slice()).assert();
     assert!(s.contains("stack backtrace") && s.contains("foo::h"),
             "bad output: {}", s);
 
     // Make sure the stack trace is *not* printed
-    let p = template.clone().arg("fail").spawn().unwrap();
-    let out = p.wait_with_output().unwrap();
+    let p = template.clone().arg("fail").spawn().assert();
+    let out = p.wait_with_output().assert();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error.as_slice()).unwrap();
+    let s = str::from_utf8(out.error.as_slice()).assert();
     assert!(!s.contains("stack backtrace") && !s.contains("foo::h"),
             "bad output2: {}", s);
 
     // Make sure a stack trace is printed
-    let p = template.clone().arg("double-fail").spawn().unwrap();
-    let out = p.wait_with_output().unwrap();
+    let p = template.clone().arg("double-fail").spawn().assert();
+    let out = p.wait_with_output().assert();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error.as_slice()).unwrap();
+    let s = str::from_utf8(out.error.as_slice()).assert();
     assert!(s.contains("stack backtrace") && s.contains("double::h"),
             "bad output3: {}", s);
 
     // Make sure a stack trace isn't printed too many times
     let p = template.clone().arg("double-fail")
-                                .env("RUST_BACKTRACE", "1").spawn().unwrap();
-    let out = p.wait_with_output().unwrap();
+                                .env("RUST_BACKTRACE", "1").spawn().assert();
+    let out = p.wait_with_output().assert();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error.as_slice()).unwrap();
+    let s = str::from_utf8(out.error.as_slice()).assert();
     let mut i = 0;
     for _ in range(0i, 2) {
-        i += s.slice_from(i + 10).find_str("stack backtrace").unwrap() + 10;
+        i += s.slice_from(i + 10).find_str("stack backtrace").assert() + 10;
     }
     assert!(s.slice_from(i + 10).find_str("stack backtrace").is_none(),
             "bad output4: {}", s);

@@ -96,9 +96,9 @@ impl<'a> FromHex for &'a str {
      * fn main () {
      *     let hello_str = "Hello, World".as_bytes().to_hex();
      *     println!("{}", hello_str);
-     *     let bytes = hello_str.as_slice().from_hex().unwrap();
+     *     let bytes = hello_str.as_slice().from_hex().assert();
      *     println!("{}", bytes);
-     *     let result_str = String::from_utf8(bytes).unwrap();
+     *     let result_str = String::from_utf8(bytes).assert();
      *     println!("{}", result_str);
      * }
      * ```
@@ -131,7 +131,7 @@ impl<'a> FromHex for &'a str {
         }
 
         match modulus {
-            0 => Ok(b.move_iter().collect()),
+            0 => Ok(b.iter_owned().collect()),
             _ => Err(InvalidHexLength),
         }
     }
@@ -150,9 +150,9 @@ mod tests {
 
     #[test]
     pub fn test_from_hex_okay() {
-        assert_eq!("666f6f626172".from_hex().unwrap().as_slice(),
+        assert_eq!("666f6f626172".from_hex().assert().as_slice(),
                    "foobar".as_bytes());
-        assert_eq!("666F6F626172".from_hex().unwrap().as_slice(),
+        assert_eq!("666F6F626172".from_hex().assert().as_slice(),
                    "foobar".as_bytes());
     }
 
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     pub fn test_from_hex_ignores_whitespace() {
-        assert_eq!("666f 6f6\r\n26172 ".from_hex().unwrap().as_slice(),
+        assert_eq!("666f 6f6\r\n26172 ".from_hex().assert().as_slice(),
                    "foobar".as_bytes());
     }
 
@@ -185,12 +185,12 @@ mod tests {
         for i in range(0u, 256) {
             assert_eq!(format!("{:02x}", i as uint).as_slice()
                                                    .from_hex()
-                                                   .unwrap()
+                                                   .assert()
                                                    .as_slice(),
                        &[i as u8]);
             assert_eq!(format!("{:02X}", i as uint).as_slice()
                                                    .from_hex()
-                                                   .unwrap()
+                                                   .assert()
                                                    .as_slice(),
                        &[i as u8]);
         }
@@ -212,7 +212,7 @@ mod tests {
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_hex();
         b.iter(|| {
-            sb.as_slice().from_hex().unwrap();
+            sb.as_slice().from_hex().assert();
         });
         b.bytes = sb.len() as u64;
     }

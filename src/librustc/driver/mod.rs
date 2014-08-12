@@ -80,8 +80,8 @@ fn run_compiler(args: &[String]) {
         1u => {
             let ifile = matches.free.get(0).as_slice();
             if ifile == "-" {
-                let contents = io::stdin().read_to_end().unwrap();
-                let src = String::from_utf8(contents).unwrap();
+                let contents = io::stdin().read_to_end().assert();
+                let src = String::from_utf8(contents).assert();
                 (StrInput(src), None)
             } else {
                 (FileInput(Path::new(ifile)), Some(Path::new(ifile)))
@@ -111,7 +111,7 @@ fn run_compiler(args: &[String]) {
         match input {
             FileInput(ref ifile) => {
                 let mut stdout = io::stdout();
-                list_metadata(&sess, &(*ifile), &mut stdout).unwrap();
+                list_metadata(&sess, &(*ifile), &mut stdout).assert();
             }
             StrInput(_) => {
                 early_error("can not list metadata for stdin");
@@ -169,7 +169,7 @@ Available lint options:
 ");
 
     fn sort_lints(lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
-        let mut lints: Vec<_> = lints.move_iter().map(|(x, _)| x).collect();
+        let mut lints: Vec<_> = lints.iter_owned().map(|(x, _)| x).collect();
         lints.sort_by(|x: &&Lint, y: &&Lint| {
             match x.default_level.cmp(&y.default_level) {
                 // The sort doesn't case-fold but it's doubtful we care.
@@ -198,7 +198,7 @@ Available lint options:
     println!("    {}  {:7.7s}  {}", padded("----"), "-------", "-------");
 
     let print_lints = |lints: Vec<&Lint>| {
-        for lint in lints.move_iter() {
+        for lint in lints.iter_owned() {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7s}  {}",
                      padded(name.as_slice()), lint.default_level.as_str(), lint.desc);
@@ -255,7 +255,7 @@ fn describe_codegen_flags() {
 /// returns None.
 pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     // Throw away the first argument, the name of the binary
-    let _binary = args.shift().unwrap();
+    let _binary = args.shift().assert();
 
     if args.is_empty() {
         usage();
@@ -357,7 +357,7 @@ pub enum PpMode {
 
 fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<driver::UserIdentifiedItem>) {
     let mut split = name.splitn('=', 1);
-    let first = split.next().unwrap();
+    let first = split.next().assert();
     let opt_second = split.next();
     let first = match first {
         "normal"       => PpmSource(PpmNormal),
@@ -393,7 +393,7 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
                 &sess.parse_sess)
         }
     };
-    result.move_iter().collect()
+    result.iter_owned().collect()
 }
 
 pub fn early_error(msg: &str) -> ! {

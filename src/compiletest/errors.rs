@@ -21,10 +21,10 @@ pub static EXPECTED_PATTERN : &'static str = r"//~(?P<adjusts>\^*)\s*(?P<kind>\S
 
 // Load any test directives embedded in the file
 pub fn load_errors(re: &Regex, testfile: &Path) -> Vec<ExpectedError> {
-    let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
+    let mut rdr = BufferedReader::new(File::open(testfile).assert());
 
     rdr.lines().enumerate().filter_map(|(line_no, ln)| {
-        parse_expected(line_no + 1, ln.unwrap().as_slice(), re)
+        parse_expected(line_no + 1, ln.assert().as_slice(), re)
     }).collect()
 }
 

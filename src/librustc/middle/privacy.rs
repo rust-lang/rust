@@ -610,7 +610,7 @@ impl<'a> PrivacyVisitor<'a> {
         let field = match name {
             NamedField(ident) => {
                 debug!("privacy - check named field {} in struct {}", ident.name, id);
-                fields.iter().find(|f| f.name == ident.name).unwrap()
+                fields.iter().find(|f| f.name == ident.name).assert()
             }
             UnnamedField(idx) => fields.get(idx)
         };
@@ -633,7 +633,7 @@ impl<'a> PrivacyVisitor<'a> {
                                                        belong to an enum")
                 };
                 format!("variant `{}` of enum `{}`",
-                        ty::with_path(self.tcx, id, |mut p| p.last().unwrap()),
+                        ty::with_path(self.tcx, id, |mut p| p.last().assert()),
                         ty::item_path_str(self.tcx, enum_id))
             }
             _ => self.tcx.sess.span_bug(span, "can't find struct for field")
@@ -671,7 +671,7 @@ impl<'a> PrivacyVisitor<'a> {
             let ck_public = |def: ast::DefId| {
                 let name = token::get_ident(path.segments
                                                 .last()
-                                                .unwrap()
+                                                .assert()
                                                 .identifier);
                 let origdid = orig_def.def_id();
                 self.ensure_public(span,

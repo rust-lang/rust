@@ -98,7 +98,7 @@ impl RtioTTY for WindowsTTY {
                                          utf16.as_mut_ptr() as LPVOID,
                                          utf16.len() as u32,
                                          &mut num as LPDWORD,
-                                         ptr::mut_null()) } {
+                                         ptr::null_mut()) } {
                 0 => return Err(super::last_error()),
                 _ => (),
             };
@@ -110,7 +110,7 @@ impl RtioTTY for WindowsTTY {
             self.utf8 = MemReader::new(utf8);
         }
         // MemReader shouldn't error here since we just filled it
-        Ok(self.utf8.read(buf).unwrap())
+        Ok(self.utf8.read(buf).assert())
     }
 
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
@@ -123,7 +123,7 @@ impl RtioTTY for WindowsTTY {
                                      utf16.as_ptr() as LPCVOID,
                                      utf16.len() as u32,
                                      &mut num as LPDWORD,
-                                     ptr::mut_null()) } {
+                                     ptr::null_mut()) } {
             0 => Err(super::last_error()),
             _ => Ok(()),
         }

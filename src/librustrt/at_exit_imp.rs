@@ -59,7 +59,7 @@ pub fn run() {
         v
     };
 
-    for to_run in cur.move_iter() {
+    for to_run in cur.iter_owned() {
         to_run();
     }
 }

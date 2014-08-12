@@ -99,7 +99,7 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
                 tuple: (box(GC) Cons((), st.tuple.ref0().clone()),
                         box Cons((), box(GC) *st.tuple.ref1().clone())),
                 vec: st.vec.clone().append(
-                        &[box(GC) Cons((), *st.vec.last().unwrap())]),
+                        &[box(GC) Cons((), *st.vec.last().assert())]),
                 res: r(box(GC) Cons((), st.res._l))
             }
           }

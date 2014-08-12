@@ -45,7 +45,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     // load the bitcode from the archive. Then merge it into the current LLVM
     // module that we've got.
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
-    for (cnum, path) in crates.move_iter() {
+    for (cnum, path) in crates.iter_owned() {
         let name = sess.cstore.get_crate_data(cnum).name.clone();
         let path = match path {
             Some(p) => p,
@@ -56,7 +56,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         };
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
-        let file = path.filename_str().unwrap();
+        let file = path.filename_str().assert();
         let file = file.slice(3, file.len() - 5); // chop off lib/.rlib
         debug!("reading {}", file);
         let bc_encoded = time(sess.time_passes(),

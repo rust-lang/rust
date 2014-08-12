@@ -157,8 +157,8 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
     let rounds =
         match props.pp_exact { Some(_) => 1, None => 2 };
 
-    let src = File::open(testfile).read_to_end().unwrap();
-    let src = String::from_utf8(src.clone()).unwrap();
+    let src = File::open(testfile).read_to_end().assert();
+    let src = String::from_utf8(src.clone()).assert();
     let mut srcs = vec!(src);
 
     let mut round = 0;
@@ -184,8 +184,8 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
     let mut expected = match props.pp_exact {
         Some(ref file) => {
             let filepath = testfile.dir_path().join(file);
-            let s = File::open(&filepath).read_to_end().unwrap();
-            String::from_utf8(s).unwrap()
+            let s = File::open(&filepath).read_to_end().assert();
+            String::from_utf8(s).assert()
         }
         None => { srcs[srcs.len() - 2u].clone() }
     };
@@ -240,7 +240,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
                                      pretty_type.to_string()),
                         props.exec_env.clone(),
                         config.compile_lib_path.as_slice(),
-                        Some(aux_dir.as_str().unwrap()),
+                        Some(aux_dir.as_str().assert()),
                         Some(src))
     }
 
@@ -255,11 +255,11 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
                             pretty_type,
                             format!("--target={}", config.target),
                             "-L".to_string(),
-                            aux_dir.as_str().unwrap().to_string());
+                            aux_dir.as_str().assert().to_string());
         args.push_all_move(split_maybe_args(&config.target_rustcflags));
         args.push_all_move(split_maybe_args(&props.compile_flags));
         return ProcArgs {
-            prog: config.rustc_path.as_str().unwrap().to_string(),
+            prog: config.rustc_path.as_str().assert().to_string(),
             args: args,
         };
     }
@@ -301,14 +301,14 @@ actual:\n\
                             "--crate-type=lib".to_string(),
                             format!("--target={}", target),
                             "-L".to_string(),
-                            config.build_base.as_str().unwrap().to_string(),
+                            config.build_base.as_str().assert().to_string(),
                             "-L".to_string(),
-                            aux_dir.as_str().unwrap().to_string());
+                            aux_dir.as_str().assert().to_string());
         args.push_all_move(split_maybe_args(&config.target_rustcflags));
         args.push_all_move(split_maybe_args(&props.compile_flags));
         // FIXME (#9639): This needs to handle non-utf8 paths
         return ProcArgs {
-            prog: config.rustc_path.as_str().unwrap().to_string(),
+            prog: config.rustc_path.as_str().assert().to_string(),
             args: args,
         };
     }
@@ -342,7 +342,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
             // write debugger script
             let script_str = ["set charset UTF-8".to_string(),
-                              format!("file {}", exe_file.as_str().unwrap()
+                              format!("file {}", exe_file.as_str().assert()
                                                          .to_string()),
                               "target remote :5039".to_string(),
                               cmds,
@@ -359,7 +359,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                          None,
                          [
                             "push".to_string(),
-                            exe_file.as_str().unwrap().to_string(),
+                            exe_file.as_str().assert().to_string(),
                             config.adb_test_dir.clone()
                          ],
                          vec!(("".to_string(), "".to_string())),
@@ -384,7 +384,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                   config.adb_test_dir.clone(),
                                   str::from_utf8(
                                       exe_file.filename()
-                                      .unwrap()).unwrap());
+                                      .assert()).assert());
 
             let mut process = procsrv::run_background("",
                                                       config.adb_path
@@ -402,7 +402,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 //waiting 1 second for gdbserver start
                 timer::sleep(1000);
                 let result = task::try(proc() {
-                    tcp::TcpStream::connect("127.0.0.1", 5039).unwrap();
+                    tcp::TcpStream::connect("127.0.0.1", 5039).assert();
                 });
                 if result.is_err() {
                     continue;
@@ -421,7 +421,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 vec!("-quiet".to_string(),
                      "-batch".to_string(),
                      "-nx".to_string(),
-                     format!("-command={}", debugger_script.as_str().unwrap()));
+                     format!("-command={}", debugger_script.as_str().assert()));
 
             let gdb_path = tool_path.append("/bin/arm-linux-androideabi-gdb");
             let procsrv::Result {
@@ -449,7 +449,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 stderr: err,
                 cmdline: cmdline
             };
-            process.signal_kill().unwrap();
+            process.signal_kill().assert();
         }
 
         _=> {
@@ -482,8 +482,8 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 vec!("-quiet".to_string(),
                      "-batch".to_string(),
                      "-nx".to_string(),
-                     format!("-command={}", debugger_script.as_str().unwrap()),
-                     exe_file.as_str().unwrap().to_string());
+                     format!("-command={}", debugger_script.as_str().assert()),
+                     exe_file.as_str().assert().to_string());
             proc_args = ProcArgs {
                 prog: debugger(),
                 args: debugger_opts,
@@ -587,16 +587,16 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
         cmd.arg("./src/etc/lldb_batchmode.py")
            .arg(test_executable)
            .arg(debugger_script)
-           .env_set_all([("PYTHONPATH", config.lldb_python_dir.clone().unwrap().as_slice())]);
+           .env_set_all([("PYTHONPATH", config.lldb_python_dir.clone().assert().as_slice())]);
 
         let (status, out, err) = match cmd.spawn() {
             Ok(process) => {
                 let ProcessOutput { status, output, error } =
-                    process.wait_with_output().unwrap();
+                    process.wait_with_output().assert();
 
                 (status,
-                 String::from_utf8(output).unwrap(),
-                 String::from_utf8(error).unwrap())
+                 String::from_utf8(output).assert(),
+                 String::from_utf8(error).assert())
             },
             Err(e) => {
                 fatal(format!("Failed to setup Python process for \
@@ -631,7 +631,7 @@ fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
     let mut commands = vec!();
     let mut check_lines = vec!();
     let mut counter = 1;
-    let mut reader = BufferedReader::new(File::open(file_path).unwrap());
+    let mut reader = BufferedReader::new(File::open(file_path).assert());
     for line in reader.lines() {
         match line {
             Ok(line) => {
@@ -678,7 +678,7 @@ fn cleanup_debug_info_options(options: &Option<String>) -> Option<String> {
         "--debuginfo".to_string()
     ];
     let new_options =
-        split_maybe_args(options).move_iter()
+        split_maybe_args(options).iter_owned()
                                  .filter(|x| !options_to_remove.contains(x))
                                  .collect::<Vec<String>>()
                                  .connect(" ");
@@ -736,7 +736,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
         }
         if i != num_check_lines {
             fatal_proc_rec(format!("line not found in debugger output: {}",
-                                  check_lines.get(i).unwrap()).as_slice(),
+                                  check_lines.get(i).assert()).as_slice(),
                           debugger_run_result);
         }
     }
@@ -915,7 +915,7 @@ fn scan_until_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
     if opt.is_none() {
         return false;
     }
-    *idx = opt.unwrap();
+    *idx = opt.assert();
     return true;
 }
 
@@ -990,7 +990,7 @@ fn compile_test_(config: &Config, props: &TestProps,
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
     let link_args = vec!("-L".to_string(),
-                         aux_dir.as_str().unwrap().to_string());
+                         aux_dir.as_str().assert().to_string());
     let args = make_compile_args(config,
                                  props,
                                  link_args.append(extra_args),
@@ -1016,7 +1016,7 @@ fn exec_compiled_test(config: &Config, props: &TestProps,
                             make_run_args(config, props, testfile),
                             env,
                             config.run_lib_path.as_slice(),
-                            Some(aux_dir.as_str().unwrap()),
+                            Some(aux_dir.as_str().assert()),
                             None)
         }
     }
@@ -1035,7 +1035,7 @@ fn compose_and_run_compiler(
 
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let extra_link_args = vec!("-L".to_string(), aux_dir.as_str().unwrap().to_string());
+    let extra_link_args = vec!("-L".to_string(), aux_dir.as_str().assert().to_string());
 
     for rel_ab in props.aux_builds.iter() {
         let abs_ab = config.aux_base.join(rel_ab.as_slice());
@@ -1060,7 +1060,7 @@ fn compose_and_run_compiler(
                                      aux_args,
                                      Vec::new(),
                                      config.compile_lib_path.as_slice(),
-                                     Some(aux_dir.as_str().unwrap()),
+                                     Some(aux_dir.as_str().assert()),
                                      None);
         if !auxres.status.success() {
             fatal_proc_rec(
@@ -1082,13 +1082,13 @@ fn compose_and_run_compiler(
                     args,
                     Vec::new(),
                     config.compile_lib_path.as_slice(),
-                    Some(aux_dir.as_str().unwrap()),
+                    Some(aux_dir.as_str().assert()),
                     input)
 }
 
 fn ensure_dir(path: &Path) {
     if path.is_dir() { return; }
-    fs::mkdir(path, io::UserRWX).unwrap();
+    fs::mkdir(path, io::UserRWX).assert();
 }
 
 fn compose_and_run(config: &Config, testfile: &Path,
@@ -1119,9 +1119,9 @@ fn make_compile_args(config: &Config,
         config.target.as_slice()
     };
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let mut args = vec!(testfile.as_str().unwrap().to_string(),
+    let mut args = vec!(testfile.as_str().assert().to_string(),
                         "-L".to_string(),
-                        config.build_base.as_str().unwrap().to_string(),
+                        config.build_base.as_str().assert().to_string(),
                         format!("--target={}", target));
     args.push_all(extras.as_slice());
     if !props.no_prefer_dynamic {
@@ -1138,7 +1138,7 @@ fn make_compile_args(config: &Config,
             path
         }
     };
-    args.push(path.as_str().unwrap().to_string());
+    args.push(path.as_str().assert().to_string());
     if props.force_host {
         args.push_all_move(split_maybe_args(&config.host_rustcflags));
     } else {
@@ -1146,7 +1146,7 @@ fn make_compile_args(config: &Config,
     }
     args.push_all_move(split_maybe_args(&props.compile_flags));
     return ProcArgs {
-        prog: config.rustc_path.as_str().unwrap().to_string(),
+        prog: config.rustc_path.as_str().assert().to_string(),
         args: args,
     };
 }
@@ -1177,12 +1177,12 @@ fn make_run_args(config: &Config, props: &TestProps, testfile: &Path) ->
     let exe_file = make_exe_name(config, testfile);
 
     // FIXME (#9639): This needs to handle non-utf8 paths
-    args.push(exe_file.as_str().unwrap().to_string());
+    args.push(exe_file.as_str().assert().to_string());
 
     // Add the arguments in the run_flags directive
     args.push_all_move(split_maybe_args(&props.run_flags));
 
-    let prog = args.remove(0).unwrap();
+    let prog = args.remove(0).assert();
     return ProcArgs {
         prog: prog,
         args: args,
@@ -1267,7 +1267,7 @@ fn dump_output(config: &Config, testfile: &Path, out: &str, err: &str) {
 fn dump_output_file(config: &Config, testfile: &Path,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
-    File::create(&outfile).write(out.as_bytes()).unwrap();
+    File::create(&outfile).write(out.as_bytes()).assert();
 }
 
 fn make_out_name(config: &Config, testfile: &Path, extension: &str) -> Path {
@@ -1284,7 +1284,7 @@ fn aux_output_dir_name(config: &Config, testfile: &Path) -> Path {
 }
 
 fn output_testname(testfile: &Path) -> Path {
-    Path::new(testfile.filestem().unwrap())
+    Path::new(testfile.filestem().assert())
 }
 
 fn output_base_name(config: &Config, testfile: &Path) -> Path {
@@ -1342,7 +1342,7 @@ fn _arm_exec_compiled_test(config: &Config,
                                     .split('/')
                                     .map(|ts| ts.to_string())
                                     .collect();
-    let prog_short = tvec.pop().unwrap();
+    let prog_short = tvec.pop().assert();
 
     // copy to target
     let copy_result = procsrv::run("",
@@ -1371,7 +1371,7 @@ fn _arm_exec_compiled_test(config: &Config,
 
     // run test via adb_run_wrapper
     runargs.push("shell".to_string());
-    for (key, val) in env.move_iter() {
+    for (key, val) in env.iter_owned() {
         runargs.push(format!("{}={}", key, val));
     }
     runargs.push(format!("{}/adb_run_wrapper.sh", config.adb_test_dir));
@@ -1458,7 +1458,7 @@ fn _arm_exec_compiled_test(config: &Config,
 fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
     let tdir = aux_output_dir_name(config, testfile);
 
-    let dirs = fs::readdir(&tdir).unwrap();
+    let dirs = fs::readdir(&tdir).assert();
     for file in dirs.iter() {
         if file.extension_str() == Some("so") {
             // FIXME (#9639): This needs to handle non-utf8 paths
@@ -1468,7 +1468,7 @@ fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
                                            [
                                             "push".to_string(),
                                             file.as_str()
-                                                .unwrap()
+                                                .assert()
                                                 .to_string(),
                                             config.adb_test_dir.to_string()
                                            ],
@@ -1496,7 +1496,7 @@ fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
     if suffix.len() == 0 {
         (*p).clone()
     } else {
-        let stem = p.filestem().unwrap();
+        let stem = p.filestem().assert();
         p.with_filename(Vec::from_slice(stem).append(b"-").append(suffix.as_bytes()))
     }
 }
@@ -1506,7 +1506,7 @@ fn compile_test_and_save_bitcode(config: &Config, props: &TestProps,
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
     let link_args = vec!("-L".to_string(),
-                         aux_dir.as_str().unwrap().to_string());
+                         aux_dir.as_str().assert().to_string());
     let llvm_args = vec!("--emit=obj".to_string(),
                          "--crate-type=lib".to_string(),
                          "-C".to_string(),
@@ -1525,12 +1525,12 @@ fn compile_cc_with_clang_and_save_bitcode(config: &Config, _props: &TestProps,
     let testcc = testfile.with_extension("cc");
     let proc_args = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        prog: config.clang_path.get_ref().as_str().unwrap().to_string(),
+        prog: config.clang_path.as_ref().assert().as_str().assert().to_string(),
         args: vec!("-c".to_string(),
                    "-emit-llvm".to_string(),
                    "-o".to_string(),
-                   bitcodefile.as_str().unwrap().to_string(),
-                   testcc.as_str().unwrap().to_string())
+                   bitcodefile.as_str().assert().to_string(),
+                   testcc.as_str().assert().to_string())
     };
     compose_and_run(config, testfile, proc_args, Vec::new(), "", None, None)
 }
@@ -1541,13 +1541,13 @@ fn extract_function_from_bitcode(config: &Config, _props: &TestProps,
     let bitcodefile = output_base_name(config, testfile).with_extension("bc");
     let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
     let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
-    let prog = config.llvm_bin_path.get_ref().join("llvm-extract");
+    let prog = config.llvm_bin_path.as_ref().assert().join("llvm-extract");
     let proc_args = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        prog: prog.as_str().unwrap().to_string(),
+        prog: prog.as_str().assert().to_string(),
         args: vec!(format!("-func={}", fname),
-                   format!("-o={}", extracted_bc.as_str().unwrap()),
-                   bitcodefile.as_str().unwrap().to_string())
+                   format!("-o={}", extracted_bc.as_str().assert()),
+                   bitcodefile.as_str().assert().to_string())
     };
     compose_and_run(config, testfile, proc_args, Vec::new(), "", None, None)
 }
@@ -1558,20 +1558,20 @@ fn disassemble_extract(config: &Config, _props: &TestProps,
     let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
     let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
     let extracted_ll = extracted_bc.with_extension("ll");
-    let prog = config.llvm_bin_path.get_ref().join("llvm-dis");
+    let prog = config.llvm_bin_path.as_ref().assert().join("llvm-dis");
     let proc_args = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        prog: prog.as_str().unwrap().to_string(),
-        args: vec!(format!("-o={}", extracted_ll.as_str().unwrap()),
-                   extracted_bc.as_str().unwrap().to_string())
+        prog: prog.as_str().assert().to_string(),
+        args: vec!(format!("-o={}", extracted_ll.as_str().assert()),
+                   extracted_bc.as_str().assert().to_string())
     };
     compose_and_run(config, testfile, proc_args, Vec::new(), "", None, None)
 }
 
 
 fn count_extracted_lines(p: &Path) -> uint {
-    let x = File::open(&p.with_extension("ll")).read_to_end().unwrap();
-    let x = str::from_utf8(x.as_slice()).unwrap();
+    let x = File::open(&p.with_extension("ll")).read_to_end().assert();
+    let x = str::from_utf8(x.as_slice()).assert();
     x.lines().count()
 }
 

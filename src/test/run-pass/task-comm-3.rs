@@ -62,7 +62,7 @@ fn test00() {
     }
 
     // Join spawned tasks...
-    for r in results.mut_iter() { r.get_ref(); }
+    for r in results.iter_mut() { r.get_ref(); }
 
     println!("Completed: Final number is: ");
     println!("{:?}", sum);

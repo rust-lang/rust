@@ -68,7 +68,7 @@ You can also get a `&str` from a stack-allocated array of bytes:
 use std::str;
 
 let x: &[u8] = &[b'a', b'b'];
-let stack_str: &str = str::from_utf8(x).unwrap();
+let stack_str: &str = str::from_utf8(x).assert();
 ```
 
 # Best Practices

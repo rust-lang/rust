@@ -483,7 +483,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn print_backtrace(&self) { }
     pub fn backtrace(&self) -> Option<Gc<ExpnInfo>> { self.backtrace }
     pub fn mod_push(&mut self, i: ast::Ident) { self.mod_path.push(i); }
-    pub fn mod_pop(&mut self) { self.mod_path.pop().unwrap(); }
+    pub fn mod_pop(&mut self) { self.mod_path.pop().assert(); }
     pub fn mod_path(&self) -> Vec<ast::Ident> {
         let mut v = Vec::new();
         v.push(token::str_to_ident(self.ecfg.crate_name.as_slice()));
@@ -686,7 +686,7 @@ impl SyntaxEnv {
     }
 
     fn find_escape_frame<'a>(&'a mut self) -> &'a mut MapChainFrame {
-        for (i, frame) in self.chain.mut_iter().enumerate().rev() {
+        for (i, frame) in self.chain.iter_mut().enumerate().rev() {
             if !frame.info.macros_escape || i == 0 {
                 return frame
             }

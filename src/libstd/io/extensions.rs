@@ -316,13 +316,13 @@ mod test {
         let mut reader = ErroringReader;
         let mut it = reader.bytes();
         let byte = it.next();
-        assert!(byte.unwrap().is_err());
+        assert!(byte.assert().is_err());
     }
 
     #[test]
     fn read_bytes() {
         let mut reader = MemReader::new(vec!(10, 11, 12, 13));
-        let bytes = reader.read_exact(4).unwrap();
+        let bytes = reader.read_exact(4).assert();
         assert!(bytes == vec!(10, 11, 12, 13));
     }
 
@@ -331,7 +331,7 @@ mod test {
         let mut reader = PartialReader {
             count: 0,
         };
-        let bytes = reader.read_exact(4).unwrap();
+        let bytes = reader.read_exact(4).assert();
         assert!(bytes == vec!(10, 11, 12, 13));
     }
 
@@ -382,7 +382,7 @@ mod test {
         let mut reader = ThreeChunkReader {
             count: 0,
         };
-        let buf = reader.read_to_end().unwrap();
+        let buf = reader.read_to_end().assert();
         assert!(buf == vec!(10, 11, 12, 13));
     }
 
@@ -392,7 +392,7 @@ mod test {
         let mut reader = ThreeChunkReader {
             count: 0,
         };
-        let buf = reader.read_to_end().unwrap();
+        let buf = reader.read_to_end().assert();
         assert!(buf == vec!(10, 11));
     }
 
@@ -402,12 +402,12 @@ mod test {
 
         let mut writer = MemWriter::new();
         for i in uints.iter() {
-            writer.write_le_u64(*i).unwrap();
+            writer.write_le_u64(*i).assert();
         }
 
         let mut reader = MemReader::new(writer.unwrap());
         for i in uints.iter() {
-            assert!(reader.read_le_u64().unwrap() == *i);
+            assert!(reader.read_le_u64().assert() == *i);
         }
     }
 
@@ -418,12 +418,12 @@ mod test {
 
         let mut writer = MemWriter::new();
         for i in uints.iter() {
-            writer.write_be_u64(*i).unwrap();
+            writer.write_be_u64(*i).assert();
         }
 
         let mut reader = MemReader::new(writer.unwrap());
         for i in uints.iter() {
-            assert!(reader.read_be_u64().unwrap() == *i);
+            assert!(reader.read_be_u64().assert() == *i);
         }
     }
 
@@ -433,14 +433,14 @@ mod test {
 
         let mut writer = MemWriter::new();
         for i in ints.iter() {
-            writer.write_be_i32(*i).unwrap();
+            writer.write_be_i32(*i).assert();
         }
 
         let mut reader = MemReader::new(writer.unwrap());
         for i in ints.iter() {
             // this tests that the sign extension is working
             // (comparing the values as i32 would not test this)
-            assert!(reader.read_be_int_n(4).unwrap() == *i as i64);
+            assert!(reader.read_be_int_n(4).assert() == *i as i64);
         }
     }
 
@@ -450,10 +450,10 @@ mod test {
         let buf = vec![0x41, 0x02, 0x00, 0x00];
 
         let mut writer = MemWriter::new();
-        writer.write(buf.as_slice()).unwrap();
+        writer.write(buf.as_slice()).assert();
 
         let mut reader = MemReader::new(writer.unwrap());
-        let f = reader.read_be_f32().unwrap();
+        let f = reader.read_be_f32().assert();
         assert!(f == 8.1250);
     }
 
@@ -462,12 +462,12 @@ mod test {
         let f:f32 = 8.1250;
 
         let mut writer = MemWriter::new();
-        writer.write_be_f32(f).unwrap();
-        writer.write_le_f32(f).unwrap();
+        writer.write_be_f32(f).assert();
+        writer.write_le_f32(f).assert();
 
         let mut reader = MemReader::new(writer.unwrap());
-        assert!(reader.read_be_f32().unwrap() == 8.1250);
-        assert!(reader.read_le_f32().unwrap() == 8.1250);
+        assert!(reader.read_be_f32().assert() == 8.1250);
+        assert!(reader.read_le_f32().assert() == 8.1250);
     }
 
     #[test]

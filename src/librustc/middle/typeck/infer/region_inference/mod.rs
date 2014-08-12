@@ -209,7 +209,7 @@ impl<'a> RegionVarBindings<'a> {
         assert!(undo_log.len() > snapshot.length);
         assert!(*undo_log.get(snapshot.length) == OpenSnapshot);
         while undo_log.len() > snapshot.length + 1 {
-            match undo_log.pop().unwrap() {
+            match undo_log.pop().assert() {
                 OpenSnapshot => {
                     fail!("Failure to observe stack discipline");
                 }
@@ -217,7 +217,7 @@ impl<'a> RegionVarBindings<'a> {
                 AddVar(vid) => {
                     let mut var_origins = self.var_origins.borrow_mut();
                     assert_eq!(var_origins.len(), vid.index + 1);
-                    var_origins.pop().unwrap();
+                    var_origins.pop().assert();
                 }
                 AddConstraint(ref constraint) => {
                     self.constraints.borrow_mut().remove(constraint);
@@ -230,7 +230,7 @@ impl<'a> RegionVarBindings<'a> {
                 }
             }
         }
-        let c = undo_log.pop().unwrap();
+        let c = undo_log.pop().assert();
         assert!(c == OpenSnapshot);
     }
 
@@ -1088,7 +1088,7 @@ impl<'a> RegionVarBindings<'a> {
                     if opt_graph.is_none() {
                         opt_graph = Some(self.construct_graph());
                     }
-                    let graph = opt_graph.get_ref();
+                    let graph = opt_graph.as_ref().assert();
 
                     let node_vid = RegionVid { index: idx };
                     match var_data[idx].classification {
@@ -1291,7 +1291,7 @@ impl<'a> RegionVarBindings<'a> {
         process_edges(self, &mut state, graph, orig_node_idx, dir);
 
         while !state.stack.is_empty() {
-            let node_idx = state.stack.pop().unwrap();
+            let node_idx = state.stack.pop().assert();
             let classification = var_data[node_idx.index].classification;
 
             // check whether we've visited this node on some previous walk

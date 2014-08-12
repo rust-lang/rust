@@ -328,7 +328,7 @@ impl<'a> FunctionContext<'a> {
         unsafe {
             llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt
                                                      .get()
-                                                     .unwrap());
+                                                     .assert());
         }
     }
 
@@ -342,7 +342,7 @@ impl<'a> FunctionContext<'a> {
             }))
         }
 
-        self.llreturn.get().unwrap()
+        self.llreturn.get().assert()
     }
 
     pub fn new_block(&'a self,
@@ -624,7 +624,7 @@ pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
         let len = s.get().len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s, false),
                                             Type::i8p(cx).to_ref());
-        C_named_struct(cx.tn.find_type("str_slice").unwrap(), [cs, C_uint(cx, len)])
+        C_named_struct(cx.tn.find_type("str_slice").assert(), [cs, C_uint(cx, len)])
     }
 }
 

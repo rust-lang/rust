@@ -336,7 +336,7 @@ impl<'a> Iterator<char> for Recompositions<'a> {
                             self.composee = Some(ch);
                             continue;
                         }
-                        let k = self.composee.clone().unwrap();
+                        let k = self.composee.clone().assert();
 
                         match self.last_ccc {
                             None => {
@@ -1512,7 +1512,7 @@ mod tests {
         let s1: String = String::from_str("All mimsy were the borogoves");
 
         let v: Vec<u8> = Vec::from_slice(s1.as_bytes());
-        let s2: String = String::from_str(from_utf8(v.as_slice()).unwrap());
+        let s2: String = String::from_str(from_utf8(v.as_slice()).assert());
         let mut i: uint = 0u;
         let n1: uint = s1.len();
         let n2: uint = v.len();
@@ -1681,7 +1681,7 @@ mod tests {
         let mut bytes = [0u8, ..4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(bytes);
-            let s = ::core::str::from_utf8(bytes.slice_to(len)).unwrap();
+            let s = ::core::str::from_utf8(bytes.slice_to(len)).assert();
             if Some(c) != s.chars().next() {
                 fail!("character {:x}={} does not decode correctly", c as u32, c);
             }
@@ -1693,7 +1693,7 @@ mod tests {
         let mut bytes = [0u8, ..4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(bytes);
-            let s = ::core::str::from_utf8(bytes.slice_to(len)).unwrap();
+            let s = ::core::str::from_utf8(bytes.slice_to(len)).assert();
             if Some(c) != s.chars().rev().next() {
                 fail!("character {:x}={} does not decode correctly", c as u32, c);
             }

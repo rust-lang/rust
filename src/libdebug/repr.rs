@@ -108,7 +108,7 @@ impl<'a> MovePtr for ReprVisitor<'a> {
         self.ptr_stk.push(self.ptr);
     }
     fn pop_ptr(&mut self) {
-        self.ptr = self.ptr_stk.pop().unwrap();
+        self.ptr = self.ptr_stk.pop().assert();
     }
 }
 
@@ -438,7 +438,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
                                 n_fields: uint,
                                 name: &str) -> bool {
         let mut write = false;
-        match self.var_stk.pop().unwrap() {
+        match self.var_stk.pop().assert() {
             SearchingFor(sought) => {
                 if disr_val == sought {
                     self.var_stk.push(Matched);
@@ -501,7 +501,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
                         _sz: uint,
                         _align: uint)
                         -> bool {
-        match self.var_stk.pop().unwrap() {
+        match self.var_stk.pop().assert() {
             SearchingFor(..) => fail!("enum value matched no variant"),
             _ => true
         }
@@ -566,8 +566,8 @@ pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {
 
 pub fn repr_to_string<T>(t: &T) -> String {
     let mut result = io::MemWriter::new();
-    write_repr(&mut result as &mut io::Writer, t).unwrap();
-    String::from_utf8(result.unwrap()).unwrap()
+    write_repr(&mut result as &mut io::Writer, t).assert();
+    String::from_utf8(result.unwrap()).assert()
 }
 
 #[cfg(test)]
@@ -582,8 +582,8 @@ fn test_repr() {
 
     fn exact_test<T>(t: &T, e:&str) {
         let mut m = io::MemWriter::new();
-        write_repr(&mut m as &mut io::Writer, t).unwrap();
-        let s = String::from_utf8(m.unwrap()).unwrap();
+        write_repr(&mut m as &mut io::Writer, t).assert();
+        let s = String::from_utf8(m.assert()).assert();
         assert_eq!(s.as_slice(), e);
     }
 

@@ -18,7 +18,7 @@ use util::ppaux::Repr;
 use std::fmt;
 use std::mem;
 use std::raw;
-use std::slice::{Items, MutItems};
+use std::slice::{Items, ItemsMut};
 use std::vec::Vec;
 use syntax::codemap::{Span, DUMMY_SP};
 
@@ -32,7 +32,7 @@ trait HomogeneousTuple3<T> {
     fn as_slice<'a>(&'a self) -> &'a [T];
     fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T];
     fn iter<'a>(&'a self) -> Items<'a, T>;
-    fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T>;
+    fn iter_mut<'a>(&'a mut self) -> ItemsMut<'a, T>;
     fn get<'a>(&'a self, index: uint) -> Option<&'a T>;
     fn get_mut<'a>(&'a mut self, index: uint) -> Option<&'a mut T>;
 }
@@ -63,8 +63,8 @@ impl<T> HomogeneousTuple3<T> for (T, T, T) {
         slice.iter()
     }
 
-    fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
-        self.as_mut_slice().mut_iter()
+    fn iter_mut<'a>(&'a mut self) -> ItemsMut<'a, T> {
+        self.as_mut_slice().iter_mut()
     }
 
     fn get<'a>(&'a self, index: uint) -> Option<&'a T> {
@@ -177,7 +177,7 @@ impl Substs {
         }
     }
 
-    pub fn mut_regions<'a>(&'a mut self) -> &'a mut VecPerParamSpace<ty::Region> {
+    pub fn regions_mut<'a>(&'a mut self) -> &'a mut VecPerParamSpace<ty::Region> {
         /*!
          * Since ErasedRegions are only to be used in trans, most of
          * the compiler can use this method to easily access the set
@@ -335,7 +335,7 @@ impl<T> VecPerParamSpace<T> {
 
     pub fn sort(t: Vec<T>, space: |&T| -> ParamSpace) -> VecPerParamSpace<T> {
         let mut result = VecPerParamSpace::empty();
-        for t in t.move_iter() {
+        for t in t.iter_owned() {
             result.push(space(&t), t);
         }
         result
@@ -379,7 +379,7 @@ impl<T> VecPerParamSpace<T> {
     pub fn replace(&mut self, space: ParamSpace, elems: Vec<T>) {
         // FIXME (#15435): slow; O(n^2); could enhance vec to make it O(n).
         self.truncate(space, 0);
-        for t in elems.move_iter() {
+        for t in elems.iter_owned() {
             self.push(space, t);
         }
     }
@@ -405,7 +405,7 @@ impl<T> VecPerParamSpace<T> {
 
     fn get_mut_slice<'a>(&'a mut self, space: ParamSpace) -> &'a mut [T] {
         let (start, limit) = self.limits(space);
-        self.content.mut_slice(start, limit)
+        self.content.slice_mut(start, limit)
     }
 
     pub fn opt_get<'a>(&'a self,

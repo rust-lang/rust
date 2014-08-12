@@ -12,7 +12,7 @@
 use std::io::{File, TempDir};
 
 pub fn main() {
-    let dir = TempDir::new_in(&Path::new("."), "").unwrap();
+    let dir = TempDir::new_in(&Path::new("."), "").assert();
     let path = dir.path().join("file");
 
     {
@@ -28,5 +28,5 @@ pub fn main() {
     }
 
     assert!(path.exists());
-    assert_eq!(path.stat().unwrap().size, 1000);
+    assert_eq!(path.stat().assert().size, 1000);
 }

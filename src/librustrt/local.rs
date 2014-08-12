@@ -117,7 +117,7 @@ mod test {
             let task = box Task::new();
             Local::put(task);
 
-            let t: Box<Task> = Local::try_take().unwrap();
+            let t: Box<Task> = Local::try_take().assert();
             let u: Option<Box<Task>> = Local::try_take();
             assert!(u.is_none());
 

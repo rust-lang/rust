@@ -39,12 +39,12 @@ fn main() {
     } else if args.len() > 1 && args[1].as_slice() == "loud" {
         loud_recurse();
     } else {
-        let silent = Command::new(args[0].as_slice()).arg("silent").output().unwrap();
+        let silent = Command::new(args[0].as_slice()).arg("silent").output().assert();
         assert!(!silent.status.success());
         let error = String::from_utf8_lossy(silent.error.as_slice());
         assert!(error.as_slice().contains("has overflowed its stack"));
 
-        let loud = Command::new(args[0].as_slice()).arg("loud").output().unwrap();
+        let loud = Command::new(args[0].as_slice()).arg("loud").output().assert();
         assert!(!loud.status.success());
         let error = String::from_utf8_lossy(silent.error.as_slice());
         assert!(error.as_slice().contains("has overflowed its stack"));

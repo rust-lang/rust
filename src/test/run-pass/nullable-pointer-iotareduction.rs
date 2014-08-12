@@ -45,7 +45,7 @@ macro_rules! check_option {
         assert!(option::None::<$T>.is_none());
         let e = $e;
         let s_ = option::Some::<$T>(e);
-        let $v = s_.get_ref();
+        let $v = s_.as_ref().assert();
         $chk
     }}
 }
@@ -60,7 +60,7 @@ macro_rules! check_fancy {
         let t_ = Thing::<$T>(23, e);
         match t_.get_ref() {
             (23, $v) => { $chk }
-            _ => fail!("Thing::<{}>(23, {}).get_ref() != (23, _)",
+            _ => fail!("Thing::<{}>(23, {}).as_ref().assert() != (23, _)",
                        stringify!($T), stringify!($e))
         }
     }}

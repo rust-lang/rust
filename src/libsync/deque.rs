@@ -161,7 +161,7 @@ impl<T: Send> BufferPool<T> {
         unsafe {
             let mut pool = self.pool.lock();
             match pool.iter().position(|x| x.size() >= (1 << bits)) {
-                Some(i) => pool.remove(i).unwrap(),
+                Some(i) => pool.remove(i).assert(),
                 None => box Buffer::new(bits)
             }
         }
@@ -513,7 +513,7 @@ mod tests {
             }
         }
 
-        for thread in threads.move_iter() {
+        for thread in threads.iter_owned() {
             thread.join();
         }
     }
@@ -536,7 +536,7 @@ mod tests {
             })
         }).collect::<Vec<Thread<()>>>();
 
-        for thread in threads.move_iter() {
+        for thread in threads.iter_owned() {
             thread.join();
         }
     }
@@ -592,7 +592,7 @@ mod tests {
             DONE.store(true, SeqCst);
         }
 
-        for thread in threads.move_iter() {
+        for thread in threads.iter_owned() {
             thread.join();
         }
 
@@ -657,7 +657,7 @@ mod tests {
 
         unsafe { DONE.store(true, SeqCst); }
 
-        for thread in threads.move_iter() {
+        for thread in threads.iter_owned() {
             thread.join();
         }
     }

@@ -360,7 +360,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("schedule_clean_in_ast_scope(cleanup_scope={:?})",
                cleanup_scope);
 
-        for scope in self.scopes.borrow_mut().mut_iter().rev() {
+        for scope in self.scopes.borrow_mut().iter_mut().rev() {
             if scope.kind.is_ast_with_id(cleanup_scope) {
                 scope.cleanups.push(cleanup);
                 scope.clear_cached_exits();
@@ -500,11 +500,11 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
                self.top_scope(|s| s.block_name("")),
                self.scopes_len() - 1);
 
-        self.scopes.borrow_mut().pop().unwrap()
+        self.scopes.borrow_mut().pop().assert()
     }
 
     fn top_scope<R>(&self, f: |&CleanupScope<'a>| -> R) -> R {
-        f(self.scopes.borrow().last().unwrap())
+        f(self.scopes.borrow().last().assert())
     }
 
     fn trans_cleanups_to_exit_scope(&'a self,
@@ -597,7 +597,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
             // and this scope is that loop, then stop popping and set
             // `prev_llbb` to the appropriate exit block from the loop.
             popped_scopes.push(self.pop_scope());
-            let scope = popped_scopes.last().unwrap();
+            let scope = popped_scopes.last().assert();
             match label {
                 UnwindExit | ReturnExit => { }
                 LoopExit(id, exit) => {
@@ -637,7 +637,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
         // At this point, `popped_scopes` is empty, and so the final block
         // that we return to the user is `Cleanup(AST 24)`.
         while !popped_scopes.is_empty() {
-            let mut scope = popped_scopes.pop().unwrap();
+            let mut scope = popped_scopes.pop().assert();
 
             if scope.cleanups.iter().any(|c| cleanup_is_suitable_for(*c, label))
             {
@@ -690,7 +690,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
         // Check if a landing pad block exists; if not, create one.
         {
             let mut scopes = self.scopes.borrow_mut();
-            let last_scope = scopes.mut_last().unwrap();
+            let last_scope = scopes.last_mut().assert();
             match last_scope.cached_landing_pad {
                 Some(llbb) => { return llbb; }
                 None => {

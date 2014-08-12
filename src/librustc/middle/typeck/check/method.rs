@@ -263,7 +263,7 @@ fn construct_transformed_self_ty_for_object(
     // The subst we get in has Err as the "Self" type. For an object
     // type, we don't put any type into the Self paramspace, so let's
     // make a copy of rcvr_substs that has the Self paramspace empty.
-    obj_substs.types.pop(subst::SelfSpace).unwrap();
+    obj_substs.types.pop(subst::SelfSpace).assert();
 
     match method_ty.explicit_self {
         StaticExplicitSelfCategory => {
@@ -502,7 +502,7 @@ impl<'a> LookupContext<'a> {
         // find all the impls of that trait.  Each of those are
         // candidates.
         let opt_applicable_traits = self.fcx.ccx.trait_map.find(&expr_id);
-        for applicable_traits in opt_applicable_traits.move_iter() {
+        for applicable_traits in opt_applicable_traits.iter_owned() {
             for trait_did in applicable_traits.iter() {
                 debug!("push_extension_candidates() found trait: {}",
                        if trait_did.krate == ast::LOCAL_CRATE {
@@ -1237,7 +1237,7 @@ impl<'a> LookupContext<'a> {
                 let args = fn_sig.inputs.slice_from(1).iter().map(|t| {
                     t.subst(tcx, &all_substs)
                 });
-                Some(*fn_sig.inputs.get(0)).move_iter().chain(args).collect()
+                Some(*fn_sig.inputs.get(0)).iter_owned().chain(args).collect()
             }
             _ => fn_sig.inputs.subst(tcx, &all_substs)
         };

@@ -16,7 +16,7 @@ fn match_on_local() {
             foo = Some(x);
         }
     }
-    println!("'{}'", foo.unwrap());
+    println!("'{}'", foo.assert());
 }
 
 fn match_on_arg(mut foo: Option<Box<int>>) {
@@ -26,7 +26,7 @@ fn match_on_arg(mut foo: Option<Box<int>>) {
             foo = Some(x);
         }
     }
-    println!("'{}'", foo.unwrap());
+    println!("'{}'", foo.assert());
 }
 
 fn match_on_binding() {
@@ -38,7 +38,7 @@ fn match_on_binding() {
                     foo = Some(x);
                 }
             }
-            println!("'{}'", foo.unwrap());
+            println!("'{}'", foo.assert());
         }
     }
 }
@@ -52,7 +52,7 @@ fn match_on_upvar() {
                 foo = Some(x);
             }
         }
-        println!("'{}'", foo.unwrap());
+        println!("'{}'", foo.assert());
     })();
 }
 

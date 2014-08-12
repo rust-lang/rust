@@ -39,7 +39,7 @@ impl<'a, 'b> Fn<(&'b mut Response,),()> for SendFile<'a> {
 
 impl<Rq: Request, Rs: Response> Ingot<Rq, Rs> for HelloWorld {
     fn enter(&mut self, _req: &mut Rq, res: &mut Rs, alloy: &mut Alloy) -> Status {
-        let send_file = alloy.find::<SendFile>().unwrap();
+        let send_file = alloy.find::<SendFile>().assert();
         send_file(res);
         Continue
     }

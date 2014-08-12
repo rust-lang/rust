@@ -107,7 +107,7 @@ mod tests {
                 });
             };
 
-            for f in futures.mut_iter() { f.recv() }
+            for f in futures.iter_mut() { f.recv() }
 
             assert_eq!(**total.lock(), num_tasks * count);
         }

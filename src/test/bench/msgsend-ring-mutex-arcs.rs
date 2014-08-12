@@ -37,7 +37,7 @@ fn recv(p: &pipe) -> uint {
     while arr.is_empty() {
         arr.cond.wait();
     }
-    arr.pop().unwrap()
+    arr.pop().assert()
 }
 
 fn init() -> (pipe,pipe) {
@@ -52,8 +52,8 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
     // Send/Receive lots of messages.
     for j in range(0u, count) {
         //println!("task %?, iter %?", i, j);
-        let num_chan2 = num_chan.take_unwrap();
-        let num_port2 = num_port.take_unwrap();
+        let num_chan2 = num_chan.take().assert();
+        let num_port2 = num_port.take().assert();
         send(&num_chan2, i * j);
         num_chan = Some(num_chan2);
         let _n = recv(&num_port2);
@@ -69,11 +69,11 @@ fn main() {
     } else if args.len() <= 1u {
         vec!("".to_string(), "10".to_string(), "100".to_string())
     } else {
-        args.clone().move_iter().collect()
+        args.clone().iter_owned().collect()
     };
 
-    let num_tasks = from_str::<uint>(args.get(1).as_slice()).unwrap();
-    let msg_per_task = from_str::<uint>(args.get(2).as_slice()).unwrap();
+    let num_tasks = from_str::<uint>(args.get(1).as_slice()).assert();
+    let msg_per_task = from_str::<uint>(args.get(2).as_slice()).assert();
 
     let (mut num_chan, num_port) = init();
 
@@ -97,7 +97,7 @@ fn main() {
     thread_ring(0, msg_per_task, num_chan, num_port);
 
     // synchronize
-    for f in futures.mut_iter() {
+    for f in futures.iter_mut() {
         f.get()
     }
 

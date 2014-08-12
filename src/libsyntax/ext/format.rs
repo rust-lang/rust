@@ -535,8 +535,8 @@ impl<'a, 'b> Context<'a, 'b> {
         // Now create a vector containing all the arguments
         let slicename = self.ecx.ident_of("__args_vec");
         {
-            let args = names.move_iter().map(|a| a.unwrap());
-            let mut args = locals.move_iter().chain(args);
+            let args = names.iter_owned().map(|a| a.assert());
+            let mut args = locals.iter_owned().chain(args);
             let args = self.ecx.expr_vec_slice(self.fmtsp, args.collect());
             lets.push(self.ecx.stmt_let(self.fmtsp, false, slicename, args));
         }
@@ -612,7 +612,7 @@ impl<'a, 'b> Context<'a, 'b> {
     fn format_arg(&self, sp: Span, argno: Position, arg: Gc<ast::Expr>)
                   -> Gc<ast::Expr> {
         let ty = match argno {
-            Exact(ref i) => self.arg_types.get(*i).get_ref(),
+            Exact(ref i) => self.arg_types.get(*i).as_ref().assert(),
             Named(ref s) => self.name_types.get(s)
         };
 

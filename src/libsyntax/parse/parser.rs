@@ -1957,19 +1957,19 @@ impl<'a> Parser<'a> {
                     return self.mk_expr(lo, hi, ExprLit(lit));
                 }
                 let mut es = vec!(self.parse_expr());
-                self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
+                self.commit_expr(*es.last().assert(), &[], &[token::COMMA, token::RPAREN]);
                 while self.token == token::COMMA {
                     self.bump();
                     if self.token != token::RPAREN {
                         es.push(self.parse_expr());
-                        self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
+                        self.commit_expr(*es.last().assert(), &[], &[token::COMMA, token::RPAREN]);
                     }
                         else {
                         trailing_comma = true;
                     }
                 }
                 hi = self.span.hi;
-                self.commit_expr_expecting(*es.last().unwrap(), token::RPAREN);
+                self.commit_expr_expecting(*es.last().assert(), token::RPAREN);
 
                 return if es.len() == 1 && !trailing_comma {
                     self.mk_expr(lo, hi, ExprParen(*es.get(0)))
@@ -2158,7 +2158,7 @@ impl<'a> Parser<'a> {
                                 }
 
                                 fields.push(self.parse_field());
-                                self.commit_expr(fields.last().unwrap().expr,
+                                self.commit_expr(fields.last().assert().expr,
                                                  &[token::COMMA],
                                                  &[token::RBRACE]);
                             }
@@ -2395,7 +2395,7 @@ impl<'a> Parser<'a> {
 
                 // Parse the close delimiter.
                 result.push(parse_any_tt_tok(self));
-                self.open_braces.pop().unwrap();
+                self.open_braces.pop().assert();
 
                 TTDelim(Rc::new(result))
             }
@@ -3781,7 +3781,7 @@ impl<'a> Parser<'a> {
                           "variadic function must be declared with at least one named argument");
         }
 
-        let args = args.move_iter().map(|x| x.unwrap()).collect();
+        let args = args.iter_owned().map(|x| x.assert()).collect();
 
         (args, variadic)
     }
@@ -4515,7 +4515,7 @@ impl<'a> Parser<'a> {
     }
 
     fn pop_mod_path(&mut self) {
-        self.mod_path_stack.pop().unwrap();
+        self.mod_path_stack.pop().assert();
     }
 
     /// Read a module from a source file.
@@ -4546,7 +4546,7 @@ impl<'a> Parser<'a> {
                                   "cannot declare a new module at this location");
                     let this_module = match self.mod_path_stack.last() {
                         Some(name) => name.get().to_string(),
-                        None => self.root_module_name.get_ref().clone(),
+                        None => self.root_module_name.as_ref().assert().clone(),
                     };
                     self.span_note(id_sp,
                                    format!("maybe move this module `{0}` \
@@ -4835,7 +4835,7 @@ impl<'a> Parser<'a> {
                     seq_sep_trailing_disallowed(token::COMMA),
                     |p| p.parse_ty(true)
                 );
-                for ty in arg_tys.move_iter() {
+                for ty in arg_tys.iter_owned() {
                     args.push(ast::VariantArg {
                         ty: ty,
                         id: ast::DUMMY_NODE_ID,
@@ -5277,7 +5277,7 @@ impl<'a> Parser<'a> {
             let path = ast::Path {
                 span: mk_sp(path_lo, self.span.hi),
                 global: false,
-                segments: path.move_iter().map(|identifier| {
+                segments: path.iter_owned().map(|identifier| {
                     ast::PathSegment {
                         identifier: identifier,
                         lifetimes: Vec::new(),
@@ -5312,7 +5312,7 @@ impl<'a> Parser<'a> {
                     let path = ast::Path {
                         span: mk_sp(lo, self.span.hi),
                         global: false,
-                        segments: path.move_iter().map(|identifier| {
+                        segments: path.iter_owned().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
                                 lifetimes: Vec::new(),
@@ -5330,7 +5330,7 @@ impl<'a> Parser<'a> {
                     let path = ast::Path {
                         span: mk_sp(lo, self.span.hi),
                         global: false,
-                        segments: path.move_iter().map(|identifier| {
+                        segments: path.iter_owned().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
                                 lifetimes: Vec::new(),
@@ -5352,7 +5352,7 @@ impl<'a> Parser<'a> {
         let path = ast::Path {
             span: mk_sp(lo, self.span.hi),
             global: false,
-            segments: path.move_iter().map(|identifier| {
+            segments: path.iter_owned().map(|identifier| {
                 ast::PathSegment {
                     identifier: identifier,
                     lifetimes: Vec::new(),

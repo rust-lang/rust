@@ -396,7 +396,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let ratchet_noise_percent = matches.opt_str("ratchet-noise-percent");
     let ratchet_noise_percent =
-        ratchet_noise_percent.map(|s| from_str::<f64>(s.as_slice()).unwrap());
+        ratchet_noise_percent.map(|s| from_str::<f64>(s.as_slice()).assert());
 
     let save_metrics = matches.opt_str("save-metrics");
     let save_metrics = save_metrics.map(|s| Path::new(s));
@@ -869,14 +869,14 @@ fn should_sort_failures_before_printing_them() {
         failures: vec!((test_b, Vec::new()), (test_a, Vec::new()))
     };
 
-    st.write_failures().unwrap();
+    st.write_failures().assert();
     let s = match st.out {
-        Raw(ref m) => String::from_utf8_lossy(m.get_ref()),
+        Raw(ref m) => String::from_utf8_lossy(m.as_ref().assert()),
         Pretty(_) => unreachable!()
     };
 
-    let apos = s.as_slice().find_str("a").unwrap();
-    let bpos = s.as_slice().find_str("b").unwrap();
+    let apos = s.as_slice().find_str("a").assert();
+    let bpos = s.as_slice().find_str("b").assert();
     assert!(apos < bpos);
 }
 
@@ -927,7 +927,7 @@ fn run_tests(opts: &TestOpts,
 
     while pending > 0 || !remaining.is_empty() {
         while pending < concurrency && !remaining.is_empty() {
-            let test = remaining.pop().unwrap();
+            let test = remaining.pop().assert();
             if concurrency == 1 {
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
@@ -948,7 +948,7 @@ fn run_tests(opts: &TestOpts,
 
     // All benchmarks run at the end, in serial.
     // (this includes metric fns)
-    for b in filtered_benchs_and_metrics.move_iter() {
+    for b in filtered_benchs_and_metrics.iter_owned() {
         try!(callback(TeWait(b.desc.clone(), b.testfn.padding())));
         run_test(opts, !opts.run_benchmarks, b, tx.clone());
         let (test, result, stdout) = rx.recv();
@@ -980,7 +980,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     filtered = match opts.filter {
         None => filtered,
         Some(ref re) => {
-            filtered.move_iter()
+            filtered.iter_owned()
                 .filter(|test| re.is_match(test.desc.name.as_slice())).collect()
         }
     };
@@ -1000,7 +1000,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
                 None
             }
         };
-        filtered.move_iter().filter_map(|x| filter(x)).collect()
+        filtered.iter_owned().filter_map(|x| filter(x)).collect()
     };
 
     // Sort the tests alphabetically
@@ -1010,7 +1010,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     match opts.test_shard {
         None => filtered,
         Some((a,b)) => {
-            filtered.move_iter().enumerate()
+            filtered.iter_owned().enumerate()
             // note: using a - 1 so that the valid shards, for example, are
             // 1.2 and 2.2 instead of 0.2 and 1.2
             .filter(|&(i,_)| i % b == (a - 1))
@@ -1053,7 +1053,7 @@ pub fn run_test(opts: &TestOpts,
             }
             let result_future = task.try_future(testfn);
 
-            let stdout = reader.read_to_end().unwrap().move_iter().collect();
+            let stdout = reader.read_to_end().assert().iter_owned().collect();
             let task_result = result_future.unwrap();
             let test_result = calc_result(&desc, task_result.is_ok());
             monitor_ch.send((desc.clone(), test_result, stdout));
@@ -1124,8 +1124,8 @@ impl MetricMap {
     /// contain a valid metric map.
     pub fn load(p: &Path) -> MetricMap {
         assert!(p.exists());
-        let mut f = File::open(p).unwrap();
-        let value = json::from_reader(&mut f as &mut io::Reader).unwrap();
+        let mut f = File::open(p).assert();
+        let value = json::from_reader(&mut f as &mut io::Reader).assert();
         let mut decoder = json::Decoder::new(value);
         MetricMap(match Decodable::decode(&mut decoder) {
             Ok(t) => t,
@@ -1248,7 +1248,7 @@ impl MetricMap {
         });
 
         if ok {
-            self.save(p).unwrap();
+            self.save(p).assert();
         }
         return (diff, ok)
     }
@@ -1327,7 +1327,7 @@ impl Bencher {
         loop {
             let loop_start = precise_time_ns();
 
-            for p in samples.mut_iter() {
+            for p in samples.iter_mut() {
                 self.bench_n(n, |x| f(x));
                 *p = self.ns_per_iter() as f64;
             };
@@ -1335,7 +1335,7 @@ impl Bencher {
             stats::winsorize(samples, 5.0);
             let summ = stats::Summary::new(samples);
 
-            for p in samples.mut_iter() {
+            for p in samples.iter_mut() {
                 self.bench_n(5 * n, |x| f(x));
                 *p = self.ns_per_iter() as f64;
             };
@@ -1576,7 +1576,7 @@ mod tests {
     #[test]
     pub fn filter_tests_regex() {
         let mut opts = TestOpts::new();
-        opts.filter = Some(::regex::Regex::new("a.*b.+c").unwrap());
+        opts.filter = Some(::regex::Regex::new("a.*b.+c").assert());
 
         let mut names = ["yes::abXc", "yes::aXXXbXXXXc",
                          "no::XYZ", "no::abc"];
@@ -1628,31 +1628,31 @@ mod tests {
 
         let diff1 = m2.compare_to_old(&m1, None);
 
-        assert_eq!(*(diff1.find(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff1.find(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
-        assert_eq!(*(diff1.find(&"in-second-noise".to_string()).unwrap()), MetricAdded);
-        assert_eq!(*(diff1.find(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff1.find(&"in-both-noise".to_string()).assert()), LikelyNoise);
+        assert_eq!(*(diff1.find(&"in-first-noise".to_string()).assert()), MetricRemoved);
+        assert_eq!(*(diff1.find(&"in-second-noise".to_string()).assert()), MetricAdded);
+        assert_eq!(*(diff1.find(&"in-both-want-downwards-but-regressed".to_string()).assert()),
                    Regression(100.0));
-        assert_eq!(*(diff1.find(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff1.find(&"in-both-want-downwards-and-improved".to_string()).assert()),
                    Improvement(50.0));
-        assert_eq!(*(diff1.find(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff1.find(&"in-both-want-upwards-but-regressed".to_string()).assert()),
                    Regression(50.0));
-        assert_eq!(*(diff1.find(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff1.find(&"in-both-want-upwards-and-improved".to_string()).assert()),
                    Improvement(100.0));
         assert_eq!(diff1.len(), 7);
 
         let diff2 = m2.compare_to_old(&m1, Some(200.0));
 
-        assert_eq!(*(diff2.find(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
-        assert_eq!(*(diff2.find(&"in-second-noise".to_string()).unwrap()), MetricAdded);
-        assert_eq!(*(diff2.find(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff2.find(&"in-both-noise".to_string()).assert()), LikelyNoise);
+        assert_eq!(*(diff2.find(&"in-first-noise".to_string()).assert()), MetricRemoved);
+        assert_eq!(*(diff2.find(&"in-second-noise".to_string()).assert()), MetricAdded);
+        assert_eq!(*(diff2.find(&"in-both-want-downwards-but-regressed".to_string()).assert()),
                    LikelyNoise);
-        assert_eq!(*(diff2.find(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff2.find(&"in-both-want-downwards-and-improved".to_string()).assert()),
                    LikelyNoise);
-        assert_eq!(*(diff2.find(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff2.find(&"in-both-want-upwards-but-regressed".to_string()).assert()),
                    LikelyNoise);
-        assert_eq!(*(diff2.find(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff2.find(&"in-both-want-upwards-and-improved".to_string()).assert()),
                    LikelyNoise);
         assert_eq!(diff2.len(), 7);
     }
@@ -1671,35 +1671,35 @@ mod tests {
         m2.insert_metric("runtime", 1100.0, 2.0);
         m2.insert_metric("throughput", 50.0, 2.0);
 
-        m1.save(&pth).unwrap();
+        m1.save(&pth).assert();
 
         // Ask for a ratchet that should fail to advance.
         let (diff1, ok1) = m2.ratchet(&pth, None);
         assert_eq!(ok1, false);
         assert_eq!(diff1.len(), 2);
-        assert_eq!(*(diff1.find(&"runtime".to_string()).unwrap()), Regression(10.0));
-        assert_eq!(*(diff1.find(&"throughput".to_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff1.find(&"runtime".to_string()).assert()), Regression(10.0));
+        assert_eq!(*(diff1.find(&"throughput".to_string()).assert()), LikelyNoise);
 
         // Check that it was not rewritten.
         let m3 = MetricMap::load(&pth);
         let MetricMap(m3) = m3;
         assert_eq!(m3.len(), 2);
-        assert_eq!(*(m3.find(&"runtime".to_string()).unwrap()), Metric::new(1000.0, 2.0));
-        assert_eq!(*(m3.find(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
+        assert_eq!(*(m3.find(&"runtime".to_string()).assert()), Metric::new(1000.0, 2.0));
+        assert_eq!(*(m3.find(&"throughput".to_string()).assert()), Metric::new(50.0, 2.0));
 
         // Ask for a ratchet with an explicit noise-percentage override,
         // that should advance.
         let (diff2, ok2) = m2.ratchet(&pth, Some(10.0));
         assert_eq!(ok2, true);
         assert_eq!(diff2.len(), 2);
-        assert_eq!(*(diff2.find(&"runtime".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&"throughput".to_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.find(&"runtime".to_string()).assert()), LikelyNoise);
+        assert_eq!(*(diff2.find(&"throughput".to_string()).assert()), LikelyNoise);
 
         // Check that it was rewritten.
         let m4 = MetricMap::load(&pth);
         let MetricMap(m4) = m4;
         assert_eq!(m4.len(), 2);
-        assert_eq!(*(m4.find(&"runtime".to_string()).unwrap()), Metric::new(1100.0, 2.0));
-        assert_eq!(*(m4.find(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
+        assert_eq!(*(m4.find(&"runtime".to_string()).assert()), Metric::new(1100.0, 2.0));
+        assert_eq!(*(m4.find(&"throughput".to_string()).assert()), Metric::new(50.0, 2.0));
     }
 }

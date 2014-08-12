@@ -76,7 +76,7 @@ pub struct Info {
 /// Easy name resolution. Given a hostname, returns the list of IP addresses for
 /// that hostname.
 pub fn get_host_addresses(host: &str) -> IoResult<Vec<IpAddr>> {
-    lookup(Some(host), None, None).map(|a| a.move_iter().map(|i| i.address.ip).collect())
+    lookup(Some(host), None, None).map(|a| a.iter_owned().map(|i| i.address.ip).collect())
 }
 
 /// Full-fledged resolution. This function will perform a synchronous call to
@@ -105,7 +105,7 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
     match LocalIo::maybe_raise(|io| {
         io.get_host_addresses(hostname, servname, hint)
     }) {
-        Ok(v) => Ok(v.move_iter().map(|info| {
+        Ok(v) => Ok(v.iter_owned().map(|info| {
             Info {
                 address: SocketAddr {
                     ip: super::from_rtio(info.address.ip),
@@ -126,7 +126,7 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
 #[cfg(test, not(target_os = "android"))]
 mod test {
     iotest!(fn dns_smoke_test() {
-        let ipaddrs = get_host_addresses("localhost").unwrap();
+        let ipaddrs = get_host_addresses("localhost").assert();
         let mut found_local = false;
         let local_addr = &Ipv4Addr(127, 0, 0, 1);
         for addr in ipaddrs.iter() {
@@ -138,6 +138,6 @@ mod test {
     iotest!(fn issue_10663() {
         // Something should happen here, but this certainly shouldn't cause
         // everything to die. The actual outcome we don't care too much about.
-        get_host_addresses("example.com").unwrap();
+        get_host_addresses("example.com").assert();
     } #[ignore])
 }

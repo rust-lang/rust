@@ -120,7 +120,7 @@ impl LintStore {
                 self.levels.insert(id, (lint.default_level, Default));
             }
         }
-        self.passes.get_mut_ref().push(pass);
+        self.passes.as_mut().assert().push(pass);
     }
 
     pub fn register_builtin(&mut self, sess: Option<&Session>) {
@@ -207,8 +207,8 @@ pub struct Context<'a> {
 macro_rules! run_lints ( ($cx:expr, $f:ident, $($args:expr),*) => ({
     // Move the vector of passes out of `$cx` so that we can
     // iterate over it mutably while passing `$cx` to the methods.
-    let mut passes = $cx.lints.passes.take_unwrap();
-    for obj in passes.mut_iter() {
+    let mut passes = $cx.lints.passes.take().assert();
+    for obj in passes.iter_mut() {
         obj.$f($cx, $($args),*);
     }
     $cx.lints.passes = Some(passes);
@@ -289,7 +289,7 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
         _ => sess.bug("impossible level in raw_emit_lint"),
     }
 
-    for span in note.move_iter() {
+    for span in note.iter_owned() {
         sess.span_note(span, "lint level defined here");
     }
 }
@@ -360,7 +360,7 @@ impl<'a> Context<'a> {
         // specified closure
         let mut pushed = 0u;
 
-        for result in gather_attrs(attrs).move_iter() {
+        for result in gather_attrs(attrs).iter_owned() {
             let (lint_id, level, span) = match result {
                 Err(span) => {
                     self.tcx.sess.span_err(span, "malformed lint attribute");
@@ -399,7 +399,7 @@ impl<'a> Context<'a> {
 
         // rollback
         for _ in range(0, pushed) {
-            let (lint, lvlsrc) = self.level_stack.pop().unwrap();
+            let (lint, lvlsrc) = self.level_stack.pop().assert();
             self.lints.set_level(lint, lvlsrc);
         }
     }
@@ -606,7 +606,7 @@ impl<'a> IdVisitingOperation for Context<'a> {
         match self.tcx.sess.lints.borrow_mut().pop(&id) {
             None => {}
             Some(lints) => {
-                for (lint_id, span, msg) in lints.move_iter() {
+                for (lint_id, span, msg) in lints.iter_owned() {
                     self.span_lint(lint_id.lint, span, msg.as_slice())
                 }
             }

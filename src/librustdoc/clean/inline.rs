@@ -41,7 +41,7 @@ use super::Clean;
 /// of a vector of items if it was successfully expanded.
 pub fn try_inline(id: ast::NodeId, into: Option<ast::Ident>)
                   -> Option<Vec<clean::Item>> {
-    let cx = ::ctxtkey.get().unwrap();
+    let cx = ::ctxtkey.get().assert();
     let tcx = match cx.maybe_typed {
         core::Typed(ref tycx) => tycx,
         core::NotTyped(_) => return None,
@@ -53,7 +53,7 @@ pub fn try_inline(id: ast::NodeId, into: Option<ast::Ident>)
     let did = def.def_id();
     if ast_util::is_local(did) { return None }
     try_inline_def(&**cx, tcx, def).map(|vec| {
-        vec.move_iter().map(|mut item| {
+        vec.iter_owned().map(|mut item| {
             match into {
                 Some(into) if item.name.is_some() => {
                     item.name = Some(into.clean());
@@ -86,12 +86,12 @@ fn try_inline_def(cx: &core::DocContext,
         }
         def::DefStruct(did) => {
             record_extern_fqn(cx, did, clean::TypeStruct);
-            ret.extend(build_impls(cx, tcx, did).move_iter());
+            ret.extend(build_impls(cx, tcx, did).iter_owned());
             clean::StructItem(build_struct(tcx, did))
         }
         def::DefTy(did) => {
             record_extern_fqn(cx, did, clean::TypeEnum);
-            ret.extend(build_impls(cx, tcx, did).move_iter());
+            ret.extend(build_impls(cx, tcx, did).iter_owned());
             build_type(tcx, did)
         }
         // Assume that the enum type is reexported next to the variant, and
@@ -108,10 +108,10 @@ fn try_inline_def(cx: &core::DocContext,
         _ => return None,
     };
     let fqn = csearch::get_item_path(tcx, did);
-    cx.inlined.borrow_mut().get_mut_ref().insert(did);
+    cx.inlined.borrow_mut().as_mut().assert().insert(did);
     ret.push(clean::Item {
         source: clean::Span::empty(),
-        name: Some(fqn.last().unwrap().to_string()),
+        name: Some(fqn.last().assert().to_string()),
         attrs: load_attrs(tcx, did),
         inner: inner,
         visibility: Some(ast::Public),
@@ -124,7 +124,7 @@ fn try_inline_def(cx: &core::DocContext,
 pub fn load_attrs(tcx: &ty::ctxt, did: ast::DefId) -> Vec<clean::Attribute> {
     let mut attrs = Vec::new();
     csearch::get_item_attrs(&tcx.sess.cstore, did, |v| {
-        attrs.extend(v.move_iter().map(|mut a| {
+        attrs.extend(v.iter_owned().map(|mut a| {
             // FIXME this isn't quite always true, it's just true about 99% of
             //       the time when dealing with documentation. For example,
             //       this would treat doc comments of the form `#[doc = "foo"]`
@@ -148,8 +148,8 @@ pub fn record_extern_fqn(cx: &core::DocContext,
     match cx.maybe_typed {
         core::Typed(ref tcx) => {
             let fqn = csearch::get_item_path(tcx, did);
-            let fqn = fqn.move_iter().map(|i| i.to_string()).collect();
-            cx.external_paths.borrow_mut().get_mut_ref().insert(did, (fqn, kind));
+            let fqn = fqn.iter_owned().map(|i| i.to_string()).collect();
+            cx.external_paths.borrow_mut().as_mut().assert().insert(did, (fqn, kind));
         }
         core::NotTyped(..) => {}
     }
@@ -159,7 +159,7 @@ pub fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> clean::Trait {
     let def = ty::lookup_trait_def(tcx, did);
     let methods = ty::trait_methods(tcx, did).clean();
     let provided = ty::provided_trait_methods(tcx, did);
-    let mut methods = methods.move_iter().map(|meth| {
+    let mut methods = methods.iter_owned().map(|meth| {
         if provided.iter().any(|a| a.def_id == meth.def_id) {
             clean::Provided(meth)
         } else {
@@ -279,13 +279,13 @@ fn build_impls(cx: &core::DocContext,
         }
     }
 
-    impls.move_iter().filter_map(|a| a).collect()
+    impls.iter_owned().filter_map(|a| a).collect()
 }
 
 fn build_impl(cx: &core::DocContext,
               tcx: &ty::ctxt,
               did: ast::DefId) -> Option<clean::Item> {
-    if !cx.inlined.borrow_mut().get_mut_ref().insert(did) {
+    if !cx.inlined.borrow_mut().as_mut().assert().insert(did) {
         return None
     }
 
@@ -381,7 +381,7 @@ fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
                 }
                 decoder::DlDef(def) if vis == ast::Public => {
                     match try_inline_def(cx, tcx, def) {
-                        Some(i) => items.extend(i.move_iter()),
+                        Some(i) => items.extend(i.iter_owned()),
                         None => {}
                     }
                 }

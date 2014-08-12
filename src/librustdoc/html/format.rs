@@ -190,7 +190,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
 {
     // The generics will get written to both the title and link
     let mut generics = String::new();
-    let last = path.segments.last().unwrap();
+    let last = path.segments.last().assert();
     if last.lifetimes.len() > 0 || last.types.len() > 0 {
         let mut counter = 0u;
         generics.push_str("&lt;");
@@ -207,8 +207,8 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
         generics.push_str("&gt;");
     }
 
-    let loc = current_location_key.get().unwrap();
-    let cache = cache_key.get().unwrap();
+    let loc = current_location_key.get().assert();
+    let cache = cache_key.get().assert();
     let abs_root = root(&**cache, loc.as_slice());
     let rel_root = match path.segments[0].name.as_slice() {
         "self" => Some("./".to_string()),
@@ -245,7 +245,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
     match info(&**cache) {
         // This is a documented path, link to it!
         Some((ref fqp, shortty)) if abs_root.is_some() => {
-            let mut url = String::from_str(abs_root.unwrap().as_slice());
+            let mut url = String::from_str(abs_root.assert().as_slice());
             let to_link = fqp.slice_to(fqp.len() - 1);
             for component in to_link.iter() {
                 url.push_str(component.as_slice());
@@ -253,13 +253,13 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
             }
             match shortty {
                 item_type::Module => {
-                    url.push_str(fqp.last().unwrap().as_slice());
+                    url.push_str(fqp.last().assert().as_slice());
                     url.push_str("/index.html");
                 }
                 _ => {
                     url.push_str(shortty.to_static_str());
                     url.push_str(".");
-                    url.push_str(fqp.last().unwrap().as_slice());
+                    url.push_str(fqp.last().assert().as_slice());
                     url.push_str(".html");
                 }
             }
@@ -279,11 +279,11 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
 fn primitive_link(f: &mut fmt::Formatter,
                   prim: clean::Primitive,
                   name: &str) -> fmt::Result {
-    let m = cache_key.get().unwrap();
+    let m = cache_key.get().assert();
     let mut needs_termination = false;
     match m.primitive_locations.find(&prim) {
         Some(&ast::LOCAL_CRATE) => {
-            let loc = current_location_key.get().unwrap();
+            let loc = current_location_key.get().assert();
             let len = if loc.len() == 0 {0} else {loc.len() - 1};
             try!(write!(f, "<a href='{}primitive.{}.html'>",
                         "../".repeat(len),
@@ -298,7 +298,7 @@ fn primitive_link(f: &mut fmt::Formatter,
             let loc = match *m.extern_locations.get(&cnum) {
                 render::Remote(ref s) => Some(s.to_string()),
                 render::Local => {
-                    let loc = current_location_key.get().unwrap();
+                    let loc = current_location_key.get().assert();
                     Some("../".repeat(loc.len()))
                 }
                 render::Unknown => None,
@@ -307,7 +307,7 @@ fn primitive_link(f: &mut fmt::Formatter,
                 Some(root) => {
                     try!(write!(f, "<a href='{}{}/primitive.{}.html'>",
                                 root,
-                                path.ref0().as_slice().head().unwrap(),
+                                path.ref0().as_slice().head().assert(),
                                 prim.to_url_str()));
                     needs_termination = true;
                 }
@@ -342,11 +342,11 @@ impl fmt::Show for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::TyParamBinder(id) => {
-                let m = cache_key.get().unwrap();
+                let m = cache_key.get().assert();
                 f.write(m.typarams.get(&ast_util::local_def(id)).as_bytes())
             }
             clean::Generic(did) => {
-                let m = cache_key.get().unwrap();
+                let m = cache_key.get().assert();
                 f.write(m.typarams.get(&did).as_bytes())
             }
             clean::ResolvedPath{ did, ref typarams, ref path } => {
@@ -542,7 +542,7 @@ impl fmt::Show for clean::ViewPath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::SimpleImport(ref name, ref src) => {
-                if *name == src.path.segments.last().unwrap().name {
+                if *name == src.path.segments.last().assert().name {
                     write!(f, "use {};", *src)
                 } else {
                     write!(f, "use {} = {};", *name, *src)

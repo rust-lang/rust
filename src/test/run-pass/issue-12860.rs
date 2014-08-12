@@ -28,7 +28,7 @@ fn main() {
     border.insert(middle);
 
     while border.len() > 0 && connected.len() < 10000 {
-        let choice = *(border.iter().next().unwrap());
+        let choice = *(border.iter().next().assert());
         border.remove(&choice);
         connected.insert(choice);
 

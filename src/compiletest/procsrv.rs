@@ -24,7 +24,7 @@ fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
     // Add the new dylib search path var
     let var = DynamicLibrary::envvar();
     let newpath = DynamicLibrary::create_path(path.as_slice());
-    let newpath = String::from_utf8(newpath).unwrap();
+    let newpath = String::from_utf8(newpath).assert();
     cmd.env(var.to_string(), newpath);
 }
 
@@ -40,22 +40,22 @@ pub fn run(lib_path: &str,
     let mut cmd = Command::new(prog);
     cmd.args(args);
     add_target_env(&mut cmd, lib_path, aux_path);
-    for (key, val) in env.move_iter() {
+    for (key, val) in env.iter_owned() {
         cmd.env(key, val);
     }
 
     match cmd.spawn() {
         Ok(mut process) => {
             for input in input.iter() {
-                process.stdin.get_mut_ref().write(input.as_bytes()).unwrap();
+                process.stdin.as_mut().assert().write(input.as_bytes()).assert();
             }
             let ProcessOutput { status, output, error } =
-                process.wait_with_output().unwrap();
+                process.wait_with_output().assert();
 
             Some(Result {
                 status: status,
-                out: String::from_utf8(output).unwrap(),
-                err: String::from_utf8(error).unwrap()
+                out: String::from_utf8(output).assert(),
+                err: String::from_utf8(error).assert()
             })
         },
         Err(..) => None
@@ -72,14 +72,14 @@ pub fn run_background(lib_path: &str,
     let mut cmd = Command::new(prog);
     cmd.args(args);
     add_target_env(&mut cmd, lib_path, aux_path);
-    for (key, val) in env.move_iter() {
+    for (key, val) in env.iter_owned() {
         cmd.env(key, val);
     }
 
     match cmd.spawn() {
         Ok(mut process) => {
             for input in input.iter() {
-                process.stdin.get_mut_ref().write(input.as_bytes()).unwrap();
+                process.stdin.as_mut().assert().write(input.as_bytes()).assert();
             }
 
             Some(process)

@@ -180,9 +180,9 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
     let expected_num_region_params = decl_generics.regions.len(TypeSpace);
-    let supplied_num_region_params = path.segments.last().unwrap().lifetimes.len();
+    let supplied_num_region_params = path.segments.last().assert().lifetimes.len();
     let regions = if expected_num_region_params == supplied_num_region_params {
-        path.segments.last().unwrap().lifetimes.iter().map(
+        path.segments.last().assert().lifetimes.iter().map(
             |l| ast_region_to_region(this.tcx(), l)).collect::<Vec<_>>()
     } else {
         let anon_regions =
@@ -195,7 +195,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
         }
 
         match anon_regions {
-            Ok(v) => v.move_iter().collect(),
+            Ok(v) => v.iter_owned().collect(),
             Err(()) => Vec::from_fn(expected_num_region_params,
                                     |_| ty::ReStatic) // hokey
         }
@@ -261,7 +261,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     }
 
     for param in ty_param_defs.slice_from(supplied_ty_param_count).iter() {
-        let default = param.default.unwrap();
+        let default = param.default.assert();
         let default = default.subst_spanned(tcx, &substs, Some(path.span));
         substs.types.push(TypeSpace, default);
     }
@@ -327,7 +327,7 @@ pub fn ast_path_to_ty_relaxed<AC:AstConv,
                                        |_| this.ty_infer(path.span));
         let region_params =
             rscope.anon_regions(path.span, generics.regions.len(TypeSpace))
-                  .unwrap();
+                  .assert();
         Substs::new(VecPerParamSpace::params_from_type(type_params),
                     VecPerParamSpace::params_from_type(region_params))
     } else {
@@ -355,7 +355,7 @@ fn check_path_args(tcx: &ty::ctxt,
     }
 
     if (flags & NO_REGIONS) != 0u {
-        if !path.segments.last().unwrap().lifetimes.is_empty() {
+        if !path.segments.last().assert().lifetimes.is_empty() {
             span_err!(tcx.sess, path.span, E0110,
                 "region parameters are not allowed on this type");
         }
@@ -553,7 +553,7 @@ pub fn trait_ref_for_unboxed_function<AC:AstConv,
     let fn_mut_trait_did = this.tcx()
                                .lang_items
                                .require(FnMutTraitLangItem)
-                               .unwrap();
+                               .assert();
     let input_types =
         unboxed_function.decl
                         .inputs
@@ -922,7 +922,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
 pub fn ty_of_arg<AC: AstConv, RS: RegionScope>(this: &AC, rscope: &RS, a: &ast::Arg,
                                                expected_ty: Option<ty::t>) -> ty::t {
     match a.ty.node {
-        ast::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
+        ast::TyInfer if expected_ty.is_some() => expected_ty.assert(),
         ast::TyInfer => this.ty_infer(a.ty.span),
         _ => ast_ty_to_ty(this, rscope, &*a.ty),
     }
@@ -953,7 +953,7 @@ pub fn ty_of_method<AC:AstConv>(
                                 abi,
                                 self_info,
                                 decl);
-    (bare_fn_ty, optional_explicit_self_category.unwrap())
+    (bare_fn_ty, optional_explicit_self_category.assert())
 }
 
 pub fn ty_of_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
@@ -1023,7 +1023,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
     };
     let input_tys = input_tys.iter().map(|a| ty_of_arg(this, &rb, a, None));
     let self_and_input_tys: Vec<_> =
-        self_ty.move_iter().chain(input_tys).collect();
+        self_ty.iter_owned().chain(input_tys).collect();
 
     // Second, if there was exactly one lifetime (either a substitution or a
     // reference) in the arguments, then any anonymous regions in the output
@@ -1185,7 +1185,7 @@ pub fn ty_of_closure<AC:AstConv>(
 
     let expected_ret_ty = expected_sig.map(|e| e.output);
     let output_ty = match decl.output.node {
-        ast::TyInfer if expected_ret_ty.is_some() => expected_ret_ty.unwrap(),
+        ast::TyInfer if expected_ret_ty.is_some() => expected_ret_ty.assert(),
         ast::TyInfer => this.ty_infer(decl.output.span),
         _ => ast_ty_to_ty(this, &rb, &*decl.output)
     };

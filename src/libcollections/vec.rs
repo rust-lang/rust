@@ -255,7 +255,7 @@ impl<T> Vec<T> {
         let mut lefts  = Vec::new();
         let mut rights = Vec::new();
 
-        for elt in self.move_iter() {
+        for elt in self.iter_owned() {
             if f(&elt) {
                 lefts.push(elt);
             } else {
@@ -440,7 +440,7 @@ impl<T:Clone> Clone for Vec<T> {
         }
 
         // reuse the contained values' allocations/resources.
-        for (place, thing) in self.mut_iter().zip(other.iter()) {
+        for (place, thing) in self.iter_mut().zip(other.iter()) {
             place.clone_from(thing)
         }
 
@@ -726,6 +726,12 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Deprecated: renamed to `iter_owned`.
+    #[deprecated = "renamed to iter_owned"]
+    pub fn move_iter(self) -> ItemsOwned<T> {
+        self.iter_owned()
+    }
+
     /// Creates a consuming iterator, that is, one that moves each
     /// value out of the vector (from start to end). The vector cannot
     /// be used after calling this.
@@ -734,19 +740,19 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let v = vec!["a".to_string(), "b".to_string()];
-    /// for s in v.move_iter() {
+    /// for s in v.iter_owned() {
     ///     // s has type String, not &String
     ///     println!("{}", s);
     /// }
     /// ```
     #[inline]
-    pub fn move_iter(self) -> MoveItems<T> {
+    pub fn iter_owned(self) -> ItemsOwned<T> {
         unsafe {
             let iter = mem::transmute(self.as_slice().iter());
             let ptr = self.ptr;
             let cap = self.cap;
             mem::forget(self);
-            MoveItems { allocation: ptr, cap: cap, iter: iter }
+            ItemsOwned { allocation: ptr, cap: cap, iter: iter }
         }
     }
 
@@ -824,6 +830,11 @@ impl<T> Vec<T> {
         self.as_slice().iter()
     }
 
+    /// Deprecated: renamed to `iter_mut`.
+    #[deprecated = "renamed to iter_mut"]
+    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a,T> {
+        self.iter_mut()
+    }
 
     /// Returns an iterator over mutable references to the elements of the
     /// vector in order.
@@ -832,13 +843,13 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
-    /// for num in vec.mut_iter() {
+    /// for num in vec.iter_mut() {
     ///     *num = 0;
     /// }
     /// ```
     #[inline]
-    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a,T> {
-        self.as_mut_slice().mut_iter()
+    pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a,T> {
+        self.as_mut_slice().iter_mut()
     }
 
     /// Sort the vector, in place, using `compare` to compare elements.
@@ -928,6 +939,12 @@ impl<T> Vec<T> {
         self.as_slice().last()
     }
 
+    /// Deprecated: renamed to `last_mut`.
+    #[deprecated = "renamed to last_must"]
+    pub fn mut_last<'a>(&'a mut self) -> Option<&'a mut T> {
+        self.last_mut()
+    }
+
     /// Returns a mutable reference to the last element of a vector, or `None`
     /// if it is empty.
     ///
@@ -935,12 +952,12 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
-    /// *vec.mut_last().unwrap() = 4;
+    /// *vec.last_mut().assert() = 4;
     /// assert_eq!(vec, vec![1i, 2, 4]);
     /// ```
     #[inline]
-    pub fn mut_last<'a>(&'a mut self) -> Option<&'a mut T> {
-        self.as_mut_slice().mut_last()
+    pub fn last_mut<'a>(&'a mut self) -> Option<&'a mut T> {
+        self.as_mut_slice().last_mut()
     }
 
     /// Remove an element from anywhere in the vector and return it, replacing
@@ -1103,7 +1120,14 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn push_all_move(&mut self, other: Vec<T>) {
-        self.extend(other.move_iter());
+        self.extend(other.iter_owned());
+    }
+
+    /// Deprecated: renamed to `slice_mut`.
+    #[deprecated = "renamed to slice_mut"]
+    pub fn mut_slice<'a>(&'a mut self, start: uint, end: uint)
+                         -> &'a mut [T] {
+        self.slice_mut(start, end)
     }
 
     /// Returns a mutable slice of `self` between `start` and `end`.
@@ -1117,12 +1141,18 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.mut_slice(0, 2) == [1, 2]);
+    /// assert!(vec.slice_mut(0, 2) == [1, 2]);
     /// ```
     #[inline]
-    pub fn mut_slice<'a>(&'a mut self, start: uint, end: uint)
+    pub fn slice_mut<'a>(&'a mut self, start: uint, end: uint)
                          -> &'a mut [T] {
-        self.as_mut_slice().mut_slice(start, end)
+        self.as_mut_slice().slice_mut(start, end)
+    }
+
+    /// Deprecated: renamed to `slice_from_mut`.
+    #[deprecated = "renamed to slice_from_mut"]
+    pub fn mut_slice_from<'a>(&'a mut self, start: uint) -> &'a mut [T] {
+        self.slice_from_mut(start)
     }
 
     /// Returns a mutable slice of self from `start` to the end of the vec.
@@ -1135,11 +1165,17 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.mut_slice_from(2) == [3, 4]);
+    /// assert!(vec.slice_from_mut(2) == [3, 4]);
     /// ```
     #[inline]
-    pub fn mut_slice_from<'a>(&'a mut self, start: uint) -> &'a mut [T] {
-        self.as_mut_slice().mut_slice_from(start)
+    pub fn slice_from_mut<'a>(&'a mut self, start: uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_from_mut(start)
+    }
+
+    /// Deprecated: renamed to `slice_to_mut`.
+    #[deprecated = "renamed to slice_to_mut"]
+    pub fn mut_slice_to<'a>(&'a mut self, end: uint) -> &'a mut [T] {
+        self.slice_to_mut(end)
     }
 
     /// Returns a mutable slice of self from the start of the vec to `end`.
@@ -1152,11 +1188,17 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3, 4];
-    /// assert!(vec.mut_slice_to(2) == [1, 2]);
+    /// assert!(vec.slice_to_mut(2) == [1, 2]);
     /// ```
     #[inline]
-    pub fn mut_slice_to<'a>(&'a mut self, end: uint) -> &'a mut [T] {
-        self.as_mut_slice().mut_slice_to(end)
+    pub fn slice_to_mut<'a>(&'a mut self, end: uint) -> &'a mut [T] {
+        self.as_mut_slice().slice_to_mut(end)
+    }
+
+    /// Deprecated: renamed to `split_at_mut`.
+    #[deprecated = "renamed to split_at_mut"]
+    pub fn mut_split_at<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
+      self.split_at_mut(mid)
     }
 
     /// Returns a pair of mutable slices that divides the vec at an index.
@@ -1176,26 +1218,26 @@ impl<T> Vec<T> {
     ///
     /// // scoped to restrict the lifetime of the borrows
     /// {
-    ///    let (left, right) = vec.mut_split_at(0);
+    ///    let (left, right) = vec.split_at_mut(0);
     ///    assert!(left == &mut []);
     ///    assert!(right == &mut [1, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
-    ///     let (left, right) = vec.mut_split_at(2);
+    ///     let (left, right) = vec.split_at_mut(2);
     ///     assert!(left == &mut [1, 2]);
     ///     assert!(right == &mut [3, 4, 5, 6]);
     /// }
     ///
     /// {
-    ///     let (left, right) = vec.mut_split_at(6);
+    ///     let (left, right) = vec.split_at_mut(6);
     ///     assert!(left == &mut [1, 2, 3, 4, 5, 6]);
     ///     assert!(right == &mut []);
     /// }
     /// ```
     #[inline]
-    pub fn mut_split_at<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
-        self.as_mut_slice().mut_split_at(mid)
+    pub fn split_at_mut<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
+        self.as_mut_slice().split_at_mut(mid)
     }
 
     /// Reverse the order of elements in a vector, in place.
@@ -1611,13 +1653,17 @@ impl<T> MutableSeq<T> for Vec<T> {
 }
 
 /// An iterator that moves out of a vector.
-pub struct MoveItems<T> {
+pub struct ItemsOwned<T> {
     allocation: *mut T, // the block of memory allocated for the vector
     cap: uint, // the capacity of the vector
     iter: Items<'static, T>
 }
 
-impl<T> Iterator<T> for MoveItems<T> {
+/// Deprecated: renamed to `ItemsOwned`.
+#[deprecated = "renamed to ItemsOwned"]
+pub type MoveItems<T> = ItemsOwned<T>;
+
+impl<T> Iterator<T> for ItemsOwned<T> {
     #[inline]
     fn next(&mut self) -> Option<T> {
         unsafe {
@@ -1631,7 +1677,7 @@ impl<T> Iterator<T> for MoveItems<T> {
     }
 }
 
-impl<T> DoubleEndedIterator<T> for MoveItems<T> {
+impl<T> DoubleEndedIterator<T> for ItemsOwned<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         unsafe {
@@ -1641,7 +1687,7 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
 }
 
 #[unsafe_destructor]
-impl<T> Drop for MoveItems<T> {
+impl<T> Drop for ItemsOwned<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
         if self.cap != 0 {
@@ -1787,9 +1833,9 @@ mod tests {
     fn test_mut_slice_from() {
         let mut values = Vec::from_slice([1u8,2,3,4,5]);
         {
-            let slice = values.mut_slice_from(2);
+            let slice = values.slice_from_mut(2);
             assert!(slice == [3, 4, 5]);
-            for p in slice.mut_iter() {
+            for p in slice.iter_mut() {
                 *p += 2;
             }
         }
@@ -1801,9 +1847,9 @@ mod tests {
     fn test_mut_slice_to() {
         let mut values = Vec::from_slice([1u8,2,3,4,5]);
         {
-            let slice = values.mut_slice_to(2);
+            let slice = values.slice_to_mut(2);
             assert!(slice == [1, 2]);
-            for p in slice.mut_iter() {
+            for p in slice.iter_mut() {
                 *p += 1;
             }
         }
@@ -1812,17 +1858,17 @@ mod tests {
     }
 
     #[test]
-    fn test_mut_split_at() {
+    fn test_split_at_mut() {
         let mut values = Vec::from_slice([1u8,2,3,4,5]);
         {
-            let (left, right) = values.mut_split_at(2);
+            let (left, right) = values.split_at_mut(2);
             assert!(left.slice(0, left.len()) == [1, 2]);
-            for p in left.mut_iter() {
+            for p in left.iter_mut() {
                 *p += 1;
             }
 
             assert!(right.slice(0, right.len()) == [3, 4, 5]);
-            for p in right.mut_iter() {
+            for p in right.iter_mut() {
                 *p += 2;
             }
         }
@@ -1899,15 +1945,15 @@ mod tests {
 
         for &() in v.iter() {}
 
-        assert_eq!(v.mut_iter().count(), 2);
+        assert_eq!(v.iter_mut().count(), 2);
         v.push(());
-        assert_eq!(v.mut_iter().count(), 3);
+        assert_eq!(v.iter_mut().count(), 3);
         v.push(());
-        assert_eq!(v.mut_iter().count(), 4);
+        assert_eq!(v.iter_mut().count(), 4);
 
-        for &() in v.mut_iter() {}
+        for &() in v.iter_mut() {}
         unsafe { v.set_len(0); }
-        assert_eq!(v.mut_iter().count(), 0);
+        assert_eq!(v.iter_mut().count(), 0);
     }
 
     #[test]
@@ -2146,7 +2192,7 @@ mod tests {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst: Vec<uint> = FromIterator::from_iter(src.clone().move_iter());
+            let dst: Vec<uint> = FromIterator::from_iter(src.clone().iter_owned());
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         });
@@ -2180,7 +2226,7 @@ mod tests {
 
         b.iter(|| {
             let mut dst = dst.clone();
-            dst.extend(src.clone().move_iter());
+            dst.extend(src.clone().iter_owned());
             assert_eq!(dst.len(), dst_len + src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         });

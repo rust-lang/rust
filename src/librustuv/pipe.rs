@@ -354,7 +354,7 @@ mod tests {
     #[test] #[should_fail]
     fn bind_fail() {
         let p = next_test_unix().to_c_str();
-        let _w = PipeListener::bind(local_loop(), &p).unwrap();
+        let _w = PipeListener::bind(local_loop(), &p).assert();
         fail!();
     }
 
@@ -365,20 +365,20 @@ mod tests {
         let (tx, rx) = channel();
 
         spawn(proc() {
-            let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
-            let mut p = p.listen().ok().unwrap();
+            let p = PipeListener::bind(local_loop(), &path2.to_c_str()).assert();
+            let mut p = p.listen().ok().assert();
             tx.send(());
-            let mut client = p.accept().ok().unwrap();
+            let mut client = p.accept().ok().assert();
             let mut buf = [0];
-            assert!(client.read(buf).ok().unwrap() == 1);
+            assert!(client.read(buf).ok().assert() == 1);
             assert_eq!(buf[0], 1);
             assert!(client.write([2]).is_ok());
         });
         rx.recv();
-        let mut c = PipeWatcher::connect(local_loop(), &path.to_c_str(), None).unwrap();
+        let mut c = PipeWatcher::connect(local_loop(), &path.to_c_str(), None).assert();
         assert!(c.write([1]).is_ok());
         let mut buf = [0];
-        assert!(c.read(buf).ok().unwrap() == 1);
+        assert!(c.read(buf).ok().assert() == 1);
         assert_eq!(buf[0], 2);
     }
 
@@ -389,13 +389,13 @@ mod tests {
         let (tx, rx) = channel();
 
         spawn(proc() {
-            let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
-            let mut p = p.listen().ok().unwrap();
+            let p = PipeListener::bind(local_loop(), &path2.to_c_str()).assert();
+            let mut p = p.listen().ok().assert();
             tx.send(());
-            drop(p.accept().ok().unwrap());
+            drop(p.accept().ok().assert());
         });
         rx.recv();
-        let _c = PipeWatcher::connect(local_loop(), &path.to_c_str(), None).unwrap();
+        let _c = PipeWatcher::connect(local_loop(), &path.to_c_str(), None).assert();
         fail!()
 
     }

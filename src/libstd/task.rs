@@ -413,28 +413,28 @@ mod test {
     fn test_unnamed_task() {
         try(proc() {
             assert!(name().is_none());
-        }).map_err(|_| ()).unwrap();
+        }).map_err(|_| ()).assert();
     }
 
     #[test]
     fn test_owned_named_task() {
         TaskBuilder::new().named("ada lovelace".to_string()).try(proc() {
-            assert!(name().unwrap() == "ada lovelace".to_string());
-        }).map_err(|_| ()).unwrap();
+            assert!(name().assert() == "ada lovelace".to_string());
+        }).map_err(|_| ()).assert();
     }
 
     #[test]
     fn test_static_named_task() {
         TaskBuilder::new().named("ada lovelace").try(proc() {
-            assert!(name().unwrap() == "ada lovelace".to_string());
-        }).map_err(|_| ()).unwrap();
+            assert!(name().assert() == "ada lovelace".to_string());
+        }).map_err(|_| ()).assert();
     }
 
     #[test]
     fn test_send_named_task() {
         TaskBuilder::new().named("ada lovelace".into_maybe_owned()).try(proc() {
-            assert!(name().unwrap() == "ada lovelace".to_string());
-        }).map_err(|_| ()).unwrap();
+            assert!(name().assert() == "ada lovelace".to_string());
+        }).map_err(|_| ()).assert();
     }
 
     #[test]
@@ -593,7 +593,7 @@ mod test {
             Err(e) => {
                 type T = &'static str;
                 assert!(e.is::<T>());
-                assert_eq!(*e.downcast::<T>().unwrap(), "static string");
+                assert_eq!(*e.downcast::<T>().assert(), "static string");
             }
             Ok(()) => fail!()
         }
@@ -607,7 +607,7 @@ mod test {
             Err(e) => {
                 type T = String;
                 assert!(e.is::<T>());
-                assert_eq!(*e.downcast::<T>().unwrap(), "owned string".to_string());
+                assert_eq!(*e.downcast::<T>().assert(), "owned string".to_string());
             }
             Ok(()) => fail!()
         }
@@ -621,9 +621,9 @@ mod test {
             Err(e) => {
                 type T = Box<Any + Send>;
                 assert!(e.is::<T>());
-                let any = e.downcast::<T>().unwrap();
+                let any = e.downcast::<T>().assert();
                 assert!(any.is::<u16>());
-                assert_eq!(*any.downcast::<u16>().unwrap(), 413u16);
+                assert_eq!(*any.downcast::<u16>().assert(), 413u16);
             }
             Ok(()) => fail!()
         }
@@ -653,7 +653,7 @@ mod test {
             });
         assert!(r.is_ok());
 
-        let output = reader.read_to_string().unwrap();
+        let output = reader.read_to_string().assert();
         assert_eq!(output, "Hello, world!".to_string());
     }
 

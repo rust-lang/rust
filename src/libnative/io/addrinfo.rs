@@ -11,7 +11,7 @@
 use libc::{c_char, c_int};
 use libc;
 use std::mem;
-use std::ptr::{null, mut_null};
+use std::ptr::{null, null_mut};
 use std::rt::rtio;
 use std::rt::rtio::IoError;
 
@@ -38,16 +38,16 @@ impl GetAddrInfoRequest {
                 ai_socktype: 0,
                 ai_protocol: 0,
                 ai_addrlen: 0,
-                ai_canonname: mut_null(),
-                ai_addr: mut_null(),
-                ai_next: mut_null()
+                ai_canonname: null_mut(),
+                ai_addr: null_mut(),
+                ai_next: null_mut()
             }
         });
 
         let hint_ptr = hint.as_ref().map_or(null(), |x| {
             x as *const libc::addrinfo
         });
-        let mut res = mut_null();
+        let mut res = null_mut();
 
         // Make the call
         let s = unsafe {
@@ -106,7 +106,7 @@ fn get_error(s: c_int) -> IoError {
     use std::c_str::CString;
 
     let err_str = unsafe {
-        CString::new(gai_strerror(s), false).as_str().unwrap().to_string()
+        CString::new(gai_strerror(s), false).as_str().assert().to_string()
     };
     IoError {
         code: s as uint,

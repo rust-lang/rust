@@ -21,6 +21,6 @@ pub fn main() {
     foo.replace(Some(3));
     bar::baz.replace(Some(-10.0));
 
-    assert_eq!(*foo.get().unwrap(), 3);
-    assert_eq!(*bar::baz.get().unwrap(), -10.0);
+    assert_eq!(*foo.get().assert(), 3);
+    assert_eq!(*bar::baz.get().assert(), -10.0);
 }

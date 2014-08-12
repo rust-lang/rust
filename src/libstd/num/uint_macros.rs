@@ -76,8 +76,8 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
     let mut buf = [0u8, ..65];
     let amt = {
         let mut wr = ::io::BufWriter::new(buf);
-        (write!(&mut wr, "{}", ::fmt::radix(n, radix as u8))).unwrap();
-        wr.tell().unwrap() as uint
+        (write!(&mut wr, "{}", ::fmt::radix(n, radix as u8))).assert();
+        wr.tell().assert() as uint
     };
     f(buf.slice(0, amt))
 }

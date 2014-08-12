@@ -39,7 +39,7 @@ impl LocalHeap {
     pub fn new() -> LocalHeap {
         LocalHeap {
             memory_region: MemoryRegion { live_allocations: 0 },
-            live_allocs: ptr::mut_null(),
+            live_allocs: ptr::null_mut(),
         }
     }
 
@@ -58,7 +58,7 @@ impl LocalHeap {
             // allocations list
             mybox.drop_glue = drop_glue;
             mybox.ref_count = 1;
-            mybox.prev = ptr::mut_null();
+            mybox.prev = ptr::null_mut();
             mybox.next = self.live_allocs;
             if !self.live_allocs.is_null() {
                 unsafe { (*self.live_allocs).prev = alloc; }
@@ -165,7 +165,7 @@ impl LocalHeap {
         //! Walks the internal list of allocations
 
         let mut alloc = self.live_allocs;
-        while alloc != ptr::mut_null() {
+        while alloc != ptr::null_mut() {
             let next_before = (*alloc).next;
 
             f(self, alloc);

@@ -974,7 +974,7 @@ mod tests {
         for p in pairs.iter() {
             let (s, u) = (*p).clone();
             let s_as_utf16 = s.as_slice().utf16_units().collect::<Vec<u16>>();
-            let u_as_string = String::from_utf16(u.as_slice()).unwrap();
+            let u_as_string = String::from_utf16(u.as_slice()).assert();
 
             assert!(str::is_utf16(u.as_slice()));
             assert_eq!(s_as_utf16, u);
@@ -982,7 +982,7 @@ mod tests {
             assert_eq!(u_as_string, s);
             assert_eq!(String::from_utf16_lossy(u.as_slice()), s);
 
-            assert_eq!(String::from_utf16(s_as_utf16.as_slice()).unwrap(), s);
+            assert_eq!(String::from_utf16(s_as_utf16.as_slice()).assert(), s);
             assert_eq!(u_as_string.as_slice().utf16_units().collect::<Vec<u16>>(), u);
         }
     }
@@ -1070,22 +1070,22 @@ mod tests {
     #[test]
     fn test_pop_char() {
         let mut data = String::from_str("ประเทศไทย中华b¢€𤭢");
-        assert_eq!(data.pop_char().unwrap(), '𤭢'); // 4 bytes
-        assert_eq!(data.pop_char().unwrap(), '€'); // 3 bytes
-        assert_eq!(data.pop_char().unwrap(), '¢'); // 2 bytes
-        assert_eq!(data.pop_char().unwrap(), 'b'); // 1 bytes
-        assert_eq!(data.pop_char().unwrap(), '华');
+        assert_eq!(data.pop_char().assert(), '𤭢'); // 4 bytes
+        assert_eq!(data.pop_char().assert(), '€'); // 3 bytes
+        assert_eq!(data.pop_char().assert(), '¢'); // 2 bytes
+        assert_eq!(data.pop_char().assert(), 'b'); // 1 bytes
+        assert_eq!(data.pop_char().assert(), '华');
         assert_eq!(data.as_slice(), "ประเทศไทย中");
     }
 
     #[test]
     fn test_shift_char() {
         let mut data = String::from_str("𤭢€¢b华ประเทศไทย中");
-        assert_eq!(data.shift_char().unwrap(), '𤭢'); // 4 bytes
-        assert_eq!(data.shift_char().unwrap(), '€'); // 3 bytes
-        assert_eq!(data.shift_char().unwrap(), '¢'); // 2 bytes
-        assert_eq!(data.shift_char().unwrap(), 'b'); // 1 bytes
-        assert_eq!(data.shift_char().unwrap(), '华');
+        assert_eq!(data.shift_char().assert(), '𤭢'); // 4 bytes
+        assert_eq!(data.shift_char().assert(), '€'); // 3 bytes
+        assert_eq!(data.shift_char().assert(), '¢'); // 2 bytes
+        assert_eq!(data.shift_char().assert(), 'b'); // 1 bytes
+        assert_eq!(data.shift_char().assert(), '华');
         assert_eq!(data.as_slice(), "ประเทศไทย中");
     }
 

@@ -113,7 +113,7 @@ pub trait Rng {
         // optimisations are on.
         let mut count = 0i;
         let mut num = 0;
-        for byte in dest.mut_iter() {
+        for byte in dest.iter_mut() {
             if count == 0 {
                 // we could micro-optimise here by generating a u32 if
                 // we only need a few more bytes to fill the vector
@@ -295,7 +295,7 @@ impl<'a, R: Rng> Iterator<char> for AsciiGenerator<'a, R> {
             b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
               abcdefghijklmnopqrstuvwxyz\
               0123456789";
-        Some(*self.rng.choose(GEN_ASCII_STR_CHARSET).unwrap() as char)
+        Some(*self.rng.choose(GEN_ASCII_STR_CHARSET).assert() as char)
     }
 }
 
