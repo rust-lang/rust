@@ -139,6 +139,8 @@ impl<T> RingBuf<T> {
     /// # Example
     ///
     /// ```rust
+    /// #![allow(deprecated)]
+    ///
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
@@ -147,6 +149,7 @@ impl<T> RingBuf<T> {
     /// buf.push(5);
     /// assert_eq!(buf.get(1), &4);
     /// ```
+    #[deprecated = "prefer using indexing, e.g., ringbuf[0]"]
     pub fn get<'a>(&'a self, i: uint) -> &'a T {
         let idx = self.raw_index(i);
         match *self.elts.get(idx) {
@@ -169,7 +172,7 @@ impl<T> RingBuf<T> {
     /// buf.push(4);
     /// buf.push(5);
     /// *buf.get_mut(1) = 7;
-    /// assert_eq!(buf.get(1), &7);
+    /// assert_eq!(buf[1], 7);
     /// ```
     pub fn get_mut<'a>(&'a mut self, i: uint) -> &'a mut T {
         let idx = self.raw_index(i);
@@ -195,8 +198,8 @@ impl<T> RingBuf<T> {
     /// buf.push(4);
     /// buf.push(5);
     /// buf.swap(0, 2);
-    /// assert_eq!(buf.get(0), &5);
-    /// assert_eq!(buf.get(2), &3);
+    /// assert_eq!(buf[0], 5);
+    /// assert_eq!(buf[2], 3);
     /// ```
     pub fn swap(&mut self, i: uint, j: uint) {
         assert!(i < self.len());
@@ -476,6 +479,21 @@ impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
     }
 }
 
+impl<A> Index<uint, A> for RingBuf<A> {
+    #[inline]
+    fn index<'a>(&'a self, i: &uint) -> &'a A {
+        self.get(*i)
+    }
+}
+
+// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
+/*impl<A> IndexMut<uint, A> for RingBuf<A> {
+    #[inline]
+    fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut A {
+        self.get_mut(*index)
+    }
+}*/
+
 impl<A> FromIterator<A> for RingBuf<A> {
     fn from_iter<T: Iterator<A>>(iterator: T) -> RingBuf<A> {
         let (lower, _) = iterator.size_hint();
@@ -651,6 +669,25 @@ mod tests {
         for i in range(0u, 66) {
             assert_eq!(*deq.get(i), i);
         }
+    }
+
+    #[test]
+    fn test_index() {
+        let mut deq = RingBuf::new();
+        for i in range(1u, 4) {
+            deq.push_front(i);
+        }
+        assert_eq!(deq[1], 2);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_index_out_of_bounds() {
+        let mut deq = RingBuf::new();
+        for i in range(1u, 4) {
+            deq.push_front(i);
+        }
+        deq[3];
     }
 
     #[bench]

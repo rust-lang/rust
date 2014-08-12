@@ -26,6 +26,7 @@ use mem::replace;
 use num;
 use option::{Some, None, Option};
 use result::{Ok, Err};
+use ops::Index;
 
 mod table {
     use clone::Clone;
@@ -1341,7 +1342,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// // Update and return the existing value
     /// assert_eq!(*map.insert_or_update_with("a", 9, |_key, val| *val = 7), 7);
-    /// assert_eq!(map.get(&"a"), &7);
+    /// assert_eq!(map["a"], 7);
     /// ```
     pub fn insert_or_update_with<'a>(
                                  &'a mut self,
@@ -1392,9 +1393,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     ///
     /// assert_eq!(map.len(), 3);
-    /// assert_eq!(map.get(&"a key"), &vec!["value", "new value"]);
-    /// assert_eq!(map.get(&"b key"), &vec!["new value"]);
-    /// assert_eq!(map.get(&"z key"), &vec!["new value", "value"]);
+    /// assert_eq!(map["a key"], vec!["value", "new value"]);
+    /// assert_eq!(map["b key"], vec!["new value"]);
+    /// assert_eq!(map["z key"], vec!["new value", "value"]);
     /// ```
     pub fn find_with_or_insert_with<'a, A>(&'a mut self,
                                            k: K,
@@ -1426,12 +1427,15 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// # Example
     ///
     /// ```
+    /// #![allow(deprecated)]
+    ///
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.insert("a", 1i);
     /// assert_eq!(map.get(&"a"), &1);
     /// ```
+    #[deprecated = "prefer indexing instead, e.g., map[key]"]
     pub fn get<'a>(&'a self, k: &K) -> &'a V {
         match self.find(k) {
             Some(v) => v,
@@ -1458,11 +1462,11 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///     let val = map.get_mut(&"a");
     ///     *val = 40;
     /// }
-    /// assert_eq!(map.get(&"a"), &40);
+    /// assert_eq!(map["a"], 40);
     ///
     /// // A more direct way could be:
     /// *map.get_mut(&"a") = -2;
-    /// assert_eq!(map.get(&"a"), &-2);
+    /// assert_eq!(map["a"], -2);
     /// ```
     pub fn get_mut<'a>(&'a mut self, k: &K) -> &'a mut V {
         match self.find_mut(k) {
@@ -1737,6 +1741,21 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H>
         HashMap::with_hasher(Default::default())
     }
 }
+
+impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Index<K, V> for HashMap<K, V, H> {
+    #[inline]
+    fn index<'a>(&'a self, index: &K) -> &'a V {
+        self.get(index)
+    }
+}
+
+// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
+/*impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> ops::IndexMut<K, V> for HashMap<K, V, H> {
+    #[inline]
+    fn index_mut<'a>(&'a mut self, index: &K) -> &'a mut V {
+        self.get_mut(index)
+    }
+}*/
 
 /// HashMap iterator
 pub type Entries<'a, K, V> = table::Entries<'a, K, V>;
@@ -2693,6 +2712,29 @@ mod test_map {
         for _ in iter.by_ref().take(3) {}
 
         assert_eq!(iter.size_hint(), (3, Some(3)));
+    }
+
+    #[test]
+    fn test_index() {
+        let mut map: HashMap<int, int> = HashMap::new();
+
+        map.insert(1, 2);
+        map.insert(2, 1);
+        map.insert(3, 4);
+
+        assert_eq!(map[2], 1);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_index_nonexistent() {
+        let mut map: HashMap<int, int> = HashMap::new();
+
+        map.insert(1, 2);
+        map.insert(2, 1);
+        map.insert(3, 4);
+
+        map[4];
     }
 }
 

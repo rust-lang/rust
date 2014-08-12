@@ -246,6 +246,20 @@ impl<K: Ord, V> Default for TreeMap<K,V> {
     fn default() -> TreeMap<K, V> { TreeMap::new() }
 }
 
+impl<K: Ord, V> Index<K, V> for TreeMap<K, V> {
+    #[inline]
+    fn index<'a>(&'a self, i: &K) -> &'a V {
+        self.find(i).expect("no entry found for key")
+    }
+}
+
+/*impl<K: Ord, V> IndexMut<K, V> for TreeMap<K, V> {
+    #[inline]
+    fn index_mut<'a>(&'a mut self, i: &K) -> &'a mut V {
+        self.find_mut(i).expect("no entry found for key")
+    }
+}*/
+
 impl<K: Ord, V> TreeMap<K, V> {
     /// Create an empty `TreeMap`.
     ///
@@ -2149,6 +2163,28 @@ mod test_treemap {
         }
     }
 
+    #[test]
+    fn test_index() {
+        let mut map: TreeMap<int, int> = TreeMap::new();
+
+        map.insert(1, 2);
+        map.insert(2, 1);
+        map.insert(3, 4);
+
+        assert_eq!(map[2], 1);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_index_nonexistent() {
+        let mut map: TreeMap<int, int> = TreeMap::new();
+
+        map.insert(1, 2);
+        map.insert(2, 1);
+        map.insert(3, 4);
+
+        map[4];
+    }
 }
 
 #[cfg(test)]
