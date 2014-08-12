@@ -1341,7 +1341,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
         // Handle self type
         if has_self_type {
-            let actual_self_type = self_type.unwrap();
+            let actual_self_type = self_type.assert();
             // Add self type name to <...> clause of function name
             let actual_self_type_name = compute_debuginfo_type_name(
                 cx,
@@ -1598,7 +1598,7 @@ fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
     debug!("file_metadata: {}", full_path);
 
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let work_dir = cx.sess().working_dir.as_str().unwrap();
+    let work_dir = cx.sess().working_dir.as_str().assert();
     let file_name =
         if full_path.starts_with(work_dir) {
             full_path.slice(work_dir.len() + 1u, full_path.len())
@@ -2415,7 +2415,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
         let name = if def_id.krate == ast::LOCAL_CRATE {
             cx.tcx.map.get_path_elem(def_id.node).name()
         } else {
-            csearch::get_item_path(&cx.tcx, def_id).last().unwrap().name()
+            csearch::get_item_path(&cx.tcx, def_id).last().assert().name()
         };
 
         token::get_name(name)
@@ -3182,14 +3182,14 @@ fn bytes_to_bits(bytes: u64) -> c_ulonglong {
 
 #[inline]
 fn debug_context<'a>(cx: &'a CrateContext) -> &'a CrateDebugContext {
-    let debug_context: &'a CrateDebugContext = cx.dbg_cx.get_ref();
+    let debug_context: &'a CrateDebugContext = cx.dbg_cx.as_ref().assert();
     debug_context
 }
 
 #[inline]
 #[allow(non_snake_case_functions)]
 fn DIB(cx: &CrateContext) -> DIBuilderRef {
-    cx.dbg_cx.get_ref().builder
+    cx.dbg_cx.as_ref().assert().builder
 }
 
 fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
@@ -3269,7 +3269,7 @@ fn populate_scope_map(cx: &CrateContext,
         // Create a new lexical scope and push it onto the stack
         let loc = cx.sess().codemap().lookup_char_pos(scope_span.lo);
         let file_metadata = file_metadata(cx, loc.file.name.as_slice());
-        let parent_scope = scope_stack.last().unwrap().scope_metadata;
+        let parent_scope = scope_stack.last().assert().scope_metadata;
 
         let scope_metadata = unsafe {
             llvm::LLVMDIBuilderCreateLexicalBlock(
@@ -3287,11 +3287,11 @@ fn populate_scope_map(cx: &CrateContext,
         inner_walk(cx, scope_stack, scope_map);
 
         // pop artificial scopes
-        while scope_stack.last().unwrap().ident.is_some() {
+        while scope_stack.last().assert().ident.is_some() {
             scope_stack.pop();
         }
 
-        if scope_stack.last().unwrap().scope_metadata != scope_metadata {
+        if scope_stack.last().assert().scope_metadata != scope_metadata {
             cx.sess().span_bug(scope_span, "debuginfo: Inconsistency in scope management.");
         }
 
@@ -3302,12 +3302,12 @@ fn populate_scope_map(cx: &CrateContext,
                   block: &ast::Block,
                   scope_stack: &mut Vec<ScopeStackEntry> ,
                   scope_map: &mut HashMap<ast::NodeId, DIScope>) {
-        scope_map.insert(block.id, scope_stack.last().unwrap().scope_metadata);
+        scope_map.insert(block.id, scope_stack.last().assert().scope_metadata);
 
         // The interesting things here are statements and the concluding expression.
         for statement in block.stmts.iter() {
             scope_map.insert(ast_util::stmt_id(&**statement),
-                             scope_stack.last().unwrap().scope_metadata);
+                             scope_stack.last().assert().scope_metadata);
 
             match statement.node {
                 ast::StmtDecl(ref decl, _) =>
@@ -3330,7 +3330,7 @@ fn populate_scope_map(cx: &CrateContext,
                  scope_map: &mut HashMap<ast::NodeId, DIScope>) {
         match *decl {
             codemap::Spanned { node: ast::DeclLocal(local), .. } => {
-                scope_map.insert(local.id, scope_stack.last().unwrap().scope_metadata);
+                scope_map.insert(local.id, scope_stack.last().assert().scope_metadata);
 
                 walk_pattern(cx, local.pat, scope_stack, scope_map);
 
@@ -3395,7 +3395,7 @@ fn populate_scope_map(cx: &CrateContext,
                                                           loc.file
                                                              .name
                                                              .as_slice());
-                        let parent_scope = scope_stack.last().unwrap().scope_metadata;
+                        let parent_scope = scope_stack.last().assert().scope_metadata;
 
                         let scope_metadata = unsafe {
                             llvm::LLVMDIBuilderCreateLexicalBlock(
@@ -3414,7 +3414,7 @@ fn populate_scope_map(cx: &CrateContext,
 
                     } else {
                         // Push a new entry anyway so the name can be found
-                        let prev_metadata = scope_stack.last().unwrap().scope_metadata;
+                        let prev_metadata = scope_stack.last().assert().scope_metadata;
                         scope_stack.push(ScopeStackEntry {
                             scope_metadata: prev_metadata,
                             ident: Some(ident)
@@ -3422,7 +3422,7 @@ fn populate_scope_map(cx: &CrateContext,
                     }
                 }
 
-                scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
+                scope_map.insert(pat.id, scope_stack.last().assert().scope_metadata);
 
                 for &sub_pat in sub_pat_opt.iter() {
                     walk_pattern(cx, sub_pat, scope_stack, scope_map);
@@ -3430,11 +3430,11 @@ fn populate_scope_map(cx: &CrateContext,
             }
 
             ast::PatWild(_) => {
-                scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
+                scope_map.insert(pat.id, scope_stack.last().assert().scope_metadata);
             }
 
             ast::PatEnum(_, ref sub_pats_opt) => {
-                scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
+                scope_map.insert(pat.id, scope_stack.last().assert().scope_metadata);
 
                 for ref sub_pats in sub_pats_opt.iter() {
                     for &p in sub_pats.iter() {
@@ -3444,7 +3444,7 @@ fn populate_scope_map(cx: &CrateContext,
             }
 
             ast::PatStruct(_, ref field_pats, _) => {
-                scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
+                scope_map.insert(pat.id, scope_stack.last().assert().scope_metadata);
 
                 for &ast::FieldPat { pat: sub_pat, .. } in field_pats.iter() {
                     walk_pattern(cx, sub_pat, scope_stack, scope_map);
@@ -3452,7 +3452,7 @@ fn populate_scope_map(cx: &CrateContext,
             }
 
             ast::PatTup(ref sub_pats) => {
-                scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
+                scope_map.insert(pat.id, scope_stack.last().assert().scope_metadata);
 
                 for sub_pat in sub_pats.iter() {
                     walk_pattern(cx, sub_pat.clone(), scope_stack, scope_map);
@@ -3460,23 +3460,23 @@ fn populate_scope_map(cx: &CrateContext,
             }
 
             ast::PatBox(ref sub_pat) | ast::PatRegion(ref sub_pat) => {
-                scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
+                scope_map.insert(pat.id, scope_stack.last().assert().scope_metadata);
                 walk_pattern(cx, sub_pat.clone(), scope_stack, scope_map);
             }
 
             ast::PatLit(ref exp) => {
-                scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
+                scope_map.insert(pat.id, scope_stack.last().assert().scope_metadata);
                 walk_expr(cx, &**exp, scope_stack, scope_map);
             }
 
             ast::PatRange(ref exp1, ref exp2) => {
-                scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
+                scope_map.insert(pat.id, scope_stack.last().assert().scope_metadata);
                 walk_expr(cx, &**exp1, scope_stack, scope_map);
                 walk_expr(cx, &**exp2, scope_stack, scope_map);
             }
 
             ast::PatVec(ref front_sub_pats, ref middle_sub_pats, ref back_sub_pats) => {
-                scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
+                scope_map.insert(pat.id, scope_stack.last().assert().scope_metadata);
 
                 for &sub_pat in front_sub_pats.iter() {
                     walk_pattern(cx, sub_pat, scope_stack, scope_map);
@@ -3503,7 +3503,7 @@ fn populate_scope_map(cx: &CrateContext,
                  scope_stack: &mut Vec<ScopeStackEntry> ,
                  scope_map: &mut HashMap<ast::NodeId, DIScope>) {
 
-        scope_map.insert(exp.id, scope_stack.last().unwrap().scope_metadata);
+        scope_map.insert(exp.id, scope_stack.last().assert().scope_metadata);
 
         match exp.node {
             ast::ExprLit(_)   |
@@ -3592,7 +3592,7 @@ fn populate_scope_map(cx: &CrateContext,
                                |cx, scope_stack, scope_map| {
                     scope_map.insert(exp.id,
                                      scope_stack.last()
-                                                .unwrap()
+                                                .assert()
                                                 .scope_metadata);
                     walk_pattern(cx,
                                  *pattern,
@@ -3981,7 +3981,7 @@ impl NamespaceTreeNode {
     fn mangled_name_of_contained_item(&self, item_name: &str) -> String {
         fn fill_nested(node: &NamespaceTreeNode, output: &mut String) {
             match node.parent {
-                Some(ref parent) => fill_nested(&*parent.upgrade().unwrap(), output),
+                Some(ref parent) => fill_nested(&*parent.upgrade().assert(), output),
                 None => {}
             }
             let string = token::get_name(node.name);

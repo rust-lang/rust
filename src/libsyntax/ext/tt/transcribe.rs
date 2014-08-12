@@ -157,13 +157,13 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                     break;
                 }
                 !frame.dotdotdoted ||
-                    *r.repeat_idx.last().unwrap() == *r.repeat_len.last().unwrap() - 1
+                    *r.repeat_idx.last().assert() == *r.repeat_len.last().assert() - 1
             }
         };
 
         /* done with this set; pop or repeat? */
         if should_pop {
-            let prev = r.stack.pop().unwrap();
+            let prev = r.stack.pop().assert();
             match r.stack.last_mut() {
                 None => {
                     r.cur_tok = EOF;
@@ -178,9 +178,9 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 r.repeat_len.pop();
             }
         } else { /* repeat */
-            *r.repeat_idx.last_mut().unwrap() += 1u;
-            r.stack.last_mut().unwrap().idx = 0;
-            match r.stack.last().unwrap().sep.clone() {
+            *r.repeat_idx.last_mut().assert() += 1u;
+            r.stack.last_mut().assert().idx = 0;
+            match r.stack.last().assert().sep.clone() {
                 Some(tk) => {
                     r.cur_tok = tk; /* repeat same span, I guess */
                     return ret_val;
@@ -192,7 +192,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
     loop { /* because it's easiest, this handles `TTDelim` not starting
               with a `TTTok`, even though it won't happen */
         let t = {
-            let frame = r.stack.last().unwrap();
+            let frame = r.stack.last().assert();
             // FIXME(pcwalton): Bad copy.
             (*frame.forest.get(frame.idx)).clone()
         };
@@ -209,7 +209,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             TTTok(sp, tok) => {
                 r.cur_span = sp;
                 r.cur_tok = tok;
-                r.stack.last_mut().unwrap().idx += 1;
+                r.stack.last_mut().assert().idx += 1;
                 return ret_val;
             }
             TTSeq(sp, tts, sep, zerok) => {
@@ -234,7 +234,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                                                      "this must repeat at least once");
                             }
 
-                            r.stack.last_mut().unwrap().idx += 1;
+                            r.stack.last_mut().assert().idx += 1;
                             return tt_next_token(r);
                         }
                         r.repeat_len.push(len);
@@ -250,7 +250,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             }
             // FIXME #2887: think about span stuff here
             TTNonterminal(sp, ident) => {
-                r.stack.last_mut().unwrap().idx += 1;
+                r.stack.last_mut().assert().idx += 1;
                 match *lookup_cur_matched(r, ident) {
                     /* sidestep the interpolation tricks for ident because
                        (a) idents can be in lots of places, so it'd be a pain

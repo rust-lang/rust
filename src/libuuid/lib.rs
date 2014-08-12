@@ -329,7 +329,7 @@ impl Uuid {
             *s.get_mut(i*2+0) = digit.as_bytes()[0];
             *s.get_mut(i*2+1) = digit.as_bytes()[1];
         }
-        String::from_utf8(s).unwrap()
+        String::from_utf8(s).assert()
     }
 
     /// Returns a string of hexadecimal digits, separated into groups with a hyphen.
@@ -434,10 +434,10 @@ impl Uuid {
         for i in range(0u, 16u) {
             ub[i] = FromStrRadix::from_str_radix(vs.as_slice()
                                                    .slice(i*2, (i+1)*2),
-                                                 16).unwrap();
+                                                 16).assert();
         }
 
-        Ok(Uuid::from_bytes(ub).unwrap())
+        Ok(Uuid::from_bytes(ub).assert())
     }
 
     /// Tests if the UUID is nil
@@ -541,11 +541,11 @@ mod test {
     #[test]
     fn test_new() {
         // Supported
-        let uuid1 = Uuid::new(Version4Random).unwrap();
+        let uuid1 = Uuid::new(Version4Random).assert();
         let s = uuid1.to_simple_str();
 
         assert!(s.len() == 32);
-        assert!(uuid1.get_version().unwrap() == Version4Random);
+        assert!(uuid1.get_version().assert() == Version4Random);
 
         // Test unsupported versions
         assert!(Uuid::new(Version1Mac) == None);
@@ -558,33 +558,33 @@ mod test {
     fn test_new_v4() {
         let uuid1 = Uuid::new_v4();
 
-        assert!(uuid1.get_version().unwrap() == Version4Random);
-        assert!(uuid1.get_variant().unwrap() == VariantRFC4122);
+        assert!(uuid1.get_version().assert() == Version4Random);
+        assert!(uuid1.get_variant().assert() == VariantRFC4122);
     }
 
     #[test]
     fn test_get_version() {
         let uuid1 = Uuid::new_v4();
 
-        assert!(uuid1.get_version().unwrap() == Version4Random);
+        assert!(uuid1.get_version().assert() == Version4Random);
         assert!(uuid1.get_version_num() == 4);
     }
 
     #[test]
     fn test_get_variant() {
         let uuid1 = Uuid::new_v4();
-        let uuid2 = Uuid::parse_string("550e8400-e29b-41d4-a716-446655440000").unwrap();
-        let uuid3 = Uuid::parse_string("67e55044-10b1-426f-9247-bb680e5fe0c8").unwrap();
-        let uuid4 = Uuid::parse_string("936DA01F9ABD4d9dC0C702AF85C822A8").unwrap();
-        let uuid5 = Uuid::parse_string("F9168C5E-CEB2-4faa-D6BF-329BF39FA1E4").unwrap();
-        let uuid6 = Uuid::parse_string("f81d4fae-7dec-11d0-7765-00a0c91e6bf6").unwrap();
+        let uuid2 = Uuid::parse_string("550e8400-e29b-41d4-a716-446655440000").assert();
+        let uuid3 = Uuid::parse_string("67e55044-10b1-426f-9247-bb680e5fe0c8").assert();
+        let uuid4 = Uuid::parse_string("936DA01F9ABD4d9dC0C702AF85C822A8").assert();
+        let uuid5 = Uuid::parse_string("F9168C5E-CEB2-4faa-D6BF-329BF39FA1E4").assert();
+        let uuid6 = Uuid::parse_string("f81d4fae-7dec-11d0-7765-00a0c91e6bf6").assert();
 
-        assert!(uuid1.get_variant().unwrap() == VariantRFC4122);
-        assert!(uuid2.get_variant().unwrap() == VariantRFC4122);
-        assert!(uuid3.get_variant().unwrap() == VariantRFC4122);
-        assert!(uuid4.get_variant().unwrap() == VariantMicrosoft);
-        assert!(uuid5.get_variant().unwrap() == VariantMicrosoft);
-        assert!(uuid6.get_variant().unwrap() == VariantNCS);
+        assert!(uuid1.get_variant().assert() == VariantRFC4122);
+        assert!(uuid2.get_variant().assert() == VariantRFC4122);
+        assert!(uuid3.get_variant().assert() == VariantRFC4122);
+        assert!(uuid4.get_variant().assert() == VariantMicrosoft);
+        assert!(uuid5.get_variant().assert() == VariantMicrosoft);
+        assert!(uuid6.get_variant().assert() == VariantNCS);
     }
 
     #[test]
@@ -619,26 +619,26 @@ mod test {
 
         // Nil
         let nil = Uuid::nil();
-        assert!(Uuid::parse_string("00000000000000000000000000000000").unwrap()  == nil);
-        assert!(Uuid::parse_string("00000000-0000-0000-0000-000000000000").unwrap() == nil);
+        assert!(Uuid::parse_string("00000000000000000000000000000000").assert()  == nil);
+        assert!(Uuid::parse_string("00000000-0000-0000-0000-000000000000").assert() == nil);
 
         // Round-trip
         let uuid_orig = Uuid::new_v4();
         let orig_str = uuid_orig.to_string();
-        let uuid_out = Uuid::parse_string(orig_str.as_slice()).unwrap();
+        let uuid_out = Uuid::parse_string(orig_str.as_slice()).assert();
         assert!(uuid_orig == uuid_out);
 
         // Test error reporting
-        let e = Uuid::parse_string("67e5504410b1426f9247bb680e5fe0c").unwrap_err();
+        let e = Uuid::parse_string("67e5504410b1426f9247bb680e5fe0c").assert_err();
         assert!(match e { ErrorInvalidLength(n) => n==31, _ => false });
 
-        let e = Uuid::parse_string("67e550X410b1426f9247bb680e5fe0cd").unwrap_err();
+        let e = Uuid::parse_string("67e550X410b1426f9247bb680e5fe0cd").assert_err();
         assert!(match e { ErrorInvalidCharacter(c, n) => c=='X' && n==6, _ => false });
 
-        let e = Uuid::parse_string("67e550-4105b1426f9247bb680e5fe0c").unwrap_err();
+        let e = Uuid::parse_string("67e550-4105b1426f9247bb680e5fe0c").assert_err();
         assert!(match e { ErrorInvalidGroups(n) => n==2, _ => false });
 
-        let e = Uuid::parse_string("F9168C5E-CEB2-4faa-B6BF1-02BF39FA1E4").unwrap_err();
+        let e = Uuid::parse_string("F9168C5E-CEB2-4faa-B6BF1-02BF39FA1E4").assert_err();
         assert!(match e { ErrorInvalidGroupLength(g, n, e) => g==3 && n==5 && e==4, _ => false });
     }
 
@@ -703,11 +703,11 @@ mod test {
         let uuid = Uuid::new_v4();
 
         let hs = uuid.to_hyphenated_str();
-        let uuid_hs = Uuid::parse_string(hs.as_slice()).unwrap();
+        let uuid_hs = Uuid::parse_string(hs.as_slice()).assert();
         assert!(uuid_hs == uuid);
 
         let ss = uuid.to_string();
-        let uuid_ss = Uuid::parse_string(ss.as_slice()).unwrap();
+        let uuid_ss = Uuid::parse_string(ss.as_slice()).assert();
         assert!(uuid_ss == uuid);
     }
 
@@ -741,7 +741,7 @@ mod test {
         let b = vec!( 0xa1, 0xa2, 0xa3, 0xa4, 0xb1, 0xb2, 0xc1, 0xc2,
                    0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8 );
 
-        let u = Uuid::from_bytes(b.as_slice()).unwrap();
+        let u = Uuid::from_bytes(b.as_slice()).assert();
         let expected = "a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8".to_string();
 
         assert!(u.to_simple_str() == expected);
@@ -761,7 +761,7 @@ mod test {
         let b_in: [u8, ..16] = [ 0xa1, 0xa2, 0xa3, 0xa4, 0xb1, 0xb2, 0xc1, 0xc2,
                                  0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8 ];
 
-        let u = Uuid::from_bytes(b_in.clone()).unwrap();
+        let u = Uuid::from_bytes(b_in.clone()).assert();
 
         let b_out = u.as_bytes();
 
@@ -801,7 +801,7 @@ mod test {
 
         let u = Uuid::new_v4();
         let s = json::encode(&u);
-        let u2 = json::decode(s.as_slice()).unwrap();
+        let u2 = json::decode(s.as_slice()).assert();
         assert_eq!(u, u2);
     }
 
@@ -859,7 +859,7 @@ mod bench {
     pub fn parse_str(b: &mut Bencher) {
         let s = "urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4";
         b.iter(|| {
-            Uuid::parse_string(s).unwrap();
+            Uuid::parse_string(s).assert();
         })
     }
 }

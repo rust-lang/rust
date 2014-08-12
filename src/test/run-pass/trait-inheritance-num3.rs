@@ -16,7 +16,7 @@ pub trait NumExt: PartialEq + PartialOrd + Num + NumCast {}
 impl NumExt for f32 {}
 
 fn num_eq_one<T:NumExt>(n: T) {
-    println!("{}", n == NumCast::from(1i).unwrap())
+    println!("{}", n == NumCast::from(1i).assert())
 }
 
 pub fn main() {

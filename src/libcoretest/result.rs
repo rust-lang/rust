@@ -16,43 +16,43 @@ pub fn op2() -> Result<int, &'static str> { Err("sadface") }
 
 #[test]
 pub fn test_and() {
-    assert_eq!(op1().and(Ok(667i)).unwrap(), 667);
-    assert_eq!(op1().and(Err::<(), &'static str>("bad")).unwrap_err(),
+    assert_eq!(op1().and(Ok(667i)).assert(), 667);
+    assert_eq!(op1().and(Err::<(), &'static str>("bad")).assert_err(),
                "bad");
 
-    assert_eq!(op2().and(Ok(667i)).unwrap_err(), "sadface");
-    assert_eq!(op2().and(Err::<(),&'static str>("bad")).unwrap_err(),
+    assert_eq!(op2().and(Ok(667i)).assert_err(), "sadface");
+    assert_eq!(op2().and(Err::<(),&'static str>("bad")).assert_err(),
                "sadface");
 }
 
 #[test]
 pub fn test_and_then() {
-    assert_eq!(op1().and_then(|i| Ok::<int, &'static str>(i + 1)).unwrap(), 667);
-    assert_eq!(op1().and_then(|_| Err::<int, &'static str>("bad")).unwrap_err(),
+    assert_eq!(op1().and_then(|i| Ok::<int, &'static str>(i + 1)).assert(), 667);
+    assert_eq!(op1().and_then(|_| Err::<int, &'static str>("bad")).assert_err(),
                "bad");
 
-    assert_eq!(op2().and_then(|i| Ok::<int, &'static str>(i + 1)).unwrap_err(),
+    assert_eq!(op2().and_then(|i| Ok::<int, &'static str>(i + 1)).assert_err(),
                "sadface");
-    assert_eq!(op2().and_then(|_| Err::<int, &'static str>("bad")).unwrap_err(),
+    assert_eq!(op2().and_then(|_| Err::<int, &'static str>("bad")).assert_err(),
                "sadface");
 }
 
 #[test]
 pub fn test_or() {
-    assert_eq!(op1().or(Ok(667)).unwrap(), 666);
-    assert_eq!(op1().or(Err("bad")).unwrap(), 666);
+    assert_eq!(op1().or(Ok(667)).assert(), 666);
+    assert_eq!(op1().or(Err("bad")).assert(), 666);
 
-    assert_eq!(op2().or(Ok(667)).unwrap(), 667);
-    assert_eq!(op2().or(Err("bad")).unwrap_err(), "bad");
+    assert_eq!(op2().or(Ok(667)).assert(), 667);
+    assert_eq!(op2().or(Err("bad")).assert_err(), "bad");
 }
 
 #[test]
 pub fn test_or_else() {
-    assert_eq!(op1().or_else(|_| Ok::<int, &'static str>(667)).unwrap(), 666);
-    assert_eq!(op1().or_else(|e| Err::<int, &'static str>(e)).unwrap(), 666);
+    assert_eq!(op1().or_else(|_| Ok::<int, &'static str>(667)).assert(), 666);
+    assert_eq!(op1().or_else(|e| Err::<int, &'static str>(e)).assert(), 666);
 
-    assert_eq!(op2().or_else(|_| Ok::<int, &'static str>(667)).unwrap(), 667);
-    assert_eq!(op2().or_else(|e| Err::<int, &'static str>(e)).unwrap_err(),
+    assert_eq!(op2().or_else(|_| Ok::<int, &'static str>(667)).assert(), 667);
+    assert_eq!(op2().or_else(|e| Err::<int, &'static str>(e)).assert_err(),
                "sadface");
 }
 

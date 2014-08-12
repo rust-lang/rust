@@ -295,7 +295,7 @@ impl<'a, R: Rng> Iterator<char> for AsciiGenerator<'a, R> {
             b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
               abcdefghijklmnopqrstuvwxyz\
               0123456789";
-        Some(*self.rng.choose(GEN_ASCII_STR_CHARSET).unwrap() as char)
+        Some(*self.rng.choose(GEN_ASCII_STR_CHARSET).assert() as char)
     }
 }
 

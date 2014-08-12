@@ -125,7 +125,7 @@ impl AttributeMethods for Attribute {
     /// non-sugared doc attributes.)
     fn desugar_doc(&self) -> Attribute {
         if self.node.is_sugared_doc {
-            let comment = self.value_str().unwrap();
+            let comment = self.value_str().assert();
             let meta = mk_name_value_item_str(
                 InternedString::new("doc"),
                 token::intern_and_get_ident(strip_doc_comment_decoration(

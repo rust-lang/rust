@@ -136,7 +136,7 @@ impl StreamWatcher {
         let mut req = match self.last_write_req.take() {
             Some(req) => req, None => Request::new(uvll::UV_WRITE),
         };
-        req.set_data(ptr::mut_null::<()>());
+        req.set_data(ptr::null_mut::<()>());
 
         // And here's where timeouts get a little interesting. Currently, libuv
         // does not support canceling an in-flight write request. Consequently,
@@ -161,7 +161,7 @@ impl StreamWatcher {
         // bytes.
         let data = if may_timeout {Some(Vec::from_slice(buf))} else {None};
         let uv_buf = if may_timeout {
-            slice_to_uv_buf(data.get_ref().as_slice())
+            slice_to_uv_buf(data.as_ref().assert().as_slice())
         } else {
             slice_to_uv_buf(buf)
         };

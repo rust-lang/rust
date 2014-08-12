@@ -160,7 +160,7 @@ fn main() {
     let to_child  = sizes.iter().zip(streams.iter_mut()).map(|(sz, stream_ref)| {
         let sz = *sz;
         let stream = replace(stream_ref, None);
-        let (to_parent_, from_child_) = stream.unwrap();
+        let (to_parent_, from_child_) = stream.assert();
 
         from_child.push(from_child_);
 
@@ -179,7 +179,7 @@ fn main() {
    let mut proc_mode = false;
 
    for line in rdr.lines() {
-       let line = line.unwrap().as_slice().trim().to_string();
+       let line = line.assert().as_slice().trim().to_string();
 
        if line.len() == 0u { continue; }
 

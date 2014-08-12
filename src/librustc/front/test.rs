@@ -382,7 +382,7 @@ fn mk_test_module(cx: &TestCtxt, reexport_test_harness_main: &Option<InternedStr
             use std::slice::Vector;
             test::test_main_static(::std::os::args().as_slice(), TESTS);
         }
-    )).unwrap();
+    )).assert();
 
     let testmod = ast::Mod {
         inner: DUMMY_SP,

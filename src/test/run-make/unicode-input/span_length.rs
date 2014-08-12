@@ -28,7 +28,7 @@ fn random_char() -> char {
         _ => (0x10400, 0x1044f)
     };
 
-    char::from_u32(rng.gen_range(lo, hi + 1)).unwrap()
+    char::from_u32(rng.gen_range(lo, hi + 1)).assert()
 }
 
 fn main() {
@@ -41,7 +41,7 @@ fn main() {
         let n = task_rng().gen_range(3u, 20);
 
         {
-            let _ = write!(&mut File::create(&main_file).unwrap(),
+            let _ = write!(&mut File::create(&main_file).assert(),
                            "#![feature(non_ascii_idents)] fn main() {{ {} }}",
                            // random string of length n
                            range(0, n).map(|_| random_char()).collect::<String>());
@@ -54,8 +54,8 @@ fn main() {
                              .arg(format!("{} {}",
                                           rustc,
                                           main_file.as_str()
-                                                   .unwrap()).as_slice())
-                             .output().unwrap();
+                                                   .assert()).as_slice())
+                             .output().assert();
 
         let err = String::from_utf8_lossy(result.error.as_slice());
 

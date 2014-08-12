@@ -129,7 +129,7 @@ impl Drop for Arena {
 
 #[inline]
 fn round_up(base: uint, align: uint) -> uint {
-    (base.checked_add(&(align - 1))).unwrap() & !(&(align - 1))
+    (base.checked_add(&(align - 1))).assert() & !(&(align - 1))
 }
 
 // Walk down a chunk, running the destructors for any objects stored
@@ -378,8 +378,8 @@ impl<T> TypedArenaChunk<T> {
         let mut size = mem::size_of::<TypedArenaChunk<T>>();
         size = round_up(size, mem::min_align_of::<T>());
         let elem_size = mem::size_of::<T>();
-        let elems_size = elem_size.checked_mul(&capacity).unwrap();
-        size = size.checked_add(&elems_size).unwrap();
+        let elems_size = elem_size.checked_mul(&capacity).assert();
+        size = size.checked_add(&elems_size).assert();
 
         let mut chunk = unsafe {
             let chunk = allocate(size, mem::min_align_of::<TypedArenaChunk<T>>());
@@ -431,7 +431,7 @@ impl<T> TypedArenaChunk<T> {
     #[inline]
     fn end(&self) -> *const u8 {
         unsafe {
-            let size = mem::size_of::<T>().checked_mul(&self.capacity).unwrap();
+            let size = mem::size_of::<T>().checked_mul(&self.capacity).assert();
             self.start().offset(size as int)
         }
     }
@@ -476,8 +476,8 @@ impl<T> TypedArena<T> {
     /// Grows the arena.
     #[inline(never)]
     fn grow(&self) {
-        let chunk = self.first.borrow_mut().take_unwrap();
-        let new_capacity = chunk.capacity.checked_mul(&2).unwrap();
+        let chunk = self.first.borrow_mut().take().assert();
+        let new_capacity = chunk.capacity.checked_mul(&2).assert();
         let chunk = TypedArenaChunk::<T>::new(Some(chunk), new_capacity);
         self.ptr.set(chunk.start() as *const T);
         self.end.set(chunk.end() as *const T);
@@ -489,13 +489,13 @@ impl<T> TypedArena<T> {
 impl<T> Drop for TypedArena<T> {
     fn drop(&mut self) {
         // Determine how much was filled.
-        let start = self.first.borrow().get_ref().start() as uint;
+        let start = self.first.borrow().as_ref().assert().start() as uint;
         let end = self.ptr.get() as uint;
         let diff = (end - start) / mem::size_of::<T>();
 
         // Pass that to the `destroy` method.
         unsafe {
-            self.first.borrow_mut().get_mut_ref().destroy(diff)
+            self.first.borrow_mut().as_mut().assert().destroy(diff)
         }
     }
 }

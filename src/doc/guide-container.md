@@ -121,11 +121,11 @@ Containers implement iteration over the contained elements by returning an
 iterator object. For example, for vector slices several iterators are available:
 
 * `iter()` for immutable references to the elements
-* `mut_iter()` for mutable references to the elements
-* `move_iter()` to move the elements out by-value
+* `iter_mut()` for mutable references to the elements
+* `iter_owned()` to move the elements out by-value
 
-A typical mutable container will implement at least `iter()`, `mut_iter()` and
-`move_iter()`. If it maintains an order, the returned iterators will be
+A typical mutable container will implement at least `iter()`, `iter_mut()` and
+`iter_owned()`. If it maintains an order, the returned iterators will be
 `DoubleEndedIterator`s, which are described below.
 
 ### Freezing
@@ -381,7 +381,7 @@ the trailing underscore is a workaround for issue #5898 and will be removed.
 
 ~~~
 let mut ys = [1i, 2, 3, 4, 5];
-ys.mut_iter().reverse_();
+ys.iter_mut().reverse_();
 assert!(ys == [5i, 4, 3, 2, 1]);
 ~~~
 

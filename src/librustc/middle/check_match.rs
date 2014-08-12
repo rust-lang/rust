@@ -303,7 +303,7 @@ impl<'a> Folder for StaticInliner<'a> {
                 let def = self.tcx.def_map.borrow().find_copy(&pat.id);
                 match def {
                     Some(DefStatic(did, _)) => {
-                        let const_expr = lookup_const_by_id(self.tcx, did).unwrap();
+                        let const_expr = lookup_const_by_id(self.tcx, did).assert();
                         const_expr_to_pat(self.tcx, const_expr)
                     },
                     _ => noop_fold_pat(pat, self)
@@ -892,7 +892,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
         } else if by_ref_span.is_some() {
             span_err!(cx.tcx.sess, p.span, E0009,
                 "cannot bind by-move and by-ref in the same pattern");
-            span_note!(cx.tcx.sess, by_ref_span.unwrap(), "by-ref binding occurs here");
+            span_note!(cx.tcx.sess, by_ref_span.assert(), "by-ref binding occurs here");
         }
     };
 

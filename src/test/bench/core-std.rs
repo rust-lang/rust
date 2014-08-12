@@ -68,7 +68,7 @@ fn shift_push() {
     let mut v2 = Vec::new();
 
     while v1.len() > 0 {
-        v2.push(v1.shift().unwrap());
+        v2.push(v1.shift().assert());
     }
 }
 
@@ -79,7 +79,7 @@ fn read_line() {
     path.push("src/test/bench/shootout-k-nucleotide.data");
 
     for _ in range(0u, 3) {
-        let mut reader = BufferedReader::new(File::open(&path).unwrap());
+        let mut reader = BufferedReader::new(File::open(&path).assert());
         for _line in reader.lines() {
         }
     }

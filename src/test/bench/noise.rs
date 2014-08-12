@@ -40,7 +40,7 @@ struct Noise2DContext {
 
 impl Noise2DContext {
     fn new() -> Noise2DContext {
-        let mut rng = StdRng::new().unwrap();
+        let mut rng = StdRng::new().assert();
 
         let mut rgradients = [Vec2 { x: 0.0, y: 0.0 }, ..256];
         for x in rgradients.iter_mut() {

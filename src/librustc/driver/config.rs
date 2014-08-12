@@ -354,7 +354,7 @@ pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
     let mut cg = basic_codegen_options();
     for option in matches.opt_strs("C").iter_owned() {
         let mut iter = option.as_slice().splitn('=', 1);
-        let key = iter.next().unwrap();
+        let key = iter.next().assert();
         let value = iter.next();
         let option_to_lookup = key.replace("-", "_");
         let mut found = false;

@@ -149,12 +149,12 @@ mod imp {
     pub type signal = libc::c_int;
 
     pub fn new() -> (signal, signal) {
-        let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
+        let os::Pipe { reader, writer } = unsafe { os::pipe().assert() };
         (reader, writer)
     }
 
     pub fn signal(fd: libc::c_int) {
-        FileDesc::new(fd, false).inner_write([0]).ok().unwrap();
+        FileDesc::new(fd, false).inner_write([0]).ok().assert();
     }
 
     pub fn close(fd: libc::c_int) {

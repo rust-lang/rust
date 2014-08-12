@@ -578,7 +578,7 @@ mod bench {
 
     #[bench]
     fn rand_xorshift(b: &mut Bencher) {
-        let mut rng: XorShiftRng = OsRng::new().unwrap().gen();
+        let mut rng: XorShiftRng = OsRng::new().assert().gen();
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
@@ -589,7 +589,7 @@ mod bench {
 
     #[bench]
     fn rand_isaac(b: &mut Bencher) {
-        let mut rng: IsaacRng = OsRng::new().unwrap().gen();
+        let mut rng: IsaacRng = OsRng::new().assert().gen();
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
@@ -600,7 +600,7 @@ mod bench {
 
     #[bench]
     fn rand_isaac64(b: &mut Bencher) {
-        let mut rng: Isaac64Rng = OsRng::new().unwrap().gen();
+        let mut rng: Isaac64Rng = OsRng::new().assert().gen();
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
@@ -611,7 +611,7 @@ mod bench {
 
     #[bench]
     fn rand_std(b: &mut Bencher) {
-        let mut rng = StdRng::new().unwrap();
+        let mut rng = StdRng::new().assert();
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();

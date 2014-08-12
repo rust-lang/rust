@@ -1302,7 +1302,7 @@ mod test_map {
 
         for i in range(0u, 199) {
             let mut lb_it = m_lower.lower_bound_mut(i);
-            let (k, v) = lb_it.next().unwrap();
+            let (k, v) = lb_it.next().assert();
             let lb = i + i % 2;
             assert_eq!(lb, k);
             *v -= k;
@@ -1310,7 +1310,7 @@ mod test_map {
 
         for i in range(0u, 198) {
             let mut ub_it = m_upper.upper_bound_mut(i);
-            let (k, v) = ub_it.next().unwrap();
+            let (k, v) = ub_it.next().assert();
             let ub = i + 2 - i % 2;
             assert_eq!(ub, k);
             *v -= k;

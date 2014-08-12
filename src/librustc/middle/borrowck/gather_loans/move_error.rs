@@ -91,7 +91,7 @@ fn group_errors_with_same_origin(errors: &Vec<MoveError>)
         let move_from_id = error.move_from.id;
         debug!("append_to_grouped_errors(move_from_id={})", move_from_id);
         let move_to = if error.move_to.is_some() {
-            vec!(error.move_to.clone().unwrap())
+            vec!(error.move_to.clone().assert())
         } else {
             Vec::new()
         };

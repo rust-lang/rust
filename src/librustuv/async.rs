@@ -136,7 +136,7 @@ mod test_remote {
                 // once
                 let MyCallback(ref mut s) = *self;
                 if s.is_some() {
-                    s.take_unwrap().send(1);
+                    s.take().assert().send(1);
                 }
             }
         }

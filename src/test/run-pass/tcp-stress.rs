@@ -40,8 +40,8 @@ fn main() {
 
     let (tx, rx) = channel();
     spawn(proc() {
-        let mut listener = TcpListener::bind("127.0.0.1", 0).unwrap();
-        tx.send(listener.socket_name().unwrap());
+        let mut listener = TcpListener::bind("127.0.0.1", 0).assert();
+        tx.send(listener.socket_name().assert());
         let mut acceptor = listener.listen();
         loop {
             let mut stream = match acceptor.accept() {

@@ -261,7 +261,7 @@ impl CrateContext {
     }
 
     pub fn tydesc_type(&self) -> Type {
-        self.tn.find_type("tydesc").unwrap()
+        self.tn.find_type("tydesc").assert()
     }
 
     pub fn get_intrinsic(&self, key: & &'static str) -> ValueRef {

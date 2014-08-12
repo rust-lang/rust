@@ -51,16 +51,16 @@ fn parent(flavor: String) {
     let args = os::args();
     let args = args.as_slice();
     let mut p = io::process::Command::new(args[0].as_slice())
-                                     .arg("child").arg(flavor).spawn().unwrap();
-    p.stdin.get_mut_ref().write_str("test1\ntest2\ntest3").unwrap();
-    let out = p.wait_with_output().unwrap();
+                                     .arg("child").arg(flavor).spawn().assert();
+    p.stdin.as_mut().assert().write_str("test1\ntest2\ntest3").assert();
+    let out = p.wait_with_output().assert();
     assert!(out.status.success());
-    let s = str::from_utf8(out.output.as_slice()).unwrap();
+    let s = str::from_utf8(out.output.as_slice()).assert();
     assert_eq!(s, "test1\n\ntest2\n\ntest3\n");
 }
 
 fn child() {
     for line in io::stdin().lines() {
-        println!("{}", line.unwrap());
+        println!("{}", line.assert());
     }
 }

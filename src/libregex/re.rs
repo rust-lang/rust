@@ -207,7 +207,7 @@ impl Regex {
     pub fn find(&self, text: &str) -> Option<(uint, uint)> {
         let caps = exec(self, Location, text);
         if has_match(&caps) {
-            Some((caps[0].unwrap(), caps[1].unwrap()))
+            Some((caps[0].assert(), caps[1].assert()))
         } else {
             None
         }
@@ -267,7 +267,7 @@ impl Regex {
     /// # fn main() {
     /// let re = regex!(r"'([^']+)'\s+\((\d{4})\)");
     /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
-    /// let caps = re.captures(text).unwrap();
+    /// let caps = re.captures(text).assert();
     /// assert_eq!(caps.at(1), "Citizen Kane");
     /// assert_eq!(caps.at(2), "1941");
     /// assert_eq!(caps.at(0), "'Citizen Kane' (1941)");
@@ -285,7 +285,7 @@ impl Regex {
     /// # fn main() {
     /// let re = regex!(r"'(?P<title>[^']+)'\s+\((?P<year>\d{4})\)");
     /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
-    /// let caps = re.captures(text).unwrap();
+    /// let caps = re.captures(text).assert();
     /// assert_eq!(caps.name("title"), "Citizen Kane");
     /// assert_eq!(caps.name("year"), "1941");
     /// assert_eq!(caps.at(0), "'Citizen Kane' (1941)");
@@ -499,7 +499,7 @@ impl Regex {
                 break
             }
 
-            let (s, e) = cap.pos(0).unwrap(); // captures only reports matches
+            let (s, e) = cap.pos(0).assert(); // captures only reports matches
             new.push_str(text.slice(last_match, s));
             new.push_str(rep.reg_replace(&cap).as_slice());
             last_match = e;
@@ -703,7 +703,7 @@ impl<'t> Captures<'t> {
             // VM guarantees that each pair of locations are both Some or None.
             return None
         }
-        Some((self.locs[s].unwrap(), self.locs[e].unwrap()))
+        Some((self.locs[s].assert(), self.locs[e].assert()))
     }
 
     /// Returns the matched string for the capture group `i`.
@@ -761,7 +761,7 @@ impl<'t> Captures<'t> {
     pub fn expand(&self, text: &str) -> String {
         // How evil can you get?
         // FIXME: Don't use regexes for this. It's completely unnecessary.
-        let re = Regex::new(r"(^|[^$]|\b)\$(\w+)").unwrap();
+        let re = Regex::new(r"(^|[^$]|\b)\$(\w+)").assert();
         let text = re.replace_all(text, |refs: &Captures| -> String {
             let (pre, name) = (refs.at(1), refs.at(2));
             format!("{}{}", pre,
@@ -770,7 +770,7 @@ impl<'t> Captures<'t> {
                 Some(i) => self.at(i).to_string(),
             })
         });
-        let re = Regex::new(r"\$\$").unwrap();
+        let re = Regex::new(r"\$\$").assert();
         re.replace_all(text.as_slice(), NoExpand("$"))
     }
 }
@@ -851,7 +851,7 @@ impl<'r, 't> Iterator<Captures<'t>> for FindCaptures<'r, 't> {
             if !has_match(&caps) {
                 return None
             } else {
-                (caps[0].unwrap(), caps[1].unwrap())
+                (caps[0].assert(), caps[1].assert())
             };
 
         // Don't accept empty matches immediately following a match.
@@ -893,7 +893,7 @@ impl<'r, 't> Iterator<(uint, uint)> for FindMatches<'r, 't> {
             if !has_match(&caps) {
                 return None
             } else {
-                (caps[0].unwrap(), caps[1].unwrap())
+                (caps[0].assert(), caps[1].assert())
             };
 
         // Don't accept empty matches immediately following a match.

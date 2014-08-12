@@ -18,7 +18,7 @@ fn test_get_ptr() {
         let x = box 0i;
         let addr_x: *const int = mem::transmute(&*x);
         let opt = Some(x);
-        let y = opt.unwrap();
+        let y = opt.assert();
         let addr_y: *const int = mem::transmute(&*y);
         assert_eq!(addr_x, addr_y);
     }
@@ -29,7 +29,7 @@ fn test_get_str() {
     let x = "test".to_string();
     let addr_x = x.as_slice().as_ptr();
     let opt = Some(x);
-    let y = opt.unwrap();
+    let y = opt.assert();
     let addr_y = y.as_slice().as_ptr();
     assert_eq!(addr_x, addr_y);
 }
@@ -62,7 +62,7 @@ fn test_get_resource() {
     {
         let x = r(i.clone());
         let opt = Some(x);
-        let _y = opt.unwrap();
+        let _y = opt.assert();
     }
     assert_eq!(*i.borrow(), 1);
 }
@@ -73,7 +73,7 @@ fn test_option_dance() {
     let mut y = Some(5i);
     let mut y2 = 0;
     for _x in x.iter() {
-        y2 = y.take_unwrap();
+        y2 = y.take().assert();
     }
     assert_eq!(y2, 5);
     assert!(y.is_none());
@@ -82,8 +82,8 @@ fn test_option_dance() {
 #[test] #[should_fail]
 fn test_option_too_much_dance() {
     let mut y = Some(marker::NoCopy);
-    let _y2 = y.take_unwrap();
-    let _y3 = y.take_unwrap();
+    let _y2 = y.take().assert();
+    let _y3 = y.take().assert();
 }
 
 #[test]
@@ -146,8 +146,8 @@ fn test_option_while_some() {
 
 #[test]
 fn test_unwrap() {
-    assert_eq!(Some(1i).unwrap(), 1);
-    let s = Some("hello".to_string()).unwrap();
+    assert_eq!(Some(1i).assert(), 1);
+    let s = Some("hello".to_string()).assert();
     assert_eq!(s.as_slice(), "hello");
 }
 
@@ -155,14 +155,14 @@ fn test_unwrap() {
 #[should_fail]
 fn test_unwrap_fail1() {
     let x: Option<int> = None;
-    x.unwrap();
+    x.assert();
 }
 
 #[test]
 #[should_fail]
 fn test_unwrap_fail2() {
     let x: Option<String> = None;
-    x.unwrap();
+    x.assert();
 }
 
 #[test]
@@ -187,7 +187,7 @@ fn test_unwrap_or_else() {
 fn test_filtered() {
     let some_stuff = Some(42i);
     let modified_stuff = some_stuff.filtered(|&x| {x < 10});
-    assert_eq!(some_stuff.unwrap(), 42);
+    assert_eq!(some_stuff.assert(), 42);
     assert!(modified_stuff.is_none());
 }
 

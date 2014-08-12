@@ -326,7 +326,7 @@ pub fn Alloca(cx: &Block, ty: Type, name: &str) -> ValueRef {
 
 pub fn AllocaFcx(fcx: &FunctionContext, ty: Type, name: &str) -> ValueRef {
     let b = fcx.ccx.builder();
-    b.position_before(fcx.alloca_insert_pt.get().unwrap());
+    b.position_before(fcx.alloca_insert_pt.get().assert());
     b.alloca(ty, name)
 }
 
@@ -334,7 +334,7 @@ pub fn ArrayAlloca(cx: &Block, ty: Type, val: ValueRef) -> ValueRef {
     unsafe {
         if cx.unreachable.get() { return llvm::LLVMGetUndef(ty.ptr_to().to_ref()); }
         let b = cx.fcx.ccx.builder();
-        b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
+        b.position_before(cx.fcx.alloca_insert_pt.get().assert());
         b.array_alloca(ty, val)
     }
 }

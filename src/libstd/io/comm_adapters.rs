@@ -180,7 +180,7 @@ mod test {
     fn test_chan_writer() {
         let (tx, rx) = channel();
         let mut writer = ChanWriter::new(tx);
-        writer.write_be_u32(42).unwrap();
+        writer.write_be_u32(42).assert();
 
         let wanted = vec![0u8, 0u8, 0u8, 42u8];
         let got = match task::try(proc() { rx.recv() }) {

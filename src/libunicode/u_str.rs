@@ -242,7 +242,7 @@ impl<'a> Iterator<&'a str> for Graphemes<'a> {
             // looking up each character twice.
             cat = match self.cat {
                 None => gr::grapheme_category(ch),
-                _ => self.cat.take_unwrap()
+                _ => self.cat.take().assert()
             };
 
             if match cat {
@@ -342,7 +342,7 @@ impl<'a> DoubleEndedIterator<&'a str> for Graphemes<'a> {
             // cached category, if any
             cat = match self.catb {
                 None => gr::grapheme_category(ch),
-                _ => self.catb.take_unwrap()
+                _ => self.catb.take().assert()
             };
 
             // a matching state machine that runs *backwards* across an input string

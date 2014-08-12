@@ -175,7 +175,7 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
     let _0: T = Zero::zero();
 
     let neg = num < _0;
-    let radix_gen: T = cast(radix).unwrap();
+    let radix_gen: T = cast(radix).assert();
 
     let mut deccum = num;
     // This is just for integral types, the largest of which is a u64. The
@@ -198,7 +198,7 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
         } else {
             current_digit_signed
         };
-        buf[cur] = match current_digit.to_u8().unwrap() {
+        buf[cur] = match current_digit.to_u8().assert() {
             i @ 0..9 => b'0' + i,
             i        => b'a' + (i - 10),
         };
@@ -296,7 +296,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
 
     let neg = num < _0 || (negative_zero && _1 / num == Float::neg_infinity());
     let mut buf = Vec::new();
-    let radix_gen: T   = cast(radix as int).unwrap();
+    let radix_gen: T   = cast(radix as int).assert();
 
     let (num, exp) = match exp_format {
         ExpNone => (num, 0i32),
@@ -305,12 +305,12 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
                 (num, 0i32)
             } else {
                 let (exp, exp_base) = match exp_format {
-                    ExpDec => (num.abs().log10().floor(), cast::<f64, T>(10.0f64).unwrap()),
-                    ExpBin => (num.abs().log2().floor(), cast::<f64, T>(2.0f64).unwrap()),
+                    ExpDec => (num.abs().log10().floor(), cast::<f64, T>(10.0f64).assert()),
+                    ExpBin => (num.abs().log2().floor(), cast::<f64, T>(2.0f64).assert()),
                     ExpNone => unreachable!()
                 };
 
-                (num / exp_base.powf(exp), cast::<T, i32>(exp).unwrap())
+                (num / exp_base.powf(exp), cast::<T, i32>(exp).assert())
             }
         }
     };
@@ -331,8 +331,8 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
         deccum = deccum / radix_gen;
         deccum = deccum.trunc();
 
-        buf.push(char::from_digit(current_digit.to_int().unwrap() as uint, radix)
-             .unwrap() as u8);
+        buf.push(char::from_digit(current_digit.to_int().assert() as uint, radix)
+             .assert() as u8);
 
         // No more digits to calculate for the non-fractional part -> break
         if deccum == _0 { break; }
@@ -388,7 +388,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
             let current_digit = deccum.trunc().abs();
 
             buf.push(char::from_digit(
-                current_digit.to_int().unwrap() as uint, radix).unwrap() as u8);
+                current_digit.to_int().assert() as uint, radix).assert() as u8);
 
             // Decrease the deccumulator one fractional digit at a time
             deccum = deccum.fract();
@@ -400,13 +400,13 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
         // round the remaining ones.
         if limit_digits && dig == digit_count {
             let ascii2value = |chr: u8| {
-                char::to_digit(chr as char, radix).unwrap()
+                char::to_digit(chr as char, radix).assert()
             };
             let value2ascii = |val: uint| {
-                char::from_digit(val, radix).unwrap() as u8
+                char::from_digit(val, radix).assert() as u8
             };
 
-            let extra_digit = ascii2value(buf.pop().unwrap());
+            let extra_digit = ascii2value(buf.pop().assert());
             if extra_digit >= radix / 2 { // -> need to round
                 let mut i: int = buf.len() as int - 1;
                 loop {
@@ -498,7 +498,7 @@ pub fn float_to_str_common<T:NumCast+Zero+One+PartialEq+PartialOrd+NumStrConv+Fl
         ) -> (String, bool) {
     let (bytes, special) = float_to_str_bytes_common(num, radix,
                                negative_zero, sign, digits, exp_format, exp_capital);
-    (String::from_utf8(bytes).unwrap(), special)
+    (String::from_utf8(bytes).assert(), special)
 }
 
 // Some constants for from_str_bytes_common's input validation,
@@ -574,7 +574,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
 
     let _0: T = Zero::zero();
     let _1: T = One::one();
-    let radix_gen: T = cast(radix as int).unwrap();
+    let radix_gen: T = cast(radix as int).assert();
 
     let len = buf.len();
 
@@ -625,9 +625,9 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
 
                 // add/subtract current digit depending on sign
                 if accum_positive {
-                    accum = accum + cast(digit as int).unwrap();
+                    accum = accum + cast(digit as int).assert();
                 } else {
-                    accum = accum - cast(digit as int).unwrap();
+                    accum = accum - cast(digit as int).assert();
                 }
 
                 // Detect overflow by comparing to last value, except
@@ -638,11 +638,11 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
 
                     // Detect overflow by reversing the shift-and-add process
                     if accum_positive &&
-                        (last_accum != ((accum - cast(digit as int).unwrap())/radix_gen.clone())) {
+                        (last_accum != ((accum - cast(digit as int).assert())/radix_gen.clone())) {
                         return NumStrConv::inf();
                     }
                     if !accum_positive &&
-                        (last_accum != ((accum + cast(digit as int).unwrap())/radix_gen.clone())) {
+                        (last_accum != ((accum + cast(digit as int).assert())/radix_gen.clone())) {
                         return NumStrConv::neg_inf();
                     }
                 }
@@ -678,7 +678,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
                     // Decrease power one order of magnitude
                     power = power / radix_gen;
 
-                    let digit_t: T = cast(digit).unwrap();
+                    let digit_t: T = cast(digit).assert();
 
                     // add/subtract current digit depending on sign
                     if accum_positive {
@@ -722,8 +722,8 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
         let c = buf[i] as char;
         let base: T = match (c, exponent) {
             // c is never _ so don't need to handle specially
-            ('e', ExpDec) | ('E', ExpDec) => cast(10u).unwrap(),
-            ('p', ExpBin) | ('P', ExpBin) => cast(2u).unwrap(),
+            ('e', ExpDec) | ('E', ExpDec) => cast(10u).assert(),
+            ('p', ExpBin) | ('P', ExpBin) => cast(2u).assert(),
             _ => return None // char doesn't fit given exponent format
         };
 
@@ -736,9 +736,9 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
         match exp {
             Some(exp_pow) => {
                 multiplier = if exp_pow < 0 {
-                    _1 / num::pow(base, (-exp_pow.to_int().unwrap()) as uint)
+                    _1 / num::pow(base, (-exp_pow.to_int().assert()) as uint)
                 } else {
-                    num::pow(base, exp_pow.to_int().unwrap() as uint)
+                    num::pow(base, exp_pow.to_int().assert() as uint)
                 }
             }
             None => return None // invalid exponent -> invalid number

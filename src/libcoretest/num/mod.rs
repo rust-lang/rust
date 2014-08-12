@@ -25,11 +25,11 @@ mod uint;
 
 /// Helper function for testing numeric operations
 pub fn test_num<T:Num + NumCast + ::std::fmt::Show>(ten: T, two: T) {
-    assert_eq!(ten.add(&two),  cast(12i).unwrap());
-    assert_eq!(ten.sub(&two),  cast(8i).unwrap());
-    assert_eq!(ten.mul(&two),  cast(20i).unwrap());
-    assert_eq!(ten.div(&two),  cast(5i).unwrap());
-    assert_eq!(ten.rem(&two),  cast(0i).unwrap());
+    assert_eq!(ten.add(&two),  cast(12i).assert());
+    assert_eq!(ten.sub(&two),  cast(8i).assert());
+    assert_eq!(ten.mul(&two),  cast(20i).assert());
+    assert_eq!(ten.div(&two),  cast(5i).assert());
+    assert_eq!(ten.rem(&two),  cast(0i).assert());
 
     assert_eq!(ten.add(&two),  ten + two);
     assert_eq!(ten.sub(&two),  ten - two);

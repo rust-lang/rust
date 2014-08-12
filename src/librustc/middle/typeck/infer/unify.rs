@@ -185,7 +185,7 @@ impl<V:PartialEq+Clone+Repr,K:UnifyKey<V>> UnificationTable<K,V> {
         self.assert_open_snapshot(&snapshot);
 
         while self.undo_log.len() > snapshot.length + 1 {
-            match self.undo_log.pop().unwrap() {
+            match self.undo_log.pop().assert() {
                 OpenSnapshot => {
                     // This indicates a failure to obey the stack discipline.
                     tcx.sess.bug("Cannot rollback an uncommitted snapshot");
@@ -207,7 +207,7 @@ impl<V:PartialEq+Clone+Repr,K:UnifyKey<V>> UnificationTable<K,V> {
             }
         }
 
-        let v = self.undo_log.pop().unwrap();
+        let v = self.undo_log.pop().assert();
         assert!(v == OpenSnapshot);
         assert!(self.undo_log.len() == snapshot.length);
     }

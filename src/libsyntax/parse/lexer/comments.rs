@@ -252,7 +252,7 @@ fn read_block_comment(rdr: &mut StringReader,
     // doc-comments are not really comments, they are attributes
     if (rdr.curr_is('*') && !rdr.nextch_is('*')) || rdr.curr_is('!') {
         while !(rdr.curr_is('*') && rdr.nextch_is('/')) && !rdr.is_eof() {
-            curr_line.push_char(rdr.curr.unwrap());
+            curr_line.push_char(rdr.curr.assert());
             rdr.bump();
         }
         if !rdr.is_eof() {
@@ -279,7 +279,7 @@ fn read_block_comment(rdr: &mut StringReader,
                 curr_line = String::new();
                 rdr.bump();
             } else {
-                curr_line.push_char(rdr.curr.unwrap());
+                curr_line.push_char(rdr.curr.assert());
                 if rdr.curr_is('/') && rdr.nextch_is('*') {
                     rdr.bump();
                     rdr.bump();
@@ -338,8 +338,8 @@ pub fn gather_comments_and_literals(span_diagnostic: &diagnostic::SpanHandler,
                                     path: String,
                                     srdr: &mut io::Reader)
                                  -> (Vec<Comment>, Vec<Literal>) {
-    let src = srdr.read_to_end().unwrap();
-    let src = String::from_utf8(src).unwrap();
+    let src = srdr.read_to_end().assert();
+    let src = String::from_utf8(src).assert();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);
     let mut rdr = lexer::StringReader::new_raw(span_diagnostic, filemap);

@@ -315,7 +315,7 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
         }
         let raw_index = raw_index(self.lo, self.elts.len(), self.index);
         self.index += 1;
-        Some(self.elts[raw_index].get_ref())
+        Some(self.elts[raw_index].as_ref().assert())
     }
 
     #[inline]
@@ -333,7 +333,7 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
         }
         self.rindex -= 1;
         let raw_index = raw_index(self.lo, self.elts.len(), self.rindex);
-        Some(self.elts[raw_index].get_ref())
+        Some(self.elts[raw_index].as_ref().assert())
     }
 }
 
@@ -349,7 +349,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
             None
         } else {
             let raw_index = raw_index(self.lo, self.elts.len(), self.index + j);
-            Some(self.elts[raw_index].get_ref())
+            Some(self.elts[raw_index].as_ref().assert())
         }
     }
 }
@@ -374,7 +374,7 @@ impl<'a, T> Iterator<&'a mut T> for ItemsMut<'a, T> {
             &mut self.remaining2
         };
         self.nelts -= 1;
-        Some(r.shift_mut().unwrap().get_mut_ref())
+        Some(r.shift_mut().assert().as_mut().assert())
     }
 
     #[inline]
@@ -396,7 +396,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for ItemsMut<'a, T> {
             &mut self.remaining1
         };
         self.nelts -= 1;
-        Some(r.pop_mut().unwrap().get_mut_ref())
+        Some(r.pop_mut().assert().as_mut().assert())
     }
 }
 
@@ -534,9 +534,9 @@ mod tests {
         d.push_back(137);
         assert_eq!(d.len(), 4u);
         debug!("{:?}", d.front());
-        assert_eq!(*d.front().unwrap(), 42);
+        assert_eq!(*d.front().assert(), 42);
         debug!("{:?}", d.back());
-        assert_eq!(*d.back().unwrap(), 137);
+        assert_eq!(*d.back().assert(), 137);
         let mut i = d.pop_front();
         debug!("{:?}", i);
         assert_eq!(i, Some(42));
@@ -614,12 +614,12 @@ mod tests {
         assert_eq!(deq.len(), 3);
         deq.push_back(d.clone());
         assert_eq!(deq.len(), 4);
-        assert_eq!((*deq.front().unwrap()).clone(), b.clone());
-        assert_eq!((*deq.back().unwrap()).clone(), d.clone());
-        assert_eq!(deq.pop_front().unwrap(), b.clone());
-        assert_eq!(deq.pop_back().unwrap(), d.clone());
-        assert_eq!(deq.pop_back().unwrap(), c.clone());
-        assert_eq!(deq.pop_back().unwrap(), a.clone());
+        assert_eq!((*deq.front().assert()).clone(), b.clone());
+        assert_eq!((*deq.back().assert()).clone(), d.clone());
+        assert_eq!(deq.pop_front().assert(), b.clone());
+        assert_eq!(deq.pop_back().assert(), d.clone());
+        assert_eq!(deq.pop_back().assert(), c.clone());
+        assert_eq!(deq.pop_back().assert(), a.clone());
         assert_eq!(deq.len(), 0);
         deq.push_back(c.clone());
         assert_eq!(deq.len(), 1);
@@ -900,9 +900,9 @@ mod tests {
 
         {
             let mut it = d.iter_mut();
-            assert_eq!(*it.next().unwrap(), 0);
-            assert_eq!(*it.next().unwrap(), 1);
-            assert_eq!(*it.next().unwrap(), 2);
+            assert_eq!(*it.next().assert(), 0);
+            assert_eq!(*it.next().assert(), 1);
+            assert_eq!(*it.next().assert(), 2);
             assert!(it.next().is_none());
         }
     }
@@ -923,9 +923,9 @@ mod tests {
 
         {
             let mut it = d.iter_mut().rev();
-            assert_eq!(*it.next().unwrap(), 0);
-            assert_eq!(*it.next().unwrap(), 1);
-            assert_eq!(*it.next().unwrap(), 2);
+            assert_eq!(*it.next().assert(), 0);
+            assert_eq!(*it.next().assert(), 1);
+            assert_eq!(*it.next().assert(), 2);
             assert!(it.next().is_none());
         }
     }

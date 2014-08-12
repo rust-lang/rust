@@ -92,7 +92,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc():Send) {
         let mut f = Some(f);
         let mut task = task;
         task.put_runtime(ops);
-        drop(task.run(|| { f.take_unwrap()() }).destroy());
+        drop(task.run(|| { f.take().assert()() }).destroy());
         drop(token);
     })
 }
@@ -378,6 +378,6 @@ mod tests {
         let res = TaskBuilder::new().native().try(proc() {
             "Success!".to_string()
         });
-        assert_eq!(res.ok().unwrap(), "Success!".to_string());
+        assert_eq!(res.ok().assert(), "Success!".to_string());
     }
 }

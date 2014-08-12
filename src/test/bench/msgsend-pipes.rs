@@ -50,8 +50,8 @@ fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
 fn run(args: &[String]) {
     let (to_parent, from_child) = channel();
 
-    let size = from_str::<uint>(args[1].as_slice()).unwrap();
-    let workers = from_str::<uint>(args[2].as_slice()).unwrap();
+    let size = from_str::<uint>(args[1].as_slice()).assert();
+    let workers = from_str::<uint>(args[2].as_slice()).assert();
     let num_bytes = 100;
     let start = time::precise_time_s();
     let mut worker_results = Vec::new();
@@ -84,7 +84,7 @@ fn run(args: &[String]) {
     });
 
     for r in worker_results.iter_owned() {
-        r.unwrap();
+        r.assert();
     }
 
     //println!("sending stop message");

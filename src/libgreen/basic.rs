@@ -78,7 +78,7 @@ impl BasicLoop {
             }
             RemoveRemote(i) => {
                 match self.remotes.iter().position(|&(id, _)| id == i) {
-                    Some(i) => { self.remotes.remove(i).unwrap(); }
+                    Some(i) => { self.remotes.remove(i).assert(); }
                     None => unreachable!()
                 }
             }
@@ -89,7 +89,7 @@ impl BasicLoop {
     fn idle(&mut self) {
         match self.idle {
             Some(ref mut idle) => {
-                if self.idle_active.get_ref().load(atomic::SeqCst) {
+                if self.idle_active.as_ref().assert().load(atomic::SeqCst) {
                     idle.call();
                 }
             }
@@ -98,7 +98,7 @@ impl BasicLoop {
     }
 
     fn has_idle(&self) -> bool {
-        self.idle.is_some() && self.idle_active.get_ref().load(atomic::SeqCst)
+        self.idle.is_some() && self.idle_active.as_ref().assert().load(atomic::SeqCst)
     }
 }
 

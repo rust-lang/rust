@@ -294,7 +294,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
             let mut pairs = Vec::new();
             for p in input.iter() {
                 let mut it = p.as_slice().splitn(1, |b| *b == b'=');
-                let key = Vec::from_slice(it.next().unwrap());
+                let key = Vec::from_slice(it.next().assert());
                 let val = Vec::from_slice(it.next().unwrap_or(&[]));
                 pairs.push((key, val));
             }
@@ -412,7 +412,7 @@ pub fn setenv<T: BytesContainer>(n: &str, v: T) {
     fn _setenv(n: &str, v: &[u8]) {
         let n: Vec<u16> = n.utf16_units().collect();
         let n = n.append_one(0);
-        let v: Vec<u16> = ::str::from_utf8(v).unwrap().utf16_units().collect();
+        let v: Vec<u16> = ::str::from_utf8(v).assert().utf16_units().collect();
         let v = v.append_one(0);
 
         unsafe {
@@ -536,7 +536,7 @@ pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
 /// let key = "PATH";
 /// let mut paths = os::getenv_as_bytes(key).map_or(Vec::new(), os::split_paths);
 /// paths.push(Path::new("/home/xyz/bin"));
-/// os::setenv(key, os::join_paths(paths.as_slice()).unwrap());
+/// os::setenv(key, os::join_paths(paths.as_slice()).assert());
 /// ```
 pub fn join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static str> {
     #[cfg(windows)]
@@ -1974,7 +1974,7 @@ mod tests {
     fn test_self_exe_name() {
         let path = os::self_exe_name();
         assert!(path.is_some());
-        let path = path.unwrap();
+        let path = path.assert();
         debug!("{:?}", path.clone());
 
         // Hard to test this function
@@ -1985,7 +1985,7 @@ mod tests {
     fn test_self_exe_path() {
         let path = os::self_exe_path();
         assert!(path.is_some());
-        let path = path.unwrap();
+        let path = path.assert();
         debug!("{:?}", path.clone());
 
         // Hard to test this function
@@ -2158,7 +2158,7 @@ mod tests {
         }
         drop(chunk);
 
-        fs::unlink(&path).unwrap();
+        fs::unlink(&path).assert();
     }
 
     #[test]
@@ -2200,7 +2200,7 @@ mod tests {
     #[cfg(unix)]
     fn join_paths_unix() {
         fn test_eq(input: &[&str], output: &str) -> bool {
-            join_paths(input).unwrap().as_slice() == output.as_bytes()
+            join_paths(input).assert().as_slice() == output.as_bytes()
         }
 
         assert!(test_eq([], ""));
@@ -2215,7 +2215,7 @@ mod tests {
     #[cfg(windows)]
     fn join_paths_windows() {
         fn test_eq(input: &[&str], output: &str) -> bool {
-            join_paths(input).unwrap().as_slice() == output.as_bytes()
+            join_paths(input).assert().as_slice() == output.as_bytes()
         }
 
         assert!(test_eq([], ""));

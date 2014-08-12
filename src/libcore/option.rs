@@ -334,7 +334,7 @@ impl<T> Option<T> {
     /// Returns true if the contained value was mutated.
     pub fn mutate(&mut self, f: |T| -> T) -> bool {
         if self.is_some() {
-            *self = Some(f(self.take_unwrap()));
+            *self = Some(f(self.take().assert()));
             true
         } else { false }
     }
@@ -343,7 +343,7 @@ impl<T> Option<T> {
     /// Returns true if the contained value was mutated, or false if set to the default.
     pub fn mutate_or_set(&mut self, def: T, f: |T| -> T) -> bool {
         if self.is_some() {
-            *self = Some(f(self.take_unwrap()));
+            *self = Some(f(self.take().assert()));
             true
         } else {
             *self = Some(def);

@@ -795,8 +795,8 @@ fn with_envp<T>(env: Option<&[(&CString, &CString)]>, cb: |*mut c_void| -> T) ->
 
             for pair in env.iter() {
                 let kv = format!("{}={}",
-                                 pair.ref0().as_str().unwrap(),
-                                 pair.ref1().as_str().unwrap());
+                                 pair.ref0().as_str().assert(),
+                                 pair.ref1().as_str().assert());
                 blk.extend(kv.as_slice().utf16_units());
                 blk.push(0);
             }
@@ -1010,8 +1010,8 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
         unsafe {
             let mut pipes = [0, ..2];
             assert_eq!(libc::pipe(pipes.as_mut_ptr()), 0);
-            util::set_nonblocking(pipes[0], true).ok().unwrap();
-            util::set_nonblocking(pipes[1], true).ok().unwrap();
+            util::set_nonblocking(pipes[0], true).ok().assert();
+            util::set_nonblocking(pipes[1], true).ok().assert();
             WRITE_FD = pipes[1];
 
             let mut old: c::sigaction = mem::zeroed();
@@ -1027,7 +1027,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
     fn waitpid_helper(input: libc::c_int,
                       messages: Receiver<Req>,
                       (read_fd, old): (libc::c_int, c::sigaction)) {
-        util::set_nonblocking(input, true).ok().unwrap();
+        util::set_nonblocking(input, true).ok().assert();
         let mut set: c::fd_set = unsafe { mem::zeroed() };
         let mut tv: libc::timeval;
         let mut active = Vec::<(libc::pid_t, Sender<rtio::ProcessExit>, u64)>::new();

@@ -952,7 +952,7 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1i, 2, 3];
-    /// *vec.last_mut().unwrap() = 4;
+    /// *vec.last_mut().assert() = 4;
     /// assert_eq!(vec, vec![1i, 2, 4]);
     /// ```
     #[inline]
@@ -1197,7 +1197,7 @@ impl<T> Vec<T> {
 
     /// Deprecated: renamed to `split_at_mut`.
     #[deprecated = "renamed to split_at_mut"]
-    pub fn.split_at_mut<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
+    pub fn mut_split_at<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
       self.split_at_mut(mid)
     }
 

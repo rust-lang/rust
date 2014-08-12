@@ -225,7 +225,7 @@ impl<'f> Combine for Glb<'f> {
 
             if a_r.is_some() && b_r.is_some() && only_new_vars {
                 // Related to exactly one bound variable from each fn:
-                return rev_lookup(this, a_map, new_binder_id, a_r.unwrap());
+                return rev_lookup(this, a_map, new_binder_id, a_r.assert());
             } else if a_r.is_none() && b_r.is_none() {
                 // Not related to bound variables from either fn:
                 assert!(!r0.is_bound());

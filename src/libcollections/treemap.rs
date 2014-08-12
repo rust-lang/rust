@@ -470,7 +470,7 @@ impl<K, V> TreeMap<K, V> {
     ///    ua_key.cmp(&k.as_slice())
     /// });
     ///
-    /// assert_eq!((*ua.unwrap()).as_slice(), "Curl-Rust/0.1");
+    /// assert_eq!((*ua.assert()).as_slice(), "Curl-Rust/0.1");
     /// ```
     #[inline]
     pub fn find_with<'a>(&'a self, f:|&K| -> Ordering) -> Option<&'a V> {
@@ -788,7 +788,7 @@ macro_rules! define_iterator {
                         }
                         self.stack.push(node);
                     } else {
-                        let node = self.stack.pop().unwrap();
+                        let node = self.stack.pop().assert();
                         let next_node = if forward {
                             addr!(& $($addr_mut)* node.right)
                         } else {
@@ -926,7 +926,7 @@ impl<K, V> Iterator<(K, V)> for EntriesOwned<K,V> {
                 left: left,
                 right: right,
                 level: level
-            } = self.stack.pop().unwrap();
+            } = self.stack.pop().assert();
 
             match left {
                 Some(box left) => {
@@ -1115,8 +1115,8 @@ impl<T: Ord> Set<T> for TreeSet<T> {
                 return false;
             }
 
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
+            let a1 = a.assert();
+            let b1 = b.assert();
 
             match b1.cmp(a1) {
                 Less => (),
@@ -1479,7 +1479,7 @@ impl<K: Ord, V> TreeNode<K, V> {
 // Remove left horizontal link by rotating right
 fn skew<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
     if node.left.as_ref().map_or(false, |x| x.level == node.level) {
-        let mut save = node.left.take_unwrap();
+        let mut save = node.left.take().assert();
         swap(&mut node.left, &mut save.right); // save.right now None
         swap(node, &mut save);
         node.right = Some(save);
@@ -1491,7 +1491,7 @@ fn skew<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
 fn split<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
     if node.right.as_ref().map_or(false,
       |x| x.right.as_ref().map_or(false, |y| y.level == node.level)) {
-        let mut save = node.right.take_unwrap();
+        let mut save = node.right.take().assert();
         swap(&mut node.right, &mut save.left); // save.left now None
         save.level += 1;
         swap(node, &mut save);
@@ -1595,7 +1595,7 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
           Equal => {
             if save.left.is_some() {
                 if save.right.is_some() {
-                    let mut left = save.left.take_unwrap();
+                    let mut left = save.left.take().assert();
                     if left.right.is_some() {
                         heir_swap(save, &mut left.right);
                     } else {
@@ -1605,13 +1605,13 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
                     save.left = Some(left);
                     (remove(&mut save.left, key), true)
                 } else {
-                    let new = save.left.take_unwrap();
+                    let new = save.left.take().assert();
                     let box TreeNode{value, ..} = replace(save, new);
-                    *save = save.left.take_unwrap();
+                    *save = save.left.take().assert();
                     (Some(value), true)
                 }
             } else if save.right.is_some() {
-                let new = save.right.take_unwrap();
+                let new = save.right.take().assert();
                 let box TreeNode{value, ..} = replace(save, new);
                 (Some(value), true)
             } else {
@@ -1783,7 +1783,7 @@ mod test_treemap {
         assert!(m.insert(5i, 2i));
         assert!(m.insert(2, 9));
         assert!(!m.insert(2, 11));
-        assert_eq!(m.find(&2).unwrap(), &11);
+        assert_eq!(m.find(&2).assert(), &11);
     }
 
     #[test]
@@ -1821,7 +1821,7 @@ mod test_treemap {
         assert_eq!(ctrl.is_empty(), map.is_empty());
         for x in ctrl.iter() {
             let &(ref k, ref v) = x;
-            assert!(map.find(k).unwrap() == v)
+            assert!(map.find(k).assert() == v)
         }
         for (map_k, map_v) in map.iter() {
             let mut found = false;
@@ -1901,7 +1901,7 @@ mod test_treemap {
 
             for _ in range(0u, 30) {
                 let r = rng.gen_range(0, ctrl.len());
-                let (key, _) = ctrl.remove(r).unwrap();
+                let (key, _) = ctrl.remove(r).assert();
                 assert!(map.remove(&key));
                 check_structure(&map);
                 check_equal(ctrl.as_slice(), &map);
@@ -1956,13 +1956,13 @@ mod test_treemap {
 
         for i in range(1i, 198i) {
             let mut lb_it = m.lower_bound(&i);
-            let (&k, &v) = lb_it.next().unwrap();
+            let (&k, &v) = lb_it.next().assert();
             let lb = i + i % 2;
             assert_eq!(lb, k);
             assert_eq!(lb * 2, v);
 
             let mut ub_it = m.upper_bound(&i);
-            let (&k, &v) = ub_it.next().unwrap();
+            let (&k, &v) = ub_it.next().assert();
             let ub = i + 2 - i % 2;
             assert_eq!(ub, k);
             assert_eq!(ub * 2, v);
@@ -2031,14 +2031,14 @@ mod test_treemap {
 
         for i in range(1i, 199) {
             let mut lb_it = m_lower.lower_bound_mut(&i);
-            let (&k, v) = lb_it.next().unwrap();
+            let (&k, v) = lb_it.next().assert();
             let lb = i + i % 2;
             assert_eq!(lb, k);
             *v -= k;
         }
         for i in range(0i, 198) {
             let mut ub_it = m_upper.upper_bound_mut(&i);
-            let (&k, v) = ub_it.next().unwrap();
+            let (&k, v) = ub_it.next().assert();
             let ub = i + 2 - i % 2;
             assert_eq!(ub, k);
             *v -= k;
@@ -2156,11 +2156,11 @@ mod test_treemap {
         let m = m;
         let mut a = m.iter();
 
-        assert_eq!(a.next().unwrap(), (&x1, &y1));
-        assert_eq!(a.next().unwrap(), (&x2, &y2));
-        assert_eq!(a.next().unwrap(), (&x3, &y3));
-        assert_eq!(a.next().unwrap(), (&x4, &y4));
-        assert_eq!(a.next().unwrap(), (&x5, &y5));
+        assert_eq!(a.next().assert(), (&x1, &y1));
+        assert_eq!(a.next().assert(), (&x2, &y2));
+        assert_eq!(a.next().assert(), (&x3, &y3));
+        assert_eq!(a.next().assert(), (&x4, &y4));
+        assert_eq!(a.next().assert(), (&x5, &y5));
 
         assert!(a.next().is_none());
 
@@ -2517,10 +2517,10 @@ mod test_set {
 
         // FIXME: #5801: this needs a type hint to compile...
         let result: Option<(&uint, & &'static str)> = z.next();
-        assert_eq!(result.unwrap(), (&5u, &("bar")));
+        assert_eq!(result.assert(), (&5u, &("bar")));
 
         let result: Option<(&uint, & &'static str)> = z.next();
-        assert_eq!(result.unwrap(), (&11u, &("foo")));
+        assert_eq!(result.assert(), (&11u, &("foo")));
 
         let result: Option<(&uint, & &'static str)> = z.next();
         assert!(result.is_none());

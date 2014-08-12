@@ -199,9 +199,9 @@ impl<'a> FromBase64 for &'a str {
      *     println!("base64 output: {}", hello_str);
      *     let res = hello_str.as_slice().from_base64();
      *     if res.is_ok() {
-     *       let opt_bytes = String::from_utf8(res.unwrap());
+     *       let opt_bytes = String::from_utf8(res.assert());
      *       if opt_bytes.is_ok() {
-     *         println!("decoded from base64: {}", opt_bytes.unwrap());
+     *         println!("decoded from base64: {}", opt_bytes.assert());
      *       }
      *     }
      * }
@@ -308,31 +308,31 @@ mod tests {
 
     #[test]
     fn test_from_base64_basic() {
-        assert_eq!("".from_base64().unwrap().as_slice(), "".as_bytes());
-        assert_eq!("Zg==".from_base64().unwrap().as_slice(), "f".as_bytes());
-        assert_eq!("Zm8=".from_base64().unwrap().as_slice(), "fo".as_bytes());
-        assert_eq!("Zm9v".from_base64().unwrap().as_slice(), "foo".as_bytes());
-        assert_eq!("Zm9vYg==".from_base64().unwrap().as_slice(), "foob".as_bytes());
-        assert_eq!("Zm9vYmE=".from_base64().unwrap().as_slice(), "fooba".as_bytes());
-        assert_eq!("Zm9vYmFy".from_base64().unwrap().as_slice(), "foobar".as_bytes());
+        assert_eq!("".from_base64().assert().as_slice(), "".as_bytes());
+        assert_eq!("Zg==".from_base64().assert().as_slice(), "f".as_bytes());
+        assert_eq!("Zm8=".from_base64().assert().as_slice(), "fo".as_bytes());
+        assert_eq!("Zm9v".from_base64().assert().as_slice(), "foo".as_bytes());
+        assert_eq!("Zm9vYg==".from_base64().assert().as_slice(), "foob".as_bytes());
+        assert_eq!("Zm9vYmE=".from_base64().assert().as_slice(), "fooba".as_bytes());
+        assert_eq!("Zm9vYmFy".from_base64().assert().as_slice(), "foobar".as_bytes());
     }
 
     #[test]
     fn test_from_base64_bytes() {
-        assert_eq!(b"Zm9vYmFy".from_base64().unwrap().as_slice(), "foobar".as_bytes());
+        assert_eq!(b"Zm9vYmFy".from_base64().assert().as_slice(), "foobar".as_bytes());
     }
 
     #[test]
     fn test_from_base64_newlines() {
-        assert_eq!("Zm9v\r\nYmFy".from_base64().unwrap().as_slice(),
+        assert_eq!("Zm9v\r\nYmFy".from_base64().assert().as_slice(),
                    "foobar".as_bytes());
-        assert_eq!("Zm9vYg==\r\n".from_base64().unwrap().as_slice(),
+        assert_eq!("Zm9vYg==\r\n".from_base64().assert().as_slice(),
                    "foob".as_bytes());
     }
 
     #[test]
     fn test_from_base64_urlsafe() {
-        assert_eq!("-_8".from_base64().unwrap(), "+/8=".from_base64().unwrap());
+        assert_eq!("-_8".from_base64().assert(), "+/8=".from_base64().assert());
     }
 
     #[test]
@@ -357,7 +357,7 @@ mod tests {
                         .to_base64(STANDARD)
                         .as_slice()
                         .from_base64()
-                        .unwrap()
+                        .assert()
                         .as_slice(),
                        v.as_slice());
         }
@@ -379,7 +379,7 @@ mod tests {
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_base64(STANDARD);
         b.iter(|| {
-            sb.as_slice().from_base64().unwrap();
+            sb.as_slice().from_base64().assert();
         });
         b.bytes = sb.len() as u64;
     }

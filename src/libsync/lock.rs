@@ -637,7 +637,7 @@ mod tests {
 
         // Wait for children to pass their asserts
         for r in children.iter_mut() {
-            assert!(r.get_ref().is_ok());
+            assert!(r.as_ref().assert().is_ok());
         }
 
         // Wait for writer to finish

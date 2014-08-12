@@ -630,7 +630,7 @@ mod tests {
         assert_eq!(expected, result_str.as_slice());
 
         let expected_vec: Vec<u8> = expected.from_hex()
-                                            .unwrap()
+                                            .assert()
                                             .iter_owned()
                                             .collect();
         assert_eq!(expected_vec, result_bytes);

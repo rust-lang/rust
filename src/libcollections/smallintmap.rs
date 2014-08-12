@@ -582,9 +582,9 @@ mod test_map {
         map.update_with_key(3, 2, add_more_to_count);
 
         // check the total counts
-        assert_eq!(map.find(&3).unwrap(), &10);
-        assert_eq!(map.find(&5).unwrap(), &3);
-        assert_eq!(map.find(&9).unwrap(), &1);
+        assert_eq!(map.find(&3).assert(), &10);
+        assert_eq!(map.find(&5).assert(), &3);
+        assert_eq!(map.find(&9).assert(), &1);
 
         // sadly, no sevens were counted
         assert!(map.find(&7).is_none());
@@ -644,15 +644,15 @@ mod test_map {
 
         let mut it = m.iter();
         assert_eq!(it.size_hint(), (0, Some(11)));
-        assert_eq!(it.next().unwrap(), (0, &1));
+        assert_eq!(it.next().assert(), (0, &1));
         assert_eq!(it.size_hint(), (0, Some(10)));
-        assert_eq!(it.next().unwrap(), (1, &2));
+        assert_eq!(it.next().assert(), (1, &2));
         assert_eq!(it.size_hint(), (0, Some(9)));
-        assert_eq!(it.next().unwrap(), (3, &5));
+        assert_eq!(it.next().assert(), (3, &5));
         assert_eq!(it.size_hint(), (0, Some(7)));
-        assert_eq!(it.next().unwrap(), (6, &10));
+        assert_eq!(it.next().assert(), (6, &10));
         assert_eq!(it.size_hint(), (0, Some(4)));
-        assert_eq!(it.next().unwrap(), (10, &11));
+        assert_eq!(it.next().assert(), (10, &11));
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert!(it.next().is_none());
     }
@@ -688,11 +688,11 @@ mod test_map {
         }
 
         let mut it = m.iter();
-        assert_eq!(it.next().unwrap(), (0, &1));
-        assert_eq!(it.next().unwrap(), (1, &3));
-        assert_eq!(it.next().unwrap(), (3, &8));
-        assert_eq!(it.next().unwrap(), (6, &16));
-        assert_eq!(it.next().unwrap(), (10, &21));
+        assert_eq!(it.next().assert(), (0, &1));
+        assert_eq!(it.next().assert(), (1, &3));
+        assert_eq!(it.next().assert(), (3, &8));
+        assert_eq!(it.next().assert(), (6, &16));
+        assert_eq!(it.next().assert(), (10, &21));
         assert!(it.next().is_none());
     }
 
@@ -707,11 +707,11 @@ mod test_map {
         assert!(m.insert(10, 11));
 
         let mut it = m.iter().rev();
-        assert_eq!(it.next().unwrap(), (10, &11));
-        assert_eq!(it.next().unwrap(), (6, &10));
-        assert_eq!(it.next().unwrap(), (3, &5));
-        assert_eq!(it.next().unwrap(), (1, &2));
-        assert_eq!(it.next().unwrap(), (0, &1));
+        assert_eq!(it.next().assert(), (10, &11));
+        assert_eq!(it.next().assert(), (6, &10));
+        assert_eq!(it.next().assert(), (3, &5));
+        assert_eq!(it.next().assert(), (1, &2));
+        assert_eq!(it.next().assert(), (0, &1));
         assert!(it.next().is_none());
     }
 
@@ -730,11 +730,11 @@ mod test_map {
         }
 
         let mut it = m.iter();
-        assert_eq!(it.next().unwrap(), (0, &1));
-        assert_eq!(it.next().unwrap(), (1, &3));
-        assert_eq!(it.next().unwrap(), (3, &8));
-        assert_eq!(it.next().unwrap(), (6, &16));
-        assert_eq!(it.next().unwrap(), (10, &21));
+        assert_eq!(it.next().assert(), (0, &1));
+        assert_eq!(it.next().assert(), (1, &3));
+        assert_eq!(it.next().assert(), (3, &8));
+        assert_eq!(it.next().assert(), (6, &16));
+        assert_eq!(it.next().assert(), (10, &21));
         assert!(it.next().is_none());
     }
 

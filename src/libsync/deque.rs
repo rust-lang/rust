@@ -161,7 +161,7 @@ impl<T: Send> BufferPool<T> {
         unsafe {
             let mut pool = self.pool.lock();
             match pool.iter().position(|x| x.size() >= (1 << bits)) {
-                Some(i) => pool.remove(i).unwrap(),
+                Some(i) => pool.remove(i).assert(),
                 None => box Buffer::new(bits)
             }
         }

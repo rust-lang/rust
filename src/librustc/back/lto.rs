@@ -56,7 +56,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         };
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
-        let file = path.filename_str().unwrap();
+        let file = path.filename_str().assert();
         let file = file.slice(3, file.len() - 5); // chop off lib/.rlib
         debug!("reading {}", file);
         let bc_encoded = time(sess.time_passes(),

@@ -245,7 +245,7 @@ impl<'a> Parser<'a> {
                     // alternate and make it a capture.
                     if cap.is_some() {
                         let ast = try!(self.pop_ast());
-                        self.push(Capture(cap.unwrap(), cap_name, box ast));
+                        self.push(Capture(cap.assert(), cap_name, box ast));
                     }
                 }
                 '|' => {
@@ -303,7 +303,7 @@ impl<'a> Parser<'a> {
     }
 
     fn pop_ast(&mut self) -> Result<Ast, Error> {
-        match self.stack.pop().unwrap().unwrap() {
+        match self.stack.pop().assert().unwrap() {
             Err(e) => Err(e),
             Ok(ast) => Ok(ast),
         }
@@ -422,7 +422,7 @@ impl<'a> Parser<'a> {
                         }
                         self.push(ast);
                     } else if alts.len() > 0 {
-                        let mut ast = alts.pop().unwrap();
+                        let mut ast = alts.pop().assert();
                         for alt in alts.iter_owned() {
                             ast = Alt(box alt, box ast)
                         }
@@ -540,7 +540,7 @@ impl<'a> Parser<'a> {
                 min, MAX_REPEAT).as_slice());
         }
         if max.is_some() {
-            let m = max.unwrap();
+            let m = max.assert();
             if m > MAX_REPEAT {
                 return self.err(format!(
                     "{} exceeds maximum allowed repetitions ({})",
@@ -569,7 +569,7 @@ impl<'a> Parser<'a> {
                 self.push(ast.clone())
             }
             if max.is_some() {
-                for _ in iter::range(min, max.unwrap()) {
+                for _ in iter::range(min, max.assert()) {
                     self.push(Rep(box ast.clone(), ZeroOne, greed))
                 }
             }
@@ -886,7 +886,7 @@ impl<'a> Parser<'a> {
         let mut i = self.stack.len();
         while i > from {
             i = i - 1;
-            match self.stack.pop().unwrap() {
+            match self.stack.pop().assert() {
                 Ast(x) => combined = mk(x, combined),
                 _ => {},
             }

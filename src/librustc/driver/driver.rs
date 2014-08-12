@@ -129,7 +129,7 @@ pub fn anon_src() -> String {
 pub fn source_name(input: &Input) -> String {
     match *input {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        FileInput(ref ifile) => ifile.as_str().unwrap().to_string(),
+        FileInput(ref ifile) => ifile.as_str().assert().to_string(),
         StrInput(_) => anon_src()
     }
 }
@@ -144,7 +144,7 @@ pub enum Input {
 impl Input {
     fn filestem(&self) -> String {
         match *self {
-            FileInput(ref ifile) => ifile.filestem_str().unwrap().to_string(),
+            FileInput(ref ifile) => ifile.filestem_str().assert().to_string(),
             StrInput(_) => "rust_out".to_string(),
         }
     }
@@ -171,7 +171,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
         let mut stdout = io::BufferedWriter::new(io::stdout());
         let mut json = json::PrettyEncoder::new(&mut stdout);
         // unwrapping so IoError isn't ignored
-        krate.encode(&mut json).unwrap();
+        krate.encode(&mut json).assert();
     }
 
     if sess.show_span() {
@@ -223,7 +223,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let mut addl_plugins = Some(addl_plugins);
     let Plugins { macros, registrars }
         = time(time_passes, "plugin loading", (), |_|
-               plugin::load::load_plugins(sess, &krate, addl_plugins.take_unwrap()));
+               plugin::load::load_plugins(sess, &krate, addl_plugins.take().assert()));
 
     let mut registry = Registry::new(&krate);
 
@@ -302,7 +302,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         let mut stdout = io::BufferedWriter::new(io::stdout());
         let mut json = json::PrettyEncoder::new(&mut stdout);
         // unwrapping so IoError isn't ignored
-        krate.encode(&mut json).unwrap();
+        krate.encode(&mut json).assert();
     }
 
     time(time_passes, "checking that all macro invocations are gone", &krate, |krate|
@@ -486,7 +486,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 
         // Remove assembly source, unless --save-temps was specified
         if !sess.opts.cg.save_temps {
-            fs::unlink(&outputs.temp_path(link::OutputTypeAssembly)).unwrap();
+            fs::unlink(&outputs.temp_path(link::OutputTypeAssembly)).assert();
         }
     } else {
         time(sess.time_passes(), "LLVM passes", (), |_|
@@ -1039,7 +1039,7 @@ pub fn pretty_print_input(sess: Session,
                 }
             }
         }
-    }.unwrap()
+    }.assert()
 }
 
 fn print_flowgraph<W:io::Writer>(variants: Vec<borrowck_dot::Variant>,
@@ -1271,7 +1271,7 @@ pub fn build_output_filenames(input: &Input,
             }
             OutputFilenames {
                 out_directory: out_file.dir_path(),
-                out_filestem: out_file.filestem_str().unwrap().to_string(),
+                out_filestem: out_file.filestem_str().assert().to_string(),
                 single_output_file: ofile,
                 extra: sess.opts.cg.extra_filename.clone(),
             }

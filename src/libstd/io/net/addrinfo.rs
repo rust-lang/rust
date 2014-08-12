@@ -126,7 +126,7 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
 #[cfg(test, not(target_os = "android"))]
 mod test {
     iotest!(fn dns_smoke_test() {
-        let ipaddrs = get_host_addresses("localhost").unwrap();
+        let ipaddrs = get_host_addresses("localhost").assert();
         let mut found_local = false;
         let local_addr = &Ipv4Addr(127, 0, 0, 1);
         for addr in ipaddrs.iter() {
@@ -138,6 +138,6 @@ mod test {
     iotest!(fn issue_10663() {
         // Something should happen here, but this certainly shouldn't cause
         // everything to die. The actual outcome we don't care too much about.
-        get_host_addresses("example.com").unwrap();
+        get_host_addresses("example.com").assert();
     } #[ignore])
 }

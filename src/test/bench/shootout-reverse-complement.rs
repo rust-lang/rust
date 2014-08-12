@@ -42,7 +42,7 @@ fn main() {
     } else {
         stdin().read_to_end()
     };
-    let mut data = data.unwrap();
+    let mut data = data.assert();
 
     for seq in data.as_mut_slice().split_mut(|c| *c == '>' as u8) {
         // skip header and last \n
@@ -80,5 +80,5 @@ fn main() {
         }
     }
 
-    stdout().write(data.as_slice()).unwrap();
+    stdout().write(data.as_slice()).assert();
 }

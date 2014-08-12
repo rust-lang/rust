@@ -54,7 +54,7 @@ impl<'doc> Doc<'doc> {
     }
 
     pub fn as_str_slice<'a>(&'a self) -> &'a str {
-        str::from_utf8(self.data.slice(self.start, self.end)).unwrap()
+        str::from_utf8(self.data.slice(self.start, self.end)).assert()
     }
 
     pub fn as_str(&self) -> String {
@@ -453,7 +453,7 @@ pub mod reader {
             Ok(unsafe { transmute(bits) })
         }
         fn read_char(&mut self) -> DecodeResult<char> {
-            Ok(char::from_u32(doc_as_u32(try!(self.next_doc(EsChar)))).unwrap())
+            Ok(char::from_u32(doc_as_u32(try!(self.next_doc(EsChar)))).assert())
         }
         fn read_str(&mut self) -> DecodeResult<String> {
             Ok(try!(self.next_doc(EsStr)).as_str())
@@ -725,7 +725,7 @@ pub mod writer {
         }
 
         pub fn end_tag(&mut self) -> EncodeResult {
-            let last_size_pos = self.size_positions.pop().unwrap();
+            let last_size_pos = self.size_positions.pop().assert();
             let cur_pos = try!(self.writer.tell());
             try!(self.writer.seek(last_size_pos as i64, io::SeekSet));
             let size = cur_pos as uint - last_size_pos - 4;
@@ -1068,34 +1068,34 @@ mod tests {
         let mut res: reader::Res;
 
         // Class A
-        res = reader::vuint_at(data, 0).unwrap();
+        res = reader::vuint_at(data, 0).assert();
         assert_eq!(res.val, 0);
         assert_eq!(res.next, 1);
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(data, res.next).assert();
         assert_eq!(res.val, (1 << 7) - 1);
         assert_eq!(res.next, 2);
 
         // Class B
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(data, res.next).assert();
         assert_eq!(res.val, 0);
         assert_eq!(res.next, 4);
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(data, res.next).assert();
         assert_eq!(res.val, (1 << 14) - 1);
         assert_eq!(res.next, 6);
 
         // Class C
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(data, res.next).assert();
         assert_eq!(res.val, 0);
         assert_eq!(res.next, 9);
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(data, res.next).assert();
         assert_eq!(res.val, (1 << 21) - 1);
         assert_eq!(res.next, 12);
 
         // Class D
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(data, res.next).assert();
         assert_eq!(res.val, 0);
         assert_eq!(res.next, 16);
-        res = reader::vuint_at(data, res.next).unwrap();
+        res = reader::vuint_at(data, res.next).assert();
         assert_eq!(res.val, (1 << 28) - 1);
         assert_eq!(res.next, 20);
     }
@@ -1109,9 +1109,9 @@ mod tests {
                 let mut rbml_w = writer::Encoder::new(&mut wr);
                 let _ = v.encode(&mut rbml_w);
             }
-            let rbml_doc = Doc::new(wr.get_ref());
+            let rbml_doc = Doc::new(wr.as_ref().assert());
             let mut deser = reader::Decoder::new(rbml_doc);
-            let v1 = Decodable::decode(&mut deser).unwrap();
+            let v1 = Decodable::decode(&mut deser).assert();
             debug!("v1 == {}", v1);
             assert_eq!(v, v1);
         }
@@ -1140,7 +1140,7 @@ mod bench {
         b.iter(|| {
             let mut i = 0;
             while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
+                sum += reader::vuint_at(data.as_slice(), i).assert().val;
                 i += 4;
             }
         });
@@ -1158,7 +1158,7 @@ mod bench {
         b.iter(|| {
             let mut i = 1;
             while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
+                sum += reader::vuint_at(data.as_slice(), i).assert().val;
                 i += 4;
             }
         });
@@ -1177,7 +1177,7 @@ mod bench {
         b.iter(|| {
             let mut i = 0;
             while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
+                sum += reader::vuint_at(data.as_slice(), i).assert().val;
                 i += 4;
             }
         });
@@ -1196,7 +1196,7 @@ mod bench {
         b.iter(|| {
             let mut i = 1;
             while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
+                sum += reader::vuint_at(data.as_slice(), i).assert().val;
                 i += 4;
             }
         });

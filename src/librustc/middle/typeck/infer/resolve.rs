@@ -235,7 +235,7 @@ impl<'a> ResolveState<'a> {
                 ty::mk_var(tcx, vid)
               }
             };
-            self.v_seen.pop().unwrap();
+            self.v_seen.pop().assert();
             return t1;
         }
     }

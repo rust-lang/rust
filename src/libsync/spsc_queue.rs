@@ -321,7 +321,7 @@ mod test {
         let q = unsafe { Queue::new(0) };
         q.push(vec![1i]);
         q.push(vec![2]);
-        let peeked = q.peek().unwrap();
+        let peeked = q.peek().assert();
 
         assert_eq!(*peeked, vec![1]);
         assert_eq!(q.pop(), Some(vec![1]));

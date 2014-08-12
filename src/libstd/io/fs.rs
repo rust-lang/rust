@@ -44,7 +44,7 @@ file.write(b"foobar");
 let mut file = File::open(&path);
 file.read_to_end();
 
-println!("{}", path.stat().unwrap().size);
+println!("{}", path.stat().assert().size);
 # drop(file);
 fs::unlink(&path);
 ```
@@ -750,7 +750,7 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
     }
 
     while !rm_stack.is_empty() {
-        let children = try!(readdir(rm_stack.last().unwrap())
+        let children = try!(readdir(rm_stack.last().assert())
             .update_detail(|e| rmdir_failed(e, path)));
 
         let mut has_child_dir = false;
@@ -780,7 +780,7 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
 
         // if no subdir was found, let's pop and delete
         if !has_child_dir {
-            let result = update_err(rmdir(&rm_stack.pop().unwrap()), path);
+            let result = update_err(rmdir(&rm_stack.pop().assert()), path);
             match result {
                 Ok(()) => (),
                 Err(ref e) if e.kind == io::FileNotFound => (),
@@ -999,7 +999,7 @@ mod test {
             let mut read_buf = [0, .. 1028];
             let read_str = match check!(read_stream.read(read_buf)) {
                 -1|0 => fail!("shouldn't happen"),
-                n => str::from_utf8(read_buf.slice_to(n)).unwrap().to_string()
+                n => str::from_utf8(read_buf.slice_to(n)).assert().to_string()
             };
             assert_eq!(read_str.as_slice(), message);
         }
@@ -1052,7 +1052,7 @@ mod test {
             }
         }
         check!(unlink(filename));
-        let read_str = str::from_utf8(read_mem).unwrap();
+        let read_str = str::from_utf8(read_mem).assert();
         assert_eq!(read_str, message);
     })
 
@@ -1076,7 +1076,7 @@ mod test {
             tell_pos_post_read = check!(read_stream.tell());
         }
         check!(unlink(filename));
-        let read_str = str::from_utf8(read_mem).unwrap();
+        let read_str = str::from_utf8(read_mem).assert();
         assert_eq!(read_str, message.slice(4, 8));
         assert_eq!(tell_pos_pre_read, set_cursor);
         assert_eq!(tell_pos_post_read, message.len() as u64);
@@ -1101,7 +1101,7 @@ mod test {
             check!(read_stream.read(read_mem));
         }
         check!(unlink(filename));
-        let read_str = str::from_utf8(read_mem).unwrap();
+        let read_str = str::from_utf8(read_mem).assert();
         assert!(read_str.as_slice() == final_msg.as_slice());
     })
 
@@ -1123,15 +1123,15 @@ mod test {
 
             check!(read_stream.seek(-4, SeekEnd));
             check!(read_stream.read(read_mem));
-            assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_three);
+            assert_eq!(str::from_utf8(read_mem).assert(), chunk_three);
 
             check!(read_stream.seek(-9, SeekCur));
             check!(read_stream.read(read_mem));
-            assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_two);
+            assert_eq!(str::from_utf8(read_mem).assert(), chunk_two);
 
             check!(read_stream.seek(0, SeekSet));
             check!(read_stream.read(read_mem));
-            assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_one);
+            assert_eq!(str::from_utf8(read_mem).assert(), chunk_one);
         }
         check!(unlink(filename));
     })
@@ -1142,7 +1142,7 @@ mod test {
         {
             let mut fs = check!(File::open_mode(filename, Open, ReadWrite));
             let msg = "hw";
-            fs.write(msg.as_bytes()).unwrap();
+            fs.write(msg.as_bytes()).assert();
 
             let fstat_res = check!(fs.stat());
             assert_eq!(fstat_res.kind, io::TypeFile);
@@ -1212,7 +1212,7 @@ mod test {
             {
                 let n = f.filestem_str();
                 check!(File::open(f).read(mem));
-                let read_str = str::from_utf8(mem).unwrap();
+                let read_str = str::from_utf8(mem).assert();
                 let expected = match n {
                     None|Some("") => fail!("really shouldn't happen.."),
                     Some(n) => format!("{}{}", prefix, n),
@@ -1240,7 +1240,7 @@ mod test {
         let mut files = check!(walk_dir(dir));
         let mut cur = [0u8, .. 2];
         for f in files {
-            let stem = f.filestem_str().unwrap();
+            let stem = f.filestem_str().assert();
             let root = stem.as_bytes()[0] - b'0';
             let name = stem.as_bytes()[1] - b'0';
             assert!(cur[root as uint] < name);
@@ -1612,7 +1612,7 @@ mod test {
         use rand::{StdRng, Rng};
 
         let mut bytes = [0, ..1024];
-        StdRng::new().ok().unwrap().fill_bytes(bytes);
+        StdRng::new().ok().assert().fill_bytes(bytes);
 
         let tmpdir = tmpdir();
 

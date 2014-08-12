@@ -734,8 +734,8 @@ mod tests {
     fn test_ldexp() {
         // We have to use from_str until base-2 exponents
         // are supported in floating-point literals
-        let f1: f32 = from_str_hex("1p-123").unwrap();
-        let f2: f32 = from_str_hex("1p-111").unwrap();
+        let f1: f32 = from_str_hex("1p-123").assert();
+        let f2: f32 = from_str_hex("1p-111").assert();
         assert_eq!(FloatMath::ldexp(1f32, -123), f1);
         assert_eq!(FloatMath::ldexp(1f32, -111), f2);
 
@@ -754,8 +754,8 @@ mod tests {
     fn test_frexp() {
         // We have to use from_str until base-2 exponents
         // are supported in floating-point literals
-        let f1: f32 = from_str_hex("1p-123").unwrap();
-        let f2: f32 = from_str_hex("1p-111").unwrap();
+        let f1: f32 = from_str_hex("1p-123").assert();
+        let f2: f32 = from_str_hex("1p-111").assert();
         let (x1, exp1) = f1.frexp();
         let (x2, exp2) = f2.frexp();
         assert_eq!((x1, exp1), (0.5f32, -122));

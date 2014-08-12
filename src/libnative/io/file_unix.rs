@@ -525,11 +525,11 @@ mod tests {
     fn test_file_desc() {
         // Run this test with some pipes so we don't have to mess around with
         // opening or closing files.
-        let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
+        let os::Pipe { reader, writer } = unsafe { os::pipe().assert() };
         let mut reader = FileDesc::new(reader, true);
         let mut writer = FileDesc::new(writer, true);
 
-        writer.inner_write(b"test").ok().unwrap();
+        writer.inner_write(b"test").ok().assert();
         let mut buf = [0u8, ..4];
         match reader.inner_read(buf) {
             Ok(4) => {
@@ -552,9 +552,9 @@ mod tests {
             assert!(!f.is_null());
             let mut file = CFile::new(f);
 
-            file.write(b"test").ok().unwrap();
+            file.write(b"test").ok().assert();
             let mut buf = [0u8, ..4];
-            let _ = file.seek(0, SeekSet).ok().unwrap();
+            let _ = file.seek(0, SeekSet).ok().assert();
             match file.read(buf) {
                 Ok(4) => {
                     assert_eq!(buf[0], 't' as u8);

@@ -441,7 +441,7 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<Vec<&'a [u8]>> {
         else if comp == b".." {
             if is_abs && comps.is_empty() { changed = true }
             else if comps.len() == n_up { comps.push(dot_dot_static); n_up += 1 }
-            else { comps.pop().unwrap(); changed = true }
+            else { comps.pop().assert(); changed = true }
         } else { comps.push(comp) }
     }
     if changed {
@@ -527,9 +527,9 @@ mod tests {
     #[test]
     fn test_opt_paths() {
         assert!(Path::new_opt(b"foo/bar\0") == None);
-        t!(v: Path::new_opt(b"foo/bar").unwrap(), b"foo/bar");
+        t!(v: Path::new_opt(b"foo/bar").assert(), b"foo/bar");
         assert!(Path::new_opt("foo/bar\0") == None);
-        t!(s: Path::new_opt("foo/bar").unwrap(), "foo/bar");
+        t!(s: Path::new_opt("foo/bar").assert(), "foo/bar");
     }
 
     #[test]
@@ -628,7 +628,7 @@ mod tests {
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
                     let path = Path::new($path);
-                    let left = path.$op().map(|x| str::from_utf8(x).unwrap());
+                    let left = path.$op().map(|x| str::from_utf8(x).assert());
                     assert!(left == $exp);
                 }
             );
@@ -978,19 +978,19 @@ mod tests {
                     let filename = $filename;
                     assert!(path.filename_str() == filename,
                             "{}.filename_str(): Expected `{:?}`, found {:?}",
-                            path.as_str().unwrap(), filename, path.filename_str());
+                            path.as_str().assert(), filename, path.filename_str());
                     let dirname = $dirname;
                     assert!(path.dirname_str() == dirname,
                             "`{}`.dirname_str(): Expected `{:?}`, found `{:?}`",
-                            path.as_str().unwrap(), dirname, path.dirname_str());
+                            path.as_str().assert(), dirname, path.dirname_str());
                     let filestem = $filestem;
                     assert!(path.filestem_str() == filestem,
                             "`{}`.filestem_str(): Expected `{:?}`, found `{:?}`",
-                            path.as_str().unwrap(), filestem, path.filestem_str());
+                            path.as_str().assert(), filestem, path.filestem_str());
                     let ext = $ext;
                     assert!(path.extension_str() == ext,
                             "`{}`.extension_str(): Expected `{:?}`, found `{:?}`",
-                            path.as_str().unwrap(), ext, path.extension_str());
+                            path.as_str().assert(), ext, path.extension_str());
                 }
             );
             (v: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (

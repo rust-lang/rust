@@ -366,7 +366,7 @@ pub trait MutableSeq<T>: Mutable {
 ///
 /// // Will print 1, 2, 3
 /// while !queue.is_empty() {
-///     let x = queue.pop_front().unwrap();
+///     let x = queue.pop_front().assert();
 ///     println!("{}", x);
 /// }
 /// ```
@@ -383,7 +383,7 @@ pub trait MutableSeq<T>: Mutable {
 ///
 /// // Will print 3, 2, 1
 /// while !stack.is_empty() {
-///     let x = stack.pop_front().unwrap();
+///     let x = stack.pop_front().assert();
 ///     println!("{}", x);
 /// }
 /// ```
@@ -403,8 +403,8 @@ pub trait MutableSeq<T>: Mutable {
 ///
 /// // Will print (1, 4) and (2, 3)
 /// while !deque.is_empty() {
-///     let f = deque.pop_front().unwrap();
-///     let b = deque.pop().unwrap();
+///     let f = deque.pop_front().assert();
+///     let b = deque.pop().assert();
 ///     println!("{}", (f, b));
 /// }
 /// ```

@@ -594,7 +594,7 @@ impl<'a> CFGBuilder<'a> {
                   label: Option<ast::Ident>) -> LoopScope {
         match label {
             None => {
-                return *self.loop_scopes.last().unwrap();
+                return *self.loop_scopes.last().assert();
             }
 
             Some(_) => {

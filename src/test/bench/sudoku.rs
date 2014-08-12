@@ -66,21 +66,21 @@ impl Sudoku {
 
     pub fn read(mut reader: BufferedReader<StdReader>) -> Sudoku {
         /* assert first line is exactly "9,9" */
-        assert!(reader.read_line().unwrap() == "9,9".to_string());
+        assert!(reader.read_line().assert() == "9,9".to_string());
 
         let mut g = Vec::from_fn(10u, { |_i| vec!(0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8) });
         for line in reader.lines() {
-            let line = line.unwrap();
+            let line = line.assert();
             let comps: Vec<&str> = line.as_slice()
                                        .trim()
                                        .split(',')
                                        .collect();
 
             if comps.len() == 3u {
-                let row     = from_str::<uint>(*comps.get(0)).unwrap() as u8;
-                let col     = from_str::<uint>(*comps.get(1)).unwrap() as u8;
+                let row     = from_str::<uint>(*comps.get(0)).assert() as u8;
+                let col     = from_str::<uint>(*comps.get(1)).assert() as u8;
                 *g.get_mut(row as uint).get_mut(col as uint) =
-                    from_str::<uint>(*comps.get(2)).unwrap() as u8;
+                    from_str::<uint>(*comps.get(2)).assert() as u8;
             }
             else {
                 fail!("Invalid sudoku file");

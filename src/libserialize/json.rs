@@ -100,7 +100,7 @@ fn main() {
     let encoded = json::encode(&object);
 
     // Deserialize using `json::decode`
-    let decoded: TestStruct = json::decode(encoded.as_slice()).unwrap();
+    let decoded: TestStruct = json::decode(encoded.as_slice()).assert();
 }
 ```
 
@@ -188,7 +188,7 @@ fn main() {
     let json_str: String = json_obj.to_string();
 
     // Deserialize like before
-    let decoded: TestStruct = json::decode(json_str.as_slice()).unwrap();
+    let decoded: TestStruct = json::decode(json_str.as_slice()).assert();
 }
 ```
 
@@ -296,7 +296,7 @@ pub fn decode<T: ::Decodable<Decoder, DecoderError>>(s: &str) -> DecodeResult<T>
 /// Shortcut function to encode a `T` into a JSON `String`
 pub fn encode<'a, T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> String {
     let buff = Encoder::buffer_encode(object);
-    String::from_utf8(buff).unwrap()
+    String::from_utf8(buff).assert()
 }
 
 impl fmt::Show for ErrorCode {
@@ -573,7 +573,7 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
             let mut check_encoder = Encoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(buf.get_ref()).unwrap();
+        let out = str::from_utf8(buf.get_ref()).assert();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -817,7 +817,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             let mut check_encoder = PrettyEncoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(buf.get_ref()).unwrap();
+        let out = str::from_utf8(buf.get_ref()).assert();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -863,8 +863,8 @@ impl Json {
     /// Encodes a json value into a string
     pub fn to_pretty_str(&self) -> String {
         let mut s = MemWriter::new();
-        self.to_pretty_writer(&mut s as &mut io::Writer).unwrap();
-        String::from_utf8(s.unwrap()).unwrap()
+        self.to_pretty_writer(&mut s as &mut io::Writer).assert();
+        String::from_utf8(s.unwrap()).assert()
     }
 
      /// If the Json value is an Object, returns the value associated with the provided key.
@@ -1075,7 +1075,7 @@ impl Stack {
             InternalIndex(i) => { Index(i) }
             InternalKey(start, size) => {
                 Key(str::from_utf8(
-                    self.str_buffer.slice(start as uint, start as uint + size as uint)).unwrap())
+                    self.str_buffer.slice(start as uint, start as uint + size as uint)).assert())
             }
         }
     }
@@ -1118,7 +1118,7 @@ impl Stack {
             Some(&InternalKey(start, size)) => {
                 Some(Key(str::from_utf8(
                     self.str_buffer.slice(start as uint, (start+size) as uint)
-                ).unwrap()))
+                ).assert()))
             }
         }
     }
@@ -1139,7 +1139,7 @@ impl Stack {
     // Used by Parser to remove the top-most element of the stack.
     fn pop(&mut self) {
         assert!(!self.is_empty());
-        match *self.stack.last().unwrap() {
+        match *self.stack.last().assert() {
             InternalKey(_, sz) => {
                 let new_size = self.str_buffer.len() - sz as uint;
                 self.str_buffer.truncate(new_size);
@@ -1152,7 +1152,7 @@ impl Stack {
     // Used by Parser to test whether the top-most element is an index.
     fn last_is_index(&self) -> bool {
         if self.is_empty() { return false; }
-        return match *self.stack.last().unwrap() {
+        return match *self.stack.last().assert() {
             InternalIndex(_) => true,
             _ => false,
         }
@@ -1161,7 +1161,7 @@ impl Stack {
     // Used by Parser to increment the index of the top-most element.
     fn bump_index(&mut self) {
         let len = self.stack.len();
-        let idx = match *self.stack.last().unwrap() {
+        let idx = match *self.stack.last().assert() {
             InternalIndex(i) => { i + 1 }
             _ => { fail!(); }
         };
@@ -1813,7 +1813,7 @@ impl Decoder {
 
 impl Decoder {
     fn pop(&mut self) -> Json {
-        self.stack.pop().unwrap()
+        self.stack.pop().assert()
     }
 }
 
@@ -1866,7 +1866,7 @@ impl ::Decoder<DecoderError> for Decoder {
             String(s) => {
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
-                Ok(std::from_str::from_str(s.as_slice()).unwrap())
+                Ok(std::from_str::from_str(s.as_slice()).assert())
             },
             Null => Ok(f64::NAN),
             value => Err(ExpectedError("Number".to_string(), format!("{}", value)))
@@ -2255,7 +2255,7 @@ mod tests {
     #[test]
     fn test_from_str_trait() {
         let s = "null";
-        assert!(::std::from_str::from_str::<Json>(s).unwrap() == from_str(s).unwrap());
+        assert!(::std::from_str::from_str::<Json>(s).assert() == from_str(s).assert());
     }
 
     #[test]
@@ -2402,9 +2402,9 @@ mod tests {
 
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
-        assert_eq!(a.clone(), from_str(a.to_string().as_slice()).unwrap());
+        assert_eq!(a.clone(), from_str(a.to_string().as_slice()).assert());
         assert_eq!(a.clone(),
-                   from_str(a.to_pretty_str().as_slice()).unwrap());
+                   from_str(a.to_pretty_str().as_slice()).assert());
     }
 
     fn with_str_writer(f: |&mut io::Writer|) -> String {
@@ -2413,7 +2413,7 @@ mod tests {
 
         let mut m = MemWriter::new();
         f(&mut m as &mut io::Writer);
-        str::from_utf8(m.unwrap().as_slice()).unwrap().to_string()
+        str::from_utf8(m.assert().as_slice()).assert().to_string()
     }
 
     #[test]
@@ -2422,14 +2422,14 @@ mod tests {
         assert_eq!(
             with_str_writer(|writer| {
                 let mut encoder = Encoder::new(writer);
-                animal.encode(&mut encoder).unwrap();
+                animal.encode(&mut encoder).assert();
             }),
             "\"Dog\"".to_string()
         );
         assert_eq!(
             with_str_writer(|writer| {
                 let mut encoder = PrettyEncoder::new(writer);
-                animal.encode(&mut encoder).unwrap();
+                animal.encode(&mut encoder).assert();
             }),
             "\"Dog\"".to_string()
         );
@@ -2438,14 +2438,14 @@ mod tests {
         assert_eq!(
             with_str_writer(|writer| {
                 let mut encoder = Encoder::new(writer);
-                animal.encode(&mut encoder).unwrap();
+                animal.encode(&mut encoder).assert();
             }),
             "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}".to_string()
         );
         assert_eq!(
             with_str_writer(|writer| {
                 let mut encoder = PrettyEncoder::new(writer);
-                animal.encode(&mut encoder).unwrap();
+                animal.encode(&mut encoder).assert();
             }),
             "\
             [\n  \
@@ -2461,14 +2461,14 @@ mod tests {
         let value = Some("jodhpurs".to_string());
         let s = with_str_writer(|writer| {
             let mut encoder = Encoder::new(writer);
-            value.encode(&mut encoder).unwrap();
+            value.encode(&mut encoder).assert();
         });
         assert_eq!(s, "\"jodhpurs\"".to_string());
 
         let value = Some("jodhpurs".to_string());
         let s = with_str_writer(|writer| {
             let mut encoder = PrettyEncoder::new(writer);
-            value.encode(&mut encoder).unwrap();
+            value.encode(&mut encoder).assert();
         });
         assert_eq!(s, "\"jodhpurs\"".to_string());
     }
@@ -2478,13 +2478,13 @@ mod tests {
         let value: Option<String> = None;
         let s = with_str_writer(|writer| {
             let mut encoder = Encoder::new(writer);
-            value.encode(&mut encoder).unwrap();
+            value.encode(&mut encoder).assert();
         });
         assert_eq!(s, "null".to_string());
 
         let s = with_str_writer(|writer| {
             let mut encoder = Encoder::new(writer);
-            value.encode(&mut encoder).unwrap();
+            value.encode(&mut encoder).assert();
         });
         assert_eq!(s, "null".to_string());
     }
@@ -2518,13 +2518,13 @@ mod tests {
 
     #[test]
     fn test_decode_identifiers() {
-        let v: () = super::decode("null").unwrap();
+        let v: () = super::decode("null").assert();
         assert_eq!(v, ());
 
-        let v: bool = super::decode("true").unwrap();
+        let v: bool = super::decode("true").assert();
         assert_eq!(v, true);
 
-        let v: bool = super::decode("false").unwrap();
+        let v: bool = super::decode("false").assert();
         assert_eq!(v, false);
     }
 
@@ -2551,25 +2551,25 @@ mod tests {
 
     #[test]
     fn test_decode_numbers() {
-        let v: f64 = super::decode("3").unwrap();
+        let v: f64 = super::decode("3").assert();
         assert_eq!(v, 3.0);
 
-        let v: f64 = super::decode("3.1").unwrap();
+        let v: f64 = super::decode("3.1").assert();
         assert_eq!(v, 3.1);
 
-        let v: f64 = super::decode("-1.2").unwrap();
+        let v: f64 = super::decode("-1.2").assert();
         assert_eq!(v, -1.2);
 
-        let v: f64 = super::decode("0.4").unwrap();
+        let v: f64 = super::decode("0.4").assert();
         assert_eq!(v, 0.4);
 
-        let v: f64 = super::decode("0.4e5").unwrap();
+        let v: f64 = super::decode("0.4e5").assert();
         assert_eq!(v, 0.4e5);
 
-        let v: f64 = super::decode("0.4e15").unwrap();
+        let v: f64 = super::decode("0.4e15").assert();
         assert_eq!(v, 0.4e15);
 
-        let v: f64 = super::decode("0.4e-01").unwrap();
+        let v: f64 = super::decode("0.4e-01").assert();
         assert_eq!(v, 0.4e-01);
     }
 
@@ -2603,7 +2603,7 @@ mod tests {
                  ("\"\\uAB12\"", "\uAB12")];
 
         for &(i, o) in s.iter() {
-            let v: String = super::decode(i).unwrap();
+            let v: String = super::decode(i).assert();
             assert_eq!(v.as_slice(), o);
         }
     }
@@ -2631,19 +2631,19 @@ mod tests {
 
     #[test]
     fn test_decode_list() {
-        let v: Vec<()> = super::decode("[]").unwrap();
+        let v: Vec<()> = super::decode("[]").assert();
         assert_eq!(v, vec![]);
 
-        let v: Vec<()> = super::decode("[null]").unwrap();
+        let v: Vec<()> = super::decode("[null]").assert();
         assert_eq!(v, vec![()]);
 
-        let v: Vec<bool> = super::decode("[true]").unwrap();
+        let v: Vec<bool> = super::decode("[true]").assert();
         assert_eq!(v, vec![true]);
 
-        let v: Vec<int> = super::decode("[3, 1]").unwrap();
+        let v: Vec<int> = super::decode("[3, 1]").assert();
         assert_eq!(v, vec![3, 1]);
 
-        let v: Vec<Vec<uint>> = super::decode("[[3], [1, 2]]").unwrap();
+        let v: Vec<Vec<uint>> = super::decode("[[3], [1, 2]]").assert();
         assert_eq!(v, vec![vec![3], vec![1, 2]]);
     }
 
@@ -2662,21 +2662,21 @@ mod tests {
         assert_eq!(from_str("{\"a\":1 1"), Err(SyntaxError(InvalidSyntax,         1, 8)));
         assert_eq!(from_str("{\"a\":1,"),  Err(SyntaxError(EOFWhileParsingObject, 1, 8)));
 
-        assert_eq!(from_str("{}").unwrap(), mk_object([]));
-        assert_eq!(from_str("{\"a\": 3}").unwrap(),
+        assert_eq!(from_str("{}").assert(), mk_object([]));
+        assert_eq!(from_str("{\"a\": 3}").assert(),
                   mk_object([("a".to_string(), Number(3.0))]));
 
         assert_eq!(from_str(
-                      "{ \"a\": null, \"b\" : true }").unwrap(),
+                      "{ \"a\": null, \"b\" : true }").assert(),
                   mk_object([
                       ("a".to_string(), Null),
                       ("b".to_string(), Boolean(true))]));
-        assert_eq!(from_str("\n{ \"a\": null, \"b\" : true }\n").unwrap(),
+        assert_eq!(from_str("\n{ \"a\": null, \"b\" : true }\n").assert(),
                   mk_object([
                       ("a".to_string(), Null),
                       ("b".to_string(), Boolean(true))]));
         assert_eq!(from_str(
-                      "{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
+                      "{\"a\" : 1.0 ,\"b\": [ true ]}").assert(),
                   mk_object([
                       ("a".to_string(), Number(1.0)),
                       ("b".to_string(), List(vec![Boolean(true)]))
@@ -2689,7 +2689,7 @@ mod tests {
                               \"foo\\nbar\", \
                               { \"c\": {\"d\": null} } \
                           ]\
-                      }").unwrap(),
+                      }").assert(),
                   mk_object([
                       ("a".to_string(), Number(1.0)),
                       ("b".to_string(), List(vec![
@@ -2710,7 +2710,7 @@ mod tests {
             ]
         }";
 
-        let v: Outer = super::decode(s).unwrap();
+        let v: Outer = super::decode(s).assert();
         assert_eq!(
             v,
             Outer {
@@ -2729,7 +2729,7 @@ mod tests {
     #[test]
     fn test_decode_struct_with_nan() {
         let s = "{\"f\":null,\"a\":[null,123]}";
-        let obj: FloatStruct = super::decode(s).unwrap();
+        let obj: FloatStruct = super::decode(s).assert();
         assert!(obj.f.is_nan());
         assert!(obj.a.get(0).is_nan());
         assert_eq!(obj.a.get(1), &123f64);
@@ -2737,20 +2737,20 @@ mod tests {
 
     #[test]
     fn test_decode_option() {
-        let value: Option<String> = super::decode("null").unwrap();
+        let value: Option<String> = super::decode("null").assert();
         assert_eq!(value, None);
 
-        let value: Option<String> = super::decode("\"jodhpurs\"").unwrap();
+        let value: Option<String> = super::decode("\"jodhpurs\"").assert();
         assert_eq!(value, Some("jodhpurs".to_string()));
     }
 
     #[test]
     fn test_decode_enum() {
-        let value: Animal = super::decode("\"Dog\"").unwrap();
+        let value: Animal = super::decode("\"Dog\"").assert();
         assert_eq!(value, Dog);
 
         let s = "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}";
-        let value: Animal = super::decode(s).unwrap();
+        let value: Animal = super::decode(s).assert();
         assert_eq!(value, Frog("Henry".to_string(), 349));
     }
 
@@ -2758,7 +2758,7 @@ mod tests {
     fn test_decode_map() {
         let s = "{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\
                   \"fields\":[\"Henry\", 349]}}";
-        let mut map: TreeMap<String, Animal> = super::decode(s).unwrap();
+        let mut map: TreeMap<String, Animal> = super::decode(s).assert();
 
         assert_eq!(map.pop(&"a".to_string()), Some(Dog));
         assert_eq!(map.pop(&"b".to_string()), Some(Frog("Henry".to_string(), 349)));
@@ -2830,63 +2830,63 @@ mod tests {
 
     #[test]
     fn test_find(){
-        let json_value = from_str("{\"dog\" : \"cat\"}").unwrap();
+        let json_value = from_str("{\"dog\" : \"cat\"}").assert();
         let found_str = json_value.find(&"dog".to_string());
-        assert!(found_str.is_some() && found_str.unwrap().as_string().unwrap() == "cat");
+        assert!(found_str.is_some() && found_str.assert().as_string().assert() == "cat");
     }
 
     #[test]
     fn test_find_path(){
-        let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
+        let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").assert();
         let found_str = json_value.find_path(&[&"dog".to_string(),
                                              &"cat".to_string(), &"mouse".to_string()]);
-        assert!(found_str.is_some() && found_str.unwrap().as_string().unwrap() == "cheese");
+        assert!(found_str.is_some() && found_str.assert().as_string().assert() == "cheese");
     }
 
     #[test]
     fn test_search(){
-        let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
+        let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").assert();
         let found_str = json_value.search(&"mouse".to_string()).and_then(|j| j.as_string());
         assert!(found_str.is_some());
-        assert!(found_str.unwrap() == "cheese");
+        assert!(found_str.assert() == "cheese");
     }
 
     #[test]
     fn test_is_object(){
-        let json_value = from_str("{}").unwrap();
+        let json_value = from_str("{}").assert();
         assert!(json_value.is_object());
     }
 
     #[test]
     fn test_as_object(){
-        let json_value = from_str("{}").unwrap();
+        let json_value = from_str("{}").assert();
         let json_object = json_value.as_object();
         assert!(json_object.is_some());
     }
 
     #[test]
     fn test_is_list(){
-        let json_value = from_str("[1, 2, 3]").unwrap();
+        let json_value = from_str("[1, 2, 3]").assert();
         assert!(json_value.is_list());
     }
 
     #[test]
     fn test_as_list(){
-        let json_value = from_str("[1, 2, 3]").unwrap();
+        let json_value = from_str("[1, 2, 3]").assert();
         let json_list = json_value.as_list();
         let expected_length = 3;
-        assert!(json_list.is_some() && json_list.unwrap().len() == expected_length);
+        assert!(json_list.is_some() && json_list.assert().len() == expected_length);
     }
 
     #[test]
     fn test_is_string(){
-        let json_value = from_str("\"dog\"").unwrap();
+        let json_value = from_str("\"dog\"").assert();
         assert!(json_value.is_string());
     }
 
     #[test]
     fn test_as_string(){
-        let json_value = from_str("\"dog\"").unwrap();
+        let json_value = from_str("\"dog\"").assert();
         let json_str = json_value.as_string();
         let expected_str = "dog";
         assert_eq!(json_str, Some(expected_str));
@@ -2894,44 +2894,44 @@ mod tests {
 
     #[test]
     fn test_is_number(){
-        let json_value = from_str("12").unwrap();
+        let json_value = from_str("12").assert();
         assert!(json_value.is_number());
     }
 
     #[test]
     fn test_as_number(){
-        let json_value = from_str("12").unwrap();
+        let json_value = from_str("12").assert();
         let json_num = json_value.as_number();
         let expected_num = 12f64;
-        assert!(json_num.is_some() && json_num.unwrap() == expected_num);
+        assert!(json_num.is_some() && json_num.assert() == expected_num);
     }
 
     #[test]
     fn test_is_boolean(){
-        let json_value = from_str("false").unwrap();
+        let json_value = from_str("false").assert();
         assert!(json_value.is_boolean());
     }
 
     #[test]
     fn test_as_boolean(){
-        let json_value = from_str("false").unwrap();
+        let json_value = from_str("false").assert();
         let json_bool = json_value.as_boolean();
         let expected_bool = false;
-        assert!(json_bool.is_some() && json_bool.unwrap() == expected_bool);
+        assert!(json_bool.is_some() && json_bool.assert() == expected_bool);
     }
 
     #[test]
     fn test_is_null(){
-        let json_value = from_str("null").unwrap();
+        let json_value = from_str("null").assert();
         assert!(json_value.is_null());
     }
 
     #[test]
     fn test_as_null(){
-        let json_value = from_str("null").unwrap();
+        let json_value = from_str("null").assert();
         let json_null = json_value.as_null();
         let expected_null = ();
-        assert!(json_null.is_some() && json_null.unwrap() == expected_null);
+        assert!(json_null.is_some() && json_null.assert() == expected_null);
     }
 
     #[test]
@@ -2945,10 +2945,10 @@ mod tests {
         let mut mem_buf = MemWriter::new();
         {
             let mut encoder = Encoder::new(&mut mem_buf as &mut io::Writer);
-            hm.encode(&mut encoder).unwrap();
+            hm.encode(&mut encoder).assert();
         }
-        let bytes = mem_buf.unwrap();
-        let json_str = from_utf8(bytes.as_slice()).unwrap();
+        let bytes = mem_buf.assert();
+        let json_str = from_utf8(bytes.as_slice()).assert();
         match from_str(json_str) {
             Err(_) => fail!("Unable to parse json_str: {}", json_str),
             _ => {} // it parsed and we are good to go
@@ -2965,10 +2965,10 @@ mod tests {
         let mut mem_buf = MemWriter::new();
         {
             let mut encoder = PrettyEncoder::new(&mut mem_buf as &mut io::Writer);
-            hm.encode(&mut encoder).unwrap()
+            hm.encode(&mut encoder).assert()
         }
-        let bytes = mem_buf.unwrap();
-        let json_str = from_utf8(bytes.as_slice()).unwrap();
+        let bytes = mem_buf.assert();
+        let json_str = from_utf8(bytes.as_slice()).assert();
         match from_str(json_str) {
             Err(_) => fail!("Unable to parse json_str: {}", json_str),
             _ => {} // it parsed and we are good to go
@@ -2984,7 +2984,7 @@ mod tests {
             Ok(o) => o
         };
         let mut decoder = Decoder::new(json_obj);
-        let _hm: HashMap<uint, bool> = Decodable::decode(&mut decoder).unwrap();
+        let _hm: HashMap<uint, bool> = Decodable::decode(&mut decoder).assert();
     }
 
     fn assert_stream_equal(src: &str,

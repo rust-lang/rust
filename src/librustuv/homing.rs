@@ -172,7 +172,7 @@ mod test {
 
         pool.spawn(TaskOpts::new(), proc() {
             let listener = UdpWatcher::bind(local_loop(), ::next_test_ip4());
-            tx.send(listener.unwrap());
+            tx.send(listener.assert());
         });
 
         let task = pool.task(TaskOpts::new(), proc() {
@@ -195,15 +195,15 @@ mod test {
             let addr1 = ::next_test_ip4();
             let addr2 = ::next_test_ip4();
             let listener = UdpWatcher::bind(local_loop(), addr2);
-            tx.send((listener.unwrap(), addr1));
-            let mut listener = UdpWatcher::bind(local_loop(), addr1).unwrap();
-            listener.send_to([1, 2, 3, 4], addr2).ok().unwrap();
+            tx.send((listener.assert(), addr1));
+            let mut listener = UdpWatcher::bind(local_loop(), addr1).assert();
+            listener.send_to([1, 2, 3, 4], addr2).ok().assert();
         });
 
         let task = pool.task(TaskOpts::new(), proc() {
             let (mut watcher, addr) = rx.recv();
             let mut buf = [0, ..10];
-            assert!(watcher.recv_from(buf).ok().unwrap() == (4, addr));
+            assert!(watcher.recv_from(buf).ok().assert() == (4, addr));
         });
         pool.spawn_sched().send(sched::TaskFromFriend(task));
 

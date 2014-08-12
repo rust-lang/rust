@@ -811,7 +811,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
 
             None if rust_uses_outptr => {
                 // Rust uses an outpointer, but the foreign ABI does not. Load.
-                let llrust_outptr = return_alloca.unwrap();
+                let llrust_outptr = return_alloca.assert();
                 let llforeign_outptr_casted =
                     builder.bitcast(llrust_outptr, llforeign_ret_ty.ptr_to());
                 let llforeign_retval = builder.load(llforeign_outptr_casted);

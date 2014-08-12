@@ -133,7 +133,7 @@ impl<'a> MarkSymbolVisitor<'a> {
             ty::ty_struct(id, _) => {
                 let fields = ty::lookup_struct_fields(self.tcx, id);
                 let field_id = fields.iter()
-                    .find(|field| field.name == name.name).unwrap().id;
+                    .find(|field| field.name == name.name).assert().id;
                 self.live_symbols.insert(field_id.node);
             },
             _ => ()
@@ -158,7 +158,7 @@ impl<'a> MarkSymbolVisitor<'a> {
         let fields = ty::lookup_struct_fields(self.tcx, id);
         for pat in pats.iter() {
             let field_id = fields.iter()
-                .find(|field| field.name == pat.ident.name).unwrap().id;
+                .find(|field| field.name == pat.ident.name).assert().id;
             self.live_symbols.insert(field_id.node);
         }
     }
@@ -166,7 +166,7 @@ impl<'a> MarkSymbolVisitor<'a> {
     fn mark_live_symbols(&mut self) {
         let mut scanned = HashSet::new();
         while self.worklist.len() > 0 {
-            let id = self.worklist.pop().unwrap();
+            let id = self.worklist.pop().assert();
             if scanned.contains(&id) {
                 continue
             }
@@ -509,7 +509,7 @@ impl<'a> Visitor<()> for DeadVisitor<'a> {
 
     fn visit_struct_field(&mut self, field: &ast::StructField, _: ()) {
         if self.should_warn_about_field(&field.node) {
-            self.warn_dead_code(field.node.id, field.span, field.node.ident().unwrap());
+            self.warn_dead_code(field.node.id, field.span, field.node.ident().assert());
         }
 
         visit::walk_struct_field(self, field, ());

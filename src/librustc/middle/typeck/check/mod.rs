@@ -4562,7 +4562,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
         // parameters, so we have to substitute as we go with the
         // partial substitution that we have built up.
         for i in range(provided_len, desired.len()) {
-            let default = desired[i].default.unwrap();
+            let default = desired[i].default.assert();
             let default = default.subst_spanned(fcx.tcx(), substs, Some(span));
             substs.types.push(space, default);
         }

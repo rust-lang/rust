@@ -1089,7 +1089,7 @@ impl<'a> Resolver<'a> {
                 if duplicate_type != NoError {
                     // Return an error here by looking up the namespace that
                     // had the duplicate.
-                    let ns = ns.unwrap();
+                    let ns = ns.assert();
                     self.resolve_error(sp,
                         format!("duplicate definition of {} `{}`",
                              namespace_error_to_string(duplicate_type),
@@ -1275,7 +1275,7 @@ impl<'a> Resolver<'a> {
                 // Create the module and add all methods.
                 match ty.node {
                     TyPath(ref path, _, _) if path.segments.len() == 1 => {
-                        let name = path.segments.last().unwrap().identifier;
+                        let name = path.segments.last().assert().identifier;
 
                         let parent_opt = parent.module().children.borrow()
                                                .find_copy(&name.name);
@@ -1476,7 +1476,7 @@ impl<'a> Resolver<'a> {
                 match view_path.node {
                     ViewPathSimple(binding, ref full_path, id) => {
                         let source_ident =
-                            full_path.segments.last().unwrap().identifier;
+                            full_path.segments.last().assert().identifier;
                         if token::get_ident(source_ident).get() == "mod" {
                             self.resolve_error(view_path.span,
                                 "`mod` imports are only allowed within a { } list");
@@ -1964,7 +1964,7 @@ impl<'a> Resolver<'a> {
         csearch::each_top_level_item_of_crate(&self.session.cstore,
                                               root.def_id
                                                   .get()
-                                                  .unwrap()
+                                                  .assert()
                                                   .krate,
                                               |def_like, ident, visibility| {
             self.build_reduced_graph_for_external_crate_def(root.clone(),
@@ -1994,7 +1994,7 @@ impl<'a> Resolver<'a> {
             SingleImport(target, _) => {
                 debug!("(building import directive) building import \
                         directive: {}::{}",
-                       self.idents_to_string(module_.imports.borrow().last().unwrap()
+                       self.idents_to_string(module_.imports.borrow().last().assert()
                                                  .module_path.as_slice()),
                        token::get_ident(target));
 
@@ -2468,7 +2468,7 @@ impl<'a> Resolver<'a> {
         match type_result {
             BoundResult(ref target_module, ref name_bindings) => {
                 debug!("(resolving single import) found type target: {:?}",
-                       { name_bindings.type_def.borrow().clone().unwrap().type_def });
+                       { name_bindings.type_def.borrow().clone().assert().type_def });
                 import_resolution.type_target =
                     Some(Target::new(target_module.clone(), name_bindings.clone()));
                 import_resolution.type_id = directive.id;
@@ -2498,7 +2498,7 @@ impl<'a> Resolver<'a> {
         // purposes it's good enough to just favor one over the other.
         let value_private = match import_resolution.value_target {
             Some(ref target) => {
-                let def = target.bindings.def_for_namespace(ValueNS).unwrap();
+                let def = target.bindings.def_for_namespace(ValueNS).assert();
                 self.def_map.borrow_mut().insert(directive.id, def);
                 let did = def.def_id();
                 if value_used_public {Some(lp)} else {Some(DependsOn(did))}
@@ -2509,7 +2509,7 @@ impl<'a> Resolver<'a> {
         };
         let type_private = match import_resolution.type_target {
             Some(ref target) => {
-                let def = target.bindings.def_for_namespace(TypeNS).unwrap();
+                let def = target.bindings.def_for_namespace(TypeNS).assert();
                 self.def_map.borrow_mut().insert(directive.id, def);
                 let did = def.def_id();
                 if type_used_public {Some(lp)} else {Some(DependsOn(did))}
@@ -2692,7 +2692,7 @@ impl<'a> Resolver<'a> {
                 match module.parent_link.clone() {
                     ModuleParentLink(parent, _) => {
                         search_parent_externals(needle,
-                                                &parent.upgrade().unwrap())
+                                                &parent.upgrade().assert())
                     }
                    _ => None
                 }
@@ -2906,7 +2906,7 @@ impl<'a> Resolver<'a> {
                 start_index = index;
                 last_private = LastMod(DependsOn(containing_module.def_id
                                                                   .get()
-                                                                  .unwrap()));
+                                                                  .assert()));
             }
         }
 
@@ -3009,12 +3009,12 @@ impl<'a> Resolver<'a> {
                         TraitModuleKind |
                         ImplModuleKind |
                         AnonymousModuleKind => {
-                            search_module = parent_module_node.upgrade().unwrap();
+                            search_module = parent_module_node.upgrade().assert();
                         }
                     }
                 }
                 BlockParentLink(ref parent_module_node, _) => {
-                    search_module = parent_module_node.upgrade().unwrap();
+                    search_module = parent_module_node.upgrade().assert();
                 }
             }
 
@@ -3100,7 +3100,7 @@ impl<'a> Resolver<'a> {
                 NoParentLink => return None,
                 ModuleParentLink(new_module, _) |
                 BlockParentLink(new_module, _) => {
-                    let new_module = new_module.upgrade().unwrap();
+                    let new_module = new_module.upgrade().assert();
                     match new_module.kind.get() {
                         NormalModuleKind => return Some(new_module),
                         ExternModuleKind |
@@ -3272,7 +3272,7 @@ impl<'a> Resolver<'a> {
             let sn = self.session
                          .codemap()
                          .span_to_snippet(imports.get(index).span)
-                         .unwrap();
+                         .assert();
             if sn.as_slice().contains("::") {
                 self.resolve_error(imports.get(index).span,
                                    "unresolved import");
@@ -4037,7 +4037,7 @@ impl<'a> Resolver<'a> {
                                 let def = DefStruct(def_id);
                                 debug!("(resolving struct) resolved `{}` to type {:?}",
                                        token::get_ident(path.segments
-                                                            .last().unwrap()
+                                                            .last().assert()
                                                             .identifier),
                                        def);
                                 debug!("(resolving struct) writing resolution for `{}` (id {})",
@@ -4317,7 +4317,7 @@ impl<'a> Resolver<'a> {
 
                 // First, check to see whether the name is a primitive type.
                 if path.segments.len() == 1 {
-                    let id = path.segments.last().unwrap().identifier;
+                    let id = path.segments.last().assert().identifier;
 
                     match self.primitive_type_table
                             .primitive_types
@@ -4352,7 +4352,7 @@ impl<'a> Resolver<'a> {
                                 debug!("(resolving type) resolved `{}` to \
                                         type {:?}",
                                        token::get_ident(path.segments
-                                                            .last().unwrap()
+                                                            .last().assert()
                                                             .identifier),
                                        def);
                                 result_def = Some(def);
@@ -4537,7 +4537,7 @@ impl<'a> Resolver<'a> {
                                     token::get_ident(
                                         path.segments
                                             .last()
-                                            .unwrap()
+                                            .assert()
                                             .identifier)).as_slice());
                         }
                         None => {
@@ -4546,7 +4546,7 @@ impl<'a> Resolver<'a> {
                                     token::get_ident(
                                         path.segments
                                             .last()
-                                            .unwrap()
+                                            .assert()
                                             .identifier)).as_slice());
                         }
                     }
@@ -4668,7 +4668,7 @@ impl<'a> Resolver<'a> {
 
         let unqualified_def =
                 self.resolve_identifier(path.segments
-                                            .last().unwrap()
+                                            .last().assert()
                                             .identifier,
                                         namespace,
                                         check_ribs,
@@ -4829,7 +4829,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let ident = path.segments.last().unwrap().identifier;
+        let ident = path.segments.last().assert().identifier;
         let def = match self.resolve_definition_of_name_in_module(containing_module.clone(),
                                                         ident.name,
                                                         namespace) {
@@ -4909,7 +4909,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let name = path.segments.last().unwrap().identifier.name;
+        let name = path.segments.last().assert().identifier.name;
         match self.resolve_definition_of_name_in_module(containing_module,
                                                         name,
                                                         namespace) {
@@ -5038,7 +5038,7 @@ impl<'a> Resolver<'a> {
         fn get_module(this: &mut Resolver, span: Span, ident_path: &[ast::Ident])
                             -> Option<Rc<Module>> {
             let root = this.current_module.clone();
-            let last_name = ident_path.last().unwrap().name;
+            let last_name = ident_path.last().assert().name;
 
             if ident_path.len() == 1 {
                 match this.primitive_type_table.primitive_types.find(&last_name) {
@@ -5250,7 +5250,7 @@ impl<'a> Resolver<'a> {
                                              in a static method. Maybe a \
                                              `self` argument is missing?");
                                 } else {
-                                    let last_name = path.segments.last().unwrap().identifier.name;
+                                    let last_name = path.segments.last().assert().identifier.name;
                                     let mut msg = match self.find_fallback_in_self_type(last_name) {
                                         NoSuggestion => {
                                             // limit search to 5 to reduce the number
@@ -5485,7 +5485,7 @@ impl<'a> Resolver<'a> {
             match search_module.parent_link.clone() {
                 NoParentLink | ModuleParentLink(..) => break,
                 BlockParentLink(parent_module, _) => {
-                    search_module = parent_module.upgrade().unwrap();
+                    search_module = parent_module.upgrade().assert();
                 }
             }
         }
@@ -5648,12 +5648,12 @@ impl<'a> Resolver<'a> {
                 NoParentLink => {}
                 ModuleParentLink(ref module, name) => {
                     idents.push(name);
-                    collect_mod(idents, &*module.upgrade().unwrap());
+                    collect_mod(idents, &*module.upgrade().assert());
                 }
                 BlockParentLink(ref module, _) => {
                     // danger, shouldn't be ident?
                     idents.push(special_idents::opaque);
-                    collect_mod(idents, &*module.upgrade().unwrap());
+                    collect_mod(idents, &*module.upgrade().assert());
                 }
             }
         }

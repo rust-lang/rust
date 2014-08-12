@@ -103,7 +103,7 @@ impl<T> SmallVector<T> {
             One(v) => v,
             Many(v) => {
                 if v.len() == 1 {
-                    v.iter_owned().next().unwrap()
+                    v.iter_owned().next().assert()
                 } else {
                     fail!(err)
                 }

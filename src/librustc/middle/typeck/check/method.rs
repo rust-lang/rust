@@ -263,7 +263,7 @@ fn construct_transformed_self_ty_for_object(
     // The subst we get in has Err as the "Self" type. For an object
     // type, we don't put any type into the Self paramspace, so let's
     // make a copy of rcvr_substs that has the Self paramspace empty.
-    obj_substs.types.pop(subst::SelfSpace).unwrap();
+    obj_substs.types.pop(subst::SelfSpace).assert();
 
     match method_ty.explicit_self {
         StaticExplicitSelfCategory => {

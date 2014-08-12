@@ -218,7 +218,7 @@ impl<'r, 't> Nfa<'r, 't> {
             }
             CharClass(ref ranges, flags) => {
                 if self.chars.prev.is_some() {
-                    let c = self.chars.prev.unwrap();
+                    let c = self.chars.prev.assert();
                     let negate = flags & FLAG_NEGATED > 0;
                     let casei = flags & FLAG_NOCASE > 0;
                     let found = ranges.as_slice();

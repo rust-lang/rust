@@ -1063,7 +1063,7 @@ fn mark_method(expr: Gc<ast::Method>, m: Mrk) -> Gc<ast::Method> {
 
 fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
     let mut relevant_info = cx.backtrace();
-    let mut einfo = relevant_info.unwrap();
+    let mut einfo = relevant_info.assert();
     loop {
         match relevant_info {
             None => { break }
@@ -1480,7 +1480,7 @@ mod test {
             let binding_marks = mtwt::marksof(bindings.get(binding_idx).ctxt, invalid_name);
             // shouldmatch can't name varrefs that don't exist:
             assert!((shouldmatch.len() == 0) ||
-                    (varrefs.len() > *shouldmatch.iter().max().unwrap()));
+                    (varrefs.len() > *shouldmatch.iter().max().assert()));
             for (idx,varref) in varrefs.iter().enumerate() {
                 let print_hygiene_debug_info = || {
                     // good lord, you can't make a path with 0 segments, can you?

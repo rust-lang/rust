@@ -184,7 +184,7 @@ impl Select {
             let task: Box<Task> = Local::take();
             task.deschedule(amt, |task| {
                 // Prepare for the block
-                let (i, handle) = iter.next().unwrap();
+                let (i, handle) = iter.next().assert();
                 match (*handle).packet.start_selection(task) {
                     Ok(()) => Ok(()),
                     Err(task) => {

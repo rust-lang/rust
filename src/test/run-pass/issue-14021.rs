@@ -22,8 +22,8 @@ pub fn main() {
     let json_str: String = json::Encoder::str_encode(&obj);
 
     let json_object = json::from_str(json_str.as_slice());
-    let mut decoder = json::Decoder::new(json_object.unwrap());
-    let mut decoded_obj: UnitLikeStruct = Decodable::decode(&mut decoder).unwrap();
+    let mut decoder = json::Decoder::new(json_object.assert());
+    let mut decoded_obj: UnitLikeStruct = Decodable::decode(&mut decoder).assert();
 
     assert_eq!(obj, decoded_obj);
 }

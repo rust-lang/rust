@@ -301,7 +301,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
               }
               ty::ty_str => {
                   // This means we get a nicer name in the output
-                  cx.tn.find_type("str_slice").unwrap()
+                  cx.tn.find_type("str_slice").assert()
               }
               ty::ty_trait(..) => Type::opaque_trait(cx),
               _ => type_of(cx, mt.ty).ptr_to(),

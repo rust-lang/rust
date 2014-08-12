@@ -254,7 +254,7 @@ impl<'a> Visitor<()> for Context<'a> {
 
     fn visit_mac(&mut self, macro: &ast::Mac, _: ()) {
         let ast::MacInvocTT(ref path, _, _) = macro.node;
-        let id = path.segments.last().unwrap().identifier;
+        let id = path.segments.last().assert().identifier;
         let quotes = ["quote_tokens", "quote_expr", "quote_ty",
                       "quote_item", "quote_pat", "quote_stmt"];
         let msg = " is not stable enough for use and are subject to change";

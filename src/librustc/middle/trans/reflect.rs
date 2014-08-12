@@ -295,7 +295,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
             let repr = adt::represent_type(bcx.ccx(), t);
             let variants = ty::substd_enum_variants(ccx.tcx(), did, substs);
             let llptrty = type_of(ccx, t).ptr_to();
-            let opaquety = ty::get_opaque_ty(ccx.tcx()).unwrap();
+            let opaquety = ty::get_opaque_ty(ccx.tcx()).assert();
             let opaqueptrty = ty::mk_ptr(ccx.tcx(), ty::mt { ty: opaquety,
                                                            mutbl: ast::MutImmutable });
 
@@ -321,7 +321,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
                 let arg = get_param(llfdecl, fcx.arg_pos(0u) as c_uint);
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, &*repr, arg, Some(Type::i64(ccx)));
-                Store(bcx, ret, fcx.llretptr.get().unwrap());
+                Store(bcx, ret, fcx.llretptr.get().assert());
                 match fcx.llreturn.get() {
                     Some(llreturn) => Br(bcx, llreturn),
                     None => {}
@@ -393,7 +393,7 @@ pub fn emit_calls_to_trait_visit_ty<'a>(
                                     -> &'a Block<'a> {
     let fcx = bcx.fcx;
     let final = fcx.new_temp_block("final");
-    let tydesc_ty = ty::get_tydesc_ty(bcx.tcx()).unwrap();
+    let tydesc_ty = ty::get_tydesc_ty(bcx.tcx()).assert();
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
     let visitor_methods = ty::trait_methods(bcx.tcx(), visitor_trait_id);
     let mut r = Reflector {

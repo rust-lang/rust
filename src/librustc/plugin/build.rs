@@ -46,7 +46,7 @@ pub fn find_plugin_registrar(diagnostic: &diagnostic::SpanHandler,
     match finder.registrars.len() {
         0 => None,
         1 => {
-            let (node_id, _) = finder.registrars.pop().unwrap();
+            let (node_id, _) = finder.registrars.pop().assert();
             Some(node_id)
         },
         _ => {

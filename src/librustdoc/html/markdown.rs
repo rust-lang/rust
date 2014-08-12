@@ -157,7 +157,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             let opaque = opaque as *mut hoedown_html_renderer_state;
             let my_opaque: &MyOpaque = &*((*opaque).opaque as *const MyOpaque);
             slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
-                let origtext = str::from_utf8(text).unwrap();
+                let origtext = str::from_utf8(text).assert();
                 debug!("docblock: ==============\n{}\n=======", text);
                 let mut lines = origtext.lines().filter(|l| {
                     stripped_filtered_line(*l).is_none()
@@ -175,7 +175,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 } else {
                     slice::raw::buf_as_slice((*lang).data,
                                            (*lang).size as uint, |rlang| {
-                        let rlang = str::from_utf8(rlang).unwrap();
+                        let rlang = str::from_utf8(rlang).assert();
                         if LangString::parse(rlang).notrust {
                             (my_opaque.dfltblk)(ob, &buf, lang,
                                                 opaque as *mut libc::c_void);
@@ -189,7 +189,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 if !rendered {
                     let mut s = String::new();
                     let id = playground_krate.get().map(|krate| {
-                        let idx = test_idx.get().unwrap();
+                        let idx = test_idx.get().assert();
                         let i = idx.get();
                         idx.set(i + 1);
 
@@ -243,7 +243,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
         // Make sure our hyphenated ID is unique for this page
-        let map = used_header_map.get().unwrap();
+        let map = used_header_map.get().assert();
         let id = match map.borrow_mut().find_mut(&id) {
             None => id,
             Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
@@ -274,7 +274,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         let ob = hoedown_buffer_new(DEF_OUNIT);
         let renderer = hoedown_html_renderer_new(0, 0);
         let mut opaque = MyOpaque {
-            dfltblk: (*renderer).blockcode.unwrap(),
+            dfltblk: (*renderer).blockcode.assert(),
             toc_builder: if print_toc {Some(TocBuilder::new())} else {None}
         };
         (*(*renderer).opaque).opaque = &mut opaque as *mut _ as *mut libc::c_void;
@@ -315,7 +315,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             } else {
                 slice::raw::buf_as_slice((*lang).data,
                                        (*lang).size as uint, |lang| {
-                    let s = str::from_utf8(lang).unwrap();
+                    let s = str::from_utf8(lang).assert();
                     LangString::parse(s)
                 })
             };
@@ -323,7 +323,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let opaque = opaque as *mut hoedown_html_renderer_state;
                 let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
-                let text = str::from_utf8(text).unwrap();
+                let text = str::from_utf8(text).assert();
                 let mut lines = text.lines().map(|l| {
                     stripped_filtered_line(l).unwrap_or(l)
                 });
@@ -345,7 +345,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 tests.register_header("", level as u32);
             } else {
                 slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
-                    let text = str::from_utf8(text).unwrap();
+                    let text = str::from_utf8(text).assert();
                     tests.register_header(text, level as u32);
                 })
             }

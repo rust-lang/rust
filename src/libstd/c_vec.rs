@@ -180,10 +180,10 @@ mod tests {
     fn test_basic() {
         let mut cv = malloc(16);
 
-        *cv.get_mut(3).unwrap() = 8;
-        *cv.get_mut(4).unwrap() = 9;
-        assert_eq!(*cv.get(3).unwrap(), 8);
-        assert_eq!(*cv.get(4).unwrap(), 9);
+        *cv.get_mut(3).assert() = 8;
+        *cv.get_mut(4).assert() = 9;
+        assert_eq!(*cv.get(3).assert(), 8);
+        assert_eq!(*cv.get(4).assert(), 9);
         assert_eq!(cv.len(), 16);
     }
 

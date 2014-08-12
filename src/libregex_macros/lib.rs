@@ -479,9 +479,9 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
                     let casei = flags & FLAG_NOCASE > 0;
                     let get_char =
                         if casei {
-                            quote_expr!(self.cx, self.chars.prev.unwrap().to_uppercase())
+                            quote_expr!(self.cx, self.chars.prev.assert().to_uppercase())
                         } else {
-                            quote_expr!(self.cx, self.chars.prev.unwrap())
+                            quote_expr!(self.cx, self.chars.prev.assert())
                         };
                     let negcond =
                         if negate {

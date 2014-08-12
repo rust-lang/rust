@@ -60,29 +60,29 @@ mod test {
 
     #[test]
     fn realpath_works() {
-        let tmpdir = TempDir::new("rustc-fs").unwrap();
-        let tmpdir = realpath(tmpdir.path()).unwrap();
+        let tmpdir = TempDir::new("rustc-fs").assert();
+        let tmpdir = realpath(tmpdir.path()).assert();
         let file = tmpdir.join("test");
         let dir = tmpdir.join("test2");
         let link = dir.join("link");
         let linkdir = tmpdir.join("test3");
 
-        File::create(&file).unwrap();
-        mkdir(&dir, io::UserRWX).unwrap();
-        symlink(&file, &link).unwrap();
-        symlink(&dir, &linkdir).unwrap();
+        File::create(&file).assert();
+        mkdir(&dir, io::UserRWX).assert();
+        symlink(&file, &link).assert();
+        symlink(&dir, &linkdir).assert();
 
-        assert!(realpath(&tmpdir).unwrap() == tmpdir);
-        assert!(realpath(&file).unwrap() == file);
-        assert!(realpath(&link).unwrap() == file);
-        assert!(realpath(&linkdir).unwrap() == dir);
-        assert!(realpath(&linkdir.join("link")).unwrap() == file);
+        assert!(realpath(&tmpdir).assert() == tmpdir);
+        assert!(realpath(&file).assert() == file);
+        assert!(realpath(&link).assert() == file);
+        assert!(realpath(&linkdir).assert() == dir);
+        assert!(realpath(&linkdir.join("link")).assert() == file);
     }
 
     #[test]
     fn realpath_works_tricky() {
-        let tmpdir = TempDir::new("rustc-fs").unwrap();
-        let tmpdir = realpath(tmpdir.path()).unwrap();
+        let tmpdir = TempDir::new("rustc-fs").assert();
+        let tmpdir = realpath(tmpdir.path()).assert();
 
         let a = tmpdir.join("a");
         let b = a.join("b");
@@ -91,13 +91,13 @@ mod test {
         let e = d.join("e");
         let f = a.join("f");
 
-        mkdir_recursive(&b, io::UserRWX).unwrap();
-        mkdir_recursive(&d, io::UserRWX).unwrap();
-        File::create(&f).unwrap();
-        symlink(&Path::new("../d/e"), &c).unwrap();
-        symlink(&Path::new("../f"), &e).unwrap();
+        mkdir_recursive(&b, io::UserRWX).assert();
+        mkdir_recursive(&d, io::UserRWX).assert();
+        File::create(&f).assert();
+        symlink(&Path::new("../d/e"), &c).assert();
+        symlink(&Path::new("../f"), &e).assert();
 
-        assert!(realpath(&c).unwrap() == f);
-        assert!(realpath(&e).unwrap() == f);
+        assert!(realpath(&c).assert() == f);
+        assert!(realpath(&e).assert() == f);
     }
 }

@@ -131,7 +131,7 @@ impl AccessTimeout {
             self.timer = Some(timer);
         }
 
-        let timer = self.timer.get_mut_ref();
+        let timer = self.timer.as_mut().assert();
         unsafe {
             let cx = uvll::get_data_for_uv_handle(timer.handle);
             let cx = cx as *mut TimerContext;
@@ -374,7 +374,7 @@ impl AcceptTimeout {
 
         // Once we've got a timer, stop any previous timeout, reset it for the
         // current one, and install some new channels to send/receive data on
-        let timer = self.timer.get_mut_ref();
+        let timer = self.timer.as_mut().assert();
         timer.stop();
         timer.start(timer_cb, ms, 0);
         let (tx, rx) = channel();
@@ -387,7 +387,7 @@ impl AcceptTimeout {
             };
             // This send can never fail because if this timer is active then the
             // receiving channel is guaranteed to be alive
-            acceptor.timeout_tx.get_ref().send(());
+            acceptor.timeout_tx.as_ref().assert().send(());
         }
     }
 }

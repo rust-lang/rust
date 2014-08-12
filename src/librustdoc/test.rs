@@ -48,7 +48,7 @@ pub fn run(input: &str,
     let input = driver::FileInput(input_path.clone());
 
     let sessopts = config::Options {
-        maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
+        maybe_sysroot: Some(os::self_exe_path().assert().dir_path()),
         addl_lib_search_paths: RefCell::new(libs.clone()),
         crate_types: vec!(config::CrateTypeDylib),
         externs: externs.clone(),
@@ -117,7 +117,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, externs: core::Exte
     let input = driver::StrInput(test.to_string());
 
     let sessopts = config::Options {
-        maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
+        maybe_sysroot: Some(os::self_exe_path().assert().dir_path()),
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(config::CrateTypeExecutable),
         output_types: vec!(link::OutputTypeExe),
@@ -156,7 +156,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, externs: core::Exte
             }
             None => box io::stderr() as Box<Writer>,
         };
-        io::util::copy(&mut p, &mut err).unwrap();
+        io::util::copy(&mut p, &mut err).assert();
     });
     let emitter = diagnostic::EmitterWriter::new(box w2, None);
 

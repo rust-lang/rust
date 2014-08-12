@@ -48,7 +48,7 @@ fn expand_into_foo(cx: &mut ExtCtxt, sp: Span, attr: Gc<MetaItem>, it: Gc<Item>)
                    -> Gc<Item> {
     box(GC) Item {
         attrs: it.attrs.clone(),
-        ..(*quote_item!(cx, enum Foo { Bar, Baz }).unwrap()).clone()
+        ..(*quote_item!(cx, enum Foo { Bar, Baz }).assert()).clone()
     }
 }
 

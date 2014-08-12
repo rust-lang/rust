@@ -23,7 +23,7 @@ fn no_exponential(b: &mut Bencher) {
     let n = 100;
     let re = Regex::new(format!("{}{}",
                                 "a?".repeat(n),
-                                "a".repeat(n)).as_slice()).unwrap();
+                                "a".repeat(n)).as_slice()).assert();
     let text = "a".repeat(n);
     bench_assert_match(b, re, text.as_slice());
 }
@@ -162,7 +162,7 @@ fn gen_text(n: uint) -> String {
             *b = b'\n'
         }
     }
-    String::from_utf8(bytes).unwrap()
+    String::from_utf8(bytes).assert()
 }
 
 throughput!(easy0_32, easy0(), 32)

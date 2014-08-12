@@ -286,7 +286,7 @@ impl<'a> StringReader<'a> {
         let current_byte_offset = self.byte_offset(self.pos).to_uint();
         if current_byte_offset < self.filemap.src.len() {
             assert!(self.curr.is_some());
-            let last_char = self.curr.unwrap();
+            let last_char = self.curr.assert();
             let next = self.filemap
                           .src
                           .as_slice()
@@ -359,7 +359,7 @@ impl<'a> StringReader<'a> {
                     if self.curr_is('/') || self.curr_is('!') {
                         let start_bpos = self.pos - BytePos(3);
                         while !self.is_eof() {
-                            match self.curr.unwrap() {
+                            match self.curr.assert() {
                                 '\n' => break,
                                 '\r' => {
                                     if self.nextch_is('\n') {
@@ -475,7 +475,7 @@ impl<'a> StringReader<'a> {
                 let last_bpos = self.last_pos;
                 self.fatal_span_(start_bpos, last_bpos, msg);
             }
-            let n = self.curr.unwrap();
+            let n = self.curr.assert();
             match n {
                 '/' if self.nextch_is('*') => {
                     level += 1;
@@ -809,7 +809,7 @@ impl<'a> StringReader<'a> {
     /// token, and updates the interner
     fn next_token_inner(&mut self) -> token::Token {
         let c = self.curr;
-        if ident_start(c) && match (c.unwrap(), self.nextch(), self.nextnextch()) {
+        if ident_start(c) && match (c.assert(), self.nextch(), self.nextnextch()) {
             // Note: r as in r" or r#" is part of a raw string literal,
             // b as in b' is part of a byte literal.
             // They are not identifiers, and are handled further down.
@@ -836,7 +836,7 @@ impl<'a> StringReader<'a> {
         }
 
         if is_dec_digit(c) {
-            return self.scan_number(c.unwrap());
+            return self.scan_number(c.assert());
         }
 
         match c.expect("next_token_inner called at EOF") {
@@ -1005,7 +1005,7 @@ impl<'a> StringReader<'a> {
                 }
 
                 let ch_start = self.last_pos;
-                let ch = self.curr.unwrap();
+                let ch = self.curr.assert();
                 self.bump();
                 valid &= self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ false, '"');
             }
@@ -1029,7 +1029,7 @@ impl<'a> StringReader<'a> {
                 self.fatal_span_(start_bpos, last_bpos, "unterminated raw string");
             } else if !self.curr_is('"') {
                 let last_bpos = self.last_pos;
-                let curr_char = self.curr.unwrap();
+                let curr_char = self.curr.assert();
                 self.fatal_span_char(start_bpos, last_bpos,
                                 "only `#` is allowed in raw string delimitation; \
                                  found illegal character",
@@ -1050,7 +1050,7 @@ impl<'a> StringReader<'a> {
                         //self.bump();
                         //if !self.curr_is('#') {
                             //continue 'outer;
-                let c = self.curr.unwrap();
+                let c = self.curr.assert();
                 match c {
                     '"' => {
                         content_end_bpos = self.last_pos;
@@ -1122,7 +1122,7 @@ impl<'a> StringReader<'a> {
     fn read_to_eol(&mut self) -> String {
         let mut val = String::new();
         while !self.curr_is('\n') && !self.is_eof() {
-            val.push_char(self.curr.unwrap());
+            val.push_char(self.curr.assert());
             self.bump();
         }
         if self.curr_is('\n') { self.bump(); }
@@ -1186,7 +1186,7 @@ impl<'a> StringReader<'a> {
             }
 
             let ch_start = self.last_pos;
-            let ch = self.curr.unwrap();
+            let ch = self.curr.assert();
             self.bump();
             valid &= self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ true, '"');
         }
@@ -1209,7 +1209,7 @@ impl<'a> StringReader<'a> {
             self.fatal_span_(start_bpos, last_pos, "unterminated raw string");
         } else if !self.curr_is('"') {
             let last_pos = self.last_pos;
-            let ch = self.curr.unwrap();
+            let ch = self.curr.assert();
             self.fatal_span_char(start_bpos, last_pos,
                             "only `#` is allowed in raw string delimitation; \
                              found illegal character",

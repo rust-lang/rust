@@ -726,7 +726,7 @@ impl<'a> Liveness<'a> {
                 if self.loop_scope.len() == 0 {
                     self.ir.tcx.sess.span_bug(sp, "break outside loop");
                 } else {
-                    *self.loop_scope.last().unwrap()
+                    *self.loop_scope.last().assert()
                 }
             }
         }
@@ -743,7 +743,7 @@ impl<'a> Liveness<'a> {
             self.write_vars(wr, ln, |idx| self.users.get(idx).writer);
             write!(wr, "  precedes {}]", self.successors.get(ln.get()).to_string());
         }
-        str::from_utf8(wr.unwrap().as_slice()).unwrap().to_string()
+        str::from_utf8(wr.unwrap().as_slice()).assert().to_string()
     }
 
     fn init_empty(&mut self, ln: LiveNode, succ_ln: LiveNode) {
@@ -1490,7 +1490,7 @@ impl<'a> Liveness<'a> {
             } else {
                 let ends_with_stmt = match body.expr {
                     None if body.stmts.len() > 0 =>
-                        match body.stmts.last().unwrap().node {
+                        match body.stmts.last().assert().node {
                             StmtSemi(ref e, _) => {
                                 let t_stmt = ty::expr_ty(self.ir.tcx, &**e);
                                 ty::get(t_stmt).sty == ty::get(t_ret).sty
@@ -1502,7 +1502,7 @@ impl<'a> Liveness<'a> {
                 self.ir.tcx.sess.span_err(
                     sp, "not all control paths return a value");
                 if ends_with_stmt {
-                    let last_stmt = body.stmts.last().unwrap();
+                    let last_stmt = body.stmts.last().assert();
                     let original_span = original_sp(last_stmt.span, sp);
                     let span_semicolon = Span {
                         lo: original_span.hi - BytePos(1),

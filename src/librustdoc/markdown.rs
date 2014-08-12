@@ -44,7 +44,7 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
               external_html: &ExternalHtml, include_toc: bool) -> int {
     let input_p = Path::new(input);
-    output.push(input_p.filestem().unwrap());
+    output.push(input_p.filestem().assert());
     output.set_extension("html");
 
     let mut css = String::new();

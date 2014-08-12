@@ -297,7 +297,7 @@ fn existing_match(e: &Env, name: &str,
         // We're also sure to compare *paths*, not actual byte slices. The
         // `source` stores paths which are normalized which may be different
         // from the strings on the command line.
-        let source = e.sess.cstore.get_used_crate_source(cnum).unwrap();
+        let source = e.sess.cstore.get_used_crate_source(cnum).assert();
         match e.sess.opts.externs.find_equiv(&name) {
             Some(locs) => {
                 let found = locs.iter().any(|l| {
@@ -391,7 +391,7 @@ fn resolve_crate<'a>(e: &mut Env,
         }
         Some(cnum) => (cnum,
                        e.sess.cstore.get_crate_data(cnum),
-                       e.sess.cstore.get_used_crate_source(cnum).unwrap())
+                       e.sess.cstore.get_used_crate_source(cnum).assert())
     }
 }
 
@@ -429,11 +429,11 @@ impl<'a> PluginMetadataReader<'a> {
     }
 
     pub fn read_plugin_metadata(&mut self, krate: &ast::ViewItem) -> PluginMetadata {
-        let info = extract_crate_info(&self.env, krate).unwrap();
+        let info = extract_crate_info(&self.env, krate).assert();
         let target_triple = self.env.sess.targ_cfg.target_strs.target_triple.as_slice();
         let is_cross = target_triple != driver::host_triple();
         let mut should_link = info.should_link && !is_cross;
-        let os = config::get_os(driver::host_triple()).unwrap();
+        let os = config::get_os(driver::host_triple()).assert();
         let mut load_ctxt = loader::Context {
             sess: self.env.sess,
             span: krate.span,

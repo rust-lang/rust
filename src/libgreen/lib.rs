@@ -305,11 +305,11 @@ pub fn start(argc: int, argv: *const *const u8,
     let mut main = Some(main);
     let mut ret = None;
     simple::task().run(|| {
-        ret = Some(run(event_loop_factory, main.take_unwrap()));
+        ret = Some(run(event_loop_factory, main.take().assert()));
     }).destroy();
     // unsafe is ok b/c we're sure that the runtime is gone
     unsafe { rt::cleanup() }
-    ret.unwrap()
+    ret.assert()
 }
 
 /// Execute the main function in a pool of M:N schedulers.
@@ -623,7 +623,7 @@ mod test {
         let res = TaskBuilder::new().green(&mut pool).try(proc() {
             "Success!".to_string()
         });
-        assert_eq!(res.ok().unwrap(), "Success!".to_string());
+        assert_eq!(res.ok().assert(), "Success!".to_string());
         pool.shutdown();
     }
 }

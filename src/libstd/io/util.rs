@@ -272,7 +272,7 @@ mod test {
         let mut r = MemReader::new(vec!(0, 1, 2));
         {
             let mut r = LimitReader::new(r.by_ref(), 4);
-            assert_eq!(vec!(0, 1, 2), r.read_to_end().unwrap());
+            assert_eq!(vec!(0, 1, 2), r.read_to_end().assert());
         }
     }
 
@@ -281,9 +281,9 @@ mod test {
         let mut r = MemReader::new(vec!(0, 1, 2));
         {
             let mut r = LimitReader::new(r.by_ref(), 2);
-            assert_eq!(vec!(0, 1), r.read_to_end().unwrap());
+            assert_eq!(vec!(0, 1), r.read_to_end().assert());
         }
-        assert_eq!(vec!(2), r.read_to_end().unwrap());
+        assert_eq!(vec!(2), r.read_to_end().assert());
     }
 
     #[test]
@@ -291,9 +291,9 @@ mod test {
         let r = MemReader::new(vec!(0, 1, 2));
         let mut r = LimitReader::new(r, 3);
         assert_eq!(3, r.limit());
-        assert_eq!(0, r.read_byte().unwrap());
+        assert_eq!(0, r.read_byte().assert());
         assert_eq!(2, r.limit());
-        assert_eq!(vec!(1, 2), r.read_to_end().unwrap());
+        assert_eq!(vec!(1, 2), r.read_to_end().assert());
         assert_eq!(0, r.limit());
     }
 
@@ -301,8 +301,8 @@ mod test {
     fn test_null_writer() {
         let mut s = NullWriter;
         let buf = vec![0, 0, 0];
-        s.write(buf.as_slice()).unwrap();
-        s.flush().unwrap();
+        s.write(buf.as_slice()).assert();
+        s.flush().assert();
     }
 
     #[test]
@@ -340,10 +340,10 @@ mod test {
 
         let mut multi = MultiWriter::new(vec!(box TestWriter as Box<Writer>,
                                               box TestWriter as Box<Writer>));
-        multi.write([1, 2, 3]).unwrap();
+        multi.write([1, 2, 3]).assert();
         assert_eq!(2, unsafe { writes });
         assert_eq!(0, unsafe { flushes });
-        multi.flush().unwrap();
+        multi.flush().assert();
         assert_eq!(2, unsafe { writes });
         assert_eq!(2, unsafe { flushes });
     }
@@ -353,14 +353,14 @@ mod test {
         let rs = vec!(MemReader::new(vec!(0, 1)), MemReader::new(vec!()),
                       MemReader::new(vec!(2, 3)));
         let mut r = ChainedReader::new(rs.iter_owned());
-        assert_eq!(vec!(0, 1, 2, 3), r.read_to_end().unwrap());
+        assert_eq!(vec!(0, 1, 2, 3), r.read_to_end().assert());
     }
 
     #[test]
     fn test_tee_reader() {
         let mut r = TeeReader::new(MemReader::new(vec!(0, 1, 2)),
                                    MemWriter::new());
-        assert_eq!(vec!(0, 1, 2), r.read_to_end().unwrap());
+        assert_eq!(vec!(0, 1, 2), r.read_to_end().assert());
         let (_, w) = r.unwrap();
         assert_eq!(vec!(0, 1, 2), w.unwrap());
     }
@@ -369,7 +369,7 @@ mod test {
     fn test_copy() {
         let mut r = MemReader::new(vec!(0, 1, 2, 3, 4));
         let mut w = MemWriter::new();
-        copy(&mut r, &mut w).unwrap();
+        copy(&mut r, &mut w).assert();
         assert_eq!(vec!(0, 1, 2, 3, 4), w.unwrap());
     }
 
@@ -381,7 +381,7 @@ mod test {
             let mut r = LimitReader::new(r.by_ref(), 3);
             assert_eq!(r.read_line(), Ok("012".to_string()));
             assert_eq!(r.limit(), 0);
-            assert_eq!(r.read_line().err().unwrap().kind, io::EndOfFile);
+            assert_eq!(r.read_line().err().assert().kind, io::EndOfFile);
         }
         {
             let mut r = LimitReader::new(r.by_ref(), 9);
@@ -401,18 +401,18 @@ mod test {
     fn test_iter_reader() {
         let mut r = IterReader::new(range(0u8, 8));
         let mut buf = [0, 0, 0];
-        let len = r.read(buf).unwrap();
+        let len = r.read(buf).assert();
         assert_eq!(len, 3);
         assert!(buf == [0, 1, 2]);
 
-        let len = r.read(buf).unwrap();
+        let len = r.read(buf).assert();
         assert_eq!(len, 3);
         assert!(buf == [3, 4, 5]);
 
-        let len = r.read(buf).unwrap();
+        let len = r.read(buf).assert();
         assert_eq!(len, 2);
         assert!(buf == [6, 7, 5]);
 
-        assert_eq!(r.read(buf).unwrap_err().kind, io::EndOfFile);
+        assert_eq!(r.read(buf).assert_err().kind, io::EndOfFile);
     }
 }

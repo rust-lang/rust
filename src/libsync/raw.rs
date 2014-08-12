@@ -143,7 +143,7 @@ impl<Q: Send> Sem<Q> {
             /* for _ in range(0u, 1000) { task::deschedule(); } */
             // Need to wait outside the exclusive.
             if waiter_nobe.is_some() {
-                let _ = waiter_nobe.unwrap().recv();
+                let _ = waiter_nobe.assert().recv();
             }
         }
     }
@@ -259,7 +259,7 @@ impl<'a> Condvar<'a> {
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
             (|| {
-                let _ = wait_end.take_unwrap().recv();
+                let _ = wait_end.take().assert().recv();
             }).finally(|| {
                 // Reacquire the condvar.
                 match self.order {
@@ -318,7 +318,7 @@ impl<'a> Condvar<'a> {
                               condvar_id,
                               "cond.signal_on()",
                               || {
-                queue.take_unwrap().broadcast()
+                queue.take().assert().broadcast()
             })
         }
     }

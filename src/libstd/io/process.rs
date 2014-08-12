@@ -55,8 +55,8 @@ use collections::HashMap;
 ///     Err(e) => fail!("failed to execute child: {}", e),
 /// };
 ///
-/// let contents = child.stdout.get_mut_ref().read_to_end();
-/// assert!(child.wait().unwrap().success());
+/// let contents = child.stdout.as_mut().assert().read_to_end();
+/// assert!(child.wait().assert().success());
 /// ```
 pub struct Process {
     handle: Box<RtioProcess + Send>,
@@ -96,7 +96,7 @@ pub type EnvMap = HashMap<CString, CString>;
 ///   Err(e) => fail!("failed to execute process: {}", e),
 /// };
 ///
-/// let output = process.stdout.get_mut_ref().read_to_end();
+/// let output = process.stdout.as_mut().assert().read_to_end();
 /// ```
 #[deriving(Clone)]
 pub struct Command {
@@ -172,7 +172,7 @@ impl Command {
                                    .map(|(k, v)| (k.as_slice().to_c_str(),
                                                   v.as_slice().to_c_str()))
                                    .collect());
-                self.env.as_mut().unwrap()
+                self.env.as_mut().assert()
             }
         }
     }
@@ -296,9 +296,9 @@ impl Command {
                 Process {
                     handle: p,
                     forget: false,
-                    stdin: io.next().unwrap(),
-                    stdout: io.next().unwrap(),
-                    stderr: io.next().unwrap(),
+                    stdin: io.next().assert(),
+                    stdout: io.next().assert(),
+                    stderr: io.next().assert(),
                     extra_io: io.collect(),
                 }
             })
@@ -599,7 +599,7 @@ impl Drop for Process {
         drop(mem::replace(&mut self.extra_io, Vec::new()));
 
         self.set_timeout(None);
-        let _ = self.wait().unwrap();
+        let _ = self.wait().assert();
     }
 }
 
@@ -614,8 +614,8 @@ mod tests {
     iotest!(fn smoke() {
         let p = Command::new("true").spawn();
         assert!(p.is_ok());
-        let mut p = p.unwrap();
-        assert!(p.wait().unwrap().success());
+        let mut p = p.assert();
+        assert!(p.wait().assert().success());
     })
 
     #[cfg(not(target_os="android"))]
@@ -630,8 +630,8 @@ mod tests {
     iotest!(fn exit_reported_right() {
         let p = Command::new("false").spawn();
         assert!(p.is_ok());
-        let mut p = p.unwrap();
-        assert!(p.wait().unwrap().matches_exit_status(1));
+        let mut p = p.assert();
+        assert!(p.wait().assert().matches_exit_status(1));
         drop(p.wait().clone());
     })
 
@@ -639,24 +639,24 @@ mod tests {
     iotest!(fn signal_reported_right() {
         let p = Command::new("/bin/sh").arg("-c").arg("kill -1 $$").spawn();
         assert!(p.is_ok());
-        let mut p = p.unwrap();
-        match p.wait().unwrap() {
+        let mut p = p.assert();
+        match p.wait().assert() {
             process::ExitSignal(1) => {},
             result => fail!("not terminated by signal 1 (instead, {})", result),
         }
     })
 
     pub fn read_all(input: &mut Reader) -> String {
-        input.read_to_string().unwrap()
+        input.read_to_string().assert()
     }
 
     pub fn run_output(cmd: Command) -> String {
         let p = cmd.spawn();
         assert!(p.is_ok());
-        let mut p = p.unwrap();
+        let mut p = p.assert();
         assert!(p.stdout.is_some());
-        let ret = read_all(p.stdout.get_mut_ref() as &mut Reader);
-        assert!(p.wait().unwrap().success());
+        let ret = read_all(p.stdout.as_mut().assert() as &mut Reader);
+        assert!(p.wait().assert().success());
         return ret;
     }
 
@@ -682,18 +682,18 @@ mod tests {
                             .arg("-c").arg("read line; echo $line")
                             .stdin(CreatePipe(true, false))
                             .stdout(CreatePipe(false, true))
-                            .spawn().unwrap();
-        p.stdin.get_mut_ref().write("foobar".as_bytes()).unwrap();
+                            .spawn().assert();
+        p.stdin.as_mut().assert().write("foobar".as_bytes()).assert();
         drop(p.stdin.take());
-        let out = read_all(p.stdout.get_mut_ref() as &mut Reader);
-        assert!(p.wait().unwrap().success());
+        let out = read_all(p.stdout.as_mut().assert() as &mut Reader);
+        assert!(p.wait().assert().success());
         assert_eq!(out, "foobar\n".to_string());
     })
 
     #[cfg(not(target_os="android"))]
     iotest!(fn detach_works() {
-        let mut p = Command::new("true").detached().spawn().unwrap();
-        assert!(p.wait().unwrap().success());
+        let mut p = Command::new("true").detached().spawn().assert();
+        assert!(p.wait().assert().success());
     })
 
     #[cfg(windows)]
@@ -708,8 +708,8 @@ mod tests {
                             .arg("-c").arg("true")
                             .uid(unsafe { libc::getuid() as uint })
                             .gid(unsafe { libc::getgid() as uint })
-                            .spawn().unwrap();
-        assert!(p.wait().unwrap().success());
+                            .spawn().assert();
+        assert!(p.wait().assert().success());
     })
 
     #[cfg(unix, not(target_os="android"))]
@@ -724,10 +724,10 @@ mod tests {
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_process_status() {
-        let mut status = Command::new("false").status().unwrap();
+        let mut status = Command::new("false").status().assert();
         assert!(status.matches_exit_status(1));
 
-        status = Command::new("true").status().unwrap();
+        status = Command::new("true").status().assert();
         assert!(status.success());
     })
 
@@ -741,8 +741,8 @@ mod tests {
     #[cfg(not(target_os="android"))]
     iotest!(fn test_process_output_output() {
         let ProcessOutput {status, output, error}
-             = Command::new("echo").arg("hello").output().unwrap();
-        let output_str = str::from_utf8(output.as_slice()).unwrap();
+             = Command::new("echo").arg("hello").output().assert();
+        let output_str = str::from_utf8(output.as_slice()).assert();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_string(), "hello".to_string());
@@ -755,7 +755,7 @@ mod tests {
     #[cfg(not(target_os="android"))]
     iotest!(fn test_process_output_error() {
         let ProcessOutput {status, output, error}
-             = Command::new("mkdir").arg(".").output().unwrap();
+             = Command::new("mkdir").arg(".").output().assert();
 
         assert!(status.matches_exit_status(1));
         assert_eq!(output, Vec::new());
@@ -764,22 +764,22 @@ mod tests {
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_finish_once() {
-        let mut prog = Command::new("false").spawn().unwrap();
-        assert!(prog.wait().unwrap().matches_exit_status(1));
+        let mut prog = Command::new("false").spawn().assert();
+        assert!(prog.wait().assert().matches_exit_status(1));
     })
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_finish_twice() {
-        let mut prog = Command::new("false").spawn().unwrap();
-        assert!(prog.wait().unwrap().matches_exit_status(1));
-        assert!(prog.wait().unwrap().matches_exit_status(1));
+        let mut prog = Command::new("false").spawn().assert();
+        assert!(prog.wait().assert().matches_exit_status(1));
+        assert!(prog.wait().assert().matches_exit_status(1));
     })
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_wait_with_output_once() {
-        let prog = Command::new("echo").arg("hello").spawn().unwrap();
-        let ProcessOutput {status, output, error} = prog.wait_with_output().unwrap();
-        let output_str = str::from_utf8(output.as_slice()).unwrap();
+        let prog = Command::new("echo").arg("hello").spawn().assert();
+        let ProcessOutput {status, output, error} = prog.wait_with_output().assert();
+        let output_str = str::from_utf8(output.as_slice()).assert();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_string(), "hello".to_string());
@@ -809,14 +809,14 @@ mod tests {
 
     iotest!(fn test_keep_current_working_dir() {
         use os;
-        let prog = pwd_cmd().spawn().unwrap();
+        let prog = pwd_cmd().spawn().assert();
 
-        let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
+        let output = String::from_utf8(prog.wait_with_output().assert().output).assert();
         let parent_dir = os::getcwd();
         let child_dir = Path::new(output.as_slice().trim());
 
-        let parent_stat = parent_dir.stat().unwrap();
-        let child_stat = child_dir.stat().unwrap();
+        let parent_stat = parent_dir.stat().assert();
+        let child_stat = child_dir.stat().assert();
 
         assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
         assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
@@ -827,13 +827,13 @@ mod tests {
         // test changing to the parent of os::getcwd() because we know
         // the path exists (and os::getcwd() is not expected to be root)
         let parent_dir = os::getcwd().dir_path();
-        let prog = pwd_cmd().cwd(&parent_dir).spawn().unwrap();
+        let prog = pwd_cmd().cwd(&parent_dir).spawn().assert();
 
-        let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
+        let output = String::from_utf8(prog.wait_with_output().assert().output).assert();
         let child_dir = Path::new(output.as_slice().trim().into_string());
 
-        let parent_stat = parent_dir.stat().unwrap();
-        let child_stat = child_dir.stat().unwrap();
+        let parent_stat = parent_dir.stat().assert();
+        let child_stat = child_dir.stat().assert();
 
         assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
         assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
@@ -862,8 +862,8 @@ mod tests {
         use os;
         if running_on_valgrind() { return; }
 
-        let prog = env_cmd().spawn().unwrap();
-        let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
+        let prog = env_cmd().spawn().assert();
+        let output = String::from_utf8(prog.wait_with_output().assert().output).assert();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
@@ -878,8 +878,8 @@ mod tests {
         use os;
         if running_on_valgrind() { return; }
 
-        let mut prog = env_cmd().spawn().unwrap();
-        let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
+        let mut prog = env_cmd().spawn().assert();
+        let output = String::from_utf8(prog.wait_with_output().assert().output).assert();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
@@ -899,8 +899,8 @@ mod tests {
 
     iotest!(fn test_override_env() {
         let new_env = vec![("RUN_TEST_NEW_ENV", "123")];
-        let prog = env_cmd().env_set_all(new_env.as_slice()).spawn().unwrap();
-        let result = prog.wait_with_output().unwrap();
+        let prog = env_cmd().env_set_all(new_env.as_slice()).spawn().assert();
+        let result = prog.wait_with_output().assert();
         let output = String::from_utf8_lossy(result.output.as_slice()).into_string();
 
         assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
@@ -908,8 +908,8 @@ mod tests {
     })
 
     iotest!(fn test_add_to_env() {
-        let prog = env_cmd().env("RUN_TEST_NEW_ENV", "123").spawn().unwrap();
-        let result = prog.wait_with_output().unwrap();
+        let prog = env_cmd().env("RUN_TEST_NEW_ENV", "123").spawn().assert();
+        let result = prog.wait_with_output().assert();
         let output = str::from_utf8_lossy(result.output.as_slice()).into_string();
 
         assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
@@ -923,8 +923,8 @@ mod tests {
         let old_env = os::getenv("RUN_TEST_NEW_ENV");
 
         os::setenv("RUN_TEST_NEW_ENV", "123");
-        let prog = env_cmd().env_remove("RUN_TEST_NEW_ENV").spawn().unwrap();
-        let result = prog.wait_with_output().unwrap();
+        let prog = env_cmd().env_remove("RUN_TEST_NEW_ENV").spawn().assert();
+        let result = prog.wait_with_output().assert();
         let output = str::from_utf8_lossy(result.output.as_slice()).into_string();
 
         // restore original environment
@@ -943,35 +943,35 @@ mod tests {
 
     #[cfg(unix)]
     pub fn sleeper() -> Process {
-        Command::new("sleep").arg("1000").spawn().unwrap()
+        Command::new("sleep").arg("1000").spawn().assert()
     }
     #[cfg(windows)]
     pub fn sleeper() -> Process {
         // There's a `timeout` command on windows, but it doesn't like having
         // its output piped, so instead just ping ourselves a few times with
         // gaps in between so we're sure this process is alive for awhile
-        Command::new("ping").arg("127.0.0.1").arg("-n").arg("1000").spawn().unwrap()
+        Command::new("ping").arg("127.0.0.1").arg("-n").arg("1000").spawn().assert()
     }
 
     iotest!(fn test_kill() {
         let mut p = sleeper();
-        Process::kill(p.id(), PleaseExitSignal).unwrap();
-        assert!(!p.wait().unwrap().success());
+        Process::kill(p.id(), PleaseExitSignal).assert();
+        assert!(!p.wait().assert().success());
     })
 
     iotest!(fn test_exists() {
         let mut p = sleeper();
         assert!(Process::kill(p.id(), 0).is_ok());
-        p.signal_kill().unwrap();
-        assert!(!p.wait().unwrap().success());
+        p.signal_kill().assert();
+        assert!(!p.wait().assert().success());
     })
 
     iotest!(fn test_zero() {
         let mut p = sleeper();
-        p.signal_kill().unwrap();
+        p.signal_kill().assert();
         for _ in range(0i, 20) {
             if p.signal(0).is_err() {
-                assert!(!p.wait().unwrap().success());
+                assert!(!p.wait().assert().success());
                 return
             }
             timer::sleep(100);
@@ -982,9 +982,9 @@ mod tests {
     iotest!(fn wait_timeout() {
         let mut p = sleeper();
         p.set_timeout(Some(10));
-        assert_eq!(p.wait().err().unwrap().kind, TimedOut);
-        assert_eq!(p.wait().err().unwrap().kind, TimedOut);
-        p.signal_kill().unwrap();
+        assert_eq!(p.wait().err().assert().kind, TimedOut);
+        assert_eq!(p.wait().err().assert().kind, TimedOut);
+        p.signal_kill().assert();
         p.set_timeout(None);
         assert!(p.wait().is_ok());
     })
@@ -995,15 +995,15 @@ mod tests {
         spawn(proc() {
             let mut p = sleeper();
             p.set_timeout(Some(10));
-            assert_eq!(p.wait().err().unwrap().kind, TimedOut);
-            p.signal_kill().unwrap();
+            assert_eq!(p.wait().err().assert().kind, TimedOut);
+            p.signal_kill().assert();
             tx.send(());
         });
         spawn(proc() {
             let mut p = sleeper();
             p.set_timeout(Some(10));
-            assert_eq!(p.wait().err().unwrap().kind, TimedOut);
-            p.signal_kill().unwrap();
+            assert_eq!(p.wait().err().assert().kind, TimedOut);
+            p.signal_kill().assert();
             tx2.send(());
         });
         rx.recv();

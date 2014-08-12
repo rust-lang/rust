@@ -110,7 +110,7 @@ impl RtioTTY for WindowsTTY {
             self.utf8 = MemReader::new(utf8);
         }
         // MemReader shouldn't error here since we just filled it
-        Ok(self.utf8.read(buf).unwrap())
+        Ok(self.utf8.read(buf).assert())
     }
 
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {

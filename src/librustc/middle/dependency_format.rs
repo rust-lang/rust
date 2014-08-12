@@ -115,7 +115,7 @@ fn calculate_type(sess: &session::Session,
                 None => {}
             }
             sess.cstore.iter_crate_data(|cnum, data| {
-                let src = sess.cstore.get_used_crate_source(cnum).unwrap();
+                let src = sess.cstore.get_used_crate_source(cnum).assert();
                 if src.rlib.is_some() { return }
                 sess.err(format!("dependency `{}` not found in rlib format",
                                  data.name).as_slice());
@@ -133,7 +133,7 @@ fn calculate_type(sess: &session::Session,
     // dependencies, ensuring there are no conflicts. The only valid case for a
     // dependency to be relied upon twice is for both cases to rely on a dylib.
     sess.cstore.iter_crate_data(|cnum, data| {
-        let src = sess.cstore.get_used_crate_source(cnum).unwrap();
+        let src = sess.cstore.get_used_crate_source(cnum).assert();
         if src.dylib.is_some() {
             add_library(sess, cnum, cstore::RequireDynamic, &mut formats);
             debug!("adding dylib: {}", data.name);
@@ -157,7 +157,7 @@ fn calculate_type(sess: &session::Session,
     // Run through the dependency list again, and add any missing libraries as
     // static libraries.
     sess.cstore.iter_crate_data(|cnum, data| {
-        let src = sess.cstore.get_used_crate_source(cnum).unwrap();
+        let src = sess.cstore.get_used_crate_source(cnum).assert();
         if src.dylib.is_none() && !formats.contains_key(&cnum) {
             assert!(src.rlib.is_some());
             add_library(sess, cnum, cstore::RequireStatic, &mut formats);
@@ -174,7 +174,7 @@ fn calculate_type(sess: &session::Session,
     // making sure that everything is available in the requested format.
     for (cnum, kind) in ret.iter().enumerate() {
         let cnum = cnum as ast::CrateNum;
-        let src = sess.cstore.get_used_crate_source(cnum + 1).unwrap();
+        let src = sess.cstore.get_used_crate_source(cnum + 1).assert();
         match *kind {
             None => continue,
             Some(cstore::RequireStatic) if src.rlib.is_some() => continue,

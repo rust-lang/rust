@@ -121,7 +121,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                 match cur {
                     '%' => { output.push(c); state = Nothing },
                     'c' => if stack.len() > 0 {
-                        match stack.pop().unwrap() {
+                        match stack.pop().assert() {
                             // if c is 0, use 0200 (128) for ncurses compatibility
                             Number(c) => {
                                 output.push(if c == 0 {
@@ -139,82 +139,82 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     '\'' => state = CharConstant,
                     '{' => state = IntConstant(0),
                     'l' => if stack.len() > 0 {
-                        match stack.pop().unwrap() {
+                        match stack.pop().assert() {
                             String(s) => stack.push(Number(s.len() as int)),
                             _         => return Err("a non-str was used with %l".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '+' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(y), Number(x)) => stack.push(Number(x + y)),
                             _ => return Err("non-numbers on stack with +".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '-' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(y), Number(x)) => stack.push(Number(x - y)),
                             _ => return Err("non-numbers on stack with -".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '*' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(y), Number(x)) => stack.push(Number(x * y)),
                             _ => return Err("non-numbers on stack with *".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '/' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(y), Number(x)) => stack.push(Number(x / y)),
                             _ => return Err("non-numbers on stack with /".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     'm' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(y), Number(x)) => stack.push(Number(x % y)),
                             _ => return Err("non-numbers on stack with %".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '&' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(y), Number(x)) => stack.push(Number(x & y)),
                             _ => return Err("non-numbers on stack with &".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '|' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(y), Number(x)) => stack.push(Number(x | y)),
                             _ => return Err("non-numbers on stack with |".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '^' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(y), Number(x)) => stack.push(Number(x ^ y)),
                             _ => return Err("non-numbers on stack with ^".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '=' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(y), Number(x)) => stack.push(Number(if x == y { 1 }
                                                                         else { 0 })),
                             _ => return Err("non-numbers on stack with =".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '>' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(y), Number(x)) => stack.push(Number(if x > y { 1 }
                                                                         else { 0 })),
                             _ => return Err("non-numbers on stack with >".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '<' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(y), Number(x)) => stack.push(Number(if x < y { 1 }
                                                                         else { 0 })),
                             _ => return Err("non-numbers on stack with <".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     'A' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(0), Number(_)) => stack.push(Number(0)),
                             (Number(_), Number(0)) => stack.push(Number(0)),
                             (Number(_), Number(_)) => stack.push(Number(1)),
@@ -222,21 +222,21 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         }
                     } else { return Err("stack is empty".to_string()) },
                     'O' => if stack.len() > 1 {
-                        match (stack.pop().unwrap(), stack.pop().unwrap()) {
+                        match (stack.pop().assert(), stack.pop().assert()) {
                             (Number(0), Number(0)) => stack.push(Number(0)),
                             (Number(_), Number(_)) => stack.push(Number(1)),
                             _ => return Err("non-numbers on stack with logical or".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '!' => if stack.len() > 0 {
-                        match stack.pop().unwrap() {
+                        match stack.pop().assert() {
                             Number(0) => stack.push(Number(1)),
                             Number(_) => stack.push(Number(0)),
                             _ => return Err("non-number on stack with logical not".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '~' => if stack.len() > 0 {
-                        match stack.pop().unwrap() {
+                        match stack.pop().assert() {
                             Number(x) => stack.push(Number(!x)),
                             _         => return Err("non-number on stack with %~".to_string())
                         }
@@ -252,9 +252,9 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     // printf-style support for %doxXs
                     'd'|'o'|'x'|'X'|'s' => if stack.len() > 0 {
                         let flags = Flags::new();
-                        let res = format(stack.pop().unwrap(), FormatOp::from_char(cur), flags);
+                        let res = format(stack.pop().assert(), FormatOp::from_char(cur), flags);
                         if res.is_err() { return res }
-                        output.push_all(res.unwrap().as_slice())
+                        output.push_all(res.assert().as_slice())
                     } else { return Err("stack is empty".to_string()) },
                     ':'|'#'|' '|'.'|'0'..'9' => {
                         let mut flags = Flags::new();
@@ -276,7 +276,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     // conditionals
                     '?' => (),
                     't' => if stack.len() > 0 {
-                        match stack.pop().unwrap() {
+                        match stack.pop().assert() {
                             Number(0) => state = SeekIfElse(0),
                             Number(_) => (),
                             _         => return Err("non-number on stack \
@@ -302,12 +302,12 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                 if cur >= 'A' && cur <= 'Z' {
                     if stack.len() > 0 {
                         let idx = (cur as u8) - b'A';
-                        vars.sta[idx as uint] = stack.pop().unwrap();
+                        vars.sta[idx as uint] = stack.pop().assert();
                     } else { return Err("stack is empty".to_string()) }
                 } else if cur >= 'a' && cur <= 'z' {
                     if stack.len() > 0 {
                         let idx = (cur as u8) - b'a';
-                        vars.dyn[idx as uint] = stack.pop().unwrap();
+                        vars.dyn[idx as uint] = stack.pop().assert();
                     } else { return Err("stack is empty".to_string()) }
                 } else {
                     return Err("bad variable name in %P".to_string());
@@ -350,9 +350,9 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                 old_state = Nothing;
                 match (*fstate, cur) {
                     (_,'d')|(_,'o')|(_,'x')|(_,'X')|(_,'s') => if stack.len() > 0 {
-                        let res = format(stack.pop().unwrap(), FormatOp::from_char(cur), *flags);
+                        let res = format(stack.pop().assert(), FormatOp::from_char(cur), *flags);
                         if res.is_err() { return res }
-                        output.push_all(res.unwrap().as_slice());
+                        output.push_all(res.assert().as_slice());
                         // will cause state to go to Nothing
                         old_state = FormatPattern(*flags, *fstate);
                     } else { return Err("stack is empty".to_string()) },
@@ -581,13 +581,13 @@ mod test {
     #[test]
     fn test_basic_setabf() {
         let s = b"\\E[48;5;%p1%dm";
-        assert_eq!(expand(s, [Number(1)], &mut Variables::new()).unwrap(),
+        assert_eq!(expand(s, [Number(1)], &mut Variables::new()).assert(),
                    "\\E[48;5;1m".bytes().collect());
     }
 
     #[test]
     fn test_multiple_int_constants() {
-        assert_eq!(expand(b"%{1}%{2}%d%d", [], &mut Variables::new()).unwrap(),
+        assert_eq!(expand(b"%{1}%{2}%d%d", [], &mut Variables::new()).assert(),
                    "21".bytes().collect());
     }
 
@@ -620,7 +620,7 @@ mod test {
                              [p],
                              vars);
             assert!(res.is_ok(),
-                    "Op {} failed with 1 stack entry: {}", *cap, res.unwrap_err());
+                    "Op {} failed with 1 stack entry: {}", *cap, res.assert_err());
         }
         let caps = ["%+", "%-", "%*", "%/", "%m", "%&", "%|", "%A", "%O"];
         for cap in caps.iter() {
@@ -638,7 +638,7 @@ mod test {
                              [],
                              vars);
             assert!(res.is_ok(),
-                    "Binop {} failed with 2 stack entries: {}", *cap, res.unwrap_err());
+                    "Binop {} failed with 2 stack entries: {}", *cap, res.assert_err());
         }
     }
 
@@ -653,16 +653,16 @@ mod test {
         for &(op, bs) in v.iter() {
             let s = format!("%{{1}}%{{2}}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
-            assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), vec!(b'0' + bs[0]));
+            assert!(res.is_ok(), res.assert_err());
+            assert_eq!(res.assert(), vec!(b'0' + bs[0]));
             let s = format!("%{{1}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
-            assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), vec!(b'0' + bs[1]));
+            assert!(res.is_ok(), res.assert_err());
+            assert_eq!(res.assert(), vec!(b'0' + bs[1]));
             let s = format!("%{{2}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
-            assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), vec!(b'0' + bs[2]));
+            assert!(res.is_ok(), res.assert_err());
+            assert_eq!(res.assert(), vec!(b'0' + bs[2]));
         }
     }
 
@@ -671,16 +671,16 @@ mod test {
         let mut vars = Variables::new();
         let s = b"\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
         let res = expand(s, [Number(1)], &mut vars);
-        assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(),
+        assert!(res.is_ok(), res.assert_err());
+        assert_eq!(res.assert(),
                    "\\E[31m".bytes().collect());
         let res = expand(s, [Number(8)], &mut vars);
-        assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(),
+        assert!(res.is_ok(), res.assert_err());
+        assert_eq!(res.assert(),
                    "\\E[90m".bytes().collect());
         let res = expand(s, [Number(42)], &mut vars);
-        assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(),
+        assert!(res.is_ok(), res.assert_err());
+        assert_eq!(res.assert(),
                    "\\E[38;5;42m".bytes().collect());
     }
 

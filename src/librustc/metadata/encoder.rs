@@ -325,7 +325,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         let def_id = local_def(variant.node.id);
         index.push(entry {
             val: variant.node.id as i64,
-            pos: rbml_w.writer.tell().unwrap(),
+            pos: rbml_w.writer.tell().assert(),
         });
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
@@ -695,10 +695,10 @@ fn encode_info_for_struct(ecx: &EncodeContext,
         let nm = field.name;
         let id = field.id.node;
 
-        index.push(entry {val: id as i64, pos: rbml_w.writer.tell().unwrap()});
+        index.push(entry {val: id as i64, pos: rbml_w.writer.tell().assert()});
         global_index.push(entry {
             val: id as i64,
-            pos: rbml_w.writer.tell().unwrap(),
+            pos: rbml_w.writer.tell().assert(),
         });
         rbml_w.start_tag(tag_items_data_item);
         debug!("encode_info_for_struct: doing {} {}",
@@ -724,7 +724,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                struct_id: NodeId) {
     index.push(entry {
         val: ctor_id as i64,
-        pos: rbml_w.writer.tell().unwrap(),
+        pos: rbml_w.writer.tell().assert(),
     });
 
     rbml_w.start_tag(tag_items_data_item);
@@ -902,7 +902,7 @@ fn encode_extension_implementations(ecx: &EncodeContext,
 fn encode_stability(rbml_w: &mut Encoder, stab_opt: Option<attr::Stability>) {
     stab_opt.map(|stab| {
         rbml_w.start_tag(tag_items_data_item_stability);
-        stab.encode(rbml_w).unwrap();
+        stab.encode(rbml_w).assert();
         rbml_w.end_tag();
     });
 }
@@ -919,7 +919,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     index: &mut Vec<entry<i64>>) {
         index.push(entry {
             val: item.id as i64,
-            pos: rbml_w.writer.tell().unwrap(),
+            pos: rbml_w.writer.tell().assert(),
         });
     }
 
@@ -1110,7 +1110,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         match ty.node {
             ast::TyPath(ref path, ref bounds, _) if path.segments
                                                         .len() == 1 => {
-                let ident = path.segments.last().unwrap().identifier;
+                let ident = path.segments.last().assert().identifier;
                 assert!(bounds.is_none());
                 encode_impl_type_basename(rbml_w, ident);
             }
@@ -1145,7 +1145,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             index.push(entry {
                 val: method_def_id.node as i64,
-                pos: rbml_w.writer.tell().unwrap(),
+                pos: rbml_w.writer.tell().assert(),
             });
             encode_info_for_method(ecx,
                                    rbml_w,
@@ -1204,7 +1204,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             index.push(entry {
                 val: method_def_id.node as i64,
-                pos: rbml_w.writer.tell().unwrap(),
+                pos: rbml_w.writer.tell().assert(),
             });
 
             rbml_w.start_tag(tag_items_data_item);
@@ -1278,7 +1278,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 abi: abi::Abi) {
     index.push(entry {
         val: nitem.id as i64,
-        pos: rbml_w.writer.tell().unwrap(),
+        pos: rbml_w.writer.tell().assert(),
     });
 
     rbml_w.start_tag(tag_items_data_item);
@@ -1380,7 +1380,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
     rbml_w.start_tag(tag_items_data);
     index.push(entry {
         val: CRATE_NODE_ID as i64,
-        pos: rbml_w.writer.tell().unwrap(),
+        pos: rbml_w.writer.tell().assert(),
     });
     encode_info_for_mod(ecx,
                         rbml_w,
@@ -1418,7 +1418,7 @@ fn encode_index<T: Hash>(rbml_w: &mut Encoder, index: Vec<entry<T>>,
     let mut bucket_locs = Vec::new();
     rbml_w.start_tag(tag_index_buckets);
     for bucket in buckets.iter() {
-        bucket_locs.push(rbml_w.writer.tell().unwrap());
+        bucket_locs.push(rbml_w.writer.tell().assert());
         rbml_w.start_tag(tag_index_buckets_bucket);
         for elt in bucket.iter() {
             rbml_w.start_tag(tag_index_buckets_bucket_elt);
@@ -1893,64 +1893,64 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter, parms: EncodeParams, krate:
     encode_hash(&mut rbml_w, &ecx.link_meta.crate_hash);
     encode_dylib_dependency_formats(&mut rbml_w, &ecx);
 
-    let mut i = rbml_w.writer.tell().unwrap();
+    let mut i = rbml_w.writer.tell().assert();
     encode_attributes(&mut rbml_w, krate.attrs.as_slice());
-    stats.attr_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.attr_bytes = rbml_w.writer.tell().assert() - i;
 
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.tell().assert();
     encode_crate_deps(&mut rbml_w, ecx.cstore);
-    stats.dep_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.dep_bytes = rbml_w.writer.tell().assert() - i;
 
     // Encode the language items.
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.tell().assert();
     encode_lang_items(&ecx, &mut rbml_w);
-    stats.lang_item_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.lang_item_bytes = rbml_w.writer.tell().assert() - i;
 
     // Encode the native libraries used
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.tell().assert();
     encode_native_libraries(&ecx, &mut rbml_w);
-    stats.native_lib_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.native_lib_bytes = rbml_w.writer.tell().assert() - i;
 
     // Encode the plugin registrar function
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.tell().assert();
     encode_plugin_registrar_fn(&ecx, &mut rbml_w);
-    stats.plugin_registrar_fn_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.plugin_registrar_fn_bytes = rbml_w.writer.tell().assert() - i;
 
     // Encode macro definitions
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.tell().assert();
     encode_macro_defs(&ecx, krate, &mut rbml_w);
-    stats.macro_defs_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.macro_defs_bytes = rbml_w.writer.tell().assert() - i;
 
     // Encode the types of all unboxed closures in this crate.
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.tell().assert();
     encode_unboxed_closures(&ecx, &mut rbml_w);
-    stats.unboxed_closure_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.unboxed_closure_bytes = rbml_w.writer.tell().assert() - i;
 
     // Encode the def IDs of impls, for coherence checking.
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.tell().assert();
     encode_impls(&ecx, krate, &mut rbml_w);
-    stats.impl_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.impl_bytes = rbml_w.writer.tell().assert() - i;
 
     // Encode miscellaneous info.
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.tell().assert();
     encode_misc_info(&ecx, krate, &mut rbml_w);
     encode_reachable_extern_fns(&ecx, &mut rbml_w);
-    stats.misc_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.misc_bytes = rbml_w.writer.tell().assert() - i;
 
     // Encode and index the items.
     rbml_w.start_tag(tag_items);
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.tell().assert();
     let items_index = encode_info_for_items(&ecx, &mut rbml_w, krate);
-    stats.item_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.item_bytes = rbml_w.writer.tell().assert() - i;
 
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.tell().assert();
     encode_index(&mut rbml_w, items_index, write_i64);
-    stats.index_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.index_bytes = rbml_w.writer.tell().assert() - i;
     rbml_w.end_tag();
 
     encode_struct_field_attrs(&mut rbml_w, krate);
 
-    stats.total_bytes = rbml_w.writer.tell().unwrap();
+    stats.total_bytes = rbml_w.writer.tell().assert();
 
     if tcx.sess.meta_stats() {
         for e in rbml_w.writer.get_ref().iter() {
@@ -1985,5 +1985,5 @@ pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> String {
         tcx: tcx,
         abbrevs: &RefCell::new(HashMap::new())
     }, t);
-    String::from_utf8(wr.unwrap()).unwrap()
+    String::from_utf8(wr.unwrap()).assert()
 }

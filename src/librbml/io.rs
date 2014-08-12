@@ -137,35 +137,35 @@ mod tests {
     fn test_seekable_mem_writer() {
         let mut writer = SeekableMemWriter::new();
         assert_eq!(writer.tell(), Ok(0));
-        writer.write([0]).unwrap();
+        writer.write([0]).assert();
         assert_eq!(writer.tell(), Ok(1));
-        writer.write([1, 2, 3]).unwrap();
-        writer.write([4, 5, 6, 7]).unwrap();
+        writer.write([1, 2, 3]).assert();
+        writer.write([4, 5, 6, 7]).assert();
         assert_eq!(writer.tell(), Ok(8));
-        assert_eq!(writer.get_ref(), &[0, 1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(writer.as_ref().assert(), &[0, 1, 2, 3, 4, 5, 6, 7]);
 
-        writer.seek(0, io::SeekSet).unwrap();
+        writer.seek(0, io::SeekSet).assert();
         assert_eq!(writer.tell(), Ok(0));
-        writer.write([3, 4]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 3, 4, 5, 6, 7]);
+        writer.write([3, 4]).assert();
+        assert_eq!(writer.as_ref().assert(), &[3, 4, 2, 3, 4, 5, 6, 7]);
 
-        writer.seek(1, io::SeekCur).unwrap();
-        writer.write([0, 1]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 7]);
+        writer.seek(1, io::SeekCur).assert();
+        writer.write([0, 1]).assert();
+        assert_eq!(writer.as_ref().assert(), &[3, 4, 2, 0, 1, 5, 6, 7]);
 
-        writer.seek(-1, io::SeekEnd).unwrap();
-        writer.write([1, 2]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 1, 2]);
+        writer.seek(-1, io::SeekEnd).assert();
+        writer.write([1, 2]).assert();
+        assert_eq!(writer.as_ref().assert(), &[3, 4, 2, 0, 1, 5, 6, 1, 2]);
 
-        writer.seek(1, io::SeekEnd).unwrap();
-        writer.write([1]).unwrap();
-        assert_eq!(writer.get_ref(), &[3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1]);
+        writer.seek(1, io::SeekEnd).assert();
+        writer.write([1]).assert();
+        assert_eq!(writer.as_ref().assert(), &[3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1]);
     }
 
     #[test]
     fn seek_past_end() {
         let mut r = SeekableMemWriter::new();
-        r.seek(10, io::SeekSet).unwrap();
+        r.seek(10, io::SeekSet).assert();
         assert!(r.write([3]).is_ok());
     }
 
@@ -182,10 +182,10 @@ mod tests {
         b.iter(|| {
             let mut wr = SeekableMemWriter::new();
             for _ in range(0, times) {
-                wr.write(src.as_slice()).unwrap();
+                wr.write(src.as_slice()).assert();
             }
 
-            let v = wr.unwrap();
+            let v = wr.assert();
             assert_eq!(v.len(), times * len);
             assert!(v.iter().all(|x| *x == 5));
         });

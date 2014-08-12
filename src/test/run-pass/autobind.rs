@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn f<T>(x: Vec<T>) -> T { return x.iter_owned().next().unwrap(); }
+fn f<T>(x: Vec<T>) -> T { return x.iter_owned().next().assert(); }
 
 fn g(act: |Vec<int> | -> int) -> int { return act(vec!(1, 2, 3)); }
 

@@ -11,7 +11,7 @@
 use libc::c_int;
 use libc;
 use std::mem;
-use std::ptr::{null, mut_null};
+use std::ptr::{null, null_mut};
 use std::rt::task::BlockedTask;
 use std::rt::rtio;
 
@@ -86,7 +86,7 @@ impl GetAddrInfoRequest {
                 });
 
                 match cx.status {
-                    0 => Ok(accum_addrinfo(cx.addrinfo.get_ref())),
+                    0 => Ok(accum_addrinfo(cx.addrinfo.as_ref().assert())),
                     n => Err(UvError(n))
                 }
             }

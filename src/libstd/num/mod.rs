@@ -132,11 +132,11 @@ pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
 /// Helper function for testing numeric operations
 #[cfg(test)]
 pub fn test_num<T:Num + NumCast + Show>(ten: T, two: T) {
-    assert_eq!(ten.add(&two),  cast(12i).unwrap());
-    assert_eq!(ten.sub(&two),  cast(8i).unwrap());
-    assert_eq!(ten.mul(&two),  cast(20i).unwrap());
-    assert_eq!(ten.div(&two),  cast(5i).unwrap());
-    assert_eq!(ten.rem(&two),  cast(0i).unwrap());
+    assert_eq!(ten.add(&two),  cast(12i).assert());
+    assert_eq!(ten.sub(&two),  cast(8i).assert());
+    assert_eq!(ten.mul(&two),  cast(20i).assert());
+    assert_eq!(ten.div(&two),  cast(5i).assert());
+    assert_eq!(ten.rem(&two),  cast(0i).assert());
 
     assert_eq!(ten.add(&two),  ten + two);
     assert_eq!(ten.sub(&two),  ten - two);
@@ -164,44 +164,44 @@ mod tests {
         ($_20:expr) => ({
             let _20 = $_20;
 
-            assert_eq!(20u,   _20.to_uint().unwrap());
-            assert_eq!(20u8,  _20.to_u8().unwrap());
-            assert_eq!(20u16, _20.to_u16().unwrap());
-            assert_eq!(20u32, _20.to_u32().unwrap());
-            assert_eq!(20u64, _20.to_u64().unwrap());
-            assert_eq!(20i,   _20.to_int().unwrap());
-            assert_eq!(20i8,  _20.to_i8().unwrap());
-            assert_eq!(20i16, _20.to_i16().unwrap());
-            assert_eq!(20i32, _20.to_i32().unwrap());
-            assert_eq!(20i64, _20.to_i64().unwrap());
-            assert_eq!(20f32, _20.to_f32().unwrap());
-            assert_eq!(20f64, _20.to_f64().unwrap());
+            assert_eq!(20u,   _20.to_uint().assert());
+            assert_eq!(20u8,  _20.to_u8().assert());
+            assert_eq!(20u16, _20.to_u16().assert());
+            assert_eq!(20u32, _20.to_u32().assert());
+            assert_eq!(20u64, _20.to_u64().assert());
+            assert_eq!(20i,   _20.to_int().assert());
+            assert_eq!(20i8,  _20.to_i8().assert());
+            assert_eq!(20i16, _20.to_i16().assert());
+            assert_eq!(20i32, _20.to_i32().assert());
+            assert_eq!(20i64, _20.to_i64().assert());
+            assert_eq!(20f32, _20.to_f32().assert());
+            assert_eq!(20f64, _20.to_f64().assert());
 
-            assert_eq!(_20, NumCast::from(20u).unwrap());
-            assert_eq!(_20, NumCast::from(20u8).unwrap());
-            assert_eq!(_20, NumCast::from(20u16).unwrap());
-            assert_eq!(_20, NumCast::from(20u32).unwrap());
-            assert_eq!(_20, NumCast::from(20u64).unwrap());
-            assert_eq!(_20, NumCast::from(20i).unwrap());
-            assert_eq!(_20, NumCast::from(20i8).unwrap());
-            assert_eq!(_20, NumCast::from(20i16).unwrap());
-            assert_eq!(_20, NumCast::from(20i32).unwrap());
-            assert_eq!(_20, NumCast::from(20i64).unwrap());
-            assert_eq!(_20, NumCast::from(20f32).unwrap());
-            assert_eq!(_20, NumCast::from(20f64).unwrap());
+            assert_eq!(_20, NumCast::from(20u).assert());
+            assert_eq!(_20, NumCast::from(20u8).assert());
+            assert_eq!(_20, NumCast::from(20u16).assert());
+            assert_eq!(_20, NumCast::from(20u32).assert());
+            assert_eq!(_20, NumCast::from(20u64).assert());
+            assert_eq!(_20, NumCast::from(20i).assert());
+            assert_eq!(_20, NumCast::from(20i8).assert());
+            assert_eq!(_20, NumCast::from(20i16).assert());
+            assert_eq!(_20, NumCast::from(20i32).assert());
+            assert_eq!(_20, NumCast::from(20i64).assert());
+            assert_eq!(_20, NumCast::from(20f32).assert());
+            assert_eq!(_20, NumCast::from(20f64).assert());
 
-            assert_eq!(_20, cast(20u).unwrap());
-            assert_eq!(_20, cast(20u8).unwrap());
-            assert_eq!(_20, cast(20u16).unwrap());
-            assert_eq!(_20, cast(20u32).unwrap());
-            assert_eq!(_20, cast(20u64).unwrap());
-            assert_eq!(_20, cast(20i).unwrap());
-            assert_eq!(_20, cast(20i8).unwrap());
-            assert_eq!(_20, cast(20i16).unwrap());
-            assert_eq!(_20, cast(20i32).unwrap());
-            assert_eq!(_20, cast(20i64).unwrap());
-            assert_eq!(_20, cast(20f32).unwrap());
-            assert_eq!(_20, cast(20f64).unwrap());
+            assert_eq!(_20, cast(20u).assert());
+            assert_eq!(_20, cast(20u8).assert());
+            assert_eq!(_20, cast(20u16).assert());
+            assert_eq!(_20, cast(20u32).assert());
+            assert_eq!(_20, cast(20u64).assert());
+            assert_eq!(_20, cast(20i).assert());
+            assert_eq!(_20, cast(20i8).assert());
+            assert_eq!(_20, cast(20i16).assert());
+            assert_eq!(_20, cast(20i32).assert());
+            assert_eq!(_20, cast(20i64).assert());
+            assert_eq!(_20, cast(20f32).assert());
+            assert_eq!(_20, cast(20f64).assert());
         })
     )
 

@@ -140,7 +140,7 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
     }
     fn ignore_stage(config: &Config) -> String {
         format!("ignore-{}",
-                config.stage_id.as_slice().split('-').next().unwrap())
+                config.stage_id.as_slice().split('-').next().assert())
     }
 
     let val = iter_header(testfile, |ln| {
@@ -167,12 +167,12 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
 fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
     use std::io::{BufferedReader, File};
 
-    let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
+    let mut rdr = BufferedReader::new(File::open(testfile).assert());
     for ln in rdr.lines() {
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
-        let ln = ln.unwrap();
+        let ln = ln.assert();
         if ln.as_slice().starts_with("fn") ||
                 ln.as_slice().starts_with("mod") {
             return true;
@@ -238,10 +238,10 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
                                       .collect();
 
         match strs.len() {
-          1u => (strs.pop().unwrap(), "".to_string()),
+          1u => (strs.pop().assert(), "".to_string()),
           2u => {
-              let end = strs.pop().unwrap();
-              (strs.pop().unwrap(), end)
+              let end = strs.pop().assert();
+              (strs.pop().assert(), end)
           }
           n => fail!("Expected 1 or 2 strings, not {}", n)
         }

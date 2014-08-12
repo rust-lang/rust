@@ -177,7 +177,7 @@ mod test_unix {
     #[test] #[cfg(not(target_os="android"))] // FIXME(#10378)
     fn test_io_signal_smoketest() {
         let mut signal = Listener::new();
-        signal.register(Interrupt).unwrap();
+        signal.register(Interrupt).assert();
         sigint();
         timer::sleep(10);
         match signal.rx.recv() {
@@ -190,8 +190,8 @@ mod test_unix {
     fn test_io_signal_two_signal_one_signum() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
-        s1.register(Interrupt).unwrap();
-        s2.register(Interrupt).unwrap();
+        s1.register(Interrupt).assert();
+        s2.register(Interrupt).assert();
         sigint();
         timer::sleep(10);
         match s1.rx.recv() {
@@ -208,8 +208,8 @@ mod test_unix {
     fn test_io_signal_unregister() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
-        s1.register(Interrupt).unwrap();
-        s2.register(Interrupt).unwrap();
+        s1.register(Interrupt).assert();
+        s2.register(Interrupt).assert();
         s2.unregister(Interrupt);
         sigint();
         timer::sleep(10);

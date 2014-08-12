@@ -14,7 +14,7 @@ use std::io::timer::Timer;
 pub fn main() {
     let (tx, rx) = channel();
     spawn(proc (){
-        let mut timer = Timer::new().unwrap();
+        let mut timer = Timer::new().assert();
         timer.sleep(10);
         tx.send(());
     });

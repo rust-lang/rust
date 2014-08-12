@@ -374,7 +374,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
                        externs,
                        &cr,
                        triple)
-    }).map_err(|boxed_any|format!("{:?}", boxed_any)).unwrap();
+    }).map_err(|boxed_any|format!("{:?}", boxed_any)).assert();
     info!("finished with rustc");
     analysiskey.replace(Some(analysis));
 
@@ -385,7 +385,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
-    match krate.module.get_ref().doc_list() {
+    match krate.module.as_ref().assert().doc_list() {
         Some(nested) => {
             for inner in nested.iter() {
                 match *inner {
@@ -472,7 +472,7 @@ fn json_input(input: &str) -> Result<Output, String> {
             let krate = match obj.pop(&"crate".to_string()) {
                 Some(json) => {
                     let mut d = json::Decoder::new(json);
-                    Decodable::decode(&mut d).unwrap()
+                    Decodable::decode(&mut d).assert()
                 }
                 None => return Err("malformed json".to_string()),
             };
@@ -515,9 +515,9 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
         let mut w = MemWriter::new();
         {
             let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
-            krate.encode(&mut encoder).unwrap();
+            krate.encode(&mut encoder).assert();
         }
-        String::from_utf8(w.unwrap()).unwrap()
+        String::from_utf8(w.unwrap()).assert()
     };
     let crate_json = match json::from_str(crate_json_str.as_slice()) {
         Ok(j) => j,

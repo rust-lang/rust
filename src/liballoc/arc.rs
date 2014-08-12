@@ -375,7 +375,7 @@ mod tests {
         let cow1_weak = cow0.downgrade();
 
         assert!(75 == *cow0);
-        assert!(75 == *cow1_weak.upgrade().unwrap());
+        assert!(75 == *cow1_weak.upgrade().assert());
 
         *cow0.make_unique() += 1;
 

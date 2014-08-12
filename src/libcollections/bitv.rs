@@ -55,7 +55,7 @@
 //! println!("");
 //!
 //! // We can manipulate the internal Bitv
-//! let num_primes = primes.get_ref().iter().filter(|x| *x).count();
+//! let num_primes = primes.as_bitv().iter().filter(|x| *x).count();
 //! println!("There are {} primes below {}", num_primes, max_prime);
 //! ```
 
@@ -966,7 +966,7 @@ impl<'a> RandomAccessIterator<bool> for Bits<'a> {
 /// }
 ///
 /// // Can convert back to a `Bitv`
-/// let bv: Bitv = s.unwrap();
+/// let bv: Bitv = s.into_bitv();
 /// assert!(bv.eq_vec([true, true, false, true,
 ///                    false, false, false, false]));
 /// ```
@@ -989,7 +989,7 @@ impl FromIterator<bool> for BitvSet {
 impl Extendable<bool> for BitvSet {
     #[inline]
     fn extend<I: Iterator<bool>>(&mut self, iterator: I) {
-        self.get_mut_ref().extend(iterator);
+        self.as_bitv_mut().extend(iterator);
     }
 }
 
@@ -1088,7 +1088,7 @@ impl BitvSet {
     /// s.insert(0);
     /// s.insert(3);
     ///
-    /// let bv = s.unwrap();
+    /// let bv = s.assert();
     /// assert!(bv.eq_vec([true, false, false, true]));
     /// ```
     #[inline]
@@ -1129,7 +1129,7 @@ impl BitvSet {
     /// let mut s = BitvSet::new();
     /// s.insert(0);
     ///
-    /// let bv = s.get_ref();
+    /// let bv = s.as_bitv();
     /// assert_eq!(bv[0], true);
     /// ```
     #[inline]
@@ -1171,7 +1171,7 @@ impl BitvSet {
     /// assert_eq!(s.contains(&0), true);
     /// {
     ///     // Will free the set during bv's lifetime
-    ///     let bv = s.get_mut_ref();
+    ///     let bv = s.as_bitv_mut();
     ///     bv.set(0, false);
     /// }
     /// assert_eq!(s.contains(&0), false);
@@ -1408,7 +1408,7 @@ impl BitvSet {
     /// let b = BitvSet::from_bitv(bitv::from_bytes([b]));
     ///
     /// a.union_with(&b);
-    /// assert_eq!(a.unwrap(), bitv::from_bytes([res]));
+    /// assert_eq!(a.assert(), bitv::from_bytes([res]));
     /// ```
     #[inline]
     pub fn union_with(&mut self, other: &BitvSet) {
@@ -1431,7 +1431,7 @@ impl BitvSet {
     /// let b = BitvSet::from_bitv(bitv::from_bytes([b]));
     ///
     /// a.intersect_with(&b);
-    /// assert_eq!(a.unwrap(), bitv::from_bytes([res]));
+    /// assert_eq!(a.assert(), bitv::from_bytes([res]));
     /// ```
     #[inline]
     pub fn intersect_with(&mut self, other: &BitvSet) {
@@ -1455,13 +1455,13 @@ impl BitvSet {
     /// let bvb = BitvSet::from_bitv(bitv::from_bytes([b]));
     ///
     /// bva.difference_with(&bvb);
-    /// assert_eq!(bva.unwrap(), bitv::from_bytes([a_b]));
+    /// assert_eq!(bva.into_bitv(), bitv::from_bytes([a_b]));
     ///
     /// let bva = BitvSet::from_bitv(bitv::from_bytes([a]));
     /// let mut bvb = BitvSet::from_bitv(bitv::from_bytes([b]));
     ///
     /// bvb.difference_with(&bva);
-    /// assert_eq!(bvb.unwrap(), bitv::from_bytes([b_a]));
+    /// assert_eq!(bvb.into_bitv(), bitv::from_bytes([b_a]));
     /// ```
     #[inline]
     pub fn difference_with(&mut self, other: &BitvSet) {
@@ -1484,7 +1484,7 @@ impl BitvSet {
     /// let b = BitvSet::from_bitv(bitv::from_bytes([b]));
     ///
     /// a.symmetric_difference_with(&b);
-    /// assert_eq!(a.unwrap(), bitv::from_bytes([res]));
+    /// assert_eq!(a.into_bitv(), bitv::from_bytes([res]));
     /// ```
     #[inline]
     pub fn symmetric_difference_with(&mut self, other: &BitvSet) {

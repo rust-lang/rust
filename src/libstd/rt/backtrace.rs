@@ -108,7 +108,7 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
             while rest.char_at(0).is_digit() {
                 rest = rest.slice_from(1);
             }
-            let i: uint = from_str(s.slice_to(s.len() - rest.len())).unwrap();
+            let i: uint = from_str(s.slice_to(s.len() - rest.len())).assert();
             s = rest.slice_from(i);
             rest = rest.slice_to(i);
             while rest.len() > 0 {
@@ -1002,8 +1002,8 @@ mod test {
 
     macro_rules! t( ($a:expr, $b:expr) => ({
         let mut m = MemWriter::new();
-        super::demangle(&mut m, $a).unwrap();
-        assert_eq!(String::from_utf8(m.unwrap()).unwrap(), $b.to_string());
+        super::demangle(&mut m, $a).assert();
+        assert_eq!(String::from_utf8(m.unwrap()).assert(), $b.to_string());
     }) )
 
     #[test]

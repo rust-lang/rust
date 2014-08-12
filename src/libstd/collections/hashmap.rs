@@ -385,20 +385,8 @@ mod table {
             Entries { table: self, idx: 0, elems_seen: 0 }
         }
 
-        /// Deprecated: renamed to `iter_mut`.
-        #[deprecated = "renamed to iter_mut"]
-        pub fn mut_iter<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
-            self.iter_mut()
-        }
-
         pub fn iter_mut<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
             EntriesMut { table: self, idx: 0, elems_seen: 0 }
-        }
-
-        /// Deprecated: renamed to `iter_owned`.
-        #[deprecated = "renamed to iter_owned"]
-        pub fn move_iter(self) -> EntriesOwned<K, V> {
-            self.iter_owned()
         }
 
         pub fn iter_owned(self) -> EntriesOwned<K, V> {
@@ -1709,7 +1697,7 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// let mut map: HashMap<uint, String> = HashMap::new();
     /// map.insert(1u, "foo".to_string());
-    /// let s: String = map.find_copy(&1).unwrap();
+    /// let s: String = map.find_copy(&1).assert();
     /// ```
     pub fn find_copy(&self, k: &K) -> Option<V> {
         self.find(k).map(|v| (*v).clone())
@@ -2287,8 +2275,8 @@ mod test_map {
         assert_eq!(m.len(), 1);
         assert!(m.insert(2i, 4i));
         assert_eq!(m.len(), 2);
-        assert_eq!(*m.find(&1).unwrap(), 2);
-        assert_eq!(*m.find(&2).unwrap(), 4);
+        assert_eq!(*m.find(&1).assert(), 2);
+        assert_eq!(*m.find(&2).assert(), 4);
     }
 
     local_data_key!(drop_vector: RefCell<Vec<int>>)
@@ -2301,7 +2289,7 @@ mod test_map {
 
     impl Dropable {
         fn new(k: uint) -> Dropable {
-            let v = drop_vector.get().unwrap();
+            let v = drop_vector.get().assert();
             v.borrow_mut().as_mut_slice()[k] += 1;
 
             Dropable { k: k }
@@ -2310,7 +2298,7 @@ mod test_map {
 
     impl Drop for Dropable {
         fn drop(&mut self) {
-            let v = drop_vector.get().unwrap();
+            let v = drop_vector.get().assert();
             v.borrow_mut().as_mut_slice()[self.k] -= 1;
         }
     }
@@ -2322,7 +2310,7 @@ mod test_map {
         {
             let mut m = HashMap::new();
 
-            let v = drop_vector.get().unwrap();
+            let v = drop_vector.get().assert();
             for i in range(0u, 200) {
                 assert_eq!(v.borrow().as_slice()[i], 0);
             }
@@ -2334,7 +2322,7 @@ mod test_map {
                 m.insert(d1, d2);
             }
 
-            let v = drop_vector.get().unwrap();
+            let v = drop_vector.get().assert();
             for i in range(0u, 200) {
                 assert_eq!(v.borrow().as_slice()[i], 1);
             }
@@ -2346,12 +2334,12 @@ mod test_map {
 
                 assert!(v.is_some());
 
-                let v = drop_vector.get().unwrap();
+                let v = drop_vector.get().assert();
                 assert_eq!(v.borrow().as_slice()[i], 1);
                 assert_eq!(v.borrow().as_slice()[i+100], 1);
             }
 
-            let v = drop_vector.get().unwrap();
+            let v = drop_vector.get().assert();
             for i in range(0u, 50) {
                 assert_eq!(v.borrow().as_slice()[i], 0);
                 assert_eq!(v.borrow().as_slice()[i+100], 0);
@@ -2363,7 +2351,7 @@ mod test_map {
             }
         }
 
-        let v = drop_vector.get().unwrap();
+        let v = drop_vector.get().assert();
         for i in range(0u, 200) {
             assert_eq!(v.borrow().as_slice()[i], 0);
         }
@@ -2455,9 +2443,9 @@ mod test_map {
     fn test_insert_overwrite() {
         let mut m = HashMap::new();
         assert!(m.insert(1i, 2i));
-        assert_eq!(*m.find(&1).unwrap(), 2);
+        assert_eq!(*m.find(&1).assert(), 2);
         assert!(!m.insert(1i, 3i));
-        assert_eq!(*m.find(&1).unwrap(), 3);
+        assert_eq!(*m.find(&1).assert(), 3);
     }
 
     #[test]
@@ -2466,26 +2454,26 @@ mod test_map {
         assert!(m.insert(1i, 2i));
         assert!(m.insert(5i, 3i));
         assert!(m.insert(9i, 4i));
-        assert_eq!(*m.find(&9).unwrap(), 4);
-        assert_eq!(*m.find(&5).unwrap(), 3);
-        assert_eq!(*m.find(&1).unwrap(), 2);
+        assert_eq!(*m.find(&9).assert(), 4);
+        assert_eq!(*m.find(&5).assert(), 3);
+        assert_eq!(*m.find(&1).assert(), 2);
     }
 
     #[test]
     fn test_conflict_remove() {
         let mut m = HashMap::with_capacity(4);
         assert!(m.insert(1i, 2i));
-        assert_eq!(*m.find(&1).unwrap(), 2);
+        assert_eq!(*m.find(&1).assert(), 2);
         assert!(m.insert(5, 3));
-        assert_eq!(*m.find(&1).unwrap(), 2);
-        assert_eq!(*m.find(&5).unwrap(), 3);
+        assert_eq!(*m.find(&1).assert(), 2);
+        assert_eq!(*m.find(&5).assert(), 3);
         assert!(m.insert(9, 4));
-        assert_eq!(*m.find(&1).unwrap(), 2);
-        assert_eq!(*m.find(&5).unwrap(), 3);
-        assert_eq!(*m.find(&9).unwrap(), 4);
+        assert_eq!(*m.find(&1).assert(), 2);
+        assert_eq!(*m.find(&5).assert(), 3);
+        assert_eq!(*m.find(&9).assert(), 4);
         assert!(m.remove(&1));
-        assert_eq!(*m.find(&9).unwrap(), 4);
-        assert_eq!(*m.find(&5).unwrap(), 3);
+        assert_eq!(*m.find(&9).assert(), 4);
+        assert_eq!(*m.find(&5).assert(), 3);
     }
 
     #[test]

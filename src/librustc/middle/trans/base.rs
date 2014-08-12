@@ -160,7 +160,7 @@ impl<'a> Drop for StatRecorder<'a> {
             let end = time::precise_time_ns();
             let elapsed = ((end - self.start) / 1_000_000) as uint;
             let iend = self.ccx.stats.n_llvm_insns.get();
-            self.ccx.stats.fn_stats.borrow_mut().push((self.name.take_unwrap(),
+            self.ccx.stats.fn_stats.borrow_mut().push((self.name.take().assert(),
                                                        elapsed,
                                                        iend - self.istart));
             self.ccx.stats.n_fns.set(self.ccx.stats.n_fns.get() + 1);
@@ -1192,7 +1192,7 @@ pub fn alloca_zeroed(cx: &Block, ty: Type, name: &str) -> ValueRef {
     }
     let p = alloca_no_lifetime(cx, ty, name);
     let b = cx.fcx.ccx.builder();
-    b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
+    b.position_before(cx.fcx.alloca_insert_pt.get().assert());
     memzero(&b, p, ty);
     p
 }
@@ -1465,7 +1465,7 @@ fn copy_unboxed_closure_args_to_allocas<'a>(
 
     assert_eq!(arg_datums.len(), 1);
 
-    let arg_datum = arg_datums.iter_owned().next().unwrap();
+    let arg_datum = arg_datums.iter_owned().next().assert();
 
     // Untuple the rest of the arguments.
     let tuple_datum =
@@ -1538,12 +1538,12 @@ pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block, retty: ty::t) {
         return RetVoid(ret_cx);
     }
 
-    let retptr = Value(fcx.llretptr.get().unwrap());
+    let retptr = Value(fcx.llretptr.get().assert());
     let retval = match retptr.get_dominating_store(ret_cx) {
         // If there's only a single store to the ret slot, we can directly return
         // the value that was stored and omit the store and the alloca
         Some(s) => {
-            let retval = s.get_operand(0).unwrap().get();
+            let retval = s.get_operand(0).assert().get();
             s.erase_from_parent();
 
             if retptr.has_no_uses() {
@@ -1557,7 +1557,7 @@ pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block, retty: ty::t) {
             }
         }
         // Otherwise, load the return value from the ret slot
-        None => load_ty(ret_cx, fcx.llretptr.get().unwrap(), retty)
+        None => load_ty(ret_cx, fcx.llretptr.get().assert(), retty)
     };
 
     Ret(ret_cx, retval);
@@ -1845,12 +1845,12 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
         for (i, arg_datum) in arg_datums.iter_owned().enumerate() {
             let lldestptr = adt::trans_field_ptr(bcx,
                                                  &*repr,
-                                                 fcx.llretptr.get().unwrap(),
+                                                 fcx.llretptr.get().assert(),
                                                  disr,
                                                  i);
             arg_datum.store_to(bcx, lldestptr);
         }
-        adt::trans_set_discr(bcx, &*repr, fcx.llretptr.get().unwrap(), disr);
+        adt::trans_set_discr(bcx, &*repr, fcx.llretptr.get().assert(), disr);
     }
 
     finish_fn(&fcx, bcx, result_ty);
@@ -2246,7 +2246,7 @@ pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
 pub fn create_entry_wrapper(ccx: &CrateContext,
                            _sp: Span,
                            main_llfn: ValueRef) {
-    let et = ccx.sess().entry_type.get().unwrap();
+    let et = ccx.sess().entry_type.get().assert();
     match et {
         config::EntryMain => {
             create_entry_fn(ccx, main_llfn, true);
@@ -2326,7 +2326,7 @@ fn exported_name(ccx: &CrateContext, id: ast::NodeId,
         _ => ccx.tcx.map.with_path(id, |mut path| {
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
-                path.last().unwrap().to_string()
+                path.last().assert().to_string()
             } else {
                 match weak_lang_items::link_name(attrs) {
                     Some(name) => name.get().to_string(),

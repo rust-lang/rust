@@ -123,18 +123,18 @@ mod test {
         use os;
         use io::pipe::PipeStream;
 
-        let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
+        let os::Pipe { reader, writer } = unsafe { os::pipe().assert() };
         let out = PipeStream::open(writer);
         let mut input = PipeStream::open(reader);
         let (tx, rx) = channel();
         spawn(proc() {
             let mut out = out;
-            out.write([10]).unwrap();
+            out.write([10]).assert();
             rx.recv(); // don't close the pipe until the other read has finished
         });
 
         let mut buf = [0, ..10];
-        input.read(buf).unwrap();
+        input.read(buf).assert();
         tx.send(());
     })
 }

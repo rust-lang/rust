@@ -108,13 +108,13 @@ fn test_to_option() {
         assert_eq!(p.to_option(), None);
 
         let q: *const int = &2;
-        assert_eq!(q.to_option().unwrap(), &2);
+        assert_eq!(q.to_option().assert(), &2);
 
         let p: *mut int = null_mut();
         assert_eq!(p.to_option(), None);
 
         let q: *mut int = &mut 2;
-        assert_eq!(q.to_option().unwrap(), &2);
+        assert_eq!(q.to_option().assert(), &2);
     }
 }
 
@@ -230,7 +230,7 @@ fn test_ptr_array_each() {
 fn test_ptr_array_each_with_len_null_ptr() {
     unsafe {
         array_each_with_len(0 as *const *const libc::c_char, 1, |e| {
-            CString::new(e, false).as_str().unwrap();
+            CString::new(e, false).as_str().assert();
         });
     }
 }
@@ -239,7 +239,7 @@ fn test_ptr_array_each_with_len_null_ptr() {
 fn test_ptr_array_each_null_ptr() {
     unsafe {
         array_each(0 as *const *const libc::c_char, |e| {
-            CString::new(e, false).as_str().unwrap();
+            CString::new(e, false).as_str().assert();
         });
     }
 }

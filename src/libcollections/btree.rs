@@ -378,7 +378,7 @@ impl<K: Clone + Ord, V: Clone> Leaf<K, V> {
         //upper bound), we return a new Branch with one element and two children.
         if self.elts.len() > ub {
             let midpoint_opt = self.elts.remove(ub / 2);
-            let midpoint = midpoint_opt.unwrap();
+            let midpoint = midpoint_opt.assert();
             let (left_leaf, right_leaf) = self.elts.partition(|le|
                                                               le.key.cmp(&midpoint.key.clone())
                                                               == Less);
@@ -568,11 +568,11 @@ impl<K: Clone + Ord, V: Clone> Branch<K, V> {
                 //If we have a new leaf node, integrate it into the current branch
                 //and return it, saying we have inserted a new element.
                 LeafNode(..) => {
-                    if index.unwrap() == self.elts.len() {
+                    if index.assert() == self.elts.len() {
                         self.rightmost_child = box new_branch;
                     }
                     else {
-                        self.elts.get_mut(index.unwrap()).left = box new_branch;
+                        self.elts.get_mut(index.assert()).left = box new_branch;
                     }
                     return (Node::new_branch(self.clone().elts,
                                              self.clone().rightmost_child),
@@ -605,7 +605,7 @@ impl<K: Clone + Ord, V: Clone> Branch<K, V> {
             //If the current node is overfilled, create a new branch with one element
             //and two children.
             if self.elts.len() > ub {
-                let midpoint = self.elts.remove(ub / 2).unwrap();
+                let midpoint = self.elts.remove(ub / 2).assert();
                 let (new_left, new_right) = self.clone().elts.partition(|le|
                                                                 midpoint.key.cmp(&le.key)
                                                                         == Greater);

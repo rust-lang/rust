@@ -84,7 +84,7 @@ impl Access {
     pub unsafe fn dequeue(&mut self, token: uint) -> Option<BlockedTask> {
         let inner: &mut Inner = &mut *self.inner.get();
         match inner.queue.iter().position(|&(_, t)| t == token) {
-            Some(i) => Some(inner.queue.remove(i).unwrap().val0()),
+            Some(i) => Some(inner.queue.remove(i).assert().val0()),
             None => None,
         }
     }

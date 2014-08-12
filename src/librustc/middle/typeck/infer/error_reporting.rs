@@ -219,7 +219,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     };
                     match free_regions_from_same_fn(self.tcx, sub, sup) {
                         Some(ref same_frs) if trace.is_some() => {
-                            let trace = trace.unwrap();
+                            let trace = trace.assert();
                             let terr = ty::terr_regions_does_not_outlive(sup,
                                                                          sub);
                             trace_origins.push((trace, terr));
@@ -915,7 +915,7 @@ impl<'a> Rebuilder<'a> {
                     ast::UnboxedFnTyParamBound(unboxed_function_type)
                 }
                 &ast::TraitTyParamBound(ref tr) => {
-                    let last_seg = tr.path.segments.last().unwrap();
+                    let last_seg = tr.path.segments.last().assert();
                     let mut insert = Vec::new();
                     for (i, lt) in last_seg.lifetimes.iter().enumerate() {
                         if region_names.contains(&lt.name) {
@@ -1022,7 +1022,7 @@ impl<'a> Rebuilder<'a> {
         let mut ty_queue = vec!(ty);
         let mut cur_ty;
         while !ty_queue.is_empty() {
-            cur_ty = ty_queue.shift().unwrap();
+            cur_ty = ty_queue.shift().assert();
             match cur_ty.node {
                 ast::TyRptr(lt_opt, mut_ty) => {
                     match lt_opt {
@@ -1063,7 +1063,7 @@ impl<'a> Rebuilder<'a> {
                             let expected =
                                 generics.regions.len(subst::TypeSpace);
                             let lifetimes =
-                                &path.segments.last().unwrap().lifetimes;
+                                &path.segments.last().assert().lifetimes;
                             let mut insert = Vec::new();
                             if lifetimes.len() == 0 {
                                 let anon = self.cur_anon.get();
@@ -1182,7 +1182,7 @@ impl<'a> Rebuilder<'a> {
             region_names: region_names,
         } = rebuild_info;
 
-        let last_seg = path.segments.last().unwrap();
+        let last_seg = path.segments.last().assert();
         let mut new_lts = Vec::new();
         if last_seg.lifetimes.len() == 0 {
             // traverse once to see if there's a need to insert lifetime
@@ -1463,7 +1463,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
         None => None
     };
     if method_id_opt.is_some() {
-        let method_id = method_id_opt.unwrap();
+        let method_id = method_id_opt.assert();
         let parent = tcx.map.get_parent(method_id);
         match tcx.map.find(parent) {
             Some(node) => match node {
@@ -1527,7 +1527,7 @@ impl LifeGiver {
         fn num_to_string(counter: uint) -> String {
             let mut s = String::new();
             let (n, r) = (counter/26 + 1, counter % 26);
-            let letter: char = from_u32((r+97) as u32).unwrap();
+            let letter: char = from_u32((r+97) as u32).assert();
             for _ in range(0, n) {
                 s.push_char(letter);
             }

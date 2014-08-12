@@ -823,7 +823,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
         }
     }
 
-    if pos == len && rdr.tell().unwrap() == format.len() as u64 {
+    if pos == len && rdr.tell().assert() == format.len() as u64 {
         Ok(Tm {
             tm_sec: tm.tm_sec,
             tm_min: tm.tm_min,
@@ -1061,7 +1061,7 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
         };
         match ch as char {
             '%' => {
-                rdr.read(b).unwrap();
+                rdr.read(b).assert();
                 let s = parse_type(b[0] as char, tm);
                 buf.push_all(s.as_bytes());
             }
@@ -1069,7 +1069,7 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
         }
     }
 
-    String::from_utf8(buf).unwrap()
+    String::from_utf8(buf).assert()
 }
 
 #[cfg(test)]
@@ -1359,9 +1359,9 @@ mod tests {
         assert!(test("6", "%w"));
         assert!(test("2009", "%Y"));
         assert!(test("09", "%y"));
-        assert!(strptime("-0000", "%z").unwrap().tm_gmtoff ==
+        assert!(strptime("-0000", "%z").assert().tm_gmtoff ==
             0);
-        assert!(strptime("-0800", "%z").unwrap().tm_gmtoff ==
+        assert!(strptime("-0800", "%z").assert().tm_gmtoff ==
             0);
         assert!(test("%", "%%"));
 

@@ -228,7 +228,7 @@ impl<'a> ReachableContext<'a> {
             if self.worklist.len() == 0 {
                 break
             }
-            let search_item = self.worklist.pop().unwrap();
+            let search_item = self.worklist.pop().assert();
             if scanned.contains(&search_item) {
                 continue
             }

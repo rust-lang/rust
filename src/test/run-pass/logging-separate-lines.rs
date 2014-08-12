@@ -32,9 +32,9 @@ fn main() {
 
     let p = Command::new(args[0].as_slice())
                     .arg("child")
-                    .spawn().unwrap().wait_with_output().unwrap();
+                    .spawn().assert().wait_with_output().assert();
     assert!(p.status.success());
-    let mut lines = str::from_utf8(p.error.as_slice()).unwrap().lines();
-    assert!(lines.next().unwrap().contains("foo"));
-    assert!(lines.next().unwrap().contains("bar"));
+    let mut lines = str::from_utf8(p.error.as_slice()).assert().lines();
+    assert!(lines.next().assert().contains("foo"));
+    assert!(lines.next().assert().contains("bar"));
 }

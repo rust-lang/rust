@@ -27,10 +27,10 @@ local_data_key!(key_int: int)
 local_data_key!(key_vector: Vec<int>)
 
 key_int.replace(Some(3));
-assert_eq!(*key_int.get().unwrap(), 3);
+assert_eq!(*key_int.get().assert(), 3);
 
 key_vector.replace(Some(vec![4]));
-assert_eq!(*key_vector.get().unwrap(), vec![4]);
+assert_eq!(*key_vector.get().assert(), vec![4]);
 ```
 
 */
@@ -258,7 +258,7 @@ impl<T: 'static> KeyValue<T> {
     /// assert!(key.get().is_none());
     ///
     /// key.replace(Some(3));
-    /// assert_eq!(*key.get().unwrap(), 3);
+    /// assert_eq!(*key.get().assert(), 3);
     /// ```
     pub fn get(&'static self) -> Option<Ref<T>> {
         let map = match unsafe { get_local_map() } {
@@ -421,14 +421,14 @@ mod tests {
             // TLD shouldn't carry over.
             assert!(my_key.get().is_none());
             my_key.replace(Some("child data".to_string()));
-            assert!(my_key.get().get_ref().as_slice() == "child data");
+            assert!(my_key.get().as_ref().assert().as_slice() == "child data");
             // should be cleaned up for us
         });
 
         // Must work multiple times
-        assert!(my_key.get().unwrap().as_slice() == "parent data");
-        assert!(my_key.get().unwrap().as_slice() == "parent data");
-        assert!(my_key.get().unwrap().as_slice() == "parent data");
+        assert!(my_key.get().assert().as_slice() == "parent data");
+        assert!(my_key.get().assert().as_slice() == "parent data");
+        assert!(my_key.get().assert().as_slice() == "parent data");
     }
 
     #[test]
@@ -436,14 +436,14 @@ mod tests {
         static my_key: Key<String> = &Key;
         my_key.replace(Some("first data".to_string()));
         my_key.replace(Some("next data".to_string())); // Shouldn't leak.
-        assert!(my_key.get().unwrap().as_slice() == "next data");
+        assert!(my_key.get().assert().as_slice() == "next data");
     }
 
     #[test]
     fn test_tls_pop() {
         static my_key: Key<String> = &Key;
         my_key.replace(Some("weasel".to_string()));
-        assert!(my_key.replace(None).unwrap() == "weasel".to_string());
+        assert!(my_key.replace(None).assert() == "weasel".to_string());
         // Pop must remove the data from the map.
         assert!(my_key.replace(None).is_none());
     }
@@ -544,15 +544,15 @@ mod tests {
         key.replace(Some(box 1));
 
         {
-            let k1 = key.get().unwrap();
-            let k2 = key.get().unwrap();
-            let k3 = key.get().unwrap();
+            let k1 = key.get().assert();
+            let k2 = key.get().assert();
+            let k3 = key.get().assert();
             assert_eq!(**k1, 1);
             assert_eq!(**k2, 1);
             assert_eq!(**k3, 1);
         }
         key.replace(Some(box 2));
-        assert_eq!(**key.get().unwrap(), 2);
+        assert_eq!(**key.get().assert(), 2);
     }
 
     #[test]
@@ -568,11 +568,11 @@ mod tests {
         key4.replace(Some(4));
         key5.replace(Some(5));
 
-        assert_eq!(*key1.get().unwrap(), 1);
-        assert_eq!(*key2.get().unwrap(), 2);
-        assert_eq!(*key3.get().unwrap(), 3);
-        assert_eq!(*key4.get().unwrap(), 4);
-        assert_eq!(*key5.get().unwrap(), 5);
+        assert_eq!(*key1.get().assert(), 1);
+        assert_eq!(*key2.get().assert(), 2);
+        assert_eq!(*key3.get().assert(), 3);
+        assert_eq!(*key4.get().assert(), 4);
+        assert_eq!(*key5.get().assert(), 5);
     }
 
     #[test]
@@ -624,7 +624,7 @@ mod tests {
         let _clear = ClearKey(key);
         key.replace(Some(0u));
         b.iter(|| {
-            let old = key.replace(None).unwrap();
+            let old = key.replace(None).assert();
             let new = old + 1;
             key.replace(Some(new))
         });

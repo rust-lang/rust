@@ -67,7 +67,7 @@ fn main() {
     } else {
         box io::stdin() as Box<io::Reader>
     };
-    let mut seq = rdr.read_to_string().unwrap();
+    let mut seq = rdr.read_to_string().assert();
     let ilen = seq.len();
 
     seq = regex!(">[^\n]*\n|\n").replace_all(seq.as_slice(), NoExpand(""));

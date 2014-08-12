@@ -28,9 +28,9 @@ macro_rules! assert_eq ( ($e1:expr, $e2:expr) => (
 pub fn main() {
     fn mk_file(path: &str, directory: bool) {
         if directory {
-            io::fs::mkdir(&Path::new(path), io::UserRWX).unwrap();
+            io::fs::mkdir(&Path::new(path), io::UserRWX).assert();
         } else {
-            io::File::create(&Path::new(path)).unwrap();
+            io::File::create(&Path::new(path)).assert();
         }
     }
 
@@ -132,7 +132,7 @@ pub fn main() {
 
     assert_eq!(glob_vec("./aaa"), vec!(abs_path("aaa")));
     assert_eq!(glob_vec("./*"), glob_vec("*"));
-    assert_eq!(glob_vec("*/..").pop().unwrap(), abs_path("."));
+    assert_eq!(glob_vec("*/..").pop().assert(), abs_path("."));
     assert_eq!(glob_vec("aaa/../bbb"), vec!(abs_path("bbb")));
     assert_eq!(glob_vec("nonexistent/../bbb"), Vec::new());
     assert_eq!(glob_vec("aaa/tomato/tomato.txt/.."), Vec::new());

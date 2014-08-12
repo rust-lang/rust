@@ -377,7 +377,7 @@ impl<T: Ord> PriorityQueue<T> {
     /// assert_eq!(pq.top(), Some(&3i));
     /// ```
     pub fn push_pop(&mut self, mut item: T) -> T {
-        if !self.is_empty() && *self.top().unwrap() > item {
+        if !self.is_empty() && *self.top().assert() > item {
             swap(&mut item, self.data.get_mut(0));
             self.siftdown(0);
         }
@@ -574,8 +574,8 @@ mod tests {
         sorted.sort();
         let mut heap = PriorityQueue::from_vec(data);
         while !heap.is_empty() {
-            assert_eq!(heap.top().unwrap(), sorted.last().unwrap());
-            assert_eq!(heap.pop().unwrap(), sorted.pop().unwrap());
+            assert_eq!(heap.top().assert(), sorted.last().assert());
+            assert_eq!(heap.pop().assert(), sorted.pop().assert());
         }
     }
 
@@ -583,44 +583,44 @@ mod tests {
     fn test_push() {
         let mut heap = PriorityQueue::from_vec(vec!(2i, 4, 9));
         assert_eq!(heap.len(), 3);
-        assert!(*heap.top().unwrap() == 9);
+        assert!(*heap.top().assert() == 9);
         heap.push(11);
         assert_eq!(heap.len(), 4);
-        assert!(*heap.top().unwrap() == 11);
+        assert!(*heap.top().assert() == 11);
         heap.push(5);
         assert_eq!(heap.len(), 5);
-        assert!(*heap.top().unwrap() == 11);
+        assert!(*heap.top().assert() == 11);
         heap.push(27);
         assert_eq!(heap.len(), 6);
-        assert!(*heap.top().unwrap() == 27);
+        assert!(*heap.top().assert() == 27);
         heap.push(3);
         assert_eq!(heap.len(), 7);
-        assert!(*heap.top().unwrap() == 27);
+        assert!(*heap.top().assert() == 27);
         heap.push(103);
         assert_eq!(heap.len(), 8);
-        assert!(*heap.top().unwrap() == 103);
+        assert!(*heap.top().assert() == 103);
     }
 
     #[test]
     fn test_push_unique() {
         let mut heap = PriorityQueue::from_vec(vec!(box 2i, box 4, box 9));
         assert_eq!(heap.len(), 3);
-        assert!(*heap.top().unwrap() == box 9);
+        assert!(*heap.top().assert() == box 9);
         heap.push(box 11);
         assert_eq!(heap.len(), 4);
-        assert!(*heap.top().unwrap() == box 11);
+        assert!(*heap.top().assert() == box 11);
         heap.push(box 5);
         assert_eq!(heap.len(), 5);
-        assert!(*heap.top().unwrap() == box 11);
+        assert!(*heap.top().assert() == box 11);
         heap.push(box 27);
         assert_eq!(heap.len(), 6);
-        assert!(*heap.top().unwrap() == box 27);
+        assert!(*heap.top().assert() == box 27);
         heap.push(box 3);
         assert_eq!(heap.len(), 7);
-        assert!(*heap.top().unwrap() == box 27);
+        assert!(*heap.top().assert() == box 27);
         heap.push(box 103);
         assert_eq!(heap.len(), 8);
-        assert!(*heap.top().unwrap() == box 103);
+        assert!(*heap.top().assert() == box 103);
     }
 
     #[test]
@@ -641,13 +641,13 @@ mod tests {
     fn test_replace() {
         let mut heap = PriorityQueue::from_vec(vec!(5i, 5, 2, 1, 3));
         assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(6).unwrap(), 5);
+        assert_eq!(heap.replace(6).assert(), 5);
         assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(0).unwrap(), 6);
+        assert_eq!(heap.replace(0).assert(), 6);
         assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(4).unwrap(), 5);
+        assert_eq!(heap.replace(4).assert(), 5);
         assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(1).unwrap(), 4);
+        assert_eq!(heap.replace(1).assert(), 4);
         assert_eq!(heap.len(), 5);
     }
 
@@ -703,7 +703,7 @@ mod tests {
         let mut q: PriorityQueue<uint> = xs.as_slice().iter().rev().map(|&x| x).collect();
 
         for &x in xs.iter() {
-            assert_eq!(q.pop().unwrap(), x);
+            assert_eq!(q.pop().assert(), x);
         }
     }
 }

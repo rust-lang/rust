@@ -32,7 +32,7 @@ pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "line!");
 
-    let topmost = topmost_expn_info(cx.backtrace().unwrap());
+    let topmost = topmost_expn_info(cx.backtrace().assert());
     let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
 
     base::MacExpr::new(cx.expr_uint(topmost.call_site, loc.line))
@@ -43,7 +43,7 @@ pub fn expand_col(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                   -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "col!");
 
-    let topmost = topmost_expn_info(cx.backtrace().unwrap());
+    let topmost = topmost_expn_info(cx.backtrace().assert());
     let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
     base::MacExpr::new(cx.expr_uint(topmost.call_site, loc.col.to_uint()))
 }
@@ -55,7 +55,7 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "file!");
 
-    let topmost = topmost_expn_info(cx.backtrace().unwrap());
+    let topmost = topmost_expn_info(cx.backtrace().assert());
     let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
     let filename = token::intern_and_get_ident(loc.file.name.as_slice());
     base::MacExpr::new(cx.expr_str(topmost.call_site, filename))

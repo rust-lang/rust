@@ -1253,7 +1253,7 @@ impl<'a> TraitDef<'a> {
         let pattern = if struct_type == Record {
             let field_pats = subpats.iter().zip(ident_expr.iter()).map(|(&pat, &(_, id, _))| {
                 // id is guaranteed to be Some
-                ast::FieldPat { ident: id.unwrap(), pat: pat }
+                ast::FieldPat { ident: id.assert(), pat: pat }
             }).collect();
             cx.pat_struct(self.span, matching_path, field_pats)
         } else {

@@ -39,8 +39,8 @@ fn main() {
     } else {
         args.iter_owned().collect()
     };
-    let max = from_str::<uint>(args.get(1).as_slice()).unwrap();
-    let rep = from_str::<uint>(args.get(2).as_slice()).unwrap();
+    let max = from_str::<uint>(args.get(1).as_slice()).assert();
+    let rep = from_str::<uint>(args.get(2).as_slice()).assert();
 
     let mut checkf = 0.0;
     let mut appendf = 0.0;

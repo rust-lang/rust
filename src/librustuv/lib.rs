@@ -168,7 +168,7 @@ pub trait UvHandle<T> {
         }
 
         unsafe {
-            uvll::set_data_for_uv_handle(self.uv_handle(), ptr::mut_null::<()>());
+            uvll::set_data_for_uv_handle(self.uv_handle(), ptr::null_mut::<()>());
             uvll::uv_close(self.uv_handle() as *mut uvll::uv_handle_t, close_cb)
         }
     }
@@ -179,7 +179,7 @@ pub trait UvHandle<T> {
         unsafe {
             uvll::uv_close(self.uv_handle() as *mut uvll::uv_handle_t, close_cb);
             uvll::set_data_for_uv_handle(self.uv_handle(),
-                                         ptr::mut_null::<()>());
+                                         ptr::null_mut::<()>());
 
             wait_until_woken_after(&mut slot, &self.uv_loop(), || {
                 uvll::set_data_for_uv_handle(self.uv_handle(), &mut slot);
@@ -259,7 +259,7 @@ fn wait_until_woken_after(slot: *mut Option<BlockedTask>,
 
 fn wakeup(slot: &mut Option<BlockedTask>) {
     assert!(slot.is_some());
-    let _ = slot.take_unwrap().wake().map(|t| t.reawaken());
+    let _ = slot.take().assert().wake().map(|t| t.reawaken());
 }
 
 pub struct Request {
@@ -271,7 +271,7 @@ impl Request {
     pub fn new(ty: uvll::uv_req_type) -> Request {
         unsafe {
             let handle = uvll::malloc_req(ty);
-            uvll::set_data_for_req(handle, ptr::mut_null::<()>());
+            uvll::set_data_for_req(handle, ptr::null_mut::<()>());
             Request::wrap(handle)
         }
     }
@@ -465,7 +465,7 @@ fn local_loop() -> &'static mut uvio::UvIoFactory {
     unsafe {
         mem::transmute({
             let mut task = Local::borrow(None::<Task>);
-            let mut io = task.local_io().unwrap();
+            let mut io = task.local_io().assert();
             let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
                 mem::transmute(io.get());
             uvio

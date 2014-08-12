@@ -212,11 +212,11 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
 
     fn mean(self) -> T {
         assert!(self.len() != 0);
-        self.sum() / FromPrimitive::from_uint(self.len()).unwrap()
+        self.sum() / FromPrimitive::from_uint(self.len()).assert()
     }
 
     fn median(self) -> T {
-        self.percentile(FromPrimitive::from_uint(50).unwrap())
+        self.percentile(FromPrimitive::from_uint(50).assert())
     }
 
     fn var(self) -> T {
@@ -232,7 +232,7 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
             // NB: this is _supposed to be_ len-1, not len. If you
             // change it back to len, you will be calculating a
             // population variance, not a sample variance.
-            let denom = FromPrimitive::from_uint(self.len()-1).unwrap();
+            let denom = FromPrimitive::from_uint(self.len()-1).assert();
             v/denom
         }
     }
@@ -242,7 +242,7 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
     }
 
     fn std_dev_pct(self) -> T {
-        let hundred = FromPrimitive::from_uint(100).unwrap();
+        let hundred = FromPrimitive::from_uint(100).assert();
         (self.std_dev() / self.mean()) * hundred
     }
 
@@ -251,12 +251,12 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
         let abs_devs: Vec<T> = self.iter().map(|&v| num::abs(med - v)).collect();
         // This constant is derived by smarter statistics brains than me, but it is
         // consistent with how R and other packages treat the MAD.
-        let number = FromPrimitive::from_f64(1.4826).unwrap();
+        let number = FromPrimitive::from_f64(1.4826).assert();
         abs_devs.as_slice().median() * number
     }
 
     fn median_abs_dev_pct(self) -> T {
-        let hundred = FromPrimitive::from_uint(100).unwrap();
+        let hundred = FromPrimitive::from_uint(100).assert();
         (self.median_abs_dev() / self.median()) * hundred
     }
 
@@ -269,11 +269,11 @@ impl<'a, T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
     fn quartiles(self) -> (T,T,T) {
         let mut tmp = Vec::from_slice(self);
         local_sort(tmp.as_mut_slice());
-        let first = FromPrimitive::from_uint(25).unwrap();
+        let first = FromPrimitive::from_uint(25).assert();
         let a = percentile_of_sorted(tmp.as_slice(), first);
-        let secound = FromPrimitive::from_uint(50).unwrap();
+        let secound = FromPrimitive::from_uint(50).assert();
         let b = percentile_of_sorted(tmp.as_slice(), secound);
-        let third = FromPrimitive::from_uint(75).unwrap();
+        let third = FromPrimitive::from_uint(75).assert();
         let c = percentile_of_sorted(tmp.as_slice(), third);
         (a,b,c)
     }
@@ -295,16 +295,16 @@ fn percentile_of_sorted<T: Float + FromPrimitive>(sorted_samples: &[T],
     }
     let zero: T = Zero::zero();
     assert!(zero <= pct);
-    let hundred = FromPrimitive::from_uint(100).unwrap();
+    let hundred = FromPrimitive::from_uint(100).assert();
     assert!(pct <= hundred);
     if pct == hundred {
         return sorted_samples[sorted_samples.len() - 1];
     }
-    let length = FromPrimitive::from_uint(sorted_samples.len() - 1).unwrap();
+    let length = FromPrimitive::from_uint(sorted_samples.len() - 1).assert();
     let rank = (pct / hundred) * length;
     let lrank = rank.floor();
     let d = rank - lrank;
-    let n = lrank.to_uint().unwrap();
+    let n = lrank.to_uint().assert();
     let lo = sorted_samples[n];
     let hi = sorted_samples[n+1];
     lo + (hi - lo) * d
@@ -321,7 +321,7 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
     let mut tmp = Vec::from_slice(samples);
     local_sort(tmp.as_mut_slice());
     let lo = percentile_of_sorted(tmp.as_slice(), pct);
-    let hundred: T = FromPrimitive::from_uint(100).unwrap();
+    let hundred: T = FromPrimitive::from_uint(100).assert();
     let hi = percentile_of_sorted(tmp.as_slice(), hundred-pct);
     for samp in samples.iter_mut() {
         if *samp > hi {
@@ -365,7 +365,7 @@ pub fn write_boxplot<T: Float + Show + FromPrimitive>(
     let (q1,q2,q3) = s.quartiles;
 
     // the .abs() handles the case where numbers are negative
-    let ten: T = FromPrimitive::from_uint(10).unwrap();
+    let ten: T = FromPrimitive::from_uint(10).assert();
     let lomag = ten.powf(s.min.abs().log10().floor());
     let himag = ten.powf(s.max.abs().log10().floor());
 
@@ -390,7 +390,7 @@ pub fn write_boxplot<T: Float + Show + FromPrimitive>(
 
     let overhead_width = lostr.len() + histr.len() + 4;
     let range_width = width_hint - overhead_width;
-    let range_float = FromPrimitive::from_uint(range_width).unwrap();
+    let range_float = FromPrimitive::from_uint(range_width).assert();
     let char_step = range / range_float;
 
     try!(write!(w, "{} |", lostr));
@@ -473,11 +473,11 @@ mod tests {
 
         let mut w = io::stdout();
         let w = &mut w as &mut io::Writer;
-        (write!(w, "\n")).unwrap();
-        write_5_number_summary(w, &summ2).unwrap();
-        (write!(w, "\n")).unwrap();
-        write_boxplot(w, &summ2, 50).unwrap();
-        (write!(w, "\n")).unwrap();
+        (write!(w, "\n")).assert();
+        write_5_number_summary(w, &summ2).assert();
+        (write!(w, "\n")).assert();
+        write_boxplot(w, &summ2, 50).assert();
+        (write!(w, "\n")).assert();
 
         assert_eq!(summ.sum, summ2.sum);
         assert_eq!(summ.min, summ2.min);
@@ -1028,8 +1028,8 @@ mod tests {
         fn t(s: &Summary<f64>, expected: String) {
             use std::io::MemWriter;
             let mut m = MemWriter::new();
-            write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
-            let out = String::from_utf8(m.unwrap()).unwrap();
+            write_boxplot(&mut m as &mut io::Writer, s, 30).assert();
+            let out = String::from_utf8(m.assert()).assert();
             assert_eq!(out, expected);
         }
 

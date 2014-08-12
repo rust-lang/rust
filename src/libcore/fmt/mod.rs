@@ -300,7 +300,7 @@ impl<'a> Formatter<'a> {
 
                 // Extract the correct argument
                 let value = match arg.position {
-                    rt::ArgumentNext => { *self.curarg.next().unwrap() }
+                    rt::ArgumentNext => { *self.curarg.next().assert() }
                     rt::ArgumentIs(i) => self.args[i],
                 };
 
@@ -319,7 +319,7 @@ impl<'a> Formatter<'a> {
                 unsafe { Some(*(v as *const _ as *const uint)) }
             }
             rt::CountIsNextParam => {
-                let v = self.curarg.next().unwrap().value;
+                let v = self.curarg.next().assert().value;
                 unsafe { Some(*(v as *const _ as *const uint)) }
             }
         }

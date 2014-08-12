@@ -43,14 +43,14 @@ fn main() {
     let args = os::args();
     let me = args.get(0).as_slice();
 
-    pass(Command::new(me).arg(&[1u8]).output().unwrap());
-    pass(Command::new(me).arg(&[2u8]).output().unwrap());
-    pass(Command::new(me).arg(&[3u8]).output().unwrap());
-    pass(Command::new(me).arg(&[4u8]).output().unwrap());
-    pass(Command::new(me).arg(&[5u8]).output().unwrap());
-    pass(Command::new(me).arg(&[6u8]).output().unwrap());
-    pass(Command::new(me).arg(&[7u8]).output().unwrap());
-    pass(Command::new(me).arg(&[8u8]).output().unwrap());
+    pass(Command::new(me).arg(&[1u8]).output().assert());
+    pass(Command::new(me).arg(&[2u8]).output().assert());
+    pass(Command::new(me).arg(&[3u8]).output().assert());
+    pass(Command::new(me).arg(&[4u8]).output().assert());
+    pass(Command::new(me).arg(&[5u8]).output().assert());
+    pass(Command::new(me).arg(&[6u8]).output().assert());
+    pass(Command::new(me).arg(&[7u8]).output().assert());
+    pass(Command::new(me).arg(&[8u8]).output().assert());
 }
 
 fn pass(output: ProcessOutput) {

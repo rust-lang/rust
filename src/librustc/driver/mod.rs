@@ -80,8 +80,8 @@ fn run_compiler(args: &[String]) {
         1u => {
             let ifile = matches.free.get(0).as_slice();
             if ifile == "-" {
-                let contents = io::stdin().read_to_end().unwrap();
-                let src = String::from_utf8(contents).unwrap();
+                let contents = io::stdin().read_to_end().assert();
+                let src = String::from_utf8(contents).assert();
                 (StrInput(src), None)
             } else {
                 (FileInput(Path::new(ifile)), Some(Path::new(ifile)))
@@ -111,7 +111,7 @@ fn run_compiler(args: &[String]) {
         match input {
             FileInput(ref ifile) => {
                 let mut stdout = io::stdout();
-                list_metadata(&sess, &(*ifile), &mut stdout).unwrap();
+                list_metadata(&sess, &(*ifile), &mut stdout).assert();
             }
             StrInput(_) => {
                 early_error("can not list metadata for stdin");
@@ -255,7 +255,7 @@ fn describe_codegen_flags() {
 /// returns None.
 pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     // Throw away the first argument, the name of the binary
-    let _binary = args.shift().unwrap();
+    let _binary = args.shift().assert();
 
     if args.is_empty() {
         usage();
@@ -357,7 +357,7 @@ pub enum PpMode {
 
 fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<driver::UserIdentifiedItem>) {
     let mut split = name.splitn('=', 1);
-    let first = split.next().unwrap();
+    let first = split.next().assert();
     let opt_second = split.next();
     let first = match first {
         "normal"       => PpmSource(PpmNormal),

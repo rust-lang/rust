@@ -34,7 +34,7 @@ fn test_rbml<'a, 'b, A:
     let mut wr = std::io::MemWriter::new();
     let mut rbml_w = EBwriter::Encoder::new(&mut wr);
     a1.encode(&mut rbml_w);
-    let bytes = wr.get_ref();
+    let bytes = wr.as_ref().assert();
 
     let d: serialize::rbml::Doc<'a> = EBDoc::new(bytes);
     let mut decoder: EBReader::Decoder<'a> = EBreader::Decoder::new(d);

@@ -653,7 +653,7 @@ pub trait MutableVector<'a, T> {
 
     /// Deprecated: renamed to `split_at_mut`
     #[deprecated = "renamed to split_at_mut"]
-    fn.split_at_mut(self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
+    fn mut_split_at(self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
         self.split_at_mut(mid)
     }
 }

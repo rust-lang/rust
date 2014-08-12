@@ -56,7 +56,7 @@ fn main() {
         args
     };
 
-    let children = from_str::<uint>(args[1]).unwrap();
+    let children = from_str::<uint>(args[1]).assert();
     let (wait_port, wait_chan) = stream();
     task::spawn(proc() {
         calc(children, &wait_chan);

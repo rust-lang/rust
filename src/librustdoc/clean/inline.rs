@@ -41,7 +41,7 @@ use super::Clean;
 /// of a vector of items if it was successfully expanded.
 pub fn try_inline(id: ast::NodeId, into: Option<ast::Ident>)
                   -> Option<Vec<clean::Item>> {
-    let cx = ::ctxtkey.get().unwrap();
+    let cx = ::ctxtkey.get().assert();
     let tcx = match cx.maybe_typed {
         core::Typed(ref tycx) => tycx,
         core::NotTyped(_) => return None,
@@ -108,10 +108,10 @@ fn try_inline_def(cx: &core::DocContext,
         _ => return None,
     };
     let fqn = csearch::get_item_path(tcx, did);
-    cx.inlined.borrow_mut().get_mut_ref().insert(did);
+    cx.inlined.borrow_mut().as_mut().assert().insert(did);
     ret.push(clean::Item {
         source: clean::Span::empty(),
-        name: Some(fqn.last().unwrap().to_string()),
+        name: Some(fqn.last().assert().to_string()),
         attrs: load_attrs(tcx, did),
         inner: inner,
         visibility: Some(ast::Public),
@@ -149,7 +149,7 @@ pub fn record_extern_fqn(cx: &core::DocContext,
         core::Typed(ref tcx) => {
             let fqn = csearch::get_item_path(tcx, did);
             let fqn = fqn.iter_owned().map(|i| i.to_string()).collect();
-            cx.external_paths.borrow_mut().get_mut_ref().insert(did, (fqn, kind));
+            cx.external_paths.borrow_mut().as_mut().assert().insert(did, (fqn, kind));
         }
         core::NotTyped(..) => {}
     }
@@ -285,7 +285,7 @@ fn build_impls(cx: &core::DocContext,
 fn build_impl(cx: &core::DocContext,
               tcx: &ty::ctxt,
               did: ast::DefId) -> Option<clean::Item> {
-    if !cx.inlined.borrow_mut().get_mut_ref().insert(did) {
+    if !cx.inlined.borrow_mut().as_mut().assert().insert(did) {
         return None
     }
 

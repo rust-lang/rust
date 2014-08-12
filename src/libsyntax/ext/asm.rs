@@ -213,7 +213,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprInlineAsm(ast::InlineAsm {
             asm: token::intern_and_get_ident(asm.get()),
-            asm_str_style: asm_str_style.unwrap(),
+            asm_str_style: asm_str_style.assert(),
             clobbers: token::intern_and_get_ident(cons.as_slice()),
             inputs: inputs,
             outputs: outputs,

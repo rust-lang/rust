@@ -165,7 +165,7 @@ impl TcpStream {
     /// use std::io::timer;
     /// use std::io::TcpStream;
     ///
-    /// let mut stream = TcpStream::connect("127.0.0.1", 34254).unwrap();
+    /// let mut stream = TcpStream::connect("127.0.0.1", 34254).assert();
     /// let stream2 = stream.clone();
     ///
     /// spawn(proc() {
@@ -410,7 +410,7 @@ impl TcpAcceptor {
     /// use std::io::TcpListener;
     /// use std::io::{Listener, Acceptor, TimedOut};
     ///
-    /// let mut a = TcpListener::bind("127.0.0.1", 8482).listen().unwrap();
+    /// let mut a = TcpListener::bind("127.0.0.1", 8482).listen().assert();
     ///
     /// // After 100ms have passed, all accepts will fail
     /// a.set_timeout(Some(100));
@@ -475,12 +475,12 @@ mod test {
 
         spawn(proc() {
             let mut stream = TcpStream::connect("localhost", port);
-            stream.write([144]).unwrap();
+            stream.write([144]).assert();
         });
 
         let mut stream = acceptor.accept();
         let mut buf = [0];
-        stream.read(buf).unwrap();
+        stream.read(buf).assert();
         assert!(buf[0] == 144);
     })
 
@@ -492,12 +492,12 @@ mod test {
 
         spawn(proc() {
             let mut stream = TcpStream::connect("localhost", addr.port);
-            stream.write([64]).unwrap();
+            stream.write([64]).assert();
         });
 
         let mut stream = acceptor.accept();
         let mut buf = [0];
-        stream.read(buf).unwrap();
+        stream.read(buf).assert();
         assert!(buf[0] == 64);
     })
 
@@ -509,12 +509,12 @@ mod test {
 
         spawn(proc() {
             let mut stream = TcpStream::connect("127.0.0.1", addr.port);
-            stream.write([44]).unwrap();
+            stream.write([44]).assert();
         });
 
         let mut stream = acceptor.accept();
         let mut buf = [0];
-        stream.read(buf).unwrap();
+        stream.read(buf).assert();
         assert!(buf[0] == 44);
     })
 
@@ -526,12 +526,12 @@ mod test {
 
         spawn(proc() {
             let mut stream = TcpStream::connect("::1", addr.port);
-            stream.write([66]).unwrap();
+            stream.write([66]).assert();
         });
 
         let mut stream = acceptor.accept();
         let mut buf = [0];
-        stream.read(buf).unwrap();
+        stream.read(buf).assert();
         assert!(buf[0] == 66);
     })
 
@@ -543,12 +543,12 @@ mod test {
 
         spawn(proc() {
             let mut stream = TcpStream::connect(ip_str.as_slice(), port);
-            stream.write([99]).unwrap();
+            stream.write([99]).assert();
         });
 
         let mut stream = acceptor.accept();
         let mut buf = [0];
-        stream.read(buf).unwrap();
+        stream.read(buf).assert();
         assert!(buf[0] == 99);
     })
 
@@ -560,12 +560,12 @@ mod test {
 
         spawn(proc() {
             let mut stream = TcpStream::connect(ip_str.as_slice(), port);
-            stream.write([99]).unwrap();
+            stream.write([99]).assert();
         });
 
         let mut stream = acceptor.accept();
         let mut buf = [0];
-        stream.read(buf).unwrap();
+        stream.read(buf).assert();
         assert!(buf[0] == 99);
     })
 
@@ -717,13 +717,13 @@ mod test {
         spawn(proc() {
             for _ in range(0, max) {
                 let mut stream = TcpStream::connect(ip_str.as_slice(), port);
-                stream.write([99]).unwrap();
+                stream.write([99]).assert();
             }
         });
 
         for ref mut stream in acceptor.incoming().take(max) {
             let mut buf = [0];
-            stream.read(buf).unwrap();
+            stream.read(buf).assert();
             assert_eq!(buf[0], 99);
         }
     })
@@ -738,13 +738,13 @@ mod test {
         spawn(proc() {
             for _ in range(0, max) {
                 let mut stream = TcpStream::connect(ip_str.as_slice(), port);
-                stream.write([99]).unwrap();
+                stream.write([99]).assert();
             }
         });
 
         for ref mut stream in acceptor.incoming().take(max) {
             let mut buf = [0];
-            stream.read(buf).unwrap();
+            stream.read(buf).assert();
             assert_eq!(buf[0], 99);
         }
     })
@@ -763,7 +763,7 @@ mod test {
                 spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
-                    stream.read(buf).unwrap();
+                    stream.read(buf).assert();
                     assert!(buf[0] == i as u8);
                     debug!("read");
                 });
@@ -783,7 +783,7 @@ mod test {
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
-                stream.write([i as u8]).unwrap();
+                stream.write([i as u8]).assert();
             });
         }
     })
@@ -802,7 +802,7 @@ mod test {
                 spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
-                    stream.read(buf).unwrap();
+                    stream.read(buf).assert();
                     assert!(buf[0] == i as u8);
                     debug!("read");
                 });
@@ -822,7 +822,7 @@ mod test {
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
-                stream.write([i as u8]).unwrap();
+                stream.write([i as u8]).assert();
             });
         }
     })
@@ -841,7 +841,7 @@ mod test {
                 spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
-                    stream.read(buf).unwrap();
+                    stream.read(buf).assert();
                     assert!(buf[0] == 99);
                     debug!("read");
                 });
@@ -861,7 +861,7 @@ mod test {
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
-                stream.write([99]).unwrap();
+                stream.write([99]).assert();
             });
         }
     })
@@ -880,7 +880,7 @@ mod test {
                 spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
-                    stream.read(buf).unwrap();
+                    stream.read(buf).assert();
                     assert!(buf[0] == 99);
                     debug!("read");
                 });
@@ -900,7 +900,7 @@ mod test {
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
-                stream.write([99]).unwrap();
+                stream.write([99]).assert();
             });
         }
     })
@@ -908,13 +908,13 @@ mod test {
     pub fn socket_name(addr: SocketAddr) {
         let ip_str = addr.ip.to_string();
         let port = addr.port;
-        let mut listener = TcpListener::bind(ip_str.as_slice(), port).unwrap();
+        let mut listener = TcpListener::bind(ip_str.as_slice(), port).assert();
 
         // Make sure socket_name gives
         // us the socket we binded to.
         let so_name = listener.socket_name();
         assert!(so_name.is_ok());
-        assert_eq!(addr, so_name.unwrap());
+        assert_eq!(addr, so_name.assert());
     }
 
     pub fn peer_name(addr: SocketAddr) {
@@ -923,20 +923,20 @@ mod test {
         let acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
         spawn(proc() {
             let mut acceptor = acceptor;
-            acceptor.accept().unwrap();
+            acceptor.accept().assert();
         });
 
         let stream = TcpStream::connect(ip_str.as_slice(), port);
 
         assert!(stream.is_ok());
-        let mut stream = stream.unwrap();
+        let mut stream = stream.assert();
 
         // Make sure peer_name gives us the
         // address/port of the peer we've
         // connected to.
         let peer_name = stream.peer_name();
         assert!(peer_name.is_ok());
-        assert_eq!(addr, peer_name.unwrap());
+        assert_eq!(addr, peer_name.assert());
     }
 
     iotest!(fn socket_and_peer_name_ip4() {
@@ -956,21 +956,21 @@ mod test {
         let (tx, rx) = channel();
         spawn(proc() {
             let ip_str = addr.ip.to_string();
-            let mut srv = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+            let mut srv = TcpListener::bind(ip_str.as_slice(), port).listen().assert();
             tx.send(());
-            let mut cl = srv.accept().unwrap();
-            cl.write([10]).unwrap();
+            let mut cl = srv.accept().assert();
+            cl.write([10]).assert();
             let mut b = [0];
-            cl.read(b).unwrap();
+            cl.read(b).assert();
             tx.send(());
         });
 
         rx.recv();
         let ip_str = addr.ip.to_string();
-        let mut c = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+        let mut c = TcpStream::connect(ip_str.as_slice(), port).assert();
         let mut b = [0, ..10];
         assert_eq!(c.read(b), Ok(1));
-        c.write([1]).unwrap();
+        c.write([1]).assert();
         rx.recv();
     })
 
@@ -978,7 +978,7 @@ mod test {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
-        let listener = TcpListener::bind(ip_str.as_slice(), port).unwrap().listen();
+        let listener = TcpListener::bind(ip_str.as_slice(), port).assert().listen();
         assert!(listener.is_ok());
         match TcpListener::bind(ip_str.as_slice(), port).listen() {
             Ok(..) => fail!(),
@@ -997,7 +997,7 @@ mod test {
         spawn(proc() {
             let ip_str = addr.ip.to_string();
             rx.recv();
-            let _stream = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+            let _stream = TcpStream::connect(ip_str.as_slice(), port).assert();
             // Close
             rx.recv();
         });
@@ -1007,7 +1007,7 @@ mod test {
             let mut acceptor = TcpListener::bind(ip_str.as_slice(), port).listen();
             tx.send(());
             {
-                let _stream = acceptor.accept().unwrap();
+                let _stream = acceptor.accept().assert();
                 // Close client
                 tx.send(());
             }
@@ -1027,10 +1027,10 @@ mod test {
             let mut buf = [0, 0];
             assert_eq!(s.read(buf), Ok(1));
             assert_eq!(buf[0], 1);
-            s.write([2]).unwrap();
+            s.write([2]).assert();
         });
 
-        let mut s1 = acceptor.accept().unwrap();
+        let mut s1 = acceptor.accept().assert();
         let s2 = s1.clone();
 
         let (tx1, rx1) = channel();
@@ -1038,7 +1038,7 @@ mod test {
         spawn(proc() {
             let mut s2 = s2;
             rx1.recv();
-            s2.write([1]).unwrap();
+            s2.write([1]).assert();
             tx2.send(());
         });
         tx1.send(());
@@ -1057,25 +1057,25 @@ mod test {
 
         spawn(proc() {
             let mut s = TcpStream::connect(ip_str.as_slice(), port);
-            s.write([1]).unwrap();
+            s.write([1]).assert();
             rx.recv();
-            s.write([2]).unwrap();
+            s.write([2]).assert();
             rx.recv();
         });
 
-        let mut s1 = acceptor.accept().unwrap();
+        let mut s1 = acceptor.accept().assert();
         let s2 = s1.clone();
 
         let (done, rx) = channel();
         spawn(proc() {
             let mut s2 = s2;
             let mut buf = [0, 0];
-            s2.read(buf).unwrap();
+            s2.read(buf).assert();
             tx2.send(());
             done.send(());
         });
         let mut buf = [0, 0];
-        s1.read(buf).unwrap();
+        s1.read(buf).assert();
         tx1.send(());
 
         rx.recv();
@@ -1090,20 +1090,20 @@ mod test {
         spawn(proc() {
             let mut s = TcpStream::connect(ip_str.as_slice(), port);
             let mut buf = [0, 1];
-            s.read(buf).unwrap();
-            s.read(buf).unwrap();
+            s.read(buf).assert();
+            s.read(buf).assert();
         });
 
-        let mut s1 = acceptor.accept().unwrap();
+        let mut s1 = acceptor.accept().assert();
         let s2 = s1.clone();
 
         let (done, rx) = channel();
         spawn(proc() {
             let mut s2 = s2;
-            s2.write([1]).unwrap();
+            s2.write([1]).assert();
             done.send(());
         });
-        s1.write([2]).unwrap();
+        s1.write([2]).assert();
 
         rx.recv();
     })
@@ -1114,15 +1114,15 @@ mod test {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
-        let a = TcpListener::bind(ip_str.as_slice(), port).unwrap().listen();
+        let a = TcpListener::bind(ip_str.as_slice(), port).assert().listen();
         spawn(proc() {
             let mut a = a;
-            let mut c = a.accept().unwrap();
+            let mut c = a.accept().assert();
             assert_eq!(c.read_to_end(), Ok(vec!()));
-            c.write([1]).unwrap();
+            c.write([1]).assert();
         });
 
-        let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+        let mut s = TcpStream::connect(ip_str.as_slice(), port).assert();
         assert!(s.obj.close_write().is_ok());
         assert!(s.write([1]).is_err());
         assert_eq!(s.read_to_end(), Ok(vec!(1)));
@@ -1132,14 +1132,14 @@ mod test {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
-        let mut a = TcpListener::bind(ip_str.as_slice(), port).unwrap().listen().unwrap();
+        let mut a = TcpListener::bind(ip_str.as_slice(), port).assert().listen().assert();
 
         a.set_timeout(Some(10));
 
         // Make sure we time out once and future invocations also time out
-        let err = a.accept().err().unwrap();
+        let err = a.accept().err().assert();
         assert_eq!(err.kind, TimedOut);
-        let err = a.accept().err().unwrap();
+        let err = a.accept().err().assert();
         assert_eq!(err.kind, TimedOut);
 
         // Also make sure that even though the timeout is expired that we will
@@ -1152,7 +1152,7 @@ mod test {
             let (tx, rx) = channel();
             spawn(proc() {
                 tx.send(TcpStream::connect(addr.ip.to_string().as_slice(),
-                                           port).unwrap());
+                                           port).assert());
             });
             let _l = rx.recv();
             for i in range(0i, 1001) {
@@ -1170,31 +1170,31 @@ mod test {
         a.set_timeout(None);
         spawn(proc() {
             drop(TcpStream::connect(addr.ip.to_string().as_slice(),
-                                    port).unwrap());
+                                    port).assert());
         });
-        a.accept().unwrap();
+        a.accept().assert();
     })
 
     iotest!(fn close_readwrite_smoke() {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
-        let a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let a = TcpListener::bind(ip_str.as_slice(), port).listen().assert();
         let (_tx, rx) = channel::<()>();
         spawn(proc() {
             let mut a = a;
-            let _s = a.accept().unwrap();
+            let _s = a.accept().assert();
             let _ = rx.recv_opt();
         });
 
         let mut b = [0];
-        let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+        let mut s = TcpStream::connect(ip_str.as_slice(), port).assert();
         let mut s2 = s.clone();
 
         // closing should prevent reads/writes
-        s.close_write().unwrap();
+        s.close_write().assert();
         assert!(s.write([0]).is_err());
-        s.close_read().unwrap();
+        s.close_read().assert();
         assert!(s.read(b).is_err());
 
         // closing should affect previous handles
@@ -1217,15 +1217,15 @@ mod test {
         let addr = next_test_ip4();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
-        let a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let a = TcpListener::bind(ip_str.as_slice(), port).listen().assert();
         let (_tx, rx) = channel::<()>();
         spawn(proc() {
             let mut a = a;
-            let _s = a.accept().unwrap();
+            let _s = a.accept().assert();
             let _ = rx.recv_opt();
         });
 
-        let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+        let mut s = TcpStream::connect(ip_str.as_slice(), port).assert();
         let s2 = s.clone();
         let (tx, rx) = channel();
         spawn(proc() {
@@ -1234,7 +1234,7 @@ mod test {
             tx.send(());
         });
         // this should wake up the child task
-        s.close_read().unwrap();
+        s.close_read().assert();
 
         // this test will never finish if the child doesn't wake up
         rx.recv();
@@ -1244,19 +1244,19 @@ mod test {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
-        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().assert();
         let (tx, rx) = channel::<()>();
         spawn(proc() {
-            let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+            let mut s = TcpStream::connect(ip_str.as_slice(), port).assert();
             rx.recv();
             assert!(s.write([0]).is_ok());
             let _ = rx.recv_opt();
         });
 
-        let mut s = a.accept().unwrap();
+        let mut s = a.accept().assert();
         s.set_timeout(Some(20));
-        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
-        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read([0]).err().assert().kind, TimedOut);
+        assert_eq!(s.read([0]).err().assert().kind, TimedOut);
 
         s.set_timeout(Some(20));
         for i in range(0i, 1001) {
@@ -1267,7 +1267,7 @@ mod test {
            }
            if i == 1000 { fail!("should have filled up?!"); }
         }
-        assert_eq!(s.write([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.write([0]).err().assert().kind, TimedOut);
 
         tx.send(());
         s.set_timeout(None);
@@ -1278,10 +1278,10 @@ mod test {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
-        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().assert();
         let (tx, rx) = channel::<()>();
         spawn(proc() {
-            let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+            let mut s = TcpStream::connect(ip_str.as_slice(), port).assert();
             rx.recv();
             let mut amt = 0;
             while amt < 100 * 128 * 1024 {
@@ -1293,10 +1293,10 @@ mod test {
             let _ = rx.recv_opt();
         });
 
-        let mut s = a.accept().unwrap();
+        let mut s = a.accept().assert();
         s.set_read_timeout(Some(20));
-        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
-        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read([0]).err().assert().kind, TimedOut);
+        assert_eq!(s.read([0]).err().assert().kind, TimedOut);
 
         tx.send(());
         for _ in range(0i, 100) {
@@ -1308,16 +1308,16 @@ mod test {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
-        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().assert();
         let (tx, rx) = channel::<()>();
         spawn(proc() {
-            let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+            let mut s = TcpStream::connect(ip_str.as_slice(), port).assert();
             rx.recv();
             assert!(s.write([0]).is_ok());
             let _ = rx.recv_opt();
         });
 
-        let mut s = a.accept().unwrap();
+        let mut s = a.accept().assert();
         s.set_write_timeout(Some(20));
         for i in range(0i, 1001) {
             match s.write([0, .. 128 * 1024]) {
@@ -1327,7 +1327,7 @@ mod test {
            }
            if i == 1000 { fail!("should have filled up?!"); }
         }
-        assert_eq!(s.write([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.write([0]).err().assert().kind, TimedOut);
 
         tx.send(());
         assert!(s.read([0]).is_ok());
@@ -1337,16 +1337,16 @@ mod test {
         let addr = next_test_ip6();
         let ip_str = addr.ip.to_string();
         let port = addr.port;
-        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().unwrap();
+        let mut a = TcpListener::bind(ip_str.as_slice(), port).listen().assert();
         let (tx, rx) = channel::<()>();
         spawn(proc() {
-            let mut s = TcpStream::connect(ip_str.as_slice(), port).unwrap();
+            let mut s = TcpStream::connect(ip_str.as_slice(), port).assert();
             rx.recv();
             assert_eq!(s.write([0]), Ok(()));
             let _ = rx.recv_opt();
         });
 
-        let mut s = a.accept().unwrap();
+        let mut s = a.accept().assert();
         let s2 = s.clone();
         let (tx2, rx2) = channel();
         spawn(proc() {
@@ -1356,7 +1356,7 @@ mod test {
         });
 
         s.set_read_timeout(Some(20));
-        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read([0]).err().assert().kind, TimedOut);
         tx.send(());
 
         rx2.recv();
@@ -1365,7 +1365,7 @@ mod test {
     iotest!(fn clone_while_reading() {
         let addr = next_test_ip6();
         let listen = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
-        let mut accept = listen.listen().unwrap();
+        let mut accept = listen.listen().assert();
 
         // Enqueue a task to write to a socket
         let (tx, rx) = channel();
@@ -1373,19 +1373,19 @@ mod test {
         let txdone2 = txdone.clone();
         spawn(proc() {
             let mut tcp = TcpStream::connect(addr.ip.to_string().as_slice(),
-                                             addr.port).unwrap();
+                                             addr.port).assert();
             rx.recv();
-            tcp.write_u8(0).unwrap();
+            tcp.write_u8(0).assert();
             txdone2.send(());
         });
 
         // Spawn off a reading clone
-        let tcp = accept.accept().unwrap();
+        let tcp = accept.accept().assert();
         let tcp2 = tcp.clone();
         let txdone3 = txdone.clone();
         spawn(proc() {
             let mut tcp2 = tcp2;
-            tcp2.read_u8().unwrap();
+            tcp2.read_u8().assert();
             txdone3.send(());
         });
 

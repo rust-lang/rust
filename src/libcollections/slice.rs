@@ -834,9 +834,9 @@ mod tests {
         let mut a = vec![11i];
         assert_eq!(a.as_slice().get(1), None);
         a = vec![11i, 12];
-        assert_eq!(a.as_slice().get(1).unwrap(), &12);
+        assert_eq!(a.as_slice().get(1).assert(), &12);
         a = vec![11i, 12, 13];
-        assert_eq!(a.as_slice().get(1).unwrap(), &12);
+        assert_eq!(a.as_slice().get(1).assert(), &12);
     }
 
     #[test]
@@ -844,9 +844,9 @@ mod tests {
         let mut a = vec![];
         assert_eq!(a.as_slice().head(), None);
         a = vec![11i];
-        assert_eq!(a.as_slice().head().unwrap(), &11);
+        assert_eq!(a.as_slice().head().assert(), &11);
         a = vec![11i, 12];
-        assert_eq!(a.as_slice().head().unwrap(), &11);
+        assert_eq!(a.as_slice().head().assert(), &11);
     }
 
     #[test]
@@ -914,9 +914,9 @@ mod tests {
         let mut a = vec![];
         assert_eq!(a.as_slice().last(), None);
         a = vec![11i];
-        assert_eq!(a.as_slice().last().unwrap(), &11);
+        assert_eq!(a.as_slice().last().assert(), &11);
         a = vec![11i, 12];
-        assert_eq!(a.as_slice().last().unwrap(), &12);
+        assert_eq!(a.as_slice().last().assert(), &12);
     }
 
     #[test]
@@ -1166,7 +1166,7 @@ mod tests {
             let mut it = v.permutations();
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);
-            assert_eq!(max_opt.unwrap(), 1);
+            assert_eq!(max_opt.assert(), 1);
             assert_eq!(it.next(), Some(v.as_slice().to_vec()));
             assert_eq!(it.next(), None);
         }
@@ -1175,7 +1175,7 @@ mod tests {
             let mut it = v.permutations();
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);
-            assert_eq!(max_opt.unwrap(), 1);
+            assert_eq!(max_opt.assert(), 1);
             assert_eq!(it.next(), Some(v.as_slice().to_vec()));
             assert_eq!(it.next(), None);
         }
@@ -1184,13 +1184,13 @@ mod tests {
             let mut it = v.permutations();
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 3*2);
-            assert_eq!(max_opt.unwrap(), 3*2);
+            assert_eq!(max_opt.assert(), 3*2);
             assert_eq!(it.next(), Some(vec![1,2,3]));
             assert_eq!(it.next(), Some(vec![1,3,2]));
             assert_eq!(it.next(), Some(vec![3,1,2]));
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 3);
-            assert_eq!(max_opt.unwrap(), 3);
+            assert_eq!(max_opt.assert(), 3);
             assert_eq!(it.next(), Some(vec![3,2,1]));
             assert_eq!(it.next(), Some(vec![2,3,1]));
             assert_eq!(it.next(), Some(vec![2,1,3]));
@@ -1208,7 +1208,7 @@ mod tests {
             assert_eq!(amt, it.swaps.swaps_made);
             assert_eq!(amt, min_size);
             assert_eq!(amt, 2 * 3 * 4 * 5 * 6);
-            assert_eq!(amt, max_opt.unwrap());
+            assert_eq!(amt, max_opt.assert());
         }
     }
 
@@ -1596,15 +1596,15 @@ mod tests {
         let xs = [1i, 2, 5, 10, 11];
         let mut it = xs.iter();
         assert_eq!(it.size_hint(), (5, Some(5)));
-        assert_eq!(it.next().unwrap(), &1);
+        assert_eq!(it.next().assert(), &1);
         assert_eq!(it.size_hint(), (4, Some(4)));
-        assert_eq!(it.next().unwrap(), &2);
+        assert_eq!(it.next().assert(), &2);
         assert_eq!(it.size_hint(), (3, Some(3)));
-        assert_eq!(it.next().unwrap(), &5);
+        assert_eq!(it.next().assert(), &5);
         assert_eq!(it.size_hint(), (2, Some(2)));
-        assert_eq!(it.next().unwrap(), &10);
+        assert_eq!(it.next().assert(), &10);
         assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next().unwrap(), &11);
+        assert_eq!(it.next().assert(), &11);
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert!(it.next().is_none());
     }
@@ -1615,32 +1615,32 @@ mod tests {
         let mut it = xs.iter();
 
         assert_eq!(it.indexable(), 5);
-        assert_eq!(it.idx(0).unwrap(), &1);
-        assert_eq!(it.idx(2).unwrap(), &5);
-        assert_eq!(it.idx(4).unwrap(), &11);
+        assert_eq!(it.idx(0).assert(), &1);
+        assert_eq!(it.idx(2).assert(), &5);
+        assert_eq!(it.idx(4).assert(), &11);
         assert!(it.idx(5).is_none());
 
-        assert_eq!(it.next().unwrap(), &1);
+        assert_eq!(it.next().assert(), &1);
         assert_eq!(it.indexable(), 4);
-        assert_eq!(it.idx(0).unwrap(), &2);
-        assert_eq!(it.idx(3).unwrap(), &11);
+        assert_eq!(it.idx(0).assert(), &2);
+        assert_eq!(it.idx(3).assert(), &11);
         assert!(it.idx(4).is_none());
 
-        assert_eq!(it.next().unwrap(), &2);
+        assert_eq!(it.next().assert(), &2);
         assert_eq!(it.indexable(), 3);
-        assert_eq!(it.idx(1).unwrap(), &10);
+        assert_eq!(it.idx(1).assert(), &10);
         assert!(it.idx(3).is_none());
 
-        assert_eq!(it.next().unwrap(), &5);
+        assert_eq!(it.next().assert(), &5);
         assert_eq!(it.indexable(), 2);
-        assert_eq!(it.idx(1).unwrap(), &11);
+        assert_eq!(it.idx(1).assert(), &11);
 
-        assert_eq!(it.next().unwrap(), &10);
+        assert_eq!(it.next().assert(), &10);
         assert_eq!(it.indexable(), 1);
-        assert_eq!(it.idx(0).unwrap(), &11);
+        assert_eq!(it.idx(0).assert(), &11);
         assert!(it.idx(1).is_none());
 
-        assert_eq!(it.next().unwrap(), &11);
+        assert_eq!(it.next().assert(), &11);
         assert_eq!(it.indexable(), 0);
         assert!(it.idx(0).is_none());
 
@@ -1801,9 +1801,9 @@ mod tests {
         assert_eq!(v.chunks(2).rev().collect::<Vec<&[int]>>().as_slice(), &[&[5i], &[3,4], &[1,2]]);
         let mut it = v.chunks(2);
         assert_eq!(it.indexable(), 3);
-        assert_eq!(it.idx(0).unwrap(), &[1,2]);
-        assert_eq!(it.idx(1).unwrap(), &[3,4]);
-        assert_eq!(it.idx(2).unwrap(), &[5]);
+        assert_eq!(it.idx(0).assert(), &[1,2]);
+        assert_eq!(it.idx(1).assert(), &[3,4]);
+        assert_eq!(it.idx(2).assert(), &[5]);
         assert_eq!(it.idx(3), None);
     }
 
@@ -1918,7 +1918,7 @@ mod tests {
     }
 
     #[test]
-    fn test.split_at_mut() {
+    fn test_split_at_mut() {
         let mut values = [1u8,2,3,4,5];
         {
             let (left, right) = values.split_at_mut(2);
@@ -2022,7 +2022,7 @@ mod tests {
     fn test_shift_ref() {
         let mut x: &[int] = [1, 2, 3, 4, 5];
         let h = x.shift_ref();
-        assert_eq!(*h.unwrap(), 1);
+        assert_eq!(*h.assert(), 1);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 2);
         assert_eq!(x[3], 5);
@@ -2035,7 +2035,7 @@ mod tests {
     fn test_pop_ref() {
         let mut x: &[int] = [1, 2, 3, 4, 5];
         let h = x.pop_ref();
-        assert_eq!(*h.unwrap(), 5);
+        assert_eq!(*h.assert(), 5);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 1);
         assert_eq!(x[3], 4);
@@ -2114,7 +2114,7 @@ mod tests {
     fn test_mut_shift_ref() {
         let mut x: &mut [int] = [1, 2, 3, 4, 5];
         let h = x.shift_mut();
-        assert_eq!(*h.unwrap(), 1);
+        assert_eq!(*h.assert(), 1);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 2);
         assert_eq!(x[3], 5);
@@ -2127,7 +2127,7 @@ mod tests {
     fn test_mut_pop_ref() {
         let mut x: &mut [int] = [1, 2, 3, 4, 5];
         let h = x.pop_mut();
-        assert_eq!(*h.unwrap(), 5);
+        assert_eq!(*h.assert(), 5);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 1);
         assert_eq!(x[3], 4);
@@ -2140,7 +2140,7 @@ mod tests {
     fn test_mut_last() {
         let mut x = [1i, 2, 3, 4, 5];
         let h = x.last_mut();
-        assert_eq!(*h.unwrap(), 5);
+        assert_eq!(*h.assert(), 5);
 
         let y: &mut [int] = [];
         assert!(y.last_mut().is_none());

@@ -264,7 +264,7 @@ fn load_environment<'a>(bcx: &'a Block<'a>,
     }
 
     // Load a pointer to the closure data, skipping over the box header:
-    let llcdata = at_box_body(bcx, cdata_ty, bcx.fcx.llenv.unwrap());
+    let llcdata = at_box_body(bcx, cdata_ty, bcx.fcx.llenv.assert());
 
     // Store the pointer to closure data in an alloca for debug info because that's what the
     // llvm.dbg.declare intrinsic expects
@@ -314,7 +314,7 @@ fn load_unboxed_closure_environment<'a>(
         return bcx
     }
 
-    let llenv = bcx.fcx.llenv.unwrap();
+    let llenv = bcx.fcx.llenv.assert();
     for (i, freevar) in freevars.iter().enumerate() {
         let upvar_ptr = GEPi(bcx, llenv, [0, i]);
         let def_id = freevar.def.def_id();
@@ -452,7 +452,7 @@ pub fn trans_unboxed_closure<'a>(
     let closure_id = ast_util::local_def(id);
     let llfn = get_or_create_declaration_if_unboxed_closure(
         bcx.ccx(),
-        closure_id).unwrap();
+        closure_id).assert();
 
     // Untuple the arguments.
     let unboxed_closure_types = bcx.tcx().unboxed_closure_types.borrow();

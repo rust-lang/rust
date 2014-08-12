@@ -162,7 +162,7 @@ impl<W: Writer> BufferedWriter<W> {
 
     fn flush_buf(&mut self) -> IoResult<()> {
         if self.pos != 0 {
-            let ret = self.inner.get_mut_ref().write(self.buf.slice_to(self.pos));
+            let ret = self.inner.as_mut().assert().write(self.buf.slice_to(self.pos));
             self.pos = 0;
             ret
         } else {
@@ -174,15 +174,15 @@ impl<W: Writer> BufferedWriter<W> {
     ///
     /// This type does not expose the ability to get a mutable reference to the
     /// underlying reader because that could possibly corrupt the buffer.
-    pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.get_ref() }
+    pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.as_ref().assert() }
 
     /// Unwraps this `BufferedWriter`, returning the underlying writer.
     ///
     /// The buffer is flushed before returning the writer.
     pub fn unwrap(mut self) -> W {
         // FIXME(#12628): is failing the right thing to do if flushing fails?
-        self.flush_buf().unwrap();
-        self.inner.take_unwrap()
+        self.flush_buf().assert();
+        self.inner.take().assert()
     }
 }
 
@@ -193,7 +193,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
         }
 
         if buf.len() > self.buf.len() {
-            self.inner.get_mut_ref().write(buf)
+            self.inner.as_mut().assert().write(buf)
         } else {
             let dst = self.buf.slice_from_mut(self.pos);
             slice::bytes::copy_memory(dst, buf);
@@ -203,7 +203,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
     }
 
     fn flush(&mut self) -> IoResult<()> {
-        self.flush_buf().and_then(|()| self.inner.get_mut_ref().flush())
+        self.flush_buf().and_then(|()| self.inner.as_mut().assert().flush())
     }
 }
 
@@ -439,35 +439,35 @@ mod test {
         let inner = MemWriter::new();
         let mut writer = BufferedWriter::with_capacity(2, inner);
 
-        writer.write([0, 1]).unwrap();
+        writer.write([0, 1]).assert();
         assert_eq!(writer.get_ref().get_ref(), &[]);
 
-        writer.write([2]).unwrap();
+        writer.write([2]).assert();
         assert_eq!(writer.get_ref().get_ref(), &[0, 1]);
 
-        writer.write([3]).unwrap();
+        writer.write([3]).assert();
         assert_eq!(writer.get_ref().get_ref(), &[0, 1]);
 
-        writer.flush().unwrap();
+        writer.flush().assert();
         assert_eq!(&[0, 1, 2, 3], writer.get_ref().get_ref());
 
-        writer.write([4]).unwrap();
-        writer.write([5]).unwrap();
+        writer.write([4]).assert();
+        writer.write([5]).assert();
         assert_eq!(&[0, 1, 2, 3], writer.get_ref().get_ref());
 
-        writer.write([6]).unwrap();
+        writer.write([6]).assert();
         assert_eq!(&[0, 1, 2, 3, 4, 5],
                    writer.get_ref().get_ref());
 
-        writer.write([7, 8]).unwrap();
+        writer.write([7, 8]).assert();
         assert_eq!(&[0, 1, 2, 3, 4, 5, 6],
                    writer.get_ref().get_ref());
 
-        writer.write([9, 10, 11]).unwrap();
+        writer.write([9, 10, 11]).assert();
         assert_eq!(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
                    writer.get_ref().get_ref());
 
-        writer.flush().unwrap();
+        writer.flush().assert();
         assert_eq!(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
                    writer.get_ref().get_ref());
     }
@@ -475,7 +475,7 @@ mod test {
     #[test]
     fn test_buffered_writer_inner_flushes() {
         let mut w = BufferedWriter::with_capacity(3, MemWriter::new());
-        w.write([0, 1]).unwrap();
+        w.write([0, 1]).assert();
         assert_eq!(&[], w.get_ref().get_ref());
         let w = w.unwrap();
         assert_eq!(&[0, 1], w.get_ref());
@@ -500,8 +500,8 @@ mod test {
         let mut stream = BufferedStream::new(S);
         let mut buf = [];
         assert!(stream.read(buf).is_err());
-        stream.write(buf).unwrap();
-        stream.flush().unwrap();
+        stream.write(buf).assert();
+        stream.flush().assert();
     }
 
     #[test]
@@ -518,19 +518,19 @@ mod test {
     #[test]
     fn test_line_buffer() {
         let mut writer = LineBufferedWriter::new(MemWriter::new());
-        writer.write([0]).unwrap();
+        writer.write([0]).assert();
         assert_eq!(writer.get_ref().get_ref(), &[]);
-        writer.write([1]).unwrap();
+        writer.write([1]).assert();
         assert_eq!(writer.get_ref().get_ref(), &[]);
-        writer.flush().unwrap();
+        writer.flush().assert();
         assert_eq!(writer.get_ref().get_ref(), &[0, 1]);
-        writer.write([0, b'\n', 1, b'\n', 2]).unwrap();
+        writer.write([0, b'\n', 1, b'\n', 2]).assert();
         assert_eq!(writer.get_ref().get_ref(),
                    &[0, 1, 0, b'\n', 1, b'\n']);
-        writer.flush().unwrap();
+        writer.flush().assert();
         assert_eq!(writer.get_ref().get_ref(),
                    &[0, 1, 0, b'\n', 1, b'\n', 2]);
-        writer.write([3, b'\n']).unwrap();
+        writer.write([3, b'\n']).assert();
         assert_eq!(writer.get_ref().get_ref(),
             &[0, 1, 0, b'\n', 1, b'\n', 2, 3, b'\n']);
     }

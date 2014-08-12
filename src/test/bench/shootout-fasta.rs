@@ -64,7 +64,7 @@ fn make_fasta<W: Writer, I: Iterator<u8>>(
     while n > 0 {
         let nb = min(LINE_LENGTH, n);
         for i in range(0, nb) {
-            line[i] = it.next().unwrap();
+            line[i] = it.next().assert();
         }
         n -= nb;
         line[nb] = '\n' as u8;
@@ -80,7 +80,7 @@ fn run<W: Writer>(writer: &mut W) {
     } else if args.len() <= 1u {
         1000
     } else {
-        from_str(args[1].as_slice()).unwrap()
+        from_str(args[1].as_slice()).assert()
     };
 
     let rng = &mut MyRandom::new();

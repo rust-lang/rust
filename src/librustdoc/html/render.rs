@@ -296,7 +296,7 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
     let public_items = public_items.unwrap_or(NodeSet::new());
     let paths: HashMap<ast::DefId, (Vec<String>, ItemType)> =
       analysis.as_ref().map(|a| {
-        let paths = a.external_paths.borrow_mut().take_unwrap();
+        let paths = a.external_paths.borrow_mut().take().assert();
         paths.iter_owned().map(|(k, (v, t))| {
             (k, (v, match t {
                 clean::TypeStruct => item_type::Struct,
@@ -324,13 +324,13 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
         public_items: public_items,
         orphan_methods: Vec::new(),
         traits: analysis.as_ref().map(|a| {
-            a.external_traits.borrow_mut().take_unwrap()
+            a.external_traits.borrow_mut().take().assert()
         }).unwrap_or(HashMap::new()),
         typarams: analysis.as_ref().map(|a| {
-            a.external_typarams.borrow_mut().take_unwrap()
+            a.external_typarams.borrow_mut().take().assert()
         }).unwrap_or(HashMap::new()),
         inlined: analysis.as_ref().map(|a| {
-            a.inlined.borrow_mut().take_unwrap()
+            a.inlined.borrow_mut().take().assert()
         }).unwrap_or(HashSet::new()),
     };
     cache.stack.push(krate.name.clone());
@@ -389,7 +389,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
                 Some(&(ref fqp, _)) => {
                     search_index.push(IndexItem {
                         ty: shortty(item),
-                        name: item.name.clone().unwrap(),
+                        name: item.name.clone().assert(),
                         path: fqp.slice_to(fqp.len() - 1).connect("::"),
                         desc: shorter(item.doc_value()).to_string(),
                         parent: Some(did),
@@ -439,7 +439,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
                     item.desc.to_json().to_string()));
         match item.parent {
             Some(nodeid) => {
-                let pathid = *nodeid_to_pathid.find(&nodeid).unwrap();
+                let pathid = *nodeid_to_pathid.find(&nodeid).assert();
                 try!(write!(&mut w, ",{}", pathid));
             }
             None => {}
@@ -450,17 +450,17 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
     try!(write!(&mut w, r#"],"paths":["#));
 
     for (i, &did) in pathid_to_nodeid.iter().enumerate() {
-        let &(ref fqp, short) = cache.paths.find(&did).unwrap();
+        let &(ref fqp, short) = cache.paths.find(&did).assert();
         if i > 0 {
             try!(write!(&mut w, ","));
         }
         try!(write!(&mut w, r#"[{:u},"{}"]"#,
-                    short, *fqp.last().unwrap()));
+                    short, *fqp.last().assert()));
     }
 
     try!(write!(&mut w, "]}};"));
 
-    Ok(String::from_utf8(w.unwrap()).unwrap())
+    Ok(String::from_utf8(w.unwrap()).assert())
 }
 
 fn write_shared(cx: &Context,
@@ -627,7 +627,7 @@ fn mkdir(path: &Path) -> io::IoResult<()> {
 fn clean_srcpath(src: &[u8], f: |&str|) {
     let p = Path::new(src);
     if p.as_vec() != b"." {
-        for c in p.str_components().map(|x|x.unwrap()) {
+        for c in p.str_components().map(|x|x.assert()) {
             if ".." == c {
                 f("up");
             } else {
@@ -719,7 +719,7 @@ impl<'a> SourceCollector<'a> {
                        filename.ends_with("macros>") => return Ok(()),
             Err(e) => return Err(e)
         };
-        let contents = str::from_utf8(contents.as_slice()).unwrap();
+        let contents = str::from_utf8(contents.as_slice()).assert();
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\ufeff") {
@@ -733,7 +733,7 @@ impl<'a> SourceCollector<'a> {
         let mut root_path = String::from_str("../../");
         clean_srcpath(p.dirname(), |component| {
             cur.push(component);
-            mkdir(&cur).unwrap();
+            mkdir(&cur).assert();
             root_path.push_str("../");
         });
 
@@ -804,7 +804,7 @@ impl DocFolder for Cache {
                         v.push(Implementor {
                             def_id: item.def_id,
                             generics: i.generics.clone(),
-                            trait_: i.trait_.get_ref().clone(),
+                            trait_: i.trait_.as_ref().assert().clone(),
                             for_: i.for_.clone(),
                             stability: item.stability.clone(),
                         });
@@ -822,14 +822,14 @@ impl DocFolder for Cache {
                     clean::TyMethodItem(..) |
                     clean::StructFieldItem(..) |
                     clean::VariantItem(..) => {
-                        (Some(*self.parent_stack.last().unwrap()),
+                        (Some(*self.parent_stack.last().assert()),
                          Some(self.stack.slice_to(self.stack.len() - 1)))
                     }
                     clean::MethodItem(..) => {
                         if self.parent_stack.len() == 0 {
                             (None, None)
                         } else {
-                            let last = self.parent_stack.last().unwrap();
+                            let last = self.parent_stack.last().assert();
                             let did = *last;
                             let path = match self.paths.find(&did) {
                                 Some(&(_, item_type::Trait)) =>
@@ -877,7 +877,7 @@ impl DocFolder for Cache {
 
         // Keep track of the fully qualified path for this item.
         let pushed = if item.name.is_some() {
-            let n = item.name.get_ref();
+            let n = item.name.as_ref().assert();
             if n.len() > 0 {
                 self.stack.push(n.to_string());
                 true
@@ -1013,8 +1013,8 @@ impl DocFolder for Cache {
             i => i,
         };
 
-        if pushed { self.stack.pop().unwrap(); }
-        if parent_pushed { self.parent_stack.pop().unwrap(); }
+        if pushed { self.stack.pop().assert(); }
+        if parent_pushed { self.parent_stack.pop().assert(); }
         self.privmod = orig_privmod;
         return ret;
     }
@@ -1042,7 +1042,7 @@ impl Context {
 
         info!("Recursing into {}", self.dst.display());
 
-        mkdir(&self.dst).unwrap();
+        mkdir(&self.dst).assert();
         let ret = f(self);
 
         info!("Recursed; leaving {}", self.dst.display());
@@ -1051,7 +1051,7 @@ impl Context {
         self.dst = prev;
         let len = self.root_path.len();
         self.root_path.truncate(len - 3);
-        self.current.pop().unwrap();
+        self.current.pop().assert();
 
         return ret;
     }
@@ -1124,7 +1124,7 @@ impl Context {
                 if title.len() > 0 {
                     title.push_str("::");
                 }
-                title.push_str(it.name.get_ref().as_slice());
+                title.push_str(it.name.as_ref().assert().as_slice());
             }
             title.push_str(" - Rust");
             let tyname = shortty(it).to_static_str();
@@ -1137,7 +1137,7 @@ impl Context {
                         cx.layout.krate)
             } else {
                 format!("API documentation for the Rust `{}` {} in crate `{}`.",
-                        it.name.get_ref(), tyname, cx.layout.krate)
+                        it.name.as_ref().assert(), tyname, cx.layout.krate)
             };
             let keywords = make_item_keywords(it);
             let page = layout::Page {
@@ -1160,7 +1160,7 @@ impl Context {
                                     &Item{ cx: cx, item: it }));
             } else {
                 let mut url = "../".repeat(cx.current.len());
-                match cache_key.get().unwrap().paths.find(&it.def_id) {
+                match cache_key.get().assert().paths.find(&it.def_id) {
                     Some(&(ref names, _)) => {
                         for name in names.slice_to(names.len() - 1).iter() {
                             url.push_str(name.as_slice());
@@ -1190,10 +1190,10 @@ impl Context {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
             clean::ModuleItem(..) => {
-                let name = item.name.get_ref().to_string();
+                let name = item.name.as_ref().assert().to_string();
                 let mut item = Some(item);
                 self.recurse(name, |this| {
-                    let item = item.take_unwrap();
+                    let item = item.take().assert();
                     let dst = this.dst.join("index.html");
                     let dst = try!(File::create(&dst));
                     try!(render(dst, this, &item, false));
@@ -1273,7 +1273,7 @@ impl<'a> Item<'a> {
         // If we don't know where the external documentation for this crate is
         // located, then we return `None`.
         } else {
-            let cache = cache_key.get().unwrap();
+            let cache = cache_key.get().assert();
             let path = cache.external_paths.get(&self.item.def_id);
             let root = match *cache.extern_locations.get(&self.item.def_id.krate) {
                 Remote(ref s) => s.to_string(),
@@ -1322,7 +1322,7 @@ impl<'a> fmt::Show for Item<'a> {
             }
         }
         try!(write!(fmt, "<a class='{}' href=''>{}</a>",
-                    shortty(self.item), self.item.name.get_ref().as_slice()));
+                    shortty(self.item), self.item.name.as_ref().assert().as_slice()));
 
         // Write stability level
         try!(write!(fmt, "&#8203;{}", Stability(&self.item.stability)));
@@ -1384,12 +1384,12 @@ impl<'a> fmt::Show for Item<'a> {
 fn item_path(item: &clean::Item) -> String {
     match item.inner {
         clean::ModuleItem(..) => {
-            format!("{}/index.html", item.name.get_ref())
+            format!("{}/index.html", item.name.as_ref().assert())
         }
         _ => {
             format!("{}.{}.html",
                     shortty(item).to_static_str(),
-                    *item.name.get_ref())
+                    *item.name.as_ref().assert())
         }
     }
 }
@@ -1397,7 +1397,7 @@ fn item_path(item: &clean::Item) -> String {
 fn full_path(cx: &Context, item: &clean::Item) -> String {
     let mut s = cx.current.connect("::");
     s.push_str("::");
-    s.push_str(item.name.get_ref().as_slice());
+    s.push_str(item.name.as_ref().assert().as_slice());
     return s
 }
 
@@ -1545,7 +1545,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 ConciseStability(&myitem.stability),
                 VisSpace(myitem.visibility),
                 MutableSpace(s.mutability),
-                *myitem.name.get_ref(),
+                *myitem.name.as_ref().assert(),
                 s.type_,
                 Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),
                 Markdown(blank(myitem.doc_value()))));
@@ -1582,7 +1582,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                         <td class='docblock short'>{}</td>
                     </tr>
                 ",
-                *myitem.name.get_ref(),
+                *myitem.name.as_ref().assert(),
                 Markdown(shorter(myitem.doc_value())),
                 class = shortty(myitem),
                 href = item_path(myitem),
@@ -1601,7 +1601,7 @@ fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
                     {name}{generics}{decl}</pre>",
            vis = VisSpace(it.visibility),
            fn_style = FnStyleSpace(f.fn_style),
-           name = it.name.get_ref().as_slice(),
+           name = it.name.as_ref().assert().as_slice(),
            generics = f.generics,
            decl = f.decl));
     document(w, it)
@@ -1621,7 +1621,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Output the trait definition
     try!(write!(w, "<pre class='rust trait'>{}trait {}{}{} ",
                   VisSpace(it.visibility),
-                  it.name.get_ref().as_slice(),
+                  it.name.as_ref().assert().as_slice(),
                   t.generics,
                   parents));
     let required = t.methods.iter().filter(|m| m.is_req()).collect::<Vec<&clean::TraitMethod>>();
@@ -1654,7 +1654,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     fn meth(w: &mut fmt::Formatter, m: &clean::TraitMethod) -> fmt::Result {
         try!(write!(w, "<h3 id='{}.{}' class='method'>{}<code>",
                     shortty(m.item()),
-                    *m.item().name.get_ref(),
+                    *m.item().name.as_ref().assert(),
                     ConciseStability(&m.item().stability)));
         try!(render_method(w, m.item()));
         try!(write!(w, "</code></h3>"));
@@ -1684,7 +1684,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "</div>"));
     }
 
-    let cache = cache_key.get().unwrap();
+    let cache = cache_key.get().assert();
     try!(write!(w, "
         <h2 id='implementors'>Implementors</h2>
         <ul class='item-list' id='implementors-list'>
@@ -1711,7 +1711,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                     path.slice_to(path.len() - 1).connect("/")
                 },
                 ty = shortty(it).to_static_str(),
-                name = *it.name.get_ref()));
+                name = *it.name.as_ref().assert()));
     Ok(())
 }
 
@@ -1726,7 +1726,7 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
                    _ => "",
                },
                ty = shortty(it),
-               name = it.name.get_ref().as_slice(),
+               name = it.name.as_ref().assert().as_slice(),
                generics = *g,
                decl = Method(selfty, d))
     }
@@ -1769,7 +1769,7 @@ fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
                     try!(write!(w, "<tr><td id='structfield.{name}'>\
                                       {stab}<code>{name}</code></td><td>",
                                   stab = ConciseStability(&field.stability),
-                                  name = field.name.get_ref().as_slice()));
+                                  name = field.name.as_ref().assert().as_slice()));
                     try!(document(w, field));
                     try!(write!(w, "</td></tr>"));
                 }
@@ -1785,7 +1785,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
              e: &clean::Enum) -> fmt::Result {
     try!(write!(w, "<pre class='rust enum'>{}enum {}{}",
                   VisSpace(it.visibility),
-                  it.name.get_ref().as_slice(),
+                  it.name.as_ref().assert().as_slice(),
                   e.generics));
     if e.variants.len() == 0 && !e.variants_stripped {
         try!(write!(w, " {{}}"));
@@ -1793,7 +1793,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
         try!(write!(w, " {{\n"));
         for v in e.variants.iter() {
             try!(write!(w, "    "));
-            let name = v.name.get_ref().as_slice();
+            let name = v.name.as_ref().assert().as_slice();
             match v.inner {
                 clean::VariantItem(ref var) => {
                     match var.kind {
@@ -1837,7 +1837,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
         for variant in e.variants.iter() {
             try!(write!(w, "<tr><td id='variant.{name}'>{stab}<code>{name}</code></td><td>",
                           stab = ConciseStability(&variant.stability),
-                          name = variant.name.get_ref().as_slice()));
+                          name = variant.name.as_ref().assert().as_slice()));
             try!(document(w, variant));
             match variant.inner {
                 clean::VariantItem(ref var) => {
@@ -1858,8 +1858,8 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
                                 try!(write!(w, "<tr><td \
                                                   id='variant.{v}.field.{f}'>\
                                                   <code>{f}</code></td><td>",
-                                              v = variant.name.get_ref().as_slice(),
-                                              f = field.name.get_ref().as_slice()));
+                                              v = variant.name.as_ref().assert().as_slice(),
+                                              f = field.name.as_ref().assert().as_slice()));
                                 try!(document(w, field));
                                 try!(write!(w, "</td></tr>"));
                             }
@@ -1888,7 +1888,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
     try!(write!(w, "{}{}{}",
                   VisSpace(it.visibility),
                   if structhead {"struct "} else {""},
-                  it.name.get_ref().as_slice()));
+                  it.name.as_ref().assert().as_slice()));
     match g {
         Some(g) => try!(write!(w, "{}", *g)),
         None => {}
@@ -1905,7 +1905,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
                     clean::StructFieldItem(clean::TypedStructField(ref ty)) => {
                         try!(write!(w, "    {}{}: {},\n{}",
                                       VisSpace(field.visibility),
-                                      field.name.get_ref().as_slice(),
+                                      field.name.as_ref().assert().as_slice(),
                                       *ty,
                                       tab));
                     }
@@ -1944,7 +1944,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 }
 
 fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
-    match cache_key.get().unwrap().impls.find(&it.def_id) {
+    match cache_key.get().assert().impls.find(&it.def_id) {
         Some(v) => {
             let (non_trait, traits) = v.partitioned(|i| i.impl_.trait_.is_none());
             if non_trait.len() > 0 {
@@ -1994,7 +1994,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     fn docmeth(w: &mut fmt::Formatter, item: &clean::Item,
                dox: bool) -> fmt::Result {
         try!(write!(w, "<h4 id='method.{}' class='method'>{}<code>",
-                    *item.name.get_ref(),
+                    *item.name.as_ref().assert(),
                     ConciseStability(&item.stability)));
         try!(render_method(w, item));
         try!(write!(w, "</code></h4>\n"));
@@ -2032,7 +2032,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     match i.impl_.trait_ {
         Some(clean::ResolvedPath { did, .. }) => {
             try!({
-                match cache_key.get().unwrap().traits.find(&did) {
+                match cache_key.get().assert().traits.find(&did) {
                     Some(t) => try!(render_default_methods(w, t, &i.impl_)),
                     None => {}
                 }
@@ -2048,7 +2048,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
 fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
     try!(write!(w, "<pre class='rust typedef'>type {}{} = {};</pre>",
-                  it.name.get_ref().as_slice(),
+                  it.name.as_ref().assert().as_slice(),
                   t.generics,
                   t.type_));
 
@@ -2082,7 +2082,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
             try!(write!(w, "<div class='block {}'><h2>{}</h2>", short, longty));
             for item in items.iter() {
                 let curty = shortty(cur).to_static_str();
-                let class = if cur.name.get_ref() == item &&
+                let class = if cur.name.as_ref().assert() == item &&
                                short == curty { "current" } else { "" };
                 try!(write!(w, "<a class='{ty} {class}' href='{href}{path}'>\
                                 {name}</a>",
@@ -2180,5 +2180,5 @@ fn get_basic_keywords() -> &'static str {
 }
 
 fn make_item_keywords(it: &clean::Item) -> String {
-    format!("{}, {}", get_basic_keywords(), it.name.get_ref())
+    format!("{}, {}", get_basic_keywords(), it.name.as_ref().assert())
 }

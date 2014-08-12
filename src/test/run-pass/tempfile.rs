@@ -27,7 +27,7 @@ use std::task;
 
 fn test_tempdir() {
     let path = {
-        let p = TempDir::new_in(&Path::new("."), "foobar").unwrap();
+        let p = TempDir::new_in(&Path::new("."), "foobar").assert();
         let p = p.path();
         assert!(p.as_vec().ends_with(b"foobar"));
         p.clone()
@@ -38,7 +38,7 @@ fn test_tempdir() {
 fn test_rm_tempdir() {
     let (tx, rx) = channel();
     let f: proc():Send = proc() {
-        let tmp = TempDir::new("test_rm_tempdir").unwrap();
+        let tmp = TempDir::new("test_rm_tempdir").assert();
         tx.send(tmp.path().clone());
         fail!("fail to unwind past `tmp`");
     };
@@ -46,7 +46,7 @@ fn test_rm_tempdir() {
     let path = rx.recv();
     assert!(!path.exists());
 
-    let tmp = TempDir::new("test_rm_tempdir").unwrap();
+    let tmp = TempDir::new("test_rm_tempdir").assert();
     let path = tmp.path().clone();
     let f: proc():Send = proc() {
         let _tmp = tmp;
@@ -58,7 +58,7 @@ fn test_rm_tempdir() {
     let path;
     {
         let f = proc() {
-            TempDir::new("test_rm_tempdir").unwrap()
+            TempDir::new("test_rm_tempdir").assert()
         };
         let tmp = task::try(f).ok().expect("test_rm_tmdir");
         path = tmp.path().clone();
@@ -68,7 +68,7 @@ fn test_rm_tempdir() {
 
     let path;
     {
-        let tmp = TempDir::new("test_rm_tempdir").unwrap();
+        let tmp = TempDir::new("test_rm_tempdir").assert();
         path = tmp.unwrap();
     }
     assert!(path.exists());
@@ -79,7 +79,7 @@ fn test_rm_tempdir() {
 fn test_rm_tempdir_close() {
     let (tx, rx) = channel();
     let f: proc():Send = proc() {
-        let tmp = TempDir::new("test_rm_tempdir").unwrap();
+        let tmp = TempDir::new("test_rm_tempdir").assert();
         tx.send(tmp.path().clone());
         tmp.close();
         fail!("fail to unwind past `tmp`");
@@ -88,7 +88,7 @@ fn test_rm_tempdir_close() {
     let path = rx.recv();
     assert!(!path.exists());
 
-    let tmp = TempDir::new("test_rm_tempdir").unwrap();
+    let tmp = TempDir::new("test_rm_tempdir").assert();
     let path = tmp.path().clone();
     let f: proc():Send = proc() {
         let tmp = tmp;
@@ -101,7 +101,7 @@ fn test_rm_tempdir_close() {
     let path;
     {
         let f = proc() {
-            TempDir::new("test_rm_tempdir").unwrap()
+            TempDir::new("test_rm_tempdir").assert()
         };
         let tmp = task::try(f).ok().expect("test_rm_tmdir");
         path = tmp.path().clone();
@@ -112,7 +112,7 @@ fn test_rm_tempdir_close() {
 
     let path;
     {
-        let tmp = TempDir::new("test_rm_tempdir").unwrap();
+        let tmp = TempDir::new("test_rm_tempdir").assert();
         path = tmp.unwrap();
     }
     assert!(path.exists());
@@ -178,7 +178,7 @@ pub fn test_rmdir_recursive_ok() {
 
 pub fn dont_double_fail() {
     let r: Result<(), _> = task::try(proc() {
-        let tmpdir = TempDir::new("test").unwrap();
+        let tmpdir = TempDir::new("test").assert();
         // Remove the temporary directory so that TempDir sees
         // an error on drop
         fs::rmdir(tmpdir.path());

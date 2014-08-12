@@ -194,10 +194,10 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
                 // All bodies empty -> intlike
                 let discrs: Vec<u64> = cases.iter().map(|c| c.discr).collect();
                 let bounds = IntBounds {
-                    ulo: *discrs.iter().min().unwrap(),
-                    uhi: *discrs.iter().max().unwrap(),
-                    slo: discrs.iter().map(|n| *n as i64).min().unwrap(),
-                    shi: discrs.iter().map(|n| *n as i64).max().unwrap()
+                    ulo: *discrs.iter().min().assert(),
+                    uhi: *discrs.iter().max().assert(),
+                    slo: discrs.iter().map(|n| *n as i64).min().assert(),
+                    shi: discrs.iter().map(|n| *n as i64).max().assert()
                 };
                 return mk_cenum(cx, hint, &bounds);
             }
@@ -522,8 +522,8 @@ fn generic_type_of(cx: &CrateContext, r: &Repr, name: Option<&str>, sizing: bool
             // of the size.
             //
             // FIXME #10604: this breaks when vector types are present.
-            let size = sts.iter().map(|st| st.size).max().unwrap();
-            let most_aligned = sts.iter().max_by(|st| st.align).unwrap();
+            let size = sts.iter().map(|st| st.size).max().assert();
+            let most_aligned = sts.iter().max_by(|st| st.align).assert();
             let align = most_aligned.align;
             let discr_ty = ll_inttype(cx, ity);
             let discr_size = machine::llsize_of_alloc(cx, discr_ty) as u64;
@@ -918,7 +918,7 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
         }
         General(ity, ref cases, _) => {
             let case = cases.get(discr as uint);
-            let max_sz = cases.iter().map(|x| x.size).max().unwrap();
+            let max_sz = cases.iter().map(|x| x.size).max().assert();
             let lldiscr = C_integral(ll_inttype(ccx, ity), discr as u64, true);
             let contents = build_const_struct(ccx,
                                               case,

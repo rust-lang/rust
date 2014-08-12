@@ -15,10 +15,10 @@ fn main() {
     let args = os::args();
     if args.len() > 1 {
         let mut out = stdio::stdout();
-        out.write(['a' as u8, ..128 * 1024]).unwrap();
+        out.write(['a' as u8, ..128 * 1024]).assert();
     } else {
         let out = Command::new(args.get(0).as_slice()).arg("child").output();
-        let out = out.unwrap();
+        let out = out.assert();
         assert!(out.status.success());
     }
 }

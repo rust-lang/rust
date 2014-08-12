@@ -130,7 +130,7 @@
 //! use std::io::timer::Timer;
 //!
 //! let (tx, rx) = channel::<int>();
-//! let mut timer = Timer::new().unwrap();
+//! let mut timer = Timer::new().assert();
 //! let timeout = timer.oneshot(10000);
 //!
 //! loop {
@@ -152,7 +152,7 @@
 //! use std::io::timer::Timer;
 //!
 //! let (tx, rx) = channel::<int>();
-//! let mut timer = Timer::new().unwrap();
+//! let mut timer = Timer::new().assert();
 //!
 //! loop {
 //!     let timeout = timer.oneshot(5000);
@@ -633,7 +633,7 @@ impl<T: Send> Sender<T> {
                                 // This send cannot fail because the task is
                                 // asleep (we're looking at it), so the receiver
                                 // can't go away.
-                                (*a.get()).send(t).ok().unwrap();
+                                (*a.get()).send(t).ok().assert();
                                 task.wake().map(|t| t.reawaken());
                                 (a, Ok(()))
                             }
@@ -1064,7 +1064,7 @@ mod test {
 
     pub fn stress_factor() -> uint {
         match os::getenv("RUST_TEST_STRESS") {
-            Some(val) => from_str::<uint>(val.as_slice()).unwrap(),
+            Some(val) => from_str::<uint>(val.as_slice()).assert(),
             None => 1,
         }
     }
@@ -1597,7 +1597,7 @@ mod sync_tests {
 
     pub fn stress_factor() -> uint {
         match os::getenv("RUST_TEST_STRESS") {
-            Some(val) => from_str::<uint>(val.as_slice()).unwrap(),
+            Some(val) => from_str::<uint>(val.as_slice()).assert(),
             None => 1,
         }
     }
@@ -2110,10 +2110,10 @@ mod sync_tests {
 
             spawn(proc() {
                 rx1.recv();
-                tx2.try_send(()).unwrap();
+                tx2.try_send(()).assert();
             });
 
-            tx1.try_send(()).unwrap();
+            tx1.try_send(()).assert();
             rx2.recv();
         }
 

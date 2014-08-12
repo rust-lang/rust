@@ -22,15 +22,15 @@
 //! extern crate term;
 //!
 //! fn main() {
-//!     let mut t = term::stdout().unwrap();
+//!     let mut t = term::stdout().assert();
 //!
-//!     t.fg(term::color::GREEN).unwrap();
-//!     (write!(t, "hello, ")).unwrap();
+//!     t.fg(term::color::GREEN).assert();
+//!     (write!(t, "hello, ")).assert();
 //!
-//!     t.fg(term::color::RED).unwrap();
-//!     (writeln!(t, "world!")).unwrap();
+//!     t.fg(term::color::RED).assert();
+//!     (writeln!(t, "world!")).assert();
 //!
-//!     t.reset().unwrap();
+//!     t.reset().assert();
 //! }
 //! ```
 //!

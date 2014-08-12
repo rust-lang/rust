@@ -119,7 +119,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
         let mut timer = match active.shift() {
             Some(timer) => timer, None => return
         };
-        let mut cb = timer.cb.take_unwrap();
+        let mut cb = timer.cb.take().assert();
         cb.call();
         if timer.repeat {
             timer.cb = Some(cb);
@@ -174,7 +174,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
                         Ok(RemoveTimer(id, ack)) => {
                             match dead.iter().position(|&(i, _)| id == i) {
                                 Some(i) => {
-                                    let (_, i) = dead.remove(i).unwrap();
+                                    let (_, i) = dead.remove(i).assert();
                                     ack.send(i);
                                     continue
                                 }
@@ -182,7 +182,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
                             }
                             let i = active.iter().position(|i| i.id == id);
                             let i = i.expect("no timer found");
-                            let t = active.remove(i).unwrap();
+                            let t = active.remove(i).assert();
                             ack.send(t);
                         }
                         Err(..) => break
@@ -191,7 +191,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
                 // drain the file descriptor
                 let mut buf = [0];
-                assert_eq!(fd.inner_read(buf).ok().unwrap(), 1);
+                assert_eq!(fd.inner_read(buf).ok().assert(), 1);
             }
 
             -1 if os::errno() == libc::EINTR as int => {}

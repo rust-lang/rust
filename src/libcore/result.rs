@@ -78,7 +78,7 @@
 //! let bad_result: Result<int, int> = bad_result.or_else(|i| Ok(11));
 //!
 //! // Consume the result and return the contents with `unwrap`.
-//! let final_awesome_result = good_result.ok().unwrap();
+//! let final_awesome_result = good_result.ok().assert();
 //! ~~~
 //!
 //! # Results must be used

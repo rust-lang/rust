@@ -75,7 +75,7 @@ fn main() {
     } else if args.len() <= 1u {
         8
     } else {
-        from_str(args[1].as_slice()).unwrap()
+        from_str(args[1].as_slice()).assert()
     };
     let min_depth = 4;
     let max_depth = if min_depth + 2 > n {min_depth + 2} else {n};
@@ -109,7 +109,7 @@ fn main() {
         }).collect::<Vec<Future<String>>>();
 
     for message in messages.iter_mut() {
-        println!("{}", *message.get_ref());
+        println!("{}", *message.as_ref().assert());
     }
 
     println!("long lived tree of depth {}\t check: {}",

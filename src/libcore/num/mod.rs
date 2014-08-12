@@ -1135,7 +1135,7 @@ impl_from_primitive!(f64, to_f64)
 /// ```
 /// use std::num;
 ///
-/// let twenty: f32 = num::cast(0x14i).unwrap();
+/// let twenty: f32 = num::cast(0x14i).assert();
 /// assert_eq!(twenty, 20f32);
 /// ```
 ///

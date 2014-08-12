@@ -37,10 +37,10 @@ fn main() {
 
     // we shouldn't die because of an interrupt
     let mut l = Listener::new();
-    l.register(Interrupt).unwrap();
+    l.register(Interrupt).assert();
 
     // spawn the child
-    let mut p = Command::new("/bin/sh").arg("-c").arg("read a").detached().spawn().unwrap();
+    let mut p = Command::new("/bin/sh").arg("-c").arg("read a").detached().spawn().assert();
 
     // send an interrupt to everyone in our process group
     unsafe { libc::funcs::posix88::signal::kill(0, libc::SIGINT); }
@@ -48,7 +48,7 @@ fn main() {
     // Wait for the child process to die (terminate it's stdin and the read
     // should fail).
     drop(p.stdin.take());
-    match p.wait().unwrap() {
+    match p.wait().assert() {
         process::ExitStatus(..) => {}
         process::ExitSignal(..) => fail!()
     }

@@ -119,16 +119,16 @@ fn test_iterator_enumerate() {
 fn test_iterator_peekable() {
     let xs = vec![0u, 1, 2, 3, 4, 5];
     let mut it = xs.iter().map(|&x|x).peekable();
-    assert_eq!(it.peek().unwrap(), &0);
-    assert_eq!(it.next().unwrap(), 0);
-    assert_eq!(it.next().unwrap(), 1);
-    assert_eq!(it.next().unwrap(), 2);
-    assert_eq!(it.peek().unwrap(), &3);
-    assert_eq!(it.peek().unwrap(), &3);
-    assert_eq!(it.next().unwrap(), 3);
-    assert_eq!(it.next().unwrap(), 4);
-    assert_eq!(it.peek().unwrap(), &5);
-    assert_eq!(it.next().unwrap(), 5);
+    assert_eq!(it.peek().assert(), &0);
+    assert_eq!(it.next().assert(), 0);
+    assert_eq!(it.next().assert(), 1);
+    assert_eq!(it.next().assert(), 2);
+    assert_eq!(it.peek().assert(), &3);
+    assert_eq!(it.peek().assert(), &3);
+    assert_eq!(it.next().assert(), 3);
+    assert_eq!(it.next().assert(), 4);
+    assert_eq!(it.peek().assert(), &5);
+    assert_eq!(it.next().assert(), 5);
     assert!(it.peek().is_none());
     assert!(it.next().is_none());
 }
@@ -270,7 +270,7 @@ fn test_cycle() {
 fn test_iterator_nth() {
     let v = &[0i, 1, 2, 3, 4];
     for i in range(0u, v.len()) {
-        assert_eq!(v.iter().nth(i).unwrap(), &v[i]);
+        assert_eq!(v.iter().nth(i).assert(), &v[i]);
     }
     assert_eq!(v.iter().nth(v.len()), None);
 }
@@ -278,8 +278,8 @@ fn test_iterator_nth() {
 #[test]
 fn test_iterator_last() {
     let v = &[0i, 1, 2, 3, 4];
-    assert_eq!(v.iter().last().unwrap(), &4);
-    assert_eq!(v.slice(0, 1).iter().last().unwrap(), &0);
+    assert_eq!(v.iter().last().assert(), &4);
+    assert_eq!(v.slice(0, 1).iter().last().assert(), &0);
 }
 
 #[test]
@@ -387,16 +387,16 @@ fn test_any() {
 #[test]
 fn test_find() {
     let v: &[int] = &[1i, 3, 9, 27, 103, 14, 11];
-    assert_eq!(*v.iter().find(|x| *x & 1 == 0).unwrap(), 14);
-    assert_eq!(*v.iter().find(|x| *x % 3 == 0).unwrap(), 3);
+    assert_eq!(*v.iter().find(|x| *x & 1 == 0).assert(), 14);
+    assert_eq!(*v.iter().find(|x| *x % 3 == 0).assert(), 3);
     assert!(v.iter().find(|x| *x % 12 == 0).is_none());
 }
 
 #[test]
 fn test_position() {
     let v = &[1i, 3, 9, 27, 103, 14, 11];
-    assert_eq!(v.iter().position(|x| *x & 1 == 0).unwrap(), 5);
-    assert_eq!(v.iter().position(|x| *x % 3 == 0).unwrap(), 1);
+    assert_eq!(v.iter().position(|x| *x & 1 == 0).assert(), 5);
+    assert_eq!(v.iter().position(|x| *x % 3 == 0).assert(), 1);
     assert!(v.iter().position(|x| *x % 12 == 0).is_none());
 }
 
@@ -411,13 +411,13 @@ fn test_count() {
 #[test]
 fn test_max_by() {
     let xs: &[int] = &[-3i, 0, 1, 5, -10];
-    assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
+    assert_eq!(*xs.iter().max_by(|x| x.abs()).assert(), -10);
 }
 
 #[test]
 fn test_min_by() {
     let xs: &[int] = &[-3i, 0, 1, 5, -10];
-    assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+    assert_eq!(*xs.iter().min_by(|x| x.abs()).assert(), 0);
 }
 
 #[test]
@@ -483,9 +483,9 @@ fn test_double_ended_zip() {
 fn test_double_ended_filter() {
     let xs = [1i, 2, 3, 4, 5, 6];
     let mut it = xs.iter().filter(|&x| *x & 1 == 0);
-    assert_eq!(it.next_back().unwrap(), &6);
-    assert_eq!(it.next_back().unwrap(), &4);
-    assert_eq!(it.next().unwrap(), &2);
+    assert_eq!(it.next_back().assert(), &6);
+    assert_eq!(it.next_back().assert(), &4);
+    assert_eq!(it.next().assert(), &2);
     assert_eq!(it.next_back(), None);
 }
 
@@ -493,9 +493,9 @@ fn test_double_ended_filter() {
 fn test_double_ended_filter_map() {
     let xs = [1i, 2, 3, 4, 5, 6];
     let mut it = xs.iter().filter_map(|&x| if x & 1 == 0 { Some(x * 2) } else { None });
-    assert_eq!(it.next_back().unwrap(), 12);
-    assert_eq!(it.next_back().unwrap(), 8);
-    assert_eq!(it.next().unwrap(), 4);
+    assert_eq!(it.next_back().assert(), 12);
+    assert_eq!(it.next_back().assert(), 8);
+    assert_eq!(it.next().assert(), 4);
     assert_eq!(it.next_back(), None);
 }
 
@@ -504,14 +504,14 @@ fn test_double_ended_chain() {
     let xs = [1i, 2, 3, 4, 5];
     let ys = [7i, 9, 11];
     let mut it = xs.iter().chain(ys.iter()).rev();
-    assert_eq!(it.next().unwrap(), &11)
-    assert_eq!(it.next().unwrap(), &9)
-    assert_eq!(it.next_back().unwrap(), &1)
-    assert_eq!(it.next_back().unwrap(), &2)
-    assert_eq!(it.next_back().unwrap(), &3)
-    assert_eq!(it.next_back().unwrap(), &4)
-    assert_eq!(it.next_back().unwrap(), &5)
-    assert_eq!(it.next_back().unwrap(), &7)
+    assert_eq!(it.next().assert(), &11)
+    assert_eq!(it.next().assert(), &9)
+    assert_eq!(it.next_back().assert(), &1)
+    assert_eq!(it.next_back().assert(), &2)
+    assert_eq!(it.next_back().assert(), &3)
+    assert_eq!(it.next_back().assert(), &4)
+    assert_eq!(it.next_back().assert(), &5)
+    assert_eq!(it.next_back().assert(), &7)
     assert_eq!(it.next_back(), None)
 }
 
@@ -567,13 +567,13 @@ fn test_double_ended_flat_map() {
     let u = [0u,1];
     let v = [5u,6,7,8];
     let mut it = u.iter().flat_map(|x| v.slice(*x, v.len()).iter());
-    assert_eq!(it.next_back().unwrap(), &8);
-    assert_eq!(it.next().unwrap(),      &5);
-    assert_eq!(it.next_back().unwrap(), &7);
-    assert_eq!(it.next_back().unwrap(), &6);
-    assert_eq!(it.next_back().unwrap(), &8);
-    assert_eq!(it.next().unwrap(),      &6);
-    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back().assert(), &8);
+    assert_eq!(it.next().assert(),      &5);
+    assert_eq!(it.next_back().assert(), &7);
+    assert_eq!(it.next_back().assert(), &6);
+    assert_eq!(it.next_back().assert(), &8);
+    assert_eq!(it.next().assert(),      &6);
+    assert_eq!(it.next_back().assert(), &7);
     assert_eq!(it.next_back(), None);
     assert_eq!(it.next(),      None);
     assert_eq!(it.next_back(), None);
@@ -584,17 +584,17 @@ fn test_random_access_chain() {
     let xs = [1i, 2, 3, 4, 5];
     let ys = [7i, 9, 11];
     let mut it = xs.iter().chain(ys.iter());
-    assert_eq!(it.idx(0).unwrap(), &1);
-    assert_eq!(it.idx(5).unwrap(), &7);
-    assert_eq!(it.idx(7).unwrap(), &11);
+    assert_eq!(it.idx(0).assert(), &1);
+    assert_eq!(it.idx(5).assert(), &7);
+    assert_eq!(it.idx(7).assert(), &11);
     assert!(it.idx(8).is_none());
 
     it.next();
     it.next();
     it.next_back();
 
-    assert_eq!(it.idx(0).unwrap(), &3);
-    assert_eq!(it.idx(4).unwrap(), &9);
+    assert_eq!(it.idx(0).assert(), &3);
+    assert_eq!(it.idx(4).assert(), &9);
     assert!(it.idx(6).is_none());
 
     check_randacc_iter(it, xs.len() + ys.len() - 3);
@@ -867,9 +867,9 @@ fn bench_skip_while(b: &mut Bencher) {
 fn bench_multiple_take(b: &mut Bencher) {
     let mut it = range(0u, 42).cycle();
     b.iter(|| {
-        let n = it.next().unwrap();
+        let n = it.next().assert();
         for m in range(0u, n) {
-            it.take(it.next().unwrap()).all(|_| true);
+            it.take(it.next().assert()).all(|_| true);
         }
     });
 }
