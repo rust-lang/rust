@@ -126,7 +126,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
                                 callee_ty: ty::t, cleanup_scope: cleanup::CustomScopeIndex,
                                 args: callee::CallArgs, dest: expr::Dest,
-                                substs: subst::Substs) -> Result<'a> {
+                                substs: subst::Substs, call_info: NodeInfo) -> Result<'a> {
 
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
@@ -424,6 +424,17 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
         (_, "u64_mul_with_overflow") =>
             with_overflow_intrinsic(bcx, "llvm.umul.with.overflow.i64", ret_ty,
                                     *llargs.get(0), *llargs.get(1)),
+
+        (_, "return_address") => {
+            if !fcx.caller_expects_out_pointer {
+                tcx.sess.span_err(call_info.span,
+                                  "invalid use of `return_address` intrinsic: function \
+                                   does not use out pointer");
+                C_null(Type::i8p(ccx))
+            } else {
+                PointerCast(bcx, llvm::get_param(fcx.llfn, 0), Type::i8p(ccx))
+            }
+        }
 
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
