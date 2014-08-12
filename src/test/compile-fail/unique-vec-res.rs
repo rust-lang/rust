@@ -37,6 +37,9 @@ fn main() {
     let r2 = vec!(box r { i: i2 });
     f(r1.clone(), r2.clone());
     //~^ ERROR failed to find an implementation of
+    //~^^ ERROR failed to find an implementation of
+    //~^^^ ERROR failed to find an implementation of
+    //~^^^^ ERROR failed to find an implementation of
     println!("{:?}", (r2, i1.get()));
     println!("{:?}", (r1, i2.get()));
 }

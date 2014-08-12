@@ -14,7 +14,10 @@ fn equal<T>(_: &T, _: &T) -> bool where T : Eq {
 struct Struct;
 
 fn main() {
-    equal(&Struct, &Struct)
-    //~^ ERROR failed to find an implementation of trait
+    drop(equal(&Struct, &Struct))
+    //~^ ERROR failed to find an implementation of trait core::cmp::Eq
+    //~^^ ERROR failed to find an implementation of trait core::cmp::PartialEq
+    //~^^^ ERROR failed to find an implementation of trait core::cmp::Eq
+    //~^^^^ ERROR failed to find an implementation of trait core::cmp::PartialEq
 }
 

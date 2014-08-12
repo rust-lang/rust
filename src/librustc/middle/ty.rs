@@ -55,7 +55,7 @@ use syntax::ast::{CrateNum, DefId, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{Onceness, StmtExpr, StmtSemi, StructField, UnnamedField};
 use syntax::ast::{Visibility};
-use syntax::ast_util::{is_local, lit_is_str};
+use syntax::ast_util::{PostExpansionMethod, is_local, lit_is_str};
 use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
@@ -1081,6 +1081,84 @@ pub struct ParameterEnvironment {
 
     /// Bounds on the various type parameters
     pub bounds: VecPerParamSpace<ParamBounds>,
+}
+
+impl ParameterEnvironment {
+    pub fn for_item(cx: &ctxt, id: NodeId) -> ParameterEnvironment {
+        match cx.map.find(id) {
+            Some(ast_map::NodeImplItem(ref impl_item)) => {
+                match **impl_item {
+                    ast::MethodImplItem(ref method) => {
+                        let method_def_id = ast_util::local_def(id);
+                        match ty::impl_or_trait_item(cx, method_def_id) {
+                            MethodTraitItem(ref method_ty) => {
+                                let method_generics = &method_ty.generics;
+                                construct_parameter_environment(
+                                    cx,
+                                    method_generics,
+                                    method.pe_body().id)
+                            }
+                        }
+                    }
+                }
+            }
+            Some(ast_map::NodeTraitItem(trait_method)) => {
+                match *trait_method {
+                    ast::RequiredMethod(ref required) => {
+                        cx.sess.span_bug(required.span,
+                                         "ParameterEnvironment::from_item():
+                                          can't create a parameter \
+                                          environment for required trait \
+                                          methods")
+                    }
+                    ast::ProvidedMethod(ref method) => {
+                        let method_def_id = ast_util::local_def(id);
+                        match ty::impl_or_trait_item(cx, method_def_id) {
+                            MethodTraitItem(ref method_ty) => {
+                                let method_generics = &method_ty.generics;
+                                construct_parameter_environment(
+                                    cx,
+                                    method_generics,
+                                    method.pe_body().id)
+                            }
+                        }
+                    }
+                }
+            }
+            Some(ast_map::NodeItem(item)) => {
+                match item.node {
+                    ast::ItemFn(_, _, _, _, ref body) => {
+                        // We assume this is a function.
+                        let fn_def_id = ast_util::local_def(id);
+                        let fn_pty = ty::lookup_item_type(cx, fn_def_id);
+
+                        construct_parameter_environment(cx,
+                                                        &fn_pty.generics,
+                                                        body.id)
+                    }
+                    ast::ItemEnum(..) |
+                    ast::ItemStruct(..) |
+                    ast::ItemImpl(..) |
+                    ast::ItemStatic(..) => {
+                        let def_id = ast_util::local_def(id);
+                        let pty = ty::lookup_item_type(cx, def_id);
+                        construct_parameter_environment(cx, &pty.generics, id)
+                    }
+                    _ => {
+                        cx.sess.span_bug(item.span,
+                                         "ParameterEnvironment::from_item():
+                                          can't create a parameter \
+                                          environment for this kind of item")
+                    }
+                }
+            }
+            _ => {
+                cx.sess.bug(format!("ParameterEnvironment::from_item(): \
+                                     `{}` is not an item",
+                                    cx.map.node_to_string(id)).as_slice())
+            }
+        }
+    }
 }
 
 /// A polytype.

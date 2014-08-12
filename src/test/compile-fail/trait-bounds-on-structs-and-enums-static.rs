@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that constant expressions can be used for declaring the
-// type of a fixed length vector.
+trait Trait {}
 
-pub fn main() {
-
-    static FOO: uint = 2;
-    let _v: [int, ..FOO*3];
-
+struct Foo<T:Trait> {
+    x: T,
 }
+
+static X: Foo<uint> = Foo {
+//~^ ERROR failed to find an implementation
+//~^^ ERROR instantiating a type parameter with an incompatible type
+    x: 1,
+};
+
+fn main() {
+}
+

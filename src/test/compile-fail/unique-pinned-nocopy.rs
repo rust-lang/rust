@@ -21,5 +21,6 @@ impl Drop for r {
 fn main() {
     let i = box r { b: true };
     let _j = i.clone(); //~ ERROR failed to find an implementation
+    //~^ ERROR failed to find an implementation
     println!("{:?}", i);
 }

@@ -1456,13 +1456,24 @@ pub mod types {
                     pub Data4: [BYTE, ..8],
                 }
 
+                // NOTE(pcwalton, stage0): Remove after snapshot (typeck bug
+                // workaround).
+                #[cfg(stage0)]
                 pub struct WSAPROTOCOLCHAIN {
                     pub ChainLen: c_int,
                     pub ChainEntries: [DWORD, ..MAX_PROTOCOL_CHAIN],
                 }
+                #[cfg(not(stage0))]
+                pub struct WSAPROTOCOLCHAIN {
+                    pub ChainLen: c_int,
+                    pub ChainEntries: [DWORD, ..MAX_PROTOCOL_CHAIN as uint],
+                }
 
                 pub type LPWSAPROTOCOLCHAIN = *mut WSAPROTOCOLCHAIN;
 
+                // NOTE(pcwalton, stage0): Remove after snapshot (typeck bug
+                // workaround).
+                #[cfg(stage0)]
                 pub struct WSAPROTOCOL_INFO {
                     pub dwServiceFlags1: DWORD,
                     pub dwServiceFlags2: DWORD,
@@ -1484,6 +1495,29 @@ pub mod types {
                     pub dwMessageSize: DWORD,
                     pub dwProviderReserved: DWORD,
                     pub szProtocol: [u8, ..WSAPROTOCOL_LEN+1],
+                }
+                #[cfg(not(stage0))]
+                pub struct WSAPROTOCOL_INFO {
+                    pub dwServiceFlags1: DWORD,
+                    pub dwServiceFlags2: DWORD,
+                    pub dwServiceFlags3: DWORD,
+                    pub dwServiceFlags4: DWORD,
+                    pub dwProviderFlags: DWORD,
+                    pub ProviderId: GUID,
+                    pub dwCatalogEntryId: DWORD,
+                    pub ProtocolChain: WSAPROTOCOLCHAIN,
+                    pub iVersion: c_int,
+                    pub iAddressFamily: c_int,
+                    pub iMaxSockAddr: c_int,
+                    pub iMinSockAddr: c_int,
+                    pub iSocketType: c_int,
+                    pub iProtocol: c_int,
+                    pub iProtocolMaxOffset: c_int,
+                    pub iNetworkByteOrder: c_int,
+                    pub iSecurityScheme: c_int,
+                    pub dwMessageSize: DWORD,
+                    pub dwProviderReserved: DWORD,
+                    pub szProtocol: [u8, ..(WSAPROTOCOL_LEN as uint) + 1u],
                 }
 
                 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
