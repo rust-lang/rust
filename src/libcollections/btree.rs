@@ -299,14 +299,14 @@ impl<K: Ord, V> Leaf<K, V> {
             midpoint = 0;
         }
         loop {
-            let order = self.elts.get(midpoint).key.cmp(&k);
+            let order = self.elts[midpoint].key.cmp(&k);
             match order {
                 Equal => {
                     return None;
                 }
                 Greater => {
                     if midpoint > 0 {
-                        if self.elts.get(midpoint - 1).key.cmp(&k) == Less {
+                        if self.elts[midpoint - 1].key.cmp(&k) == Less {
                             return Some(midpoint);
                         }
                         else {
@@ -322,7 +322,7 @@ impl<K: Ord, V> Leaf<K, V> {
                 }
                 Less => {
                     if midpoint + 1 < self.elts.len() {
-                        if self.elts.get(midpoint + 1).key.cmp(&k) == Greater {
+                        if self.elts[midpoint + 1].key.cmp(&k) == Greater {
                             return Some(midpoint);
                         }
                         else {
@@ -422,7 +422,7 @@ impl<K: Ord, V: Eq> Ord for Leaf<K, V> {
         if self.elts.len() < other.elts.len() {
             return Less;
         }
-        self.elts.get(0).cmp(other.elts.get(0))
+        self.elts[0].cmp(&other.elts[0])
     }
 }
 
@@ -457,14 +457,14 @@ impl<K: Ord, V> Branch<K, V> {
             midpoint = 0u;
         }
         loop {
-            let order = self.elts.get(midpoint).key.cmp(&k);
+            let order = self.elts[midpoint].key.cmp(&k);
             match order {
                 Equal => {
                     return None;
                 }
                 Greater => {
                     if midpoint > 0 {
-                        if self.elts.get(midpoint - 1).key.cmp(&k) == Less {
+                        if self.elts[midpoint - 1].key.cmp(&k) == Less {
                             return Some(midpoint);
                         }
                         else {
@@ -480,7 +480,7 @@ impl<K: Ord, V> Branch<K, V> {
                 }
                 Less => {
                     if midpoint + 1 < self.elts.len() {
-                        if self.elts.get(midpoint + 1).key.cmp(&k) == Greater {
+                        if self.elts[midpoint + 1].key.cmp(&k) == Greater {
                             return Some(midpoint);
                         }
                         else {
@@ -529,15 +529,15 @@ impl<K: Clone + Ord, V: Clone> Branch<K, V> {
             Some(i) => {
                 if i == self.elts.len() {
                     let new_outcome = self.clone().rightmost_child.insert(k.clone(),
-                                                                       v.clone(),
-                                                                       ub.clone());
+                                                                          v.clone(),
+                                                                          ub.clone());
                     new_branch = new_outcome.clone().val0();
                     outcome = new_outcome.val1();
                 }
                 else {
-                    let new_outcome = self.elts.get(i).left.clone().insert(k.clone(),
-                                                                                 v.clone(),
-                                                                                 ub.clone());
+                    let new_outcome = self.elts[i].left.clone().insert(k.clone(),
+                                                                       v.clone(),
+                                                                       ub.clone());
                     new_branch = new_outcome.clone().val0();
                     outcome = new_outcome.val1();
                 }
@@ -581,7 +581,7 @@ impl<K: Clone + Ord, V: Clone> Branch<K, V> {
                 //If we have a new branch node, attempt to insert it into the tree
                 //as with the key-value pair, then check to see if the node is overfull.
                 BranchNode(branch) => {
-                    let new_elt = branch.elts.get(0).clone();
+                    let new_elt = branch.elts[0].clone();
                     let new_elt_index = self.bsearch_branch(new_elt.clone().key);
                     match new_elt_index {
                         None => {
@@ -652,7 +652,7 @@ impl<K: Ord, V: Eq> Ord for Branch<K, V> {
         if self.elts.len() < other.elts.len() {
             return Less;
         }
-        self.elts.get(0).cmp(other.elts.get(0))
+        self.elts[0].cmp(&other.elts[0])
     }
 }
 
