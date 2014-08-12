@@ -76,10 +76,9 @@ pub fn trans_impl(ccx: &CrateContext,
                      &param_substs::empty(),
                      method.id,
                      []);
-        } else {
-            let mut v = TransItemVisitor{ ccx: ccx };
-            visit::walk_method_helper(&mut v, &**method, ());
         }
+        let mut v = TransItemVisitor{ ccx: ccx };
+        visit::walk_method_helper(&mut v, &**method, ());
     }
 }
 
