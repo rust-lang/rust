@@ -1571,6 +1571,19 @@ for i in vec.iter() {
 
 This code will print each number in order, on its own line.
 
+You can access a particular element of a vector, array, or slice by using
+**subscript notation**:
+
+```{rust}
+let names = ["Graydon", "Brian", "Niko"];
+
+println!("The second name is: {}", names[1]);
+```
+
+These subscripts start at zero, like in most programming languages, so the
+first name is `names[0]` and the second name is `names[1]`. The above example
+prints `The second name is Brian`.
+
 There's a whole lot more to vectors, but that's enough to get started. We have
 now learned all of the most basic Rust concepts. We're ready to start building
 our guessing game, but we need to know how to do one last thing first: get
