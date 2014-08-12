@@ -645,7 +645,7 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// at a non-directory file
 pub fn readdir(path: &Path) -> IoResult<Vec<Path>> {
     let err = LocalIo::maybe_raise(|io| {
-        Ok(try!(io.fs_readdir(&path.to_c_str(), 0)).move_iter().map(|a| {
+        Ok(try!(io.fs_readdir(&path.to_c_str(), 0)).iter_owned().map(|a| {
             Path::new(a)
         }).collect())
     }).map_err(IoError::from_rtio_error);
@@ -757,7 +757,7 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
 
         // delete all regular files in the way and push subdirs
         // on the stack
-        for child in children.move_iter() {
+        for child in children.iter_owned() {
             // FIXME(#12795) we should use lstat in all cases
             let child_type = match cfg!(windows) {
                 true => try!(update_err(stat(&child), path)),
@@ -1043,11 +1043,11 @@ mod test {
         {
             let mut read_stream = File::open_mode(filename, Open, Read);
             {
-                let read_buf = read_mem.mut_slice(0, 4);
+                let read_buf = read_mem.slice_mut(0, 4);
                 check!(read_stream.read(read_buf));
             }
             {
-                let read_buf = read_mem.mut_slice(4, 8);
+                let read_buf = read_mem.slice_mut(4, 8);
                 check!(read_stream.read(read_buf));
             }
         }

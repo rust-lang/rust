@@ -195,7 +195,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
         if buf.len() > self.buf.len() {
             self.inner.get_mut_ref().write(buf)
         } else {
-            let dst = self.buf.mut_slice_from(self.pos);
+            let dst = self.buf.slice_from_mut(self.pos);
             slice::bytes::copy_memory(dst, buf);
             self.pos += buf.len();
             Ok(())

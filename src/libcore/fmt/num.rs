@@ -43,7 +43,7 @@ trait GenericRadix {
         if is_positive {
             // Accumulate each digit of the number from the least significant
             // to the most significant figure.
-            for byte in buf.mut_iter().rev() {
+            for byte in buf.iter_mut().rev() {
                 let n = x % base;                         // Get the current place value.
                 x = x / base;                             // Deaccumulate the number.
                 *byte = self.digit(cast(n).unwrap());     // Store the digit in the buffer.
@@ -52,7 +52,7 @@ trait GenericRadix {
             }
         } else {
             // Do the same as above, but accounting for two's complement.
-            for byte in buf.mut_iter().rev() {
+            for byte in buf.iter_mut().rev() {
                 let n = -(x % base);                      // Get the current place value.
                 x = x / base;                             // Deaccumulate the number.
                 *byte = self.digit(cast(n).unwrap());     // Store the digit in the buffer.

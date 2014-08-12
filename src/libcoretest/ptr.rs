@@ -92,7 +92,7 @@ fn test_is_null() {
     assert!(!q.is_null());
     assert!(q.is_not_null());
 
-    let mp: *mut int = mut_null();
+    let mp: *mut int = null_mut();
     assert!(mp.is_null());
     assert!(!mp.is_not_null());
 
@@ -110,7 +110,7 @@ fn test_to_option() {
         let q: *const int = &2;
         assert_eq!(q.to_option().unwrap(), &2);
 
-        let p: *mut int = mut_null();
+        let p: *mut int = null_mut();
         assert_eq!(p.to_option(), None);
 
         let q: *mut int = &mut 2;

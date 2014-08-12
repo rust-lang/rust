@@ -88,7 +88,7 @@ pub enum Req {
 pub fn now() -> u64 {
     unsafe {
         let mut now: libc::timeval = mem::zeroed();
-        assert_eq!(c::gettimeofday(&mut now, ptr::mut_null()), 0);
+        assert_eq!(c::gettimeofday(&mut now, ptr::null_mut()), 0);
         return (now.tv_sec as u64) * 1000 + (now.tv_usec as u64) / 1000;
     }
 }
@@ -133,7 +133,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
     'outer: loop {
         let timeout = if active.len() == 0 {
             // Empty array? no timeout (wait forever for the next request)
-            ptr::mut_null()
+            ptr::null_mut()
         } else {
             let now = now();
             // If this request has already expired, then signal it and go
@@ -154,8 +154,8 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
         c::fd_set(&mut set, input);
         match unsafe {
-            c::select(input + 1, &mut set, ptr::mut_null(),
-                      ptr::mut_null(), timeout)
+            c::select(input + 1, &mut set, ptr::null_mut(),
+                      ptr::null_mut(), timeout)
         } {
             // timed out
             0 => signal(&mut active, &mut dead),

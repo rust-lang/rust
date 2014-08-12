@@ -19,7 +19,7 @@ fn touch<A>(_a: &A) {}
 
 fn f20() {
     let x = vec!("hi".to_string());
-    consume(x.move_iter().next().unwrap());
+    consume(x.iter_owned().next().unwrap());
     touch(x.get(0)); //~ ERROR use of moved value: `x`
 }
 

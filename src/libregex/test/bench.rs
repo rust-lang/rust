@@ -157,7 +157,7 @@ fn gen_text(n: uint) -> String {
     let mut rng = task_rng();
     let mut bytes = rng.gen_ascii_chars().map(|n| n as u8).take(n)
                        .collect::<Vec<u8>>();
-    for (i, b) in bytes.mut_iter().enumerate() {
+    for (i, b) in bytes.iter_mut().enumerate() {
         if i % 20 == 0 {
             *b = b'\n'
         }

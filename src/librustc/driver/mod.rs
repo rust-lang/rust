@@ -169,7 +169,7 @@ Available lint options:
 ");
 
     fn sort_lints(lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
-        let mut lints: Vec<_> = lints.move_iter().map(|(x, _)| x).collect();
+        let mut lints: Vec<_> = lints.iter_owned().map(|(x, _)| x).collect();
         lints.sort_by(|x: &&Lint, y: &&Lint| {
             match x.default_level.cmp(&y.default_level) {
                 // The sort doesn't case-fold but it's doubtful we care.
@@ -198,7 +198,7 @@ Available lint options:
     println!("    {}  {:7.7s}  {}", padded("----"), "-------", "-------");
 
     let print_lints = |lints: Vec<&Lint>| {
-        for lint in lints.move_iter() {
+        for lint in lints.iter_owned() {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7s}  {}",
                      padded(name.as_slice()), lint.default_level.as_str(), lint.desc);
@@ -393,7 +393,7 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
                 &sess.parse_sess)
         }
     };
-    result.move_iter().collect()
+    result.iter_owned().collect()
 }
 
 pub fn early_error(msg: &str) -> ! {

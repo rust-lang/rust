@@ -796,7 +796,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
     encode_bounds_and_type(rbml_w, ecx, &pty);
 
     let elem = ast_map::PathName(m.ident.name);
-    encode_path(rbml_w, impl_path.chain(Some(elem).move_iter()));
+    encode_path(rbml_w, impl_path.chain(Some(elem).iter_owned()));
     match ast_method_opt {
         Some(ast_method) => {
             encode_attributes(rbml_w, ast_method.attrs.as_slice())
@@ -1216,7 +1216,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             encode_stability(rbml_w, stab);
 
             let elem = ast_map::PathName(method_ty.ident.name);
-            encode_path(rbml_w, path.clone().chain(Some(elem).move_iter()));
+            encode_path(rbml_w, path.clone().chain(Some(elem).iter_owned()));
 
             match method_ty.explicit_self {
                 ty::StaticExplicitSelfCategory => {
@@ -1409,7 +1409,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
 fn encode_index<T: Hash>(rbml_w: &mut Encoder, index: Vec<entry<T>>,
                          write_fn: |&mut SeekableMemWriter, &T|) {
     let mut buckets: Vec<Vec<entry<T>>> = Vec::from_fn(256, |_| Vec::new());
-    for elt in index.move_iter() {
+    for elt in index.iter_owned() {
         let h = hash::hash(&elt.val) as uint;
         buckets.get_mut(h % 256).push(elt);
     }
@@ -1822,7 +1822,7 @@ pub static metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't',
 pub fn encode_metadata(parms: EncodeParams, krate: &Crate) -> Vec<u8> {
     let mut wr = SeekableMemWriter::new();
     encode_metadata_inner(&mut wr, parms, krate);
-    wr.unwrap().move_iter().collect()
+    wr.unwrap().iter_owned().collect()
 }
 
 fn encode_metadata_inner(wr: &mut SeekableMemWriter, parms: EncodeParams, krate: &Crate) {

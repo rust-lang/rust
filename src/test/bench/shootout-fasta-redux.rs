@@ -94,7 +94,7 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
 
         copy_memory(buf.as_mut_slice(), alu);
         let buf_len = buf.len();
-        copy_memory(buf.mut_slice(alu_len, buf_len),
+        copy_memory(buf.slice_mut(alu_len, buf_len),
                     alu.slice_to(LINE_LEN));
 
         let mut pos = 0;
@@ -117,7 +117,7 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
 fn make_lookup(a: &[AminoAcid]) -> [AminoAcid, ..LOOKUP_SIZE] {
     let mut lookup = [ NULL_AMINO_ACID, ..LOOKUP_SIZE ];
     let mut j = 0;
-    for (i, slot) in lookup.mut_iter().enumerate() {
+    for (i, slot) in lookup.iter_mut().enumerate() {
         while a[j].p < (i as f32) {
             j += 1;
         }

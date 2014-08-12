@@ -95,7 +95,7 @@ fn group_errors_with_same_origin(errors: &Vec<MoveError>)
         } else {
             Vec::new()
         };
-        for ge in grouped_errors.mut_iter() {
+        for ge in grouped_errors.iter_mut() {
             if move_from_id == ge.move_from.id && error.move_to.is_some() {
                 debug!("appending move_to to list");
                 ge.move_to_places.push_all_move(move_to);

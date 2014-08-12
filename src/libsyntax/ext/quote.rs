@@ -56,7 +56,7 @@ pub mod rt {
 
     impl<T: ToTokens> ToTokens for Vec<T> {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-            let a = self.iter().flat_map(|t| t.to_tokens(cx).move_iter());
+            let a = self.iter().flat_map(|t| t.to_tokens(cx).iter_owned());
             FromIterator::from_iter(a)
         }
     }

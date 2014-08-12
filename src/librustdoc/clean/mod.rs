@@ -150,7 +150,7 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
                 _ => unreachable!(),
             };
             let mut tmp = Vec::new();
-            for child in m.items.mut_iter() {
+            for child in m.items.iter_mut() {
                 let inner = match child.inner {
                     ModuleItem(ref mut m) => m,
                     _ => continue,
@@ -179,7 +179,7 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
                 inner.items.push(i);
 
             }
-            m.items.extend(tmp.move_iter());
+            m.items.extend(tmp.iter_owned());
         }
 
         Crate {
@@ -341,8 +341,8 @@ impl Clean<Item> for doctree::Module {
             "".to_string()
         };
         let mut foreigns = Vec::new();
-        for subforeigns in self.foreigns.clean().move_iter() {
-            for foreign in subforeigns.move_iter() {
+        for subforeigns in self.foreigns.clean().iter_owned() {
+            for foreign in subforeigns.iter_owned() {
                 foreigns.push(foreign)
             }
         }
@@ -356,8 +356,8 @@ impl Clean<Item> for doctree::Module {
             self.statics.clean(),
             self.traits.clean(),
             self.impls.clean(),
-            self.view_items.clean().move_iter()
-                           .flat_map(|s| s.move_iter()).collect(),
+            self.view_items.clean().iter_owned()
+                           .flat_map(|s| s.iter_owned()).collect(),
             self.macros.clean(),
         );
 
@@ -540,7 +540,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
                  external_path("Sync", &empty)),
         };
         let fqn = csearch::get_item_path(tcx, did);
-        let fqn = fqn.move_iter().map(|i| i.to_string()).collect();
+        let fqn = fqn.iter_owned().map(|i| i.to_string()).collect();
         cx.external_paths.borrow_mut().get_mut_ref().insert(did,
                                                             (fqn, TypeTrait));
         TraitBound(ResolvedPath {
@@ -559,7 +559,7 @@ impl Clean<TyParamBound> for ty::TraitRef {
             core::NotTyped(_) => return RegionBound,
         };
         let fqn = csearch::get_item_path(tcx, self.def_id);
-        let fqn = fqn.move_iter().map(|i| i.to_string())
+        let fqn = fqn.iter_owned().map(|i| i.to_string())
                      .collect::<Vec<String>>();
         let path = external_path(fqn.last().unwrap().as_slice(),
                                  &self.substs);
@@ -849,9 +849,9 @@ impl<'a> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig) {
         let cx = get_cx();
         let (did, sig) = *self;
         let mut names = if did.node != 0 {
-            csearch::get_method_arg_names(&cx.tcx().sess.cstore, did).move_iter()
+            csearch::get_method_arg_names(&cx.tcx().sess.cstore, did).iter_owned()
         } else {
-            Vec::new().move_iter()
+            Vec::new().iter_owned()
         }.peekable();
         if names.peek().map(|s| s.as_slice()) == Some("self") {
             let _ = names.next();
@@ -1263,7 +1263,7 @@ impl Clean<Type> for ty::t {
             ty::ty_enum(did, ref substs) |
             ty::ty_trait(box ty::TyTrait { def_id: did, ref substs, .. }) => {
                 let fqn = csearch::get_item_path(get_cx().tcx(), did);
-                let fqn: Vec<String> = fqn.move_iter().map(|i| {
+                let fqn: Vec<String> = fqn.iter_owned().map(|i| {
                     i.to_string()
                 }).collect();
                 let kind = match ty::get(*self).sty {
@@ -1781,7 +1781,7 @@ impl Clean<Vec<Item>> for ast::ViewItem {
                         let remaining = list.iter().filter(|path| {
                             match inline::try_inline(path.node.id(), None) {
                                 Some(items) => {
-                                    ret.extend(items.move_iter()); false
+                                    ret.extend(items.iter_owned()); false
                                 }
                                 None => true,
                             }
@@ -1796,7 +1796,7 @@ impl Clean<Vec<Item>> for ast::ViewItem {
                     }
                     ast::ViewPathSimple(ident, _, id) => {
                         match inline::try_inline(id, Some(ident)) {
-                            Some(items) => ret.extend(items.move_iter()),
+                            Some(items) => ret.extend(items.iter_owned()),
                             None => ret.push(convert(&self.node)),
                         }
                     }
@@ -2124,7 +2124,7 @@ fn lang_struct(did: Option<ast::DefId>, t: ty::t, name: &str,
         None => return fallback(box t.clean()),
     };
     let fqn = csearch::get_item_path(get_cx().tcx(), did);
-    let fqn: Vec<String> = fqn.move_iter().map(|i| {
+    let fqn: Vec<String> = fqn.iter_owned().map(|i| {
         i.to_string()
     }).collect();
     get_cx().external_paths.borrow_mut().get_mut_ref()

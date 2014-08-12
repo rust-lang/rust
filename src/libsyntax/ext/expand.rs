@@ -252,8 +252,8 @@ fn expand_item(it: Gc<ast::Item>, fld: &mut MacroExpander)
                     let mut items: SmallVector<Gc<ast::Item>> = SmallVector::zero();
                     dec_fn(fld.cx, attr.span, attr.node.value, it,
                         |item| items.push(item));
-                    decorator_items.extend(items.move_iter()
-                        .flat_map(|item| expand_item(item, fld).move_iter()));
+                    decorator_items.extend(items.iter_owned()
+                        .flat_map(|item| expand_item(item, fld).iter_owned()));
 
                     fld.cx.bt_pop();
                 }
@@ -463,9 +463,9 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
         None => {
             match expanded.make_items() {
                 Some(items) => {
-                    items.move_iter()
+                    items.iter_owned()
                         .map(|i| mark_item(i, fm))
-                        .flat_map(|i| fld.fold_item(i).move_iter())
+                        .flat_map(|i| fld.fold_item(i).iter_owned())
                         .collect()
                 }
                 None => {
@@ -505,11 +505,11 @@ fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<Gc<Stmt>> {
     // Keep going, outside-in.
     let fully_expanded = fld.fold_stmt(&*expanded_stmt);
     fld.cx.bt_pop();
-    let fully_expanded: SmallVector<Gc<Stmt>> = fully_expanded.move_iter()
+    let fully_expanded: SmallVector<Gc<Stmt>> = fully_expanded.iter_owned()
             .map(|s| box(GC) Spanned { span: s.span, node: s.node.clone() })
             .collect();
 
-    fully_expanded.move_iter().map(|s| {
+    fully_expanded.iter_owned().map(|s| {
         match s.node {
             StmtExpr(e, stmt_id) if semi => {
                 box(GC) Spanned {
@@ -681,7 +681,7 @@ fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
                 rename_fld.fold_stmt(&**x).expect_one("rename_fold didn't return one value")
             };
             // expand macros in the statement
-            fld.fold_stmt(&*renamed_stmt).move_iter()
+            fld.fold_stmt(&*renamed_stmt).iter_owned()
         }).collect();
     let new_expr = b.expr.map(|x| {
         let expr = {
@@ -864,7 +864,7 @@ fn expand_method(m: &ast::Method, fld: &mut MacroExpander) -> SmallVector<Gc<ast
                 expand_mac_invoc(mac, &m.span,
                                  |r|{r.make_methods()},
                                  |meths,mark|{
-                    meths.move_iter().map(|m|{mark_method(m,mark)})
+                    meths.iter_owned().map(|m|{mark_method(m,mark)})
                         .collect()},
                                  fld);
 
@@ -874,7 +874,7 @@ fn expand_method(m: &ast::Method, fld: &mut MacroExpander) -> SmallVector<Gc<ast
             };
 
             // expand again if necessary
-            new_methods.move_iter().flat_map(|m| fld.fold_method(m).move_iter()).collect()
+            new_methods.iter_owned().flat_map(|m| fld.fold_method(m).iter_owned()).collect()
         }
     }
 }
@@ -971,11 +971,11 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
         cx: &mut cx,
     };
 
-    for ExportedMacros { crate_name, macros } in imported_macros.move_iter() {
+    for ExportedMacros { crate_name, macros } in imported_macros.iter_owned() {
         let name = format!("<{} macros>", token::get_ident(crate_name))
             .into_string();
 
-        for source in macros.move_iter() {
+        for source in macros.iter_owned() {
             let item = parse::parse_item_from_source_str(name.clone(),
                                                          source,
                                                          expander.cx.cfg(),
@@ -985,7 +985,7 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
         }
     }
 
-    for (name, extension) in user_exts.move_iter() {
+    for (name, extension) in user_exts.iter_owned() {
         expander.cx.syntax_env.insert(name, extension);
     }
 

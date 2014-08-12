@@ -65,7 +65,7 @@ pub fn run(input: &str,
                                       span_diagnostic_handler);
 
     let mut cfg = config::build_configuration(&sess);
-    cfg.extend(cfgs.move_iter().map(|cfg_| {
+    cfg.extend(cfgs.iter_owned().map(|cfg_| {
         let cfg_ = token::intern_and_get_ident(cfg_.as_slice());
         box(GC) dummy_spanned(ast::MetaWord(cfg_))
     }));
@@ -105,7 +105,7 @@ pub fn run(input: &str,
     test_args.insert(0, "rustdoctest".to_string());
 
     testing::test_main(test_args.as_slice(),
-                       collector.tests.move_iter().collect());
+                       collector.tests.iter_owned().collect());
     0
 }
 

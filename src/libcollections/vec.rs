@@ -1146,7 +1146,7 @@ impl<T> Vec<T> {
     #[inline]
     pub fn slice_mut<'a>(&'a mut self, start: uint, end: uint)
                          -> &'a mut [T] {
-        self.as_mut_slice().mut_slice(start, end)
+        self.as_mut_slice().slice_mut(start, end)
     }
 
     /// Deprecated: renamed to `slice_from_mut`.
@@ -1197,7 +1197,7 @@ impl<T> Vec<T> {
 
     /// Deprecated: renamed to `split_at_mut`.
     #[deprecated = "renamed to split_at_mut"]
-    pub fn mut_split_at<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
+    pub fn.split_at_mut<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
       self.split_at_mut(mid)
     }
 
@@ -1833,7 +1833,7 @@ mod tests {
     fn test_mut_slice_from() {
         let mut values = Vec::from_slice([1u8,2,3,4,5]);
         {
-            let slice = values.mut_slice_from(2);
+            let slice = values.slice_from_mut(2);
             assert!(slice == [3, 4, 5]);
             for p in slice.iter_mut() {
                 *p += 2;
@@ -1847,7 +1847,7 @@ mod tests {
     fn test_mut_slice_to() {
         let mut values = Vec::from_slice([1u8,2,3,4,5]);
         {
-            let slice = values.mut_slice_to(2);
+            let slice = values.slice_to_mut(2);
             assert!(slice == [1, 2]);
             for p in slice.iter_mut() {
                 *p += 1;

@@ -254,7 +254,7 @@ pub fn sort_meta_items(items: &[Gc<MetaItem>]) -> Vec<Gc<MetaItem>> {
     v.sort_by(|&(ref a, _), &(ref b, _)| a.cmp(b));
 
     // There doesn't seem to be a more optimal way to do this
-    v.move_iter().map(|(_, m)| {
+    v.iter_owned().map(|(_, m)| {
         match m.node {
             MetaList(ref n, ref mis) => {
                 box(GC) Spanned {

@@ -484,10 +484,10 @@ fn get_vtable(bcx: &Block,
     }
 
     // Not in the cache. Actually build it.
-    let methods = origins.move_iter().flat_map(|origin| {
+    let methods = origins.iter_owned().flat_map(|origin| {
         match origin {
             typeck::vtable_static(id, substs, sub_vtables) => {
-                emit_vtable_methods(bcx, id, substs, sub_vtables).move_iter()
+                emit_vtable_methods(bcx, id, substs, sub_vtables).iter_owned()
             }
             typeck::vtable_unboxed_closure(closure_def_id) => {
                 let callee_substs =
@@ -502,7 +502,7 @@ fn get_vtable(bcx: &Block,
                     callee_substs,
                     VecPerParamSpace::empty());
 
-                (vec!(llfn)).move_iter()
+                (vec!(llfn)).iter_owned()
             }
             _ => ccx.sess().bug("get_vtable: expected a static origin"),
         }
@@ -523,7 +523,7 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
                                           -> ValueRef {
     let _icx = push_ctxt("meth::make_vtable");
 
-    let components: Vec<_> = Some(drop_glue).move_iter().chain(ptrs).collect();
+    let components: Vec<_> = Some(drop_glue).iter_owned().chain(ptrs).collect();
 
     unsafe {
         let tbl = C_struct(ccx, components.as_slice(), false);

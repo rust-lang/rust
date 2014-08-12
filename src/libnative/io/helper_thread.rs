@@ -172,7 +172,7 @@ mod imp {
 
     pub fn new() -> (HANDLE, HANDLE) {
         unsafe {
-            let handle = CreateEventA(ptr::mut_null(), libc::FALSE, libc::FALSE,
+            let handle = CreateEventA(ptr::null_mut(), libc::FALSE, libc::FALSE,
                                       ptr::null());
             (handle, handle)
         }

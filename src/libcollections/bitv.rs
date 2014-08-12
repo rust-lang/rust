@@ -177,7 +177,7 @@ impl Bitv {
         // `op` is a bitwise operation, since any bits that should've
         // been masked were fine to change anyway. `b` is masked to
         // make sure its unmasked bits do not cause damage.
-        for (a, (_, b)) in self.storage.mut_iter()
+        for (a, (_, b)) in self.storage.iter_mut()
                            .zip(other.mask_words(0)) {
             let w = op(*a, b);
             if *a != w {
@@ -309,7 +309,7 @@ impl Bitv {
     /// ```
     #[inline]
     pub fn set_all(&mut self) {
-        for w in self.storage.mut_iter() { *w = !0u; }
+        for w in self.storage.iter_mut() { *w = !0u; }
     }
 
     /// Flip all bits.
@@ -328,7 +328,7 @@ impl Bitv {
     /// ```
     #[inline]
     pub fn negate(&mut self) {
-        for w in self.storage.mut_iter() { *w = !*w; }
+        for w in self.storage.iter_mut() { *w = !*w; }
     }
 
     /// Calculate the union of two bitvectors, acts like bitwise or.
@@ -793,7 +793,7 @@ impl Collection for Bitv {
 impl Mutable for Bitv {
     #[inline]
     fn clear(&mut self) {
-        for w in self.storage.mut_iter() { *w = 0u; }
+        for w in self.storage.iter_mut() { *w = 0u; }
     }
 }
 
@@ -827,7 +827,7 @@ impl Clone for Bitv {
     fn clone_from(&mut self, source: &Bitv) {
         self.nbits = source.nbits;
         self.storage.reserve(source.storage.len());
-        for (i, w) in self.storage.mut_iter().enumerate() { *w = *source.storage.get(i); }
+        for (i, w) in self.storage.iter_mut().enumerate() { *w = *source.storage.get(i); }
     }
 }
 

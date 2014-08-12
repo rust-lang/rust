@@ -44,7 +44,7 @@ impl<T> Collection for RingBuf<T> {
 impl<T> Mutable for RingBuf<T> {
     /// Clear the RingBuf, removing all values.
     fn clear(&mut self) {
-        for x in self.elts.mut_iter() { *x = None }
+        for x in self.elts.iter_mut() { *x = None }
         self.nelts = 0;
         self.lo = 0;
     }
@@ -271,7 +271,7 @@ impl<T> RingBuf<T> {
     /// for num in buf.iter_mut() {
     ///     *num = *num - 2;
     /// }
-    /// assert_eq!(buf.mut_iter().collect::<Vec<&mut int>>().as_slice(), &[&mut 3, &mut 1, &mut 2]);
+    /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>().as_slice(), &[&mut 3, &mut 1, &mut 2]);
     /// ```
     pub fn iter_mut(&mut self) -> ItemsMut<T> {
         let start_index = raw_index(self.lo, self.elts.len(), 0);
@@ -283,15 +283,15 @@ impl<T> RingBuf<T> {
             //    start_index to self.elts.len()
             // and then
             //    0 to end_index
-            let (temp, remaining1) = self.elts.mut_split_at(start_index);
-            let (remaining2, _) = temp.mut_split_at(end_index);
+            let (temp, remaining1) = self.elts.split_at_mut(start_index);
+            let (remaining2, _) = temp.split_at_mut(end_index);
             ItemsMut { remaining1: remaining1,
                                  remaining2: remaining2,
                                  nelts: self.nelts }
         } else {
             // Items to iterate goes from start_index to end_index:
-            let (empty, elts) = self.elts.mut_split_at(0);
-            let remaining1 = elts.mut_slice(start_index, end_index);
+            let (empty, elts) = self.elts.split_at_mut(0);
+            let remaining1 = elts.slice_mut(start_index, end_index);
             ItemsMut { remaining1: remaining1,
                                  remaining2: empty,
                                  nelts: self.nelts }
@@ -374,7 +374,7 @@ impl<'a, T> Iterator<&'a mut T> for ItemsMut<'a, T> {
             &mut self.remaining2
         };
         self.nelts -= 1;
-        Some(r.mut_shift_ref().unwrap().get_mut_ref())
+        Some(r.shift_mut().unwrap().get_mut_ref())
     }
 
     #[inline]
@@ -396,7 +396,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for ItemsMut<'a, T> {
             &mut self.remaining1
         };
         self.nelts -= 1;
-        Some(r.mut_pop_ref().unwrap().get_mut_ref())
+        Some(r.pop_mut().unwrap().get_mut_ref())
     }
 }
 
@@ -872,7 +872,7 @@ mod tests {
     #[test]
     fn test_mut_rev_iter_wrap() {
         let mut d = RingBuf::with_capacity(3);
-        assert!(d.mut_iter().rev().next().is_none());
+        assert!(d.iter_mut().rev().next().is_none());
 
         d.push_back(1i);
         d.push_back(2);
@@ -880,26 +880,26 @@ mod tests {
         assert_eq!(d.pop_front(), Some(1));
         d.push_back(4);
 
-        assert_eq!(d.mut_iter().rev().map(|x| *x).collect::<Vec<int>>(),
+        assert_eq!(d.iter_mut().rev().map(|x| *x).collect::<Vec<int>>(),
                    vec!(4, 3, 2));
     }
 
     #[test]
     fn test_mut_iter() {
         let mut d = RingBuf::new();
-        assert!(d.mut_iter().next().is_none());
+        assert!(d.iter_mut().next().is_none());
 
         for i in range(0u, 3) {
             d.push_front(i);
         }
 
-        for (i, elt) in d.mut_iter().enumerate() {
+        for (i, elt) in d.iter_mut().enumerate() {
             assert_eq!(*elt, 2 - i);
             *elt = i;
         }
 
         {
-            let mut it = d.mut_iter();
+            let mut it = d.iter_mut();
             assert_eq!(*it.next().unwrap(), 0);
             assert_eq!(*it.next().unwrap(), 1);
             assert_eq!(*it.next().unwrap(), 2);
@@ -910,19 +910,19 @@ mod tests {
     #[test]
     fn test_mut_rev_iter() {
         let mut d = RingBuf::new();
-        assert!(d.mut_iter().rev().next().is_none());
+        assert!(d.iter_mut().rev().next().is_none());
 
         for i in range(0u, 3) {
             d.push_front(i);
         }
 
-        for (i, elt) in d.mut_iter().rev().enumerate() {
+        for (i, elt) in d.iter_mut().rev().enumerate() {
             assert_eq!(*elt, i);
             *elt = i;
         }
 
         {
-            let mut it = d.mut_iter().rev();
+            let mut it = d.iter_mut().rev();
             assert_eq!(*it.next().unwrap(), 0);
             assert_eq!(*it.next().unwrap(), 1);
             assert_eq!(*it.next().unwrap(), 2);

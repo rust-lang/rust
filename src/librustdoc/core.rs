@@ -115,7 +115,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>,
                                                span_diagnostic_handler);
 
     let mut cfg = build_configuration(&sess);
-    for cfg_ in cfgs.move_iter() {
+    for cfg_ in cfgs.iter_owned() {
         let cfg_ = token::intern_and_get_ident(cfg_.as_slice());
         cfg.push(box(GC) dummy_spanned(ast::MetaWord(cfg_)));
     }

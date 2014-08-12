@@ -352,7 +352,7 @@ impl Map {
 
     fn path_to_str_with_ident(&self, id: NodeId, i: Ident) -> String {
         self.with_path(id, |path| {
-            path_to_string(path.chain(Some(PathName(i.name)).move_iter()))
+            path_to_string(path.chain(Some(PathName(i.name)).iter_owned()))
         })
     }
 

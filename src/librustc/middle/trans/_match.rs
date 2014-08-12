@@ -1797,7 +1797,7 @@ fn bind_irrefutable_pat<'a>(
             );
             bcx = before
                 .iter().map(|v| Some(*v))
-                .chain(Some(*slice).move_iter())
+                .chain(Some(*slice).iter_owned())
                 .chain(after.iter().map(|v| Some(*v)))
                 .zip(extracted.vals.iter())
                 .fold(bcx, |bcx, (inner, elem)| {

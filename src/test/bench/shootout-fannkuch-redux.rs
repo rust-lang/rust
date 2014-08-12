@@ -73,7 +73,7 @@ fn fannkuch(n: uint, i: uint) -> (int, int) {
         loop {
             let k = *tperm.get(0);
             if k == 1 { break; }
-            tperm.mut_slice_to(k as uint).reverse();
+            tperm.slice_to_mut(k as uint).reverse();
             flips_count += 1;
         }
         perm_count = max(perm_count, flips_count);

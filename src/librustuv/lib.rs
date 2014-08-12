@@ -190,7 +190,7 @@ pub trait UvHandle<T> {
             unsafe {
                 let data = uvll::get_data_for_uv_handle(handle);
                 uvll::free_handle(handle);
-                if data == ptr::mut_null() { return }
+                if data == ptr::null_mut() { return }
                 let slot: &mut Option<BlockedTask> = mem::transmute(data);
                 wakeup(slot);
             }
@@ -286,7 +286,7 @@ impl Request {
 
     pub unsafe fn get_data<T>(&self) -> &'static mut T {
         let data = uvll::get_data_for_req(self.handle);
-        assert!(data != ptr::mut_null());
+        assert!(data != ptr::null_mut());
         mem::transmute(data)
     }
 
@@ -448,7 +448,7 @@ pub type Buf = uvll::uv_buf_t;
 
 pub fn empty_buf() -> Buf {
     uvll::uv_buf_t {
-        base: ptr::mut_null(),
+        base: ptr::null_mut(),
         len: 0,
     }
 }

@@ -361,7 +361,7 @@ impl<'a> Formatter<'a> {
 
         // Writes the sign if it exists, and then the prefix if it was requested
         let write_prefix = |f: &mut Formatter| {
-            for c in sign.move_iter() {
+            for c in sign.iter_owned() {
                 let mut b = [0, ..4];
                 let n = c.encode_utf8(b);
                 try!(f.buf.write(b.slice_to(n)));

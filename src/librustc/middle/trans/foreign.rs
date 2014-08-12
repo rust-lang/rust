@@ -610,7 +610,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
 
         let ps = ccx.tcx.map.with_path(id, |path| {
             let abi = Some(ast_map::PathName(special_idents::clownshoe_abi.name));
-            link::mangle(path.chain(abi.move_iter()), hash)
+            link::mangle(path.chain(abi.iter_owned()), hash)
         });
 
         // Compute the type that the function would have if it were just a

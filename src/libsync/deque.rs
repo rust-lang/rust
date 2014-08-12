@@ -513,7 +513,7 @@ mod tests {
             }
         }
 
-        for thread in threads.move_iter() {
+        for thread in threads.iter_owned() {
             thread.join();
         }
     }
@@ -536,7 +536,7 @@ mod tests {
             })
         }).collect::<Vec<Thread<()>>>();
 
-        for thread in threads.move_iter() {
+        for thread in threads.iter_owned() {
             thread.join();
         }
     }
@@ -592,7 +592,7 @@ mod tests {
             DONE.store(true, SeqCst);
         }
 
-        for thread in threads.move_iter() {
+        for thread in threads.iter_owned() {
             thread.join();
         }
 
@@ -657,7 +657,7 @@ mod tests {
 
         unsafe { DONE.store(true, SeqCst); }
 
-        for thread in threads.move_iter() {
+        for thread in threads.iter_owned() {
             thread.join();
         }
     }

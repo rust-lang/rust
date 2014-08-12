@@ -383,7 +383,7 @@ pub trait Iterator<A> {
     ///     sum
     /// }
     /// let x = vec![1i,2,3,7,8,9];
-    /// assert_eq!(process(x.move_iter()), 1006);
+    /// assert_eq!(process(x.iter_owned()), 1006);
     /// ```
     #[inline]
     fn fuse(self) -> Fuse<Self> {
@@ -1686,7 +1686,7 @@ impl<'a, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'a, A, T,
     #[inline]
     fn next(&mut self) -> Option<B> {
         loop {
-            for inner in self.frontiter.mut_iter() {
+            for inner in self.frontiter.iter_mut() {
                 for x in *inner {
                     return Some(x)
                 }
@@ -1717,7 +1717,7 @@ impl<'a,
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         loop {
-            for inner in self.backiter.mut_iter() {
+            for inner in self.backiter.iter_mut() {
                 match inner.next_back() {
                     None => (),
                     y => return y

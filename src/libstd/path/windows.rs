@@ -814,7 +814,7 @@ impl Path {
                             Some(_) => s.push_str(prefix_),
                             None => ()
                         }
-                        let mut it = comps.move_iter();
+                        let mut it = comps.iter_owned();
                         if !is_abs {
                             match it.next() {
                                 None => (),

@@ -1045,7 +1045,7 @@ fn get_meta_items(md: rbml::Doc) -> Vec<Gc<ast::MetaItem>> {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = token::intern_and_get_ident(nd.as_str_slice());
         let subitems = get_meta_items(meta_item_doc);
-        items.push(attr::mk_list_item(n, subitems.move_iter().collect()));
+        items.push(attr::mk_list_item(n, subitems.iter_owned().collect()));
         true
     });
     return items;

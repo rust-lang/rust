@@ -45,7 +45,7 @@ fn main() {
     } else if args.len() <= 1 {
         vec!("".to_string(), "100".to_string())
     } else {
-        args.clone().move_iter().collect()
+        args.clone().iter_owned().collect()
     };
 
     let (tx, rx) = channel();

@@ -62,9 +62,9 @@ impl GetAddrInfoRequest {
                 ai_socktype: 0,
                 ai_protocol: 0,
                 ai_addrlen: 0,
-                ai_canonname: mut_null(),
-                ai_addr: mut_null(),
-                ai_next: mut_null(),
+                ai_canonname: null_mut(),
+                ai_addr: null_mut(),
+                ai_next: null_mut(),
             }
         });
         let hint_ptr = hint.as_ref().map_or(null(), |x| {

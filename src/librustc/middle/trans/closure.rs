@@ -202,7 +202,7 @@ pub fn store_environment<'a>(
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
-    for (i, bv) in bound_values.move_iter().enumerate() {
+    for (i, bv) in bound_values.iter_owned().enumerate() {
         debug!("Copy {} into closure", bv.to_string(ccx));
 
         if ccx.sess().asm_comments() {

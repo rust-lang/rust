@@ -382,7 +382,7 @@ fn renumber_and_map_ast(xcx: &ExtendedDecodeContext,
                         path: Vec<ast_map::PathElem> ,
                         ii: ast::InlinedItem) -> ast::InlinedItem {
     ast_map::map_decoded_item(map,
-                              path.move_iter().collect(),
+                              path.iter_owned().collect(),
                               AstRenumberer { xcx: xcx },
                               |fld| {
         match ii {
@@ -784,7 +784,7 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
                              tcx: &ty::ctxt, cdata: &cstore::crate_metadata)
                       -> typeck::vtable_param_res {
         self.read_to_vec(|this| Ok(this.read_vtable_origin(tcx, cdata)))
-             .unwrap().move_iter().collect()
+             .unwrap().iter_owned().collect()
     }
 
     fn read_vtable_origin(&mut self,
@@ -1263,7 +1263,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                       cdata: &cstore::crate_metadata) -> Vec<ty::t> {
         self.read_to_vec(|this| Ok(this.read_ty_noxcx(tcx, cdata)) )
             .unwrap()
-            .move_iter()
+            .iter_owned()
             .collect()
     }
 
@@ -1311,7 +1311,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
     }
 
     fn read_tys(&mut self, xcx: &ExtendedDecodeContext) -> Vec<ty::t> {
-        self.read_to_vec(|this| Ok(this.read_ty(xcx))).unwrap().move_iter().collect()
+        self.read_to_vec(|this| Ok(this.read_ty(xcx))).unwrap().iter_owned().collect()
     }
 
     fn read_type_param_def(&mut self, xcx: &ExtendedDecodeContext)
@@ -1497,7 +1497,7 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                     c::tag_table_freevars => {
                         let fv_info = val_dsr.read_to_vec(|val_dsr| {
                             Ok(val_dsr.read_freevar_entry(xcx))
-                        }).unwrap().move_iter().collect();
+                        }).unwrap().iter_owned().collect();
                         dcx.tcx.freevars.borrow_mut().insert(id, fv_info);
                     }
                     c::tag_table_upvar_borrow_map => {

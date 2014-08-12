@@ -653,7 +653,7 @@ pub trait MutableVector<'a, T> {
 
     /// Deprecated: renamed to `split_at_mut`
     #[deprecated = "renamed to split_at_mut"]
-    fn mut_split_at(self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
+    fn.split_at_mut(self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
         self.split_at_mut(mid)
     }
 }
@@ -681,12 +681,12 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     #[inline]
     fn slice_from_mut(self, start: uint) -> &'a mut [T] {
         let len = self.len();
-        self.mut_slice(start, len)
+        self.slice_mut(start, len)
     }
 
     #[inline]
     fn slice_to_mut(self, end: uint) -> &'a mut [T] {
-        self.mut_slice(0, end)
+        self.slice_mut(0, end)
     }
 
     #[inline]
@@ -694,7 +694,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         unsafe {
             let len = self.len();
             let self2: &'a mut [T] = mem::transmute_copy(&self);
-            (self.mut_slice(0, mid), self2.mut_slice(mid, len))
+            (self.slice_mut(0, mid), self2.slice_mut(mid, len))
         }
     }
 
@@ -895,7 +895,7 @@ pub trait MutableCloneableVector<T> {
 impl<'a, T:Clone> MutableCloneableVector<T> for &'a mut [T] {
     #[inline]
     fn copy_from(self, src: &[T]) -> uint {
-        for (a, b) in self.mut_iter().zip(src.iter()) {
+        for (a, b) in self.iter_mut().zip(src.iter()) {
             a.clone_from(b);
         }
         cmp::min(self.len(), src.len())
@@ -1136,14 +1136,14 @@ impl<'a, T> Iterator<&'a mut [T]> for SplitsMut<'a, T> {
                 self.finished = true;
                 let tmp = mem::replace(&mut self.v, &mut []);
                 let len = tmp.len();
-                let (head, tail) = tmp.mut_split_at(len);
+                let (head, tail) = tmp.split_at_mut(len);
                 self.v = tail;
                 Some(head)
             }
             Some(idx) => {
                 let tmp = mem::replace(&mut self.v, &mut []);
-                let (head, tail) = tmp.mut_split_at(idx);
-                self.v = tail.mut_slice_from(1);
+                let (head, tail) = tmp.split_at_mut(idx);
+                self.v = tail.slice_from_mut(1);
                 Some(head)
             }
         }
@@ -1175,9 +1175,9 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for SplitsMut<'a, T> {
             }
             Some(idx) => {
                 let tmp = mem::replace(&mut self.v, &mut []);
-                let (head, tail) = tmp.mut_split_at(idx);
+                let (head, tail) = tmp.split_at_mut(idx);
                 self.v = head;
-                Some(tail.mut_slice_from(1))
+                Some(tail.slice_from_mut(1))
             }
         }
     }
@@ -1339,7 +1339,7 @@ impl<'a, T> Iterator<&'a mut [T]> for ChunksMut<'a, T> {
         } else {
             let sz = cmp::min(self.v.len(), self.chunk_size);
             let tmp = mem::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.mut_split_at(sz);
+            let (head, tail) = tmp.split_at_mut(sz);
             self.v = tail;
             Some(head)
         }
@@ -1367,7 +1367,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for ChunksMut<'a, T> {
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
             let tmp = mem::replace(&mut self.v, &mut []);
             let tmp_len = tmp.len();
-            let (head, tail) = tmp.mut_split_at(tmp_len - sz);
+            let (head, tail) = tmp.split_at_mut(tmp_len - sz);
             self.v = head;
             Some(tail)
         }

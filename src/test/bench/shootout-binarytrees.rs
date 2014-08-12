@@ -108,7 +108,7 @@ fn main() {
             })
         }).collect::<Vec<Future<String>>>();
 
-    for message in messages.mut_iter() {
+    for message in messages.iter_mut() {
         println!("{}", *message.get_ref());
     }
 

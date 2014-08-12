@@ -636,7 +636,7 @@ mod tests {
         }
 
         // Wait for children to pass their asserts
-        for r in children.mut_iter() {
+        for r in children.iter_mut() {
             assert!(r.get_ref().is_ok());
         }
 
@@ -722,12 +722,12 @@ mod tests {
         assert_eq!(*lock, 42);
         *lock = 31337;
         // send to other readers
-        for &(ref mut rc, _) in reader_convos.mut_iter() {
+        for &(ref mut rc, _) in reader_convos.iter_mut() {
             rc.send(())
         }
         let lock = lock.downgrade();
         // complete handshake with other readers
-        for &(_, ref mut rp) in reader_convos.mut_iter() {
+        for &(_, ref mut rp) in reader_convos.iter_mut() {
             rp.recv()
         }
         tx1.send(()); // tell writer to try again

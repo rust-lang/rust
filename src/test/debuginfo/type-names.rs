@@ -269,9 +269,9 @@ fn main() {
     let mut_ref2 = (&mut mut_generic_struct, 0i32);
 
     // Raw Pointers
-    let mut_ptr1: (*mut Struct1, int) = (ptr::mut_null(), 0);
-    let mut_ptr2: (*mut int, int) = (ptr::mut_null(), 0);
-    let mut_ptr3: (*mut Mod1::Mod2::Enum3<Struct1>, int) = (ptr::mut_null(), 0);
+    let mut_ptr1: (*mut Struct1, int) = (ptr::null_mut(), 0);
+    let mut_ptr2: (*mut int, int) = (ptr::null_mut(), 0);
+    let mut_ptr3: (*mut Mod1::Mod2::Enum3<Struct1>, int) = (ptr::null_mut(), 0);
 
     let const_ptr1: (*const Struct1, int) = (ptr::null(), 0);
     let const_ptr2: (*const int, int) = (ptr::null(), 0);

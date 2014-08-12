@@ -60,7 +60,7 @@ impl Process {
         let mut ret_io = Vec::with_capacity(io.len());
         unsafe {
             stdio.set_len(io.len());
-            for (slot, other) in stdio.mut_iter().zip(io.iter()) {
+            for (slot, other) in stdio.iter_mut().zip(io.iter()) {
                 let io = set_stdio(slot as *mut uvll::uv_stdio_container_t, other,
                                    io_loop);
                 ret_io.push(io);

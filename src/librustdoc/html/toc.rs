@@ -167,7 +167,7 @@ impl TocBuilder {
 
         // get the thing we just pushed, so we can borrow the string
         // out of it with the right lifetime
-        let just_inserted = self.chain.mut_last().unwrap();
+        let just_inserted = self.chain.last_mut().unwrap();
         just_inserted.sec_number.as_slice()
     }
 }

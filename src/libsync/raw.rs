@@ -804,14 +804,14 @@ mod tests {
         }
 
         // wait until all children get in the mutex
-        for rx in rxs.mut_iter() { rx.recv(); }
+        for rx in rxs.iter_mut() { rx.recv(); }
         {
             let lock = m.lock();
             let num_woken = lock.cond.broadcast();
             assert_eq!(num_woken, num_waiters);
         }
         // wait until all children wake up
-        for rx in rxs.mut_iter() { rx.recv(); }
+        for rx in rxs.iter_mut() { rx.recv(); }
     }
     #[test]
     fn test_mutex_cond_broadcast() {
@@ -1058,13 +1058,13 @@ mod tests {
         }
 
         // wait until all children get in the mutex
-        for rx in rxs.mut_iter() { let _ = rx.recv(); }
+        for rx in rxs.iter_mut() { let _ = rx.recv(); }
         lock_cond(&x, |cond| {
             let num_woken = cond.broadcast();
             assert_eq!(num_woken, num_waiters);
         });
         // wait until all children wake up
-        for rx in rxs.mut_iter() { let _ = rx.recv(); }
+        for rx in rxs.iter_mut() { let _ = rx.recv(); }
     }
     #[test]
     fn test_rwlock_cond_broadcast() {

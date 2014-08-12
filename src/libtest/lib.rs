@@ -948,7 +948,7 @@ fn run_tests(opts: &TestOpts,
 
     // All benchmarks run at the end, in serial.
     // (this includes metric fns)
-    for b in filtered_benchs_and_metrics.move_iter() {
+    for b in filtered_benchs_and_metrics.iter_owned() {
         try!(callback(TeWait(b.desc.clone(), b.testfn.padding())));
         run_test(opts, !opts.run_benchmarks, b, tx.clone());
         let (test, result, stdout) = rx.recv();
@@ -980,7 +980,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     filtered = match opts.filter {
         None => filtered,
         Some(ref re) => {
-            filtered.move_iter()
+            filtered.iter_owned()
                 .filter(|test| re.is_match(test.desc.name.as_slice())).collect()
         }
     };
@@ -1000,7 +1000,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
                 None
             }
         };
-        filtered.move_iter().filter_map(|x| filter(x)).collect()
+        filtered.iter_owned().filter_map(|x| filter(x)).collect()
     };
 
     // Sort the tests alphabetically
@@ -1010,7 +1010,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     match opts.test_shard {
         None => filtered,
         Some((a,b)) => {
-            filtered.move_iter().enumerate()
+            filtered.iter_owned().enumerate()
             // note: using a - 1 so that the valid shards, for example, are
             // 1.2 and 2.2 instead of 0.2 and 1.2
             .filter(|&(i,_)| i % b == (a - 1))
@@ -1053,7 +1053,7 @@ pub fn run_test(opts: &TestOpts,
             }
             let result_future = task.try_future(testfn);
 
-            let stdout = reader.read_to_end().unwrap().move_iter().collect();
+            let stdout = reader.read_to_end().unwrap().iter_owned().collect();
             let task_result = result_future.unwrap();
             let test_result = calc_result(&desc, task_result.is_ok());
             monitor_ch.send((desc.clone(), test_result, stdout));
@@ -1327,7 +1327,7 @@ impl Bencher {
         loop {
             let loop_start = precise_time_ns();
 
-            for p in samples.mut_iter() {
+            for p in samples.iter_mut() {
                 self.bench_n(n, |x| f(x));
                 *p = self.ns_per_iter() as f64;
             };
@@ -1335,7 +1335,7 @@ impl Bencher {
             stats::winsorize(samples, 5.0);
             let summ = stats::Summary::new(samples);
 
-            for p in samples.mut_iter() {
+            for p in samples.iter_mut() {
                 self.bench_n(5 * n, |x| f(x));
                 *p = self.ns_per_iter() as f64;
             };

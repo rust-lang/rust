@@ -313,7 +313,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 types: Vec<P<ast::Ty>> )
                 -> ast::Path {
         let last_identifier = idents.pop().unwrap();
-        let mut segments: Vec<ast::PathSegment> = idents.move_iter()
+        let mut segments: Vec<ast::PathSegment> = idents.iter_owned()
                                                       .map(|ident| {
             ast::PathSegment {
                 identifier: ident,
@@ -985,7 +985,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn variant(&self, span: Span, name: Ident, tys: Vec<P<ast::Ty>> ) -> ast::Variant {
-        let args = tys.move_iter().map(|ty| {
+        let args = tys.iter_owned().map(|ty| {
             ast::VariantArg { ty: ty, id: ast::DUMMY_NODE_ID }
         }).collect();
 

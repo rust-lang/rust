@@ -316,11 +316,11 @@ pub fn noop_fold_decl<T: Folder>(d: Gc<Decl>, fld: &mut T) -> SmallVector<Gc<Dec
     let node = match d.node {
         DeclLocal(ref l) => SmallVector::one(DeclLocal(fld.fold_local(*l))),
         DeclItem(it) => {
-            fld.fold_item(it).move_iter().map(|i| DeclItem(i)).collect()
+            fld.fold_item(it).iter_owned().map(|i| DeclItem(i)).collect()
         }
     };
 
-    node.move_iter().map(|node| {
+    node.iter_owned().map(|node| {
         box(GC) Spanned {
             node: node,
             span: fld.new_span(d.span),
@@ -789,7 +789,7 @@ pub fn noop_fold_view_item<T: Folder>(vi: &ViewItem, folder: &mut T)
 pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     let id = folder.new_id(b.id); // Needs to be first, for ast_map.
     let view_items = b.view_items.iter().map(|x| folder.fold_view_item(x)).collect();
-    let stmts = b.stmts.iter().flat_map(|s| folder.fold_stmt(&**s).move_iter()).collect();
+    let stmts = b.stmts.iter().flat_map(|s| folder.fold_stmt(&**s).iter_owned()).collect();
     P(Block {
         id: id,
         view_items: view_items,
@@ -836,23 +836,23 @@ pub fn noop_fold_item_underscore<T: Folder>(i: &Item_, folder: &mut T) -> Item_ 
             ItemImpl(folder.fold_generics(generics),
                      ifce.as_ref().map(|p| folder.fold_trait_ref(p)),
                      folder.fold_ty(ty),
-                     methods.iter().flat_map(|x| folder.fold_method(*x).move_iter()).collect()
+                     methods.iter().flat_map(|x| folder.fold_method(*x).iter_owned()).collect()
             )
         }
         ItemTrait(ref generics, ref unbound, ref traits, ref methods) => {
             let methods = methods.iter().flat_map(|method| {
                 let r = match *method {
                     Required(ref m) =>
-                            SmallVector::one(Required(folder.fold_type_method(m))).move_iter(),
+                            SmallVector::one(Required(folder.fold_type_method(m))).iter_owned(),
                     Provided(method) => {
                             // the awkward collect/iter idiom here is because
                             // even though an iter and a map satisfy the same trait bound,
                             // they're not actually the same type, so the method arms
                             // don't unify.
                             let methods : SmallVector<ast::TraitMethod> =
-                                folder.fold_method(method).move_iter()
+                                folder.fold_method(method).iter_owned()
                                 .map(|m| Provided(m)).collect();
-                            methods.move_iter()
+                            methods.iter_owned()
                         }
                 };
                 r
@@ -888,7 +888,7 @@ pub fn noop_fold_mod<T: Folder>(m: &Mod, folder: &mut T) -> Mod {
         view_items: m.view_items
                      .iter()
                      .map(|x| folder.fold_view_item(x)).collect(),
-        items: m.items.iter().flat_map(|x| folder.fold_item(*x).move_iter()).collect(),
+        items: m.items.iter().flat_map(|x| folder.fold_item(*x).iter_owned()).collect(),
     }
 }
 
@@ -1161,7 +1161,7 @@ pub fn noop_fold_stmt<T: Folder>(s: &Stmt,
     let nodes = match s.node {
         StmtDecl(d, id) => {
             let id = folder.new_id(id);
-            folder.fold_decl(d).move_iter()
+            folder.fold_decl(d).iter_owned()
                     .map(|d| StmtDecl(d, id))
                     .collect()
         }
@@ -1176,7 +1176,7 @@ pub fn noop_fold_stmt<T: Folder>(s: &Stmt,
         StmtMac(ref mac, semi) => SmallVector::one(StmtMac(folder.fold_mac(mac), semi))
     };
 
-    nodes.move_iter().map(|node| box(GC) Spanned {
+    nodes.iter_owned().map(|node| box(GC) Spanned {
         node: node,
         span: folder.new_span(s.span),
     }).collect()

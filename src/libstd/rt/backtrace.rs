@@ -485,7 +485,7 @@ mod imp {
                     let bytes = path.as_vec();
                     if bytes.len() < LAST_FILENAME.len() {
                         let i = bytes.iter();
-                        for (slot, val) in LAST_FILENAME.mut_iter().zip(i) {
+                        for (slot, val) in LAST_FILENAME.iter_mut().zip(i) {
                             *slot = *val as libc::c_char;
                         }
                         LAST_FILENAME.as_ptr()
@@ -496,7 +496,7 @@ mod imp {
                 None => ptr::null(),
             };
             STATE = backtrace_create_state(filename, 0, error_cb,
-                                           ptr::mut_null());
+                                           ptr::null_mut());
             return STATE
         }
 

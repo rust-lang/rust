@@ -195,7 +195,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
         }
 
         match anon_regions {
-            Ok(v) => v.move_iter().collect(),
+            Ok(v) => v.iter_owned().collect(),
             Err(()) => Vec::from_fn(expected_num_region_params,
                                     |_| ty::ReStatic) // hokey
         }
@@ -1023,7 +1023,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
     };
     let input_tys = input_tys.iter().map(|a| ty_of_arg(this, &rb, a, None));
     let self_and_input_tys: Vec<_> =
-        self_ty.move_iter().chain(input_tys).collect();
+        self_ty.iter_owned().chain(input_tys).collect();
 
     // Second, if there was exactly one lifetime (either a substitution or a
     // reference) in the arguments, then any anonymous regions in the output

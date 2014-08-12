@@ -366,7 +366,7 @@ pub fn parse(sess: &ParseSess,
         if token_name_eq(&tok, &EOF) {
             if eof_eis.len() == 1u {
                 let mut v = Vec::new();
-                for dv in eof_eis.get_mut(0).matches.mut_iter() {
+                for dv in eof_eis.get_mut(0).matches.iter_mut() {
                     v.push(dv.pop().unwrap());
                 }
                 return Success(nameize(sess, ms, v.as_slice()));
