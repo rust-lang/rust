@@ -12,20 +12,24 @@
 use middle::freevars::freevar_entry;
 use middle::freevars;
 use middle::subst;
+use middle::ty::ParameterEnvironment;
 use middle::ty;
-use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
-use middle::typeck;
+use middle::ty_fold;
+use middle::typeck::check::vtable;
 use middle::typeck::{MethodCall, NoAdjustment};
+use middle::typeck;
 use util::ppaux::{Repr, ty_to_string};
 use util::ppaux::UserString;
 
+use std::collections::HashSet;
 use syntax::ast::*;
+use syntax::ast_util;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::print::pprust::{expr_to_string, ident_to_string};
-use syntax::{visit};
 use syntax::visit::Visitor;
+use syntax::visit;
 
 // Kind analysis pass.
 //
@@ -47,13 +51,13 @@ use syntax::visit::Visitor;
 // primitives in the stdlib are explicitly annotated to only take sendable
 // types.
 
-#[deriving(Clone)]
 pub struct Context<'a> {
     tcx: &'a ty::ctxt,
+    struct_and_enum_bounds_checked: HashSet<ty::t>,
+    parameter_environments: Vec<ParameterEnvironment>,
 }
 
 impl<'a> Visitor<()> for Context<'a> {
-
     fn visit_expr(&mut self, ex: &Expr, _: ()) {
         check_expr(self, ex);
     }
@@ -74,12 +78,18 @@ impl<'a> Visitor<()> for Context<'a> {
     fn visit_pat(&mut self, p: &Pat, _: ()) {
         check_pat(self, p);
     }
+
+    fn visit_local(&mut self, l: &Local, _: ()) {
+        check_local(self, l);
+    }
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
                    krate: &Crate) {
     let mut ctx = Context {
         tcx: tcx,
+        struct_and_enum_bounds_checked: HashSet::new(),
+        parameter_environments: Vec::new(),
     };
     visit::walk_crate(&mut ctx, krate, ());
     tcx.sess.abort_if_errors();
@@ -165,12 +175,90 @@ fn check_item(cx: &mut Context, item: &Item) {
         match item.node {
             ItemImpl(_, Some(ref trait_ref), ref self_type, _) => {
                 check_impl_of_trait(cx, item, trait_ref, &**self_type);
+
+                let parameter_environment =
+                    ParameterEnvironment::for_item(cx.tcx, item.id);
+                cx.parameter_environments.push(parameter_environment);
+
+                // Check bounds on the `self` type.
+                check_bounds_on_structs_or_enums_in_type_if_possible(
+                    cx,
+                    item.span,
+                    ty::node_id_to_type(cx.tcx, item.id));
+
+                // Check bounds on the trait ref.
+                match ty::impl_trait_ref(cx.tcx,
+                                         ast_util::local_def(item.id)) {
+                    None => {}
+                    Some(trait_ref) => {
+                        check_bounds_on_structs_or_enums_in_trait_ref(
+                            cx,
+                            item.span,
+                            &*trait_ref);
+                    }
+                }
+
+                drop(cx.parameter_environments.pop());
+            }
+            ItemEnum(..) => {
+                let parameter_environment =
+                    ParameterEnvironment::for_item(cx.tcx, item.id);
+                cx.parameter_environments.push(parameter_environment);
+
+                let def_id = ast_util::local_def(item.id);
+                for variant in ty::enum_variants(cx.tcx, def_id).iter() {
+                    for arg in variant.args.iter() {
+                        check_bounds_on_structs_or_enums_in_type_if_possible(
+                            cx,
+                            item.span,
+                            *arg)
+                    }
+                }
+
+                drop(cx.parameter_environments.pop());
+            }
+            ItemStruct(..) => {
+                let parameter_environment =
+                    ParameterEnvironment::for_item(cx.tcx, item.id);
+                cx.parameter_environments.push(parameter_environment);
+
+                let def_id = ast_util::local_def(item.id);
+                for field in ty::lookup_struct_fields(cx.tcx, def_id).iter() {
+                    check_bounds_on_structs_or_enums_in_type_if_possible(
+                        cx,
+                        item.span,
+                        ty::node_id_to_type(cx.tcx, field.id.node))
+                }
+
+                drop(cx.parameter_environments.pop());
+
+            }
+            ItemStatic(..) => {
+                let parameter_environment =
+                    ParameterEnvironment::for_item(cx.tcx, item.id);
+                cx.parameter_environments.push(parameter_environment);
+
+                check_bounds_on_structs_or_enums_in_type_if_possible(
+                    cx,
+                    item.span,
+                    ty::node_id_to_type(cx.tcx, item.id));
+
+                drop(cx.parameter_environments.pop());
             }
             _ => {}
         }
     }
 
-    visit::walk_item(cx, item, ());
+    visit::walk_item(cx, item, ())
+}
+
+fn check_local(cx: &mut Context, local: &Local) {
+    check_bounds_on_structs_or_enums_in_type_if_possible(
+        cx,
+        local.span,
+        ty::node_id_to_type(cx.tcx, local.id));
+
+    visit::walk_local(cx, local, ())
 }
 
 // Yields the appropriate function to check the kind of closed over
@@ -254,7 +342,25 @@ fn check_fn(
         });
     });
 
-    visit::walk_fn(cx, fk, decl, body, sp, ());
+    match *fk {
+        visit::FkFnBlock(..) => {
+            let ty = ty::node_id_to_type(cx.tcx, fn_id);
+            check_bounds_on_structs_or_enums_in_type_if_possible(cx, sp, ty);
+
+            visit::walk_fn(cx, fk, decl, body, sp, ())
+        }
+        visit::FkItemFn(..) | visit::FkMethod(..) => {
+            let parameter_environment = ParameterEnvironment::for_item(cx.tcx,
+                                                                       fn_id);
+            cx.parameter_environments.push(parameter_environment);
+
+            let ty = ty::node_id_to_type(cx.tcx, fn_id);
+            check_bounds_on_structs_or_enums_in_type_if_possible(cx, sp, ty);
+
+            visit::walk_fn(cx, fk, decl, body, sp, ());
+            drop(cx.parameter_environments.pop());
+        }
+    }
 }
 
 pub fn check_expr(cx: &mut Context, e: &Expr) {
@@ -262,6 +368,13 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
 
     // Handle any kind bounds on type parameters
     check_bounds_on_type_parameters(cx, e);
+
+    // Check bounds on structures or enumerations in the type of the
+    // expression.
+    let expression_type = ty::expr_ty(cx.tcx, e);
+    check_bounds_on_structs_or_enums_in_type_if_possible(cx,
+                                                         e.span,
+                                                         expression_type);
 
     match e.node {
         ExprBox(ref loc, ref interior) => {
@@ -483,6 +596,7 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
         }
         _ => {}
     }
+
     visit::walk_ty(cx, aty, ());
 }
 
@@ -517,6 +631,76 @@ pub fn check_typaram_bounds(cx: &Context,
                    ty_to_string(cx.tcx, ty),
                    missing.user_string(cx.tcx));
     });
+}
+
+fn check_bounds_on_structs_or_enums_in_type_if_possible(cx: &mut Context,
+                                                        span: Span,
+                                                        ty: ty::t) {
+    // If we aren't in a function, structure, or enumeration context, we don't
+    // have enough information to ensure that bounds on structures or
+    // enumerations are satisfied. So we don't perform the check.
+    if cx.parameter_environments.len() == 0 {
+        return
+    }
+
+    // If we've already checked for this type, don't do it again. This
+    // massively speeds up kind checking.
+    if cx.struct_and_enum_bounds_checked.contains(&ty) {
+        return
+    }
+    cx.struct_and_enum_bounds_checked.insert(ty);
+
+    ty::walk_ty(ty, |ty| {
+        match ty::get(ty).sty {
+            ty::ty_struct(type_id, ref substs) |
+            ty::ty_enum(type_id, ref substs) => {
+                let polytype = ty::lookup_item_type(cx.tcx, type_id);
+
+                // Check builtin bounds.
+                for (ty, type_param_def) in substs.types
+                                                  .iter()
+                                                  .zip(polytype.generics
+                                                               .types
+                                                               .iter()) {
+                    check_typaram_bounds(cx, span, *ty, type_param_def)
+                }
+
+                // Check trait bounds.
+                let parameter_environment =
+                    cx.parameter_environments.get(cx.parameter_environments
+                                                    .len() - 1);
+                debug!(
+                    "check_bounds_on_structs_or_enums_in_type_if_possible(): \
+                     checking {}",
+                    ty.repr(cx.tcx));
+                vtable::check_param_bounds(cx.tcx,
+                                           span,
+                                           parameter_environment,
+                                           &polytype.generics.types,
+                                           substs,
+                                           |missing| {
+                    cx.tcx
+                      .sess
+                      .span_err(span,
+                                format!("instantiating a type parameter with \
+                                         an incompatible type `{}`, which \
+                                         does not fulfill `{}`",
+                                        ty_to_string(cx.tcx, ty),
+                                        missing.user_string(
+                                            cx.tcx)).as_slice());
+                })
+            }
+            _ => {}
+        }
+    });
+}
+
+fn check_bounds_on_structs_or_enums_in_trait_ref(cx: &mut Context,
+                                                 span: Span,
+                                                 trait_ref: &ty::TraitRef) {
+    for ty in trait_ref.substs.types.iter() {
+        check_bounds_on_structs_or_enums_in_type_if_possible(cx, span, *ty)
+    }
 }
 
 pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,

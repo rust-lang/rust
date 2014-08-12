@@ -17,6 +17,7 @@ use middle::def;
 use middle::pat_util::def_to_path;
 use middle::ty;
 use middle::typeck::astconv;
+use middle::typeck::check;
 use util::nodemap::{DefIdMap};
 
 use syntax::ast::*;
@@ -274,6 +275,17 @@ impl<'a> ConstEvalVisitor<'a> {
 }
 
 impl<'a> Visitor<()> for ConstEvalVisitor<'a> {
+    fn visit_ty(&mut self, t: &Ty, _: ()) {
+        match t.node {
+            TyFixedLengthVec(_, expr) => {
+                check::check_const_in_type(self.tcx, &*expr, ty::mk_uint());
+            }
+            _ => {}
+        }
+
+        visit::walk_ty(self, t, ());
+    }
+
     fn visit_expr_post(&mut self, e: &Expr, _: ()) {
         self.classify(e);
     }
