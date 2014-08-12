@@ -20,13 +20,13 @@ all:
 	mkdir -p $(A1) $(A2) $(A3)
 	$(RUSTC) --crate-type=rlib crateA1.rs
 	mv $(TMPDIR)/$(call RLIB_GLOB,crateA) $(A1)
-	$(RUSTC) --crate-type=rlib -L$(A1) crateB.rs
+	$(RUSTC) --crate-type=rlib -L $(A1) crateB.rs
 	$(RUSTC) --crate-type=rlib crateA2.rs
 	mv $(TMPDIR)/$(call RLIB_GLOB,crateA) $(A2)
 	$(RUSTC) --crate-type=rlib crateA3.rs
 	mv $(TMPDIR)/$(call RLIB_GLOB,crateA) $(A3)
 	# Ensure crateC fails to compile since A1 is "missing" and A2/A3 hashes do not match
-	$(RUSTC) -L$(A2) -L$(A3) crateC.rs >$(LOG) 2>&1 || true
+	$(RUSTC) -L $(A2) -L $(A3) crateC.rs >$(LOG) 2>&1 || true
 	grep "error: found possibly newer version of crate \`crateA\` which \`crateB\` depends on" $(LOG)
 	grep "note: perhaps this crate needs to be recompiled?" $(LOG)
 	grep "note: crate \`crateA\` path #1:" $(LOG)
