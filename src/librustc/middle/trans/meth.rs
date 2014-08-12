@@ -75,12 +75,10 @@ pub fn trans_impl(ccx: &CrateContext,
                      llfn,
                      &param_substs::empty(),
                      method.id,
-                     [],
-                     TranslateItems);
-        } else {
-            let mut v = TransItemVisitor{ ccx: ccx };
-            visit::walk_method_helper(&mut v, &**method, ());
+                     []);
         }
+        let mut v = TransItemVisitor{ ccx: ccx };
+        visit::walk_method_helper(&mut v, &**method, ());
     }
 }
 
