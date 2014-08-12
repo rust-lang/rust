@@ -34,6 +34,8 @@ macro_rules! try_opt(
     ($e:expr) => (match $e { Some(v) => v, None => return None })
 )
 
+
+// FIXME #16466: This could be represented as (i64 seconds, u32 nanos)
 /// ISO 8601 time duration with nanosecond precision.
 /// This also allows for the negative duration; see individual methods for details.
 #[deriving(PartialEq, Eq, PartialOrd, Ord)]
