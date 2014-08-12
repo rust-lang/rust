@@ -312,6 +312,7 @@ pub enum uv_req_type {
     UV_FS,
     UV_WORK,
     UV_GETADDRINFO,
+    UV_GETNAMEINFO,
     UV_REQ_TYPE_MAX
 }
 
@@ -329,6 +330,7 @@ pub enum uv_req_type {
     UV_UDP_SEND,
     UV_FS,
     UV_WORK,
+    UV_GETNAMEINFO,
     UV_GETADDRINFO,
     UV_ACCEPT,
     UV_FS_EVENT_REQ,
@@ -578,14 +580,16 @@ extern {
     pub fn uv_tcp_init(l: *mut uv_loop_t, h: *mut uv_tcp_t) -> c_int;
     pub fn uv_tcp_connect(c: *mut uv_connect_t, h: *mut uv_tcp_t,
                           addr: *const sockaddr, cb: uv_connect_cb) -> c_int;
-    pub fn uv_tcp_bind(t: *mut uv_tcp_t, addr: *const sockaddr) -> c_int;
+    pub fn uv_tcp_bind(t: *mut uv_tcp_t,
+                       addr: *const sockaddr,
+                       flags: c_uint) -> c_int;
     pub fn uv_tcp_nodelay(h: *mut uv_tcp_t, enable: c_int) -> c_int;
     pub fn uv_tcp_keepalive(h: *mut uv_tcp_t, enable: c_int,
                             delay: c_uint) -> c_int;
     pub fn uv_tcp_simultaneous_accepts(h: *mut uv_tcp_t, enable: c_int) -> c_int;
-    pub fn uv_tcp_getsockname(h: *mut uv_tcp_t, name: *mut sockaddr,
+    pub fn uv_tcp_getsockname(h: *const uv_tcp_t, name: *mut sockaddr,
                               len: *mut c_int) -> c_int;
-    pub fn uv_tcp_getpeername(h: *mut uv_tcp_t, name: *mut sockaddr,
+    pub fn uv_tcp_getpeername(h: *const uv_tcp_t, name: *mut sockaddr,
                               len: *mut c_int) -> c_int;
 
     // udp bindings
@@ -604,7 +608,7 @@ extern {
     pub fn uv_udp_set_multicast_ttl(handle: *mut uv_udp_t, ttl: c_int) -> c_int;
     pub fn uv_udp_set_ttl(handle: *mut uv_udp_t, ttl: c_int) -> c_int;
     pub fn uv_udp_set_broadcast(handle: *mut uv_udp_t, on: c_int) -> c_int;
-    pub fn uv_udp_getsockname(h: *mut uv_udp_t, name: *mut sockaddr,
+    pub fn uv_udp_getsockname(h: *const uv_udp_t, name: *mut sockaddr,
                               len: *mut c_int) -> c_int;
 
     // timer bindings

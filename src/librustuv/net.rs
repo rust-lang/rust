@@ -137,7 +137,7 @@ fn socket_name(sk: SocketNameKind,
 
     let sockaddr_p = &mut sockaddr as *mut libc::sockaddr_storage;
     match unsafe {
-        getsockname(handle, sockaddr_p as *mut libc::sockaddr, &mut namelen)
+        getsockname(&*handle, sockaddr_p as *mut libc::sockaddr, &mut namelen)
     } {
         0 => Ok(sockaddr_to_addr(&sockaddr, namelen as uint)),
         n => Err(uv_error_to_io_error(UvError(n)))
@@ -365,7 +365,7 @@ impl TcpListener {
         let _len = addr_to_sockaddr(address, &mut storage);
         let res = unsafe {
             let addr_p = &storage as *const _ as *const libc::sockaddr;
-            uvll::uv_tcp_bind(l.handle, addr_p)
+            uvll::uv_tcp_bind(l.handle, addr_p, 0)
         };
         return match res {
             0 => Ok(l.install()),
