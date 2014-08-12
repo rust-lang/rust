@@ -251,11 +251,11 @@ impl<'a> Iterator<char> for Decompositions<'a> {
         match self.buffer.as_slice().head() {
             Some(&(c, 0)) => {
                 self.sorted = false;
-                self.buffer.shift();
+                self.buffer.remove(0);
                 return Some(c);
             }
             Some(&(c, _)) if self.sorted => {
-                self.buffer.shift();
+                self.buffer.remove(0);
                 return Some(c);
             }
             _ => self.sorted = false
@@ -287,7 +287,7 @@ impl<'a> Iterator<char> for Decompositions<'a> {
             self.sorted = true;
         }
 
-        match self.buffer.shift() {
+        match self.buffer.remove(0) {
             Some((c, 0)) => {
                 self.sorted = false;
                 Some(c)
@@ -805,21 +805,21 @@ pub trait StrAllocating: Str {
 
             for (j, tc) in t.chars().enumerate() {
 
-                let next = *dcol.get(j + 1);
+                let next = dcol[j + 1];
 
                 if sc == tc {
                     *dcol.get_mut(j + 1) = current;
                 } else {
                     *dcol.get_mut(j + 1) = cmp::min(current, next);
-                    *dcol.get_mut(j + 1) = cmp::min(*dcol.get(j + 1),
-                                                    *dcol.get(j)) + 1;
+                    *dcol.get_mut(j + 1) = cmp::min(dcol[j + 1],
+                                                    dcol[j]) + 1;
                 }
 
                 current = next;
             }
         }
 
-        return *dcol.get(tlen);
+        return dcol[tlen];
     }
 
     /// An Iterator over the string in Unicode Normalization Form D

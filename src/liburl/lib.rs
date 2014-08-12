@@ -12,6 +12,7 @@
 
 #![crate_name = "url"]
 #![deprecated="This is being removed. Use rust-url instead. http://servo.github.io/rust-url/"]
+#![allow(deprecated)]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]

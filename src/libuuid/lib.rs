@@ -59,6 +59,7 @@ Examples of string representations:
 #![crate_name = "uuid"]
 #![deprecated = "This is now a cargo package located at: \
                  https://github.com/rust-lang/uuid"]
+#![allow(deprecated)]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]

@@ -329,19 +329,19 @@ mod this_crate {
     pub struct LockedTupleStruct(int);
 
     fn test() {
-        // None of the following should generate errors, because
-        // stability attributes now have meaning only *across* crates,
-        // not within a single crate.
+        // Only the deprecated cases of the following should generate
+        // errors, because other stability attributes now have meaning
+        // only *across* crates, not within a single crate.
 
         let foo = MethodTester;
 
-        deprecated();
-        foo.method_deprecated();
-        foo.trait_deprecated();
+        deprecated(); //~ ERROR use of deprecated item
+        foo.method_deprecated(); //~ ERROR use of deprecated item
+        foo.trait_deprecated(); //~ ERROR use of deprecated item
 
-        deprecated_text();
-        foo.method_deprecated_text();
-        foo.trait_deprecated_text();
+        deprecated_text(); //~ ERROR use of deprecated item: text
+        foo.method_deprecated_text(); //~ ERROR use of deprecated item: text
+        foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
 
         experimental();
         foo.method_experimental();
@@ -387,8 +387,7 @@ mod this_crate {
         foo.method_locked_text();
         foo.trait_locked_text();
 
-
-        let _ = DeprecatedStruct { i: 0 };
+        let _ = DeprecatedStruct { i: 0 }; //~ ERROR use of deprecated item
         let _ = ExperimentalStruct { i: 0 };
         let _ = UnstableStruct { i: 0 };
         let _ = UnmarkedStruct { i: 0 };
@@ -396,7 +395,7 @@ mod this_crate {
         let _ = FrozenStruct { i: 0 };
         let _ = LockedStruct { i: 0 };
 
-        let _ = DeprecatedUnitStruct;
+        let _ = DeprecatedUnitStruct; //~ ERROR use of deprecated item
         let _ = ExperimentalUnitStruct;
         let _ = UnstableUnitStruct;
         let _ = UnmarkedUnitStruct;
@@ -404,7 +403,7 @@ mod this_crate {
         let _ = FrozenUnitStruct;
         let _ = LockedUnitStruct;
 
-        let _ = DeprecatedVariant;
+        let _ = DeprecatedVariant; //~ ERROR use of deprecated item
         let _ = ExperimentalVariant;
         let _ = UnstableVariant;
         let _ = UnmarkedVariant;
@@ -412,7 +411,7 @@ mod this_crate {
         let _ = FrozenVariant;
         let _ = LockedVariant;
 
-        let _ = DeprecatedTupleStruct (1);
+        let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item
         let _ = ExperimentalTupleStruct (1);
         let _ = UnstableTupleStruct (1);
         let _ = UnmarkedTupleStruct (1);
@@ -422,8 +421,8 @@ mod this_crate {
     }
 
     fn test_method_param<F: Trait>(foo: F) {
-        foo.trait_deprecated();
-        foo.trait_deprecated_text();
+        foo.trait_deprecated(); //~ ERROR use of deprecated item
+        foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
         foo.trait_experimental();
         foo.trait_experimental_text();
         foo.trait_unstable();
@@ -433,8 +432,8 @@ mod this_crate {
     }
 
     fn test_method_object(foo: &Trait) {
-        foo.trait_deprecated();
-        foo.trait_deprecated_text();
+        foo.trait_deprecated(); //~ ERROR use of deprecated item
+        foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
         foo.trait_experimental();
         foo.trait_experimental_text();
         foo.trait_unstable();

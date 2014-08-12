@@ -101,6 +101,8 @@
 //! }
 //! ```
 
+#![allow(deprecated)]
+
 use core::prelude::*;
 
 use alloc::boxed::Box;
