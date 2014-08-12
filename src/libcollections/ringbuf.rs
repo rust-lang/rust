@@ -53,7 +53,7 @@ impl<T> Mutable for RingBuf<T> {
 impl<T> Deque<T> for RingBuf<T> {
     /// Return a reference to the first element in the RingBuf
     fn front<'a>(&'a self) -> Option<&'a T> {
-        if self.nelts > 0 { Some(self.get(0)) } else { None }
+        if self.nelts > 0 { Some(&self[0]) } else { None }
     }
 
     /// Return a mutable reference to the first element in the RingBuf
@@ -63,7 +63,7 @@ impl<T> Deque<T> for RingBuf<T> {
 
     /// Return a reference to the last element in the RingBuf
     fn back<'a>(&'a self) -> Option<&'a T> {
-        if self.nelts > 0 { Some(self.get(self.nelts - 1)) } else { None }
+        if self.nelts > 0 { Some(&self[self.nelts - 1]) } else { None }
     }
 
     /// Return a mutable reference to the last element in the RingBuf
@@ -152,7 +152,7 @@ impl<T> RingBuf<T> {
     #[deprecated = "prefer using indexing, e.g., ringbuf[0]"]
     pub fn get<'a>(&'a self, i: uint) -> &'a T {
         let idx = self.raw_index(i);
-        match *self.elts.get(idx) {
+        match self.elts[idx] {
             None => fail!(),
             Some(ref v) => v
         }
@@ -481,6 +481,7 @@ impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
 
 impl<A> Index<uint, A> for RingBuf<A> {
     #[inline]
+    #[allow(deprecated)]
     fn index<'a>(&'a self, i: &uint) -> &'a A {
         self.get(*i)
     }
@@ -506,7 +507,7 @@ impl<A> FromIterator<A> for RingBuf<A> {
 impl<A> Extendable<A> for RingBuf<A> {
     fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
         for elt in iterator {
-            self.push_back(elt);
+            self.push(elt);
         }
     }
 }

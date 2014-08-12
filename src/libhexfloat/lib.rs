@@ -39,6 +39,7 @@ fn main() {
 #![crate_name = "hexfloat"]
 #![deprecated = "This is now a cargo package located at: \
                  https://github.com/rust-lang/hexfloat"]
+#![allow(deprecated)]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]

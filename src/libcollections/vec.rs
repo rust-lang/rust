@@ -453,6 +453,7 @@ impl<T:Clone> Clone for Vec<T> {
 
 impl<T> Index<uint,T> for Vec<T> {
     #[inline]
+    #[allow(deprecated)] // allow use of get
     fn index<'a>(&'a self, index: &uint) -> &'a T {
         self.get(*index)
     }

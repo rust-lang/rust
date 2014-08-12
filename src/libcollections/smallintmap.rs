@@ -86,7 +86,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     /// Return a reference to the value corresponding to the key.
     fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
         if *key < self.v.len() {
-            match *self.v.get(*key) {
+            match self.v[*key] {
               Some(ref value) => Some(value),
               None => None
             }
@@ -421,6 +421,7 @@ impl<V> Extendable<(uint, V)> for SmallIntMap<V> {
 
 impl<V> Index<uint, V> for SmallIntMap<V> {
     #[inline]
+    #[allow(deprecated)]
     fn index<'a>(&'a self, i: &uint) -> &'a V {
         self.get(i)
     }
