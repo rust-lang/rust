@@ -399,10 +399,16 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
             ast::ExprForLoop(ref pat, ref head, ref blk, _) => {
                 // The pattern lives as long as the block.
                 debug!("walk_expr for loop case: blk id={}", blk.id);
-                self.walk_expr(&**head);
+                self.consume_expr(&**head);
 
-                let head_cmt = return_if_err!(self.mc.cat_expr(&**head));
-                self.walk_pat(head_cmt, pat.clone());
+                // Fetch the type of the value that the iteration yields to
+                // produce the pattern's categorized mutable type.
+                let pattern_type = ty::node_id_to_type(self.tcx(), pat.id);
+                let pat_cmt = self.mc.cat_rvalue(pat.id,
+                                                 pat.span,
+                                                 ty::ReScope(blk.id),
+                                                 pattern_type);
+                self.walk_pat(pat_cmt, pat.clone());
 
                 self.walk_block(&**blk);
             }
@@ -835,6 +841,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                     }
                     ast::PatIdent(ast::BindByValue(_), _, _) => {
                         let mode = copy_or_move(typer.tcx(), cmt_pat.ty, PatBindingMove);
+                        debug!("walk_pat binding consuming pat");
                         delegate.consume_pat(pat, cmt_pat, mode);
                     }
                     _ => {
