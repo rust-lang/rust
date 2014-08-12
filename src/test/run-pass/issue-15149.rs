@@ -18,9 +18,7 @@ use std::io::{TempDir, Command, fs};
 use std::os;
 use std::task::TaskBuilder;
 
-// FIXME(#15149) libgreen still needs to be update. There is an open PR for it
-//               but it is not yet merged.
-// green_start!(main)
+green_start!(main)
 
 fn main() {
     // If we're the child, make sure we were invoked correctly
