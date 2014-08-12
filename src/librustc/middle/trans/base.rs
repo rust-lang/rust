@@ -2070,12 +2070,12 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                          item.id,
                          item.attrs.as_slice());
             }
-        } else {
-            // Be sure to travel more than just one layer deep to catch nested
-            // items in blocks and such.
-            let mut v = TransItemVisitor{ ccx: ccx };
-            v.visit_block(&**body, ());
         }
+
+        // Be sure to travel more than just one layer deep to catch nested
+        // items in blocks and such.
+        let mut v = TransItemVisitor{ ccx: ccx };
+        v.visit_block(&**body, ());
       }
       ast::ItemImpl(ref generics, _, _, ref ms) => {
         meth::trans_impl(ccx, item.ident, ms.as_slice(), generics, item.id);
