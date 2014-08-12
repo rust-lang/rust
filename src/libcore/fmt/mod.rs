@@ -19,6 +19,7 @@ use collections::Collection;
 use iter::{Iterator, range};
 use kinds::Copy;
 use mem;
+use num::Float;
 use option::{Option, Some, None};
 use ops::Deref;
 use result::{Ok, Err};
@@ -584,7 +585,7 @@ macro_rules! floating(($ty:ident) => {
                                              float::ExpNone,
                                              false,
                                              |bytes| {
-                fmt.pad_integral(*self >= 0.0, "", bytes)
+                fmt.pad_integral(self.is_nan() || *self >= 0.0, "", bytes)
             })
         }
     }
@@ -605,7 +606,7 @@ macro_rules! floating(($ty:ident) => {
                                              float::ExpDec,
                                              false,
                                              |bytes| {
-                fmt.pad_integral(*self >= 0.0, "", bytes)
+                fmt.pad_integral(self.is_nan() || *self >= 0.0, "", bytes)
             })
         }
     }
@@ -626,7 +627,7 @@ macro_rules! floating(($ty:ident) => {
                                              float::ExpDec,
                                              true,
                                              |bytes| {
-                fmt.pad_integral(*self >= 0.0, "", bytes)
+                fmt.pad_integral(self.is_nan() || *self >= 0.0, "", bytes)
             })
         }
     }
