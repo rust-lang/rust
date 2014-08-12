@@ -628,18 +628,36 @@ impl GenericPath for Path {
 }
 
 impl Path {
-    /// Returns a new Path from a byte vector or string
+    /// Returns a new `Path` from a `BytesContainer`.
     ///
     /// # Failure
     ///
-    /// Fails the task if the vector contains a NUL.
-    /// Fails if invalid UTF-8.
+    /// Fails if the vector contains a `NUL`, or if it contains invalid UTF-8.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// println!("{}", Path::new(r"C:\some\path").display());
+    /// ```
     #[inline]
     pub fn new<T: BytesContainer>(path: T) -> Path {
         GenericPath::new(path)
     }
 
-    /// Returns a new Path from a byte vector or string, if possible
+    /// Returns a new `Some(Path)` from a `BytesContainer`.
+    ///
+    /// Returns `None` if the vector contains a `NUL`, or if it contains invalid UTF-8.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let path = Path::new_opt(r"C:\some\path");
+    ///
+    /// match path {
+    ///     Some(path) => println!("{}", path.display()),
+    ///     None       => println!("There was a problem with your path."),
+    /// }
+    /// ```
     #[inline]
     pub fn new_opt<T: BytesContainer>(path: T) -> Option<Path> {
         GenericPath::new_opt(path)
