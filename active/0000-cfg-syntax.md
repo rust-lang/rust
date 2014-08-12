@@ -56,9 +56,14 @@ fn foo() {}
 ```
 will change from "include `foo` if *either of* `a` and `b` are present in the
 compilation environment" to "include `foo` if *both of* `a` and `b` are present
-in the compilation environment". To ease the transition it will be an error to
-have multiple `#[cfg(...)]` attributes on a single item for some reasonable
-period of time.
+in the compilation environment". To ease the transition, the old semantics of
+multiple `#[cfg(...)]` attributes will be maintained as a special case, with a
+warning. After some reasonable period of time, the special case will be
+removed.
+
+In addition, `#[cfg(a, b, c)]` will be accepted with a warning and be
+equivalent to `#[cfg(all(a, b, c))]`. Again, after some reasonable period of
+time, this behavior will be removed as well.
 
 The `cfg!()` syntax extension will be modified to accept cfg patterns as well.
 A `#[cfg_attr(<p>, <attr>)]` syntax extension will be added
@@ -89,3 +94,9 @@ little readability gain.
 
 How long should multiple `#[cfg(...)]` attributes on a single item be
 forbidden? It should probably be at least until after 0.12 releases.
+
+Should we permanently keep the behavior of treating `#[cfg(a, b)]` as
+`#[cfg(all(a, b))]`? It is the common case, and adding this interpretation
+can reduce the noise level a bit. On the other hand, it may be a bit confusing
+to read as it's not immediately clear if it will be processed as `and(..)` or
+`all(..)`.
