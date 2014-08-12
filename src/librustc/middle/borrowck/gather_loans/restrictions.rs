@@ -122,9 +122,7 @@ impl<'a> RestrictionsContext<'a> {
             }
 
             mc::cat_deref(cmt_base, _, mc::BorrowedPtr(ty::ImmBorrow, lt)) |
-            mc::cat_deref(cmt_base, _, mc::BorrowedPtr(ty::UniqueImmBorrow, lt)) |
-            mc::cat_deref(cmt_base, _, mc::Implicit(ty::ImmBorrow, lt)) |
-            mc::cat_deref(cmt_base, _, mc::Implicit(ty::UniqueImmBorrow, lt)) => {
+            mc::cat_deref(cmt_base, _, mc::Implicit(ty::ImmBorrow, lt)) => {
                 // R-Deref-Imm-Borrowed
                 if !self.bccx.is_subregion_of(self.loan_region, lt) {
                     self.bccx.report(
@@ -142,7 +140,9 @@ impl<'a> RestrictionsContext<'a> {
             mc::cat_deref(cmt_base, _, pk) => {
                 match pk {
                     mc::BorrowedPtr(ty::MutBorrow, lt) |
-                    mc::Implicit(ty::MutBorrow, lt) => {
+                    mc::BorrowedPtr(ty::UniqueImmBorrow, lt) |
+                    mc::Implicit(ty::MutBorrow, lt) |
+                    mc::Implicit(ty::UniqueImmBorrow, lt) => {
                         // R-Deref-Mut-Borrowed
                         if !self.bccx.is_subregion_of(self.loan_region, lt) {
                             self.bccx.report(
