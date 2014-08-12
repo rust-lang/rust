@@ -574,7 +574,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
 
     let arena = TypedArena::new();
     let empty_param_substs = param_substs::empty();
-    let fcx = new_fn_ctxt(ccx, llfn, -1, true, f.sig.output,
+    let fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, true, f.sig.output,
                           &empty_param_substs, None, &arena, TranslateItems);
     let bcx = init_function(&fcx, true, f.sig.output);
 
@@ -582,8 +582,9 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
                                          ty::ty_fn_args(closure_ty)
                                             .as_slice());
     let mut llargs = Vec::new();
-    match fcx.llretptr.get() {
+    match fcx.llretslotptr.get() {
         Some(llretptr) => {
+            assert!(!fcx.needs_ret_allocas);
             llargs.push(llretptr);
         }
         None => {}
@@ -591,7 +592,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
     llargs.extend(args.iter().map(|arg| arg.val));
 
     let retval = Call(bcx, fn_ptr, llargs.as_slice(), None);
-    if type_is_zero_size(ccx, f.sig.output) || fcx.llretptr.get().is_some() {
+    if type_is_zero_size(ccx, f.sig.output) || fcx.llretslotptr.get().is_some() {
         RetVoid(bcx);
     } else {
         Ret(bcx, retval);

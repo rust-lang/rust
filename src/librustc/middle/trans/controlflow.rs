@@ -462,13 +462,22 @@ pub fn trans_ret<'a>(bcx: &'a Block<'a>,
     let _icx = push_ctxt("trans_ret");
     let fcx = bcx.fcx;
     let mut bcx = bcx;
-    let dest = match bcx.fcx.llretptr.get() {
-        None => expr::Ignore,
-        Some(retptr) => expr::SaveIn(retptr),
+    let dest = match (fcx.llretslotptr.get(), e) {
+        (Some(_), Some(e)) => {
+            let ret_ty = expr_ty(bcx, &*e);
+            expr::SaveIn(fcx.get_ret_slot(bcx, ret_ty, "ret_slot"))
+        }
+        _ => expr::Ignore,
     };
     match e {
         Some(x) => {
             bcx = expr::trans_into(bcx, &*x, dest);
+            match dest {
+                expr::SaveIn(slot) if fcx.needs_ret_allocas => {
+                    Store(bcx, slot, fcx.llretslotptr.get().unwrap());
+                }
+                _ => {}
+            }
         }
         _ => {}
     }

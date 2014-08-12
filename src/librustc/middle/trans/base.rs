@@ -1122,7 +1122,7 @@ pub fn memcpy_ty(bcx: &Block, dst: ValueRef, src: ValueRef, t: ty::t) {
         let llalign = llalign_of_min(ccx, llty);
         call_memcpy(bcx, dst, src, llsz, llalign as u32);
     } else {
-        Store(bcx, Load(bcx, src), dst);
+        store_ty(bcx, Load(bcx, src), dst, t);
     }
 }
 
@@ -1210,15 +1210,120 @@ pub fn arrayalloca(cx: &Block, ty: Type, v: ValueRef) -> ValueRef {
     p
 }
 
-// Creates and returns space for, or returns the argument representing, the
-// slot where the return value of the function must go.
-pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
-                           -> ValueRef {
-    if type_of::return_uses_outptr(fcx.ccx, output_type) {
-        get_param(fcx.llfn, 0)
+// Creates the alloca slot which holds the pointer to the slot for the final return value
+pub fn make_return_slot_pointer(fcx: &FunctionContext, output_type: ty::t) -> ValueRef {
+    let lloutputtype = type_of::type_of(fcx.ccx, output_type);
+
+    // We create an alloca to hold a pointer of type `output_type`
+    // which will hold the pointer to the right alloca which has the
+    // final ret value
+    if fcx.needs_ret_allocas {
+        // Let's create the stack slot
+        let slot = AllocaFcx(fcx, lloutputtype.ptr_to(), "llretslotptr");
+
+        // and if we're using an out pointer, then store that in our newly made slot
+        if type_of::return_uses_outptr(fcx.ccx, output_type) {
+            let outptr = get_param(fcx.llfn, 0);
+
+            let b = fcx.ccx.builder();
+            b.position_before(fcx.alloca_insert_pt.get().unwrap());
+            b.store(outptr, slot);
+        }
+
+        slot
+
+    // But if there are no nested returns, we skip the indirection and have a single
+    // retslot
     } else {
-        let lloutputtype = type_of::type_of(fcx.ccx, output_type);
-        AllocaFcx(fcx, lloutputtype, "__make_return_pointer")
+        if type_of::return_uses_outptr(fcx.ccx, output_type) {
+            get_param(fcx.llfn, 0)
+        } else {
+            AllocaFcx(fcx, lloutputtype, "sret_slot")
+        }
+    }
+}
+
+struct CheckForNestedReturnsVisitor {
+    found: bool
+}
+
+impl Visitor<bool> for CheckForNestedReturnsVisitor {
+    fn visit_expr(&mut self, e: &ast::Expr, in_return: bool) {
+        match e.node {
+            ast::ExprRet(..) if in_return => {
+                self.found = true;
+                return;
+            }
+            ast::ExprRet(..) => visit::walk_expr(self, e, true),
+            _ => visit::walk_expr(self, e, in_return)
+        }
+    }
+}
+
+fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
+    match tcx.map.find(id) {
+        Some(ast_map::NodeItem(i)) => {
+            match i.node {
+                ast::ItemFn(_, _, _, _, blk) => {
+                    let mut explicit = CheckForNestedReturnsVisitor { found: false };
+                    let mut implicit = CheckForNestedReturnsVisitor { found: false };
+                    visit::walk_item(&mut explicit, &*i, false);
+                    visit::walk_expr_opt(&mut implicit, blk.expr, true);
+                    explicit.found || implicit.found
+                }
+                _ => tcx.sess.bug("unexpected item variant in has_nested_returns")
+            }
+        }
+        Some(ast_map::NodeTraitMethod(trait_method)) => {
+            match *trait_method {
+                ast::Provided(m) => {
+                    match m.node {
+                        ast::MethDecl(_, _, _, _, _, _, blk, _) => {
+                            let mut explicit = CheckForNestedReturnsVisitor { found: false };
+                            let mut implicit = CheckForNestedReturnsVisitor { found: false };
+                            visit::walk_method_helper(&mut explicit, &*m, false);
+                            visit::walk_expr_opt(&mut implicit, blk.expr, true);
+                            explicit.found || implicit.found
+                        }
+                        ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
+                    }
+                }
+                ast::Required(_) => tcx.sess.bug("unexpected variant: required trait method in \
+                                                  has_nested_returns")
+            }
+        }
+        Some(ast_map::NodeMethod(m)) => {
+            match m.node {
+                ast::MethDecl(_, _, _, _, _, _, blk, _) => {
+                    let mut explicit = CheckForNestedReturnsVisitor { found: false };
+                    let mut implicit = CheckForNestedReturnsVisitor { found: false };
+                    visit::walk_method_helper(&mut explicit, &*m, false);
+                    visit::walk_expr_opt(&mut implicit, blk.expr, true);
+                    explicit.found || implicit.found
+                }
+                ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
+            }
+        }
+        Some(ast_map::NodeExpr(e)) => {
+            match e.node {
+                ast::ExprFnBlock(_, blk) | ast::ExprProc(_, blk) | ast::ExprUnboxedFn(_, blk) => {
+                    let mut explicit = CheckForNestedReturnsVisitor { found: false };
+                    let mut implicit = CheckForNestedReturnsVisitor { found: false };
+                    visit::walk_expr(&mut explicit, &*e, false);
+                    visit::walk_expr_opt(&mut implicit, blk.expr, true);
+                    explicit.found || implicit.found
+                }
+                _ => tcx.sess.bug("unexpected expr variant in has_nested_returns")
+            }
+        }
+
+        Some(ast_map::NodeVariant(..)) | Some(ast_map::NodeStructCtor(..)) => false,
+
+        // glue, shims, etc
+        None if id == ast::DUMMY_NODE_ID => false,
+
+        _ => tcx.sess.bug(format!("unexpected variant in has_nested_returns: {}",
+                                  tcx.map.path_to_string(id)).as_slice())
     }
 }
 
@@ -1254,13 +1359,15 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
     let substd_output_type = output_type.substp(ccx.tcx(), param_substs);
     let uses_outptr = type_of::return_uses_outptr(ccx, substd_output_type);
     let debug_context = debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl);
+    let nested_returns = has_nested_returns(ccx.tcx(), id);
 
     let mut fcx = FunctionContext {
           llfn: llfndecl,
           llenv: None,
-          llretptr: Cell::new(None),
+          llretslotptr: Cell::new(None),
           alloca_insert_pt: Cell::new(None),
           llreturn: Cell::new(None),
+          needs_ret_allocas: nested_returns,
           personality: Cell::new(None),
           caller_expects_out_pointer: uses_outptr,
           llargs: RefCell::new(NodeMap::new()),
@@ -1303,12 +1410,12 @@ pub fn init_function<'a>(fcx: &'a FunctionContext<'a>,
 
     if !return_type_is_void(fcx.ccx, substd_output_type) {
         // If the function returns nil/bot, there is no real return
-        // value, so do not set `llretptr`.
+        // value, so do not set `llretslotptr`.
         if !skip_retptr || fcx.caller_expects_out_pointer {
-            // Otherwise, we normally allocate the llretptr, unless we
+            // Otherwise, we normally allocate the llretslotptr, unless we
             // have been instructed to skip it for immediate return
             // values.
-            fcx.llretptr.set(Some(make_return_pointer(fcx, substd_output_type)));
+            fcx.llretslotptr.set(Some(make_return_slot_pointer(fcx, substd_output_type)));
         }
     }
 
@@ -1533,13 +1640,18 @@ pub fn finish_fn<'a>(fcx: &'a FunctionContext<'a>,
 
 // Builds the return block for a function.
 pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block, retty: ty::t) {
-    // Return the value if this function immediate; otherwise, return void.
-    if fcx.llretptr.get().is_none() || fcx.caller_expects_out_pointer {
+    if fcx.llretslotptr.get().is_none() ||
+       (!fcx.needs_ret_allocas && fcx.caller_expects_out_pointer) {
         return RetVoid(ret_cx);
     }
 
-    let retptr = Value(fcx.llretptr.get().unwrap());
-    let retval = match retptr.get_dominating_store(ret_cx) {
+    let retslot = if fcx.needs_ret_allocas {
+        Load(ret_cx, fcx.llretslotptr.get().unwrap())
+    } else {
+        fcx.llretslotptr.get().unwrap()
+    };
+    let retptr = Value(retslot);
+    match retptr.get_dominating_store(ret_cx) {
         // If there's only a single store to the ret slot, we can directly return
         // the value that was stored and omit the store and the alloca
         Some(s) => {
@@ -1550,17 +1662,29 @@ pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block, retty: ty::t) {
                 retptr.erase_from_parent();
             }
 
-            if ty::type_is_bool(retty) {
+            let retval = if ty::type_is_bool(retty) {
                 Trunc(ret_cx, retval, Type::i1(fcx.ccx))
             } else {
                 retval
+            };
+
+            if fcx.caller_expects_out_pointer {
+                store_ty(ret_cx, retval, get_param(fcx.llfn, 0), retty);
+                return RetVoid(ret_cx);
+            } else {
+                return Ret(ret_cx, retval);
             }
         }
-        // Otherwise, load the return value from the ret slot
-        None => load_ty(ret_cx, fcx.llretptr.get().unwrap(), retty)
-    };
-
-    Ret(ret_cx, retval);
+        // Otherwise, copy the return value to the ret slot
+        None => {
+            if fcx.caller_expects_out_pointer {
+                memcpy_ty(ret_cx, get_param(fcx.llfn, 0), retslot, retty);
+                return RetVoid(ret_cx);
+            } else {
+                return Ret(ret_cx, load_ty(ret_cx, retslot, retty));
+            }
+        }
+    }
 }
 
 #[deriving(Clone, Eq, PartialEq)]
@@ -1658,10 +1782,10 @@ pub fn trans_closure(ccx: &CrateContext,
     // emitting should be enabled.
     debuginfo::start_emitting_source_locations(&fcx);
 
-    let dest = match fcx.llretptr.get() {
-        Some(e) => {expr::SaveIn(e)}
+    let dest = match fcx.llretslotptr.get() {
+        Some(_) => expr::SaveIn(fcx.get_ret_slot(bcx, block_ty, "iret_slot")),
         None => {
-            assert!(type_is_zero_size(bcx.ccx(), block_ty))
+            assert!(type_is_zero_size(bcx.ccx(), block_ty));
             expr::Ignore
         }
     };
@@ -1671,6 +1795,13 @@ pub fn trans_closure(ccx: &CrateContext,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
     bcx = controlflow::trans_block(bcx, body, dest);
+
+    match dest {
+        expr::SaveIn(slot) if fcx.needs_ret_allocas => {
+            Store(bcx, slot, fcx.llretslotptr.get().unwrap());
+        }
+        _ => {}
+    }
 
     match fcx.llreturn.get() {
         Some(_) => {
@@ -1836,21 +1967,24 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
                           param_substs, None, &arena, TranslateItems);
     let bcx = init_function(&fcx, false, result_ty);
 
+    assert!(!fcx.needs_ret_allocas);
+
     let arg_tys = ty::ty_fn_args(ctor_ty);
 
     let arg_datums = create_datums_for_fn_args(&fcx, arg_tys.as_slice());
 
     if !type_is_zero_size(fcx.ccx, result_ty) {
+        let dest = fcx.get_ret_slot(bcx, result_ty, "eret_slot");
         let repr = adt::represent_type(ccx, result_ty);
         for (i, arg_datum) in arg_datums.move_iter().enumerate() {
             let lldestptr = adt::trans_field_ptr(bcx,
                                                  &*repr,
-                                                 fcx.llretptr.get().unwrap(),
+                                                 dest,
                                                  disr,
                                                  i);
             arg_datum.store_to(bcx, lldestptr);
         }
-        adt::trans_set_discr(bcx, &*repr, fcx.llretptr.get().unwrap(), disr);
+        adt::trans_set_discr(bcx, &*repr, dest, disr);
     }
 
     finish_fn(&fcx, bcx, result_ty);

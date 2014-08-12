@@ -310,7 +310,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
                                                     sym.as_slice());
                 let arena = TypedArena::new();
                 let empty_param_substs = param_substs::empty();
-                let fcx = new_fn_ctxt(ccx, llfdecl, -1, false,
+                let fcx = new_fn_ctxt(ccx, llfdecl, ast::DUMMY_NODE_ID, false,
                                       ty::mk_u64(), &empty_param_substs,
                                       None, &arena, TranslateItems);
                 let bcx = init_function(&fcx, false, ty::mk_u64());
@@ -321,7 +321,9 @@ impl<'a, 'b> Reflector<'a, 'b> {
                 let arg = get_param(llfdecl, fcx.arg_pos(0u) as c_uint);
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, &*repr, arg, Some(Type::i64(ccx)));
-                Store(bcx, ret, fcx.llretptr.get().unwrap());
+                assert!(!fcx.needs_ret_allocas);
+                let ret_slot = fcx.get_ret_slot(bcx, ty::mk_u64(), "ret_slot");
+                Store(bcx, ret, ret_slot);
                 match fcx.llreturn.get() {
                     Some(llreturn) => Br(bcx, llreturn),
                     None => {}
