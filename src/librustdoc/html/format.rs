@@ -166,7 +166,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
             if ast_util::is_local(did) || cache.inlined.contains(&did) {
                 Some(("../".repeat(loc.len())).to_string())
             } else {
-                match *cache.extern_locations.get(&did.krate) {
+                match cache.extern_locations[did.krate] {
                     render::Remote(ref s) => Some(s.to_string()),
                     render::Local => {
                         Some(("../".repeat(loc.len())).to_string())
@@ -291,11 +291,11 @@ fn primitive_link(f: &mut fmt::Formatter,
             needs_termination = true;
         }
         Some(&cnum) => {
-            let path = m.paths.get(&ast::DefId {
+            let path = &m.paths[ast::DefId {
                 krate: cnum,
                 node: ast::CRATE_NODE_ID,
-            });
-            let loc = match *m.extern_locations.get(&cnum) {
+            }];
+            let loc = match m.extern_locations[cnum] {
                 render::Remote(ref s) => Some(s.to_string()),
                 render::Local => {
                     let loc = current_location_key.get().unwrap();
@@ -343,11 +343,11 @@ impl fmt::Show for clean::Type {
         match *self {
             clean::TyParamBinder(id) => {
                 let m = cache_key.get().unwrap();
-                f.write(m.typarams.get(&ast_util::local_def(id)).as_bytes())
+                f.write(m.typarams[ast_util::local_def(id)].as_bytes())
             }
             clean::Generic(did) => {
                 let m = cache_key.get().unwrap();
-                f.write(m.typarams.get(&did).as_bytes())
+                f.write(m.typarams[did].as_bytes())
             }
             clean::ResolvedPath{ did, ref typarams, ref path } => {
                 try!(resolved_path(f, did, path, false));

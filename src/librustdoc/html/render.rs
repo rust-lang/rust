@@ -1274,8 +1274,8 @@ impl<'a> Item<'a> {
         // located, then we return `None`.
         } else {
             let cache = cache_key.get().unwrap();
-            let path = cache.external_paths.get(&self.item.def_id);
-            let root = match *cache.extern_locations.get(&self.item.def_id.krate) {
+            let path = &cache.external_paths[self.item.def_id];
+            let root = match cache.extern_locations[self.item.def_id.krate] {
                 Remote(ref s) => s.to_string(),
                 Local => self.cx.root_path.clone(),
                 Unknown => return None,
