@@ -21,11 +21,13 @@ use middle::def;
 use middle::lang_items::LangItem;
 use middle::subst;
 use middle::subst::Subst;
+use middle::trans::base;
 use middle::trans::build;
 use middle::trans::cleanup;
 use middle::trans::datum;
 use middle::trans::debuginfo;
 use middle::trans::type_::Type;
+use middle::trans::type_of;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
@@ -254,6 +256,11 @@ pub struct FunctionContext<'a> {
     pub alloca_insert_pt: Cell<Option<ValueRef>>,
     pub llreturn: Cell<Option<BasicBlockRef>>,
 
+    // If the function has any nested return's, including something like:
+    // fn foo() -> Option<Foo> { Some(Foo { x: return None }) }, then
+    // we use a separate alloca for each return
+    pub needs_ret_allocas: bool,
+
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
     pub personality: Cell<Option<ValueRef>>,
@@ -343,6 +350,14 @@ impl<'a> FunctionContext<'a> {
         }
 
         self.llreturn.get().unwrap()
+    }
+
+    pub fn get_ret_slot(&self, bcx: &Block, ty: ty::t, name: &str) -> ValueRef {
+        if self.needs_ret_allocas {
+            base::alloca_no_lifetime(bcx, type_of::type_of(bcx.ccx(), ty), name)
+        } else {
+            self.llretslotptr.get().unwrap()
+        }
     }
 
     pub fn new_block(&'a self,
