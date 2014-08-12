@@ -209,12 +209,15 @@ impl<V> SmallIntMap<V> {
     /// # Example
     ///
     /// ```
+    /// #![allow(deprecated)]
+    ///
     /// use std::collections::SmallIntMap;
     ///
     /// let mut map = SmallIntMap::new();
     /// map.insert(1, "a");
     /// assert_eq!(map.get(&1), &"a");
     /// ```
+    #[deprecated = "prefer using indexing, e.g., map[0]"]
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
         self.find(key).expect("key not present")
     }
@@ -330,11 +333,11 @@ impl<V:Clone> SmallIntMap<V> {
     ///
     /// // Key does not exist, will do a simple insert
     /// assert!(map.update(1, vec![1i, 2], |old, new| old.append(new.as_slice())));
-    /// assert_eq!(map.get(&1), &vec![1i, 2]);
+    /// assert_eq!(map[1], vec![1i, 2]);
     ///
     /// // Key exists, update the value
     /// assert!(!map.update(1, vec![3i, 4], |old, new| old.append(new.as_slice())));
-    /// assert_eq!(map.get(&1), &vec![1i, 2, 3, 4]);
+    /// assert_eq!(map[1], vec![1i, 2, 3, 4]);
     /// ```
     pub fn update(&mut self, key: uint, newval: V, ff: |V, V| -> V) -> bool {
         self.update_with_key(key, newval, |_k, v, v1| ff(v,v1))
@@ -354,11 +357,11 @@ impl<V:Clone> SmallIntMap<V> {
     ///
     /// // Key does not exist, will do a simple insert
     /// assert!(map.update_with_key(7, 10, |key, old, new| (old + new) % key));
-    /// assert_eq!(map.get(&7), &10);
+    /// assert_eq!(map[7], 10);
     ///
     /// // Key exists, update the value
     /// assert!(!map.update_with_key(7, 20, |key, old, new| (old + new) % key));
-    /// assert_eq!(map.get(&7), &2);
+    /// assert_eq!(map[7], 2);
     /// ```
     pub fn update_with_key(&mut self,
                            key: uint,
@@ -415,6 +418,21 @@ impl<V> Extendable<(uint, V)> for SmallIntMap<V> {
         }
     }
 }
+
+impl<V> Index<uint, V> for SmallIntMap<V> {
+    #[inline]
+    fn index<'a>(&'a self, i: &uint) -> &'a V {
+        self.get(i)
+    }
+}
+
+// FIXME(#12825) Indexing will always try IndexMut first and that causes issues.
+/*impl<V> IndexMut<uint, V> for SmallIntMap<V> {
+    #[inline]
+    fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut V {
+        self.find_mut(i).expect("key not present")
+    }
+}*/
 
 macro_rules! iterator {
     (impl $name:ident -> $elem:ty, $getter:ident) => {
@@ -842,6 +860,29 @@ mod test_map {
         for &(k, v) in xs.iter() {
             assert_eq!(map.find(&k), Some(&v));
         }
+    }
+
+    #[test]
+    fn test_index() {
+        let mut map: SmallIntMap<int> = SmallIntMap::new();
+
+        map.insert(1, 2);
+        map.insert(2, 1);
+        map.insert(3, 4);
+
+        assert_eq!(map[3], 4);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_index_nonexistent() {
+        let mut map: SmallIntMap<int> = SmallIntMap::new();
+
+        map.insert(1, 2);
+        map.insert(2, 1);
+        map.insert(3, 4);
+
+        map[4];
     }
 }
 
