@@ -144,7 +144,7 @@ pub trait Combine {
                                                       b_regions));
 
             substs.types.replace(space, tps);
-            substs.mut_regions().replace(space, regions);
+            substs.regions_mut().replace(space, regions);
         }
 
         return Ok(substs);

@@ -99,9 +99,12 @@ use vec::Vec;
 
 pub use core::slice::{ref_slice, mut_ref_slice, Splits, Windows};
 pub use core::slice::{Chunks, Vector, ImmutableVector, ImmutableEqVector};
-pub use core::slice::{ImmutableOrdVector, MutableVector, Items, MutItems};
-pub use core::slice::{MutSplits, MutChunks};
+pub use core::slice::{ImmutableOrdVector, MutableVector, Items, ItemsMut};
+pub use core::slice::{SplitsMut, ChunksMut};
 pub use core::slice::{bytes, MutableCloneableVector};
+
+// Deprecated items:
+pub use core::slice::{MutItems, MutSplits, MutChunks};
 
 // Functional utilities
 

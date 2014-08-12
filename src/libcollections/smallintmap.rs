@@ -249,13 +249,16 @@ impl<V> SmallIntMap<V> {
     ///     println!("{}: {}", key, value);
     /// }
     /// ```
-    pub fn iter<'r>(&'r self) -> Entries<'r, V> {
+    pub fn iter(&self) -> Entries<V> {
         Entries {
             front: 0,
             back: self.v.len(),
             iter: self.v.iter()
         }
     }
+
+    /// Deprecated. Use `iter_mut` instead.
+    pub fn mut_iter(&mut self) -> EntriesMut<V> { self.iter_mut() }
 
     /// An iterator visiting all key-value pairs in ascending order by the keys,
     /// with mutable references to the values
@@ -271,7 +274,7 @@ impl<V> SmallIntMap<V> {
     /// map.insert(2, "b");
     /// map.insert(3, "c");
     ///
-    /// for (key, value) in map.mut_iter() {
+    /// for (key, value) in map.iter_mut() {
     ///     *value = "x";
     /// }
     ///
@@ -279,13 +282,18 @@ impl<V> SmallIntMap<V> {
     ///     assert_eq!(value, &"x");
     /// }
     /// ```
-    pub fn mut_iter<'r>(&'r mut self) -> MutEntries<'r, V> {
-        MutEntries {
+    pub fn iter_mut(&mut self) -> EntriesMut<V> {
+        EntriesMut {
             front: 0,
             back: self.v.len(),
             iter: self.v.mut_iter()
         }
     }
+
+    /// Deprecated. Use `iter_owned` instead.
+    pub fn move_iter(&mut self)
+        -> FilterMap<(uint, Option<V>), (uint, V),
+                Enumerate<vec::MoveItems<Option<V>>>> { self.iter_owned() }
 
     /// Empties the map, moving all values into the specified closure.
     ///
@@ -300,11 +308,11 @@ impl<V> SmallIntMap<V> {
     /// map.insert(2, "b");
     ///
     /// // Not possible with .iter()
-    /// let vec: Vec<(uint, &str)> = map.move_iter().collect();
+    /// let vec: Vec<(uint, &str)> = map.iter_owned().collect();
     ///
     /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
     /// ```
-    pub fn move_iter(&mut self)
+    pub fn iter_owned(&mut self)
         -> FilterMap<(uint, Option<V>), (uint, V),
                 Enumerate<vec::MoveItems<Option<V>>>>
     {
@@ -480,14 +488,18 @@ double_ended_iterator!(impl Entries -> (uint, &'a T), get_ref)
 
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
-pub struct MutEntries<'a, T> {
+pub struct EntriesMut<'a, T> {
     front: uint,
     back: uint,
     iter: slice::MutItems<'a, Option<T>>
 }
 
-iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
-double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
+/// Deprecated: renamed to `EntriesMut`.
+#[deprecated = "renamed to EntriesMut"]
+pub type MutEntries<'a, T> = EntriesMut<'a, T>;
+
+iterator!(impl EntriesMut -> (uint, &'a mut T), get_mut_ref)
+double_ended_iterator!(impl EntriesMut -> (uint, &'a mut T), get_mut_ref)
 
 /// Forward iterator over the keys of a map
 pub type Keys<'a, T> =

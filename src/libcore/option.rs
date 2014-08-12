@@ -361,15 +361,29 @@ impl<T> Option<T> {
         Item{opt: self.as_ref()}
     }
 
-    /// Returns a mutable iterator over the possibly contained value.
+    /// Deprecated: renamed to `iter_mut`.
+    #[deprecated = "renamed to iter_mut"]
     #[inline]
     pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
+        self.iter_mut()
+    }
+
+    /// Returns a mutable iterator over the possibly contained value.
+    #[inline]
+    pub fn iter_mut<'r>(&'r mut self) -> Item<&'r mut T> {
         Item{opt: self.as_mut()}
+    }
+
+    /// Deprecated: renamed to `iter_owned`.
+    #[deprecated = "renamed to iter_owned"]
+    #[inline]
+    pub fn move_iter(self) -> Item<T> {
+        self.iter_owned()
     }
 
     /// Returns a consuming iterator over the possibly contained value.
     #[inline]
-    pub fn move_iter(self) -> Item<T> {
+    pub fn iter_owned(self) -> Item<T> {
         Item{opt: self}
     }
 

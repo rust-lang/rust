@@ -262,6 +262,12 @@ impl<T> TrieMap<T> {
         iter
     }
 
+    /// Deprecated: renamed to `iter_mut`.
+    #[deprecated = "renamed to iter_mut"]
+    pub fn mut_iter<'a>(&'a mut self) -> EntriesMut<'a, T> {
+        self.iter_mut()
+    }
+
     /// Get an iterator over the key-value pairs in the map, with the
     /// ability to mutate the values.
     ///
@@ -271,7 +277,7 @@ impl<T> TrieMap<T> {
     /// use std::collections::TrieMap;
     /// let mut map: TrieMap<int> = [(1, 2), (2, 4), (3, 6)].iter().map(|&x| x).collect();
     ///
-    /// for (key, value) in map.mut_iter() {
+    /// for (key, value) in map.iter_mut() {
     ///     *value = -(key as int);
     /// }
     ///
@@ -279,8 +285,8 @@ impl<T> TrieMap<T> {
     /// assert_eq!(map.find(&2), Some(&-2));
     /// assert_eq!(map.find(&3), Some(&-3));
     /// ```
-    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, T> {
-        let mut iter = unsafe {MutEntries::new()};
+    pub fn iter_mut<'a>(&'a mut self) -> EntriesMut<'a, T> {
+        let mut iter = unsafe {EntriesMut::new()};
         iter.stack[0] = self.root.children.mut_iter();
         iter.length = 1;
         iter.remaining_min = self.length;
@@ -418,13 +424,20 @@ impl<T> TrieMap<T> {
     pub fn upper_bound<'a>(&'a self, key: uint) -> Entries<'a, T> {
         self.bound(key, true)
     }
+
     // If `upper` is true then returns upper_bound else returns lower_bound.
     #[inline]
-    fn mut_bound<'a>(&'a mut self, key: uint, upper: bool) -> MutEntries<'a, T> {
-        bound!(MutEntries, self = self,
+    fn bound_mut<'a>(&'a mut self, key: uint, upper: bool) -> EntriesMut<'a, T> {
+        bound!(EntriesMut, self = self,
                key = key, is_upper = upper,
                slice_from = mut_slice_from, iter = mut_iter,
                mutability = mut)
+    }
+
+    /// Deprecated: renamed to `lower_bound_mut`.
+    #[deprecated = "renamed to lower_bound_mut"]
+    pub fn mut_lower_bound<'a>(&'a mut self, key: uint) -> EntriesMut<'a, T> {
+        self.lower_bound_mut(key)
     }
 
     /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
@@ -440,7 +453,7 @@ impl<T> TrieMap<T> {
     /// assert_eq!(map.mut_lower_bound(5).next(), Some((6, &mut "c")));
     /// assert_eq!(map.mut_lower_bound(10).next(), None);
     ///
-    /// for (key, value) in map.mut_lower_bound(4) {
+    /// for (key, value) in map.lower_bound_mut(4) {
     ///     *value = "changed";
     /// }
     ///
@@ -448,8 +461,14 @@ impl<T> TrieMap<T> {
     /// assert_eq!(map.find(&4), Some(&"changed"));
     /// assert_eq!(map.find(&6), Some(&"changed"));
     /// ```
-    pub fn mut_lower_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
-        self.mut_bound(key, false)
+    pub fn lower_bound_mut<'a>(&'a mut self, key: uint) -> EntriesMut<'a, T> {
+        self.bound_mut(key, false)
+    }
+
+    /// Deprecated: renamed to `upper_bound_mut`.
+    #[deprecated = "renamed to upper_bound_mut"]
+    pub fn mut_upper_bound<'a>(&'a mut self, key: uint) -> EntriesMut<'a, T> {
+        self.upper_bound_mut(key)
     }
 
     /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
@@ -465,7 +484,7 @@ impl<T> TrieMap<T> {
     /// assert_eq!(map.mut_upper_bound(5).next(), Some((6, &mut "c")));
     /// assert_eq!(map.mut_upper_bound(10).next(), None);
     ///
-    /// for (key, value) in map.mut_upper_bound(4) {
+    /// for (key, value) in map.upper_bound_mut(4) {
     ///     *value = "changed";
     /// }
     ///
@@ -473,8 +492,8 @@ impl<T> TrieMap<T> {
     /// assert_eq!(map.find(&4), Some(&"b"));
     /// assert_eq!(map.find(&6), Some(&"changed"));
     /// ```
-    pub fn mut_upper_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
-        self.mut_bound(key, true)
+    pub fn upper_bound_mut<'a>(&'a mut self, key: uint) -> EntriesMut<'a, T> {
+        self.bound_mut(key, true)
     }
 }
 
@@ -852,12 +871,16 @@ pub struct Entries<'a, T> {
 
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
-pub struct MutEntries<'a, T> {
+pub struct EntriesMut<'a, T> {
     stack: [slice::MutItems<'a, Child<T>>, .. NUM_CHUNKS],
     length: uint,
     remaining_min: uint,
     remaining_max: uint
 }
+
+/// Deprecated: renamed to `EntriesMut`.
+#[deprecated = "renamed to EntriesMut"]
+pub type MutEntries<'a, T> = EntriesMut<'a, T>;
 
 /// Forward iterator over the keys of a map
 pub type Keys<'a, T> =
@@ -982,7 +1005,7 @@ macro_rules! iterator_impl {
 }
 
 iterator_impl! { Entries, iter = iter, mutability = }
-iterator_impl! { MutEntries, iter = mut_iter, mutability = mut }
+iterator_impl! { EntriesMut, iter = mut_iter, mutability = mut }
 
 /// Forward iterator over a set.
 pub struct SetItems<'a> {
@@ -1265,7 +1288,7 @@ mod test_map {
     }
 
     #[test]
-    fn test_mut_bound() {
+    fn test_bound_mut() {
         let empty_map : TrieMap<uint> = TrieMap::new();
         assert_eq!(empty_map.lower_bound(0).next(), None);
         assert_eq!(empty_map.upper_bound(0).next(), None);

@@ -18,7 +18,7 @@ use util::ppaux::Repr;
 use std::fmt;
 use std::mem;
 use std::raw;
-use std::slice::{Items, MutItems};
+use std::slice::{Items, ItemsMut};
 use std::vec::Vec;
 use syntax::codemap::{Span, DUMMY_SP};
 
@@ -32,7 +32,7 @@ trait HomogeneousTuple3<T> {
     fn as_slice<'a>(&'a self) -> &'a [T];
     fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T];
     fn iter<'a>(&'a self) -> Items<'a, T>;
-    fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T>;
+    fn iter_mut<'a>(&'a mut self) -> ItemsMut<'a, T>;
     fn get<'a>(&'a self, index: uint) -> Option<&'a T>;
     fn get_mut<'a>(&'a mut self, index: uint) -> Option<&'a mut T>;
 }
@@ -63,8 +63,8 @@ impl<T> HomogeneousTuple3<T> for (T, T, T) {
         slice.iter()
     }
 
-    fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
-        self.as_mut_slice().mut_iter()
+    fn iter_mut<'a>(&'a mut self) -> ItemsMut<'a, T> {
+        self.as_mut_slice().iter_mut()
     }
 
     fn get<'a>(&'a self, index: uint) -> Option<&'a T> {
@@ -177,7 +177,7 @@ impl Substs {
         }
     }
 
-    pub fn mut_regions<'a>(&'a mut self) -> &'a mut VecPerParamSpace<ty::Region> {
+    pub fn regions_mut<'a>(&'a mut self) -> &'a mut VecPerParamSpace<ty::Region> {
         /*!
          * Since ErasedRegions are only to be used in trans, most of
          * the compiler can use this method to easily access the set

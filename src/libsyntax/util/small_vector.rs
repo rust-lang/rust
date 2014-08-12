@@ -85,7 +85,7 @@ impl<T> SmallVector<T> {
     }
 
     pub fn push_all(&mut self, other: SmallVector<T>) {
-        for v in other.move_iter() {
+        for v in other.iter_owned() {
             self.push(v);
         }
     }
@@ -103,7 +103,7 @@ impl<T> SmallVector<T> {
             One(v) => v,
             Many(v) => {
                 if v.len() == 1 {
-                    v.move_iter().next().unwrap()
+                    v.iter_owned().next().unwrap()
                 } else {
                     fail!(err)
                 }
@@ -112,27 +112,37 @@ impl<T> SmallVector<T> {
         }
     }
 
-    pub fn move_iter(self) -> MoveItems<T> {
+    /// Deprecated: renamed to `iter_owned`.
+    #[deprecated = "renamed to iter_owned"]
+    pub fn move_iter(self) -> ItemsOwned<T> {
+        self.iter_owned()
+    }
+
+    pub fn iter_owned(self) -> ItemsOwned<T> {
         let repr = match self.repr {
             Zero => ZeroIterator,
             One(v) => OneIterator(v),
-            Many(vs) => ManyIterator(vs.move_iter())
+            Many(vs) => ManyIterator(vs.iter_owned())
         };
-        MoveItems { repr: repr }
+        ItemsOwned { repr: repr }
     }
 }
 
-pub struct MoveItems<T> {
-    repr: MoveItemsRepr<T>,
+pub struct ItemsOwned<T> {
+    repr: ItemsOwnedRepr<T>,
 }
 
-enum MoveItemsRepr<T> {
+/// Deprecated: renamed to `ItemsOwned`.
+#[deprecated = "renamed to ItemsOwned"]
+pub type MoveItems<T> = ItemsOwned<T>;
+
+enum ItemsOwnedRepr<T> {
     ZeroIterator,
     OneIterator(T),
-    ManyIterator(vec::MoveItems<T>),
+    ManyIterator(vec::ItemsOwned<T>),
 }
 
-impl<T> Iterator<T> for MoveItems<T> {
+impl<T> Iterator<T> for ItemsOwned<T> {
     fn next(&mut self) -> Option<T> {
         match self.repr {
             ZeroIterator => None,
@@ -186,7 +196,7 @@ mod test {
 
     #[test]
     fn test_from_iter() {
-        let v: SmallVector<int> = (vec!(1i, 2, 3)).move_iter().collect();
+        let v: SmallVector<int> = (vec!(1i, 2, 3)).iter_owned().collect();
         assert_eq!(3, v.len());
         assert_eq!(&1, v.get(0));
         assert_eq!(&2, v.get(1));
@@ -196,14 +206,14 @@ mod test {
     #[test]
     fn test_move_iter() {
         let v = SmallVector::zero();
-        let v: Vec<int> = v.move_iter().collect();
+        let v: Vec<int> = v.iter_owned().collect();
         assert_eq!(Vec::new(), v);
 
         let v = SmallVector::one(1i);
-        assert_eq!(vec!(1i), v.move_iter().collect());
+        assert_eq!(vec!(1i), v.iter_owned().collect());
 
         let v = SmallVector::many(vec!(1i, 2i, 3i));
-        assert_eq!(vec!(1i, 2i, 3i), v.move_iter().collect());
+        assert_eq!(vec!(1i, 2i, 3i), v.iter_owned().collect());
     }
 
     #[test]

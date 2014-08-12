@@ -248,7 +248,7 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
     fn apply_gen_kill(&self, cfgidx: CFGIndex, bits: &mut [uint]) {
         //! Applies the gen and kill sets for `cfgidx` to `bits`
         debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [before]",
-               self.analysis_name, cfgidx, mut_bits_to_string(bits));
+               self.analysis_name, cfgidx, bits_to_string_mut(bits));
         assert!(self.bits_per_id > 0);
 
         let (start, end) = self.compute_id_range(cfgidx);
@@ -258,7 +258,7 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         bitwise(bits, kills, &Subtract);
 
         debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [after]",
-               self.analysis_name, cfgidx, mut_bits_to_string(bits));
+               self.analysis_name, cfgidx, bits_to_string_mut(bits));
     }
 
     fn compute_id_range(&self, cfgidx: CFGIndex) -> (uint, uint) {
@@ -416,10 +416,10 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
             if changed {
                 let bits = self.kills.mut_slice(start, end);
                 debug!("{:s} add_kills_from_flow_exits flow_exit={} bits={} [before]",
-                       self.analysis_name, flow_exit, mut_bits_to_string(bits));
+                       self.analysis_name, flow_exit, bits_to_string_mut(bits));
                 bits.copy_from(orig_kills.as_slice());
                 debug!("{:s} add_kills_from_flow_exits flow_exit={} bits={} [after]",
-                       self.analysis_name, flow_exit, mut_bits_to_string(bits));
+                       self.analysis_name, flow_exit, bits_to_string_mut(bits));
             }
             true
         });
@@ -536,7 +536,7 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
     }
 }
 
-fn mut_bits_to_string(words: &mut [uint]) -> String {
+fn bits_to_string_mut(words: &mut [uint]) -> String {
     bits_to_string(words)
 }
 
@@ -576,7 +576,7 @@ fn bitwise<Op:BitwiseOperator>(out_vec: &mut [uint],
 
 fn set_bit(words: &mut [uint], bit: uint) -> bool {
     debug!("set_bit: words={} bit={}",
-           mut_bits_to_string(words), bit_str(bit));
+           bits_to_string_mut(words), bit_str(bit));
     let word = bit / uint::BITS;
     let bit_in_word = bit % uint::BITS;
     let bit_mask = 1 << bit_in_word;

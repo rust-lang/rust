@@ -249,9 +249,13 @@ impl<T> RingBuf<T> {
     /// buf.push(4);
     /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), &[&5, &3, &4]);
     /// ```
-    pub fn iter<'a>(&'a self) -> Items<'a, T> {
+    pub fn iter(&self) -> Items<T> {
         Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
     }
+
+    /// Deprecated. Use `iter_mut` instead.
+    #[deprecated = "use iter_mut instead"]
+    pub fn mut_iter(&mut self) -> ItemsMut<T> { self.iter_mut() }
 
     /// Front-to-back iterator which returns mutable values.
     ///
@@ -264,12 +268,12 @@ impl<T> RingBuf<T> {
     /// buf.push(5i);
     /// buf.push(3);
     /// buf.push(4);
-    /// for num in buf.mut_iter() {
+    /// for num in buf.iter_mut() {
     ///     *num = *num - 2;
     /// }
     /// assert_eq!(buf.mut_iter().collect::<Vec<&mut int>>().as_slice(), &[&mut 3, &mut 1, &mut 2]);
     /// ```
-    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
+    pub fn iter_mut(&mut self) -> ItemsMut<T> {
         let start_index = raw_index(self.lo, self.elts.len(), 0);
         let end_index = raw_index(self.lo, self.elts.len(), self.nelts);
 
@@ -281,14 +285,14 @@ impl<T> RingBuf<T> {
             //    0 to end_index
             let (temp, remaining1) = self.elts.mut_split_at(start_index);
             let (remaining2, _) = temp.mut_split_at(end_index);
-            MutItems { remaining1: remaining1,
+            ItemsMut { remaining1: remaining1,
                                  remaining2: remaining2,
                                  nelts: self.nelts }
         } else {
             // Items to iterate goes from start_index to end_index:
             let (empty, elts) = self.elts.mut_split_at(0);
             let remaining1 = elts.mut_slice(start_index, end_index);
-            MutItems { remaining1: remaining1,
+            ItemsMut { remaining1: remaining1,
                                  remaining2: empty,
                                  nelts: self.nelts }
         }
@@ -351,13 +355,13 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
 }
 
 /// RingBuf mutable iterator
-pub struct MutItems<'a, T> {
+pub struct ItemsMut<'a, T> {
     remaining1: &'a mut [Option<T>],
     remaining2: &'a mut [Option<T>],
     nelts: uint,
 }
 
-impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
+impl<'a, T> Iterator<&'a mut T> for ItemsMut<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
@@ -379,7 +383,7 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a mut T> for ItemsMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
@@ -396,7 +400,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
     }
 }
 
-impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
+impl<'a, T> ExactSize<&'a mut T> for ItemsMut<'a, T> {}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.

@@ -343,6 +343,12 @@ impl<K: Ord, V> TreeMap<K, V> {
         RevEntries{iter: self.iter()}
     }
 
+    /// Deprecated: renamed to `iter_mut`.
+    #[deprecated = "renamed to iter_mut"]
+    pub fn mut_iter<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
+        self.iter_mut()
+    }
+
     /// Get a lazy forward iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
@@ -356,7 +362,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// map.insert("b", 2i);
     ///
     /// // Add 10 until we find "b"
-    /// for (key, value) in map.mut_iter() {
+    /// for (key, value) in map.iter_mut() {
     ///     *value += 10;
     ///     if key == &"b" { break }
     /// }
@@ -365,14 +371,21 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(map.find(&"b"), Some(&12));
     /// assert_eq!(map.find(&"c"), Some(&3));
     /// ```
-    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
-        MutEntries {
+    pub fn iter_mut<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
+        EntriesMut {
             stack: vec!(),
-            node: mut_deref(&mut self.root),
+            node: deref_mut(&mut self.root),
             remaining_min: self.length,
             remaining_max: self.length
         }
     }
+
+    /// Deprecated: renamed to `rev_iter_mut`.
+    #[deprecated = "renamed to rev_iter_mut"]
+    pub fn mut_rev_iter<'a>(&'a mut self) -> RevEntriesMut<'a, K, V> {
+        self.rev_iter_mut()
+    }
+
     /// Get a lazy reverse iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
@@ -386,7 +399,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// map.insert("b", 2i);
     ///
     /// // Add 10 until we find "b"
-    /// for (key, value) in map.mut_rev_iter() {
+    /// for (key, value) in map.rev_iter_mut() {
     ///     *value += 10;
     ///     if key == &"b" { break }
     /// }
@@ -395,10 +408,15 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(map.find(&"b"), Some(&12));
     /// assert_eq!(map.find(&"c"), Some(&13));
     /// ```
-    pub fn mut_rev_iter<'a>(&'a mut self) -> RevMutEntries<'a, K, V> {
-        RevMutEntries{iter: self.mut_iter()}
+    pub fn rev_iter_mut<'a>(&'a mut self) -> RevEntriesMut<'a, K, V> {
+        RevEntriesMut{iter: self.mut_iter()}
     }
 
+    /// Deprecated: renamed to `iter_owned`.
+    #[deprecated = "renamed to iter_owned"]
+    pub fn move_iter(self) -> EntriesOwned<K, V> {
+        self.iter_owned()
+    }
 
     /// Get a lazy iterator that consumes the treemap, it is not usable
     /// after calling this.
@@ -413,16 +431,16 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// map.insert("b", 2i);
     ///
     /// // Not possible with a regular `.iter()`
-    /// let vec: Vec<(&str, int)> = map.move_iter().collect();
+    /// let vec: Vec<(&str, int)> = map.iter_owned().collect();
     /// assert_eq!(vec, vec![("a", 1), ("b", 2), ("c", 3)]);
     /// ```
-    pub fn move_iter(self) -> MoveEntries<K, V> {
+    pub fn iter_owned(self) -> EntriesOwned<K, V> {
         let TreeMap { root: root, length: length } = self;
         let stk = match root {
             None => vec!(),
             Some(box tn) => vec!(tn)
         };
-        MoveEntries {
+        EntriesOwned {
             stack: stk,
             remaining: length
         }
@@ -576,13 +594,19 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Get a lazy iterator that should be initialized using
     /// `traverse_left`/`traverse_right`/`traverse_complete`.
-    fn mut_iter_for_traversal<'a>(&'a mut self) -> MutEntries<'a, K, V> {
-        MutEntries {
+    fn iter_for_traversal_mut<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
+        EntriesMut {
             stack: vec!(),
-            node: mut_deref(&mut self.root),
+            node: deref_mut(&mut self.root),
             remaining_min: 0,
             remaining_max: self.length
         }
+    }
+
+    /// Deprecated: renamed to `lower_bound_mut`.
+    #[deprecated = "renamed to lower_bound_mut"]
+    pub fn mut_lower_bound<'a>(&'a mut self, k: &K) -> EntriesMut<'a, K, V> {
+        self.lower_bound_mut(k)
     }
 
     /// Return a lazy value iterator to the first key-value pair (with
@@ -606,7 +630,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(map.mut_lower_bound(&5).next(), Some((&6, &mut "c")));
     /// assert_eq!(map.mut_lower_bound(&10).next(), None);
     ///
-    /// for (key, value) in map.mut_lower_bound(&4) {
+    /// for (key, value) in map.lower_bound_mut(&4) {
     ///     *value = "changed";
     /// }
     ///
@@ -615,8 +639,14 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(map.find(&6), Some(&"changed"));
     /// assert_eq!(map.find(&8), Some(&"changed"));
     /// ```
-    pub fn mut_lower_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
-        bound_setup!(self.mut_iter_for_traversal(), k, true)
+    pub fn lower_bound_mut<'a>(&'a mut self, k: &K) -> EntriesMut<'a, K, V> {
+        bound_setup!(self.iter_for_traversal_mut(), k, true)
+    }
+
+    /// Deprecated: renamed to `upper_bound_mut`.
+    #[deprecated = "renamed to upper_bound_mut"]
+    pub fn mut_upper_bound<'a>(&'a mut self, k: &K) -> EntriesMut<'a, K, V> {
+        self.upper_bound_mut(k)
     }
 
     /// Return a lazy iterator to the first key-value pair (with the
@@ -640,7 +670,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(map.mut_upper_bound(&5).next(), Some((&6, &mut "c")));
     /// assert_eq!(map.mut_upper_bound(&10).next(), None);
     ///
-    /// for (key, value) in map.mut_upper_bound(&4) {
+    /// for (key, value) in map.upper_bound_mut(&4) {
     ///     *value = "changed";
     /// }
     ///
@@ -649,15 +679,15 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// assert_eq!(map.find(&6), Some(&"changed"));
     /// assert_eq!(map.find(&8), Some(&"changed"));
     /// ```
-    pub fn mut_upper_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
-        bound_setup!(self.mut_iter_for_traversal(), k, false)
+    pub fn upper_bound_mut<'a>(&'a mut self, k: &K) -> EntriesMut<'a, K, V> {
+        bound_setup!(self.iter_for_traversal_mut(), k, false)
     }
 }
 
 /// Lazy forward iterator over a map
 pub struct Entries<'a, K, V> {
     stack: Vec<&'a TreeNode<K, V>>,
-    // See the comment on MutEntries; this is just to allow
+    // See the comment on EntriesMut; this is just to allow
     // code-sharing (for this immutable-values iterator it *could* very
     // well be Option<&'a TreeNode<K,V>>).
     node: *const TreeNode<K, V>,
@@ -672,7 +702,7 @@ pub struct RevEntries<'a, K, V> {
 
 /// Lazy forward iterator over a map that allows for the mutation of
 /// the values.
-pub struct MutEntries<'a, K, V> {
+pub struct EntriesMut<'a, K, V> {
     stack: Vec<&'a mut TreeNode<K, V>>,
     // Unfortunately, we require some unsafe-ness to get around the
     // fact that we would be storing a reference *into* one of the
@@ -698,11 +728,18 @@ pub struct MutEntries<'a, K, V> {
     remaining_max: uint
 }
 
+/// Deprecated: renamed to `EntriesMut`.
+#[deprecated = "renamed to EntriesMut"]
+pub type MutEntries<'a, K, V> = EntriesMut<'a, K, V>;
+
 /// Lazy backward iterator over a map
-pub struct RevMutEntries<'a, K, V> {
-    iter: MutEntries<'a, K, V>,
+pub struct RevEntriesMut<'a, K, V> {
+    iter: EntriesMut<'a, K, V>,
 }
 
+/// Deprecated: renamed to `RevEntriesMut`.
+#[deprecated = "renamed to RevEntriesMut"]
+pub type RevMutEntries<'a, K, V> = RevEntriesMut<'a, K, V>;
 
 /// TreeMap keys iterator
 pub type Keys<'a, K, V> =
@@ -769,7 +806,7 @@ macro_rules! define_iterator {
             }
 
             /// traverse_left, traverse_right and traverse_complete are
-            /// used to initialize Entries/MutEntries
+            /// used to initialize Entries/EntriesMut
             /// pointing to element inside tree structure.
             ///
             /// They should be used in following manner:
@@ -843,9 +880,9 @@ define_iterator! {
     addr_mut =
 }
 define_iterator! {
-    MutEntries,
-    RevMutEntries,
-    deref = mut_deref,
+    EntriesMut,
+    RevEntriesMut,
+    deref = deref_mut,
 
     addr_mut = mut
 }
@@ -860,7 +897,7 @@ fn deref<'a, K, V>(node: &'a Option<Box<TreeNode<K, V>>>) -> *const TreeNode<K, 
     }
 }
 
-fn mut_deref<K, V>(x: &mut Option<Box<TreeNode<K, V>>>)
+fn deref_mut<K, V>(x: &mut Option<Box<TreeNode<K, V>>>)
              -> *mut TreeNode<K, V> {
     match *x {
         Some(ref mut n) => {
@@ -874,12 +911,12 @@ fn mut_deref<K, V>(x: &mut Option<Box<TreeNode<K, V>>>)
 
 
 /// Lazy forward iterator over a map that consumes the map while iterating
-pub struct MoveEntries<K, V> {
+pub struct EntriesOwned<K, V> {
     stack: Vec<TreeNode<K, V>>,
     remaining: uint
 }
 
-impl<K, V> Iterator<(K, V)> for MoveEntries<K,V> {
+impl<K, V> Iterator<(K, V)> for EntriesOwned<K,V> {
     #[inline]
     fn next(&mut self) -> Option<(K, V)> {
         while !self.stack.is_empty() {
@@ -1154,6 +1191,12 @@ impl<T: Ord> TreeSet<T> {
         RevSetItems{iter: self.map.rev_iter()}
     }
 
+    /// Deprecated: renamed to `iter_owned`.
+    #[deprecated = "renamed to iter_owned"]
+    pub fn move_iter(self) -> SetItemsOwned<T> {
+        self.iter_owned()
+    }
+
     /// Creates a consuming iterator, that is, one that moves each value out of the
     /// set in ascending order. The set cannot be used after calling this.
     ///
@@ -1168,8 +1211,8 @@ impl<T: Ord> TreeSet<T> {
     /// assert_eq!(v, vec![1, 2, 3, 4, 5]);
     /// ```
     #[inline]
-    pub fn move_iter(self) -> MoveSetItems<T> {
-        self.map.move_iter().map(|(value, _)| value)
+    pub fn iter_owned(self) -> SetItemsOwned<T> {
+        self.map.iter_owned().map(|(value, _)| value)
     }
 
     /// Get a lazy iterator pointing to the first value not less than `v` (greater or equal).
@@ -1319,7 +1362,11 @@ pub struct RevSetItems<'a, T> {
 }
 
 /// Lazy forward iterator over a set that consumes the set while iterating
-pub type MoveSetItems<T> = iter::Map<'static, (T, ()), T, MoveEntries<T, ()>>;
+pub type SetItemsOwned<T> = iter::Map<'static, (T, ()), T, EntriesOwned<T, ()>>;
+
+/// Deprecated: renamed to `SetItemsOwned`.
+#[deprecated = "renamed to SetItemsOwned"]
+pub type MoveSetItems<T> = SetItemsOwned<T>;
 
 /// Lazy iterator producing elements in the set difference (in-order)
 pub struct DifferenceItems<'a, T> {

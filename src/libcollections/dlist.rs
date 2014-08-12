@@ -62,18 +62,26 @@ impl<'a, T> Clone for Items<'a, T> {
 }
 
 /// Double-ended mutable DList iterator
-pub struct MutItems<'a, T> {
+pub struct ItemsMut<'a, T> {
     list: &'a mut DList<T>,
     head: Rawlink<Node<T>>,
     tail: Rawlink<Node<T>>,
     nelem: uint,
 }
 
+/// Deprecated: renamed to `ItemsMut`.
+#[deprecated = "renamed to ItemsMut"]
+pub type MutItems<'a, T> = ItemsMut<'a, T>;
+
 /// DList consuming iterator
 #[deriving(Clone)]
-pub struct MoveItems<T> {
+pub struct ItemsOwned<T> {
     list: DList<T>
 }
+
+/// Deprecated: renamed to `ItemsOwned`.
+#[deprecated = "renamed to ItemsOwned"]
+pub type MoveItems<T> = ItemsOwned<T>;
 
 /// Rawlink is a type like Option<T> but for holding a raw pointer
 impl<T> Rawlink<T> {
@@ -460,18 +468,23 @@ impl<T> DList<T> {
 
     /// Provide a forward iterator
     #[inline]
-    pub fn iter<'a>(&'a self) -> Items<'a, T> {
+    pub fn iter(&self) -> Items<T> {
         Items{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
     }
 
+    /// Deprecated. Use `iter_mut` instead.
+    #[inline]
+    #[deprecated = "use iter_mut instead"]
+    pub fn mut_iter(&mut self) -> ItemsMut<T> { self.iter_mut() }
+
     /// Provide a forward iterator with mutable references
     #[inline]
-    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
+    pub fn iter_mut(&mut self) -> ItemsMut<T> {
         let head_raw = match self.list_head {
             Some(ref mut h) => Rawlink::some(&mut **h),
             None => Rawlink::none(),
         };
-        MutItems{
+        ItemsMut{
             nelem: self.len(),
             head: head_raw,
             tail: self.list_tail,
@@ -479,11 +492,14 @@ impl<T> DList<T> {
         }
     }
 
+    /// Deprecated. Use `iter_owned` instead.
+    #[inline]
+    pub fn move_iter(self) -> ItemsOwned<T> { self.iter_owned() }
 
     /// Consume the list into an iterator yielding elements by value
     #[inline]
-    pub fn move_iter(self) -> MoveItems<T> {
-        MoveItems{list: self}
+    pub fn iter_owned(self) -> ItemsOwned<T> {
+        ItemsOwned{list: self}
     }
 }
 
@@ -555,7 +571,7 @@ impl<'a, A> DoubleEndedIterator<&'a A> for Items<'a, A> {
 
 impl<'a, A> ExactSize<&'a A> for Items<'a, A> {}
 
-impl<'a, A> Iterator<&'a mut A> for MutItems<'a, A> {
+impl<'a, A> Iterator<&'a mut A> for ItemsMut<'a, A> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut A> {
         if self.nelem == 0 {
@@ -577,7 +593,7 @@ impl<'a, A> Iterator<&'a mut A> for MutItems<'a, A> {
     }
 }
 
-impl<'a, A> DoubleEndedIterator<&'a mut A> for MutItems<'a, A> {
+impl<'a, A> DoubleEndedIterator<&'a mut A> for ItemsMut<'a, A> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut A> {
         if self.nelem == 0 {
@@ -591,7 +607,7 @@ impl<'a, A> DoubleEndedIterator<&'a mut A> for MutItems<'a, A> {
     }
 }
 
-impl<'a, A> ExactSize<&'a mut A> for MutItems<'a, A> {}
+impl<'a, A> ExactSize<&'a mut A> for ItemsMut<'a, A> {}
 
 /// Allow mutating the DList while iterating
 pub trait ListInsertion<A> {
@@ -604,8 +620,8 @@ pub trait ListInsertion<A> {
     fn peek_next<'a>(&'a mut self) -> Option<&'a mut A>;
 }
 
-// private methods for MutItems
-impl<'a, A> MutItems<'a, A> {
+// private methods for ItemsMut
+impl<'a, A> ItemsMut<'a, A> {
     fn insert_next_node(&mut self, mut ins_node: Box<Node<A>>) {
         // Insert before `self.head` so that it is between the
         // previously yielded element and self.head.
@@ -627,7 +643,7 @@ impl<'a, A> MutItems<'a, A> {
     }
 }
 
-impl<'a, A> ListInsertion<A> for MutItems<'a, A> {
+impl<'a, A> ListInsertion<A> for ItemsMut<'a, A> {
     #[inline]
     fn insert_next(&mut self, elt: A) {
         self.insert_next_node(box Node::new(elt))
@@ -642,7 +658,7 @@ impl<'a, A> ListInsertion<A> for MutItems<'a, A> {
     }
 }
 
-impl<A> Iterator<A> for MoveItems<A> {
+impl<A> Iterator<A> for ItemsOwned<A> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.list.pop_front() }
 
@@ -652,7 +668,7 @@ impl<A> Iterator<A> for MoveItems<A> {
     }
 }
 
-impl<A> DoubleEndedIterator<A> for MoveItems<A> {
+impl<A> DoubleEndedIterator<A> for ItemsOwned<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
 }

@@ -385,12 +385,24 @@ mod table {
             Entries { table: self, idx: 0, elems_seen: 0 }
         }
 
-        pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
-            MutEntries { table: self, idx: 0, elems_seen: 0 }
+        /// Deprecated: renamed to `iter_mut`.
+        #[deprecated = "renamed to iter_mut"]
+        pub fn mut_iter<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
+            self.iter_mut()
         }
 
-        pub fn move_iter(self) -> MoveEntries<K, V> {
-            MoveEntries { table: self, idx: 0 }
+        pub fn iter_mut<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
+            EntriesMut { table: self, idx: 0, elems_seen: 0 }
+        }
+
+        /// Deprecated: renamed to `iter_owned`.
+        #[deprecated = "renamed to iter_owned"]
+        pub fn move_iter(self) -> EntriesOwned<K, V> {
+            self.iter_owned()
+        }
+
+        pub fn iter_owned(self) -> EntriesOwned<K, V> {
+            EntriesOwned { table: self, idx: 0 }
         }
     }
 
@@ -416,17 +428,25 @@ mod table {
     }
 
     /// Iterator over mutable references to entries in a table.
-    pub struct MutEntries<'a, K, V> {
+    pub struct EntriesMut<'a, K, V> {
         table: &'a mut RawTable<K, V>,
         idx: uint,
         elems_seen: uint,
     }
 
+    /// Deprecated: renamed to `EntriesMut`
+    #[deprecated = "renamed to EntriesMut"]
+    pub type MutEntries<'a, K, V> = EntriesMut<'a, K, V>;
+
     /// Iterator over the entries in a table, consuming the table.
-    pub struct MoveEntries<K, V> {
+    pub struct EntriesOwned<K, V> {
         table: RawTable<K, V>,
         idx: uint
     }
+
+    /// Deprecated: renamed to `EntriesOwned`
+    #[deprecated = "renamed to EntriesOwned"]
+    pub type MoveEntries<K, V> = EntriesOwned<K, V>;
 
     impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
         fn next(&mut self) -> Option<(&'a K, &'a V)> {
@@ -452,7 +472,7 @@ mod table {
         }
     }
 
-    impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
+    impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for EntriesMut<'a, K, V> {
         fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
             while self.idx < self.table.capacity() {
                 let i = self.idx;
@@ -479,7 +499,7 @@ mod table {
         }
     }
 
-    impl<K, V> Iterator<(SafeHash, K, V)> for MoveEntries<K, V> {
+    impl<K, V> Iterator<(SafeHash, K, V)> for EntriesOwned<K, V> {
         fn next(&mut self) -> Option<(SafeHash, K, V)> {
             while self.idx < self.table.capacity() {
                 let i = self.idx;
@@ -535,7 +555,7 @@ mod table {
     impl<K, V> Drop for RawTable<K, V> {
         fn drop(&mut self) {
             // This is in reverse because we're likely to have partially taken
-            // some elements out with `.move_iter()` from the front.
+            // some elements out with `.iter_owned()` from the front.
             for i in range_step_inclusive(self.capacity as int - 1, 0, -1) {
                 // Check if the size is 0, so we don't do a useless scan when
                 // dropping empty tables such as on resize.
@@ -1147,7 +1167,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         let old_table = replace(&mut self.table, table::RawTable::new(new_capacity));
         let old_size  = old_table.size();
 
-        for (h, k, v) in old_table.move_iter() {
+        for (h, k, v) in old_table.iter_owned() {
             self.insert_hashed_nocheck(h, k, v);
         }
 
@@ -1374,7 +1394,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// let new = vec!["a key", "b key", "z key"];
     ///
-    /// for k in new.move_iter() {
+    /// for k in new.iter_owned() {
     ///     map.find_with_or_insert_with(
     ///         k, "new value",
     ///         // if the key does exist either prepend or append this
@@ -1618,6 +1638,12 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         self.table.iter()
     }
 
+    /// Deprecated: renamed to `iter_mut`
+    #[deprecated = "renamed to iter_mut"]
+    pub fn mut_iter<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
+        self.iter_mut()
+    }
+
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
     /// Iterator element type is `(&'a K, &'a mut V)`.
@@ -1633,7 +1659,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// map.insert("c", 3);
     ///
     /// // Update all values
-    /// for (_, val) in map.mut_iter() {
+    /// for (_, val) in map.iter_mut() {
     ///     *val *= 2;
     /// }
     ///
@@ -1641,8 +1667,14 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///     println!("key: {} val: {}", key, val);
     /// }
     /// ```
-    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
-        self.table.mut_iter()
+    pub fn iter_mut<'a>(&'a mut self) -> EntriesMut<'a, K, V> {
+        self.table.iter_mut()
+    }
+
+    /// Deprecated: renamed to `iter_owned`.
+    #[deprecated = "renamed to iter_owned"]
+    pub fn move_iter(self) -> EntriesOwned<K, V> {
+        self.iter_owned()
     }
 
     /// Creates a consuming iterator, that is, one that moves each key-value
@@ -1660,10 +1692,10 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// map.insert("c", 3);
     ///
     /// // Not possible with .iter()
-    /// let vec: Vec<(&str, int)> = map.move_iter().collect();
+    /// let vec: Vec<(&str, int)> = map.iter_owned().collect();
     /// ```
-    pub fn move_iter(self) -> MoveEntries<K, V> {
-        self.table.move_iter().map(|(_, k, v)| (k, v))
+    pub fn iter_owned(self) -> EntriesOwned<K, V> {
+        self.table.iter_owned().map(|(_, k, v)| (k, v))
     }
 }
 
@@ -1742,11 +1774,11 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H>
 pub type Entries<'a, K, V> = table::Entries<'a, K, V>;
 
 /// HashMap mutable values iterator
-pub type MutEntries<'a, K, V> = table::MutEntries<'a, K, V>;
+pub type EntriesMut<'a, K, V> = table::EntriesMut<'a, K, V>;
 
 /// HashMap move iterator
-pub type MoveEntries<K, V> =
-    iter::Map<'static, (table::SafeHash, K, V), (K, V), table::MoveEntries<K, V>>;
+pub type EntriesOwned<K, V> =
+    iter::Map<'static, (table::SafeHash, K, V), (K, V), table::EntriesOwned<K, V>>;
 
 /// HashMap keys iterator
 pub type Keys<'a, K, V> =
@@ -1778,8 +1810,12 @@ pub type SetItems<'a, K> =
     iter::Map<'static, (&'a K, &'a ()), &'a K, Entries<'a, K, ()>>;
 
 /// HashSet move iterator
-pub type SetMoveItems<K> =
-    iter::Map<'static, (K, ()), K, MoveEntries<K, ()>>;
+pub type SetItemsOwned<K> =
+    iter::Map<'static, (K, ()), K, EntriesOwned<K, ()>>;
+
+/// Deprecated: renamed to `SetItemsOwned`.
+#[deprecated = "renamed to SetItemsOwned"]
+pub type SetMoveItems<K> = SetItemsOwned<K>;
 
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
@@ -1996,6 +2032,12 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
         self.map.keys()
     }
 
+    /// Deprecated: renamed to `iter_owned`.
+    #[deprecated = "renamed to iter_owned"]
+    pub fn move_iter(self) -> SetItemsOwned<T> {
+        self.iter_owned()
+    }
+
     /// Creates a consuming iterator, that is, one that moves each value out
     /// of the set in arbitrary order. The set cannot be used after calling
     /// this.
@@ -2009,15 +2051,15 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// set.insert("b".to_string());
     ///
     /// // Not possible to collect to a Vec<String> with a regular `.iter()`.
-    /// let v: Vec<String> = set.move_iter().collect();
+    /// let v: Vec<String> = set.iter_owned().collect();
     ///
     /// // Will print in an arbitrary order.
     /// for x in v.iter() {
     ///     println!("{}", x);
     /// }
     /// ```
-    pub fn move_iter(self) -> SetMoveItems<T> {
-        self.map.move_iter().map(|(k, _)| k)
+    pub fn iter_owned(self) -> SetItemsOwned<T> {
+        self.map.iter_owned().map(|(k, _)| k)
     }
 
     /// Visit the values representing the difference.
@@ -2491,7 +2533,7 @@ mod test_map {
             hm
         };
 
-        let v = hm.move_iter().collect::<Vec<(char, int)>>();
+        let v = hm.iter_owned().collect::<Vec<(char, int)>>();
         assert!([('a', 1), ('b', 2)] == v.as_slice() || [('b', 2), ('a', 1)] == v.as_slice());
     }
 
@@ -2515,7 +2557,7 @@ mod test_map {
     #[test]
     fn test_keys() {
         let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
-        let map = vec.move_iter().collect::<HashMap<int, char>>();
+        let map = vec.iter_owned().collect::<HashMap<int, char>>();
         let keys = map.keys().map(|&k| k).collect::<Vec<int>>();
         assert_eq!(keys.len(), 3);
         assert!(keys.contains(&1));
@@ -2526,7 +2568,7 @@ mod test_map {
     #[test]
     fn test_values() {
         let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
-        let map = vec.move_iter().collect::<HashMap<int, char>>();
+        let map = vec.iter_owned().collect::<HashMap<int, char>>();
         let values = map.values().map(|&v| v).collect::<Vec<char>>();
         assert_eq!(values.len(), 3);
         assert!(values.contains(&'a'));
@@ -2688,7 +2730,7 @@ mod test_map {
 
         let mut map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
 
-        let mut iter = map.mut_iter();
+        let mut iter = map.iter_mut();
 
         for _ in iter.by_ref().take(3) {}
 
@@ -2899,7 +2941,7 @@ mod test_set {
             hs
         };
 
-        let v = hs.move_iter().collect::<Vec<char>>();
+        let v = hs.iter_owned().collect::<Vec<char>>();
         assert!(['a', 'b'] == v.as_slice() || ['b', 'a'] == v.as_slice());
     }
 
