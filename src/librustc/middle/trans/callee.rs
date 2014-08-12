@@ -334,7 +334,7 @@ pub fn trans_unboxing_shim(bcx: &Block,
     let return_type = ty::ty_fn_ret(boxed_function_type);
     let fcx = new_fn_ctxt(ccx,
                           llfn,
-                          -1,
+                          ast::DUMMY_NODE_ID,
                           false,
                           return_type,
                           &empty_param_substs,
@@ -389,6 +389,11 @@ pub fn trans_unboxing_shim(bcx: &Block,
     for i in range(1, arg_types.len()) {
         llshimmedargs.push(get_param(fcx.llfn, fcx.arg_pos(i) as u32));
     }
+    assert!(!fcx.needs_ret_allocas);
+    let dest = match fcx.llretslotptr.get() {
+        Some(_) => Some(expr::SaveIn(fcx.get_ret_slot(bcx, return_type, "ret_slot"))),
+        None => None
+    };
     bcx = trans_call_inner(bcx,
                            None,
                            function_type,
@@ -399,10 +404,7 @@ pub fn trans_unboxing_shim(bcx: &Block,
                                }
                            },
                            ArgVals(llshimmedargs.as_slice()),
-                           match fcx.llretptr.get() {
-                               None => None,
-                               Some(llretptr) => Some(expr::SaveIn(llretptr)),
-                           }).bcx;
+                           dest).bcx;
 
     bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_scope);
     finish_fn(&fcx, bcx, return_type);
@@ -758,9 +760,11 @@ pub fn trans_call_inner<'a>(
             assert!(abi == synabi::RustIntrinsic);
             assert!(dest.is_some());
 
+            let call_info = call_info.expect("no call info for intrinsic call?");
             return intrinsic::trans_intrinsic_call(bcx, node, callee_ty,
                                                    arg_cleanup_scope, args,
-                                                   dest.unwrap(), substs);
+                                                   dest.unwrap(), substs,
+                                                   call_info);
         }
         NamedTupleConstructor(substs, disr) => {
             assert!(dest.is_some());
