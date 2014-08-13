@@ -12,9 +12,9 @@
 //!
 //! Rust's standard collections library provides several structures for organizing
 //! and querying data. Choosing the right collection for the right job is a non-
-//! trivial and important part of writing any good program. While Rust strives to
-//! provide efficient and easy to use collections for common use-cases, given *only*
-//! a list of the functions a collection provides it can be difficult to determine
+//! trivial and important part of writing any good program. While Rust
+//! provides efficient and easy to use collections for common use-cases, given *only*
+//! a list of the operations a collection provides it can be difficult to determine
 //! the best choice. When in doubt, running tests on your actual code with your
 //! actual data will always be the best way to identify the best collection for the
 //! job. However, in practice this can be time-consuming or otherwise impractical to
@@ -31,7 +31,7 @@
 //! and the importance of knowing when they are more or less appropriate cannot be
 //! understated.
 //!
-//! # Measuring Performance
+//! ## Terminology and Notation
 //!
 //! The performance of a collection is a difficult thing to precisely capture. One
 //! cannot simply perform an operation and measure how long it takes or how much
@@ -39,49 +39,12 @@
 //! compiled, the hardware it's running on, the software managing its execution, and
 //! the current state of the program. These precise details are independent of the
 //! collection's implementation itself, and are far too diverse to exhaustively test
-//! against.
-//!
-//! To avoid this issue, we use *asymptotic analysis* to measure how performance
-//! *scales* with the size of the input (commonly denoted by `n`), or other more
-//! exotic properties. This is an excellent first-order approximation of
-//! performance, but has some drawbacks that we discuss below.
-//!
-//! ## Big-Oh Notation
-//!
-//! The most common tool in performing asymptotic analysis is *Big-Oh notation*.
-//! Big-Oh notation is a way of expressing the relation between the growth rate of
-//! two functions. Given two functions `f` and `g`, when we say `f(x)` *is*
-//! `O(g(x))`, you can generally read this as "`f(x)` is *on the order of* `g(x)`".
-//! Informally, we say `f(x)` is `O(g(x))` if `g(x)` grows at least as fast as
-//! `f(x)`.  In effect, `g(x)` is an upper-bound on how `f(x)` scales with `x`. This
-//! scaling ignores constant factors, so `2x` is `O(x)`, even though `2x` grows
-//! faster.
-//!
-//! This ignoring of constants is exactly what we want when discussing the
-//! performance of collections, because the the precise compilation and execution
-//! details will generally only provide constant-factor speed ups. *In practice*,
-//! these constant factors can be large and important, and should be part of the
-//! collection selection process. However, Big-Oh notation provides a useful way to
-//! quickly identify what a collection does well, and what a collection does poorly,
-//! particularly in comparison to other collections. Note also that Big-Oh notation
-//! is only interested in the *asymptotic* performance of the functions. For small
-//! values of `x` the relationship between these two functions may be arbitrary.
-//!
-//! While the functions in Big-Oh notation can have arbitrary complexity, by
-//! convention the function `g(x)` in `O(g(x))` should be written as simply as
-//! possible, and is expected to be as tight as possible. For instance, `2x` is
-//! <code>O(3x<sup>2</sup> + 5x - 2)</code>,
-//! but we would generally simplify the expression to only the
-//! dominant factor, with constants stripped away. In this case,
-//! `<code>x<sup>2</sup></code> grows the
-//! fastest, and so we would simply say `2x` is
-//! <code>O(x<sup>2</sup>)</code>. Similarly, although `2x`
-//! *is* <code>O(x<sup>2</sup>)</code>, this is needlessly weak.
-//! We would instead prefer to provide the
-//! stronger bound `O(x)`.
+//! against. To abstract these issues away, we use Big-Oh notation, which, roughly
+//! speaking, expresses how performance scales with input size.
 //!
 //! Several functions occur very often in Big-Oh notation, and so we note them here
-//! for convenience:
+//! for convenience. Generally, we will denote the size of the input or number of
+//! elements in the collection as `n`:
 //!
 //! * `O(1)` - *Constant*: The performance of the operation is effectively
 //! independent of context. This is usually *very* cheap.
@@ -101,117 +64,39 @@
 //! * <code>O(2<sup>n</sup>)</code> - *Exponential*: Performance scales exponentially with `n`.
 //! This is considered intractable for anything but very small inputs.
 //!
-//! ## Time Complexity
+//! In addition, performance may be one of the following:
 //!
-//! The most common measure of performance is how long something takes. However,
-//! even at the abstraction level of Big-Oh notation, this is not necessarily
-//! straight forward. Time complexity is separated into several different
-//! categories, to capture important distinctions. In the simplest case, an
-//! operation *always* takes `O(g(x))` time to execute. However, we may also be
-//! interested in the following measures of time:
+//! * Worst-Case: This is the worst possible behavior of the operation. For some operations, this
+//! may be common or uncommon. If performance is unqualified, it is a worst-case bound.
 //!
-//! ### Worst-Case Time
+//! * Expected: Performance depends internally on a randomized process, but this performance
+//! is expected *on average*. Usually this occurs with high probability, and can be relied upon,
+//! but operations with expected performance may be inappropriate for real-time or otherwise
+//! resource-constrained applications.
 //!
-//! The amount of time an operation may take can vary greatly from input to input.
-//! However, it is often possible to determine how much time is taken *in the worst-
-//! case*. For some operations, the worst-case may be rare and very large. For other
-//! operations, it may be the most common, with rare "fast" events.
+//! * Amortized: Performance depends on the internal state of the structure, but over a
+//! sufficiently long sequence of operations, cost per-operation averages out to this. This is
+//! deterministically guaranteed, but the occasional high-cost operation may make these operations
+//! inappropriate for real-time or otherwise resource-constrained applications.
 //!
-//! For instance, if an operation sometimes takes `O(1)`, `O(log n)`, or `O(n)` time,
-//! we simply say it takes `O(n)` worst-case time, since `O(n)` is the largest.
+//! ## Time vs Space
 //!
-//! Worst-case analysis is often the easiest to perform, and is always applicable to
-//! any operation. As such, it is the standard default measure of time complexity.
-//! If time complexity is not qualified, it can be assumed to be worst-case. Having
-//! a good worst-case time complexity is the most desirable, as it provides a strong
-//! guarantee of reliable performance. However, sometimes the most efficient
-//! operations in practice have poor worst-case times, due to rare degenerate
-//! behaviors.
+//! Usually, we are only interested in performance in terms of time taken to perform the operation.
+//! As such, any unqualified discussion of performance should be assumed to be in terms of
+//! time taken. However, performance may also occasionally be in terms of memory consumed.
+//! Conveniently, a collection on `n` elements almost always simply occupies `O(n)` space, and
+//! operations often only take `O(1)` additional memory. Therefore, space concerns are usually
+//! excluded from analysis, and these bounds on memory usage can be assumed in that case.
 //!
-//! Vec's push operation usually takes `O(1)` time, but occasionally takes `O(n)` time,
-//! and so takes `O(n)` worst-case time.
-//!
-//! ### Expected Time
-//!
-//! The running time of some operations may depend on a random or pseudo-random
-//! process. In this case, expected time is used to capture how long the operation
-//! takes *on average*. The operation may take much more or less time on any given
-//! input, or even on different calls on the same input.
-//!
-//! For instance, if an operation takes `O(n log n)` time *with high probability*, but
-//! very rarely takes <code>O(n<sup>2</sup>)</code> time,
-//! then the operation takes `O(n log n)` expected time, even though it has a worst-case time
-//! of <code>O(n<sup>2</sup>)</code>. `QuickSort` is the
-//! canonical randomized operation, with exactly this performance analysis.
-//!
-//! ### Amortized Time
-//!
-//! Some operations can have a very high worst-case cost, but over a *sequence* of
-//! `m` operations the total cost can sometimes be guaranteed to not exceed some
-//! smaller bound than `m` times the worst-case.
-//!
-//! For instance, `Vec`'s push operation almost always takes `O(1)` time, but after
-//! (approximately) `n`operations, a single push may take `O(n)` time. By worst-case
-//! analysis, all we can say of this situation is that a sequence of `m` pushes will
-//! take `O(mn)` time. However, in reality we know that the sequence will only take
-//! `O(m)` time, since the expensive `O(n)` operation can be *amortized* across the
-//! many cheap operations that are *guaranteed* to occur before an expensive
-//! operation. Therefore, we say that `Vec.push()` takes `O(1)` amortized time.
-//!
-//! ## Space Complexity
-//!
-//! Space complexity is less commonly discussed, but still an important
-//! consideration. It can be used to measure either how much space a structure
-//! consumes with respect to its contents, or how much additional space an operation
-//! temporarily uses. Generally, a fast operation cannot use much space, because
-//! time complexity is bounded below by space complexity. That is, it takes `O(n)`
-//! time to even *allocate* `O(n)` memory, let alone use it productively.
-//!
-//! However, space consumption can be important in resource constrained
-//! environments, or just when working on large datasets. An operation that takes
-//! <code>O(n<sup>2</sup>)</code> time on a large dataset might be unfortunate,
-//! but consuming <code>O(n<sup>2</sup>)</code>
-//! extra space to do it, even if only temporary, might prove catastrophic. If the
-//! extra space consumed is greater than `O(1)`, it is also likely allocated on the
-//! heap, which is generally an expensive operation. Knowing this can help give
-//! context to otherwise abstract time complexities.
-//!
-//! Like time complexity, space complexity can be expressed in worst-case, expected,
-//! or amortized terms. Unless otherwise stated, an operation can be assumed to use
-//! only `O(1)` additional worst-case space, and a structure containing `n` items
-//! can be assumed to have worst-case size `O(n)`.
-//!
-//! ## Problems with Big-Oh Notation
-//!
-//! Big-Oh notation is great for broad-strokes analysis of collections and
-//! operations, but it can sometimes be misleading in practice.
-//!
-//! For instance, from a pure asymptotic analysis perspective, `RingBuf` appears to
-//! be a strictly superior collection to `Vec`. `RingBuf` supports every operation
-//! that `Vec` does in the "same" amount of time, while improving the performance of
-//! some operations. However, in practice `Vec` will outperform `RingBuf` on many of
-//! the operations they appear to be equally good at. This is because `RingBuf`
-//! takes a small constant performance penalty to speed up its other operations.
-//! This penalty is not reflected in asymptotic analysis, precisely *because* it is
-//! a constant.
-//!
-//! Similarly, [`DList`](struct.DList.html) appears to be better than `Vec`
-//! at many operations, and even
-//! provides strong *worst-case* guarantees on operations like `push`, where `Vec`
-//! only provides strong *amortized* guarantees. However, in practice `Vec` is
-//! expected to *substantially* outperform DList over any large sequence of
-//! `push`es.
-//!
-//! Worse yet, it can sometimes be the case that for all practically sized inputs,
-//! an operation that appears to be asymptotically slower than another may be faster
-//! in practice, because the "hidden" constant of the theoretically fast operation
-//! can be catastrophically large.
+//! Note that while well-defined, Big-Oh notation is often imprecise from a practical perspective.
+//! It should be used for broad-strokes comparison and evaluation of operations and collections.
+//! One `O(1)` may be better than another in practice. Similarly, operations with
+//! good amortized or expected performance often out-perform similar operations with worst-case
+//! guarantees under sufficiently active usage patterns.
 //!
 //! For these reasons, we will generally strive to discuss practical performance
 //! considerations *in addition to* providing the much more convenient and simple
-//! asymptotic bounds for high level comparisons. If an operation on a collection
-//! does not provide any asymptotic performance information, it should be considered
-//! a bug.
+//! Big-Oh notation for high level comparisons.
 
 #![crate_name = "collections"]
 #![experimental]
