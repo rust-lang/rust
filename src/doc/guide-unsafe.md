@@ -137,7 +137,7 @@ explicitly with, respectively, `value as *const T` and `value as *mut T`).
 
 Going the opposite direction, from `*const` to a reference `&`, is not
 safe. A `&T` is always valid, and so, at a minimum, the raw pointer
-`*const T` has to be a valid to a valid instance of type `T`. Furthermore,
+`*const T` has to point to a valid instance of type `T`. Furthermore,
 the resulting pointer must satisfy the aliasing and mutability laws of
 references. The compiler assumes these properties are true for any
 references, no matter how they are created, and so any conversion from
