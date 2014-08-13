@@ -29,10 +29,12 @@ use prelude::*;
 use c_str::ToCStr;
 use clone::Clone;
 use io::{Listener, Acceptor, Reader, Writer, IoResult, IoError};
+use io::{standard_error, TimedOut};
 use kinds::Send;
 use boxed::Box;
 use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe};
+use time::Duration;
 
 /// A stream which communicates over a named pipe.
 pub struct UnixStream {
@@ -66,11 +68,18 @@ impl UnixStream {
     ///
     /// This function is similar to `connect`, except that if `timeout_ms`
     /// elapses the function will return an error of kind `TimedOut`.
+    ///
+    /// If a `timeout` with zero or negative duration is specified then
+    /// the function returns `Err`, with the error kind set to `TimedOut`.
     #[experimental = "the timeout argument is likely to change types"]
     pub fn connect_timeout<P: ToCStr>(path: &P,
-                                      timeout_ms: u64) -> IoResult<UnixStream> {
+                                      timeout: Duration) -> IoResult<UnixStream> {
+        if timeout <= Duration::milliseconds(0) {
+            return Err(standard_error(TimedOut));
+        }
+
         LocalIo::maybe_raise(|io| {
-            let s = io.unix_connect(&path.to_c_str(), Some(timeout_ms));
+            let s = io.unix_connect(&path.to_c_str(), Some(timeout.num_milliseconds() as u64));
             s.map(|p| UnixStream { obj: p })
         }).map_err(IoError::from_rtio_error)
     }
@@ -499,13 +508,25 @@ mod tests {
 
     iotest!(fn connect_timeout_error() {
         let addr = next_test_unix();
-        assert!(UnixStream::connect_timeout(&addr, 100).is_err());
+        assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(100)).is_err());
     })
 
     iotest!(fn connect_timeout_success() {
         let addr = next_test_unix();
         let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
-        assert!(UnixStream::connect_timeout(&addr, 100).is_ok());
+        assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(100)).is_ok());
+    })
+
+    iotest!(fn connect_timeout_zero() {
+        let addr = next_test_unix();
+        let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
+        assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(0)).is_err());
+    })
+
+    iotest!(fn connect_timeout_negative() {
+        let addr = next_test_unix();
+        let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
+        assert!(UnixStream::connect_timeout(&addr, Duration::milliseconds(-1)).is_err());
     })
 
     iotest!(fn close_readwrite_smoke() {

@@ -128,10 +128,11 @@
 //!
 //! ```no_run
 //! use std::io::timer::Timer;
+//! use std::time::Duration;
 //!
 //! let (tx, rx) = channel::<int>();
 //! let mut timer = Timer::new().unwrap();
-//! let timeout = timer.oneshot(10000);
+//! let timeout = timer.oneshot(Duration::seconds(10));
 //!
 //! loop {
 //!     select! {
@@ -150,12 +151,13 @@
 //!
 //! ```no_run
 //! use std::io::timer::Timer;
+//! use std::time::Duration;
 //!
 //! let (tx, rx) = channel::<int>();
 //! let mut timer = Timer::new().unwrap();
 //!
 //! loop {
-//!     let timeout = timer.oneshot(5000);
+//!     let timeout = timer.oneshot(Duration::seconds(5));
 //!
 //!     select! {
 //!         val = rx.recv() => println!("Received {}", val),

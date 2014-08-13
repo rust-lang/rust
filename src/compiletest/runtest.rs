@@ -30,6 +30,7 @@ use std::os;
 use std::str;
 use std::string::String;
 use std::task;
+use std::time::Duration;
 use test::MetricMap;
 
 pub fn run(config: Config, testfile: String) {
@@ -400,7 +401,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 .expect(format!("failed to exec `{}`", config.adb_path).as_slice());
             loop {
                 //waiting 1 second for gdbserver start
-                timer::sleep(1000);
+                timer::sleep(Duration::milliseconds(1000));
                 let result = task::try(proc() {
                     tcp::TcpStream::connect("127.0.0.1", 5039).unwrap();
                 });

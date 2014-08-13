@@ -39,6 +39,7 @@ macro_rules! iotest (
             use io::process::*;
             use rt::running_on_valgrind;
             use str;
+            use time::Duration;
 
             fn f() $b
 
