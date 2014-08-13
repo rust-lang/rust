@@ -26,12 +26,7 @@ instances as clients.
 
 use prelude::*;
 
-use c_str::ToCStr;
-use clone::Clone;
-use io::{Listener, Acceptor, Reader, Writer, IoResult, IoError};
-use io::{standard_error, TimedOut};
-use kinds::Send;
-use boxed::Box;
+use io::{Listener, Acceptor, IoResult, IoError, TimedOut, standard_error};
 use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 use time::Duration;

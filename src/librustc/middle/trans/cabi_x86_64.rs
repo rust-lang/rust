@@ -17,7 +17,7 @@ use llvm;
 use llvm::{Integer, Pointer, Float, Double};
 use llvm::{Struct, Array, Attribute};
 use llvm::{StructRetAttribute, ByValAttribute, ZExtAttribute};
-use middle::trans::cabi::*;
+use middle::trans::cabi::{ArgType, FnType};
 use middle::trans::context::CrateContext;
 use middle::trans::type_::Type;
 

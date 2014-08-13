@@ -12,9 +12,8 @@ use foo::bar::{
     mod //~ ERROR module `bar` is private
 };
 use foo::bar::{
-    Bar, //~ ERROR type `Bar` is inaccessible
+    Bar //~ ERROR type `Bar` is inaccessible
     //~^ NOTE module `bar` is private
-    mod //~ ERROR module `bar` is private
 };
 
 mod foo {

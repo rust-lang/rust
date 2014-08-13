@@ -24,7 +24,6 @@ that do not need to record state.
 
 use core::prelude::*;
 use core::num;
-use core::num::CheckedAdd;
 
 use {Rng, Rand};
 

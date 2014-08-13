@@ -13,7 +13,6 @@
 use prelude::*;
 use cmp;
 use io;
-use boxed::Box;
 use slice::bytes::MutableByteVector;
 
 /// Wraps a `Reader`, limiting the number of bytes that can be read from it.

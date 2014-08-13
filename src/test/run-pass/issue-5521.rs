@@ -13,7 +13,7 @@
 
 extern crate foo = "issue-5521";
 
-fn foo(a: foo::map) {
+fn bar(a: foo::map) {
     if false {
         fail!();
     } else {

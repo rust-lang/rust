@@ -15,8 +15,8 @@ use std::cmp;
 use llvm;
 use llvm::{Integer, Pointer, Float, Double, Struct, Array};
 use llvm::{StructRetAttribute, ZExtAttribute};
+use middle::trans::cabi::{ArgType, FnType};
 use middle::trans::context::CrateContext;
-use middle::trans::cabi::*;
 use middle::trans::type_::Type;
 
 fn align_up_to(off: uint, a: uint) -> uint {

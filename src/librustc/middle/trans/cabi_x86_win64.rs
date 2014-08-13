@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use llvm::*;
-use super::cabi::*;
 use super::common::*;
 use super::machine::*;
+use middle::trans::cabi::{ArgType, FnType};
 use middle::trans::type_::Type;
 
 // Win64 ABI: http://msdn.microsoft.com/en-us/library/zthk2dkh.aspx

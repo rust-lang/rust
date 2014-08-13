@@ -22,8 +22,11 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(macro_rules, managed_boxes, default_type_params, phase, globs)]
-#![feature(unsafe_destructor)]
+#![feature(unsafe_destructor, import_shadowing)]
 #![no_std]
+
+// NOTE(stage0, pcwalton): Remove after snapshot.
+#![allow(unknown_features)]
 
 #[phase(plugin, link)] extern crate core;
 extern crate unicode;
@@ -36,11 +39,11 @@ extern crate alloc;
 #[cfg(test)] #[phase(plugin, link)] extern crate std;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
-use core::prelude::*;
+use core::prelude::Option;
 
-pub use core::collections::Collection;
 pub use bitv::{Bitv, BitvSet};
 pub use btree::BTree;
+pub use core::prelude::Collection;
 pub use dlist::DList;
 pub use enum_set::EnumSet;
 pub use priority_queue::PriorityQueue;
