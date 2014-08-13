@@ -378,7 +378,8 @@ pub enum StdioContainer {
     Ignored,
 
     /// The specified file descriptor is inherited for the stream which it is
-    /// specified for.
+    /// specified for. Ownership of the file descriptor is *not* taken, so the
+    /// caller must clean it up.
     InheritFd(libc::c_int),
 
     /// Creates a pipe for the specified file descriptor which will be created
@@ -605,6 +606,7 @@ impl Drop for Process {
 
 #[cfg(test)]
 mod tests {
+    extern crate native;
     use io::process::{Command, Process};
     use prelude::*;
 
@@ -1016,5 +1018,26 @@ mod tests {
         p.forget();
         assert!(Process::kill(id, 0).is_ok());
         assert!(Process::kill(id, PleaseExitSignal).is_ok());
+    })
+
+    iotest!(fn dont_close_fd_on_command_spawn() {
+        use std::rt::rtio::{Truncate, Write};
+        use native::io::file;
+
+        let path = if cfg!(windows) {
+            Path::new("NUL")
+        } else {
+            Path::new("/dev/null")
+        };
+
+        let mut fdes = match file::open(&path.to_c_str(), Truncate, Write) {
+            Ok(f) => f,
+            Err(_) => fail!("failed to open file descriptor"),
+        };
+
+        let mut cmd = pwd_cmd();
+        let _ = cmd.stdout(InheritFd(fdes.fd()));
+        assert!(cmd.status().unwrap().success());
+        assert!(fdes.inner_write("extra write\n".as_bytes()).is_ok());
     })
 }
