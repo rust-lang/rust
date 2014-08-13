@@ -1360,7 +1360,7 @@ while !done {
 ```
 
 `while` loops are the correct choice when you're not sure how many times
-you need to loop. 
+you need to loop.
 
 If you need an infinite loop, you may be tempted to write this:
 
@@ -1650,7 +1650,7 @@ a full line of input. Nice and easy.
 .ok().expect("Failed to read line");
 ```
 
-Do you remember this code? 
+Do you remember this code?
 
 ```
 enum OptionalInt {
@@ -1796,6 +1796,21 @@ Excellent! Open up your `src/main.rs` again. We'll be writing all of
 our code in this file. We'll talk about multiple-file projects later on in the
 guide.
 
+Before we move on, let me show you one more Cargo command: `run`. `cargo run`
+is kind of like `cargo build`, but it also then runs the produced exectuable.
+Try it out:
+
+```{notrust,ignore}
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+     Running `target/guessing_game`
+Hello, world!
+$
+```
+
+Great! The `run` command comes in handy when you need to rapidly iterate on a project.
+Our game is just such a project, we need to quickly test each iteration before moving on to the next one.
+
 ## Processing a Guess
 
 Let's get to it! The first thing we need to do for our guessing game is
@@ -1933,19 +1948,19 @@ $
 Excellent! Try running our new program a few times:
 
 ```{notrust,ignore}
-$ ./target/guessing_game 
+$ ./target/guessing_game
 Guess the number!
 The secret number is: 7
 Please input your guess.
 4
 You guessed: 4
-$ ./target/guessing_game 
+$ ./target/guessing_game
 Guess the number!
 The secret number is: 83
 Please input your guess.
 5
 You guessed: 5
-$ ./target/guessing_game 
+$ ./target/guessing_game
 Guess the number!
 The secret number is: -29
 Please input your guess.
@@ -1986,7 +2001,7 @@ And trying it out:
 ```{notrust,ignore}
 $ cargo build
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-$ ./target/guessing_game 
+$ ./target/guessing_game
 Guess the number!
 The secret number is: 57
 Please input your guess.
@@ -2022,7 +2037,7 @@ fn main() {
 
     println!("You guessed: {}", input);
 
-    match cmp(input, secret_number) { 
+    match cmp(input, secret_number) {
         Less    => println!("Too small!"),
         Greater => println!("Too big!"),
         Equal   => { println!("You win!"); },
@@ -2106,7 +2121,7 @@ a `String` instead! That's because our `input` variable is coming from the
 standard input, and you can guess anything. Try it:
 
 ```{notrust,ignore}
-$ ./target/guessing_game 
+$ ./target/guessing_game
 Guess the number!
 The secret number is: 73
 Please input your guess.
@@ -2257,7 +2272,7 @@ print an error message and return. Let's give this a shot:
 ```{notrust,ignore}
 $ cargo build
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-$ ./target/guessing_game 
+$ ./target/guessing_game
 Guess the number!
 The secret number is: 17
 Please input your guess.
@@ -2323,7 +2338,7 @@ Let's try it!
 ```{notrust,ignore}
 $ cargo build
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-$ ./target/guessing_game 
+$ ./target/guessing_game
 Guess the number!
 The secret number is: 58
 Please input your guess.
@@ -2401,7 +2416,7 @@ that `return`? If we give a non-number answer, we'll `return` and quit. Observe:
 ```{notrust,ignore}
 $ cargo build
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-$ ./target/guessing_game 
+$ ./target/guessing_game
 Guess the number!
 The secret number is: 59
 Please input your guess.
@@ -2534,7 +2549,7 @@ Now we should be good! Let's try:
 ```{rust,ignore}
 $ cargo build
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
-$ ./target/guessing_game 
+$ ./target/guessing_game
 Guess the number!
 The secret number is: 61
 Please input your guess.
@@ -2730,16 +2745,6 @@ mod hello {
 ```
 
 This will work:
-
-```{notrust,ignore}
-$ cargo build
-   Compiling modules v0.1.0 (file:/home/you/projects/modules)
-$
-```
-
-Before we move on, let me show you one more Cargo command: `run`. `cargo run`
-is kind of like `cargo build`, but it also then runs the produced exectuable.
-Try it out:
 
 ```{notrust,ignore}
 $ cargo run
@@ -3647,14 +3652,14 @@ In order to truly understand this error, we have to learn a few new concepts:
 All of our references so far have been to variables we've created on the stack.
 In Rust, the simplest way to allocate heap variables is using a *box*.  To
 create a box, use the `box` keyword:
- 
+
 ```{rust}
 let x = box 5i;
 ```
 
 This allocates an integer `5` on the heap, and creates a binding `x` that
 refers to it.. The great thing about boxed pointers is that we don't have to
-manually free this allocation! If we write 
+manually free this allocation! If we write
 
 ```{rust}
 {
@@ -4189,7 +4194,7 @@ the match:
 
 ```{rust,ignore}
 let x = inverse(25.0f64);
-println!("{}", x + 2.0f64); // error: binary operation `+` cannot be applied 
+println!("{}", x + 2.0f64); // error: binary operation `+` cannot be applied
            // to type `core::result::Result<f64,collections::string::String>`
 ```
 
@@ -4700,4 +4705,3 @@ fail.
 # Macros
 
 # Unsafe
-
