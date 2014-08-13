@@ -342,7 +342,7 @@ Once you have this file in place, we should be ready to build! Try this:
 
 ```{bash}
 $ cargo build
-   Compiling hello_world v0.1.0 (file:///home/yourname/projects/hello_world)
+   Compiling hello_world v0.0.1 (file:///home/yourname/projects/hello_world)
 $ ./target/hello_world
 Hello, world!
 ```
@@ -486,7 +486,7 @@ You can use `cargo build` on the command line to build it. You'll get a warning,
 but it will still print "Hello, world!":
 
 ```{ignore,notrust}
-   Compiling hello_world v0.1.0 (file:///home/you/projects/hello_world)
+   Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
 src/hello_world.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
 src/hello_world.rs:2     let x: int;
                              ^
@@ -508,7 +508,7 @@ And try to build it. You'll get an error:
 
 ```{bash}
 $ cargo build
-   Compiling hello_world v0.1.0 (file:///home/you/projects/hello_world)
+   Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
 src/hello_world.rs:4:39: 4:40 error: use of possibly uninitialized variable: `x`
 src/hello_world.rs:4     println!("The value of x is: {}", x);
                                                            ^
@@ -2279,7 +2279,7 @@ print an error message and return. Let's give this a shot:
 
 ```{notrust,ignore}
 $ cargo build
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
 $ ./target/guessing_game 
 Guess the number!
 The secret number is: 17
@@ -2671,7 +2671,7 @@ Let's double check our work by compiling:
 
 ```{bash,ignore}
 $ cargo build
-   Compiling modules v0.1.0 (file:///home/you/projects/modules)
+   Compiling modules v0.0.1 (file:///home/you/projects/modules)
 $ ./target/modules
 Hello, world!
 ```
@@ -2732,7 +2732,7 @@ mod hello {
 It gives an error:
 
 ```{notrust,ignore}
-   Compiling modules v0.1.0 (file:///home/you/projects/modules)
+   Compiling modules v0.0.1 (file:///home/you/projects/modules)
 src/main.rs:2:5: 2:23 error: function `print_hello` is private
 src/main.rs:2     hello::print_hello();
                   ^~~~~~~~~~~~~~~~~~
@@ -2756,7 +2756,7 @@ This will work:
 
 ```{notrust,ignore}
 $ cargo build
-   Compiling modules v0.1.0 (file:///home/you/projects/modules)
+   Compiling modules v0.0.1 (file:///home/you/projects/modules)
 $
 ```
 
@@ -2766,7 +2766,7 @@ Try it out:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling modules v0.1.0 (file:///home/steve/tmp/modules)
+   Compiling modules v0.0.1 (file:///home/steve/tmp/modules)
      Running `target/modules`
 Hello, world!
 $
@@ -2816,7 +2816,7 @@ This doesn't _quite_ work yet. Try it:
 
 ```{notrust,ignore}
 $ cargo build
-   Compiling modules v0.1.0 (file:///home/you/projects/modules)
+   Compiling modules v0.0.1 (file:///home/you/projects/modules)
 /home/you/projects/modules/src/lib.rs:2:5: 4:6 warning: code is never used: `print_hello`, #[warn(dead_code)] on by default
 /home/you/projects/modules/src/lib.rs:2     pub fn print_hello() {
 /home/you/projects/modules/src/lib.rs:3         println!("Hello, world!");
@@ -2852,7 +2852,7 @@ And everything should work:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling modules v0.1.0 (file:///home/you/projects/modules)
+   Compiling modules v0.0.1 (file:///home/you/projects/modules)
      Running `target/modules`
 Hello, world!
 ```
@@ -2918,7 +2918,7 @@ This should all compile as usual:
 
 ```{notrust,ignore}
 $ cargo build
-   Compiling modules v0.1.0 (file:///home/you/projects/modules)
+   Compiling modules v0.0.1 (file:///home/you/projects/modules)
 $
 ```
 
@@ -3090,7 +3090,7 @@ And try it out:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling testing v0.1.0 (file:///home/you/projects/testing)
+   Compiling testing v0.0.1 (file:///home/you/projects/testing)
      Running `target/testing`
 Hello, world!
 $
@@ -3123,7 +3123,7 @@ it `false`, so this test should fail. Let's try it!
 
 ```{notrust,ignore}
 $ cargo test
-   Compiling testing v0.1.0 (file:///home/you/projects/testing)
+   Compiling testing v0.0.1 (file:///home/you/projects/testing)
 /home/you/projects/testing/src/main.rs:1:1: 3:2 warning: code is never used: `main`, #[warn(dead_code)] on by default
 /home/you/projects/testing/src/main.rs:1 fn main() {
 /home/you/projects/testing/src/main.rs:2     println!("Hello, world");
@@ -3156,7 +3156,7 @@ Lots of output! Let's break this down:
 
 ```{notrust,ignore}
 $ cargo test
-   Compiling testing v0.1.0 (file:///home/you/projects/testing)
+   Compiling testing v0.0.1 (file:///home/you/projects/testing)
 ```
 
 You can run all of your tests with `cargo test`. This runs both your tests in
@@ -3231,7 +3231,7 @@ And then try to run our tests again:
 
 ```{notrust,ignore}
 $ cargo test
-   Compiling testing v0.1.0 (file:///home/you/projects/testing)
+   Compiling testing v0.0.1 (file:///home/you/projects/testing)
 /home/you/projects/testing/src/main.rs:1:1: 3:2 warning: code is never used: `main`, #[warn(dead_code)] on by default
 /home/you/projects/testing/src/main.rs:1 fn main() {
 /home/you/projects/testing/src/main.rs:2     println!("Hello, world");
@@ -3270,7 +3270,7 @@ With this attribute, we won't get the warning:
 
 ```{notrust,ignore}
 $ cargo test
-   Compiling testing v0.1.0 (file:///home/you/projects/testing)
+   Compiling testing v0.0.1 (file:///home/you/projects/testing)
 
 running 0 tests
 
@@ -3299,7 +3299,7 @@ And try to run the test:
 
 ```{notrust,ignore}
 $ cargo test
-   Compiling testing v0.1.0 (file:///home/youg/projects/testing)
+   Compiling testing v0.0.1 (file:///home/youg/projects/testing)
 /home/youg/projects/testing/tests/lib.rs:3:18: 3:38 error: unresolved name `add_three_times_four`.
 /home/youg/projects/testing/tests/lib.rs:3     let result = add_three_times_four(5i);
                                                             ^~~~~~~~~~~~~~~~~~~~
@@ -3358,7 +3358,7 @@ Let's give it a run:
 
 ```{ignore,notrust}
 $ cargo test
-   Compiling testing v0.1.0 (file:///home/you/projects/testing)
+   Compiling testing v0.0.1 (file:///home/you/projects/testing)
 
 running 0 tests
 
@@ -3398,7 +3398,7 @@ If you run `cargo test`, you should get the same output:
 
 ```{ignore,notrust}
 $ cargo test
-   Compiling testing v0.1.0 (file:///home/you/projects/testing)
+   Compiling testing v0.0.1 (file:///home/you/projects/testing)
 
 running 0 tests
 
@@ -3442,7 +3442,7 @@ fn test_add_three() {
 We'd get this error:
 
 ```{notrust,ignore}
-   Compiling testing v0.1.0 (file:///home/you/projects/testing)
+   Compiling testing v0.0.1 (file:///home/you/projects/testing)
 /home/you/projects/testing/tests/lib.rs:3:5: 3:24 error: function `add_three` is private
 /home/you/projects/testing/tests/lib.rs:3 use testing::add_three;
                                               ^~~~~~~~~~~~~~~~~~~
@@ -3485,7 +3485,7 @@ Let's give it a shot:
 
 ```{ignore,notrust}
 $ cargo test
-   Compiling testing v0.1.0 (file:///home/you/projects/testing)
+   Compiling testing v0.0.1 (file:///home/you/projects/testing)
 
 running 1 test
 test test::test_times_four ... ok
