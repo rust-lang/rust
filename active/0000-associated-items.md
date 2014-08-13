@@ -1012,7 +1012,7 @@ trait Iterable2 {
     fn iter(self) -> I;
 }
 
-// These impls have distinct input types, so are NOT allowed
+// These impls apply to a common input (Foo), so are NOT allowed
 impl Iterable2 for Foo { ... }
 impl Iterable2 for Foo { ... }
 ```
