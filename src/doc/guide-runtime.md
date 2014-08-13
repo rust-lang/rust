@@ -128,7 +128,7 @@ itself, yet again implying that they are not defined in the standard library.
 The full complement of runtime features is defined by the [`Runtime`
 trait](std/rt/trait.Runtime.html) and the [`Task`
 struct](std/rt/task/struct.Task.html). A `Task` is constant among all runtime
-implementations, but each runtime implements has its own implementation of the
+implementations, but each runtime has its own implementation of the
 `Runtime` trait.
 
 The local `Task` stores the runtime value inside of itself, and then ownership
