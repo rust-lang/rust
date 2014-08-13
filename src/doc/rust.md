@@ -2146,6 +2146,8 @@ These language items are traits:
   : Elements have a right shift operation.
 * `index`
   : Elements can be indexed.
+* `index_mut`
+  : ___Needs filling in___
 * `eq`
   : Elements can be compared for equality.
 * `ord`
@@ -2155,9 +2157,14 @@ These language items are traits:
 * `deref_mut`
   : `*` can be applied, yielding a mutable reference to another type
 
-
 These are functions:
 
+* `fn`
+  : ___Needs filling in___
+* `fn_mut`
+  : ___Needs filling in___
+* `fn_once`
+  : ___Needs filling in___
 * `str_eq`
   : Compare two strings (`&str`) for equality.
 * `strdup_uniq`
@@ -2175,39 +2182,64 @@ These are functions:
 
 These types help drive the compiler's analysis
 
-* `covariant_type`
-  : The type parameter should be considered covariant
-* `contravariant_type`
-  : The type parameter should be considered contravariant
-* `invariant_type`
-  : The type parameter should be considered invariant
-* `covariant_lifetime`
-  : The lifetime parameter should be considered covariant
-* `contravariant_lifetime`
-  : The lifetime parameter should be considered contravariant
-* `invariant_lifetime`
-  : The lifetime parameter should be considered invariant
-* `no_send_bound`
-  : This type does not implement "send", even if eligible
+* `begin_unwind`
+  : ___Needs filling in___
 * `no_copy_bound`
   : This type does not implement "copy", even if eligible
+* `no_send_bound`
+  : This type does not implement "send", even if eligible
 * `no_sync_bound`
   : This type does not implement "sync", even if eligible
 * `managed_bound`
   : This type implements "managed"
-
+* `eh_personality`
+  : ___Needs filling in___
+* `exchange_free`
+  : Free memory that was allocated on the exchange heap.
+* `exchange_malloc`
+  : Allocate memory on the exchange heap.
+* `closure_exchange_malloc`
+  : ___Needs filling in___
 * `fail_`
   : Abort the program with an error.
 * `fail_bounds_check`
   : Abort the program with a bounds check error.
-* `exchange_malloc`
-  : Allocate memory on the exchange heap.
-* `exchange_free`
-  : Free memory that was allocated on the exchange heap.
-* `malloc`
-  : Allocate memory on the managed heap.
 * `free`
   : Free memory that was allocated on the managed heap.
+* `gc`
+  : ___Needs filling in___
+* `exchange_heap`
+  : ___Needs filling in___
+* `managed_heap`
+  : ___Needs filling in___
+* `iterator`
+  : ___Needs filling in___
+* `contravariant_lifetime`
+  : The lifetime parameter should be considered contravariant
+* `covariant_lifetime`
+  : The lifetime parameter should be considered covariant
+* `invariant_lifetime`
+  : The lifetime parameter should be considered invariant
+* `malloc`
+  : Allocate memory on the managed heap.
+* `opaque`
+  : ___Needs filling in___
+* `owned_box`
+  : ___Needs filling in___
+* `stack_exhausted`
+  : ___Needs filling in___
+* `start`
+  : ___Needs filling in___
+* `contravariant_type`
+  : The type parameter should be considered contravariant
+* `covariant_type`
+  : The type parameter should be considered covariant
+* `invariant_type`
+  : The type parameter should be considered invariant
+* `ty_desc`
+  : ___Needs filling in___
+* `ty_visitor`
+  : ___Needs filling in___
 
 > **Note:** This list is likely to become out of date. We should auto-generate it
 > from `librustc/middle/lang_items.rs`.
