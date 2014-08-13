@@ -164,10 +164,9 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                   if abi != abi::Rust {
                       foreign::trans_rust_fn_with_foreign_abi(
                           ccx, &**decl, &**body, [], d, &psubsts, fn_id.node,
-                          Some(hash.as_slice()), IgnoreItems);
+                          Some(hash.as_slice()));
                   } else {
-                      trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, [],
-                               IgnoreItems);
+                      trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, []);
                   }
 
                   d
@@ -201,8 +200,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeMethod(mth) => {
             let d = mk_lldecl(abi::Rust);
             set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-            trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d, &psubsts, mth.id, [],
-                     IgnoreItems);
+            trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d, &psubsts, mth.id, []);
             d
         }
         ast_map::NodeTraitMethod(method) => {
@@ -211,7 +209,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                     let d = mk_lldecl(abi::Rust);
                     set_llvm_fn_attrs(mth.attrs.as_slice(), d);
                     trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d,
-                             &psubsts, mth.id, [], IgnoreItems);
+                             &psubsts, mth.id, []);
                     d
                 }
                 _ => {

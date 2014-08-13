@@ -339,8 +339,7 @@ pub fn trans_unboxing_shim(bcx: &Block,
                           return_type,
                           &empty_param_substs,
                           None,
-                          &block_arena,
-                          TranslateItems);
+                          &block_arena);
     let mut bcx = init_function(&fcx, false, return_type);
 
     // Create the substituted versions of the self type.
