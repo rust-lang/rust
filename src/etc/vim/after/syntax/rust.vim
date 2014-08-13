@@ -29,5 +29,3 @@ hi link rustNiceOperator Operator
 if !exists('g:rust_conceal_mod_path')
     hi! link Conceal Operator
 endif
-
-setlocal conceallevel=2
