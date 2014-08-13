@@ -28,6 +28,7 @@ use option::{Some, None, Option};
 use result::{Ok, Err};
 use ops::Index;
 
+#[allow(missing_doc)]
 mod table {
     use clone::Clone;
     use cmp;

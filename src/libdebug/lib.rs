@@ -25,8 +25,11 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/master/")]
 #![experimental]
-#![feature(managed_boxes, macro_rules)]
+#![feature(managed_boxes, macro_rules, visible_private_types)]
 #![allow(experimental)]
+
+// NOTE(stage0, pcwalton): Remove after snapshot.
+#![allow(unknown_features)]
 
 pub mod fmt;
 pub mod reflect;

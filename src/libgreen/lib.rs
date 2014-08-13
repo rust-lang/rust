@@ -217,8 +217,11 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 // NB this does *not* include globs, please keep it that way.
-#![feature(macro_rules, phase, default_type_params)]
-#![allow(visible_private_types, deprecated)]
+#![feature(macro_rules, phase, default_type_params, visible_private_types)]
+#![allow(deprecated)]
+
+// NOTE(stage0, pcwalton): Remove after snapshot.
+#![allow(unknown_features)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 #[cfg(test)] extern crate rustuv;

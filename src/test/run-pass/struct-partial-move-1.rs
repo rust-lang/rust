@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[deriving(PartialEq, Show)]
-struct Partial<T> { x: T, y: T }
+pub struct Partial<T> { x: T, y: T }
 
 #[deriving(PartialEq, Show)]
 struct S { val: int }

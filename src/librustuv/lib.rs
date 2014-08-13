@@ -44,9 +44,11 @@ via `close` and `delete` methods.
        html_root_url = "http://doc.rust-lang.org/master/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(macro_rules, unsafe_destructor)]
+#![feature(macro_rules, unsafe_destructor, visible_private_types)]
 #![deny(unused_result, unused_must_use)]
-#![allow(visible_private_types)]
+
+// NOTE(stage0, pcwalton): Remove after snapshot.
+#![allow(unknown_features)]
 
 #![reexport_test_harness_main = "test_main"]
 
@@ -86,9 +88,9 @@ fn start(argc: int, argv: *const *const u8) -> int {
 mod macros;
 
 mod access;
-mod timeout;
 mod homing;
 mod queue;
+mod timeout;
 mod rc;
 
 pub mod uvio;

@@ -63,6 +63,10 @@
 //    consider whether they're needed before adding that feature here (the
 //    answer is that you don't need them)
 #![feature(macro_rules, unsafe_destructor, default_type_params)]
+#![feature(visible_private_types)]
+
+// NOTE(stage0, pcwalton): Remove after snapshot.
+#![allow(unknown_features)]
 
 extern crate alloc;
 extern crate libc;

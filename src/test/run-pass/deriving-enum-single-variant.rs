@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type task_id = int;
+pub type task_id = int;
 
 #[deriving(PartialEq)]
 pub enum Task {

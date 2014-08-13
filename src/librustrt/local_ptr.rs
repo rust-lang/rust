@@ -374,7 +374,6 @@ pub mod native {
 
     #[inline]
     #[cfg(not(test))]
-    #[allow(visible_private_types)]
     pub fn maybe_tls_key() -> Option<tls::Key> {
         unsafe {
             // NB: This is a little racy because, while the key is

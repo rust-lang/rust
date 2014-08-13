@@ -12,7 +12,7 @@
 
 // part of issue-6919.rs
 
-struct C<'a> {
+pub struct C<'a> {
     pub k: ||: 'a,
 }
 

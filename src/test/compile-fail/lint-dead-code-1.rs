@@ -11,7 +11,6 @@
 #![no_std]
 #![allow(unused_variable)]
 #![allow(non_camel_case_types)]
-#![allow(visible_private_types)]
 #![deny(dead_code)]
 #![feature(lang_items)]
 
@@ -46,7 +45,7 @@ struct UsedStruct1 {
 }
 struct UsedStruct2(int);
 struct UsedStruct3;
-struct UsedStruct4;
+pub struct UsedStruct4;
 // this struct is never used directly, but its method is, so we don't want
 // to warn it
 struct SemiUsedStruct;
@@ -54,7 +53,7 @@ impl SemiUsedStruct {
     fn la_la_la() {}
 }
 struct StructUsedAsField;
-struct StructUsedInEnum;
+pub struct StructUsedInEnum;
 struct StructUsedInGeneric;
 pub struct PubStruct2 {
     #[allow(dead_code)]

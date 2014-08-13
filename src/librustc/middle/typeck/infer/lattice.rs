@@ -45,7 +45,7 @@ use util::ppaux::Repr;
 
 use std::collections::HashMap;
 
-trait LatticeValue : Clone + Repr + PartialEq {
+pub trait LatticeValue : Clone + Repr + PartialEq {
     fn sub(cf: CombineFields, a: &Self, b: &Self) -> ures;
     fn lub(cf: CombineFields, a: &Self, b: &Self) -> cres<Self>;
     fn glb(cf: CombineFields, a: &Self, b: &Self) -> cres<Self>;

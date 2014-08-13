@@ -49,12 +49,12 @@ impl fmt::Show for PathElem {
 }
 
 #[deriving(Clone)]
-struct LinkedPathNode<'a> {
+pub struct LinkedPathNode<'a> {
     node: PathElem,
     next: LinkedPath<'a>,
 }
 
-type LinkedPath<'a> = Option<&'a LinkedPathNode<'a>>;
+pub type LinkedPath<'a> = Option<&'a LinkedPathNode<'a>>;
 
 impl<'a> Iterator<PathElem> for LinkedPath<'a> {
     fn next(&mut self) -> Option<PathElem> {
