@@ -259,7 +259,7 @@ TRAIT_HEADER =
 INPUT_PARAMS = INPUT_TY { ',' INPUT_TY }* [ ',' ]
 INPUT_PARAM  = IDENT [ ':' BOUNDS ]
 
-BOUNDS = IDENT { '+' IDENT }* [ '+' ]
+BOUNDS = BOUND { '+' BOUND }* [ '+' ]
 BOUND  = IDENT [ '<' ARGS '>' ]
 
 ARGS   = INPUT_ARGS
@@ -549,7 +549,7 @@ impl<C1: Container, C2: Container> TwoContainers<C1, C2> {
 }
 ```
 
-Note that `Vec<T>::E` and `Vec<T>::empty` are also valid type and function
+Note that `Vec<T>::E` and `Vec::<T>::empty` are also valid type and function
 references, respectively.
 
 For cases like `C::E` or `Vec<T>::E`, the path begins with an `ID_SEGMENT`
@@ -684,7 +684,7 @@ fn blanket<U: Show>(u: U) {
     println!("{}", u.as_T())
 }
 
-fn not_allowed(U: Foo)(u: U) {
+fn not_allowed<U: Foo>(u: U) {
     // this will not compile, since <U as Trait>::T is not known to
     // implement Show
     println!("{}", u.as_T())
@@ -901,8 +901,8 @@ fn make_vec() -> Vec<Box<Show>> {
     let f = Foo { ... };
     let b = Bar { ... };
     let mut v = Vec::new();
-    v.push(box f as Show);
-    v.push(box b as Show);
+    v.push(box f as Box<Show>);
+    v.push(box b as Box<Show>);
     v
 }
 ```
@@ -936,7 +936,7 @@ Unlike the case for static trait bounds, which do not have to specify any of the
 associated types or lifetimes (but do have to specify the input types), trait
 object types must specify all of the types:
 
-```
+```rust
 fn consume_foo<T: Foo<I1, I2>>(t: T) // this is valid
 fn consume_obj(t: Box<Foo<I1, I2>>)  // this is NOT valid
 
