@@ -12,7 +12,7 @@
 // move, when the struct implements Drop.
 
 // NoCopy
-use NP = std::kinds::marker::NoCopy;
+use std::kinds::marker::NoCopy as NP;
 
 
 struct S { a: int, np: NP }

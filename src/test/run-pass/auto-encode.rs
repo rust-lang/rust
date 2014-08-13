@@ -19,8 +19,8 @@ extern crate time;
 
 use std::hashmap::{HashMap, HashSet};
 
-use EBReader = rbml::reader;
-use EBWriter = rbml::writer;
+use rbml::reader as EBReader;
+use rbml::writer as EBWriter;
 use std::cmp::Eq;
 use std::cmp;
 use std::io;

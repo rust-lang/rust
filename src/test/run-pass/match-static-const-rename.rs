@@ -38,7 +38,7 @@ mod m {
 }
 
 fn g() {
-    use AHA = self::m::aha;
+    use self::m::aha as AHA;
     let r = match (0,0) {
         (0, AHA) => 0,
         (x, y)   => 1 + x + y,

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use x = m::f; //~ ERROR unresolved import `m::f`. There is no `f` in `m`
+use m::f as x; //~ ERROR unresolved import `m::f`. There is no `f` in `m`
 
 mod m {}
 

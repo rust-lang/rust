@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub use sub_foo::Foo;
-pub use Baz = self::Bar;
+pub use self::Bar as Baz;
 pub use sub_foo::Boz;
 pub use sub_foo::Bort;
 

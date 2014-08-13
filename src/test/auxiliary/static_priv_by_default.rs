@@ -39,10 +39,10 @@ mod foo {
 }
 
 pub mod bar {
-    pub use e = foo::reexported_a;
-    pub use f = foo::reexported_b;
-    pub use g = foo::reexported_c;
-    pub use h = foo::reexported_d;
+    pub use foo::reexported_a as e;
+    pub use foo::reexported_b as f;
+    pub use foo::reexported_c as g;
+    pub use foo::reexported_d as h;
 }
 
 pub static a: int = 0;
