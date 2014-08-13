@@ -65,14 +65,15 @@ fn main() {
 
 */
 
-use core::prelude::*;
-
 use alloc::libc_heap::malloc_raw;
 use collections::string::String;
 use collections::hash;
 use core::fmt;
 use core::kinds::marker;
 use core::mem;
+use core::prelude::{Clone, Collection, Drop, Eq, ImmutableSlice, Iterator};
+use core::prelude::{MutableSlice, None, Option, Ordering, PartialEq};
+use core::prelude::{PartialOrd, RawPtr, Some, StrSlice, range};
 use core::ptr;
 use core::raw::Slice;
 use core::slice;

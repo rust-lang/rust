@@ -41,7 +41,7 @@ macro_rules! iotest (
             use std::str;
             use std::io::process::Command;
             use native;
-            use super::*;
+            use super::{sleeper, test_destroy_actually_kills};
 
             fn f() $b
 

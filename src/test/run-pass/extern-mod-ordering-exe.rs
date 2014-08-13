@@ -12,8 +12,8 @@
 
 extern crate extern_mod_ordering_lib;
 
-use extern_mod_ordering_lib::extern_mod_ordering_lib;
+use the_lib = extern_mod_ordering_lib::extern_mod_ordering_lib;
 
 pub fn main() {
-    extern_mod_ordering_lib::f();
+    the_lib::f();
 }

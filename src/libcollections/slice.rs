@@ -86,23 +86,22 @@ for &x in numbers.iter() {
 
 #![doc(primitive = "slice")]
 
-use core::prelude::*;
-
 use core::cmp;
 use core::mem::size_of;
 use core::mem;
+use core::prelude::{Clone, Collection, Greater, Iterator, Less, None, Option};
+use core::prelude::{Ord, Ordering, RawPtr, Some, range};
 use core::ptr;
 use core::iter::{range_step, MultiplicativeIterator};
 
-use {Collection, MutableSeq};
+use MutableSeq;
 use vec::Vec;
 
-pub use core::slice::{ref_slice, mut_ref_slice, Splits, Windows};
 pub use core::slice::{Chunks, Slice, ImmutableSlice, ImmutablePartialEqSlice};
 pub use core::slice::{ImmutableOrdSlice, MutableSlice, Items, MutItems};
-pub use core::slice::{MutSplits, MutChunks};
-pub use core::slice::{bytes, MutableCloneableSlice};
-pub use core::slice::{BinarySearchResult, Found, NotFound};
+pub use core::slice::{MutSplits, MutChunks, Splits};
+pub use core::slice::{bytes, ref_slice, MutableCloneableSlice};
+pub use core::slice::{Found, NotFound};
 
 // Functional utilities
 

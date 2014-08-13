@@ -69,15 +69,17 @@ is the same as `&[u8]`.
 
 #![doc(primitive = "str")]
 
-use core::prelude::*;
-
 use core::default::Default;
 use core::fmt;
 use core::cmp;
 use core::iter::AdditiveIterator;
 use core::mem;
+use core::prelude::{Char, Clone, Collection, Eq, Equiv, ImmutableSlice};
+use core::prelude::{Iterator, MutableSlice, None, Option, Ord, Ordering};
+use core::prelude::{PartialEq, PartialOrd, Result, Slice, Some, Tuple2};
+use core::prelude::{range};
 
-use {Collection, Deque, MutableSeq};
+use {Deque, MutableSeq};
 use hash;
 use ringbuf::RingBuf;
 use string::String;

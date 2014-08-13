@@ -154,7 +154,7 @@ use core::default::Default;
 use core::mem::{zeroed, replace, swap};
 use core::ptr;
 
-use {Collection, Mutable, MutableSeq};
+use {Mutable, MutableSeq};
 use slice;
 use vec::Vec;
 

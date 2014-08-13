@@ -9,7 +9,6 @@
 // except according to those terms.
 
 extern crate collections;
-extern crate std;
 
 use std::collections::Bitv;
 

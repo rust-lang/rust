@@ -27,8 +27,6 @@ pub mod foo1 {
 }
 
 fn test_unused1() {
-    use foo1::Bar;
-    use foo1::{Bar,Baz};
     use foo1::*;
 }
 
@@ -60,8 +58,6 @@ pub mod foo2 {
 }
 
 fn test_unused2() {
-    use foo2::Bar;
-    use foo2::{Bar,Baz};
     use foo2::*;
 }
 
@@ -93,8 +89,6 @@ pub mod foo3 {
 }
 
 fn test_unused3() {
-    use foo3::Bar;
-    use foo3::{Bar,Baz};
     use foo3::*;
 }
 

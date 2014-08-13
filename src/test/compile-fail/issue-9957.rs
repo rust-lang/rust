@@ -8,13 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub extern crate std; //~ ERROR: `pub` visibility is not allowed
-extern crate std;
-
-pub use std::bool;
-use std::bool;
+pub extern crate core; //~ ERROR: `pub` visibility is not allowed
 
 fn main() {
     pub use std::bool; //~ ERROR: imports in functions are never reachable
-    use std::bool;
 }

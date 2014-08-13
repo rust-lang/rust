@@ -20,7 +20,6 @@ use prelude::*;
 use io::{IoResult, IoError};
 use libc;
 use os;
-use boxed::Box;
 use rt::rtio::{RtioPipe, LocalIo};
 
 /// A synchronous, in-memory pipe.

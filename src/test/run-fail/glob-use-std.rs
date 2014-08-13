@@ -10,6 +10,10 @@
 
 // Issue #7580
 
+// ignore-pretty
+//
+// Expanded pretty printing causes resolve conflicts.
+
 // error-pattern:fail works
 #![feature(globs)]
 

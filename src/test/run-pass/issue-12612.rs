@@ -14,8 +14,6 @@
 extern crate foo = "issue-12612-1";
 extern crate bar = "issue-12612-2";
 
-use foo::bar;
-
 mod test {
     use bar::baz;
 }

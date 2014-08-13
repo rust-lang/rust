@@ -68,12 +68,11 @@ use core::default::Default;
 use core::fmt;
 use core::iter::Take;
 use core::iter;
-use core::ops::Index;
 use core::slice;
 use core::uint;
 use std::hash;
 
-use {Collection, Mutable, Set, MutableSet, MutableSeq};
+use {Mutable, Set, MutableSet, MutableSeq};
 use vec::Vec;
 
 
