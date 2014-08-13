@@ -666,7 +666,7 @@ This is not the same as this, which won't compile:
 ```{ignore}
 let x = 5i;
 
-let y: int = if x == 5 { 10i; } else { 15i; };
+let y: int = if x == 5i { 10i; } else { 15i; };
 ```
 
 Note the semicolons after the 10 and 15. Rust will give us the following error:
