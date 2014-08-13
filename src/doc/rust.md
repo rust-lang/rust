@@ -919,7 +919,7 @@ extern crate foo = "some/where/rust-foo#foo:1.0"; // a full crate ID for externa
 ##### Use declarations
 
 ~~~~ {.ebnf .gram}
-use_decl : "pub" ? "use" [ ident '=' path
+use_decl : "pub" ? "use" [ path "as" ident
                           | path_glob ] ;
 
 path_glob : ident [ "::" [ path_glob
@@ -939,7 +939,7 @@ module item. These declarations may appear at the top of [modules](#modules) and
 
 Use declarations support a number of convenient shortcuts:
 
-  * Rebinding the target name as a new local name, using the syntax `use x = p::q::r;`.
+  * Rebinding the target name as a new local name, using the syntax `use p::q::r as x;`.
   * Simultaneously binding a list of paths differing only in their final element,
     using the glob-like brace syntax `use a::b::{c,d,e,f};`
   * Binding all paths matching a given prefix, using the asterisk wildcard syntax `use a::b::*;`

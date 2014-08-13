@@ -12,7 +12,7 @@
 #![deny(unused_imports)]
 #![allow(dead_code)]
 
-use cal = bar::c::cc;
+use bar::c::cc as cal;
 
 use std::mem::*;            // shouldn't get errors for not using
                             // everything imported

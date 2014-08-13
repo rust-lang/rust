@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-pub use local_alias = local;
+pub use local as local_alias;
 
 mod local { }
 

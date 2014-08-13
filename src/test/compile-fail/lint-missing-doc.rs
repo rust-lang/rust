@@ -148,8 +148,8 @@ mod internal_impl {
 }
 /// dox
 pub mod public_interface {
-    pub use foo = internal_impl::documented;
-    pub use bar = internal_impl::undocumented1;
+    pub use internal_impl::documented as foo;
+    pub use internal_impl::undocumented1 as bar;
     pub use internal_impl::{documented, undocumented2};
     pub use internal_impl::globbed::*;
 }
