@@ -1029,6 +1029,7 @@ mod test {
     use std::rt::task::TaskOpts;
     use std::rt::task::Task;
     use std::rt::local::Local;
+    use std::time::Duration;
 
     use {TaskState, PoolConfig, SchedPool};
     use basic;
@@ -1291,7 +1292,7 @@ mod test {
         // doesn't exit before emptying the work queue
         pool.spawn(TaskOpts::new(), proc() {
             spawn(proc() {
-                timer::sleep(10);
+                timer::sleep(Duration::milliseconds(10));
             });
         });
 

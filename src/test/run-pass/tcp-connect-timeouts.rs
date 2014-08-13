@@ -38,6 +38,7 @@ macro_rules! iotest (
             use std::io::net::tcp::*;
             use std::io::test::*;
             use std::io;
+            use std::time::Duration;
 
             fn f() $b
 
@@ -72,7 +73,7 @@ iotest!(fn eventual_timeout() {
 
     let mut v = Vec::new();
     for _ in range(0u, 10000) {
-        match TcpStream::connect_timeout(addr, 100) {
+        match TcpStream::connect_timeout(addr, Duration::milliseconds(100)) {
             Ok(e) => v.push(e),
             Err(ref e) if e.kind == io::TimedOut => return,
             Err(e) => fail!("other error: {}", e),
@@ -87,11 +88,22 @@ iotest!(fn timeout_success() {
     let port = addr.port;
     let _l = TcpListener::bind(host.as_slice(), port).unwrap().listen();
 
-    assert!(TcpStream::connect_timeout(addr, 1000).is_ok());
+    assert!(TcpStream::connect_timeout(addr, Duration::milliseconds(1000)).is_ok());
 })
 
 iotest!(fn timeout_error() {
     let addr = next_test_ip4();
 
-    assert!(TcpStream::connect_timeout(addr, 1000).is_err());
+    assert!(TcpStream::connect_timeout(addr, Duration::milliseconds(1000)).is_err());
 })
+
+    iotest!(fn connect_timeout_zero() {
+        let addr = next_test_ip4();
+        assert!(TcpStream::connect_timeout(addr, Duration::milliseconds(0)).is_err());
+    })
+
+    iotest!(fn connect_timeout_negative() {
+        let addr = next_test_ip4();
+        assert!(TcpStream::connect_timeout(addr, Duration::milliseconds(-1)).is_err());
+    })
+
