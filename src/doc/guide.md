@@ -2148,7 +2148,7 @@ a function for that:
 let input = io::stdin().read_line()
                        .ok()
                        .expect("Failed to read line");
-let guess: Option<uint> = from_str(input.as_slice());
+let input_num: Option<uint> = from_str(input.as_slice());
 ```
 
 The `from_str` function takes in a `&str` value and converts it into something.
@@ -2170,8 +2170,8 @@ In this case, we say `x` is a `uint` explicitly, so Rust is able to properly
 tell `random()` what to generate. In a similar fashion, both of these work:
 
 ```{rust,ignore}
-let guess = from_str::<Option<uint>>("5");
-let guess: Option<uint> = from_str("5");
+let input_num = from_str::<Option<uint>>("5");
+let input_num: Option<uint> = from_str("5");
 ```
 
 In this case, I happen to prefer the latter, and in the `random()` case, I prefer
