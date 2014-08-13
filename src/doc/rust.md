@@ -1356,6 +1356,9 @@ A *static item* is a named _constant value_ stored in the global data section of
 Immutable static items are stored in the read-only data section.
 The constant value bound to a static item is, like all constant values, evaluated at compile time.
 Static items have the `static` lifetime, which outlives all other lifetimes in a Rust program.
+Only values stored in the global data section (such as string constants
+and static items) can have the `static` lifetime;
+dynamically constructed values cannot safely be assigned the `static` lifetime.
 Static items are declared with the `static` keyword.
 A static item must have a _constant expression_ giving its definition.
 
@@ -3621,7 +3624,10 @@ There are four varieties of pointer in Rust:
     References arise by (automatic) conversion from owning pointers, managed pointers,
     or by applying the borrowing operator `&` to some other value,
     including [lvalues, rvalues or temporaries](#lvalues,-rvalues-and-temporaries).
-    References are written `&content`, or in some cases `&'f content` for some lifetime-variable `f`,
+    A borrow expression is written `&content`.
+
+    A reference type is written `&'f type` for some lifetime-variable `f`,
+    or just `&type` when the lifetime can be elided;
     for example `&int` means a reference to an integer.
     Copying a reference is a "shallow" operation:
     it involves only copying the pointer itself.
