@@ -664,10 +664,11 @@ mod test {
 #[test]
 fn task_abort_no_kill_runtime() {
     use std::io::timer;
+    use time::Duration;
     use mem;
 
     let tb = TaskBuilder::new();
     let rx = tb.try_future(proc() {});
     mem::drop(rx);
-    timer::sleep(1000);
+    timer::sleep(Duration::milliseconds(1000));
 }

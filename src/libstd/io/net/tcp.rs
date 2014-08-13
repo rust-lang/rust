@@ -27,6 +27,7 @@ use io::net::addrinfo::get_host_addresses;
 use io::net::ip::SocketAddr;
 use io::{IoError, ConnectionFailed, InvalidInput};
 use io::{Reader, Writer, Listener, Acceptor};
+use io::{standard_error, TimedOut};
 use from_str::FromStr;
 use kinds::Send;
 use option::{None, Some, Option};
@@ -34,6 +35,7 @@ use boxed::Box;
 use rt::rtio::{IoFactory, LocalIo, RtioSocket, RtioTcpListener};
 use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 use rt::rtio;
+use time::Duration;
 
 /// A structure which represents a TCP stream between a local socket and a
 /// remote socket.
@@ -92,7 +94,7 @@ impl TcpStream {
     }
 
     /// Creates a TCP connection to a remote socket address, timing out after
-    /// the specified number of milliseconds.
+    /// the specified duration.
     ///
     /// This is the same as the `connect` method, except that if the timeout
     /// specified (in milliseconds) elapses before a connection is made an error
@@ -100,13 +102,20 @@ impl TcpStream {
     ///
     /// Note that the `addr` argument may one day be split into a separate host
     /// and port, similar to the API seen in `connect`.
+    ///
+    /// If a `timeout` with zero or negative duration is specified then
+    /// the function returns `Err`, with the error kind set to `TimedOut`.
     #[experimental = "the timeout argument may eventually change types"]
     pub fn connect_timeout(addr: SocketAddr,
-                           timeout_ms: u64) -> IoResult<TcpStream> {
+                           timeout: Duration) -> IoResult<TcpStream> {
+        if timeout <= Duration::milliseconds(0) {
+            return Err(standard_error(TimedOut));
+        }
+
         let SocketAddr { ip, port } = addr;
         let addr = rtio::SocketAddr { ip: super::to_rtio(ip), port: port };
         LocalIo::maybe_raise(|io| {
-            io.tcp_connect(addr, Some(timeout_ms)).map(TcpStream::new)
+            io.tcp_connect(addr, Some(timeout.num_milliseconds() as u64)).map(TcpStream::new)
         }).map_err(IoError::from_rtio_error)
     }
 
@@ -164,13 +173,14 @@ impl TcpStream {
     /// # #![allow(unused_must_use)]
     /// use std::io::timer;
     /// use std::io::TcpStream;
+    /// use std::time::Duration;
     ///
     /// let mut stream = TcpStream::connect("127.0.0.1", 34254).unwrap();
     /// let stream2 = stream.clone();
     ///
     /// spawn(proc() {
     ///     // close this stream after one second
-    ///     timer::sleep(1000);
+    ///     timer::sleep(Duration::seconds(1));
     ///     let mut stream = stream2;
     ///     stream.close_read();
     /// });

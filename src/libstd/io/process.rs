@@ -976,7 +976,7 @@ mod tests {
                 assert!(!p.wait().unwrap().success());
                 return
             }
-            timer::sleep(100);
+            timer::sleep(Duration::milliseconds(100));
         }
         fail!("never saw the child go away");
     })

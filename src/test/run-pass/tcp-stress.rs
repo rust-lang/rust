@@ -23,6 +23,7 @@ extern crate debug;
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};
 use std::task::TaskBuilder;
+use std::time::Duration;
 
 #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
@@ -33,7 +34,7 @@ fn main() {
     // This test has a chance to time out, try to not let it time out
     spawn(proc() {
         use std::io::timer;
-        timer::sleep(30 * 1000);
+        timer::sleep(Duration::milliseconds(30 * 1000));
         println!("timed out!");
         unsafe { libc::exit(1) }
     });

@@ -167,6 +167,7 @@ mod test_unix {
     use comm::Empty;
     use io::timer;
     use super::{Listener, Interrupt};
+    use time::Duration;
 
     fn sigint() {
         unsafe {
@@ -179,7 +180,7 @@ mod test_unix {
         let mut signal = Listener::new();
         signal.register(Interrupt).unwrap();
         sigint();
-        timer::sleep(10);
+        timer::sleep(Duration::milliseconds(10));
         match signal.rx.recv() {
             Interrupt => (),
             s => fail!("Expected Interrupt, got {:?}", s),
@@ -193,7 +194,7 @@ mod test_unix {
         s1.register(Interrupt).unwrap();
         s2.register(Interrupt).unwrap();
         sigint();
-        timer::sleep(10);
+        timer::sleep(Duration::milliseconds(10));
         match s1.rx.recv() {
             Interrupt => (),
             s => fail!("Expected Interrupt, got {:?}", s),
@@ -212,7 +213,7 @@ mod test_unix {
         s2.register(Interrupt).unwrap();
         s2.unregister(Interrupt);
         sigint();
-        timer::sleep(10);
+        timer::sleep(Duration::milliseconds(10));
         assert_eq!(s2.rx.try_recv(), Err(Empty));
     }
 }

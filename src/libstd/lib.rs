@@ -233,6 +233,8 @@ pub mod ascii;
 #[cfg(not(test))]
 pub mod gc;
 
+pub mod time;
+
 /* Common traits */
 
 pub mod from_str;
