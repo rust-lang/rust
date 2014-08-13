@@ -261,6 +261,8 @@ impl<'a> GatherLoanCtxt<'a> {
             self.bccx, borrow_span, cause,
             cmt.clone(), loan_region);
 
+        debug!("guarantee_valid(): restrictions={:?}", restr);
+
         // Create the loan record (if needed).
         let loan = match restr {
             restrictions::Safe => {
