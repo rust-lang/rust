@@ -80,14 +80,32 @@ all modules is set to this value.
 
 Some examples of valid values of `RUST_LOG` are:
 
-```text
-hello                // turns on all logging for the 'hello' module
-info                 // turns on all info logging
-hello=debug          // turns on debug logging for 'hello'
-hello=3              // turns on info logging for 'hello'
-hello,std::option    // turns on hello, and std's option logging
-error,hello=warn     // turn on global error logging and also warn for hello
-```
+* `hello` turns on all logging for the 'hello' module
+* `info` turns on all info logging
+* `hello=debug` turns on debug logging for 'hello'
+* `hello=3` turns on info logging for 'hello'
+* `hello,std::option` turns on hello, and std's option logging
+* `error,hello=warn` turn on global error logging and also warn for hello
+
+## Filtering results
+
+A RUST_LOG directive may include a regex filter. The syntax is to append `/`
+followed by a regex. Each message is checked against the regex, and is only
+logged if it matches. Note that the matching is done after formatting the log
+string but before adding any logging meta-data. There is a single filter for all
+modules.
+
+Some examples:
+
+* `hello/foo` turns on all logging for the 'hello' module where the log message
+includes 'foo'.
+* `info/f.o` turns on all info logging where the log message includes 'foo',
+'f1o', 'fao', etc.
+* `hello=debug/foo*foo` turns on debug logging for 'hello' where the the log
+message includes 'foofoo' or 'fofoo' or 'fooooooofoo', etc.
+* `error,hello=warn/[0-9] scopes` turn on global error logging and also warn for
+ hello. In both cases the log message must include a single digit number
+ followed by 'scopes'
 
 ## Performance and Side Effects
 
@@ -117,6 +135,9 @@ if logging is disabled, none of the components of the log will be executed.
 #![feature(macro_rules)]
 #![deny(missing_doc)]
 
+extern crate regex;
+
+use regex::Regex;
 use std::fmt;
 use std::io::LineBufferedWriter;
 use std::io;
@@ -145,6 +166,9 @@ static mut LOG_LEVEL: u32 = MAX_LOG_LEVEL;
 
 static mut DIRECTIVES: *const Vec<directive::LogDirective> =
     0 as *const Vec<directive::LogDirective>;
+
+/// Optional regex filter.
+static mut FILTER: *const Regex = 0 as *const _;
 
 /// Debug log level
 pub static DEBUG: u32 = 4;
@@ -222,6 +246,13 @@ impl Drop for DefaultLogger {
 /// invoked through the logging family of macros.
 #[doc(hidden)]
 pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
+    // Test the literal string from args against the current filter, if there
+    // is one.
+    match unsafe { FILTER.to_option() } {
+        Some(filter) if filter.is_match(args.to_string().as_slice()) => return,
+        _ => {}
+    }
+
     // Completely remove the local logger from TLS in case anyone attempts to
     // frob the slot while we're doing the logging. This will destroy any logger
     // set during logging.
@@ -321,9 +352,9 @@ fn enabled(level: u32,
 /// This is not threadsafe at all, so initialization os performed through a
 /// `Once` primitive (and this function is called from that primitive).
 fn init() {
-    let mut directives = match os::getenv("RUST_LOG") {
+    let (mut directives, filter) = match os::getenv("RUST_LOG") {
         Some(spec) => directive::parse_logging_spec(spec.as_slice()),
-        None => Vec::new(),
+        None => (Vec::new(), None),
     };
 
     // Sort the provided directives by length of their name, this allows a
@@ -342,15 +373,26 @@ fn init() {
     unsafe {
         LOG_LEVEL = max_level;
 
+        assert!(FILTER.is_null());
+        match filter {
+            Some(f) => FILTER = mem::transmute(box f),
+            None => {}
+        }
+
         assert!(DIRECTIVES.is_null());
         DIRECTIVES = mem::transmute(box directives);
 
-        // Schedule the cleanup for this global for when the runtime exits.
+        // Schedule the cleanup for the globals for when the runtime exits.
         rt::at_exit(proc() {
             assert!(!DIRECTIVES.is_null());
             let _directives: Box<Vec<directive::LogDirective>> =
                 mem::transmute(DIRECTIVES);
             DIRECTIVES = 0 as *const Vec<directive::LogDirective>;
+
+            if !FILTER.is_null() {
+                let _filter: Box<Regex> = mem::transmute(FILTER);
+                FILTER = 0 as *const _;
+            }
         });
     }
 }
