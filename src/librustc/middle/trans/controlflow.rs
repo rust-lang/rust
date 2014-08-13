@@ -69,12 +69,8 @@ pub fn trans_stmt<'a>(cx: &'a Block<'a>,
                         debuginfo::create_local_var_metadata(bcx, &**local);
                     }
                 }
-                ast::DeclItem(ref i) => {
-                    match fcx.handle_items {
-                        TranslateItems => trans_item(cx.fcx.ccx, &**i),
-                        IgnoreItems => {}
-                    }
-                }
+                // Inner items are visited by `trans_item`/`trans_meth`.
+                ast::DeclItem(_) => {},
             }
         }
         ast::StmtMac(..) => cx.tcx().sess.bug("unexpanded macro")
