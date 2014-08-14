@@ -666,9 +666,9 @@ impl<'a> Context<'a> {
         let mut dylibs = HashSet::new();
         for loc in locs {
             if loc.filename_str().unwrap().ends_with(".rlib") {
-                rlibs.insert(loc.clone());
+                rlibs.insert(fs::realpath(&loc).unwrap());
             } else {
-                dylibs.insert(loc.clone());
+                dylibs.insert(fs::realpath(&loc).unwrap());
             }
         }
 
