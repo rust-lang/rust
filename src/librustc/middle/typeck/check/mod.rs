@@ -3390,7 +3390,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprMatch(ref discrim, ref arms) => {
         _match::check_match(fcx, expr, &**discrim, arms.as_slice());
       }
-      ast::ExprFnBlock(ref decl, ref body) => {
+      ast::ExprFnBlock(_, ref decl, ref body) => {
         let region = astconv::opt_ast_region_to_region(fcx,
                                                        fcx.infcx(),
                                                        expr.span,
@@ -3402,7 +3402,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                       body.clone(),
                       expected);
       }
-      ast::ExprUnboxedFn(ref decl, ref body) => {
+      ast::ExprUnboxedFn(_, ref decl, ref body) => {
         check_unboxed_closure(fcx,
                               expr,
                               &**decl,

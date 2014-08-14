@@ -124,12 +124,20 @@ fn test_env(_test_name: &str,
     let lang_items = lang_items::collect_language_items(&krate, &sess);
     let resolve::CrateMap { def_map: def_map, .. } =
         resolve::resolve_crate(&sess, &lang_items, &krate);
-    let freevars_map = freevars::annotate_freevars(&def_map, &krate);
+    let (freevars_map, captures_map) = freevars::annotate_freevars(&def_map,
+                                                                   &krate);
     let named_region_map = resolve_lifetime::krate(&sess, &krate);
     let region_map = region::resolve_crate(&sess, &krate);
     let stability_index = stability::Index::build(&krate);
-    let tcx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map,
-                          freevars_map, region_map, lang_items, stability_index);
+    let tcx = ty::mk_ctxt(sess,
+                          def_map,
+                          named_region_map,
+                          ast_map,
+                          freevars_map,
+                          captures_map,
+                          region_map,
+                          lang_items,
+                          stability_index);
     let infcx = infer::new_infer_ctxt(&tcx);
     let env = Env {krate: krate,
                    tcx: &tcx,

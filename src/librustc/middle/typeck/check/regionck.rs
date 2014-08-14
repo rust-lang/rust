@@ -290,6 +290,11 @@ impl<'fcx> mc::Typer for Rcx<'fcx> {
     fn upvar_borrow(&self, id: ty::UpvarId) -> ty::UpvarBorrow {
         self.fcx.inh.upvar_borrow_map.borrow().get_copy(&id)
     }
+
+    fn capture_mode(&self, closure_expr_id: ast::NodeId)
+                    -> freevars::CaptureMode {
+        self.tcx().capture_modes.borrow().get_copy(&closure_expr_id)
+    }
 }
 
 pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
@@ -587,9 +592,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprFnBlock(_, ref body) |
+        ast::ExprFnBlock(_, _, ref body) |
         ast::ExprProc(_, ref body) |
-        ast::ExprUnboxedFn(_, ref body) => {
+        ast::ExprUnboxedFn(_, _, ref body) => {
             check_expr_fn_block(rcx, expr, &**body);
         }
 

@@ -18,8 +18,8 @@ use driver::session::Session;
 use metadata::decoder;
 use middle::def;
 use e = metadata::encoder;
+use middle::freevars::{CaptureMode, freevar_entry};
 use middle::freevars;
-use middle::freevars::freevar_entry;
 use middle::region;
 use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter,
@@ -530,9 +530,14 @@ fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &freevar_entry) {
     (*fv).encode(rbml_w).unwrap();
 }
 
+fn encode_capture_mode(rbml_w: &mut Encoder, cm: CaptureMode) {
+    cm.encode(rbml_w).unwrap();
+}
+
 trait rbml_decoder_helper {
     fn read_freevar_entry(&mut self, xcx: &ExtendedDecodeContext)
                           -> freevar_entry;
+    fn read_capture_mode(&mut self) -> CaptureMode;
 }
 
 impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
@@ -540,6 +545,11 @@ impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
                           -> freevar_entry {
         let fv: freevar_entry = Decodable::decode(self).unwrap();
         fv.tr(xcx)
+    }
+
+    fn read_capture_mode(&mut self) -> CaptureMode {
+        let cm: CaptureMode = Decodable::decode(self).unwrap();
+        cm
     }
 }
 
@@ -1096,6 +1106,15 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
+    for &cm in tcx.capture_modes.borrow().find(&id).iter() {
+        rbml_w.tag(c::tag_table_capture_modes, |rbml_w| {
+            rbml_w.id(id);
+            rbml_w.tag(c::tag_table_val, |rbml_w| {
+                encode_capture_mode(rbml_w, *cm);
+            })
+        })
+    }
+
     let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
     for &pty in tcx.tcache.borrow().find(&lid).iter() {
         rbml_w.tag(c::tag_table_tcache, |rbml_w| {
@@ -1508,6 +1527,13 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                         };
                         let ub: ty::UpvarBorrow = Decodable::decode(val_dsr).unwrap();
                         dcx.tcx.upvar_borrow_map.borrow_mut().insert(upvar_id, ub.tr(xcx));
+                    }
+                    c::tag_table_capture_modes => {
+                        let capture_mode = val_dsr.read_capture_mode();
+                        dcx.tcx
+                           .capture_modes
+                           .borrow_mut()
+                           .insert(id, capture_mode);
                     }
                     c::tag_table_tcache => {
                         let pty = val_dsr.read_polytype(xcx);

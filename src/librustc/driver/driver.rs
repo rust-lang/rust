@@ -360,8 +360,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
             plugin::build::find_plugin_registrar(
                 sess.diagnostic(), krate)));
 
-    let freevars = time(time_passes, "freevar finding", (), |_|
-                        freevars::annotate_freevars(&def_map, krate));
+    let (freevars, capture_modes) =
+        time(time_passes, "freevar finding", (), |_|
+             freevars::annotate_freevars(&def_map, krate));
 
     let region_map = time(time_passes, "region resolution", (), |_|
                           middle::region::resolve_crate(&sess, krate));
@@ -372,8 +373,15 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     let stability_index = time(time_passes, "stability index", (), |_|
                                stability::Index::build(krate));
 
-    let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map,
-                            freevars, region_map, lang_items, stability_index);
+    let ty_cx = ty::mk_ctxt(sess,
+                            def_map,
+                            named_region_map,
+                            ast_map,
+                            freevars,
+                            capture_modes,
+                            region_map,
+                            lang_items,
+                            stability_index);
 
     // passes are timed inside typeck
     typeck::check_crate(&ty_cx, trait_map, krate);

@@ -206,7 +206,7 @@ impl FnLikeNode {
             },
             ast_map::NodeMethod(ref m) => method(&**m),
             ast_map::NodeExpr(ref e) => match e.node {
-                ast::ExprFnBlock(ref decl, ref block) =>
+                ast::ExprFnBlock(_, ref decl, ref block) =>
                     closure(ClosureParts::new(*decl, *block, e.id, e.span)),
                 ast::ExprProc(ref decl, ref block) =>
                     closure(ClosureParts::new(*decl, *block, e.id, e.span)),

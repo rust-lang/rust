@@ -5287,9 +5287,9 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr, ());
             }
 
-            ExprFnBlock(fn_decl, block) |
+            ExprFnBlock(_, fn_decl, block) |
             ExprProc(fn_decl, block) |
-            ExprUnboxedFn(fn_decl, block) => {
+            ExprUnboxedFn(_, fn_decl, block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.id),
                                       Some(fn_decl), NoTypeParameters,
                                       block);

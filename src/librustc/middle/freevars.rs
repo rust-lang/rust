@@ -17,14 +17,14 @@ use middle::def;
 use middle::mem_categorization::Typer;
 use middle::resolve;
 use middle::ty;
-use util::nodemap::{DefIdSet, NodeMap, NodeSet};
+use util::nodemap::{NodeMap, NodeSet};
 
+use syntax::ast;
 use syntax::codemap::Span;
-use syntax::{ast};
-use syntax::visit;
 use syntax::visit::Visitor;
+use syntax::visit;
 
-#[deriving(Show)]
+#[deriving(Clone, Decodable, Encodable, Show)]
 pub enum CaptureMode {
     /// Copy/move the value from this llvm ValueRef into the environment.
     CaptureByValue,
@@ -43,12 +43,13 @@ pub struct freevar_entry {
 
 pub type freevar_map = NodeMap<Vec<freevar_entry>>;
 
-pub type UnboxedClosureList = DefIdSet;
+pub type CaptureModeMap = NodeMap<CaptureMode>;
 
 struct CollectFreevarsVisitor<'a> {
     seen: NodeSet,
     refs: Vec<freevar_entry>,
     def_map: &'a resolve::DefMap,
+    capture_mode_map: &'a mut CaptureModeMap,
 }
 
 impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
@@ -58,8 +59,27 @@ impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
 
     fn visit_expr(&mut self, expr: &ast::Expr, depth: int) {
         match expr.node {
-            ast::ExprFnBlock(..) | ast::ExprProc(..) |
-            ast::ExprUnboxedFn(..) => {
+            ast::ExprProc(..) => {
+                self.capture_mode_map.insert(expr.id, CaptureByValue);
+                visit::walk_expr(self, expr, depth + 1)
+            }
+            ast::ExprFnBlock(_, _, _) => {
+                // NOTE(stage0): After snapshot, change to:
+                //
+                //let capture_mode = match capture_clause {
+                //    ast::CaptureByValue => CaptureByValue,
+                //    ast::CaptureByRef => CaptureByRef,
+                //};
+                let capture_mode = CaptureByRef;
+                self.capture_mode_map.insert(expr.id, capture_mode);
+                visit::walk_expr(self, expr, depth + 1)
+            }
+            ast::ExprUnboxedFn(capture_clause, _, _) => {
+                let capture_mode = match capture_clause {
+                    ast::CaptureByValue => CaptureByValue,
+                    ast::CaptureByRef => CaptureByRef,
+                };
+                self.capture_mode_map.insert(expr.id, capture_mode);
                 visit::walk_expr(self, expr, depth + 1)
             }
             ast::ExprPath(..) => {
@@ -91,8 +111,6 @@ impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
             _ => visit::walk_expr(self, expr, depth)
         }
     }
-
-
 }
 
 // Searches through part of the AST for all references to locals or
@@ -100,26 +118,34 @@ impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
 // Since we want to be able to collect upvars in some arbitrary piece
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
-fn collect_freevars(def_map: &resolve::DefMap, blk: &ast::Block) -> Vec<freevar_entry> {
+fn collect_freevars(def_map: &resolve::DefMap,
+                    blk: &ast::Block,
+                    capture_mode_map: &mut CaptureModeMap)
+                    -> Vec<freevar_entry> {
     let mut v = CollectFreevarsVisitor {
         seen: NodeSet::new(),
         refs: Vec::new(),
         def_map: def_map,
+        capture_mode_map: &mut *capture_mode_map,
     };
 
     v.visit_block(blk, 1);
+
     v.refs
 }
 
 struct AnnotateFreevarsVisitor<'a> {
     def_map: &'a resolve::DefMap,
     freevars: freevar_map,
+    capture_mode_map: CaptureModeMap,
 }
 
 impl<'a> Visitor<()> for AnnotateFreevarsVisitor<'a> {
     fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
                 blk: &ast::Block, s: Span, nid: ast::NodeId, _: ()) {
-        let vars = collect_freevars(self.def_map, blk);
+        let vars = collect_freevars(self.def_map,
+                                    blk,
+                                    &mut self.capture_mode_map);
         self.freevars.insert(nid, vars);
         visit::walk_fn(self, fk, fd, blk, s, ());
     }
@@ -131,14 +157,20 @@ impl<'a> Visitor<()> for AnnotateFreevarsVisitor<'a> {
 // node of interest rather than building up the free variables in
 // one pass. This could be improved upon if it turns out to matter.
 pub fn annotate_freevars(def_map: &resolve::DefMap, krate: &ast::Crate)
-                         -> freevar_map {
+                         -> (freevar_map, CaptureModeMap) {
     let mut visitor = AnnotateFreevarsVisitor {
         def_map: def_map,
         freevars: NodeMap::new(),
+        capture_mode_map: NodeMap::new(),
     };
     visit::walk_crate(&mut visitor, krate, ());
 
-    visitor.freevars
+    let AnnotateFreevarsVisitor {
+        freevars,
+        capture_mode_map,
+        ..
+    } = visitor;
+    (freevars, capture_mode_map)
 }
 
 pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[freevar_entry]| -> T) -> T {
@@ -148,10 +180,7 @@ pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[freevar_entry]| 
     }
 }
 
-pub fn get_capture_mode<T: Typer>(tcx: &T, closure_expr_id: ast::NodeId) -> CaptureMode {
-    let fn_ty = tcx.node_ty(closure_expr_id).ok().expect("couldn't find closure ty?");
-    match ty::ty_closure_store(fn_ty) {
-        ty::RegionTraitStore(..) => CaptureByRef,
-        ty::UniqTraitStore => CaptureByValue
-    }
+pub fn get_capture_mode<T:Typer>(tcx: &T, closure_expr_id: ast::NodeId)
+                        -> CaptureMode {
+    tcx.capture_mode(closure_expr_id)
 }

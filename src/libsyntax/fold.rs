@@ -1094,16 +1094,18 @@ pub fn noop_fold_expr<T: Folder>(e: Gc<Expr>, folder: &mut T) -> Gc<Expr> {
             ExprMatch(folder.fold_expr(expr),
                       arms.iter().map(|x| folder.fold_arm(x)).collect())
         }
-        ExprFnBlock(ref decl, ref body) => {
-            ExprFnBlock(folder.fold_fn_decl(&**decl),
+        ExprFnBlock(capture_clause, ref decl, ref body) => {
+            ExprFnBlock(capture_clause,
+                        folder.fold_fn_decl(&**decl),
                         folder.fold_block(body.clone()))
         }
         ExprProc(ref decl, ref body) => {
             ExprProc(folder.fold_fn_decl(&**decl),
                      folder.fold_block(body.clone()))
         }
-        ExprUnboxedFn(ref decl, ref body) => {
-            ExprUnboxedFn(folder.fold_fn_decl(&**decl),
+        ExprUnboxedFn(capture_clause, ref decl, ref body) => {
+            ExprUnboxedFn(capture_clause,
+                          folder.fold_fn_decl(&**decl),
                           folder.fold_block(*body))
         }
         ExprBlock(ref blk) => ExprBlock(folder.fold_block(*blk)),
