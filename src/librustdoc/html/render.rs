@@ -1624,10 +1624,24 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                   it.name.get_ref().as_slice(),
                   t.generics,
                   parents));
-    let required = t.methods.iter().filter(|m| m.is_req()).collect::<Vec<&clean::TraitMethod>>();
-    let provided = t.methods.iter().filter(|m| !m.is_req()).collect::<Vec<&clean::TraitMethod>>();
+    let required = t.items.iter()
+                          .filter(|m| {
+                              match **m {
+                                  clean::RequiredMethod(_) => true,
+                                  _ => false,
+                              }
+                          })
+                          .collect::<Vec<&clean::TraitItem>>();
+    let provided = t.items.iter()
+                          .filter(|m| {
+                              match **m {
+                                  clean::ProvidedMethod(_) => true,
+                                  _ => false,
+                              }
+                          })
+                          .collect::<Vec<&clean::TraitItem>>();
 
-    if t.methods.len() == 0 {
+    if t.items.len() == 0 {
         try!(write!(w, "{{ }}"));
     } else {
         try!(write!(w, "{{\n"));
@@ -1651,7 +1665,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Trait documentation
     try!(document(w, it));
 
-    fn meth(w: &mut fmt::Formatter, m: &clean::TraitMethod) -> fmt::Result {
+    fn trait_item(w: &mut fmt::Formatter, m: &clean::TraitItem)
+                  -> fmt::Result {
         try!(write!(w, "<h3 id='{}.{}' class='method'>{}<code>",
                     shortty(m.item()),
                     *m.item().name.get_ref(),
@@ -1669,7 +1684,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <div class='methods'>
         "));
         for m in required.iter() {
-            try!(meth(w, *m));
+            try!(trait_item(w, *m));
         }
         try!(write!(w, "</div>"));
     }
@@ -1679,7 +1694,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <div class='methods'>
         "));
         for m in provided.iter() {
-            try!(meth(w, *m));
+            try!(trait_item(w, *m));
         }
         try!(write!(w, "</div>"));
     }
@@ -1991,8 +2006,8 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
         None => {}
     }
 
-    fn docmeth(w: &mut fmt::Formatter, item: &clean::Item,
-               dox: bool) -> fmt::Result {
+    fn doctraititem(w: &mut fmt::Formatter, item: &clean::Item, dox: bool)
+                    -> fmt::Result {
         try!(write!(w, "<h4 id='method.{}' class='method'>{}<code>",
                     *item.name.get_ref(),
                     ConciseStability(&item.stability)));
@@ -2008,21 +2023,21 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     }
 
     try!(write!(w, "<div class='impl-methods'>"));
-    for meth in i.impl_.methods.iter() {
-        try!(docmeth(w, meth, true));
+    for trait_item in i.impl_.items.iter() {
+        try!(doctraititem(w, trait_item, true));
     }
 
     fn render_default_methods(w: &mut fmt::Formatter,
                               t: &clean::Trait,
                               i: &clean::Impl) -> fmt::Result {
-        for method in t.methods.iter() {
-            let n = method.item().name.clone();
-            match i.methods.iter().find(|m| { m.name == n }) {
+        for trait_item in t.items.iter() {
+            let n = trait_item.item().name.clone();
+            match i.items.iter().find(|m| { m.name == n }) {
                 Some(..) => continue,
                 None => {}
             }
 
-            try!(docmeth(w, method.item(), false));
+            try!(doctraititem(w, trait_item.item(), false));
         }
         Ok(())
     }

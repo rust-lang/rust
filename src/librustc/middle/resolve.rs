@@ -24,7 +24,7 @@ use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 use syntax::ast::*;
 use syntax::ast;
 use syntax::ast_util::{local_def, PostExpansionMethod};
-use syntax::ast_util::{walk_pat, trait_method_to_ty_method};
+use syntax::ast_util::{walk_pat, trait_item_to_ty_method};
 use syntax::ext::mtwt;
 use syntax::parse::token::special_names;
 use syntax::parse::token::special_idents;
@@ -36,7 +36,7 @@ use syntax::visit::Visitor;
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
-use std::gc::{Gc, GC};
+use std::gc::GC;
 use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
@@ -225,7 +225,7 @@ enum FallbackSuggestion {
     NoSuggestion,
     Field,
     Method,
-    TraitMethod,
+    TraitItem,
     StaticMethod(String),
     StaticTraitMethod(String),
 }
@@ -272,10 +272,10 @@ enum RibKind {
     ConstantItemRibKind
 }
 
-// Methods can be required or provided. Required methods only occur in traits.
+// Methods can be required or provided. RequiredMethod methods only occur in traits.
 enum MethodSort {
-    Required,
-    Provided(NodeId)
+    RequiredMethod,
+    ProvidedMethod(NodeId)
 }
 
 enum UseLexicalScopeFlag {
@@ -289,19 +289,19 @@ enum ModulePrefixResult {
 }
 
 #[deriving(Clone, Eq, PartialEq)]
-enum MethodIsStaticFlag {
-    MethodIsNotStatic,
-    MethodIsStatic,
+pub enum TraitItemKind {
+    NonstaticMethodTraitItemKind,
+    StaticMethodTraitItemKind,
 }
 
-impl MethodIsStaticFlag {
-    fn from_explicit_self_category(explicit_self_category:
-                                   ExplicitSelfCategory)
-                                   -> MethodIsStaticFlag {
+impl TraitItemKind {
+    pub fn from_explicit_self_category(explicit_self_category:
+                                       ExplicitSelfCategory)
+                                       -> TraitItemKind {
         if explicit_self_category == StaticExplicitSelfCategory {
-            MethodIsStatic
+            StaticMethodTraitItemKind
         } else {
-            MethodIsNotStatic
+            NonstaticMethodTraitItemKind
         }
     }
 }
@@ -824,7 +824,7 @@ struct Resolver<'a> {
 
     graph_root: NameBindings,
 
-    method_map: RefCell<FnvHashMap<(Name, DefId), MethodIsStaticFlag>>,
+    trait_item_map: RefCell<FnvHashMap<(Name, DefId), TraitItemKind>>,
 
     structs: FnvHashMap<DefId, Vec<Name>>,
 
@@ -934,7 +934,7 @@ impl<'a> Resolver<'a> {
 
             graph_root: graph_root,
 
-            method_map: RefCell::new(FnvHashMap::new()),
+            trait_item_map: RefCell::new(FnvHashMap::new()),
             structs: FnvHashMap::new(),
 
             unresolved_imports: 0,
@@ -1263,7 +1263,7 @@ impl<'a> Resolver<'a> {
                 parent
             }
 
-            ItemImpl(_, None, ty, ref methods) => {
+            ItemImpl(_, None, ty, ref impl_items) => {
                 // If this implements an anonymous trait, then add all the
                 // methods within to a new module, if the type was defined
                 // within this module.
@@ -1315,35 +1315,43 @@ impl<'a> Resolver<'a> {
                             }
                         };
 
-                        // For each method...
-                        for method in methods.iter() {
-                            // Add the method to the module.
-                            let ident = method.pe_ident();
-                            let method_name_bindings =
-                                self.add_child(ident,
-                                               new_parent.clone(),
-                                               ForbidDuplicateValues,
-                                               method.span);
-                            let def = match method.pe_explicit_self().node {
-                                SelfStatic => {
-                                    // Static methods become
-                                    // `def_static_method`s.
-                                    DefStaticMethod(local_def(method.id),
-                                                      FromImpl(local_def(
-                                                        item.id)),
-                                                      method.pe_fn_style())
-                                }
-                                _ => {
-                                    // Non-static methods become
-                                    // `def_method`s.
-                                    DefMethod(local_def(method.id), None)
-                                }
-                            };
+                        // For each implementation item...
+                        for impl_item in impl_items.iter() {
+                            match *impl_item {
+                                MethodImplItem(method) => {
+                                    // Add the method to the module.
+                                    let ident = method.pe_ident();
+                                    let method_name_bindings =
+                                        self.add_child(ident,
+                                                       new_parent.clone(),
+                                                       ForbidDuplicateValues,
+                                                       method.span);
+                                    let def = match method.pe_explicit_self()
+                                                          .node {
+                                        SelfStatic => {
+                                            // Static methods become
+                                            // `def_static_method`s.
+                                            DefStaticMethod(
+                                                local_def(method.id),
+                                                FromImpl(local_def(item.id)),
+                                                         method.pe_fn_style())
+                                        }
+                                        _ => {
+                                            // Non-static methods become
+                                            // `def_method`s.
+                                            DefMethod(local_def(method.id),
+                                                      None)
+                                        }
+                                    };
 
-                            let is_public = method.pe_vis() == ast::Public;
-                            method_name_bindings.define_value(def,
-                                                              method.span,
-                                                              is_public);
+                                    let is_public =
+                                        method.pe_vis() == ast::Public;
+                                    method_name_bindings.define_value(
+                                        def,
+                                        method.span,
+                                        is_public);
+                                }
+                            }
                         }
                     }
                     _ => {}
@@ -1376,7 +1384,7 @@ impl<'a> Resolver<'a> {
 
                 // Add the names of all the methods to the trait info.
                 for method in methods.iter() {
-                    let ty_m = trait_method_to_ty_method(method);
+                    let ty_m = trait_item_to_ty_method(method);
 
                     let ident = ty_m.ident;
 
@@ -1387,13 +1395,13 @@ impl<'a> Resolver<'a> {
                             (DefStaticMethod(local_def(ty_m.id),
                                               FromTrait(local_def(item.id)),
                                               ty_m.fn_style),
-                             MethodIsStatic)
+                             StaticMethodTraitItemKind)
                         }
                         _ => {
                             // Non-static methods become `def_method`s.
                             (DefMethod(local_def(ty_m.id),
                                        Some(local_def(item.id))),
-                             MethodIsNotStatic)
+                             NonstaticMethodTraitItemKind)
                         }
                     };
 
@@ -1404,7 +1412,7 @@ impl<'a> Resolver<'a> {
                                        ty_m.span);
                     method_name_bindings.define_value(def, ty_m.span, true);
 
-                    self.method_map
+                    self.trait_item_map
                         .borrow_mut()
                         .insert((ident.name, def_id), static_flag);
                 }
@@ -1714,29 +1722,29 @@ impl<'a> Resolver<'a> {
               debug!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 
-              // If this is a trait, add all the method names
-              // to the trait info.
+              // If this is a trait, add all the trait item names to the trait
+              // info.
 
-              let method_def_ids =
-                csearch::get_trait_method_def_ids(&self.session.cstore, def_id);
-              for &method_def_id in method_def_ids.iter() {
-                  let (method_name, explicit_self) =
-                      csearch::get_method_name_and_explicit_self(&self.session.cstore,
-                                                                 method_def_id);
+              let trait_item_def_ids =
+                csearch::get_trait_item_def_ids(&self.session.cstore, def_id);
+              for trait_item_def_id in trait_item_def_ids.iter() {
+                  let (trait_item_name, trait_item_kind) =
+                      csearch::get_trait_item_name_and_kind(
+                          &self.session.cstore,
+                          trait_item_def_id.def_id());
 
-                  debug!("(building reduced graph for \
-                          external crate) ... adding \
-                          trait method '{}'",
-                         token::get_ident(method_name));
+                  debug!("(building reduced graph for external crate) ... \
+                          adding trait item '{}'",
+                         token::get_ident(trait_item_name));
 
-                  self.method_map
+                  self.trait_item_map
                       .borrow_mut()
-                      .insert((method_name.name, def_id),
-                              MethodIsStaticFlag::from_explicit_self_category(
-                                  explicit_self));
+                      .insert((trait_item_name.name, def_id),
+                              trait_item_kind);
 
                   if is_exported {
-                      self.external_exports.insert(method_def_id);
+                      self.external_exports
+                          .insert(trait_item_def_id.def_id());
                   }
               }
 
@@ -3680,12 +3688,12 @@ impl<'a> Resolver<'a> {
             ItemImpl(ref generics,
                      ref implemented_traits,
                      ref self_type,
-                     ref methods) => {
+                     ref impl_items) => {
                 self.resolve_implementation(item.id,
                                             generics,
                                             implemented_traits,
                                             &**self_type,
-                                            methods.as_slice());
+                                            impl_items.as_slice());
             }
 
             ItemTrait(ref generics, ref unbound, ref traits, ref methods) => {
@@ -3724,12 +3732,12 @@ impl<'a> Resolver<'a> {
                         // FIXME #4951: Do we need a node ID here?
 
                         match *method {
-                          ast::Required(ref ty_m) => {
+                          ast::RequiredMethod(ref ty_m) => {
                             this.with_type_parameter_rib
                                 (HasTypeParameters(&ty_m.generics,
                                                    FnSpace,
                                                    item.id,
-                                        MethodRibKind(item.id, Required)),
+                                        MethodRibKind(item.id, RequiredMethod)),
                                  |this| {
 
                                 // Resolve the method-specific type
@@ -3751,9 +3759,9 @@ impl<'a> Resolver<'a> {
                                 this.resolve_type(&*ty_m.decl.output);
                             });
                           }
-                          ast::Provided(ref m) => {
+                          ast::ProvidedMethod(ref m) => {
                               this.resolve_method(MethodRibKind(item.id,
-                                                                Provided(m.id)),
+                                                                ProvidedMethod(m.id)),
                                                   &**m)
                           }
                         }
@@ -4129,7 +4137,7 @@ impl<'a> Resolver<'a> {
                               generics: &Generics,
                               opt_trait_reference: &Option<TraitRef>,
                               self_type: &Ty,
-                              methods: &[Gc<Method>]) {
+                              impl_items: &[ImplItem]) {
         // If applicable, create a rib for the type parameters.
         self.with_type_parameter_rib(HasTypeParameters(generics,
                                                        TypeSpace,
@@ -4145,27 +4153,36 @@ impl<'a> Resolver<'a> {
                 this.resolve_type(self_type);
 
                 this.with_current_self_type(self_type, |this| {
-                    for method in methods.iter() {
-                        // If this is a trait impl, ensure the method exists in trait
-                        this.check_trait_method(&**method);
+                    for impl_item in impl_items.iter() {
+                        match *impl_item {
+                            MethodImplItem(method) => {
+                                // If this is a trait impl, ensure the method
+                                // exists in trait
+                                this.check_trait_item(method.pe_ident(),
+                                                      method.span);
 
-                        // We also need a new scope for the method-specific type parameters.
-                        this.resolve_method(MethodRibKind(id, Provided(method.id)),
-                                            &**method);
+                                // We also need a new scope for the method-
+                                // specific type parameters.
+                                this.resolve_method(
+                                    MethodRibKind(id,
+                                                  ProvidedMethod(method.id)),
+                                    &*method);
+                            }
+                        }
                     }
                 });
             });
         });
     }
 
-    fn check_trait_method(&self, method: &Method) {
+    fn check_trait_item(&self, ident: Ident, span: Span) {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
         for &(did, ref trait_ref) in self.current_trait_ref.iter() {
-            let method_name = method.pe_ident().name;
+            let method_name = ident.name;
 
-            if self.method_map.borrow().find(&(method_name, did)).is_none() {
+            if self.trait_item_map.borrow().find(&(method_name, did)).is_none() {
                 let path_str = self.path_idents_to_string(&trait_ref.path);
-                self.resolve_error(method.span,
+                self.resolve_error(span,
                                     format!("method `{}` is not a member of trait `{}`",
                                             token::get_name(method_name),
                                             path_str).as_slice());
@@ -4845,8 +4862,8 @@ impl<'a> Resolver<'a> {
             TraitModuleKind | ImplModuleKind => {
                 match containing_module.def_id.get() {
                     Some(def_id) => {
-                        match self.method_map.borrow().find(&(ident.name, def_id)) {
-                            Some(&MethodIsStatic) => (),
+                        match self.trait_item_map.borrow().find(&(ident.name, def_id)) {
+                            Some(&StaticMethodTraitItemKind) => (),
                             None => (),
                             _ => {
                                 debug!("containing module was a trait or impl \
@@ -5102,7 +5119,7 @@ impl<'a> Resolver<'a> {
                             }
                         }
                         Some(DefMethod(_, None)) if allowed == Everything => return Method,
-                        Some(DefMethod(_, Some(_))) => return TraitMethod,
+                        Some(DefMethod(_, Some(_))) => return TraitItem,
                         _ => ()
                     }
                 }
@@ -5112,14 +5129,14 @@ impl<'a> Resolver<'a> {
         }
 
         // Look for a method in the current trait.
-        let method_map = self.method_map.borrow();
+        let trait_item_map = self.trait_item_map.borrow();
         match self.current_trait_ref {
             Some((did, ref trait_ref)) => {
                 let path_str = self.path_idents_to_string(&trait_ref.path);
 
-                match method_map.find(&(name, did)) {
-                    Some(&MethodIsStatic) => return StaticTraitMethod(path_str),
-                    Some(_) => return TraitMethod,
+                match trait_item_map.find(&(name, did)) {
+                    Some(&StaticMethodTraitItemKind) => return StaticTraitMethod(path_str),
+                    Some(_) => return TraitItem,
                     None => {}
                 }
             }
@@ -5262,7 +5279,7 @@ impl<'a> Resolver<'a> {
                                         Field =>
                                             format!("`self.{}`", wrong_name),
                                         Method
-                                        | TraitMethod =>
+                                        | TraitItem =>
                                             format!("to call `self.{}`", wrong_name),
                                         StaticTraitMethod(path_str)
                                         | StaticMethod(path_str) =>
@@ -5437,9 +5454,9 @@ impl<'a> Resolver<'a> {
             // Look for the current trait.
             match self.current_trait_ref {
                 Some((trait_def_id, _)) => {
-                    let method_map = self.method_map.borrow();
+                    let trait_item_map = self.trait_item_map.borrow();
 
-                    if method_map.contains_key(&(name, trait_def_id)) {
+                    if trait_item_map.contains_key(&(name, trait_def_id)) {
                         add_trait_info(&mut found_traits, trait_def_id, name);
                     }
                 }
@@ -5450,7 +5467,7 @@ impl<'a> Resolver<'a> {
             self.populate_module_if_necessary(&search_module);
 
             {
-                let method_map = self.method_map.borrow();
+                let trait_item_map = self.trait_item_map.borrow();
                 for (_, child_names) in search_module.children.borrow().iter() {
                     let def = match child_names.def_for_namespace(TypeNS) {
                         Some(def) => def,
@@ -5460,7 +5477,7 @@ impl<'a> Resolver<'a> {
                         DefTrait(trait_def_id) => trait_def_id,
                         _ => continue,
                     };
-                    if method_map.contains_key(&(name, trait_def_id)) {
+                    if trait_item_map.contains_key(&(name, trait_def_id)) {
                         add_trait_info(&mut found_traits, trait_def_id, name);
                     }
                 }
@@ -5476,7 +5493,7 @@ impl<'a> Resolver<'a> {
                     Some(DefTrait(trait_def_id)) => trait_def_id,
                     Some(..) | None => continue,
                 };
-                if self.method_map.borrow().contains_key(&(name, did)) {
+                if self.trait_item_map.borrow().contains_key(&(name, did)) {
                     add_trait_info(&mut found_traits, did, name);
                     self.used_imports.insert((import.type_id, TypeNS));
                 }

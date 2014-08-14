@@ -109,10 +109,14 @@ fn fold_foreign_mod(cx: &mut Context, nm: &ast::ForeignMod) -> ast::ForeignMod {
 
 fn fold_item_underscore(cx: &mut Context, item: &ast::Item_) -> ast::Item_ {
     let item = match *item {
-        ast::ItemImpl(ref a, ref b, c, ref methods) => {
-            let methods = methods.iter().filter(|m| method_in_cfg(cx, &***m))
-                .map(|x| *x).collect();
-            ast::ItemImpl((*a).clone(), (*b).clone(), c, methods)
+        ast::ItemImpl(ref a, ref b, c, ref impl_items) => {
+            let impl_items = impl_items.iter()
+                                       .filter(|ii| {
+                                           impl_item_in_cfg(cx, &**ii)
+                                       })
+                                       .map(|x| *x)
+                                       .collect();
+            ast::ItemImpl((*a).clone(), (*b).clone(), c, impl_items)
         }
         ast::ItemTrait(ref a, ref b, ref c, ref methods) => {
             let methods = methods.iter()
@@ -230,14 +234,16 @@ fn view_item_in_cfg(cx: &mut Context, item: &ast::ViewItem) -> bool {
     return (cx.in_cfg)(item.attrs.as_slice());
 }
 
-fn method_in_cfg(cx: &mut Context, meth: &ast::Method) -> bool {
-    return (cx.in_cfg)(meth.attrs.as_slice());
+fn trait_method_in_cfg(cx: &mut Context, meth: &ast::TraitItem) -> bool {
+    match *meth {
+        ast::RequiredMethod(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
+        ast::ProvidedMethod(meth) => (cx.in_cfg)(meth.attrs.as_slice())
+    }
 }
 
-fn trait_method_in_cfg(cx: &mut Context, meth: &ast::TraitMethod) -> bool {
-    match *meth {
-        ast::Required(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
-        ast::Provided(meth) => (cx.in_cfg)(meth.attrs.as_slice())
+fn impl_item_in_cfg(cx: &mut Context, impl_item: &ast::ImplItem) -> bool {
+    match *impl_item {
+        ast::MethodImplItem(meth) => (cx.in_cfg)(meth.attrs.as_slice()),
     }
 }
 

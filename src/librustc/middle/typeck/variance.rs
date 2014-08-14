@@ -515,10 +515,14 @@ impl<'a> Visitor<()> for ConstraintContext<'a> {
             }
 
             ast::ItemTrait(..) => {
-                let methods = ty::trait_methods(tcx, did);
-                for method in methods.iter() {
-                    self.add_constraints_from_sig(
-                        &method.fty.sig, self.covariant);
+                let trait_items = ty::trait_items(tcx, did);
+                for trait_item in trait_items.iter() {
+                    match *trait_item {
+                        ty::MethodTraitItem(ref method) => {
+                            self.add_constraints_from_sig(&method.fty.sig,
+                                                          self.covariant);
+                        }
+                    }
                 }
             }
 
@@ -609,8 +613,8 @@ impl<'a> ConstraintContext<'a> {
                         _                    => cannot_happen!(),
                     }
                 }
-                ast_map::NodeTraitMethod(..) => is_inferred = false,
-                ast_map::NodeMethod(_)       => is_inferred = false,
+                ast_map::NodeTraitItem(..)   => is_inferred = false,
+                ast_map::NodeImplItem(..)    => is_inferred = false,
                 _                            => cannot_happen!(),
             }
 

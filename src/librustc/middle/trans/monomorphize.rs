@@ -197,15 +197,25 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             }
             d
         }
-        ast_map::NodeMethod(mth) => {
-            let d = mk_lldecl(abi::Rust);
-            set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-            trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d, &psubsts, mth.id, []);
-            d
+        ast_map::NodeImplItem(ii) => {
+            match *ii {
+                ast::MethodImplItem(mth) => {
+                    let d = mk_lldecl(abi::Rust);
+                    set_llvm_fn_attrs(mth.attrs.as_slice(), d);
+                    trans_fn(ccx,
+                             &*mth.pe_fn_decl(),
+                             &*mth.pe_body(),
+                             d,
+                             &psubsts,
+                             mth.id,
+                             []);
+                    d
+                }
+            }
         }
-        ast_map::NodeTraitMethod(method) => {
+        ast_map::NodeTraitItem(method) => {
             match *method {
-                ast::Provided(mth) => {
+                ast::ProvidedMethod(mth) => {
                     let d = mk_lldecl(abi::Rust);
                     set_llvm_fn_attrs(mth.attrs.as_slice(), d);
                     trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), d,

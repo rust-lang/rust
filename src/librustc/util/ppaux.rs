@@ -762,8 +762,8 @@ impl Repr for ast::DefId {
                 match tcx.map.find(self.node) {
                     Some(ast_map::NodeItem(..)) |
                     Some(ast_map::NodeForeignItem(..)) |
-                    Some(ast_map::NodeMethod(..)) |
-                    Some(ast_map::NodeTraitMethod(..)) |
+                    Some(ast_map::NodeImplItem(..)) |
+                    Some(ast_map::NodeTraitItem(..)) |
                     Some(ast_map::NodeVariant(..)) |
                     Some(ast_map::NodeStructCtor(..)) => {
                         return format!(

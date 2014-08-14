@@ -193,26 +193,37 @@ impl<'a> ReachableContext<'a> {
                     _ => false,
                 }
             }
-            Some(ast_map::NodeTraitMethod(trait_method)) => {
+            Some(ast_map::NodeTraitItem(trait_method)) => {
                 match *trait_method {
-                    ast::Required(_) => false,
-                    ast::Provided(_) => true,
+                    ast::RequiredMethod(_) => false,
+                    ast::ProvidedMethod(_) => true,
                 }
             }
-            Some(ast_map::NodeMethod(method)) => {
-                if generics_require_inlining(method.pe_generics()) ||
-                        attributes_specify_inlining(method.attrs.as_slice()) {
-                    true
-                } else {
-                    let impl_did = self.tcx.map.get_parent_did(node_id);
-                    // Check the impl. If the generics on the self type of the
-                    // impl require inlining, this method does too.
-                    assert!(impl_did.krate == ast::LOCAL_CRATE);
-                    match self.tcx.map.expect_item(impl_did.node).node {
-                        ast::ItemImpl(ref generics, _, _, _) => {
-                            generics_require_inlining(generics)
+            Some(ast_map::NodeImplItem(impl_item)) => {
+                match *impl_item {
+                    ast::MethodImplItem(method) => {
+                        if generics_require_inlining(method.pe_generics()) ||
+                                attributes_specify_inlining(
+                                    method.attrs.as_slice()) {
+                            true
+                        } else {
+                            let impl_did = self.tcx
+                                               .map
+                                               .get_parent_did(node_id);
+                            // Check the impl. If the generics on the self
+                            // type of the impl require inlining, this method
+                            // does too.
+                            assert!(impl_did.krate == ast::LOCAL_CRATE);
+                            match self.tcx
+                                      .map
+                                      .expect_item(impl_did.node)
+                                      .node {
+                                ast::ItemImpl(ref generics, _, _, _) => {
+                                    generics_require_inlining(generics)
+                                }
+                                _ => false
+                            }
                         }
-                        _ => false
                     }
                 }
             }
@@ -310,20 +321,24 @@ impl<'a> ReachableContext<'a> {
                     }
                 }
             }
-            ast_map::NodeTraitMethod(trait_method) => {
+            ast_map::NodeTraitItem(trait_method) => {
                 match *trait_method {
-                    ast::Required(..) => {
+                    ast::RequiredMethod(..) => {
                         // Keep going, nothing to get exported
                     }
-                    ast::Provided(ref method) => {
+                    ast::ProvidedMethod(ref method) => {
                         visit::walk_block(self, &*method.pe_body(), ())
                     }
                 }
             }
-            ast_map::NodeMethod(method) => {
-                let did = self.tcx.map.get_parent_did(search_item);
-                if method_might_be_inlined(self.tcx, &*method, did) {
-                    visit::walk_block(self, &*method.pe_body(), ())
+            ast_map::NodeImplItem(impl_item) => {
+                match *impl_item {
+                    ast::MethodImplItem(method) => {
+                        let did = self.tcx.map.get_parent_did(search_item);
+                        if method_might_be_inlined(self.tcx, &*method, did) {
+                            visit::walk_block(self, &*method.pe_body(), ())
+                        }
+                    }
                 }
             }
             // Nothing to recurse on for these

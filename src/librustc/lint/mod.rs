@@ -141,7 +141,7 @@ pub trait LintPass {
     fn check_fn(&mut self, _: &Context,
         _: &FnKind, _: &ast::FnDecl, _: &ast::Block, _: Span, _: ast::NodeId) { }
     fn check_ty_method(&mut self, _: &Context, _: &ast::TypeMethod) { }
-    fn check_trait_method(&mut self, _: &Context, _: &ast::TraitMethod) { }
+    fn check_trait_method(&mut self, _: &Context, _: &ast::TraitItem) { }
     fn check_struct_def(&mut self, _: &Context,
         _: &ast::StructDef, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
     fn check_struct_def_post(&mut self, _: &Context,
