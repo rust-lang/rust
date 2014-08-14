@@ -314,7 +314,7 @@ impl<'a> Visitor<()> for Context<'a> {
 
             },
             ast::TyBox(_) => { self.gate_box(t.span); }
-            ast::TyUnboxedFn(_) => {
+            ast::TyUnboxedFn(..) => {
                 self.gate_feature("unboxed_closure_sugar",
                                   t.span,
                                   "unboxed closure trait sugar is experimental");

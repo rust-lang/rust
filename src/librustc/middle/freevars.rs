@@ -74,7 +74,7 @@ impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
                 self.capture_mode_map.insert(expr.id, capture_mode);
                 visit::walk_expr(self, expr, depth + 1)
             }
-            ast::ExprUnboxedFn(capture_clause, _, _) => {
+            ast::ExprUnboxedFn(capture_clause, _, _, _) => {
                 let capture_mode = match capture_clause {
                     ast::CaptureByValue => CaptureByValue,
                     ast::CaptureByRef => CaptureByRef,

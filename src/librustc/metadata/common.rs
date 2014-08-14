@@ -139,7 +139,7 @@ pub enum astencode_tag { // Reserves 0x40 -- 0x5f
     tag_table_adjustments = 0x51,
     tag_table_moves_map = 0x52,
     tag_table_capture_map = 0x53,
-    tag_table_unboxed_closure_type = 0x54,
+    tag_table_unboxed_closures = 0x54,
     tag_table_upvar_borrow_map = 0x55,
     tag_table_capture_modes = 0x56,
 }
@@ -229,9 +229,11 @@ pub static tag_region_param_def_index: uint = 0x94;
 pub static tag_unboxed_closures: uint = 0x95;
 pub static tag_unboxed_closure: uint = 0x96;
 pub static tag_unboxed_closure_type: uint = 0x97;
+pub static tag_unboxed_closure_kind: uint = 0x98;
 
-pub static tag_struct_fields: uint = 0x98;
-pub static tag_struct_field: uint = 0x99;
-pub static tag_struct_field_id: uint = 0x9a;
+pub static tag_struct_fields: uint = 0x99;
+pub static tag_struct_field: uint = 0x9a;
+pub static tag_struct_field_id: uint = 0x9b;
 
-pub static tag_attribute_is_sugared_doc: uint = 0x9b;
+pub static tag_attribute_is_sugared_doc: uint = 0x9c;
+

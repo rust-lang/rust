@@ -722,8 +722,13 @@ impl<'a> ConstraintContext<'a> {
         match ty::get(ty).sty {
             ty::ty_nil | ty::ty_bot | ty::ty_bool |
             ty::ty_char | ty::ty_int(_) | ty::ty_uint(_) |
-            ty::ty_float(_) | ty::ty_str | ty::ty_unboxed_closure(..) => {
+            ty::ty_float(_) | ty::ty_str => {
                 /* leaf type -- noop */
+            }
+
+            ty::ty_unboxed_closure(_, region) => {
+                let contra = self.contravariant(variance);
+                self.add_constraints_from_region(region, contra);
             }
 
             ty::ty_rptr(region, ref mt) => {

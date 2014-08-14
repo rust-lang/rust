@@ -168,7 +168,7 @@ pub struct Inherited<'a> {
     method_map: MethodMap,
     vtable_map: vtable_map,
     upvar_borrow_map: RefCell<ty::UpvarBorrowMap>,
-    unboxed_closure_types: RefCell<DefIdMap<ty::ClosureTy>>,
+    unboxed_closures: RefCell<DefIdMap<ty::UnboxedClosure>>,
 }
 
 /// When type-checking an expression, we propagate downward
@@ -275,7 +275,7 @@ impl<'a> Inherited<'a> {
             method_map: RefCell::new(FnvHashMap::new()),
             vtable_map: RefCell::new(FnvHashMap::new()),
             upvar_borrow_map: RefCell::new(HashMap::new()),
-            unboxed_closure_types: RefCell::new(DefIdMap::new()),
+            unboxed_closures: RefCell::new(DefIdMap::new()),
         }
     }
 }
@@ -1271,7 +1271,7 @@ impl<'a> FnCtxt<'a> {
         VtableContext {
             infcx: self.infcx(),
             param_env: &self.inh.param_env,
-            unboxed_closure_types: &self.inh.unboxed_closure_types,
+            unboxed_closures: &self.inh.unboxed_closures,
         }
     }
 }
@@ -2618,6 +2618,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
     fn check_unboxed_closure(fcx: &FnCtxt,
                              expr: &ast::Expr,
+                             kind: ast::UnboxedClosureKind,
                              decl: &ast::FnDecl,
                              body: ast::P<ast::Block>) {
         // The `RegionTraitStore` is a lie, but we ignore it so it doesn't
@@ -2635,8 +2636,16 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             abi::RustCall,
             None);
 
+        let region = match fcx.infcx().anon_regions(expr.span, 1) {
+            Err(_) => {
+                fcx.ccx.tcx.sess.span_bug(expr.span,
+                                          "can't make anon regions here?!")
+            }
+            Ok(regions) => *regions.get(0),
+        };
         let closure_type = ty::mk_unboxed_closure(fcx.ccx.tcx,
-                                                  local_def(expr.id));
+                                                  local_def(expr.id),
+                                                  region);
         fcx.write_ty(expr.id, closure_type);
 
         check_fn(fcx.ccx,
@@ -2648,13 +2657,24 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                  fcx.inh);
 
         // Tuple up the arguments and insert the resulting function type into
-        // the `unboxed_closure_types` table.
+        // the `unboxed_closures` table.
         fn_ty.sig.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.inputs)];
 
+        let kind = match kind {
+            ast::FnUnboxedClosureKind => ty::FnUnboxedClosureKind,
+            ast::FnMutUnboxedClosureKind => ty::FnMutUnboxedClosureKind,
+            ast::FnOnceUnboxedClosureKind => ty::FnOnceUnboxedClosureKind,
+        };
+
+        let unboxed_closure = ty::UnboxedClosure {
+            closure_type: fn_ty,
+            kind: kind,
+        };
+
         fcx.inh
-           .unboxed_closure_types
+           .unboxed_closures
            .borrow_mut()
-           .insert(local_def(expr.id), fn_ty);
+           .insert(local_def(expr.id), unboxed_closure);
     }
 
     fn check_expr_fn(fcx: &FnCtxt,
@@ -3402,9 +3422,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                       body.clone(),
                       expected);
       }
-      ast::ExprUnboxedFn(_, ref decl, ref body) => {
+      ast::ExprUnboxedFn(_, kind, ref decl, ref body) => {
         check_unboxed_closure(fcx,
                               expr,
+                              kind,
                               &**decl,
                               *body);
       }
