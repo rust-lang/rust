@@ -507,8 +507,8 @@ pub mod types {
             pub mod c99 {
                 pub type c_longlong = i64;
                 pub type c_ulonglong = u64;
-                pub type intptr_t = int;
-                pub type uintptr_t = uint;
+                pub type intptr_t = i32;
+                pub type uintptr_t = u32;
             }
             #[cfg(target_arch = "x86")]
             #[cfg(target_arch = "mips")]
@@ -702,8 +702,8 @@ pub mod types {
             pub mod c99 {
                 pub type c_longlong = i64;
                 pub type c_ulonglong = u64;
-                pub type intptr_t = int;
-                pub type uintptr_t = uint;
+                pub type intptr_t = i64;
+                pub type uintptr_t = u64;
             }
             pub mod posix88 {
                 pub type off_t = i64;
@@ -911,8 +911,8 @@ pub mod types {
             pub mod c99 {
                 pub type c_longlong = i64;
                 pub type c_ulonglong = u64;
-                pub type intptr_t = int;
-                pub type uintptr_t = uint;
+                pub type intptr_t = i64;
+                pub type uintptr_t = u64;
             }
             pub mod posix88 {
                 pub type off_t = i64;
@@ -1124,8 +1124,8 @@ pub mod types {
             pub mod c99 {
                 pub type c_longlong = i64;
                 pub type c_ulonglong = u64;
-                pub type intptr_t = int;
-                pub type uintptr_t = uint;
+                pub type intptr_t = i64;
+                pub type uintptr_t = u64;
             }
             pub mod posix88 {
                 pub type off_t = i64;
@@ -1243,9 +1243,10 @@ pub mod types {
             }
 
             pub mod bsd44 {
-                use types::os::arch::c95::{c_char, c_int, c_uint, size_t, uintptr_t};
+                use types::os::arch::c95::{c_char, c_int, c_uint, size_t};
+                use types::os::arch::c99::uintptr_t;
 
-                pub type SOCKET = uint;
+                pub type SOCKET = uintptr_t;
                 pub type socklen_t = c_int;
                 pub type sa_family_t = u16;
                 pub type in_port_t = u16;
@@ -1356,8 +1357,8 @@ pub mod types {
             pub mod c99 {
                 pub type c_longlong = i64;
                 pub type c_ulonglong = u64;
-                pub type intptr_t = int;
-                pub type uintptr_t = uint;
+                pub type intptr_t = i32;
+                pub type uintptr_t = u32;
             }
 
             pub mod posix88 {
@@ -1486,7 +1487,7 @@ pub mod types {
                     pub dwPageSize: DWORD,
                     pub lpMinimumApplicationAddress: LPVOID,
                     pub lpMaximumApplicationAddress: LPVOID,
-                    pub dwActiveProcessorMask: uint,
+                    pub dwActiveProcessorMask: uintptr_t,
                     pub dwNumberOfProcessors: DWORD,
                     pub dwProcessorType: DWORD,
                     pub dwAllocationGranularity: DWORD,
@@ -1720,8 +1721,8 @@ pub mod types {
             pub mod c99 {
                 pub type c_longlong = i64;
                 pub type c_ulonglong = u64;
-                pub type intptr_t = int;
-                pub type uintptr_t = uint;
+                pub type intptr_t = i32;
+                pub type uintptr_t = u32;
             }
             pub mod posix88 {
                 pub type off_t = i64;
@@ -1821,8 +1822,8 @@ pub mod types {
             pub mod c99 {
                 pub type c_longlong = i64;
                 pub type c_ulonglong = u64;
-                pub type intptr_t = int;
-                pub type uintptr_t = uint;
+                pub type intptr_t = i64;
+                pub type uintptr_t = u64;
             }
             pub mod posix88 {
                 pub type off_t = i64;
@@ -4401,7 +4402,7 @@ pub mod funcs {
                 pub fn glob(pattern: *const c_char,
                             flags: c_int,
                             errfunc: ::Nullable<extern "C" fn(epath: *const c_char,
-                                                              errno: int) -> int>,
+                                                              errno: c_int) -> int>,
                             pglob: *mut glob_t);
                 pub fn globfree(pglob: *mut glob_t);
             }

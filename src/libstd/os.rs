@@ -59,7 +59,7 @@ use libc::c_char;
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
     unsafe {
-        return rust_get_num_cpus();
+        return rust_get_num_cpus() as uint;
     }
 
     extern {

@@ -11,19 +11,19 @@
 #![deny(ctypes)]
 #![allow(dead_code)]
 
-struct A { //~ NOTE consider adding `#[repr(C)]` to this type
-    x: int
+struct A {
+    x: i32
 }
 
 #[repr(C, packed)]
 struct B {
-    x: int,
+    x: i32,
     y: A
 }
 
 #[repr(C)]
 struct C {
-    x: int
+    x: i32
 }
 
 type A2 = A;
@@ -37,13 +37,13 @@ struct D {
 }
 
 extern "C" {
-    fn foo(x: A); //~ ERROR found struct without FFI-safe representation used in FFI
-    fn bar(x: B); //~ ERROR FFI-safe
+    fn foo(x: A); //~ ERROR found type without foreign-function-safe
+    fn bar(x: B); //~ ERROR foreign-function-safe
     fn baz(x: C);
-    fn qux(x: A2); //~ ERROR FFI-safe
-    fn quux(x: B2); //~ ERROR FFI-safe
+    fn qux(x: A2); //~ ERROR foreign-function-safe
+    fn quux(x: B2); //~ ERROR foreign-function-safe
     fn corge(x: C2);
-    fn fred(x: D); //~ ERROR FFI-safe
+    fn fred(x: D); //~ ERROR foreign-function-safe
 }
 
 fn main() { }
