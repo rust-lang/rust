@@ -16,7 +16,7 @@
 
 extern crate libc;
 
-pub use x = extern_foo;
+pub use extern_foo as x;
 extern {
     fn extern_foo();
 }

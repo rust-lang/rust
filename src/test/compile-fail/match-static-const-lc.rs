@@ -43,7 +43,7 @@ mod n {
 }
 
 fn h() {
-    use not_okay = self::n::OKAY;
+    use self::n::OKAY as not_okay;
     let r = match (0,0) {
         (0, not_okay) => 0,
 //~^ ERROR static constant in pattern `not_okay` should have an uppercase name such as `NOT_OKAY`

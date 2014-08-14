@@ -15,7 +15,7 @@
 use bar::*;
 
 mod bar {
-    use import = self::fpriv;
+    use self::fpriv as import;
     fn fpriv() {}
     extern {
         fn epriv();

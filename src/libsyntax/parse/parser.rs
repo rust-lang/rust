@@ -5317,6 +5317,7 @@ impl<'a> Parser<'a> {
         match self.token {
           token::EQ => {
             // x = foo::bar
+            // NOTE(stage0, #16461, pcwalton): Deprecate after snapshot.
             self.bump();
             let path_lo = self.span.lo;
             path = vec!(self.parse_ident());
@@ -5399,7 +5400,7 @@ impl<'a> Parser<'a> {
           }
           _ => ()
         }
-        let last = *path.get(path.len() - 1u);
+        let mut rename_to = *path.get(path.len() - 1u);
         let path = ast::Path {
             span: mk_sp(lo, self.span.hi),
             global: false,
@@ -5411,9 +5412,12 @@ impl<'a> Parser<'a> {
                 }
             }).collect()
         };
+        if self.eat_keyword(keywords::As) {
+            rename_to = self.parse_ident()
+        }
         return box(GC) spanned(lo,
                         self.last_span.hi,
-                        ViewPathSimple(last, path, ast::DUMMY_NODE_ID));
+                        ViewPathSimple(rename_to, path, ast::DUMMY_NODE_ID));
     }
 
     /// Parses a sequence of items. Stops when it finds program
