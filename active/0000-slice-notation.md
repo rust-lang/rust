@@ -85,6 +85,19 @@ Like `Index`, uses of this notation will auto-deref just as if they were method
 invocations. So if `T` implements `Slice<uint, [U]>`, and `s: Smaht<T>`, then
 `s[]` compiles and has type `&[U]`.
 
+## Rationale for the notation
+
+The choice of square brackets for slicing is straightforward: it matches our
+indexing notation, and slicing and indexing are closely related.
+
+Some other languages (like Python and Go -- and Fortran) use `:` rather than
+`..` in slice notation. The choice of `..` here is influenced by its use
+elsewhere in Rust, for example for fixed-length array types `[T, ..n]`. The `..`
+for slicing has precedent in Perl and D.
+
+See [Wikipedia](http://en.wikipedia.org/wiki/Array_slicing) for more on the
+history of slice notation in programming languages.
+
 # Drawbacks
 
 The main drawback is the increase in complexity of the language syntax. This
