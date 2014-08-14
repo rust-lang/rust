@@ -55,6 +55,12 @@ impl Ident {
     pub fn as_str<'a>(&'a self) -> &'a str {
         self.name.as_str()
     }
+
+    pub fn encode_with_hygiene(&self) -> String {
+        format!("\x00name_{:u},ctxt_{:u}\x00",
+                self.name.uint(),
+                self.ctxt)
+    }
 }
 
 impl Show for Ident {
