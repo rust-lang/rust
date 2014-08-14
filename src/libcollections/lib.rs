@@ -8,9 +8,95 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Collection types.
- */
+//! Collections types
+//!
+//! Rust's standard collections library provides several structures for organizing
+//! and querying data. Choosing the right collection for the right job is a non-
+//! trivial and important part of writing any good program. While Rust
+//! provides efficient and easy to use collections for common use-cases, given *only*
+//! a list of the operations a collection provides it can be difficult to determine
+//! the best choice. When in doubt, running tests on your actual code with your
+//! actual data will always be the best way to identify the best collection for the
+//! job. However, in practice this can be time-consuming or otherwise impractical to
+//! do. As such, we strive to provide quality documentation on the absolute and
+//! relative strengths and weaknesses of each collection.
+//!
+//! When in doubt, we recommend first considering [`Vec`](../vec/struct.Vec.html),
+//! [`RingBuf`](struct.RingBuf.html), [`HashMap`](hashmap/struct.HashMap.html), and
+//! [`HashSet`](hashmap/struct.HashSet.html) for the task, as their performance is
+//! excellent both in theoretical and practical terms.
+//! These collections are easily the most commonly used ones by
+//! imperative programmers, and can often be acceptable even when they aren't the
+//! *best* choice. Other collections fill important but potentially subtle niches,
+//! and the importance of knowing when they are more or less appropriate cannot be
+//! understated.
+//!
+//! ## Terminology and Notation
+//!
+//! The performance of a collection is a difficult thing to precisely capture. One
+//! cannot simply perform an operation and measure how long it takes or how much
+//! space is used, as the results will depend on details such as how it was
+//! compiled, the hardware it's running on, the software managing its execution, and
+//! the current state of the program. These precise details are independent of the
+//! collection's implementation itself, and are far too diverse to exhaustively test
+//! against. To abstract these issues away, we use Big-Oh notation, which, roughly
+//! speaking, expresses how performance scales with input size.
+//!
+//! Several functions occur very often in Big-Oh notation, and so we note them here
+//! for convenience. Generally, we will denote the size of the input or number of
+//! elements in the collection as `n`:
+//!
+//! * `O(1)` - *Constant*: The performance of the operation is effectively
+//! independent of context. This is usually *very* cheap.
+//!
+//! * `O(log n)` - *Logarithmic*: Performance scales with the logarithm of `n`.
+//! This is usually cheap.
+//!
+//! * `O(n)` - *Linear*: Performance scales proportionally to `n`.
+//! This is considered expensive, but tractable.
+//!
+//! * `O(n log n)`: Performance scales a bit worse than linear.
+//! Not to be done frequently if possible.
+//!
+//! * <code>O(n<sup>2</sup>)</code> - *Quadratic*: Performance scales with the square of `n`.
+//! This is considered very expensive, and is potentially catastrophic for large inputs.
+//!
+//! * <code>O(2<sup>n</sup>)</code> - *Exponential*: Performance scales exponentially with `n`.
+//! This is considered intractable for anything but very small inputs.
+//!
+//! In addition, performance may be one of the following:
+//!
+//! * Worst-Case: This is the worst possible behavior of the operation. For some operations, this
+//! may be common or uncommon. If performance is unqualified, it is a worst-case bound.
+//!
+//! * Expected: Performance depends internally on a randomized process, but this performance
+//! is expected *on average*. Usually this occurs with high probability, and can be relied upon,
+//! but operations with expected performance may be inappropriate for real-time or otherwise
+//! resource-constrained applications.
+//!
+//! * Amortized: Performance depends on the internal state of the structure, but over a
+//! sufficiently long sequence of operations, cost per-operation averages out to this. This is
+//! deterministically guaranteed, but the occasional high-cost operation may make these operations
+//! inappropriate for real-time or otherwise resource-constrained applications.
+//!
+//! ## Time vs Space
+//!
+//! Usually, we are only interested in performance in terms of time taken to perform the operation.
+//! As such, any unqualified discussion of performance should be assumed to be in terms of
+//! time taken. However, performance may also occasionally be in terms of memory consumed.
+//! Conveniently, a collection on `n` elements almost always simply occupies `O(n)` space, and
+//! operations often only take `O(1)` additional memory. Therefore, space concerns are usually
+//! excluded from analysis, and these bounds on memory usage can be assumed in that case.
+//!
+//! Note that while well-defined, Big-Oh notation is often imprecise from a practical perspective.
+//! It should be used for broad-strokes comparison and evaluation of operations and collections.
+//! One `O(1)` may be better than another in practice. Similarly, operations with
+//! good amortized or expected performance often out-perform similar operations with worst-case
+//! guarantees under sufficiently active usage patterns.
+//!
+//! For these reasons, we will generally strive to discuss practical performance
+//! considerations *in addition to* providing the much more convenient and simple
+//! Big-Oh notation for high level comparisons.
 
 #![crate_name = "collections"]
 #![experimental]
