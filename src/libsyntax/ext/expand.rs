@@ -74,10 +74,12 @@ fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             fld.cx.expr(e.span, ast::ExprForLoop(pat, head, body, opt_ident))
         }
 
-        ast::ExprFnBlock(fn_decl, block) => {
+        ast::ExprFnBlock(capture_clause, fn_decl, block) => {
             let (rewritten_fn_decl, rewritten_block)
                 = expand_and_rename_fn_decl_and_block(&*fn_decl, block, fld);
-            let new_node = ast::ExprFnBlock(rewritten_fn_decl, rewritten_block);
+            let new_node = ast::ExprFnBlock(capture_clause,
+                                            rewritten_fn_decl,
+                                            rewritten_block);
             box(GC) ast::Expr{id:e.id, node: new_node, span: fld.new_span(e.span)}
         }
 

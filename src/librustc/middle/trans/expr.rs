@@ -782,7 +782,7 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         ast::ExprVec(..) | ast::ExprRepeat(..) => {
             tvec::trans_fixed_vstore(bcx, expr, expr, dest)
         }
-        ast::ExprFnBlock(ref decl, ref body) |
+        ast::ExprFnBlock(_, ref decl, ref body) |
         ast::ExprProc(ref decl, ref body) => {
             let expr_ty = expr_ty(bcx, expr);
             let store = ty::ty_closure_store(expr_ty);
@@ -790,7 +790,7 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
                    expr_to_string(expr), expr_ty.repr(tcx));
             closure::trans_expr_fn(bcx, store, &**decl, &**body, expr.id, dest)
         }
-        ast::ExprUnboxedFn(decl, body) => {
+        ast::ExprUnboxedFn(_, decl, body) => {
             closure::trans_unboxed_closure(bcx, &*decl, &*body, expr.id, dest)
         }
         ast::ExprCall(ref f, ref args) => {

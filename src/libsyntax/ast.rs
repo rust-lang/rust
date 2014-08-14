@@ -526,9 +526,9 @@ pub enum Expr_ {
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
     ExprMatch(Gc<Expr>, Vec<Arm>),
-    ExprFnBlock(P<FnDecl>, P<Block>),
+    ExprFnBlock(CaptureClause, P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
-    ExprUnboxedFn(P<FnDecl>, P<Block>),
+    ExprUnboxedFn(CaptureClause, P<FnDecl>, P<Block>),
     ExprBlock(P<Block>),
 
     ExprAssign(Gc<Expr>, Gc<Expr>),
@@ -557,6 +557,12 @@ pub enum Expr_ {
 
     /// No-op: used solely so we can pretty-print faithfully
     ExprParen(Gc<Expr>)
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum CaptureClause {
+    CaptureByValue,
+    CaptureByRef,
 }
 
 /// When the main rust parser encounters a syntax-extension invocation, it

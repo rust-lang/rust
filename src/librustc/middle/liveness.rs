@@ -965,9 +965,9 @@ impl<'a> Liveness<'a> {
               self.propagate_through_expr(&**e, succ)
           }
 
-          ExprFnBlock(_, ref blk) |
+          ExprFnBlock(_, _, ref blk) |
           ExprProc(_, ref blk) |
-          ExprUnboxedFn(_, ref blk) => {
+          ExprUnboxedFn(_, _, ref blk) => {
               debug!("{} is an ExprFnBlock, ExprProc, or ExprUnboxedFn",
                      expr_to_string(expr));
 
