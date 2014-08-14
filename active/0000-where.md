@@ -345,8 +345,9 @@ your mileage may vary. - nmatsakis
 ### Where can where clauses appear?
 
 Where clauses can be added to anything that can be parameterized with
-type/lifetime parameters: `impl` declarations, `fn` declarations, and
-`trait` and `struct` definitions. They appear as follows:
+type/lifetime parameters with the exception of trait method
+definitions: `impl` declarations, `fn` declarations, and `trait` and
+`struct` definitions. They appear as follows:
 
     impl Foo<A,B>
         where ...
@@ -355,6 +356,13 @@ type/lifetime parameters: `impl` declarations, `fn` declarations, and
     impl Foo<A,B> for C
         where ...
     { }
+
+    impl Foo<A,B> for C
+    {
+        fn foo<A,B> -> C
+            where ...
+        { }
+    }
 
     fn foo<A,B> -> C
         where ...
@@ -367,10 +375,15 @@ type/lifetime parameters: `impl` declarations, `fn` declarations, and
     trait Foo<A,B> : C
         where ...
     { }
+    
+#### Where clauses cannot (yet) appear on trait methods
 
-While in the motivation I mentioned the possibility of embedding where
-clauses into object types, I do not propose that as part of this
-RFC. That would come with some sort of associated items RFC.
+Note that trait method definitions were specifically excluded from the
+list above. The reason is that including where clauses on a trait
+method raises interesting questions for what it means to implement the
+trait. Using where clauses it becomes possible to define methods that
+do not necessarily apply to all implementations. We intend to enable
+this feature but it merits a second RFC to delve into the details.
 
 ### Where clause grammar
 
