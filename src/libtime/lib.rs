@@ -189,7 +189,7 @@ pub fn precise_time_ns() -> u64 {
 
 /**
  * Returns the current value of a high-resolution performance counter
- * in seconds since an unspecified epoch.
+ * in milliseconds since an unspecified epoch.
  */
 pub fn precise_time_s() -> f64 {
     return (precise_time_ns() as f64) / 1000000000.;
