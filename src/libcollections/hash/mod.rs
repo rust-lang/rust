@@ -296,7 +296,7 @@ mod tests {
     use std::prelude::*;
     use std::mem;
 
-    use slice::ImmutableVector;
+    use slice::ImmutableSlice;
     use super::{Hash, Hasher, Writer};
 
     struct MyWriterHasher;

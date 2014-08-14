@@ -28,4 +28,5 @@ mod option;
 mod ptr;
 mod raw;
 mod result;
+mod slice;
 mod tuple;

@@ -15,7 +15,7 @@ use comm::{Sender, Receiver};
 use io;
 use option::{None, Option, Some};
 use result::{Ok, Err};
-use slice::{bytes, MutableVector, ImmutableVector};
+use slice::{bytes, MutableSlice, ImmutableSlice};
 use str::StrSlice;
 use super::{Reader, Writer, IoResult};
 use vec::Vec;

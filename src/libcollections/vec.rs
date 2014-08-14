@@ -13,7 +13,8 @@
 use core::prelude::*;
 
 use alloc::heap::{allocate, reallocate, deallocate};
-use core::raw::Slice;
+use RawSlice = core::raw::Slice;
+use core::slice::Slice;
 use core::cmp::max;
 use core::default::Default;
 use core::fmt;
@@ -24,7 +25,7 @@ use core::ptr;
 use core::uint;
 
 use {Collection, Mutable, MutableSeq};
-use slice::{MutableOrdVector, MutableVectorAllocating, CloneableVector};
+use slice::{MutableOrdSlice, MutableSliceAllocating, CloneableVector};
 use slice::{Items, MutItems};
 
 
@@ -347,7 +348,7 @@ impl<T: Clone> Vec<T> {
             unsafe {
                 ptr::write(
                     self.as_mut_slice().unsafe_mut_ref(len),
-                    other.unsafe_ref(i).clone());
+                    other.unsafe_get(i).clone());
                 self.set_len(len + 1);
             }
         }
@@ -506,7 +507,7 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 
 impl<T: Eq> Eq for Vec<T> {}
 
-impl<T: PartialEq, V: Vector<T>> Equiv<V> for Vec<T> {
+impl<T: PartialEq, V: Slice<T>> Equiv<V> for Vec<T> {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
@@ -702,7 +703,7 @@ impl<T> Vec<T> {
                 // decrement len before the read(), so a failure on Drop doesn't
                 // re-drop the just-failed value.
                 self.len -= 1;
-                ptr::read(self.as_slice().unsafe_ref(self.len));
+                ptr::read(self.as_slice().unsafe_get(self.len));
             }
         }
     }
@@ -720,7 +721,7 @@ impl<T> Vec<T> {
     #[inline]
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
-            mem::transmute(Slice {
+            mem::transmute(RawSlice {
                 data: self.as_mut_ptr() as *const T,
                 len: self.len,
             })
@@ -911,8 +912,9 @@ impl<T> Vec<T> {
     /// assert!(vec.tailn(2) == [3, 4]);
     /// ```
     #[inline]
+    #[deprecated = "use slice_from"]
     pub fn tailn<'a>(&'a self, n: uint) -> &'a [T] {
-        self.as_slice().tailn(n)
+        self.as_slice().slice_from(n)
     }
 
     /// Returns a reference to the last element of a vector, or `None` if it is
@@ -1502,7 +1504,7 @@ impl<T:PartialEq> Vec<T> {
     }
 }
 
-impl<T> Vector<T> for Vec<T> {
+impl<T> Slice<T> for Vec<T> {
     /// Work with `self` as a slice.
     ///
     /// # Example
@@ -1515,11 +1517,11 @@ impl<T> Vector<T> for Vec<T> {
     /// ```
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a [T] {
-        unsafe { mem::transmute(Slice { data: self.as_ptr(), len: self.len }) }
+        unsafe { mem::transmute(RawSlice { data: self.as_ptr(), len: self.len }) }
     }
 }
 
-impl<T: Clone, V: Vector<T>> Add<V, Vec<T>> for Vec<T> {
+impl<T: Clone, V: Slice<T>> Add<V, Vec<T>> for Vec<T> {
     #[inline]
     fn add(&self, rhs: &V) -> Vec<T> {
         let mut res = Vec::with_capacity(self.len() + rhs.as_slice().len());
@@ -1604,7 +1606,7 @@ impl<T> MutableSeq<T> for Vec<T> {
         } else {
             unsafe {
                 self.len -= 1;
-                Some(ptr::read(self.as_slice().unsafe_ref(self.len())))
+                Some(ptr::read(self.as_slice().unsafe_get(self.len())))
             }
         }
     }

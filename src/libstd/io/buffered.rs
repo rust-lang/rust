@@ -19,7 +19,7 @@ use iter::ExactSize;
 use ops::Drop;
 use option::{Some, None, Option};
 use result::{Ok, Err};
-use slice::{ImmutableVector, MutableVector};
+use slice::{ImmutableSlice, MutableSlice};
 use slice;
 use vec::Vec;
 

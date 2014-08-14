@@ -15,20 +15,21 @@
 
 use core::cmp::{Equal, Less, Greater};
 use core::option::{Option, Some, None};
-use core::slice::ImmutableVector;
+use core::slice;
+use core::slice::ImmutableSlice;
 use tables::normalization::{canonical_table, compatibility_table, composition_table};
 
 fn bsearch_table<T>(c: char, r: &'static [(char, &'static [T])]) -> Option<&'static [T]> {
-    match r.bsearch(|&(val, _)| {
+    match r.binary_search(|&(val, _)| {
         if c == val { Equal }
         else if val < c { Less }
         else { Greater }
     }) {
-        Some(idx) => {
+        slice::Found(idx) => {
             let (_, result) = r[idx];
             Some(result)
         }
-        None => None
+        slice::NotFound(_) => None
     }
 }
 
@@ -82,16 +83,16 @@ pub fn compose(a: char, b: char) -> Option<char> {
         match bsearch_table(a, composition_table) {
             None => None,
             Some(candidates) => {
-                match candidates.bsearch(|&(val, _)| {
+                match candidates.binary_search(|&(val, _)| {
                     if b == val { Equal }
                     else if val < b { Less }
                     else { Greater }
                 }) {
-                    Some(idx) => {
+                    slice::Found(idx) => {
                         let (_, result) = candidates[idx];
                         Some(result)
                     }
-                    None => None
+                    slice::NotFound(_) => None
                 }
             }
         }
