@@ -350,9 +350,9 @@ linking to, and in the second case `bar` is the type of native library that the
 compiler is linking to. There are currently three known types of native
 libraries:
 
-* Dynamic - `#[link(name = "readline")]
-* Static - `#[link(name = "my_build_dependency", kind = "static")]
-* Frameworks - `#[link(name = "CoreFoundation", kind = "framework")]
+* Dynamic - `#[link(name = "readline")]`
+* Static - `#[link(name = "my_build_dependency", kind = "static")]`
+* Frameworks - `#[link(name = "CoreFoundation", kind = "framework")]`
 
 Note that frameworks are only available on OSX targets.
 
