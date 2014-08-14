@@ -10,9 +10,9 @@
 
 use abi;
 use ast::{FnMutUnboxedClosureKind, FnOnceUnboxedClosureKind};
-use ast::{FnUnboxedClosureKind, P, OtherRegionTyParamBound};
+use ast::{FnUnboxedClosureKind, MethodImplItem, P, OtherRegionTyParamBound};
 use ast::{StaticRegionTyParamBound, TraitTyParamBound, UnboxedClosureKind};
-use ast::{UnboxedFnTyParamBound, Required, Provided};
+use ast::{UnboxedFnTyParamBound, RequiredMethod, ProvidedMethod};
 use ast;
 use ast_util;
 use owned_slice::OwnedSlice;
@@ -787,7 +787,10 @@ impl<'a> State<'a> {
                                        item.span));
             }
 
-            ast::ItemImpl(ref generics, ref opt_trait, ref ty, ref methods) => {
+            ast::ItemImpl(ref generics,
+                          ref opt_trait,
+                          ref ty,
+                          ref impl_items) => {
                 try!(self.head(visibility_qualified(item.vis,
                                                     "impl").as_slice()));
                 if generics.is_parameterized() {
@@ -809,8 +812,12 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.bopen());
                 try!(self.print_inner_attributes(item.attrs.as_slice()));
-                for meth in methods.iter() {
-                    try!(self.print_method(&**meth));
+                for impl_item in impl_items.iter() {
+                    match *impl_item {
+                        ast::MethodImplItem(meth) => {
+                            try!(self.print_method(&*meth));
+                        }
+                    }
                 }
                 try!(self.bclose(item.span));
             }
@@ -1061,10 +1068,16 @@ impl<'a> State<'a> {
     }
 
     pub fn print_trait_method(&mut self,
-                              m: &ast::TraitMethod) -> IoResult<()> {
+                              m: &ast::TraitItem) -> IoResult<()> {
         match *m {
-            Required(ref ty_m) => self.print_ty_method(ty_m),
-            Provided(ref m) => self.print_method(&**m)
+            RequiredMethod(ref ty_m) => self.print_ty_method(ty_m),
+            ProvidedMethod(ref m) => self.print_method(&**m)
+        }
+    }
+
+    pub fn print_impl_item(&mut self, ii: &ast::ImplItem) -> IoResult<()> {
+        match *ii {
+            MethodImplItem(ref m) => self.print_method(&**m),
         }
     }
 

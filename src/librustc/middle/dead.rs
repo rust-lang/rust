@@ -40,9 +40,9 @@ fn should_explore(tcx: &ty::ctxt, def_id: ast::DefId) -> bool {
 
     match tcx.map.find(def_id.node) {
         Some(ast_map::NodeItem(..))
-        | Some(ast_map::NodeMethod(..))
+        | Some(ast_map::NodeImplItem(..))
         | Some(ast_map::NodeForeignItem(..))
-        | Some(ast_map::NodeTraitMethod(..)) => true,
+        | Some(ast_map::NodeTraitItem(..)) => true,
         _ => false
     }
 }
@@ -114,9 +114,14 @@ impl<'a> MarkSymbolVisitor<'a> {
                         method_num: index,
                         ..
                     }) => {
-                        let def_id = ty::trait_method(self.tcx,
-                                                      trait_id, index).def_id;
-                        self.check_def_id(def_id);
+                        let trait_item = ty::trait_item(self.tcx,
+                                                        trait_id,
+                                                        index);
+                        match trait_item {
+                            ty::MethodTraitItem(method) => {
+                                self.check_def_id(method.def_id);
+                            }
+                        }
                     }
                 }
             }
@@ -208,11 +213,15 @@ impl<'a> MarkSymbolVisitor<'a> {
                     _ => ()
                 }
             }
-            ast_map::NodeTraitMethod(trait_method) => {
-                visit::walk_trait_method(self, &*trait_method, ctxt);
+            ast_map::NodeTraitItem(trait_method) => {
+                visit::walk_trait_item(self, &*trait_method, ctxt);
             }
-            ast_map::NodeMethod(method) => {
-                visit::walk_block(self, &*method.pe_body(), ctxt);
+            ast_map::NodeImplItem(impl_item) => {
+                match *impl_item {
+                    ast::MethodImplItem(method) => {
+                        visit::walk_block(self, &*method.pe_body(), ctxt);
+                    }
+                }
             }
             ast_map::NodeForeignItem(foreign_item) => {
                 visit::walk_foreign_item(self, &*foreign_item, ctxt);
@@ -316,9 +325,13 @@ impl Visitor<()> for LifeSeeder {
             self.worklist.push(item.id);
         }
         match item.node {
-            ast::ItemImpl(_, Some(ref _trait_ref), _, ref methods) => {
-                for method in methods.iter() {
-                    self.worklist.push(method.id);
+            ast::ItemImpl(_, Some(ref _trait_ref), _, ref impl_items) => {
+                for impl_item in impl_items.iter() {
+                    match *impl_item {
+                        ast::MethodImplItem(method) => {
+                            self.worklist.push(method.id);
+                        }
+                    }
                 }
             }
             _ => ()
@@ -443,13 +456,14 @@ impl<'a> DeadVisitor<'a> {
         // This is done to handle the case where, for example, the static
         // method of a private type is used, but the type itself is never
         // called directly.
-        let impl_methods = self.tcx.impl_methods.borrow();
+        let impl_items = self.tcx.impl_items.borrow();
         match self.tcx.inherent_impls.borrow().find(&local_def(id)) {
             None => (),
             Some(impl_list) => {
                 for impl_did in impl_list.borrow().iter() {
-                    for method_did in impl_methods.get(impl_did).iter() {
-                        if self.live_symbols.contains(&method_did.node) {
+                    for item_did in impl_items.get(impl_did).iter() {
+                        if self.live_symbols.contains(&item_did.def_id()
+                                                               .node) {
                             return true;
                         }
                     }
@@ -516,12 +530,12 @@ impl<'a> Visitor<()> for DeadVisitor<'a> {
     }
 
     // Overwrite so that we don't warn the trait method itself.
-    fn visit_trait_method(&mut self, trait_method: &ast::TraitMethod, _: ()) {
+    fn visit_trait_item(&mut self, trait_method: &ast::TraitItem, _: ()) {
         match *trait_method {
-            ast::Provided(ref method) => {
+            ast::ProvidedMethod(ref method) => {
                 visit::walk_block(self, &*method.pe_body(), ())
             }
-            ast::Required(_) => ()
+            ast::RequiredMethod(_) => ()
         }
     }
 }

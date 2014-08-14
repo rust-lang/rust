@@ -834,26 +834,37 @@ pub fn noop_fold_item_underscore<T: Folder>(i: &Item_, folder: &mut T) -> Item_ 
             let struct_def = folder.fold_struct_def(*struct_def);
             ItemStruct(struct_def, folder.fold_generics(generics))
         }
-        ItemImpl(ref generics, ref ifce, ty, ref methods) => {
+        ItemImpl(ref generics, ref ifce, ty, ref impl_items) => {
             ItemImpl(folder.fold_generics(generics),
                      ifce.as_ref().map(|p| folder.fold_trait_ref(p)),
                      folder.fold_ty(ty),
-                     methods.iter().flat_map(|x| folder.fold_method(*x).move_iter()).collect()
+                     impl_items.iter()
+                               .flat_map(|impl_item| {
+                                    match *impl_item {
+                                        MethodImplItem(x) => {
+                                            folder.fold_method(x)
+                                                  .move_iter()
+                                                  .map(|x| MethodImplItem(x))
+                                        }
+                                    }
+                               }).collect()
             )
         }
         ItemTrait(ref generics, ref unbound, ref traits, ref methods) => {
             let methods = methods.iter().flat_map(|method| {
                 let r = match *method {
-                    Required(ref m) =>
-                            SmallVector::one(Required(folder.fold_type_method(m))).move_iter(),
-                    Provided(method) => {
+                    RequiredMethod(ref m) => {
+                            SmallVector::one(RequiredMethod(
+                                    folder.fold_type_method(m))).move_iter()
+                    }
+                    ProvidedMethod(method) => {
                             // the awkward collect/iter idiom here is because
                             // even though an iter and a map satisfy the same trait bound,
                             // they're not actually the same type, so the method arms
                             // don't unify.
-                            let methods : SmallVector<ast::TraitMethod> =
+                            let methods : SmallVector<ast::TraitItem> =
                                 folder.fold_method(method).move_iter()
-                                .map(|m| Provided(m)).collect();
+                                .map(|m| ProvidedMethod(m)).collect();
                             methods.move_iter()
                         }
                 };

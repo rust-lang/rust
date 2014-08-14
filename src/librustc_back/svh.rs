@@ -480,8 +480,8 @@ mod svh_visitor {
             SawTyMethod.hash(self.st); visit::walk_ty_method(self, t, e)
         }
 
-        fn visit_trait_method(&mut self, t: &TraitMethod, e: E) {
-            SawTraitMethod.hash(self.st); visit::walk_trait_method(self, t, e)
+        fn visit_trait_item(&mut self, t: &TraitItem, e: E) {
+            SawTraitMethod.hash(self.st); visit::walk_trait_item(self, t, e)
         }
 
         fn visit_struct_field(&mut self, s: &StructField, e: E) {

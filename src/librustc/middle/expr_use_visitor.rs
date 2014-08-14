@@ -131,12 +131,14 @@ impl OverloadedCallType {
     fn from_method_id(tcx: &ty::ctxt, method_id: ast::DefId)
                       -> OverloadedCallType {
         let method_descriptor =
-            match tcx.methods.borrow_mut().find(&method_id) {
+            match tcx.impl_or_trait_items.borrow_mut().find(&method_id) {
+                Some(&ty::MethodTraitItem(ref method_descriptor)) => {
+                    (*method_descriptor).clone()
+                }
                 None => {
                     tcx.sess.bug("overloaded call method wasn't in method \
                                   map")
                 }
-                Some(ref method_descriptor) => (*method_descriptor).clone(),
             };
         let impl_id = match method_descriptor.container {
             ty::TraitContainer(_) => {

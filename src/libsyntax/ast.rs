@@ -767,9 +767,14 @@ pub struct TypeMethod {
 /// doesn't have an implementation, just a signature) or provided (meaning it
 /// has a default implementation).
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum TraitMethod {
-    Required(TypeMethod),
-    Provided(Gc<Method>),
+pub enum TraitItem {
+    RequiredMethod(TypeMethod),
+    ProvidedMethod(Gc<Method>),
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum ImplItem {
+    MethodImplItem(Gc<Method>),
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
@@ -1273,11 +1278,11 @@ pub enum Item_ {
               Option<TyParamBound>, // (optional) default bound not required for Self.
                                     // Currently, only Sized makes sense here.
               Vec<TraitRef> ,
-              Vec<TraitMethod>),
+              Vec<TraitItem>),
     ItemImpl(Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
-             Vec<Gc<Method>>),
+             Vec<ImplItem>),
     /// A macro invocation (which includes macro definition)
     ItemMac(Mac),
 }
@@ -1311,8 +1316,14 @@ pub enum UnboxedClosureKind {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum InlinedItem {
     IIItem(Gc<Item>),
-    IIMethod(DefId /* impl id */, bool /* is provided */, Gc<Method>),
+    IITraitItem(DefId /* impl id */, InlinedTraitItem),
     IIForeign(Gc<ForeignItem>),
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum InlinedTraitItem {
+    ProvidedInlinedTraitItem(Gc<Method>),
+    RequiredInlinedTraitItem(Gc<Method>),
 }
 
 #[cfg(test)]
