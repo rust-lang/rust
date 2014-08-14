@@ -952,11 +952,41 @@ macro_rules! iterator {
     }
 }
 
+#[inline(never)]
+static PTR_MARKER: u8 = 0;
+
 /// Immutable slice iterator
 pub struct Items<'a, T> {
     ptr: *const T,
     end: *const T,
     marker: marker::ContravariantLifetime<'a>
+}
+
+impl<'a, T> Items<'a, T> {
+    /// Create an `Items` that yields no values.
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::slice::Items;
+    ///
+    /// for _ in Items::<u8>::empty() {
+    ///     // the iterator is empty, so this should never execute.
+    ///     fail!("the impossible happened!")
+    /// }
+    /// ```
+    pub fn empty() -> Items<'a, T> {
+        unsafe {
+            // this is safe because the pointer is non-null, and `len
+            // == 0` so it is never dereferenced, or `offset`d.
+            let array: &'a [T] = transmute(Slice {
+                data: &PTR_MARKER,
+                len: 0
+            });
+            array.iter()
+        }
+    }
 }
 
 iterator!{struct Items -> *const T, &'a T}
@@ -997,6 +1027,33 @@ pub struct MutItems<'a, T> {
     end: *mut T,
     marker: marker::ContravariantLifetime<'a>,
     marker2: marker::NoCopy
+}
+
+impl<'a, T> MutItems<'a, T> {
+    /// Create a `MutItems` that yields no values.
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::slice::MutItems;
+    ///
+    /// for _ in MutItems::<u8>::empty() {
+    ///     // the iterator is empty, so this should never execute.
+    ///     fail!("the impossible happened!")
+    /// }
+    /// ```
+    pub fn empty() -> MutItems<'a, T> {
+        unsafe {
+            // this is safe because the pointer is non-null, and `len
+            // == 0` so it is never dereferenced, or `offset`d.
+            let array: &'a mut [T] = transmute(Slice {
+                data: &PTR_MARKER,
+                len: 0
+            });
+            array.mut_iter()
+        }
+    }
 }
 
 iterator!{struct MutItems -> *mut T, &'a mut T}
