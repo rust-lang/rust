@@ -1044,7 +1044,7 @@ fn ty_generics_for_trait(ccx: &CrateCtxt,
         ident: special_idents::type_self,
         def_id: local_def(param_id),
         bounds: ty::ParamBounds {
-            opt_region_bound: None,
+            region_bounds: vec!(),
             builtin_bounds: ty::empty_builtin_bounds(),
             trait_bounds: vec!(self_trait_ref),
         },
@@ -1280,12 +1280,12 @@ fn conv_param_bounds(ccx: &CrateCtxt,
         .map(|b| instantiate_trait_ref(ccx, b, param_ty.to_ty(ccx.tcx)))
         .chain(unboxed_fn_ty_bounds)
         .collect();
-    let opt_region_bound =
-        astconv::compute_opt_region_bound(
-            ccx.tcx, span, builtin_bounds, region_bounds.as_slice(),
-            trait_bounds.as_slice());
+    let region_bounds: Vec<ty::Region> =
+        region_bounds.move_iter()
+        .map(|r| ast_region_to_region(ccx.tcx, r))
+        .collect();
     ty::ParamBounds {
-        opt_region_bound: opt_region_bound,
+        region_bounds: region_bounds,
         builtin_bounds: builtin_bounds,
         trait_bounds: trait_bounds,
     }

@@ -680,14 +680,14 @@ fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
     let builtin_bounds = parse_builtin_bounds(st, |x,y| conv(x,y));
 
     let mut param_bounds = ty::ParamBounds {
-        opt_region_bound: None,
+        region_bounds: Vec::new(),
         builtin_bounds: builtin_bounds,
         trait_bounds: Vec::new()
     };
     loop {
         match next(st) {
             'R' => {
-                param_bounds.opt_region_bound = Some(parse_region(st, |x, y| conv (x, y)));
+                param_bounds.region_bounds.push(parse_region(st, |x, y| conv (x, y)));
             }
             'I' => {
                 param_bounds.trait_bounds.push(Rc::new(parse_trait_ref(st, |x,y| conv(x,y))));
