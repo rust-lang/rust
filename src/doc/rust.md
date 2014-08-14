@@ -135,9 +135,9 @@ The `ident` production is any nonempty Unicode string of the following form:
 
 that does _not_ occur in the set of [keywords](#keywords).
 
-Note: `XID_start` and `XID_continue` as character properties cover the
-character ranges used to form the more familiar C and Java language-family
-identifiers.
+> **Note**: `XID_start` and `XID_continue` as character properties cover the
+> character ranges used to form the more familiar C and Java language-family
+> identifiers.
 
 ### Delimiter-restricted productions
 
@@ -933,9 +933,9 @@ Usually a `use` declaration is used to shorten the path required to refer to a
 module item. These declarations may appear at the top of [modules](#modules) and
 [blocks](#blocks).
 
-*Note*: Unlike in many languages,
-`use` declarations in Rust do *not* declare linkage dependency with external crates.
-Rather, [`extern crate` declarations](#extern-crate-declarations) declare linkage dependencies.
+> **Note**: Unlike in many languages,
+> `use` declarations in Rust do *not* declare linkage dependency with external crates.
+> Rather, [`extern crate` declarations](#extern-crate-declarations) declare linkage dependencies.
 
 Use declarations support a number of convenient shortcuts:
 
@@ -2573,8 +2573,8 @@ within a statement block is simply a way of restricting its scope to a narrow
 region containing all of its uses; it is otherwise identical in meaning to
 declaring the item outside the statement block.
 
-Note: there is no implicit capture of the function's dynamic environment when
-declaring a function-local item.
+> **Note**: there is no implicit capture of the function's dynamic environment when
+> declaring a function-local item.
 
 #### Slot declarations
 
