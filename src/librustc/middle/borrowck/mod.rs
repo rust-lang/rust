@@ -291,7 +291,7 @@ pub fn closure_to_block(closure_id: ast::NodeId,
     match tcx.map.get(closure_id) {
         ast_map::NodeExpr(expr) => match expr.node {
             ast::ExprProc(_decl, block) |
-            ast::ExprFnBlock(_decl, block) => { block.id }
+            ast::ExprFnBlock(_, _decl, block) => { block.id }
             _ => fail!("encountered non-closure id: {}", closure_id)
         },
         _ => fail!("encountered non-expr id: {}", closure_id)

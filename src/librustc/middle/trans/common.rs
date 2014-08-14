@@ -18,6 +18,7 @@ use llvm::{ValueRef, BasicBlockRef, BuilderRef};
 use llvm::{True, False, Bool};
 use mc = middle::mem_categorization;
 use middle::def;
+use middle::freevars;
 use middle::lang_items::LangItem;
 use middle::subst;
 use middle::subst::Subst;
@@ -515,6 +516,11 @@ impl<'a> mc::Typer for Block<'a> {
 
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
         self.tcx().upvar_borrow_map.borrow().get_copy(&upvar_id)
+    }
+
+    fn capture_mode(&self, closure_expr_id: ast::NodeId)
+                    -> freevars::CaptureMode {
+        self.tcx().capture_modes.borrow().get_copy(&closure_expr_id)
     }
 }
 

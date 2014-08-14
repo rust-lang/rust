@@ -1473,7 +1473,9 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose_(expr.span, indent_unit));
             }
-            ast::ExprFnBlock(ref decl, ref body) => {
+            ast::ExprFnBlock(capture_clause, ref decl, ref body) => {
+                try!(self.print_capture_clause(capture_clause));
+
                 // in do/for blocks we don't want to show an empty
                 // argument list, but at this point we don't know which
                 // we are inside.
@@ -1503,7 +1505,9 @@ impl<'a> State<'a> {
                 // empty box to satisfy the close.
                 try!(self.ibox(0));
             }
-            ast::ExprUnboxedFn(ref decl, ref body) => {
+            ast::ExprUnboxedFn(capture_clause, ref decl, ref body) => {
+                try!(self.print_capture_clause(capture_clause));
+
                 // in do/for blocks we don't want to show an empty
                 // argument list, but at this point we don't know which
                 // we are inside.
@@ -2069,6 +2073,14 @@ impl<'a> State<'a> {
         }
 
         self.maybe_print_comment(decl.output.span.lo)
+    }
+
+    pub fn print_capture_clause(&mut self, capture_clause: ast::CaptureClause)
+                                -> IoResult<()> {
+        match capture_clause {
+            ast::CaptureByValue => Ok(()),
+            ast::CaptureByRef => self.word_space("ref"),
+        }
     }
 
     pub fn print_proc_args(&mut self, decl: &ast::FnDecl) -> IoResult<()> {
