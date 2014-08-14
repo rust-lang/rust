@@ -926,7 +926,7 @@ macro_rules! iterator_impl {
                 // such thing as invalid pointers and memory unsafety. The
                 // reason is performance, without doing this we can get the
                 // bench_iter_large microbenchmark down to about 30000 ns/iter
-                // (using .unsafe_ref to index self.stack directly, 38000
+                // (using .unsafe_get to index self.stack directly, 38000
                 // ns/iter with [] checked indexing), but this smashes that down
                 // to 13500 ns/iter.
                 //

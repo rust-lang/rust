@@ -41,7 +41,7 @@ use rt;
 use rt::local::Local;
 use rt::task::Task;
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
-use slice::ImmutableVector;
+use slice::ImmutableSlice;
 use str::StrSlice;
 use uint;
 

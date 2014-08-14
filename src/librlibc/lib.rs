@@ -112,7 +112,7 @@ mod test {
     use core::iter::Iterator;
     use core::collections::Collection;
     use core::str::StrSlice;
-    use core::slice::{MutableVector, ImmutableVector};
+    use core::slice::{MutableSlice, ImmutableSlice};
 
     use super::{memcmp, memset, memcpy, memmove};
 

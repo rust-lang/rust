@@ -362,6 +362,7 @@ pub struct MutItems<'a, T> {
 
 impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
     #[inline]
+    #[allow(deprecated)] // mut_shift_ref
     fn next(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
             return None;
@@ -384,6 +385,7 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
 
 impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
     #[inline]
+    #[allow(deprecated)] // mut_shift_ref
     fn next_back(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
             return None;

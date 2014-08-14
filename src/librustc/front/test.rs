@@ -379,7 +379,7 @@ fn mk_test_module(cx: &TestCtxt, reexport_test_harness_main: &Option<InternedStr
     let mainfn = (quote_item!(&cx.ext_cx,
         pub fn main() {
             #![main]
-            use std::slice::Vector;
+            use std::slice::Slice;
             test::test_main_static(::std::os::args().as_slice(), TESTS);
         }
     )).unwrap();

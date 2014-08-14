@@ -356,7 +356,7 @@ pub enum PpMode {
 }
 
 fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<driver::UserIdentifiedItem>) {
-    let mut split = name.splitn('=', 1);
+    let mut split = name.splitn(1, '=');
     let first = split.next().unwrap();
     let opt_second = split.next();
     let first = match first {

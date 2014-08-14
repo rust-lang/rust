@@ -35,7 +35,7 @@
 
 use std::cmp;
 use std::mem;
-use std::slice::MutableVector;
+use std::slice::MutableSlice;
 use compile::{
     Program,
     Match, OneChar, CharClass, Any, EmptyBegin, EmptyEnd, EmptyWordBoundary,
@@ -222,8 +222,8 @@ impl<'r, 't> Nfa<'r, 't> {
                     let negate = flags & FLAG_NEGATED > 0;
                     let casei = flags & FLAG_NOCASE > 0;
                     let found = ranges.as_slice();
-                    let found = found.bsearch(|&rc| class_cmp(casei, c, rc));
-                    let found = found.is_some();
+                    let found = found.binary_search(|&rc| class_cmp(casei, c, rc))
+                        .found().is_some();
                     if found ^ negate {
                         self.add(nlist, pc+1, caps);
                     }
@@ -513,7 +513,7 @@ pub fn is_word(c: Option<char>) -> bool {
     // Try the common ASCII case before invoking binary search.
     match c {
         '_' | '0' .. '9' | 'a' .. 'z' | 'A' .. 'Z' => true,
-        _ => PERLW.bsearch(|&(start, end)| {
+        _ => PERLW.binary_search(|&(start, end)| {
             if c >= start && c <= end {
                 Equal
             } else if start > c {
@@ -521,7 +521,7 @@ pub fn is_word(c: Option<char>) -> bool {
             } else {
                 Less
             }
-        }).is_some()
+        }).found().is_some()
     }
 }
 

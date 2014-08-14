@@ -45,7 +45,7 @@ use path::{Path, GenericPath, BytesContainer};
 use ptr::RawPtr;
 use ptr;
 use result::{Err, Ok, Result};
-use slice::{Vector, ImmutableVector, MutableVector, ImmutableEqVector};
+use slice::{Slice, ImmutableSlice, MutableSlice, ImmutablePartialEqSlice};
 use str::{Str, StrSlice, StrAllocating};
 use string::String;
 use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
@@ -145,7 +145,7 @@ pub mod win32 {
     use option::{None, Option};
     use option;
     use os::TMPBUF_SZ;
-    use slice::{MutableVector, ImmutableVector};
+    use slice::{MutableSlice, ImmutableSlice};
     use string::String;
     use str::StrSlice;
     use vec::Vec;

@@ -13,6 +13,7 @@ use std::cmp;
 use std::fmt;
 use std::iter;
 use std::num;
+use std::slice;
 
 /// Static data containing Unicode ranges for general categories and scripts.
 use unicode::regex::{UNICODE_CLASSES, PERLD, PERLS, PERLW};
@@ -518,7 +519,7 @@ impl<'a> Parser<'a> {
             min = try!(self.parse_uint(inner.as_slice()));
             max = Some(min);
         } else {
-            let pieces: Vec<&str> = inner.as_slice().splitn(',', 1).collect();
+            let pieces: Vec<&str> = inner.as_slice().splitn(1, ',').collect();
             let (smin, smax) = (pieces[0], pieces[1]);
             if smin.len() == 0 {
                 return self.err("Max repetitions cannot be specified \
@@ -1017,9 +1018,9 @@ fn is_valid_cap(c: char) -> bool {
 }
 
 fn find_class(classes: NamedClasses, name: &str) -> Option<Vec<(char, char)>> {
-    match classes.bsearch(|&(s, _)| s.cmp(&name)) {
-        Some(i) => Some(Vec::from_slice(classes[i].val1())),
-        None => None,
+    match classes.binary_search(|&(s, _)| s.cmp(&name)) {
+        slice::Found(i) => Some(Vec::from_slice(classes[i].val1())),
+        slice::NotFound(_) => None,
     }
 }
 

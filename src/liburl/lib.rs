@@ -396,7 +396,7 @@ pub fn decode_form_urlencoded(s: &[u8])
 }
 
 fn split_char_first(s: &str, c: char) -> (&str, &str) {
-    let mut iter = s.splitn(c, 1);
+    let mut iter = s.splitn(1, c);
 
     match (iter.next(), iter.next()) {
         (Some(a), Some(b)) => (a, b),

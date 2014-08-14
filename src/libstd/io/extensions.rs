@@ -21,7 +21,7 @@ use option::{Option, Some, None};
 use result::{Ok, Err};
 use io;
 use io::{IoError, IoResult, Reader};
-use slice::{ImmutableVector, Vector};
+use slice::{ImmutableSlice, Slice};
 use ptr::RawPtr;
 
 /// An iterator that reads a single byte on each iteration,
@@ -153,7 +153,7 @@ pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
 pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
     use ptr::{copy_nonoverlapping_memory};
     use mem::from_be64;
-    use slice::MutableVector;
+    use slice::MutableSlice;
 
     assert!(size <= 8u);
 

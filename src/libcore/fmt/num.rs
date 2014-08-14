@@ -18,7 +18,7 @@ use collections::Collection;
 use fmt;
 use iter::DoubleEndedIterator;
 use num::{Int, cast, zero};
-use slice::{ImmutableVector, MutableVector};
+use slice::{ImmutableSlice, MutableSlice};
 
 /// A type that represents a specific radix
 #[doc(hidden)]

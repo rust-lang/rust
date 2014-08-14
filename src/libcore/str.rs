@@ -30,7 +30,7 @@ use iter::range;
 use num::{CheckedMul, Saturating};
 use option::{Option, None, Some};
 use raw::Repr;
-use slice::ImmutableVector;
+use slice::ImmutableSlice;
 use slice;
 use uint;
 
@@ -964,7 +964,7 @@ pub mod raw {
     use collections::Collection;
     use ptr::RawPtr;
     use raw::Slice;
-    use slice::{ImmutableVector};
+    use slice::{ImmutableSlice};
     use str::{is_utf8, StrSlice};
 
     /// Converts a slice of bytes to a string slice without checking
@@ -1147,22 +1147,22 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// let v: Vec<&str> = "Mary had a little lambda".splitn(' ', 2).collect();
+    /// let v: Vec<&str> = "Mary had a little lambda".splitn(2, ' ').collect();
     /// assert_eq!(v, vec!["Mary", "had", "a little lambda"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".splitn(|c: char| c.is_digit(), 1).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |c: char| c.is_digit()).collect();
     /// assert_eq!(v, vec!["abc", "def2ghi"]);
     ///
-    /// let v: Vec<&str> = "lionXXtigerXleopard".splitn('X', 2).collect();
+    /// let v: Vec<&str> = "lionXXtigerXleopard".splitn(2, 'X').collect();
     /// assert_eq!(v, vec!["lion", "", "tigerXleopard"]);
     ///
-    /// let v: Vec<&str> = "abcXdef".splitn('X', 0).collect();
+    /// let v: Vec<&str> = "abcXdef".splitn(0, 'X').collect();
     /// assert_eq!(v, vec!["abcXdef"]);
     ///
-    /// let v: Vec<&str> = "".splitn('X', 1).collect();
+    /// let v: Vec<&str> = "".splitn(1, 'X').collect();
     /// assert_eq!(v, vec![""]);
     /// ```
-    fn splitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitsN<'a, Sep>;
+    fn splitn<Sep: CharEq>(&self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`.
@@ -1197,16 +1197,16 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(' ', 2).collect();
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
     /// assert_eq!(v, vec!["lamb", "little", "Mary had a"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(|c: char| c.is_digit(), 1).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |c: char| c.is_digit()).collect();
     /// assert_eq!(v, vec!["ghi", "abc1def"]);
     ///
-    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn('X', 2).collect();
+    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
     /// ```
-    fn rsplitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitsN<'a, Sep>;
+    fn rsplitn<Sep: CharEq>(&self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
 
     /// An iterator over the start and end indices of the disjoint
     /// matches of `sep` within `self`.
@@ -1697,7 +1697,7 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn splitn<Sep: CharEq>(&self, sep: Sep, count: uint)
+    fn splitn<Sep: CharEq>(&self, count: uint, sep: Sep)
         -> CharSplitsN<'a, Sep> {
         CharSplitsN {
             iter: self.split(sep),
@@ -1716,7 +1716,7 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn rsplitn<Sep: CharEq>(&self, sep: Sep, count: uint)
+    fn rsplitn<Sep: CharEq>(&self, count: uint, sep: Sep)
         -> CharSplitsN<'a, Sep> {
         CharSplitsN {
             iter: self.split(sep),

@@ -21,7 +21,7 @@ use from_str::FromStr;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str::StrSlice;
-use slice::{MutableCloneableVector, ImmutableVector, MutableVector};
+use slice::{MutableCloneableSlice, ImmutableSlice, MutableSlice};
 
 pub type Port = u16;
 
