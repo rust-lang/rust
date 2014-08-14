@@ -275,7 +275,7 @@ mod tests {
 
     use str::Str;
     use string::String;
-    use slice::{Vector, ImmutableVector};
+    use slice::{Slice, ImmutableSlice};
     use vec::Vec;
 
     use super::super::{Hash, Writer};

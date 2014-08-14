@@ -2743,7 +2743,7 @@ mod test_set {
     use prelude::*;
 
     use super::HashSet;
-    use slice::ImmutableEqVector;
+    use slice::ImmutablePartialEqSlice;
     use collections::Collection;
 
     #[test]

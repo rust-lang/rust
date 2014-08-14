@@ -83,11 +83,11 @@
 #[doc(no_inline)] pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 #[doc(no_inline)] pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
 #[doc(no_inline)] pub use slice::{CloneableVector, ImmutableCloneableVector};
-#[doc(no_inline)] pub use slice::{MutableCloneableVector, MutableOrdVector};
-#[doc(no_inline)] pub use slice::{ImmutableVector, MutableVector};
-#[doc(no_inline)] pub use slice::{ImmutableEqVector, ImmutableOrdVector};
-#[doc(no_inline)] pub use slice::{Vector, VectorVector};
-#[doc(no_inline)] pub use slice::MutableVectorAllocating;
+#[doc(no_inline)] pub use slice::{MutableCloneableSlice, MutableOrdSlice};
+#[doc(no_inline)] pub use slice::{ImmutableSlice, MutableSlice};
+#[doc(no_inline)] pub use slice::{ImmutablePartialEqSlice, ImmutableOrdSlice};
+#[doc(no_inline)] pub use slice::{Slice, VectorVector};
+#[doc(no_inline)] pub use slice::MutableSliceAllocating;
 #[doc(no_inline)] pub use string::String;
 #[doc(no_inline)] pub use vec::Vec;
 

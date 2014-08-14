@@ -29,7 +29,7 @@ use option::*;
 use os;
 use path::{Path,GenericPath};
 use result::*;
-use slice::{Vector,ImmutableVector};
+use slice::{Slice,ImmutableSlice};
 use str;
 use string::String;
 use vec::Vec;

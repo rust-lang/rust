@@ -45,8 +45,8 @@ represents iteration over a slice.
 ## Traits
 
 A number of traits add methods that allow you to accomplish tasks with slices.
-These traits include `ImmutableVector`, which is defined for `&[T]` types,
-and `MutableVector`, defined for `&mut [T]` types.
+These traits include `ImmutableSlice`, which is defined for `&[T]` types,
+and `MutableSlice`, defined for `&mut [T]` types.
 
 An example is the method `.slice(a, b)` that returns an immutable "view" into
 a `Vec` or another slice from the index interval `[a, b)`:
@@ -98,10 +98,11 @@ use {Collection, MutableSeq};
 use vec::Vec;
 
 pub use core::slice::{ref_slice, mut_ref_slice, Splits, Windows};
-pub use core::slice::{Chunks, Vector, ImmutableVector, ImmutableEqVector};
-pub use core::slice::{ImmutableOrdVector, MutableVector, Items, MutItems};
+pub use core::slice::{Chunks, Slice, ImmutableSlice, ImmutablePartialEqSlice};
+pub use core::slice::{ImmutableOrdSlice, MutableSlice, Items, MutItems};
 pub use core::slice::{MutSplits, MutChunks};
-pub use core::slice::{bytes, MutableCloneableVector};
+pub use core::slice::{bytes, MutableCloneableSlice};
+pub use core::slice::{BinarySearchResult, Found, NotFound};
 
 // Functional utilities
 
@@ -116,7 +117,7 @@ pub trait VectorVector<T> {
     fn connect_vec(&self, sep: &T) -> Vec<T>;
 }
 
-impl<'a, T: Clone, V: Vector<T>> VectorVector<T> for &'a [V] {
+impl<'a, T: Clone, V: Slice<T>> VectorVector<T> for &'a [V] {
     fn concat_vec(&self) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size);
@@ -558,7 +559,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
 
 /// Extension methods for vectors such that their elements are
 /// mutable.
-pub trait MutableVectorAllocating<'a, T> {
+pub trait MutableSliceAllocating<'a, T> {
     /// Sort the vector, in place, using `compare` to compare
     /// elements.
     ///
@@ -604,7 +605,7 @@ pub trait MutableVectorAllocating<'a, T> {
     fn move_from(self, src: Vec<T>, start: uint, end: uint) -> uint;
 }
 
-impl<'a,T> MutableVectorAllocating<'a, T> for &'a mut [T] {
+impl<'a,T> MutableSliceAllocating<'a, T> for &'a mut [T] {
     #[inline]
     fn sort_by(self, compare: |&T, &T| -> Ordering) {
         merge_sort(self, compare)
@@ -621,7 +622,7 @@ impl<'a,T> MutableVectorAllocating<'a, T> for &'a mut [T] {
 
 /// Methods for mutable vectors with orderable elements, such as
 /// in-place sorting.
-pub trait MutableOrdVector<T> {
+pub trait MutableOrdSlice<T> {
     /// Sort the vector, in place.
     ///
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
@@ -667,7 +668,7 @@ pub trait MutableOrdVector<T> {
     fn prev_permutation(self) -> bool;
 }
 
-impl<'a, T: Ord> MutableOrdVector<T> for &'a mut [T] {
+impl<'a, T: Ord> MutableOrdSlice<T> for &'a mut [T] {
     #[inline]
     fn sort(self) {
         self.sort_by(|a,b| a.cmp(b))

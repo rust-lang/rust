@@ -18,12 +18,15 @@ use core::default::Default;
 use core::fmt;
 use core::mem;
 use core::ptr;
-use core::raw::Slice;
+// FIXME: ICE's abound if you import the `Slice` type while importing `Slice` trait
+use RawSlice = core::raw::Slice;
+use core::slice::Slice;
 
 use {Collection, Mutable, MutableSeq};
 use hash;
 use str;
-use str::{CharRange, StrAllocating, MaybeOwned, Owned, Slice};
+use str::{CharRange, StrAllocating, MaybeOwned, Owned};
+use MaybeOwnedSlice = str::Slice; // So many `Slice`s...
 use vec::Vec;
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -130,7 +133,7 @@ impl String {
     /// ```
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
         if str::is_utf8(v) {
-            return Slice(unsafe { mem::transmute(v) })
+            return MaybeOwnedSlice(unsafe { mem::transmute(v) })
         }
 
         static TAG_CONT_U8: u8 = 128u8;
@@ -138,7 +141,7 @@ impl String {
         let mut i = 0;
         let total = v.len();
         fn unsafe_get(xs: &[u8], i: uint) -> u8 {
-            unsafe { *xs.unsafe_ref(i) }
+            unsafe { *xs.unsafe_get(i) }
         }
         fn safe_get(xs: &[u8], i: uint, total: uint) -> u8 {
             if i >= total {
@@ -496,7 +499,7 @@ impl String {
         unsafe {
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
-            let slice = Slice {
+            let slice = RawSlice {
                 data: self.vec.as_ptr().offset(cur_len as int),
                 len: 4,
             };
