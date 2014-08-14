@@ -1538,7 +1538,7 @@ Likewise, supertrait methods may also be called on trait objects.
 # impl Shape for int { fn area(&self) -> f64 { 0.0 } }
 # impl Circle for int { fn radius(&self) -> f64 { 0.0 } }
 # let mycircle = 0;
-let mycircle: Circle = ~mycircle as ~Circle;
+let mycircle = box mycircle as Box<Circle>;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~~
 
