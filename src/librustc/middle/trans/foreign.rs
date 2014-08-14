@@ -741,6 +741,12 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
             let llforeign_arg_ty = *tys.fn_ty.arg_tys.get(i);
             let foreign_indirect = llforeign_arg_ty.is_indirect();
 
+            if llforeign_arg_ty.is_ignore() {
+                debug!("skipping ignored arg #{}", i);
+                llrust_args.push(C_undef(llrust_ty));
+                continue;
+            }
+
             // skip padding
             let foreign_index = next_foreign_arg(llforeign_arg_ty.pad.is_some());
             let mut llforeign_arg = get_param(llwrapfn, foreign_index);
