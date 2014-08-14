@@ -446,7 +446,7 @@ pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
 fn get_callee_substitutions_for_unboxed_closure(bcx: &Block,
                                                 def_id: ast::DefId)
                                                 -> subst::Substs {
-    let self_ty = ty::mk_unboxed_closure(bcx.tcx(), def_id);
+    let self_ty = ty::mk_unboxed_closure(bcx.tcx(), def_id, ty::ReStatic);
     subst::Substs::erased(
         VecPerParamSpace::new(Vec::new(),
                               vec![

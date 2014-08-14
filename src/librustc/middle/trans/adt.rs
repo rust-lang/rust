@@ -170,7 +170,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
 
             return Univariant(mk_struct(cx, ftys.as_slice(), packed), dtor)
         }
-        ty::ty_unboxed_closure(def_id) => {
+        ty::ty_unboxed_closure(def_id, _) => {
             let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id);
             let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
             return Univariant(mk_struct(cx, upvar_types.as_slice(), false),

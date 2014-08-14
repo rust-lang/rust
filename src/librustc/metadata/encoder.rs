@@ -630,6 +630,18 @@ fn encode_visibility(rbml_w: &mut Encoder, visibility: Visibility) {
     rbml_w.end_tag();
 }
 
+fn encode_unboxed_closure_kind(rbml_w: &mut Encoder,
+                               kind: ty::UnboxedClosureKind) {
+    rbml_w.start_tag(tag_unboxed_closure_kind);
+    let ch = match kind {
+        ty::FnUnboxedClosureKind => 'f',
+        ty::FnMutUnboxedClosureKind => 'm',
+        ty::FnOnceUnboxedClosureKind => 'o',
+    };
+    rbml_w.wr_str(ch.to_string().as_slice());
+    rbml_w.end_tag();
+}
+
 fn encode_explicit_self(rbml_w: &mut Encoder,
                         explicit_self: &ty::ExplicitSelfCategory) {
     rbml_w.start_tag(tag_item_trait_method_explicit_self);
@@ -1629,8 +1641,10 @@ fn encode_unboxed_closures<'a>(
                            ecx: &'a EncodeContext,
                            rbml_w: &'a mut Encoder) {
     rbml_w.start_tag(tag_unboxed_closures);
-    for (unboxed_closure_id, unboxed_closure_type) in
-            ecx.tcx.unboxed_closure_types.borrow().iter() {
+    for (unboxed_closure_id, unboxed_closure) in ecx.tcx
+                                                    .unboxed_closures
+                                                    .borrow()
+                                                    .iter() {
         if unboxed_closure_id.krate != LOCAL_CRATE {
             continue
         }
@@ -1638,8 +1652,9 @@ fn encode_unboxed_closures<'a>(
         rbml_w.start_tag(tag_unboxed_closure);
         encode_def_id(rbml_w, *unboxed_closure_id);
         rbml_w.start_tag(tag_unboxed_closure_type);
-        write_closure_type(ecx, rbml_w, unboxed_closure_type);
+        write_closure_type(ecx, rbml_w, &unboxed_closure.closure_type);
         rbml_w.end_tag();
+        encode_unboxed_closure_kind(rbml_w, unboxed_closure.kind);
         rbml_w.end_tag();
     }
     rbml_w.end_tag();

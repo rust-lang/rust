@@ -51,7 +51,8 @@
 
 use middle::const_eval;
 use middle::def;
-use middle::lang_items::FnMutTraitLangItem;
+use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
+use middle::lang_items::{FnOnceTraitLangItem};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::subst::{VecPerParamSpace};
 use middle::ty;
@@ -544,16 +545,17 @@ fn ast_ty_to_mt<AC:AstConv, RS:RegionScope>(this: &AC,
 
 pub fn trait_ref_for_unboxed_function<AC:AstConv,
                                       RS:RegionScope>(
-                                          this: &AC,
-                                          rscope: &RS,
-                                          unboxed_function: &ast::UnboxedFnTy,
-                                          self_ty: Option<ty::t>)
-    -> ty::TraitRef
-{
-    let fn_mut_trait_did = this.tcx()
-                               .lang_items
-                               .require(FnMutTraitLangItem)
-                               .unwrap();
+                                      this: &AC,
+                                      rscope: &RS,
+                                      unboxed_function: &ast::UnboxedFnTy,
+                                      self_ty: Option<ty::t>)
+                                      -> ty::TraitRef {
+    let lang_item = match unboxed_function.kind {
+        ast::FnUnboxedClosureKind => FnTraitLangItem,
+        ast::FnMutUnboxedClosureKind => FnMutTraitLangItem,
+        ast::FnOnceUnboxedClosureKind => FnOnceTraitLangItem,
+    };
+    let trait_did = this.tcx().lang_items.require(lang_item).unwrap();
     let input_types =
         unboxed_function.decl
                         .inputs
@@ -574,7 +576,7 @@ pub fn trait_ref_for_unboxed_function<AC:AstConv,
     }
 
     ty::TraitRef {
-        def_id: fn_mut_trait_did,
+        def_id: trait_did,
         substs: substs,
     }
 }
@@ -810,7 +812,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                             None);
                 ty::mk_closure(tcx, fn_decl)
             }
-            ast::TyUnboxedFn(_) => {
+            ast::TyUnboxedFn(..) => {
                 tcx.sess.span_err(ast_ty.span,
                                   "cannot use unboxed functions here");
                 ty::mk_err()

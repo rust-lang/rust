@@ -373,7 +373,7 @@ pub struct ctxt {
 
     /// Records the type of each unboxed closure. The def ID is the ID of the
     /// expression defining the unboxed closure.
-    pub unboxed_closure_types: RefCell<DefIdMap<ClosureTy>>,
+    pub unboxed_closures: RefCell<DefIdMap<UnboxedClosure>>,
 
     pub node_lint_levels: RefCell<HashMap<(ast::NodeId, lint::LintId),
                                           lint::LevelSource>>,
@@ -745,7 +745,7 @@ pub enum sty {
     ty_closure(Box<ClosureTy>),
     ty_trait(Box<TyTrait>),
     ty_struct(DefId, Substs),
-    ty_unboxed_closure(DefId),
+    ty_unboxed_closure(DefId, Region),
     ty_tup(Vec<t>),
 
     ty_param(ParamTy), // type parameter
@@ -1056,6 +1056,21 @@ pub type type_cache = RefCell<DefIdMap<Polytype>>;
 
 pub type node_type_table = RefCell<HashMap<uint,t>>;
 
+/// Records information about each unboxed closure.
+pub struct UnboxedClosure {
+    /// The type of the unboxed closure.
+    pub closure_type: ClosureTy,
+    /// The kind of unboxed closure this is.
+    pub kind: UnboxedClosureKind,
+}
+
+#[deriving(PartialEq, Eq)]
+pub enum UnboxedClosureKind {
+    FnUnboxedClosureKind,
+    FnMutUnboxedClosureKind,
+    FnOnceUnboxedClosureKind,
+}
+
 pub fn mk_ctxt(s: Session,
                dm: resolve::DefMap,
                named_region_map: resolve_lifetime::NamedRegionMap,
@@ -1117,7 +1132,7 @@ pub fn mk_ctxt(s: Session,
         method_map: RefCell::new(FnvHashMap::new()),
         vtable_map: RefCell::new(FnvHashMap::new()),
         dependency_formats: RefCell::new(HashMap::new()),
-        unboxed_closure_types: RefCell::new(DefIdMap::new()),
+        unboxed_closures: RefCell::new(DefIdMap::new()),
         node_lint_levels: RefCell::new(HashMap::new()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
@@ -1177,7 +1192,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
     }
     match &st {
       &ty_nil | &ty_bool | &ty_char | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
-      &ty_str | &ty_unboxed_closure(_) => {}
+      &ty_str => {}
       // You might think that we could just return ty_err for
       // any type containing ty_err as a component, and get
       // rid of the has_ty_err flag -- likewise for ty_bot (with
@@ -1194,6 +1209,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
               flags |= has_params as uint;
           }
       }
+      &ty_unboxed_closure(_, ref region) => flags |= rflags(*region),
       &ty_infer(_) => flags |= needs_infer as uint,
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
           flags |= sflags(substs);
@@ -1442,8 +1458,9 @@ pub fn mk_struct(cx: &ctxt, struct_id: ast::DefId, substs: Substs) -> t {
     mk_t(cx, ty_struct(struct_id, substs))
 }
 
-pub fn mk_unboxed_closure(cx: &ctxt, closure_id: ast::DefId) -> t {
-    mk_t(cx, ty_unboxed_closure(closure_id))
+pub fn mk_unboxed_closure(cx: &ctxt, closure_id: ast::DefId, region: Region)
+                          -> t {
+    mk_t(cx, ty_unboxed_closure(closure_id, region))
 }
 
 pub fn mk_var(cx: &ctxt, v: TyVid) -> t { mk_infer(cx, TyVar(v)) }
@@ -1476,8 +1493,8 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
     }
     match get(ty).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-        ty_str | ty_infer(_) | ty_param(_) | ty_unboxed_closure(_) | ty_err => {
-        }
+        ty_str | ty_infer(_) | ty_param(_) | ty_unboxed_closure(..) |
+        ty_err => {}
         ty_box(ty) | ty_uniq(ty) => maybe_walk_ty(ty, f),
         ty_ptr(ref tm) | ty_rptr(_, ref tm) | ty_vec(ref tm, _) => {
             maybe_walk_ty(tm.ty, f);
@@ -1584,7 +1601,7 @@ pub fn type_is_vec(ty: t) -> bool {
 pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
       ty_struct(..) | ty_tup(_) | ty_enum(..) | ty_closure(_) |
-      ty_vec(_, Some(_)) | ty_unboxed_closure(_) => true,
+      ty_vec(_, Some(_)) | ty_unboxed_closure(..) => true,
       _ => type_is_slice(ty) | type_is_trait(ty)
     }
 }
@@ -2099,10 +2116,13 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 apply_lang_items(cx, did, res)
             }
 
-            ty_unboxed_closure(did) => {
+            ty_unboxed_closure(did, r) => {
+                // FIXME(#14449): `borrowed_contents` below assumes `&mut`
+                // unboxed closure.
                 let upvars = unboxed_closure_upvars(cx, did);
                 TypeContents::union(upvars.as_slice(),
-                                    |f| tc_ty(cx, f.ty, cache))
+                                    |f| tc_ty(cx, f.ty, cache)) |
+                    borrowed_contents(r, MutMutable)
             }
 
             ty_tup(ref tys) => {
@@ -2349,7 +2369,7 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
                 r
             }
 
-            ty_unboxed_closure(did) => {
+            ty_unboxed_closure(did, _) => {
                 let upvars = unboxed_closure_upvars(cx, did);
                 upvars.iter().any(|f| type_requires(cx, seen, r_ty, f.ty))
             }
@@ -2477,7 +2497,7 @@ pub fn is_type_representable(cx: &ctxt, sp: Span, ty: t) -> Representability {
                 r
             }
 
-            ty_unboxed_closure(did) => {
+            ty_unboxed_closure(did, _) => {
                 let upvars = unboxed_closure_upvars(cx, did);
                 find_nonrepresentable(cx,
                                       sp,
@@ -2718,7 +2738,7 @@ pub fn ty_fn_args(fty: t) -> Vec<t> {
 pub fn ty_closure_store(fty: t) -> TraitStore {
     match get(fty).sty {
         ty_closure(ref f) => f.store,
-        ty_unboxed_closure(_) => {
+        ty_unboxed_closure(..) => {
             // Close enough for the purposes of all the callers of this
             // function (which is soon to be deprecated anyhow).
             UniqTraitStore
@@ -3318,7 +3338,7 @@ pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
         ty_struct(id, _) => {
             format!("struct {}", item_path_str(cx, id))
         }
-        ty_unboxed_closure(_) => "closure".to_string(),
+        ty_unboxed_closure(..) => "closure".to_string(),
         ty_tup(_) => "tuple".to_string(),
         ty_infer(TyVar(_)) => "inferred type".to_string(),
         ty_infer(IntVar(_)) => "integral variable".to_string(),
@@ -3687,7 +3707,7 @@ pub fn ty_to_def_id(ty: t) -> Option<ast::DefId> {
         ty_trait(box TyTrait { def_id: id, .. }) |
         ty_struct(id, _) |
         ty_enum(id, _) |
-        ty_unboxed_closure(id) => Some(id),
+        ty_unboxed_closure(id, _) => Some(id),
         _ => None
     }
 }
@@ -4717,9 +4737,10 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             }
             ty_infer(_) => unreachable!(),
             ty_err => byte!(23),
-            ty_unboxed_closure(d) => {
+            ty_unboxed_closure(d, r) => {
                 byte!(24);
                 did(&mut state, d);
+                region(&mut state, r);
             }
         }
     });
@@ -4873,6 +4894,11 @@ impl mc::Typer for ty::ctxt {
                     -> freevars::CaptureMode {
         self.capture_modes.borrow().get_copy(&closure_expr_id)
     }
+
+    fn unboxed_closures<'a>(&'a self)
+                        -> &'a RefCell<DefIdMap<UnboxedClosure>> {
+        &self.unboxed_closures
+    }
 }
 
 /// The category of explicit self.
@@ -4914,6 +4940,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                     UniqTraitStore => {}
                 }
             }
+            ty_unboxed_closure(_, ref region) => accumulator.push(*region),
             ty_nil |
             ty_bot |
             ty_bool |
@@ -4930,7 +4957,6 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_tup(_) |
             ty_param(_) |
             ty_infer(_) |
-            ty_unboxed_closure(_) |
             ty_err => {}
         }
     })

@@ -444,7 +444,7 @@ impl<'a> LookupContext<'a> {
                 },
                 ty_enum(did, _) |
                 ty_struct(did, _) |
-                ty_unboxed_closure(did) => {
+                ty_unboxed_closure(did, _) => {
                     if self.check_traits == CheckTraitsAndInherentMethods {
                         self.push_inherent_impl_candidates_for_type(did);
                     }
@@ -468,7 +468,7 @@ impl<'a> LookupContext<'a> {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(self_ty, restrict_to, p);
                 }
-                ty_unboxed_closure(closure_did) => {
+                ty_unboxed_closure(closure_did, _) => {
                     self.push_unboxed_closure_call_candidates_if_applicable(
                         closure_did);
                 }
@@ -531,8 +531,11 @@ impl<'a> LookupContext<'a> {
         let arguments_type = *closure_function_type.sig.inputs.get(0);
         let return_type = closure_function_type.sig.output;
 
+        let closure_region =
+            vcx.infcx.next_region_var(MiscVariable(self.span));
         let unboxed_closure_type = ty::mk_unboxed_closure(self.tcx(),
-                                                          closure_did);
+                                                          closure_did,
+                                                          closure_region);
         self.extension_candidates.push(Candidate {
             rcvr_match_condition:
                 RcvrMatchesIfSubtype(unboxed_closure_type),
@@ -548,39 +551,38 @@ impl<'a> LookupContext<'a> {
     fn push_unboxed_closure_call_candidates_if_applicable(
             &mut self,
             closure_did: DefId) {
-        // FIXME(pcwalton): Try `Fn` and `FnOnce` too.
-        let trait_did = match self.tcx().lang_items.fn_mut_trait() {
-            Some(trait_did) => trait_did,
-            None => return,
-        };
+        let trait_dids = [
+            self.tcx().lang_items.fn_trait(),
+            self.tcx().lang_items.fn_mut_trait(),
+            self.tcx().lang_items.fn_once_trait()
+        ];
+        for optional_trait_did in trait_dids.iter() {
+            let trait_did = match *optional_trait_did {
+                Some(trait_did) => trait_did,
+                None => continue,
+            };
 
-        match self.tcx()
-                  .unboxed_closure_types
-                  .borrow()
-                  .find(&closure_did) {
-            None => {}  // Fall through to try inherited.
-            Some(closure_function_type) => {
-                self.push_unboxed_closure_call_candidate_if_applicable(
-                    trait_did,
-                    closure_did,
-                    closure_function_type);
-                return
+            match self.tcx().unboxed_closures.borrow().find(&closure_did) {
+                None => {}  // Fall through to try inherited.
+                Some(closure) => {
+                    self.push_unboxed_closure_call_candidate_if_applicable(
+                        trait_did,
+                        closure_did,
+                        &closure.closure_type);
+                    return
+                }
             }
-        }
 
-        match self.fcx
-                  .inh
-                  .unboxed_closure_types
-                  .borrow()
-                  .find(&closure_did) {
-            Some(closure_function_type) => {
-                self.push_unboxed_closure_call_candidate_if_applicable(
-                    trait_did,
-                    closure_did,
-                    closure_function_type);
-                return
+            match self.fcx.inh.unboxed_closures.borrow().find(&closure_did) {
+                Some(closure) => {
+                    self.push_unboxed_closure_call_candidate_if_applicable(
+                        trait_did,
+                        closure_did,
+                        &closure.closure_type);
+                    return
+                }
+                None => {}
             }
-            None => {}
         }
 
         self.tcx().sess.bug("didn't find unboxed closure type in tcx map or \

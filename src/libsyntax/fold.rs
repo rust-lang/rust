@@ -368,6 +368,7 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
         TyUnboxedFn(ref f) => {
             TyUnboxedFn(box(GC) UnboxedFnTy {
                 decl: fld.fold_fn_decl(&*f.decl),
+                kind: f.kind,
             })
         }
         TyTup(ref tys) => TyTup(tys.iter().map(|&ty| fld.fold_ty(ty)).collect()),
@@ -641,6 +642,7 @@ pub fn noop_fold_ty_param_bound<T: Folder>(tpb: &TyParamBound, fld: &mut T)
         UnboxedFnTyParamBound(ref unboxed_function_type) => {
             UnboxedFnTyParamBound(UnboxedFnTy {
                 decl: fld.fold_fn_decl(&*unboxed_function_type.decl),
+                kind: unboxed_function_type.kind,
             })
         }
         OtherRegionTyParamBound(s) => OtherRegionTyParamBound(s)
@@ -1103,8 +1105,9 @@ pub fn noop_fold_expr<T: Folder>(e: Gc<Expr>, folder: &mut T) -> Gc<Expr> {
             ExprProc(folder.fold_fn_decl(&**decl),
                      folder.fold_block(body.clone()))
         }
-        ExprUnboxedFn(capture_clause, ref decl, ref body) => {
+        ExprUnboxedFn(capture_clause, kind, ref decl, ref body) => {
             ExprUnboxedFn(capture_clause,
+                          kind,
                           folder.fold_fn_decl(&**decl),
                           folder.fold_block(*body))
         }

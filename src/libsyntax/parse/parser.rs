@@ -30,6 +30,8 @@ use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary, ExprUnboxedFn};
 use ast::{ExprVec, ExprVstore, ExprVstoreSlice};
 use ast::{ExprVstoreMutSlice, ExprWhile, ExprForLoop, Field, FnDecl};
 use ast::{ExprVstoreUniq, Once, Many};
+use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
+use ast::{FnOnceUnboxedClosureKind};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
 use ast::{Ident, NormalFn, Inherited, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl};
@@ -53,7 +55,8 @@ use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyNil, TyParam, TyParamBound, TyParen, TyPath, TyPtr, TyRptr};
 use ast::{TyTup, TyU32, TyUnboxedFn, TyUniq, TyVec, UnUniq};
-use ast::{UnboxedFnTy, UnboxedFnTyParamBound, UnnamedField, UnsafeBlock};
+use ast::{UnboxedClosureKind, UnboxedFnTy, UnboxedFnTyParamBound};
+use ast::{UnnamedField, UnsafeBlock};
 use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::Visibility;
@@ -1087,6 +1090,34 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parses an optional unboxed closure kind (`&:`, `&mut:`, or `:`).
+    pub fn parse_optional_unboxed_closure_kind(&mut self)
+                                               -> Option<UnboxedClosureKind> {
+        if self.token == token::BINOP(token::AND) &&
+                    self.look_ahead(1, |t| {
+                        token::is_keyword(keywords::Mut, t)
+                    }) &&
+                    self.look_ahead(2, |t| *t == token::COLON) {
+            self.bump();
+            self.bump();
+            self.bump();
+            return Some(FnMutUnboxedClosureKind)
+        }
+
+        if self.token == token::BINOP(token::AND) &&
+                    self.look_ahead(1, |t| *t == token::COLON) {
+            self.bump();
+            self.bump();
+            return Some(FnUnboxedClosureKind)
+        }
+
+        if self.eat(&token::COLON) {
+            return Some(FnOnceUnboxedClosureKind)
+        }
+
+        return None
+    }
+
     /// Parse a TyClosure type
     pub fn parse_ty_closure(&mut self) -> Ty_ {
         /*
@@ -1115,27 +1146,19 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
 
-        let (is_unboxed, inputs) = if self.eat(&token::OROR) {
-            (false, Vec::new())
+        let (optional_unboxed_closure_kind, inputs) = if self.eat(&token::OROR) {
+            (None, Vec::new())
         } else {
             self.expect_or();
 
-            let is_unboxed = self.token == token::BINOP(token::AND) &&
-                self.look_ahead(1, |t| {
-                    token::is_keyword(keywords::Mut, t)
-                }) &&
-                self.look_ahead(2, |t| *t == token::COLON);
-            if is_unboxed {
-                self.bump();
-                self.bump();
-                self.bump();
-            }
+            let optional_unboxed_closure_kind =
+                self.parse_optional_unboxed_closure_kind();
 
             let inputs = self.parse_seq_to_before_or(
                 &token::COMMA,
                 |p| p.parse_arg_general(false));
             self.expect_or();
-            (is_unboxed, inputs)
+            (optional_unboxed_closure_kind, inputs)
         };
 
         let (region, bounds) = {
@@ -1155,18 +1178,22 @@ impl<'a> Parser<'a> {
             variadic: false
         });
 
-        if is_unboxed {
-            TyUnboxedFn(box(GC) UnboxedFnTy {
-                decl: decl,
-            })
-        } else {
-            TyClosure(box(GC) ClosureTy {
-                fn_style: fn_style,
-                onceness: onceness,
-                bounds: bounds,
-                decl: decl,
-                lifetimes: lifetime_defs,
-            }, region)
+        match optional_unboxed_closure_kind {
+            Some(unboxed_closure_kind) => {
+                TyUnboxedFn(box(GC) UnboxedFnTy {
+                    kind: unboxed_closure_kind,
+                    decl: decl,
+                })
+            }
+            None => {
+                TyClosure(box(GC) ClosureTy {
+                    fn_style: fn_style,
+                    onceness: onceness,
+                    bounds: bounds,
+                    decl: decl,
+                    lifetimes: lifetime_defs,
+                }, region)
+            }
         }
     }
 
@@ -2703,7 +2730,8 @@ impl<'a> Parser<'a> {
     pub fn parse_lambda_expr(&mut self, capture_clause: CaptureClause)
                              -> Gc<Expr> {
         let lo = self.span.lo;
-        let (decl, is_unboxed) = self.parse_fn_block_decl();
+        let (decl, optional_unboxed_closure_kind) =
+            self.parse_fn_block_decl();
         let body = self.parse_expr();
         let fakeblock = P(ast::Block {
             view_items: Vec::new(),
@@ -2714,14 +2742,20 @@ impl<'a> Parser<'a> {
             span: body.span,
         });
 
-        if is_unboxed {
-            self.mk_expr(lo,
-                         body.span.hi,
-                         ExprUnboxedFn(capture_clause, decl, fakeblock))
-        } else {
-            self.mk_expr(lo,
-                         body.span.hi,
-                         ExprFnBlock(capture_clause, decl, fakeblock))
+        match optional_unboxed_closure_kind {
+            Some(unboxed_closure_kind) => {
+                self.mk_expr(lo,
+                             body.span.hi,
+                             ExprUnboxedFn(capture_clause,
+                                           unboxed_closure_kind,
+                                           decl,
+                                           fakeblock))
+            }
+            None => {
+                self.mk_expr(lo,
+                             body.span.hi,
+                             ExprFnBlock(capture_clause, decl, fakeblock))
+            }
         }
     }
 
@@ -3553,28 +3587,22 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_unboxed_function_type(&mut self) -> UnboxedFnTy {
-        let inputs = if self.eat(&token::OROR) {
-            Vec::new()
-        } else {
-            self.expect_or();
+        let (optional_unboxed_closure_kind, inputs) =
+            if self.eat(&token::OROR) {
+                (None, Vec::new())
+            } else {
+                self.expect_or();
 
-            if self.token == token::BINOP(token::AND) &&
-                    self.look_ahead(1, |t| {
-                        token::is_keyword(keywords::Mut, t)
-                    }) &&
-                    self.look_ahead(2, |t| *t == token::COLON) {
-                self.bump();
-                self.bump();
-                self.bump();
-            }
+                let optional_unboxed_closure_kind =
+                    self.parse_optional_unboxed_closure_kind();
 
-            let inputs = self.parse_seq_to_before_or(&token::COMMA,
-                                                     |p| {
-                p.parse_arg_general(false)
-            });
-            self.expect_or();
-            inputs
-        };
+                let inputs = self.parse_seq_to_before_or(&token::COMMA,
+                                                         |p| {
+                    p.parse_arg_general(false)
+                });
+                self.expect_or();
+                (optional_unboxed_closure_kind, inputs)
+            };
 
         let (return_style, output) = self.parse_ret_ty();
         UnboxedFnTy {
@@ -3583,7 +3611,11 @@ impl<'a> Parser<'a> {
                 output: output,
                 cf: return_style,
                 variadic: false,
-            })
+            }),
+            kind: match optional_unboxed_closure_kind {
+                Some(kind) => kind,
+                None => FnMutUnboxedClosureKind,
+            },
         }
     }
 
@@ -4026,29 +4058,22 @@ impl<'a> Parser<'a> {
     }
 
     // parse the |arg, arg| header on a lambda
-    fn parse_fn_block_decl(&mut self) -> (P<FnDecl>, bool) {
-        let (is_unboxed, inputs_captures) = {
+    fn parse_fn_block_decl(&mut self)
+                           -> (P<FnDecl>, Option<UnboxedClosureKind>) {
+        let (optional_unboxed_closure_kind, inputs_captures) = {
             if self.eat(&token::OROR) {
-                (false, Vec::new())
+                (None, Vec::new())
             } else {
                 self.expect(&token::BINOP(token::OR));
-                let is_unboxed = self.token == token::BINOP(token::AND) &&
-                    self.look_ahead(1, |t| {
-                        token::is_keyword(keywords::Mut, t)
-                    }) &&
-                    self.look_ahead(2, |t| *t == token::COLON);
-                if is_unboxed {
-                    self.bump();
-                    self.bump();
-                    self.bump();
-                }
+                let optional_unboxed_closure_kind =
+                    self.parse_optional_unboxed_closure_kind();
                 let args = self.parse_seq_to_before_end(
                     &token::BINOP(token::OR),
                     seq_sep_trailing_disallowed(token::COMMA),
                     |p| p.parse_fn_block_arg()
                 );
                 self.bump();
-                (is_unboxed, args)
+                (optional_unboxed_closure_kind, args)
             }
         };
         let output = if self.eat(&token::RARROW) {
@@ -4066,7 +4091,7 @@ impl<'a> Parser<'a> {
             output: output,
             cf: Return,
             variadic: false
-        }), is_unboxed)
+        }), optional_unboxed_closure_kind)
     }
 
     /// Parses the `(arg, arg) -> return_type` header on a procedure.

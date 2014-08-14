@@ -32,7 +32,7 @@ use middle::trans::type_of;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
-use util::nodemap::NodeMap;
+use util::nodemap::{DefIdMap, NodeMap};
 
 use arena::TypedArena;
 use std::collections::HashMap;
@@ -512,6 +512,11 @@ impl<'a> mc::Typer for Block<'a> {
 
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId> {
         self.tcx().region_maps.temporary_scope(rvalue_id)
+    }
+
+    fn unboxed_closures<'a>(&'a self)
+                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure>> {
+        &self.tcx().unboxed_closures
     }
 
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
