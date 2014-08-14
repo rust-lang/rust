@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use bar = foo;
+pub use foo as bar;
 
 mod foo {
     pub fn frob() {}

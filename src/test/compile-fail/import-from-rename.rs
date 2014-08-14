@@ -10,7 +10,7 @@
 
 // error-pattern:expected
 
-use baz = foo::{bar};
+use foo::{bar} as baz;
 
 mod foo {
     pub fn bar() {}

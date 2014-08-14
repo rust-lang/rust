@@ -1119,11 +1119,11 @@ pub type ViewPath = Spanned<ViewPath_>;
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum ViewPath_ {
 
-    /// `quux = foo::bar::baz`
+    /// `foo::bar::baz as quux`
     ///
     /// or just
     ///
-    /// `foo::bar::baz ` (with 'baz =' implicitly on the left)
+    /// `foo::bar::baz` (with `as baz` implicitly on the right)
     ViewPathSimple(Ident, Path, NodeId),
 
     /// `foo::bar::*`

@@ -176,7 +176,7 @@ pub mod mytest {
                          //~^ NOTE: module `i` is private
 
     pub mod foo {
-        pub use foo = self::i::A;
+        pub use self::i::A as foo;
 
         mod i {
             pub struct A;

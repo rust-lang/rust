@@ -2275,13 +2275,17 @@ impl<'a> State<'a> {
     pub fn print_view_path(&mut self, vp: &ast::ViewPath) -> IoResult<()> {
         match vp.node {
             ast::ViewPathSimple(ident, ref path, _) => {
+                try!(self.print_path(path, false));
+
                 // FIXME(#6993) can't compare identifiers directly here
-                if path.segments.last().unwrap().identifier.name != ident.name {
-                    try!(self.print_ident(ident));
+                if path.segments.last().unwrap().identifier.name !=
+                        ident.name {
                     try!(space(&mut self.s));
-                    try!(self.word_space("="));
+                    try!(self.word_space("as"));
+                    try!(self.print_ident(ident));
                 }
-                self.print_path(path, false)
+
+                Ok(())
             }
 
             ast::ViewPathGlob(ref path, _) => {

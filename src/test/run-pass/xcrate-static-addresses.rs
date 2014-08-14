@@ -12,7 +12,7 @@
 
 extern crate xcrate_static_addresses;
 
-use other = xcrate_static_addresses;
+use xcrate_static_addresses as other;
 
 pub fn main() {
     other::verify_same(&other::global);
