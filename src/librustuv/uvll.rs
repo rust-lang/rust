@@ -378,14 +378,14 @@ pub unsafe fn free_req(v: *mut c_void) {
 #[test]
 fn handle_sanity_check() {
     unsafe {
-        assert_eq!(UV_HANDLE_TYPE_MAX as uint, rust_uv_handle_type_max());
+        assert_eq!(UV_HANDLE_TYPE_MAX as libc::uintptr_t, rust_uv_handle_type_max());
     }
 }
 
 #[test]
 fn request_sanity_check() {
     unsafe {
-        assert_eq!(UV_REQ_TYPE_MAX as uint, rust_uv_req_type_max());
+        assert_eq!(UV_REQ_TYPE_MAX as libc::uintptr_t, rust_uv_req_type_max());
     }
 }
 

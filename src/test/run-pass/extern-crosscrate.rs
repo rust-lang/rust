@@ -11,8 +11,9 @@
 //aux-build:extern-crosscrate-source.rs
 
 extern crate externcallback;
+extern crate libc;
 
-fn fact(n: uint) -> uint {
+fn fact(n: libc::uintptr_t) -> libc::uintptr_t {
     unsafe {
         println!("n = {}", n);
         externcallback::rustrt::rust_dbg_call(externcallback::cb, n)
@@ -20,7 +21,7 @@ fn fact(n: uint) -> uint {
 }
 
 pub fn main() {
-    let result = fact(10u);
+    let result = fact(10);
     println!("result = {}", result);
-    assert_eq!(result, 3628800u);
+    assert_eq!(result, 3628800);
 }
