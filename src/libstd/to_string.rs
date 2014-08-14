@@ -16,8 +16,12 @@ The `ToString` trait for converting to strings
 
 #![experimental]
 
+use ascii::Ascii;
 use fmt;
+use mem;
+use slice::Vector;
 use string::String;
+use vec::Vec;
 
 /// A generic trait for converting a value to a string
 pub trait ToString {
@@ -34,6 +38,16 @@ pub trait IntoStr {
 impl<T: fmt::Show> ToString for T {
     fn to_string(&self) -> String {
         format!("{}", *self)
+    }
+}
+
+impl IntoStr for Vec<Ascii> {
+    #[inline]
+    fn into_string(self) -> String {
+        unsafe {
+            let s: &str = mem::transmute(self.as_slice());
+            String::from_str(s)
+        }
     }
 }
 

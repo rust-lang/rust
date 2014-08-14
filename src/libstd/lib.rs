@@ -175,6 +175,7 @@ pub use owned = boxed;
 
 pub use alloc::rc;
 
+pub use core_collections::ascii;
 pub use core_collections::slice;
 pub use core_collections::str;
 pub use core_collections::string;
@@ -227,8 +228,6 @@ pub mod prelude;
 #[path = "num/f64.rs"]   pub mod f64;
 
 pub mod rand;
-
-pub mod ascii;
 
 #[cfg(not(test))]
 pub mod gc;
