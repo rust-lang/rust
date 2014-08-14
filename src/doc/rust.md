@@ -1928,6 +1928,8 @@ interpreted:
 
 ### Miscellaneous attributes
 
+- `export_name` - on statics and functions, this determines the name of the
+  exported symbol.
 - `link_section` - on statics and functions, this specifies the section of the
   object file that this item's contents will be placed into.
 - `macro_export` - export a macro for cross-crate usage.
