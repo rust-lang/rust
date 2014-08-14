@@ -10,7 +10,7 @@
 
 use foo::bar; //~ ERROR unresolved import `foo::bar`. Maybe a missing `extern crate foo`?
 
-use x = bar::baz; //~ ERROR unresolved import `bar::baz`. There is no `baz` in `bar`
+use bar::baz as x; //~ ERROR unresolved import `bar::baz`. There is no `baz` in `bar`
 
 mod bar {
     struct bar;

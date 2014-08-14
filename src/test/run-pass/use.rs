@@ -18,9 +18,9 @@ extern crate zed = "std";
 
 
 use std::str;
-use x = zed::str;
+use zed::str as x;
 mod baz {
-    pub use x = std::str;
+    pub use std::str as x;
 }
 
 #[start]

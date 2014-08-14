@@ -11,7 +11,7 @@
 
 
 use foo::x;
-use z = foo::x;
+use foo::x as z;
 
 mod foo {
     pub fn x(y: int) { println!("{}", y); }
