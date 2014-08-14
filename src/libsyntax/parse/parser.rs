@@ -13,7 +13,7 @@
 use abi;
 use ast::{BareFnTy, ClosureTy};
 use ast::{StaticRegionTyParamBound, OtherRegionTyParamBound, TraitTyParamBound};
-use ast::{Provided, Public, FnStyle};
+use ast::{ProvidedMethod, Public, FnStyle};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, Block};
 use ast::{BlockCheckMode, UnBox};
@@ -33,23 +33,24 @@ use ast::{ExprVstoreUniq, Once, Many};
 use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
 use ast::{FnOnceUnboxedClosureKind};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
-use ast::{Ident, NormalFn, Inherited, Item, Item_, ItemStatic};
+use ast::{Ident, NormalFn, Inherited, ImplItem, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
 use ast::{LitNil, LitStr, LitInt, Local, LocalLet};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal};
 use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
+use ast::{MethodImplItem};
 use ast::{NamedField, UnNeg, NoReturn, UnNot, P, Pat, PatEnum};
 use ast::{PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatBox, PatWild, PatWildMulti, PatWildSingle};
-use ast::{BiRem, Required};
+use ast::{BiRem, RequiredMethod};
 use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
-use ast::{TokenTree, TraitMethod, TraitRef, TTDelim, TTSeq, TTTok};
+use ast::{TokenTree, TraitItem, TraitRef, TTDelim, TTSeq, TTTok};
 use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot, TyBox};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
@@ -1238,7 +1239,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse the methods in a trait declaration
-    pub fn parse_trait_methods(&mut self) -> Vec<TraitMethod> {
+    pub fn parse_trait_methods(&mut self) -> Vec<TraitItem> {
         self.parse_unspanned_seq(
             &token::LBRACE,
             &token::RBRACE,
@@ -1276,7 +1277,7 @@ impl<'a> Parser<'a> {
               token::SEMI => {
                 p.bump();
                 debug!("parse_trait_methods(): parsing required method");
-                Required(TypeMethod {
+                RequiredMethod(TypeMethod {
                     ident: ident,
                     attrs: attrs,
                     fn_style: style,
@@ -1294,7 +1295,7 @@ impl<'a> Parser<'a> {
                 let (inner_attrs, body) =
                     p.parse_inner_attrs_and_block();
                 let attrs = attrs.append(inner_attrs.as_slice());
-                Provided(box(GC) ast::Method {
+                ProvidedMethod(box(GC) ast::Method {
                     attrs: attrs,
                     id: ast::DUMMY_NODE_ID,
                     span: mk_sp(lo, hi),
@@ -4243,6 +4244,18 @@ impl<'a> Parser<'a> {
         (ident, ItemTrait(tps, sized, traits, meths), None)
     }
 
+    fn parse_impl_items(&mut self) -> (Vec<ImplItem>, Vec<Attribute>) {
+        let mut impl_items = Vec::new();
+        self.expect(&token::LBRACE);
+        let (inner_attrs, next) = self.parse_inner_attrs_and_next();
+        let mut method_attrs = Some(next);
+        while !self.eat(&token::RBRACE) {
+            impl_items.push(MethodImplItem(self.parse_method(method_attrs)));
+            method_attrs = None;
+        }
+        (impl_items, inner_attrs)
+    }
+
     /// Parses two variants (with the region/type params always optional):
     ///    impl<T> Foo { ... }
     ///    impl<T> ToString for ~[T] { ... }
@@ -4284,18 +4297,13 @@ impl<'a> Parser<'a> {
             None
         };
 
-        let mut meths = Vec::new();
-        self.expect(&token::LBRACE);
-        let (inner_attrs, next) = self.parse_inner_attrs_and_next();
-        let mut method_attrs = Some(next);
-        while !self.eat(&token::RBRACE) {
-            meths.push(self.parse_method(method_attrs));
-            method_attrs = None;
-        }
+        let (impl_items, attrs) = self.parse_impl_items();
 
         let ident = ast_util::impl_pretty_name(&opt_trait, &*ty);
 
-        (ident, ItemImpl(generics, opt_trait, ty, meths), Some(inner_attrs))
+        (ident,
+         ItemImpl(generics, opt_trait, ty, impl_items),
+         Some(attrs))
     }
 
     /// Parse a::B<String,int>

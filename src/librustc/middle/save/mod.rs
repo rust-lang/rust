@@ -283,8 +283,8 @@ impl <'l> DxrVisitor<'l> {
                             let mut result = String::from_str("<");
                             result.push_str(ty_to_string(&*ty).as_slice());
 
-                            match ty::trait_of_method(&self.analysis.ty_cx,
-                                                      ast_util::local_def(method.id)) {
+                            match ty::trait_of_item(&self.analysis.ty_cx,
+                                                    ast_util::local_def(method.id)) {
                                 Some(def_id) => {
                                     result.push_str(" as ");
                                     result.push_str(
@@ -310,8 +310,8 @@ impl <'l> DxrVisitor<'l> {
                                               ).as_slice());
                 },
             },
-            None => match ty::trait_of_method(&self.analysis.ty_cx,
-                                              ast_util::local_def(method.id)) {
+            None => match ty::trait_of_item(&self.analysis.ty_cx,
+                                            ast_util::local_def(method.id)) {
                 Some(def_id) => {
                     scope_id = def_id.node;
                     match self.analysis.ty_cx.map.get(def_id.node) {
@@ -338,9 +338,19 @@ impl <'l> DxrVisitor<'l> {
         let qualname = qualname.as_slice();
 
         // record the decl for this def (if it has one)
-        let decl_id = ty::trait_method_of_method(&self.analysis.ty_cx,
-                                                 ast_util::local_def(method.id))
-            .filtered(|def_id| method.id != 0 && def_id.node == 0);
+        let decl_id = ty::trait_item_of_item(&self.analysis.ty_cx,
+                                             ast_util::local_def(method.id))
+            .filtered(|def_id| {
+                match *def_id {
+                    ty::MethodTraitItemId(def_id) => {
+                        method.id != 0 && def_id.node == 0
+                    }
+                }
+            });
+        let decl_id = match decl_id {
+            None => None,
+            Some(ty::MethodTraitItemId(def_id)) => Some(def_id),
+        };
 
         let sub_span = self.span.sub_span_after_keyword(method.span, keywords::Fn);
         self.fmt.method_str(method.span,
@@ -601,7 +611,7 @@ impl <'l> DxrVisitor<'l> {
                     type_parameters: &ast::Generics,
                     trait_ref: &Option<ast::TraitRef>,
                     typ: ast::P<ast::Ty>,
-                    methods: &Vec<Gc<ast::Method>>) {
+                    impl_items: &Vec<ast::ImplItem>) {
         match typ.node {
             ast::TyPath(ref path, _, id) => {
                 match self.lookup_type_ref(id) {
@@ -630,8 +640,12 @@ impl <'l> DxrVisitor<'l> {
         }
 
         self.process_generic_params(type_parameters, item.span, "", item.id, e);
-        for method in methods.iter() {
-            visit::walk_method_helper(self, &**method, e)
+        for impl_item in impl_items.iter() {
+            match *impl_item {
+                ast::MethodImplItem(method) => {
+                    visit::walk_method_helper(self, &*method, e)
+                }
+            }
         }
     }
 
@@ -640,7 +654,7 @@ impl <'l> DxrVisitor<'l> {
                      e: DxrVisitorEnv,
                      generics: &ast::Generics,
                      trait_refs: &Vec<ast::TraitRef>,
-                     methods: &Vec<ast::TraitMethod>) {
+                     methods: &Vec<ast::TraitItem>) {
         let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
 
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Trait);
@@ -672,7 +686,7 @@ impl <'l> DxrVisitor<'l> {
         // walk generics and methods
         self.process_generic_params(generics, item.span, qualname.as_slice(), item.id, e);
         for method in methods.iter() {
-            self.visit_trait_method(method, e)
+            self.visit_trait_item(method, e)
         }
     }
 
@@ -735,18 +749,44 @@ impl <'l> DxrVisitor<'l> {
             def::DefStaticMethod(declid, provenence, _) => {
                 let sub_span = self.span.sub_span_for_meth_name(ex.span);
                 let defid = if declid.krate == ast::LOCAL_CRATE {
-                    let m = ty::method(&self.analysis.ty_cx, declid);
+                    let ti = ty::impl_or_trait_item(&self.analysis.ty_cx,
+                                                    declid);
                     match provenence {
-                        def::FromTrait(def_id) =>
-                            Some(ty::trait_methods(&self.analysis.ty_cx, def_id)
-                                .iter().find(|mr| mr.ident.name == m.ident.name).unwrap().def_id),
+                        def::FromTrait(def_id) => {
+                            Some(ty::trait_items(&self.analysis.ty_cx,
+                                                 def_id)
+                                    .iter()
+                                    .find(|mr| {
+                                        match **mr {
+                                            ty::MethodTraitItem(ref mr) => {
+                                                mr.ident.name == ti.ident()
+                                                                   .name
+                                            }
+                                        }
+                                    })
+                                    .unwrap()
+                                    .def_id())
+                        }
                         def::FromImpl(def_id) => {
-                            let impl_methods = self.analysis.ty_cx.impl_methods.borrow();
-                            Some(*impl_methods.get(&def_id)
-                                .iter().find(|mr|
-                                    ty::method(
-                                        &self.analysis.ty_cx, **mr).ident.name == m.ident.name)
-                                .unwrap())
+                            let impl_items = self.analysis
+                                                 .ty_cx
+                                                 .impl_items
+                                                 .borrow();
+                            Some(impl_items.get(&def_id)
+                                           .iter()
+                                           .find(|mr| {
+                                            match **mr {
+                                                ty::MethodTraitItemId(mr) => {
+                                                    ty::impl_or_trait_item(
+                                                            &self.analysis
+                                                                 .ty_cx,
+                                                            mr).ident()
+                                                               .name ==
+                                                        ti.ident().name
+                                                    }
+                                                }
+                                            }).unwrap()
+                                              .def_id())
                         }
                     }
                 } else {
@@ -845,27 +885,45 @@ impl <'l> DxrVisitor<'l> {
             typeck::MethodStatic(def_id) |
             typeck::MethodStaticUnboxedClosure(def_id) => {
                 // method invoked on an object with a concrete type (not a static method)
-                let decl_id = ty::trait_method_of_method(&self.analysis.ty_cx, def_id);
+                let decl_id =
+                    match ty::trait_item_of_item(&self.analysis.ty_cx,
+                                                 def_id) {
+                        None => None,
+                        Some(ty::MethodTraitItemId(decl_id)) => Some(decl_id),
+                    };
 
-                // This incantation is required if the method referenced is a trait's
-                // default implementation.
-                let def_id = ty::method(&self.analysis.ty_cx, def_id).provided_source
-                                    .unwrap_or(def_id);
+                // This incantation is required if the method referenced is a
+                // trait's default implementation.
+                let def_id = match ty::impl_or_trait_item(&self.analysis
+                                                               .ty_cx,
+                                                          def_id) {
+                    ty::MethodTraitItem(method) => {
+                        method.provided_source.unwrap_or(def_id)
+                    }
+                };
                 (Some(def_id), decl_id)
             }
             typeck::MethodParam(mp) => {
                 // method invoked on a type parameter
-                let method = ty::trait_method(&self.analysis.ty_cx,
-                                              mp.trait_id,
-                                              mp.method_num);
-                (None, Some(method.def_id))
+                let trait_item = ty::trait_item(&self.analysis.ty_cx,
+                                                mp.trait_id,
+                                                mp.method_num);
+                match trait_item {
+                    ty::MethodTraitItem(method) => {
+                        (None, Some(method.def_id))
+                    }
+                }
             },
             typeck::MethodObject(mo) => {
                 // method invoked on a trait instance
-                let method = ty::trait_method(&self.analysis.ty_cx,
-                                              mo.trait_id,
-                                              mo.method_num);
-                (None, Some(method.def_id))
+                let trait_item = ty::trait_item(&self.analysis.ty_cx,
+                                                mo.trait_id,
+                                                mo.method_num);
+                match trait_item {
+                    ty::MethodTraitItem(method) => {
+                        (None, Some(method.def_id))
+                    }
+                }
             },
         };
         let sub_span = self.span.sub_span_for_meth_name(ex.span);
@@ -968,8 +1026,17 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
                 self.process_static(item, e, typ, mt, &*expr),
             ast::ItemStruct(def, ref ty_params) => self.process_struct(item, e, &*def, ty_params),
             ast::ItemEnum(ref def, ref ty_params) => self.process_enum(item, e, def, ty_params),
-            ast::ItemImpl(ref ty_params, ref trait_ref, typ, ref methods) =>
-                self.process_impl(item, e, ty_params, trait_ref, typ, methods),
+            ast::ItemImpl(ref ty_params,
+                          ref trait_ref,
+                          typ,
+                          ref impl_items) => {
+                self.process_impl(item,
+                                  e,
+                                  ty_params,
+                                  trait_ref,
+                                  typ,
+                                  impl_items)
+            }
             ast::ItemTrait(ref generics, _, ref trait_refs, ref methods) =>
                 self.process_trait(item, e, generics, trait_refs, methods),
             ast::ItemMod(ref m) => self.process_mod(item, e, m),
@@ -1027,16 +1094,16 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
         }
     }
 
-    fn visit_trait_method(&mut self, tm: &ast::TraitMethod, e: DxrVisitorEnv) {
+    fn visit_trait_item(&mut self, tm: &ast::TraitItem, e: DxrVisitorEnv) {
         match *tm {
-            ast::Required(ref method_type) => {
+            ast::RequiredMethod(ref method_type) => {
                 if generated_code(method_type.span) {
                     return;
                 }
 
-                let mut scope_id ;
-                let mut qualname = match ty::trait_of_method(&self.analysis.ty_cx,
-                                                             ast_util::local_def(method_type.id)) {
+                let mut scope_id;
+                let mut qualname = match ty::trait_of_item(&self.analysis.ty_cx,
+                                                           ast_util::local_def(method_type.id)) {
                     Some(def_id) => {
                         scope_id = def_id.node;
                         ty::item_path_str(&self.analysis.ty_cx, def_id).append("::")
@@ -1070,7 +1137,7 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
                                             method_type.id,
                                             e);
             }
-            ast::Provided(method) => self.process_method(&*method, e),
+            ast::ProvidedMethod(method) => self.process_method(&*method, e),
         }
     }
 

@@ -16,7 +16,7 @@ use syntax::codemap::Span;
 use syntax::{attr, visit};
 use syntax::ast;
 use syntax::ast::{Attribute, Block, Crate, DefId, FnDecl, NodeId, Variant};
-use syntax::ast::{Item, Required, Provided, TraitMethod, TypeMethod, Method};
+use syntax::ast::{Item, RequiredMethod, ProvidedMethod, TraitItem, TypeMethod, Method};
 use syntax::ast::{Generics, StructDef, StructField, Ident};
 use syntax::ast_util::is_local;
 use syntax::attr::Stability;
@@ -68,18 +68,18 @@ impl Visitor<Option<Stability>> for Annotator {
         visit::walk_fn(self, fk, fd, b, s, stab)
     }
 
-    fn visit_trait_method(&mut self, t: &TraitMethod, parent: Option<Stability>) {
+    fn visit_trait_item(&mut self, t: &TraitItem, parent: Option<Stability>) {
         let stab = match *t {
-            Required(TypeMethod {attrs: ref attrs, id: id, ..}) =>
+            RequiredMethod(TypeMethod {attrs: ref attrs, id: id, ..}) =>
                 self.annotate(id, attrs.as_slice(), parent),
 
             // work around lack of pattern matching for @ types
-            Provided(method) => match *method {
+            ProvidedMethod(method) => match *method {
                 Method {attrs: ref attrs, id: id, ..} =>
                     self.annotate(id, attrs.as_slice(), parent)
             }
         };
-        visit::walk_trait_method(self, t, stab)
+        visit::walk_trait_item(self, t, stab)
     }
 
     fn visit_variant(&mut self, v: &Variant, g: &Generics, parent: Option<Stability>) {
@@ -116,10 +116,11 @@ impl Index {
 
 /// Lookup the stability for a node, loading external crate
 /// metadata as necessary.
-pub fn lookup(tcx: &ty::ctxt,  id: DefId) -> Option<Stability> {
+pub fn lookup(tcx: &ty::ctxt, id: DefId) -> Option<Stability> {
     // is this definition the implementation of a trait method?
-    match ty::trait_method_of_method(tcx, id) {
-        Some(trait_method_id) if trait_method_id != id => {
+    match ty::trait_item_of_item(tcx, id) {
+        Some(ty::MethodTraitItemId(trait_method_id))
+                if trait_method_id != id => {
             lookup(tcx, trait_method_id)
         }
         _ if is_local(id) => {

@@ -40,29 +40,31 @@ pub trait DocFolder {
                 EnumItem(i)
             },
             TraitItem(mut i) => {
-                fn vtrm<T: DocFolder>(this: &mut T, trm: TraitMethod) -> Option<TraitMethod> {
+                fn vtrm<T: DocFolder>(this: &mut T, trm: TraitItem)
+                        -> Option<TraitItem> {
                     match trm {
-                        Required(it) => {
+                        RequiredMethod(it) => {
                             match this.fold_item(it) {
-                                Some(x) => return Some(Required(x)),
+                                Some(x) => return Some(RequiredMethod(x)),
                                 None => return None,
                             }
                         },
-                        Provided(it) => {
+                        ProvidedMethod(it) => {
                             match this.fold_item(it) {
-                                Some(x) => return Some(Provided(x)),
+                                Some(x) => return Some(ProvidedMethod(x)),
                                 None => return None,
                             }
                         },
                     }
                 }
-                let mut foo = Vec::new(); swap(&mut foo, &mut i.methods);
-                i.methods.extend(foo.move_iter().filter_map(|x| vtrm(self, x)));
+                let mut foo = Vec::new(); swap(&mut foo, &mut i.items);
+                i.items.extend(foo.move_iter().filter_map(|x| vtrm(self, x)));
                 TraitItem(i)
             },
             ImplItem(mut i) => {
-                let mut foo = Vec::new(); swap(&mut foo, &mut i.methods);
-                i.methods.extend(foo.move_iter().filter_map(|x| self.fold_item(x)));
+                let mut foo = Vec::new(); swap(&mut foo, &mut i.items);
+                i.items.extend(foo.move_iter()
+                                  .filter_map(|x| self.fold_item(x)));
                 ImplItem(i)
             },
             VariantItem(i) => {

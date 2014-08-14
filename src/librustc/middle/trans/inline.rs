@@ -115,27 +115,42 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ccx.sess().bug("maybe_get_item_ast returned a found_parent \
              with a non-item parent");
         }
-        csearch::found(ast::IIMethod(impl_did, is_provided, mth)) => {
-            ccx.external.borrow_mut().insert(fn_id, Some(mth.id));
-            ccx.external_srcs.borrow_mut().insert(mth.id, fn_id);
+        csearch::found(ast::IITraitItem(impl_did, impl_item)) => {
+            match impl_item {
+                ast::ProvidedInlinedTraitItem(mth) |
+                ast::RequiredInlinedTraitItem(mth) => {
+                    ccx.external.borrow_mut().insert(fn_id, Some(mth.id));
+                    ccx.external_srcs.borrow_mut().insert(mth.id, fn_id);
 
-            ccx.stats.n_inlines.set(ccx.stats.n_inlines.get() + 1);
+                    ccx.stats.n_inlines.set(ccx.stats.n_inlines.get() + 1);
+                }
+            }
 
-            // If this is a default method, we can't look up the
-            // impl type. But we aren't going to translate anyways, so don't.
-            if is_provided { return local_def(mth.id); }
+            match impl_item {
+                ast::ProvidedInlinedTraitItem(mth) => {
+                    // If this is a default method, we can't look up the
+                    // impl type. But we aren't going to translate anyways, so
+                    // don't.
+                    local_def(mth.id)
+                }
+                ast::RequiredInlinedTraitItem(mth) => {
+                    let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
+                    let unparameterized = impl_tpt.generics.types.is_empty() &&
+                            mth.pe_generics().ty_params.is_empty();
 
-            let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
-            let unparameterized =
-                impl_tpt.generics.types.is_empty() &&
-                mth.pe_generics().ty_params.is_empty();
-
-          if unparameterized {
-              let llfn = get_item_val(ccx, mth.id);
-                trans_fn(ccx, &*mth.pe_fn_decl(), &*mth.pe_body(), llfn,
-                       &param_substs::empty(), mth.id, []);
-          }
-          local_def(mth.id)
+                    if unparameterized {
+                        let llfn = get_item_val(ccx, mth.id);
+                        trans_fn(ccx,
+                                 &*mth.pe_fn_decl(),
+                                 &*mth.pe_body(),
+                                 llfn,
+                                 &param_substs::empty(),
+                                 mth.id,
+                                 []);
+                    }
+                    local_def(mth.id)
+                }
+            }
         }
     };
 }

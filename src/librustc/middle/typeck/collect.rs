@@ -37,7 +37,7 @@ use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime;
 use middle::subst;
 use middle::subst::{Substs};
-use middle::ty::{ImplContainer, MethodContainer, TraitContainer};
+use middle::ty::{ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use middle::ty::{Polytype};
 use middle::ty;
 use middle::ty_fold::TypeFolder;
@@ -200,64 +200,74 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
     match tcx.map.get(trait_id) {
         ast_map::NodeItem(item) => {
             match item.node {
-                ast::ItemTrait(_, _, _, ref ms) => {
+                ast::ItemTrait(_, _, _, ref trait_items) => {
                     // For each method, construct a suitable ty::Method and
-                    // store it into the `tcx.methods` table:
-                    for m in ms.iter() {
-                        let ty_method = Rc::new(match m {
-                            &ast::Required(ref m) => {
-                                ty_method_of_trait_method(
-                                    ccx,
-                                    trait_id,
-                                    &trait_def.generics,
-                                    &m.id,
-                                    &m.ident,
-                                    &m.explicit_self,
-                                    m.abi,
-                                    &m.generics,
-                                    &m.fn_style,
-                                    &*m.decl)
-                            }
+                    // store it into the `tcx.impl_or_trait_items` table:
+                    for trait_item in trait_items.iter() {
+                        match *trait_item {
+                            ast::RequiredMethod(_) |
+                            ast::ProvidedMethod(_) => {
+                                let ty_method = Rc::new(match *trait_item {
+                                    ast::RequiredMethod(ref m) => {
+                                        ty_method_of_trait_method(
+                                            ccx,
+                                            trait_id,
+                                            &trait_def.generics,
+                                            &m.id,
+                                            &m.ident,
+                                            &m.explicit_self,
+                                            m.abi,
+                                            &m.generics,
+                                            &m.fn_style,
+                                            &*m.decl)
+                                    }
+                                    ast::ProvidedMethod(ref m) => {
+                                        ty_method_of_trait_method(
+                                            ccx,
+                                            trait_id,
+                                            &trait_def.generics,
+                                            &m.id,
+                                            &m.pe_ident(),
+                                            m.pe_explicit_self(),
+                                            m.pe_abi(),
+                                            m.pe_generics(),
+                                            &m.pe_fn_style(),
+                                            &*m.pe_fn_decl())
+                                    }
+                                });
 
-                            &ast::Provided(ref m) => {
-                                ty_method_of_trait_method(
-                                    ccx,
-                                    trait_id,
-                                    &trait_def.generics,
-                                    &m.id,
-                                    &m.pe_ident(),
-                                    m.pe_explicit_self(),
-                                    m.pe_abi(),
-                                    m.pe_generics(),
-                                    &m.pe_fn_style(),
-                                    &*m.pe_fn_decl())
-                            }
-                        });
+                                if ty_method.explicit_self ==
+                                        ty::StaticExplicitSelfCategory {
+                                    make_static_method_ty(ccx, &*ty_method);
+                                }
 
-                        if ty_method.explicit_self ==
-                                ty::StaticExplicitSelfCategory {
-                            make_static_method_ty(ccx, &*ty_method);
+                                tcx.impl_or_trait_items
+                                   .borrow_mut()
+                                   .insert(ty_method.def_id,
+                                           ty::MethodTraitItem(ty_method));
+                            }
                         }
-
-                        tcx.methods.borrow_mut().insert(ty_method.def_id,
-                                                        ty_method);
                     }
 
                     // Add an entry mapping
-                    let method_def_ids = Rc::new(ms.iter().map(|m| {
-                        match m {
-                            &ast::Required(ref ty_method) => {
-                                local_def(ty_method.id)
+                    let trait_item_def_ids =
+                        Rc::new(trait_items.iter()
+                                           .map(|ti| {
+                            match *ti {
+                                ast::RequiredMethod(ref ty_method) => {
+                                    ty::MethodTraitItemId(local_def(
+                                            ty_method.id))
+                                }
+                                ast::ProvidedMethod(ref method) => {
+                                    ty::MethodTraitItemId(local_def(
+                                            method.id))
+                                }
                             }
-                            &ast::Provided(ref method) => {
-                                local_def(method.id)
-                            }
-                        }
-                    }).collect());
+                        }).collect());
 
                     let trait_def_id = local_def(trait_id);
-                    tcx.trait_method_def_ids.borrow_mut()
-                        .insert(trait_def_id, method_def_ids);
+                    tcx.trait_item_def_ids.borrow_mut()
+                        .insert(trait_def_id, trait_item_def_ids);
                 }
                 _ => {} // Ignore things that aren't traits.
             }
@@ -346,12 +356,11 @@ pub fn convert_field(ccx: &CrateCtxt,
 }
 
 fn convert_methods(ccx: &CrateCtxt,
-                   container: MethodContainer,
+                   container: ImplOrTraitItemContainer,
                    ms: &[Gc<ast::Method>],
                    untransformed_rcvr_ty: ty::t,
                    rcvr_ty_generics: &ty::Generics,
-                   rcvr_visibility: ast::Visibility)
-{
+                   rcvr_visibility: ast::Visibility) {
     let tcx = ccx.tcx;
     let mut seen_methods = HashSet::new();
     for m in ms.iter() {
@@ -379,11 +388,13 @@ fn convert_methods(ccx: &CrateCtxt,
 
         write_ty_to_tcx(tcx, m.id, fty);
 
-        tcx.methods.borrow_mut().insert(mty.def_id, mty);
+        tcx.impl_or_trait_items
+           .borrow_mut()
+           .insert(mty.def_id, ty::MethodTraitItem(mty));
     }
 
     fn ty_of_method(ccx: &CrateCtxt,
-                    container: MethodContainer,
+                    container: ImplOrTraitItemContainer,
                     m: &ast::Method,
                     untransformed_rcvr_ty: ty::t,
                     rcvr_ty_generics: &ty::Generics,
@@ -459,7 +470,10 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                                    enum_definition.variants.as_slice(),
                                    generics);
         },
-        ast::ItemImpl(ref generics, ref opt_trait_ref, selfty, ref ms) => {
+        ast::ItemImpl(ref generics,
+                      ref opt_trait_ref,
+                      selfty,
+                      ref impl_items) => {
             let ty_generics = ty_generics_for_type(ccx, generics);
             let selfty = ccx.to_ty(&ExplicitRscope, &*selfty);
             write_ty_to_tcx(tcx, it.id, selfty);
@@ -480,16 +494,22 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                 it.vis
             };
 
-            for method in ms.iter() {
-                check_method_self_type(ccx,
-                                       &BindingRscope::new(method.id),
-                                       selfty,
-                                       method.pe_explicit_self())
+            let mut methods = Vec::new();
+            for impl_item in impl_items.iter() {
+                match *impl_item {
+                    ast::MethodImplItem(ref method) => {
+                        check_method_self_type(ccx,
+                                               &BindingRscope::new(method.id),
+                                               selfty,
+                                               method.pe_explicit_self());
+                        methods.push(*method);
+                    }
+                }
             }
 
             convert_methods(ccx,
                             ImplContainer(local_def(it.id)),
-                            ms.as_slice(),
+                            methods.as_slice(),
                             selfty,
                             &ty_generics,
                             parent_visibility);
@@ -507,14 +527,14 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                                              0,
                                              local_def(it.id));
                 match *trait_method {
-                    ast::Required(ref type_method) => {
+                    ast::RequiredMethod(ref type_method) => {
                         let rscope = BindingRscope::new(type_method.id);
                         check_method_self_type(ccx,
                                                &rscope,
                                                self_type,
                                                &type_method.explicit_self)
                     }
-                    ast::Provided(ref method) => {
+                    ast::ProvidedMethod(ref method) => {
                         check_method_self_type(ccx,
                                                &BindingRscope::new(method.id),
                                                self_type,
