@@ -492,9 +492,11 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
             Ok(ty::mk_struct(tcx, a_id, substs))
       }
 
-      (&ty::ty_unboxed_closure(a_id), &ty::ty_unboxed_closure(b_id))
+      (&ty::ty_unboxed_closure(a_id, a_region),
+       &ty::ty_unboxed_closure(b_id, b_region))
       if a_id == b_id => {
-          Ok(ty::mk_unboxed_closure(tcx, a_id))
+          let region = if_ok!(this.regions(a_region, b_region));
+          Ok(ty::mk_unboxed_closure(tcx, a_id, region))
       }
 
       (&ty::ty_box(a_inner), &ty::ty_box(b_inner)) => {

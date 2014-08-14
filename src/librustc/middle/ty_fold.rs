@@ -392,8 +392,8 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_struct(did, ref substs) => {
             ty::ty_struct(did, substs.fold_with(this))
         }
-        ty::ty_unboxed_closure(did) => {
-            ty::ty_unboxed_closure(did)
+        ty::ty_unboxed_closure(did, ref region) => {
+            ty::ty_unboxed_closure(did, region.fold_with(this))
         }
         ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_char | ty::ty_str |
         ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |

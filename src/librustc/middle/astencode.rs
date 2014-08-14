@@ -689,10 +689,35 @@ pub fn encode_vtable_param_res(ecx: &e::EncodeContext,
     }).unwrap()
 }
 
+pub fn encode_unboxed_closure_kind(ebml_w: &mut Encoder,
+                                   kind: ty::UnboxedClosureKind) {
+    ebml_w.emit_enum("UnboxedClosureKind", |ebml_w| {
+        match kind {
+            ty::FnUnboxedClosureKind => {
+                ebml_w.emit_enum_variant("FnUnboxedClosureKind", 0, 3, |_| {
+                    Ok(())
+                })
+            }
+            ty::FnMutUnboxedClosureKind => {
+                ebml_w.emit_enum_variant("FnMutUnboxedClosureKind", 1, 3, |_| {
+                    Ok(())
+                })
+            }
+            ty::FnOnceUnboxedClosureKind => {
+                ebml_w.emit_enum_variant("FnOnceUnboxedClosureKind",
+                                         2,
+                                         3,
+                                         |_| {
+                    Ok(())
+                })
+            }
+        }
+    }).unwrap()
+}
 
 pub fn encode_vtable_origin(ecx: &e::EncodeContext,
-                        rbml_w: &mut Encoder,
-                        vtable_origin: &typeck::vtable_origin) {
+                            rbml_w: &mut Encoder,
+                            vtable_origin: &typeck::vtable_origin) {
     rbml_w.emit_enum("vtable_origin", |rbml_w| {
         match *vtable_origin {
           typeck::vtable_static(def_id, ref substs, ref vtable_res) => {
@@ -1210,14 +1235,15 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for unboxed_closure_type in tcx.unboxed_closure_types
-                                   .borrow()
-                                   .find(&ast_util::local_def(id))
-                                   .iter() {
-        rbml_w.tag(c::tag_table_unboxed_closure_type, |rbml_w| {
+    for unboxed_closure in tcx.unboxed_closures
+                              .borrow()
+                              .find(&ast_util::local_def(id))
+                              .iter() {
+        rbml_w.tag(c::tag_table_unboxed_closures, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_closure_type(ecx, *unboxed_closure_type)
+                rbml_w.emit_closure_type(ecx, &unboxed_closure.closure_type);
+                encode_unboxed_closure_kind(rbml_w, unboxed_closure.kind)
             })
         })
     }
@@ -1244,8 +1270,8 @@ trait rbml_decoder_decoder_helpers {
                      -> ty::Polytype;
     fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> subst::Substs;
     fn read_auto_adjustment(&mut self, xcx: &ExtendedDecodeContext) -> ty::AutoAdjustment;
-    fn read_unboxed_closure_type(&mut self, xcx: &ExtendedDecodeContext)
-                                 -> ty::ClosureTy;
+    fn read_unboxed_closure(&mut self, xcx: &ExtendedDecodeContext)
+                            -> ty::UnboxedClosure;
     fn convert_def_id(&mut self,
                       xcx: &ExtendedDecodeContext,
                       source: DefIdSource,
@@ -1418,16 +1444,33 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_unboxed_closure_type(&mut self, xcx: &ExtendedDecodeContext)
-                                 -> ty::ClosureTy {
-        self.read_opaque(|this, doc| {
+    fn read_unboxed_closure(&mut self, xcx: &ExtendedDecodeContext)
+                            -> ty::UnboxedClosure {
+        let closure_type = self.read_opaque(|this, doc| {
             Ok(tydecode::parse_ty_closure_data(
                 doc.data,
                 xcx.dcx.cdata.cnum,
                 doc.start,
                 xcx.dcx.tcx,
                 |s, a| this.convert_def_id(xcx, s, a)))
-        }).unwrap()
+        }).unwrap();
+        let variants = [
+            "FnUnboxedClosureKind",
+            "FnMutUnboxedClosureKind",
+            "FnOnceUnboxedClosureKind"
+        ];
+        let kind = self.read_enum_variant(variants, |_, i| {
+            Ok(match i {
+                0 => ty::FnUnboxedClosureKind,
+                1 => ty::FnMutUnboxedClosureKind,
+                2 => ty::FnOnceUnboxedClosureKind,
+                _ => fail!("bad enum variant for ty::UnboxedClosureKind"),
+            })
+        }).unwrap();
+        ty::UnboxedClosure {
+            closure_type: closure_type,
+            kind: kind,
+        }
     }
 
     fn convert_def_id(&mut self,
@@ -1566,14 +1609,14 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                         let adj: ty::AutoAdjustment = val_dsr.read_auto_adjustment(xcx);
                         dcx.tcx.adjustments.borrow_mut().insert(id, adj);
                     }
-                    c::tag_table_unboxed_closure_type => {
-                        let unboxed_closure_type =
-                            val_dsr.read_unboxed_closure_type(xcx);
+                    c::tag_table_unboxed_closures => {
+                        let unboxed_closure =
+                            val_dsr.read_unboxed_closure(xcx);
                         dcx.tcx
-                           .unboxed_closure_types
+                           .unboxed_closures
                            .borrow_mut()
                            .insert(ast_util::local_def(id),
-                                   unboxed_closure_type);
+                                   unboxed_closure);
                     }
                     _ => {
                         xcx.dcx.tcx.sess.bug(

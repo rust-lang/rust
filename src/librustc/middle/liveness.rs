@@ -967,7 +967,7 @@ impl<'a> Liveness<'a> {
 
           ExprFnBlock(_, _, ref blk) |
           ExprProc(_, ref blk) |
-          ExprUnboxedFn(_, _, ref blk) => {
+          ExprUnboxedFn(_, _, _, ref blk) => {
               debug!("{} is an ExprFnBlock, ExprProc, or ExprUnboxedFn",
                      expr_to_string(expr));
 

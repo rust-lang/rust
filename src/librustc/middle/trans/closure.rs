@@ -19,6 +19,7 @@ use middle::lang_items::ClosureExchangeMallocFnLangItem;
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
+use middle::trans::cleanup::{CleanupMethods, ScopeId};
 use middle::trans::common::*;
 use middle::trans::datum::{Datum, DatumBlock, Expr, Lvalue, rvalue_scratch_datum};
 use middle::trans::debuginfo;
@@ -306,7 +307,9 @@ fn load_environment<'a>(bcx: &'a Block<'a>,
 
 fn load_unboxed_closure_environment<'a>(
                                     bcx: &'a Block<'a>,
-                                    freevars: &Vec<freevars::freevar_entry>)
+                                    arg_scope_id: ScopeId,
+                                    freevars: &Vec<freevars::freevar_entry>,
+                                    closure_id: ast::DefId)
                                     -> &'a Block<'a> {
     let _icx = push_ctxt("closure::load_environment");
 
@@ -314,11 +317,31 @@ fn load_unboxed_closure_environment<'a>(
         return bcx
     }
 
-    let llenv = bcx.fcx.llenv.unwrap();
+    // Special case for small by-value selfs.
+    let self_type = self_type_for_unboxed_closure(bcx.ccx(), closure_id);
+    let kind = kind_for_unboxed_closure(bcx.ccx(), closure_id);
+    let llenv = if kind == ty::FnOnceUnboxedClosureKind &&
+            !arg_is_indirect(bcx.ccx(), self_type) {
+        let datum = rvalue_scratch_datum(bcx,
+                                         self_type,
+                                         "unboxed_closure_env");
+        store_ty(bcx, bcx.fcx.llenv.unwrap(), datum.val, self_type);
+        assert!(freevars.len() <= 1);
+        datum.val
+    } else {
+        bcx.fcx.llenv.unwrap()
+    };
+
     for (i, freevar) in freevars.iter().enumerate() {
         let upvar_ptr = GEPi(bcx, llenv, [0, i]);
         let def_id = freevar.def.def_id();
         bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvar_ptr);
+
+        if kind == ty::FnOnceUnboxedClosureKind {
+            bcx.fcx.schedule_drop_mem(arg_scope_id,
+                                      upvar_ptr,
+                                      node_id_type(bcx, def_id.node))
+        }
     }
 
     bcx
@@ -394,7 +417,7 @@ pub fn trans_expr_fn<'a>(
                   ty::ty_fn_abi(fty),
                   true,
                   NotUnboxedClosure,
-                  |bcx| load_environment(bcx, cdata_ty, &freevars, store));
+                  |bcx, _| load_environment(bcx, cdata_ty, &freevars, store));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
     bcx
 }
@@ -404,7 +427,7 @@ pub fn trans_expr_fn<'a>(
 pub fn get_or_create_declaration_if_unboxed_closure(ccx: &CrateContext,
                                                     closure_id: ast::DefId)
                                                     -> Option<ValueRef> {
-    if !ccx.tcx.unboxed_closure_types.borrow().contains_key(&closure_id) {
+    if !ccx.tcx.unboxed_closures.borrow().contains_key(&closure_id) {
         // Not an unboxed closure.
         return None
     }
@@ -418,7 +441,9 @@ pub fn get_or_create_declaration_if_unboxed_closure(ccx: &CrateContext,
         None => {}
     }
 
-    let function_type = ty::mk_unboxed_closure(&ccx.tcx, closure_id);
+    let function_type = ty::mk_unboxed_closure(&ccx.tcx,
+                                               closure_id,
+                                               ty::ReStatic);
     let symbol = ccx.tcx.map.with_path(closure_id.node, |path| {
         mangle_internal_name_by_path_and_seq(path, "unboxed_closure")
     });
@@ -453,19 +478,10 @@ pub fn trans_unboxed_closure<'a>(
         bcx.ccx(),
         closure_id).unwrap();
 
-    // Untuple the arguments.
-    let unboxed_closure_types = bcx.tcx().unboxed_closure_types.borrow();
-    let /*mut*/ function_type = (*unboxed_closure_types.get(&closure_id)).clone();
-    /*function_type.sig.inputs =
-        match ty::get(*function_type.sig.inputs.get(0)).sty {
-            ty::ty_tup(ref tuple_types) => {
-                tuple_types.iter().map(|x| (*x).clone()).collect()
-            }
-            _ => {
-                bcx.tcx().sess.span_bug(body.span,
-                                        "unboxed closure wasn't a tuple?!")
-            }
-        };*/
+    let unboxed_closures = bcx.tcx().unboxed_closures.borrow();
+    let function_type = unboxed_closures.get(&closure_id)
+                                        .closure_type
+                                        .clone();
     let function_type = ty::mk_closure(bcx.tcx(), function_type);
 
     let freevars: Vec<freevars::freevar_entry> =
@@ -486,7 +502,12 @@ pub fn trans_unboxed_closure<'a>(
                   ty::ty_fn_abi(function_type),
                   true,
                   IsUnboxedClosure,
-                  |bcx| load_unboxed_closure_environment(bcx, freevars_ptr));
+                  |bcx, arg_scope| {
+                      load_unboxed_closure_environment(bcx,
+                                                       arg_scope,
+                                                       freevars_ptr,
+                                                       closure_id)
+                  });
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size unboxed closure (in which case dest will be
@@ -502,13 +523,13 @@ pub fn trans_unboxed_closure<'a>(
     let repr = adt::represent_type(bcx.ccx(), node_id_type(bcx, id));
 
     // Create the closure.
-    for freevar in freevars_ptr.iter() {
+    for (i, freevar) in freevars_ptr.iter().enumerate() {
         let datum = expr::trans_local_var(bcx, freevar.def);
         let upvar_slot_dest = adt::trans_field_ptr(bcx,
                                                    &*repr,
                                                    dest_addr,
                                                    0,
-                                                   0);
+                                                   i);
         bcx = datum.store_to(bcx, upvar_slot_dest);
     }
     adt::trans_set_discr(bcx, &*repr, dest_addr, 0);

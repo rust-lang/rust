@@ -273,7 +273,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         let name = llvm_type_name(cx, an_enum, did, tps);
         adt::incomplete_type_of(cx, &*repr, name.as_slice())
       }
-      ty::ty_unboxed_closure(did) => {
+      ty::ty_unboxed_closure(did, _) => {
         // Only create the named struct, but don't fill it in. We
         // fill it in *after* placing it into the type cache.
         let repr = adt::represent_type(cx, t);

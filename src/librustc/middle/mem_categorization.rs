@@ -66,7 +66,7 @@ use middle::def;
 use middle::freevars;
 use middle::ty;
 use middle::typeck;
-use util::nodemap::NodeMap;
+use util::nodemap::{DefIdMap, NodeMap};
 use util::ppaux::{ty_to_string, Repr};
 
 use syntax::ast::{MutImmutable, MutMutable};
@@ -273,6 +273,8 @@ pub trait Typer {
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> freevars::CaptureMode;
+    fn unboxed_closures<'a>(&'a self)
+                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure>>;
 }
 
 impl MutabilityCategory {
@@ -598,13 +600,22 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                           }))
                       }
                   }
-                  ty::ty_unboxed_closure(_) => {
+                  ty::ty_unboxed_closure(closure_id, _) => {
+                      let unboxed_closures = self.typer
+                                                 .unboxed_closures()
+                                                 .borrow();
+                      let kind = unboxed_closures.get(&closure_id).kind;
+                      let onceness = match kind {
+                          ty::FnUnboxedClosureKind |
+                          ty::FnMutUnboxedClosureKind => ast::Many,
+                          ty::FnOnceUnboxedClosureKind => ast::Once,
+                      };
                       Ok(Rc::new(cmt_ {
                           id: id,
                           span: span,
                           cat: cat_copied_upvar(CopiedUpvar {
                               upvar_id: var_id,
-                              onceness: ast::Many,
+                              onceness: onceness,
                               capturing_proc: fn_node_id,
                           }),
                           mutbl: MutabilityCategory::from_def(&def),

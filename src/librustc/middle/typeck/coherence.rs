@@ -109,7 +109,7 @@ fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
         match get(t).sty {
             ty_enum(def_id, _) |
             ty_struct(def_id, _) |
-            ty_unboxed_closure(def_id) => {
+            ty_unboxed_closure(def_id, _) => {
                 if def_id.krate == ast::LOCAL_CRATE {
                     found_nominal = true;
                 }
@@ -153,7 +153,7 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
             match get(base_type).sty {
                 ty_enum(def_id, _) |
                 ty_struct(def_id, _) |
-                ty_unboxed_closure(def_id) => {
+                ty_unboxed_closure(def_id, _) => {
                     Some(def_id)
                 }
                 ty_rptr(_, ty::mt {ty, ..}) | ty_uniq(ty) => match ty::get(ty).sty {
@@ -687,7 +687,7 @@ impl<'a> CoherenceChecker<'a> {
             match ty::get(self_type.ty).sty {
                 ty::ty_enum(type_def_id, _) |
                 ty::ty_struct(type_def_id, _) |
-                ty::ty_unboxed_closure(type_def_id) => {
+                ty::ty_unboxed_closure(type_def_id, _) => {
                     tcx.destructor_for_type.borrow_mut().insert(type_def_id,
                                                                 method_def_id);
                     tcx.destructors.borrow_mut().insert(method_def_id);

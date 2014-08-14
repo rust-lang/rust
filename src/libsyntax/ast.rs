@@ -528,7 +528,7 @@ pub enum Expr_ {
     ExprMatch(Gc<Expr>, Vec<Arm>),
     ExprFnBlock(CaptureClause, P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
-    ExprUnboxedFn(CaptureClause, P<FnDecl>, P<Block>),
+    ExprUnboxedFn(CaptureClause, UnboxedClosureKind, P<FnDecl>, P<Block>),
     ExprBlock(P<Block>),
 
     ExprAssign(Gc<Expr>, Gc<Expr>),
@@ -900,6 +900,7 @@ pub struct BareFnTy {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct UnboxedFnTy {
+    pub kind: UnboxedClosureKind,
     pub decl: P<FnDecl>,
 }
 
@@ -1295,6 +1296,13 @@ pub struct ForeignItem {
 pub enum ForeignItem_ {
     ForeignItemFn(P<FnDecl>, Generics),
     ForeignItemStatic(P<Ty>, /* is_mutbl */ bool),
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum UnboxedClosureKind {
+    FnUnboxedClosureKind,
+    FnMutUnboxedClosureKind,
+    FnOnceUnboxedClosureKind,
 }
 
 /// The data we save and restore about an inlined item or method.  This is not
