@@ -754,10 +754,9 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
                          dest)
         }
         ast::ExprTup(ref args) => {
-            let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
             let numbered_fields: Vec<(uint, Gc<ast::Expr>)> =
                 args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
-            trans_adt(bcx, &*repr, 0, numbered_fields.as_slice(), None, dest)
+            trans_adt(bcx, expr_ty(bcx, expr), 0, numbered_fields.as_slice(), None, dest)
         }
         ast::ExprLit(lit) => {
             match lit.node {
@@ -1089,8 +1088,7 @@ fn trans_struct<'a>(bcx: &'a Block<'a>,
             }
         };
 
-        let repr = adt::represent_type(bcx.ccx(), ty);
-        trans_adt(bcx, &*repr, discr, numbered_fields.as_slice(), optbase, dest)
+        trans_adt(bcx, ty, discr, numbered_fields.as_slice(), optbase, dest)
     })
 }
 
@@ -1119,25 +1117,20 @@ pub struct StructBaseInfo {
  * which remaining fields are copied; see comments on `StructBaseInfo`.
  */
 pub fn trans_adt<'a>(mut bcx: &'a Block<'a>,
-                     repr: &adt::Repr,
+                     ty: ty::t,
                      discr: ty::Disr,
                      fields: &[(uint, Gc<ast::Expr>)],
                      optbase: Option<StructBaseInfo>,
                      dest: Dest) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_adt");
     let fcx = bcx.fcx;
+    let repr = adt::represent_type(bcx.ccx(), ty);
+
+    // If we don't care about the result, just make a
+    // temporary stack slot
     let addr = match dest {
-        Ignore => {
-            for &(_i, ref e) in fields.iter() {
-                bcx = trans_into(bcx, &**e, Ignore);
-            }
-            for sbi in optbase.iter() {
-                // FIXME #7261: this moves entire base, not just certain fields
-                bcx = trans_into(bcx, &*sbi.expr, Ignore);
-            }
-            return bcx;
-        }
-        SaveIn(pos) => pos
+        SaveIn(pos) => pos,
+        Ignore => alloc_ty(bcx, ty, "temp"),
     };
 
     // This scope holds intermediates that must be cleaned should
@@ -1153,8 +1146,8 @@ pub fn trans_adt<'a>(mut bcx: &'a Block<'a>,
                 let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
                 for &(i, t) in base.fields.iter() {
                     let datum = base_datum.get_element(
-                            t, |srcval| adt::trans_field_ptr(bcx, repr, srcval, discr, i));
-                    let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
+                            t, |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, i));
+                    let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
                     bcx = datum.store_to(bcx, dest);
                 }
             },
@@ -1167,7 +1160,7 @@ pub fn trans_adt<'a>(mut bcx: &'a Block<'a>,
 
     // Now, we just overwrite the fields we've explicity specified
     for &(i, ref e) in fields.iter() {
-        let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
+        let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
         let e_ty = expr_ty_adjusted(bcx, &**e);
         bcx = trans_into(bcx, &**e, SaveIn(dest));
         let scope = cleanup::CustomScope(custom_cleanup_scope);
@@ -1175,11 +1168,19 @@ pub fn trans_adt<'a>(mut bcx: &'a Block<'a>,
         fcx.schedule_drop_mem(scope, dest, e_ty);
     }
 
-    adt::trans_set_discr(bcx, repr, addr, discr);
+    adt::trans_set_discr(bcx, &*repr, addr, discr);
 
     fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
 
-    return bcx;
+    // If we don't care about the result drop the temporary we made
+    match dest {
+        SaveIn(_) => bcx,
+        Ignore => {
+            bcx = glue::drop_ty(bcx, addr, ty);
+            base::call_lifetime_end(bcx, addr);
+            bcx
+        }
+    }
 }
 
 
