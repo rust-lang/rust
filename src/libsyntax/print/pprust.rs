@@ -584,7 +584,11 @@ impl<'a> State<'a> {
             ast::TyBareFn(f) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: OwnedSlice::empty()
+                    ty_params: OwnedSlice::empty(),
+                    where_clause: ast::WhereClause {
+                        id: ast::DUMMY_NODE_ID,
+                        predicates: Vec::new(),
+                    },
                 };
                 try!(self.print_ty_fn(Some(f.abi),
                                       None,
@@ -601,7 +605,11 @@ impl<'a> State<'a> {
             ast::TyClosure(f, ref region) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: OwnedSlice::empty()
+                    ty_params: OwnedSlice::empty(),
+                    where_clause: ast::WhereClause {
+                        id: ast::DUMMY_NODE_ID,
+                        predicates: Vec::new(),
+                    },
                 };
                 try!(self.print_ty_fn(None,
                                       Some('&'),
@@ -618,7 +626,11 @@ impl<'a> State<'a> {
             ast::TyProc(ref f) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: OwnedSlice::empty()
+                    ty_params: OwnedSlice::empty(),
+                    where_clause: ast::WhereClause {
+                        id: ast::DUMMY_NODE_ID,
+                        predicates: Vec::new(),
+                    },
                 };
                 try!(self.print_ty_fn(None,
                                       Some('~'),
@@ -765,6 +777,7 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.word_space("="));
                 try!(self.print_type(&**ty));
+                try!(self.print_where_clause(params));
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end the outer ibox
             }
@@ -808,6 +821,7 @@ impl<'a> State<'a> {
                 }
 
                 try!(self.print_type(&**ty));
+                try!(self.print_where_clause(generics));
 
                 try!(space(&mut self.s));
                 try!(self.bopen());
@@ -845,6 +859,7 @@ impl<'a> State<'a> {
                         try!(self.print_path(&trait_.path, false));
                     }
                 }
+                try!(self.print_where_clause(generics));
                 try!(word(&mut self.s, " "));
                 try!(self.bopen());
                 for meth in methods.iter() {
@@ -880,6 +895,7 @@ impl<'a> State<'a> {
         try!(self.head(visibility_qualified(visibility, "enum").as_slice()));
         try!(self.print_ident(ident));
         try!(self.print_generics(generics));
+        try!(self.print_where_clause(generics));
         try!(space(&mut self.s));
         self.print_variants(enum_definition.variants.as_slice(), span)
     }
@@ -2010,7 +2026,8 @@ impl<'a> State<'a> {
         try!(self.nbsp());
         try!(self.print_ident(name));
         try!(self.print_generics(generics));
-        self.print_fn_args_and_ret(decl, opt_explicit_self)
+        try!(self.print_fn_args_and_ret(decl, opt_explicit_self))
+        self.print_where_clause(generics)
     }
 
     pub fn print_fn_args(&mut self, decl: &ast::FnDecl,
@@ -2201,52 +2218,81 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_generics(&mut self,
-                          generics: &ast::Generics) -> IoResult<()> {
-        let total = generics.lifetimes.len() + generics.ty_params.len();
-        if total > 0 {
-            try!(word(&mut self.s, "<"));
+    fn print_type_parameters(&mut self,
+                             lifetimes: &[ast::LifetimeDef],
+                             ty_params: &[ast::TyParam])
+                             -> IoResult<()> {
+        let total = lifetimes.len() + ty_params.len();
+        let mut ints = Vec::new();
+        for i in range(0u, total) {
+            ints.push(i);
+        }
 
-            let mut ints = Vec::new();
-            for i in range(0u, total) {
-                ints.push(i);
-            }
-
-            try!(self.commasep(
-                Inconsistent, ints.as_slice(),
-                |s, &idx| {
-                    if idx < generics.lifetimes.len() {
-                        let lifetime = generics.lifetimes.get(idx);
-                        s.print_lifetime_def(lifetime)
-                    } else {
-                        let idx = idx - generics.lifetimes.len();
-                        let param = generics.ty_params.get(idx);
-                        match param.unbound {
-                            Some(TraitTyParamBound(ref tref)) => {
-                                try!(s.print_trait_ref(tref));
-                                try!(s.word_space("?"));
-                            }
-                            _ => {}
-                        }
-                        try!(s.print_ident(param.ident));
-                        try!(s.print_bounds(&None,
-                                            &param.bounds,
-                                            false,
-                                            false));
-                        match param.default {
-                            Some(ref default) => {
-                                try!(space(&mut s.s));
-                                try!(s.word_space("="));
-                                s.print_type(&**default)
-                            }
-                            _ => Ok(())
-                        }
+        self.commasep(Inconsistent, ints.as_slice(), |s, &idx| {
+            if idx < lifetimes.len() {
+                let lifetime = &lifetimes[idx];
+                s.print_lifetime_def(lifetime)
+            } else {
+                let idx = idx - lifetimes.len();
+                let param = &ty_params[idx];
+                match param.unbound {
+                    Some(TraitTyParamBound(ref tref)) => {
+                        try!(s.print_trait_ref(tref));
+                        try!(s.word_space("?"));
                     }
-                }));
+                    _ => {}
+                }
+                try!(s.print_ident(param.ident));
+                try!(s.print_bounds(&None,
+                                    &param.bounds,
+                                    false,
+                                    false));
+                match param.default {
+                    Some(ref default) => {
+                        try!(space(&mut s.s));
+                        try!(s.word_space("="));
+                        s.print_type(&**default)
+                    }
+                    _ => Ok(())
+                }
+            }
+        })
+    }
+
+    pub fn print_generics(&mut self, generics: &ast::Generics)
+                          -> IoResult<()> {
+        if generics.lifetimes.len() + generics.ty_params.len() > 0 {
+            try!(word(&mut self.s, "<"));
+            try!(self.print_type_parameters(generics.lifetimes.as_slice(),
+                                            generics.ty_params.as_slice()));
             word(&mut self.s, ">")
         } else {
             Ok(())
         }
+    }
+
+    pub fn print_where_clause(&mut self, generics: &ast::Generics)
+                              -> IoResult<()> {
+        if generics.where_clause.predicates.len() == 0 {
+            return Ok(())
+        }
+
+        try!(space(&mut self.s));
+        try!(self.word_space("where"));
+
+        for (i, predicate) in generics.where_clause
+                                      .predicates
+                                      .iter()
+                                      .enumerate() {
+            if i != 0 {
+                try!(self.word_space(","));
+            }
+
+            try!(self.print_ident(predicate.ident));
+            try!(self.print_bounds(&None, &predicate.bounds, false, false));
+        }
+
+        Ok(())
     }
 
     pub fn print_meta_item(&mut self, item: &ast::MetaItem) -> IoResult<()> {
@@ -2474,6 +2520,11 @@ impl<'a> State<'a> {
                 }
                 try!(self.end());
             }
+        }
+
+        match generics {
+            Some(generics) => try!(self.print_where_clause(generics)),
+            None => {}
         }
 
         self.end()

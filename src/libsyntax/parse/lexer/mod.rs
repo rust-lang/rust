@@ -543,7 +543,7 @@ impl<'a> StringReader<'a> {
     // favors rustc debugging effectiveness over runtime efficiency.
 
     /// Scan through input of form \x00name_NNNNNN,ctxt_CCCCCCC\x00
-    /// where: `NNNNNN` is a string of characters forming an integer
+    /// whence: `NNNNNN` is a string of characters forming an integer
     /// (the name) and `CCCCCCC` is a string of characters forming an
     /// integer (the ctxt), separate by a comma and delimited by a
     /// `\x00` marker.
@@ -552,22 +552,22 @@ impl<'a> StringReader<'a> {
         fn bump_expecting_char<'a,D:fmt::Show>(r: &mut StringReader<'a>,
                                                c: char,
                                                described_c: D,
-                                               where: &str) {
+                                               whence: &str) {
             match r.curr {
                 Some(r_c) if r_c == c => r.bump(),
-                Some(r_c) => fail!("expected {}, hit {}, {}", described_c, r_c, where),
-                None      => fail!("expected {}, hit EOF, {}", described_c, where),
+                Some(r_c) => fail!("expected {}, hit {}, {}", described_c, r_c, whence),
+                None      => fail!("expected {}, hit EOF, {}", described_c, whence),
             }
         }
 
-        let where = "while scanning embedded hygienic ident";
+        let whence = "while scanning embedded hygienic ident";
 
         // skip over the leading `\x00`
-        bump_expecting_char(self, '\x00', "nul-byte", where);
+        bump_expecting_char(self, '\x00', "nul-byte", whence);
 
         // skip over the "name_"
         for c in "name_".chars() {
-            bump_expecting_char(self, c, c, where);
+            bump_expecting_char(self, c, c, whence);
         }
 
         let start_bpos = self.last_pos;
@@ -578,16 +578,16 @@ impl<'a> StringReader<'a> {
         let encoded_name : u32 = self.with_str_from(start_bpos, |s| {
             num::from_str_radix(s, 10).unwrap_or_else(|| {
                 fail!("expected digits representing a name, got `{}`, {}, range [{},{}]",
-                      s, where, start_bpos, self.last_pos);
+                      s, whence, start_bpos, self.last_pos);
             })
         });
 
         // skip over the `,`
-        bump_expecting_char(self, ',', "comma", where);
+        bump_expecting_char(self, ',', "comma", whence);
 
         // skip over the "ctxt_"
         for c in "ctxt_".chars() {
-            bump_expecting_char(self, c, c, where);
+            bump_expecting_char(self, c, c, whence);
         }
 
         // find the integer representing the ctxt
@@ -595,12 +595,12 @@ impl<'a> StringReader<'a> {
         self.scan_digits(base);
         let encoded_ctxt : ast::SyntaxContext = self.with_str_from(start_bpos, |s| {
             num::from_str_radix(s, 10).unwrap_or_else(|| {
-                fail!("expected digits representing a ctxt, got `{}`, {}", s, where);
+                fail!("expected digits representing a ctxt, got `{}`, {}", s, whence);
             })
         });
 
         // skip over the `\x00`
-        bump_expecting_char(self, '\x00', "nul-byte", where);
+        bump_expecting_char(self, '\x00', "nul-byte", whence);
 
         ast::Ident { name: ast::Name(encoded_name),
                      ctxt: encoded_ctxt, }

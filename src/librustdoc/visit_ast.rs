@@ -91,7 +91,7 @@ impl<'a> RustdocVisitor<'a> {
             attrs: item.attrs.iter().map(|x| *x).collect(),
             generics: generics.clone(),
             fields: sd.fields.iter().map(|x| (*x).clone()).collect(),
-            where: item.span
+            whence: item.span
         }
     }
 
@@ -107,7 +107,7 @@ impl<'a> RustdocVisitor<'a> {
                 stab: self.stability(x.node.id),
                 id: x.node.id,
                 kind: x.node.kind.clone(),
-                where: x.span,
+                whence: x.span,
             });
         }
         Enum {
@@ -118,7 +118,7 @@ impl<'a> RustdocVisitor<'a> {
             generics: params.clone(),
             attrs: it.attrs.iter().map(|x| *x).collect(),
             id: it.id,
-            where: it.span,
+            whence: it.span,
         }
     }
 
@@ -133,7 +133,7 @@ impl<'a> RustdocVisitor<'a> {
             attrs: item.attrs.iter().map(|x| *x).collect(),
             decl: fd.clone(),
             name: item.ident,
-            where: item.span,
+            whence: item.span,
             generics: gen.clone(),
             fn_style: *fn_style,
         }
@@ -297,7 +297,7 @@ impl<'a> RustdocVisitor<'a> {
                     name: item.ident,
                     id: item.id,
                     attrs: item.attrs.iter().map(|x| *x).collect(),
-                    where: item.span,
+                    whence: item.span,
                     vis: item.vis,
                     stab: self.stability(item.id),
                 };
@@ -311,7 +311,7 @@ impl<'a> RustdocVisitor<'a> {
                     id: item.id,
                     name: item.ident,
                     attrs: item.attrs.iter().map(|x| *x).collect(),
-                    where: item.span,
+                    whence: item.span,
                     vis: item.vis,
                     stab: self.stability(item.id),
                 };
@@ -325,7 +325,7 @@ impl<'a> RustdocVisitor<'a> {
                     parents: tr.iter().map(|x| (*x).clone()).collect(),
                     id: item.id,
                     attrs: item.attrs.iter().map(|x| *x).collect(),
-                    where: item.span,
+                    whence: item.span,
                     vis: item.vis,
                     stab: self.stability(item.id),
                 };
@@ -339,7 +339,7 @@ impl<'a> RustdocVisitor<'a> {
                     items: items.iter().map(|x| *x).collect(),
                     attrs: item.attrs.iter().map(|x| *x).collect(),
                     id: item.id,
-                    where: item.span,
+                    whence: item.span,
                     vis: item.vis,
                     stab: self.stability(item.id),
                 };
@@ -360,7 +360,7 @@ impl<'a> RustdocVisitor<'a> {
             id: item.id,
             attrs: item.attrs.iter().map(|x| *x).collect(),
             name: item.ident,
-            where: item.span,
+            whence: item.span,
             stab: self.stability(item.id),
         }
     }

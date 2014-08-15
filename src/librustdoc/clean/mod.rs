@@ -363,7 +363,7 @@ impl Clean<Item> for doctree::Module {
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
-        let where = {
+        let whence = {
             let ctxt = super::ctxtkey.get().unwrap();
             let cm = ctxt.sess().codemap();
             let outer = cm.lookup_char_pos(self.where_outer.lo);
@@ -380,7 +380,7 @@ impl Clean<Item> for doctree::Module {
         Item {
             name: Some(name),
             attrs: self.attrs.clean(),
-            source: where.clean(),
+            source: whence.clean(),
             visibility: self.vis.clean(),
             stability: self.stab.clean(),
             def_id: ast_util::local_def(self.id),
@@ -781,7 +781,7 @@ impl Clean<Item> for doctree::Function {
         Item {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
-            source: self.where.clean(),
+            source: self.whence.clean(),
             visibility: self.vis.clean(),
             stability: self.stab.clean(),
             def_id: ast_util::local_def(self.id),
@@ -917,7 +917,7 @@ impl Clean<Item> for doctree::Trait {
         Item {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
-            source: self.where.clean(),
+            source: self.whence.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
             stability: self.stab.clean(),
@@ -1397,7 +1397,7 @@ impl Clean<Item> for doctree::Struct {
         Item {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
-            source: self.where.clean(),
+            source: self.whence.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
             stability: self.stab.clean(),
@@ -1443,7 +1443,7 @@ impl Clean<Item> for doctree::Enum {
         Item {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
-            source: self.where.clean(),
+            source: self.whence.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
             stability: self.stab.clean(),
@@ -1466,7 +1466,7 @@ impl Clean<Item> for doctree::Variant {
         Item {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
-            source: self.where.clean(),
+            source: self.whence.clean(),
             visibility: self.vis.clean(),
             stability: self.stab.clean(),
             def_id: ast_util::local_def(self.id),
@@ -1652,7 +1652,7 @@ impl Clean<Item> for doctree::Typedef {
         Item {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
-            source: self.where.clean(),
+            source: self.whence.clean(),
             def_id: ast_util::local_def(self.id.clone()),
             visibility: self.vis.clean(),
             stability: self.stab.clean(),
@@ -1702,7 +1702,7 @@ impl Clean<Item> for doctree::Static {
         Item {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
-            source: self.where.clean(),
+            source: self.whence.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
             stability: self.stab.clean(),
@@ -1748,7 +1748,7 @@ impl Clean<Item> for doctree::Impl {
         Item {
             name: None,
             attrs: self.attrs.clean(),
-            source: self.where.clean(),
+            source: self.whence.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
             stability: self.stab.clean(),
@@ -2115,12 +2115,12 @@ impl Clean<Item> for doctree::Macro {
         Item {
             name: Some(format!("{}!", self.name.clean())),
             attrs: self.attrs.clean(),
-            source: self.where.clean(),
+            source: self.whence.clean(),
             visibility: ast::Public.clean(),
             stability: self.stab.clean(),
             def_id: ast_util::local_def(self.id),
             inner: MacroItem(Macro {
-                source: self.where.to_src(),
+                source: self.whence.to_src(),
             }),
         }
     }

@@ -390,7 +390,7 @@ impl<'a> TraitDef<'a> {
                            methods: Vec<Gc<ast::Method>> ) -> Gc<ast::Item> {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
-        let Generics { mut lifetimes, ty_params } =
+        let Generics { mut lifetimes, ty_params, where_clause: _ } =
             self.generics.to_generics(cx, self.span, type_ident, generics);
         let mut ty_params = ty_params.into_vec();
 
@@ -418,7 +418,11 @@ impl<'a> TraitDef<'a> {
         }));
         let trait_generics = Generics {
             lifetimes: lifetimes,
-            ty_params: OwnedSlice::from_vec(ty_params)
+            ty_params: OwnedSlice::from_vec(ty_params),
+            where_clause: ast::WhereClause {
+                id: ast::DUMMY_NODE_ID,
+                predicates: Vec::new(),
+            },
         };
 
         // Create the reference to the trait.
