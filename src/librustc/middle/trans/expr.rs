@@ -746,12 +746,12 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             controlflow::trans_block(bcx, &**blk, dest)
         }
         ast::ExprStruct(_, ref fields, base) => {
-            trans_rec_or_struct(bcx,
-                                fields.as_slice(),
-                                base,
-                                expr.span,
-                                expr.id,
-                                dest)
+            trans_struct(bcx,
+                         fields.as_slice(),
+                         base,
+                         expr.span,
+                         expr.id,
+                         dest)
         }
         ast::ExprTup(ref args) => {
             let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
@@ -1042,16 +1042,13 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
     }
 }
 
-fn trans_rec_or_struct<'a>(
-                       bcx: &'a Block<'a>,
-                       fields: &[ast::Field],
-                       base: Option<Gc<ast::Expr>>,
-                       expr_span: codemap::Span,
-                       id: ast::NodeId,
-                       dest: Dest)
-                       -> &'a Block<'a> {
+fn trans_struct<'a>(bcx: &'a Block<'a>,
+                    fields: &[ast::Field],
+                    base: Option<Gc<ast::Expr>>,
+                    expr_span: codemap::Span,
+                    id: ast::NodeId,
+                    dest: Dest) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_rec");
-    let bcx = bcx;
 
     let ty = node_id_type(bcx, id);
     let tcx = bcx.tcx();
@@ -1121,7 +1118,7 @@ pub struct StructBaseInfo {
  * - `optbase` contains information on the base struct (if any) from
  * which remaining fields are copied; see comments on `StructBaseInfo`.
  */
-pub fn trans_adt<'a>(bcx: &'a Block<'a>,
+pub fn trans_adt<'a>(mut bcx: &'a Block<'a>,
                      repr: &adt::Repr,
                      discr: ty::Disr,
                      fields: &[(uint, Gc<ast::Expr>)],
@@ -1129,7 +1126,6 @@ pub fn trans_adt<'a>(bcx: &'a Block<'a>,
                      dest: Dest) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_adt");
     let fcx = bcx.fcx;
-    let mut bcx = bcx;
     let addr = match dest {
         Ignore => {
             for &(_i, ref e) in fields.iter() {
@@ -1148,6 +1144,28 @@ pub fn trans_adt<'a>(bcx: &'a Block<'a>,
     // failure occur before the ADT as a whole is ready.
     let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
 
+    // First we trans the base, if we have one, to the dest
+    for base in optbase.iter() {
+        assert_eq!(discr, 0);
+
+        match ty::expr_kind(bcx.tcx(), &*base.expr) {
+            ty::LvalueExpr => {
+                let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
+                for &(i, t) in base.fields.iter() {
+                    let datum = base_datum.get_element(
+                            t, |srcval| adt::trans_field_ptr(bcx, repr, srcval, discr, i));
+                    let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
+                    bcx = datum.store_to(bcx, dest);
+                }
+            },
+            ty::RvalueDpsExpr | ty::RvalueDatumExpr => {
+                bcx = trans_into(bcx, &*base.expr, SaveIn(addr));
+            },
+            ty::RvalueStmtExpr => bcx.tcx().sess.bug("unexpected expr kind for struct base expr")
+        }
+    }
+
+    // Now, we just overwrite the fields we've explicity specified
     for &(i, ref e) in fields.iter() {
         let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
         let e_ty = expr_ty_adjusted(bcx, &**e);
@@ -1155,19 +1173,6 @@ pub fn trans_adt<'a>(bcx: &'a Block<'a>,
         let scope = cleanup::CustomScope(custom_cleanup_scope);
         fcx.schedule_lifetime_end(scope, dest);
         fcx.schedule_drop_mem(scope, dest, e_ty);
-    }
-
-    for base in optbase.iter() {
-        // FIXME #6573: is it sound to use the destination's repr on the base?
-        // And, would it ever be reasonable to be here with discr != 0?
-        let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
-        for &(i, t) in base.fields.iter() {
-            let datum = base_datum.get_element(
-                t,
-                |srcval| adt::trans_field_ptr(bcx, repr, srcval, discr, i));
-            let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
-            bcx = datum.store_to(bcx, dest);
-        }
     }
 
     adt::trans_set_discr(bcx, repr, addr, discr);
