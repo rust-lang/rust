@@ -3671,6 +3671,7 @@ impl<'a> Resolver<'a> {
                                                                ItemRibKind),
                                              |this| {
                     this.resolve_type_parameters(&generics.ty_params);
+                    this.resolve_where_clause(&generics.where_clause);
                     visit::walk_item(this, item, ());
                 });
             }
@@ -3713,6 +3714,7 @@ impl<'a> Resolver<'a> {
                                                                NormalRibKind),
                                              |this| {
                     this.resolve_type_parameters(&generics.ty_params);
+                    this.resolve_where_clause(&generics.where_clause);
 
                     // Resolve derived traits.
                     for trt in traits.iter() {
@@ -3744,6 +3746,8 @@ impl<'a> Resolver<'a> {
                                 // parameters.
                                 this.resolve_type_parameters(
                                     &ty_m.generics.ty_params);
+                                this.resolve_where_clause(&ty_m.generics
+                                                               .where_clause);
 
                                 for argument in ty_m.decl.inputs.iter() {
                                     this.resolve_type(&*argument.ty);
@@ -3907,6 +3911,7 @@ impl<'a> Resolver<'a> {
                 }
                 HasTypeParameters(ref generics, _, _, _) => {
                     this.resolve_type_parameters(&generics.ty_params);
+                    this.resolve_where_clause(&generics.where_clause);
                 }
             }
 
@@ -4022,6 +4027,30 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    fn resolve_where_clause(&mut self, where_clause: &ast::WhereClause) {
+        for predicate in where_clause.predicates.iter() {
+            match self.resolve_identifier(predicate.ident,
+                                          TypeNS,
+                                          true,
+                                          predicate.span) {
+                Some((def @ DefTyParam(_, _, _), last_private)) => {
+                    self.record_def(predicate.id, (def, last_private));
+                }
+                _ => {
+                    self.resolve_error(
+                        predicate.span,
+                        format!("undeclared type parameter `{}`",
+                                token::get_ident(
+                                    predicate.ident)).as_slice());
+                }
+            }
+
+            for bound in predicate.bounds.iter() {
+                self.resolve_type_parameter_bound(predicate.id, bound);
+            }
+        }
+    }
+
     fn resolve_struct(&mut self,
                       id: NodeId,
                       generics: &Generics,
@@ -4035,6 +4064,7 @@ impl<'a> Resolver<'a> {
                                      |this| {
             // Resolve the type parameters.
             this.resolve_type_parameters(&generics.ty_params);
+            this.resolve_where_clause(&generics.where_clause);
 
             // Resolve the super struct.
             match super_struct {
@@ -4146,6 +4176,7 @@ impl<'a> Resolver<'a> {
                                      |this| {
             // Resolve the type parameters.
             this.resolve_type_parameters(&generics.ty_params);
+            this.resolve_where_clause(&generics.where_clause);
 
             // Resolve the trait reference, if necessary.
             this.with_optional_trait_ref(id, opt_trait_reference, |this| {

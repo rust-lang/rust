@@ -431,11 +431,14 @@ impl Map {
     /// the iterator will produce node id's for items with paths
     /// such as `foo::bar::quux`, `bar::quux`, `other::bar::quux`, and
     /// any other such items it can find in the map.
-    pub fn nodes_matching_suffix<'a, S:Str>(&'a self, parts: &'a [S]) -> NodesMatchingSuffix<'a,S> {
-        NodesMatchingSuffix { map: self,
-                              item_name: parts.last().unwrap(),
-                              where: parts.slice_to(parts.len() - 1),
-                              idx: 0 }
+    pub fn nodes_matching_suffix<'a, S:Str>(&'a self, parts: &'a [S])
+                                 -> NodesMatchingSuffix<'a,S> {
+        NodesMatchingSuffix {
+            map: self,
+            item_name: parts.last().unwrap(),
+            in_which: parts.slice_to(parts.len() - 1),
+            idx: 0,
+        }
     }
 
     pub fn opt_span(&self, id: NodeId) -> Option<Span> {
@@ -478,20 +481,20 @@ impl Map {
 pub struct NodesMatchingSuffix<'a, S> {
     map: &'a Map,
     item_name: &'a S,
-    where: &'a [S],
+    in_which: &'a [S],
     idx: NodeId,
 }
 
 impl<'a,S:Str> NodesMatchingSuffix<'a,S> {
     /// Returns true only if some suffix of the module path for parent
-    /// matches `self.where`.
+    /// matches `self.in_which`.
     ///
-    /// In other words: let `[x_0,x_1,...,x_k]` be `self.where`;
+    /// In other words: let `[x_0,x_1,...,x_k]` be `self.in_which`;
     /// returns true if parent's path ends with the suffix
     /// `x_0::x_1::...::x_k`.
     fn suffix_matches(&self, parent: NodeId) -> bool {
         let mut cursor = parent;
-        for part in self.where.iter().rev() {
+        for part in self.in_which.iter().rev() {
             let (mod_id, mod_name) = match find_first_mod_parent(self.map, cursor) {
                 None => return false,
                 Some((node_id, name)) => (node_id, name),

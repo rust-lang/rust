@@ -499,18 +499,19 @@ declare_special_idents_and_keywords! {
         (41,                         Proc,       "proc");
         (42,                         Box,        "box");
         (43,                         Const,      "const");
+        (44,                         Where,      "where");
 
         'reserved:
-        (44,                         Alignof,    "alignof");
-        (45,                         Be,         "be");
-        (46,                         Offsetof,   "offsetof");
-        (47,                         Priv,       "priv");
-        (48,                         Pure,       "pure");
-        (49,                         Sizeof,     "sizeof");
-        (50,                         Typeof,     "typeof");
-        (51,                         Unsized,    "unsized");
-        (52,                         Yield,      "yield");
-        (53,                         Do,         "do");
+        (45,                         Alignof,    "alignof");
+        (46,                         Be,         "be");
+        (47,                         Offsetof,   "offsetof");
+        (48,                         Priv,       "priv");
+        (49,                         Pure,       "pure");
+        (50,                         Sizeof,     "sizeof");
+        (51,                         Typeof,     "typeof");
+        (52,                         Unsized,    "unsized");
+        (53,                         Yield,      "yield");
+        (54,                         Do,         "do");
     }
 }
 
