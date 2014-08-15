@@ -38,7 +38,7 @@ macro_rules! try_opt(
 // FIXME #16466: This could be represented as (i64 seconds, u32 nanos)
 /// ISO 8601 time duration with nanosecond precision.
 /// This also allows for the negative duration; see individual methods for details.
-#[deriving(PartialEq, Eq, PartialOrd, Ord)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration {
     days: i32,
     secs: u32,  // Always < SECS_PER_DAY
