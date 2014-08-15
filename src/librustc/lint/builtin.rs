@@ -579,6 +579,7 @@ impl LintPass for UnusedAttribute {
             "packed",
             "static_assert",
             "thread_local",
+            "no_debug",
 
             // not used anywhere (!?) but apparently we want to keep them around
             "comment",
