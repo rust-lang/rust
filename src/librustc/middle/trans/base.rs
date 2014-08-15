@@ -1947,12 +1947,10 @@ pub fn trans_named_tuple_constructor<'a>(mut bcx: &'a Block<'a>,
     };
 
     if !type_is_zero_size(ccx, result_ty) {
-        let repr = adt::represent_type(ccx, result_ty);
-
         match args {
             callee::ArgExprs(exprs) => {
                 let fields = exprs.iter().map(|x| *x).enumerate().collect::<Vec<_>>();
-                bcx = expr::trans_adt(bcx, &*repr, disr, fields.as_slice(),
+                bcx = expr::trans_adt(bcx, result_ty, disr, fields.as_slice(),
                                       None, expr::SaveIn(llresult));
             }
             _ => ccx.sess().bug("expected expr as arguments for variant/struct tuple constructor")

@@ -746,18 +746,17 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             controlflow::trans_block(bcx, &**blk, dest)
         }
         ast::ExprStruct(_, ref fields, base) => {
-            trans_rec_or_struct(bcx,
-                                fields.as_slice(),
-                                base,
-                                expr.span,
-                                expr.id,
-                                dest)
+            trans_struct(bcx,
+                         fields.as_slice(),
+                         base,
+                         expr.span,
+                         expr.id,
+                         dest)
         }
         ast::ExprTup(ref args) => {
-            let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
             let numbered_fields: Vec<(uint, Gc<ast::Expr>)> =
                 args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
-            trans_adt(bcx, &*repr, 0, numbered_fields.as_slice(), None, dest)
+            trans_adt(bcx, expr_ty(bcx, expr), 0, numbered_fields.as_slice(), None, dest)
         }
         ast::ExprLit(lit) => {
             match lit.node {
@@ -1042,16 +1041,13 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
     }
 }
 
-fn trans_rec_or_struct<'a>(
-                       bcx: &'a Block<'a>,
-                       fields: &[ast::Field],
-                       base: Option<Gc<ast::Expr>>,
-                       expr_span: codemap::Span,
-                       id: ast::NodeId,
-                       dest: Dest)
-                       -> &'a Block<'a> {
+fn trans_struct<'a>(bcx: &'a Block<'a>,
+                    fields: &[ast::Field],
+                    base: Option<Gc<ast::Expr>>,
+                    expr_span: codemap::Span,
+                    id: ast::NodeId,
+                    dest: Dest) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_rec");
-    let bcx = bcx;
 
     let ty = node_id_type(bcx, id);
     let tcx = bcx.tcx();
@@ -1092,8 +1088,7 @@ fn trans_rec_or_struct<'a>(
             }
         };
 
-        let repr = adt::represent_type(bcx.ccx(), ty);
-        trans_adt(bcx, &*repr, discr, numbered_fields.as_slice(), optbase, dest)
+        trans_adt(bcx, ty, discr, numbered_fields.as_slice(), optbase, dest)
     })
 }
 
@@ -1121,35 +1116,51 @@ pub struct StructBaseInfo {
  * - `optbase` contains information on the base struct (if any) from
  * which remaining fields are copied; see comments on `StructBaseInfo`.
  */
-pub fn trans_adt<'a>(bcx: &'a Block<'a>,
-                     repr: &adt::Repr,
+pub fn trans_adt<'a>(mut bcx: &'a Block<'a>,
+                     ty: ty::t,
                      discr: ty::Disr,
                      fields: &[(uint, Gc<ast::Expr>)],
                      optbase: Option<StructBaseInfo>,
                      dest: Dest) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_adt");
     let fcx = bcx.fcx;
-    let mut bcx = bcx;
+    let repr = adt::represent_type(bcx.ccx(), ty);
+
+    // If we don't care about the result, just make a
+    // temporary stack slot
     let addr = match dest {
-        Ignore => {
-            for &(_i, ref e) in fields.iter() {
-                bcx = trans_into(bcx, &**e, Ignore);
-            }
-            for sbi in optbase.iter() {
-                // FIXME #7261: this moves entire base, not just certain fields
-                bcx = trans_into(bcx, &*sbi.expr, Ignore);
-            }
-            return bcx;
-        }
-        SaveIn(pos) => pos
+        SaveIn(pos) => pos,
+        Ignore => alloc_ty(bcx, ty, "temp"),
     };
 
     // This scope holds intermediates that must be cleaned should
     // failure occur before the ADT as a whole is ready.
     let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
 
+    // First we trans the base, if we have one, to the dest
+    for base in optbase.iter() {
+        assert_eq!(discr, 0);
+
+        match ty::expr_kind(bcx.tcx(), &*base.expr) {
+            ty::LvalueExpr => {
+                let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
+                for &(i, t) in base.fields.iter() {
+                    let datum = base_datum.get_element(
+                            t, |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, i));
+                    let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
+                    bcx = datum.store_to(bcx, dest);
+                }
+            },
+            ty::RvalueDpsExpr | ty::RvalueDatumExpr => {
+                bcx = trans_into(bcx, &*base.expr, SaveIn(addr));
+            },
+            ty::RvalueStmtExpr => bcx.tcx().sess.bug("unexpected expr kind for struct base expr")
+        }
+    }
+
+    // Now, we just overwrite the fields we've explicity specified
     for &(i, ref e) in fields.iter() {
-        let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
+        let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
         let e_ty = expr_ty_adjusted(bcx, &**e);
         bcx = trans_into(bcx, &**e, SaveIn(dest));
         let scope = cleanup::CustomScope(custom_cleanup_scope);
@@ -1157,24 +1168,19 @@ pub fn trans_adt<'a>(bcx: &'a Block<'a>,
         fcx.schedule_drop_mem(scope, dest, e_ty);
     }
 
-    for base in optbase.iter() {
-        // FIXME #6573: is it sound to use the destination's repr on the base?
-        // And, would it ever be reasonable to be here with discr != 0?
-        let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
-        for &(i, t) in base.fields.iter() {
-            let datum = base_datum.get_element(
-                t,
-                |srcval| adt::trans_field_ptr(bcx, repr, srcval, discr, i));
-            let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
-            bcx = datum.store_to(bcx, dest);
-        }
-    }
-
-    adt::trans_set_discr(bcx, repr, addr, discr);
+    adt::trans_set_discr(bcx, &*repr, addr, discr);
 
     fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
 
-    return bcx;
+    // If we don't care about the result drop the temporary we made
+    match dest {
+        SaveIn(_) => bcx,
+        Ignore => {
+            bcx = glue::drop_ty(bcx, addr, ty);
+            base::call_lifetime_end(bcx, addr);
+            bcx
+        }
+    }
 }
 
 
