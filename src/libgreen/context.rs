@@ -166,16 +166,16 @@ fn new_regs() -> Box<Registers> {
 
 #[cfg(target_arch = "x86")]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
-                         procedure: raw::Procedure, sp: *mut libc::uintptr_t) {
-
+                         procedure: raw::Procedure, sp: *mut uint) {
+    let sp = sp as *mut uint;
     // x86 has interesting stack alignment requirements, so do some alignment
     // plus some offsetting to figure out what the actual stack should be.
     let sp = align_down(sp);
     let sp = mut_offset(sp, -4);
 
-    unsafe { *mut_offset(sp, 2) = procedure.env as libc::uintptr_t };
-    unsafe { *mut_offset(sp, 1) = procedure.code as libc::uintptr_t };
-    unsafe { *mut_offset(sp, 0) = arg as libc::uintptr_t };
+    unsafe { *mut_offset(sp, 2) = procedure.env as uint };
+    unsafe { *mut_offset(sp, 1) = procedure.code as uint };
+    unsafe { *mut_offset(sp, 0) = arg as uint };
     let sp = mut_offset(sp, -1);
     unsafe { *sp = 0 }; // The final return address
 
@@ -316,7 +316,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 }
 
 fn align_down(sp: *mut uint) -> *mut uint {
-    let sp = (sp as libc::uintptr_t) & !(16 - 1);
+    let sp = (sp as uint) & !(16 - 1);
     sp as *mut uint
 }
 
