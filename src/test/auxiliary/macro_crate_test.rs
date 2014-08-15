@@ -19,6 +19,7 @@ use syntax::ast::{TokenTree, Item, MetaItem};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::parse::token;
+use syntax::parse;
 use rustc::plugin::Registry;
 
 use std::gc::{Gc, GC};
@@ -32,6 +33,7 @@ macro_rules! unexported_macro (() => (3i))
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("make_a_1", expand_make_a_1);
     reg.register_macro("forged_ident", expand_forged_ident);
+    reg.register_macro("identity", expand_identity);
     reg.register_syntax_extension(
         token::intern("into_foo"),
         ItemModifier(expand_into_foo));
@@ -43,6 +45,16 @@ fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
         cx.span_fatal(sp, "make_a_1 takes no arguments");
     }
     MacExpr::new(quote_expr!(cx, 1i))
+}
+
+// See Issue #15750
+fn expand_identity(cx: &mut ExtCtxt, _span: Span, tts: &[TokenTree])
+                   -> Box<MacResult> {
+    // Parse an expression and emit it unchanged.
+    let mut parser = parse::new_parser_from_tts(cx.parse_sess(),
+        cx.cfg(), Vec::from_slice(tts));
+    let expr = parser.parse_expr();
+    MacExpr::new(quote_expr!(&mut *cx, $expr))
 }
 
 fn expand_into_foo(cx: &mut ExtCtxt, sp: Span, attr: Gc<MetaItem>, it: Gc<Item>)
