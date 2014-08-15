@@ -98,7 +98,7 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
 pub fn find_library(name: &str, os: abi::Os, search_paths: &[Path],
                     handler: &ErrorHandler) -> Path {
     let (osprefix, osext) = match os {
-        abi::OsWin32 => ("", "lib"), _ => ("lib", "a"),
+        abi::OsWindows => ("", "lib"), _ => ("lib", "a"),
     };
     // On Windows, static libraries sometimes show up as libfoo.a and other
     // times show up as foo.lib

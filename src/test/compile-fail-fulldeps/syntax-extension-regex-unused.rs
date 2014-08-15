@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // FIXME(#13725) windows needs fixing.
-// ignore-win32
+// ignore-windows
 // ignore-stage1
 
 #![feature(phase)]

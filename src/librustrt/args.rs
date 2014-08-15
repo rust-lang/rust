@@ -147,7 +147,8 @@ mod imp {
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "ios")]
-#[cfg(target_os = "win32")]
+#[cfg(target_os = "windows")]
+#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 mod imp {
     use core::prelude::*;
     use collections::vec::Vec;

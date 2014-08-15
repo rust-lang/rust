@@ -10,7 +10,7 @@
 
 // aux-build:lang-item-public.rs
 // ignore-android
-// ignore-win32 #13361
+// ignore-windows #13361
 
 #![no_std]
 

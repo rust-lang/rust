@@ -1842,7 +1842,8 @@ pub mod consts {
     pub static EXE_EXTENSION: &'static str = "";
 }
 
-#[cfg(target_os = "win32")]
+#[cfg(target_os = "windows")]
+#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 pub mod consts {
     pub use os::arch_consts::ARCH;
 
@@ -1850,7 +1851,7 @@ pub mod consts {
 
     /// A string describing the specific operating system in use: in this
     /// case, `win32`.
-    pub static SYSNAME: &'static str = "win32";
+    pub static SYSNAME: &'static str = "windows";
 
     /// Specifies the filename prefix used for shared libraries on this
     /// platform: in this case, the empty string.

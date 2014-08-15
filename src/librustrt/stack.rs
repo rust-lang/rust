@@ -199,7 +199,8 @@ pub unsafe fn record_sp_limit(limit: uint) {
     unsafe fn target_record_sp_limit(limit: uint) {
         asm!("movq $0, %fs:112" :: "r"(limit) :: "volatile")
     }
-    #[cfg(target_arch = "x86_64", target_os = "win32")] #[inline(always)]
+    #[cfg(target_arch = "x86_64", target_os = "windows")] #[inline(always)]
+    #[cfg(stage0, target_arch = "x86_64", target_os = "win32")] // NOTE: Remove after snapshot
     unsafe fn target_record_sp_limit(limit: uint) {
         // see: http://en.wikipedia.org/wiki/Win32_Thread_Information_Block
         // store this inside of the "arbitrary data slot", but double the size
@@ -227,7 +228,8 @@ pub unsafe fn record_sp_limit(limit: uint) {
     unsafe fn target_record_sp_limit(limit: uint) {
         asm!("movl $0, %gs:48" :: "r"(limit) :: "volatile")
     }
-    #[cfg(target_arch = "x86", target_os = "win32")] #[inline(always)]
+    #[cfg(target_arch = "x86", target_os = "windows")] #[inline(always)]
+    #[cfg(stage0, target_arch = "x86", target_os = "win32")] // NOTE: Remove after snapshot
     unsafe fn target_record_sp_limit(limit: uint) {
         // see: http://en.wikipedia.org/wiki/Win32_Thread_Information_Block
         // store this inside of the "arbitrary data slot"
@@ -280,7 +282,8 @@ pub unsafe fn get_sp_limit() -> uint {
         asm!("movq %fs:112, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }
-    #[cfg(target_arch = "x86_64", target_os = "win32")] #[inline(always)]
+    #[cfg(target_arch = "x86_64", target_os = "windows")] #[inline(always)]
+    #[cfg(stage0, target_arch = "x86_64", target_os = "win32")] // NOTE: Remove after snapshot
     unsafe fn target_get_sp_limit() -> uint {
         let limit;
         asm!("movq %gs:0x28, $0" : "=r"(limit) ::: "volatile");
@@ -316,7 +319,8 @@ pub unsafe fn get_sp_limit() -> uint {
         asm!("movl %gs:48, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }
-    #[cfg(target_arch = "x86", target_os = "win32")] #[inline(always)]
+    #[cfg(target_arch = "x86", target_os = "windows")] #[inline(always)]
+    #[cfg(stage0, target_arch = "x86", target_os = "win32")] // NOTE: Remove after snapshot
     unsafe fn target_get_sp_limit() -> uint {
         let limit;
         asm!("movl %fs:0x14, $0" : "=r"(limit) ::: "volatile");

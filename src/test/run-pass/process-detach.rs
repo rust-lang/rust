@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-win32
+// ignore-windows
 // ignore-android
 
 // This test ensures that the 'detach' field on processes does the right thing.

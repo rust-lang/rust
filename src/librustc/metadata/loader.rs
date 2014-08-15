@@ -615,7 +615,7 @@ impl<'a> Context<'a> {
     // dynamic libraries
     fn dylibname(&self) -> Option<(&'static str, &'static str)> {
         match self.os {
-            abi::OsWin32 => Some((WIN32_DLL_PREFIX, WIN32_DLL_SUFFIX)),
+            abi::OsWindows => Some((WIN32_DLL_PREFIX, WIN32_DLL_SUFFIX)),
             abi::OsMacos => Some((MACOS_DLL_PREFIX, MACOS_DLL_SUFFIX)),
             abi::OsLinux => Some((LINUX_DLL_PREFIX, LINUX_DLL_SUFFIX)),
             abi::OsAndroid => Some((ANDROID_DLL_PREFIX, ANDROID_DLL_SUFFIX)),
@@ -824,7 +824,7 @@ pub fn meta_section_name(os: abi::Os) -> Option<&'static str> {
     match os {
         abi::OsMacos => Some("__DATA,__note.rustc"),
         abi::OsiOS => Some("__DATA,__note.rustc"),
-        abi::OsWin32 => Some(".note.rustc"),
+        abi::OsWindows => Some(".note.rustc"),
         abi::OsLinux => Some(".note.rustc"),
         abi::OsAndroid => Some(".note.rustc"),
         abi::OsFreebsd => Some(".note.rustc"),
@@ -836,7 +836,7 @@ pub fn read_meta_section_name(os: abi::Os) -> &'static str {
     match os {
         abi::OsMacos => "__note.rustc",
         abi::OsiOS => unreachable!(),
-        abi::OsWin32 => ".note.rustc",
+        abi::OsWindows => ".note.rustc",
         abi::OsLinux => ".note.rustc",
         abi::OsAndroid => ".note.rustc",
         abi::OsFreebsd => ".note.rustc",

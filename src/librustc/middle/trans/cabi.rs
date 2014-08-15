@@ -18,7 +18,7 @@ use middle::trans::cabi_arm;
 use middle::trans::cabi_mips;
 use middle::trans::type_::Type;
 use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel};
-use syntax::abi::{OsWin32};
+use syntax::abi::{OsWindows};
 
 #[deriving(Clone, PartialEq)]
 pub enum ArgKind {
@@ -110,7 +110,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
     match ccx.sess().targ_cfg.arch {
         X86 => cabi_x86::compute_abi_info(ccx, atys, rty, ret_def),
         X86_64 =>
-            if ccx.sess().targ_cfg.os == OsWin32 {
+            if ccx.sess().targ_cfg.os == OsWindows {
                 cabi_x86_win64::compute_abi_info(ccx, atys, rty, ret_def)
             } else {
                 cabi_x86_64::compute_abi_info(ccx, atys, rty, ret_def)
