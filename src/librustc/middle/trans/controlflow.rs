@@ -330,13 +330,12 @@ pub fn trans_for<'a>(
     // Check the discriminant; if the `None` case, exit the loop.
     let option_representation = adt::represent_type(loopback_bcx_out.ccx(),
                                                     method_result_type);
-    let i8_type = Type::i8(loopback_bcx_out.ccx());
     let lldiscriminant = adt::trans_get_discr(loopback_bcx_out,
                                               &*option_representation,
                                               option_datum.val,
-                                              Some(i8_type));
-    let llzero = C_u8(loopback_bcx_out.ccx(), 0);
-    let llcondition = ICmp(loopback_bcx_out, IntNE, lldiscriminant, llzero);
+                                              None);
+    let i1_type = Type::i1(loopback_bcx_out.ccx());
+    let llcondition = Trunc(loopback_bcx_out, lldiscriminant, i1_type);
     CondBr(loopback_bcx_out, llcondition, body_bcx_in.llbb, cleanup_llbb);
 
     // Now we're in the body. Unpack the `Option` value into the programmer-
