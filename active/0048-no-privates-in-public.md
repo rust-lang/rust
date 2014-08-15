@@ -27,7 +27,6 @@ case), and this is the mechanism which should be used for it.
 
 [questions]: https://github.com/rust-lang/rust/issues/10573
 
-
 ## Examples of strangeness
 
 (See also https://github.com/rust-lang/rust/issues/10573.)
@@ -60,7 +59,6 @@ Again, it's surely possible to formulate rules such that answers to these
 questions can be deduced from them mechanically. But that doesn't mean it's a
 good idea to do so. If the results are bizarre, then our assumptions should be
 reconsidered. In these cases, it would be wiser to simply say, "don't do that".
-
 
 ## Properties
 
@@ -247,6 +245,16 @@ gate has been removed, they will apply always.
 An item is considered to be publicly exposed by a module if it is declared `pub`
 by that module, or if it is re-exported using `pub use` by that module.
 
+Items in a `impl` of a trait (not an inherent impl) are considered public
+if all of the following conditions are met:
+
+ * The trait being implemented is public.
+ * All input types (currently, the self type) of the impl are public.
+ * *Motivation:* If any of the input types or the trait is public, it
+   should be impossible for an outside to access the items defined in
+   the impl. They cannot name the types nor they can get direct access
+   to a value of those types.
+
 For items which are publicly exposed by a module, the rules are that:
 
  * If it is a `static` declaration, items referred to in its type must be public.
@@ -263,159 +271,174 @@ For items which are publicly exposed by a module, the rules are that:
  * If it is a `trait` declaration, items referred to in its super-traits, in the
    trait bounds of its type parameters, and in the signatures of its methods
    (see `fn` case above) must be public.
-
-
+   
 ## What does "public" mean?
 
-An item `Item` referred to in the module `module` is considered to be public if:
-
- * The qualified name used by `module` to refer to `Item`, when recursively
-   resolved through `use` declarations back to the original declaration of
-   `Item`, resolves along the way to at least one `pub` declaration, whether a
-   `pub use` declaration or a `pub` original declaration; and
-
- * For at least one of the above resolved-to `pub` declarations, all ancestor
-   modules of the declaration, up to the deepest common ancestor module of the
-   declaration with `module`, are `pub`.
-
-In all other cases, an `Item` referred to in `module` is not considered to be
-public, or `module` itself cannot refer to `Item` and the distinction is
-irrelevant.
+An item is considered "public" if it is declared with the `pub` qualifier.
 
 ### Examples
 
-In the following examples, the item `Item` referred to in the module `module`
-is considered to be public:
+Here are some examples to demonstrate the rules.
+
+#### Struct fields
 
 ````
-pub mod module {
-    pub struct Item { ... }
+// A private struct may refer to any type in any field.
+struct Priv {
+    a: Priv,
+    b: Pub,
+    pub c: Priv
 }
+
+enum Vapor<A> { X, Y, Z } // Note that A is not used
+
+// Public fields of a public struct may only refer to public types.
+pub struct Item {
+    // Private field may reference a private type.
+    a: Priv,
+    
+    // Public field must refer to a public type.
+    pub b: Pub,
+
+    // ERROR: Public field refers to a private type.
+    pub c: Priv,
+    
+    // ERROR: Public field refers to a private type.
+    // For the purposes of this test, we do not descend into the type,
+    // but merely consider the names that appear in type parameters
+    // on the type, regardless of usage (or lack thereof) within the type
+    // definition itself.
+    pub d: Vapor<Priv>,
+}
+
+pub struct Pub { ... }
 ````
 
-````
-pub struct Item { ... }
-pub mod module {
-    use Item;
-}
-````
+#### Methods
 
-````
-pub mod x {
-    pub struct Item { ... }
-}
-pub mod module {
-    use x::Item;
-}
-````
+```
+struct Priv { .. }
+pub struct Pub { .. }
+pub struct Foo { .. }
 
-````
-pub mod module {
-    pub mod x {
-        pub struct Item { ... }
+impl Foo {
+    // Illegal: public method with argument of private type.
+    pub fn foo(&self, p: Priv) { .. }
+}
+```
+
+#### Trait bounds
+
+```
+trait PrivTrait { ... }
+
+// Error: type parameter on public item bounded by a private trait.
+pub struct Foo<X: PrivTrait> { ... }
+
+// OK: type parameter on private item.
+struct Foo<X: PrivTrait> { ... }
+```
+
+#### Trait definitions
+
+```
+struct PrivStruct { ... }
+
+pub trait PubTrait {
+    // Error: private struct referenced from method in public trait
+    fn method(x: PrivStruct) { ... }
+}
+
+trait PrivTrait {
+    // OK: private struct referenced from method in private trait 
+    fn method(x: PrivStruct) { ... }
+}
+```
+
+#### Implementations
+
+To some extent, implementations are prevented from exposing private
+types because their types must match the trait. However, that is not
+true with generics.
+
+```
+pub trait PubTrait<T> {
+    fn method(t: T);
+}
+
+struct PubStruct { ... }
+
+struct PrivStruct { ... }
+
+impl PubTrait<PrivStruct> for PubStruct {
+           // ^~~~~~~~~~ Error: Private type referenced from impl of
+           //            public trait on a public type. [Note: this is
+           //            an "associated type" here, not an input.]
+
+    fn method(t: PrivStruct) {
+              // ^~~~~~~~~~ Error: Private type in method signature.
+              //
+              // Implementation note. It may not be a good idea to report
+              // an error here; I think private types can only appear in
+              // an impl by having an associated type bound to a private
+              // type.
     }
-    use self::x::Item;
 }
-````
+```
+
+#### Type aliases
+
+Note that the path to the public item does not have to be private.
+
+```
+mod impl {
+    pub struct Foo { ... }
+}
+pub type Bar = self::impl::Foo;
+```
+
+### Negative examples
+
+The following examples should fail to compile under these rules.
+
+#### Non-public items referenced by a pub use
+
+These examples are illegal because they use a `pub use` to re-export
+a private item:
 
 ````
 struct Item { ... }
 pub mod module {
+    // Error: Item is not declared as public, but is referenced from
+    // a `pub use`.
     pub use Item;
 }
 ````
 
 ````
 struct Foo { ... }
+// Error: Non-public item referenced by `pub use`.
 pub use Item = Foo;
-pub mod module {
-    use Item;
+````
+
+If it was desired to have a private name that is publicly "renamed" using a pub
+use, that can be achieved using a module:
+
+```
+mod impl {
+    pub struct ItemPriv;
 }
-````
-
-````
-struct Foo { ... }
-pub use Bar = Foo;
-use Item = Bar;
-pub mod module {
-    use Item;
-}
-````
-
-````
-struct Item { ... }
-pub mod x {
-    pub use Item;
-    pub mod y {
-        use x::Item;
-        pub mod module {
-            use super::Item;
-        }
-    }
-}
-````
-
-In the above examples, it is assumed that `module` will refer to `Item` as
-simply `Item`, but the same thing holds true if `module` refrains from importing
-`Item` explicitly with a private `use` declaration, and refers to it directly by
-qualifying it with a path instead.
-
-
-In the below examples, the item `Item` referred to in the module `module` is
-*not* considered to be public:
-
-````
-pub mod module {
-    struct Item { ... }
-}
-````
-
-````
-struct Item { ... }
-pub mod module {
-    use Item;
-}
-````
-
-````
-mod x {
-    pub struct Item { ... }
-}
-pub mod module {
-    use x::Item;
-}
-````
-
-````
-pub mod module {
-    use self::x::Item;
-    mod x {
-        pub struct Item { ... }
-    }
-}
-````
-
-````
-struct Item { ... }
-pub use Alias = Item;
-pub mod x {
-    pub use Item;
-    pub mod module {
-        use Item; // refers to top-level `Item`
-    }
-}
-````
-
+pub use Item = self::impl::ItemPriv;
+```
 
 # Drawbacks
 
 Adds a (temporary) feature gate.
 
-Requires some existing code to opt-in to the feature gate before transitioning
-to saner alternatives.
+Requires some existing code to opt-in to the feature gate before
+transitioning to a more explicit alternative.
 
 Requires effort to implement.
-
 
 # Alternatives
 
@@ -430,6 +453,13 @@ We could make an exception for private supertraits, as these are not quite as
 problematic as the other cases. However, especially given that a more principled
 alternative is known (private methods), I would rather not make any exceptions.
 
+The original design defined "public items" using a reachability
+predicate. This allowed private items to be exported via `pub use` and
+hence considered public. Unfortunately, this design makes it difficult
+to determine at a glance whether any particular item was exposed
+outside the current module or not, as one must search for a `pub
+use`. Moreover, it does not add expressiveness, as demonstrated in the
+examples section.
 
 # Unresolved questions
 
