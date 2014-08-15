@@ -26,7 +26,7 @@ pub struct RPathConfig<'a> {
 pub fn get_rpath_flags(config: RPathConfig) -> Vec<String> {
 
     // No rpath on windows
-    if config.os == abi::OsWin32 {
+    if config.os == abi::OsWindows {
         return Vec::new();
     }
 
@@ -107,14 +107,14 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig,
                                 lib: &Path) -> String {
     use std::os;
 
-    assert!(config.os != abi::OsWin32);
+    assert!(config.os != abi::OsWindows);
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = match config.os {
         abi::OsAndroid | abi::OsLinux | abi::OsFreebsd | abi::OsDragonfly
                           => "$ORIGIN",
         abi::OsMacos => "@loader_path",
-        abi::OsWin32 | abi::OsiOS => unreachable!()
+        abi::OsWindows | abi::OsiOS => unreachable!()
     };
 
     let mut lib = (config.realpath)(&os::make_absolute(lib)).unwrap();

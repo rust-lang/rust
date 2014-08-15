@@ -1138,7 +1138,8 @@ pub mod types {
         }
     }
 
-    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "windows")]
+    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod os {
         pub mod common {
             pub mod posix01 {
@@ -1803,7 +1804,8 @@ pub mod consts {
     // Consts tend to vary per OS so we pull their definitions out
     // into this module.
 
-    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "windows")]
+    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod os {
         pub mod c95 {
             use types::os::arch::c95::{c_int, c_uint};
@@ -3887,7 +3889,8 @@ pub mod funcs {
     // so be careful when trying to write portable code; it won't always work
     // with the same POSIX functions and types as other platforms.
 
-    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "windows")]
+    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod posix88 {
         pub mod stat_ {
             use types::os::common::posix01::{stat, utimbuf};
@@ -4316,7 +4319,8 @@ pub mod funcs {
         }
     }
 
-    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "windows")]
+    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod posix01 {
         pub mod stat_ {
         }
@@ -4332,7 +4336,8 @@ pub mod funcs {
     }
 
 
-    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "windows")]
+    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     #[cfg(target_os = "macos")]
@@ -4470,7 +4475,8 @@ pub mod funcs {
     }
 
 
-    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "windows")]
+    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod bsd44 {
     }
 
@@ -4496,7 +4502,8 @@ pub mod funcs {
     }
 
 
-    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "windows")]
+    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod extra {
 
         pub mod kernel32 {

@@ -17,7 +17,8 @@ mod hello;
 #[cfg(target_os = "macos")]
 mod hello;
 
-#[cfg(target_os = "win32")]
+#[cfg(target_os = "windows")]
+/* NOTE: Remove after snapshot */#[cfg(stage0, target_os = "win32")]
 mod hello;
 
 #[cfg(target_os = "freebsd")]
