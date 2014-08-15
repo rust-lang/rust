@@ -250,8 +250,9 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
         let args = vec!(self_arg);
 
         // Add all the fields as a value which needs to be cleaned at the end of
-        // this scope.
-        for (i, ty) in st.fields.iter().enumerate() {
+        // this scope. Iterate in reverse order so a Drop impl doesn't reverse
+        // the order in which fields get dropped.
+        for (i, ty) in st.fields.iter().enumerate().rev() {
             let llfld_a = adt::struct_field_ptr(variant_cx, &*st, value, i, false);
             variant_cx.fcx.schedule_drop_mem(cleanup::CustomScope(field_scope),
                                              llfld_a, *ty);
