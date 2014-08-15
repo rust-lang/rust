@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-android
-// ignore-win32
+// ignore-windows
 // exec-env:RUST_LOG=debug
 
 #![feature(phase)]

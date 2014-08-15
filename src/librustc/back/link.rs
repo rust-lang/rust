@@ -200,7 +200,7 @@ pub mod write {
             // OSX has -dead_strip, which doesn't rely on ffunction_sections
             // FIXME(#13846) this should be enabled for windows
             let ffunction_sections = sess.targ_cfg.os != abi::OsMacos &&
-                                     sess.targ_cfg.os != abi::OsWin32;
+                                     sess.targ_cfg.os != abi::OsWindows;
             let fdata_sections = ffunction_sections;
 
             let reloc_model = match sess.opts.cg.relocation_model.as_slice() {
@@ -858,7 +858,7 @@ pub fn get_cc_prog(sess: &Session) -> String {
     // instead of hard-coded gcc.
     // For win32, there is no cc command, so we add a condition to make it use gcc.
     match sess.targ_cfg.os {
-        abi::OsWin32 => "gcc",
+        abi::OsWindows => "gcc",
         _ => "cc",
     }.to_string()
 }
@@ -954,7 +954,7 @@ pub fn filename_for_input(sess: &Session,
         }
         config::CrateTypeDylib => {
             let (prefix, suffix) = match sess.targ_cfg.os {
-                abi::OsWin32 => (loader::WIN32_DLL_PREFIX, loader::WIN32_DLL_SUFFIX),
+                abi::OsWindows => (loader::WIN32_DLL_PREFIX, loader::WIN32_DLL_SUFFIX),
                 abi::OsMacos => (loader::MACOS_DLL_PREFIX, loader::MACOS_DLL_SUFFIX),
                 abi::OsLinux => (loader::LINUX_DLL_PREFIX, loader::LINUX_DLL_SUFFIX),
                 abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
@@ -972,7 +972,7 @@ pub fn filename_for_input(sess: &Session,
         }
         config::CrateTypeExecutable => {
             match sess.targ_cfg.os {
-                abi::OsWin32 => out_filename.with_extension("exe"),
+                abi::OsWindows => out_filename.with_extension("exe"),
                 abi::OsMacos |
                 abi::OsLinux |
                 abi::OsAndroid |
@@ -1388,7 +1388,7 @@ fn link_args(cmd: &mut Command,
     // subset we wanted.
     //
     // FIXME(#11937) we should invoke the system linker directly
-    if sess.targ_cfg.os != abi::OsWin32 {
+    if sess.targ_cfg.os != abi::OsWindows {
         cmd.arg("-nodefaultlibs");
     }
 
@@ -1440,7 +1440,7 @@ fn link_args(cmd: &mut Command,
         cmd.arg("-Wl,-dead_strip");
     }
 
-    if sess.targ_cfg.os == abi::OsWin32 {
+    if sess.targ_cfg.os == abi::OsWindows {
         // Make sure that we link to the dynamic libgcc, otherwise cross-module
         // DWARF stack unwinding will not work.
         // This behavior may be overridden by --link-args "-static-libgcc"
@@ -1715,7 +1715,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
 
     // Converts a library file-stem into a cc -l argument
     fn unlib<'a>(config: &config::Config, stem: &'a [u8]) -> &'a [u8] {
-        if stem.starts_with("lib".as_bytes()) && config.os != abi::OsWin32 {
+        if stem.starts_with("lib".as_bytes()) && config.os != abi::OsWindows {
             stem.tailn(3)
         } else {
             stem
