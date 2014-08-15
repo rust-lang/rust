@@ -27,6 +27,7 @@
 use abi::Abi;
 use ast::*;
 use ast;
+use ast_util;
 use codemap::Span;
 use parse;
 use owned_slice::OwnedSlice;
@@ -58,12 +59,7 @@ pub fn generics_of_fn(fk: &FnKind) -> Generics {
         FkMethod(_, generics, _) => {
             (*generics).clone()
         }
-        FkFnBlock(..) => {
-            Generics {
-                lifetimes: Vec::new(),
-                ty_params: OwnedSlice::empty(),
-            }
-        }
+        FkFnBlock(..) => ast_util::empty_generics(),
     }
 }
 
@@ -559,7 +555,11 @@ pub fn walk_generics<E: Clone, V: Visitor<E>>(visitor: &mut V,
             None => {}
         }
     }
-    walk_lifetime_decls(visitor, &generics.lifetimes, env);
+    walk_lifetime_decls(visitor, &generics.lifetimes, env.clone());
+    for predicate in generics.where_clause.predicates.iter() {
+        visitor.visit_ident(predicate.span, predicate.ident, env.clone());
+        walk_ty_param_bounds(visitor, &predicate.bounds, env.clone());
+    }
 }
 
 pub fn walk_fn_decl<E: Clone, V: Visitor<E>>(visitor: &mut V,

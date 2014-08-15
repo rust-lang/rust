@@ -202,10 +202,15 @@ fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str,
     cx.typaram(span, cx.ident_of(name), bounds, unbound, None)
 }
 
-fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam> ) -> Generics {
+fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>)
+               -> Generics {
     Generics {
         lifetimes: lifetimes,
-        ty_params: OwnedSlice::from_vec(ty_params)
+        ty_params: OwnedSlice::from_vec(ty_params),
+        where_clause: ast::WhereClause {
+            id: ast::DUMMY_NODE_ID,
+            predicates: Vec::new(),
+        },
     }
 }
 

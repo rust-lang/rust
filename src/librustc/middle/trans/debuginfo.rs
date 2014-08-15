@@ -208,7 +208,6 @@ use syntax::util::interner::Interner;
 use syntax::codemap::{Span, Pos};
 use syntax::{abi, ast, codemap, ast_util, ast_map};
 use syntax::ast_util::PostExpansionMethod;
-use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::parse::token::special_idents;
 
@@ -1123,8 +1122,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
     }
 
-    let empty_generics = ast::Generics { lifetimes: Vec::new(),
-                                         ty_params: OwnedSlice::empty() };
+    let empty_generics = ast_util::empty_generics();
 
     let fnitem = cx.tcx.map.get(fn_ast_id);
 
