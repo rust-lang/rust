@@ -568,6 +568,7 @@ impl LintPass for UnusedAttribute {
             // FIXME: #14406 these are processed in trans, which happens after the
             // lint pass
             "cold",
+            "export_name",
             "inline",
             "link",
             "link_name",
