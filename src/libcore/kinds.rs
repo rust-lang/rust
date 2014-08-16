@@ -87,13 +87,6 @@ pub trait Copy {
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
 #[lang="sync"]
-#[cfg(not(stage0))]
-pub trait Sync {
-    // Empty
-}
-/// dox
-#[lang="share"]
-#[cfg(stage0)]
 pub trait Sync {
     // Empty
 }
