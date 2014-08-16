@@ -33,6 +33,7 @@ use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::visit;
+use util::fs;
 
 struct Env<'a> {
     sess: &'a Session,
@@ -301,7 +302,7 @@ fn existing_match(e: &Env, name: &str,
         match e.sess.opts.externs.find_equiv(&name) {
             Some(locs) => {
                 let found = locs.iter().any(|l| {
-                    let l = Some(Path::new(l.as_slice()));
+                    let l = fs::realpath(&Path::new(l.as_slice())).ok();
                     l == source.dylib || l == source.rlib
                 });
                 if found {
