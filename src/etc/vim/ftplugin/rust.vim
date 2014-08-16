@@ -56,6 +56,16 @@ if exists("g:loaded_delimitMate")
 	let b:delimitMate_excluded_regions = delimitMate#Get("excluded_regions") . ',rustLifetimeCandidate,rustGenericLifetimeCandidate'
 endif
 
+if has("folding") && exists('g:rust_fold') && g:rust_fold != 0
+	let b:rust_set_foldmethod=1
+	setlocal foldmethod=syntax
+	if g:rust_fold == 2
+		setlocal foldlevel<
+	else
+		setlocal foldlevel=99
+	endif
+endif
+
 if has('conceal') && exists('g:rust_conceal')
 	let b:rust_set_conceallevel=1
 	setlocal conceallevel=2
@@ -107,6 +117,10 @@ let b:undo_ftplugin = "
 		  \|unlet b:rust_original_delimitMate_excluded_regions
 		\|else
 		  \|unlet! b:delimitMate_excluded_regions
+		\|endif
+		\|if exists('b:rust_set_foldmethod')
+		  \|setlocal foldmethod< foldlevel<
+		  \|unlet b:rust_set_foldmethod
 		\|endif
 		\|if exists('b:rust_set_conceallevel')
 		  \|setlocal conceallevel<

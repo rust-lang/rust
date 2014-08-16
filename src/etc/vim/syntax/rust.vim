@@ -11,17 +11,6 @@ elseif exists("b:current_syntax")
   finish
 endif
 
-" Fold settings {{{1
-
-if has("folding") && exists('g:rust_fold') && g:rust_fold != 0
-  setlocal foldmethod=syntax
-  if g:rust_fold == 2
-    setlocal foldlevel<
-  else
-    setlocal foldlevel=99
-  endif
-endif
-
 " Syntax definitions {{{1
 " Basic keywords {{{2
 syn keyword   rustConditional match if else
