@@ -3237,7 +3237,7 @@ Therefore, if you plan to compile your crate as a library, you should annotate i
 // `lib.rs`
 
 # #![crate_type = "lib"]
-#![crate_id = "farm#2.5"]
+#![crate_name = "farm"]
 
 // ...
 # fn farm() {}
@@ -3262,7 +3262,7 @@ or setting the crate type (library or executable) explicitly:
 // ...
 
 // This crate is a library ("bin" is the default)
-#![crate_id = "farm#2.5"]
+#![crate_name = "farm"]
 #![crate_type = "lib"]
 
 // Turn on a warning
@@ -3279,7 +3279,7 @@ We define two crates, and use one of them as a library in the other.
 ~~~~
 # #![allow(unused_attribute)]
 // `world.rs`
-#![crate_id = "world#0.42"]
+#![crate_name = "world"]
 
 # mod secret_module_to_make_this_test_run {
 pub fn explore() -> &'static str { "world" }
