@@ -2278,7 +2278,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
         match ty::get(ret_ty).sty {
             // `~` pointer return values never alias because ownership
             // is transferred
-            ty::ty_uniq(it)  if match ty::get(it).sty {
+            ty::ty_uniq(it) if match ty::get(it).sty {
                 ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
             } => {}
             ty::ty_uniq(_) => {
@@ -2354,14 +2354,20 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
             }
 
             // `&mut` pointer parameters never alias other parameters, or mutable global data
-            // `&` pointer parameters never alias either (for LLVM's purposes) as long as the
-            // interior is safe
+            //
+            // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
+            // `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely on
+            // memory dependencies rather than pointer equality
             ty::ty_rptr(b, mt) if mt.mutbl == ast::MutMutable ||
                                   !ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe() => {
 
                 let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
                 attrs.arg(idx, llvm::NoAliasAttribute)
                      .arg(idx, llvm::DereferenceableAttribute(llsz));
+
+                if mt.mutbl == ast::MutImmutable {
+                    attrs.arg(idx, llvm::ReadOnlyAttribute);
+                }
 
                 match b {
                     ReLateBound(_, BrAnon(_)) => {
