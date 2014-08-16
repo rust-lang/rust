@@ -259,6 +259,14 @@ mod test {
 
     #[test]
     #[should_fail]
+    fn test_divide_by_zero_natural() {
+        let n = Complex::new(2i, 3i);
+        let d = Complex::new(0, 0);
+        let _x = n / d;
+    }
+
+    #[test]
+    #[should_fail]
     #[ignore]
     fn test_inv_zero() {
         // FIXME #5736: should this really fail, or just NaN?
