@@ -48,10 +48,12 @@ impl<R: Reader> Reader for LimitReader<R> {
         }
 
         let len = cmp::min(self.limit, buf.len());
-        self.inner.read(buf.mut_slice_to(len)).map(|len| {
-            self.limit -= len;
-            len
-        })
+        let res = self.inner.read(buf.mut_slice_to(len));
+        match res {
+            Ok(len) => self.limit -= len,
+            _ => {}
+        }
+        res
     }
 }
 
@@ -67,6 +69,8 @@ impl<R: Buffer> Buffer for LimitReader<R> {
     }
 
     fn consume(&mut self, amt: uint) {
+        // Don't let callers reset the limit by passing an overlarge value
+        let amt = cmp::min(amt, self.limit);
         self.limit -= amt;
         self.inner.consume(amt);
     }
@@ -97,6 +101,7 @@ impl Buffer for ZeroReader {
         static DATA: [u8, ..64] = [0, ..64];
         Ok(DATA.as_slice())
     }
+
     fn consume(&mut self, _amt: uint) {}
 }
 
@@ -117,7 +122,10 @@ impl Buffer for NullReader {
     fn consume(&mut self, _amt: uint) {}
 }
 
-/// A `Writer` which multiplexes writes to a set of `Writers`.
+/// A `Writer` which multiplexes writes to a set of `Writer`s.
+///
+/// The `Writer`s are delegated to in order. If any `Writer` returns an error,
+/// that error is returned immediately and remaining `Writer`s are not called.
 pub struct MultiWriter {
     writers: Vec<Box<Writer>>
 }
@@ -132,24 +140,22 @@ impl MultiWriter {
 impl Writer for MultiWriter {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::IoResult<()> {
-        let mut ret = Ok(());
         for writer in self.writers.mut_iter() {
-            ret = ret.and(writer.write(buf));
+            try!(writer.write(buf));
         }
-        return ret;
+        Ok(())
     }
 
     #[inline]
     fn flush(&mut self) -> io::IoResult<()> {
-        let mut ret = Ok(());
         for writer in self.writers.mut_iter() {
-            ret = ret.and(writer.flush());
+            try!(writer.flush());
         }
-        return ret;
+        Ok(())
     }
 }
 
-/// A `Reader` which chains input from multiple `Readers`, reading each to
+/// A `Reader` which chains input from multiple `Reader`s, reading each to
 /// completion before moving onto the next.
 pub struct ChainedReader<I, R> {
     readers: I,
@@ -229,17 +235,16 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
     }
 }
 
-/// A `Reader` which converts an `Iterator<u8>` into a `Reader`.
+/// An adaptor converting an `Iterator<u8>` to a `Reader`.
 pub struct IterReader<T> {
     iter: T,
 }
 
 impl<T: Iterator<u8>> IterReader<T> {
-    /// Create a new `IterReader` which will read from the specified `Iterator`.
+    /// Creates a new `IterReader` which will read from the specified
+    /// `Iterator`.
     pub fn new(iter: T) -> IterReader<T> {
-        IterReader {
-            iter: iter,
-        }
+        IterReader { iter: iter }
     }
 }
 
@@ -251,7 +256,7 @@ impl<T: Iterator<u8>> Reader for IterReader<T> {
             *slot = elt;
             len += 1;
         }
-        if len == 0 {
+        if len == 0 && buf.len() != 0 {
             Err(io::standard_error(io::EndOfFile))
         } else {
             Ok(len)
@@ -295,6 +300,14 @@ mod test {
         assert_eq!(2, r.limit());
         assert_eq!(vec!(1, 2), r.read_to_end().unwrap());
         assert_eq!(0, r.limit());
+    }
+
+    #[test]
+    fn test_limit_reader_overlong_consume() {
+        let mut r = MemReader::new(vec![0, 1, 2, 3, 4, 5]);
+        let mut r = LimitReader::new(r.by_ref(), 1);
+        r.consume(2);
+        assert_eq!(vec![], r.read_to_end().unwrap());
     }
 
     #[test]
@@ -414,5 +427,12 @@ mod test {
         assert!(buf == [6, 7, 5]);
 
         assert_eq!(r.read(buf).unwrap_err().kind, io::EndOfFile);
+    }
+
+    #[test]
+    fn iter_reader_zero_length() {
+        let mut r = IterReader::new(range(0u8, 8));
+        let mut buf = [];
+        assert_eq!(Ok(0), r.read(buf));
     }
 }
