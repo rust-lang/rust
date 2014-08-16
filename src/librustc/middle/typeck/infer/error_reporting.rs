@@ -1429,7 +1429,7 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
     }
 }
 
-trait Resolvable {
+pub trait Resolvable {
     fn resolve(&self, infcx: &InferCtxt) -> Self;
     fn contains_error(&self) -> bool;
 }

@@ -235,6 +235,7 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
 /// to symbols. This is a bit of a hokey implementation as-is, but it works for
 /// all unix platforms we support right now, so it at least gets the job done.
 #[cfg(unix)]
+#[allow(missing_doc)]
 mod imp {
     use c_str::CString;
     use io::{IoResult, Writer};
@@ -657,7 +658,7 @@ mod imp {
 /// copy of that function in my mingw install (maybe it was broken?). Instead,
 /// this takes the route of using StackWalk64 in order to walk the stack.
 #[cfg(windows)]
-#[allow(dead_code, uppercase_variables)]
+#[allow(dead_code, uppercase_variables, missing_doc)]
 mod imp {
     use c_str::CString;
     use core_collections::Collection;

@@ -236,7 +236,6 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 
 #[cfg(not(target_arch = "arm"), not(windows, target_arch = "x86_64"), not(test))]
 #[doc(hidden)]
-#[allow(visible_private_types)]
 pub mod eabi {
     use uw = libunwind;
     use libc::c_int;
@@ -290,7 +289,6 @@ pub mod eabi {
 
 #[cfg(target_os = "ios", target_arch = "arm", not(test))]
 #[doc(hidden)]
-#[allow(visible_private_types)]
 pub mod eabi {
     use uw = libunwind;
     use libc::c_int;
@@ -343,7 +341,6 @@ pub mod eabi {
 // but otherwise works the same.
 #[cfg(target_arch = "arm", not(target_os = "ios"), not(test))]
 #[doc(hidden)]
-#[allow(visible_private_types)]
 pub mod eabi {
     use uw = libunwind;
     use libc::c_int;
@@ -393,7 +390,6 @@ pub mod eabi {
 
 #[cfg(windows, target_arch = "x86_64", not(test))]
 #[doc(hidden)]
-#[allow(visible_private_types)]
 #[allow(non_camel_case_types)]
 pub mod eabi {
     use uw = libunwind;

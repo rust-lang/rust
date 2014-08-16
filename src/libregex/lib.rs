@@ -368,8 +368,11 @@
        html_root_url = "http://doc.rust-lang.org/master/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(macro_rules, phase)]
+#![feature(macro_rules, phase, visible_private_types)]
 #![deny(missing_doc)]
+
+// NOTE(stage0, pcwalton): Remove after snapshot.
+#![allow(unknown_features)]
 
 #[cfg(test)]
 extern crate stdtest = "test";

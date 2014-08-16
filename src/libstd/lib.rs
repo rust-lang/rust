@@ -107,12 +107,16 @@
 
 #![feature(macro_rules, globs, managed_boxes, linkage)]
 #![feature(default_type_params, phase, lang_items, unsafe_destructor)]
+#![feature(visible_private_types)]
 
 // Don't link to std. We are std.
 #![no_std]
 
 #![allow(deprecated)]
 #![deny(missing_doc)]
+
+// NOTE(stage0, pcwalton): Remove after snapshot.
+#![allow(unknown_features)]
 
 #![reexport_test_harness_main = "test_main"]
 

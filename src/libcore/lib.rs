@@ -58,8 +58,11 @@
 
 #![no_std]
 #![feature(globs, intrinsics, lang_items, macro_rules, managed_boxes, phase)]
-#![feature(simd, unsafe_destructor)]
+#![feature(simd, unsafe_destructor, visible_private_types)]
 #![deny(missing_doc)]
+
+// NOTE(stage0, pcwalton): Remove after snapshot.
+#![allow(unknown_features)]
 
 mod macros;
 

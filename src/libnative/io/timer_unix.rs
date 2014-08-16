@@ -74,7 +74,6 @@ struct Inner {
     id: uint,
 }
 
-#[allow(visible_private_types)]
 pub enum Req {
     // Add a new timer to the helper thread.
     NewTimer(Box<Inner>),

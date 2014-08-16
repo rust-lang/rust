@@ -10,7 +10,7 @@
 
 use inner::Trait;
 
-mod inner {
+pub mod inner {
     pub struct Foo;
     pub trait Trait {
         fn f(&self);

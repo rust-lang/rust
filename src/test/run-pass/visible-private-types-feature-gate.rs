@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod inner {
-    pub trait Trait {
-        fn f(&self) { f(); }
+#![feature(visible_private_types)]
+
+pub mod a {
+    struct Struct {
+        x: int,
     }
 
-    impl Trait for int {}
-
-    fn f() {}
+    pub fn f(x: Struct) {}
 }
 
-pub fn foo<T: inner::Trait>(t: T) {
-    t.f();
-}
+fn main() {}
+

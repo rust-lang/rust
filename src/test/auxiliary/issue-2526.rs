@@ -36,7 +36,7 @@ fn init() -> arc_destruct<context_res> {
     arc(context_res())
 }
 
-struct context_res {
+pub struct context_res {
     ctx : int,
 }
 

@@ -28,8 +28,11 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/master/")]
 
-#![feature(unsafe_destructor)]
+#![feature(unsafe_destructor, visible_private_types)]
 #![allow(missing_doc)]
+
+// NOTE(stage0, pcwalton): Remove after snapshot.
+#![allow(unknown_features)]
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -359,6 +362,7 @@ pub struct TypedArena<T> {
     /// A pointer to the first arena segment.
     first: RefCell<TypedArenaChunkRef<T>>,
 }
+
 type TypedArenaChunkRef<T> = Option<Box<TypedArenaChunk<T>>>;
 
 struct TypedArenaChunk<T> {

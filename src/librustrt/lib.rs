@@ -18,8 +18,12 @@
 
 #![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm)]
 #![feature(linkage, lang_items, unsafe_destructor, default_type_params)]
+#![feature(visible_private_types)]
 #![no_std]
 #![experimental]
+
+// NOTE(stage0, pcwalton): Remove after snapshot.
+#![allow(unknown_features)]
 
 #[phase(plugin, link)] extern crate core;
 extern crate alloc;
@@ -45,10 +49,10 @@ use task::{Task, BlockedTask, TaskOpts};
 mod macros;
 
 mod at_exit_imp;
+mod libunwind;
 mod local_ptr;
 mod thread_local_storage;
 mod util;
-mod libunwind;
 
 pub mod args;
 pub mod bookkeeping;

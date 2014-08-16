@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Enable this to squash warnings due to exporting pieces of the representation
-// for use with the regex! macro. See lib.rs for explanation.
-#![allow(visible_private_types)]
+#![allow(missing_doc)]
 
 use std::cmp;
 use parse;

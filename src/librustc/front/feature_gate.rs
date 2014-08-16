@@ -68,6 +68,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
 
     ("rustc_diagnostic_macros", Active),
     ("unboxed_closures", Active),
+    ("visible_private_types", Active),
 
     // if you change this list without updating src/doc/rust.md, cmr will be sad
 
@@ -98,7 +99,8 @@ pub struct Features {
     pub default_type_params: Cell<bool>,
     pub issue_5723_bootstrap: Cell<bool>,
     pub overloaded_calls: Cell<bool>,
-    pub rustc_diagnostic_macros: Cell<bool>
+    pub rustc_diagnostic_macros: Cell<bool>,
+    pub visible_private_types: Cell<bool>,
 }
 
 impl Features {
@@ -107,7 +109,8 @@ impl Features {
             default_type_params: Cell::new(false),
             issue_5723_bootstrap: Cell::new(false),
             overloaded_calls: Cell::new(false),
-            rustc_diagnostic_macros: Cell::new(false)
+            rustc_diagnostic_macros: Cell::new(false),
+            visible_private_types: Cell::new(false),
         }
     }
 }
@@ -439,4 +442,5 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
     sess.features.issue_5723_bootstrap.set(cx.has_feature("issue_5723_bootstrap"));
     sess.features.overloaded_calls.set(cx.has_feature("overloaded_calls"));
     sess.features.rustc_diagnostic_macros.set(cx.has_feature("rustc_diagnostic_macros"));
+    sess.features.visible_private_types.set(cx.has_feature("visible_private_types"));
 }

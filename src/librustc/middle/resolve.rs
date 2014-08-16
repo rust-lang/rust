@@ -44,7 +44,7 @@ use std::uint;
 // Definition mapping
 pub type DefMap = RefCell<NodeMap<Def>>;
 
-struct binding_info {
+pub struct binding_info {
     span: Span,
     binding_mode: BindingMode,
 }

@@ -23,7 +23,7 @@ pub fn map(filename: String, emit: map_reduce::putter) {
     emit(filename, "1".to_string());
 }
 
-mod map_reduce {
+pub mod map_reduce {
     use std::collections::HashMap;
     use std::str;
     use std::task;

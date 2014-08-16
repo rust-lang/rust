@@ -17,7 +17,6 @@ use std::mem::replace;
 
 use metadata::csearch;
 use middle::def;
-use lint;
 use middle::resolve;
 use middle::ty;
 use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam};
@@ -163,23 +162,6 @@ struct EmbargoVisitor<'a> {
     prev_public: bool,
 }
 
-impl<'a> EmbargoVisitor<'a> {
-    // There are checks inside of privacy which depend on knowing whether a
-    // trait should be exported or not. The two current consumers of this are:
-    //
-    //  1. Should default methods of a trait be exported?
-    //  2. Should the methods of an implementation of a trait be exported?
-    //
-    // The answer to both of these questions partly rely on whether the trait
-    // itself is exported or not. If the trait is somehow exported, then the
-    // answers to both questions must be yes. Right now this question involves
-    // more analysis than is currently done in rustc, so we conservatively
-    // answer "yes" so that all traits need to be exported.
-    fn exported_trait(&self, _id: ast::NodeId) -> bool {
-        true
-    }
-}
-
 impl<'a> Visitor<()> for EmbargoVisitor<'a> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         let orig_all_pub = self.prev_public;
@@ -193,12 +175,6 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
             // impls/extern blocks do not break the "public chain" because they
             // cannot have visibility qualifiers on them anyway
             ast::ItemImpl(..) | ast::ItemForeignMod(..) => {}
-
-            // Traits are a little special in that even if they themselves are
-            // not public they may still be exported.
-            ast::ItemTrait(..) => {
-                self.prev_exported = self.exported_trait(item.id);
-            }
 
             // Private by default, hence we only retain the "public chain" if
             // `pub` is explicitly listed.
@@ -1218,7 +1194,6 @@ impl<'a> SanePrivacyVisitor<'a> {
 struct VisiblePrivateTypesVisitor<'a> {
     tcx: &'a ty::ctxt,
     exported_items: &'a ExportedItems,
-    public_items: &'a PublicItems,
 }
 
 struct CheckTypeForPrivatenessVisitor<'a, 'b> {
@@ -1250,9 +1225,14 @@ impl<'a> VisiblePrivateTypesVisitor<'a> {
     }
 
     fn trait_is_public(&self, trait_id: ast::NodeId) -> bool {
-        // FIXME: this would preferably be using `exported_items`, but all
-        // traits are exported currently (see `EmbargoVisitor.exported_trait`)
-        self.public_items.contains(&trait_id)
+        self.exported_items.contains(&trait_id)
+    }
+
+    fn check_path(&self, path: &ast::Path, path_id: ast::NodeId) {
+        if self.path_is_private_type(path_id) {
+            self.tcx.sess.span_err(path.span,
+                                   "private type in exported type signature");
+        }
     }
 }
 
@@ -1407,10 +1387,6 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
                 return
             }
 
-            // `type ... = ...;` can contain private types, because
-            // we're introducing a new name.
-            ast::ItemTy(..) => return,
-
             // not at all public, so we don't care
             _ if !self.exported_items.contains(&item.id) => return,
 
@@ -1439,17 +1415,24 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
         }
     }
 
-    fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
-        match t.node {
-            ast::TyPath(ref p, _, path_id) => {
-                if self.path_is_private_type(path_id) {
-                    self.tcx.sess.add_lint(
-                        lint::builtin::VISIBLE_PRIVATE_TYPES,
-                        path_id, p.span,
-                        "private type in exported type \
-                         signature".to_string());
+    fn visit_generics(&mut self, g: &ast::Generics, _: ()) {
+        for type_parameter in g.ty_params.iter() {
+            for bound in type_parameter.bounds.iter() {
+                match *bound {
+                    ast::TraitTyParamBound(ref trait_ref) => {
+                        self.check_path(&trait_ref.path, trait_ref.ref_id)
+                    }
+                    ast::StaticRegionTyParamBound |
+                    ast::UnboxedFnTyParamBound(_) |
+                    ast::OtherRegionTyParamBound(_) => {}
                 }
             }
+        }
+    }
+
+    fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
+        match t.node {
+            ast::TyPath(ref p, _, path_id) => self.check_path(p, path_id),
             _ => {}
         }
         visit::walk_ty(self, t, ())
@@ -1535,13 +1518,13 @@ pub fn check_crate(tcx: &ty::ctxt,
 
     let EmbargoVisitor { exported_items, public_items, .. } = visitor;
 
-    {
+    if !tcx.sess.features.visible_private_types.get() {
         let mut visitor = VisiblePrivateTypesVisitor {
             tcx: tcx,
             exported_items: &exported_items,
-            public_items: &public_items
         };
         visit::walk_crate(&mut visitor, krate, ());
     }
+
     return (exported_items, public_items);
 }

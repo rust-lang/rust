@@ -269,7 +269,9 @@ impl reseeding::Reseeder<StdRng> for TaskRngReseeder {
         }
     }
 }
+
 static TASK_RNG_RESEED_THRESHOLD: uint = 32_768;
+
 type TaskRngInner = reseeding::ReseedingRng<StdRng, TaskRngReseeder>;
 
 /// The task-local RNG.

@@ -230,11 +230,11 @@ pub fn infer_variance(tcx: &ty::ctxt,
  * a variable.
  */
 
-type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
+pub type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
-struct InferredIndex(uint);
+pub struct InferredIndex(uint);
 
-enum VarianceTerm<'a> {
+pub enum VarianceTerm<'a> {
     ConstantTerm(ty::Variance),
     TransformTerm(VarianceTermPtr<'a>, VarianceTermPtr<'a>),
     InferredTerm(InferredIndex),

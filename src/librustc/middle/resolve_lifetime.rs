@@ -56,7 +56,7 @@ struct LifetimeContext<'a> {
     named_region_map: NamedRegionMap,
 }
 
-enum ScopeChain<'a> {
+pub enum ScopeChain<'a> {
     /// EarlyScope(i, ['a, 'b, ...], s) extends s with early-bound
     /// lifetimes, assigning indexes 'a => i, 'b => i+1, ... etc.
     EarlyScope(subst::ParamSpace, &'a Vec<ast::LifetimeDef>, Scope<'a>),
@@ -69,7 +69,7 @@ enum ScopeChain<'a> {
     RootScope
 }
 
-type Scope<'a> = &'a ScopeChain<'a>;
+pub type Scope<'a> = &'a ScopeChain<'a>;
 
 pub fn krate(sess: &Session, krate: &ast::Crate) -> NamedRegionMap {
     let mut ctxt = LifetimeContext {
