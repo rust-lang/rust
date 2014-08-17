@@ -209,21 +209,6 @@ pub fn name_to_dummy_lifetime(name: Name) -> Lifetime {
                name: name }
 }
 
-pub fn is_unguarded(a: &Arm) -> bool {
-    match a.guard {
-      None => true,
-      _    => false
-    }
-}
-
-pub fn unguarded_pat(a: &Arm) -> Option<Vec<Gc<Pat>>> {
-    if is_unguarded(a) {
-        Some(/* FIXME (#2543) */ a.pats.clone())
-    } else {
-        None
-    }
-}
-
 /// Generate a "pretty" name for an `impl` from its type and trait.
 /// This is designed so that symbols of `impl`'d methods give some
 /// hint of where they came from, (previously they would all just be
