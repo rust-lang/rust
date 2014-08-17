@@ -71,6 +71,8 @@
 		<keyword>trait</keyword>
 		<keyword>unsafe</keyword>
 		<keyword>use</keyword>
+		<keyword>virtual</keyword>
+		<keyword>where</keyword>
 		<keyword>while</keyword>
     </context>
 

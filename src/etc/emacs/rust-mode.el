@@ -170,7 +170,7 @@
 (defconst rust-mode-keywords
   '("as"
     "box" "break"
-    "continue" "crate"
+    "const" "continue" "crate"
     "do"
     "else" "enum" "extern"
     "false" "fn" "for"
@@ -182,7 +182,8 @@
     "self" "static" "struct" "super"
     "true" "trait" "type"
     "unsafe" "use"
-    "while"))
+    "virtual"
+    "where" "while"))
 
 (defconst rust-special-types
   '("u8" "i8"
