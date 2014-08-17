@@ -11,6 +11,13 @@
 // btree.rs
 //
 
+// NB. this is not deprecated for removal, just deprecating the
+// current implementation. If the major pain-points are addressed
+// (overuse of by-value self and .clone), this can be removed.
+#![deprecated = "the current implementation is extremely inefficient, \
+                 prefer a HashMap, TreeMap or TrieMap"]
+#![allow(deprecated)]
+
 //! Starting implementation of a btree for rust.
 //! Structure inspired by github user davidhalperin's gist.
 
