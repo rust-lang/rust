@@ -18,4 +18,5 @@ fn main() {
     //~^ ERROR cannot determine a type for this bounded type parameter: unconstrained type
     println!("{}", y + 1);
     //~^ ERROR binary operation `+` cannot be applied to type `Gc<int>`
+    //~^^ ERROR cannot determine a type for this bounded type parameter: unconstrained type
 }

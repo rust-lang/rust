@@ -25,6 +25,7 @@ impl TraitB for int {
 fn call_it<B:TraitB>(b: B)  -> int {
     let y = 4u;
     b.gimme_an_a(y) //~ ERROR failed to find an implementation of trait TraitA
+    //~^ ERROR failed to find an implementation of trait TraitA
 }
 
 fn main() {

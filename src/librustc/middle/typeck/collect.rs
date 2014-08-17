@@ -462,7 +462,6 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
         // These don't define types.
         ast::ItemForeignMod(_) | ast::ItemMod(_) | ast::ItemMac(_) => {}
         ast::ItemEnum(ref enum_definition, ref generics) => {
-            ensure_no_ty_param_bounds(ccx, it.span, generics, "enumeration");
             let pty = ty_of_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, pty.ty);
             get_enum_variant_types(ccx,
@@ -559,9 +558,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             // static trait methods. This is somewhat unfortunate.
             ensure_trait_methods(ccx, it.id, &*trait_def);
         },
-        ast::ItemStruct(struct_def, ref generics) => {
-            ensure_no_ty_param_bounds(ccx, it.span, generics, "structure");
-
+        ast::ItemStruct(struct_def, _) => {
             // Write the class type.
             let pty = ty_of_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, pty.ty);
