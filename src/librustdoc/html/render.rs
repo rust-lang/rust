@@ -1316,7 +1316,7 @@ impl<'a> fmt::Show for Item<'a> {
             let cur = self.cx.current.as_slice();
             let amt = if self.ismodule() { cur.len() - 1 } else { cur.len() };
             for (i, component) in cur.iter().enumerate().take(amt) {
-                try!(write!(fmt, "<a href='{}index.html'>{}</a>&#8203;::",
+                try!(write!(fmt, "<a href='{}index.html'>{}</a>::<wbr>",
                             "../".repeat(cur.len() - i - 1),
                             component.as_slice()));
             }
@@ -1325,7 +1325,7 @@ impl<'a> fmt::Show for Item<'a> {
                     shortty(self.item), self.item.name.get_ref().as_slice()));
 
         // Write stability level
-        try!(write!(fmt, "&#8203;{}", Stability(&self.item.stability)));
+        try!(write!(fmt, "<wbr>{}", Stability(&self.item.stability)));
 
         // Links to out-of-band information, i.e. src and stability dashboard
         try!(write!(fmt, "</div><div class='out-of-band'>"));
@@ -2078,7 +2078,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
         let len = cx.current.len() - if it.is_mod() {1} else {0};
         for (i, name) in cx.current.iter().take(len).enumerate() {
             if i > 0 {
-                try!(write!(fmt, "&#8203;::"));
+                try!(write!(fmt, "::<wbr>"));
             }
             try!(write!(fmt, "<a href='{}index.html'>{}</a>",
                           cx.root_path
