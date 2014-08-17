@@ -37,7 +37,6 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use collections::Vec;
-use collections::Collection;
 use core::mem;
 use core::cell::UnsafeCell;
 use rustrt::local::Local;

@@ -14,17 +14,15 @@ use core::prelude::*;
 
 use alloc::heap::{allocate, reallocate, deallocate};
 use RawSlice = core::raw::Slice;
-use core::slice::Slice;
 use core::cmp::max;
 use core::default::Default;
 use core::fmt;
 use core::mem;
-use core::num::{CheckedMul, CheckedAdd};
 use core::num;
 use core::ptr;
 use core::uint;
 
-use {Collection, Mutable, MutableSeq};
+use {Mutable, MutableSeq};
 use slice::{MutableOrdSlice, MutableSliceAllocating, CloneableVector};
 use slice::{Items, MutItems};
 

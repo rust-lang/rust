@@ -22,7 +22,6 @@ use intrinsics;
 use libc::c_int;
 use num::strconv;
 use num;
-use string::String;
 
 pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON, MIN_VALUE};
 pub use core::f32::{MIN_POS_VALUE, MAX_VALUE, MIN_EXP, MAX_EXP, MIN_10_EXP};

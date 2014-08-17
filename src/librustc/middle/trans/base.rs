@@ -47,11 +47,17 @@ use middle::trans::builder::{Builder, noname};
 use middle::trans::callee;
 use middle::trans::cleanup::{CleanupMethods, ScopeId};
 use middle::trans::cleanup;
-use middle::trans::common::*;
+use middle::trans::common::{Block, C_bool, C_bytes, C_i32, C_integral, C_nil};
+use middle::trans::common::{C_null, C_struct, C_u64, C_u8, C_uint, C_undef};
+use middle::trans::common::{CrateContext, ExternMap, FunctionContext};
+use middle::trans::common::{NodeInfo, Result, SubstP, monomorphize_type};
+use middle::trans::common::{node_id_type, param_substs, return_type_is_void};
+use middle::trans::common::{tydesc_info, type_is_immediate};
+use middle::trans::common::{type_is_zero_size, val_ty};
+use middle::trans::common;
 use middle::trans::consts;
 use middle::trans::controlflow;
 use middle::trans::datum;
-// use middle::trans::datum::{Datum, Lvalue, Rvalue, ByRef, ByValue};
 use middle::trans::debuginfo;
 use middle::trans::expr;
 use middle::trans::foreign;
@@ -1074,7 +1080,7 @@ pub fn raw_block<'a>(
                  is_lpad: bool,
                  llbb: BasicBlockRef)
                  -> &'a Block<'a> {
-    Block::new(llbb, is_lpad, None, fcx)
+    common::Block::new(llbb, is_lpad, None, fcx)
 }
 
 pub fn with_cond<'a>(

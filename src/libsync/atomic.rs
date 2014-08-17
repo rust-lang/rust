@@ -103,10 +103,9 @@
 
 #![allow(deprecated)]
 
-use core::prelude::*;
-
 use alloc::boxed::Box;
 use core::mem;
+use core::prelude::{Drop, None, Option, Some};
 
 pub use core::atomic::{AtomicBool, AtomicInt, AtomicUint, AtomicPtr};
 pub use core::atomic::{Ordering, Relaxed, Release, Acquire, AcqRel, SeqCst};

@@ -42,7 +42,6 @@ use syntax::ast_map::{PathElem, PathElems};
 use syntax::ast_map;
 use syntax::ast_util::*;
 use syntax::ast_util;
-use syntax::ast_util::PostExpansionMethod;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::SpanHandler;

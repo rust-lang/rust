@@ -40,7 +40,7 @@ use core::mem::{replace, swap};
 use core::ptr;
 use std::hash::{Writer, Hash};
 
-use {Collection, Mutable, Set, MutableSet, MutableMap, Map, MutableSeq};
+use {Mutable, Set, MutableSet, MutableMap, Map, MutableSeq};
 use vec::Vec;
 
 /// This is implemented as an AA tree, which is a simplified variation of

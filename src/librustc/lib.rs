@@ -34,6 +34,7 @@ This API is completely unstable and subject to change.
 
 #![allow(unknown_features)] // NOTE: Remove after next snapshot
 #![feature(rustc_diagnostic_macros)]
+#![feature(import_shadowing)]
 
 extern crate arena;
 extern crate debug;

@@ -21,10 +21,31 @@ use middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use middle::ty::{ExplicitSelfCategory, StaticExplicitSelfCategory};
 use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
-use syntax::ast::*;
+use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate};
+use syntax::ast::{DeclItem, DefId, Expr, ExprAgain, ExprBreak, ExprField};
+use syntax::ast::{ExprFnBlock, ExprForLoop, ExprLoop, ExprMethodCall};
+use syntax::ast::{ExprPath, ExprProc, ExprStruct, ExprUnboxedFn, FnDecl};
+use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic, Generics};
+use syntax::ast::{Ident, ImplItem, Item, ItemEnum, ItemFn, ItemForeignMod};
+use syntax::ast::{ItemImpl, ItemMac, ItemMod, ItemStatic, ItemStruct};
+use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local, Method};
+use syntax::ast::{MethodImplItem, Mod, Name, NamedField, NodeId};
+use syntax::ast::{OtherRegionTyParamBound, P, Pat, PatEnum, PatIdent, PatLit};
+use syntax::ast::{PatRange, PatStruct, Path, PathListIdent, PathListMod};
+use syntax::ast::{PrimTy, Public, SelfExplicit, SelfStatic};
+use syntax::ast::{StaticRegionTyParamBound, StmtDecl, StructField};
+use syntax::ast::{StructVariantKind, TraitRef, TraitTyParamBound};
+use syntax::ast::{TupleVariantKind, Ty, TyBool, TyChar, TyClosure, TyF32};
+use syntax::ast::{TyF64, TyFloat, TyI, TyI8, TyI16, TyI32, TyI64, TyInt};
+use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyProc, TyRptr};
+use syntax::ast::{TyStr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
+use syntax::ast::{UnboxedFnTyParamBound, UnnamedField, UnsafeFn, Variant};
+use syntax::ast::{ViewItem, ViewItemExternCrate, ViewItemUse, ViewPathGlob};
+use syntax::ast::{ViewPathList, ViewPathSimple, Visibility};
 use syntax::ast;
-use syntax::ast_util::{local_def, PostExpansionMethod};
-use syntax::ast_util::{walk_pat, trait_item_to_ty_method};
+use syntax::ast_util::{PostExpansionMethod, local_def};
+use syntax::ast_util::{trait_item_to_ty_method, walk_pat};
+use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
 use syntax::parse::token::special_names;
 use syntax::parse::token::special_idents;
@@ -355,6 +376,7 @@ struct ImportDirective {
     span: Span,
     id: NodeId,
     is_public: bool, // see note in ImportResolution about how to use this
+    shadowable: bool,
 }
 
 impl ImportDirective {
@@ -362,7 +384,8 @@ impl ImportDirective {
            subclass: ImportDirectiveSubclass,
            span: Span,
            id: NodeId,
-           is_public: bool)
+           is_public: bool,
+           shadowable: bool)
            -> ImportDirective {
         ImportDirective {
             module_path: module_path,
@@ -370,6 +393,7 @@ impl ImportDirective {
             span: span,
             id: id,
             is_public: is_public,
+            shadowable: shadowable,
         }
     }
 }
@@ -379,13 +403,18 @@ impl ImportDirective {
 struct Target {
     target_module: Rc<Module>,
     bindings: Rc<NameBindings>,
+    shadowable: bool,
 }
 
 impl Target {
-    fn new(target_module: Rc<Module>, bindings: Rc<NameBindings>) -> Target {
+    fn new(target_module: Rc<Module>,
+           bindings: Rc<NameBindings>,
+           shadowable: bool)
+           -> Target {
         Target {
             target_module: target_module,
-            bindings: bindings
+            bindings: bindings,
+            shadowable: shadowable,
         }
     }
 }
@@ -1018,6 +1047,10 @@ impl<'a> Resolver<'a> {
 
         let module_ = reduced_graph_parent.module();
 
+        self.check_for_conflicts_between_external_crates_and_items(&*module_,
+                                                                   name.name,
+                                                                   sp);
+
         // Add or reuse the child.
         let child = module_.children.borrow().find_copy(&name.name);
         match child {
@@ -1481,6 +1514,14 @@ impl<'a> Resolver<'a> {
                 // Build up the import directives.
                 let module_ = parent.module();
                 let is_public = view_item.vis == ast::Public;
+                let shadowable =
+                    view_item.attrs
+                             .iter()
+                             .any(|attr| {
+                                 attr.name() == token::get_ident(
+                                    special_idents::prelude_import)
+                             });
+
                 match view_path.node {
                     ViewPathSimple(binding, ref full_path, id) => {
                         let source_ident =
@@ -1497,7 +1538,8 @@ impl<'a> Resolver<'a> {
                                                     subclass,
                                                     view_path.span,
                                                     id,
-                                                    is_public);
+                                                    is_public,
+                                                    shadowable);
                     }
                     ViewPathList(_, ref source_items, _) => {
                         // Make sure there's at most one `mod` import in the list.
@@ -1542,7 +1584,9 @@ impl<'a> Resolver<'a> {
                                 module_path,
                                 SingleImport(name, name),
                                 source_item.span,
-                                source_item.node.id(), is_public);
+                                source_item.node.id(),
+                                is_public,
+                                shadowable);
                         }
                     }
                     ViewPathGlob(_, id) => {
@@ -1551,7 +1595,8 @@ impl<'a> Resolver<'a> {
                                                     GlobImport,
                                                     view_path.span,
                                                     id,
-                                                    is_public);
+                                                    is_public,
+                                                    shadowable);
                     }
                 }
             }
@@ -1571,6 +1616,10 @@ impl<'a> Resolver<'a> {
                                                               true));
                     debug!("(build reduced graph for item) found extern `{}`",
                             self.module_to_string(&*external_module));
+                    self.check_for_conflicts_between_external_crates(
+                        &*parent.module(),
+                        name.name,
+                        view_item.span);
                     parent.module().external_module_children.borrow_mut()
                                    .insert(name.name, external_module.clone());
                     self.build_reduced_graph_for_external_crate(external_module);
@@ -1989,11 +2038,14 @@ impl<'a> Resolver<'a> {
                               subclass: ImportDirectiveSubclass,
                               span: Span,
                               id: NodeId,
-                              is_public: bool) {
+                              is_public: bool,
+                              shadowable: bool) {
         module_.imports.borrow_mut().push(ImportDirective::new(module_path,
                                                                subclass,
-                                                               span, id,
-                                                               is_public));
+                                                               span,
+                                                               id,
+                                                               is_public,
+                                                               shadowable));
         self.unresolved_imports += 1;
         // Bump the reference count on the name. Or, if this is a glob, set
         // the appropriate flag.
@@ -2241,8 +2293,7 @@ impl<'a> Resolver<'a> {
                         resolution_result =
                             self.resolve_glob_import(&*module_,
                                                      containing_module,
-                                                     import_directive.id,
-                                                     import_directive.is_public,
+                                                     import_directive,
                                                      lp);
                     }
                 }
@@ -2397,7 +2448,11 @@ impl<'a> Resolver<'a> {
                                 None => {
                                     return UnboundResult;
                                 }
-                                Some(Target {target_module, bindings}) => {
+                                Some(Target {
+                                    target_module,
+                                    bindings,
+                                    shadowable: _
+                                }) => {
                                     debug!("(resolving single import) found \
                                             import in ns {:?}", namespace);
                                     let id = import_resolution.id(namespace);
@@ -2462,8 +2517,16 @@ impl<'a> Resolver<'a> {
         match value_result {
             BoundResult(ref target_module, ref name_bindings) => {
                 debug!("(resolving single import) found value target");
-                import_resolution.value_target = Some(Target::new(target_module.clone(),
-                                                                  name_bindings.clone()));
+                self.check_for_conflicting_import(
+                    &import_resolution.value_target,
+                    directive.span,
+                    target.name,
+                    ValueNS);
+
+                import_resolution.value_target =
+                    Some(Target::new(target_module.clone(),
+                                     name_bindings.clone(),
+                                     directive.shadowable));
                 import_resolution.value_id = directive.id;
                 import_resolution.is_public = directive.is_public;
                 value_used_public = name_bindings.defined_in_public_namespace(ValueNS);
@@ -2477,8 +2540,16 @@ impl<'a> Resolver<'a> {
             BoundResult(ref target_module, ref name_bindings) => {
                 debug!("(resolving single import) found type target: {:?}",
                        { name_bindings.type_def.borrow().clone().unwrap().type_def });
+                self.check_for_conflicting_import(
+                    &import_resolution.type_target,
+                    directive.span,
+                    target.name,
+                    TypeNS);
+
                 import_resolution.type_target =
-                    Some(Target::new(target_module.clone(), name_bindings.clone()));
+                    Some(Target::new(target_module.clone(),
+                                     name_bindings.clone(),
+                                     directive.shadowable));
                 import_resolution.type_id = directive.id;
                 import_resolution.is_public = directive.is_public;
                 type_used_public = name_bindings.defined_in_public_namespace(TypeNS);
@@ -2488,6 +2559,12 @@ impl<'a> Resolver<'a> {
                 fail!("type result should be known at this point");
             }
         }
+
+        self.check_for_conflicts_between_imports_and_items(
+            module_,
+            import_resolution,
+            directive.span,
+            target.name);
 
         if value_result.is_unbound() && type_result.is_unbound() {
             let msg = format!("There is no `{}` in `{}`",
@@ -2540,10 +2617,12 @@ impl<'a> Resolver<'a> {
     fn resolve_glob_import(&mut self,
                            module_: &Module,
                            containing_module: Rc<Module>,
-                           id: NodeId,
-                           is_public: bool,
+                           import_directive: &ImportDirective,
                            lp: LastPrivate)
                            -> ResolveResult<()> {
+        let id = import_directive.id;
+        let is_public = import_directive.is_public;
+
         // This function works in a highly imperative manner; it eagerly adds
         // everything it can to the list of import resolutions of the module
         // node.
@@ -2619,9 +2698,12 @@ impl<'a> Resolver<'a> {
 
         for (&name, name_bindings) in containing_module.children
                                                        .borrow().iter() {
-            self.merge_import_resolution(module_, containing_module.clone(),
-                                         id, is_public,
-                                         name, name_bindings.clone());
+            self.merge_import_resolution(module_,
+                                         containing_module.clone(),
+                                         import_directive,
+                                         name,
+                                         name_bindings.clone());
+
         }
 
         // Add external module children from the containing module.
@@ -2629,9 +2711,11 @@ impl<'a> Resolver<'a> {
                                                 .borrow().iter() {
             let name_bindings =
                 Rc::new(Resolver::create_name_bindings_from_module(module.clone()));
-            self.merge_import_resolution(module_, containing_module.clone(),
-                                         id, is_public,
-                                         name, name_bindings);
+            self.merge_import_resolution(module_,
+                                         containing_module.clone(),
+                                         import_directive,
+                                         name,
+                                         name_bindings);
         }
 
         // Record the destination of this import
@@ -2650,10 +2734,12 @@ impl<'a> Resolver<'a> {
     fn merge_import_resolution(&mut self,
                                module_: &Module,
                                containing_module: Rc<Module>,
-                               id: NodeId,
-                               is_public: bool,
+                               import_directive: &ImportDirective,
                                name: Name,
                                name_bindings: Rc<NameBindings>) {
+        let id = import_directive.id;
+        let is_public = import_directive.is_public;
+
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
         let dest_import_resolution = import_resolutions.find_or_insert_with(name, |_| {
             // Create a new import resolution from this child.
@@ -2670,16 +2756,169 @@ impl<'a> Resolver<'a> {
         if name_bindings.defined_in_public_namespace(ValueNS) {
             debug!("(resolving glob import) ... for value target");
             dest_import_resolution.value_target =
-                Some(Target::new(containing_module.clone(), name_bindings.clone()));
+                Some(Target::new(containing_module.clone(),
+                                 name_bindings.clone(),
+                                 import_directive.shadowable));
             dest_import_resolution.value_id = id;
         }
         if name_bindings.defined_in_public_namespace(TypeNS) {
             debug!("(resolving glob import) ... for type target");
             dest_import_resolution.type_target =
-                Some(Target::new(containing_module, name_bindings.clone()));
+                Some(Target::new(containing_module,
+                                 name_bindings.clone(),
+                                 import_directive.shadowable));
             dest_import_resolution.type_id = id;
         }
         dest_import_resolution.is_public = is_public;
+
+        self.check_for_conflicts_between_imports_and_items(
+            module_,
+            dest_import_resolution,
+            import_directive.span,
+            name);
+    }
+
+    /// Checks that imported names and items don't have the same name.
+    fn check_for_conflicting_import(&mut self,
+                                    target: &Option<Target>,
+                                    import_span: Span,
+                                    name: Name,
+                                    namespace: Namespace) {
+        if self.session.features.import_shadowing.get() {
+            return
+        }
+
+        match *target {
+            Some(ref target) if !target.shadowable => {
+                let msg = format!("a {} named `{}` has already been imported \
+                                   in this module",
+                                  match namespace {
+                                    TypeNS => "type",
+                                    ValueNS => "value",
+                                  },
+                                  token::get_name(name).get());
+                self.session.span_err(import_span, msg.as_slice());
+            }
+            Some(_) | None => {}
+        }
+    }
+
+    /// Checks that imported names and items don't have the same name.
+    fn check_for_conflicts_between_imports_and_items(&mut self,
+                                                     module: &Module,
+                                                     import_resolution:
+                                                     &mut ImportResolution,
+                                                     import_span: Span,
+                                                     name: Name) {
+        if self.session.features.import_shadowing.get() {
+            return
+        }
+
+        // First, check for conflicts between imports and `extern crate`s.
+        if module.external_module_children
+                 .borrow()
+                 .contains_key(&name) {
+            match import_resolution.type_target {
+                Some(ref target) if !target.shadowable => {
+                    self.session.span_err(import_span,
+                                          "import conflicts with imported \
+                                           crate in this module");
+                }
+                Some(_) | None => {}
+            }
+        }
+
+        // Check for item conflicts.
+        let children = module.children.borrow();
+        let name_bindings = match children.find(&name) {
+            None => {
+                // There can't be any conflicts.
+                return
+            }
+            Some(ref name_bindings) => (*name_bindings).clone(),
+        };
+
+        match import_resolution.value_target {
+            Some(ref target) if !target.shadowable => {
+                match *name_bindings.value_def.borrow() {
+                    None => {}
+                    Some(ref value) => {
+                        self.session.span_err(import_span,
+                                              "import conflicts with value \
+                                               in this module");
+                        match value.value_span {
+                            None => {}
+                            Some(span) => {
+                                self.session
+                                    .span_note(span,
+                                               "note conflicting value here");
+                            }
+                        }
+                    }
+                }
+            }
+            Some(_) | None => {}
+        }
+
+        match import_resolution.type_target {
+            Some(ref target) if !target.shadowable => {
+                match *name_bindings.type_def.borrow() {
+                    None => {}
+                    Some(ref ty) => {
+                        self.session.span_err(import_span,
+                                              "import conflicts with type in \
+                                               this module");
+                        match ty.type_span {
+                            None => {}
+                            Some(span) => {
+                                self.session
+                                    .span_note(span,
+                                               "note conflicting type here")
+                            }
+                        }
+                    }
+                }
+            }
+            Some(_) | None => {}
+        }
+    }
+
+    /// Checks that the names of external crates don't collide with other
+    /// external crates.
+    fn check_for_conflicts_between_external_crates(&self,
+                                                   module: &Module,
+                                                   name: Name,
+                                                   span: Span) {
+        if self.session.features.import_shadowing.get() {
+            return
+        }
+
+        if module.external_module_children.borrow().contains_key(&name) {
+            self.session
+                .span_err(span,
+                          format!("an external crate named `{}` has already \
+                                   been imported into this module",
+                                  token::get_name(name).get()).as_slice());
+        }
+    }
+
+    /// Checks that the names of items don't collide with external crates.
+    fn check_for_conflicts_between_external_crates_and_items(&self,
+                                                             module: &Module,
+                                                             name: Name,
+                                                             span: Span) {
+        if self.session.features.import_shadowing.get() {
+            return
+        }
+
+        if module.external_module_children.borrow().contains_key(&name) {
+            self.session
+                .span_err(span,
+                          format!("the name `{}` conflicts with an external \
+                                   crate that has been imported into this \
+                                   module",
+                                  token::get_name(name).get()).as_slice());
+        }
     }
 
     /// Resolves the given module path from the given root `module_`.
@@ -2947,7 +3186,9 @@ impl<'a> Resolver<'a> {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
                 debug!("top name bindings succeeded");
-                return Success((Target::new(module_.clone(), name_bindings.clone()),
+                return Success((Target::new(module_.clone(),
+                                            name_bindings.clone(),
+                                            false),
                                false));
             }
             Some(_) | None => { /* Not found; continue. */ }
@@ -2987,7 +3228,10 @@ impl<'a> Resolver<'a> {
                     let name_bindings =
                         Rc::new(Resolver::create_name_bindings_from_module(module));
                     debug!("lower name bindings succeeded");
-                    return Success((Target::new(module_, name_bindings), false));
+                    return Success((Target::new(module_,
+                                                name_bindings,
+                                                false),
+                                    false));
                 }
             }
         }
@@ -3210,7 +3454,9 @@ impl<'a> Resolver<'a> {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
                 debug!("(resolving name in module) found node as child");
-                return Success((Target::new(module_.clone(), name_bindings.clone()),
+                return Success((Target::new(module_.clone(),
+                                            name_bindings.clone(),
+                                            false),
                                false));
             }
             Some(_) | None => {
@@ -3261,7 +3507,10 @@ impl<'a> Resolver<'a> {
                 Some(module) => {
                     let name_bindings =
                         Rc::new(Resolver::create_name_bindings_from_module(module));
-                    return Success((Target::new(module_, name_bindings), false));
+                    return Success((Target::new(module_,
+                                                name_bindings,
+                                                false),
+                                    false));
                 }
             }
         }

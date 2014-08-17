@@ -22,10 +22,10 @@ use middle::trans::cleanup;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::datum;
-use middle::trans::debuginfo;
 use middle::trans::expr;
 use middle::trans::meth;
 use middle::trans::type_::Type;
+use middle::trans;
 use middle::ty;
 use middle::typeck::MethodCall;
 use util::ppaux::Repr;
@@ -66,7 +66,8 @@ pub fn trans_stmt<'a>(cx: &'a Block<'a>,
                 ast::DeclLocal(ref local) => {
                     bcx = init_local(bcx, &**local);
                     if cx.sess().opts.debuginfo == FullDebugInfo {
-                        debuginfo::create_local_var_metadata(bcx, &**local);
+                        trans::debuginfo::create_local_var_metadata(bcx,
+                                                                    &**local);
                     }
                 }
                 // Inner items are visited by `trans_item`/`trans_meth`.
@@ -154,7 +155,7 @@ pub fn trans_if<'a>(bcx: &'a Block<'a>,
             }
             // if true { .. } [else { .. }]
             bcx = trans_block(bcx, &*thn, dest);
-            debuginfo::clear_source_location(bcx.fcx);
+            trans::debuginfo::clear_source_location(bcx.fcx);
         } else {
             let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx } ;
             trans.visit_block(&*thn, ());
@@ -163,7 +164,7 @@ pub fn trans_if<'a>(bcx: &'a Block<'a>,
                 // if false { .. } else { .. }
                 Some(elexpr) => {
                     bcx = expr::trans_into(bcx, &*elexpr, dest);
-                    debuginfo::clear_source_location(bcx.fcx);
+                    trans::debuginfo::clear_source_location(bcx.fcx);
                 }
 
                 // if false { .. }
@@ -177,7 +178,7 @@ pub fn trans_if<'a>(bcx: &'a Block<'a>,
     let name = format!("then-block-{}-", thn.id);
     let then_bcx_in = bcx.fcx.new_id_block(name.as_slice(), thn.id);
     let then_bcx_out = trans_block(then_bcx_in, &*thn, dest);
-    debuginfo::clear_source_location(bcx.fcx);
+    trans::debuginfo::clear_source_location(bcx.fcx);
 
     let next_bcx;
     match els {
@@ -198,7 +199,7 @@ pub fn trans_if<'a>(bcx: &'a Block<'a>,
 
     // Clear the source location because it is still set to whatever has been translated
     // right before.
-    debuginfo::clear_source_location(next_bcx.fcx);
+    trans::debuginfo::clear_source_location(next_bcx.fcx);
 
     next_bcx
 }

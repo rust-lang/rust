@@ -19,7 +19,10 @@
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![feature(macro_rules, globs)]
+#![feature(macro_rules, globs, import_shadowing)]
+
+// NOTE(stage0, pcwalton): Remove after snapshot.
+#![allow(unknown_features)]
 
 use std::char;
 use std::str;

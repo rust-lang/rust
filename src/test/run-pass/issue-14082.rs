@@ -14,7 +14,6 @@
 use foo::GC;
 
 mod foo {
-    use d::*;
     pub use m::GC; // this should shadow d::GC
 }
 

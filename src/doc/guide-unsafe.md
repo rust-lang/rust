@@ -537,11 +537,12 @@ extern crate core;
 use core::prelude::*;
 
 use core::mem;
-use core::raw::Slice;
 
 #[no_mangle]
 pub extern fn dot_product(a: *const u32, a_len: u32,
                           b: *const u32, b_len: u32) -> u32 {
+    use core::raw::Slice;
+
     // Convert the provided arrays into Rust slices.
     // The core::raw module guarantees that the Slice
     // structure has the same memory layout as a &[T]
