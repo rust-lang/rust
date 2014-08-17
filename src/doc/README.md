@@ -19,7 +19,7 @@ for the 'std' and 'extra' libraries.
 To generate HTML documentation from one source file/crate, do something like:
 
 ~~~~
-rustdoc --output-dir html-doc/ --output-format html ../src/libstd/path.rs
+rustdoc --output html-doc/ --output-format html ../src/libstd/path.rs
 ~~~~
 
 (This, of course, requires a working build of the `rustdoc` tool.)
