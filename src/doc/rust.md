@@ -924,7 +924,9 @@ use_decl : "pub" ? "use" [ path "as" ident
 
 path_glob : ident [ "::" [ path_glob
                           | '*' ] ] ?
-          | '{' ident [ ',' ident ] * '}' ;
+          | '{' path_item [ ',' path_item ] * '}' ;
+
+path_item : ident | "mod" ;
 ~~~~
 
 A _use declaration_ creates one or more local name bindings synonymous
@@ -943,14 +945,18 @@ Use declarations support a number of convenient shortcuts:
   * Simultaneously binding a list of paths differing only in their final element,
     using the glob-like brace syntax `use a::b::{c,d,e,f};`
   * Binding all paths matching a given prefix, using the asterisk wildcard syntax `use a::b::*;`
+  * Simultaneously binding a list of paths differing only in their final element
+    and their immediate parent module, using the `mod` keyword, such as `use a::b::{mod, c, d};`
 
 An example of `use` declarations:
 
 ~~~~
 use std::iter::range_step;
 use std::option::{Some, None};
+use std::collections::hashmap::{mod, HashMap};
 
 # fn foo<T>(_: T){}
+# fn bar(map: HashMap<String, uint>, set: hashmap::HashSet<String>){}
 
 fn main() {
     // Equivalent to 'std::iter::range_step(0u, 10u, 2u);'
@@ -959,6 +965,11 @@ fn main() {
     // Equivalent to 'foo(vec![std::option::Some(1.0f64),
     // std::option::None]);'
     foo(vec![Some(1.0f64), None]);
+
+    // Both `hash` and `HashMap` are in scope.
+    let map = HashMap::new();
+    let set = hashmap::HashSet::new();
+    bar(map, set);
 }
 ~~~~
 
