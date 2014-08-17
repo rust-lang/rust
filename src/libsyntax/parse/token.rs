@@ -456,62 +456,63 @@ declare_special_idents_and_keywords! {
         (7,                          opaque,                 "<opaque>");
         (8,                          unnamed_field,          "<unnamed_field>");
         (9,                          type_self,              "Self");
+        (10,                         prelude_import,         "prelude_import");
     }
 
     pub mod keywords {
         // These ones are variants of the Keyword enum
 
         'strict:
-        (10,                         As,         "as");
-        (11,                         Break,      "break");
-        (12,                         Crate,      "crate");
-        (13,                         Else,       "else");
-        (14,                         Enum,       "enum");
-        (15,                         Extern,     "extern");
-        (16,                         False,      "false");
-        (17,                         Fn,         "fn");
-        (18,                         For,        "for");
-        (19,                         If,         "if");
-        (20,                         Impl,       "impl");
-        (21,                         In,         "in");
-        (22,                         Let,        "let");
-        (23,                         Loop,       "loop");
-        (24,                         Match,      "match");
-        (25,                         Mod,        "mod");
-        (26,                         Mut,        "mut");
-        (27,                         Once,       "once");
-        (28,                         Pub,        "pub");
-        (29,                         Ref,        "ref");
-        (30,                         Return,     "return");
+        (11,                         As,         "as");
+        (12,                         Break,      "break");
+        (13,                         Crate,      "crate");
+        (14,                         Else,       "else");
+        (15,                         Enum,       "enum");
+        (16,                         Extern,     "extern");
+        (17,                         False,      "false");
+        (18,                         Fn,         "fn");
+        (19,                         For,        "for");
+        (20,                         If,         "if");
+        (21,                         Impl,       "impl");
+        (22,                         In,         "in");
+        (23,                         Let,        "let");
+        (24,                         Loop,       "loop");
+        (25,                         Match,      "match");
+        (26,                         Mod,        "mod");
+        (27,                         Mut,        "mut");
+        (28,                         Once,       "once");
+        (29,                         Pub,        "pub");
+        (30,                         Ref,        "ref");
+        (31,                         Return,     "return");
         // Static and Self are also special idents (prefill de-dupes)
         (super::STATIC_KEYWORD_NAME_NUM, Static,     "static");
         (super::SELF_KEYWORD_NAME_NUM,   Self,       "self");
-        (31,                         Struct,     "struct");
-        (32,                         Super,      "super");
-        (33,                         True,       "true");
-        (34,                         Trait,      "trait");
-        (35,                         Type,       "type");
-        (36,                         Unsafe,     "unsafe");
-        (37,                         Use,        "use");
-        (38,                         Virtual,    "virtual");
-        (39,                         While,      "while");
-        (40,                         Continue,   "continue");
-        (41,                         Proc,       "proc");
-        (42,                         Box,        "box");
-        (43,                         Const,      "const");
-        (44,                         Where,      "where");
+        (32,                         Struct,     "struct");
+        (33,                         Super,      "super");
+        (34,                         True,       "true");
+        (35,                         Trait,      "trait");
+        (36,                         Type,       "type");
+        (37,                         Unsafe,     "unsafe");
+        (38,                         Use,        "use");
+        (39,                         Virtual,    "virtual");
+        (40,                         While,      "while");
+        (41,                         Continue,   "continue");
+        (42,                         Proc,       "proc");
+        (43,                         Box,        "box");
+        (44,                         Const,      "const");
+        (45,                         Where,      "where");
 
         'reserved:
-        (45,                         Alignof,    "alignof");
-        (46,                         Be,         "be");
-        (47,                         Offsetof,   "offsetof");
-        (48,                         Priv,       "priv");
-        (49,                         Pure,       "pure");
-        (50,                         Sizeof,     "sizeof");
-        (51,                         Typeof,     "typeof");
-        (52,                         Unsized,    "unsized");
-        (53,                         Yield,      "yield");
-        (54,                         Do,         "do");
+        (46,                         Alignof,    "alignof");
+        (47,                         Be,         "be");
+        (48,                         Offsetof,   "offsetof");
+        (49,                         Priv,       "priv");
+        (50,                         Pure,       "pure");
+        (51,                         Sizeof,     "sizeof");
+        (52,                         Typeof,     "typeof");
+        (53,                         Unsized,    "unsized");
+        (54,                         Yield,      "yield");
+        (55,                         Do,         "do");
     }
 }
 

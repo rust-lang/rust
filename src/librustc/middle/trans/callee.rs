@@ -37,7 +37,6 @@ use middle::trans::closure;
 use middle::trans::common;
 use middle::trans::common::*;
 use middle::trans::datum::*;
-use middle::trans::datum::{Datum, KindOps};
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::inline;

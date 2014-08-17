@@ -437,8 +437,6 @@ pub use core::fmt::{secret_signed, secret_lower_hex, secret_upper_hex};
 #[doc(hidden)]
 pub use core::fmt::{secret_bool, secret_char, secret_octal, secret_binary};
 #[doc(hidden)]
-pub use core::fmt::{secret_bool, secret_char, secret_octal, secret_binary};
-#[doc(hidden)]
 pub use core::fmt::{secret_float, secret_upper_exp, secret_lower_exp};
 #[doc(hidden)]
 pub use core::fmt::{secret_pointer};

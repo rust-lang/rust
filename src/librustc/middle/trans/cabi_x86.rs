@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use syntax::abi::{OsWindows, OsMacos, OsiOS};
 use llvm::*;
-use super::cabi::*;
+use middle::trans::cabi::{ArgType, FnType};
+use middle::trans::type_::Type;
 use super::common::*;
 use super::machine::*;
-use middle::trans::type_::Type;
+use syntax::abi::{OsWindows, OsMacos, OsiOS};
 
 pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],

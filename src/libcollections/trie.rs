@@ -23,7 +23,7 @@ use core::uint;
 use core::iter;
 use std::hash::{Writer, Hash};
 
-use {Collection, Mutable, Map, MutableMap, Set, MutableSet};
+use {Mutable, Map, MutableMap, Set, MutableSet};
 use slice::{Items, MutItems};
 use slice;
 

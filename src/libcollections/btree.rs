@@ -24,7 +24,7 @@ use alloc::boxed::Box;
 use core::fmt;
 use core::fmt::Show;
 
-use {Collection, MutableSeq};
+use MutableSeq;
 use vec::Vec;
 
 #[allow(missing_doc)]
