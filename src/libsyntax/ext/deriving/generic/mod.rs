@@ -198,7 +198,7 @@ use owned_slice::OwnedSlice;
 use parse::token::InternedString;
 use parse::token::special_idents;
 
-use self::ty::*;
+use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self, Ty};
 
 pub mod ty;
 

@@ -18,11 +18,10 @@ use core::prelude::*;
 use core::cmp;
 use core::default::Default;
 use core::fmt;
-use core::iter::RandomAccessIterator;
 use core::iter;
 use std::hash::{Writer, Hash};
 
-use {Deque, Collection, Mutable, MutableSeq};
+use {Deque, Mutable, MutableSeq};
 use vec::Vec;
 
 static INITIAL_CAPACITY: uint = 8u; // 2^3

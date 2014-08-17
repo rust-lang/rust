@@ -31,7 +31,7 @@ use core::mem;
 use core::ptr;
 use std::hash::{Writer, Hash};
 
-use {Collection, Mutable, Deque, MutableSeq};
+use {Mutable, Deque, MutableSeq};
 
 /// A doubly-linked list.
 pub struct DList<T> {

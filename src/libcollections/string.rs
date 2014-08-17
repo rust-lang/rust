@@ -20,9 +20,8 @@ use core::mem;
 use core::ptr;
 // FIXME: ICE's abound if you import the `Slice` type while importing `Slice` trait
 use RawSlice = core::raw::Slice;
-use core::slice::Slice;
 
-use {Collection, Mutable, MutableSeq};
+use {Mutable, MutableSeq};
 use hash;
 use str;
 use str::{CharRange, StrAllocating, MaybeOwned, Owned};

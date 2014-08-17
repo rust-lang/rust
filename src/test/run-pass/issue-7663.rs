@@ -30,7 +30,6 @@ mod test2 {
     mod bar { pub fn p() -> int { 2 } }
 
     pub mod baz {
-        use test2::foo::p;
         use test2::bar::p;
 
         pub fn my_main() { assert!(p() == 2); }
@@ -43,7 +42,6 @@ mod test3 {
     mod bar { pub fn p() -> int { 2 } }
 
     pub mod baz {
-        use test3::foo::*;
         use test3::bar::p;
 
         pub fn my_main() { assert!(p() == 2); }

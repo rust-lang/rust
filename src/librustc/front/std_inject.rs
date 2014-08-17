@@ -19,6 +19,7 @@ use syntax::fold::Folder;
 use syntax::fold;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::InternedString;
+use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::util::small_vector::SmallVector;
 
@@ -197,7 +198,19 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
                                                                   ast::DUMMY_NODE_ID));
         let vi2 = ast::ViewItem {
             node: ast::ViewItemUse(vp),
-            attrs: Vec::new(),
+            attrs: vec!(ast::Attribute {
+                span: DUMMY_SP,
+                node: ast::Attribute_ {
+                    id: attr::mk_attr_id(),
+                    style: ast::AttrOuter,
+                    value: box(GC) ast::MetaItem {
+                        span: DUMMY_SP,
+                        node: ast::MetaWord(token::get_name(
+                                special_idents::prelude_import.name)),
+                    },
+                    is_sugared_doc: false,
+                },
+            }),
             vis: ast::Inherited,
             span: DUMMY_SP,
         };

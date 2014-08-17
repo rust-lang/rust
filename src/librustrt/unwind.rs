@@ -72,7 +72,7 @@ use core::raw::Closure;
 use libc::c_void;
 
 use local::Local;
-use task::{Task, Result};
+use task::Task;
 
 use uw = libunwind;
 

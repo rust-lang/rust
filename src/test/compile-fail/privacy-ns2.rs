@@ -70,7 +70,6 @@ pub mod foo3 {
 
 fn test_unused3() {
     use foo3::Bar;  //~ ERROR `Bar` is private
-    use foo3::{Bar,Baz};  //~ ERROR `Bar` is private
 }
 
 fn test_single3() {

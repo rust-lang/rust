@@ -581,6 +581,9 @@ impl LintPass for UnusedAttribute {
             "thread_local",
             "no_debug",
 
+            // used in resolve
+            "prelude_import",
+
             // not used anywhere (!?) but apparently we want to keep them around
             "comment",
             "desc",

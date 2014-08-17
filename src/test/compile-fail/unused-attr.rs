@@ -13,7 +13,7 @@
 #![foo] //~ ERROR unused attribute
 
 #[foo] //~ ERROR unused attribute
-extern crate std;
+extern crate core;
 
 #[foo] //~ ERROR unused attribute
 use std::collections;

@@ -47,8 +47,8 @@ use rbml::io::SeekableMemWriter;
 use rbml::{reader, writer};
 use rbml;
 use serialize;
-use serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
-use serialize::{Decoder, Decodable};
+use serialize::{Decodable, Decoder, DecoderHelpers, Encodable};
+use serialize::{EncoderHelpers};
 
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
@@ -620,6 +620,8 @@ fn encode_method_callee(ecx: &e::EncodeContext,
                         rbml_w: &mut Encoder,
                         adjustment: typeck::ExprAdjustment,
                         method: &MethodCallee) {
+    use serialize::Encoder;
+
     rbml_w.emit_struct("MethodCallee", 4, |rbml_w| {
         rbml_w.emit_struct_field("adjustment", 0u, |rbml_w| {
             adjustment.encode(rbml_w)
@@ -695,6 +697,8 @@ fn encode_vtable_res_with_key(ecx: &e::EncodeContext,
                               rbml_w: &mut Encoder,
                               adjustment: typeck::ExprAdjustment,
                               dr: &typeck::vtable_res) {
+    use serialize::Encoder;
+
     rbml_w.emit_struct("VtableWithKey", 2, |rbml_w| {
         rbml_w.emit_struct_field("adjustment", 0u, |rbml_w| {
             adjustment.encode(rbml_w)
@@ -728,6 +732,8 @@ pub fn encode_vtable_param_res(ecx: &e::EncodeContext,
 
 pub fn encode_unboxed_closure_kind(ebml_w: &mut Encoder,
                                    kind: ty::UnboxedClosureKind) {
+    use serialize::Encoder;
+
     ebml_w.emit_enum("UnboxedClosureKind", |ebml_w| {
         match kind {
             ty::FnUnboxedClosureKind => {
@@ -755,6 +761,8 @@ pub fn encode_unboxed_closure_kind(ebml_w: &mut Encoder,
 pub fn encode_vtable_origin(ecx: &e::EncodeContext,
                             rbml_w: &mut Encoder,
                             vtable_origin: &typeck::vtable_origin) {
+    use serialize::Encoder;
+
     rbml_w.emit_enum("vtable_origin", |rbml_w| {
         match *vtable_origin {
           typeck::vtable_static(def_id, ref substs, ref vtable_res) => {
@@ -985,6 +993,8 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
     fn emit_polytype(&mut self,
                  ecx: &e::EncodeContext,
                  pty: ty::Polytype) {
+        use serialize::Encoder;
+
         self.emit_struct("Polytype", 2, |this| {
             this.emit_struct_field("generics", 0, |this| {
                 this.emit_struct("Generics", 2, |this| {
@@ -1013,6 +1023,8 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
     }
 
     fn emit_auto_adjustment(&mut self, ecx: &e::EncodeContext, adj: &ty::AutoAdjustment) {
+        use serialize::Encoder;
+
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
                 ty::AutoAddEnv(store) => {
