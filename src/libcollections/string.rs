@@ -502,7 +502,7 @@ impl String {
                 data: self.vec.as_ptr().offset(cur_len as int),
                 len: 4,
             };
-            let used = ch.encode_utf8(mem::transmute(slice));
+            let used = ch.encode_utf8(mem::transmute(slice)).unwrap_or(0);
             self.vec.set_len(cur_len + used);
         }
     }
