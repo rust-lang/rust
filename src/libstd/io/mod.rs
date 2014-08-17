@@ -1110,7 +1110,7 @@ pub trait Writer {
     #[inline]
     fn write_char(&mut self, c: char) -> IoResult<()> {
         let mut buf = [0u8, ..4];
-        let n = c.encode_utf8(buf.as_mut_slice());
+        let n = c.encode_utf8(buf.as_mut_slice()).unwrap_or(0);
         self.write(buf.slice_to(n))
     }
 
