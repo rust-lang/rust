@@ -301,9 +301,16 @@ fi
 flag uninstall "only uninstall from the installation prefix"
 opt verify 1 "verify that the installed binaries run correctly"
 valopt prefix "/usr/local" "set installation prefix"
-# NB This isn't quite the same definition as in `configure`.
-# just using 'lib' instead of CFG_LIBDIR_RELATIVE
+# NB This is exactly the same definition as in `configure`.
 valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries"
+case "$CFG_LIBDIR" in
+    "$CFG_PREFIX"/*) CAT_INC=2;;
+    "$CFG_PREFIX"*)  CAT_INC=1;;
+    *)
+        err "libdir must begin with the prefix. Use --prefix to set it accordingly.";;
+esac
+CFG_LIBDIR_RELATIVE=`echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-`
+
 valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 
 if [ $HELP -eq 1 ]
@@ -428,9 +435,9 @@ while read p; do
     # Decide the destination of the file
     FILE_INSTALL_PATH="${CFG_PREFIX}/$p"
 
-    if echo "$p" | grep "^lib/" > /dev/null
+    if echo "$p" | grep "^${CFG_LIBDIR_RELATIVE}/" > /dev/null
     then
-        pp=`echo $p | sed 's/^lib\///'`
+        pp=`echo $p | sed "s%^${CFG_LIBDIR_RELATIVE}/%%"`
         FILE_INSTALL_PATH="${CFG_LIBDIR}/$pp"
     fi
 
