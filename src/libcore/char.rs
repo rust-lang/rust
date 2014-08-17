@@ -18,6 +18,7 @@
 use mem::transmute;
 use option::{None, Option, Some};
 use iter::range_step;
+use collections::Collection;
 
 // UTF-8 ranges and tags for encoding characters
 static TAG_CONT: u8    = 0b1000_0000u8;
@@ -27,7 +28,6 @@ static TAG_FOUR_B: u8  = 0b1111_0000u8;
 static MAX_ONE_B: u32   =     0x80u32;
 static MAX_TWO_B: u32   =    0x800u32;
 static MAX_THREE_B: u32 =  0x10000u32;
-static MAX_FOUR_B:  u32 = 0x200000u32;
 
 /*
     Lu  Uppercase_Letter        an uppercase letter
@@ -217,14 +217,14 @@ pub fn escape_default(c: char, f: |char|) {
 }
 
 /// Returns the amount of bytes this `char` would need if encoded in UTF-8
+#[inline]
 pub fn len_utf8_bytes(c: char) -> uint {
     let code = c as u32;
     match () {
         _ if code < MAX_ONE_B   => 1u,
         _ if code < MAX_TWO_B   => 2u,
         _ if code < MAX_THREE_B => 3u,
-        _ if code < MAX_FOUR_B  => 4u,
-        _                       => fail!("invalid character!"),
+        _  => 4u,
     }
 }
 
@@ -297,21 +297,19 @@ pub trait Char {
     /// UTF-8.
     fn len_utf8_bytes(&self) -> uint;
 
-    /// Encodes this character as UTF-8 into the provided byte buffer.
+    /// Encodes this character as UTF-8 into the provided byte buffer,
+    /// and then returns the number of bytes written.
     ///
-    /// The buffer must be at least 4 bytes long or a runtime failure may
-    /// occur.
-    ///
-    /// This will then return the number of bytes written to the slice.
-    fn encode_utf8(&self, dst: &mut [u8]) -> uint;
+    /// If the buffer is not large enough, nothing will be written into it
+    /// and a `None` will be returned.
+    fn encode_utf8(&self, dst: &mut [u8]) -> Option<uint>;
 
-    /// Encodes this character as UTF-16 into the provided `u16` buffer.
+    /// Encodes this character as UTF-16 into the provided `u16` buffer,
+    /// and then returns the number of `u16`s written.
     ///
-    /// The buffer must be at least 2 elements long or a runtime failure may
-    /// occur.
-    ///
-    /// This will then return the number of `u16`s written to the slice.
-    fn encode_utf16(&self, dst: &mut [u16]) -> uint;
+    /// If the buffer is not large enough, nothing will be written into it
+    /// and a `None` will be returned.
+    fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint>;
 }
 
 impl Char for char {
@@ -325,45 +323,52 @@ impl Char for char {
 
     fn escape_default(&self, f: |char|) { escape_default(*self, f) }
 
+    #[inline]
     fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
 
-    fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> uint {
+    #[inline]
+    fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> Option<uint> {
+        // Marked #[inline] to allow llvm optimizing it away
         let code = *self as u32;
-        if code < MAX_ONE_B {
+        if code < MAX_ONE_B && dst.len() >= 1 {
             dst[0] = code as u8;
-            1
-        } else if code < MAX_TWO_B {
+            Some(1)
+        } else if code < MAX_TWO_B && dst.len() >= 2 {
             dst[0] = (code >> 6u & 0x1F_u32) as u8 | TAG_TWO_B;
             dst[1] = (code & 0x3F_u32) as u8 | TAG_CONT;
-            2
-        } else if code < MAX_THREE_B {
+            Some(2)
+        } else if code < MAX_THREE_B && dst.len() >= 3  {
             dst[0] = (code >> 12u & 0x0F_u32) as u8 | TAG_THREE_B;
             dst[1] = (code >>  6u & 0x3F_u32) as u8 | TAG_CONT;
             dst[2] = (code & 0x3F_u32) as u8 | TAG_CONT;
-            3
-        } else {
+            Some(3)
+        } else if dst.len() >= 4 {
             dst[0] = (code >> 18u & 0x07_u32) as u8 | TAG_FOUR_B;
             dst[1] = (code >> 12u & 0x3F_u32) as u8 | TAG_CONT;
             dst[2] = (code >>  6u & 0x3F_u32) as u8 | TAG_CONT;
             dst[3] = (code & 0x3F_u32) as u8 | TAG_CONT;
-            4
+            Some(4)
+        } else {
+            None
         }
     }
 
-    fn encode_utf16(&self, dst: &mut [u16]) -> uint {
+    #[inline]
+    fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint> {
+        // Marked #[inline] to allow llvm optimizing it away
         let mut ch = *self as u32;
-        if (ch & 0xFFFF_u32) == ch {
+        if (ch & 0xFFFF_u32) == ch  && dst.len() >= 1 {
             // The BMP falls through (assuming non-surrogate, as it should)
-            assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
             dst[0] = ch as u16;
-            1
-        } else {
+            Some(1)
+        } else if dst.len() >= 2 {
             // Supplementary planes break into surrogates.
-            assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
             ch -= 0x1_0000_u32;
             dst[0] = 0xD800_u16 | ((ch >> 10) as u16);
             dst[1] = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-            2
+            Some(2)
+        } else {
+            None
         }
     }
 }
