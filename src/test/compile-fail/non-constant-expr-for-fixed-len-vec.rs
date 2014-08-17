@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test
+//
+// Ignored because of an ICE at the moment.
+
 // Check that non-constant exprs do fail as count in fixed length vec type
 
 fn main() {

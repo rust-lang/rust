@@ -8,19 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This file was auto-generated using 'src/etc/generate-deriving-span-tests.py'
+trait Trait {}
 
-#![feature(struct_variant)]
-extern crate rand;
+struct Foo<T:Trait> {
+    x: T,
+}
 
-
-struct Error;
-
-#[deriving(Zero)]   //~ ERROR failed to find an implementation
-struct Struct(
-    Error //~ ERROR
+fn main() {
+    let foo = Foo {
     //~^ ERROR failed to find an implementation
-    //~^^ ERROR type `Error` does not implement any method in scope
-);
+    //~^^ ERROR instantiating a type parameter with an incompatible type
+        x: 3i
+    };
+    let baz: Foo<uint> = fail!();
+    //~^ ERROR failed to find an implementation
+    //~^^ ERROR instantiating a type parameter with an incompatible type
+}
 
-fn main() {}
