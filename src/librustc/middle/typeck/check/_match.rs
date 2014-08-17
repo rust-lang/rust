@@ -355,8 +355,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
     }
 }
 
-pub fn check_struct_pat(pcx: &pat_ctxt, _pat_id: ast::NodeId, span: Span,
-                        _expected: ty::t, _path: &ast::Path,
+pub fn check_struct_pat(pcx: &pat_ctxt, span: Span,
                         fields: &[ast::FieldPat], etc: bool,
                         struct_id: ast::DefId,
                         substitutions: &subst::Substs) {
@@ -529,8 +528,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                     },
                 }
 
-                check_struct_pat(pcx, pat.id, pat.span, expected, path,
-                                 fields.as_slice(), etc, cid, substs);
+                check_struct_pat(pcx, pat.span, fields.as_slice(), etc, cid, substs);
             }
             ty::ty_enum(eid, ref substs) => {
                 check_struct_like_enum_variant_pat(pcx,
@@ -557,15 +555,11 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                             None);
                 match tcx.def_map.borrow().find(&pat.id) {
                     Some(def) => {
-                         check_struct_pat(pcx,
-                                          pat.id,
-                                          pat.span,
-                                          ty::mk_err(),
-                                          path,
-                                          fields.as_slice(),
-                                          etc,
-                                          def.def_id(),
-                                          &subst::Substs::empty());
+                        let item_type = ty::lookup_item_type(tcx, def.def_id());
+                        let substitutions = fcx.infcx().fresh_substs_for_type(
+                            pat.span, &item_type.generics);
+                        check_struct_pat(pcx, pat.span, fields.as_slice(),
+                                         etc, def.def_id(), &substitutions);
                     }
                     None => {
                         tcx.sess.span_bug(pat.span,
