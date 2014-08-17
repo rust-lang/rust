@@ -53,12 +53,13 @@ This file consists of three conceptual sections:
 3. Minor utility functions
 
 
-## Recursive Types Some kinds of types, such as structs and enums can be
-recursive. That means that the type definition of some type X refers to some
-other type which in turn (transitively) refers to X. This introduces cycles into
-the type referral graph. A naive algorithm doing an on-demand, depth-first
-traversal of this graph when describing types, can get trapped in an endless
-loop when it reaches such a cycle.
+## Recursive Types
+
+Some kinds of types, such as structs and enums can be recursive. That means that
+the type definition of some type X refers to some other type which in turn (transitively)
+refers to X. This introduces cycles into the type referral graph. A naive algorithm doing
+an on-demand, depth-first traversal of this graph when describing types, can get trapped
+in an endless loop when it reaches such a cycle.
 
 For example, the following simple type for a singly-linked list...
 
@@ -96,10 +97,12 @@ traversal at the type members after the type has been registered with the cache.
 the future)
 
 
-## Source Locations and Line Information In addition to data type descriptions
-the debugging information must also allow to map machine code locations back to
-source code locations in order to be useful. This functionality is also handled
-in this module. The following functions allow to control source mappings:
+## Source Locations and Line Information
+
+In addition to data type descriptions the debugging information must also allow
+to map machine code locations back to source code locations in order to be useful.
+This functionality is also handled in this module. The following functions allow
+to control source mappings:
 
 + set_source_location()
 + clear_source_location()
@@ -139,10 +142,12 @@ of the prologue, however, they are ignored by LLVM's prologue detection. The
 source location emission is still disabled, so there is no need to do anything
 special with source location handling here.
 
-## Unique Type Identification In order for link-time optimization to work
-properly, LLVM needs a unique type identifier that tells it across compilation
-units which types are the same as others. This type identifier is created by
-TypeMap::get_unique_type_id_of_type() using the following algorithm:
+## Unique Type Identification
+
+In order for link-time optimization to work properly, LLVM needs a unique type
+identifier that tells it across compilation units which types are the same as
+others. This type identifier is created by TypeMap::get_unique_type_id_of_type()
+using the following algorithm:
 
 (1) Primitive types have their name as ID
 (2) Structs, enums and traits have a multipart identifier
