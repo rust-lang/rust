@@ -84,7 +84,7 @@ syn keyword   rustEnumVariant Ok Err
 syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr
 syn keyword rustTrait IntoBytes
 syn keyword rustTrait ToCStr
-syn keyword rustTrait Char
+syn keyword rustTrait Char UnicodeChar
 syn keyword rustTrait Clone
 syn keyword rustTrait PartialEq PartialOrd Eq Ord Equiv
 syn keyword rustEnum Ordering
@@ -102,18 +102,18 @@ syn keyword rustTrait Box
 syn keyword rustTrait GenericPath Path PosixPath WindowsPath
 syn keyword rustTrait RawPtr
 syn keyword rustTrait Buffer Writer Reader Seek
-syn keyword rustTrait Str StrVector StrSlice OwnedStr
-syn keyword rustTrait IntoMaybeOwned StrAllocating
+syn keyword rustTrait Str StrVector StrSlice
+syn keyword rustTrait IntoMaybeOwned StrAllocating UnicodeStrSlice
 syn keyword rustTrait ToString IntoStr
 syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
 syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12
 syn keyword rustTrait CloneableVector ImmutableCloneableVector
-syn keyword rustTrait MutableCloneableVector MutableOrdVector
-syn keyword rustTrait ImmutableVector MutableVector
-syn keyword rustTrait ImmutableEqVector ImmutableOrdVector
-syn keyword rustTrait Vector VectorVector
-syn keyword rustTrait MutableVectorAllocating
+syn keyword rustTrait MutableCloneableSlice MutableOrdSlice
+syn keyword rustTrait ImmutableSlice MutableSlice
+syn keyword rustTrait ImmutablePartialEqSlice ImmutableOrdSlice
+syn keyword rustTrait Slice VectorVector
+syn keyword rustTrait MutableSliceAllocating
 syn keyword rustTrait String
 syn keyword rustTrait Vec
 
