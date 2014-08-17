@@ -59,7 +59,7 @@
 use Integer;
 use rand::Rng;
 
-use std::{cmp, fmt};
+use std::{cmp, fmt, hash};
 use std::default::Default;
 use std::from_str::FromStr;
 use std::num::CheckedDiv;
@@ -148,6 +148,22 @@ impl Ord for BigUint {
 impl Default for BigUint {
     #[inline]
     fn default() -> BigUint { Zero::zero() }
+}
+
+impl<S: hash::Writer> hash::Hash<S> for BigUint {
+    fn hash(&self, state: &mut S) {
+        // hash 0 in case it's all 0's
+        0u32.hash(state);
+
+        let mut found_first_value = false;
+        for elem in self.data.iter().rev() {
+            // don't hash any leading 0's, they shouldn't affect the hash
+            if found_first_value || *elem != 0 {
+                found_first_value = true;
+                elem.hash(state);
+            }
+        }
+    }
 }
 
 impl fmt::Show for BigUint {
@@ -881,6 +897,13 @@ impl fmt::Show for BigInt {
     }
 }
 
+impl<S: hash::Writer> hash::Hash<S> for BigInt {
+    fn hash(&self, state: &mut S) {
+        (self.sign == Plus).hash(state);
+        self.data.hash(state);
+    }
+}
+
 impl FromStr for BigInt {
     #[inline]
     fn from_str(s: &str) -> Option<BigInt> {
@@ -1409,6 +1432,7 @@ mod biguint_tests {
     use std::num::CheckedDiv;
     use std::rand::task_rng;
     use std::u64;
+    use std::hash::hash;
 
     #[test]
     fn test_from_slice() {
@@ -1458,6 +1482,19 @@ mod biguint_tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_hash() {
+        let a = BigUint::new(vec!());
+        let b = BigUint::new(vec!(0));
+        let c = BigUint::new(vec!(1));
+        let d = BigUint::new(vec!(1,0,0,0,0,0));
+        let e = BigUint::new(vec!(0,0,0,0,0,1));
+        assert!(hash(&a) == hash(&b));
+        assert!(hash(&b) != hash(&c));
+        assert!(hash(&c) == hash(&d));
+        assert!(hash(&d) != hash(&e));
     }
 
     #[test]
@@ -2257,6 +2294,7 @@ mod bigint_tests {
     use std::num::{ToPrimitive, FromPrimitive};
     use std::rand::task_rng;
     use std::u64;
+    use std::hash::hash;
 
     #[test]
     fn test_from_biguint() {
@@ -2312,6 +2350,21 @@ mod bigint_tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_hash() {
+        let a = BigInt::new(Zero, vec!());
+        let b = BigInt::new(Zero, vec!(0));
+        let c = BigInt::new(Plus, vec!(1));
+        let d = BigInt::new(Plus, vec!(1,0,0,0,0,0));
+        let e = BigInt::new(Plus, vec!(0,0,0,0,0,1));
+        let f = BigInt::new(Minus, vec!(1));
+        assert!(hash(&a) == hash(&b));
+        assert!(hash(&b) != hash(&c));
+        assert!(hash(&c) == hash(&d));
+        assert!(hash(&d) != hash(&e));
+        assert!(hash(&c) != hash(&f));
     }
 
     #[test]
