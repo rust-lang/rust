@@ -19,6 +19,7 @@
 		<item> as </item>
 		<item> break </item>
 		<item> box </item>
+		<item> const </item>
 		<item> continue </item>
 		<item> crate </item>
 		<item> do </item>
@@ -44,6 +45,8 @@
 		<item> trait </item>
 		<item> unsafe </item>
 		<item> use </item>
+		<item> virtual </item>
+		<item> where </item>
 		<item> while </item>
 	</list>
 	<list name="traits">
