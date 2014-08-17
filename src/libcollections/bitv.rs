@@ -1271,7 +1271,7 @@ impl BitvSet {
     /// let a = BitvSet::from_bitv(bitv::from_bytes([0b01101000]));
     /// let b = BitvSet::from_bitv(bitv::from_bytes([0b10100000]));
     ///
-    /// // Print 2, 4 in arbitrary order
+    /// // Print 1, 4 in arbitrary order
     /// for x in a.difference(&b) {
     ///     println!("{}", x);
     /// }
