@@ -86,7 +86,7 @@ use middle::subst;
 use middle::subst::{Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::ty::{FnSig, VariantInfo};
 use middle::ty::{Polytype};
-use middle::ty::{ParamTy, Disr, ExprTyProvider};
+use middle::ty::{Disr, ExprTyProvider, ParamTy, ParameterEnvironment};
 use middle::ty;
 use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::AstConv;
@@ -281,7 +281,8 @@ impl<'a> Inherited<'a> {
 }
 
 // Used by check_const and check_enum_variants
-fn blank_fn_ctxt<'a>(ccx: &'a CrateCtxt<'a>,
+pub fn blank_fn_ctxt<'a>(
+                     ccx: &'a CrateCtxt<'a>,
                      inh: &'a Inherited<'a>,
                      rty: ty::t,
                      region_bnd: ast::NodeId)
@@ -673,11 +674,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
       }
       ast::ItemFn(ref decl, _, _, _, ref body) => {
         let fn_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
-
-        let param_env = ty::construct_parameter_environment(ccx.tcx,
-                                                            &fn_pty.generics,
-                                                            body.id);
-
+        let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
         check_bare_fn(ccx, &**decl, &**body, it.id, fn_pty.ty, param_env);
       }
       ast::ItemImpl(_, ref opt_trait_ref, _, ref impl_items) => {
@@ -773,15 +770,7 @@ fn check_method_body(ccx: &CrateCtxt,
     debug!("check_method_body(item_generics={}, method.id={})",
             item_generics.repr(ccx.tcx),
             method.id);
-    let method_def_id = local_def(method.id);
-    let method_ty = match ty::impl_or_trait_item(ccx.tcx, method_def_id) {
-        ty::MethodTraitItem(ref method_ty) => (*method_ty).clone(),
-    };
-    let method_generics = &method_ty.generics;
-
-    let param_env = ty::construct_parameter_environment(ccx.tcx,
-                                                        method_generics,
-                                                        method.pe_body().id);
+    let param_env = ParameterEnvironment::for_item(ccx.tcx, method.id);
 
     let fty = ty::node_id_to_type(ccx.tcx, method.id);
 
@@ -3969,6 +3958,24 @@ fn check_block_with_expected(fcx: &FnCtxt,
     });
 
     *fcx.ps.borrow_mut() = prev;
+}
+
+/// Checks a constant appearing in a type. At the moment this is just the
+/// length expression in a fixed-length vector, but someday it might be
+/// extended to type-level numeric literals.
+pub fn check_const_in_type(tcx: &ty::ctxt,
+                           expr: &ast::Expr,
+                           expected_type: ty::t) {
+    // Synthesize a crate context. The trait map is not needed here (though I
+    // imagine it will be if we have associated statics --pcwalton), so we
+    // leave it blank.
+    let ccx = CrateCtxt {
+        trait_map: NodeMap::new(),
+        tcx: tcx,
+    };
+    let inh = blank_inherited_fields(&ccx);
+    let fcx = blank_fn_ctxt(&ccx, &inh, expected_type, expr.id);
+    check_const_with_ty(&fcx, expr.span, expr, expected_type);
 }
 
 pub fn check_const(ccx: &CrateCtxt,

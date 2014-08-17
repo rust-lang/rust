@@ -19,5 +19,5 @@ fn main() {
     let x: Box<Map<int, int>> = x;
     let y: Box<Map<uint, int>> = box x;
     //~^ ERROR failed to find an implementation of trait collections::Map<uint,int>
-    //         for ~collections::Map<int,int>:Send
+    //~^^ ERROR failed to find an implementation of trait core::collections::Collection
 }

@@ -66,8 +66,8 @@ use syntax::visit::Visitor;
 // It may be better to do something more clever, like processing fully
 // resolved types first.
 
-/// A vtable context includes an inference context, a crate context, and a
-/// callback function to call in case of type error.
+/// A vtable context includes an inference context, a parameter environment,
+/// and a list of unboxed closure types.
 pub struct VtableContext<'a> {
     pub infcx: &'a infer::InferCtxt<'a>,
     pub param_env: &'a ty::ParameterEnvironment,
@@ -83,8 +83,7 @@ fn lookup_vtables(vcx: &VtableContext,
                   type_param_defs: &VecPerParamSpace<ty::TypeParameterDef>,
                   substs: &subst::Substs,
                   is_early: bool)
-                  -> VecPerParamSpace<vtable_param_res>
-{
+                  -> VecPerParamSpace<vtable_param_res> {
     debug!("lookup_vtables(\
            type_param_defs={}, \
            substs={}",
@@ -154,11 +153,12 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
         match lookup_vtable(vcx, span, ty, trait_ref.clone(), is_early) {
             Some(vtable) => param_result.push(vtable),
             None => {
-                vcx.tcx().sess.span_fatal(span,
+                vcx.tcx().sess.span_err(span,
                     format!("failed to find an implementation of \
                           trait {} for {}",
                          vcx.infcx.trait_ref_to_string(&*trait_ref),
                          vcx.infcx.ty_to_string(ty)).as_slice());
+                param_result.push(vtable_error)
             }
         }
         true
@@ -583,10 +583,11 @@ fn fixup_ty(vcx: &VtableContext,
     match resolve_type(vcx.infcx, Some(span), ty, resolve_and_force_all_but_regions) {
         Ok(new_type) => Some(new_type),
         Err(e) if !is_early => {
-            tcx.sess.span_fatal(span,
+            tcx.sess.span_err(span,
                 format!("cannot determine a type for this bounded type \
                          parameter: {}",
-                        fixup_err_to_string(e)).as_slice())
+                        fixup_err_to_string(e)).as_slice());
+            Some(ty::mk_err())
         }
         Err(_) => {
             None
@@ -974,3 +975,38 @@ impl<'a, 'b> visit::Visitor<()> for &'a FnCtxt<'b> {
 pub fn resolve_in_block(mut fcx: &FnCtxt, bl: &ast::Block) {
     visit::walk_block(&mut fcx, bl, ());
 }
+
+/// Used in the kind checker after typechecking has finished. Calls
+/// `any_missing` if any bounds were missing.
+pub fn check_param_bounds(tcx: &ty::ctxt,
+                          span: Span,
+                          parameter_environment: &ty::ParameterEnvironment,
+                          type_param_defs:
+                            &VecPerParamSpace<ty::TypeParameterDef>,
+                          substs: &subst::Substs,
+                          any_missing: |&ty::TraitRef|) {
+    let unboxed_closures = RefCell::new(DefIdMap::new());
+    let vcx = VtableContext {
+        infcx: &infer::new_infer_ctxt(tcx),
+        param_env: parameter_environment,
+        unboxed_closures: &unboxed_closures,
+    };
+    let vtable_param_results =
+        lookup_vtables(&vcx, span, type_param_defs, substs, false);
+    for (vtable_param_result, type_param_def) in
+            vtable_param_results.iter().zip(type_param_defs.iter()) {
+        for (vtable_result, trait_ref) in
+                vtable_param_result.iter()
+                                   .zip(type_param_def.bounds
+                                                      .trait_bounds
+                                                      .iter()) {
+            match *vtable_result {
+                vtable_error => any_missing(&**trait_ref),
+                vtable_static(..) |
+                vtable_param(..) |
+                vtable_unboxed_closure(..) => {}
+            }
+        }
+    }
+}
+
