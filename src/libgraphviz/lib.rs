@@ -47,7 +47,7 @@ forming a diamond-shaped acyclic graph and then pointing to the fifth
 which is cyclic.
 
 ```rust
-use dot = graphviz;
+use graphviz as dot;
 use graphviz::maybe_owned_vec::IntoMaybeOwnedVector;
 
 type Nd = int;
@@ -147,7 +147,7 @@ labelled with the &sube; character (specified using the HTML character
 entity `&sube`).
 
 ```rust
-use dot = graphviz;
+use graphviz as dot;
 use std::str;
 
 type Nd = uint;
@@ -203,7 +203,7 @@ The output from this example is the same as the second example: the
 Hasse-diagram for the subsets of the set `{x, y}`.
 
 ```rust
-use dot = graphviz;
+use graphviz as dot;
 use std::str;
 
 type Nd<'a> = (uint, &'a str);

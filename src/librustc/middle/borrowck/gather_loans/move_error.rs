@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use mc = middle::mem_categorization;
+use middle::mem_categorization as mc;
 use middle::borrowck::BorrowckCtxt;
 use middle::ty;
 

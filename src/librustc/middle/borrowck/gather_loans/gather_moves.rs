@@ -12,12 +12,12 @@
  * Computes moves.
  */
 
-use mc = middle::mem_categorization;
 use middle::borrowck::*;
-use middle::borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
 use middle::borrowck::gather_loans::move_error::MoveSpanAndPath;
+use middle::borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
 use middle::borrowck::move_data::*;
-use euv = middle::expr_use_visitor;
+use middle::expr_use_visitor as euv;
+use middle::mem_categorization as mc;
 use middle::ty;
 use syntax::ast;
 use syntax::codemap::Span;

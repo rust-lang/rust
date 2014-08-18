@@ -74,7 +74,7 @@ use libc::c_void;
 use local::Local;
 use task::Task;
 
-use uw = libunwind;
+use libunwind as uw;
 
 pub struct Unwinder {
     unwinding: bool,
@@ -238,7 +238,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 #[doc(hidden)]
 #[allow(visible_private_types)]
 pub mod eabi {
-    use uw = libunwind;
+    use libunwind as uw;
     use libc::c_int;
 
     extern "C" {
@@ -292,7 +292,7 @@ pub mod eabi {
 #[doc(hidden)]
 #[allow(visible_private_types)]
 pub mod eabi {
-    use uw = libunwind;
+    use libunwind as uw;
     use libc::c_int;
 
     extern "C" {
@@ -345,7 +345,7 @@ pub mod eabi {
 #[doc(hidden)]
 #[allow(visible_private_types)]
 pub mod eabi {
-    use uw = libunwind;
+    use libunwind as uw;
     use libc::c_int;
 
     extern "C" {
@@ -396,7 +396,7 @@ pub mod eabi {
 #[allow(visible_private_types)]
 #[allow(non_camel_case_types)]
 pub mod eabi {
-    use uw = libunwind;
+    use libunwind as uw;
     use libc::{c_void, c_int};
 
     struct EXCEPTION_RECORD;

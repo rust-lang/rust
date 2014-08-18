@@ -12,9 +12,8 @@
 
 use back::svh::Svh;
 use driver::session::Session;
-use metadata::csearch;
-use mc = middle::mem_categorization;
 use lint;
+use metadata::csearch;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
@@ -22,6 +21,7 @@ use middle::freevars::CaptureModeMap;
 use middle::freevars;
 use middle::lang_items::{FnMutTraitLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
+use middle::mem_categorization as mc;
 use middle::resolve;
 use middle::resolve_lifetime;
 use middle::stability;

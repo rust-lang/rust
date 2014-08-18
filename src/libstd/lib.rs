@@ -175,7 +175,7 @@ pub use core::option;
 
 pub use alloc::boxed;
 #[deprecated = "use boxed instead"]
-pub use owned = boxed;
+pub use boxed as owned;
 
 pub use alloc::rc;
 
@@ -289,7 +289,7 @@ mod std {
     pub use vec; // used for vec![]
 
     // The test runner calls ::std::os::args() but really wants realstd
-    #[cfg(test)] pub use os = realstd::os;
+    #[cfg(test)] pub use realstd::os as os;
     // The test runner requires std::slice::Vector, so re-export std::slice just for it.
     #[cfg(test)] pub use slice;
 

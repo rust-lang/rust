@@ -28,7 +28,7 @@ use rustrt::thread::Thread;
 
 use atomic;
 use comm::Receiver;
-use spsc = spsc_queue;
+use spsc_queue as spsc;
 
 static DISCONNECTED: int = int::MIN;
 #[cfg(test)]
