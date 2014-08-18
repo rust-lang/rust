@@ -1522,7 +1522,7 @@ impl Set<uint> for BitvSet {
 
     #[inline]
     fn is_disjoint(&self, other: &BitvSet) -> bool {
-        self.intersection(other).count() > 0
+        self.intersection(other).next().is_none()
     }
 
     #[inline]
@@ -2262,6 +2262,24 @@ mod tests {
         assert!(!set1.is_subset(&set2)); // { 2, 3 }  { 2, 4 }
         set1.remove(&300);
         assert!(set1.is_subset(&set2)); // { 2 }  { 2, 4 }
+    }
+
+    #[test]
+    fn test_bitv_set_is_disjoint() {
+        let a = BitvSet::from_bitv(from_bytes([0b10100010]));
+        let b = BitvSet::from_bitv(from_bytes([0b01000000]));
+        let c = BitvSet::new();
+        let d = BitvSet::from_bitv(from_bytes([0b00110000]));
+
+        assert!(!a.is_disjoint(&d));
+        assert!(!d.is_disjoint(&a));
+
+        assert!(a.is_disjoint(&b))
+        assert!(a.is_disjoint(&c))
+        assert!(b.is_disjoint(&a))
+        assert!(b.is_disjoint(&c))
+        assert!(c.is_disjoint(&a))
+        assert!(c.is_disjoint(&b))
     }
 
     #[test]
