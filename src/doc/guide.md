@@ -3669,10 +3669,9 @@ manually free this allocation! If we write
 ```
 
 then Rust will automatically free `x` at the end of the block. This isn't
-because Rust has a garbage collector -- it doesn't. Instead, Rust uses static
-analysis to determine the *lifetime* of `x`, and then generates code to free it
-once it's sure the `x` won't be used again. This Rust code will do the same
-thing as the following C code:
+because Rust has a garbage collector -- it doesn't. Instead, when `x` goes out
+of scope, Rust `free`s `x`. This Rust code will do the same thing as the
+following C code:
 
 ```{c,ignore}
 {
