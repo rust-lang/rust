@@ -68,7 +68,7 @@ use rustrt::mutex;
 use rustrt::task::{BlockedTask, Task};
 use rustrt::thread::Thread;
 
-use q = mpsc_intrusive;
+use mpsc_intrusive as q;
 
 pub static LOCKED: uint = 1 << 0;
 pub static GREEN_BLOCKED: uint = 1 << 1;

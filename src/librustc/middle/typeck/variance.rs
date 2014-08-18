@@ -195,7 +195,7 @@ represents the "variance transform" as defined in the paper:
 use std::collections::HashMap;
 use arena;
 use arena::Arena;
-use rl = middle::resolve_lifetime;
+use middle::resolve_lifetime as rl;
 use middle::subst;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace};
 use middle::ty;

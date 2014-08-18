@@ -240,7 +240,7 @@ pub mod native {
     use alloc::boxed::Box;
     use core::mem;
     use core::ptr;
-    use tls = thread_local_storage;
+    use thread_local_storage as tls;
 
     static mut RT_TLS_KEY: tls::Key = -1;
 

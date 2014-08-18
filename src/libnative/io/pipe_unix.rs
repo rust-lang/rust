@@ -39,8 +39,8 @@ fn addr_to_sockaddr_un(addr: &CString,
 
     let len = addr.len();
     if len > s.sun_path.len() - 1 {
-        #[cfg(unix)] use ERROR = libc::EINVAL;
-        #[cfg(windows)] use ERROR = libc::WSAEINVAL;
+        #[cfg(unix)] use libc::EINVAL as ERROR;
+        #[cfg(windows)] use libc::WSAEINVAL as ERROR;
         return Err(IoError {
             code: ERROR as uint,
             extra: 0,

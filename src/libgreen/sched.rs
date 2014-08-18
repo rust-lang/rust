@@ -25,7 +25,7 @@ use coroutine::Coroutine;
 use sleeper_list::SleeperList;
 use stack::StackPool;
 use task::{TypeSched, GreenTask, HomeSched, AnySched};
-use msgq = message_queue;
+use message_queue as msgq;
 
 /// A scheduler is responsible for coordinating the execution of Tasks
 /// on a single thread. The scheduler runs inside a slightly modified

@@ -79,8 +79,8 @@ mod tty;
 #[cfg(windows)] #[path = "c_win32.rs"] mod c;
 
 fn unimpl() -> IoError {
-    #[cfg(unix)] use ERROR = libc::ENOSYS;
-    #[cfg(windows)] use ERROR = libc::ERROR_CALL_NOT_IMPLEMENTED;
+    #[cfg(unix)] use libc::ENOSYS as ERROR;
+    #[cfg(windows)] use libc::ERROR_CALL_NOT_IMPLEMENTED as ERROR;
     IoError {
         code: ERROR as uint,
         extra: 0,

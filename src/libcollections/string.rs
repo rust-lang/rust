@@ -19,13 +19,13 @@ use core::fmt;
 use core::mem;
 use core::ptr;
 // FIXME: ICE's abound if you import the `Slice` type while importing `Slice` trait
-use RawSlice = core::raw::Slice;
+use core::raw::Slice as RawSlice;
 
 use {Mutable, MutableSeq};
 use hash;
 use str;
 use str::{CharRange, StrAllocating, MaybeOwned, Owned};
-use MaybeOwnedSlice = str::Slice; // So many `Slice`s...
+use str::Slice as MaybeOwnedSlice; // So many `Slice`s...
 use vec::Vec;
 
 /// A growable string stored as a UTF-8 encoded buffer.

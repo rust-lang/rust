@@ -27,10 +27,10 @@ use to_string::IntoStr;
 use vec::Vec;
 
 #[deprecated="this trait has been renamed to `AsciiExt`"]
-pub use StrAsciiExt = self::AsciiExt;
+pub use self::AsciiExt as StrAsciiExt;
 
 #[deprecated="this trait has been renamed to `OwnedAsciiExt`"]
-pub use OwnedStrAsciiExt = self::OwnedAsciiExt;
+pub use self::OwnedAsciiExt as OwnedStrAsciiExt;
 
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.

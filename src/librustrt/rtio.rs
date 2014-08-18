@@ -162,8 +162,8 @@ impl<'a> LocalIo<'a> {
     pub fn maybe_raise<T>(f: |io: &mut IoFactory| -> IoResult<T>)
         -> IoResult<T>
     {
-        #[cfg(unix)] use ERROR = libc::EINVAL;
-        #[cfg(windows)] use ERROR = libc::ERROR_CALL_NOT_IMPLEMENTED;
+        #[cfg(unix)] use libc::EINVAL as ERROR;
+        #[cfg(windows)] use libc::ERROR_CALL_NOT_IMPLEMENTED as ERROR;
         match LocalIo::borrow() {
             Some(mut io) => f(io.get()),
             None => Err(IoError {

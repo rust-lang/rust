@@ -13,9 +13,9 @@
 //! data to rendered labels.
 
 /// For clarity, rename the graphviz crate locally to dot.
-use dot = graphviz;
+use graphviz as dot;
 pub use middle::cfg::graphviz::{Node, Edge};
-use cfg_dot = middle::cfg::graphviz;
+use middle::cfg::graphviz as cfg_dot;
 
 use middle::borrowck;
 use middle::borrowck::{BorrowckCtxt, LoanPath};

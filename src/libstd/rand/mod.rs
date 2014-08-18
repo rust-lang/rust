@@ -185,9 +185,9 @@ use result::{Ok, Err};
 use vec::Vec;
 
 #[cfg(not(target_word_size="64"))]
-use IsaacWordRng = core_rand::IsaacRng;
+use core_rand::IsaacRng as IsaacWordRng;
 #[cfg(target_word_size="64")]
-use IsaacWordRng = core_rand::Isaac64Rng;
+use core_rand::Isaac64Rng as IsaacWordRng;
 
 pub use core_rand::{Rand, Rng, SeedableRng, Open01, Closed01};
 pub use core_rand::{XorShiftRng, IsaacRng, Isaac64Rng};

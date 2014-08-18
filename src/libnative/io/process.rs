@@ -148,8 +148,8 @@ impl rtio::RtioProcess for Process {
     }
 
     fn kill(&mut self, signum: int) -> IoResult<()> {
-        #[cfg(unix)] use ERROR = libc::EINVAL;
-        #[cfg(windows)] use ERROR = libc::ERROR_NOTHING_TO_TERMINATE;
+        #[cfg(unix)] use libc::EINVAL as ERROR;
+        #[cfg(windows)] use libc::ERROR_NOTHING_TO_TERMINATE as ERROR;
 
         // On linux (and possibly other unices), a process that has exited will
         // continue to accept signals because it is "defunct". The delivery of
@@ -192,8 +192,8 @@ impl Drop for Process {
 }
 
 fn pipe() -> IoResult<(file::FileDesc, file::FileDesc)> {
-    #[cfg(unix)] use ERROR = libc::EMFILE;
-    #[cfg(windows)] use ERROR = libc::WSAEMFILE;
+    #[cfg(unix)] use libc::EMFILE as ERROR;
+    #[cfg(windows)] use libc::WSAEMFILE as ERROR;
     struct Closer { fd: libc::c_int }
 
     let os::Pipe { reader, writer } = match unsafe { os::pipe() } {

@@ -14,10 +14,10 @@ use codemap::{Span, respan};
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
+use fmt_macros as parse;
 use parse::token::InternedString;
 use parse::token;
 
-use parse = fmt_macros;
 use std::collections::HashMap;
 use std::gc::{Gc, GC};
 
