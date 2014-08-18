@@ -1422,7 +1422,7 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
         bindings_map: create_bindings_map(bcx, *arm.pats.get(0), discr_expr, &*arm.body)
     }).collect();
 
-    let mut static_inliner = StaticInliner { tcx: scope_cx.tcx() };
+    let mut static_inliner = StaticInliner::new(scope_cx.tcx());
     let mut matches = Vec::new();
     for arm_data in arm_datas.iter() {
         matches.extend(arm_data.arm.pats.iter().map(|&p| Match {

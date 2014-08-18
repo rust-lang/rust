@@ -23,7 +23,7 @@ use std::gc::{Gc, GC};
 use std::iter::AdditiveIterator;
 use std::iter::range_inclusive;
 use syntax::ast::*;
-use syntax::ast_util::{is_unguarded, walk_pat};
+use syntax::ast_util::walk_pat;
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use syntax::fold::{Folder, noop_fold_pat};
 use syntax::print::pprust::pat_to_string;
@@ -159,13 +159,31 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                 }
             }
 
-            // Third, check for unreachable arms.
-            check_arms(cx, arms.as_slice());
+            let mut static_inliner = StaticInliner::new(cx.tcx);
+            let inlined_arms = arms
+                .iter()
+                .map(|arm| Arm {
+                    pats: arm.pats.iter().map(|pat| {
+                        static_inliner.fold_pat(*pat)
+                    }).collect(),
+                    ..arm.clone()
+                })
+                .collect::<Vec<Arm>>();
+
+            if static_inliner.failed {
+                return;
+            }
+
+            // Third, check if there are any references to NaN that we should warn about.
+            check_for_static_nan(cx, inlined_arms.as_slice());
+
+            // Fourth, check for unreachable arms.
+            check_arms(cx, inlined_arms.as_slice());
 
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
             let pat_ty = node_id_to_type(cx.tcx, scrut.id);
-            if arms.is_empty() {
+            if inlined_arms.is_empty() {
                 if !type_is_empty(cx.tcx, pat_ty) {
                     // We know the type is inhabited, so this must be wrong
                     span_err!(cx.tcx.sess, ex.span, E0002,
@@ -177,19 +195,16 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                 return;
             }
 
-            let mut static_inliner = StaticInliner { tcx: cx.tcx };
-            let matrix: Matrix = arms
-                .iter()
-                .filter(|&arm| is_unguarded(arm))
-                .flat_map(|arm| arm.pats.iter())
-                .map(|pat| vec![static_inliner.fold_pat(*pat)])
+            let matrix: Matrix = inlined_arms
+                .move_iter()
+                .filter(|arm| arm.guard.is_none())
+                .flat_map(|arm| arm.pats.move_iter())
+                .map(|pat| vec![pat])
                 .collect();
             check_exhaustive(cx, ex.span, &matrix);
         },
         ExprForLoop(ref pat, _, _, _) => {
-            let mut static_inliner = StaticInliner {
-                tcx: cx.tcx
-            };
+            let mut static_inliner = StaticInliner::new(cx.tcx);
             match is_refutable(cx, static_inliner.fold_pat(*pat)) {
                 Some(uncovered_pat) => {
                     cx.tcx.sess.span_err(
@@ -216,19 +231,14 @@ fn is_expr_const_nan(tcx: &ty::ctxt, expr: &Expr) -> bool {
     }
 }
 
-// Check for unreachable patterns
-fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
-    let mut seen = Matrix(vec!());
-    let mut static_inliner = StaticInliner { tcx: cx.tcx };
+// Check that we do not match against a static NaN (#6804)
+fn check_for_static_nan(cx: &MatchCheckCtxt, arms: &[Arm]) {
     for arm in arms.iter() {
-        for pat in arm.pats.iter() {
-            let inlined = static_inliner.fold_pat(*pat);
-
-            // Check that we do not match against a static NaN (#6804)
-            walk_pat(&*inlined, |p| {
+        for &pat in arm.pats.iter() {
+            walk_pat(&*pat, |p| {
                 match p.node {
                     PatLit(expr) if is_expr_const_nan(cx.tcx, &*expr) => {
-                        span_warn!(cx.tcx.sess, pat.span, E0003,
+                        span_warn!(cx.tcx.sess, p.span, E0003,
                             "unmatchable NaN in pattern, \
                              use the is_nan method in a guard instead");
                     }
@@ -236,8 +246,16 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
                 }
                 true
             });
+        }
+    }
+}
 
-            let v = vec![inlined];
+// Check for unreachable patterns
+fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
+    let mut seen = Matrix(vec!());
+    for arm in arms.iter() {
+        for &pat in arm.pats.iter() {
+            let v = vec![pat];
             match is_useful(cx, &seen, v.as_slice(), LeaveOutWitness) {
                 NotUseful => span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern"),
                 Useful => (),
@@ -293,7 +311,17 @@ fn const_val_to_expr(value: &const_val) -> Gc<Expr> {
 }
 
 pub struct StaticInliner<'a> {
-    pub tcx: &'a ty::ctxt
+    pub tcx: &'a ty::ctxt,
+    pub failed: bool
+}
+
+impl<'a> StaticInliner<'a> {
+    pub fn new<'a>(tcx: &'a ty::ctxt) -> StaticInliner<'a> {
+        StaticInliner {
+            tcx: tcx,
+            failed: false
+        }
+    }
 }
 
 impl<'a> Folder for StaticInliner<'a> {
@@ -302,9 +330,17 @@ impl<'a> Folder for StaticInliner<'a> {
             PatIdent(..) | PatEnum(..) => {
                 let def = self.tcx.def_map.borrow().find_copy(&pat.id);
                 match def {
-                    Some(DefStatic(did, _)) => {
-                        let const_expr = lookup_const_by_id(self.tcx, did).unwrap();
-                        const_expr_to_pat(self.tcx, const_expr)
+                    Some(DefStatic(did, _)) => match lookup_const_by_id(self.tcx, did) {
+                        Some(const_expr) => box (GC) Pat {
+                            span: pat.span,
+                            ..(*const_expr_to_pat(self.tcx, const_expr)).clone()
+                        },
+                        None => {
+                            self.failed = true;
+                            span_err!(self.tcx.sess, pat.span, E0158,
+                                "extern statics cannot be referenced in patterns");
+                            pat
+                        }
                     },
                     _ => noop_fold_pat(pat, self)
                 }
@@ -813,7 +849,7 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
         LocalFor => "`for` loop"
     };
 
-    let mut static_inliner = StaticInliner { tcx: cx.tcx };
+    let mut static_inliner = StaticInliner::new(cx.tcx);
     match is_refutable(cx, static_inliner.fold_pat(loc.pat)) {
         Some(pat) => {
             span_err!(cx.tcx.sess, loc.pat.span, E0005,

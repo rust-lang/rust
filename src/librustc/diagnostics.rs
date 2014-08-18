@@ -139,7 +139,6 @@ register_diagnostics!(
     E0120,
     E0121,
     E0122,
-    E0123,
     E0124,
     E0125,
     E0126,
@@ -173,5 +172,6 @@ register_diagnostics!(
     E0154,
     E0155,
     E0156,
-    E0157
+    E0157,
+    E0158
 )
