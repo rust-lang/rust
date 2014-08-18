@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use alloc::arc::Arc;
-use mpsc = std::sync::mpsc_queue;
+use std::sync::mpsc_queue as mpsc;
 use std::kinds::marker;
 
 pub enum PopResult<T> {

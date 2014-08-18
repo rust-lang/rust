@@ -10,27 +10,27 @@
 
 
 use middle::def;
-use middle::subst;
 use middle::subst::{VecPerParamSpace,Subst};
-use middle::ty::{ReSkolemized, ReVar};
+use middle::subst;
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
-use middle::ty::{mt, t, ParamTy};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
+use middle::ty::{ReSkolemized, ReVar};
+use middle::ty::{mt, t, ParamTy};
 use middle::ty::{ty_bool, ty_char, ty_bot, ty_box, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
 use middle::ty::{ty_nil, ty_param, ty_ptr, ty_rptr, ty_tup};
-use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty::{ty_unboxed_closure};
+use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
-use middle::typeck;
-use middle::typeck::infer;
-use middle::typeck::infer::unify;
-use VV = middle::typeck::infer::unify::VarValue;
 use middle::typeck::infer::region_inference;
+use middle::typeck::infer::unify::VarValue as VV;
+use middle::typeck::infer::unify;
+use middle::typeck::infer;
+use middle::typeck;
 
-use std::rc::Rc;
 use std::gc::Gc;
+use std::rc::Rc;
 use syntax::abi;
 use syntax::ast_map;
 use syntax::codemap::{Span, Pos};

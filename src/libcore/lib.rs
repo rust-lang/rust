@@ -107,7 +107,7 @@ pub mod collections;
 /// Deprecated module in favor of `std::cell`
 pub mod ty {
     #[deprecated = "this type has been renamed to `UnsafeCell`"]
-    pub use Unsafe = cell::UnsafeCell;
+    pub use cell::UnsafeCell as Unsafe;
 }
 
 /* Core types and methods on primitives */

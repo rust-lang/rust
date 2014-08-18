@@ -13,13 +13,13 @@
 use core::prelude::*;
 
 use alloc::heap::{allocate, reallocate, deallocate};
-use RawSlice = core::raw::Slice;
 use core::cmp::max;
 use core::default::Default;
 use core::fmt;
 use core::mem;
 use core::num;
 use core::ptr;
+use core::raw::Slice as RawSlice;
 use core::uint;
 
 use {Mutable, MutableSeq};

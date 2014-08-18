@@ -16,7 +16,7 @@ use std::io::fs;
 use std::dynamic_lib::DynamicLibrary;
 use std::collections::HashSet;
 
-use myfs = util::fs;
+use util::fs as myfs;
 
 pub enum FileMatch { FileMatches, FileDoesntMatch }
 

@@ -25,8 +25,8 @@ pub enum SocketStatus {
 }
 
 pub fn timeout(desc: &'static str) -> IoError {
-    #[cfg(unix)] use ERROR = libc::ETIMEDOUT;
-    #[cfg(windows)] use ERROR = libc::ERROR_OPERATION_ABORTED;
+    #[cfg(unix)] use libc::ETIMEDOUT as ERROR;
+    #[cfg(windows)] use libc::ERROR_OPERATION_ABORTED as ERROR;
     IoError {
         code: ERROR as uint,
         extra: 0,
@@ -35,8 +35,8 @@ pub fn timeout(desc: &'static str) -> IoError {
 }
 
 pub fn short_write(n: uint, desc: &'static str) -> IoError {
-    #[cfg(unix)] use ERROR = libc::EAGAIN;
-    #[cfg(windows)] use ERROR = libc::ERROR_OPERATION_ABORTED;
+    #[cfg(unix)] use libc::EAGAIN as ERROR;
+    #[cfg(windows)] use libc::ERROR_OPERATION_ABORTED as ERROR;
     IoError {
         code: ERROR as uint,
         extra: n,
@@ -102,10 +102,10 @@ pub fn connect_timeout(fd: net::sock_t,
                        len: libc::socklen_t,
                        timeout_ms: u64) -> IoResult<()> {
     use std::os;
-    #[cfg(unix)]    use INPROGRESS = libc::EINPROGRESS;
-    #[cfg(windows)] use INPROGRESS = libc::WSAEINPROGRESS;
-    #[cfg(unix)]    use WOULDBLOCK = libc::EWOULDBLOCK;
-    #[cfg(windows)] use WOULDBLOCK = libc::WSAEWOULDBLOCK;
+    #[cfg(unix)]    use libc::EINPROGRESS as INPROGRESS;
+    #[cfg(windows)] use libc::WSAEINPROGRESS as INPROGRESS;
+    #[cfg(unix)]    use libc::EWOULDBLOCK as WOULDBLOCK;
+    #[cfg(windows)] use libc::WSAEWOULDBLOCK as WOULDBLOCK;
 
     // Make sure the call to connect() doesn't block
     try!(set_nonblocking(fd, true));

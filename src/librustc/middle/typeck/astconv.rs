@@ -53,15 +53,15 @@ use middle::const_eval;
 use middle::def;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem};
+use middle::resolve_lifetime as rl;
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::subst::{VecPerParamSpace};
 use middle::ty;
 use middle::ty_fold::TypeFolder;
-use middle::typeck::rscope::{ExplicitRscope, ImpliedSingleRscope};
 use middle::typeck::rscope::RegionScope;
+use middle::typeck::rscope::{ExplicitRscope, ImpliedSingleRscope};
 use middle::typeck::{TypeAndSubsts, infer, lookup_def_tcx, rscope};
 use middle::typeck;
-use rl = middle::resolve_lifetime;
 use util::ppaux::Repr;
 
 use std::rc::Rc;

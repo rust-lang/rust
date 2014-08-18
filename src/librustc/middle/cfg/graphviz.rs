@@ -12,7 +12,7 @@
 /// libgraphviz traits.
 
 /// For clarity, rename the graphviz crate locally to dot.
-use dot = graphviz;
+use graphviz as dot;
 
 use syntax::ast;
 use syntax::ast_map;

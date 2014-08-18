@@ -5385,7 +5385,6 @@ impl<'a> Parser<'a> {
         match self.token {
           token::EQ => {
             // x = foo::bar
-            // NOTE(stage0, #16461, pcwalton): Deprecate after snapshot.
             self.bump();
             let path_lo = self.span.lo;
             path = vec!(self.parse_ident());
@@ -5394,8 +5393,10 @@ impl<'a> Parser<'a> {
                 let id = self.parse_ident();
                 path.push(id);
             }
+            let span = mk_sp(path_lo, self.span.hi);
+            self.obsolete(span, ObsoleteImportRenaming);
             let path = ast::Path {
-                span: mk_sp(path_lo, self.span.hi),
+                span: span,
                 global: false,
                 segments: path.move_iter().map(|identifier| {
                     ast::PathSegment {

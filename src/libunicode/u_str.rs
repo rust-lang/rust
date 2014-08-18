@@ -225,7 +225,7 @@ impl<'a> Iterator<&'a str> for Graphemes<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
-        use gr = tables::grapheme;
+        use tables::grapheme as gr;
         if self.string.len() == 0 {
             return None;
         }
@@ -325,7 +325,7 @@ impl<'a> Iterator<&'a str> for Graphemes<'a> {
 impl<'a> DoubleEndedIterator<&'a str> for Graphemes<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> {
-        use gr = tables::grapheme;
+        use tables::grapheme as gr;
         if self.string.len() == 0 {
             return None;
         }

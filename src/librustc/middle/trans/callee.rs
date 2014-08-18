@@ -53,9 +53,9 @@ use middle::typeck::MethodCall;
 use util::ppaux::Repr;
 
 use std::gc::Gc;
+use syntax::abi as synabi;
 use syntax::ast;
 use syntax::ast_map;
-use synabi = syntax::abi;
 
 pub struct MethodData {
     pub llfn: ValueRef,
