@@ -75,6 +75,25 @@ use std::hash;
 use {Mutable, Set, MutableSet, MutableSeq};
 use vec::Vec;
 
+// Take two BitV's, and return iterators of their words, where the shorter one
+// has been padded with 0's
+macro_rules! match_words(
+    ($a_expr:expr, $b_expr:expr) => ({
+        let a = $a_expr;
+        let b = $b_expr;
+        let a_len = a.storage.len();
+        let b_len = b.storage.len();
+
+        // have to uselessly pretend to pad the longer one for type matching
+        if a_len < b_len {
+            (a.mask_words(0).chain(iter::Repeat::new(0u).enumerate().take(b_len).skip(a_len)),
+             b.mask_words(0).chain(iter::Repeat::new(0u).enumerate().take(0).skip(0)))
+        } else {
+            (a.mask_words(0).chain(iter::Repeat::new(0u).enumerate().take(0).skip(0)),
+             b.mask_words(0).chain(iter::Repeat::new(0u).enumerate().take(a_len).skip(b_len)))
+        }
+    })
+)
 
 static TRUE: bool = true;
 static FALSE: bool = false;
@@ -969,7 +988,7 @@ impl<'a> RandomAccessIterator<bool> for Bits<'a> {
 /// assert!(bv.eq_vec([true, true, false, true,
 ///                    false, false, false, false]));
 /// ```
-#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[deriving(Clone)]
 pub struct BitvSet(Bitv);
 
 impl Default for BitvSet {
@@ -991,6 +1010,32 @@ impl Extendable<bool> for BitvSet {
         self.get_mut_ref().extend(iterator);
     }
 }
+
+impl PartialOrd for BitvSet {
+    #[inline]
+    fn partial_cmp(&self, other: &BitvSet) -> Option<Ordering> {
+        let (a_iter, b_iter) = match_words!(self.get_ref(), other.get_ref());
+        iter::order::partial_cmp(a_iter, b_iter)
+    }
+}
+
+impl Ord for BitvSet {
+    #[inline]
+    fn cmp(&self, other: &BitvSet) -> Ordering {
+        let (a_iter, b_iter) = match_words!(self.get_ref(), other.get_ref());
+        iter::order::cmp(a_iter, b_iter)
+    }
+}
+
+impl cmp::PartialEq for BitvSet {
+    #[inline]
+    fn eq(&self, other: &BitvSet) -> bool {
+        let (a_iter, b_iter) = match_words!(self.get_ref(), other.get_ref());
+        iter::order::eq(a_iter, b_iter)
+    }
+}
+
+impl cmp::Eq for BitvSet {}
 
 impl BitvSet {
     /// Create a new bit vector set with initially no contents.
@@ -1141,10 +1186,18 @@ impl BitvSet {
         // Unwrap Bitvs
         let &BitvSet(ref mut self_bitv) = self;
         let &BitvSet(ref other_bitv) = other;
+
         // Expand the vector if necessary
         self_bitv.reserve(other_bitv.capacity());
-        // Apply values
-        for (i, w) in other_bitv.mask_words(0) {
+
+        // virtually pad other with 0's for equal lengths
+        let self_len = self_bitv.storage.len();
+        let other_len =  other_bitv.storage.len();
+        let mut other_words = other_bitv.mask_words(0)
+         .chain(iter::Repeat::new(0u).enumerate().take(self_len).skip(other_len));
+
+        // Apply values found in other
+        for (i, w) in other_words {
             let old = self_bitv.storage[i];
             let new = f(old, w);
             *self_bitv.storage.get_mut(i) = new;
@@ -2211,6 +2264,64 @@ mod tests {
         assert!(!set1.is_subset(&set2)); // { 2, 3 }  { 2, 4 }
         set1.remove(&300);
         assert!(set1.is_subset(&set2)); // { 2 }  { 2, 4 }
+    }
+
+    #[test]
+    fn test_bitv_set_intersect_with() {
+        // Explicitly 0'ed bits
+        let mut a = BitvSet::from_bitv(from_bytes([0b10100010]));
+        let mut b = BitvSet::from_bitv(from_bytes([0b00000000]));
+        let c = a.clone();
+        a.intersect_with(&b);
+        b.intersect_with(&c);
+        assert!(a.is_empty());
+        assert!(b.is_empty());
+
+        // Uninitialized bits should behave like 0's
+        let mut a = BitvSet::from_bitv(from_bytes([0b10100010]));
+        let mut b = BitvSet::new();
+        let c = a.clone();
+        a.intersect_with(&b);
+        b.intersect_with(&c);
+        assert!(a.is_empty());
+        assert!(b.is_empty());
+
+        // Standard
+        let mut a = BitvSet::from_bitv(from_bytes([0b10100010]));
+        let mut b = BitvSet::from_bitv(from_bytes([0b01100010]));
+        let c = a.clone();
+        a.intersect_with(&b);
+        b.intersect_with(&c);
+        assert_eq!(a.len(), 2);
+        assert_eq!(b.len(), 2);
+    }
+
+    #[test]
+    fn test_bitv_set_eq() {
+        let a = BitvSet::from_bitv(from_bytes([0b10100010]));
+        let b = BitvSet::from_bitv(from_bytes([0b00000000]));
+        let c = BitvSet::new();
+
+        assert!(a == a);
+        assert!(a != b);
+        assert!(a != c);
+        assert!(b == b);
+        assert!(b == c);
+        assert!(c == c);
+    }
+
+    #[test]
+    fn test_bitv_set_cmp() {
+        let a = BitvSet::from_bitv(from_bytes([0b10100010]));
+        let b = BitvSet::from_bitv(from_bytes([0b00000000]));
+        let c = BitvSet::new();
+
+        assert_eq!(a.cmp(&b), Greater);
+        assert_eq!(a.cmp(&c), Greater);
+        assert_eq!(b.cmp(&a), Less);
+        assert_eq!(b.cmp(&c), Equal);
+        assert_eq!(c.cmp(&a), Less);
+        assert_eq!(c.cmp(&b), Equal);
     }
 
     #[test]
