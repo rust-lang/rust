@@ -189,16 +189,16 @@
 #![allow(non_camel_case_types)]
 
 use back::abi;
-use mc = middle::mem_categorization;
 use driver::config::FullDebugInfo;
-use euv = middle::expr_use_visitor;
-use llvm;
 use llvm::{ValueRef, BasicBlockRef};
+use llvm;
+use middle::check_match::StaticInliner;
+use middle::check_match;
 use middle::const_eval;
 use middle::def;
-use middle::check_match;
-use middle::check_match::StaticInliner;
+use middle::expr_use_visitor as euv;
 use middle::lang_items::StrEqFnLangItem;
+use middle::mem_categorization as mc;
 use middle::pat_util::*;
 use middle::resolve::DefMap;
 use middle::trans::adt;

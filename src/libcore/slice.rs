@@ -50,7 +50,7 @@ use mem::size_of;
 use kinds::marker;
 use raw::Repr;
 // Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
-use RawSlice = raw::Slice;
+use raw::Slice as RawSlice;
 
 
 //

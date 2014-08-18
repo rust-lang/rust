@@ -80,59 +80,59 @@ use vec::Vec;
 
 /// Typedef for POSIX file paths.
 /// See `posix::Path` for more info.
-pub use PosixPath = self::posix::Path;
+pub use self::posix::Path as PosixPath;
 
 /// Typedef for Windows file paths.
 /// See `windows::Path` for more info.
-pub use WindowsPath = self::windows::Path;
+pub use self::windows::Path as WindowsPath;
 
 /// Typedef for the platform-native path type
 #[cfg(unix)]
-pub use Path = self::posix::Path;
+pub use self::posix::Path as Path;
 /// Typedef for the platform-native path type
 #[cfg(windows)]
-pub use Path = self::windows::Path;
+pub use self::windows::Path as Path;
 
 /// Typedef for the platform-native component iterator
 #[cfg(unix)]
-pub use Components = self::posix::Components;
+pub use self::posix::Components as Components;
 /// Typedef for the platform-native component iterator
 #[cfg(windows)]
-pub use Components = self::windows::Components;
+pub use self::windows::Components as Components;
 
 /// Typedef for the platform-native str component iterator
 #[cfg(unix)]
-pub use StrComponents = self::posix::StrComponents;
+pub use self::posix::StrComponents as StrComponents;
 /// Typedef for the platform-native str component iterator
 #[cfg(windows)]
-pub use StrComponents = self::windows::StrComponents;
+pub use self::windows::StrComponents as StrComponents;
 
 /// Alias for the platform-native separator character.
 #[cfg(unix)]
-pub use SEP = self::posix::SEP;
+pub use self::posix::SEP as SEP;
 /// Alias for the platform-native separator character.
 #[cfg(windows)]
-pub use SEP = self::windows::SEP;
+pub use self::windows::SEP as SEP;
 
 /// Alias for the platform-native separator byte.
 #[cfg(unix)]
-pub use SEP_BYTE = self::posix::SEP_BYTE;
+pub use self::posix::SEP_BYTE as SEP_BYTE;
 /// Alias for the platform-native separator byte.
 #[cfg(windows)]
-pub use SEP_BYTE = self::windows::SEP_BYTE;
+pub use self::windows::SEP_BYTE as SEP_BYTE;
 
 /// Typedef for the platform-native separator char func
 #[cfg(unix)]
-pub use is_sep = self::posix::is_sep;
+pub use self::posix::is_sep as is_sep;
 /// Typedef for the platform-native separator char func
 #[cfg(windows)]
-pub use is_sep = self::windows::is_sep;
+pub use self::windows::is_sep as is_sep;
 /// Typedef for the platform-native separator byte func
 #[cfg(unix)]
-pub use is_sep_byte = self::posix::is_sep_byte;
+pub use self::posix::is_sep_byte as is_sep_byte;
 /// Typedef for the platform-native separator byte func
 #[cfg(windows)]
-pub use is_sep_byte = self::windows::is_sep_byte;
+pub use self::windows::is_sep_byte as is_sep_byte;
 
 pub mod posix;
 pub mod windows;

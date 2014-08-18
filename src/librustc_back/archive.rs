@@ -16,7 +16,7 @@ use std::io;
 use std::os;
 use std::str;
 use syntax::abi;
-use ErrorHandler = syntax::diagnostic::Handler;
+use syntax::diagnostic::Handler as ErrorHandler;
 
 pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
 

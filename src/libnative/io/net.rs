@@ -210,8 +210,8 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             })
         }
         _ => {
-            #[cfg(unix)] use ERROR = libc::EINVAL;
-            #[cfg(windows)] use ERROR = libc::WSAEINVAL;
+            #[cfg(unix)] use libc::EINVAL as ERROR;
+            #[cfg(windows)] use libc::WSAEINVAL as ERROR;
             Err(IoError {
                 code: ERROR as uint,
                 extra: 0,

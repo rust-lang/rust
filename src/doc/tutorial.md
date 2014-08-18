@@ -3112,7 +3112,7 @@ use farm::*;
 However, that's not all. You can also rename an item while you're bringing it into scope:
 
 ~~~
-use egg_layer = farm::chicken;
+use farm::chicken as egg_layer;
 # mod farm { pub fn chicken() { println!("Laying eggs is fun!")  } }
 // ...
 
@@ -3335,7 +3335,7 @@ you just have to import it with an `use` statement.
 For example, it re-exports `range` which is defined in `std::iter::range`:
 
 ~~~
-use iter_range = std::iter::range;
+use std::iter::range as iter_range;
 
 fn main() {
     // `range` is imported by default

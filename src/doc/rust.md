@@ -1801,7 +1801,7 @@ module through the rules above. It essentially allows public access into the
 re-exported item. For example, this program is valid:
 
 ~~~~
-pub use api = self::implementation;
+pub use self::implementation as api;
 
 mod implementation {
     pub fn f() {}

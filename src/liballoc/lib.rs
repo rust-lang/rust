@@ -86,7 +86,7 @@ extern crate libc;
 
 #[deprecated = "use boxed instead"]
 #[cfg(not(test))]
-pub use owned = boxed;
+pub use boxed as owned;
 
 // Heaps provided for low-level allocation strategies
 

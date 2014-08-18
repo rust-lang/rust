@@ -10,7 +10,7 @@
 
 use clean;
 
-use dl = std::dynamic_lib;
+use std::dynamic_lib as dl;
 use serialize::json;
 use std::mem;
 use std::string::String;
