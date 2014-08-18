@@ -169,6 +169,10 @@ sequence (`/**`), are interpreted as a special syntax for `doc`
 `#[doc="..."]` around the body of the comment (this includes the comment
 characters themselves, ie `/// Foo` turns into `#[doc="/// Foo"]`).
 
+`//!` comments apply to the parent of the comment, rather than the item that
+follows. `//!` comments are usually used to display information on the crate
+index page.
+
 Non-doc comments are interpreted as a form of whitespace.
 
 ## Whitespace
