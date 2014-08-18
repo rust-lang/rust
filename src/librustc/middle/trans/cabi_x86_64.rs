@@ -176,11 +176,15 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
     }
 
     fn classify_struct(tys: &[Type],
-                       cls: &mut [RegClass], i: uint,
-                       off: uint) {
+                       cls: &mut [RegClass],
+                       i: uint,
+                       off: uint,
+                       packed: bool) {
         let mut field_off = off;
         for ty in tys.iter() {
-            field_off = align(field_off, *ty);
+            if !packed {
+                field_off = align(field_off, *ty);
+            }
             classify(*ty, cls, i, field_off);
             field_off += ty_size(*ty);
         }
@@ -219,7 +223,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                 unify(cls, ix + off / 8u, SSEDs);
             }
             Struct => {
-                classify_struct(ty.field_types().as_slice(), cls, ix, off);
+                classify_struct(ty.field_types().as_slice(), cls, ix, off, ty.is_packed());
             }
             Array => {
                 let len = ty.array_length();
