@@ -244,7 +244,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Moves a value out of an option type and returns it, consuming the `Option`.
+    /// Returns the inner `T` of a `Some(T)`.
     ///
     /// # Failure
     ///
