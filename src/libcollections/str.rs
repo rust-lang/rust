@@ -44,17 +44,6 @@ the string is valid for the `'static` lifetime, otherwise known as the
 lifetime of the entire program. As can be inferred from the type, these static
 strings are not mutable.
 
-# Mutability
-
-Many languages have immutable strings by default, and Rust has a particular
-flavor on this idea. As with the rest of Rust types, strings are immutable by
-default. If a string is declared as `mut`, however, it may be mutated. This
-works the same way as the rest of Rust's type system in the sense that if
-there's a mutable reference to a string, there may only be one mutable reference
-to that string. With these guarantees, strings can easily transition between
-being mutable/immutable with the same benefits of having mutable strings in
-other languages.
-
 # Representation
 
 Rust's string type, `str`, is a sequence of unicode scalar values encoded as a
