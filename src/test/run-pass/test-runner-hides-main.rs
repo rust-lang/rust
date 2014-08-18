@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // compile-flags:--test
-// ignore-windows #10872
 // ignore-pretty: does not work well with `--test`
 
 // Building as a test runner means that a synthetic main will be run,

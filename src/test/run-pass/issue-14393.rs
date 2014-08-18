@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-windows: FIXME #13793
-
 fn main() {
     match ("", 1u) {
         (_, 42u) => (),

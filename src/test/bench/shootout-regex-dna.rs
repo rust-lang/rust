@@ -38,8 +38,6 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// FIXME(#13725) windows needs fixing.
-// ignore-windows
 // ignore-stage1
 // ignore-cross-compile #12102
 
