@@ -428,7 +428,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
 
 pub fn append_configuration(cfg: &mut ast::CrateConfig,
                             name: InternedString) {
-    if !cfg.iter().any(|mi| mi.name() == name) {
+    if !cfg.iter().any(ref |mi| mi.name() == name) {
         cfg.push(attr::mk_word_item(name))
     }
 }

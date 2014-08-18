@@ -67,8 +67,8 @@ impl Process {
             }
         }
 
-        let ret = with_argv(cfg.program, cfg.args, |argv| {
-            with_env(cfg.env, |envp| {
+        let ret = with_argv(cfg.program, cfg.args, ref |argv| {
+            with_env(cfg.env, ref |envp| {
                 let mut flags = 0;
                 if cfg.uid.is_some() {
                     flags |= uvll::PROCESS_SETUID;

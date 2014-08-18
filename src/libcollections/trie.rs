@@ -215,12 +215,18 @@ impl<T> TrieMap<T> {
     /// let map: TrieMap<&str> = [(1, "a"), (2, "b"), (3, "c")].iter().map(|&x| x).collect();
     ///
     /// let mut vec = Vec::new();
-    /// assert_eq!(true, map.each_reverse(|&key, &value| { vec.push((key, value)); true }));
+    /// assert_eq!(true, map.each_reverse(ref |&key, &value| {
+    ///     vec.push((key, value));
+    ///     true
+    /// }));
     /// assert_eq!(vec, vec![(3, "c"), (2, "b"), (1, "a")]);
     ///
     /// // Stop when we reach 2
     /// let mut vec = Vec::new();
-    /// assert_eq!(false, map.each_reverse(|&key, &value| { vec.push(value); key != 2 }));
+    /// assert_eq!(false, map.each_reverse(ref |&key, &value| {
+    ///     vec.push(value);
+    ///     key != 2
+    /// }));
     /// assert_eq!(vec, vec!["c", "b"]);
     /// ```
     #[inline]
@@ -640,12 +646,12 @@ impl TrieSet {
     /// let set: TrieSet = [1, 2, 3, 4, 5].iter().map(|&x| x).collect();
     ///
     /// let mut vec = Vec::new();
-    /// assert_eq!(true, set.each_reverse(|&x| { vec.push(x); true }));
+    /// assert_eq!(true, set.each_reverse(ref |&x| { vec.push(x); true }));
     /// assert_eq!(vec, vec![5, 4, 3, 2, 1]);
     ///
     /// // Stop when we reach 3
     /// let mut vec = Vec::new();
-    /// assert_eq!(false, set.each_reverse(|&x| { vec.push(x); x != 3 }));
+    /// assert_eq!(false, set.each_reverse(ref |&x| { vec.push(x); x != 3 }));
     /// assert_eq!(vec, vec![5, 4, 3]);
     /// ```
     #[inline]
@@ -762,7 +768,9 @@ impl<T> TrieNode<T> {
     fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
         for elt in self.children.iter().rev() {
             match *elt {
-                Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
+                Internal(ref x) => if !x.each_reverse(ref |i,t| f(i,t)) {
+                    return false
+                },
                 External(k, ref v) => if !f(&k, v) { return false },
                 Nothing => ()
             }
@@ -1113,7 +1121,7 @@ mod test_map {
         assert!(m.insert(1, 2));
 
         let mut n = 4;
-        m.each_reverse(|k, v| {
+        m.each_reverse(ref |k, v| {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n -= 1;
@@ -1130,7 +1138,7 @@ mod test_map {
         }
 
         let mut n = uint::MAX - 1;
-        m.each_reverse(|k, v| {
+        m.each_reverse(ref |k, v| {
             if n == uint::MAX - 5000 { false } else {
                 assert!(n > uint::MAX - 5000);
 
@@ -1448,7 +1456,7 @@ mod bench_map {
             m.insert(rng.gen(), rng.gen());
         }
 
-        b.iter(|| for _ in m.iter() {})
+        b.iter(ref || for _ in m.iter() {})
     }
 
     #[bench]
@@ -1459,7 +1467,7 @@ mod bench_map {
             m.insert(rng.gen(), rng.gen());
         }
 
-        b.iter(|| for _ in m.iter() {})
+        b.iter(ref || for _ in m.iter() {})
     }
 
     #[bench]
@@ -1470,7 +1478,7 @@ mod bench_map {
             m.insert(rng.gen(), rng.gen());
         }
 
-        b.iter(|| {
+        b.iter(ref || {
                 for _ in range(0u, 10) {
                     m.lower_bound(rng.gen());
                 }
@@ -1485,7 +1493,7 @@ mod bench_map {
             m.insert(rng.gen(), rng.gen());
         }
 
-        b.iter(|| {
+        b.iter(ref || {
                 for _ in range(0u, 10) {
                     m.upper_bound(rng.gen());
                 }
@@ -1497,7 +1505,7 @@ mod bench_map {
         let mut m = TrieMap::<[uint, .. 10]>::new();
         let mut rng = weak_rng();
 
-        b.iter(|| {
+        b.iter(ref || {
                 for _ in range(0u, 1000) {
                     m.insert(rng.gen(), [1, .. 10]);
                 }
@@ -1508,7 +1516,7 @@ mod bench_map {
         let mut m = TrieMap::<[uint, .. 10]>::new();
         let mut rng = weak_rng();
 
-        b.iter(|| {
+        b.iter(ref || {
                 for _ in range(0u, 1000) {
                     // only have the last few bits set.
                     m.insert(rng.gen::<uint>() & 0xff_ff, [1, .. 10]);
@@ -1521,7 +1529,7 @@ mod bench_map {
         let mut m = TrieMap::<()>::new();
         let mut rng = weak_rng();
 
-        b.iter(|| {
+        b.iter(ref || {
                 for _ in range(0u, 1000) {
                     m.insert(rng.gen(), ());
                 }
@@ -1532,7 +1540,7 @@ mod bench_map {
         let mut m = TrieMap::<()>::new();
         let mut rng = weak_rng();
 
-        b.iter(|| {
+        b.iter(ref || {
                 for _ in range(0u, 1000) {
                     // only have the last few bits set.
                     m.insert(rng.gen::<uint>() & 0xff_ff, ());

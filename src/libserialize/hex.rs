@@ -200,7 +200,7 @@ mod tests {
     pub fn bench_to_hex(b: &mut Bencher) {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        b.iter(|| {
+        b.iter(ref || {
             s.as_bytes().to_hex();
         });
         b.bytes = s.len() as u64;
@@ -211,7 +211,7 @@ mod tests {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_hex();
-        b.iter(|| {
+        b.iter(ref || {
             sb.as_slice().from_hex().unwrap();
         });
         b.bytes = sb.len() as u64;

@@ -154,7 +154,7 @@ impl rtio::RtioFileStream for FileDesc {
 
     fn fstat(&mut self) -> IoResult<rtio::FileStat> {
         let mut stat: libc::stat = unsafe { mem::zeroed() };
-        match retry(|| unsafe { libc::fstat(self.fd(), &mut stat) }) {
+        match retry(ref || unsafe { libc::fstat(self.fd(), &mut stat) }) {
             0 => Ok(mkstat(&stat)),
             _ => Err(super::last_error()),
         }
@@ -428,7 +428,7 @@ pub fn readlink(p: &CString) -> IoResult<CString> {
         len = 1024; // FIXME: read PATH_MAX from C ffi?
     }
     let mut buf: Vec<u8> = Vec::with_capacity(len as uint);
-    match retry(|| unsafe {
+    match retry(ref || unsafe {
         libc::readlink(p, buf.as_ptr() as *mut libc::c_char,
                        len as libc::size_t) as libc::c_int
     }) {
@@ -442,13 +442,13 @@ pub fn readlink(p: &CString) -> IoResult<CString> {
 }
 
 pub fn symlink(src: &CString, dst: &CString) -> IoResult<()> {
-    super::mkerr_libc(retry(|| unsafe {
+    super::mkerr_libc(retry(ref || unsafe {
         libc::symlink(src.as_ptr(), dst.as_ptr())
     }))
 }
 
 pub fn link(src: &CString, dst: &CString) -> IoResult<()> {
-    super::mkerr_libc(retry(|| unsafe {
+    super::mkerr_libc(retry(ref || unsafe {
         libc::link(src.as_ptr(), dst.as_ptr())
     }))
 }
@@ -489,7 +489,7 @@ fn mkstat(stat: &libc::stat) -> rtio::FileStat {
 
 pub fn stat(p: &CString) -> IoResult<rtio::FileStat> {
     let mut stat: libc::stat = unsafe { mem::zeroed() };
-    match retry(|| unsafe { libc::stat(p.as_ptr(), &mut stat) }) {
+    match retry(ref || unsafe { libc::stat(p.as_ptr(), &mut stat) }) {
         0 => Ok(mkstat(&stat)),
         _ => Err(super::last_error()),
     }
@@ -497,7 +497,7 @@ pub fn stat(p: &CString) -> IoResult<rtio::FileStat> {
 
 pub fn lstat(p: &CString) -> IoResult<rtio::FileStat> {
     let mut stat: libc::stat = unsafe { mem::zeroed() };
-    match retry(|| unsafe { libc::lstat(p.as_ptr(), &mut stat) }) {
+    match retry(ref || unsafe { libc::lstat(p.as_ptr(), &mut stat) }) {
         0 => Ok(mkstat(&stat)),
         _ => Err(super::last_error()),
     }
@@ -508,7 +508,7 @@ pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
         actime: (atime / 1000) as libc::time_t,
         modtime: (mtime / 1000) as libc::time_t,
     };
-    super::mkerr_libc(retry(|| unsafe {
+    super::mkerr_libc(retry(ref || unsafe {
         libc::utime(p.as_ptr(), &buf)
     }))
 }

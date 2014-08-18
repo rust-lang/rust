@@ -129,7 +129,7 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
     ty::each_bound_trait_and_supertraits(tcx,
                                          type_param_bounds.trait_bounds
                                                           .as_slice(),
-                                         |trait_ref| {
+                                         ref |trait_ref| {
         // ...and here trait_ref is each bound that was declared on A,
         // expressed in terms of the type parameters.
 
@@ -142,7 +142,8 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
 
         // Substitute the values of the type parameters that may
         // appear in the bound.
-        let trait_ref = substs.as_ref().map_or(trait_ref.clone(), |substs| {
+        let trait_ref = substs.as_ref()
+                              .map_or(trait_ref.clone(), ref |substs| {
             debug!("about to subst: {}, {}",
                    trait_ref.repr(tcx), substs.repr(tcx));
             trait_ref.subst(tcx, *substs)
@@ -283,7 +284,7 @@ fn lookup_vtable_from_bounds(vcx: &VtableContext,
 
     let mut n_bound = 0;
     let mut ret = None;
-    ty::each_bound_trait_and_supertraits(tcx, bounds, |bound_trait_ref| {
+    ty::each_bound_trait_and_supertraits(tcx, bounds, ref |bound_trait_ref| {
         debug!("checking bounds trait {}",
                bound_trait_ref.repr(vcx.tcx()));
 

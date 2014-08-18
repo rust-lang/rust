@@ -299,7 +299,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
             let opaqueptrty = ty::mk_ptr(ccx.tcx(), ty::mt { ty: opaquety,
                                                            mutbl: ast::MutImmutable });
 
-            let make_get_disr = || {
+            let make_get_disr = ref || {
                 let sym = mangle_internal_name_by_path_and_seq(
                     ast_map::Values([].iter()).chain(None), "get_disr");
 
@@ -334,7 +334,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
 
             let enum_args = (vec!(self.c_uint(variants.len()), make_get_disr()))
                             .append(self.c_size_and_align(t).as_slice());
-            self.bracketed("enum", enum_args.as_slice(), |this| {
+            self.bracketed("enum", enum_args.as_slice(), ref |this| {
                 for (i, v) in variants.iter().enumerate() {
                     let name = token::get_ident(v.name);
                     let variant_args = [this.c_uint(i),
@@ -343,11 +343,15 @@ impl<'a, 'b> Reflector<'a, 'b> {
                                          this.c_slice(name)];
                     this.bracketed("enum_variant",
                                    variant_args,
-                                   |this| {
+                                   ref |this| {
                         for (j, a) in v.args.iter().enumerate() {
                             let bcx = this.bcx;
                             let null = C_null(llptrty);
-                            let ptr = adt::trans_field_ptr(bcx, &*repr, null, v.disr_val, j);
+                            let ptr = adt::trans_field_ptr(bcx,
+                                                           &*repr,
+                                                           null,
+                                                           v.disr_val,
+                                                           j);
                             let offset = p2i(ccx, ptr);
                             let field_args = [this.c_uint(j),
                                                offset,

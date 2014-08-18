@@ -309,14 +309,14 @@ pub fn trans_for<'a>(
                                                   false,
                                                   option_cleanup_scope_id,
                                                   (),
-                                                  |(), bcx, lloption| {
+                                                  ref |(), bcx, lloption| {
         let Result {
             bcx: bcx,
             val: _
         } = callee::trans_call_inner(bcx,
                                      Some(loop_info),
                                      method_type,
-                                     |bcx, arg_cleanup_scope| {
+                                     ref |bcx, arg_cleanup_scope| {
                                          meth::trans_method_callee(
                                              bcx,
                                              method_call,

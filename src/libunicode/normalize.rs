@@ -53,7 +53,7 @@ fn d(c: char, i: |char|, k: bool) {
     match bsearch_table(c, canonical_table) {
         Some(canon) => {
             for x in canon.iter() {
-                d(*x, |b| i(b), k);
+                d(*x, ref |b| i(b), k);
             }
             return;
         }
@@ -67,7 +67,7 @@ fn d(c: char, i: |char|, k: bool) {
     match bsearch_table(c, compatibility_table) {
         Some(compat) => {
             for x in compat.iter() {
-                d(*x, |b| i(b), k);
+                d(*x, ref |b| i(b), k);
             }
             return;
         }

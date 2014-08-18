@@ -1058,7 +1058,7 @@ mod bench {
 
     #[bench]
     pub fn sum_three_items(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             [1e20f64, 1.5f64, -1e20f64].sum();
         })
     }
@@ -1067,7 +1067,7 @@ mod bench {
         let nums = [-1e30f64, 1e60, 1e30, 1.0, -1e60];
         let v = Vec::from_fn(500, |i| nums[i%5]);
 
-        b.iter(|| {
+        b.iter(ref || {
             v.as_slice().sum();
         })
     }

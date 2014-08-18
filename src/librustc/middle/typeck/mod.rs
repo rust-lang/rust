@@ -483,20 +483,20 @@ pub fn check_crate(tcx: &ty::ctxt,
         tcx: tcx
     };
 
-    time(time_passes, "type collecting", (), |_|
+    time(time_passes, "type collecting", (), ref |_|
         collect::collect_item_types(&ccx, krate));
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
     tcx.sess.abort_if_errors();
 
-    time(time_passes, "variance inference", (), |_|
+    time(time_passes, "variance inference", (), ref |_|
          variance::infer_variance(tcx, krate));
 
-    time(time_passes, "coherence checking", (), |_|
+    time(time_passes, "coherence checking", (), ref |_|
         coherence::check_coherence(&ccx, krate));
 
-    time(time_passes, "type checking", (), |_|
+    time(time_passes, "type checking", (), ref |_|
         check::check_item_types(&ccx, krate));
 
     check_for_entry_fn(&ccx);

@@ -31,7 +31,7 @@ impl<A> iterable<A> for Vec<A> {
 
 fn length<A, T: iterable<A>>(x: T) -> uint {
     let mut len = 0;
-    x.iterate(|_y| {
+    x.iterate(ref |_y| {
         len += 1;
         true
     });
@@ -41,7 +41,7 @@ fn length<A, T: iterable<A>>(x: T) -> uint {
 pub fn main() {
     let x: Vec<int> = vec!(0,1,2,3);
     // Call a method
-    x.iterate(|y| { assert!(*x.get(*y as uint) == *y); true });
+    x.iterate(ref |y| { assert!(*x.get(*y as uint) == *y); true });
     // Call a parameterized function
     assert_eq!(length(x.clone()), x.len());
     // Call a parameterized function, with type arguments that require
@@ -51,7 +51,7 @@ pub fn main() {
     // Now try it with a type that *needs* to be borrowed
     let z = [0,1,2,3];
     // Call a method
-    z.iterate(|y| { assert!(z[*y as uint] == *y); true });
+    z.iterate(ref |y| { assert!(z[*y as uint] == *y); true });
     // Call a parameterized function
     assert_eq!(length::<int, &[int]>(z), z.len());
 }

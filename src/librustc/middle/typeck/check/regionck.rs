@@ -649,7 +649,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     match ty::get(function_type).sty {
         ty::ty_closure(box ty::ClosureTy {
                 store: ty::RegionTraitStore(region, _), ..}) => {
-            freevars::with_freevars(tcx, expr.id, |freevars| {
+            freevars::with_freevars(tcx, expr.id, ref |freevars| {
                 if freevars.is_empty() {
                     // No free variables means that the environment
                     // will be NULL at runtime and hence the closure
@@ -666,7 +666,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             });
         }
         ty::ty_unboxed_closure(_, region) => {
-            freevars::with_freevars(tcx, expr.id, |freevars| {
+            freevars::with_freevars(tcx, expr.id, ref |freevars| {
                 // No free variables means that there is no environment and
                 // hence the closure has static lifetime. Otherwise, the
                 // closure must not outlive the variables it closes over
@@ -1018,9 +1018,14 @@ fn constrain_regions_in_type_of_node(
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty0 = rcx.resolve_node_type(id);
-    let ty = ty::adjust_ty(tcx, origin.span(), id, ty0,
+    let ty = ty::adjust_ty(tcx,
+                           origin.span(),
+                           id,
+                           ty0,
                            rcx.fcx.inh.adjustments.borrow().find(&id),
-                           |method_call| rcx.resolve_method_type(method_call));
+                           ref |method_call| {
+                               rcx.resolve_method_type(method_call)
+                           });
     debug!("constrain_regions_in_type_of_node(\
             ty={}, ty0={}, id={}, minimum_lifetime={:?})",
            ty_to_string(tcx, ty), ty_to_string(tcx, ty0),

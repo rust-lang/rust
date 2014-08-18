@@ -2994,7 +2994,7 @@ mod bench {
     fn new_drop(b : &mut Bencher) {
         use super::HashMap;
 
-        b.iter(|| {
+        b.iter(ref || {
             let m : HashMap<int, int> = HashMap::new();
             assert_eq!(m.len(), 0);
         })
@@ -3004,7 +3004,7 @@ mod bench {
     fn new_insert_drop(b : &mut Bencher) {
         use super::HashMap;
 
-        b.iter(|| {
+        b.iter(ref || {
             let mut m = HashMap::new();
             m.insert(0i, 0i);
             assert_eq!(m.len(), 1);
@@ -3023,7 +3023,7 @@ mod bench {
 
         let mut k = 1001;
 
-        b.iter(|| {
+        b.iter(ref || {
             m.insert(k, k);
             k += 1;
         });
@@ -3039,7 +3039,7 @@ mod bench {
             m.insert(i, i);
         }
 
-        b.iter(|| {
+        b.iter(ref || {
             for i in range_inclusive(1i, 1000) {
                 m.contains_key(&i);
             }
@@ -3056,7 +3056,7 @@ mod bench {
             m.insert(i, i);
         }
 
-        b.iter(|| {
+        b.iter(ref || {
             for i in range_inclusive(1001i, 2000) {
                 m.contains_key(&i);
             }
@@ -3075,7 +3075,7 @@ mod bench {
 
         let mut k = 1i;
 
-        b.iter(|| {
+        b.iter(ref || {
             m.pop(&k);
             m.insert(k + 1000, k + 1000);
             k += 1;
@@ -3094,7 +3094,7 @@ mod bench {
 
         let mut k = 1i;
 
-        b.iter(|| {
+        b.iter(ref || {
             m.find(&(k + 400));
             m.find(&(k + 2000));
             m.pop(&k);

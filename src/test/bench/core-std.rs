@@ -49,7 +49,9 @@ fn maybe_run_test(argv: &[String], name: String, test: ||) {
     if os::getenv("RUST_BENCH").is_some() {
         run_test = true
     } else if argv.len() > 0 {
-        run_test = argv.iter().any(|x| x == &"all".to_string()) || argv.iter().any(|x| x == &name)
+        run_test = argv.iter()
+                       .any(ref |x| x == &"all".to_string()) ||
+                    argv.iter().any(ref |x| x == &name)
     }
 
     if !run_test {

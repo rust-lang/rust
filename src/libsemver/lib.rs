@@ -208,13 +208,13 @@ fn expect(ch: Option<char>, c: char) -> Option<()> {
 }
 
 fn parse_iter<T: Iterator<char>>(rdr: &mut T) -> Option<Version> {
-    let maybe_vers = take_num(rdr).and_then(|(major, ch)| {
+    let maybe_vers = take_num(rdr).and_then(ref |(major, ch)| {
         expect(ch, '.').and_then(|_| Some(major))
-    }).and_then(|major| {
+    }).and_then(ref |major| {
         take_num(rdr).and_then(|(minor, ch)| {
             expect(ch, '.').and_then(|_| Some((major, minor)))
         })
-    }).and_then(|(major, minor)| {
+    }).and_then(ref |(major, minor)| {
         take_num(rdr).and_then(|(patch, ch)| {
            Some((major, minor, patch, ch))
         })

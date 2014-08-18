@@ -530,7 +530,9 @@ mod tests {
             let ptr = input.as_ptr();
             let expected = ["zero", "one"];
             let mut it = expected.iter();
-            let result = from_c_multistring(ptr as *const libc::c_char, None, |c| {
+            let result = from_c_multistring(ptr as *const libc::c_char,
+                                            None,
+                                            ref |c| {
                 let cbytes = c.as_bytes_no_nul();
                 assert_eq!(cbytes, it.next().unwrap().as_bytes());
             });
@@ -694,7 +696,7 @@ mod tests {
         }
 
         let mut c_: Option<CString> = None;
-        foo(|c| {
+        foo(ref |c| {
             c_ = Some(c.clone());
             c.clone();
             // force a copy, reading the memory
@@ -735,7 +737,7 @@ mod bench {
         Mary had a little lamb, Little lamb";
 
     fn bench_to_string(b: &mut Bencher, s: &str) {
-        b.iter(|| {
+        b.iter(ref || {
             let c_str = s.to_c_str();
             check(s, c_str.as_ptr());
         })
@@ -757,7 +759,7 @@ mod bench {
     }
 
     fn bench_to_c_str_unchecked(b: &mut Bencher, s: &str) {
-        b.iter(|| {
+        b.iter(ref || {
             let c_str = unsafe { s.to_c_str_unchecked() };
             check(s, c_str.as_ptr())
         })
@@ -779,8 +781,8 @@ mod bench {
     }
 
     fn bench_with_c_str(b: &mut Bencher, s: &str) {
-        b.iter(|| {
-            s.with_c_str(|c_str_buf| check(s, c_str_buf))
+        b.iter(ref || {
+            s.with_c_str(ref |c_str_buf| check(s, c_str_buf))
         })
     }
 
@@ -800,9 +802,9 @@ mod bench {
     }
 
     fn bench_with_c_str_unchecked(b: &mut Bencher, s: &str) {
-        b.iter(|| {
+        b.iter(ref || {
             unsafe {
-                s.with_c_str_unchecked(|c_str_buf| check(s, c_str_buf))
+                s.with_c_str_unchecked(ref |c_str_buf| check(s, c_str_buf))
             }
         })
     }

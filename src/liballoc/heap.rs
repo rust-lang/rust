@@ -331,7 +331,7 @@ mod bench {
 
     #[bench]
     fn alloc_owned_small(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             box 10i
         })
     }

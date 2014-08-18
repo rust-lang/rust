@@ -143,7 +143,7 @@ fn keep_going(data: &[u8], f: |*const u8, uint| -> i64) -> i64 {
     let mut data = data.as_ptr();
     let mut amt = origamt;
     while amt > 0 {
-        let ret = retry(|| f(data, amt) as libc::c_int);
+        let ret = retry(ref || f(data, amt) as libc::c_int);
         if ret == 0 {
             break
         } else if ret != -1 {

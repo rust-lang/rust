@@ -631,7 +631,7 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 ///         let contents = try!(fs::readdir(dir));
 ///         for entry in contents.iter() {
 ///             if entry.is_dir() {
-///                 try!(visit_dirs(entry, |p| cb(p)));
+///                 try!(visit_dirs(entry, ref |p| cb(p)));
 ///             } else {
 ///                 cb(entry);
 ///             }
@@ -682,8 +682,11 @@ impl Iterator<Path> for Directories {
                 if path.is_dir() {
                     let result = readdir(&path)
                         .update_err("couldn't advance Directories iterator",
-                                    |e| format!("{}; path={}",
-                                                e, path.display()));
+                                    ref |e| {
+                                        format!("{}; path={}",
+                                                e,
+                                                path.display())
+                                    });
 
                     match result {
                         Ok(dirs) => { self.stack.push_all_move(dirs); }

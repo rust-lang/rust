@@ -645,7 +645,7 @@ impl<'a> Iterator<u16> for Utf16CodeUnits<'a> {
         }
 
         let mut buf = [0u16, ..2];
-        self.chars.next().map(|ch| {
+        self.chars.next().map(ref |ch| {
             let n = ch.encode_utf16(buf.as_mut_slice()).unwrap_or(0);
             if n == 2 { self.extra = buf[1]; }
             buf[0]
@@ -1817,11 +1817,11 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn trim_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
-        let cur = match self.find(|c: char| !to_trim.matches(c)) {
+        let cur = match self.find(ref |c: char| !to_trim.matches(c)) {
             None => "",
             Some(i) => unsafe { raw::slice_bytes(*self, i, self.len()) }
         };
-        match cur.rfind(|c: char| !to_trim.matches(c)) {
+        match cur.rfind(ref |c: char| !to_trim.matches(c)) {
             None => "",
             Some(i) => {
                 let right = cur.char_range_at(i).next;
@@ -1832,7 +1832,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn trim_left_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
-        match self.find(|c: char| !to_trim.matches(c)) {
+        match self.find(ref |c: char| !to_trim.matches(c)) {
             None => "",
             Some(first) => unsafe { raw::slice_bytes(*self, first, self.len()) }
         }
@@ -1840,7 +1840,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn trim_right_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
-        match self.rfind(|c: char| !to_trim.matches(c)) {
+        match self.rfind(ref |c: char| !to_trim.matches(c)) {
             None => "",
             Some(last) => {
                 let next = self.char_range_at(last).next;

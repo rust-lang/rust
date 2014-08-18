@@ -255,7 +255,8 @@ fn build_closure<'a>(bcx0: &'a Block<'a>,
 fn load_environment<'a>(bcx: &'a Block<'a>,
                         cdata_ty: ty::t,
                         freevars: &Vec<freevars::freevar_entry>,
-                        store: ty::TraitStore)
+                        store: ty::TraitStore,
+                        capture_mode: freevars::CaptureMode)
                         -> &'a Block<'a> {
     let _icx = push_ctxt("closure::load_environment");
 
@@ -281,11 +282,12 @@ fn load_environment<'a>(bcx: &'a Block<'a>,
     let mut i = 0u;
     for freevar in freevars.iter() {
         let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
-        match store {
-            ty::RegionTraitStore(..) => { upvarptr = Load(bcx, upvarptr); }
-            ty::UniqTraitStore => {}
-        }
         let def_id = freevar.def.def_id();
+
+        match capture_mode {
+            freevars::CaptureByRef => upvarptr = Load(bcx, upvarptr),
+            freevars::CaptureByValue => {}
+        }
 
         bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvarptr);
         for &env_pointer_alloca in env_pointer_alloca.iter() {
@@ -417,7 +419,13 @@ pub fn trans_expr_fn<'a>(
                   ty::ty_fn_abi(fty),
                   true,
                   NotUnboxedClosure,
-                  |bcx, _| load_environment(bcx, cdata_ty, &freevars, store));
+                  |bcx, _| {
+                      load_environment(bcx,
+                                       cdata_ty,
+                                       &freevars,
+                                       store,
+                                       freevar_mode)
+                  });
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
     bcx
 }

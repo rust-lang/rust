@@ -735,8 +735,9 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                 cx.verify_piece(&piece);
                 match cx.trans_piece(&piece) {
                     Some(piece) => {
-                        cx.trans_literal_string().map(|piece|
-                                                      cx.pieces.push(piece));
+                        cx.trans_literal_string().map(ref |piece| {
+                            cx.pieces.push(piece)
+                        });
                         cx.pieces.push(piece);
                     }
                     None => {}
@@ -754,7 +755,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         }
         None => {}
     }
-    cx.trans_literal_string().map(|piece| cx.pieces.push(piece));
+    cx.trans_literal_string().map(ref |piece| cx.pieces.push(piece));
 
     // Make sure that all arguments were used and all arguments have types.
     for (i, ty) in cx.arg_types.iter().enumerate() {

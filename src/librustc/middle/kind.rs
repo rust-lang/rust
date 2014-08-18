@@ -144,7 +144,7 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
     debug!("checking impl with self type {}", ty::get(self_ty).sty);
-    check_builtin_bounds(cx, self_ty, trait_def.bounds, |missing| {
+    check_builtin_bounds(cx, self_ty, trait_def.bounds, ref |missing| {
         span_err!(cx.tcx.sess, self_type.span, E0142,
                   "the type `{}', which does not fulfill `{}`, cannot implement this trait",
                   ty_to_string(cx.tcx, self_ty), missing.user_string(cx.tcx));
@@ -334,8 +334,8 @@ fn check_fn(
     fn_id: NodeId) {
 
     // Check kinds on free variables:
-    with_appropriate_checker(cx, fn_id, |chk| {
-        freevars::with_freevars(cx.tcx, fn_id, |freevars| {
+    with_appropriate_checker(cx, fn_id, ref |chk| {
+        freevars::with_freevars(cx.tcx, fn_id, ref |freevars| {
             for fv in freevars.iter() {
                 chk(cx, fv);
             }
@@ -678,7 +678,7 @@ fn check_bounds_on_structs_or_enums_in_type_if_possible(cx: &mut Context,
                                            parameter_environment,
                                            &polytype.generics.types,
                                            substs,
-                                           |missing| {
+                                           ref |missing| {
                     cx.tcx
                       .sess
                       .span_err(span,
@@ -706,7 +706,7 @@ fn check_bounds_on_structs_or_enums_in_trait_ref(cx: &mut Context,
 pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
                             bounds: ty::BuiltinBounds, referenced_ty: Option<ty::t>)
 {
-    check_builtin_bounds(cx, ty, bounds, |missing| {
+    check_builtin_bounds(cx, ty, bounds, ref |missing| {
         // Will be Some if the freevar is implicitly borrowed (stack closure).
         // Emit a less mysterious error message in this case.
         match referenced_ty {
@@ -731,7 +731,7 @@ pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
 
 pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
                                bounds: ty::BuiltinBounds) {
-    check_builtin_bounds(cx, ty, bounds, |missing| {
+    check_builtin_bounds(cx, ty, bounds, ref |missing| {
         span_err!(cx.tcx.sess, sp, E0147,
             "cannot pack type `{}`, which does not fulfill `{}`, as a trait bounded by {}",
             ty_to_string(cx.tcx, ty),
@@ -816,7 +816,7 @@ pub fn check_cast_for_escaping_regions(
     ty::walk_regions_and_ty(
         cx.tcx,
         target_ty,
-        |r| {
+        ref |r| {
             if !r.is_bound() {
                 target_regions.push(r);
             }
@@ -826,7 +826,7 @@ pub fn check_cast_for_escaping_regions(
     // Check, based on the region associated with the trait, whether it can
     // possibly escape the enclosing fn item (note that all type parameters
     // must have been declared on the enclosing fn item).
-    if target_regions.iter().any(|r| is_ReScope(*r)) {
+    if target_regions.iter().any(ref |r| is_ReScope(*r)) {
         return; /* case (1) */
     }
 
@@ -859,7 +859,8 @@ pub fn check_cast_for_escaping_regions(
                         // Self should be exempt from this check,
                         // except for historical accident. Bottom
                         // line, we need proper region bounding.
-                    } else if target_params.iter().any(|x| x == &source_param) {
+                    } else if target_params.iter()
+                                           .any(ref |x| x == &source_param) {
                         /* case (2) */
                     } else {
                         check_static(cx.tcx, ty, source_span); /* case (3) */

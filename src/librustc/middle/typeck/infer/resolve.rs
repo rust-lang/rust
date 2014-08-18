@@ -128,7 +128,7 @@ impl<'a> ResolveState<'a> {
         // allow us to pass back errors in any useful way.
 
         assert!(self.v_seen.is_empty());
-        let rty = indent(|| self.resolve_type(typ) );
+        let rty = indent(ref || self.resolve_type(typ) );
         assert!(self.v_seen.is_empty());
         match self.err {
           None => {
@@ -142,11 +142,10 @@ impl<'a> ResolveState<'a> {
         }
     }
 
-    pub fn resolve_region_chk(&mut self,
-                              orig: ty::Region)
+    pub fn resolve_region_chk(&mut self, orig: ty::Region)
                               -> fres<ty::Region> {
         self.err = None;
-        let resolved = indent(|| self.resolve_region(orig) );
+        let resolved = indent(ref || self.resolve_region(orig) );
         match self.err {
           None => Ok(resolved),
           Some(e) => Err(e)

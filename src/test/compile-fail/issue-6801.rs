@@ -23,7 +23,7 @@ fn invoke(f: || -> uint) {
 
 fn main() {
       let x  : Box<uint>  = box 9;
-      let sq : || -> uint =  || { *x * *x };
+      let sq : || -> uint = ref || { *x * *x };
 
       twice(x); //~ ERROR: cannot move out of
       invoke(sq);

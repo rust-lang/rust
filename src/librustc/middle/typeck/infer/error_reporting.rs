@@ -1198,7 +1198,7 @@ impl<'a> Rebuilder<'a> {
         let mut new_lts = Vec::new();
         if last_seg.lifetimes.len() == 0 {
             // traverse once to see if there's a need to insert lifetime
-            let need_insert = range(0, expected).any(|i| {
+            let need_insert = range(0, expected).any(ref |i| {
                 indexes.contains(&i)
             });
             if need_insert {

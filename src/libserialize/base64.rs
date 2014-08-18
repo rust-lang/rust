@@ -367,7 +367,7 @@ mod tests {
     pub fn bench_to_base64(b: &mut Bencher) {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        b.iter(|| {
+        b.iter(ref || {
             s.as_bytes().to_base64(STANDARD);
         });
         b.bytes = s.len() as u64;
@@ -378,7 +378,7 @@ mod tests {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_base64(STANDARD);
-        b.iter(|| {
+        b.iter(ref || {
             sb.as_slice().from_base64().unwrap();
         });
         b.bytes = sb.len() as u64;

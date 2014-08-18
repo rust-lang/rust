@@ -184,11 +184,11 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
     let mut view_items = Vec::new();
     let super_ = token::str_to_ident("super");
 
-    view_items.extend(tests.move_iter().map(|r| {
+    view_items.extend(tests.move_iter().map(ref |r| {
         cx.ext_cx.view_use_simple(DUMMY_SP, ast::Public,
                                   cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
     }));
-    view_items.extend(tested_submods.move_iter().map(|r| {
+    view_items.extend(tested_submods.move_iter().map(ref |r| {
         let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, cx.reexport_mod_ident]);
         cx.ext_cx.view_use_simple_(DUMMY_SP, ast::Public, r, path)
     }));

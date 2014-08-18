@@ -381,15 +381,18 @@ fn is_arg(arg: &str) -> bool {
 
 fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
     // Search main options.
-    let pos = opts.iter().position(|opt| opt.name == nm);
+    let pos = opts.iter().position(ref |opt| opt.name == nm);
     if pos.is_some() {
         return pos
     }
 
     // Search in aliases.
     for candidate in opts.iter() {
-        if candidate.aliases.iter().position(|opt| opt.name == nm).is_some() {
-            return opts.iter().position(|opt| opt.name == candidate.name);
+        if candidate.aliases
+                    .iter()
+                    .position(ref |opt| opt.name == nm)
+                    .is_some() {
+            return opts.iter().position(ref |opt| opt.name == candidate.name);
         }
     }
 
@@ -742,7 +745,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         let mut desc_rows = Vec::new();
         each_split_within(desc_normalized_whitespace.as_slice(),
                           54,
-                          |substr| {
+                          ref |substr| {
             desc_rows.push(substr.to_string());
             true
         });
@@ -850,7 +853,7 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
         lim = fake_i;
     }
 
-    let machine: |&mut bool, (uint, char)| -> bool = |cont, (i, c)| {
+    let machine: |&mut bool, (uint, char)| -> bool = ref |cont, (i, c)| {
         let whitespace = if ::std::char::is_whitespace(c) { Ws }       else { Cr };
         let limit      = if (i - slice_start + 1) <= lim  { UnderLim } else { OverLim };
 
@@ -900,7 +903,7 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
         *cont
     };
 
-    ss.char_indices().all(|x| machine(&mut cont, x));
+    ss.char_indices().all(ref |x| machine(&mut cont, x));
 
     // Let the automaton 'run out' by supplying trailing whitespace
     while cont && match state { B | C => true, A => false } {
@@ -914,8 +917,8 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
 fn test_split_within() {
     fn t(s: &str, i: uint, u: &[String]) {
         let mut v = Vec::new();
-        each_split_within(s, i, |s| { v.push(s.to_string()); true });
-        assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
+        each_split_within(s, i, ref |s| { v.push(s.to_string()); true });
+        assert!(v.iter().zip(u.iter()).all(ref |(a,b)| a == b));
     }
     t("", 0, []);
     t("", 15, []);

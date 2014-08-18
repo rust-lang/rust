@@ -105,17 +105,19 @@ impl<'a, T> Iterator<&'a T> for ListIterator<'a, T> {
 fn transform(piece: Vec<(int, int)> , all: bool) -> Vec<Vec<(int, int)>> {
     let mut res: Vec<Vec<(int, int)>> =
         // rotations
-        iterate(piece, |rot| rot.iter().map(|&(y, x)| (x + y, -y)).collect())
+        iterate(piece,
+                ref |rot| rot.iter().map(ref |&(y, x)| (x + y, -y)).collect())
         .take(if all {6} else {3})
         // mirror
-        .flat_map(|cur_piece| {
-            iterate(cur_piece, |mir| mir.iter().map(|&(y, x)| (x, y)).collect())
+        .flat_map(ref |cur_piece| {
+            iterate(cur_piece,
+                    ref |mir| mir.iter().map(ref |&(y, x)| (x, y)).collect())
             .take(2)
         }).collect();
 
     // translating to (0, 0) as minimum coordinates.
     for cur_piece in res.mut_iter() {
-        let (dy, dx) = *cur_piece.iter().min_by(|e| *e).unwrap();
+        let (dy, dx) = *cur_piece.iter().min_by(ref |e| *e).unwrap();
         for &(ref mut y, ref mut x) in cur_piece.mut_iter() {
             *y -= dy; *x -= dx;
         }
@@ -164,12 +166,12 @@ fn make_masks() -> Vec<Vec<Vec<u64> > > {
     // here).
     let transforms: Vec<Vec<Vec<(int, int)>>> =
         pieces.move_iter().enumerate()
-        .map(|(id, p)| transform(p, id != 3))
+        .map(ref |(id, p)| transform(p, id != 3))
         .collect();
 
-    range(0i, 50).map(|yx| {
-        transforms.iter().enumerate().map(|(id, t)| {
-            t.iter().filter_map(|p| mask(yx / 5, yx % 5, id, p)).collect()
+    range(0i, 50).map(ref |yx| {
+        transforms.iter().enumerate().map(ref |(id, t)| {
+            t.iter().filter_map(ref |p| mask(yx / 5, yx % 5, id, p)).collect()
         }).collect()
     }).collect()
 }
@@ -200,8 +202,8 @@ fn filter_masks(masks: &mut Vec<Vec<Vec<u64>>>) {
     for i in range(0, masks.len()) {
         for j in range(0, masks.get(i).len()) {
             *masks.get_mut(i).get_mut(j) =
-                masks.get(i).get(j).iter().map(|&m| m)
-                .filter(|&m| !is_board_unfeasible(m, masks))
+                masks.get(i).get(j).iter().map(ref |&m| m)
+                .filter(ref |&m| !is_board_unfeasible(m, masks))
                 .collect();
         }
     }
@@ -268,7 +270,7 @@ fn handle_sol(raw_sol: &List<u64>, data: &mut Data) {
     // reverse order, i.e. the board rotated by half a turn.
     data.nb += 2;
     let sol1 = to_vec(raw_sol);
-    let sol2: Vec<u8> = sol1.iter().rev().map(|x| *x).collect();
+    let sol2: Vec<u8> = sol1.iter().rev().map(ref |x| *x).collect();
 
     if data.nb == 2 {
         data.min = sol1.clone();
@@ -295,9 +297,9 @@ fn search(
     let masks_at = masks.get(i);
 
     // for every unused piece
-    for id in range(0u, 10).filter(|id| board & (1 << (id + 50)) == 0) {
+    for id in range(0u, 10).filter(ref |id| board & (1 << (id + 50)) == 0) {
         // for each mask that fits on the board
-        for m in masks_at.get(id).iter().filter(|&m| board & *m == 0) {
+        for m in masks_at.get(id).iter().filter(ref |&m| board & *m == 0) {
             // This check is too costly.
             //if is_board_unfeasible(board | m, masks) {continue;}
             search(masks, board | *m, i + 1, Cons(*m, &cur), data);
@@ -311,7 +313,7 @@ fn par_search(masks: Vec<Vec<Vec<u64>>>) -> Data {
 
     // launching the search in parallel on every masks at minimum
     // coordinate (0,0)
-    for m in masks.get(0).iter().flat_map(|masks_pos| masks_pos.iter()) {
+    for m in masks.get(0).iter().flat_map(ref |masks_pos| masks_pos.iter()) {
         let masks = masks.clone();
         let tx = tx.clone();
         let m = *m;

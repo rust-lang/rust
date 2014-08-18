@@ -39,7 +39,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                 args: Vec::new(),
                 ret_ty: Self,
                 attributes: attrs,
-                combine_substructure: combine_substructure(|c, s, sub| {
+                combine_substructure: combine_substructure(ref |c, s, sub| {
                     cs_clone("Clone", c, s, sub)
                 }),
             }
@@ -49,15 +49,17 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn cs_clone(
-    name: &str,
-    cx: &mut ExtCtxt, trait_span: Span,
-    substr: &Substructure) -> Gc<Expr> {
+fn cs_clone(name: &str,
+            cx: &mut ExtCtxt,
+            trait_span: Span,
+            substr: &Substructure)
+            -> Gc<Expr> {
     let clone_ident = substr.method_ident;
     let ctor_ident;
     let all_fields;
-    let subcall = |field: &FieldInfo|
-        cx.expr_method_call(field.span, field.self_, clone_ident, Vec::new());
+    let subcall = ref |field: &FieldInfo| {
+        cx.expr_method_call(field.span, field.self_, clone_ident, Vec::new())
+    };
 
     match *substr.fields {
         Struct(ref af) => {
@@ -87,7 +89,7 @@ fn cs_clone(
         cx.expr_call_ident(trait_span, ctor_ident, subcalls)
     } else {
         // struct-like
-        let fields = all_fields.iter().map(|field| {
+        let fields = all_fields.iter().map(ref |field| {
             let ident = match field.name {
                 Some(i) => i,
                 None => {

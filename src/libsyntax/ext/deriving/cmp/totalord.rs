@@ -40,7 +40,7 @@ pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(Path::new(vec!("std", "cmp", "Ordering"))),
                 attributes: attrs,
-                combine_substructure: combine_substructure(|a, b, c| {
+                combine_substructure: combine_substructure(ref |a, b, c| {
                     cs_cmp(a, b, c)
                 }),
             }
@@ -88,7 +88,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
-        |cx, span, old, new| {
+        ref |cx, span, old, new| {
             // let __test = new;
             // if __test == ::std::cmp::Equal {
             //    old
@@ -107,7 +107,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
             cx.expr_block(cx.block(span, vec!(assign), Some(if_)))
         },
         cx.expr_path(equals_path.clone()),
-        |cx, span, (self_args, tag_tuple), _non_self_args| {
+        ref |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `deriving(TotalOrd)`")
             } else {

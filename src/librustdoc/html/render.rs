@@ -731,7 +731,7 @@ impl<'a> SourceCollector<'a> {
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = String::from_str("../../");
-        clean_srcpath(p.dirname(), |component| {
+        clean_srcpath(p.dirname(), ref |component| {
             cur.push(component);
             mkdir(&cur).unwrap();
             root_path.push_str("../");
@@ -798,7 +798,8 @@ impl DocFolder for Cache {
             clean::ImplItem(ref i) => {
                 match i.trait_ {
                     Some(clean::ResolvedPath{ did, .. }) => {
-                        let v = self.implementors.find_or_insert_with(did, |_| {
+                        let v = self.implementors
+                                    .find_or_insert_with(did, ref |_| {
                             Vec::new()
                         });
                         v.push(Implementor {
@@ -1069,7 +1070,7 @@ impl Context {
         item.name = Some(krate.name);
 
         // render stability dashboard
-        try!(self.recurse(stability.name.clone(), |this| {
+        try!(self.recurse(stability.name.clone(), ref |this| {
             let json_dst = &this.dst.join("stability.json");
             let mut json_out = BufferedWriter::new(try!(File::create(json_dst)));
             try!(stability.encode(&mut json::Encoder::new(&mut json_out)));
@@ -1095,7 +1096,7 @@ impl Context {
         let mut work = vec!((self, item));
         loop {
             match work.pop() {
-                Some((mut cx, item)) => try!(cx.item(item, |cx, item| {
+                Some((mut cx, item)) => try!(cx.item(item, ref |cx, item| {
                     work.push((cx.clone(), item));
                 })),
                 None => break,
@@ -1192,7 +1193,7 @@ impl Context {
             clean::ModuleItem(..) => {
                 let name = item.name.get_ref().to_string();
                 let mut item = Some(item);
-                self.recurse(name, |this| {
+                self.recurse(name, ref |this| {
                     let item = item.take_unwrap();
                     let dst = this.dst.join("index.html");
                     let dst = try!(File::create(&dst));
@@ -1245,9 +1246,8 @@ impl<'a> Item<'a> {
         // has anchors for the line numbers that we're linking to.
         if ast_util::is_local(self.item.def_id) {
             let mut path = Vec::new();
-            clean_srcpath(self.item.source.filename.as_bytes(), |component| {
-                path.push(component.to_string());
-            });
+            clean_srcpath(self.item.source.filename.as_bytes(),
+                          ref |component| path.push(component.to_string()));
             let href = if self.item.source.loline == self.item.source.hiline {
                 format!("{}", self.item.source.loline)
             } else {

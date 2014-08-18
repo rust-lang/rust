@@ -394,7 +394,7 @@ mod bench {
         let gamma = Gamma::new(10., 1.0);
         let mut rng = ::test::weak_rng();
 
-        b.iter(|| {
+        b.iter(ref || {
             for _ in range(0, ::RAND_BENCH_N) {
                 gamma.ind_sample(&mut rng);
             }
@@ -407,7 +407,7 @@ mod bench {
         let gamma = Gamma::new(0.1, 1.0);
         let mut rng = ::test::weak_rng();
 
-        b.iter(|| {
+        b.iter(ref || {
             for _ in range(0, ::RAND_BENCH_N) {
                 gamma.ind_sample(&mut rng);
             }

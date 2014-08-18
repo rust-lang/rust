@@ -464,7 +464,9 @@ impl Engine256 {
         }
 
         let self_state = &mut self.state;
-        self.buffer.standard_padding(8, |input: &[u8]| { self_state.process_block(input) });
+        self.buffer.standard_padding(8, ref |input: &[u8]| {
+            self_state.process_block(input)
+        });
         write_u32_be(self.buffer.next(4), (self.length_bits >> 32) as u32 );
         write_u32_be(self.buffer.next(4), self.length_bits as u32);
         self_state.process_block(self.buffer.full_buffer());
@@ -656,7 +658,7 @@ mod bench {
     pub fn sha256_10(b: &mut Bencher) {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..10];
-        b.iter(|| {
+        b.iter(ref || {
             sh.input(bytes);
         });
         b.bytes = bytes.len() as u64;
@@ -666,7 +668,7 @@ mod bench {
     pub fn sha256_1k(b: &mut Bencher) {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..1024];
-        b.iter(|| {
+        b.iter(ref || {
             sh.input(bytes);
         });
         b.bytes = bytes.len() as u64;
@@ -676,7 +678,7 @@ mod bench {
     pub fn sha256_64k(b: &mut Bencher) {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..65536];
-        b.iter(|| {
+        b.iter(ref || {
             sh.input(bytes);
         });
         b.bytes = bytes.len() as u64;

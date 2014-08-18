@@ -51,11 +51,11 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                 ret_ty: Literal(Path::new(vec!("bool"))),
                 attributes: attrs,
                 combine_substructure: combine_substructure(|cx, span, substr| {
-                    cs_and(|cx, span, _, _| cx.span_bug(span,
-                                                        "Non-matching enum \
-                                                         variant in \
-                                                         deriving(Zero)"),
-                           cx, span, substr)
+                    cs_and(ref |cx, span, _, _| {
+                        cx.span_bug(span,
+                                    "Non-matching enum variant in \
+                                     deriving(Zero)")
+                    }, cx, span, substr)
                 })
             }
         )
@@ -71,7 +71,9 @@ fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span,
         cx.ident_of("Zero"),
         cx.ident_of("zero")
     );
-    let zero_call = |span| cx.expr_call_global(span, zero_ident.clone(), Vec::new());
+    let zero_call = ref |span| {
+        cx.expr_call_global(span, zero_ident.clone(), Vec::new())
+    };
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
@@ -80,12 +82,14 @@ fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span,
                     if fields.is_empty() {
                         cx.expr_ident(trait_span, substr.type_ident)
                     } else {
-                        let exprs = fields.iter().map(|sp| zero_call(*sp)).collect();
+                        let exprs = fields.iter()
+                                          .map(ref |sp| zero_call(*sp))
+                                          .collect();
                         cx.expr_call_ident(trait_span, substr.type_ident, exprs)
                     }
                 }
                 Named(ref fields) => {
-                    let zero_fields = fields.iter().map(|&(ident, span)| {
+                    let zero_fields = fields.iter().map(ref |&(ident, span)| {
                         cx.field_imm(span, ident, zero_call(span))
                     }).collect();
                     cx.expr_struct_ident(trait_span, substr.type_ident, zero_fields)

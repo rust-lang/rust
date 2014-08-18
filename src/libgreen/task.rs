@@ -110,7 +110,7 @@ extern fn bootstrap_green_task(task: uint, code: *mut (), env: *mut ()) -> ! {
     // requested. This is the "try/catch" block for this green task and
     // is the wrapper for *all* code run in the task.
     let mut start = Some(start);
-    let task = task.swap().run(|| start.take_unwrap()()).destroy();
+    let task = task.swap().run(ref || start.take_unwrap()()).destroy();
 
     // Once the function has exited, it's time to run the termination
     // routine. This means we need to context switch one more time but

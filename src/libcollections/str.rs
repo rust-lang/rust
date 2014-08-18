@@ -261,7 +261,7 @@ impl<'a> Iterator<char> for Decompositions<'a> {
             for ch in self.iter {
                 let buffer = &mut self.buffer;
                 let sorted = &mut self.sorted;
-                decomposer(ch, |d| {
+                decomposer(ch, ref |d| {
                     let class = unicode::char::canonical_combining_class(d);
                     if class == 0 && !*sorted {
                         canonical_sort(buffer.as_mut_slice());
@@ -701,7 +701,7 @@ pub trait StrAllocating: Str {
         let me = self.as_slice();
         let mut out = String::with_capacity(me.len());
         for c in me.chars() {
-            c.escape_default(|c| out.push_char(c));
+            c.escape_default(ref |c| out.push_char(c));
         }
         out
     }
@@ -711,7 +711,7 @@ pub trait StrAllocating: Str {
         let me = self.as_slice();
         let mut out = String::with_capacity(me.len());
         for c in me.chars() {
-            c.escape_unicode(|c| out.push_char(c));
+            c.escape_unicode(ref |c| out.push_char(c));
         }
         out
     }
@@ -2372,14 +2372,14 @@ mod bench {
     fn char_iterator(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
 
-        b.iter(|| s.chars().count());
+        b.iter(ref || s.chars().count());
     }
 
     #[bench]
     fn char_iterator_for(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
 
-        b.iter(|| {
+        b.iter(ref || {
             for ch in s.chars() { black_box(ch) }
         });
     }
@@ -2393,21 +2393,21 @@ mod bench {
         Mary had a little lamb, Little lamb
         Mary had a little lamb, Little lamb";
 
-        b.iter(|| s.chars().count());
+        b.iter(ref || s.chars().count());
     }
 
     #[bench]
     fn char_iterator_rev(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
 
-        b.iter(|| s.chars().rev().count());
+        b.iter(ref || s.chars().rev().count());
     }
 
     #[bench]
     fn char_iterator_rev_for(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
 
-        b.iter(|| {
+        b.iter(ref || {
             for ch in s.chars().rev() { black_box(ch) }
         });
     }
@@ -2417,7 +2417,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.char_indices().count(), len));
+        b.iter(ref || assert_eq!(s.char_indices().count(), len));
     }
 
     #[bench]
@@ -2425,14 +2425,14 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.char_indices().rev().count(), len));
+        b.iter(ref || assert_eq!(s.char_indices().rev().count(), len));
     }
 
     #[bench]
     fn split_unicode_ascii(b: &mut Bencher) {
         let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
-        b.iter(|| assert_eq!(s.split('V').count(), 3));
+        b.iter(ref || assert_eq!(s.split('V').count(), 3));
     }
 
     #[bench]
@@ -2447,7 +2447,7 @@ mod bench {
         }
         let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
-        b.iter(|| assert_eq!(s.split(NotAscii('V')).count(), 3));
+        b.iter(ref || assert_eq!(s.split(NotAscii('V')).count(), 3));
     }
 
 
@@ -2456,7 +2456,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').count();
 
-        b.iter(|| assert_eq!(s.split(' ').count(), len));
+        b.iter(ref || assert_eq!(s.split(' ').count(), len));
     }
 
     #[bench]
@@ -2473,7 +2473,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').count();
 
-        b.iter(|| assert_eq!(s.split(NotAscii(' ')).count(), len));
+        b.iter(ref || assert_eq!(s.split(NotAscii(' ')).count(), len));
     }
 
     #[bench]
@@ -2482,7 +2482,7 @@ mod bench {
         let len = s.split(' ').count();
         fn pred(c: char) -> bool { c == ' ' }
 
-        b.iter(|| assert_eq!(s.split(pred).count(), len));
+        b.iter(ref || assert_eq!(s.split(pred).count(), len));
     }
 
     #[bench]
@@ -2490,7 +2490,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').count();
 
-        b.iter(|| assert_eq!(s.split(|c: char| c == ' ').count(), len));
+        b.iter(ref || assert_eq!(s.split(|c: char| c == ' ').count(), len));
     }
 
     #[bench]
@@ -2498,7 +2498,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').count();
 
-        b.iter(|| assert_eq!(s.split(&[' ']).count(), len));
+        b.iter(ref || assert_eq!(s.split(&[' ']).count(), len));
     }
 
     #[bench]
@@ -2508,7 +2508,7 @@ mod bench {
                   Lorem ipsum dolor sit amet, consectetur. ";
 
         assert_eq!(100, s.len());
-        b.iter(|| {
+        b.iter(ref || {
             is_utf8(s)
         });
     }
@@ -2517,7 +2517,7 @@ mod bench {
     fn is_utf8_100_multibyte(b: &mut Bencher) {
         let s = "𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰".as_bytes();
         assert_eq!(100, s.len());
-        b.iter(|| {
+        b.iter(ref || {
             is_utf8(s)
         });
     }
@@ -2527,7 +2527,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let sep = "→";
         let v = [s, s, s, s, s, s, s, s, s, s];
-        b.iter(|| {
+        b.iter(ref || {
             assert_eq!(v.connect(sep).len(), s.len() * 10 + sep.len() * 9);
         })
     }
@@ -2537,7 +2537,7 @@ mod bench {
         let haystack = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
         let needle = "sit";
 
-        b.iter(|| {
+        b.iter(ref || {
             assert!(haystack.contains(needle));
         })
     }
@@ -2581,7 +2581,7 @@ leo suscipit, varius porttitor nulla porta. Pellentesque ut sem nec nisi euismod
 malesuada sollicitudin quam eu fermentum.";
         let needle = "english";
 
-        b.iter(|| {
+        b.iter(ref || {
             assert!(!haystack.contains(needle));
         })
     }
@@ -2591,7 +2591,7 @@ malesuada sollicitudin quam eu fermentum.";
         let haystack = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         let needle = "aaaaaaaab";
 
-        b.iter(|| {
+        b.iter(ref || {
             assert!(!haystack.contains(needle));
         })
     }
@@ -2601,7 +2601,7 @@ malesuada sollicitudin quam eu fermentum.";
         let haystack = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
         let needle = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
 
-        b.iter(|| {
+        b.iter(ref || {
             assert!(haystack.contains(needle));
         })
     }

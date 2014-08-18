@@ -580,9 +580,9 @@ pub trait EncoderHelpers<E> {
 
 impl<E, S:Encoder<E>> EncoderHelpers<E> for S {
     fn emit_from_vec<T>(&mut self, v: &[T], f: |&mut S, &T| -> Result<(), E>) -> Result<(), E> {
-        self.emit_seq(v.len(), |this| {
+        self.emit_seq(v.len(), ref |this| {
             for (i, e) in v.iter().enumerate() {
-                try!(this.emit_seq_elt(i, |this| {
+                try!(this.emit_seq_elt(i, ref |this| {
                     f(this, e)
                 }));
             }
@@ -597,10 +597,10 @@ pub trait DecoderHelpers<E> {
 
 impl<E, D:Decoder<E>> DecoderHelpers<E> for D {
     fn read_to_vec<T>(&mut self, f: |&mut D| -> Result<T, E>) -> Result<Vec<T>, E> {
-        self.read_seq(|this, len| {
+        self.read_seq(ref |this, len| {
             let mut v = Vec::with_capacity(len);
             for i in range(0, len) {
-                v.push(try!(this.read_seq_elt(i, |this| f(this))));
+                v.push(try!(this.read_seq_elt(i, ref |this| f(this))));
             }
             Ok(v)
         })

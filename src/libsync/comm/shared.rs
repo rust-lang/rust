@@ -230,7 +230,7 @@ impl<T: Send> Packet<T> {
         }
 
         let task: Box<Task> = Local::take();
-        task.deschedule(1, |task| {
+        task.deschedule(1, ref |task| {
             self.decrement(task)
         });
 

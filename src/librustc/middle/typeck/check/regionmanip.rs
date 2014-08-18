@@ -29,11 +29,11 @@ pub fn replace_late_bound_regions_in_fn_sig(
 
     let mut map = HashMap::new();
     let fn_sig = {
-        let mut f = ty_fold::RegionFolder::regions(tcx, |r| {
+        let mut f = ty_fold::RegionFolder::regions(tcx, ref |r| {
             debug!("region r={}", r.to_string());
             match r {
                 ty::ReLateBound(s, br) if s == fn_sig.binder_id => {
-                    *map.find_or_insert_with(br, |_| mapf(br))
+                    *map.find_or_insert_with(br, ref |_| mapf(br))
                 }
                 _ => r
             }

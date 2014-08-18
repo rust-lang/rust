@@ -90,7 +90,7 @@ impl <'l> DxrVisitor<'l> {
         self.fmt.crate_str(krate.span, name);
 
         // dump info about all the external crates referenced from this crate
-        self.sess.cstore.iter_crate_data(|n, cmd| {
+        self.sess.cstore.iter_crate_data(ref |n, cmd| {
             self.fmt.external_crate_str(krate.span, cmd.name.as_slice(), n);
         });
         self.fmt.recorder.record("end_external_crates\n");
@@ -774,7 +774,7 @@ impl <'l> DxrVisitor<'l> {
                                                  .borrow();
                             Some(impl_items.get(&def_id)
                                            .iter()
-                                           .find(|mr| {
+                                           .find(ref |mr| {
                                             match **mr {
                                                 ty::MethodTraitItemId(mr) => {
                                                     ty::impl_or_trait_item(

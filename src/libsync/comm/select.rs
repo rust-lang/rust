@@ -182,7 +182,7 @@ impl Select {
             // sequentially until one fails. If one fails, then abort
             // immediately so we can go unblock on all the other receivers.
             let task: Box<Task> = Local::take();
-            task.deschedule(amt, |task| {
+            task.deschedule(amt, ref |task| {
                 // Prepare for the block
                 let (i, handle) = iter.next().unwrap();
                 match (*handle).packet.start_selection(task) {

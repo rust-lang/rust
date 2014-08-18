@@ -33,8 +33,8 @@ fn map_nums<'a,'b>(x: &ast, f: |uint| -> uint) -> &'a ast<'b> {
         return &num(f(x)); //~ ERROR borrowed value does not live long enough
       }
       add(x, y) => {
-        let m_x = map_nums(x, |z| f(z));
-        let m_y = map_nums(y, |z| f(z));
+        let m_x = map_nums(x, ref |z| f(z));
+        let m_y = map_nums(y, ref |z| f(z));
         return &add(m_x, m_y);  //~ ERROR borrowed value does not live long enough
       }
     }

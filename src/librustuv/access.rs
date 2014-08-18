@@ -57,7 +57,7 @@ impl Access {
 
         if inner.held {
             let t: Box<Task> = Local::take();
-            t.deschedule(1, |task| {
+            t.deschedule(1, ref |task| {
                 inner.queue.push((task, token));
                 Ok(())
             });

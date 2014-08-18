@@ -219,7 +219,7 @@ fn get_method_index(tcx: &ty::ctxt,
     // we find the trait the method came from, counting up the
     // methods from them.
     let mut method_count = 0;
-    ty::each_bound_trait_and_supertraits(tcx, &[subtrait], |bound_ref| {
+    ty::each_bound_trait_and_supertraits(tcx, &[subtrait], ref |bound_ref| {
         if bound_ref.def_id == trait_ref.def_id {
             false
         } else {
@@ -708,12 +708,14 @@ impl<'a> LookupContext<'a> {
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
 
-        ty::each_bound_trait_and_supertraits(tcx, bounds, |bound_trait_ref| {
+        ty::each_bound_trait_and_supertraits(tcx,
+                                             bounds,
+                                             ref |bound_trait_ref| {
             let this_bound_idx = next_bound_idx;
             next_bound_idx += 1;
 
             let trait_items = ty::trait_items(tcx, bound_trait_ref.def_id);
-            match trait_items.iter().position(|ti| {
+            match trait_items.iter().position(ref |ti| {
                 match *ti {
                     ty::MethodTraitItem(ref m) => {
                         m.explicit_self != ty::StaticExplicitSelfCategory &&
@@ -786,7 +788,7 @@ impl<'a> LookupContext<'a> {
         debug!("push_candidates_from_impl: {} {}",
                token::get_name(self.m_name),
                impl_items.iter()
-                         .map(|&did| {
+                         .map(ref |&did| {
                              ty::impl_or_trait_item(self.tcx(),
                                                     did.def_id()).ident()
                          })
@@ -794,11 +796,11 @@ impl<'a> LookupContext<'a> {
                          .repr(self.tcx()));
 
         let method = match impl_items.iter()
-                                     .map(|&did| {
+                                     .map(ref |&did| {
                                          ty::impl_or_trait_item(self.tcx(),
                                                                 did.def_id())
                                      })
-                                     .find(|m| {
+                                     .find(ref |m| {
                                          m.ident().name == self.m_name
                                      }) {
             Some(ty::MethodTraitItem(method)) => method,
@@ -807,7 +809,7 @@ impl<'a> LookupContext<'a> {
 
         // determine the `self` of the impl with fresh
         // variables for each parameter:
-        let span = self.self_expr.map_or(self.span, |e| e.span);
+        let span = self.self_expr.map_or(self.span, ref |e| e.span);
         let vcx = self.fcx.vtable_context();
         let TypeAndSubsts {
             substs: impl_substs,
@@ -1269,7 +1271,7 @@ impl<'a> LookupContext<'a> {
             MethodObject(..) => {
                 // For annoying reasons, we've already handled the
                 // substitution of self for object calls.
-                let args = fn_sig.inputs.slice_from(1).iter().map(|t| {
+                let args = fn_sig.inputs.slice_from(1).iter().map(ref |t| {
                     t.subst(tcx, &all_substs)
                 });
                 Some(*fn_sig.inputs.get(0)).move_iter().chain(args).collect()

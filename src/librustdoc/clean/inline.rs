@@ -123,8 +123,8 @@ fn try_inline_def(cx: &core::DocContext,
 
 pub fn load_attrs(tcx: &ty::ctxt, did: ast::DefId) -> Vec<clean::Attribute> {
     let mut attrs = Vec::new();
-    csearch::get_item_attrs(&tcx.sess.cstore, did, |v| {
-        attrs.extend(v.move_iter().map(|mut a| {
+    csearch::get_item_attrs(&tcx.sess.cstore, did, ref |v| {
+        attrs.extend(v.move_iter().map(ref |mut a| {
             // FIXME this isn't quite always true, it's just true about 99% of
             //       the time when dealing with documentation. For example,
             //       this would treat doc comments of the form `#[doc = "foo"]`
@@ -159,15 +159,15 @@ pub fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> clean::Trait {
     let def = ty::lookup_trait_def(tcx, did);
     let trait_items = ty::trait_items(tcx, did).clean();
     let provided = ty::provided_trait_methods(tcx, did);
-    let mut items = trait_items.move_iter().map(|trait_item| {
-        if provided.iter().any(|a| a.def_id == trait_item.def_id) {
+    let mut items = trait_items.move_iter().map(ref |trait_item| {
+        if provided.iter().any(ref |a| a.def_id == trait_item.def_id) {
             clean::ProvidedMethod(trait_item)
         } else {
             clean::RequiredMethod(trait_item)
         }
     });
     let supertraits = ty::trait_supertraits(tcx, did);
-    let mut parents = supertraits.iter().map(|i| {
+    let mut parents = supertraits.iter().map(ref |i| {
         match i.clean() {
             clean::TraitBound(ty) => ty,
             clean::RegionBound => unreachable!()
@@ -242,7 +242,9 @@ fn build_impls(cx: &core::DocContext,
     match tcx.inherent_impls.borrow().find(&did) {
         None => {}
         Some(i) => {
-            impls.extend(i.borrow().iter().map(|&did| { build_impl(cx, tcx, did) }));
+            impls.extend(i.borrow()
+                          .iter()
+                          .map(ref |&did| build_impl(cx, tcx, did)));
         }
     }
 
@@ -257,7 +259,7 @@ fn build_impls(cx: &core::DocContext,
     if cx.populated_crate_impls.borrow_mut().insert(did.krate) {
         csearch::each_top_level_item_of_crate(&tcx.sess.cstore,
                                               did.krate,
-                                              |def, _, _| {
+                                              ref |def, _, _| {
             populate_impls(cx, tcx, def, &mut impls)
         });
 
@@ -270,7 +272,7 @@ fn build_impls(cx: &core::DocContext,
                 decoder::DlDef(def::DefMod(did)) => {
                     csearch::each_child_of_item(&tcx.sess.cstore,
                                                 did,
-                                                |def, _, _| {
+                                                ref |def, _, _| {
                         populate_impls(cx, tcx, def, impls)
                     })
                 }
@@ -279,7 +281,7 @@ fn build_impls(cx: &core::DocContext,
         }
     }
 
-    impls.move_iter().filter_map(|a| a).collect()
+    impls.move_iter().filter_map(ref |a| a).collect()
 }
 
 fn build_impl(cx: &core::DocContext,
@@ -294,7 +296,7 @@ fn build_impl(cx: &core::DocContext,
     match associated_trait {
         Some(ref t) => {
             let trait_attrs = load_attrs(tcx, t.def_id);
-            if trait_attrs.iter().any(|a| is_doc_hidden(a)) {
+            if trait_attrs.iter().any(ref |a| is_doc_hidden(a)) {
                 return None
             }
         }
@@ -305,7 +307,7 @@ fn build_impl(cx: &core::DocContext,
     let ty = ty::lookup_item_type(tcx, did);
     let trait_items = csearch::get_impl_items(&tcx.sess.cstore, did)
             .iter()
-            .filter_map(|did| {
+            .filter_map(ref |did| {
         let did = did.def_id();
         let impl_item = ty::impl_or_trait_item(tcx, did);
         match impl_item {
@@ -334,7 +336,7 @@ fn build_impl(cx: &core::DocContext,
     return Some(clean::Item {
         inner: clean::ImplItem(clean::Impl {
             derived: clean::detect_derived(attrs.as_slice()),
-            trait_: associated_trait.clean().map(|bound| {
+            trait_: associated_trait.clean().map(ref |bound| {
                 match bound {
                     clean::TraitBound(ty) => ty,
                     clean::RegionBound => unreachable!(),
@@ -355,7 +357,7 @@ fn build_impl(cx: &core::DocContext,
     fn is_doc_hidden(a: &clean::Attribute) -> bool {
         match *a {
             clean::List(ref name, ref inner) if name.as_slice() == "doc" => {
-                inner.iter().any(|a| {
+                inner.iter().any(ref |a| {
                     match *a {
                         clean::Word(ref s) => s.as_slice() == "hidden",
                         _ => false,

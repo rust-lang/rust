@@ -135,7 +135,7 @@ impl Trait for Struct {
 fn trait_vtable_method_call(b: &mut Bencher) {
     let s = Struct { field: 10 };
     let t = &s as &Trait;
-    b.iter(|| {
+    b.iter(ref || {
         t.method()
     });
 }
@@ -143,7 +143,7 @@ fn trait_vtable_method_call(b: &mut Bencher) {
 #[bench]
 fn trait_static_method_call(b: &mut Bencher) {
     let s = Struct { field: 10 };
-    b.iter(|| {
+    b.iter(ref || {
         s.method()
     });
 }
@@ -153,7 +153,7 @@ fn trait_static_method_call(b: &mut Bencher) {
 #[bench]
 fn match_option_some(b: &mut Bencher) {
     let x = Some(10i);
-    b.iter(|| {
+    b.iter(ref || {
         match x {
             Some(y) => y,
             None => 11
@@ -164,7 +164,7 @@ fn match_option_some(b: &mut Bencher) {
 #[bench]
 fn match_vec_pattern(b: &mut Bencher) {
     let x = [1i,2,3,4,5,6];
-    b.iter(|| {
+    b.iter(ref || {
         match x {
             [1,2,3,..] => 10i,
             _ => 11i,

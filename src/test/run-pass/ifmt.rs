@@ -187,16 +187,16 @@ fn test_format_args() {
     let mut buf = MemWriter::new();
     {
         let w = &mut buf as &mut io::Writer;
-        format_args!(|args| { write!(w, "{}", args); }, "{}", 1i);
-        format_args!(|args| { write!(w, "{}", args); }, "test");
-        format_args!(|args| { write!(w, "{}", args); }, "{test}", test=3i);
+        format_args!(ref |args| { write!(w, "{}", args); }, "{}", 1i);
+        format_args!(ref |args| { write!(w, "{}", args); }, "test");
+        format_args!(ref |args| { write!(w, "{}", args); }, "{test}", test=3i);
     }
     let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_string();
     t!(s, "1test3");
 
     let s = format_args!(fmt::format, "hello {}", "world");
     t!(s, "hello world");
-    let s = format_args!(|args| {
+    let s = format_args!(ref |args| {
         format!("{}: {}", "args were", args)
     }, "hello {}", "world");
     t!(s, "args were: hello world");

@@ -81,7 +81,7 @@ fn dump_crates(cstore: &CStore) {
 
 fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
     let mut map = HashMap::new();
-    cstore.iter_crate_data(|cnum, data| {
+    cstore.iter_crate_data(ref |cnum, data| {
         map.find_or_insert_with(data.name(), |_| Vec::new()).push(cnum);
     });
 
@@ -280,7 +280,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
 fn existing_match(e: &Env, name: &str,
                   hash: Option<&Svh>) -> Option<ast::CrateNum> {
     let mut ret = None;
-    e.sess.cstore.iter_crate_data(|cnum, data| {
+    e.sess.cstore.iter_crate_data(ref |cnum, data| {
         if data.name().as_slice() != name { return }
 
         match hash {
@@ -301,7 +301,7 @@ fn existing_match(e: &Env, name: &str,
         let source = e.sess.cstore.get_used_crate_source(cnum).unwrap();
         match e.sess.opts.externs.find_equiv(&name) {
             Some(locs) => {
-                let found = locs.iter().any(|l| {
+                let found = locs.iter().any(ref |l| {
                     let l = fs::realpath(&Path::new(l.as_slice())).ok();
                     l == source.dylib || l == source.rlib
                 });
@@ -404,7 +404,7 @@ fn resolve_crate_deps(e: &mut Env,
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
-    decoder::get_crate_deps(cdata).iter().map(|dep| {
+    decoder::get_crate_deps(cdata).iter().map(ref |dep| {
         debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
         let (local_cnum, _, _) = resolve_crate(e, root,
                                                dep.name.as_slice(),
@@ -474,7 +474,9 @@ impl<'a> PluginMetadataReader<'a> {
             None => { load_ctxt.report_load_errs(); unreachable!() },
         };
         let macros = decoder::get_exported_macros(library.metadata.as_slice());
-        let registrar = decoder::get_plugin_registrar_fn(library.metadata.as_slice()).map(|id| {
+        let registrar =
+            decoder::get_plugin_registrar_fn(
+                library.metadata.as_slice()).map(ref |id| {
             decoder::get_symbol(library.metadata.as_slice(), id)
         });
         if library.dylib.is_none() && registrar.is_some() {

@@ -315,7 +315,7 @@ pub fn encode_form_urlencoded(m: &HashMap<String, Vec<String>>) -> String {
     }
 
     let mut first = true;
-    m.iter().fold(String::new(), |mut out, (key, values)| {
+    m.iter().fold(String::new(), ref |mut out, (key, values)| {
         let key = encode_plus(key);
 
         for value in values.iter() {

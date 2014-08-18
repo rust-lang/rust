@@ -943,7 +943,9 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
 
     let mut status = 0 as c_int;
     if deadline == 0 {
-        return match retry(|| unsafe { c::waitpid(pid, &mut status, 0) }) {
+        return match retry(ref || unsafe {
+                c::waitpid(pid, &mut status, 0)
+        }) {
             -1 => fail!("unknown waitpid error: {}", super::last_error().code),
             _ => Ok(translate_status(status)),
         }
@@ -1187,7 +1189,7 @@ fn waitpid_nowait(pid: pid_t) -> Option<rtio::ProcessExit> {
     #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> Option<rtio::ProcessExit> {
         let mut status = 0 as c_int;
-        match retry(|| unsafe {
+        match retry(ref || unsafe {
             c::waitpid(pid, &mut status, c::WNOHANG)
         }) {
             n if n == pid => Some(translate_status(status)),

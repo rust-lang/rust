@@ -414,7 +414,7 @@ impl HeapMemory {
     fn check_heap_type(&self, cx: &Context, span: Span, ty: ty::t) {
         let mut n_box = 0i;
         let mut n_uniq = 0i;
-        ty::fold_ty(cx.tcx, ty, |t| {
+        ty::fold_ty(cx.tcx, ty, ref |t| {
             match ty::get(t).sty {
                 ty::ty_box(_) => {
                     n_box += 1;
@@ -839,7 +839,7 @@ impl NonSnakeCaseFunctions {
             let ident = ident.get().trim_chars('_');
 
             let mut allow_underscore = true;
-            ident.chars().all(|c| {
+            ident.chars().all(ref |c| {
                 allow_underscore = match c {
                     c if c.is_lowercase() || c.is_digit() => true,
                     '_' if allow_underscore => false,
@@ -1154,13 +1154,17 @@ impl UnusedMut {
         // avoid false warnings in match arms with multiple patterns
         let mut mutables = HashMap::new();
         for &p in pats.iter() {
-            pat_util::pat_bindings(&cx.tcx.def_map, &*p, |mode, id, _, path1| {
+            pat_util::pat_bindings(&cx.tcx.def_map,
+                                   &*p,
+                                   ref |mode, id, _, path1| {
                 let ident = path1.node;
                 match mode {
                     ast::BindByValue(ast::MutMutable) => {
                         if !token::get_ident(ident).get().starts_with("_") {
-                            mutables.insert_or_update_with(ident.name.uint(),
-                                vec!(id), |_, old| { old.push(id); });
+                            mutables.insert_or_update_with(
+                                ident.name.uint(),
+                                vec!(id),
+                                ref |_, old| { old.push(id); });
                         }
                     }
                     _ => {
@@ -1171,7 +1175,7 @@ impl UnusedMut {
 
         let used_mutables = cx.tcx.used_mut_nodes.borrow();
         for (_, v) in mutables.iter() {
-            if !v.iter().any(|e| used_mutables.contains(e)) {
+            if !v.iter().any(ref |e| used_mutables.contains(e)) {
                 cx.span_lint(UNUSED_MUT, cx.tcx.map.span(*v.get(0)),
                              "variable does not need to be mutable");
             }

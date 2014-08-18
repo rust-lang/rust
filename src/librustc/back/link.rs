@@ -456,7 +456,7 @@ pub mod write {
         let mut llvm_c_strs = Vec::new();
         let mut llvm_args = Vec::new();
         {
-            let add = |arg: &str| {
+            let add = ref |arg: &str| {
                 let s = arg.to_c_str();
                 llvm_args.push(s.as_ptr());
                 llvm_c_strs.push(s);
@@ -750,7 +750,7 @@ pub fn sanitize(s: &str) -> String {
 
             _ => {
                 let mut tstr = String::new();
-                char::escape_unicode(c, |c| tstr.push_char(c));
+                char::escape_unicode(c, ref |c| tstr.push_char(c));
                 result.push_char('$');
                 result.push_str(tstr.as_slice().slice_from(1));
             }
@@ -1292,7 +1292,10 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
 
     // Invoke the system linker
     debug!("{}", &cmd);
-    let prog = time(sess.time_passes(), "running linker", (), |()| cmd.output());
+    let prog = time(sess.time_passes(),
+                    "running linker",
+                    (),
+                    ref |()| cmd.output());
     match prog {
         Ok(prog) => {
             if !prog.status.success() {
@@ -1750,7 +1753,8 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
             let name = name.slice(3, name.len() - 5); // chop off lib/.rlib
             time(sess.time_passes(),
                  format!("altering {}.rlib", name).as_slice(),
-                 (), |()| {
+                 (),
+                 ref |()| {
                 let dst = tmpdir.join(cratepath.filename().unwrap());
                 match fs::copy(&cratepath, &dst) {
                     Ok(..) => {}

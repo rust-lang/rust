@@ -19,10 +19,10 @@ use parse::token::InternedString;
 use std::gc::Gc;
 
 pub fn expand_deriving_default(cx: &mut ExtCtxt,
-                            span: Span,
-                            mitem: Gc<MetaItem>,
-                            item: Gc<Item>,
-                            push: |Gc<Item>|) {
+                               span: Span,
+                               mitem: Gc<MetaItem>,
+                               item: Gc<Item>,
+                               push: |Gc<Item>|) {
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
@@ -39,7 +39,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
                 args: Vec::new(),
                 ret_ty: Self,
                 attributes: attrs,
-                combine_substructure: combine_substructure(|a, b, c| {
+                combine_substructure: combine_substructure(ref |a, b, c| {
                     default_substructure(a, b, c)
                 })
             })
@@ -55,7 +55,9 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span,
         cx.ident_of("Default"),
         cx.ident_of("default")
     );
-    let default_call = |span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
+    let default_call = ref |span| {
+        cx.expr_call_global(span, default_ident.clone(), Vec::new())
+    };
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
@@ -64,15 +66,22 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span,
                     if fields.is_empty() {
                         cx.expr_ident(trait_span, substr.type_ident)
                     } else {
-                        let exprs = fields.iter().map(|sp| default_call(*sp)).collect();
+                        let exprs = fields.iter()
+                                          .map(ref |sp| default_call(*sp))
+                                          .collect();
                         cx.expr_call_ident(trait_span, substr.type_ident, exprs)
                     }
                 }
                 Named(ref fields) => {
-                    let default_fields = fields.iter().map(|&(ident, span)| {
-                        cx.field_imm(span, ident, default_call(span))
-                    }).collect();
-                    cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
+                    let default_fields = fields.iter()
+                                               .map(ref |&(ident, span)| {
+                                                cx.field_imm(span,
+                                                             ident,
+                                                             default_call(span))
+                                               }).collect();
+                    cx.expr_struct_ident(trait_span,
+                                         substr.type_ident,
+                                         default_fields)
                 }
             }
         }

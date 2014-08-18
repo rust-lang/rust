@@ -1995,7 +1995,7 @@ impl<'a> Resolver<'a> {
 
         csearch::each_child_of_item(&self.session.cstore,
                                     def_id,
-                                    |def_like, child_ident, visibility| {
+                                    ref |def_like, child_ident, visibility| {
             debug!("(populating external module) ... found ident: {}",
                    token::get_ident(child_ident));
             self.build_reduced_graph_for_external_crate_def(module.clone(),
@@ -4504,7 +4504,7 @@ impl<'a> Resolver<'a> {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut result = HashMap::new();
-        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
+        pat_bindings(&self.def_map, pat, ref |binding_mode, _id, sp, path1| {
             let name = mtwt::resolve(path1.node);
             result.insert(name,
                           binding_info {span: sp,
@@ -4686,7 +4686,7 @@ impl<'a> Resolver<'a> {
             }
 
             TyClosure(c, _) | TyProc(c) => {
-                c.bounds.as_ref().map(|bounds| {
+                c.bounds.as_ref().map(ref |bounds| {
                     for bound in bounds.iter() {
                         self.resolve_type_parameter_bound(ty.id, bound);
                     }
@@ -5528,7 +5528,11 @@ impl<'a> Resolver<'a> {
                             }
                             _ => {
                                 let mut method_scope = false;
-                                self.value_ribs.borrow().iter().rev().all(|rib| {
+                                self.value_ribs
+                                    .borrow()
+                                    .iter()
+                                    .rev()
+                                    .all(ref |rib| {
                                     let res = match *rib {
                                         Rib { bindings: _, kind: MethodRibKind(_, _) } => true,
                                         Rib { bindings: _, kind: ItemRibKind } => false,
@@ -5796,7 +5800,9 @@ impl<'a> Resolver<'a> {
         assert!(match lp {LastImport{..} => false, _ => true},
                 "Import should only be used for `use` directives");
         self.last_private.insert(node_id, lp);
-        self.def_map.borrow_mut().insert_or_update_with(node_id, def, |_, old_value| {
+        self.def_map
+            .borrow_mut()
+            .insert_or_update_with(node_id, def, ref |_, old_value| {
             // Resolve appears to "resolve" the same ID multiple
             // times, so here is a sanity check it at least comes to
             // the same conclusion! - nmatsakis

@@ -13,7 +13,11 @@
 
 pub fn main() {
     let mut sum: int = 0;
-    first_ten(|i| { println!("main"); println!("{}", i); sum = sum + i; });
+    first_ten(ref |i| {
+        println!("main");
+        println!("{}", i);
+        sum = sum + i;
+    });
     println!("sum");
     println!("{}", sum);
     assert_eq!(sum, 45);

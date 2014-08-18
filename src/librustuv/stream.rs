@@ -182,7 +182,7 @@ impl StreamWatcher {
 
                 let loop_ = unsafe { uvll::get_loop_for_uv_handle(self.handle) };
                 wait_until_woken_after(&mut self.blocked_writer,
-                                       &Loop::wrap(loop_), || {
+                                       &Loop::wrap(loop_), ref || {
                     req.set_data(&mut wcx);
                 });
 

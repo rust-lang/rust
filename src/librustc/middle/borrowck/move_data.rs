@@ -485,7 +485,7 @@ impl MoveData {
 
         let mut p = self.path_first_child(index);
         while p != InvalidMovePathIndex {
-            if !self.each_extending_path(p, |x| f(x)) {
+            if !self.each_extending_path(p, ref |x| f(x)) {
                 return false;
             }
             p = self.path_next_sibling(p);
@@ -499,7 +499,7 @@ impl MoveData {
                             f: |MoveIndex| -> bool)
                             -> bool {
         let mut ret = true;
-        self.each_extending_path(index0, |index| {
+        self.each_extending_path(index0, ref |index| {
             let mut p = self.path_first_move(index);
             while p != InvalidMoveIndex {
                 if !f(p) {
@@ -591,8 +591,11 @@ impl<'a> FlowedMoveData<'a> {
         //! Returns the kind of a move of `loan_path` by `id`, if one exists.
 
         let mut ret = None;
-        for loan_path_index in self.move_data.path_map.borrow().find(&*loan_path).iter() {
-            self.dfcx_moves.each_gen_bit(id, |move_index| {
+        for loan_path_index in self.move_data
+                                   .path_map
+                                   .borrow()
+                                   .find(&*loan_path).iter() {
+            self.dfcx_moves.each_gen_bit(id, ref |move_index| {
                 let move = self.move_data.moves.borrow();
                 let move = move.get(move_index);
                 if move.path == **loan_path_index {
@@ -637,7 +640,7 @@ impl<'a> FlowedMoveData<'a> {
 
         let mut ret = true;
 
-        self.dfcx_moves.each_bit_on_entry(id, |index| {
+        self.dfcx_moves.each_bit_on_entry(id, ref |index| {
             let move = self.move_data.moves.borrow();
             let move = move.get(index);
             let moved_path = move.path;
@@ -649,7 +652,8 @@ impl<'a> FlowedMoveData<'a> {
                 }
             } else {
                 for &loan_path_index in opt_loan_path_index.iter() {
-                    let cont = self.move_data.each_base_path(moved_path, |p| {
+                    let cont = self.move_data.each_base_path(moved_path,
+                                                             ref |p| {
                         if p == loan_path_index {
                             // Scenario 3: some extension of `loan_path`
                             // was moved
@@ -693,7 +697,7 @@ impl<'a> FlowedMoveData<'a> {
             }
         };
 
-        self.dfcx_assign.each_bit_on_entry(id, |index| {
+        self.dfcx_assign.each_bit_on_entry(id, ref |index| {
             let assignment = self.move_data.var_assignments.borrow();
             let assignment = assignment.get(index);
             if assignment.path == loan_path_index && !f(assignment) {

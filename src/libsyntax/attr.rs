@@ -317,7 +317,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
 
     // this would be much nicer as a chain of iterator adaptors, but
     // this doesn't work.
-    let some_cfg_matches = metas.fold(false, |matches, mi| {
+    let some_cfg_matches = metas.fold(false, ref |matches, mi| {
         debug!("testing name: {}", mi.name());
         let this_matches = if mi.check_name("cfg") { // it is a #[cfg()] attribute
             debug!("is cfg");
@@ -326,7 +326,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
             match mi.meta_item_list() {
                 Some(cfg_meta) => {
                     debug!("is cfg(...)");
-                    cfg_meta.iter().all(|cfg_mi| {
+                    cfg_meta.iter().all(ref |cfg_mi| {
                         debug!("cfg({}[...])", cfg_mi.name());
                         match cfg_mi.node {
                             ast::MetaList(ref s, ref not_cfgs)
@@ -334,7 +334,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
                                 debug!("not!");
                                 // inside #[cfg(not(...))], so these need to all
                                 // not match.
-                                !not_cfgs.iter().all(|mi| {
+                                !not_cfgs.iter().all(ref |mi| {
                                     debug!("cfg(not({}[...]))", mi.name());
                                     contains(cfg, *mi)
                                 })

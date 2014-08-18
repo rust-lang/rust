@@ -117,12 +117,14 @@ impl<'a> NfaGen<'a> {
         let num_cap_locs = 2 * self.prog.num_captures();
         let num_insts = self.prog.insts.len();
         let cap_names = self.vec_expr(self.names.as_slice().iter(),
-            |cx, name| match *name {
-                Some(ref name) => {
-                    let name = name.as_slice();
-                    quote_expr!(cx, Some($name))
+            ref |cx, name| {
+                match *name {
+                    Some(ref name) => {
+                        let name = name.as_slice();
+                        quote_expr!(cx, Some($name))
+                    }
+                    None => cx.expr_none(self.sp),
                 }
-                None => cx.expr_none(self.sp),
             }
         );
         let prefix_anchor =
@@ -131,7 +133,7 @@ impl<'a> NfaGen<'a> {
                 _ => false,
             };
         let init_groups = self.vec_expr(range(0, num_cap_locs),
-                                        |cx, _| cx.expr_none(self.sp));
+                                        ref |cx, _| cx.expr_none(self.sp));
 
         let prefix_lit = Rc::new(Vec::from_slice(self.prog.prefix.as_slice().as_bytes()));
         let prefix_bytes = self.cx.expr_lit(self.sp, ast::LitBinary(prefix_lit));

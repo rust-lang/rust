@@ -156,7 +156,7 @@ into a single value:
 
 ~~~
 let xs = [1i, 9, 2, 3, 14, 12];
-let result = xs.iter().fold(0, |accumulator, item| accumulator - *item);
+let result = xs.iter().fold(0, ref |accumulator, item| accumulator - *item);
 assert_eq!(result, -41);
 ~~~
 
@@ -165,7 +165,7 @@ Most adaptors return an adaptor object implementing the `Iterator` trait itself:
 ~~~
 let xs = [1i, 9, 2, 3, 14, 12];
 let ys = [5i, 2, 1, 8];
-let sum = xs.iter().chain(ys.iter()).fold(0, |a, b| a + *b);
+let sum = xs.iter().chain(ys.iter()).fold(0, ref |a, b| a + *b);
 assert_eq!(sum, 57);
 ~~~
 
@@ -184,7 +184,7 @@ let xs = [1i,2,3,4,5];
 let mut calls = 0i;
 
 {
-    let it = xs.iter().scan((), |_, x| {
+    let it = xs.iter().scan((), ref |_, x| {
         calls += 1;
         if *x < 3 { Some(x) } else { None }});
 
@@ -266,7 +266,7 @@ Iterators offer generic conversion to containers with the `collect` adaptor:
 
 ~~~
 let xs = [0i, 1, 1, 2, 3, 5, 8];
-let ys = xs.iter().rev().skip(1).map(|&x| x * 2).collect::<Vec<int>>();
+let ys = xs.iter().rev().skip(1).map(ref |&x| x * 2).collect::<Vec<int>>();
 assert_eq!(ys, vec![10, 6, 4, 2, 2, 0]);
 ~~~
 
@@ -365,7 +365,7 @@ The `chain`, `map`, `filter`, `filter_map` and `inspect` adaptors are
 ~~~
 let xs = [1i, 2, 3, 4];
 let ys = [5i, 6, 7, 8];
-let mut it = xs.iter().chain(ys.iter()).map(|&x| x * 2);
+let mut it = xs.iter().chain(ys.iter()).map(ref |&x| x * 2);
 
 println!("{}", it.next()); // prints `Some(2)`
 

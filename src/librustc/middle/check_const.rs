@@ -146,9 +146,13 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
           ExprBlock(ref block) => {
             // Check all statements in the block
             for stmt in block.stmts.iter() {
-                let block_span_err = |span|
-                    span_err!(v.tcx.sess, span, E0016,
-                        "blocks in constants are limited to items and tail expressions");
+                let block_span_err = ref |span| {
+                    span_err!(v.tcx.sess,
+                              span,
+                              E0016,
+                              "blocks in constants are limited to items and \
+                               tail expressions")
+                };
                 match stmt.node {
                     StmtDecl(ref span, _) => {
                         match span.node {

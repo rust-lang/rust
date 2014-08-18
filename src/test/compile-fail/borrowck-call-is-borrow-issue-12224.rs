@@ -18,14 +18,14 @@ struct Test<'a> {
 }
 
 fn call(f: |Fn|) {
-    f(|| {
+    f(ref || {
     //~^ ERROR: closure requires unique access to `f` but it is already borrowed
-        f(|| {})
+        f(ref || {})
     });
 }
 
 fn test1() {
-    call(|a| {
+    call(ref |a| {
         a();
     });
 }
@@ -47,16 +47,16 @@ fn test5(f: &mut Test) {
 }
 
 fn test6() {
-    let f = || {};
-    (|| {
+    let f = ref || {};
+    (ref || {
         f();
     })();
 }
 
 fn test7() {
     fn foo(_: |g: |int|, b: int|) {}
-    let f = |g: |int|, b: int| {};
-    f(|a| { //~ ERROR: cannot borrow `f` as immutable because previous closure
+    let f = ref |g: |int|, b: int| {};
+    f(ref |a| { //~ ERROR: cannot borrow `f` as immutable because previous closure
         foo(f); //~ ERROR: cannot move out of captured outer variable
     }, 3);
 }

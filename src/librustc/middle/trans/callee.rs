@@ -395,7 +395,7 @@ pub fn trans_unboxing_shim(bcx: &Block,
     bcx = trans_call_inner(bcx,
                            None,
                            function_type,
-                           |bcx, _| {
+                           ref |bcx, _| {
                                Callee {
                                    bcx: bcx,
                                    data: Fn(llshimmedfn),
@@ -647,7 +647,7 @@ pub fn trans_call<'a>(
     trans_call_inner(in_cx,
                      Some(common::expr_info(call_ex)),
                      expr_ty(in_cx, f),
-                     |cx, _| trans(cx, f),
+                     ref |cx, _| trans(cx, f),
                      args,
                      Some(dest)).bcx
 }
@@ -667,8 +667,11 @@ pub fn trans_method_call<'a>(
         bcx,
         Some(common::expr_info(call_ex)),
         monomorphize_type(bcx, method_ty),
-        |cx, arg_cleanup_scope| {
-            meth::trans_method_callee(cx, method_call, Some(rcvr), arg_cleanup_scope)
+        ref |cx, arg_cleanup_scope| {
+            meth::trans_method_callee(cx,
+                                      method_call,
+                                      Some(rcvr),
+                                      arg_cleanup_scope)
         },
         args,
         Some(dest)).bcx
@@ -688,7 +691,7 @@ pub fn trans_lang_call<'a>(
     callee::trans_call_inner(bcx,
                              None,
                              fty,
-                             |bcx, _| {
+                             ref |bcx, _| {
                                 trans_fn_ref_with_vtables_to_callee(bcx,
                                                                     did,
                                                                     0,
@@ -876,7 +879,7 @@ pub fn trans_call_inner<'a>(
 
         let mut llargs = Vec::new();
         let arg_tys = match args {
-            ArgExprs(a) => a.iter().map(|x| expr_ty(bcx, &**x)).collect(),
+            ArgExprs(a) => a.iter().map(ref |x| expr_ty(bcx, &**x)).collect(),
             _ => fail!("expected arg exprs.")
         };
         bcx = trans_args(bcx,
@@ -969,7 +972,7 @@ fn trans_args_under_call_abi<'a>(
             for i in range(0, field_types.len()) {
                 let arg_datum = tuple_lvalue_datum.get_element(
                     *field_types.get(i),
-                    |srcval| {
+                    ref |srcval| {
                         adt::trans_field_ptr(bcx, repr_ptr, srcval, 0, i)
                     });
                 let arg_datum = arg_datum.to_expr_datum();

@@ -30,7 +30,7 @@ pub mod bench {
         }
 
         // measure
-        b.iter(|| {
+        b.iter(ref || {
             let k = rng.gen::<uint>() % n;
             map.insert(k, 1);
             map.remove(&k);
@@ -48,7 +48,7 @@ pub mod bench {
 
         // measure
         let mut i = 1;
-        b.iter(|| {
+        b.iter(ref || {
             map.insert(i, 1);
             map.remove(&i);
             i = (i + 2) % n;
@@ -70,7 +70,7 @@ pub mod bench {
 
         // measure
         let mut i = 0;
-        b.iter(|| {
+        b.iter(ref || {
             map.find(&keys[i]);
             i = (i + 1) % n;
         })
@@ -86,7 +86,7 @@ pub mod bench {
 
         // measure
         let mut i = 0;
-        b.iter(|| {
+        b.iter(ref || {
             let x = map.find(&i);
             i = (i + 1) % n;
             x

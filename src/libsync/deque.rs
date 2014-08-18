@@ -170,7 +170,7 @@ impl<T: Send> BufferPool<T> {
     fn free(&self, buf: Box<Buffer<T>>) {
         unsafe {
             let mut pool = self.pool.lock();
-            match pool.iter().position(|v| v.size() > buf.size()) {
+            match pool.iter().position(ref |v| v.size() > buf.size()) {
                 Some(i) => pool.insert(i, buf),
                 None => pool.push(buf),
             }

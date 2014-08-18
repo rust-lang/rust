@@ -1141,7 +1141,7 @@ impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
     fn next(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
 
-        match self.v.iter().position(|x| (self.pred)(x)) {
+        match self.v.iter().position(ref |x| (self.pred)(x)) {
             None => {
                 self.finished = true;
                 Some(self.v)
@@ -1170,7 +1170,7 @@ impl<'a, T> DoubleEndedIterator<&'a [T]> for Splits<'a, T> {
     fn next_back(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
 
-        match self.v.iter().rposition(|x| (self.pred)(x)) {
+        match self.v.iter().rposition(ref |x| (self.pred)(x)) {
             None => {
                 self.finished = true;
                 Some(self.v)
@@ -1200,7 +1200,7 @@ impl<'a, T> Iterator<&'a mut [T]> for MutSplits<'a, T> {
         if self.finished { return None; }
 
         let pred = &mut self.pred;
-        match self.v.iter().position(|x| (*pred)(x)) {
+        match self.v.iter().position(ref |x| (*pred)(x)) {
             None => {
                 self.finished = true;
                 let tmp = mem::replace(&mut self.v, &mut []);
@@ -1237,7 +1237,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T> {
         if self.finished { return None; }
 
         let pred = &mut self.pred;
-        match self.v.iter().rposition(|x| (*pred)(x)) {
+        match self.v.iter().rposition(ref |x| (*pred)(x)) {
             None => {
                 self.finished = true;
                 let tmp = mem::replace(&mut self.v, &mut []);

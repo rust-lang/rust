@@ -133,7 +133,7 @@ fn test_or_else() {
 #[test]
 fn test_option_while_some() {
     let mut i = 0i;
-    Some(10i).while_some(|j| {
+    Some(10i).while_some(ref |j| {
         i += 1;
         if j > 0 {
             Some(j-1)

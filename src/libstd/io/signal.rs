@@ -134,7 +134,7 @@ impl Listener {
         if self.handles.iter().any(|&(sig, _)| sig == signum) {
             return Ok(()); // self is already listening to signum, so succeed
         }
-        match LocalIo::maybe_raise(|io| {
+        match LocalIo::maybe_raise(ref |io| {
             io.signal(signum as int, box SignalCallback {
                 signum: signum,
                 tx: self.tx.clone(),

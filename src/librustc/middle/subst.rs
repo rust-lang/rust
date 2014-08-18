@@ -452,9 +452,9 @@ impl<T> VecPerParamSpace<T> {
         // Vec's, but note that the values of type_limit and self_limit
         // also need to be kept in sync during construction.
         VecPerParamSpace::new(
-            self.get_slice(TypeSpace).iter().map(|p| pred(p)).collect(),
-            self.get_slice(SelfSpace).iter().map(|p| pred(p)).collect(),
-            self.get_slice(FnSpace).iter().map(|p| pred(p)).collect())
+            self.get_slice(TypeSpace).iter().map(ref |p| pred(p)).collect(),
+            self.get_slice(SelfSpace).iter().map(ref |p| pred(p)).collect(),
+            self.get_slice(FnSpace).iter().map(ref |p| pred(p)).collect())
     }
 
     pub fn map_rev<U>(&self, pred: |&T| -> U) -> VecPerParamSpace<U> {
@@ -467,16 +467,28 @@ impl<T> VecPerParamSpace<T> {
          * can be run to a fixed point
          */
 
-        let mut fns: Vec<U> = self.get_slice(FnSpace).iter().rev().map(|p| pred(p)).collect();
+        let mut fns: Vec<U> = self.get_slice(FnSpace)
+                                  .iter()
+                                  .rev()
+                                  .map(ref |p| pred(p))
+                                  .collect();
 
         // NB: Calling foo.rev().map().rev() causes the calls to map
         // to occur in the wrong order. This was somewhat surprising
         // to me, though it makes total sense.
         fns.reverse();
 
-        let mut selfs: Vec<U> = self.get_slice(SelfSpace).iter().rev().map(|p| pred(p)).collect();
+        let mut selfs: Vec<U> = self.get_slice(SelfSpace)
+                                    .iter()
+                                    .rev()
+                                    .map(ref |p| pred(p))
+                                    .collect();
         selfs.reverse();
-        let mut tys: Vec<U> = self.get_slice(TypeSpace).iter().rev().map(|p| pred(p)).collect();
+        let mut tys: Vec<U> = self.get_slice(TypeSpace)
+                                  .iter()
+                                  .rev()
+                                  .map(ref |p| pred(p))
+                                  .collect();
         tys.reverse();
         VecPerParamSpace::new(tys, selfs, fns)
     }
@@ -486,14 +498,14 @@ impl<T> VecPerParamSpace<T> {
         // one would suffice.  i.e. change to use `move_iter`.
         let VecPerParamSpace { type_limit, self_limit, content } = self;
         let mut i = 0;
-        let (prefix, fn_vec) = content.partition(|_| {
+        let (prefix, fn_vec) = content.partition(ref |_| {
             let on_left = i < self_limit;
             i += 1;
             on_left
         });
 
         let mut i = 0;
-        let (type_vec, self_vec) = prefix.partition(|_| {
+        let (type_vec, self_vec) = prefix.partition(ref |_| {
             let on_left = i < type_limit;
             i += 1;
             on_left

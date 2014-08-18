@@ -19,7 +19,7 @@ fn pairs(it: |(int, int)|) {
 pub fn main() {
     let mut i: int = 10;
     let mut j: int = 0;
-    pairs(|p| {
+    pairs(ref |p| {
         let (_0, _1) = p;
         println!("{}", _0);
         println!("{}", _1);

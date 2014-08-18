@@ -138,7 +138,7 @@ impl<T: Send> Packet<T> {
         // like we're not empty, then immediately go through to `try_recv`.
         if self.state.load(atomic::SeqCst) == EMPTY {
             let t: Box<Task> = Local::take();
-            t.deschedule(1, |task| {
+            t.deschedule(1, ref |task| {
                 let n = unsafe { task.cast_to_uint() };
                 match self.state.compare_and_swap(EMPTY, n, atomic::SeqCst) {
                     // Nothing on the channel, we legitimately block

@@ -1079,7 +1079,9 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                                 pat, downcast_cmt.clone(), subpat_ty,
                                 InteriorField(PositionalField(i)));
 
-                        if_ok!(self.cat_pattern(subcmt, &**subpat, |x,y,z| op(x,y,z)));
+                        if_ok!(self.cat_pattern(subcmt,
+                                                &**subpat,
+                                                ref |x,y,z| op(x,y,z)));
                     }
                 }
                 Some(&def::DefFn(..)) |
@@ -1090,13 +1092,16 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                             self.cat_imm_interior(
                                 pat, cmt.clone(), subpat_ty,
                                 InteriorField(PositionalField(i)));
-                        if_ok!(self.cat_pattern(cmt_field, &**subpat,
-                                                |x,y,z| op(x,y,z)));
+                        if_ok!(self.cat_pattern(cmt_field,
+                                                &**subpat,
+                                                ref |x,y,z| op(x,y,z)));
                     }
                 }
                 Some(&def::DefStatic(..)) => {
                     for subpat in subpats.iter() {
-                        if_ok!(self.cat_pattern(cmt.clone(), &**subpat, |x,y,z| op(x,y,z)));
+                        if_ok!(self.cat_pattern(cmt.clone(),
+                                                &**subpat,
+                                                ref |x,y,z| op(x,y,z)));
                     }
                 }
                 _ => {
@@ -1120,7 +1125,9 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
             for fp in field_pats.iter() {
                 let field_ty = if_ok!(self.pat_ty(&*fp.pat)); // see (*2)
                 let cmt_field = self.cat_field(pat, cmt.clone(), fp.ident, field_ty);
-                if_ok!(self.cat_pattern(cmt_field, &*fp.pat, |x,y,z| op(x,y,z)));
+                if_ok!(self.cat_pattern(cmt_field,
+                                        &*fp.pat,
+                                        ref |x,y,z| op(x,y,z)));
             }
           }
 
@@ -1132,7 +1139,9 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                     self.cat_imm_interior(
                         pat, cmt.clone(), subpat_ty,
                         InteriorField(PositionalField(i)));
-                if_ok!(self.cat_pattern(subcmt, &**subpat, |x,y,z| op(x,y,z)));
+                if_ok!(self.cat_pattern(subcmt,
+                                        &**subpat,
+                                        ref |x,y,z| op(x,y,z)));
             }
           }
 
@@ -1145,16 +1154,21 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
           ast::PatVec(ref before, slice, ref after) => {
               let elt_cmt = self.cat_index(pat, cmt, 0);
               for before_pat in before.iter() {
-                  if_ok!(self.cat_pattern(elt_cmt.clone(), &**before_pat,
-                                          |x,y,z| op(x,y,z)));
+                  if_ok!(self.cat_pattern(elt_cmt.clone(),
+                                          &**before_pat,
+                                          ref |x,y,z| op(x,y,z)));
               }
               for slice_pat in slice.iter() {
                   let slice_ty = if_ok!(self.pat_ty(&**slice_pat));
                   let slice_cmt = self.cat_rvalue_node(pat.id(), pat.span(), slice_ty);
-                  if_ok!(self.cat_pattern(slice_cmt, &**slice_pat, |x,y,z| op(x,y,z)));
+                  if_ok!(self.cat_pattern(slice_cmt,
+                                          &**slice_pat,
+                                          ref |x,y,z| op(x,y,z)));
               }
               for after_pat in after.iter() {
-                  if_ok!(self.cat_pattern(elt_cmt.clone(), &**after_pat, |x,y,z| op(x,y,z)));
+                  if_ok!(self.cat_pattern(elt_cmt.clone(),
+                                          &**after_pat,
+                                          ref |x,y,z| op(x,y,z)));
               }
           }
 

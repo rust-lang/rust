@@ -531,7 +531,9 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
                         id: NodeId,
                         _: ()) {
         self.operation.visit_id(id);
-        struct_def.ctor_id.map(|ctor_id| self.operation.visit_id(ctor_id));
+        struct_def.ctor_id.map(ref |ctor_id| {
+            self.operation.visit_id(ctor_id)
+        });
         visit::walk_struct_def(self, struct_def, ());
     }
 
@@ -614,18 +616,20 @@ pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
     match pat.node {
         PatIdent(_, _, Some(ref p)) => walk_pat(&**p, it),
         PatStruct(_, ref fields, _) => {
-            fields.iter().all(|field| walk_pat(&*field.pat, |p| it(p)))
+            fields.iter().all(ref |field| {
+                walk_pat(&*field.pat, ref |p| it(p))
+            })
         }
         PatEnum(_, Some(ref s)) | PatTup(ref s) => {
-            s.iter().all(|p| walk_pat(&**p, |p| it(p)))
+            s.iter().all(ref |p| walk_pat(&**p, ref |p| it(p)))
         }
         PatBox(ref s) | PatRegion(ref s) => {
             walk_pat(&**s, it)
         }
         PatVec(ref before, ref slice, ref after) => {
-            before.iter().all(|p| walk_pat(&**p, |p| it(p))) &&
-            slice.iter().all(|p| walk_pat(&**p, |p| it(p))) &&
-            after.iter().all(|p| walk_pat(&**p, |p| it(p)))
+            before.iter().all(ref |p| walk_pat(&**p, ref |p| it(p))) &&
+            slice.iter().all(ref |p| walk_pat(&**p, ref |p| it(p))) &&
+            after.iter().all(ref |p| walk_pat(&**p, ref |p| it(p)))
         }
         PatMac(_) => fail!("attempted to analyze unexpanded pattern"),
         PatWild(_) | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |

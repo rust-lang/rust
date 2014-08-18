@@ -507,7 +507,7 @@ mod tests {
     #[bench]
     fn bench_str_under_8_bytes(b: &mut Bencher) {
         let s = "foo";
-        b.iter(|| {
+        b.iter(ref || {
             assert_eq!(hash(&s), 16262950014981195938);
         })
     }
@@ -515,7 +515,7 @@ mod tests {
     #[bench]
     fn bench_str_of_8_bytes(b: &mut Bencher) {
         let s = "foobar78";
-        b.iter(|| {
+        b.iter(ref || {
             assert_eq!(hash(&s), 4898293253460910787);
         })
     }
@@ -523,7 +523,7 @@ mod tests {
     #[bench]
     fn bench_str_over_8_bytes(b: &mut Bencher) {
         let s = "foobarbaz0";
-        b.iter(|| {
+        b.iter(ref || {
             assert_eq!(hash(&s), 10581415515220175264);
         })
     }
@@ -536,7 +536,7 @@ exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute 
 irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla \
 pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui \
 officia deserunt mollit anim id est laborum.";
-        b.iter(|| {
+        b.iter(ref || {
             assert_eq!(hash(&s), 17717065544121360093);
         })
     }
@@ -544,7 +544,7 @@ officia deserunt mollit anim id est laborum.";
     #[bench]
     fn bench_u64(b: &mut Bencher) {
         let u = 16262950014981195938u64;
-        b.iter(|| {
+        b.iter(ref || {
             assert_eq!(hash(&u), 5254097107239593357);
         })
     }

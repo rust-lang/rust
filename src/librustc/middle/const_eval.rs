@@ -204,7 +204,7 @@ impl<'a> ConstEvalVisitor<'a> {
 
             ast::ExprTup(ref es) |
             ast::ExprVec(ref es) =>
-                join_all(es.iter().map(|e| self.classify(&**e))),
+                join_all(es.iter().map(ref |e| self.classify(&**e))),
 
             ast::ExprVstore(ref e, vstore) => {
                 match vstore {
@@ -215,7 +215,7 @@ impl<'a> ConstEvalVisitor<'a> {
             }
 
             ast::ExprStruct(_, ref fs, None) => {
-                let cs = fs.iter().map(|f| self.classify(&*f.expr));
+                let cs = fs.iter().map(ref |f| self.classify(&*f.expr));
                 join_all(cs)
             }
 

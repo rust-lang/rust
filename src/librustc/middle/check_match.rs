@@ -59,7 +59,7 @@ impl fmt::Show for Matrix {
 
         let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0u);
         assert!(m.iter().all(|row| row.len() == column_count));
-        let column_widths: Vec<uint> = range(0, column_count).map(|col| {
+        let column_widths: Vec<uint> = range(0, column_count).map(ref |col| {
             pretty_printed_matrix.iter().map(|row| row.get(col).len()).max().unwrap_or(0u)
         }).collect();
 
@@ -162,7 +162,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
             let mut static_inliner = StaticInliner::new(cx.tcx);
             let inlined_arms = arms
                 .iter()
-                .map(|arm| Arm {
+                .map(ref |arm| Arm {
                     pats: arm.pats.iter().map(|pat| {
                         static_inliner.fold_pat(*pat)
                     }).collect(),
@@ -574,7 +574,7 @@ fn is_useful(cx: &MatchCheckCtxt,
 fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix, v: &[Gc<Pat>],
                          ctor: Constructor, lty: ty::t, witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
-    let matrix = Matrix(m.iter().filter_map(|r| {
+    let matrix = Matrix(m.iter().filter_map(ref |r| {
         specialize(cx, r.as_slice(), &ctor, 0u, arity)
     }).collect());
     match specialize(cx, v, &ctor, 0u, arity) {
@@ -906,7 +906,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     let def_map = &tcx.def_map;
     let mut by_ref_span = None;
     for pat in pats.iter() {
-        pat_bindings(def_map, &**pat, |bm, _, span, _path| {
+        pat_bindings(def_map, &**pat, ref |bm, _, span, _path| {
             match bm {
                 BindByRef(_) => {
                     by_ref_span = Some(span);
@@ -933,7 +933,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     };
 
     for pat in pats.iter() {
-        walk_pat(&**pat, |p| {
+        walk_pat(&**pat, ref |p| {
             if pat_is_binding(def_map, &*p) {
                 match p.node {
                     PatIdent(BindByValue(_), _, sub) => {

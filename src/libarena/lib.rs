@@ -316,8 +316,8 @@ fn test_arena_alloc_nested() {
 
     let arena = Arena::new();
 
-    let result = arena.alloc(|| Outer {
-        inner: arena.alloc(|| Inner { value: 10 })
+    let result = arena.alloc(ref || Outer {
+        inner: arena.alloc(ref || Inner { value: 10 })
     });
 
     assert_eq!(result.inner.value, 10);
@@ -527,7 +527,7 @@ mod tests {
     #[bench]
     pub fn bench_copy(b: &mut Bencher) {
         let arena = TypedArena::new();
-        b.iter(|| {
+        b.iter(ref || {
             arena.alloc(Point {
                 x: 1,
                 y: 2,
@@ -538,7 +538,7 @@ mod tests {
 
     #[bench]
     pub fn bench_copy_nonarena(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             box Point {
                 x: 1,
                 y: 2,
@@ -550,8 +550,8 @@ mod tests {
     #[bench]
     pub fn bench_copy_old_arena(b: &mut Bencher) {
         let arena = Arena::new();
-        b.iter(|| {
-            arena.alloc(|| {
+        b.iter(ref || {
+            arena.alloc(ref || {
                 Point {
                     x: 1,
                     y: 2,
@@ -580,7 +580,7 @@ mod tests {
     #[bench]
     pub fn bench_noncopy(b: &mut Bencher) {
         let arena = TypedArena::new();
-        b.iter(|| {
+        b.iter(ref || {
             arena.alloc(Noncopy {
                 string: "hello world".to_string(),
                 array: vec!( 1, 2, 3, 4, 5 ),
@@ -590,7 +590,7 @@ mod tests {
 
     #[bench]
     pub fn bench_noncopy_nonarena(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             box Noncopy {
                 string: "hello world".to_string(),
                 array: vec!( 1, 2, 3, 4, 5 ),
@@ -601,8 +601,8 @@ mod tests {
     #[bench]
     pub fn bench_noncopy_old_arena(b: &mut Bencher) {
         let arena = Arena::new();
-        b.iter(|| {
-            arena.alloc(|| Noncopy {
+        b.iter(ref || {
+            arena.alloc(ref || Noncopy {
                 string: "hello world".to_string(),
                 array: vec!( 1, 2, 3, 4, 5 ),
             })

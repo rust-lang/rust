@@ -820,14 +820,14 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
             PadOnLeft | PadOnRight => t.desc.name.as_slice().len(),
         }
     }
-    match tests.iter().max_by(|t|len_if_padded(*t)) {
+    match tests.iter().max_by(ref |t| len_if_padded(*t)) {
         Some(t) => {
             let n = t.desc.name.as_slice();
             st.max_name_len = n.len();
         },
         None => {}
     }
-    try!(run_tests(opts, tests, |x| callback(&x, &mut st)));
+    try!(run_tests(opts, tests, ref |x| callback(&x, &mut st)));
     match opts.save_metrics {
         None => (),
         Some(ref pth) => {
@@ -1306,7 +1306,7 @@ impl Bencher {
 
         // Initial bench run to get ballpark figure.
         let mut n = 1_u64;
-        self.bench_n(n, |x| f(x));
+        self.bench_n(n, ref |x| f(x));
 
         // Try to estimate iter count for 1ms falling back to 1m
         // iterations if first run took < 1ns.
@@ -1328,7 +1328,7 @@ impl Bencher {
             let loop_start = precise_time_ns();
 
             for p in samples.mut_iter() {
-                self.bench_n(n, |x| f(x));
+                self.bench_n(n, ref |x| f(x));
                 *p = self.ns_per_iter() as f64;
             };
 
@@ -1336,7 +1336,7 @@ impl Bencher {
             let summ = stats::Summary::new(samples);
 
             for p in samples.mut_iter() {
-                self.bench_n(5 * n, |x| f(x));
+                self.bench_n(5 * n, ref |x| f(x));
                 *p = self.ns_per_iter() as f64;
             };
 

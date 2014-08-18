@@ -188,22 +188,22 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
                 if !rendered {
                     let mut s = String::new();
-                    let id = playground_krate.get().map(|krate| {
+                    let id = playground_krate.get().map(ref |krate| {
                         let idx = test_idx.get().unwrap();
                         let i = idx.get();
                         idx.set(i + 1);
 
-                        let test = origtext.lines().map(|l| {
+                        let test = origtext.lines().map(ref |l| {
                             stripped_filtered_line(l).unwrap_or(l)
                         }).collect::<Vec<&str>>().connect("\n");
-                        let krate = krate.as_ref().map(|s| s.as_slice());
+                        let krate = krate.as_ref().map(ref |s| s.as_slice());
                         let test = test::maketest(test.as_slice(), krate, false, false);
                         s.push_str(format!("<span id='rust-example-raw-{}' \
                                              class='rusttest'>{}</span>",
                                            i, Escape(test.as_slice())).as_slice());
                         format!("rust-example-rendered-{}", i)
                     });
-                    let id = id.as_ref().map(|a| a.as_slice());
+                    let id = id.as_ref().map(ref |a| a.as_slice());
                     s.push_str(highlight::highlight(text.as_slice(), None, id)
                                          .as_slice());
                     let output = s.to_c_str();

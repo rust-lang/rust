@@ -62,13 +62,13 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         let bc_encoded = time(sess.time_passes(),
                               format!("read {}.bytecode.deflate", name).as_slice(),
                               (),
-                              |_| {
+                              ref |_| {
                                   archive.read(format!("{}.bytecode.deflate",
                                                        file).as_slice())
                               });
         let bc_encoded = bc_encoded.expect("missing compressed bytecode in archive!");
         let bc_extractor = if is_versioned_bytecode_format(bc_encoded) {
-            |_| {
+            ref |_| {
                 // Read the version
                 let version = extract_bytecode_format_version(bc_encoded);
 
@@ -94,7 +94,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         } else {
             // the object must be in the old, pre-versioning format, so simply
             // inflate everything and let LLVM decide if it can make sense of it
-            |_| {
+            ref |_| {
                 match flate::inflate_bytes(bc_encoded) {
                     Some(bc) => bc,
                     None => {
@@ -115,7 +115,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         time(sess.time_passes(),
              format!("ll link {}", name).as_slice(),
              (),
-             |()| unsafe {
+             ref |()| unsafe {
             if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                     ptr as *const libc::c_char,
                                                     bc_decoded.len() as libc::size_t) {

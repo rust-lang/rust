@@ -1445,7 +1445,7 @@ impl<K: Ord, V> TreeNode<K, V> {
 
 // Remove left horizontal link by rotating right
 fn skew<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
-    if node.left.as_ref().map_or(false, |x| x.level == node.level) {
+    if node.left.as_ref().map_or(false, ref |x| x.level == node.level) {
         let mut save = node.left.take_unwrap();
         swap(&mut node.left, &mut save.right); // save.right now None
         swap(node, &mut save);
@@ -1456,8 +1456,9 @@ fn skew<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
 // Remove dual horizontal link by rotating left and increasing level of
 // the parent
 fn split<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
-    if node.right.as_ref().map_or(false,
-      |x| x.right.as_ref().map_or(false, |y| y.level == node.level)) {
+    if node.right.as_ref().map_or(false, ref |x| {
+        x.right.as_ref().map_or(false, ref |y| y.level == node.level)
+    }) {
         let mut save = node.right.take_unwrap();
         swap(&mut node.right, &mut save.left); // save.left now None
         save.level += 1;
@@ -2418,7 +2419,7 @@ mod test_set {
         for y in b.iter() { assert!(set_b.insert(*y)) }
 
         let mut i = 0;
-        f(&set_a, &set_b, |x| {
+        f(&set_a, &set_b, ref |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
             true
@@ -2445,7 +2446,7 @@ mod test_set {
     #[test]
     fn test_difference() {
         fn check_difference(a: &[int], b: &[int], expected: &[int]) {
-            check(a, b, expected, |x, y, f| x.difference(y).all(f))
+            check(a, b, expected, ref |x, y, f| x.difference(y).all(f))
         }
 
         check_difference([], [], []);
@@ -2463,7 +2464,10 @@ mod test_set {
     fn test_symmetric_difference() {
         fn check_symmetric_difference(a: &[int], b: &[int],
                                       expected: &[int]) {
-            check(a, b, expected, |x, y, f| x.symmetric_difference(y).all(f))
+            check(a,
+                  b,
+                  expected,
+                  ref |x, y, f| x.symmetric_difference(y).all(f))
         }
 
         check_symmetric_difference([], [], []);
@@ -2478,7 +2482,7 @@ mod test_set {
     fn test_union() {
         fn check_union(a: &[int], b: &[int],
                                       expected: &[int]) {
-            check(a, b, expected, |x, y, f| x.union(y).all(f))
+            check(a, b, expected, ref |x, y, f| x.union(y).all(f))
         }
 
         check_union([], [], []);

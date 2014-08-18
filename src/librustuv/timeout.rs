@@ -239,7 +239,7 @@ impl ConnectCtx {
                     }
                     None => {}
                 }
-                wait_until_woken_after(&mut self.task, &io.loop_, || {
+                wait_until_woken_after(&mut self.task, &io.loop_, ref || {
                     let data = &self as *const _ as *mut ConnectCtx;
                     match self.timer {
                         Some(ref mut timer) => unsafe { timer.set_data(data) },

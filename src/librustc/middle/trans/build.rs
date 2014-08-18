@@ -30,7 +30,7 @@ pub fn terminate(cx: &Block, _: &str) {
 
 pub fn check_not_terminated(cx: &Block) {
     if cx.terminated.get() {
-        fail!("already terminated!");
+        fail!("block {} already terminated!", cx.to_str());
     }
 }
 
@@ -122,7 +122,9 @@ pub fn Invoke(cx: &Block,
     terminate(cx, "Invoke");
     debug!("Invoke({} with arguments ({}))",
            cx.val_to_string(fn_),
-           args.iter().map(|a| cx.val_to_string(*a)).collect::<Vec<String>>().connect(", "));
+           args.iter()
+               .map(ref |a| cx.val_to_string(*a))
+               .collect::<Vec<String>>().connect(", "));
     B(cx).invoke(fn_, args, then, catch, attributes)
 }
 

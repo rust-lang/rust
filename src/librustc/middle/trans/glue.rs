@@ -213,7 +213,7 @@ fn trans_struct_drop_flag<'a>(mut bcx: &'a Block<'a>,
                               -> &'a Block<'a> {
     let repr = adt::represent_type(bcx.ccx(), t);
     let drop_flag = unpack_datum!(bcx, adt::trans_drop_flag_ptr(bcx, &*repr, v0));
-    with_cond(bcx, load_ty(bcx, drop_flag.val, ty::mk_bool()), |cx| {
+    with_cond(bcx, load_ty(bcx, drop_flag.val, ty::mk_bool()), ref |cx| {
         trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
     })
 }
@@ -237,7 +237,7 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
         ty.element_type().func_params()
     };
 
-    adt::fold_variants(bcx, &*repr, v0, |variant_cx, st, value| {
+    adt::fold_variants(bcx, &*repr, v0, ref |variant_cx, st, value| {
         // Be sure to put all of the fields into a scope so we can use an invoke
         // instruction to call the user destructor but still call the field
         // destructors if the user destructor fails.
@@ -279,7 +279,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                 ty::ty_vec(mt, None) => {
                     let llbox = Load(bcx, v0);
                     let not_null = IsNotNull(bcx, llbox);
-                    with_cond(bcx, not_null, |bcx| {
+                    with_cond(bcx, not_null, ref |bcx| {
                         let bcx = tvec::make_drop_glue_unboxed(bcx, llbox, mt.ty);
                         // FIXME: #13994: the old `Box<[T]>` will not support sized deallocation
                         trans_exchange_free(bcx, llbox, 0, 8)
@@ -288,7 +288,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                 ty::ty_str => {
                     let llbox = Load(bcx, v0);
                     let not_null = IsNotNull(bcx, llbox);
-                    with_cond(bcx, not_null, |bcx| {
+                    with_cond(bcx, not_null, ref |bcx| {
                         let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
                         let bcx = tvec::make_drop_glue_unboxed(bcx, llbox, unit_ty);
                         // FIXME: #13994: the old `Box<str>` will not support sized deallocation
@@ -298,7 +298,9 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                 ty::ty_trait(..) => {
                     let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
                     // Only drop the value when it is non-null
-                    with_cond(bcx, IsNotNull(bcx, Load(bcx, lluniquevalue)), |bcx| {
+                    with_cond(bcx,
+                              IsNotNull(bcx, Load(bcx, lluniquevalue)),
+                                        ref |bcx| {
                         let dtor_ptr = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
                         let dtor = Load(bcx, dtor_ptr);
                         Call(bcx,
@@ -311,7 +313,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                 _ => {
                     let llbox = Load(bcx, v0);
                     let not_null = IsNotNull(bcx, llbox);
-                    with_cond(bcx, not_null, |bcx| {
+                    with_cond(bcx, not_null, ref |bcx| {
                         let bcx = drop_ty(bcx, llbox, content_ty);
                         trans_exchange_free_ty(bcx, llbox, content_ty)
                     })
@@ -339,7 +341,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
             let env = Load(bcx, box_cell_v);
             let env_ptr_ty = Type::at_box(bcx.ccx(), Type::i8(bcx.ccx())).ptr_to();
             let env = PointerCast(bcx, env, env_ptr_ty);
-            with_cond(bcx, IsNotNull(bcx, env), |bcx| {
+            with_cond(bcx, IsNotNull(bcx, env), ref |bcx| {
                 let dtor_ptr = GEPi(bcx, env, [0u, abi::box_field_tydesc]);
                 let dtor = Load(bcx, dtor_ptr);
                 let cdata = GEPi(bcx, env, [0u, abi::box_field_body]);
@@ -420,7 +422,7 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> tydesc_info {
     let llalign = llalign_of(ccx, llty);
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
     debug!("+++ declare_tydesc {} {}", ppaux::ty_to_string(ccx.tcx(), t), name);
-    let gvar = name.as_slice().with_c_str(|buf| {
+    let gvar = name.as_slice().with_c_str(ref |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type().to_ref(), buf)
         }

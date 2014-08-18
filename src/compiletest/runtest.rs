@@ -643,13 +643,13 @@ fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
 
                 header::parse_name_value_directive(
                         line.as_slice(),
-                        command_directive.as_slice()).map(|cmd| {
+                        command_directive.as_slice()).map(ref |cmd| {
                     commands.push(cmd)
                 });
 
                 header::parse_name_value_directive(
                         line.as_slice(),
-                        check_directive.as_slice()).map(|cmd| {
+                        check_directive.as_slice()).map(ref |cmd| {
                     check_lines.push(cmd)
                 });
             }

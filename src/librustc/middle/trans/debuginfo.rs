@@ -1265,8 +1265,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     let is_local_to_unit = is_node_local_to_unit(cx, fn_ast_id);
 
-    let fn_metadata = function_name.as_slice().with_c_str(|function_name| {
-                          linkage_name.as_slice().with_c_str(|linkage_name| {
+    let fn_metadata = function_name.as_slice()
+                                   .with_c_str(ref |function_name| {
+                          linkage_name.as_slice()
+                                      .with_c_str(ref |linkage_name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateFunction(
                     DIB(cx),
@@ -1549,7 +1551,7 @@ fn declare_local(bcx: &Block,
         CapturedVariable => (0, DW_TAG_auto_variable)
     };
 
-    let (var_alloca, var_metadata) = name.get().with_c_str(|name| {
+    let (var_alloca, var_metadata) = name.get().with_c_str(ref |name| {
         match variable_access {
             DirectVariable { alloca } => (
                 alloca,
@@ -2352,7 +2354,9 @@ fn prepare_enum_metadata(cx: &CrateContext,
                                                                     codemap::DUMMY_SP);
                 let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
 
-                let discriminant_type_metadata = discriminant_name.get().with_c_str(|name| {
+                let discriminant_type_metadata =
+                        discriminant_name.get()
+                                         .with_c_str(ref |name| {
                     unsafe {
                         llvm::LLVMDIBuilderCreateEnumerationType(
                             DIB(cx),
@@ -3276,7 +3280,7 @@ fn populate_scope_map(cx: &CrateContext,
     // Push argument identifiers onto the stack so arguments integrate nicely
     // with variable shadowing.
     for &arg_pat in arg_pats.iter() {
-        pat_util::pat_bindings(def_map, &*arg_pat, |_, _, _, path1| {
+        pat_util::pat_bindings(def_map, &*arg_pat, ref |_, _, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
                                                ident: Some(path1.node) });
         })

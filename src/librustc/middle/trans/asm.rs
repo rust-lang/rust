@@ -37,7 +37,7 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     let temp_scope = fcx.push_custom_cleanup_scope();
 
     // Prepare the output operands
-    let outputs = ia.outputs.iter().map(|&(ref c, ref out)| {
+    let outputs = ia.outputs.iter().map(ref |&(ref c, ref out)| {
         constraints.push((*c).clone());
 
         let out_datum = unpack_datum!(bcx, expr::trans(bcx, &**out));
@@ -47,7 +47,7 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     }).collect::<Vec<_>>();
 
     // Now the input operands
-    let inputs = ia.inputs.iter().map(|&(ref c, ref input)| {
+    let inputs = ia.inputs.iter().map(ref |&(ref c, ref input)| {
         constraints.push((*c).clone());
 
         let in_datum = unpack_datum!(bcx, expr::trans(bcx, &**input));
@@ -103,8 +103,8 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
         ast::AsmIntel => llvm::AD_Intel
     };
 
-    let r = ia.asm.get().with_c_str(|a| {
-        constraints.as_slice().with_c_str(|c| {
+    let r = ia.asm.get().with_c_str(ref |a| {
+        constraints.as_slice().with_c_str(ref |c| {
             InlineAsmCall(bcx,
                           a,
                           c,

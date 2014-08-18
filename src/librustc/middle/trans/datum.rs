@@ -322,7 +322,7 @@ impl Datum<Rvalue> {
             ByValue => {
                 lvalue_scratch_datum(
                     bcx, self.ty, name, false, scope, self,
-                    |this, bcx, llval| this.store_to(bcx, llval))
+                    ref |this, bcx, llval| this.store_to(bcx, llval))
             }
         }
     }
@@ -386,8 +386,8 @@ impl Datum<Expr> {
          */
 
         self.match_kind(
-            |d| d,
-            |_| bcx.sess().bug("assert_lvalue given rvalue"))
+            ref |d| d,
+            ref |_| bcx.sess().bug("assert_lvalue given rvalue"))
     }
 
     pub fn assert_rvalue(self, bcx: &Block) -> Datum<Rvalue> {
@@ -396,8 +396,8 @@ impl Datum<Expr> {
          */
 
         self.match_kind(
-            |_| bcx.sess().bug("assert_rvalue given lvalue"),
-            |r| r)
+            ref |_| bcx.sess().bug("assert_rvalue given lvalue"),
+            ref |r| r)
     }
 
     pub fn store_to_dest<'a>(self,
@@ -425,8 +425,8 @@ impl Datum<Expr> {
          */
 
         self.match_kind(
-            |_| { /* Nothing to do, cleanup already arranged */ },
-            |r| {
+            ref |_| { /* Nothing to do, cleanup already arranged */ },
+            ref |r| {
                 let scope = cleanup::temporary_scope(bcx.tcx(), expr_id);
                 r.add_clean(bcx.fcx, scope);
             })
@@ -451,8 +451,8 @@ impl Datum<Expr> {
                                expr_id: ast::NodeId)
                                -> DatumBlock<'a, Lvalue> {
         self.match_kind(
-            |l| DatumBlock::new(bcx, l),
-            |r| {
+            ref |l| DatumBlock::new(bcx, l),
+            ref |r| {
                 let scope = cleanup::temporary_scope(bcx.tcx(), expr_id);
                 r.to_lvalue_datum_in_scope(bcx, name, scope)
             })
@@ -468,7 +468,7 @@ impl Datum<Expr> {
          */
 
         self.match_kind(
-            |l| {
+            ref |l| {
                 let mut bcx = bcx;
                 match l.appropriate_rvalue_mode(bcx.ccx()) {
                     ByRef => {
@@ -483,7 +483,7 @@ impl Datum<Expr> {
                     }
                 }
             },
-            |r| DatumBlock::new(bcx, r))
+            ref |r| DatumBlock::new(bcx, r))
     }
 
 }

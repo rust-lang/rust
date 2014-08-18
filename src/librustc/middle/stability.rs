@@ -89,7 +89,7 @@ impl Visitor<Option<Stability>> for Annotator {
 
     fn visit_struct_def(&mut self, s: &StructDef, _: Ident, _: &Generics,
                         _: NodeId, parent: Option<Stability>) {
-        s.ctor_id.map(|id| self.annotate(id, &[], parent.clone()));
+        s.ctor_id.map(ref |id| self.annotate(id, &[], parent.clone()));
         visit::walk_struct_def(self, s, parent)
     }
 
