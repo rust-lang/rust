@@ -236,10 +236,15 @@ impl File {
         })
     }
 
-    /// Tests whether this stream has reached EOF.
+    /// Returns true if the stream has reached the end of the file.
     ///
     /// If true, then this file will no longer continue to return data via
     /// `read`.
+    ///
+    /// Note that the operating system will not return an `EOF` indicator
+    /// until you have attempted to read past the end of the file, so if
+    /// you've read _exactly_ the number of bytes in the file, this will
+    /// return `false`, not `true`.
     pub fn eof(&self) -> bool {
         self.last_nread == 0
     }
