@@ -34,6 +34,7 @@ pub enum ObsoleteSyntax {
     ObsoleteOwnedSelf,
     ObsoleteManagedType,
     ObsoleteManagedExpr,
+    ObsoleteImportRenaming,
 }
 
 pub trait ParserObsoleteMethods {
@@ -83,6 +84,10 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
                 "`@` notation for a managed pointer allocation",
                 "use the `box(GC)` operator instead of `@`"
             ),
+            ObsoleteImportRenaming => (
+                "`use foo = bar` syntax",
+                "write `use bar as foo` instead"
+            )
         };
 
         self.report(sp, kind, kind_str, desc);

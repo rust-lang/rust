@@ -328,7 +328,7 @@ pub mod with_hygiene {
                       -> Vec<ast::TokenTree> {
         // it appears to me that the cfg doesn't matter here... indeed,
         // parsing tt's probably shouldn't require a parser at all.
-        use make_reader = super::lexer::make_reader_with_embedded_idents;
+        use super::lexer::make_reader_with_embedded_idents as make_reader;
         let cfg = Vec::new();
         let srdr = make_reader(&sess.span_diagnostic, filemap);
         let mut p1 = Parser::new(sess, cfg, box srdr);

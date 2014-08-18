@@ -545,7 +545,7 @@ impl fmt::Show for clean::ViewPath {
                 if *name == src.path.segments.last().unwrap().name {
                     write!(f, "use {};", *src)
                 } else {
-                    write!(f, "use {} = {};", *name, *src)
+                    write!(f, "use {} as {};", *src, *name)
                 }
             }
             clean::GlobImport(ref src) => {

@@ -21,7 +21,7 @@ use metadata::common::LinkMeta;
 use metadata::creader;
 use middle::borrowck::{FnPartsWithCFG};
 use middle::borrowck;
-use borrowck_dot = middle::borrowck::graphviz;
+use middle::borrowck::graphviz as borrowck_dot;
 use middle::cfg;
 use middle::cfg::graphviz::LabelledCFG;
 use middle::{trans, freevars, stability, kind, ty, typeck, reachable};
@@ -35,7 +35,7 @@ use util::common::time;
 use util::ppaux;
 use util::nodemap::{NodeSet};
 
-use dot = graphviz;
+use graphviz as dot;
 
 use serialize::{json, Encodable};
 

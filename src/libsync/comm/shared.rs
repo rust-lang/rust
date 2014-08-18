@@ -29,7 +29,7 @@ use rustrt::task::{Task, BlockedTask};
 use rustrt::thread::Thread;
 
 use atomic;
-use mpsc = mpsc_queue;
+use mpsc_queue as mpsc;
 
 static DISCONNECTED: int = int::MIN;
 static FUDGE: int = 1024;

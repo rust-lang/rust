@@ -73,7 +73,7 @@ use core::mem;
 use vec::Vec;
 
 /// Reexport the `sip::hash` function as our default hasher.
-pub use hash = self::sip::hash;
+pub use self::sip::hash as hash;
 
 pub mod sip;
 

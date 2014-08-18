@@ -12,18 +12,18 @@
 // FIXME: remove this after snapshot, and Results are handled
 #![allow(unused_must_use)]
 
-use c = metadata::common;
-use cstore = metadata::cstore;
+use metadata::common as c;
+use metadata::cstore as cstore;
 use driver::session::Session;
 use metadata::decoder;
 use middle::def;
-use e = metadata::encoder;
+use metadata::encoder as e;
 use middle::freevars::{CaptureMode, freevar_entry};
 use middle::freevars;
 use middle::region;
 use metadata::tydecode;
-use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter,
-                         RegionParameter};
+use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
+use metadata::tydecode::{RegionParameter};
 use metadata::tyencode;
 use middle::subst;
 use middle::subst::VecPerParamSpace;

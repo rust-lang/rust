@@ -14,8 +14,8 @@
  */
 
 use middle::borrowck::*;
-use euv = middle::expr_use_visitor;
-use mc = middle::mem_categorization;
+use middle::expr_use_visitor as euv;
+use middle::mem_categorization as mc;
 use middle::ty;
 use util::ppaux::Repr;
 use syntax::ast;

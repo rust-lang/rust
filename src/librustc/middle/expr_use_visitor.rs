@@ -14,7 +14,7 @@
  * `ExprUseVisitor` determines how expressions are being used.
  */
 
-use mc = middle::mem_categorization;
+use middle::mem_categorization as mc;
 use middle::def;
 use middle::freevars;
 use middle::pat_util;

@@ -121,7 +121,7 @@ and report an error, and it just seems like more mess in the end.)
 use middle::def;
 use middle::def::{DefArg, DefBinding, DefLocal, DefUpvar};
 use middle::freevars;
-use mc = middle::mem_categorization;
+use middle::mem_categorization as mc;
 use middle::ty::{ReScope};
 use middle::ty;
 use middle::typeck::astconv::AstConv;

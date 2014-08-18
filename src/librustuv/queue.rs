@@ -25,7 +25,7 @@ use libc::c_void;
 use std::mem;
 use std::rt::mutex::NativeMutex;
 use std::rt::task::BlockedTask;
-use mpsc = std::sync::mpsc_queue;
+use std::sync::mpsc_queue as mpsc;
 
 use async::AsyncWatcher;
 use super::{Loop, UvHandle};
