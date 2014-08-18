@@ -19,7 +19,11 @@ pub enum CharacterSet {
     /// The standard character set (uses `+` and `/`)
     Standard,
     /// The URL safe character set (uses `-` and `_`)
-    UrlSafe
+    UrlSafe,
+    /// The XML/Name character set (uses `_` and `:`)
+    XmlName,
+    /// The XML/Nmtoken character set (uses `.` and `-`)
+    XmlNmtoken,
 }
 
 /// Contains configuration parameters for `to_base64`.
@@ -44,6 +48,14 @@ pub static URL_SAFE: Config =
 pub static MIME: Config =
     Config {char_set: Standard, pad: true, line_length: Some(76)};
 
+/// Configuration for base64 encoding acceptable in XML element names
+pub static XML_NAME: Config =
+    Config {char_set: XmlName, pad: false, line_length: None};
+
+/// Configuration for base64 encoding acceptable in XML NMTOKENs
+pub static XML_NMTOKEN: Config =
+    Config {char_set: XmlNmtoken, pad: false, line_length: None};
+
 static STANDARD_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                         abcdefghijklmnopqrstuvwxyz\
                                         0123456789+/";
@@ -51,6 +63,14 @@ static STANDARD_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
 static URLSAFE_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                        abcdefghijklmnopqrstuvwxyz\
                                        0123456789-_";
+
+static XML_NAME_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                                        abcdefghijklmnopqrstuvwxyz\
+                                        0123456789_:";
+
+static XML_NMTOKEN_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                                           abcdefghijklmnopqrstuvwxyz\
+                                           0123456789.-";
 
 /// A trait for converting a value to base64 encoding.
 pub trait ToBase64 {
@@ -78,7 +98,9 @@ impl<'a> ToBase64 for &'a [u8] {
     fn to_base64(&self, config: Config) -> String {
         let bytes = match config.char_set {
             Standard => STANDARD_CHARS,
-            UrlSafe => URLSAFE_CHARS
+            UrlSafe => URLSAFE_CHARS,
+            XmlNmtoken => XML_NMTOKEN_CHARS,
+            XmlName => XML_NAME_CHARS,
         };
 
         let mut v = Vec::new();
@@ -271,7 +293,7 @@ impl<'a> FromBase64 for &'a [u8] {
 mod tests {
     extern crate test;
     use self::test::Bencher;
-    use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE};
+    use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE, XML_NAME, XML_NMTOKEN};
 
     #[test]
     fn test_to_base64_basic() {
@@ -304,6 +326,16 @@ mod tests {
     fn test_to_base64_url_safe() {
         assert_eq!([251, 255].to_base64(URL_SAFE), "-_8".to_string());
         assert_eq!([251, 255].to_base64(STANDARD), "+/8=".to_string());
+    }
+
+    #[test]
+    fn test_to_base64_xml_token() {
+        assert_eq!([251, 255].to_base64(XML_NMTOKEN), ".-8".to_string());
+    }
+
+    #[test]
+    fn test_to_base64_xml_name() {
+        assert_eq!([251, 255].to_base64(XML_NAME), "_:8".to_string());
     }
 
     #[test]
@@ -383,5 +415,4 @@ mod tests {
         });
         b.bytes = sb.len() as u64;
     }
-
 }
