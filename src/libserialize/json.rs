@@ -106,7 +106,7 @@ fn main() {
 
 ## Using the `ToJson` trait
 
-The examples above use the `ToJson` trait to generate the JSON string, which required
+The examples above use the `ToJson` trait to generate the JSON string, which is required
 for custom mappings.
 
 ### Simple example of `ToJson` usage
