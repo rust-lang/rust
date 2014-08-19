@@ -54,7 +54,7 @@ use collections::HashMap;
 ///     Err(e) => fail!("failed to execute child: {}", e),
 /// };
 ///
-/// let contents = child.stdout.get_mut_ref().read_to_end();
+/// let contents = child.stdout.as_mut().unwrap().read_to_end();
 /// assert!(child.wait().unwrap().success());
 /// ```
 pub struct Process {
@@ -95,7 +95,7 @@ pub type EnvMap = HashMap<CString, CString>;
 ///   Err(e) => fail!("failed to execute process: {}", e),
 /// };
 ///
-/// let output = process.stdout.get_mut_ref().read_to_end();
+/// let output = process.stdout.as_mut().unwrap().read_to_end();
 /// ```
 #[deriving(Clone)]
 pub struct Command {

@@ -110,7 +110,7 @@ extern fn bootstrap_green_task(task: uint, code: *mut (), env: *mut ()) -> ! {
     // requested. This is the "try/catch" block for this green task and
     // is the wrapper for *all* code run in the task.
     let mut start = Some(start);
-    let task = task.swap().run(|| start.take_unwrap()()).destroy();
+    let task = task.swap().run(|| start.take().unwrap()()).destroy();
 
     // Once the function has exited, it's time to run the termination
     // routine. This means we need to context switch one more time but
@@ -212,7 +212,7 @@ impl GreenTask {
 
     pub fn take_unwrap_home(&mut self) -> Home {
         match self.task_type {
-            TypeGreen(ref mut home) => home.take_unwrap(),
+            TypeGreen(ref mut home) => home.take().unwrap(),
             TypeSched => rtabort!("type error: used SchedTask as GreenTask"),
         }
     }
@@ -277,7 +277,7 @@ impl GreenTask {
     }
 
     pub fn swap(mut self: Box<GreenTask>) -> Box<Task> {
-        let mut task = self.task.take_unwrap();
+        let mut task = self.task.take().unwrap();
         task.put_runtime(self);
         return task;
     }
@@ -288,7 +288,7 @@ impl GreenTask {
     }
 
     fn terminate(mut self: Box<GreenTask>) -> ! {
-        let sched = self.sched.take_unwrap();
+        let sched = self.sched.take().unwrap();
         sched.terminate_current_task(self)
     }
 
@@ -324,13 +324,13 @@ impl GreenTask {
 impl Runtime for GreenTask {
     fn yield_now(mut self: Box<GreenTask>, cur_task: Box<Task>) {
         self.put_task(cur_task);
-        let sched = self.sched.take_unwrap();
+        let sched = self.sched.take().unwrap();
         sched.yield_now(self);
     }
 
     fn maybe_yield(mut self: Box<GreenTask>, cur_task: Box<Task>) {
         self.put_task(cur_task);
-        let sched = self.sched.take_unwrap();
+        let sched = self.sched.take().unwrap();
         sched.maybe_yield(self);
     }
 
@@ -339,7 +339,7 @@ impl Runtime for GreenTask {
                   cur_task: Box<Task>,
                   f: |BlockedTask| -> Result<(), BlockedTask>) {
         self.put_task(cur_task);
-        let mut sched = self.sched.take_unwrap();
+        let mut sched = self.sched.take().unwrap();
 
         // In order for this task to be reawoken in all possible contexts, we
         // may need a handle back in to the current scheduler. When we're woken
@@ -418,7 +418,7 @@ impl Runtime for GreenTask {
         match running_task.maybe_take_runtime::<GreenTask>() {
             Some(mut running_green_task) => {
                 running_green_task.put_task(running_task);
-                let sched = running_green_task.sched.take_unwrap();
+                let sched = running_green_task.sched.take().unwrap();
 
                 if sched.pool_id == self.pool_id {
                     sched.run_task(running_green_task, self);

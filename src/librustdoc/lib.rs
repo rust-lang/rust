@@ -385,7 +385,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
-    match krate.module.get_ref().doc_list() {
+    match krate.module.as_ref().unwrap().doc_list() {
         Some(nested) => {
             for inner in nested.iter() {
                 match *inner {

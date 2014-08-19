@@ -119,7 +119,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
         let mut timer = match active.shift() {
             Some(timer) => timer, None => return
         };
-        let mut cb = timer.cb.take_unwrap();
+        let mut cb = timer.cb.take().unwrap();
         cb.call();
         if timer.repeat {
             timer.cb = Some(cb);

@@ -223,7 +223,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let mut addl_plugins = Some(addl_plugins);
     let Plugins { macros, registrars }
         = time(time_passes, "plugin loading", (), |_|
-               plugin::load::load_plugins(sess, &krate, addl_plugins.take_unwrap()));
+               plugin::load::load_plugins(sess, &krate, addl_plugins.take().unwrap()));
 
     let mut registry = Registry::new(&krate);
 

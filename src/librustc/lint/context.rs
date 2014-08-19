@@ -207,7 +207,7 @@ pub struct Context<'a> {
 macro_rules! run_lints ( ($cx:expr, $f:ident, $($args:expr),*) => ({
     // Move the vector of passes out of `$cx` so that we can
     // iterate over it mutably while passing `$cx` to the methods.
-    let mut passes = $cx.lints.passes.take_unwrap();
+    let mut passes = $cx.lints.passes.take().unwrap();
     for obj in passes.mut_iter() {
         obj.$f($cx, $($args),*);
     }
