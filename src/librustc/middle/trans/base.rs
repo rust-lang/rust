@@ -87,7 +87,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::{i8, i16, i32, i64};
 use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel, Rust, RustCall};
-use syntax::abi::{RustIntrinsic, Abi};
+use syntax::abi::{RustIntrinsic, Abi, OsWindows};
 use syntax::ast_util::{local_def, is_local};
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
@@ -2446,6 +2446,13 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                                &ccx.int_type);
 
         let llfn = decl_cdecl_fn(ccx, "main", llfty, ty::mk_nil());
+
+        // FIXME: #16581: Marking a symbol in the executable with `dllexport`
+        // linkage forces MinGW's linker to output a `.reloc` section for ASLR
+        if ccx.sess().targ_cfg.os == OsWindows {
+            unsafe { llvm::LLVMRustSetDLLExportStorageClass(llfn) }
+        }
+
         let llbb = "top".with_c_str(|buf| {
             unsafe {
                 llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llfn, buf)
