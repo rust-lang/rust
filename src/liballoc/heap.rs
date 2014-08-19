@@ -15,7 +15,7 @@
 #[cfg(not(test))] use core::raw;
 #[cfg(not(test))] use util;
 
-/// Return a pointer to `size` bytes of memory.
+/// Returns a pointer to `size` bytes of memory.
 ///
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
 /// power of 2. The alignment must be no larger than the largest supported page
@@ -25,7 +25,7 @@ pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
     imp::allocate(size, align)
 }
 
-/// Extend or shrink the allocation referenced by `ptr` to `size` bytes of
+/// Extends or shrinks the allocation referenced by `ptr` to `size` bytes of
 /// memory.
 ///
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
@@ -41,10 +41,10 @@ pub unsafe fn reallocate(ptr: *mut u8, size: uint, align: uint,
     imp::reallocate(ptr, size, align, old_size)
 }
 
-/// Extend or shrink the allocation referenced by `ptr` to `size` bytes of
+/// Extends or shrinks the allocation referenced by `ptr` to `size` bytes of
 /// memory in-place.
 ///
-/// Return true if successful, otherwise false if the allocation was not
+/// Returns true if successful, otherwise false if the allocation was not
 /// altered.
 ///
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
@@ -60,7 +60,7 @@ pub unsafe fn reallocate_inplace(ptr: *mut u8, size: uint, align: uint,
     imp::reallocate_inplace(ptr, size, align, old_size)
 }
 
-/// Deallocate the memory referenced by `ptr`.
+/// Deallocates the memory referenced by `ptr`.
 ///
 /// The `ptr` parameter must not be null.
 ///
@@ -72,14 +72,14 @@ pub unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
     imp::deallocate(ptr, size, align)
 }
 
-/// Return the usable size of an allocation created with the specified the
+/// Returns the usable size of an allocation created with the specified the
 /// `size` and `align`.
 #[inline]
 pub fn usable_size(size: uint, align: uint) -> uint {
     imp::usable_size(size, align)
 }
 
-/// Print implementation-defined allocator statistics.
+/// Prints implementation-defined allocator statistics.
 ///
 /// These statistics may be inconsistent if other threads use the allocator
 /// during the call.
@@ -88,7 +88,7 @@ pub fn stats_print() {
     imp::stats_print();
 }
 
-// The compiler never calls `exchange_free` on ~ZeroSizeType, so zero-size
+// The compiler never calls `exchange_free` on Box<ZeroSizeType>, so zero-size
 // allocations can point to this `static`. It would be incorrect to use a null
 // pointer, due to enums assuming types like unique pointers are never null.
 pub static mut EMPTY: uint = 12345;

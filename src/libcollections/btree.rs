@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-// btree.rs
-//
 
 // NB. this is not deprecated for removal, just deprecating the
 // current implementation. If the major pain-points are addressed
@@ -18,12 +16,12 @@
                  prefer a HashMap, TreeMap or TrieMap"]
 #![allow(deprecated)]
 
-//! Starting implementation of a btree for rust.
-//! Structure inspired by github user davidhalperin's gist.
+//! Starting implementation of a B-tree for Rust.
+//! Structure inspired by Github user davidhalperin's gist.
 
-///A B-tree contains a root node (which contains a vector of elements),
-///a length (the height of the tree), and lower and upper bounds on the
-///number of elements that a given node can contain.
+// A B-tree contains a root node (which contains a vector of elements),
+// a length (the height of the tree), and lower and upper bounds on the
+// number of elements that a given node can contain.
 
 use core::prelude::*;
 
@@ -43,9 +41,8 @@ pub struct BTree<K, V> {
 }
 
 impl<K: Ord, V> BTree<K, V> {
-
-    ///Returns new BTree with root node (leaf) and user-supplied lower bound
-    ///The lower bound applies to every node except the root node.
+    /// Returns new `BTree` with root node (leaf) and user-supplied lower bound
+    /// The lower bound applies to every node except the root node.
     pub fn new(k: K, v: V, lb: uint) -> BTree<K, V> {
         BTree {
             root: Node::new_leaf(vec!(LeafElt::new(k, v))),
@@ -55,8 +52,8 @@ impl<K: Ord, V> BTree<K, V> {
         }
     }
 
-    ///Helper function for clone: returns new BTree with supplied root node,
-    ///length, and lower bound.  For use when the length is known already.
+    /// Helper function for `clone`: returns new BTree with supplied root node,
+    /// length, and lower bound. For use when the length is known already.
     fn new_with_node_len(n: Node<K, V>,
                          length: uint,
                          lb: uint) -> BTree<K, V> {
@@ -69,17 +66,17 @@ impl<K: Ord, V> BTree<K, V> {
     }
 }
 
-//We would probably want to remove the dependence on the Clone trait in the future.
-//It is here as a crutch to ensure values can be passed around through the tree's nodes
-//especially during insertions and deletions.
+// We would probably want to remove the dependence on the Clone trait in the future.
+// It is here as a crutch to ensure values can be passed around through the tree's nodes
+// especially during insertions and deletions.
 impl<K: Clone + Ord, V: Clone> BTree<K, V> {
-    ///Returns the value of a given key, which may not exist in the tree.
-    ///Calls the root node's get method.
+    /// Returns the value of a given key, which may not exist in the tree.
+    /// Calls the root node's get method.
     pub fn get(self, k: K) -> Option<V> {
         return self.root.get(k);
     }
 
-    ///An insert method that uses the clone() feature for support.
+    /// An insert method that uses the `clone` method for support.
     pub fn insert(mut self, k: K, v: V) -> BTree<K, V> {
         let (a, b) = self.root.clone().insert(k, v, self.upper_bound.clone());
         if b {
@@ -98,8 +95,6 @@ impl<K: Clone + Ord, V: Clone> BTree<K, V> {
 }
 
 impl<K: Clone + Ord, V: Clone> Clone for BTree<K, V> {
-    ///Implements the Clone trait for the BTree.
-    ///Uses a helper function/constructor to produce a new BTree.
     fn clone(&self) -> BTree<K, V> {
         BTree::new_with_node_len(self.root.clone(), self.len, self.lower_bound)
     }
@@ -120,46 +115,46 @@ impl<K: Ord, V: Eq> PartialOrd for BTree<K, V> {
 }
 
 impl<K: Ord, V: Eq> Ord for BTree<K, V> {
-    ///Returns an ordering based on the root nodes of each BTree.
+    /// Returns an ordering based on the root nodes of each `BTree`.
     fn cmp(&self, other: &BTree<K, V>) -> Ordering {
         self.root.cmp(&other.root)
     }
 }
 
 impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for BTree<K, V> {
-    ///Returns a string representation of the BTree
+    /// Returns a string representation of the `BTree`.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.root.fmt(f)
     }
 }
 
 
-//Node types
-//A node is either a LeafNode or a BranchNode, which contain either a Leaf or a Branch.
-//Branches contain BranchElts, which contain a left child (another node) and a key-value
-//pair.  Branches also contain the rightmost child of the elements in the array.
-//Leaves contain LeafElts, which do not have children.
+// Node types
+//
+// A node is either a LeafNode or a BranchNode, which contain either a Leaf or a Branch.
+// Branches contain BranchElts, which contain a left child (another node) and a key-value
+// pair. Branches also contain the rightmost child of the elements in the array.
+// Leaves contain LeafElts, which do not have children.
 enum Node<K, V> {
     LeafNode(Leaf<K, V>),
     BranchNode(Branch<K, V>)
 }
 
 
-//Node functions/methods
 impl<K: Ord, V> Node<K, V> {
-    ///Creates a new leaf node given a vector of elements.
+    /// Creates a new leaf node given a vector of elements.
     fn new_leaf(vec: Vec<LeafElt<K, V>>) -> Node<K,V> {
         LeafNode(Leaf::new(vec))
     }
 
-    ///Creates a new branch node given a vector of an elements and a pointer to a rightmost child.
+    /// Creates a new branch node given a vector of an elements and a pointer to a rightmost child.
     fn new_branch(vec: Vec<BranchElt<K, V>>, right: Box<Node<K, V>>)
                   -> Node<K, V> {
         BranchNode(Branch::new(vec, right))
     }
 
-    ///Determines whether the given Node contains a Branch or a Leaf.
-    ///Used in testing.
+    /// Determines whether the given Node contains a Branch or a Leaf.
+    /// Used in testing.
     fn is_leaf(&self) -> bool {
         match self {
             &LeafNode(..) => true,
@@ -167,8 +162,8 @@ impl<K: Ord, V> Node<K, V> {
         }
     }
 
-    ///A binary search function for Nodes.
-    ///Calls either the Branch's or the Leaf's bsearch function.
+    /// A binary search function for Nodes.
+    /// Calls either the Branch's or the Leaf's bsearch function.
     fn bsearch_node(&self, k: K) -> Option<uint> {
          match self {
              &LeafNode(ref leaf) => leaf.bsearch_leaf(k),
@@ -178,8 +173,8 @@ impl<K: Ord, V> Node<K, V> {
 }
 
 impl<K: Clone + Ord, V: Clone> Node<K, V> {
-    ///Returns the corresponding value to the provided key.
-    ///get() is called in different ways on a branch or a leaf.
+    /// Returns the corresponding value to the provided key.
+    /// `get()` is called in different ways on a branch or a leaf.
     fn get(&self, k: K) -> Option<V> {
         match *self {
             LeafNode(ref leaf) => return leaf.get(k),
@@ -187,7 +182,7 @@ impl<K: Clone + Ord, V: Clone> Node<K, V> {
         }
     }
 
-    ///Matches on the Node, then performs and returns the appropriate insert method.
+    /// Matches on the `Node`, then performs and returns the appropriate insert method.
     fn insert(self, k: K, v: V, ub: uint) -> (Node<K, V>, bool) {
         match self {
             LeafNode(leaf) => leaf.insert(k, v, ub),
@@ -197,7 +192,7 @@ impl<K: Clone + Ord, V: Clone> Node<K, V> {
 }
 
 impl<K: Clone + Ord, V: Clone> Clone for Node<K, V> {
-    ///Returns a new node based on whether or not it is a branch or a leaf.
+    /// Returns a new `Node` based on whether or not it is a branch or a leaf.
     fn clone(&self) -> Node<K, V> {
         match *self {
             LeafNode(ref leaf) => {
@@ -242,7 +237,7 @@ impl<K: Ord, V: Eq> PartialOrd for Node<K, V> {
 }
 
 impl<K: Ord, V: Eq> Ord for Node<K, V> {
-    ///Implementation of Ord for Nodes.
+    /// Implementation of `Ord` for `Node`s.
     fn cmp(&self, other: &Node<K, V>) -> Ordering {
         match *self {
             LeafNode(ref leaf) => {
@@ -262,10 +257,10 @@ impl<K: Ord, V: Eq> Ord for Node<K, V> {
 }
 
 impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for Node<K, V> {
-    ///Returns a string representation of a Node.
-    ///Will iterate over the Node and show "Key: x, value: y, child: () // "
-    ///for all elements in the Node. "Child" only exists if the Node contains
-    ///a branch.
+    /// Returns a string representation of a `Node`.
+    /// Will iterate over the Node and show `Key: x, value: y, child: ()`
+    /// for all elements in the `Node`. `child` only exists if the `Node` contains
+    /// a branch.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             LeafNode(ref leaf) => leaf.fmt(f),
@@ -275,13 +270,13 @@ impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for Node<K, V> {
 }
 
 
-//A leaf is a vector with elements that contain no children.  A leaf also
-//does not contain a rightmost child.
+// A leaf is a vector with elements that contain no children. A leaf also
+// does not contain a rightmost child.
 struct Leaf<K, V> {
     elts: Vec<LeafElt<K, V>>
 }
 
-//Vector of values with children, plus a rightmost child (greater than all)
+// Vector of values with children, plus a rightmost child (greater than all)
 struct Branch<K, V> {
     elts: Vec<BranchElt<K,V>>,
     rightmost_child: Box<Node<K, V>>,
@@ -289,15 +284,15 @@ struct Branch<K, V> {
 
 
 impl<K: Ord, V> Leaf<K, V> {
-    ///Creates a new Leaf from a vector of LeafElts.
+    /// Creates a new `Leaf` from a vector of `LeafElts`.
     fn new(vec: Vec<LeafElt<K, V>>) -> Leaf<K, V> {
         Leaf {
             elts: vec
         }
     }
 
-    ///Searches a leaf for a spot for a new element using a binary search.
-    ///Returns None if the element is already in the vector.
+    /// Searches a leaf for a spot for a new element using a binary search.
+    /// Returns `None` if the element is already in the vector.
     fn bsearch_leaf(&self, k: K) -> Option<uint> {
         let mut high: uint = self.elts.len();
         let mut low: uint = 0;
@@ -349,7 +344,7 @@ impl<K: Ord, V> Leaf<K, V> {
 
 
 impl<K: Clone + Ord, V: Clone> Leaf<K, V> {
-    ///Returns the corresponding value to the supplied key.
+    /// Returns the corresponding value to the supplied key.
     fn get(&self, k: K) -> Option<V> {
         for s in self.elts.iter() {
             let order = s.key.cmp(&k);
@@ -361,7 +356,7 @@ impl<K: Clone + Ord, V: Clone> Leaf<K, V> {
         return None;
     }
 
-    ///Uses clone() to facilitate inserting new elements into a tree.
+    /// Uses `clone()` to facilitate inserting new elements into a tree.
     fn insert(mut self, k: K, v: V, ub: uint) -> (Node<K, V>, bool) {
         let to_insert = LeafElt::new(k, v);
         let index: Option<uint> = self.bsearch_leaf(to_insert.clone().key);
@@ -400,7 +395,7 @@ impl<K: Clone + Ord, V: Clone> Leaf<K, V> {
 }
 
 impl<K: Clone + Ord, V: Clone> Clone for Leaf<K, V> {
-    ///Returns a new Leaf with the same elts.
+    /// Returns a new `Leaf` with the same elts.
     fn clone(&self) -> Leaf<K, V> {
         Leaf::new(self.elts.clone())
     }
@@ -421,7 +416,7 @@ impl<K: Ord, V: Eq> PartialOrd for Leaf<K, V> {
 }
 
 impl<K: Ord, V: Eq> Ord for Leaf<K, V> {
-    ///Returns an ordering based on the first element of each Leaf.
+    /// Returns an ordering based on the first element of each `Leaf`.
     fn cmp(&self, other: &Leaf<K, V>) -> Ordering {
         if self.elts.len() > other.elts.len() {
             return Greater;
@@ -435,7 +430,7 @@ impl<K: Ord, V: Eq> Ord for Leaf<K, V> {
 
 
 impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for Leaf<K, V> {
-    ///Returns a string representation of a Leaf.
+    /// Returns a string representation of a `Leaf`.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, s) in self.elts.iter().enumerate() {
             if i != 0 { try!(write!(f, " // ")) }
@@ -447,7 +442,7 @@ impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for Leaf<K, V> {
 
 
 impl<K: Ord, V> Branch<K, V> {
-    ///Creates a new Branch from a vector of BranchElts and a rightmost child (a node).
+    /// Creates a new `Branch` from a vector of `BranchElts` and a rightmost child (a node).
     fn new(vec: Vec<BranchElt<K, V>>, right: Box<Node<K, V>>)
            -> Branch<K, V> {
         Branch {
@@ -506,8 +501,8 @@ impl<K: Ord, V> Branch<K, V> {
 }
 
 impl<K: Clone + Ord, V: Clone> Branch<K, V> {
-    ///Returns the corresponding value to the supplied key.
-    ///If the key is not there, find the child that might hold it.
+    /// Returns the corresponding value to the supplied key.
+    /// If the key is not there, find the child that might hold it.
     fn get(&self, k: K) -> Option<V> {
         for s in self.elts.iter() {
             let order = s.key.cmp(&k);
@@ -520,7 +515,7 @@ impl<K: Clone + Ord, V: Clone> Branch<K, V> {
         self.rightmost_child.get(k)
     }
 
-    ///An insert method that uses .clone() for support.
+    /// An insert method that uses `.clone()` for support.
     fn insert(mut self, k: K, v: V, ub: uint) -> (Node<K, V>, bool) {
         let mut new_branch = Node::new_branch(self.clone().elts, self.clone().rightmost_child);
         let mut outcome = false;
@@ -630,7 +625,7 @@ impl<K: Clone + Ord, V: Clone> Branch<K, V> {
 }
 
 impl<K: Clone + Ord, V: Clone> Clone for Branch<K, V> {
-    ///Returns a new branch using the clone methods of the Branch's internal variables.
+    /// Returns a new branch using the clone methods of the `Branch`'s internal variables.
     fn clone(&self) -> Branch<K, V> {
         Branch::new(self.elts.clone(), self.rightmost_child.clone())
     }
@@ -651,7 +646,8 @@ impl<K: Ord, V: Eq> PartialOrd for Branch<K, V> {
 }
 
 impl<K: Ord, V: Eq> Ord for Branch<K, V> {
-    ///Compares the first elements of two branches to determine an ordering
+    /// Compares the first elements of two `Branch`es to determine an
+    /// `Ordering`.
     fn cmp(&self, other: &Branch<K, V>) -> Ordering {
         if self.elts.len() > other.elts.len() {
             return Greater;
@@ -664,7 +660,7 @@ impl<K: Ord, V: Eq> Ord for Branch<K, V> {
 }
 
 impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for Branch<K, V> {
-    ///Returns a string representation of a Branch.
+    /// Returns a string representation of a `Branch`.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, s) in self.elts.iter().enumerate() {
             if i != 0 { try!(write!(f, " // ")) }
@@ -688,7 +684,7 @@ struct BranchElt<K, V> {
 }
 
 impl<K: Ord, V> LeafElt<K, V> {
-    ///Creates a new LeafElt from a supplied key-value pair.
+    /// Creates a new `LeafElt` from a supplied key-value pair.
     fn new(k: K, v: V) -> LeafElt<K, V> {
         LeafElt {
             key: k,
@@ -698,7 +694,7 @@ impl<K: Ord, V> LeafElt<K, V> {
 }
 
 impl<K: Clone + Ord, V: Clone> Clone for LeafElt<K, V> {
-    ///Returns a new LeafElt by cloning the key and value.
+    /// Returns a new `LeafElt` by cloning the key and value.
     fn clone(&self) -> LeafElt<K, V> {
         LeafElt::new(self.key.clone(), self.value.clone())
     }
@@ -719,21 +715,21 @@ impl<K: Ord, V: Eq> PartialOrd for LeafElt<K, V> {
 }
 
 impl<K: Ord, V: Eq> Ord for LeafElt<K, V> {
-    ///Returns an ordering based on the keys of the LeafElts.
+    /// Returns an ordering based on the keys of the `LeafElt`s.
     fn cmp(&self, other: &LeafElt<K, V>) -> Ordering {
         self.key.cmp(&other.key)
     }
 }
 
 impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for LeafElt<K, V> {
-    ///Returns a string representation of a LeafElt.
+    /// Returns a string representation of a `LeafElt`.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Key: {}, value: {};", self.key, self.value)
     }
 }
 
 impl<K: Ord, V> BranchElt<K, V> {
-    ///Creates a new BranchElt from a supplied key, value, and left child.
+    /// Creates a new `BranchElt` from a supplied key, value, and left child.
     fn new(k: K, v: V, n: Box<Node<K, V>>) -> BranchElt<K, V> {
         BranchElt {
             left: n,
@@ -745,7 +741,7 @@ impl<K: Ord, V> BranchElt<K, V> {
 
 
 impl<K: Clone + Ord, V: Clone> Clone for BranchElt<K, V> {
-    ///Returns a new BranchElt by cloning the key, value, and left child.
+    /// Returns a new `BranchElt` by cloning the key, value, and left child.
     fn clone(&self) -> BranchElt<K, V> {
         BranchElt::new(self.key.clone(),
                        self.value.clone(),
@@ -768,15 +764,15 @@ impl<K: Ord, V: Eq> PartialOrd for BranchElt<K, V> {
 }
 
 impl<K: Ord, V: Eq> Ord for BranchElt<K, V> {
-    ///Fulfills Ord for BranchElts
+    /// Fulfills `Ord` for `BranchElts`.
     fn cmp(&self, other: &BranchElt<K, V>) -> Ordering {
         self.key.cmp(&other.key)
     }
 }
 
 impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for BranchElt<K, V> {
-    /// Returns string containing key, value, and child (which should recur to a
-    /// leaf) Consider changing in future to be more readable.
+    /// Formats as a string containing the key, value, and child (which should recur to a
+    /// leaf). Consider changing in future to be more readable.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Key: {}, value: {}, (child: {})",
                self.key, self.value, *self.left)

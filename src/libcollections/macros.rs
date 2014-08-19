@@ -10,7 +10,7 @@
 
 #![macro_escape]
 
-/// Create a `std::vec::Vec` containing the arguments.
+/// Creates a `std::vec::Vec` containing the arguments.
 macro_rules! vec(
     ($($e:expr),*) => ({
         // leading _ to allow empty construction without a warning.

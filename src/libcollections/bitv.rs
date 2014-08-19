@@ -109,7 +109,7 @@ struct BigBitv {
 #[deriving(Clone)]
 enum BitvVariant { Big(BigBitv), Small(SmallBitv) }
 
-/// The bitvector type
+/// The bitvector type.
 ///
 /// # Example
 ///
@@ -222,7 +222,7 @@ impl Bitv {
         }
     }
 
-    /// Create an empty Bitv.
+    /// Creates an empty `Bitv`.
     ///
     /// # Example
     ///
@@ -234,7 +234,7 @@ impl Bitv {
         Bitv { storage: Vec::new(), nbits: 0 }
     }
 
-    /// Create a Bitv that holds `nbits` elements, setting each element
+    /// Creates a `Bitv` that holds `nbits` elements, setting each element
     /// to `init`.
     ///
     /// # Example
@@ -256,11 +256,11 @@ impl Bitv {
         }
     }
 
-    /// Retrieve the value at index `i`.
+    /// Retrieves the value at index `i`.
     ///
     /// # Failure
     ///
-    /// Assert if `i` out of bounds.
+    /// Fails if `i` is out of bounds.
     ///
     /// # Example
     ///
@@ -283,11 +283,11 @@ impl Bitv {
         x != 0
     }
 
-    /// Set the value of a bit at a index `i`.
+    /// Sets the value of a bit at a index `i`.
     ///
     /// # Failure
     ///
-    /// Assert if `i` out of bounds.
+    /// Fails if `i` is out of bounds.
     ///
     /// # Example
     ///
@@ -308,7 +308,7 @@ impl Bitv {
                           else { self.storage[w] & !flag };
     }
 
-    /// Set all bits to 1.
+    /// Sets all bits to 1.
     ///
     /// # Example
     ///
@@ -327,7 +327,7 @@ impl Bitv {
         for w in self.storage.mut_iter() { *w = !0u; }
     }
 
-    /// Flip all bits.
+    /// Flips all bits.
     ///
     /// # Example
     ///
@@ -346,14 +346,15 @@ impl Bitv {
         for w in self.storage.mut_iter() { *w = !*w; }
     }
 
-    /// Calculate the union of two bitvectors, acts like bitwise or.
+    /// Calculates the union of two bitvectors. This acts like the bitwise `or`
+    /// function.
     ///
-    /// Set `self` to the union of `self` and `other`. Both bitvectors must be
-    /// the same length. Return `true` if `self` changed.
+    /// Sets `self` to the union of `self` and `other`. Both bitvectors must be
+    /// the same length. Returns `true` if `self` changed.
     ///
     /// # Failure
     ///
-    /// Assert if the bitvectors are of different length.
+    /// Fails if the bitvectors are of different lengths.
     ///
     /// # Example
     ///
@@ -375,14 +376,15 @@ impl Bitv {
         self.process(other, |w1, w2| w1 | w2)
     }
 
-    /// Calculate the intersection of two bitvectors, acts like bitwise and.
+    /// Calculates the intersection of two bitvectors. This acts like the
+    /// bitwise `and` function.
     ///
-    /// Set `self` to the intersection of `self` and `other`. Both bitvectors
-    /// must be the same length. Return `true` if `self` changed.
+    /// Sets `self` to the intersection of `self` and `other`. Both bitvectors
+    /// must be the same length. Returns `true` if `self` changed.
     ///
     /// # Failure
     ///
-    /// Assert if the bitvectors are of different length.
+    /// Fails if the bitvectors are of different lengths.
     ///
     /// # Example
     ///
@@ -404,15 +406,15 @@ impl Bitv {
         self.process(other, |w1, w2| w1 & w2)
     }
 
-    /// Calculate the difference between two bitvectors.
+    /// Calculates the difference between two bitvectors.
     ///
-    /// Set each element of `self` to the value of that element minus the
+    /// Sets each element of `self` to the value of that element minus the
     /// element of `other` at the same index. Both bitvectors must be the same
-    /// length. Return `true` if `self` changed.
+    /// length. Returns `true` if `self` changed.
     ///
     /// # Failure
     ///
-    /// Assert if the bitvectors are of different length.
+    /// Fails if the bitvectors are of different length.
     ///
     /// # Example
     ///
@@ -464,7 +466,7 @@ impl Bitv {
         (last_word == ((1 << self.nbits % uint::BITS) - 1) || last_word == !0u)
     }
 
-    /// Return an iterator over the elements of the vector in order.
+    /// Returns an iterator over the elements of the vector in order.
     ///
     /// # Example
     ///
@@ -479,7 +481,7 @@ impl Bitv {
         Bits {bitv: self, next_idx: 0, end_idx: self.nbits}
     }
 
-    /// Return `true` if all bits are 0.
+    /// Returns `true` if all bits are 0.
     ///
     /// # Example
     ///
@@ -496,7 +498,7 @@ impl Bitv {
         self.mask_words(0).all(|(_, w)| w == 0)
     }
 
-    /// Return `true` if any bit is 1.
+    /// Returns `true` if any bit is 1.
     ///
     /// # Example
     ///
@@ -514,9 +516,9 @@ impl Bitv {
         !self.none()
     }
 
-    /// Organise the bits into bytes, such that the first bit in the
+    /// Organises the bits into bytes, such that the first bit in the
     /// `Bitv` becomes the high-order bit of the first byte. If the
-    /// size of the `Bitv` is not a multiple of 8 then trailing bits
+    /// size of the `Bitv` is not a multiple of eight then trailing bits
     /// will be filled-in with `false`.
     ///
     /// # Example
@@ -559,7 +561,7 @@ impl Bitv {
         )
     }
 
-    /// Transform `self` into a `Vec<bool>` by turning each bit into a `bool`.
+    /// Transforms `self` into a `Vec<bool>` by turning each bit into a `bool`.
     ///
     /// # Example
     ///
@@ -574,11 +576,12 @@ impl Bitv {
         Vec::from_fn(self.nbits, |i| self.get(i))
     }
 
-    /// Compare a bitvector to a vector of `bool`.
-    /// Both the bitvector and vector must have the same length.
+    /// Compares a `Bitv` to a slice of `bool`s.
+    /// Both the `Bitv` and slice must have the same length.
+    ///
     /// # Failure
     ///
-    /// Assert if the bitvectors are of different length.
+    /// Fails if the the `Bitv` and slice are of different length.
     ///
     /// # Example
     ///
@@ -600,7 +603,7 @@ impl Bitv {
         true
     }
 
-    /// Shorten a Bitv, dropping excess elements.
+    /// Shortens a `Bitv`, dropping excess elements.
     ///
     /// If `len` is greater than the vector's current length, this has no
     /// effect.
@@ -626,7 +629,7 @@ impl Bitv {
         }
     }
 
-    /// Grow the vector to be able to store `size` bits without resizing.
+    /// Grows the vector to be able to store `size` bits without resizing.
     ///
     /// # Example
     ///
@@ -646,7 +649,7 @@ impl Bitv {
         }
     }
 
-    /// Return the capacity in bits for this bit vector. Inserting any
+    /// Returns the capacity in bits for this bit vector. Inserting any
     /// element less than this amount will not trigger a resizing.
     ///
     /// # Example
@@ -663,7 +666,7 @@ impl Bitv {
         self.storage.len() * uint::BITS
     }
 
-    /// Grow the `Bitv` in-place. Add `n` copies of `value` to the `Bitv`.
+    /// Grows the `Bitv` in-place, adding `n` copies of `value` to the `Bitv`.
     ///
     /// # Example
     ///
@@ -704,7 +707,7 @@ impl Bitv {
         self.nbits = new_nbits;
     }
 
-    /// Shorten by one and return the removed element.
+    /// Shortens by one element and returns the removed element.
     ///
     /// # Failure
     ///
@@ -731,7 +734,7 @@ impl Bitv {
         ret
     }
 
-    /// Push a `bool` onto the end.
+    /// Pushes a `bool` onto the end.
     ///
     /// # Example
     ///
@@ -753,7 +756,7 @@ impl Bitv {
     }
 }
 
-/// Transform a byte-vector into a `Bitv`. Each byte becomes 8 bits,
+/// Transforms a byte-vector into a `Bitv`. Each byte becomes eight bits,
 /// with the most significant bits of each byte coming first. Each
 /// bit becomes `true` if equal to 1 or `false` if equal to 0.
 ///
@@ -776,7 +779,7 @@ pub fn from_bytes(bytes: &[u8]) -> Bitv {
     })
 }
 
-/// Create a `Bitv` of the specified length where the value at each
+/// Creates a `Bitv` of the specified length where the value at each
 /// index is `f(index)`.
 ///
 /// # Example
@@ -1035,7 +1038,7 @@ impl cmp::PartialEq for BitvSet {
 impl cmp::Eq for BitvSet {}
 
 impl BitvSet {
-    /// Create a new bit vector set with initially no contents.
+    /// Creates a new bit vector set with initially no contents.
     ///
     /// # Example
     ///
@@ -1048,7 +1051,7 @@ impl BitvSet {
         BitvSet(Bitv::new())
     }
 
-    /// Create a new bit vector set with initially no contents, able to
+    /// Creates a new bit vector set with initially no contents, able to
     /// hold `nbits` elements without resizing.
     ///
     /// # Example
@@ -1063,7 +1066,7 @@ impl BitvSet {
         BitvSet(Bitv::with_capacity(nbits, false))
     }
 
-    /// Create a new bit vector set from the given bit vector.
+    /// Creates a new bit vector set from the given bit vector.
     ///
     /// # Example
     ///
@@ -1116,7 +1119,7 @@ impl BitvSet {
         bitv.reserve(size)
     }
 
-    /// Consume this set to return the underlying bit vector.
+    /// Consumes this set to return the underlying bit vector.
     ///
     /// # Example
     ///
@@ -1136,7 +1139,7 @@ impl BitvSet {
         bitv
     }
 
-    /// Return a reference to the underlying bit vector.
+    /// Returns a reference to the underlying bit vector.
     ///
     /// # Example
     ///
@@ -1155,7 +1158,7 @@ impl BitvSet {
         bitv
     }
 
-    /// Return a mutable reference to the underlying bit vector.
+    /// Returns a mutable reference to the underlying bit vector.
     ///
     /// # Example
     ///
@@ -1201,7 +1204,7 @@ impl BitvSet {
         }
     }
 
-    /// Truncate the underlying vector to the least length required.
+    /// Truncates the underlying vector to the least length required.
     ///
     /// # Example
     ///
@@ -1232,7 +1235,7 @@ impl BitvSet {
         bitv.nbits = trunc_len * uint::BITS;
     }
 
-    /// Iterator over each uint stored in the BitvSet.
+    /// Iterator over each uint stored in the `BitvSet`.
     ///
     /// # Example
     ///
@@ -1373,7 +1376,7 @@ impl BitvSet {
         }
     }
 
-    /// Union in-place with the specified other bit vector.
+    /// Unions in-place with the specified other bit vector.
     ///
     /// # Example
     ///
@@ -1396,7 +1399,7 @@ impl BitvSet {
         self.other_op(other, |w1, w2| w1 | w2);
     }
 
-    /// Intersect in-place with the specified other bit vector.
+    /// Intersects in-place with the specified other bit vector.
     ///
     /// # Example
     ///
@@ -1419,7 +1422,8 @@ impl BitvSet {
         self.other_op(other, |w1, w2| w1 & w2);
     }
 
-    /// Difference in-place with the specified other bit vector.
+    /// Makes this bit vector the difference with the specified other bit vector
+    /// in-place.
     ///
     /// # Example
     ///
@@ -1449,7 +1453,8 @@ impl BitvSet {
         self.other_op(other, |w1, w2| w1 & !w2);
     }
 
-    /// Symmetric difference in-place with the specified other bit vector.
+    /// Makes this bit vector the symmetric difference with the specified other
+    /// bit vector in-place.
     ///
     /// # Example
     ///

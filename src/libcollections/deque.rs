@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Container traits for collections
+//! Container traits for collections.
 
 #[cfg(test)]
 pub mod bench {
@@ -18,9 +18,9 @@ pub mod bench {
     use test::Bencher;
     use MutableMap;
 
-    pub fn insert_rand_n<M:MutableMap<uint,uint>>(n: uint,
-                                                  map: &mut M,
-                                                  b: &mut Bencher) {
+    pub fn insert_rand_n<M: MutableMap<uint, uint>>(n: uint,
+                                                    map: &mut M,
+                                                    b: &mut Bencher) {
         // setup
         let mut rng = rand::weak_rng();
 
@@ -37,9 +37,9 @@ pub mod bench {
         })
     }
 
-    pub fn insert_seq_n<M:MutableMap<uint,uint>>(n: uint,
-                                                 map: &mut M,
-                                                 b: &mut Bencher) {
+    pub fn insert_seq_n<M: MutableMap<uint, uint>>(n: uint,
+                                                   map: &mut M,
+                                                   b: &mut Bencher) {
         // setup
         map.clear();
         for i in range(0u, n) {
