@@ -1951,7 +1951,10 @@ macro_rules! read_primitive {
                 String(s) => {
                     // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                     // is going to have a string here, as per JSON spec.
-                    Ok(std::from_str::from_str(s.as_slice()).unwrap())
+                    match std::from_str::from_str(s.as_slice()) {
+                        Some(f) => Ok(f),
+                        None => Err(ExpectedError("Number".to_string(), s)),
+                    }
                 },
                 value => Err(ExpectedError("Number".to_string(), format!("{}", value)))
             }
@@ -1987,7 +1990,10 @@ impl ::Decoder<DecoderError> for Decoder {
             String(s) => {
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
-                Ok(std::from_str::from_str(s.as_slice()).unwrap())
+                match std::from_str::from_str(s.as_slice()) {
+                    Some(f) => Ok(f),
+                    None => Err(ExpectedError("Number".to_string(), s)),
+                }
             },
             Null => Ok(f64::NAN),
             value => Err(ExpectedError("Number".to_string(), format!("{}", value)))
@@ -3169,6 +3175,7 @@ mod tests {
             _ => {} // it parsed and we are good to go
         }
     }
+
     #[test]
     fn test_prettyencode_hashmap_with_numeric_key() {
         use std::str::from_utf8;
@@ -3189,6 +3196,7 @@ mod tests {
             _ => {} // it parsed and we are good to go
         }
     }
+
     #[test]
     fn test_hashmap_with_numeric_key_can_handle_double_quote_delimited_key() {
         use std::collections::HashMap;
@@ -3200,6 +3208,20 @@ mod tests {
         };
         let mut decoder = Decoder::new(json_obj);
         let _hm: HashMap<uint, bool> = Decodable::decode(&mut decoder).unwrap();
+    }
+
+    #[test]
+    fn test_hashmap_with_numeric_key_will_error_with_string_keys() {
+        use std::collections::HashMap;
+        use Decodable;
+        let json_str = "{\"a\":true}";
+        let json_obj = match from_str(json_str) {
+            Err(_) => fail!("Unable to parse json_str: {}", json_str),
+            Ok(o) => o
+        };
+        let mut decoder = Decoder::new(json_obj);
+        let result: Result<HashMap<uint, bool>, DecoderError> = Decodable::decode(&mut decoder);
+        assert_eq!(result, Err(ExpectedError("Number".to_string(), "a".to_string())));
     }
 
     fn assert_stream_equal(src: &str,
