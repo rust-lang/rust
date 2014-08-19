@@ -1,6 +1,6 @@
 % The Rust Design FAQ
 
-This document describes decisions were arrived at after lengthy discussion and
+This document describes decisions that were arrived at after lengthy discussion and
 experimenting with alternatives. Please do not propose reversing them unless
 you have a new, extremely compelling argument. Note that this document
 specifically talks about the *language* and not any library or implementation.

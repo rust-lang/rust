@@ -446,7 +446,7 @@ possible in two ways: the `#[start]` attribute, or overriding the
 default shim for the C `main` function with your own.
 
 The function marked `#[start]` is passed the command line parameters
-in the same format as a C:
+in the same format as C:
 
 ```
 #![no_std]
@@ -593,7 +593,7 @@ standard library itself.
 # Interacting with the compiler internals
 
 > **Note**: this section is specific to the `rustc` compiler; these
-> parts of the language may never be full specified and so details may
+> parts of the language may never be fully specified and so details may
 > differ wildly between implementations (and even versions of `rustc`
 > itself).
 >
