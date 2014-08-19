@@ -1094,6 +1094,12 @@ pub trait StrSlice<'a> {
     /// # Arguments
     ///
     /// - needle - The string to look for
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("bananas".contains("nana"));
+    /// ```
     fn contains<'a>(&self, needle: &'a str) -> bool;
 
     /// Returns true if a string contains a char.
@@ -1101,6 +1107,12 @@ pub trait StrSlice<'a> {
     /// # Arguments
     ///
     /// - needle - The char to look for
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("hello".contains_char('e'));
+    /// ```
     fn contains_char(&self, needle: char) -> bool;
 
     /// An iterator over the characters of `self`. Note, this iterates
@@ -1115,6 +1127,13 @@ pub trait StrSlice<'a> {
     fn chars(&self) -> Chars<'a>;
 
     /// An iterator over the bytes of `self`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<u8> = "bors".bytes().collect();
+    /// assert_eq!(v, b"bors".to_vec());
+    /// ```
     fn bytes(&self) -> Bytes<'a>;
 
     /// An iterator over the characters of `self` and their byte offsets.
@@ -1381,9 +1400,21 @@ pub trait StrSlice<'a> {
     fn slice_chars(&self, begin: uint, end: uint) -> &'a str;
 
     /// Returns true if `needle` is a prefix of the string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("banana".starts_with("ba"));
+    /// ```
     fn starts_with(&self, needle: &str) -> bool;
 
     /// Returns true if `needle` is a suffix of the string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("banana".ends_with("nana"));
+    /// ```
     fn ends_with(&self, needle: &str) -> bool;
 
     /// Returns a string with characters that match `to_trim` removed.
@@ -1525,6 +1556,15 @@ pub trait StrSlice<'a> {
 
     /// Plucks the character starting at the `i`th byte of a string.
     ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "abπc";
+    /// assert_eq!(s.char_at(1), 'b');
+    /// assert_eq!(s.char_at(2), 'π');
+    /// assert_eq!(s.char_at(4), 'c');
+    /// ```
+    ///
     /// # Failure
     ///
     /// If `i` is greater than or equal to the length of the string.
@@ -1540,6 +1580,12 @@ pub trait StrSlice<'a> {
     fn char_at_reverse(&self, i: uint) -> char;
 
     /// Work with the byte buffer of a string as a byte slice.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!("bors".as_bytes(), b"bors");
+    /// ```
     fn as_bytes(&self) -> &'a [u8];
 
     /// Returns the byte index of the first character of `self` that
