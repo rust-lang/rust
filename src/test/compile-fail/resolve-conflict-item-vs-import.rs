@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::mem::transmute;
-//~^ ERROR import conflicts with value in this module
+//~^ ERROR import `transmute` conflicts with value in this module
 
 fn transmute() {}
 
