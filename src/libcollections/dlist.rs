@@ -75,6 +75,21 @@ pub struct MoveItems<T> {
     list: DList<T>
 }
 
+enum SeekState { LeftOfHead, RightOfHead, OnHead }
+
+/// DList seeker
+pub struct SeekItems<'a, T> {
+    state: SeekState,
+    head: Option<&'a Node<T>>,
+}
+
+/// mutable DList seeker
+pub struct MutSeekItems<'a, T> {
+    list: &'a mut DList<T>,
+    state: SeekState,
+    head: Rawlink<Node<T>>,
+}
+
 /// Rawlink is a type like Option<T> but for holding a raw pointer
 impl<T> Rawlink<T> {
     /// Like Option::None for Rawlink
@@ -120,6 +135,17 @@ impl<T> Node<T> {
     fn new(v: T) -> Node<T> {
         Node{value: v, next: None, prev: Rawlink::none()}
     }
+}
+
+fn as_raw <T> (link: &mut Link<T>) -> Rawlink<Node<T>> {
+    match *link {
+        Some(ref mut h) => Rawlink::some(&mut **h),
+        None => Rawlink::none(),
+    }
+}
+
+fn as_ref <'a, T> (link: &'a Link<T>) -> Option<&'a Node<T>> {
+    link.as_ref().map(|node| &** node)
 }
 
 /// Set the .prev field on `next`, then return `Some(next)`
@@ -209,6 +235,81 @@ impl<T> DList<T> {
                 Some(tail_prev) => tail_prev.next.take()
             }
         })
+    }
+
+    /// Insert a Node in the list before the given Rawlink
+    ///
+    /// If the given Rawlink is null, append to the end of the list, so that this
+    /// function can potentially insert anywhere in the list
+    #[inline]
+    fn insert_before_node(&mut self, mut link: Rawlink<Node<T>>, ins_node: Box<Node<T>>) {
+        match link.resolve() {
+            None => self.push_back_node(ins_node),
+            Some(node) => self.insert_after_node(node.prev, ins_node)
+        }
+    }
+
+    /// Insert a Node in the list after the given Rawlink
+    ///
+    /// If the given Rawlink is null, append to the front of the list, so that this
+    /// function can potentially insert anywhere in the list
+    #[inline]
+    fn insert_after_node(&mut self, mut link: Rawlink<Node<T>>, mut ins_node: Box<Node<T>>) {
+        match link.resolve() {
+            None => self.push_front_node(ins_node),
+            Some(node) => {
+                let next_node = match node.next.take() {
+                    None => return self.push_back_node(ins_node),
+                    Some(next) => next,
+                };
+                ins_node.next = link_with_prev(next_node, Rawlink::some(&mut *ins_node));
+                node.next = link_with_prev(ins_node, Rawlink::some(node));
+                self.length += 1;
+            }
+        }
+    }
+
+    /// Pop the Node before the given Rawlink
+    ///
+    /// If the given Rawlink is null, pop the back of the list, so that this
+    /// function can potentially pop anywhere in the list
+    #[inline]
+    fn pop_before_node(&mut self, mut link: Rawlink<Node<T>>) -> Option<Box<Node<T>>> {
+        match link.resolve() {
+            None => self.pop_back_node(),
+            Some(node) => match node.prev.resolve() {
+                None => None,
+                Some(prev) => self.pop_after_node(prev.prev),
+            }
+        }
+    }
+
+    /// Pop the Node after the given Rawlink
+    ///
+    /// If the given Rawlink is null, pop the front of the list, so that this
+    /// function can potentially pop anywhere in the list
+    #[inline]
+    fn pop_after_node(&mut self, mut link: Rawlink<Node<T>>) -> Option<Box<Node<T>>> {
+        match link.resolve() {
+            None => self.pop_front_node(),
+            Some(node) => match node.next.take() {
+                None => None,
+                Some(mut next) => {
+                    node.next = match next.next.take() {
+                        None => None,
+                        Some(next_next) => link_with_prev(next_next, Rawlink::some(&mut *node))
+                    };
+                    self.length -= 1;
+                    Some(next)
+                }
+            }
+        }
+    }
+
+    /// Get the head of the list as a Rawlink
+    #[inline]
+    fn head_raw(&mut self) -> Rawlink<Node<T>>{
+        as_raw(&mut self.list_head)
     }
 }
 
@@ -457,7 +558,6 @@ impl<T> DList<T> {
         self.append(other);
     }
 
-
     /// Provide a forward iterator
     #[inline]
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
@@ -467,10 +567,7 @@ impl<T> DList<T> {
     /// Provide a forward iterator with mutable references
     #[inline]
     pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
-        let head_raw = match self.list_head {
-            Some(ref mut h) => Rawlink::some(&mut **h),
-            None => Rawlink::none(),
-        };
+        let head_raw = self.head_raw();
         MutItems{
             nelem: self.len(),
             head: head_raw,
@@ -484,6 +581,33 @@ impl<T> DList<T> {
     #[inline]
     pub fn move_iter(self) -> MoveItems<T> {
         MoveItems{list: self}
+    }
+
+    /// Provide an iterator-like object for seeking back and forth in the list.
+    /// The seek head starts out pointing before the head of the list.
+    pub fn seeker <'a> (&'a self) -> SeekItems<'a, T> {
+        SeekItems{head: as_ref(&self.list_head), state: LeftOfHead}
+    }
+
+    /// Provide an iterator-like object for seeking back and forth in the list
+    /// with the ability to insert/delete nodes.
+    /// The seek head starts out pointing before the head of the list.
+    pub fn mut_seeker <'a> (&'a mut self) -> MutSeekItems<'a, T> {
+        let head_raw = self.head_raw();
+        MutSeekItems{head: head_raw, list: self, state: LeftOfHead}
+    }
+
+    /// Provide an iterator-like object for seeking back and forth in the list.
+    /// The seek head starts out pointing after the tail of the list.
+    pub fn seeker_back <'a> (&'a self) -> SeekItems<'a, T> {
+        SeekItems{head: self.list_tail.resolve_immut(), state: RightOfHead}
+    }
+
+    /// Provide an iterator-like object for seeking back and forth in the list
+    /// with the ability to insert/delete nodes.
+    /// The seek head starts out pointing after the tail of the list.
+    pub fn mut_seeker_back <'a> (&'a mut self) -> MutSeekItems<'a, T> {
+        MutSeekItems{head: self.list_tail, list: self, state: RightOfHead}
     }
 }
 
@@ -555,6 +679,14 @@ impl<'a, A> DoubleEndedIterator<&'a A> for Items<'a, A> {
 
 impl<'a, A> ExactSize<&'a A> for Items<'a, A> {}
 
+// private methods
+impl <'a, A> MutItems<'a, A> {
+    #[inline]
+    fn insert_next_node(&mut self, ins_node: Box<Node<A>>) {
+        self.list.insert_before_node(self.head, ins_node);
+    }
+}
+
 impl<'a, A> Iterator<&'a mut A> for MutItems<'a, A> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut A> {
@@ -604,29 +736,6 @@ pub trait ListInsertion<A> {
     fn peek_next<'a>(&'a mut self) -> Option<&'a mut A>;
 }
 
-// private methods for MutItems
-impl<'a, A> MutItems<'a, A> {
-    fn insert_next_node(&mut self, mut ins_node: Box<Node<A>>) {
-        // Insert before `self.head` so that it is between the
-        // previously yielded element and self.head.
-        //
-        // The inserted node will not appear in further iteration.
-        match self.head.resolve() {
-            None => { self.list.push_back_node(ins_node); }
-            Some(node) => {
-                let prev_node = match node.prev.resolve() {
-                    None => return self.list.push_front_node(ins_node),
-                    Some(prev) => prev,
-                };
-                let node_own = prev_node.next.take_unwrap();
-                ins_node.next = link_with_prev(node_own, Rawlink::some(&mut *ins_node));
-                prev_node.next = link_with_prev(ins_node, Rawlink::some(prev_node));
-                self.list.length += 1;
-            }
-        }
-    }
-}
-
 impl<'a, A> ListInsertion<A> for MutItems<'a, A> {
     #[inline]
     fn insert_next(&mut self, elt: A) {
@@ -655,6 +764,187 @@ impl<A> Iterator<A> for MoveItems<A> {
 impl<A> DoubleEndedIterator<A> for MoveItems<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.list.pop() }
+}
+
+impl<'a, A> SeekItems<'a, A> {
+    /// Seek to and return the next element in the list. Returns `None` if the seek head
+    /// is after the tail of the List. Will seek to and return the head of the list if the
+    /// seeker's head was before there.
+    #[inline]
+    pub fn next(&mut self) -> Option<&'a A> {
+        match self.head {
+            None => None,
+            Some(node) => match self.state {
+                RightOfHead => None,
+                LeftOfHead => {
+                    self.state = OnHead;
+                    Some(&node.value)
+                }
+                OnHead => match node.next {
+                    None => {
+                        self.state = RightOfHead;
+                        None
+                    }
+                    Some(ref next) => {
+                        self.head = Some(&**next);
+                        Some(&self.head.as_ref().unwrap().value)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Seek to and return the previous element in the list. Returns `None` if the seek head
+    /// is before the head of the List. Will seek to and return the tail of the list if the
+    /// seeker's head was after there.
+    #[inline]
+    pub fn prev(&mut self) -> Option<&'a A> {
+        match self.head {
+            None => None,
+            Some(node) => match self.state {
+                LeftOfHead => None,
+                RightOfHead => {
+                    self.state = OnHead;
+                    Some(&node.value)
+                }
+                OnHead => match node.prev.resolve_immut() {
+                    None => {
+                        self.state = RightOfHead;
+                        None
+                    }
+                    Some(prev) => {
+                        self.head = Some(prev);
+                        Some(&self.head.as_ref().unwrap().value)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// private helpers
+impl <'a, A> MutSeekItems<'a, A> {
+    /// Insert the element when the head is logically before the head of the list
+    #[inline]
+    fn insert_front(&mut self, elt: A) {
+        self.list.push_front(elt);
+        self.head = self.list.head_raw();
+    }
+
+    /// Insert the element when the head is logically after the tail of the list
+    #[inline]
+    fn insert_back(&mut self, elt: A) {
+        self.list.push(elt);
+        self.head = self.list.list_tail;
+    }
+}
+
+impl<'a, A> MutSeekItems<'a, A> {
+    /// Seek to and return the next element in the list. Returns `None` if the seek head
+    /// is after the tail of the List. Will seek to and return the head of the list if the
+    /// seeker's head was before there.
+    #[inline]
+    pub fn next(&mut self) -> Option<&'a mut A> {
+        match self.head.resolve() {
+            None => None,
+            Some(node) => match self.state {
+                RightOfHead => None,
+                LeftOfHead => {
+                    self.state = OnHead;
+                    Some(&mut node.value)
+                }
+                OnHead => match node.next {
+                    None => {
+                        self.state = RightOfHead;
+                        None
+                    }
+                    Some(ref mut next) => {
+                        self.head = Rawlink::some(&mut **next);
+                        Some(&mut self.head.resolve().unwrap().value)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Seek to and return the previous element in the list. Returns `None` if the seek head
+    /// is before the head of the List. Will seek to and return the tail of the list if the
+    /// seeker's head was after there.
+    #[inline]
+    pub fn prev(&mut self) -> Option<&'a mut A> {
+        match self.head.resolve() {
+            None => None,
+            Some(node) => match self.state {
+                LeftOfHead => None,
+                RightOfHead => {
+                    self.state = OnHead;
+                    Some(&mut node.value)
+                }
+                OnHead => match node.prev.resolve_immut() {
+                    None => {
+                        self.state = LeftOfHead;
+                        None
+                    }
+                    Some(_) => {
+                        self.head = node.prev;
+                        Some(&mut self.head.resolve().unwrap().value)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Insert `elt` right before the seek head
+    #[inline]
+    pub fn insert_before(&mut self, elt: A) {
+        match self.state {
+            LeftOfHead => self.insert_front(elt),
+            RightOfHead => self.insert_back(elt),
+            OnHead => {
+                self.list.insert_before_node(self.head, box Node::new(elt));
+            }
+        }
+    }
+
+    /// Insert `elt` right after the seek head
+    #[inline]
+    pub fn insert_after(&mut self, elt: A) {
+        match self.state {
+            LeftOfHead => self.insert_front(elt),
+            RightOfHead => self.insert_back(elt),
+            OnHead => {
+                self.list.insert_after_node(self.head, box Node::new(elt));
+            }
+        }
+    }
+
+    /// Pop the element right before the seek head
+    #[inline]
+    pub fn pop_before(&mut self) -> Option<A> {
+        match self.state {
+            LeftOfHead => None,
+            OnHead => self.list.pop_before_node(self.head).map(|node| node.value),
+            RightOfHead => {
+                let result = self.list.pop_back();
+                self.head = self.list.list_tail;
+                result
+            }
+        }
+    }
+
+    /// Pop the element right after the seek head
+    #[inline]
+    pub fn pop_after(&mut self) -> Option<A> {
+        match self.state {
+            RightOfHead => None,
+            OnHead => self.list.pop_after_node(self.head).map(|node| node.value),
+            LeftOfHead => {
+                let result = self.list.pop_front();
+                self.head = self.list.head_raw();
+                result
+            }
+        }
+    }
 }
 
 impl<A> FromIterator<A> for DList<A> {
@@ -1070,6 +1360,229 @@ mod tests {
         assert!(it.next().is_some());
         assert!(it.next().is_none());
     }
+
+    #[test]
+    fn test_seeker() {
+        let m = generate_test();
+        let mut s = m.seeker();
+        assert_eq!(s.prev(), None);
+        assert_eq!(&*s.next().unwrap(), &0);
+        assert_eq!(&*s.next().unwrap(), &1);
+        assert_eq!(&*s.prev().unwrap(), &0);
+        assert_eq!(s.prev(), None);
+    }
+
+    #[test]
+    fn test_seeker_back() {
+        let m = generate_test();
+        let mut s = m.seeker_back();
+        assert_eq!(s.next(), None);
+        assert_eq!(&*s.prev().unwrap(), &6);
+        assert_eq!(&*s.prev().unwrap(), &5);
+        assert_eq!(&*s.next().unwrap(), &6);
+        assert_eq!(s.next(), None);
+    }
+
+    #[test]
+    fn test_mut_seeker_seek() {
+        let mut m = generate_test();
+        let mut s = m.mut_seeker();
+
+        assert_eq!(s.prev(), None);
+        assert_eq!(&*s.next().unwrap(), &0);
+        assert_eq!(&*s.next().unwrap(), &1);
+        assert_eq!(&*s.prev().unwrap(), &0);
+        assert_eq!(s.prev(), None);
+    }
+
+    #[test]
+    fn test_mut_seeker_insert_off() {
+        let mut m = generate_test();
+        assert_eq!(m.len(), 7);
+        {
+            let mut s = m.mut_seeker();
+
+            s.insert_after(-1);
+            s.insert_before(-2);
+
+            assert_eq!(s.prev(), None);
+            assert_eq!(&*s.next().unwrap(), &-2);
+            assert_eq!(&*s.next().unwrap(), &-1);
+            assert_eq!(&*s.next().unwrap(), &0);
+            assert_eq!(&*s.next().unwrap(), &1);
+            assert_eq!(&*s.prev().unwrap(), &0);
+            assert_eq!(&*s.prev().unwrap(), &-1);
+            assert_eq!(&*s.prev().unwrap(), &-2);
+            assert_eq!(s.prev(), None);
+        }
+        assert_eq!(m.len(), 9);
+    }
+
+    #[test]
+    fn test_mut_seeker_insert_front() {
+        let mut m = generate_test();
+        assert_eq!(m.len(), 7);
+        {
+            let mut s = m.mut_seeker();
+
+            s.next();
+            s.insert_before(-1);
+
+            assert_eq!(&*s.prev().unwrap(), &-1);
+            assert_eq!(s.prev(), None);
+            assert_eq!(&*s.next().unwrap(), &-1);
+            assert_eq!(&*s.next().unwrap(), &0);
+            assert_eq!(&*s.next().unwrap(), &1);
+            assert_eq!(&*s.prev().unwrap(), &0);
+        }
+        assert_eq!(m.len(), 8);
+    }
+
+    #[test]
+    fn test_mut_seeker_insert_middle() {
+        let mut m = generate_test();
+        assert_eq!(m.len(), 7);
+        {
+            let mut s = m.mut_seeker();
+
+            s.next();
+            s.next();
+            s.insert_before(11);
+            s.insert_after(21);
+
+            assert_eq!(&*s.next().unwrap(), &21);
+            assert_eq!(&*s.next().unwrap(), &2);
+            assert_eq!(&*s.next().unwrap(), &3);
+            assert_eq!(&*s.prev().unwrap(), &2);
+            assert_eq!(&*s.prev().unwrap(), &21);
+            assert_eq!(&*s.prev().unwrap(), &1);
+            assert_eq!(&*s.prev().unwrap(), &11);
+            assert_eq!(&*s.prev().unwrap(), &0);
+            assert_eq!(s.prev(), None);
+            assert_eq!(&*s.next().unwrap(), &0);
+            assert_eq!(&*s.next().unwrap(), &11);
+            assert_eq!(&*s.next().unwrap(), &1);
+        }
+        assert_eq!(m.len(), 9);
+    }
+
+    #[test]
+    fn test_mut_seeker_pop_off() {
+        let mut m = generate_test();
+        assert_eq!(m.len(), 7);
+        {
+            let mut s = m.mut_seeker();
+
+            assert_eq!(s.pop_before(), None);
+            assert_eq!(s.pop_after(), Some(0));
+
+            assert_eq!(&*s.next().unwrap(), &1);
+            assert_eq!(&*s.next().unwrap(), &2);
+            assert_eq!(&*s.prev().unwrap(), &1);
+            assert_eq!(s.prev(), None);
+        }
+        assert_eq!(m.len(), 6);
+    }
+
+    #[test]
+    fn test_mut_seeker_pop_on() {
+        let mut m = generate_test();
+        assert_eq!(m.len(), 7);
+        {
+            let mut s = m.mut_seeker();
+
+            s.next();
+
+            assert_eq!(s.pop_before(), None);
+            assert_eq!(s.pop_after(), Some(1));
+
+            assert_eq!(&*s.next().unwrap(), &2);
+            assert_eq!(&*s.prev().unwrap(), &0);
+            assert_eq!(&*s.next().unwrap(), &2);
+
+            assert_eq!(s.pop_before(), Some(0));
+
+            assert_eq!(s.prev(), None);
+            assert_eq!(&*s.next().unwrap(), &2);
+            assert_eq!(&*s.next().unwrap(), &3);
+            assert_eq!(&*s.prev().unwrap(), &2);
+        }
+        assert_eq!(m.len(), 5);
+    }
+
+    #[test]
+    fn test_mut_seeker_back_seek() {
+        let mut m = generate_test();
+        let mut s = m.mut_seeker_back();
+
+        assert_eq!(s.next(), None);
+        assert_eq!(&*s.prev().unwrap(), &6);
+        assert_eq!(&*s.prev().unwrap(), &5);
+        assert_eq!(&*s.next().unwrap(), &6);
+        assert_eq!(s.next(), None);
+    }
+
+    #[test]
+    fn test_mut_seeker_back_insert_off() {
+        let mut m = generate_test();
+        assert_eq!(m.len(), 7);
+        {
+            let mut s = m.mut_seeker_back();
+
+            s.insert_after(7);
+            s.insert_before(8);
+
+            assert_eq!(s.next(), None);
+            assert_eq!(&*s.prev().unwrap(), &8);
+            assert_eq!(&*s.prev().unwrap(), &7);
+            assert_eq!(&*s.prev().unwrap(), &6);
+            assert_eq!(&*s.prev().unwrap(), &5);
+            assert_eq!(&*s.next().unwrap(), &6);
+            assert_eq!(&*s.next().unwrap(), &7);
+            assert_eq!(&*s.next().unwrap(), &8);
+            assert_eq!(s.next(), None);
+        }
+        assert_eq!(m.len(), 9);
+    }
+
+    #[test]
+    fn test_mut_seeker_back_insert_back() {
+        let mut m = generate_test();
+        assert_eq!(m.len(), 7);
+        {
+            let mut s = m.mut_seeker_back();
+
+            s.prev();
+            s.insert_after(7);
+
+            assert_eq!(&*s.next().unwrap(), &7);
+            assert_eq!(s.next(), None);
+            assert_eq!(&*s.prev().unwrap(), &7);
+            assert_eq!(&*s.prev().unwrap(), &6);
+            assert_eq!(&*s.prev().unwrap(), &5);
+            assert_eq!(&*s.next().unwrap(), &6);
+        }
+        assert_eq!(m.len(), 8);
+    }
+
+    #[test]
+    fn test_mut_seeker_back_pop_off() {
+        let mut m = generate_test();
+        assert_eq!(m.len(), 7);
+        {
+            let mut s = m.mut_seeker_back();
+
+            assert_eq!(s.pop_after(), None);
+            assert_eq!(s.pop_before(), Some(6));
+
+            assert_eq!(&*s.prev().unwrap(), &5);
+            assert_eq!(&*s.prev().unwrap(), &4);
+            assert_eq!(&*s.next().unwrap(), &5);
+            assert_eq!(s.next(), None);
+        }
+        assert_eq!(m.len(), 6);
+    }
+
 
     #[test]
     fn test_send() {
