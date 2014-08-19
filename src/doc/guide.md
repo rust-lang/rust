@@ -2755,18 +2755,8 @@ mod hello {
 This will work:
 
 ```{notrust,ignore}
-$ cargo build
-   Compiling modules v0.0.1 (file:///home/you/projects/modules)
-$
-```
-
-Before we move on, let me show you one more Cargo command: `run`. `cargo run`
-is kind of like `cargo build`, but it also then runs the produced exectuable.
-Try it out:
-
-```{notrust,ignore}
 $ cargo run
-   Compiling modules v0.0.1 (file:///home/steve/tmp/modules)
+   Compiling modules v0.0.1 (file:///home/you/projects/modules)
      Running `target/modules`
 Hello, world!
 $
