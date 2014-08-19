@@ -419,6 +419,8 @@ struct TwoWaySearcher {
     memory: uint
 }
 
+// This is the Two-Way search algorithm, which was introduced in the paper:
+// Crochemore, M., Perrin, D., 1991, Two-way string-matching, Journal of the ACM 38(3):651-675.
 impl TwoWaySearcher {
     fn new(needle: &[u8]) -> TwoWaySearcher {
         let (critPos1, period1) = TwoWaySearcher::maximal_suffix(needle, false);
@@ -437,7 +439,10 @@ impl TwoWaySearcher {
         let byteset = needle.iter()
                             .fold(0, |a, &b| (1 << ((b & 0x3f) as uint)) | a);
 
-        if needle.slice_to(critPos) == needle.slice_from(needle.len() - critPos) {
+        // Check if the needle is periodic. If so, during searching when we
+        // find a mismatch, we must only advance the position by the length
+        // of the period, not the length of the entire needle
+        if needle.slice_to(critPos) == needle.slice(period, period + critPos) {
             TwoWaySearcher {
                 critPos: critPos,
                 period: period,
