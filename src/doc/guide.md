@@ -1888,8 +1888,16 @@ fn main() {
 
 The first thing we changed was to `use std::rand`, as the docs
 explained.  We then added in a `let` expression to create a variable binding
-named `secret_number`, and we printed out its result. Let's try to compile
-this using `cargo build`:
+named `secret_number`, and we printed out its result.
+
+Also, you may wonder why we are using `%` on the result of `rand::random()`.
+This operator is called 'modulo', and it returns the remainder of a division.
+By taking the modulo of the result of `rand::random()`, we're limiting the
+values to be between 0 and 99. Then, we add one to the result, making it from 1
+to 100. Using modulo can give you a very, very small bias in the result, but
+for this example, it is not important.
+
+Let's try to compile this using `cargo build`:
 
 ```{notrust,no_run}
 $ cargo build
