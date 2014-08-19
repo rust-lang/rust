@@ -476,7 +476,7 @@ impl<T> TypedArena<T> {
     /// Grows the arena.
     #[inline(never)]
     fn grow(&self) {
-        let chunk = self.first.borrow_mut().take_unwrap();
+        let chunk = self.first.borrow_mut().take().unwrap();
         let new_capacity = chunk.capacity.checked_mul(&2).unwrap();
         let chunk = TypedArenaChunk::<T>::new(Some(chunk), new_capacity);
         self.ptr.set(chunk.start() as *const T);
@@ -489,13 +489,13 @@ impl<T> TypedArena<T> {
 impl<T> Drop for TypedArena<T> {
     fn drop(&mut self) {
         // Determine how much was filled.
-        let start = self.first.borrow().get_ref().start() as uint;
+        let start = self.first.borrow().as_ref().unwrap().start() as uint;
         let end = self.ptr.get() as uint;
         let diff = (end - start) / mem::size_of::<T>();
 
         // Pass that to the `destroy` method.
         unsafe {
-            self.first.borrow_mut().get_mut_ref().destroy(diff)
+            self.first.borrow_mut().as_mut().unwrap().destroy(diff)
         }
     }
 }

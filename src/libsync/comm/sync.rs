@@ -347,7 +347,7 @@ impl<T: Send> Packet<T> {
         let waiter = match mem::replace(&mut state.blocker, NoneBlocked) {
             NoneBlocked => None,
             BlockedSender(task) => {
-                *state.canceled.take_unwrap() = true;
+                *state.canceled.take().unwrap() = true;
                 Some(task)
             }
             BlockedReceiver(..) => unreachable!(),
@@ -434,7 +434,7 @@ impl<T> Buffer<T> {
         let start = self.start;
         self.size -= 1;
         self.start = (self.start + 1) % self.buf.len();
-        self.buf.get_mut(start).take_unwrap()
+        self.buf.get_mut(start).take().unwrap()
     }
 
     fn size(&self) -> uint { self.size }
@@ -481,7 +481,7 @@ impl Queue {
         }
         unsafe {
             (*node).next = 0 as *mut Node;
-            Some((*node).task.take_unwrap())
+            Some((*node).task.take().unwrap())
         }
     }
 }

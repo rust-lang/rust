@@ -1526,7 +1526,7 @@ fn compile_cc_with_clang_and_save_bitcode(config: &Config, _props: &TestProps,
     let testcc = testfile.with_extension("cc");
     let proc_args = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        prog: config.clang_path.get_ref().as_str().unwrap().to_string(),
+        prog: config.clang_path.as_ref().unwrap().as_str().unwrap().to_string(),
         args: vec!("-c".to_string(),
                    "-emit-llvm".to_string(),
                    "-o".to_string(),
@@ -1542,7 +1542,7 @@ fn extract_function_from_bitcode(config: &Config, _props: &TestProps,
     let bitcodefile = output_base_name(config, testfile).with_extension("bc");
     let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
     let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
-    let prog = config.llvm_bin_path.get_ref().join("llvm-extract");
+    let prog = config.llvm_bin_path.as_ref().unwrap().join("llvm-extract");
     let proc_args = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
         prog: prog.as_str().unwrap().to_string(),
@@ -1559,7 +1559,7 @@ fn disassemble_extract(config: &Config, _props: &TestProps,
     let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
     let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
     let extracted_ll = extracted_bc.with_extension("ll");
-    let prog = config.llvm_bin_path.get_ref().join("llvm-dis");
+    let prog = config.llvm_bin_path.as_ref().unwrap().join("llvm-dis");
     let proc_args = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
         prog: prog.as_str().unwrap().to_string(),

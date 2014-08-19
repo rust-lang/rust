@@ -99,7 +99,7 @@
 //!             // Take a reference to the inside of cache cell
 //!             let mut cache = self.span_tree_cache.borrow_mut();
 //!             if cache.is_some() {
-//!                 return cache.get_ref().clone();
+//!                 return cache.as_ref().unwrap().clone();
 //!             }
 //!
 //!             let span_tree = self.calc_span_tree();

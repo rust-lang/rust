@@ -128,7 +128,7 @@ impl<T: Send> Thread<T> {
         unsafe { imp::join(self.native) };
         self.joined = true;
         assert!(self.packet.is_some());
-        self.packet.take_unwrap()
+        self.packet.take().unwrap()
     }
 }
 

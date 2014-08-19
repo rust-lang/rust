@@ -297,7 +297,7 @@ impl rtio::RtioProcess for Process {
             self.timer = Some(timer);
         }
 
-        let timer = self.timer.get_mut_ref();
+        let timer = self.timer.as_mut().unwrap();
         timer.stop();
         timer.start(timer_cb, ms, 0);
         self.timeout_state = TimeoutPending;

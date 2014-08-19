@@ -161,7 +161,7 @@ impl StreamWatcher {
         // bytes.
         let data = if may_timeout {Some(Vec::from_slice(buf))} else {None};
         let uv_buf = if may_timeout {
-            slice_to_uv_buf(data.get_ref().as_slice())
+            slice_to_uv_buf(data.as_ref().unwrap().as_slice())
         } else {
             slice_to_uv_buf(buf)
         };

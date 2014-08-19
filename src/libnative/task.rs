@@ -92,7 +92,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc():Send) {
         let mut f = Some(f);
         let mut task = task;
         task.put_runtime(ops);
-        drop(task.run(|| { f.take_unwrap()() }).destroy());
+        drop(task.run(|| { f.take().unwrap()() }).destroy());
         drop(token);
     })
 }

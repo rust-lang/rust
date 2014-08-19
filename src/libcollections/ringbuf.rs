@@ -309,7 +309,7 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
         }
         let raw_index = raw_index(self.lo, self.elts.len(), self.index);
         self.index += 1;
-        Some(self.elts[raw_index].get_ref())
+        Some(self.elts[raw_index].as_ref().unwrap())
     }
 
     #[inline]
@@ -327,7 +327,7 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
         }
         self.rindex -= 1;
         let raw_index = raw_index(self.lo, self.elts.len(), self.rindex);
-        Some(self.elts[raw_index].get_ref())
+        Some(self.elts[raw_index].as_ref().unwrap())
     }
 }
 
@@ -343,7 +343,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
             None
         } else {
             let raw_index = raw_index(self.lo, self.elts.len(), self.index + j);
-            Some(self.elts[raw_index].get_ref())
+            Some(self.elts[raw_index].as_ref().unwrap())
         }
     }
 }
