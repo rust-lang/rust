@@ -274,10 +274,14 @@
 //! the context. The caller of `fail!` should assume that execution
 //! will not resume after failure, that failure is catastrophic.
 
+#![stable]
+
 use clone::Clone;
 use cmp::PartialEq;
 use std::fmt::Show;
-use iter::{Iterator, FromIterator};
+use slice;
+use slice::Slice;
+use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use option::{None, Option, Some};
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
@@ -285,6 +289,7 @@ use option::{None, Option, Some};
 /// See the [`std::result`](index.html) module documentation for details.
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Show)]
 #[must_use]
+#[stable]
 pub enum Result<T, E> {
     /// Contains the success value
     Ok(T),
@@ -315,6 +320,7 @@ impl<T, E> Result<T, E> {
     /// # }
     /// ~~~
     #[inline]
+    #[stable]
     pub fn is_ok(&self) -> bool {
         match *self {
             Ok(_) => true,
@@ -335,6 +341,7 @@ impl<T, E> Result<T, E> {
     /// assert!(bogus.is_err());
     /// ~~~
     #[inline]
+    #[stable]
     pub fn is_err(&self) -> bool {
         !self.is_ok()
     }
@@ -362,6 +369,7 @@ impl<T, E> Result<T, E> {
     /// let bdays: File = bdays.ok().expect("unable to open birthday file");
     /// ~~~
     #[inline]
+    #[stable]
     pub fn ok(self) -> Option<T> {
         match self {
             Ok(x)  => Some(x),
@@ -374,6 +382,7 @@ impl<T, E> Result<T, E> {
     /// Converts `self` into an `Option<T>`, consuming `self`,
     /// and discarding the value, if any.
     #[inline]
+    #[stable]
     pub fn err(self) -> Option<E> {
         match self {
             Ok(_)  => None,
@@ -390,6 +399,7 @@ impl<T, E> Result<T, E> {
     /// Produces a new `Result`, containing a reference
     /// into the original, leaving the original in place.
     #[inline]
+    #[stable]
     pub fn as_ref<'r>(&'r self) -> Result<&'r T, &'r E> {
         match *self {
             Ok(ref x) => Ok(x),
@@ -399,10 +409,25 @@ impl<T, E> Result<T, E> {
 
     /// Convert from `Result<T, E>` to `Result<&mut T, &mut E>`
     #[inline]
+    #[unstable = "waiting for mut conventions"]
     pub fn as_mut<'r>(&'r mut self) -> Result<&'r mut T, &'r mut E> {
         match *self {
             Ok(ref mut x) => Ok(x),
             Err(ref mut x) => Err(x),
+        }
+    }
+
+    /// Convert from `Result<T, E>` to `&mut [T]` (without copying)
+    #[inline]
+    #[unstable = "waiting for mut conventions"]
+    pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
+        match *self {
+            Ok(ref mut x) => slice::mut_ref_slice(x),
+            Err(_) => {
+                // work around lack of implicit coercion from fixed-size array to slice
+                let emp: &mut [_] = &mut [];
+                emp
+            }
         }
     }
 
@@ -441,6 +466,7 @@ impl<T, E> Result<T, E> {
     /// assert!(sum == 10);
     /// ~~~
     #[inline]
+    #[unstable = "waiting for unboxed closures"]
     pub fn map<U>(self, op: |T| -> U) -> Result<U,E> {
         match self {
           Ok(t) => Ok(op(t)),
@@ -454,11 +480,38 @@ impl<T, E> Result<T, E> {
     /// This function can be used to pass through a successful result while handling
     /// an error.
     #[inline]
+    #[unstable = "waiting for unboxed closures"]
     pub fn map_err<F>(self, op: |E| -> F) -> Result<T,F> {
         match self {
           Ok(t) => Ok(t),
           Err(e) => Err(op(e))
         }
+    }
+
+
+    /////////////////////////////////////////////////////////////////////////
+    // Iterator constructors
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Returns an iterator over the possibly contained value.
+    #[inline]
+    #[unstable = "waiting for iterator conventions"]
+    pub fn iter<'r>(&'r self) -> Item<&'r T> {
+        Item{opt: self.as_ref().ok()}
+    }
+
+    /// Returns a mutable iterator over the possibly contained value.
+    #[inline]
+    #[unstable = "waiting for iterator conventions"]
+    pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
+        Item{opt: self.as_mut().ok()}
+    }
+
+    /// Returns a consuming iterator over the possibly contained value.
+    #[inline]
+    #[unstable = "waiting for iterator conventions"]
+    pub fn move_iter(self) -> Item<T> {
+        Item{opt: self.ok()}
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -467,6 +520,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns `res` if the result is `Ok`, otherwise returns the `Err` value of `self`.
     #[inline]
+    #[stable]
     pub fn and<U>(self, res: Result<U, E>) -> Result<U, E> {
         match self {
             Ok(_) => res,
@@ -478,6 +532,7 @@ impl<T, E> Result<T, E> {
     ///
     /// This function can be used for control flow based on result values
     #[inline]
+    #[unstable = "waiting for unboxed closures"]
     pub fn and_then<U>(self, op: |T| -> Result<U, E>) -> Result<U, E> {
         match self {
             Ok(t) => op(t),
@@ -487,6 +542,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns `res` if the result is `Err`, otherwise returns the `Ok` value of `self`.
     #[inline]
+    #[stable]
     pub fn or(self, res: Result<T, E>) -> Result<T, E> {
         match self {
             Ok(_) => self,
@@ -498,6 +554,7 @@ impl<T, E> Result<T, E> {
     ///
     /// This function can be used for control flow based on result values
     #[inline]
+    #[unstable = "waiting for unboxed closures"]
     pub fn or_else<F>(self, op: |E| -> Result<T, F>) -> Result<T, F> {
         match self {
             Ok(t) => Ok(t),
@@ -508,6 +565,7 @@ impl<T, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Ok`.
     /// Else it returns `optb`.
     #[inline]
+    #[unstable = "waiting for conventions"]
     pub fn unwrap_or(self, optb: T) -> T {
         match self {
             Ok(t) => t,
@@ -518,6 +576,7 @@ impl<T, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Ok`.
     /// If the value is an `Err` then it calls `op` with its value.
     #[inline]
+    #[unstable = "waiting for conventions"]
     pub fn unwrap_or_else(self, op: |E| -> T) -> T {
         match self {
             Ok(t) => t,
@@ -541,6 +600,7 @@ impl<T, E: Show> Result<T, E> {
     /// Fails if the value is an `Err`, with a custom failure message provided
     /// by the `Err`'s value.
     #[inline]
+    #[unstable = "waiting for conventions"]
     pub fn unwrap(self) -> T {
         match self {
             Ok(t) => t,
@@ -558,6 +618,7 @@ impl<T: Show, E> Result<T, E> {
     /// Fails if the value is an `Ok`, with a custom failure message provided
     /// by the `Ok`'s value.
     #[inline]
+    #[unstable = "waiting for conventions"]
     pub fn unwrap_err(self) -> E {
         match self {
             Ok(t) =>
@@ -568,57 +629,124 @@ impl<T: Show, E> Result<T, E> {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// Free functions
+// Trait implementations
 /////////////////////////////////////////////////////////////////////////////
 
-/// Takes each element in the `Iterator`: if it is an `Err`, no further
-/// elements are taken, and the `Err` is returned. Should no `Err` occur, a
-/// vector containing the values of each `Result` is returned.
-///
-/// Here is an example which increments every integer in a vector,
-/// checking for overflow:
-///
-/// ```rust
-/// use std::result;
-/// use std::uint;
-///
-/// let v = vec!(1u, 2u);
-/// let res: Result<Vec<uint>, &'static str> = result::collect(v.iter().map(|x: &uint|
-///     if *x == uint::MAX { Err("Overflow!") }
-///     else { Ok(x + 1) }
-/// ));
-/// assert!(res == Ok(vec!(2u, 3u)));
-/// ```
-#[inline]
-pub fn collect<T, E, Iter: Iterator<Result<T, E>>, V: FromIterator<T>>(iter: Iter) -> Result<V, E> {
-    // FIXME(#11084): This could be replaced with Iterator::scan when this
-    // performance bug is closed.
-
-    struct Adapter<Iter, E> {
-        iter: Iter,
-        err: Option<E>,
-    }
-
-    impl<T, E, Iter: Iterator<Result<T, E>>> Iterator<T> for Adapter<Iter, E> {
-        #[inline]
-        fn next(&mut self) -> Option<T> {
-            match self.iter.next() {
-                Some(Ok(value)) => Some(value),
-                Some(Err(err)) => {
-                    self.err = Some(err);
-                    None
-                }
-                None => None,
+impl<T, E> Slice<T> for Result<T, E> {
+    /// Convert from `Result<T, E>` to `&[T]` (without copying)
+    #[inline]
+    #[stable]
+    fn as_slice<'a>(&'a self) -> &'a [T] {
+        match *self {
+            Ok(ref x) => slice::ref_slice(x),
+            Err(_) => {
+                // work around lack of implicit coercion from fixed-size array to slice
+                let emp: &[_] = &[];
+                emp
             }
         }
     }
+}
 
-    let mut adapter = Adapter { iter: iter, err: None };
-    let v: V = FromIterator::from_iter(adapter.by_ref());
+/////////////////////////////////////////////////////////////////////////////
+// The Result Iterator
+/////////////////////////////////////////////////////////////////////////////
 
-    match adapter.err {
-        Some(err) => Err(err),
-        None => Ok(v),
+/// A `Result` iterator that yields either one or zero elements
+///
+/// The `Item` iterator is returned by the `iter`, `mut_iter` and `move_iter`
+/// methods on `Result`.
+#[deriving(Clone)]
+#[unstable = "waiting for iterator conventions"]
+pub struct Item<T> {
+    opt: Option<T>
+}
+
+impl<T> Iterator<T> for Item<T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        self.opt.take()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        match self.opt {
+            Some(_) => (1, Some(1)),
+            None => (0, Some(0)),
+        }
+    }
+}
+
+impl<A> DoubleEndedIterator<A> for Item<A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        self.opt.take()
+    }
+}
+
+impl<A> ExactSize<A> for Item<A> {}
+
+/////////////////////////////////////////////////////////////////////////////
+// Free functions
+/////////////////////////////////////////////////////////////////////////////
+
+/// Deprecated: use `Iterator::collect`.
+#[inline]
+#[deprecated = "use Iterator::collect instead"]
+pub fn collect<T, E, Iter: Iterator<Result<T, E>>, V: FromIterator<T>>(mut iter: Iter)
+                                                                       -> Result<V, E> {
+    iter.collect()
+}
+
+impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
+    /// Takes each element in the `Iterator`: if it is an `Err`, no further
+    /// elements are taken, and the `Err` is returned. Should no `Err` occur, a
+    /// container with the values of each `Result` is returned.
+    ///
+    /// Here is an example which increments every integer in a vector,
+    /// checking for overflow:
+    ///
+    /// ```rust
+    /// use std::uint;
+    ///
+    /// let v = vec!(1u, 2u);
+    /// let res: Result<Vec<uint>, &'static str> = v.iter().map(|x: &uint|
+    ///     if *x == uint::MAX { Err("Overflow!") }
+    ///     else { Ok(x + 1) }
+    /// ).collect();
+    /// assert!(res == Ok(vec!(2u, 3u)));
+    /// ```
+    #[inline]
+    fn from_iter<I: Iterator<Result<A, E>>>(iter: I) -> Result<V, E> {
+        // FIXME(#11084): This could be replaced with Iterator::scan when this
+        // performance bug is closed.
+
+        struct Adapter<Iter, E> {
+            iter: Iter,
+            err: Option<E>,
+        }
+
+        impl<T, E, Iter: Iterator<Result<T, E>>> Iterator<T> for Adapter<Iter, E> {
+            #[inline]
+            fn next(&mut self) -> Option<T> {
+                match self.iter.next() {
+                    Some(Ok(value)) => Some(value),
+                    Some(Err(err)) => {
+                        self.err = Some(err);
+                        None
+                    }
+                    None => None,
+                }
+            }
+        }
+
+        let mut adapter = Adapter { iter: iter, err: None };
+        let v: V = FromIterator::from_iter(adapter.by_ref());
+
+        match adapter.err {
+            Some(err) => Err(err),
+            None => Ok(v),
+        }
     }
 }
 
@@ -627,6 +755,7 @@ pub fn collect<T, E, Iter: Iterator<Result<T, E>>, V: FromIterator<T>>(iter: Ite
 /// If an `Err` is encountered, it is immediately returned.
 /// Otherwise, the folded value is returned.
 #[inline]
+#[experimental]
 pub fn fold<T,
             V,
             E,
@@ -644,12 +773,15 @@ pub fn fold<T,
     Ok(init)
 }
 
+/// Deprecated.
+///
 /// Perform a trivial fold operation over the result values
 /// from an iterator.
 ///
 /// If an `Err` is encountered, it is immediately returned.
 /// Otherwise, a simple `Ok(())` is returned.
 #[inline]
+#[deprecated = "use fold instead"]
 pub fn fold_<T,E,Iter:Iterator<Result<T,E>>>(iterator: Iter) -> Result<(),E> {
     fold(iterator, (), |_, _| ())
 }
