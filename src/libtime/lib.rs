@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -87,6 +87,30 @@ impl Timespec {
     pub fn new(sec: i64, nsec: i32) -> Timespec {
         assert!(nsec >= 0 && nsec < NSEC_PER_SEC);
         Timespec { sec: sec, nsec: nsec }
+    }
+}
+
+impl Add<Timespec, Timespec> for Timespec {
+    fn add(&self, other: &Timespec) -> Timespec {
+        let mut sec = self.sec + other.sec;
+        let mut nsec = self.nsec + other.nsec;
+        if nsec >= NSEC_PER_SEC {
+            nsec -= NSEC_PER_SEC;
+            sec += 1;
+        }
+        Timespec::new(sec, nsec)
+    }
+}
+
+impl Sub<Timespec, Timespec> for Timespec {
+    fn sub(&self, other: &Timespec) -> Timespec {
+        let mut sec = self.sec - other.sec;
+        let mut nsec = self.nsec - other.nsec;
+        if nsec < 0 {
+            nsec += NSEC_PER_SEC;
+            sec -= 1;
+        }
+        Timespec::new(sec, nsec)
     }
 }
 
@@ -1489,6 +1513,46 @@ mod tests {
         assert!(d.gt(c));
     }
 
+    fn test_timespec_add() {
+        let a = Timespec::new(1, 2);
+        let b = Timespec::new(2, 3);
+        let c = a + b;
+        assert_eq!(c.sec, 3);
+        assert_eq!(c.nsec, 5);
+
+        let p = Timespec::new(1, super::NSEC_PER_SEC - 2);
+        let q = Timespec::new(2, 2);
+        let r = p + q;
+        assert_eq!(r.sec, 4);
+        assert_eq!(r.nsec, 0);
+
+        let u = Timespec::new(1, super::NSEC_PER_SEC - 2);
+        let v = Timespec::new(2, 3);
+        let w = u + v;
+        assert_eq!(w.sec, 4);
+        assert_eq!(w.nsec, 1);
+    }
+
+    fn test_timespec_sub() {
+        let a = Timespec::new(2, 3);
+        let b = Timespec::new(1, 2);
+        let c = a - b;
+        assert_eq!(c.sec, 1);
+        assert_eq!(c.nsec, 1);
+
+        let p = Timespec::new(2, 0);
+        let q = Timespec::new(1, 2);
+        let r = p - q;
+        assert_eq!(r.sec, 0);
+        assert_eq!(r.nsec, super::NSEC_PER_SEC - 2);
+
+        let u = Timespec::new(1, 2);
+        let v = Timespec::new(2, 3);
+        let w = u - v;
+        assert_eq!(w.sec, -2);
+        assert_eq!(w.nsec, super::NSEC_PER_SEC - 1);
+    }
+
     #[test]
     #[ignore(cfg(target_os = "android"))] // FIXME #10958
     fn run_tests() {
@@ -1505,6 +1569,8 @@ mod tests {
         test_ctime();
         test_strftime();
         test_timespec_eq_ord();
+        test_timespec_add();
+        test_timespec_sub();
     }
 
     #[bench]
