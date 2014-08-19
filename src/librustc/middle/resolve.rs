@@ -2820,9 +2820,10 @@ impl<'a> Resolver<'a> {
                  .contains_key(&name) {
             match import_resolution.type_target {
                 Some(ref target) if !target.shadowable => {
-                    self.session.span_err(import_span,
-                                          "import conflicts with imported \
-                                           crate in this module");
+                    let msg = format!("import `{}` conflicts with imported \
+                                       crate in this module",
+                                      token::get_name(name).get());
+                    self.session.span_err(import_span, msg.as_slice());
                 }
                 Some(_) | None => {}
             }
@@ -2843,9 +2844,10 @@ impl<'a> Resolver<'a> {
                 match *name_bindings.value_def.borrow() {
                     None => {}
                     Some(ref value) => {
-                        self.session.span_err(import_span,
-                                              "import conflicts with value \
-                                               in this module");
+                        let msg = format!("import `{}` conflicts with value \
+                                           in this module",
+                                          token::get_name(name).get());
+                        self.session.span_err(import_span, msg.as_slice());
                         match value.value_span {
                             None => {}
                             Some(span) => {
@@ -2865,9 +2867,10 @@ impl<'a> Resolver<'a> {
                 match *name_bindings.type_def.borrow() {
                     None => {}
                     Some(ref ty) => {
-                        self.session.span_err(import_span,
-                                              "import conflicts with type in \
-                                               this module");
+                        let msg = format!("import `{}` conflicts with type in \
+                                           this module",
+                                          token::get_name(name).get());
+                        self.session.span_err(import_span, msg.as_slice());
                         match ty.type_span {
                             None => {}
                             Some(span) => {
