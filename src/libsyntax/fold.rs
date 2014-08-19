@@ -1189,8 +1189,8 @@ pub fn noop_fold_expr<T: Folder>(e: Gc<Expr>, folder: &mut T) -> Gc<Expr> {
                 inputs: a.inputs.iter().map(|&(ref c, input)| {
                     ((*c).clone(), folder.fold_expr(input))
                 }).collect(),
-                outputs: a.outputs.iter().map(|&(ref c, out)| {
-                    ((*c).clone(), folder.fold_expr(out))
+                outputs: a.outputs.iter().map(|&(ref c, out, is_rw)| {
+                    ((*c).clone(), folder.fold_expr(out), is_rw)
                 }).collect(),
                 .. (*a).clone()
             })

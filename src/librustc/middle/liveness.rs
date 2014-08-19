@@ -1192,9 +1192,10 @@ impl<'a> Liveness<'a> {
           }
 
           ExprInlineAsm(ref ia) => {
-            let succ = ia.outputs.iter().rev().fold(succ, |succ, &(_, ref expr)| {
-                // see comment on lvalues in
-                // propagate_through_lvalue_components()
+
+            let succ = ia.outputs.iter().rev().fold(succ, |succ, &(_, ref expr, _)| {
+                // see comment on lvalues
+                // in propagate_through_lvalue_components()
                 let succ = self.write_lvalue(&**expr, succ, ACC_WRITE);
                 self.propagate_through_lvalue_components(&**expr, succ)
             });
@@ -1437,7 +1438,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
         }
 
         // Output operands must be lvalues
-        for &(_, ref out) in ia.outputs.iter() {
+        for &(_, ref out, _) in ia.outputs.iter() {
           this.check_lvalue(&**out);
           this.visit_expr(&**out, ());
         }
