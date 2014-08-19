@@ -682,6 +682,24 @@ impl<T> Vec<T> {
         self
     }
 
+    /// Takes ownership of the vector `other`, moving all elements into
+    /// the current vector. Afterwards, the current vector is returned for use
+    /// again. This does not copy any elements, and it is illegal to use the
+    ///`other` vector after calling this method (because it is moved here).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(box 1i);
+    /// let other = vec!(box 2, box 3);
+    /// assert_eq!(vec.append_move(other), vec!(box 1, box 2, box 3));
+    /// ```
+    #[inline]
+    pub fn append_move(mut self, other: Vec<T>) -> Vec<T> {
+        self.push_all_move(other);
+        self
+    }
+
     /// Shorten a vector, dropping excess elements.
     ///
     /// If `len` is greater than the vector's current length, this has no
