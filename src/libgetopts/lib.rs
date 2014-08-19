@@ -99,8 +99,7 @@
 
 use std::cmp::PartialEq;
 use std::fmt;
-use std::result::{Err, Ok};
-use std::result;
+use std::result::{Err, Ok, Result};
 use std::string::String;
 
 /// Name of an option. Either a string or a single char.
@@ -213,9 +212,6 @@ pub enum FailType {
     OptionDuplicated_,
     UnexpectedArgument_,
 }
-
-/// The result of parsing a command line with a set of options.
-pub type Result = result::Result<Matches, Fail_>;
 
 impl Name {
     fn from_str(nm: &str) -> Name {
@@ -537,7 +533,7 @@ impl fmt::Show for Fail_ {
 /// `opt_str`, etc. to interrogate results.  Returns `Err(Fail_)` on
 /// failure: use the `Show` implementation of `Fail_` to display
 /// information about it.
-pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
+pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result<Matches, Fail_> {
     let opts: Vec<Opt> = optgrps.iter().map(|x| x.long_to_short()).collect();
     let n_opts = opts.len();
 
