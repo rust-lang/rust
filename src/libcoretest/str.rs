@@ -7,27 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(globs, unsafe_destructor, macro_rules)]
 
-extern crate core;
-extern crate test;
-extern crate libc;
-
-mod any;
-mod atomic;
-mod cell;
-mod char;
-mod cmp;
-mod finally;
-mod fmt;
-mod iter;
-mod mem;
-mod num;
-mod ops;
-mod option;
-mod ptr;
-mod raw;
-mod result;
-mod slice;
-mod str;
-mod tuple;
+#[test]
+fn strslice_issue_16589() {
+    assert!("bananas".contains("nana"));
+}
