@@ -2142,6 +2142,26 @@ mod tests {
         let y: &mut [int] = [];
         assert!(y.mut_last().is_none());
     }
+
+    #[test]
+    fn test_items_empty() {
+        for _ in Items::<u8>::empty() {
+            unreachable!()
+        }
+        for _ in Items::<Box<uint>>::empty() {
+            unreachable!()
+        }
+    }
+
+    #[test]
+    fn test_mutitems_empty() {
+        for _ in MutItems::<u8>::empty() {
+            unreachable!()
+        }
+        for _ in MutItems::<Box<uint>>::empty() {
+            unreachable!()
+        }
+    }
 }
 
 #[cfg(test)]
