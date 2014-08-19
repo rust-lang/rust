@@ -206,7 +206,8 @@ impl<'a> LifetimeContext<'a> {
 
         self.check_lifetime_names(&generics.lifetimes);
 
-        let referenced_idents = free_lifetimes(&generics.ty_params);
+        let referenced_idents = free_lifetimes(&generics.ty_params,
+                                               &generics.where_clause);
         debug!("pushing fn scope id={} due to fn item/method\
                referenced_idents={:?}",
                n,
@@ -403,7 +404,8 @@ fn search_lifetimes(lifetimes: &Vec<ast::LifetimeDef>,
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::LifetimeDef> {
-    let referenced_idents = free_lifetimes(&generics.ty_params);
+    let referenced_idents = free_lifetimes(&generics.ty_params,
+                                           &generics.where_clause);
     if referenced_idents.is_empty() {
         return Vec::new();
     }
@@ -414,7 +416,9 @@ pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::Lifeti
         .collect()
 }
 
-pub fn free_lifetimes(ty_params: &OwnedSlice<ast::TyParam>) -> Vec<ast::Name> {
+pub fn free_lifetimes(ty_params: &OwnedSlice<ast::TyParam>,
+                      where_clause: &ast::WhereClause)
+                      -> Vec<ast::Name> {
     /*!
      * Gathers up and returns the names of any lifetimes that appear
      * free in `ty_params`. Of course, right now, all lifetimes appear
@@ -425,6 +429,9 @@ pub fn free_lifetimes(ty_params: &OwnedSlice<ast::TyParam>) -> Vec<ast::Name> {
     let mut collector = FreeLifetimeCollector { names: vec!() };
     for ty_param in ty_params.iter() {
         visit::walk_ty_param_bounds(&mut collector, &ty_param.bounds, ());
+    }
+    for predicate in where_clause.predicates.iter() {
+        visit::walk_ty_param_bounds(&mut collector, &predicate.bounds, ());
     }
     return collector.names;
 
