@@ -97,25 +97,31 @@ impl TcpStream {
     /// the specified duration.
     ///
     /// This is the same as the `connect` method, except that if the timeout
-    /// specified (in milliseconds) elapses before a connection is made an error
-    /// will be returned. The error's kind will be `TimedOut`.
+    /// specified elapses before a connection is made an error will be
+    /// returned. The error's kind will be `TimedOut`.
     ///
     /// Note that the `addr` argument may one day be split into a separate host
     /// and port, similar to the API seen in `connect`.
     ///
     /// If a `timeout` with zero or negative duration is specified then
     /// the function returns `Err`, with the error kind set to `TimedOut`.
+    /// If the timeout is larger than 2^63 milliseconds, the function also
+    /// returns `Err` with the error kind set to `TimedOut`.
     #[experimental = "the timeout argument may eventually change types"]
     pub fn connect_timeout(addr: SocketAddr,
                            timeout: Duration) -> IoResult<TcpStream> {
         if timeout <= Duration::milliseconds(0) {
             return Err(standard_error(TimedOut));
         }
+        let timeout_ms = timeout.num_milliseconds().map(|x| { x as u64 });
+        if timeout_ms.is_none() {
+            return Err(standard_error(TimedOut));
+        }
 
         let SocketAddr { ip, port } = addr;
         let addr = rtio::SocketAddr { ip: super::to_rtio(ip), port: port };
         LocalIo::maybe_raise(|io| {
-            io.tcp_connect(addr, Some(timeout.num_milliseconds() as u64)).map(TcpStream::new)
+            io.tcp_connect(addr, timeout_ms).map(TcpStream::new)
         }).map_err(IoError::from_rtio_error)
     }
 
