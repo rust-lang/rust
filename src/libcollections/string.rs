@@ -120,8 +120,8 @@ impl String {
         }
     }
 
-    /// Converts a vector of bytes to a new utf-8 string.
-    /// Any invalid utf-8 sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    /// Converts a vector of bytes to a new UTF-8 string.
+    /// Any invalid UTF-8 sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
     ///
     /// # Example
     ///
@@ -289,7 +289,7 @@ impl String {
         str::utf16_items(v).map(|c| c.to_char_lossy()).collect()
     }
 
-    /// Convert a vector of chars to a string.
+    /// Convert a vector of `char`s to a `String`.
     ///
     /// # Example
     ///
@@ -317,8 +317,8 @@ impl String {
         self.vec
     }
 
-    /// Pushes the given string onto this buffer; then, returns `self` so that it can be used
-    /// again.
+    /// Pushes the given `String` onto this buffer then returns `self` so that it can be
+    /// used again.
     ///
     /// # Example
     ///
@@ -359,11 +359,11 @@ impl String {
         buf
     }
 
-    /// Convert a byte to a UTF-8 string.
+    /// Converts a byte to a UTF-8 string.
     ///
     /// # Failure
     ///
-    /// Fails if invalid UTF-8
+    /// Fails with invalid UTF-8 (i.e., the byte is greater than 127).
     ///
     /// # Example
     ///
@@ -390,7 +390,7 @@ impl String {
         self.vec.push_all(string.as_bytes())
     }
 
-    /// Push `ch` onto the given string `count` times.
+    /// Pushes `ch` onto the given string `count` times.
     ///
     /// # Example
     ///
@@ -560,7 +560,7 @@ impl String {
         self.vec.as_mut_slice()
     }
 
-    /// Shorten a string to the specified length.
+    /// Shortens a string to the specified length.
     ///
     /// # Failure
     ///
@@ -815,11 +815,11 @@ pub mod raw {
     use super::String;
     use vec::Vec;
 
-    /// Creates a new `String` from length, capacity, and a pointer.
+    /// Creates a new `String` from a length, capacity, and pointer.
     ///
     /// This is unsafe because:
-    /// * We call `Vec::from_raw_parts` to get a `Vec<u8>`
-    /// * We assume that the `Vec` contains valid UTF-8
+    /// * We call `Vec::from_raw_parts` to get a `Vec<u8>`;
+    /// * We assume that the `Vec` contains valid UTF-8.
     #[inline]
     pub unsafe fn from_parts(buf: *mut u8, length: uint, capacity: uint) -> String {
         String {
@@ -827,11 +827,11 @@ pub mod raw {
         }
     }
 
-    /// Create `String` from a *u8 buffer of the given length
+    /// Creates a `String` from a `*const u8` buffer of the given length.
     ///
     /// This function is unsafe because of two reasons:
-    /// * A raw pointer is dereferenced and transmuted to `&[u8]`
-    /// * The slice is not checked to see whether it contains valid UTF-8
+    /// * A raw pointer is dereferenced and transmuted to `&[u8]`;
+    /// * The slice is not checked to see whether it contains valid UTF-8.
     pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> String {
         use slice::CloneableVector;
         let slice: &[u8] = mem::transmute(Slice {
@@ -841,7 +841,7 @@ pub mod raw {
         self::from_utf8(slice.to_vec())
     }
 
-    /// Create a `String` from a null-terminated *u8 buffer
+    /// Creates a `String` from a null-terminated `*const u8` buffer.
     ///
     /// This function is unsafe because we dereference memory until we find the NUL character,
     /// which is not guaranteed to be present. Additionally, the slice is not checked to see
@@ -856,7 +856,7 @@ pub mod raw {
 
     /// Converts a vector of bytes to a new `String` without checking if
     /// it contains valid UTF-8. This is unsafe because it assumes that
-    /// the utf-8-ness of the vector has already been validated.
+    /// the UTF-8-ness of the vector has already been validated.
     #[inline]
     pub unsafe fn from_utf8(bytes: Vec<u8>) -> String {
         String { vec: bytes }

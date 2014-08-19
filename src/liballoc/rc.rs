@@ -8,145 +8,142 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Task-local reference-counted boxes (`Rc` type)
-
-The `Rc` type provides shared ownership of an immutable value. Destruction is
-deterministic, and will occur as soon as the last owner is gone. It is marked
-as non-sendable because it avoids the overhead of atomic reference counting.
-
-The `downgrade` method can be used to create a non-owning `Weak` pointer to the
-box. A `Weak` pointer can be upgraded to an `Rc` pointer, but will return
-`None` if the value has already been freed.
-
-For example, a tree with parent pointers can be represented by putting the
-nodes behind strong `Rc` pointers, and then storing the parent pointers as
-`Weak` pointers.
-
-
-## Examples
-
-Consider a scenario where a set of Gadgets are owned by a given Owner.  We want
-to have our Gadgets point to their Owner.  We can't do this with unique
-ownership, because more than one gadget may belong to the same Owner.  Rc
-allows us to share an Owner between multiple Gadgets, and have the Owner kept
-alive as long as any Gadget points at it.
-
-```rust
-use std::rc::Rc;
-
-struct Owner {
-    name: String
-    // ...other fields
-}
-
-struct Gadget {
-    id: int,
-    owner: Rc<Owner>
-    // ...other fields
-}
-
-fn main() {
-    // Create a reference counted Owner.
-    let gadget_owner : Rc<Owner> = Rc::new(
-            Owner { name: String::from_str("Gadget Man") }
-    );
-
-    // Create Gadgets belonging to gadget_owner.  To increment the reference
-    // count we clone the Rc object.
-    let gadget1 = Gadget { id: 1, owner: gadget_owner.clone() };
-    let gadget2 = Gadget { id: 2, owner: gadget_owner.clone() };
-
-    drop(gadget_owner);
-
-    // Despite dropping gadget_owner, we're still able to print out the name of
-    // the Owner of the Gadgets. This is because we've only dropped the
-    // reference count object, not the Owner it wraps. As long as there are
-    // other Rc objects pointing at the same Owner, it will stay alive. Notice
-    // that the Rc wrapper around Gadget.owner gets automatically dereferenced
-    // for us.
-    println!("Gadget {} owned by {}", gadget1.id, gadget1.owner.name);
-    println!("Gadget {} owned by {}", gadget2.id, gadget2.owner.name);
-
-    // At the end of the method, gadget1 and gadget2 get destroyed, and with
-    // them the last counted references to our Owner.  Gadget Man now gets
-    // destroyed as well.
-}
-```
-
-If our requirements change, and we also need to be able to traverse from
-Owner->Gadget, we will run into problems: an Rc pointer from Owner->Gadget
-introduces a cycle between the objects.  This means that their reference counts
-can never reach 0, and the objects will stay alive: a memory leak.  In order to
-get around this, we can use `Weak` pointers.  These are reference counted
-pointers that don't keep an object alive if there are no normal `Rc` (or
-*strong*) pointers left.
-
-Rust actually makes it somewhat difficult to produce this loop in the first
-place: in order to end up with two objects that point at each other, one of
-them needs to be mutable.  This is problematic because Rc enforces memory
-safety by only giving out shared references to the object it wraps, and these
-don't allow direct mutation.  We need to wrap the part of the object we wish to
-mutate in a `RefCell`, which provides *interior mutability*: a method to
-achieve mutability through a shared reference.  `RefCell` enforces Rust's
-borrowing rules at runtime.  Read the `Cell` documentation for more details on
-interior mutability.
-
-```rust
-use std::rc::Rc;
-use std::rc::Weak;
-use std::cell::RefCell;
-
-struct Owner {
-    name: String,
-    gadgets: RefCell<Vec<Weak<Gadget>>>
-    // ...other fields
-}
-
-struct Gadget {
-    id: int,
-    owner: Rc<Owner>
-    // ...other fields
-}
-
-fn main() {
-    // Create a reference counted Owner.  Note the fact that we've put the
-    // Owner's vector of Gadgets inside a RefCell so that we can mutate it
-    // through a shared reference.
-    let gadget_owner : Rc<Owner> = Rc::new(
-            Owner {
-                name: "Gadget Man".to_string(),
-                gadgets: RefCell::new(Vec::new())
-            }
-    );
-
-    // Create Gadgets belonging to gadget_owner as before.
-    let gadget1 = Rc::new(Gadget{id: 1, owner: gadget_owner.clone()});
-    let gadget2 = Rc::new(Gadget{id: 2, owner: gadget_owner.clone()});
-
-    // Add the Gadgets to their Owner.  To do this we mutably borrow from
-    // the RefCell holding the Owner's Gadgets.
-    gadget_owner.gadgets.borrow_mut().push(gadget1.clone().downgrade());
-    gadget_owner.gadgets.borrow_mut().push(gadget2.clone().downgrade());
-
-    // Iterate over our Gadgets, printing their details out
-    for gadget_opt in gadget_owner.gadgets.borrow().iter() {
-
-        // gadget_opt is a Weak<Gadget>.  Since weak pointers can't guarantee
-        // that their object is still alive, we need to call upgrade() on them
-        // to turn them into a strong reference.  This returns an Option, which
-        // contains a reference to our object if it still exists.
-        let gadget = gadget_opt.upgrade().unwrap();
-        println!("Gadget {} owned by {}", gadget.id, gadget.owner.name);
-    }
-
-    // At the end of the method, gadget_owner, gadget1 and gadget2 get
-    // destroyed.  There are now no strong (Rc) references to the gadgets.
-    // Once they get destroyed, the Gadgets get destroyed.  This zeroes the
-    // reference count on Gadget Man, so he gets destroyed as well.
-}
-```
-
-*/
+//! Task-local reference-counted boxes (the `Rc` type).
+//!
+//! The `Rc` type provides shared ownership of an immutable value. Destruction is
+//! deterministic, and will occur as soon as the last owner is gone. It is marked
+//! as non-sendable because it avoids the overhead of atomic reference counting.
+//!
+//! The `downgrade` method can be used to create a non-owning `Weak` pointer to the
+//! box. A `Weak` pointer can be upgraded to an `Rc` pointer, but will return
+//! `None` if the value has already been freed.
+//!
+//! For example, a tree with parent pointers can be represented by putting the
+//! nodes behind strong `Rc` pointers, and then storing the parent pointers as
+//! `Weak` pointers.
+//!
+//! # Examples
+//!
+//! Consider a scenario where a set of `Gadget`s are owned by a given `Owner`.
+//! We want to have our `Gadget`s point to their `Owner`. We can't do this with
+//! unique ownership, because more than one gadget may belong to the same
+//! `Owner`. `Rc` allows us to share an `Owner` between multiple `Gadget`s, and
+//! have the `Owner` kept alive as long as any `Gadget` points at it.
+//!
+//! ```rust
+//! use std::rc::Rc;
+//!
+//! struct Owner {
+//!     name: String
+//!     // ...other fields
+//! }
+//!
+//! struct Gadget {
+//!     id: int,
+//!     owner: Rc<Owner>
+//!     // ...other fields
+//! }
+//!
+//! fn main() {
+//!     // Create a reference counted Owner.
+//!     let gadget_owner : Rc<Owner> = Rc::new(
+//!             Owner { name: String::from_str("Gadget Man") }
+//!     );
+//!
+//!     // Create Gadgets belonging to gadget_owner. To increment the reference
+//!     // count we clone the Rc object.
+//!     let gadget1 = Gadget { id: 1, owner: gadget_owner.clone() };
+//!     let gadget2 = Gadget { id: 2, owner: gadget_owner.clone() };
+//!
+//!     drop(gadget_owner);
+//!
+//!     // Despite dropping gadget_owner, we're still able to print out the name of
+//!     // the Owner of the Gadgets. This is because we've only dropped the
+//!     // reference count object, not the Owner it wraps. As long as there are
+//!     // other Rc objects pointing at the same Owner, it will stay alive. Notice
+//!     // that the Rc wrapper around Gadget.owner gets automatically dereferenced
+//!     // for us.
+//!     println!("Gadget {} owned by {}", gadget1.id, gadget1.owner.name);
+//!     println!("Gadget {} owned by {}", gadget2.id, gadget2.owner.name);
+//!
+//!     // At the end of the method, gadget1 and gadget2 get destroyed, and with
+//!     // them the last counted references to our Owner. Gadget Man now gets
+//!     // destroyed as well.
+//! }
+//! ```
+//!
+//! If our requirements change, and we also need to be able to traverse from
+//! Owner → Gadget, we will run into problems: an `Rc` pointer from Owner → Gadget
+//! introduces a cycle between the objects. This means that their reference counts
+//! can never reach 0, and the objects will stay alive: a memory leak. In order to
+//! get around this, we can use `Weak` pointers. These are reference counted
+//! pointers that don't keep an object alive if there are no normal `Rc` (or
+//! *strong*) pointers left.
+//!
+//! Rust actually makes it somewhat difficult to produce this loop in the first
+//! place: in order to end up with two objects that point at each other, one of
+//! them needs to be mutable. This is problematic because `Rc` enforces memory
+//! safety by only giving out shared references to the object it wraps, and these
+//! don't allow direct mutation. We need to wrap the part of the object we wish to
+//! mutate in a `RefCell`, which provides *interior mutability*: a method to
+//! achieve mutability through a shared reference. `RefCell` enforces Rust's
+//! borrowing rules at runtime. Read the `Cell` documentation for more details on
+//! interior mutability.
+//!
+//! ```rust
+//! use std::rc::Rc;
+//! use std::rc::Weak;
+//! use std::cell::RefCell;
+//!
+//! struct Owner {
+//!     name: String,
+//!     gadgets: RefCell<Vec<Weak<Gadget>>>
+//!     // ...other fields
+//! }
+//!
+//! struct Gadget {
+//!     id: int,
+//!     owner: Rc<Owner>
+//!     // ...other fields
+//! }
+//!
+//! fn main() {
+//!     // Create a reference counted Owner. Note the fact that we've put the
+//!     // Owner's vector of Gadgets inside a RefCell so that we can mutate it
+//!     // through a shared reference.
+//!     let gadget_owner : Rc<Owner> = Rc::new(
+//!             Owner {
+//!                 name: "Gadget Man".to_string(),
+//!                 gadgets: RefCell::new(Vec::new())
+//!             }
+//!     );
+//!
+//!     // Create Gadgets belonging to gadget_owner as before.
+//!     let gadget1 = Rc::new(Gadget{id: 1, owner: gadget_owner.clone()});
+//!     let gadget2 = Rc::new(Gadget{id: 2, owner: gadget_owner.clone()});
+//!
+//!     // Add the Gadgets to their Owner. To do this we mutably borrow from
+//!     // the RefCell holding the Owner's Gadgets.
+//!     gadget_owner.gadgets.borrow_mut().push(gadget1.clone().downgrade());
+//!     gadget_owner.gadgets.borrow_mut().push(gadget2.clone().downgrade());
+//!
+//!     // Iterate over our Gadgets, printing their details out
+//!     for gadget_opt in gadget_owner.gadgets.borrow().iter() {
+//!
+//!         // gadget_opt is a Weak<Gadget>. Since weak pointers can't guarantee
+//!         // that their object is still alive, we need to call upgrade() on them
+//!         // to turn them into a strong reference. This returns an Option, which
+//!         // contains a reference to our object if it still exists.
+//!         let gadget = gadget_opt.upgrade().unwrap();
+//!         println!("Gadget {} owned by {}", gadget.id, gadget.owner.name);
+//!     }
+//!
+//!     // At the end of the method, gadget_owner, gadget1 and gadget2 get
+//!     // destroyed. There are now no strong (Rc) references to the gadgets.
+//!     // Once they get destroyed, the Gadgets get destroyed. This zeroes the
+//!     // reference count on Gadget Man, so he gets destroyed as well.
+//! }
+//! ```
 
 #![stable]
 
@@ -171,7 +168,7 @@ struct RcBox<T> {
     weak: Cell<uint>
 }
 
-/// Immutable reference counted pointer type
+/// An immutable reference-counted pointer type.
 #[unsafe_no_drop_flag]
 #[stable]
 pub struct Rc<T> {
@@ -184,7 +181,7 @@ pub struct Rc<T> {
 
 #[stable]
 impl<T> Rc<T> {
-    /// Construct a new reference-counted box
+    /// Constructs a new reference-counted pointer.
     pub fn new(value: T) -> Rc<T> {
         unsafe {
             Rc {
@@ -206,8 +203,8 @@ impl<T> Rc<T> {
 }
 
 impl<T> Rc<T> {
-    /// Downgrade the reference-counted pointer to a weak reference
-    #[experimental = "Weak pointers may not belong in this module."]
+    /// Downgrades the reference-counted pointer to a weak reference.
+    #[experimental = "Weak pointers may not belong in this module"]
     pub fn downgrade(&self) -> Weak<T> {
         self.inc_weak();
         Weak {
@@ -234,7 +231,7 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool {
 /// If the `Rc` does not have unique ownership, `Err` is returned with the
 /// same `Rc`.
 ///
-/// # Example:
+/// # Example
 ///
 /// ```
 /// use std::rc::{mod, Rc};
@@ -267,7 +264,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 ///
 /// Returns `None` if the `Rc` does not have unique ownership.
 ///
-/// # Example:
+/// # Example
 ///
 /// ```
 /// use std::rc::{mod, Rc};
@@ -312,7 +309,7 @@ impl<T: Clone> Rc<T> {
 
 #[experimental = "Deref is experimental."]
 impl<T> Deref<T> for Rc<T> {
-    /// Borrow the value contained in the reference-counted box
+    /// Borrows the value contained in the reference-counted pointer.
     #[inline(always)]
     fn deref(&self) -> &T {
         &self.inner().value
@@ -404,7 +401,7 @@ impl<T: fmt::Show> fmt::Show for Rc<T> {
     }
 }
 
-/// Weak reference to a reference-counted box
+/// A weak reference to a reference-counted pointer.
 #[unsafe_no_drop_flag]
 #[experimental = "Weak pointers may not belong in this module."]
 pub struct Weak<T> {
@@ -417,7 +414,10 @@ pub struct Weak<T> {
 
 #[experimental = "Weak pointers may not belong in this module."]
 impl<T> Weak<T> {
-    /// Upgrade a weak reference to a strong reference
+    /// Upgrades a weak reference to a strong reference.
+    ///
+    /// Returns `None` if there were no strong references and the data was
+    /// destroyed.
     pub fn upgrade(&self) -> Option<Rc<T>> {
         if self.strong() == 0 {
             None

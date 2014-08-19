@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Rust's core allocation library
+//! # The Rust core allocation library
 //!
 //! This is the lowest level library through which allocation in Rust can be
 //! performed where the allocation is assumed to succeed. This library will
@@ -23,13 +23,13 @@
 //!
 //! ## Boxed values
 //!
-//! The [`Box`](boxed/index.html) type is the core owned pointer type in rust.
+//! The [`Box`](boxed/index.html) type is the core owned pointer type in Rust.
 //! There can only be one owner of a `Box`, and the owner can decide to mutate
 //! the contents, which live on the heap.
 //!
 //! This type can be sent among tasks efficiently as the size of a `Box` value
-//! is just a pointer. Tree-like data structures are often built on owned
-//! pointers because each node often has only one owner, the parent.
+//! is the same as that of a pointer. Tree-like data structures are often built
+//! with boxes because each node often has only one owner, the parent.
 //!
 //! ## Reference counted pointers
 //!
@@ -37,8 +37,8 @@
 //! type intended for sharing memory within a task. An `Rc` pointer wraps a
 //! type, `T`, and only allows access to `&T`, a shared reference.
 //!
-//! This type is useful when inherited mutability is too constraining for an
-//! application (such as using `Box`), and is often paired with the `Cell` or
+//! This type is useful when inherited mutability (such as using `Box`) is too
+//! constraining for an application, and is often paired with the `Cell` or
 //! `RefCell` types in order to allow mutation.
 //!
 //! ## Atomically reference counted pointers
