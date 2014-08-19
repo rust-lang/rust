@@ -862,6 +862,23 @@ impl<T> Vec<T> {
         self.as_mut_slice().sort_by(compare)
     }
 
+    /// Sort the vector, in place, using `compare` to compare the elements,
+    /// assuming that the vector is already mostly sorted, in terms of number
+    /// of inversions.
+    ///
+    /// This sort is stable, and takes `O(n + i)` time,
+    /// where `i` is the number of element inversions.
+    /// As a consequence, this method is generally only appropriate for data
+    /// that is known to be almost completely sorted.
+    /// In the worst case (a reverse ordered list) this is <code>O(n<sup>2</sup>)</code>.
+    /// Further, <code>O(n<sup>2</sup>)</code> is also expected for a random permutation.
+    /// However, for highly sorted inputs, this can be as low as `O(n)`, in contrast to `sort`,
+    /// which always takes `O(n log n)`.
+    #[inline]
+    pub fn resort_by(&mut self, compare: |&T, &T| -> Ordering) {
+        self.as_mut_slice().resort_by(compare)
+    }
+
     /// Returns a slice of self spanning the interval [`start`, `end`).
     ///
     /// # Failure
@@ -1382,6 +1399,22 @@ impl<T:Ord> Vec<T> {
     /// ```
     pub fn sort(&mut self) {
         self.as_mut_slice().sort()
+    }
+
+    /// Sort the vector in place,
+    /// assuming that the vector is already mostly sorted, in terms of number
+    /// of inversions.
+    ///
+    /// This sort is stable, and takes `O(n + i)` time,
+    /// where `i` is the number of element inversions.
+    /// As a consequence, this method is generally only appropriate for data
+    /// that is known to be almost completely sorted.
+    /// In the worst case (a reverse ordered list) this is <code>O(n<sup>2</sup>)</code>.
+    /// Further, <code>O(n<sup>2</sup>)</code> is also expected for a random permutation.
+    /// However, for highly sorted inputs, this can be as low as `O(n)`, in contrast to `sort`,
+    /// which always takes `O(n log n)`.
+    pub fn resort(&mut self) {
+        self.as_mut_slice().resort()
     }
 }
 

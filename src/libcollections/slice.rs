@@ -356,7 +356,6 @@ impl<'a,T:Clone> ImmutableCloneableVector<T> for &'a [T] {
 fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     let len = v.len() as int;
     let buf_v = v.as_mut_ptr();
-
     // 1 <= i < len;
     for i in range(1, len) {
         // j satisfies: 0 <= j <= i;
@@ -578,6 +577,20 @@ pub trait MutableSliceAllocating<'a, T> {
     /// ```
     fn sort_by(self, compare: |&T, &T| -> Ordering);
 
+    /// Sort the vector, in place, using `compare` to compare the elements,
+    /// assuming that the vector is already mostly sorted, in terms of number
+    /// of inversions.
+    ///
+    /// This sort is stable, and takes `O(n + i)` time,
+    /// where `i` is the number of element inversions.
+    /// As a consequence, this method is generally only appropriate for data
+    /// that is known to be almost completely sorted.
+    /// In the worst case (a reverse ordered list) this is <code>O(n<sup>2</sup>)</code>.
+    /// Further, <code>O(n<sup>2</sup>)</code> is also expected for a random permutation.
+    /// However, for highly sorted inputs, this can be as low as `O(n)`, in contrast to `sort`,
+    /// which always takes `O(n log n)`.
+    fn resort_by(self, compare: |&T, &T| -> Ordering);
+
     /**
      * Consumes `src` and moves as many elements as it can into `self`
      * from the range [start,end).
@@ -611,6 +624,11 @@ impl<'a,T> MutableSliceAllocating<'a, T> for &'a mut [T] {
     }
 
     #[inline]
+    fn resort_by(self, compare: |&T, &T| -> Ordering) {
+        insertion_sort(self, compare)
+    }
+
+    #[inline]
     fn move_from(self, mut src: Vec<T>, start: uint, end: uint) -> uint {
         for (a, b) in self.mut_iter().zip(src.mut_slice(start, end).mut_iter()) {
             mem::swap(a, b);
@@ -635,6 +653,10 @@ pub trait MutableOrdSlice<T> {
     /// assert!(v == [-5i, -3, 1, 2, 4]);
     /// ```
     fn sort(self);
+
+    /// Sort the vector, in place, assuming that the vector is already mostly sorted,
+    /// in terms of number of inversions.
+    fn resort(self);
 
     /// Mutates the slice to the next lexicographic permutation.
     ///
@@ -671,6 +693,11 @@ impl<'a, T: Ord> MutableOrdSlice<T> for &'a mut [T] {
     #[inline]
     fn sort(self) {
         self.sort_by(|a,b| a.cmp(b))
+    }
+
+    #[inline]
+    fn resort(self) {
+        self.resort_by(|a,b| a.cmp(b))
     }
 
     fn next_permutation(self) -> bool {
@@ -2421,6 +2448,87 @@ mod bench {
         let mut v = Vec::from_fn(10000u, |i| (i, i, i, i));
         b.iter(|| {
             v.sort();
+        });
+        b.bytes = (v.len() * mem::size_of_val(v.get(0))) as u64;
+    }
+
+    #[bench]
+    fn resort_random_small(b: &mut Bencher) {
+        let mut rng = weak_rng();
+        b.iter(|| {
+            let mut v = rng.gen_iter::<u64>().take(5).collect::<Vec<u64>>();
+            v.as_mut_slice().resort();
+        });
+        b.bytes = 5 * mem::size_of::<u64>() as u64;
+    }
+
+    #[bench]
+    fn resort_random_medium(b: &mut Bencher) {
+        let mut rng = weak_rng();
+        b.iter(|| {
+            let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
+            v.as_mut_slice().resort();
+        });
+        b.bytes = 100 * mem::size_of::<u64>() as u64;
+    }
+
+    #[bench]
+    fn resort_random_large(b: &mut Bencher) {
+        let mut rng = weak_rng();
+        b.iter(|| {
+            let mut v = rng.gen_iter::<u64>().take(10000).collect::<Vec<u64>>();
+            v.as_mut_slice().resort();
+        });
+        b.bytes = 10000 * mem::size_of::<u64>() as u64;
+    }
+
+    #[bench]
+    fn resort_sorted(b: &mut Bencher) {
+        let mut v = Vec::from_fn(10000, |i| i);
+        b.iter(|| {
+            v.resort();
+        });
+        b.bytes = (v.len() * mem::size_of_val(v.get(0))) as u64;
+    }
+
+    #[bench]
+    fn resort_big_random_small(b: &mut Bencher) {
+        let mut rng = weak_rng();
+        b.iter(|| {
+            let mut v = rng.gen_iter::<BigSortable>().take(5)
+                           .collect::<Vec<BigSortable>>();
+            v.resort();
+        });
+        b.bytes = 5 * mem::size_of::<BigSortable>() as u64;
+    }
+
+    #[bench]
+    fn resort_big_random_medium(b: &mut Bencher) {
+        let mut rng = weak_rng();
+        b.iter(|| {
+            let mut v = rng.gen_iter::<BigSortable>().take(100)
+                           .collect::<Vec<BigSortable>>();
+            v.resort();
+        });
+        b.bytes = 100 * mem::size_of::<BigSortable>() as u64;
+    }
+
+    #[bench]
+    fn resort_big_random_large(b: &mut Bencher) {
+        let mut rng = weak_rng();
+        b.iter(|| {
+            let mut v = rng.gen_iter::<BigSortable>().take(10000)
+                           .collect::<Vec<BigSortable>>();
+            v.resort();
+        });
+        b.bytes = 10000 * mem::size_of::<BigSortable>() as u64;
+    }
+
+    #[bench]
+    fn resort_big_sorted(b: &mut Bencher) {
+        let mut v = Vec::from_fn(10000u, |i| (i, i, i, i));
+        b.iter(|| {
+            v.resort();
         });
         b.bytes = (v.len() * mem::size_of_val(v.get(0))) as u64;
     }
