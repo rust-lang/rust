@@ -261,7 +261,7 @@ impl<K: Ord, V> Index<K, V> for TreeMap<K, V> {
 }*/
 
 impl<K: Ord, V> TreeMap<K, V> {
-    /// Create an empty `TreeMap`.
+    /// Creates an empty `TreeMap`.
     ///
     /// # Example
     ///
@@ -271,7 +271,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// ```
     pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
-    /// Get a lazy iterator over the keys in the map, in ascending order.
+    /// Gets a lazy iterator over the keys in the map, in ascending order.
     ///
     /// # Example
     ///
@@ -291,7 +291,7 @@ impl<K: Ord, V> TreeMap<K, V> {
         self.iter().map(|(k, _v)| k)
     }
 
-    /// Get a lazy iterator over the values in the map, in ascending order
+    /// Gets a lazy iterator over the values in the map, in ascending order
     /// with respect to the corresponding keys.
     ///
     /// # Example
@@ -312,7 +312,7 @@ impl<K: Ord, V> TreeMap<K, V> {
         self.iter().map(|(_k, v)| v)
     }
 
-    /// Get a lazy iterator over the key-value pairs in the map, in ascending order.
+    /// Gets a lazy iterator over the key-value pairs in the map, in ascending order.
     ///
     /// # Example
     ///
@@ -337,7 +337,7 @@ impl<K: Ord, V> TreeMap<K, V> {
         }
     }
 
-    /// Get a lazy reverse iterator over the key-value pairs in the map, in descending order.
+    /// Gets a lazy reverse iterator over the key-value pairs in the map, in descending order.
     ///
     /// # Example
     ///
@@ -357,7 +357,7 @@ impl<K: Ord, V> TreeMap<K, V> {
         RevEntries{iter: self.iter()}
     }
 
-    /// Get a lazy forward iterator over the key-value pairs in the
+    /// Gets a lazy forward iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
     /// # Example
@@ -387,7 +387,8 @@ impl<K: Ord, V> TreeMap<K, V> {
             remaining_max: self.length
         }
     }
-    /// Get a lazy reverse iterator over the key-value pairs in the
+
+    /// Gets a lazy reverse iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
     /// # Example
@@ -414,8 +415,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     }
 
 
-    /// Get a lazy iterator that consumes the treemap, it is not usable
-    /// after calling this.
+    /// Gets a lazy iterator that consumes the treemap.
     ///
     /// # Example
     ///
@@ -444,7 +444,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 }
 
 impl<K, V> TreeMap<K, V> {
-    /// Return the value for which `f(key)` returns `Equal`. `f` is invoked
+    /// Returns the value for which `f(key)` returns `Equal`. `f` is invoked
     /// with current key and guides tree navigation. That means `f` should
     /// be aware of natural ordering of the tree.
     ///
@@ -473,7 +473,7 @@ impl<K, V> TreeMap<K, V> {
         tree_find_with(&self.root, f)
     }
 
-    /// Return the value for which `f(key)` returns `Equal`. `f` is invoked
+    /// Returns the value for which `f(key)` returns `Equal`. `f` is invoked
     /// with current key and guides tree navigation. That means `f` should
     /// be aware of natural ordering of the tree.
     ///
@@ -533,7 +533,7 @@ macro_rules! bound_setup {
 
 
 impl<K: Ord, V> TreeMap<K, V> {
-    /// Get a lazy iterator that should be initialized using
+    /// Gets a lazy iterator that should be initialized using
     /// `traverse_left`/`traverse_right`/`traverse_complete`.
     fn iter_for_traversal<'a>(&'a self) -> Entries<'a, K, V> {
         Entries {
@@ -544,7 +544,7 @@ impl<K: Ord, V> TreeMap<K, V> {
         }
     }
 
-    /// Return a lazy iterator to the first key-value pair whose key is not less than `k`
+    /// Returns a lazy iterator to the first key-value pair whose key is not less than `k`
     /// If all keys in map are less than `k` an empty iterator is returned.
     ///
     /// # Example
@@ -566,7 +566,7 @@ impl<K: Ord, V> TreeMap<K, V> {
         bound_setup!(self.iter_for_traversal(), k, true)
     }
 
-    /// Return a lazy iterator to the first key-value pair whose key is greater than `k`
+    /// Returns a lazy iterator to the first key-value pair whose key is greater than `k`
     /// If all keys in map are less than or equal to `k` an empty iterator is returned.
     ///
     /// # Example
@@ -588,7 +588,7 @@ impl<K: Ord, V> TreeMap<K, V> {
         bound_setup!(self.iter_for_traversal(), k, false)
     }
 
-    /// Get a lazy iterator that should be initialized using
+    /// Gets a lazy iterator that should be initialized using
     /// `traverse_left`/`traverse_right`/`traverse_complete`.
     fn mut_iter_for_traversal<'a>(&'a mut self) -> MutEntries<'a, K, V> {
         MutEntries {
@@ -599,7 +599,7 @@ impl<K: Ord, V> TreeMap<K, V> {
         }
     }
 
-    /// Return a lazy value iterator to the first key-value pair (with
+    /// Returns a lazy value iterator to the first key-value pair (with
     /// the value being mutable) whose key is not less than `k`.
     ///
     /// If all keys in map are less than `k` an empty iterator is
@@ -633,7 +633,7 @@ impl<K: Ord, V> TreeMap<K, V> {
         bound_setup!(self.mut_iter_for_traversal(), k, true)
     }
 
-    /// Return a lazy iterator to the first key-value pair (with the
+    /// Returns a lazy iterator to the first key-value pair (with the
     /// value being mutable) whose key is greater than `k`.
     ///
     /// If all keys in map are less than or equal to `k` an empty iterator
@@ -668,7 +668,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     }
 }
 
-/// Lazy forward iterator over a map
+/// A lazy forward iterator over a map.
 pub struct Entries<'a, K, V> {
     stack: Vec<&'a TreeNode<K, V>>,
     // See the comment on MutEntries; this is just to allow
@@ -679,12 +679,12 @@ pub struct Entries<'a, K, V> {
     remaining_max: uint
 }
 
-/// Lazy backward iterator over a map
+/// Lazy backward iterator over a map.
 pub struct RevEntries<'a, K, V> {
     iter: Entries<'a, K, V>,
 }
 
-/// Lazy forward iterator over a map that allows for the mutation of
+/// A lazy forward iterator over a map that allows for the mutation of
 /// the values.
 pub struct MutEntries<'a, K, V> {
     stack: Vec<&'a mut TreeNode<K, V>>,
@@ -712,17 +712,17 @@ pub struct MutEntries<'a, K, V> {
     remaining_max: uint
 }
 
-/// Lazy backward iterator over a map
+/// Lazy backward iterator over a map.
 pub struct RevMutEntries<'a, K, V> {
     iter: MutEntries<'a, K, V>,
 }
 
 
-/// TreeMap keys iterator
+/// TreeMap keys iterator.
 pub type Keys<'a, K, V> =
     iter::Map<'static, (&'a K, &'a V), &'a K, Entries<'a, K, V>>;
 
-/// TreeMap values iterator
+/// TreeMap values iterator.
 pub type Values<'a, K, V> =
     iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
 
@@ -821,7 +821,7 @@ macro_rules! define_iterator {
 
         // the forward Iterator impl.
         item!(impl<'a, K, V> Iterator<(&'a K, &'a $($addr_mut)* V)> for $name<'a, K, V> {
-            /// Advance the iterator to the next node (in order) and return a
+            /// Advances the iterator to the next node (in order) and return a
             /// tuple with a reference to the key and value. If there are no
             /// more nodes, return `None`.
             fn next(&mut self) -> Option<(&'a K, &'a $($addr_mut)* V)> {
@@ -887,7 +887,7 @@ fn mut_deref<K, V>(x: &mut Option<Box<TreeNode<K, V>>>)
 
 
 
-/// Lazy forward iterator over a map that consumes the map while iterating
+/// A lazy forward iterator over a map that consumes the map while iterating.
 pub struct MoveEntries<K, V> {
     stack: Vec<TreeNode<K, V>>,
     remaining: uint
@@ -951,7 +951,7 @@ impl<'a, T> Iterator<&'a T> for RevSetItems<'a, T> {
     }
 }
 
-/// A implementation of the `Set` trait on top of the `TreeMap` container. The
+/// An implementation of the `Set` trait on top of the `TreeMap` container. The
 /// only requirement is that the type of the elements contained ascribes to the
 /// `Ord` trait.
 ///
@@ -1121,7 +1121,7 @@ impl<T: Ord> Default for TreeSet<T> {
 }
 
 impl<T: Ord> TreeSet<T> {
-    /// Create an empty `TreeSet`.
+    /// Creates an empty `TreeSet`.
     ///
     /// # Example
     ///
@@ -1132,7 +1132,7 @@ impl<T: Ord> TreeSet<T> {
     #[inline]
     pub fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
 
-    /// Get a lazy iterator over the values in the set, in ascending order.
+    /// Gets a lazy iterator over the values in the set, in ascending order.
     ///
     /// # Example
     ///
@@ -1150,7 +1150,7 @@ impl<T: Ord> TreeSet<T> {
         SetItems{iter: self.map.iter()}
     }
 
-    /// Get a lazy iterator over the values in the set, in descending order.
+    /// Gets a lazy iterator over the values in the set, in descending order.
     ///
     /// # Example
     ///
@@ -1186,7 +1186,7 @@ impl<T: Ord> TreeSet<T> {
         self.map.move_iter().map(|(value, _)| value)
     }
 
-    /// Get a lazy iterator pointing to the first value not less than `v` (greater or equal).
+    /// Gets a lazy iterator pointing to the first value not less than `v` (greater or equal).
     /// If all elements in the set are less than `v` empty iterator is returned.
     ///
     /// # Example
@@ -1204,7 +1204,7 @@ impl<T: Ord> TreeSet<T> {
         SetItems{iter: self.map.lower_bound(v)}
     }
 
-    /// Get a lazy iterator pointing to the first value greater than `v`.
+    /// Gets a lazy iterator pointing to the first value greater than `v`.
     /// If all elements in the set are less than or equal to `v` an
     /// empty iterator is returned.
     ///
@@ -1223,7 +1223,7 @@ impl<T: Ord> TreeSet<T> {
         SetItems{iter: self.map.upper_bound(v)}
     }
 
-    /// Visit the values representing the difference, in ascending order.
+    /// Visits the values representing the difference, in ascending order.
     ///
     /// # Example
     ///
@@ -1250,7 +1250,7 @@ impl<T: Ord> TreeSet<T> {
         DifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
-    /// Visit the values representing the symmetric difference, in ascending order.
+    /// Visits the values representing the symmetric difference, in ascending order.
     ///
     /// # Example
     ///
@@ -1276,7 +1276,7 @@ impl<T: Ord> TreeSet<T> {
         SymDifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
-    /// Visit the values representing the intersection, in ascending order.
+    /// Visits the values representing the intersection, in ascending order.
     ///
     /// # Example
     ///
@@ -1299,7 +1299,7 @@ impl<T: Ord> TreeSet<T> {
         IntersectionItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
-    /// Visit the values representing the union, in ascending order.
+    /// Visits the values representing the union, in ascending order.
     ///
     /// # Example
     ///
@@ -1322,44 +1322,45 @@ impl<T: Ord> TreeSet<T> {
     }
 }
 
-/// Lazy forward iterator over a set
+/// A lazy forward iterator over a set.
 pub struct SetItems<'a, T> {
     iter: Entries<'a, T, ()>
 }
 
-/// Lazy backward iterator over a set
+/// Lazy backward iterator over a set.
 pub struct RevSetItems<'a, T> {
     iter: RevEntries<'a, T, ()>
 }
 
-/// Lazy forward iterator over a set that consumes the set while iterating
+/// A lazy forward iterator over a set that consumes the set while iterating.
 pub type MoveSetItems<T> = iter::Map<'static, (T, ()), T, MoveEntries<T, ()>>;
 
-/// Lazy iterator producing elements in the set difference (in-order)
+/// A lazy iterator producing elements in the set difference (in-order).
 pub struct DifferenceItems<'a, T> {
     a: Peekable<&'a T, SetItems<'a, T>>,
     b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
-/// Lazy iterator producing elements in the set symmetric difference (in-order)
+/// A lazy iterator producing elements in the set symmetric difference (in-order).
 pub struct SymDifferenceItems<'a, T> {
     a: Peekable<&'a T, SetItems<'a, T>>,
     b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
-/// Lazy iterator producing elements in the set intersection (in-order)
+/// A lazy iterator producing elements in the set intersection (in-order).
 pub struct IntersectionItems<'a, T> {
     a: Peekable<&'a T, SetItems<'a, T>>,
     b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
-/// Lazy iterator producing elements in the set union (in-order)
+/// A lazy iterator producing elements in the set union (in-order).
 pub struct UnionItems<'a, T> {
     a: Peekable<&'a T, SetItems<'a, T>>,
     b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
-/// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
+/// Compare `x` and `y`, but return `short` if x is None and `long` if y is
+/// `None`.
 fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>,
                         short: Ordering, long: Ordering) -> Ordering {
     match (x, y) {

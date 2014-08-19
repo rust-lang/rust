@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A double-ended queue implemented as a circular buffer
+//! A double-ended queue implemented as a circular buffer.
 //!
-//! RingBuf implements the trait Deque. It should be imported with `use
-//! collections::Deque`.
+//! `RingBuf` implements the trait `Deque`. It should be imported with
+//! `use collections::Deque`.
 
 use core::prelude::*;
 
@@ -27,7 +27,7 @@ use vec::Vec;
 static INITIAL_CAPACITY: uint = 8u; // 2^3
 static MINIMUM_CAPACITY: uint = 2u;
 
-/// RingBuf is a circular buffer that implements Deque.
+/// `RingBuf` is a circular buffer that implements `Deque`.
 #[deriving(Clone)]
 pub struct RingBuf<T> {
     nelts: uint,
@@ -36,12 +36,12 @@ pub struct RingBuf<T> {
 }
 
 impl<T> Collection for RingBuf<T> {
-    /// Return the number of elements in the RingBuf
+    /// Returns the number of elements in the `RingBuf`.
     fn len(&self) -> uint { self.nelts }
 }
 
 impl<T> Mutable for RingBuf<T> {
-    /// Clear the RingBuf, removing all values.
+    /// Clears the `RingBuf`, removing all values.
     fn clear(&mut self) {
         for x in self.elts.mut_iter() { *x = None }
         self.nelts = 0;
@@ -50,28 +50,29 @@ impl<T> Mutable for RingBuf<T> {
 }
 
 impl<T> Deque<T> for RingBuf<T> {
-    /// Return a reference to the first element in the RingBuf
+    /// Returns a reference to the first element in the `RingBuf`.
     fn front<'a>(&'a self) -> Option<&'a T> {
         if self.nelts > 0 { Some(&self[0]) } else { None }
     }
 
-    /// Return a mutable reference to the first element in the RingBuf
+    /// Returns a mutable reference to the first element in the `RingBuf`.
     fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
         if self.nelts > 0 { Some(self.get_mut(0)) } else { None }
     }
 
-    /// Return a reference to the last element in the RingBuf
+    /// Returns a reference to the last element in the `RingBuf`.
     fn back<'a>(&'a self) -> Option<&'a T> {
         if self.nelts > 0 { Some(&self[self.nelts - 1]) } else { None }
     }
 
-    /// Return a mutable reference to the last element in the RingBuf
+    /// Returns a mutable reference to the last element in the `RingBuf`.
     fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
         let nelts = self.nelts;
         if nelts > 0 { Some(self.get_mut(nelts - 1)) } else { None }
     }
 
-    /// Remove and return the first element in the RingBuf, or None if it is empty
+    /// Removes and returns the first element in the `RingBuf`, or `None` if it
+    /// is empty.
     fn pop_front(&mut self) -> Option<T> {
         let result = self.elts.get_mut(self.lo).take();
         if result.is_some() {
@@ -81,7 +82,7 @@ impl<T> Deque<T> for RingBuf<T> {
         result
     }
 
-    /// Prepend an element to the RingBuf
+    /// Prepends an element to the `RingBuf`.
     fn push_front(&mut self, t: T) {
         if self.nelts == self.elts.len() {
             grow(self.nelts, &mut self.lo, &mut self.elts);
@@ -120,20 +121,20 @@ impl<T> Default for RingBuf<T> {
 }
 
 impl<T> RingBuf<T> {
-    /// Create an empty RingBuf
+    /// Creates an empty `RingBuf`.
     pub fn new() -> RingBuf<T> {
         RingBuf::with_capacity(INITIAL_CAPACITY)
     }
 
-    /// Create an empty RingBuf with space for at least `n` elements.
+    /// Creates an empty `RingBuf` with space for at least `n` elements.
     pub fn with_capacity(n: uint) -> RingBuf<T> {
         RingBuf{nelts: 0, lo: 0,
               elts: Vec::from_fn(cmp::max(MINIMUM_CAPACITY, n), |_| None)}
     }
 
-    /// Retrieve an element in the RingBuf by index
+    /// Retrieva an element in the `RingBuf` by index.
     ///
-    /// Fails if there is no element with the given index
+    /// Fails if there is no element with the given index.
     ///
     /// # Example
     ///
@@ -157,9 +158,9 @@ impl<T> RingBuf<T> {
         }
     }
 
-    /// Retrieve an element in the RingBuf by index
+    /// Retrieves an element in the `RingBuf` by index.
     ///
-    /// Fails if there is no element with the given index
+    /// Fails if there is no element with the given index.
     ///
     /// # Example
     ///
@@ -181,11 +182,11 @@ impl<T> RingBuf<T> {
         }
     }
 
-    /// Swap elements at indices `i` and `j`
+    /// Swaps elements at indices `i` and `j`.
     ///
     /// `i` and `j` may be equal.
     ///
-    /// Fails if there is no element with the given index
+    /// Fails if there is no element with either index.
     ///
     /// # Example
     ///
@@ -208,37 +209,30 @@ impl<T> RingBuf<T> {
         self.elts.as_mut_slice().swap(ri, rj);
     }
 
-    /// Return index in underlying vec for a given logical element index
+    /// Returns the index in the underlying `Vec` for a given logical element
+    /// index.
     fn raw_index(&self, idx: uint) -> uint {
         raw_index(self.lo, self.elts.len(), idx)
     }
 
-    /// Reserve capacity for exactly `n` elements in the given RingBuf,
+    /// Reserves capacity for exactly `n` elements in the given `RingBuf`,
     /// doing nothing if `self`'s capacity is already equal to or greater
-    /// than the requested capacity
-    ///
-    /// # Arguments
-    ///
-    /// * n - The number of elements to reserve space for
+    /// than the requested capacity.
     pub fn reserve_exact(&mut self, n: uint) {
         self.elts.reserve_exact(n);
     }
 
-    /// Reserve capacity for at least `n` elements in the given RingBuf,
+    /// Reserves capacity for at least `n` elements in the given `RingBuf`,
     /// over-allocating in case the caller needs to reserve additional
     /// space.
     ///
     /// Do nothing if `self`'s capacity is already equal to or greater
     /// than the requested capacity.
-    ///
-    /// # Arguments
-    ///
-    /// * n - The number of elements to reserve space for
     pub fn reserve(&mut self, n: uint) {
         self.elts.reserve(n);
     }
 
-    /// Front-to-back iterator.
+    /// Returns a front-to-back iterator.
     ///
     /// # Example
     ///
@@ -255,7 +249,7 @@ impl<T> RingBuf<T> {
         Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
     }
 
-    /// Front-to-back iterator which returns mutable values.
+    /// Returns a front-to-back iterator which returns mutable references.
     ///
     /// # Example
     ///
@@ -297,7 +291,7 @@ impl<T> RingBuf<T> {
     }
 }
 
-/// RingBuf iterator
+/// `RingBuf` iterator.
 pub struct Items<'a, T> {
     lo: uint,
     index: uint,
@@ -352,7 +346,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     }
 }
 
-/// RingBuf mutable iterator
+/// `RingBuf` mutable iterator.
 pub struct MutItems<'a, T> {
     remaining1: &'a mut [Option<T>],
     remaining2: &'a mut [Option<T>],
@@ -437,7 +431,7 @@ fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut Vec<Option<T>>) {
     }
 }
 
-/// Return index in underlying vec for a given logical element index
+/// Returns the index in the underlying `Vec` for a given logical element index.
 fn raw_index(lo: uint, len: uint, index: uint) -> uint {
     if lo >= len - index {
         lo + index - len

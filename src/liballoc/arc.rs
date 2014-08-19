@@ -77,7 +77,7 @@ struct ArcInner<T> {
 }
 
 impl<T: Sync + Send> Arc<T> {
-    /// Create an atomically reference counted wrapper.
+    /// Creates an atomically reference counted wrapper.
     #[inline]
     #[stable]
     pub fn new(data: T) -> Arc<T> {
@@ -101,7 +101,7 @@ impl<T: Sync + Send> Arc<T> {
         unsafe { &*self._ptr }
     }
 
-    /// Downgrades a strong pointer to a weak pointer
+    /// Downgrades a strong pointer to a weak pointer.
     ///
     /// Weak pointers will not keep the data alive. Once all strong references
     /// to the underlying data have been dropped, the data itself will be
@@ -224,7 +224,7 @@ impl<T: Sync + Send> Weak<T> {
     ///
     /// This method will fail to upgrade this reference if the strong reference
     /// count has already reached 0, but if there are still other active strong
-    /// references this function will return a new strong reference to the data
+    /// references this function will return a new strong reference to the data.
     pub fn upgrade(&self) -> Option<Arc<T>> {
         // We use a CAS loop to increment the strong count instead of a
         // fetch_add because once the count hits 0 is must never be above 0.

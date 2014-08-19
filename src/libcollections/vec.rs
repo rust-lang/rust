@@ -190,7 +190,7 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Create a `Vec<T>` directly from the raw constituents.
+    /// Creates a `Vec<T>` directly from the raw constituents.
     ///
     /// This is highly unsafe:
     ///
@@ -399,7 +399,7 @@ impl<T: Clone> Vec<T> {
     /// Partitions a vector based on a predicate.
     ///
     /// Clones the elements of the vector, partitioning them into two `Vec`s
-    /// `(A,B)`, where all elements of `A` satisfy `f` and all elements of `B`
+    /// `(a, b)`, where all elements of `a` satisfy `f` and all elements of `b`
     /// do not. The order of elements is preserved.
     ///
     /// # Example
@@ -635,7 +635,7 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Shrink the capacity of the vector as much as possible
+    /// Shrinks the capacity of the vector as much as possible.
     ///
     /// # Example
     ///
@@ -706,7 +706,7 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Work with `self` as a mutable slice.
+    /// Returns a mutable slice of the elements of `self`.
     ///
     /// # Example
     ///
@@ -841,7 +841,7 @@ impl<T> Vec<T> {
         self.as_mut_slice().mut_iter()
     }
 
-    /// Sort the vector, in place, using `compare` to compare elements.
+    /// Sorts the vector, in place, using `compare` to compare elements.
     ///
     /// This sort is `O(n log n)` worst-case and stable, but allocates
     /// approximately `2 * n`, where `n` is the length of `self`.
@@ -944,7 +944,7 @@ impl<T> Vec<T> {
         self.as_mut_slice().mut_last()
     }
 
-    /// Remove an element from anywhere in the vector and return it, replacing
+    /// Removes an element from anywhere in the vector and return it, replacing
     /// it with the last element. This does not preserve ordering, but is O(1).
     ///
     /// Returns `None` if `index` is out of bounds.
@@ -973,7 +973,7 @@ impl<T> Vec<T> {
         self.pop()
     }
 
-    /// Prepend an element to the vector.
+    /// Prepends an element to the vector.
     ///
     /// # Warning
     ///
@@ -1014,8 +1014,8 @@ impl<T> Vec<T> {
         self.remove(0)
     }
 
-    /// Insert an element at position `index` within the vector, shifting all
-    /// elements after position i one position to the right.
+    /// Inserts an element at position `index` within the vector, shifting all
+    /// elements after position `i` one position to the right.
     ///
     /// # Failure
     ///
@@ -1052,7 +1052,7 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Remove and return the element at position `index` within the vector,
+    /// Removes and returns the element at position `index` within the vector,
     /// shifting all elements after position `index` one position to the left.
     /// Returns `None` if `i` is out of bounds.
     ///
@@ -1126,7 +1126,7 @@ impl<T> Vec<T> {
         self.as_mut_slice().mut_slice(start, end)
     }
 
-    /// Returns a mutable slice of self from `start` to the end of the vec.
+    /// Returns a mutable slice of `self` from `start` to the end of the `Vec`.
     ///
     /// # Failure
     ///
@@ -1143,7 +1143,7 @@ impl<T> Vec<T> {
         self.as_mut_slice().mut_slice_from(start)
     }
 
-    /// Returns a mutable slice of self from the start of the vec to `end`.
+    /// Returns a mutable slice of `self` from the start of the `Vec` to `end`.
     ///
     /// # Failure
     ///
@@ -1160,7 +1160,7 @@ impl<T> Vec<T> {
         self.as_mut_slice().mut_slice_to(end)
     }
 
-    /// Returns a pair of mutable slices that divides the vec at an index.
+    /// Returns a pair of mutable slices that divides the `Vec` at an index.
     ///
     /// The first will contain all indices from `[0, mid)` (excluding
     /// the index `mid` itself) and the second will contain all
@@ -1199,7 +1199,7 @@ impl<T> Vec<T> {
         self.as_mut_slice().mut_split_at(mid)
     }
 
-    /// Reverse the order of elements in a vector, in place.
+    /// Reverses the order of elements in a vector, in place.
     ///
     /// # Example
     ///
@@ -1392,8 +1392,8 @@ impl<T> Mutable for Vec<T> {
     }
 }
 
-impl<T:PartialEq> Vec<T> {
-    /// Return true if a vector contains an element with the given value
+impl<T: PartialEq> Vec<T> {
+    /// Returns true if a vector contains an element equal to the given value.
     ///
     /// # Example
     ///
@@ -1406,7 +1406,7 @@ impl<T:PartialEq> Vec<T> {
         self.as_slice().contains(x)
     }
 
-    /// Remove consecutive repeated elements in the vector.
+    /// Removes consecutive repeated elements in the vector.
     ///
     /// If the vector is sorted, this removes all duplicates.
     ///
@@ -1503,7 +1503,7 @@ impl<T:PartialEq> Vec<T> {
 }
 
 impl<T> Slice<T> for Vec<T> {
-    /// Work with `self` as a slice.
+    /// Returns a slice into `self`.
     ///
     /// # Example
     ///
@@ -1558,7 +1558,7 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
 }
 
 impl<T> MutableSeq<T> for Vec<T> {
-    /// Append an element to the back of a collection.
+    /// Appends an element to the back of a collection.
     ///
     /// # Failure
     ///
@@ -1654,14 +1654,12 @@ impl<T> Drop for MoveItems<T> {
     }
 }
 
-/**
- * Convert an iterator of pairs into a pair of vectors.
- *
- * Returns a tuple containing two vectors where the i-th element of the first
- * vector contains the first element of the i-th tuple of the input iterator,
- * and the i-th element of the second vector contains the second element
- * of the i-th tuple of the input iterator.
- */
+/// Converts an iterator of pairs into a pair of vectors.
+///
+/// Returns a tuple containing two vectors where the i-th element of the first
+/// vector contains the first element of the i-th tuple of the input iterator,
+/// and the i-th element of the second vector contains the second element
+/// of the i-th tuple of the input iterator.
 pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (Vec<T>, Vec<U>) {
     let (lo, _) = iter.size_hint();
     let mut ts = Vec::with_capacity(lo);
@@ -1673,7 +1671,7 @@ pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (Vec<T>, Vec<U>) {
     (ts, us)
 }
 
-/// Unsafe operations
+/// Unsafe vector operations.
 pub mod raw {
     use super::Vec;
     use core::ptr;

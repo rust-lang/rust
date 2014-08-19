@@ -10,10 +10,10 @@
 
 //! A doubly-linked list with owned nodes.
 //!
-//! The DList allows pushing and popping elements at either end.
+//! The `DList` allows pushing and popping elements at either end.
 //!
-//! DList implements the trait Deque. It should be imported with `use
-//! collections::Deque`.
+//! `DList` implements the trait `Deque`. It should be imported with
+//! `use collections::Deque`.
 
 // DList is constructed like a singly-linked list over the field `next`.
 // including the last link being None; each Node owns its `next` field.
@@ -49,7 +49,7 @@ struct Node<T> {
     value: T,
 }
 
-/// Double-ended DList iterator
+/// An iterator over references to the items of a `DList`.
 pub struct Items<'a, T> {
     head: &'a Link<T>,
     tail: Rawlink<Node<T>>,
@@ -61,7 +61,7 @@ impl<'a, T> Clone for Items<'a, T> {
     fn clone(&self) -> Items<'a, T> { *self }
 }
 
-/// Double-ended mutable DList iterator
+/// An iterator over mutable references to the items of a `DList`.
 pub struct MutItems<'a, T> {
     list: &'a mut DList<T>,
     head: Rawlink<Node<T>>,
@@ -69,7 +69,7 @@ pub struct MutItems<'a, T> {
     nelem: uint,
 }
 
-/// DList consuming iterator
+/// A consuming iterator over the items of a `DList`.
 #[deriving(Clone)]
 pub struct MoveItems<T> {
     list: DList<T>
@@ -130,12 +130,17 @@ fn link_with_prev<T>(mut next: Box<Node<T>>, prev: Rawlink<Node<T>>)
 }
 
 impl<T> Collection for DList<T> {
-    /// O(1)
+    /// Returns `true` if the `DList` is empty.
+    ///
+    /// This operation should compute in O(1) time.
     #[inline]
     fn is_empty(&self) -> bool {
         self.list_head.is_none()
     }
-    /// O(1)
+
+    /// Returns the length of the `DList`.
+    ///
+    /// This operation should compute in O(1) time.
     #[inline]
     fn len(&self) -> uint {
         self.length
@@ -143,9 +148,9 @@ impl<T> Collection for DList<T> {
 }
 
 impl<T> Mutable for DList<T> {
-    /// Remove all elements from the DList
+    /// Removes all elements from the `DList`.
     ///
-    /// O(N)
+    /// This operation should compute in O(n) time.
     #[inline]
     fn clear(&mut self) {
         *self = DList::new()
@@ -213,40 +218,45 @@ impl<T> DList<T> {
 }
 
 impl<T> Deque<T> for DList<T> {
-    /// Provide a reference to the front element, or None if the list is empty
+    /// Provides a reference to the front element, or `None` if the list is
+    /// empty.
     #[inline]
     fn front<'a>(&'a self) -> Option<&'a T> {
         self.list_head.as_ref().map(|head| &head.value)
     }
 
-    /// Provide a mutable reference to the front element, or None if the list is empty
+    /// Provides a mutable reference to the front element, or `None` if the list
+    /// is empty.
     #[inline]
     fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
         self.list_head.as_mut().map(|head| &mut head.value)
     }
 
-    /// Provide a reference to the back element, or None if the list is empty
+    /// Provides a reference to the back element, or `None` if the list is
+    /// empty.
     #[inline]
     fn back<'a>(&'a self) -> Option<&'a T> {
         self.list_tail.resolve_immut().as_ref().map(|tail| &tail.value)
     }
 
-    /// Provide a mutable reference to the back element, or None if the list is empty
+    /// Provides a mutable reference to the back element, or `None` if the list
+    /// is empty.
     #[inline]
     fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
         self.list_tail.resolve().map(|tail| &mut tail.value)
     }
 
-    /// Add an element first in the list
+    /// Adds an element first in the list.
     ///
-    /// O(1)
+    /// This operation should compute in O(1) time.
     fn push_front(&mut self, elt: T) {
         self.push_front_node(box Node::new(elt))
     }
 
-    /// Remove the first element and return it, or None if the list is empty
+    /// Removes the first element and returns it, or `None` if the list is
+    /// empty.
     ///
-    /// O(1)
+    /// This operation should compute in O(1) time.
     fn pop_front(&mut self) -> Option<T> {
         self.pop_front_node().map(|box Node{value, ..}| value)
     }
@@ -267,15 +277,15 @@ impl<T> Default for DList<T> {
 }
 
 impl<T> DList<T> {
-    /// Create an empty DList
+    /// Creates an empty `DList`.
     #[inline]
     pub fn new() -> DList<T> {
         DList{list_head: None, list_tail: Rawlink::none(), length: 0}
     }
 
-    /// Move the last element to the front of the list.
+    /// Moves the last element to the front of the list.
     ///
-    /// If the list is empty, do nothing.
+    /// If the list is empty, does nothing.
     ///
     /// # Example
     ///
@@ -300,9 +310,9 @@ impl<T> DList<T> {
         });
     }
 
-    /// Move the first element to the back of the list.
+    /// Moves the first element to the back of the list.
     ///
-    /// If the list is empty, do nothing.
+    /// If the list is empty, does nothing.
     ///
     /// # Example
     ///
@@ -327,9 +337,9 @@ impl<T> DList<T> {
         });
     }
 
-    /// Add all elements from `other` to the end of the list
+    /// Adds all elements from `other` to the end of the list.
     ///
-    /// O(1)
+    /// This operation should compute in O(1) time.
     ///
     /// # Example
     ///
@@ -368,9 +378,9 @@ impl<T> DList<T> {
         }
     }
 
-    /// Add all elements from `other` to the beginning of the list
+    /// Adds all elements from `other` to the beginning of the list.
     ///
-    /// O(1)
+    /// This operation should compute in O(1) time.
     ///
     /// # Example
     ///
@@ -396,10 +406,10 @@ impl<T> DList<T> {
         self.append(other);
     }
 
-    /// Insert `elt` before the first `x` in the list where `f(x, elt)` is true,
-    /// or at the end.
+    /// Inserts `elt` before the first `x` in the list where `f(x, elt)` is
+    /// true, or at the end.
     ///
-    /// O(N)
+    /// This operation should compute in O(N) time.
     ///
     /// # Example
     ///
@@ -433,11 +443,12 @@ impl<T> DList<T> {
         }
     }
 
-    /// Merge DList `other` into this DList, using the function `f`.
-    /// Iterate the both DList with `a` from self and `b` from `other`, and
-    /// put `a` in the result if `f(a, b)` is true, else `b`.
+    /// Merges `other` into this `DList`, using the function `f`.
     ///
-    /// O(max(N, M))
+    /// Iterates both `DList`s with `a` from self and `b` from `other`, and
+    /// put `a` in the result if `f(a, b)` is true, and otherwise `b`.
+    ///
+    /// This operation should compute in O(max(N, M)) time.
     pub fn merge(&mut self, mut other: DList<T>, f: |&T, &T| -> bool) {
         {
             let mut it = self.mut_iter();
@@ -458,13 +469,13 @@ impl<T> DList<T> {
     }
 
 
-    /// Provide a forward iterator
+    /// Provides a forward iterator.
     #[inline]
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
         Items{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
     }
 
-    /// Provide a forward iterator with mutable references
+    /// Provides a forward iterator with mutable references.
     #[inline]
     pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
         let head_raw = match self.list_head {
@@ -480,7 +491,7 @@ impl<T> DList<T> {
     }
 
 
-    /// Consume the list into an iterator yielding elements by value
+    /// Consumes the list into an iterator yielding elements by value.
     #[inline]
     pub fn move_iter(self) -> MoveItems<T> {
         MoveItems{list: self}
@@ -488,9 +499,9 @@ impl<T> DList<T> {
 }
 
 impl<T: Ord> DList<T> {
-    /// Insert `elt` sorted in ascending order
+    /// Inserts `elt` sorted in ascending order.
     ///
-    /// O(N)
+    /// This operation should compute in O(N) time.
     #[inline]
     pub fn insert_ordered(&mut self, elt: T) {
         self.insert_when(elt, |a, b| a >= b)
@@ -593,14 +604,15 @@ impl<'a, A> DoubleEndedIterator<&'a mut A> for MutItems<'a, A> {
 
 impl<'a, A> ExactSize<&'a mut A> for MutItems<'a, A> {}
 
-/// Allow mutating the DList while iterating
+/// Allows mutating a `DList` while iterating.
 pub trait ListInsertion<A> {
-    /// Insert `elt` just after to the element most recently returned by `.next()`
+    /// Inserts `elt` just after to the element most recently returned by
+    /// `.next()`
     ///
     /// The inserted element does not appear in the iteration.
     fn insert_next(&mut self, elt: A);
 
-    /// Provide a reference to the next element, without changing the iterator
+    /// Provides a reference to the next element, without changing the iterator
     fn peek_next<'a>(&'a mut self) -> Option<&'a mut A>;
 }
 

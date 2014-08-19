@@ -10,51 +10,47 @@
 //
 // ignore-lexer-test FIXME #15679
 
-/*!
-
-Unicode string manipulation (`str` type)
-
-# Basic Usage
-
-Rust's string type is one of the core primitive types of the language. While
-represented by the name `str`, the name `str` is not actually a valid type in
-Rust. Each string must also be decorated with a pointer. `String` is used
-for an owned string, so there is only one commonly-used `str` type in Rust:
-`&str`.
-
-`&str` is the borrowed string type. This type of string can only be created
-from other strings, unless it is a static string (see below). As the word
-"borrowed" implies, this type of string is owned elsewhere, and this string
-cannot be moved out of.
-
-As an example, here's some code that uses a string.
-
-```rust
-fn main() {
-    let borrowed_string = "This string is borrowed with the 'static lifetime";
-}
-```
-
-From the example above, you can see that Rust's string literals have the
-`'static` lifetime. This is akin to C's concept of a static string.
-
-String literals are allocated statically in the rodata of the
-executable/library. The string then has the type `&'static str` meaning that
-the string is valid for the `'static` lifetime, otherwise known as the
-lifetime of the entire program. As can be inferred from the type, these static
-strings are not mutable.
-
-# Representation
-
-Rust's string type, `str`, is a sequence of unicode scalar values encoded as a
-stream of UTF-8 bytes. All strings are guaranteed to be validly encoded UTF-8
-sequences. Additionally, strings are not null-terminated and can contain null
-bytes.
-
-The actual representation of strings have direct mappings to vectors: `&str`
-is the same as `&[u8]`.
-
-*/
+//! Unicode string manipulation (`str` type)
+//!
+//! # Basic Usage
+//!
+//! Rust's string type is one of the core primitive types of the language. While
+//! represented by the name `str`, the name `str` is not actually a valid type in
+//! Rust. Each string must also be decorated with a pointer. `String` is used
+//! for an owned string, so there is only one commonly-used `str` type in Rust:
+//! `&str`.
+//!
+//! `&str` is the borrowed string type. This type of string can only be created
+//! from other strings, unless it is a static string (see below). As the word
+//! "borrowed" implies, this type of string is owned elsewhere, and this string
+//! cannot be moved out of.
+//!
+//! As an example, here's some code that uses a string.
+//!
+//! ```rust
+//! fn main() {
+//!     let borrowed_string = "This string is borrowed with the 'static lifetime";
+//! }
+//! ```
+//!
+//! From the example above, you can see that Rust's string literals have the
+//! `'static` lifetime. This is akin to C's concept of a static string.
+//!
+//! String literals are allocated statically in the rodata of the
+//! executable/library. The string then has the type `&'static str` meaning that
+//! the string is valid for the `'static` lifetime, otherwise known as the
+//! lifetime of the entire program. As can be inferred from the type, these static
+//! strings are not mutable.
+//!
+//! # Representation
+//!
+//! Rust's string type, `str`, is a sequence of unicode scalar values encoded as a
+//! stream of UTF-8 bytes. All strings are guaranteed to be validly encoded UTF-8
+//! sequences. Additionally, strings are not null-terminated and can contain null
+//! bytes.
+//!
+//! The actual representation of strings have direct mappings to slices: `&str`
+//! is the same as `&[u8]`.
 
 #![doc(primitive = "str")]
 
@@ -88,34 +84,34 @@ pub use unicode::str::{UnicodeStrSlice, Words, Graphemes, GraphemeIndices};
 Section: Creating a string
 */
 
-/// Deprecated. Replaced by `String::from_utf8`
+/// Deprecated. Replaced by `String::from_utf8`.
 #[deprecated = "Replaced by `String::from_utf8`"]
 pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
     String::from_utf8(vv)
 }
 
-/// Deprecated. Replaced by `String::from_byte`
+/// Deprecated. Replaced by `String::from_byte`.
 #[deprecated = "Replaced by String::from_byte"]
 pub fn from_byte(b: u8) -> String {
     assert!(b < 128u8);
     String::from_char(1, b as char)
 }
 
-/// Deprecated. Use `String::from_char` or `char::to_string()` instead
+/// Deprecated. Use `String::from_char` or `char::to_string()` instead.
 #[deprecated = "use String::from_char or char.to_string()"]
 pub fn from_char(ch: char) -> String {
     String::from_char(1, ch)
 }
 
-/// Deprecated. Replaced by `String::from_chars`
+/// Deprecated. Replaced by `String::from_chars`.
 #[deprecated = "use String::from_chars instead"]
 pub fn from_chars(chs: &[char]) -> String {
     chs.iter().map(|c| *c).collect()
 }
 
-/// Methods for vectors of strings
+/// Methods for vectors of strings.
 pub trait StrVector {
-    /// Concatenate a vector of strings.
+    /// Concatenates a vector of strings.
     ///
     /// # Example
     ///
@@ -127,7 +123,7 @@ pub trait StrVector {
     /// ```
     fn concat(&self) -> String;
 
-    /// Concatenate a vector of strings, placing a given separator between each.
+    /// Concatenates a vector of strings, placing a given separator between each.
     ///
     /// # Example
     ///
@@ -394,7 +390,7 @@ impl<'a> Iterator<char> for Recompositions<'a> {
     }
 }
 
-/// Replace all occurrences of one string with another
+/// Replaces all occurrences of one string with another.
 ///
 /// # Arguments
 ///
@@ -404,7 +400,7 @@ impl<'a> Iterator<char> for Recompositions<'a> {
 ///
 /// # Return value
 ///
-/// The original string with all occurrences of `from` replaced with `to`
+/// The original string with all occurrences of `from` replaced with `to`.
 ///
 /// # Example
 ///
@@ -464,21 +460,21 @@ pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
 Section: MaybeOwned
 */
 
-/// A `MaybeOwned` is a string that can hold either a `String` or a `&str`.
+/// A string type that can hold either a `String` or a `&str`.
 /// This can be useful as an optimization when an allocation is sometimes
 /// needed but not always.
 pub enum MaybeOwned<'a> {
-    /// A borrowed string
+    /// A borrowed string.
     Slice(&'a str),
-    /// An owned string
+    /// An owned string.
     Owned(String)
 }
 
-/// `SendStr` is a specialization of `MaybeOwned` to be sendable
+/// A specialization of `MaybeOwned` to be sendable.
 pub type SendStr = MaybeOwned<'static>;
 
 impl<'a> MaybeOwned<'a> {
-    /// Returns `true` if this `MaybeOwned` wraps an owned string
+    /// Returns `true` if this `MaybeOwned` wraps an owned string.
     ///
     /// # Example
     ///
@@ -495,7 +491,7 @@ impl<'a> MaybeOwned<'a> {
         }
     }
 
-    /// Returns `true` if this `MaybeOwned` wraps a borrowed string
+    /// Returns `true` if this `MaybeOwned` wraps a borrowed string.
     ///
     /// # Example
     ///
@@ -513,47 +509,47 @@ impl<'a> MaybeOwned<'a> {
     }
 }
 
-/// Trait for moving into a `MaybeOwned`
+/// Trait for moving into a `MaybeOwned`.
 pub trait IntoMaybeOwned<'a> {
-    /// Moves self into a `MaybeOwned`
+    /// Moves `self` into a `MaybeOwned`.
     fn into_maybe_owned(self) -> MaybeOwned<'a>;
 }
 
-/// # Example
-///
-/// ```rust
-/// let owned_string = String::from_str("orange");
-/// let maybe_owned_string = owned_string.into_maybe_owned();
-/// assert_eq!(true, maybe_owned_string.is_owned());
-/// ```
 impl<'a> IntoMaybeOwned<'a> for String {
+    /// # Example
+    ///
+    /// ```rust
+    /// let owned_string = String::from_str("orange");
+    /// let maybe_owned_string = owned_string.into_maybe_owned();
+    /// assert_eq!(true, maybe_owned_string.is_owned());
+    /// ```
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> {
         Owned(self)
     }
 }
 
-/// # Example
-///
-/// ```rust
-/// let string = "orange";
-/// let maybe_owned_str = string.as_slice().into_maybe_owned();
-/// assert_eq!(false, maybe_owned_str.is_owned());
-/// ```
 impl<'a> IntoMaybeOwned<'a> for &'a str {
+    /// # Example
+    ///
+    /// ```rust
+    /// let string = "orange";
+    /// let maybe_owned_str = string.as_slice().into_maybe_owned();
+    /// assert_eq!(false, maybe_owned_str.is_owned());
+    /// ```
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> { Slice(self) }
 }
 
-/// # Example
-///
-/// ```rust
-/// let str = "orange";
-/// let maybe_owned_str = str.as_slice().into_maybe_owned();
-/// let maybe_maybe_owned_str = maybe_owned_str.into_maybe_owned();
-/// assert_eq!(false, maybe_maybe_owned_str.is_owned());
-/// ```
 impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
+    /// # Example
+    ///
+    /// ```rust
+    /// let str = "orange";
+    /// let maybe_owned_str = str.as_slice().into_maybe_owned();
+    /// let maybe_maybe_owned_str = maybe_owned_str.into_maybe_owned();
+    /// assert_eq!(false, maybe_maybe_owned_str.is_owned());
+    /// ```
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> { self }
 }
@@ -645,7 +641,7 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
     }
 }
 
-/// Unsafe operations
+/// Unsafe string operations.
 pub mod raw {
     use string;
     use string::String;
@@ -685,9 +681,9 @@ pub mod raw {
 Section: Trait implementations
 */
 
-/// Any string that can be represented as a slice
+/// Any string that can be represented as a slice.
 pub trait StrAllocating: Str {
-    /// Convert `self` into a `String`, not making a copy if possible.
+    /// Converts `self` into a `String`, not making a copy if possible.
     fn into_string(self) -> String;
 
     #[allow(missing_doc)]
@@ -696,7 +692,7 @@ pub trait StrAllocating: Str {
         self.into_string()
     }
 
-    /// Escape each char in `s` with `char::escape_default`.
+    /// Escapes each char in `s` with `char::escape_default`.
     fn escape_default(&self) -> String {
         let me = self.as_slice();
         let mut out = String::with_capacity(me.len());
@@ -706,7 +702,7 @@ pub trait StrAllocating: Str {
         out
     }
 
-    /// Escape each char in `s` with `char::escape_unicode`.
+    /// Escapes each char in `s` with `char::escape_unicode`.
     fn escape_unicode(&self) -> String {
         let me = self.as_slice();
         let mut out = String::with_capacity(me.len());
@@ -716,7 +712,7 @@ pub trait StrAllocating: Str {
         out
     }
 
-    /// Replace all occurrences of one string with another.
+    /// Replaces all occurrences of one string with another.
     ///
     /// # Arguments
     ///
@@ -768,7 +764,7 @@ pub trait StrAllocating: Str {
         self.as_slice().utf16_units().collect::<Vec<u16>>()
     }
 
-    /// Given a string, make a new string with repeated copies of it.
+    /// Given a string, makes a new string with repeated copies of it.
     fn repeat(&self, nn: uint) -> String {
         let me = self.as_slice();
         let mut ret = String::with_capacity(nn * me.len());
@@ -778,7 +774,7 @@ pub trait StrAllocating: Str {
         ret
     }
 
-    /// Levenshtein Distance between two strings.
+    /// Returns the Levenshtein Distance between two strings.
     fn lev_distance(&self, t: &str) -> uint {
         let me = self.as_slice();
         let slen = me.len();
@@ -813,7 +809,7 @@ pub trait StrAllocating: Str {
         return dcol[tlen];
     }
 
-    /// An Iterator over the string in Unicode Normalization Form D
+    /// Returns an iterator over the string in Unicode Normalization Form D
     /// (canonical decomposition).
     #[inline]
     fn nfd_chars<'a>(&'a self) -> Decompositions<'a> {
@@ -825,7 +821,7 @@ pub trait StrAllocating: Str {
         }
     }
 
-    /// An Iterator over the string in Unicode Normalization Form KD
+    /// Returns an iterator over the string in Unicode Normalization Form KD
     /// (compatibility decomposition).
     #[inline]
     fn nfkd_chars<'a>(&'a self) -> Decompositions<'a> {

@@ -121,13 +121,13 @@ impl<T: Show> Show for TrieMap<T> {
 }
 
 impl<T> Collection for TrieMap<T> {
-    /// Return the number of elements in the map.
+    /// Returns the number of elements in the map.
     #[inline]
     fn len(&self) -> uint { self.length }
 }
 
 impl<T> Mutable for TrieMap<T> {
-    /// Clear the map, removing all values.
+    /// Clears the map, removing all values.
     #[inline]
     fn clear(&mut self) {
         self.root = TrieNode::new();
@@ -136,7 +136,7 @@ impl<T> Mutable for TrieMap<T> {
 }
 
 impl<T> Map<uint, T> for TrieMap<T> {
-    /// Return a reference to the value corresponding to the key.
+    /// Returns a reference to the value corresponding to the key.
     #[inline]
     fn find<'a>(&'a self, key: &uint) -> Option<&'a T> {
         let mut node: &'a TrieNode<T> = &self.root;
@@ -159,14 +159,14 @@ impl<T> Map<uint, T> for TrieMap<T> {
 }
 
 impl<T> MutableMap<uint, T> for TrieMap<T> {
-    /// Return a mutable reference to the value corresponding to the key.
+    /// Returns a mutable reference to the value corresponding to the key.
     #[inline]
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
         find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
     }
 
-    /// Insert a key-value pair from the map. If the key already had a value
-    /// present in the map, that value is returned. Otherwise None is returned.
+    /// Inserts a key-value pair from the map. If the key already had a value
+    /// present in the map, that value is returned. Otherwise, `None` is returned.
     fn swap(&mut self, key: uint, value: T) -> Option<T> {
         let ret = insert(&mut self.root.count,
                          &mut self.root.children[chunk(key, 0)],
@@ -192,7 +192,7 @@ impl<T> Default for TrieMap<T> {
 }
 
 impl<T> TrieMap<T> {
-    /// Create an empty TrieMap.
+    /// Creates an empty `TrieMap`.
     ///
     /// # Example
     ///
@@ -205,8 +205,8 @@ impl<T> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
     }
 
-    /// Visit all key-value pairs in reverse order. Abort traversal when f returns false.
-    /// Return true if f returns true for all elements.
+    /// Visits all key-value pairs in reverse order. Aborts traversal when `f` returns `false`.
+    /// Returns `true` if `f` returns `true` for all elements.
     ///
     /// # Example
     ///
@@ -228,19 +228,19 @@ impl<T> TrieMap<T> {
         self.root.each_reverse(f)
     }
 
-    /// Get an iterator visiting all keys in ascending order by the keys.
-    /// Iterator element type is `uint`.
+    /// Gets an iterator visiting all keys in ascending order by the keys.
+    /// The iterator's element type is `uint`.
     pub fn keys<'r>(&'r self) -> Keys<'r, T> {
         self.iter().map(|(k, _v)| k)
     }
 
-    /// Get an iterator visiting all values in ascending order by the keys.
-    /// Iterator element type is `&'r T`.
+    /// Gets an iterator visiting all values in ascending order by the keys.
+    /// The iterator's element type is `&'r T`.
     pub fn values<'r>(&'r self) -> Values<'r, T> {
         self.iter().map(|(_k, v)| v)
     }
 
-    /// Get an iterator over the key-value pairs in the map, ordered by keys.
+    /// Gets an iterator over the key-value pairs in the map, ordered by keys.
     ///
     /// # Example
     ///
@@ -262,7 +262,7 @@ impl<T> TrieMap<T> {
         iter
     }
 
-    /// Get an iterator over the key-value pairs in the map, with the
+    /// Gets an iterator over the key-value pairs in the map, with the
     /// ability to mutate the values.
     ///
     /// # Example
@@ -385,7 +385,7 @@ impl<T> TrieMap<T> {
                mutability = )
     }
 
-    /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
+    /// Gets an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
     ///
     /// # Example
@@ -402,7 +402,7 @@ impl<T> TrieMap<T> {
         self.bound(key, false)
     }
 
-    /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
+    /// Gets an iterator pointing to the first key-value pair whose key is greater than `key`.
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
     ///
     /// # Example
@@ -427,7 +427,7 @@ impl<T> TrieMap<T> {
                mutability = mut)
     }
 
-    /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
+    /// Gets an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
     ///
     /// # Example
@@ -452,7 +452,7 @@ impl<T> TrieMap<T> {
         self.mut_bound(key, false)
     }
 
-    /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
+    /// Gets an iterator pointing to the first key-value pair whose key is greater than `key`.
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
     ///
     /// # Example
@@ -565,13 +565,13 @@ impl Show for TrieSet {
 }
 
 impl Collection for TrieSet {
-    /// Return the number of elements in the set.
+    /// Returns the number of elements in the set.
     #[inline]
     fn len(&self) -> uint { self.map.len() }
 }
 
 impl Mutable for TrieSet {
-    /// Clear the set, removing all values.
+    /// Clears the set, removing all values.
     #[inline]
     fn clear(&mut self) { self.map.clear() }
 }
@@ -616,7 +616,7 @@ impl Default for TrieSet {
 }
 
 impl TrieSet {
-    /// Create an empty TrieSet.
+    /// Creates an empty TrieSet.
     ///
     /// # Example
     ///
@@ -629,8 +629,8 @@ impl TrieSet {
         TrieSet{map: TrieMap::new()}
     }
 
-    /// Visit all values in reverse order. Abort traversal when `f` returns false.
-    /// Return `true` if `f` returns `true` for all elements.
+    /// Visits all values in reverse order. Aborts traversal when `f` returns `false`.
+    /// Returns `true` if `f` returns `true` for all elements.
     ///
     /// # Example
     ///
@@ -653,7 +653,7 @@ impl TrieSet {
         self.map.each_reverse(|k, _| f(k))
     }
 
-    /// Get an iterator over the values in the set, in sorted order.
+    /// Gets an iterator over the values in the set, in sorted order.
     ///
     /// # Example
     ///
@@ -676,7 +676,7 @@ impl TrieSet {
         SetItems{iter: self.map.iter()}
     }
 
-    /// Get an iterator pointing to the first value that is not less than `val`.
+    /// Gets an iterator pointing to the first value that is not less than `val`.
     /// If all values in the set are less than `val` an empty iterator is returned.
     ///
     /// # Example
@@ -693,7 +693,7 @@ impl TrieSet {
         SetItems{iter: self.map.lower_bound(val)}
     }
 
-    /// Get an iterator pointing to the first value that key is greater than `val`.
+    /// Gets an iterator pointing to the first value that key is greater than `val`.
     /// If all values in the set are less than or equal to `val` an empty iterator is returned.
     ///
     /// # Example
@@ -857,7 +857,7 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
     return ret;
 }
 
-/// Forward iterator over a map.
+/// A forward iterator over a map.
 pub struct Entries<'a, T> {
     stack: [slice::Items<'a, Child<T>>, .. NUM_CHUNKS],
     length: uint,
@@ -865,7 +865,7 @@ pub struct Entries<'a, T> {
     remaining_max: uint
 }
 
-/// Forward iterator over the key-value pairs of a map, with the
+/// A forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
 pub struct MutEntries<'a, T> {
     stack: [slice::MutItems<'a, Child<T>>, .. NUM_CHUNKS],
@@ -874,11 +874,11 @@ pub struct MutEntries<'a, T> {
     remaining_max: uint
 }
 
-/// Forward iterator over the keys of a map
+/// A forward iterator over the keys of a map.
 pub type Keys<'a, T> =
     iter::Map<'static, (uint, &'a T), uint, Entries<'a, T>>;
 
-/// Forward iterator over the values of a map
+/// A forward iterator over the values of a map.
 pub type Values<'a, T> =
     iter::Map<'static, (uint, &'a T), &'a T, Entries<'a, T>>;
 
@@ -999,7 +999,7 @@ macro_rules! iterator_impl {
 iterator_impl! { Entries, iter = iter, mutability = }
 iterator_impl! { MutEntries, iter = mut_iter, mutability = mut }
 
-/// Forward iterator over a set.
+/// A forward iterator over a set.
 pub struct SetItems<'a> {
     iter: Entries<'a, ()>
 }
