@@ -899,6 +899,11 @@ impl fmt::Show for String {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_slice().fmt(f)
     }
+
+    #[inline]
+    fn formatter_len_hint(&self) -> Option<uint> {
+        self.as_slice().formatter_len_hint()
+    }
 }
 
 #[experimental = "waiting on Hash stabilization"]

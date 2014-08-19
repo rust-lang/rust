@@ -17,7 +17,7 @@ use core::default::Default;
 use core::fmt;
 use core::intrinsics;
 use core::mem;
-use core::option::Option;
+use core::option::{Option, Some};
 use core::raw::TraitObject;
 use core::result::{Ok, Err, Result};
 
@@ -130,11 +130,21 @@ impl<T: fmt::Show> fmt::Show for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
     }
+
+    #[inline]
+    fn formatter_len_hint(&self) -> Option<uint> {
+        (**self).formatter_len_hint()
+    }
 }
 
 impl fmt::Show for Box<Any+'static> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")
+    }
+
+    #[inline]
+    fn formatter_len_hint(&self) -> Option<uint> {
+        Some(8)
     }
 }
 

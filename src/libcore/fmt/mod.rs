@@ -14,10 +14,13 @@
 
 use any;
 use cell::{Cell, Ref, RefMut};
+use cmp;
 use collections::Collection;
+use f32;
 use iter::{Iterator, range};
 use kinds::Copy;
 use mem;
+use num::FPNormal;
 use option::{Option, Some, None};
 use ops::Deref;
 use result::{Ok, Err};
@@ -171,6 +174,11 @@ impl<'a> Show for Arguments<'a> {
 pub trait Show {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
+
+    /// Returns a conservative estimate of the size of the formatted string.
+    ///
+    /// A return of `None` means a close estimate is costly or not feasible.
+    fn formatter_len_hint(&self) -> Option<uint> { None }
 }
 
 /// Format trait for the `b` character
@@ -260,7 +268,7 @@ macro_rules! uniform_fn_call_workaround {
             pub fn $name<T: $trait_>(x: &T, fmt: &mut Formatter) -> Result {
                 x.fmt(fmt)
             }
-            )*
+        )*
     }
 }
 uniform_fn_call_workaround! {
@@ -591,6 +599,7 @@ impl<'a, T: Show> Show for &'a mut T {
 }
 impl<'a> Show for &'a Show+'a {
     fn fmt(&self, f: &mut Formatter) -> Result { (*self).fmt(f) }
+    fn formatter_len_hint(&self) -> Option<uint> { #![inline] (*self).formatter_len_hint() }
 }
 
 impl Bool for bool {
@@ -705,20 +714,69 @@ macro_rules! floating(($ty:ident) => {
 floating!(f32)
 floating!(f64)
 
+fn formatter_len_hint_string(this: &&str) -> Option<uint> {
+    Some(this.len())
+}
+
+fn formatter_len_hint_bool(_: &bool) -> Option<uint> {
+    Some(5)
+}
+
+fn formatter_len_hint_char(_: &char) -> Option<uint> {
+    Some(4)
+}
+
+static LOG10_2: f32 = f32::consts::LOG10_E / f32::consts::LOG2_E;
+static SHIFTED_LOG10_2: i32 = (LOG10_2 * (1u << 16) as f32) as i32;
+
+fn formatter_len_hint_float_f32(this: &f32) -> Option<uint> {
+    use num::{Float, Signed};
+
+    match this.classify() {
+        FPNormal => {
+            let (_, exponent, _) = this.integer_decode();
+            // A fast approximate log_10. Add a small value at the end for the
+            // sign and decimal separator.
+            let log_10 = ((exponent as i32 + 23) * SHIFTED_LOG10_2) >> 16;
+            Some(cmp::max(log_10, -5).abs() as uint + 4)
+        }
+        // Otherwise, "+inf" is the longest string we might print.
+        _ => Some(4)
+    }
+}
+
+fn formatter_len_hint_float_f64(this: &f64) -> Option<uint> {
+    use num::{Float, Signed};
+
+    match this.classify() {
+        FPNormal => {
+            let (_, exponent, _) = this.integer_decode();
+            let log_10 = ((exponent as i32 + 52) * SHIFTED_LOG10_2) >> 16;
+            Some(cmp::max(log_10, -5).abs() as uint + 4)
+        }
+        // Otherwise, "+inf" is the longest string we might print.
+        _ => Some(4)
+    }
+}
+
 // Implementation of Show for various core types
 
-macro_rules! delegate(($ty:ty to $other:ident) => {
+macro_rules! delegate(($ty:ty to $other:ident $($suffix:ident)*) => {
     impl<'a> Show for $ty {
         fn fmt(&self, f: &mut Formatter) -> Result {
             (concat_idents!(secret_, $other)(self, f))
+        }
+        #[inline]
+        fn formatter_len_hint(&self) -> Option<uint> {
+            (concat_idents!(formatter_len_hint_, $other, $($suffix),*)(self))
         }
     }
 })
 delegate!(&'a str to string)
 delegate!(bool to bool)
 delegate!(char to char)
-delegate!(f32 to float)
-delegate!(f64 to float)
+delegate!(f32 to float _f32)
+delegate!(f64 to float _f64)
 
 impl<T> Show for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_pointer(self, f) }
@@ -792,6 +850,11 @@ impl Show for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
     }
+
+    #[inline]
+    fn formatter_len_hint(&self) -> Option<uint> {
+        Some(2)
+    }
 }
 
 impl<T: Copy + Show> Show for Cell<T> {
@@ -804,11 +867,21 @@ impl<'b, T: Show> Show for Ref<'b, T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         (**self).fmt(f)
     }
+
+    #[inline]
+    fn formatter_len_hint(&self) -> Option<uint> {
+        (**self).formatter_len_hint()
+    }
 }
 
 impl<'b, T: Show> Show for RefMut<'b, T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         (*(self.deref())).fmt(f)
+    }
+
+    #[inline]
+    fn formatter_len_hint(&self) -> Option<uint> {
+        (*(self.deref())).formatter_len_hint()
     }
 }
 
