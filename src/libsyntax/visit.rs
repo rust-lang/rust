@@ -854,11 +854,11 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
         ExprParen(ref subexpression) => {
             visitor.visit_expr(&**subexpression, env.clone())
         }
-        ExprInlineAsm(ref assembler) => {
-            for &(_, ref input) in assembler.inputs.iter() {
+        ExprInlineAsm(ref ia) => {
+            for &(_, ref input) in ia.inputs.iter() {
                 visitor.visit_expr(&**input, env.clone())
             }
-            for &(_, ref output) in assembler.outputs.iter() {
+            for &(_, ref output, _) in ia.outputs.iter() {
                 visitor.visit_expr(&**output, env.clone())
             }
         }

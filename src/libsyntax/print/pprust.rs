@@ -1671,8 +1671,14 @@ impl<'a> State<'a> {
                 try!(self.word_space(":"));
 
                 try!(self.commasep(Inconsistent, a.outputs.as_slice(),
-                                   |s, &(ref co, ref o)| {
-                    try!(s.print_string(co.get(), ast::CookedStr));
+                                   |s, &(ref co, ref o, is_rw)| {
+                    match co.get().slice_shift_char() {
+                        (Some('='), operand) if is_rw => {
+                            try!(s.print_string(format!("+{}", operand).as_slice(),
+                                                ast::CookedStr))
+                        }
+                        _ => try!(s.print_string(co.get(), ast::CookedStr))
+                    }
                     try!(s.popen());
                     try!(s.print_expr(&**o));
                     try!(s.pclose());

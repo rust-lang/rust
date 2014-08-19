@@ -3332,7 +3332,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
           for &(_, ref input) in ia.inputs.iter() {
               check_expr(fcx, &**input);
           }
-          for &(_, ref out) in ia.outputs.iter() {
+          for &(_, ref out, _) in ia.outputs.iter() {
               check_expr(fcx, &**out);
           }
           fcx.write_nil(id);
