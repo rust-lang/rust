@@ -1076,7 +1076,7 @@ Finally, Rust has a "sum type", an **enum**. Enums are an incredibly useful
 feature of Rust, and are used throughout the standard library. Enums look
 like this:
 
-```
+```{rust}
 enum Ordering {
     Less,
     Equal,
@@ -1088,7 +1088,7 @@ This is an enum that is provided by the Rust standard library. An `Ordering`
 can only be _one_ of `Less`, `Equal`, or `Greater` at any given time. Here's
 an example:
 
-```rust
+```{rust}
 fn cmp(a: int, b: int) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
@@ -1155,7 +1155,7 @@ gotten there yet!
 
 You can have any number of values in an enum:
 
-```
+```{rust}
 enum OptionalColor {
     Color(int, int, int),
     Missing
@@ -1652,7 +1652,7 @@ a full line of input. Nice and easy.
 
 Do you remember this code?
 
-```
+```{rust}
 enum OptionalInt {
     Value(int),
     Missing,
