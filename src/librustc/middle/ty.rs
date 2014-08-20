@@ -2254,6 +2254,8 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut`
                 // unboxed closure.
                 let upvars = unboxed_closure_upvars(cx, did);
+                debug!("region of unboxed closure is {}",
+                       r.repr(cx));
                 TypeContents::union(upvars.as_slice(),
                                     |f| tc_ty(cx, f.ty, cache)) |
                     borrowed_contents(r, MutMutable)

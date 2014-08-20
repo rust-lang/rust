@@ -194,6 +194,9 @@ pub enum SubregionOrigin {
 
     // An auto-borrow that does not enclose the expr where it occurs
     AutoBorrow(Span),
+
+    // Not yet categorized
+    MiscRegion(Span),
 }
 
 /// Reasons to create a region inference variable
@@ -905,6 +908,7 @@ impl SubregionOrigin {
             CallReturn(a) => a,
             AddrOf(a) => a,
             AutoBorrow(a) => a,
+            MiscRegion(a) => a,
         }
     }
 }
@@ -948,6 +952,7 @@ impl Repr for SubregionOrigin {
             CallReturn(a) => format!("CallReturn({})", a.repr(tcx)),
             AddrOf(a) => format!("AddrOf({})", a.repr(tcx)),
             AutoBorrow(a) => format!("AutoBorrow({})", a.repr(tcx)),
+            MiscRegion(a) => format!("MiscRegion({})", a.repr(tcx)),
         }
     }
 }

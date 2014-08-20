@@ -24,7 +24,7 @@ use syntax::codemap::Span;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-#[deriving(Clone, Decodable, Encodable, Show)]
+#[deriving(Clone, Decodable, Encodable, PartialEq, Eq, Show)]
 pub enum CaptureMode {
     /// Copy/move the value from this llvm ValueRef into the environment.
     CaptureByValue,
