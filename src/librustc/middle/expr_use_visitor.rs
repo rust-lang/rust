@@ -380,8 +380,9 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                     self.consume_expr(&**input);
                 }
 
-                for &(_, ref output) in ia.outputs.iter() {
-                    self.mutate_expr(expr, &**output, JustWrite);
+                for &(_, ref output, is_rw) in ia.outputs.iter() {
+                    self.mutate_expr(expr, &**output,
+                                           if is_rw { WriteAndRead } else { JustWrite });
                 }
             }
 
