@@ -515,6 +515,13 @@ probe CFG_LUALATEX         lualatex
 probe CFG_GDB              gdb
 probe CFG_LLDB             lldb
 
+if [ ! -z "$CFG_GDB" ]
+then
+    # Extract the version
+    CFG_GDB_VERSION=$($CFG_GDB --version 2>/dev/null | head -1)
+    putvar CFG_GDB_VERSION
+fi
+
 if [ ! -z "$CFG_LLDB" ]
 then
     # If CFG_LLDB_PYTHON_DIR is not already set from the outside and valid, try to read it from

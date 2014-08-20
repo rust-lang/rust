@@ -623,6 +623,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
         --stage-id stage$(1)-$(2) \
         --target $(2) \
         --host $(3) \
+        --gdb-version="$(CFG_GDB_VERSION)" \
         --android-cross-path=$(CFG_ANDROID_CROSS_PATH) \
         --adb-path=$(CFG_ADB) \
         --adb-test-dir=$(CFG_ADB_TEST_DIR) \
