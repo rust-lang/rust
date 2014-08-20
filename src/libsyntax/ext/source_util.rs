@@ -68,6 +68,58 @@ pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                    token::intern_and_get_ident(s.as_slice())))
 }
 
+pub fn expand_lower(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+                        -> Box<base::MacResult> {
+    expand_cased(cx, sp, tts, |c| { c.to_lowercase() })
+}
+
+pub fn expand_upper(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+                        -> Box<base::MacResult> {
+    expand_cased(cx, sp, tts, |c| { c.to_uppercase() })
+}
+
+fn expand_cased(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree], transform: |char| -> char)
+                        -> Box<base::MacResult> {
+    let es = match base::get_exprs_from_tts(cx, sp, tts) {
+        Some(e) => e,
+        None => return base::DummyResult::expr(sp)
+    };
+
+    let mut it = es.iter();
+    let res = match it.next() {
+        // FIXME (#13910): nested matches are necessary to get through Gc<>
+        Some(expr) => match expr.node {
+            ast::ExprLit(ref lit) => match lit.node {
+                ast::LitStr(ref s, _) => Some((s, lit.span)),
+                _ => {
+                    cx.span_err(expr.span, "expected a string literal");
+                    None
+                }
+            },
+            _ => {
+                cx.span_err(expr.span, "expected a string literal");
+                None
+            }
+        },
+        None => {
+            cx.span_err(sp, "expected 1 argument, found 0");
+            None
+        }
+    };
+    match (res, it.count()) {
+        (Some((s, span)), 0) => {
+            let new_s = s.get().chars().map(transform).collect::<String>();
+            base::MacExpr::new(cx.expr_str(span, token::intern_and_get_ident(new_s.as_slice())))
+        }
+        (_, rest) => {
+            if rest > 0 {
+                cx.span_err(sp, format!("expected 1 argument, found {}", rest+1).as_slice());
+            }
+            base::DummyResult::expr(sp)
+        }
+    }
+}
+
 pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                   -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "module_path!");

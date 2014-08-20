@@ -401,6 +401,12 @@ fn initial_syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern("stringify"),
                             builtin_normal_expander(
                                     ext::source_util::expand_stringify));
+    syntax_expanders.insert(intern("to_lower"),
+                            builtin_normal_expander(
+                                    ext::source_util::expand_lower));
+    syntax_expanders.insert(intern("to_upper"),
+                            builtin_normal_expander(
+                                    ext::source_util::expand_upper));
     syntax_expanders.insert(intern("include"),
                             builtin_normal_expander(
                                     ext::source_util::expand_include));

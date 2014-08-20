@@ -582,6 +582,34 @@ pub mod builtin {
     #[macro_export]
     macro_rules! stringify( ($t:tt) => ({ /* compiler built-in */ }) )
 
+    /// A macro which converts its argument to a lowercase string at compile time
+    /// Useful for lowercasing stringified idents in macros
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let lower1 = to_lower!(stringify!(FooBar))
+    /// let lower2 = to_lower!("FooBar")
+    /// assert_eq!(lower1, "foobar");
+    /// assert_eq!(lower2, "foobar");
+    /// ```
+    #[macro_export]
+    macro_rules! to_lower( ($t:tt) => ({ /* compiler built-in */ }) )
+
+    /// A macro which converts its argument to an uppercase string at compile time
+    /// Useful for lowercasing stringified idents in macros
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let upper1 = to_upper!(stringify!(FooBar))
+    /// let upper2 = to_upper!("FooBar")
+    /// assert_eq!(upper1, "FOOBAR");
+    /// assert_eq!(upper2, "FOOBAR");
+    /// ```
+    #[macro_export]
+    macro_rules! to_upper( ($t:tt) => ({ /* compiler built-in */ }) )
+
     /// Includes a utf8-encoded file as a string.
     ///
     /// This macro will yield an expression of type `&'static str` which is the
