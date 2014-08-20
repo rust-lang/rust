@@ -19,7 +19,8 @@ use middle::def;
 use middle::dependency_format;
 use middle::freevars::CaptureModeMap;
 use middle::freevars;
-use middle::lang_items::{FnMutTraitLangItem, OpaqueStructLangItem};
+use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
+use middle::lang_items::{FnOnceTraitLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
 use middle::mem_categorization as mc;
 use middle::resolve;
@@ -1203,6 +1204,24 @@ pub enum UnboxedClosureKind {
     FnUnboxedClosureKind,
     FnMutUnboxedClosureKind,
     FnOnceUnboxedClosureKind,
+}
+
+impl UnboxedClosureKind {
+    pub fn trait_did(&self, cx: &ctxt) -> ast::DefId {
+        let result = match *self {
+            FnUnboxedClosureKind => cx.lang_items.require(FnTraitLangItem),
+            FnMutUnboxedClosureKind => {
+                cx.lang_items.require(FnMutTraitLangItem)
+            }
+            FnOnceUnboxedClosureKind => {
+                cx.lang_items.require(FnOnceTraitLangItem)
+            }
+        };
+        match result {
+            Ok(trait_did) => trait_did,
+            Err(err) => cx.sess.fatal(err.as_slice()),
+        }
+    }
 }
 
 pub fn mk_ctxt(s: Session,
