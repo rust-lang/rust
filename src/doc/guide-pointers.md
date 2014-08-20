@@ -332,7 +332,7 @@ let z = &x;
 Mutable ones, however, are not:
 
 ```{rust,ignore}
-let x = 5i;
+let mut x = 5i;
 let y = &mut x;
 let z = &mut x; // error: cannot borrow `x` as mutable more than once at a time
 ```
