@@ -14,6 +14,11 @@
 // compile-flags:-g
 // gdb-use-pretty-printer
 
+// This test uses some GDB Python API features (e.g. accessing anonymous fields)
+// which are only available in newer GDB version. The following directive will
+// case the test runner to ignore this test if an older GDB version is used:
+// min-gdb-version 7.7
+
 // The following line actually doesn't have to do anything with pretty printing,
 // it just tells GDB to print values on one line:
 // gdb-command: set print pretty off

@@ -12,6 +12,8 @@ use common::Config;
 use common;
 use util;
 
+use std::from_str::FromStr;
+
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String> ,
@@ -142,23 +144,42 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
         format!("ignore-{}",
                 config.stage_id.as_slice().split('-').next().unwrap())
     }
+    fn ignore_gdb(config: &Config, line: &str) -> bool {
+        if config.mode != common::DebugInfoGdb {
+            return false;
+        }
+
+        if parse_name_directive(line, "ignore-gdb") {
+            return true;
+        }
+
+        match config.gdb_version {
+            Some(ref actual_version) => {
+                if line.contains("min-gdb-version") {
+                    let min_version = line.trim()
+                                          .split(' ')
+                                          .last()
+                                          .expect("Malformed GDB version directive");
+                    // Ignore if actual version is smaller the minimum required
+                    // version
+                    gdb_version_to_int(actual_version.as_slice()) <
+                        gdb_version_to_int(min_version.as_slice())
+                } else {
+                    false
+                }
+            }
+            None => false
+        }
+    }
 
     let val = iter_header(testfile, |ln| {
-        if parse_name_directive(ln, "ignore-test") {
-            false
-        } else if parse_name_directive(ln, ignore_target(config).as_slice()) {
-            false
-        } else if parse_name_directive(ln, ignore_stage(config).as_slice()) {
-            false
-        } else if config.mode == common::Pretty &&
-                parse_name_directive(ln, "ignore-pretty") {
-            false
-        } else if config.target != config.host &&
-                parse_name_directive(ln, "ignore-cross-compile") {
-            false
-        } else {
-            true
-        }
+        !parse_name_directive(ln, "ignore-test") &&
+        !parse_name_directive(ln, ignore_target(config).as_slice()) &&
+        !parse_name_directive(ln, ignore_stage(config).as_slice()) &&
+        !(config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) &&
+        !(config.target != config.host && parse_name_directive(ln, "ignore-cross-compile")) &&
+        !ignore_gdb(config, ln) &&
+        !(config.mode == common::DebugInfoLldb && parse_name_directive(ln, "ignore-lldb"))
     });
 
     !val
@@ -277,4 +298,22 @@ pub fn parse_name_value_directive(line: &str, directive: &str)
         }
         None => None
     }
+}
+
+pub fn gdb_version_to_int(version_string: &str) -> int {
+    let error_string = format!(
+        "Encountered GDB version string with unexpected format: {}",
+        version_string);
+    let error_string = error_string.as_slice();
+
+    let components: Vec<&str> = version_string.trim().split('.').collect();
+
+    if components.len() != 2 {
+        fail!("{}", error_string);
+    }
+
+    let major: int = FromStr::from_str(components[0]).expect(error_string);
+    let minor: int = FromStr::from_str(components[1]).expect(error_string);
+
+    return major * 1000 + minor;
 }

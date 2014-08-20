@@ -80,8 +80,7 @@ def rust_pretty_printer_lookup_function(val):
     discriminant_name, discriminant_val = extract_discriminant_value(val)
     return rust_pretty_printer_lookup_function(val[enum_members[discriminant_val]])
 
-
-
+  # No pretty printer has been found
   return None
 
 #=------------------------------------------------------------------------------
@@ -99,10 +98,17 @@ class RustStructPrinter:
   def children(self):
     cs = []
     for field in self.val.type.fields():
-      field_name = field.name;
+      field_name = field.name
+      # Normally the field name is used as a key to access the field value,
+      # because that's also supported in older versions of GDB...
+      field_key = field_name
       if field_name == None:
         field_name = ""
-      name_value_tuple = ( field_name, self.val[field] )
+        # ... but for fields without a name (as in tuples), we have to fall back
+        # to the newer method of using the field object directly as key. In
+        # older versions of GDB, this will just fail.
+        field_key = field
+      name_value_tuple = ( field_name, self.val[field_key] )
       cs.append( name_value_tuple )
 
     if self.hide_first_field:
