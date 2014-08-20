@@ -36,13 +36,27 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
     let temp_scope = fcx.push_custom_cleanup_scope();
 
+    let mut ext_inputs = Vec::new();
+    let mut ext_constraints = Vec::new();
+
     // Prepare the output operands
-    let outputs = ia.outputs.iter().map(|&(ref c, ref out)| {
+    let outputs = ia.outputs.iter().enumerate().map(|(i, &(ref c, ref out, is_rw))| {
         constraints.push((*c).clone());
 
         let out_datum = unpack_datum!(bcx, expr::trans(bcx, &**out));
         output_types.push(type_of::type_of(bcx.ccx(), out_datum.ty));
-        out_datum.val
+        let val = out_datum.val;
+        if is_rw {
+            ext_inputs.push(unpack_result!(bcx, {
+                callee::trans_arg_datum(bcx,
+                                       expr_ty(bcx, &**out),
+                                       out_datum,
+                                       cleanup::CustomScope(temp_scope),
+                                       callee::DontAutorefArg)
+            }));
+            ext_constraints.push(i.to_string());
+        }
+        val
 
     }).collect::<Vec<_>>();
 
@@ -58,7 +72,7 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
                                    cleanup::CustomScope(temp_scope),
                                    callee::DontAutorefArg)
         })
-    }).collect::<Vec<_>>();
+    }).collect::<Vec<_>>().append(ext_inputs.as_slice());
 
     // no failure occurred preparing operands, no need to cleanup
     fcx.pop_custom_cleanup_scope(temp_scope);
@@ -66,6 +80,7 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     let mut constraints =
         String::from_str(constraints.iter()
                                     .map(|s| s.get().to_string())
+                                    .chain(ext_constraints.move_iter())
                                     .collect::<Vec<String>>()
                                     .connect(",")
                                     .as_slice());
