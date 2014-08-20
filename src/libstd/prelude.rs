@@ -46,6 +46,7 @@
 #[doc(no_inline)] pub use ops::{Drop, Deref, DerefMut};
 #[doc(no_inline)] pub use ops::{Shl, Shr};
 #[doc(no_inline)] pub use ops::{Index, IndexMut};
+#[doc(no_inline)] pub use ops::{Fn, FnMut, FnOnce};
 #[doc(no_inline)] pub use option::{Option, Some, None};
 #[doc(no_inline)] pub use result::{Result, Ok, Err};
 
