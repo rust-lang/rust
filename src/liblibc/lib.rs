@@ -304,7 +304,7 @@ extern {}
 // If/when libprim happens, this can be removed in favor of that
 pub enum Nullable<T> {
     Null,
-    Some(T)
+    NotNull(T)
 }
 
 pub mod types {
