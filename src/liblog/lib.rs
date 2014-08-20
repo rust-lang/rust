@@ -282,7 +282,7 @@ impl Drop for DefaultLogger {
 pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
     // Test the literal string from args against the current filter, if there
     // is one.
-    match unsafe { FILTER.to_option() } {
+    match unsafe { FILTER.as_ref() } {
         Some(filter) if filter.is_match(args.to_string().as_slice()) => return,
         _ => {}
     }

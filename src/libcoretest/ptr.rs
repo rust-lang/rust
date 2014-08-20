@@ -102,19 +102,44 @@ fn test_is_null() {
 }
 
 #[test]
-fn test_to_option() {
+fn test_as_ref() {
     unsafe {
         let p: *const int = null();
-        assert_eq!(p.to_option(), None);
+        assert_eq!(p.as_ref(), None);
 
         let q: *const int = &2;
-        assert_eq!(q.to_option().unwrap(), &2);
+        assert_eq!(q.as_ref().unwrap(), &2);
 
         let p: *mut int = mut_null();
-        assert_eq!(p.to_option(), None);
+        assert_eq!(p.as_ref(), None);
 
         let q: *mut int = &mut 2;
-        assert_eq!(q.to_option().unwrap(), &2);
+        assert_eq!(q.as_ref().unwrap(), &2);
+
+        // Lifetime inference
+        let u = 2i;
+        {
+            let p: *const int = &u as *const _;
+            assert_eq!(p.as_ref().unwrap(), &2);
+        }
+    }
+}
+
+#[test]
+fn test_as_mut() {
+    unsafe {
+        let p: *mut int = mut_null();
+        assert!(p.as_mut() == None);
+
+        let q: *mut int = &mut 2;
+        assert!(q.as_mut().unwrap() == &mut 2);
+
+        // Lifetime inference
+        let mut u = 2i;
+        {
+            let p: *mut int = &mut u as *mut _;
+            assert!(p.as_mut().unwrap() == &mut 2);
+        }
     }
 }
 
