@@ -1077,12 +1077,16 @@ feature of Rust, and are used throughout the standard library. Enums look
 like this:
 
 ```
+#[deriving(Eq, PartialEq)]
 enum Ordering {
     Less,
     Equal,
     Greater,
 }
 ```
+
+We will talk about `#[deriving(Eq, PartialEq)]` later, for now we can read
+it as "allow us to use `==` for comparisons."
 
 This is an enum that is provided by the Rust standard library. An `Ordering`
 can only be _one_ of `Less`, `Equal`, or `Greater` at any given time. Here's
