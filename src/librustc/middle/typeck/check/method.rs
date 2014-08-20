@@ -534,6 +534,11 @@ impl<'a> LookupContext<'a> {
             ty::MethodTraitItem(method) => method,
         };
 
+        // Make sure it has the right name!
+        if method.ident.name != self.m_name {
+            return
+        }
+
         let vcx = self.fcx.vtable_context();
         let region_params =
             vec!(vcx.infcx.next_region_var(MiscVariable(self.span)));
@@ -562,38 +567,28 @@ impl<'a> LookupContext<'a> {
     fn push_unboxed_closure_call_candidates_if_applicable(
             &mut self,
             closure_did: DefId) {
-        let trait_dids = [
-            self.tcx().lang_items.fn_trait(),
-            self.tcx().lang_items.fn_mut_trait(),
-            self.tcx().lang_items.fn_once_trait()
-        ];
-        for optional_trait_did in trait_dids.iter() {
-            let trait_did = match *optional_trait_did {
-                Some(trait_did) => trait_did,
-                None => continue,
-            };
-
-            match self.tcx().unboxed_closures.borrow().find(&closure_did) {
-                None => {}  // Fall through to try inherited.
-                Some(closure) => {
-                    self.push_unboxed_closure_call_candidate_if_applicable(
-                        trait_did,
-                        closure_did,
-                        &closure.closure_type);
-                    return
-                }
+        match self.tcx().unboxed_closures.borrow().find(&closure_did) {
+            None => {}  // Fall through to try inherited.
+            Some(closure) => {
+                let tcx = self.tcx();
+                self.push_unboxed_closure_call_candidate_if_applicable(
+                    closure.kind.trait_did(tcx),
+                    closure_did,
+                    &closure.closure_type);
+                return
             }
+        }
 
-            match self.fcx.inh.unboxed_closures.borrow().find(&closure_did) {
-                Some(closure) => {
-                    self.push_unboxed_closure_call_candidate_if_applicable(
-                        trait_did,
-                        closure_did,
-                        &closure.closure_type);
-                    return
-                }
-                None => {}
+        match self.fcx.inh.unboxed_closures.borrow().find(&closure_did) {
+            Some(closure) => {
+                let tcx = self.tcx();
+                self.push_unboxed_closure_call_candidate_if_applicable(
+                    closure.kind.trait_did(tcx),
+                    closure_did,
+                    &closure.closure_type);
+                return
             }
+            None => {}
         }
 
         self.tcx().sess.bug("didn't find unboxed closure type in tcx map or \

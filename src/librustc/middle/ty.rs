@@ -19,7 +19,8 @@ use middle::def;
 use middle::dependency_format;
 use middle::freevars::CaptureModeMap;
 use middle::freevars;
-use middle::lang_items::{FnMutTraitLangItem, OpaqueStructLangItem};
+use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
+use middle::lang_items::{FnOnceTraitLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
 use middle::mem_categorization as mc;
 use middle::resolve;
@@ -1203,6 +1204,24 @@ pub enum UnboxedClosureKind {
     FnUnboxedClosureKind,
     FnMutUnboxedClosureKind,
     FnOnceUnboxedClosureKind,
+}
+
+impl UnboxedClosureKind {
+    pub fn trait_did(&self, cx: &ctxt) -> ast::DefId {
+        let result = match *self {
+            FnUnboxedClosureKind => cx.lang_items.require(FnTraitLangItem),
+            FnMutUnboxedClosureKind => {
+                cx.lang_items.require(FnMutTraitLangItem)
+            }
+            FnOnceUnboxedClosureKind => {
+                cx.lang_items.require(FnOnceTraitLangItem)
+            }
+        };
+        match result {
+            Ok(trait_did) => trait_did,
+            Err(err) => cx.sess.fatal(err.as_slice()),
+        }
+    }
 }
 
 pub fn mk_ctxt(s: Session,
@@ -3195,19 +3214,23 @@ impl AutoRef {
     }
 }
 
-pub fn method_call_type_param_defs(tcx: &ctxt, origin: typeck::MethodOrigin)
-                                   -> VecPerParamSpace<TypeParameterDef> {
+pub fn method_call_type_param_defs<T>(typer: &T,
+                                      origin: typeck::MethodOrigin)
+                                      -> VecPerParamSpace<TypeParameterDef>
+                                      where T: mc::Typer {
     match origin {
         typeck::MethodStatic(did) => {
-            ty::lookup_item_type(tcx, did).generics.types.clone()
+            ty::lookup_item_type(typer.tcx(), did).generics.types.clone()
         }
-        typeck::MethodStaticUnboxedClosure(_) => {
-            match tcx.lang_items.require(FnMutTraitLangItem) {
-                Ok(def_id) => {
-                    lookup_trait_def(tcx, def_id).generics.types.clone()
-                }
-                Err(s) => tcx.sess.fatal(s.as_slice()),
-            }
+        typeck::MethodStaticUnboxedClosure(did) => {
+            let def_id = typer.unboxed_closures()
+                              .borrow()
+                              .find(&did)
+                              .expect("method_call_type_param_defs: didn't \
+                                       find unboxed closure")
+                              .kind
+                              .trait_did(typer.tcx());
+            lookup_trait_def(typer.tcx(), def_id).generics.types.clone()
         }
         typeck::MethodParam(typeck::MethodParam{
             trait_id: trt_id,
@@ -3219,7 +3242,7 @@ pub fn method_call_type_param_defs(tcx: &ctxt, origin: typeck::MethodOrigin)
                 method_num: n_mth,
                 ..
         }) => {
-            match ty::trait_item(tcx, trt_id, n_mth) {
+            match ty::trait_item(typer.tcx(), trt_id, n_mth) {
                 ty::MethodTraitItem(method) => method.generics.types.clone(),
             }
         }
