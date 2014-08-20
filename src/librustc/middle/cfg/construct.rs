@@ -473,14 +473,15 @@ impl<'a> CFGBuilder<'a> {
             ast::ExprInlineAsm(ref inline_asm) => {
                 let inputs = inline_asm.inputs.iter();
                 let outputs = inline_asm.outputs.iter();
-                fn extract_expr<A>(&(_, expr): &(A, Gc<ast::Expr>)) -> Gc<ast::Expr> { expr }
                 let post_inputs = self.exprs(inputs.map(|a| {
                     debug!("cfg::construct InlineAsm id:{} input:{:?}", expr.id, a);
-                    extract_expr(a)
+                    let &(_, expr) = a;
+                    expr
                 }), pred);
                 let post_outputs = self.exprs(outputs.map(|a| {
                     debug!("cfg::construct InlineAsm id:{} output:{:?}", expr.id, a);
-                    extract_expr(a)
+                    let &(_, expr, _) = a;
+                    expr
                 }), post_inputs);
                 self.add_node(expr.id, [post_outputs])
             }

@@ -3729,7 +3729,7 @@ fn populate_scope_map(cx: &CrateContext,
                     walk_expr(cx, &**exp, scope_stack, scope_map);
                 }
 
-                for &(_, ref exp) in outputs.iter() {
+                for &(_, ref exp, _) in outputs.iter() {
                     walk_expr(cx, &**exp, scope_stack, scope_map);
                 }
             }

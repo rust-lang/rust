@@ -59,8 +59,6 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let mut state = Asm;
 
-    let mut read_write_operands = Vec::new();
-
     'statement: loop {
         match state {
             Asm => {
@@ -100,8 +98,6 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     let output = match constraint.get().slice_shift_char() {
                         (Some('='), _) => None,
                         (Some('+'), operand) => {
-                            // Save a reference to the output
-                            read_write_operands.push((outputs.len(), out));
                             Some(token::intern_and_get_ident(format!(
                                         "={}",
                                         operand).as_slice()))
@@ -112,7 +108,8 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         }
                     };
 
-                    outputs.push((output.unwrap_or(constraint), out));
+                    let is_rw = output.is_some();
+                    outputs.push((output.unwrap_or(constraint), out, is_rw));
                 }
             }
             Inputs => {
@@ -202,21 +199,14 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
     }
 
-    // Append an input operand, with the form of ("0", expr)
-    // that links to an output operand.
-    for &(i, out) in read_write_operands.iter() {
-        inputs.push((token::intern_and_get_ident(i.to_string().as_slice()),
-                                                 out));
-    }
-
     MacExpr::new(box(GC) ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprInlineAsm(ast::InlineAsm {
             asm: token::intern_and_get_ident(asm.get()),
             asm_str_style: asm_str_style.unwrap(),
-            clobbers: token::intern_and_get_ident(cons.as_slice()),
-            inputs: inputs,
             outputs: outputs,
+            inputs: inputs,
+            clobbers: token::intern_and_get_ident(cons.as_slice()),
             volatile: volatile,
             alignstack: alignstack,
             dialect: dialect
