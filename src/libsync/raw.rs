@@ -130,7 +130,7 @@ impl<Q: Send> Sem<Q> {
     pub fn acquire(&self) {
         unsafe {
             let mut waiter_nobe = None;
-            self.with(|state| {
+            self.with(ref |state| {
                 state.count -= 1;
                 if state.count < 0 {
                     // Create waiter nobe, enqueue ourself, and tell
@@ -236,7 +236,7 @@ impl<'a> Condvar<'a> {
         let mut out_of_bounds = None;
         // Release lock, 'atomically' enqueuing ourselves in so doing.
         unsafe {
-            self.sem.with(|state| {
+            self.sem.with(ref |state| {
                 if condvar_id < state.blocked.len() {
                     // Drop the lock.
                     state.count += 1;
@@ -254,13 +254,16 @@ impl<'a> Condvar<'a> {
 
         // If deschedule checks start getting inserted anywhere, we can be
         // killed before or after enqueueing.
-        check_cvar_bounds(out_of_bounds, condvar_id, "cond.wait_on()", || {
+        check_cvar_bounds(out_of_bounds,
+                          condvar_id,
+                          "cond.wait_on()",
+                          ref || {
             // Unconditionally "block". (Might not actually block if a
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
-            (|| {
+            (ref || {
                 let _ = wait_end.take_unwrap().recv();
-            }).finally(|| {
+            }).finally(ref || {
                 // Reacquire the condvar.
                 match self.order {
                     Just(lock) => {
@@ -281,7 +284,7 @@ impl<'a> Condvar<'a> {
         unsafe {
             let mut out_of_bounds = None;
             let mut result = false;
-            self.sem.with(|state| {
+            self.sem.with(ref |state| {
                 if condvar_id < state.blocked.len() {
                     result = state.blocked[condvar_id].signal();
                 } else {
@@ -303,7 +306,7 @@ impl<'a> Condvar<'a> {
         let mut out_of_bounds = None;
         let mut queue = None;
         unsafe {
-            self.sem.with(|state| {
+            self.sem.with(ref |state| {
                 if condvar_id < state.blocked.len() {
                     // To avoid :broadcast_heavy, we make a new waitqueue,
                     // swap it out with the old one, and broadcast on the
@@ -919,7 +922,7 @@ mod tests {
         fn access_shared(sharedstate: &mut int, x: &Arc<RWLock>,
                          mode: RWLockMode, n: uint) {
             for _ in range(0u, n) {
-                lock_rwlock_in_mode(x, mode, || {
+                lock_rwlock_in_mode(x, mode, ref || {
                     let oldval = *sharedstate;
                     task::deschedule();
                     *sharedstate = oldval + 1;

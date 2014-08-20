@@ -20,9 +20,9 @@ fn set(x: &mut int) {
 }
 
 fn a(x: &int) {
-    let c1 = || set(&mut *x);
+    let c1 = ref || set(&mut *x);
     //~^ ERROR cannot borrow
-    let c2 = || set(&mut *x);
+    let c2 = ref || set(&mut *x);
     //~^ ERROR closure requires unique access to `x`
     //~^^ ERROR cannot borrow
 }

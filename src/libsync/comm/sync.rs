@@ -452,7 +452,7 @@ impl Queue {
             task: None,
             next: 0 as *mut Node,
         };
-        task.deschedule(1, |task| {
+        task.deschedule(1, ref |task| {
             node.task = Some(task);
             if self.tail.is_null() {
                 self.head = &mut node as *mut Node;

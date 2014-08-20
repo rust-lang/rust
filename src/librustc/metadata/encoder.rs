@@ -365,7 +365,8 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         encode_bounds_and_type(rbml_w, ecx,
                                &lookup_item_type(ecx.tcx, def_id));
 
-        ecx.tcx.map.with_path(variant.node.id, |path| encode_path(rbml_w, path));
+        ecx.tcx.map.with_path(variant.node.id,
+                              ref |path| encode_path(rbml_w, path));
         rbml_w.end_tag();
         disr_val += 1;
         i += 1;
@@ -594,7 +595,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         rbml_w.wr_str(def_to_string(local_def(item.id)).as_slice());
         rbml_w.end_tag();
 
-        each_auxiliary_node_id(*item, |auxiliary_node_id| {
+        each_auxiliary_node_id(*item, ref |auxiliary_node_id| {
             rbml_w.start_tag(tag_mod_child);
             rbml_w.wr_str(def_to_string(local_def(
                         auxiliary_node_id)).as_slice());
@@ -774,7 +775,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                            &lookup_item_type(ecx.tcx, local_def(ctor_id)));
     encode_name(rbml_w, name.name);
     encode_type(ecx, rbml_w, node_id_to_type(ecx.tcx, ctor_id));
-    ecx.tcx.map.with_path(ctor_id, |path| encode_path(rbml_w, path));
+    ecx.tcx.map.with_path(ctor_id, ref |path| encode_path(rbml_w, path));
     encode_parent_item(rbml_w, local_def(struct_id));
 
     if ecx.item_symbols.borrow().contains_key(&ctor_id) {
@@ -1407,7 +1408,7 @@ fn my_visit_item(i: &Item,
     let mut rbml_w = unsafe { rbml_w.unsafe_clone() };
     // See above
     let ecx: &EncodeContext = unsafe { mem::transmute(ecx_ptr) };
-    ecx.tcx.map.with_path(i.id, |path| {
+    ecx.tcx.map.with_path(i.id, ref |path| {
         encode_info_for_item(ecx, &mut rbml_w, i, index, path, i.vis);
     });
 }
@@ -1426,10 +1427,8 @@ fn my_visit_foreign_item(ni: &ForeignItem,
         rbml_w.unsafe_clone()
     };
     let abi = ecx.tcx.map.get_foreign_abi(ni.id);
-    ecx.tcx.map.with_path(ni.id, |path| {
-        encode_info_for_foreign_item(ecx, &mut rbml_w,
-                                     ni, index,
-                                     path, abi);
+    ecx.tcx.map.with_path(ni.id, ref |path| {
+        encode_info_for_foreign_item(ecx, &mut rbml_w, ni, index, path, abi);
     });
 }
 
@@ -1589,7 +1588,7 @@ fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {
     fn get_ordered_deps(cstore: &cstore::CStore) -> Vec<decoder::CrateDep> {
         // Pull the cnums and name,vers,hash out of cstore
         let mut deps = Vec::new();
-        cstore.iter_crate_data(|key, val| {
+        cstore.iter_crate_data(ref |key, val| {
             let dep = decoder::CrateDep {
                 cnum: key,
                 name: decoder::get_crate_name(val.data()),
@@ -1599,7 +1598,7 @@ fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {
         });
 
         // Sort by cnum
-        deps.sort_by(|kv1, kv2| kv1.cnum.cmp(&kv2.cnum));
+        deps.sort_by(ref |kv1, kv2| kv1.cnum.cmp(&kv2.cnum));
 
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
@@ -1823,7 +1822,7 @@ fn encode_misc_info(ecx: &EncodeContext,
         rbml_w.wr_str(def_to_string(local_def(item.id)).as_slice());
         rbml_w.end_tag();
 
-        each_auxiliary_node_id(item, |auxiliary_node_id| {
+        each_auxiliary_node_id(item, ref |auxiliary_node_id| {
             rbml_w.start_tag(tag_mod_child);
             rbml_w.wr_str(def_to_string(local_def(
                         auxiliary_node_id)).as_slice());

@@ -63,14 +63,11 @@ impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
                 self.capture_mode_map.insert(expr.id, CaptureByValue);
                 visit::walk_expr(self, expr, depth + 1)
             }
-            ast::ExprFnBlock(_, _, _) => {
-                // NOTE(stage0): After snapshot, change to:
-                //
-                //let capture_mode = match capture_clause {
-                //    ast::CaptureByValue => CaptureByValue,
-                //    ast::CaptureByRef => CaptureByRef,
-                //};
-                let capture_mode = CaptureByRef;
+            ast::ExprFnBlock(capture_clause, _, _) => {
+                let capture_mode = match capture_clause {
+                    ast::CaptureByValue => CaptureByValue,
+                    ast::CaptureByRef => CaptureByRef,
+                };
                 self.capture_mode_map.insert(expr.id, capture_mode);
                 visit::walk_expr(self, expr, depth + 1)
             }

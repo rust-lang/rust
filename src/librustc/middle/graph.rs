@@ -338,7 +338,7 @@ mod test {
     fn each_node() {
         let graph = create_graph();
         let expected = ["A", "B", "C", "D", "E", "F"];
-        graph.each_node(|idx, node| {
+        graph.each_node(ref |idx, node| {
             assert_eq!(&expected[idx.get()], graph.node_data(idx));
             assert_eq!(expected[idx.get()], node.data);
             true
@@ -349,7 +349,7 @@ mod test {
     fn each_edge() {
         let graph = create_graph();
         let expected = ["AB", "BC", "BD", "DE", "EC", "FB"];
-        graph.each_edge(|idx, edge| {
+        graph.each_edge(ref |idx, edge| {
             assert_eq!(&expected[idx.get()], graph.edge_data(idx));
             assert_eq!(expected[idx.get()], edge.data);
             true
@@ -364,7 +364,7 @@ mod test {
         assert!(graph.node_data(start_index) == &start_data);
 
         let mut counter = 0;
-        graph.each_incoming_edge(start_index, |edge_index, edge| {
+        graph.each_incoming_edge(start_index, ref |edge_index, edge| {
             assert!(graph.edge_data(edge_index) == &edge.data);
             assert!(counter < expected_incoming.len());
             debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
@@ -382,7 +382,7 @@ mod test {
         assert_eq!(counter, expected_incoming.len());
 
         let mut counter = 0;
-        graph.each_outgoing_edge(start_index, |edge_index, edge| {
+        graph.each_outgoing_edge(start_index, ref |edge_index, edge| {
             assert!(graph.edge_data(edge_index) == &edge.data);
             assert!(counter < expected_outgoing.len());
             debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",

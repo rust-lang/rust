@@ -122,7 +122,7 @@ impl LocalHeap {
         //
         // In this pass, nothing gets freed, so it does not matter whether
         // we read the next field before or after the callback.
-        self.each_live_alloc(true, |_, alloc| {
+        self.each_live_alloc(true, ref |_, alloc| {
             n_total_boxes += 1;
             (*alloc).ref_count = RC_IMMORTAL;
         });
@@ -335,11 +335,11 @@ mod bench {
 
     #[bench]
     fn alloc_managed_small(b: &mut Bencher) {
-        b.iter(|| { box(GC) 10i });
+        b.iter(ref || { box(GC) 10i });
     }
 
     #[bench]
     fn alloc_managed_big(b: &mut Bencher) {
-        b.iter(|| { box(GC) ([10i, ..1000]) });
+        b.iter(ref || { box(GC) ([10i, ..1000]) });
     }
 }

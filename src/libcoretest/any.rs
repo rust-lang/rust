@@ -122,7 +122,7 @@ fn any_fixed_vec() {
 
 #[bench]
 fn bench_as_ref(b: &mut Bencher) {
-    b.iter(|| {
+    b.iter(ref || {
         let mut x = 0i;
         let mut y = &mut x as &mut Any;
         test::black_box(&mut y);

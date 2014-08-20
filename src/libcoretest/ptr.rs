@@ -185,7 +185,7 @@ fn test_ptr_array_each_with_len() {
 
         let mut ctr = 0;
         let mut iteration_count = 0;
-        array_each_with_len(arr.as_ptr(), arr.len(), |e| {
+        array_each_with_len(arr.as_ptr(), arr.len(), ref |e| {
                 let actual = CString::new(e, false);
                 assert_eq!(actual.as_str(), expected_arr[ctr].as_str());
                 ctr += 1;
@@ -215,7 +215,7 @@ fn test_ptr_array_each() {
         let arr_ptr = arr.as_ptr();
         let mut ctr = 0u;
         let mut iteration_count = 0u;
-        array_each(arr_ptr, |e| {
+        array_each(arr_ptr, ref |e| {
                 let actual = CString::new(e, false);
                 assert_eq!(actual.as_str(), expected_arr[ctr].as_str());
                 ctr += 1;

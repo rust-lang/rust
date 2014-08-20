@@ -136,7 +136,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("pop_and_trans_ast_cleanup_scope({})",
                self.ccx.tcx.map.node_to_string(cleanup_scope));
 
-        assert!(self.top_scope(|s| s.kind.is_ast_with_id(cleanup_scope)));
+        assert!(self.top_scope(ref |s| s.kind.is_ast_with_id(cleanup_scope)));
 
         let scope = self.pop_scope();
         self.trans_scope_cleanups(bcx, &scope)
@@ -155,7 +155,9 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("pop_loop_cleanup_scope({})",
                self.ccx.tcx.map.node_to_string(cleanup_scope));
 
-        assert!(self.top_scope(|s| s.kind.is_loop_with_id(cleanup_scope)));
+        assert!(self.top_scope(ref |s| {
+            s.kind.is_loop_with_id(cleanup_scope)
+        }));
 
         let _ = self.pop_scope();
     }
@@ -401,7 +403,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          * execute on failure.
          */
 
-        self.scopes.borrow().iter().rev().any(|s| s.needs_invoke())
+        self.scopes.borrow().iter().rev().any(ref |s| s.needs_invoke())
     }
 
     fn get_landing_pad(&'a self) -> BasicBlockRef {
@@ -420,7 +422,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
 
         // Remove any scopes that do not have cleanups on failure:
         let mut popped_scopes = vec!();
-        while !self.top_scope(|s| s.needs_invoke()) {
+        while !self.top_scope(ref |s| s.needs_invoke()) {
             debug!("top scope does not need invoke");
             popped_scopes.push(self.pop_scope());
         }
@@ -459,7 +461,11 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
     }
 
     fn top_nonempty_cleanup_scope(&self) -> Option<uint> {
-        self.scopes.borrow().iter().rev().position(|s| !s.cleanups.is_empty())
+        self.scopes
+            .borrow()
+            .iter()
+            .rev()
+            .position(ref |s| !s.cleanups.is_empty())
     }
 
     fn is_valid_to_pop_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
@@ -497,7 +503,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
 
     fn pop_scope(&self) -> CleanupScope<'a> {
         debug!("popping cleanup scope {}, {} scopes remaining",
-               self.top_scope(|s| s.block_name("")),
+               self.top_scope(ref |s| s.block_name("")),
                self.scopes_len() - 1);
 
         self.scopes.borrow_mut().pop().unwrap()
@@ -584,7 +590,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
             // scope for this label. If so, we can stop popping scopes
             // and branch to the cached label, since it contains the
             // cleanups for any subsequent scopes.
-            match self.top_scope(|s| s.cached_early_exit(label)) {
+            match self.top_scope(ref |s| s.cached_early_exit(label)) {
                 Some(cleanup_block) => {
                     prev_llbb = cleanup_block;
                     break;
@@ -639,8 +645,9 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
         while !popped_scopes.is_empty() {
             let mut scope = popped_scopes.pop().unwrap();
 
-            if scope.cleanups.iter().any(|c| cleanup_is_suitable_for(*c, label))
-            {
+            if scope.cleanups
+                    .iter()
+                    .any(ref |c| cleanup_is_suitable_for(*c, label)) {
                 let name = scope.block_name("clean");
                 debug!("generating cleanups for {}", name);
                 let bcx_in = self.new_block(label.is_unwind(),
@@ -780,9 +787,10 @@ impl<'a> CleanupScope<'a> {
     fn cached_early_exit(&self,
                          label: EarlyExitLabel)
                          -> Option<BasicBlockRef> {
-        self.cached_early_exits.iter().
-            find(|e| e.label == label).
-            map(|e| e.cleanup_block)
+        self.cached_early_exits
+            .iter()
+            .find(ref |e| e.label == label)
+            .map(ref |e| e.cleanup_block)
     }
 
     fn add_cached_early_exit(&mut self,
@@ -797,7 +805,7 @@ impl<'a> CleanupScope<'a> {
         /*! True if this scope has cleanups that need unwinding */
 
         self.cached_landing_pad.is_some() ||
-            self.cleanups.iter().any(|c| c.must_unwind())
+            self.cleanups.iter().any(ref |c| c.must_unwind())
     }
 
     fn block_name(&self, prefix: &str) -> String {

@@ -20,7 +20,7 @@ pub fn main() {
     let mut i = 3i;
     assert_eq!(i, 3);
     {
-        let cl = || i += 1;
+        let cl = ref || i += 1;
         let cl_box = box_it(cl);
         (cl_box.cl)();
     }

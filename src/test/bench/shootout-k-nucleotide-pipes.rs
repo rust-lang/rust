@@ -44,8 +44,8 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
 
    // sort by key, then by value
    fn sortKV(mut orig: Vec<(Vec<u8> ,f64)> ) -> Vec<(Vec<u8> ,f64)> {
-        orig.sort_by(|&(ref a, _), &(ref b, _)| a.cmp(b));
-        orig.sort_by(|&(_, a), &(_, b)| f64_cmp(b, a));
+        orig.sort_by(ref |&(ref a, _), &(ref b, _)| a.cmp(b));
+        orig.sort_by(ref |&(_, a), &(_, b)| f64_cmp(b, a));
         orig
    }
 
@@ -120,7 +120,7 @@ fn make_sequence_processor(sz: uint,
 
        carry = windows_with_carry(carry.append(line.as_slice()).as_slice(),
                                   sz,
-                                  |window| {
+                                  ref |window| {
          update_freq(&mut freqs, window);
          total += 1u;
       });
@@ -155,9 +155,12 @@ fn main() {
 
     // initialize each sequence sorter
     let sizes = vec!(1u,2,3,4,6,12,18);
-    let mut streams = Vec::from_fn(sizes.len(), |_| Some(channel::<String>()));
+    let mut streams = Vec::from_fn(sizes.len(),
+                                   ref |_| Some(channel::<String>()));
     let mut from_child = Vec::new();
-    let to_child  = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
+    let to_child = sizes.iter()
+                        .zip(streams.mut_iter())
+                        .map(ref |(sz, stream_ref)| {
         let sz = *sz;
         let stream = replace(stream_ref, None);
         let (to_parent_, from_child_) = stream.unwrap();

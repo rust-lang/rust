@@ -51,7 +51,7 @@ pub fn expand_diagnostic_used(ecx: &mut ExtCtxt, span: Span,
         [ast::TTTok(_, token::IDENT(code, _))] => code,
         _ => unreachable!()
     };
-    with_registered_diagnostics(|diagnostics| {
+    with_registered_diagnostics(ref |diagnostics| {
         if !diagnostics.contains_key(&code.name) {
             ecx.span_err(span, format!(
                 "unknown diagnostic code {}; add to librustc/diagnostics.rs",
@@ -60,7 +60,7 @@ pub fn expand_diagnostic_used(ecx: &mut ExtCtxt, span: Span,
         }
         ()
     });
-    with_used_diagnostics(|diagnostics| {
+    with_used_diagnostics(ref |diagnostics| {
         match diagnostics.swap(code.name, span) {
             Some(previous_span) => {
                 ecx.span_warn(span, format!(
@@ -88,7 +88,7 @@ pub fn expand_register_diagnostic(ecx: &mut ExtCtxt, span: Span,
         }
         _ => unreachable!()
     };
-    with_registered_diagnostics(|diagnostics| {
+    with_registered_diagnostics(ref |diagnostics| {
         if !diagnostics.insert(code.name, description) {
             ecx.span_err(span, format!(
                 "diagnostic code {} already registered", token::get_ident(*code).get()
@@ -108,16 +108,16 @@ pub fn expand_build_diagnostic_array(ecx: &mut ExtCtxt, span: Span,
         _ => unreachable!()
     };
 
-    let (count, expr) = with_used_diagnostics(|diagnostics_in_use| {
-        with_registered_diagnostics(|diagnostics| {
+    let (count, expr) = with_used_diagnostics(ref |diagnostics_in_use| {
+        with_registered_diagnostics(ref |diagnostics| {
             let descriptions: Vec<Gc<ast::Expr>> = diagnostics
-                .iter().filter_map(|(code, description)| {
+                .iter().filter_map(ref |(code, description)| {
                 if !diagnostics_in_use.contains_key(code) {
                     ecx.span_warn(span, format!(
                         "diagnostic code {} never used", token::get_name(*code).get()
                     ).as_slice());
                 }
-                description.map(|description| {
+                description.map(ref |description| {
                     ecx.expr_tuple(span, vec![
                         ecx.expr_str(span, token::get_name(*code)),
                         ecx.expr_str(span, token::get_name(description))

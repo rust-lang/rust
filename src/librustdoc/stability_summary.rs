@@ -145,15 +145,18 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
             let mut counts = item_counts;
             let mut submodules = Vec::new();
 
-            for (subcounts, submodule) in items.iter().filter(|i| visible(*i))
-                                                      .map(summarize_item) {
+            for (subcounts, submodule) in items.iter()
+                                               .filter(ref |i| visible(*i))
+                                               .map(summarize_item) {
                 counts = counts + subcounts;
-                submodule.map(|m| submodules.push(m));
+                submodule.map(ref |m| submodules.push(m));
             }
             submodules.sort();
 
             (counts, Some(ModuleSummary {
-                name: item.name.as_ref().map_or("".to_string(), |n| n.clone()),
+                name: item.name
+                          .as_ref()
+                          .map_or("".to_string(), ref |n| n.clone()),
                 counts: counts,
                 submodules: submodules,
             }))

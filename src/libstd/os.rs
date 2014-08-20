@@ -282,7 +282,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
                        os::last_os_error());
             }
             let mut result = Vec::new();
-            ptr::array_each(environ, |e| {
+            ptr::array_each(environ, ref |e| {
                 let env_pair =
                     Vec::from_slice(CString::new(e, false).as_bytes_no_nul());
                 result.push(env_pair);

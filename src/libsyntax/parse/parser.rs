@@ -2053,8 +2053,7 @@ impl<'a> Parser<'a> {
                         let remaining_exprs = self.parse_seq_to_end(
                             &token::RBRACKET,
                             seq_sep_trailing_allowed(token::COMMA),
-                            |p| p.parse_expr()
-                                );
+                            ref |p| p.parse_expr());
                         let mut exprs = vec!(first_expr);
                         exprs.push_all_move(remaining_exprs);
                         ex = ExprVec(exprs);
@@ -2159,7 +2158,7 @@ impl<'a> Parser<'a> {
                         self.bump();
 
                         let ket = token::close_delimiter_for(&self.token)
-                            .unwrap_or_else(|| {
+                            .unwrap_or_else(ref || {
                                 self.fatal("expected open delimiter")
                             });
                         self.bump();
@@ -2167,7 +2166,7 @@ impl<'a> Parser<'a> {
                         let tts = self.parse_seq_to_end(
                             &ket,
                             seq_sep_none(),
-                            |p| p.parse_token_tree());
+                            ref |p| p.parse_token_tree());
                         let hi = self.span.hi;
 
                         return self.mk_mac_expr(lo,
@@ -3145,12 +3144,15 @@ impl<'a> Parser<'a> {
                 if self.eat(&token::NOT) {
                     // macro invocation
                     let ket = token::close_delimiter_for(&self.token)
-                                    .unwrap_or_else(|| self.fatal("expected open delimiter"));
+                                    .unwrap_or_else(ref || {
+                                        self.fatal("expected open delimiter")
+                                    });
                     self.bump();
 
-                    let tts = self.parse_seq_to_end(&ket,
-                                                    seq_sep_none(),
-                                                    |p| p.parse_token_tree());
+                    let tts =
+                        self.parse_seq_to_end(&ket,
+                                              seq_sep_none(),
+                                              ref |p| p.parse_token_tree());
 
                     let mac = MacInvocTT(ident_to_path(id_span,id), tts, EMPTY_CTXT);
                     pat = ast::PatMac(codemap::Spanned {node: mac, span: self.span});
@@ -3755,7 +3757,7 @@ impl<'a> Parser<'a> {
         if self.eat(&token::LT) {
             let lifetime_defs = self.parse_lifetime_defs();
             let mut seen_default = false;
-            let ty_params = self.parse_seq_to_gt(Some(token::COMMA), |p| {
+            let ty_params = self.parse_seq_to_gt(Some(token::COMMA), ref |p| {
                 p.forbid_lifetime();
                 let ty_param = p.parse_ty_param();
                 if ty_param.default.is_some() {
@@ -4236,7 +4238,7 @@ impl<'a> Parser<'a> {
                         self.bump();
                         self.parse_seq_to_end(&ket,
                                               seq_sep_none(),
-                                              |p| p.parse_token_tree())
+                                              ref |p| p.parse_token_tree())
                     }
                     None => self.fatal("expected open delimiter")
                 };
@@ -4260,9 +4262,8 @@ impl<'a> Parser<'a> {
                 let fn_style = self.parse_fn_style();
                 let ident = self.parse_ident();
                 let mut generics = self.parse_generics();
-                let (explicit_self, decl) = self.parse_fn_decl_with_self(|p| {
-                        p.parse_arg()
-                    });
+                let (explicit_self, decl) =
+                    self.parse_fn_decl_with_self(ref |p| p.parse_arg());
                 self.parse_where_clause(&mut generics);
                 let (inner_attrs, body) = self.parse_inner_attrs_and_block();
                 let new_attrs = attrs.append(inner_attrs.as_slice());
@@ -4431,17 +4432,17 @@ impl<'a> Parser<'a> {
                 &token::LPAREN,
                 &token::RPAREN,
                 seq_sep_trailing_allowed(token::COMMA),
-                |p| {
-                let attrs = p.parse_outer_attributes();
-                let lo = p.span.lo;
-                let struct_field_ = ast::StructField_ {
-                    kind: UnnamedField(p.parse_visibility()),
-                    id: ast::DUMMY_NODE_ID,
-                    ty: p.parse_ty(true),
-                    attrs: attrs,
-                };
-                spanned(lo, p.span.hi, struct_field_)
-            });
+                ref |p| {
+                    let attrs = p.parse_outer_attributes();
+                    let lo = p.span.lo;
+                    let struct_field_ = ast::StructField_ {
+                        kind: UnnamedField(p.parse_visibility()),
+                        id: ast::DUMMY_NODE_ID,
+                        ty: p.parse_ty(true),
+                        attrs: attrs,
+                    };
+                    spanned(lo, p.span.hi, struct_field_)
+                });
             if fields.len() == 0 {
                 self.fatal(format!("unit-like struct definition should be \
                                     written as `struct {};`",
@@ -4711,7 +4712,7 @@ impl<'a> Parser<'a> {
                               name: String,
                               id_sp: Span) -> (ast::Item_, Vec<ast::Attribute> ) {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
-        match included_mod_stack.iter().position(|p| *p == path) {
+        match included_mod_stack.iter().position(ref |p| *p == path) {
             Some(i) => {
                 let mut err = String::from_str("circular modules: ");
                 let len = included_mod_stack.len();
@@ -5300,7 +5301,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     self.parse_seq_to_end(&ket,
                                           seq_sep_none(),
-                                          |p| p.parse_token_tree())
+                                          ref |p| p.parse_token_tree())
                 }
                 None => self.fatal("expected open delimiter")
             };

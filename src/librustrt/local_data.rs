@@ -605,7 +605,7 @@ mod tests {
         static key: Key<uint> = &Key;
         let _clear = ClearKey(key);
         key.replace(None);
-        b.iter(|| {
+        b.iter(ref || {
             key.replace(None)
         });
     }
@@ -615,7 +615,7 @@ mod tests {
         static key: Key<uint> = &Key;
         let _clear = ClearKey(key);
         key.replace(Some(1u));
-        b.iter(|| {
+        b.iter(ref || {
             key.replace(Some(2))
         });
     }
@@ -625,7 +625,7 @@ mod tests {
         static key: Key<uint> = &Key;
         let _clear = ClearKey(key);
         key.replace(Some(0u));
-        b.iter(|| {
+        b.iter(ref || {
             let old = key.replace(None).unwrap();
             let new = old + 1;
             key.replace(Some(new))
@@ -639,7 +639,7 @@ mod tests {
         for (i, key) in keys.iter().enumerate() {
             key.replace(Some(i));
         }
-        b.iter(|| {
+        b.iter(ref || {
             let key: Key<uint> = &keys[99];
             key.replace(Some(42))
         });
@@ -652,7 +652,7 @@ mod tests {
         for (i, key) in keys.iter().enumerate() {
             key.replace(Some(i));
         }
-        b.iter(|| {
+        b.iter(ref || {
             let key: Key<uint> = &keys[999];
             key.replace(Some(42))
         });
@@ -664,7 +664,7 @@ mod tests {
         static key: Key<uint> = &Key;
         let _clear = ClearKey(key);
         key.replace(Some(42));
-        b.iter(|| {
+        b.iter(ref || {
             key.get()
         });
     }
@@ -676,7 +676,7 @@ mod tests {
         for (i, key) in keys.iter().enumerate() {
             key.replace(Some(i));
         }
-        b.iter(|| {
+        b.iter(ref || {
             let key: Key<uint> = &keys[99];
             key.get()
         });
@@ -689,7 +689,7 @@ mod tests {
         for (i, key) in keys.iter().enumerate() {
             key.replace(Some(i));
         }
-        b.iter(|| {
+        b.iter(ref || {
             let key: Key<uint> = &keys[999];
             key.get()
         });

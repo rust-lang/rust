@@ -368,7 +368,7 @@ pub fn gather_comments_and_literals(span_diagnostic: &diagnostic::SpanHandler,
         //discard, and look ahead; we're working with internal state
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(&tok) {
-            rdr.with_str_from(bstart, |s| {
+            rdr.with_str_from(bstart, ref |s| {
                 debug!("tok lit: {}", s);
                 literals.push(Literal {lit: s.to_string(), pos: sp.lo});
             })

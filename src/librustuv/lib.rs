@@ -181,7 +181,7 @@ pub trait UvHandle<T> {
             uvll::set_data_for_uv_handle(self.uv_handle(),
                                          ptr::mut_null::<()>());
 
-            wait_until_woken_after(&mut slot, &self.uv_loop(), || {
+            wait_until_woken_after(&mut slot, &self.uv_loop(), ref || {
                 uvll::set_data_for_uv_handle(self.uv_handle(), &mut slot);
             })
         }
@@ -248,7 +248,7 @@ fn wait_until_woken_after(slot: *mut Option<BlockedTask>,
         assert!((*slot).is_none());
         let task: Box<Task> = Local::take();
         loop_.modify_blockers(1);
-        task.deschedule(1, |task| {
+        task.deschedule(1, ref |task| {
             *slot = Some(task);
             f();
             Ok(())
@@ -259,7 +259,7 @@ fn wait_until_woken_after(slot: *mut Option<BlockedTask>,
 
 fn wakeup(slot: &mut Option<BlockedTask>) {
     assert!(slot.is_some());
-    let _ = slot.take_unwrap().wake().map(|t| t.reawaken());
+    let _ = slot.take_unwrap().wake().map(ref |t| t.reawaken());
 }
 
 pub struct Request {

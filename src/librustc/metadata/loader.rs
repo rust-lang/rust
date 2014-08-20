@@ -386,7 +386,7 @@ impl<'a> Context<'a> {
         let dypair = self.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
-        let dylib_prefix = dypair.map(|(prefix, _)| {
+        let dylib_prefix = dypair.map(ref |(prefix, _)| {
             format!("{}{}", prefix, self.crate_name)
         });
         let rlib_prefix = format!("lib{}", self.crate_name);
@@ -406,7 +406,7 @@ impl<'a> Context<'a> {
         // of the crate id (path/name/id).
         //
         // The goal of this step is to look at as little metadata as possible.
-        self.filesearch.search(|path| {
+        self.filesearch.search(ref |path| {
             let file = match path.filename_str() {
                 None => return FileDoesntMatch,
                 Some(file) => file,
@@ -415,7 +415,7 @@ impl<'a> Context<'a> {
                     file.ends_with(".rlib") {
                 (file.slice(rlib_prefix.len(), file.len() - ".rlib".len()),
                  true)
-            } else if dypair.map_or(false, |(_, suffix)| {
+            } else if dypair.map_or(false, ref |(_, suffix)| {
                 file.starts_with(dylib_prefix.get_ref().as_slice()) &&
                 file.ends_with(suffix)
             }) {
@@ -799,7 +799,7 @@ fn get_metadata_section_imp(os: abi::Os, filename: &Path) -> Result<MetadataBlob
                 let cvbuf1 = cvbuf.offset(vlen as int);
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
-                slice::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
+                slice::raw::buf_as_slice(cvbuf1, csz-vlen, ref |bytes| {
                     match flate::inflate_bytes(bytes) {
                         Some(inflated) => found = Ok(MetadataVec(inflated)),
                         None => {

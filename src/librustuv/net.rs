@@ -560,7 +560,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                     result: None,
                 };
                 let handle = self.handle;
-                wait_until_woken_after(&mut cx.task, &loop_, || {
+                wait_until_woken_after(&mut cx.task, &loop_, ref || {
                     unsafe { uvll::set_data_for_uv_handle(handle, &mut cx) }
                 });
                 match cx.result.take_unwrap() {
@@ -637,9 +637,9 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 let mut cx = UdpSendCtx {
                     result: uvll::ECANCELED, data: data, udp: self as *mut _
                 };
-                wait_until_woken_after(&mut self.blocked_sender, &loop_, || {
-                    req.set_data(&mut cx);
-                });
+                wait_until_woken_after(&mut self.blocked_sender,
+                                       &loop_,
+                                       ref || req.set_data(&mut cx));
 
                 if cx.result != uvll::ECANCELED {
                     return match cx.result {
@@ -680,7 +680,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     fn join_multicast(&mut self, multi: rtio::IpAddr) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
-            multi.to_string().with_c_str(|m_addr| {
+            multi.to_string().with_c_str(ref |m_addr| {
                 uvll::uv_udp_set_membership(self.handle,
                                             m_addr, ptr::null(),
                                             uvll::UV_JOIN_GROUP)
@@ -691,7 +691,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     fn leave_multicast(&mut self, multi: rtio::IpAddr) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
-            multi.to_string().with_c_str(|m_addr| {
+            multi.to_string().with_c_str(ref |m_addr| {
                 uvll::uv_udp_set_membership(self.handle,
                                             m_addr, ptr::null(),
                                             uvll::UV_LEAVE_GROUP)
@@ -823,7 +823,7 @@ pub fn shutdown(handle: *mut uvll::uv_stream_t, loop_: &Loop) -> Result<(), IoEr
             req.defuse(); // uv callback now owns this request
             let mut cx = Ctx { slot: None, status: 0 };
 
-            wait_until_woken_after(&mut cx.slot, loop_, || {
+            wait_until_woken_after(&mut cx.slot, loop_, ref || {
                 req.set_data(&mut cx);
             });
 

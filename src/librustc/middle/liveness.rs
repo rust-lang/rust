@@ -378,7 +378,7 @@ fn visit_fn(ir: &mut IrMaps,
     for arg in decl.inputs.iter() {
         pat_util::pat_bindings(&ir.tcx.def_map,
                                &*arg.pat,
-                               |_bm, arg_id, _x, path1| {
+                               ref |_bm, arg_id, _x, path1| {
             debug!("adding argument {}", arg_id);
             let ident = path1.node;
             fn_maps.add_variable(Arg(arg_id, ident));
@@ -410,7 +410,9 @@ fn visit_fn(ir: &mut IrMaps,
 }
 
 fn visit_local(ir: &mut IrMaps, local: &Local) {
-    pat_util::pat_bindings(&ir.tcx.def_map, &*local.pat, |_, p_id, sp, path1| {
+    pat_util::pat_bindings(&ir.tcx.def_map,
+                           &*local.pat,
+                           ref |_, p_id, sp, path1| {
         debug!("adding local variable {}", p_id);
         let name = path1.node;
         ir.add_live_node_for_node(p_id, VarDefNode(sp));
@@ -424,7 +426,9 @@ fn visit_local(ir: &mut IrMaps, local: &Local) {
 
 fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
     for pat in arm.pats.iter() {
-        pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
+        pat_util::pat_bindings(&ir.tcx.def_map,
+                               &**pat,
+                               ref |bm, p_id, sp, path1| {
             debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
             let name = path1.node;
@@ -469,7 +473,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        freevars::with_freevars(ir.tcx, expr.id, |freevars| {
+        freevars::with_freevars(ir.tcx, expr.id, ref |freevars| {
             for fv in freevars.iter() {
                 match moved_variable_node_id_from_def(fv.def) {
                     Some(rv) => {
@@ -492,7 +496,9 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         visit::walk_expr(ir, expr, ());
       }
       ExprForLoop(ref pat, _, _, _) => {
-        pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
+        pat_util::pat_bindings(&ir.tcx.def_map,
+                               &**pat,
+                               ref |bm, p_id, sp, path1| {
             debug!("adding local variable {} from for loop with bm {:?}",
                    p_id, bm);
             let name = path1.node;
@@ -634,7 +640,7 @@ impl<'a> Liveness<'a> {
     fn define_bindings_in_arm_pats(&mut self, pats: &[Gc<Pat>], succ: LiveNode)
                                    -> LiveNode {
         let mut succ = succ;
-        self.arm_pats_bindings(pats, |this, ln, var, _sp, _id| {
+        self.arm_pats_bindings(pats, ref |this, ln, var, _sp, _id| {
             this.init_from_succ(ln, succ);
             this.define(ln, var);
             succ = ln;
@@ -778,7 +784,7 @@ impl<'a> Liveness<'a> {
         if ln == succ_ln { return false; }
 
         let mut changed = false;
-        self.indices2(ln, succ_ln, |this, idx, succ_idx| {
+        self.indices2(ln, succ_ln, ref |this, idx, succ_idx| {
             changed |= copy_if_invalid(this.users.get(succ_idx).reader,
                                        &mut this.users.get_mut(idx).reader);
             changed |= copy_if_invalid(this.users.get(succ_idx).writer,
@@ -1192,7 +1198,10 @@ impl<'a> Liveness<'a> {
           }
 
           ExprInlineAsm(ref ia) => {
-            let succ = ia.outputs.iter().rev().fold(succ, |succ, &(_, ref expr)| {
+            let succ = ia.outputs
+                         .iter()
+                         .rev()
+                         .fold(succ, ref |succ, &(_, ref expr)| {
                 // see comment on lvalues in
                 // propagate_through_lvalue_components()
                 let succ = self.write_lvalue(&**expr, succ, ACC_WRITE);

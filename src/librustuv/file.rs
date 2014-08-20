@@ -39,18 +39,18 @@ impl FsRequest {
     pub fn open(io: &mut UvIoFactory, path: &CString, flags: int, mode: int)
         -> Result<FileWatcher, UvError>
     {
-        execute(|req, cb| unsafe {
+        execute(ref |req, cb| unsafe {
             uvll::uv_fs_open(io.uv_loop(),
                              req, path.as_ptr(), flags as c_int,
                              mode as c_int, cb)
-        }).map(|req|
+        }).map(ref |req|
             FileWatcher::new(io, req.get_result() as c_int,
                              rtio::CloseSynchronously)
         )
     }
 
     pub fn unlink(loop_: &Loop, path: &CString) -> Result<(), UvError> {
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_unlink(loop_.handle, req, path.as_ptr(),
                                cb)
         })
@@ -59,23 +59,23 @@ impl FsRequest {
     pub fn lstat(loop_: &Loop, path: &CString)
         -> Result<rtio::FileStat, UvError>
     {
-        execute(|req, cb| unsafe {
+        execute(ref |req, cb| unsafe {
             uvll::uv_fs_lstat(loop_.handle, req, path.as_ptr(),
                               cb)
-        }).map(|req| req.mkstat())
+        }).map(ref |req| req.mkstat())
     }
 
     pub fn stat(loop_: &Loop, path: &CString) -> Result<rtio::FileStat, UvError> {
-        execute(|req, cb| unsafe {
+        execute(ref |req, cb| unsafe {
             uvll::uv_fs_stat(loop_.handle, req, path.as_ptr(),
                              cb)
-        }).map(|req| req.mkstat())
+        }).map(ref |req| req.mkstat())
     }
 
     pub fn fstat(loop_: &Loop, fd: c_int) -> Result<rtio::FileStat, UvError> {
-        execute(|req, cb| unsafe {
+        execute(ref |req, cb| unsafe {
             uvll::uv_fs_fstat(loop_.handle, req, fd, cb)
-        }).map(|req| req.mkstat())
+        }).map(ref |req| req.mkstat())
     }
 
     pub fn write(loop_: &Loop, fd: c_int, buf: &[u8], offset: i64)
@@ -97,9 +97,9 @@ impl FsRequest {
                 base: buf.slice_from(written as uint).as_ptr() as *mut _,
                 len: (buf.len() - written) as uvll::uv_buf_len_t,
             };
-            match execute(|req, cb| unsafe {
+            match execute(ref |req, cb| unsafe {
                 uvll::uv_fs_write(loop_.handle, req, fd, &uvbuf, 1, offset, cb)
-            }).map(|req| req.get_result()) {
+            }).map(ref |req| req.get_result()) {
                 Err(e) => return Err(e),
                 Ok(n) => { written += n as uint; }
             }
@@ -110,13 +110,13 @@ impl FsRequest {
     pub fn read(loop_: &Loop, fd: c_int, buf: &mut [u8], offset: i64)
         -> Result<int, UvError>
     {
-        execute(|req, cb| unsafe {
+        execute(ref |req, cb| unsafe {
             let mut uvbuf = uvll::uv_buf_t {
                 base: buf.as_mut_ptr(),
                 len: buf.len() as uvll::uv_buf_len_t,
             };
             uvll::uv_fs_read(loop_.handle, req, fd, &mut uvbuf, 1, offset, cb)
-        }).map(|req| {
+        }).map(ref |req| {
             req.get_result() as int
         })
     }
@@ -124,14 +124,14 @@ impl FsRequest {
     pub fn mkdir(loop_: &Loop, path: &CString, mode: c_int)
         -> Result<(), UvError>
     {
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_mkdir(loop_.handle, req, path.as_ptr(),
                               mode, cb)
         })
     }
 
     pub fn rmdir(loop_: &Loop, path: &CString) -> Result<(), UvError> {
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_rmdir(loop_.handle, req, path.as_ptr(),
                               cb)
         })
@@ -140,7 +140,7 @@ impl FsRequest {
     pub fn rename(loop_: &Loop, path: &CString, to: &CString)
         -> Result<(), UvError>
     {
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_rename(loop_.handle,
                                req,
                                path.as_ptr(),
@@ -152,7 +152,7 @@ impl FsRequest {
     pub fn chmod(loop_: &Loop, path: &CString, mode: c_int)
         -> Result<(), UvError>
     {
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_chmod(loop_.handle, req, path.as_ptr(),
                               mode, cb)
         })
@@ -161,16 +161,16 @@ impl FsRequest {
     pub fn readdir(loop_: &Loop, path: &CString, flags: c_int)
         -> Result<Vec<CString>, UvError>
     {
-        execute(|req, cb| unsafe {
+        execute(ref |req, cb| unsafe {
             uvll::uv_fs_readdir(loop_.handle,
                                 req, path.as_ptr(), flags, cb)
-        }).map(|req| unsafe {
+        }).map(ref |req| unsafe {
             let mut paths = vec!();
             let path = CString::new(path.as_ptr(), false);
             let parent = Path::new(path);
             let _ = c_str::from_c_multistring(req.get_ptr() as *const libc::c_char,
                                               Some(req.get_result() as uint),
-                                              |rel| {
+                                              ref |rel| {
                 let p = rel.as_bytes();
                 paths.push(parent.join(p.slice_to(rel.len())).to_c_str());
             });
@@ -179,10 +179,10 @@ impl FsRequest {
     }
 
     pub fn readlink(loop_: &Loop, path: &CString) -> Result<CString, UvError> {
-        execute(|req, cb| unsafe {
+        execute(ref |req, cb| unsafe {
             uvll::uv_fs_readlink(loop_.handle, req,
                                  path.as_ptr(), cb)
-        }).map(|req| {
+        }).map(ref |req| {
             // Be sure to clone the cstring so we get an independently owned
             // allocation to work with and return.
             unsafe {
@@ -194,7 +194,7 @@ impl FsRequest {
     pub fn chown(loop_: &Loop, path: &CString, uid: int, gid: int)
         -> Result<(), UvError>
     {
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_chown(loop_.handle,
                               req, path.as_ptr(),
                               uid as uvll::uv_uid_t,
@@ -206,7 +206,7 @@ impl FsRequest {
     pub fn truncate(loop_: &Loop, file: c_int, offset: i64)
         -> Result<(), UvError>
     {
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_ftruncate(loop_.handle, req, file, offset, cb)
         })
     }
@@ -214,7 +214,7 @@ impl FsRequest {
     pub fn link(loop_: &Loop, src: &CString, dst: &CString)
         -> Result<(), UvError>
     {
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_link(loop_.handle, req,
                              src.as_ptr(),
                              dst.as_ptr(),
@@ -225,7 +225,7 @@ impl FsRequest {
     pub fn symlink(loop_: &Loop, src: &CString, dst: &CString)
         -> Result<(), UvError>
     {
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_symlink(loop_.handle, req,
                                 src.as_ptr(),
                                 dst.as_ptr(),
@@ -234,13 +234,13 @@ impl FsRequest {
     }
 
     pub fn fsync(loop_: &Loop, fd: c_int) -> Result<(), UvError> {
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_fsync(loop_.handle, req, fd, cb)
         })
     }
 
     pub fn datasync(loop_: &Loop, fd: c_int) -> Result<(), UvError> {
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_fdatasync(loop_.handle, req, fd, cb)
         })
     }
@@ -251,7 +251,7 @@ impl FsRequest {
         // libuv takes seconds
         let atime = atime as libc::c_double / 1000.0;
         let mtime = mtime as libc::c_double / 1000.0;
-        execute_nop(|req, cb| unsafe {
+        execute_nop(ref |req, cb| unsafe {
             uvll::uv_fs_utime(loop_.handle, req, path.as_ptr(),
                               atime, mtime, cb)
         })
@@ -322,7 +322,7 @@ fn execute(f: |*mut uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
             req.fired = true;
             let mut slot = None;
             let loop_ = unsafe { uvll::get_loop_from_fs_req(req.req) };
-            wait_until_woken_after(&mut slot, &Loop::wrap(loop_), || {
+            wait_until_woken_after(&mut slot, &Loop::wrap(loop_), ref || {
                 unsafe { uvll::set_data_for_req(req.req, &mut slot) }
             });
             match req.get_result() {

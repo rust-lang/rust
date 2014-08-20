@@ -304,7 +304,7 @@ pub fn start(argc: int, argv: *const *const u8,
     rt::init(argc, argv);
     let mut main = Some(main);
     let mut ret = None;
-    simple::task().run(|| {
+    simple::task().run(ref || {
         ret = Some(run(event_loop_factory, main.take_unwrap()));
     }).destroy();
     // unsafe is ok b/c we're sure that the runtime is gone

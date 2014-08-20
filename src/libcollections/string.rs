@@ -1142,7 +1142,7 @@ mod tests {
 
     #[bench]
     fn bench_with_capacity(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             String::with_capacity(100)
         });
     }
@@ -1150,7 +1150,7 @@ mod tests {
     #[bench]
     fn bench_push_str(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
-        b.iter(|| {
+        b.iter(ref || {
             let mut r = String::new();
             r.push_str(s);
         });
@@ -1162,7 +1162,7 @@ mod tests {
                   Lorem ipsum dolor sit amet, consectetur. ";
 
         assert_eq!(100, s.len());
-        b.iter(|| {
+        b.iter(ref || {
             let _ = String::from_utf8_lossy(s);
         });
     }
@@ -1171,7 +1171,7 @@ mod tests {
     fn from_utf8_lossy_100_multibyte(b: &mut Bencher) {
         let s = "𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰".as_bytes();
         assert_eq!(100, s.len());
-        b.iter(|| {
+        b.iter(ref || {
             let _ = String::from_utf8_lossy(s);
         });
     }
@@ -1179,7 +1179,7 @@ mod tests {
     #[bench]
     fn from_utf8_lossy_invalid(b: &mut Bencher) {
         let s = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
-        b.iter(|| {
+        b.iter(ref || {
             let _ = String::from_utf8_lossy(s);
         });
     }
@@ -1187,7 +1187,7 @@ mod tests {
     #[bench]
     fn from_utf8_lossy_100_invalid(b: &mut Bencher) {
         let s = Vec::from_elem(100, 0xF5u8);
-        b.iter(|| {
+        b.iter(ref || {
             let _ = String::from_utf8_lossy(s.as_slice());
         });
     }

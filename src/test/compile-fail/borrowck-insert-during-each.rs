@@ -25,7 +25,7 @@ impl Foo {
 
 fn bar(f: &mut Foo) {
   f.foo(
-        |a| { //~ ERROR closure requires unique access to `f`
+        ref |a| { //~ ERROR closure requires unique access to `f`
             f.n.insert(*a);
         })
 }

@@ -68,13 +68,13 @@ fn filter_view_item<'r>(cx: &mut Context, view_item: &'r ast::ViewItem)
 
 fn fold_mod(cx: &mut Context, m: &ast::Mod) -> ast::Mod {
     let filtered_items: Vec<&Gc<ast::Item>> = m.items.iter()
-            .filter(|a| item_in_cfg(cx, &***a))
+            .filter(ref |a| item_in_cfg(cx, &***a))
             .collect();
     let flattened_items = filtered_items.move_iter()
-            .flat_map(|&x| cx.fold_item(x).move_iter())
+            .flat_map(ref |&x| cx.fold_item(x).move_iter())
             .collect();
     let filtered_view_items = m.view_items.iter().filter_map(|a| {
-        filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
+        filter_view_item(cx, a).map(ref |x| cx.fold_view_item(x))
     }).collect();
     ast::Mod {
         inner: m.inner,
@@ -95,10 +95,10 @@ fn filter_foreign_item(cx: &mut Context, item: Gc<ast::ForeignItem>)
 fn fold_foreign_mod(cx: &mut Context, nm: &ast::ForeignMod) -> ast::ForeignMod {
     let filtered_items = nm.items
                            .iter()
-                           .filter_map(|a| filter_foreign_item(cx, *a))
+                           .filter_map(ref |a| filter_foreign_item(cx, *a))
                            .collect();
     let filtered_view_items = nm.view_items.iter().filter_map(|a| {
-        filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
+        filter_view_item(cx, a).map(ref |x| cx.fold_view_item(x))
     }).collect();
     ast::ForeignMod {
         abi: nm.abi,
@@ -111,17 +111,17 @@ fn fold_item_underscore(cx: &mut Context, item: &ast::Item_) -> ast::Item_ {
     let item = match *item {
         ast::ItemImpl(ref a, ref b, c, ref impl_items) => {
             let impl_items = impl_items.iter()
-                                       .filter(|ii| {
+                                       .filter(ref |ii| {
                                            impl_item_in_cfg(cx, &**ii)
                                        })
-                                       .map(|x| *x)
+                                       .map(ref |x| *x)
                                        .collect();
             ast::ItemImpl((*a).clone(), (*b).clone(), c, impl_items)
         }
         ast::ItemTrait(ref a, ref b, ref c, ref methods) => {
             let methods = methods.iter()
-                                 .filter(|m| trait_method_in_cfg(cx, *m) )
-                                 .map(|x| (*x).clone())
+                                 .filter(ref |m| trait_method_in_cfg(cx, *m) )
+                                 .map(ref |x| (*x).clone())
                                  .collect();
             ast::ItemTrait((*a).clone(), (*b).clone(), (*c).clone(), methods)
         }
@@ -129,8 +129,8 @@ fn fold_item_underscore(cx: &mut Context, item: &ast::Item_) -> ast::Item_ {
             ast::ItemStruct(fold_struct(cx, &**def), generics.clone())
         }
         ast::ItemEnum(ref def, ref generics) => {
-            let mut variants = def.variants.iter().map(|c| c.clone()).
-            filter_map(|v| {
+            let mut variants = def.variants.iter().map(ref |c| c.clone()).
+            filter_map(ref |v| {
                 if !(cx.in_cfg)(v.node.attrs.as_slice()) {
                     None
                 } else {
@@ -160,7 +160,7 @@ fn fold_item_underscore(cx: &mut Context, item: &ast::Item_) -> ast::Item_ {
 }
 
 fn fold_struct(cx: &mut Context, def: &ast::StructDef) -> Gc<ast::StructDef> {
-    let mut fields = def.fields.iter().map(|c| c.clone()).filter(|m| {
+    let mut fields = def.fields.iter().map(ref |c| c.clone()).filter(ref |m| {
         (cx.in_cfg)(m.node.attrs.as_slice())
     });
     box(GC) ast::StructDef {
@@ -187,17 +187,17 @@ fn retain_stmt(cx: &mut Context, stmt: Gc<ast::Stmt>) -> bool {
 
 fn fold_block(cx: &mut Context, b: ast::P<ast::Block>) -> ast::P<ast::Block> {
     let resulting_stmts: Vec<&Gc<ast::Stmt>> =
-        b.stmts.iter().filter(|&a| retain_stmt(cx, *a)).collect();
+        b.stmts.iter().filter(ref |&a| retain_stmt(cx, *a)).collect();
     let resulting_stmts = resulting_stmts.move_iter()
-        .flat_map(|stmt| cx.fold_stmt(&**stmt).move_iter())
+        .flat_map(ref |stmt| cx.fold_stmt(&**stmt).move_iter())
         .collect();
-    let filtered_view_items = b.view_items.iter().filter_map(|a| {
-        filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
+    let filtered_view_items = b.view_items.iter().filter_map(ref |a| {
+        filter_view_item(cx, a).map(ref |x| cx.fold_view_item(x))
     }).collect();
     ast::P(ast::Block {
         view_items: filtered_view_items,
         stmts: resulting_stmts,
-        expr: b.expr.map(|x| cx.fold_expr(x)),
+        expr: b.expr.map(ref |x| cx.fold_expr(x)),
         id: b.id,
         rules: b.rules,
         span: b.span,
@@ -208,8 +208,8 @@ fn fold_expr(cx: &mut Context, expr: Gc<ast::Expr>) -> Gc<ast::Expr> {
     let expr = match expr.node {
         ast::ExprMatch(ref m, ref arms) => {
             let arms = arms.iter()
-                .filter(|a| (cx.in_cfg)(a.attrs.as_slice()))
-                .map(|a| a.clone())
+                .filter(ref |a| (cx.in_cfg)(a.attrs.as_slice()))
+                .map(ref |a| a.clone())
                 .collect();
             box(GC) ast::Expr {
                 id: expr.id,

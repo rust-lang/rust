@@ -81,7 +81,7 @@ impl<'a> DataflowLabeller<'a> {
                                      to_lp: |uint| -> Rc<LoanPath>) -> String {
         let mut saw_some = false;
         let mut set = "{".to_string();
-        dfcx.each_bit_for_node(e, cfgidx, |index| {
+        dfcx.each_bit_for_node(e, cfgidx, ref |index| {
             let lp = to_lp(index);
             if saw_some {
                 set.push_str(", ");
@@ -96,7 +96,7 @@ impl<'a> DataflowLabeller<'a> {
 
     fn dataflow_loans_for(&self, e: EntryOrExit, cfgidx: CFGIndex) -> String {
         let dfcx = &self.analysis_data.loans;
-        let loan_index_to_path = |loan_index| {
+        let loan_index_to_path = ref |loan_index| {
             let all_loans = &self.analysis_data.all_loans;
             all_loans.get(loan_index).loan_path()
         };
@@ -105,7 +105,7 @@ impl<'a> DataflowLabeller<'a> {
 
     fn dataflow_moves_for(&self, e: EntryOrExit, cfgidx: CFGIndex) -> String {
         let dfcx = &self.analysis_data.move_data.dfcx_moves;
-        let move_index_to_path = |move_index| {
+        let move_index_to_path = ref |move_index| {
             let move_data = &self.analysis_data.move_data.move_data;
             let moves = move_data.moves.borrow();
             let move = moves.get(move_index);
@@ -116,7 +116,7 @@ impl<'a> DataflowLabeller<'a> {
 
     fn dataflow_assigns_for(&self, e: EntryOrExit, cfgidx: CFGIndex) -> String {
         let dfcx = &self.analysis_data.move_data.dfcx_assign;
-        let assign_index_to_path = |assign_index| {
+        let assign_index_to_path = ref |assign_index| {
             let move_data = &self.analysis_data.move_data.move_data;
             let assignments = move_data.var_assignments.borrow();
             let assignment = assignments.get(assign_index);

@@ -1258,7 +1258,7 @@ mod bench {
     #[bench]
     fn join_home_dir(b: &mut Bencher) {
         let posix_path = Path::new("/");
-        b.iter(|| {
+        b.iter(ref || {
             posix_path.join("home");
         });
     }
@@ -1266,7 +1266,7 @@ mod bench {
     #[bench]
     fn join_abs_path_home_dir(b: &mut Bencher) {
         let posix_path = Path::new("/");
-        b.iter(|| {
+        b.iter(ref || {
             posix_path.join("/home");
         });
     }
@@ -1274,7 +1274,7 @@ mod bench {
     #[bench]
     fn join_many_home_dir(b: &mut Bencher) {
         let posix_path = Path::new("/");
-        b.iter(|| {
+        b.iter(ref || {
             posix_path.join_many(&["home"]);
         });
     }
@@ -1282,7 +1282,7 @@ mod bench {
     #[bench]
     fn join_many_abs_path_home_dir(b: &mut Bencher) {
         let posix_path = Path::new("/");
-        b.iter(|| {
+        b.iter(ref || {
             posix_path.join_many(&["/home"]);
         });
     }
@@ -1290,7 +1290,7 @@ mod bench {
     #[bench]
     fn push_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
-        b.iter(|| {
+        b.iter(ref || {
             posix_path.push("home");
         });
     }
@@ -1298,7 +1298,7 @@ mod bench {
     #[bench]
     fn push_abs_path_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
-        b.iter(|| {
+        b.iter(ref || {
             posix_path.push("/home");
         });
     }
@@ -1306,7 +1306,7 @@ mod bench {
     #[bench]
     fn push_many_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
-        b.iter(|| {
+        b.iter(ref || {
             posix_path.push_many(&["home"]);
         });
     }
@@ -1314,7 +1314,7 @@ mod bench {
     #[bench]
     fn push_many_abs_path_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
-        b.iter(|| {
+        b.iter(ref || {
             posix_path.push_many(&["/home"]);
         });
     }
@@ -1322,7 +1322,7 @@ mod bench {
     #[bench]
     fn ends_with_path_home_dir(b: &mut Bencher) {
         let posix_home_path = Path::new("/home");
-        b.iter(|| {
+        b.iter(ref || {
             posix_home_path.ends_with_path(&Path::new("home"));
         });
     }
@@ -1330,7 +1330,7 @@ mod bench {
     #[bench]
     fn ends_with_path_missmatch_jome_home(b: &mut Bencher) {
         let posix_home_path = Path::new("/home");
-        b.iter(|| {
+        b.iter(ref || {
             posix_home_path.ends_with_path(&Path::new("jome"));
         });
     }
@@ -1340,7 +1340,7 @@ mod bench {
         let path = Path::new("/home/1/2/3/4/5/6/7/8/9");
         let mut sub = path.clone();
         sub.pop();
-        b.iter(|| {
+        b.iter(ref || {
             path.is_ancestor_of(&sub);
         });
     }
@@ -1350,7 +1350,7 @@ mod bench {
         let path = Path::new("/a/b/c");
         let mut other = path.clone();
         other.pop();
-        b.iter(|| {
+        b.iter(ref || {
             path.path_relative_from(&other);
         });
     }
@@ -1361,7 +1361,7 @@ mod bench {
         let mut other = path.clone();
         other.pop();
         other.push("d");
-        b.iter(|| {
+        b.iter(ref || {
             path.path_relative_from(&other);
         });
     }
@@ -1371,7 +1371,7 @@ mod bench {
         let path = Path::new("/a/b");
         let mut other = path.clone();
         other.push("c");
-        b.iter(|| {
+        b.iter(ref || {
             path.path_relative_from(&other);
         });
     }

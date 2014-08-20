@@ -134,7 +134,7 @@ mod bench {
         let mut rng = ::test::weak_rng();
         let mut exp = Exp::new(2.71828 * 3.14159);
 
-        b.iter(|| {
+        b.iter(ref || {
             for _ in range(0, ::RAND_BENCH_N) {
                 exp.sample(&mut rng);
             }

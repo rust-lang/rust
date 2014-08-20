@@ -147,7 +147,7 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
 
     // these channels will allow us to talk to each creature by 'name'/index
     let mut to_creature: Vec<Sender<CreatureInfo>> =
-        set.iter().enumerate().map(|(ii, &col)| {
+        set.iter().enumerate().map(ref |(ii, &col)| {
             // create each creature as a listener with a port, and
             // give us a channel to talk to each
             let to_rendezvous = to_rendezvous.clone();
@@ -198,7 +198,7 @@ fn main() {
     } else {
         std::os::args().as_slice()
                        .get(1)
-                       .and_then(|arg| from_str(arg.as_slice()))
+                       .and_then(ref |arg| from_str(arg.as_slice()))
                        .unwrap_or(600)
     };
 

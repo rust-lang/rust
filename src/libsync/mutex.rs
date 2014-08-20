@@ -251,7 +251,7 @@ impl StaticMutex {
         // of lock stealing the lock, it's also possible for native/native
         // contention to hit this location, but as less common.
         let t: Box<Task> = Local::take();
-        t.deschedule(1, |task| {
+        t.deschedule(1, ref |task| {
             let task = unsafe { task.cast_to_uint() };
 
             // These accesses are protected by the respective native/green
@@ -336,7 +336,7 @@ impl StaticMutex {
         }
 
         let mut node = q::Node::new(0);
-        t.deschedule(1, |task| {
+        t.deschedule(1, ref |task| {
             unsafe {
                 node.data = task.cast_to_uint();
                 self.q.push(&mut node);

@@ -176,7 +176,7 @@ pub fn await(fd: net::sock_t, deadline: Option<u64>,
     };
     let mut tv: libc::timeval = unsafe { mem::zeroed() };
 
-    match retry(|| {
+    match retry(ref || {
         let now = ::io::timer::now();
         let tvp = match deadline {
             None => ptr::mut_null(),

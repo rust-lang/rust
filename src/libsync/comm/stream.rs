@@ -181,7 +181,7 @@ impl<T: Send> Packet<T> {
         // Welp, our channel has no data. Deschedule the current task and
         // initiate the blocking protocol.
         let task: Box<Task> = Local::take();
-        task.deschedule(1, |task| {
+        task.deschedule(1, ref |task| {
             self.decrement(task)
         });
 

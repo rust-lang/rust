@@ -585,10 +585,11 @@ pub mod reader {
         }
 
         fn read_option<T>(&mut self,
-                          f: |&mut Decoder<'doc>, bool| -> DecodeResult<T>) -> DecodeResult<T> {
+                          f: |&mut Decoder<'doc>, bool| -> DecodeResult<T>)
+                          -> DecodeResult<T> {
             debug!("read_option()");
-            self.read_enum("Option", |this| {
-                this.read_enum_variant(["None", "Some"], |this, idx| {
+            self.read_enum("Option", ref |this| {
+                this.read_enum_variant(["None", "Some"], ref |this, idx| {
                     match idx {
                         0 => f(this, false),
                         1 => f(this, true),
@@ -1137,7 +1138,7 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        b.iter(|| {
+        b.iter(ref || {
             let mut i = 0;
             while i < data.len() {
                 sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
@@ -1155,7 +1156,7 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        b.iter(|| {
+        b.iter(ref || {
             let mut i = 1;
             while i < data.len() {
                 sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
@@ -1174,7 +1175,7 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        b.iter(|| {
+        b.iter(ref || {
             let mut i = 0;
             while i < data.len() {
                 sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
@@ -1193,7 +1194,7 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        b.iter(|| {
+        b.iter(ref || {
             let mut i = 1;
             while i < data.len() {
                 sum += reader::vuint_at(data.as_slice(), i).unwrap().val;

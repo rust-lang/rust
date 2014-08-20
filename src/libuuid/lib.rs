@@ -843,7 +843,7 @@ mod bench {
 
     #[bench]
     pub fn create_uuids(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             Uuid::new_v4();
         })
     }
@@ -851,7 +851,7 @@ mod bench {
     #[bench]
     pub fn uuid_to_string(b: &mut Bencher) {
         let u = Uuid::new_v4();
-        b.iter(|| {
+        b.iter(ref || {
             u.to_string();
         })
     }
@@ -859,7 +859,7 @@ mod bench {
     #[bench]
     pub fn parse_str(b: &mut Bencher) {
         let s = "urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4";
-        b.iter(|| {
+        b.iter(ref || {
             Uuid::parse_string(s).unwrap();
         })
     }

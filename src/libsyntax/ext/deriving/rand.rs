@@ -45,7 +45,7 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                 ),
                 ret_ty: Self,
                 attributes: Vec::new(),
-                combine_substructure: combine_substructure(|a, b, c| {
+                combine_substructure: combine_substructure(ref |a, b, c| {
                     rand_substructure(a, b, c)
                 })
             }
@@ -66,7 +66,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span,
         cx.ident_of("Rand"),
         cx.ident_of("rand")
     );
-    let rand_call = |cx: &mut ExtCtxt, span| {
+    let rand_call = ref |cx: &mut ExtCtxt, span| {
         cx.expr_call_global(span,
                             rand_ident.clone(),
                             vec!( *rng.get(0) ))
@@ -113,11 +113,19 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                               value_ref,
                                               variant_count);
 
-            let mut arms = variants.iter().enumerate().map(|(i, &(ident, v_span, ref summary))| {
+            let mut arms = variants.iter()
+                                   .enumerate()
+                                   .map(ref |(i, &(ident,
+                                                   v_span,
+                                                   ref summary))| {
                 let i_expr = cx.expr_uint(v_span, i);
                 let pat = cx.pat_lit(v_span, i_expr);
 
-                let thing = rand_thing(cx, v_span, ident, summary, |cx, sp| rand_call(cx, sp));
+                let thing = rand_thing(cx,
+                                       v_span,
+                                       ident,
+                                       summary,
+                                       ref |cx, sp| rand_call(cx, sp));
                 cx.arm(v_span, vec!( pat ), thing)
             }).collect::<Vec<ast::Arm> >();
 
@@ -143,12 +151,14 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span,
                 if fields.is_empty() {
                     cx.expr_ident(trait_span, ctor_ident)
                 } else {
-                    let exprs = fields.iter().map(|span| rand_call(cx, *span)).collect();
+                    let exprs = fields.iter()
+                                      .map(ref |span| rand_call(cx, *span))
+                                      .collect();
                     cx.expr_call_ident(trait_span, ctor_ident, exprs)
                 }
             }
             Named(ref fields) => {
-                let rand_fields = fields.iter().map(|&(ident, span)| {
+                let rand_fields = fields.iter().map(ref |&(ident, span)| {
                     let e = rand_call(cx, span);
                     cx.field_imm(span, ident, e)
                 }).collect();

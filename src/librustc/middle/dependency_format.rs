@@ -132,7 +132,7 @@ fn calculate_type(sess: &session::Session,
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a
     // dependency to be relied upon twice is for both cases to rely on a dylib.
-    sess.cstore.iter_crate_data(|cnum, data| {
+    sess.cstore.iter_crate_data(ref |cnum, data| {
         let src = sess.cstore.get_used_crate_source(cnum).unwrap();
         if src.dylib.is_some() {
             add_library(sess, cnum, cstore::RequireDynamic, &mut formats);
@@ -147,7 +147,7 @@ fn calculate_type(sess: &session::Session,
     });
 
     // Collect what we've got so far in the return vector.
-    let mut ret = range(1, sess.cstore.next_crate_num()).map(|i| {
+    let mut ret = range(1, sess.cstore.next_crate_num()).map(ref |i| {
         match formats.find(&i).map(|v| *v) {
             v @ Some(cstore::RequireDynamic) => v,
             _ => None,
@@ -156,7 +156,7 @@ fn calculate_type(sess: &session::Session,
 
     // Run through the dependency list again, and add any missing libraries as
     // static libraries.
-    sess.cstore.iter_crate_data(|cnum, data| {
+    sess.cstore.iter_crate_data(ref |cnum, data| {
         let src = sess.cstore.get_used_crate_source(cnum).unwrap();
         if src.dylib.is_none() && !formats.contains_key(&cnum) {
             assert!(src.rlib.is_some());
@@ -223,8 +223,9 @@ fn add_library(sess: &session::Session,
 
 fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
-    if crates.iter().all(|&(_, ref p)| p.is_some()) {
-        Some(crates.move_iter().map(|_| Some(cstore::RequireStatic)).collect())
+    if crates.iter().all(ref |&(_, ref p)| p.is_some()) {
+        Some(crates.move_iter()
+                   .map(ref |_| Some(cstore::RequireStatic)).collect())
     } else {
         None
     }

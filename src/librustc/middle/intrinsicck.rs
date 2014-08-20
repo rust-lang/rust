@@ -26,7 +26,7 @@ use syntax::visit;
 fn type_size_is_affected_by_type_parameters(tcx: &ty::ctxt, typ: ty::t)
                                             -> bool {
     let mut result = false;
-    ty::maybe_walk_ty(typ, |typ| {
+    ty::maybe_walk_ty(typ, ref |typ| {
         match ty::get(typ).sty {
             ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_ptr(_) |
             ty::ty_rptr(..) | ty::ty_bare_fn(..) | ty::ty_closure(..) => {

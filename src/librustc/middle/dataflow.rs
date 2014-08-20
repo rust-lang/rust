@@ -152,7 +152,7 @@ fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
         Some(decl) => add_entries_from_fn_decl(&mut index, decl, cfg.entry)
     }
 
-    cfg.graph.each_node(|node_idx, node| {
+    cfg.graph.each_node(ref |node_idx, node| {
         if node.data.id != ast::DUMMY_NODE_ID {
             index.insert(node.data.id, node_idx);
         }

@@ -262,7 +262,7 @@ impl<'a> CheckLoanCtxt<'a> {
         //     let y = a;          // Conflicts with restriction
 
         let loan_path = owned_ptr_base_path(loan_path);
-        let cont = self.each_in_scope_loan(scope_id, |loan| {
+        let cont = self.each_in_scope_loan(scope_id, ref |loan| {
             let mut ret = true;
             for restr_path in loan.restricted_paths.iter() {
                 if **restr_path == *loan_path {
@@ -302,7 +302,7 @@ impl<'a> CheckLoanCtxt<'a> {
                 }
             }
 
-            let cont = self.each_in_scope_loan(scope_id, |loan| {
+            let cont = self.each_in_scope_loan(scope_id, ref |loan| {
                 if *loan.loan_path == *loan_path {
                     op(loan)
                 } else {
@@ -323,7 +323,7 @@ impl<'a> CheckLoanCtxt<'a> {
         //! we encounter `scope_id`.
 
         let mut result = Vec::new();
-        self.dfcx_loans.each_gen_bit(scope_id, |loan_index| {
+        self.dfcx_loans.each_gen_bit(scope_id, ref |loan_index| {
             result.push(loan_index);
             true
         });
@@ -341,7 +341,7 @@ impl<'a> CheckLoanCtxt<'a> {
         let new_loan_indices = self.loans_generated_by(scope_id);
         debug!("new_loan_indices = {:?}", new_loan_indices);
 
-        self.each_issued_loan(scope_id, |issued_loan| {
+        self.each_issued_loan(scope_id, ref |issued_loan| {
             for &new_loan_index in new_loan_indices.iter() {
                 let new_loan = &self.all_loans[new_loan_index];
                 self.report_error_if_loans_conflict(issued_loan, new_loan);
@@ -626,7 +626,7 @@ impl<'a> CheckLoanCtxt<'a> {
 
         let mut ret = UseOk;
 
-        self.each_in_scope_loan_affecting_path(expr_id, use_path, |loan| {
+        self.each_in_scope_loan_affecting_path(expr_id, use_path, ref |loan| {
             if !compatible_borrow_kinds(loan.kind, borrow_kind) {
                 ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
                 false
@@ -733,7 +733,9 @@ impl<'a> CheckLoanCtxt<'a> {
         if self.is_local_variable_or_arg(assignee_cmt.clone()) {
             assert!(assignee_cmt.mutbl.is_immutable()); // no "const" locals
             let lp = opt_loan_path(&assignee_cmt).unwrap();
-            self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
+            self.move_data.each_assignment_of(assignment_id,
+                                              &lp,
+                                              ref |assign| {
                 self.bccx.report_reassigned_immutable_variable(
                     assignment_span,
                     &*lp,
@@ -869,7 +871,9 @@ impl<'a> CheckLoanCtxt<'a> {
                 None => { return; /* no loan path, can't be any loans */ }
             };
 
-            this.each_in_scope_loan_affecting_path(assignment_id, &*loan_path, |loan| {
+            this.each_in_scope_loan_affecting_path(assignment_id,
+                                                   &*loan_path,
+                                                   ref |loan| {
                 this.report_illegal_mutation(assignment_span, &*loan_path, loan);
                 false
             });

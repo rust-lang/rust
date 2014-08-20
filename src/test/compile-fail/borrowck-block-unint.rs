@@ -11,7 +11,7 @@
 fn force(f: ||) { f(); }
 fn main() {
     let x: int;
-    force(|| {  //~ ERROR capture of possibly uninitialized variable: `x`
+    force(ref || {  //~ ERROR capture of possibly uninitialized variable: `x`
         println!("{}", x);
     });
 }

@@ -113,10 +113,10 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
         let cx = get_cx();
 
         let mut externs = Vec::new();
-        cx.sess().cstore.iter_crate_data(|n, meta| {
+        cx.sess().cstore.iter_crate_data(ref |n, meta| {
             externs.push((n, meta.clean()));
         });
-        externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
+        externs.sort_by(ref |&(a, _), &(b, _)| a.cmp(&b));
 
         // Figure out the name of this crate
         let input = driver::FileInput(cx.src.clone());
@@ -201,16 +201,18 @@ pub struct ExternalCrate {
 impl Clean<ExternalCrate> for cstore::crate_metadata {
     fn clean(&self) -> ExternalCrate {
         let mut primitives = Vec::new();
-        get_cx().tcx_opt().map(|tcx| {
+        get_cx().tcx_opt().map(ref |tcx| {
             csearch::each_top_level_item_of_crate(&tcx.sess.cstore,
                                                   self.cnum,
-                                                  |def, _, _| {
+                                                  ref |def, _, _| {
                 let did = match def {
                     decoder::DlDef(def::DefMod(did)) => did,
                     _ => return
                 };
                 let attrs = inline::load_attrs(tcx, did);
-                Primitive::find(attrs.as_slice()).map(|prim| primitives.push(prim));
+                Primitive::find(attrs.as_slice()).map(ref |prim| {
+                    primitives.push(prim)
+                });
             })
         });
         ExternalCrate {
@@ -1803,14 +1805,16 @@ impl Clean<Vec<Item>> for ast::ViewItem {
                         // Attempt to inline all reexported items, but be sure
                         // to keep any non-inlineable reexports so they can be
                         // listed in the documentation.
-                        let remaining = list.iter().filter(|path| {
+                        let remaining = list.iter().filter(ref |path| {
                             match inline::try_inline(path.node.id(), None) {
                                 Some(items) => {
                                     ret.extend(items.move_iter()); false
                                 }
                                 None => true,
                             }
-                        }).map(|a| a.clone()).collect::<Vec<ast::PathListItem>>();
+                        }).map(ref |a| {
+                            a.clone()
+                        }).collect::<Vec<ast::PathListItem>>();
                         if remaining.len() > 0 {
                             let path = ast::ViewPathList(a.clone(),
                                                          remaining,
@@ -1970,7 +1974,7 @@ fn lit_to_string(lit: &ast::Lit) -> String {
         ast::LitBinary(ref data) => format!("{:?}", data.as_slice()),
         ast::LitByte(b) => {
             let mut res = String::from_str("b'");
-            (b as char).escape_default(|c| {
+            (b as char).escape_default(ref |c| {
                 res.push_char(c);
             });
             res.push_char('\'');

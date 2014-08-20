@@ -298,7 +298,7 @@ pub fn unindent(s: &str) -> String {
     let lines = s.lines_any().collect::<Vec<&str> >();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
-    let min_indent = lines.iter().fold(uint::MAX, |min_indent, line| {
+    let min_indent = lines.iter().fold(uint::MAX, ref |min_indent, line| {
 
         // After we see the first non-whitespace line, look at
         // the line we have. If it is not whitespace, and therefore
@@ -324,7 +324,7 @@ pub fn unindent(s: &str) -> String {
         } else {
             saw_first_line = true;
             let mut spaces = 0;
-            line.chars().all(|char| {
+            line.chars().all(ref |char| {
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {

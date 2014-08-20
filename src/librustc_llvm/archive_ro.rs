@@ -44,7 +44,7 @@ impl ArchiveRO {
     pub fn read<'a>(&'a self, file: &str) -> Option<&'a [u8]> {
         unsafe {
             let mut size = 0 as libc::size_t;
-            let ptr = file.with_c_str(|file| {
+            let ptr = file.with_c_str(ref |file| {
                 ::LLVMRustArchiveReadSection(self.ptr, file, &mut size)
             });
             if ptr.is_null() {

@@ -13,7 +13,7 @@ fn ignore(_f: <'z>|&'z int| -> &'z int) {}
 fn nested() {
     let y = 3;
     ignore(
-        |z| { //~ ERROR `y` does not live long enough
+        ref |z| { //~ ERROR `y` does not live long enough
             if false { &y } else { z }
         });
 }

@@ -550,7 +550,7 @@ mod test {
         let src: Vec<u8> = Vec::from_elem(len, 5);
 
         b.bytes = (times * len) as u64;
-        b.iter(|| {
+        b.iter(ref || {
             let mut wr = MemWriter::new();
             for _ in range(0, times) {
                 wr.write(src.as_slice()).unwrap();
@@ -558,7 +558,7 @@ mod test {
 
             let v = wr.unwrap();
             assert_eq!(v.len(), times * len);
-            assert!(v.iter().all(|x| *x == 5));
+            assert!(v.iter().all(ref |x| *x == 5));
         });
     }
 
@@ -604,7 +604,7 @@ mod test {
 
     #[bench]
     fn bench_mem_reader(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             let buf = Vec::from_slice([5 as u8, ..100]);
             {
                 let mut rdr = MemReader::new(buf);
@@ -619,7 +619,7 @@ mod test {
 
     #[bench]
     fn bench_buf_writer(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             let mut buf = [0 as u8, ..100];
             {
                 let mut wr = BufWriter::new(buf);
@@ -633,7 +633,7 @@ mod test {
 
     #[bench]
     fn bench_buf_reader(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             let buf = [5 as u8, ..100];
             {
                 let mut rdr = BufReader::new(buf);

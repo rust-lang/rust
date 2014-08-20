@@ -531,7 +531,7 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
             // to be do-block/for-loop confusion
             demand::suptype_with_fn(&fcx, tail_expr.span, false,
                 fcx.ret_ty, fcx.expr_ty(&**tail_expr),
-                |sp, e, a, s| {
+                ref |sp, e, a, s| {
                     fcx.report_mismatched_return_types(sp, e, a, s);
                 });
         }
@@ -804,7 +804,7 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                 // corresponding method definition in the trait.
                 let opt_trait_method_ty =
                     trait_items.iter()
-                               .find(|ti| {
+                               .find(ref |ti| {
                                    ti.ident().name == impl_item_ty.ident()
                                                                   .name
                                });
@@ -3534,7 +3534,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       }
       ast::ExprTup(ref elts) => {
         let expected = expected.only_has_type();
-        let flds = expected.map_to_option(fcx, |sty| {
+        let flds = expected.map_to_option(fcx, ref |sty| {
             match *sty {
                 ty::ty_tup(ref flds) => Some((*flds).clone()),
                 _ => None
@@ -3543,7 +3543,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         let mut bot_field = false;
         let mut err_field = false;
 
-        let elt_ts = elts.iter().enumerate().map(|(i, e)| {
+        let elt_ts = elts.iter().enumerate().map(ref |(i, e)| {
             let opt_hint = match flds {
                 Some(ref fs) if i < fs.len() => ExpectHasType(*fs.get(i)),
                 _ => NoExpectation
@@ -4771,7 +4771,7 @@ pub fn check_bounds_are_used(ccx: &CrateCtxt,
     if tps.len() == 0u { return; }
     let mut tps_used = Vec::from_elem(tps.len(), false);
 
-    ty::walk_ty(ty, |t| {
+    ty::walk_ty(ty, ref |t| {
             match ty::get(t).sty {
                 ty::ty_param(ParamTy {idx, ..}) => {
                     debug!("Found use of ty param num {}", idx);

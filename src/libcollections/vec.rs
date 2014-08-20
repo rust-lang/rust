@@ -2010,7 +2010,7 @@ mod tests {
 
     #[bench]
     fn bench_new(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             let v: Vec<uint> = Vec::new();
             assert_eq!(v.len(), 0);
             assert_eq!(v.capacity(), 0);
@@ -2020,7 +2020,7 @@ mod tests {
     fn do_bench_with_capacity(b: &mut Bencher, src_len: uint) {
         b.bytes = src_len as u64;
 
-        b.iter(|| {
+        b.iter(ref || {
             let v: Vec<uint> = Vec::with_capacity(src_len);
             assert_eq!(v.len(), 0);
             assert_eq!(v.capacity(), src_len);
@@ -2050,7 +2050,7 @@ mod tests {
     fn do_bench_from_fn(b: &mut Bencher, src_len: uint) {
         b.bytes = src_len as u64;
 
-        b.iter(|| {
+        b.iter(ref || {
             let dst = Vec::from_fn(src_len, |i| i);
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
@@ -2080,7 +2080,7 @@ mod tests {
     fn do_bench_from_elem(b: &mut Bencher, src_len: uint) {
         b.bytes = src_len as u64;
 
-        b.iter(|| {
+        b.iter(ref || {
             let dst: Vec<uint> = Vec::from_elem(src_len, 5);
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().all(|x| *x == 5));
@@ -2112,7 +2112,7 @@ mod tests {
 
         b.bytes = src_len as u64;
 
-        b.iter(|| {
+        b.iter(ref || {
             let dst = Vec::from_slice(src.clone().as_slice());
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
@@ -2144,7 +2144,7 @@ mod tests {
 
         b.bytes = src_len as u64;
 
-        b.iter(|| {
+        b.iter(ref || {
             let dst: Vec<uint> = FromIterator::from_iter(src.clone().move_iter());
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
@@ -2177,7 +2177,7 @@ mod tests {
 
         b.bytes = src_len as u64;
 
-        b.iter(|| {
+        b.iter(ref || {
             let mut dst = dst.clone();
             dst.extend(src.clone().move_iter());
             assert_eq!(dst.len(), dst_len + src_len);
@@ -2226,7 +2226,7 @@ mod tests {
 
         b.bytes = src_len as u64;
 
-        b.iter(|| {
+        b.iter(ref || {
             let mut dst = dst.clone();
             dst.push_all(src.as_slice());
             assert_eq!(dst.len(), dst_len + src_len);
@@ -2275,7 +2275,7 @@ mod tests {
 
         b.bytes = src_len as u64;
 
-        b.iter(|| {
+        b.iter(ref || {
             let mut dst = dst.clone();
             dst.push_all_move(src.clone());
             assert_eq!(dst.len(), dst_len + src_len);
@@ -2323,7 +2323,7 @@ mod tests {
 
         b.bytes = src_len as u64;
 
-        b.iter(|| {
+        b.iter(ref || {
             let dst = src.clone();
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
@@ -2356,7 +2356,7 @@ mod tests {
 
         b.bytes = (times * src_len) as u64;
 
-        b.iter(|| {
+        b.iter(ref || {
             let mut dst = dst.clone();
 
             for _ in range(0, times) {

@@ -45,7 +45,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
            vtables.repr(ccx.tcx()),
            ref_id);
 
-    assert!(real_substs.types.all(|t| {
+    assert!(real_substs.types.all(ref |t| {
         !ty::type_needs_infer(*t) && !ty::type_has_params(*t)
     }));
 
@@ -84,7 +84,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     let map_node = session::expect(
         ccx.sess(),
         ccx.tcx.map.find(fn_id.node),
-        || {
+        ref || {
             format!("while monomorphizing {:?}, couldn't find it in \
                      the item map (may have attempted to monomorphize \
                      an item defined in a different crate?)",
@@ -131,7 +131,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         mono_ty.hash(&mut state);
 
         hash = format!("h{}", state.result());
-        ccx.tcx.map.with_path(fn_id.node, |path| {
+        ccx.tcx.map.with_path(fn_id.node, ref |path| {
             exported_name(path, hash.as_slice())
         })
     };
@@ -140,7 +140,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     // This shouldn't need to option dance.
     let mut hash_id = Some(hash_id);
-    let mk_lldecl = |abi: abi::Abi| {
+    let mk_lldecl = ref |abi: abi::Abi| {
         let lldecl = if abi != abi::Rust {
             foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, s.as_slice())
         } else {
@@ -179,7 +179,9 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeVariant(v) => {
             let parent = ccx.tcx.map.get_parent(fn_id.node);
             let tvs = ty::enum_variants(ccx.tcx(), local_def(parent));
-            let this_tv = tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
+            let this_tv = tvs.iter()
+                             .find(ref |tv| tv.id.node == fn_id.node)
+                             .unwrap();
             let d = mk_lldecl(abi::Rust);
             set_inline_hint(d);
             match v.node.kind {

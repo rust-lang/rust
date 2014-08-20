@@ -130,9 +130,9 @@ mod test {
     fn smoke_once() {
         static mut o: Once = ONCE_INIT;
         let mut a = 0i;
-        unsafe { o.doit(|| a += 1); }
+        unsafe { o.doit(ref || a += 1); }
         assert_eq!(a, 1);
-        unsafe { o.doit(|| a += 1); }
+        unsafe { o.doit(ref || a += 1); }
         assert_eq!(a, 1);
     }
 

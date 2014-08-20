@@ -75,7 +75,7 @@ impl Code {
     }
 
     fn pack(string: &str) -> Code {
-        string.bytes().fold(Code(0u64), |a, b| a.push_char(b))
+        string.bytes().fold(Code(0u64), ref |a, b| a.push_char(b))
     }
 
     fn unpack(&self, frame: uint) -> String {
@@ -133,7 +133,7 @@ impl Table {
     fn new() -> Table {
         Table {
             count: 0,
-            items: Vec::from_fn(TABLE_SIZE, |_| None),
+            items: Vec::from_fn(TABLE_SIZE, ref |_| None),
         }
     }
 
@@ -278,8 +278,8 @@ fn print_occurrences(frequencies: &mut Table, occurrence: &'static str) {
 
 fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> Vec<u8> {
     let mut res = Vec::new();
-    for l in r.lines().map(|l| l.ok().unwrap())
-        .skip_while(|l| key != l.as_slice().slice_to(key.len())).skip(1)
+    for l in r.lines().map(ref |l| l.ok().unwrap())
+        .skip_while(ref |l| key != l.as_slice().slice_to(key.len())).skip(1)
     {
         res.push_all(l.as_slice().trim().as_bytes());
     }
@@ -298,11 +298,11 @@ fn main() {
     };
     let input = Arc::new(input);
 
-    let nb_freqs: Vec<(uint, Future<Table>)> = range(1u, 3).map(|i| {
+    let nb_freqs: Vec<(uint, Future<Table>)> = range(1u, 3).map(ref |i| {
         let input = input.clone();
         (i, Future::spawn(proc() generate_frequencies(input.as_slice(), i)))
     }).collect();
-    let occ_freqs: Vec<Future<Table>> = OCCURRENCES.iter().map(|&occ| {
+    let occ_freqs: Vec<Future<Table>> = OCCURRENCES.iter().map(ref |&occ| {
         let input = input.clone();
         Future::spawn(proc() generate_frequencies(input.as_slice(), occ.len()))
     }).collect();

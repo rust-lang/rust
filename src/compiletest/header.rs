@@ -57,7 +57,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut no_pretty_expanded = false;
     let mut pretty_mode = None;
     let mut pretty_compare_only = false;
-    iter_header(testfile, |ln| {
+    iter_header(testfile, ref |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
           None => ()

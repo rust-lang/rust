@@ -1171,8 +1171,8 @@ pub fn ty_of_closure<AC:AstConv>(
     // that function type
     let rb = rscope::BindingRscope::new(id);
 
-    let input_tys = decl.inputs.iter().enumerate().map(|(i, a)| {
-        let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
+    let input_tys = decl.inputs.iter().enumerate().map(ref |(i, a)| {
+        let expected_arg_ty = expected_sig.as_ref().and_then(ref |e| {
             // no guarantee that the correct number of expected args
             // were supplied
             if i < e.inputs.len() {

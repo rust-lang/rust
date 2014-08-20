@@ -22,7 +22,7 @@ impl X {
 fn main() {
     let mut x = X(Right(main));
     (&mut x).with(
-        |opt| { //~ ERROR cannot borrow `x` as mutable more than once at a time
+        ref |opt| { //~ ERROR cannot borrow `x` as mutable more than once at a time
             match opt {
                 &Right(ref f) => {
                     x = X(Left((0,0)));

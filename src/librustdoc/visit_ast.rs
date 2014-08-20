@@ -74,7 +74,7 @@ impl<'a> RustdocVisitor<'a> {
                                               None);
         // attach the crate's exported macros to the top-level module:
         self.module.macros = krate.exported_macros.iter()
-            .map(|it| self.visit_macro(&**it)).collect();
+            .map(ref |it| self.visit_macro(&**it)).collect();
         self.module.is_crate = true;
     }
 
@@ -88,9 +88,9 @@ impl<'a> RustdocVisitor<'a> {
             name: item.ident,
             vis: item.vis,
             stab: self.stability(item.id),
-            attrs: item.attrs.iter().map(|x| *x).collect(),
+            attrs: item.attrs.iter().map(ref |x| *x).collect(),
             generics: generics.clone(),
-            fields: sd.fields.iter().map(|x| (*x).clone()).collect(),
+            fields: sd.fields.iter().map(ref |x| (*x).clone()).collect(),
             whence: item.span
         }
     }
@@ -130,7 +130,7 @@ impl<'a> RustdocVisitor<'a> {
             id: item.id,
             vis: item.vis,
             stab: self.stability(item.id),
-            attrs: item.attrs.iter().map(|x| *x).collect(),
+            attrs: item.attrs.iter().map(ref |x| *x).collect(),
             decl: fd.clone(),
             name: item.ident,
             whence: item.span,
@@ -163,10 +163,10 @@ impl<'a> RustdocVisitor<'a> {
         if item.vis != ast::Public {
             return om.view_items.push(item.clone());
         }
-        let please_inline = item.attrs.iter().any(|item| {
+        let please_inline = item.attrs.iter().any(ref |item| {
             match item.meta_item_list() {
                 Some(list) => {
-                    list.iter().any(|i| i.name().get() == "inline")
+                    list.iter().any(ref |i| i.name().get() == "inline")
                 }
                 None => false,
             }

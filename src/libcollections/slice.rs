@@ -184,11 +184,11 @@ impl Iterator<(uint, uint)> for ElementSwaps {
         // Find the index of the largest mobile element:
         // The direction should point into the vector, and the
         // swap should be with a smaller `size` element.
-        let max = self.sdir.iter().map(|&x| x).enumerate()
-                           .filter(|&(i, sd)|
+        let max = self.sdir.iter().map(ref |&x| x).enumerate()
+                           .filter(ref |&(i, sd)|
                                 new_pos(i, sd.dir) < self.sdir.len() &&
                                 self.sdir[new_pos(i, sd.dir)].size < sd.size)
-                           .max_by(|&(_, sd)| sd.size);
+                           .max_by(ref |&(_, sd)| sd.size);
         match max {
             Some((i, sd)) => {
                 let j = new_pos(i, sd.dir);
@@ -2157,7 +2157,7 @@ mod bench {
         // out.
         let v = Vec::from_fn(100, |i| i ^ (i << 1) ^ (i >> 1));
 
-        b.iter(|| {
+        b.iter(ref || {
             let mut sum = 0;
             for x in v.iter() {
                 sum += *x;
@@ -2171,7 +2171,7 @@ mod bench {
     fn mut_iterator(b: &mut Bencher) {
         let mut v = Vec::from_elem(100, 0i);
 
-        b.iter(|| {
+        b.iter(ref || {
             let mut i = 0i;
             for x in v.mut_iter() {
                 *x = i;
@@ -2184,7 +2184,7 @@ mod bench {
     fn concat(b: &mut Bencher) {
         let xss: Vec<Vec<uint>> =
             Vec::from_fn(100, |i| range(0u, i).collect());
-        b.iter(|| {
+        b.iter(ref || {
             xss.as_slice().concat_vec()
         });
     }
@@ -2193,7 +2193,7 @@ mod bench {
     fn connect(b: &mut Bencher) {
         let xss: Vec<Vec<uint>> =
             Vec::from_fn(100, |i| range(0u, i).collect());
-        b.iter(|| {
+        b.iter(ref || {
             xss.as_slice().connect_vec(&0)
         });
     }
@@ -2201,7 +2201,7 @@ mod bench {
     #[bench]
     fn push(b: &mut Bencher) {
         let mut vec: Vec<uint> = vec![];
-        b.iter(|| {
+        b.iter(ref || {
             vec.push(0);
             &vec
         })
@@ -2210,7 +2210,7 @@ mod bench {
     #[bench]
     fn starts_with_same_vector(b: &mut Bencher) {
         let vec: Vec<uint> = Vec::from_fn(100, |i| i);
-        b.iter(|| {
+        b.iter(ref || {
             vec.as_slice().starts_with(vec.as_slice())
         })
     }
@@ -2218,7 +2218,7 @@ mod bench {
     #[bench]
     fn starts_with_single_element(b: &mut Bencher) {
         let vec: Vec<uint> = vec![0];
-        b.iter(|| {
+        b.iter(ref || {
             vec.as_slice().starts_with(vec.as_slice())
         })
     }
@@ -2228,7 +2228,7 @@ mod bench {
         let vec: Vec<uint> = Vec::from_fn(100, |i| i);
         let mut match_vec: Vec<uint> = Vec::from_fn(99, |i| i);
         match_vec.push(0);
-        b.iter(|| {
+        b.iter(ref || {
             vec.as_slice().starts_with(match_vec.as_slice())
         })
     }
@@ -2236,7 +2236,7 @@ mod bench {
     #[bench]
     fn ends_with_same_vector(b: &mut Bencher) {
         let vec: Vec<uint> = Vec::from_fn(100, |i| i);
-        b.iter(|| {
+        b.iter(ref || {
             vec.as_slice().ends_with(vec.as_slice())
         })
     }
@@ -2244,7 +2244,7 @@ mod bench {
     #[bench]
     fn ends_with_single_element(b: &mut Bencher) {
         let vec: Vec<uint> = vec![0];
-        b.iter(|| {
+        b.iter(ref || {
             vec.as_slice().ends_with(vec.as_slice())
         })
     }
@@ -2254,7 +2254,7 @@ mod bench {
         let vec: Vec<uint> = Vec::from_fn(100, |i| i);
         let mut match_vec: Vec<uint> = Vec::from_fn(100, |i| i);
         match_vec.as_mut_slice()[0] = 200;
-        b.iter(|| {
+        b.iter(ref || {
             vec.as_slice().starts_with(match_vec.as_slice())
         })
     }
@@ -2262,21 +2262,21 @@ mod bench {
     #[bench]
     fn contains_last_element(b: &mut Bencher) {
         let vec: Vec<uint> = Vec::from_fn(100, |i| i);
-        b.iter(|| {
+        b.iter(ref || {
             vec.contains(&99u)
         })
     }
 
     #[bench]
     fn zero_1kb_from_elem(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             Vec::from_elem(1024, 0u8)
         });
     }
 
     #[bench]
     fn zero_1kb_set_memory(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             let mut v: Vec<uint> = Vec::with_capacity(1024);
             unsafe {
                 let vp = v.as_mut_ptr();
@@ -2289,7 +2289,7 @@ mod bench {
 
     #[bench]
     fn zero_1kb_loop_set(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             let mut v: Vec<uint> = Vec::with_capacity(1024);
             unsafe {
                 v.set_len(1024);
@@ -2302,7 +2302,7 @@ mod bench {
 
     #[bench]
     fn zero_1kb_mut_iter(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             let mut v = Vec::with_capacity(1024);
             unsafe {
                 v.set_len(1024);
@@ -2317,7 +2317,7 @@ mod bench {
     #[bench]
     fn random_inserts(b: &mut Bencher) {
         let mut rng = weak_rng();
-        b.iter(|| {
+        b.iter(ref || {
                 let mut v = Vec::from_elem(30, (0u, 0u));
                 for _ in range(0u, 100) {
                     let l = v.len();
@@ -2329,7 +2329,7 @@ mod bench {
     #[bench]
     fn random_removes(b: &mut Bencher) {
         let mut rng = weak_rng();
-        b.iter(|| {
+        b.iter(ref || {
                 let mut v = Vec::from_elem(130, (0u, 0u));
                 for _ in range(0u, 100) {
                     let l = v.len();
@@ -2341,7 +2341,7 @@ mod bench {
     #[bench]
     fn sort_random_small(b: &mut Bencher) {
         let mut rng = weak_rng();
-        b.iter(|| {
+        b.iter(ref || {
             let mut v = rng.gen_iter::<u64>().take(5).collect::<Vec<u64>>();
             v.as_mut_slice().sort();
         });
@@ -2351,7 +2351,7 @@ mod bench {
     #[bench]
     fn sort_random_medium(b: &mut Bencher) {
         let mut rng = weak_rng();
-        b.iter(|| {
+        b.iter(ref || {
             let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
             v.as_mut_slice().sort();
         });
@@ -2361,7 +2361,7 @@ mod bench {
     #[bench]
     fn sort_random_large(b: &mut Bencher) {
         let mut rng = weak_rng();
-        b.iter(|| {
+        b.iter(ref || {
             let mut v = rng.gen_iter::<u64>().take(10000).collect::<Vec<u64>>();
             v.as_mut_slice().sort();
         });
@@ -2371,7 +2371,7 @@ mod bench {
     #[bench]
     fn sort_sorted(b: &mut Bencher) {
         let mut v = Vec::from_fn(10000, |i| i);
-        b.iter(|| {
+        b.iter(ref || {
             v.sort();
         });
         b.bytes = (v.len() * mem::size_of_val(v.get(0))) as u64;
@@ -2382,7 +2382,7 @@ mod bench {
     #[bench]
     fn sort_big_random_small(b: &mut Bencher) {
         let mut rng = weak_rng();
-        b.iter(|| {
+        b.iter(ref || {
             let mut v = rng.gen_iter::<BigSortable>().take(5)
                            .collect::<Vec<BigSortable>>();
             v.sort();
@@ -2393,7 +2393,7 @@ mod bench {
     #[bench]
     fn sort_big_random_medium(b: &mut Bencher) {
         let mut rng = weak_rng();
-        b.iter(|| {
+        b.iter(ref || {
             let mut v = rng.gen_iter::<BigSortable>().take(100)
                            .collect::<Vec<BigSortable>>();
             v.sort();
@@ -2404,7 +2404,7 @@ mod bench {
     #[bench]
     fn sort_big_random_large(b: &mut Bencher) {
         let mut rng = weak_rng();
-        b.iter(|| {
+        b.iter(ref || {
             let mut v = rng.gen_iter::<BigSortable>().take(10000)
                            .collect::<Vec<BigSortable>>();
             v.sort();
@@ -2415,7 +2415,7 @@ mod bench {
     #[bench]
     fn sort_big_sorted(b: &mut Bencher) {
         let mut v = Vec::from_fn(10000u, |i| (i, i, i, i));
-        b.iter(|| {
+        b.iter(ref || {
             v.sort();
         });
         b.bytes = (v.len() * mem::size_of_val(v.get(0))) as u64;

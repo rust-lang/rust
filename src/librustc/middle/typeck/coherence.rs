@@ -106,7 +106,7 @@ fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
      */
 
     let mut found_nominal = false;
-    ty::walk_ty(original_type, |t| {
+    ty::walk_ty(original_type, ref |t| {
         match get(t).sty {
             ty_enum(def_id, _) |
             ty_struct(def_id, _) |
@@ -461,14 +461,16 @@ impl<'a> CoherenceChecker<'a> {
     }
 
     fn iter_impls_of_trait(&self, trait_def_id: DefId, f: |DefId|) {
-        self.iter_impls_of_trait_local(trait_def_id, |x| f(x));
+        self.iter_impls_of_trait_local(trait_def_id, ref |x| f(x));
 
         if trait_def_id.krate == LOCAL_CRATE {
             return;
         }
 
         let crate_store = &self.crate_context.tcx.sess.cstore;
-        csearch::each_implementation_for_trait(crate_store, trait_def_id, |impl_def_id| {
+        csearch::each_implementation_for_trait(crate_store,
+                                               trait_def_id,
+                                               ref |impl_def_id| {
             // Is this actually necessary?
             let _ = lookup_item_type(self.crate_context.tcx, impl_def_id);
             f(impl_def_id);
@@ -476,7 +478,11 @@ impl<'a> CoherenceChecker<'a> {
     }
 
     fn iter_impls_of_trait_local(&self, trait_def_id: DefId, f: |DefId|) {
-        match self.crate_context.tcx.trait_impls.borrow().find(&trait_def_id) {
+        match self.crate_context
+                  .tcx
+                  .trait_impls
+                  .borrow()
+                  .find(&trait_def_id) {
             Some(impls) => {
                 for &impl_did in impls.borrow().iter() {
                     f(impl_did);
@@ -670,8 +676,8 @@ impl<'a> CoherenceChecker<'a> {
         let mut impls_seen = HashSet::new();
 
         let crate_store = &self.crate_context.tcx.sess.cstore;
-        crate_store.iter_crate_data(|crate_number, _crate_metadata| {
-            each_impl(crate_store, crate_number, |def_id| {
+        crate_store.iter_crate_data(ref |crate_number, _crate_metadata| {
+            each_impl(crate_store, crate_number, ref |def_id| {
                 assert_eq!(crate_number, def_id.krate);
                 self.add_external_impl(&mut impls_seen, def_id)
             })

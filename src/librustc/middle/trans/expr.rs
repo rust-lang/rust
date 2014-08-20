@@ -455,11 +455,13 @@ fn trans_rec_field<'a>(bcx: &'a Block<'a>,
 
     let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, base, "field"));
     let repr = adt::represent_type(bcx.ccx(), base_datum.ty);
-    with_field_tys(bcx.tcx(), base_datum.ty, None, |discr, field_tys| {
+    with_field_tys(bcx.tcx(), base_datum.ty, None, ref |discr, field_tys| {
             let ix = ty::field_idx_strict(bcx.tcx(), field.name, field_tys);
             let d = base_datum.get_element(
                 field_tys[ix].mt.ty,
-                |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, ix));
+                ref |srcval| {
+                    adt::trans_field_ptr(bcx, &*repr, srcval, discr, ix)
+                });
             DatumBlock { datum: d.to_expr_datum(), bcx: bcx }
         })
 }
@@ -481,7 +483,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
                        .method_map
                        .borrow()
                        .find(&method_call)
-                       .map(|method| method.ty);
+                       .map(ref |method| method.ty);
     let elt_datum = match method_ty {
         Some(method_ty) => {
             let base_datum = unpack_datum!(bcx, trans(bcx, base));
@@ -554,7 +556,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
                                 expect,
                                 [bounds_check, C_bool(ccx, false)],
                                 None);
-            bcx = with_cond(bcx, expected, |bcx| {
+            bcx = with_cond(bcx, expected, ref |bcx| {
                 controlflow::trans_fail_bounds_check(bcx,
                                                      index_expr.span,
                                                      ix_val,
@@ -617,7 +619,7 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                         let symbol = csearch::get_symbol(
                             &bcx.ccx().sess().cstore,
                             did);
-                        let llval = symbol.as_slice().with_c_str(|buf| {
+                        let llval = symbol.as_slice().with_c_str(ref |buf| {
                                 llvm::LLVMAddGlobal(bcx.ccx().llmod,
                                                     llty.to_ref(),
                                                     buf)
@@ -755,7 +757,10 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         }
         ast::ExprTup(ref args) => {
             let numbered_fields: Vec<(uint, Gc<ast::Expr>)> =
-                args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
+                args.iter()
+                    .enumerate()
+                    .map(ref |(i, arg)| (i, *arg))
+                    .collect();
             trans_adt(bcx, expr_ty(bcx, expr), 0, numbered_fields.as_slice(), None, dest)
         }
         ast::ExprLit(lit) => {
@@ -1051,13 +1056,13 @@ fn trans_struct<'a>(bcx: &'a Block<'a>,
 
     let ty = node_id_type(bcx, id);
     let tcx = bcx.tcx();
-    with_field_tys(tcx, ty, Some(id), |discr, field_tys| {
+    with_field_tys(tcx, ty, Some(id), ref |discr, field_tys| {
         let mut need_base = Vec::from_elem(field_tys.len(), true);
 
-        let numbered_fields = fields.iter().map(|field| {
-            let opt_pos =
-                field_tys.iter().position(|field_ty|
-                                          field_ty.ident.name == field.ident.node.name);
+        let numbered_fields = fields.iter().map(ref |field| {
+            let opt_pos = field_tys.iter().position(ref |field_ty| {
+                field_ty.ident.name == field.ident.node.name
+            });
             match opt_pos {
                 Some(i) => {
                     *need_base.get_mut(i) = false;
@@ -1081,7 +1086,7 @@ fn trans_struct<'a>(bcx: &'a Block<'a>,
                                      fields: leftovers })
             }
             None => {
-                if need_base.iter().any(|b| *b) {
+                if need_base.iter().any(ref |b| *b) {
                     tcx.sess.span_bug(expr_span, "missing fields and no base expr")
                 }
                 None
@@ -1146,7 +1151,14 @@ pub fn trans_adt<'a>(mut bcx: &'a Block<'a>,
                 let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
                 for &(i, t) in base.fields.iter() {
                     let datum = base_datum.get_element(
-                            t, |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, i));
+                            t,
+                            ref |srcval| {
+                                adt::trans_field_ptr(bcx,
+                                                     &*repr,
+                                                     srcval,
+                                                     discr,
+                                                     i)
+                            });
                     let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
                     bcx = datum.store_to(bcx, dest);
                 }
@@ -1503,7 +1515,7 @@ fn trans_overloaded_op<'a, 'b>(
     callee::trans_call_inner(bcx,
                              Some(expr_info(expr)),
                              monomorphize_type(bcx, method_ty),
-                             |bcx, arg_cleanup_scope| {
+                             ref |bcx, arg_cleanup_scope| {
                                 meth::trans_method_callee(bcx,
                                                           method_call,
                                                           None,
@@ -1533,7 +1545,7 @@ fn trans_overloaded_call<'a>(
                                             Some(expr_info(expr)),
                                             monomorphize_type(bcx,
                                                               method_type),
-                                            |bcx, arg_cleanup_scope| {
+                                            ref |bcx, arg_cleanup_scope| {
                                                 meth::trans_method_callee(
                                                     bcx,
                                                     method_call,
@@ -1783,7 +1795,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
 
     // Check for overloaded deref.
     let method_ty = ccx.tcx.method_map.borrow()
-                       .find(&method_call).map(|method| method.ty);
+                       .find(&method_call).map(ref |method| method.ty);
     let datum = match method_ty {
         Some(method_ty) => {
             // Overloaded. Evaluate `trans_overloaded_op`, which will

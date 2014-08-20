@@ -460,8 +460,11 @@ impl Bitv {
     pub fn all(&self) -> bool {
         let mut last_word = !0u;
         // Check that every word but the last is all-ones...
-        self.mask_words(0).all(|(_, elem)|
-            { let tmp = last_word; last_word = elem; tmp == !0u }) &&
+        self.mask_words(0).all(ref |(_, elem)| {
+            let tmp = last_word;
+            last_word = elem;
+            tmp == !0u
+        }) &&
         // ...and that the last word is ones as far as it needs to be
         (last_word == ((1 << self.nbits % uint::BITS) - 1) || last_word == !0u)
     }
@@ -2565,7 +2568,7 @@ mod tests {
     fn bench_uint_small(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = 0 as uint;
-        b.iter(|| {
+        b.iter(ref || {
             bitv |= 1 << ((r.next_u32() as uint) % uint::BITS);
             &bitv
         })
@@ -2575,7 +2578,7 @@ mod tests {
     fn bench_bitv_big(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = Bitv::with_capacity(BENCH_BITS, false);
-        b.iter(|| {
+        b.iter(ref || {
             bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
             &bitv
         })
@@ -2585,7 +2588,7 @@ mod tests {
     fn bench_bitv_small(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = Bitv::with_capacity(uint::BITS, false);
-        b.iter(|| {
+        b.iter(ref || {
             bitv.set((r.next_u32() as uint) % uint::BITS, true);
             &bitv
         })
@@ -2595,7 +2598,7 @@ mod tests {
     fn bench_bitv_set_small(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = BitvSet::new();
-        b.iter(|| {
+        b.iter(ref || {
             bitv.insert((r.next_u32() as uint) % uint::BITS);
             &bitv
         })
@@ -2605,7 +2608,7 @@ mod tests {
     fn bench_bitv_set_big(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = BitvSet::new();
-        b.iter(|| {
+        b.iter(ref || {
             bitv.insert((r.next_u32() as uint) % BENCH_BITS);
             &bitv
         })
@@ -2615,7 +2618,7 @@ mod tests {
     fn bench_bitv_big_union(b: &mut Bencher) {
         let mut b1 = Bitv::with_capacity(BENCH_BITS, false);
         let b2 = Bitv::with_capacity(BENCH_BITS, false);
-        b.iter(|| {
+        b.iter(ref || {
             b1.union(&b2);
         })
     }
@@ -2623,7 +2626,7 @@ mod tests {
     #[bench]
     fn bench_btv_small_iter(b: &mut Bencher) {
         let bitv = Bitv::with_capacity(uint::BITS, false);
-        b.iter(|| {
+        b.iter(ref || {
             let mut _sum = 0;
             for pres in bitv.iter() {
                 _sum += pres as uint;
@@ -2634,7 +2637,7 @@ mod tests {
     #[bench]
     fn bench_bitv_big_iter(b: &mut Bencher) {
         let bitv = Bitv::with_capacity(BENCH_BITS, false);
-        b.iter(|| {
+        b.iter(ref || {
             let mut _sum = 0;
             for pres in bitv.iter() {
                 _sum += pres as uint;
@@ -2646,7 +2649,7 @@ mod tests {
     fn bench_bitvset_iter(b: &mut Bencher) {
         let bitv = BitvSet::from_bitv(from_fn(BENCH_BITS,
                                               |idx| {idx % 3 == 0}));
-        b.iter(|| {
+        b.iter(ref || {
             let mut _sum = 0;
             for idx in bitv.iter() {
                 _sum += idx;

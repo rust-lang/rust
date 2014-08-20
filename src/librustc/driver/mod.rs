@@ -95,7 +95,7 @@ fn run_compiler(args: &[String]) {
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
 
-    let pretty = matches.opt_default("pretty", "normal").map(|a| {
+    let pretty = matches.opt_default("pretty", "normal").map(ref |a| {
         parse_pretty(&sess, a.as_slice())
     });
     match pretty {

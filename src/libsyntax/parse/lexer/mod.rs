@@ -180,7 +180,7 @@ impl<'a> StringReader<'a> {
     fn fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) -> ! {
         let mut m = m.to_string();
         m.push_str(": ");
-        char::escape_default(c, |c| m.push_char(c));
+        char::escape_default(c, ref |c| m.push_char(c));
         self.fatal_span_(from_pos, to_pos, m.as_slice());
     }
 
@@ -189,7 +189,7 @@ impl<'a> StringReader<'a> {
     fn err_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) {
         let mut m = m.to_string();
         m.push_str(": ");
-        char::escape_default(c, |c| m.push_char(c));
+        char::escape_default(c, ref |c| m.push_char(c));
         self.err_span_(from_pos, to_pos, m.as_slice());
     }
 
@@ -393,7 +393,7 @@ impl<'a> StringReader<'a> {
                             }
                             self.bump();
                         }
-                        return self.with_str_from(start_bpos, |string| {
+                        return self.with_str_from(start_bpos, ref |string| {
                             // but comments with only more "/"s are not
                             let tok = if is_doc_comment(string) {
                                 token::DOC_COMMENT(token::intern(string))
@@ -512,7 +512,7 @@ impl<'a> StringReader<'a> {
             self.bump();
         }
 
-        self.with_str_from(start_bpos, |string| {
+        self.with_str_from(start_bpos, ref |string| {
             // but comments with only "*"s between two "/"s are not
             let tok = if is_block_doc_comment(string) {
                 let string = if has_cr {
@@ -575,8 +575,8 @@ impl<'a> StringReader<'a> {
 
         // find the integer representing the name
         self.scan_digits(base);
-        let encoded_name : u32 = self.with_str_from(start_bpos, |s| {
-            num::from_str_radix(s, 10).unwrap_or_else(|| {
+        let encoded_name : u32 = self.with_str_from(start_bpos, ref |s| {
+            num::from_str_radix(s, 10).unwrap_or_else(ref || {
                 fail!("expected digits representing a name, got `{}`, {}, range [{},{}]",
                       s, whence, start_bpos, self.last_pos);
             })
@@ -593,8 +593,9 @@ impl<'a> StringReader<'a> {
         // find the integer representing the ctxt
         let start_bpos = self.last_pos;
         self.scan_digits(base);
-        let encoded_ctxt : ast::SyntaxContext = self.with_str_from(start_bpos, |s| {
-            num::from_str_radix(s, 10).unwrap_or_else(|| {
+        let encoded_ctxt : ast::SyntaxContext = self.with_str_from(start_bpos,
+                                                                   ref |s| {
+            num::from_str_radix(s, 10).unwrap_or_else(ref || {
                 fail!("expected digits representing a ctxt, got `{}`, {}", s, whence);
             })
         });
@@ -724,7 +725,7 @@ impl<'a> StringReader<'a> {
             }
             let c = self.curr.unwrap_or('\x00');
             accum_int *= 16;
-            accum_int += c.to_digit(16).unwrap_or_else(|| {
+            accum_int += c.to_digit(16).unwrap_or_else(ref || {
                 self.err_span_char(self.last_pos, self.pos,
                               "illegal character in numeric character escape", c);
                 0
@@ -917,7 +918,7 @@ impl<'a> StringReader<'a> {
                 self.bump();
             }
 
-            return self.with_str_from(start, |string| {
+            return self.with_str_from(start, ref |string| {
                 if string == "_" {
                     token::UNDERSCORE
                 } else {
@@ -1045,14 +1046,14 @@ impl<'a> StringReader<'a> {
                 // Include the leading `'` in the real identifier, for macro
                 // expansion purposes. See #12512 for the gory details of why
                 // this is necessary.
-                let ident = self.with_str_from(start, |lifetime_name| {
+                let ident = self.with_str_from(start, ref |lifetime_name| {
                     str_to_ident(format!("'{}", lifetime_name).as_slice())
                 });
 
                 // Conjure up a "keyword checking ident" to make sure that
                 // the lifetime name is not a keyword.
                 let keyword_checking_ident =
-                    self.with_str_from(start, |lifetime_name| {
+                    self.with_str_from(start, ref |lifetime_name| {
                         str_to_ident(lifetime_name)
                     });
                 let keyword_checking_token =

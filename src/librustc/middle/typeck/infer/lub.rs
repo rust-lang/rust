@@ -137,8 +137,14 @@ impl<'f> Combine for Lub<'f> {
             fold_regions_in_sig(
                 self.get_ref().infcx.tcx,
                 &sig0,
-                |r| generalize_region(self, mark, new_vars.as_slice(),
-                                      sig0.binder_id, &a_map, r));
+                ref |r| {
+                    generalize_region(self,
+                                      mark,
+                                      new_vars.as_slice(),
+                                      sig0.binder_id,
+                                      &a_map,
+                                      r)
+                });
         return Ok(sig1);
 
         fn generalize_region(this: &Lub,
@@ -160,7 +166,7 @@ impl<'f> Combine for Lub<'f> {
             // Variables created during LUB computation which are
             // *related* to regions that pre-date the LUB computation
             // stay as they are.
-            if !tainted.iter().all(|r| is_var_in_set(new_vars, *r)) {
+            if !tainted.iter().all(ref |r| is_var_in_set(new_vars, *r)) {
                 debug!("generalize_region(r0={:?}): \
                         non-new-variables found in {:?}",
                        r0, tainted);
@@ -174,7 +180,7 @@ impl<'f> Combine for Lub<'f> {
             // bound region from A that we find it to be associated
             // with.
             for (a_br, a_r) in a_map.iter() {
-                if tainted.iter().any(|x| x == a_r) {
+                if tainted.iter().any(ref |x| x == a_r) {
                     debug!("generalize_region(r0={:?}): \
                             replacing with {:?}, tainted={:?}",
                            r0, *a_br, tainted);

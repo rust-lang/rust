@@ -180,7 +180,7 @@ impl<'a> Drop for StatRecorder<'a> {
 pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
            ty: Type, output: ty::t) -> ValueRef {
 
-    let llfn: ValueRef = name.with_c_str(|buf| {
+    let llfn: ValueRef = name.with_c_str(ref |buf| {
         unsafe {
             llvm::LLVMGetOrInsertFunction(ccx.llmod, buf, ty.to_ref())
         }
@@ -250,7 +250,7 @@ fn get_extern_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str, did: ast::De
 
     let f = decl_rust_fn(ccx, fn_ty, name);
 
-    csearch::get_item_attrs(&ccx.sess().cstore, did, |attrs| {
+    csearch::get_item_attrs(&ccx.sess().cstore, did, ref |attrs| {
         set_llvm_fn_attrs(attrs.as_slice(), f)
     });
 
@@ -330,7 +330,7 @@ pub fn get_extern_const(externs: &mut ExternMap, llmod: ModuleRef,
         None => ()
     }
     unsafe {
-        let c = name.with_c_str(|buf| {
+        let c = name.with_c_str(ref |buf| {
             llvm::LLVMAddGlobal(llmod, ty.to_ref(), buf)
         });
         externs.insert(name.to_string(), c);
@@ -479,13 +479,13 @@ pub fn set_always_inline(f: ValueRef) {
 }
 
 pub fn set_split_stack(f: ValueRef) {
-    "split-stack".with_c_str(|buf| {
+    "split-stack".with_c_str(ref |buf| {
         unsafe { llvm::LLVMAddFunctionAttrString(f, llvm::FunctionIndex as c_uint, buf); }
     })
 }
 
 pub fn unset_split_stack(f: ValueRef) {
-    "split-stack".with_c_str(|buf| {
+    "split-stack".with_c_str(ref |buf| {
         unsafe { llvm::LLVMRemoveFunctionAttrString(f, llvm::FunctionIndex as c_uint, buf); }
     })
 }
@@ -544,7 +544,7 @@ pub fn get_res_dtor(ccx: &CrateContext,
 // Structural comparison: a rather involved form of glue.
 pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
     if cx.sess().opts.cg.save_temps {
-        s.with_c_str(|buf| {
+        s.with_c_str(ref |buf| {
             unsafe {
                 llvm::LLVMSetValueName(v, buf)
             }
@@ -563,7 +563,9 @@ pub fn compare_scalar_types<'a>(
                             t: ty::t,
                             op: ast::BinOp)
                             -> Result<'a> {
-    let f = |a| Result::new(cx, compare_scalar_values(cx, lhs, rhs, a, op));
+    let f = ref |a| {
+        Result::new(cx, compare_scalar_values(cx, lhs, rhs, a, op))
+    };
 
     match ty::get(t).sty {
         ty::ty_nil => f(nil_type),
@@ -715,7 +717,7 @@ pub fn iter_structural_ty<'r,
     match ty::get(t).sty {
       ty::ty_struct(..) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          expr::with_field_tys(cx.tcx(), t, None, |discr, field_tys| {
+          expr::with_field_tys(cx.tcx(), t, None, ref |discr, field_tys| {
               for (i, field_ty) in field_tys.iter().enumerate() {
                   let llfld_a = adt::trans_field_ptr(cx, &*repr, av, discr, i);
                   cx = f(cx, llfld_a, field_ty.mt.ty);
@@ -785,7 +787,7 @@ pub fn iter_structural_ty<'r,
                                        av,
                                        &**variant,
                                        substs,
-                                       |x,y,z| f(x,y,z));
+                                       ref |x,y,z| f(x,y,z));
                       Br(variant_cx, next_cx.llbb);
                   }
                   cx = next_cx;
@@ -806,15 +808,15 @@ pub fn cast_shift_expr_rhs<'a>(
                            rhs: ValueRef)
                            -> ValueRef {
     cast_shift_rhs(op, lhs, rhs,
-                   |a,b| Trunc(cx, a, b),
-                   |a,b| ZExt(cx, a, b))
+                   ref |a,b| Trunc(cx, a, b),
+                   ref |a,b| ZExt(cx, a, b))
 }
 
 pub fn cast_shift_const_rhs(op: ast::BinOp,
                             lhs: ValueRef, rhs: ValueRef) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs,
-                   |a, b| unsafe { llvm::LLVMConstTrunc(a, b.to_ref()) },
-                   |a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
+                   ref |a, b| unsafe { llvm::LLVMConstTrunc(a, b.to_ref()) },
+                   ref |a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
 }
 
 pub fn cast_shift_rhs(op: ast::BinOp,
@@ -876,7 +878,7 @@ pub fn fail_if_zero_or_overflows<'a>(
                                   ty_to_string(cx.tcx(), rhs_t)).as_slice());
         }
     };
-    let bcx = with_cond(cx, is_zero, |bcx| {
+    let bcx = with_cond(cx, is_zero, ref |bcx| {
         controlflow::trans_fail(bcx, span, InternedString::new(zero_text))
     });
 
@@ -907,10 +909,10 @@ pub fn fail_if_zero_or_overflows<'a>(
         };
         let minus_one = ICmp(bcx, llvm::IntEQ, rhs,
                              C_integral(llty, -1, false));
-        with_cond(bcx, minus_one, |bcx| {
+        with_cond(bcx, minus_one, ref |bcx| {
             let is_min = ICmp(bcx, llvm::IntEQ, lhs,
                               C_integral(llty, min, true));
-            with_cond(bcx, is_min, |bcx| {
+            with_cond(bcx, is_min, ref |bcx| {
                 controlflow::trans_fail(bcx, span,
                                         InternedString::new(overflow_text))
             })
@@ -1496,7 +1498,7 @@ pub fn create_datums_for_fn_args(fcx: &FunctionContext,
 
     // Return an array wrapping the ValueRefs that we get from `get_param` for
     // each argument into datums.
-    arg_tys.iter().enumerate().map(|(i, &arg_ty)| {
+    arg_tys.iter().enumerate().map(ref |(i, &arg_ty)| {
         let llarg = get_param(fcx.llfn, fcx.arg_pos(i) as c_uint);
         datum::Datum::new(llarg, arg_ty, arg_kind(fcx, arg_ty))
     }).collect()
@@ -1535,7 +1537,7 @@ fn create_datums_for_fn_args_under_call_abi<
                                                               false,
                                                               tuple_args_scope_id,
                                                               (),
-                                                              |(),
+                                                              ref |(),
                                                                mut bcx,
                                                                llval| {
                         for (j, &tupled_arg_ty) in
@@ -1641,7 +1643,7 @@ fn copy_unboxed_closure_args_to_allocas<'a>(
         let tuple_element_type = untupled_arg_types[j];
         let tuple_element_datum =
             tuple_datum.get_element(tuple_element_type,
-                                    |llval| GEPi(bcx, llval, [0, j]));
+                                    ref |llval| GEPi(bcx, llval, [0, j]));
         let tuple_element_datum = tuple_element_datum.to_expr_datum();
         let tuple_element_datum =
             unpack_datum!(bcx,
@@ -1784,7 +1786,7 @@ pub fn trans_closure(ccx: &CrateContext,
     // Set up arguments to the function.
     let monomorphized_arg_types =
         arg_types.iter()
-                 .map(|at| monomorphize_type(bcx, *at))
+                 .map(ref |at| monomorphize_type(bcx, *at))
                  .collect::<Vec<_>>();
     for monomorphized_arg_type in monomorphized_arg_types.iter() {
         debug!("trans_closure: monomorphized_arg_type: {}",
@@ -1902,7 +1904,7 @@ pub fn trans_fn(ccx: &CrateContext,
                   abi,
                   false,
                   NotUnboxedClosure,
-                  |bcx, _| bcx);
+                  ref |bcx, _| bcx);
 }
 
 pub fn trans_enum_variant(ccx: &CrateContext,
@@ -2058,7 +2060,7 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
     }
 
     let (largest, slargest, largest_index) = sizes.iter().enumerate().fold((0, 0, 0),
-        |(l, s, li), (idx, &size)|
+        ref |(l, s, li), (idx, &size)|
             if size > l {
                 (size, l, idx)
             } else if size > s {
@@ -2315,7 +2317,10 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
         }
     }
 
-    for (idx, &t) in fn_sig.inputs.iter().enumerate().map(|(i, v)| (i + first_arg_offset, v)) {
+    for (idx, &t) in fn_sig.inputs
+                           .iter()
+                           .enumerate()
+                           .map(ref |(i, v)| (i + first_arg_offset, v)) {
         match ty::get(t).sty {
             // this needs to be first to prevent fat pointers from falling through
             _ if !type_is_immediate(ccx, t) => {
@@ -2453,7 +2458,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
             unsafe { llvm::LLVMRustSetDLLExportStorageClass(llfn) }
         }
 
-        let llbb = "top".with_c_str(|buf| {
+        let llbb = "top".with_c_str(ref |buf| {
             unsafe {
                 llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llfn, buf)
             }
@@ -2476,7 +2481,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                 };
 
                 let args = {
-                    let opaque_rust_main = "rust_main".with_c_str(|buf| {
+                    let opaque_rust_main = "rust_main".with_c_str(ref |buf| {
                         llvm::LLVMBuildPointerCast(bld, rust_main, Type::i8p(ccx).to_ref(), buf)
                     });
 
@@ -2514,7 +2519,7 @@ fn exported_name(ccx: &CrateContext, id: ast::NodeId,
         // Use provided name
         Some(name) => name.get().to_string(),
 
-        _ => ccx.tcx.map.with_path(id, |mut path| {
+        _ => ccx.tcx.map.with_path(id, ref |mut path| {
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
                 path.last().unwrap().to_string()
@@ -2572,7 +2577,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                     unsafe {
                         let llty = llvm::LLVMTypeOf(v);
-                        let g = sym.as_slice().with_c_str(|buf| {
+                        let g = sym.as_slice().with_c_str(ref |buf| {
                             llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
                         });
 
@@ -2640,7 +2645,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             match attr::first_attr_value_str_by_name(i.attrs.as_slice(),
                                                      "link_section") {
                 Some(sect) => unsafe {
-                    sect.get().with_c_str(|buf| {
+                    sect.get().with_c_str(ref |buf| {
                         llvm::LLVMSetSection(v, buf);
                     })
                 },
@@ -2789,7 +2794,7 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeI
 pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     use flate;
 
-    let any_library = cx.sess().crate_types.borrow().iter().any(|ty| {
+    let any_library = cx.sess().crate_types.borrow().iter().any(ref |ty| {
         *ty != config::CrateTypeExecutable
     });
     if !any_library {
@@ -2797,7 +2802,7 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     }
 
     let encode_inlined_item: encoder::EncodeInlinedItem =
-        |ecx, rbml_w, ii| astencode::encode_inlined_item(ecx, rbml_w, ii);
+        ref |ecx, rbml_w, ii| astencode::encode_inlined_item(ecx, rbml_w, ii);
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);
@@ -2813,7 +2818,7 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     let name = format!("rust_metadata_{}_{}",
                        cx.link_meta.crate_name,
                        cx.link_meta.crate_hash);
-    let llglobal = name.with_c_str(|buf| {
+    let llglobal = name.with_c_str(ref |buf| {
         unsafe {
             llvm::LLVMAddGlobal(cx.metadata_llmod, val_ty(llconst).to_ref(), buf)
         }
@@ -2821,7 +2826,7 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
         let name = loader::meta_section_name(cx.sess().targ_cfg.os);
-        name.unwrap_or("rust_metadata").with_c_str(|buf| {
+        name.unwrap_or("rust_metadata").with_c_str(ref |buf| {
             llvm::LLVMSetSection(llglobal, buf)
         });
     }
@@ -2837,7 +2842,7 @@ pub fn trans_crate(krate: ast::Crate,
         use std::sync::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
         static mut POISONED: bool = false;
-        INIT.doit(|| {
+        INIT.doit(ref || {
             if llvm::LLVMStartMultithreaded() != 1 {
                 // use an extra bool to make sure that all future usage of LLVM
                 // cannot proceed despite the Once not running more than once.
@@ -2894,7 +2899,10 @@ pub fn trans_crate(krate: ast::Crate,
         println!("n_inlines: {}", ccx.stats.n_inlines.get());
         println!("n_closures: {}", ccx.stats.n_closures.get());
         println!("fn stats:");
-        ccx.stats.fn_stats.borrow_mut().sort_by(|&(_, _, insns_a), &(_, _, insns_b)| {
+        ccx.stats
+           .fn_stats
+           .borrow_mut()
+           .sort_by(ref |&(_, _, insns_a), &(_, _, insns_b)| {
             insns_b.cmp(&insns_a)
         });
         for tuple in ccx.stats.fn_stats.borrow().iter() {
@@ -2915,16 +2923,18 @@ pub fn trans_crate(krate: ast::Crate,
     let link_meta = ccx.link_meta.clone();
     let llmod = ccx.llmod;
 
-    let mut reachable: Vec<String> = ccx.reachable.iter().filter_map(|id| {
-        ccx.item_symbols.borrow().find(id).map(|s| s.to_string())
+    let mut reachable: Vec<String> = ccx.reachable
+                                        .iter()
+                                        .filter_map(ref |id| {
+        ccx.item_symbols.borrow().find(id).map(ref |s| s.to_string())
     }).collect();
 
     // For the purposes of LTO, we add to the reachable set all of the upstream
     // reachable extern fns. These functions are all part of the public ABI of
     // the final product, so LTO needs to preserve them.
-    ccx.sess().cstore.iter_crate_data(|cnum, _| {
+    ccx.sess().cstore.iter_crate_data(ref |cnum, _| {
         let syms = csearch::get_reachable_extern_fns(&ccx.sess().cstore, cnum);
-        reachable.extend(syms.move_iter().map(|did| {
+        reachable.extend(syms.move_iter().map(ref |did| {
             csearch::get_symbol(&ccx.sess().cstore, did)
         }));
     });

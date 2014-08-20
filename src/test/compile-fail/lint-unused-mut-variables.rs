@@ -35,7 +35,7 @@ fn main() {
       _ => {}
     }
 
-    let x = |mut y: int| 10i; //~ ERROR: variable does not need to be mutable
+    let x = ref |mut y: int| 10i; //~ ERROR: variable does not need to be mutable
     fn what(mut foo: int) {} //~ ERROR: variable does not need to be mutable
 
     // positive cases
@@ -44,7 +44,7 @@ fn main() {
     let mut a = Vec::new();
     a.push(3i);
     let mut a = Vec::new();
-    callback(|| {
+    callback(ref || {
         a.push(3i);
     });
     let (mut a, b) = (1i, 2i);
@@ -65,7 +65,7 @@ fn main() {
       _ => {}
     }
 
-    let x = |mut y: int| y = 32i;
+    let x = ref |mut y: int| y = 32i;
     fn nothing(mut foo: int) { foo = 37i; }
 
     // leading underscore should avoid the warning, just like the

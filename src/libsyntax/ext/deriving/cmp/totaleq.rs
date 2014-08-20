@@ -25,14 +25,19 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                                push: |Gc<Item>|) {
     fn cs_total_eq_assert(cx: &mut ExtCtxt, span: Span,
                           substr: &Substructure) -> Gc<Expr> {
-        cs_same_method(|cx, span, exprs| {
+        cs_same_method(ref |cx, span, exprs| {
             // create `a.<method>(); b.<method>(); c.<method>(); ...`
             // (where method is `assert_receiver_is_total_eq`)
-            let stmts = exprs.move_iter().map(|e| cx.stmt_expr(e)).collect();
+            let stmts = exprs.move_iter()
+                             .map(ref |e| cx.stmt_expr(e))
+                             .collect();
             let block = cx.block(span, stmts, None);
             cx.expr_block(block)
         },
-                       |cx, sp, _, _| cx.span_bug(sp, "non matching enums in deriving(Eq)?"),
+                       ref |cx, sp, _, _| {
+                           cx.span_bug(sp,
+                                       "non matching enums in deriving(Eq)?")
+                       },
                        cx,
                        span,
                        substr)
@@ -57,7 +62,7 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                 args: vec!(),
                 ret_ty: nil_ty(),
                 attributes: attrs,
-                combine_substructure: combine_substructure(|a, b, c| {
+                combine_substructure: combine_substructure(ref |a, b, c| {
                     cs_total_eq_assert(a, b, c)
                 })
             }

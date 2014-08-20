@@ -248,7 +248,12 @@ impl Add<BigUint, BigUint> for BigUint {
         let (a, b) = if self.data.len() > other.data.len() { (self, other) } else { (other, self) };
 
         let mut carry = 0;
-        let mut sum: Vec<BigDigit> =  a.data.iter().zip(b.data.iter().chain(zeros)).map(|(ai, bi)| {
+        let mut sum: Vec<BigDigit> = a.data
+                                      .iter()
+                                      .zip(b.data
+                                            .iter()
+                                            .chain(zeros))
+                                      .map(ref |(ai, bi)| {
             let (hi, lo) = BigDigit::from_doublebigdigit(
                 (*ai as DoubleBigDigit) + (*bi as DoubleBigDigit) + (carry as DoubleBigDigit));
             carry = hi;
@@ -266,7 +271,7 @@ impl Sub<BigUint, BigUint> for BigUint {
         let (a, b) = (self.data.iter().chain(zeros.clone()), other.data.iter().chain(zeros));
 
         let mut borrow = 0i;
-        let diff: Vec<BigDigit> =  a.take(new_len).zip(b).map(|(ai, bi)| {
+        let diff: Vec<BigDigit> = a.take(new_len).zip(b).map(ref |(ai, bi)| {
             let (hi, lo) = BigDigit::from_doublebigdigit(
                 BigDigit::base
                     + (*ai as DoubleBigDigit)
@@ -324,7 +329,7 @@ impl Mul<BigUint, BigUint> for BigUint {
             if n == 1 { return (*a).clone(); }
 
             let mut carry = 0;
-            let mut prod: Vec<BigDigit> = a.data.iter().map(|ai| {
+            let mut prod: Vec<BigDigit> = a.data.iter().map(ref |ai| {
                 let (hi, lo) = BigDigit::from_doublebigdigit(
                     (*ai as DoubleBigDigit) * (n as DoubleBigDigit) + (carry as DoubleBigDigit)
                 );
@@ -768,7 +773,7 @@ impl BigUint {
         if n_bits == 0 || self.is_zero() { return (*self).clone(); }
 
         let mut carry = 0;
-        let mut shifted: Vec<BigDigit> = self.data.iter().map(|elem| {
+        let mut shifted: Vec<BigDigit> = self.data.iter().map(ref |elem| {
             let (hi, lo) = BigDigit::from_doublebigdigit(
                 (*elem as DoubleBigDigit) << n_bits | (carry as DoubleBigDigit)
             );
@@ -2918,14 +2923,14 @@ mod bench {
 
     #[bench]
     fn factorial_100(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             factorial(100);
         });
     }
 
     #[bench]
     fn fib_100(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             fib(100);
         });
     }
@@ -2934,10 +2939,10 @@ mod bench {
     fn to_string(b: &mut Bencher) {
         let fac = factorial(100);
         let fib = fib(100);
-        b.iter(|| {
+        b.iter(ref || {
             fac.to_string();
         });
-        b.iter(|| {
+        b.iter(ref || {
             fib.to_string();
         });
     }
@@ -2945,7 +2950,7 @@ mod bench {
     #[bench]
     fn shr(b: &mut Bencher) {
         let n = { let one : BigUint = One::one(); one << 1000 };
-        b.iter(|| {
+        b.iter(ref || {
             let mut m = n.clone();
             for _ in range(0u, 10) {
                 m = m >> 1;

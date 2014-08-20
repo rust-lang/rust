@@ -55,7 +55,7 @@ impl GetAddrInfoRequest {
             None => (None, null())
         };
 
-        let hint = hints.map(|hint| {
+        let hint = hints.map(ref |hint| {
             libc::addrinfo {
                 ai_flags: 0,
                 ai_family: hint.family as c_int,
@@ -67,7 +67,7 @@ impl GetAddrInfoRequest {
                 ai_next: mut_null(),
             }
         });
-        let hint_ptr = hint.as_ref().map_or(null(), |x| {
+        let hint_ptr = hint.as_ref().map_or(null(), ref |x| {
             x as *const libc::addrinfo
         });
         let mut req = Request::new(uvll::UV_GETADDRINFO);
@@ -81,7 +81,7 @@ impl GetAddrInfoRequest {
                 req.defuse(); // uv callback now owns this request
                 let mut cx = Ctx { slot: None, status: 0, addrinfo: None };
 
-                wait_until_woken_after(&mut cx.slot, loop_, || {
+                wait_until_woken_after(&mut cx.slot, loop_, ref || {
                     req.set_data(&mut cx);
                 });
 

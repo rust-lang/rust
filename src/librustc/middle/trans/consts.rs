@@ -538,7 +538,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
 
               expr::with_field_tys(tcx, ety, Some(e.id), |discr, field_tys| {
                   let (cs, inlineable) = vec::unzip(field_tys.iter().enumerate()
-                      .map(|(ix, &field_ty)| {
+                      .map(ref |(ix, &field_ty)| {
                       match fs.iter().find(|f| field_ty.ident.name == f.ident.node.name) {
                           Some(ref f) => const_expr(cx, &*f.expr, is_local),
                           None => {

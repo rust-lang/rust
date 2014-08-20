@@ -135,7 +135,7 @@ pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
     let mut main = Some(main);
     let mut task = task::new((my_stack_bottom, my_stack_top));
     task.name = Some(str::Slice("<main>"));
-    drop(task.run(|| {
+    drop(task.run(ref || {
         unsafe {
             rt::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
         }

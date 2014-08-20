@@ -97,7 +97,7 @@ impl RtioTimer for TimerWatcher {
         let _f = ForbidUnwind::new("timer");
 
         self.action = Some(WakeTask);
-        wait_until_woken_after(&mut self.blocker, &self.uv_loop(), || {
+        wait_until_woken_after(&mut self.blocker, &self.uv_loop(), ref || {
             self.start(timer_cb, msecs, 0);
         });
         self.stop();

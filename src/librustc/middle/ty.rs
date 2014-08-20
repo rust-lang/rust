@@ -1636,16 +1636,18 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
         ty_enum(_, ref substs) | ty_struct(_, ref substs) |
         ty_trait(box TyTrait { ref substs, .. }) => {
             for subty in (*substs).types.iter() {
-                maybe_walk_ty(*subty, |x| f(x));
+                maybe_walk_ty(*subty, ref |x| f(x));
             }
         }
-        ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
+        ty_tup(ref ts) => {
+            for tt in ts.iter() { maybe_walk_ty(*tt, ref |x| f(x)); }
+        }
         ty_bare_fn(ref ft) => {
-            for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
+            for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, ref |x| f(x)); }
             maybe_walk_ty(ft.sig.output, f);
         }
         ty_closure(ref ft) => {
-            for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
+            for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, ref |x| f(x)); }
             maybe_walk_ty(ft.sig.output, f);
         }
     }
@@ -1870,7 +1872,7 @@ fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
 
     let mut encountered_box = encountered_box;
     let mut needs_unwind_cleanup = false;
-    maybe_walk_ty(ty, |ty| {
+    maybe_walk_ty(ty, ref |ty| {
         let old_encountered_box = encountered_box;
         let result = match get(ty).sty {
           ty_box(_) => {
@@ -2243,7 +2245,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 let flds = struct_fields(cx, did, substs);
                 let mut res =
                     TypeContents::union(flds.as_slice(),
-                                        |f| tc_mt(cx, f.mt, cache));
+                                        ref |f| tc_mt(cx, f.mt, cache));
                 if ty::has_dtor(cx, did) {
                     res = res | TC::OwnsDtor;
                 }
@@ -2255,21 +2257,21 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 // unboxed closure.
                 let upvars = unboxed_closure_upvars(cx, did);
                 TypeContents::union(upvars.as_slice(),
-                                    |f| tc_ty(cx, f.ty, cache)) |
+                                    ref |f| tc_ty(cx, f.ty, cache)) |
                     borrowed_contents(r, MutMutable)
             }
 
             ty_tup(ref tys) => {
                 TypeContents::union(tys.as_slice(),
-                                    |ty| tc_ty(cx, *ty, cache))
+                                    ref |ty| tc_ty(cx, *ty, cache))
             }
 
             ty_enum(did, ref substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
                 let mut res =
-                    TypeContents::union(variants.as_slice(), |variant| {
+                    TypeContents::union(variants.as_slice(), ref |variant| {
                         TypeContents::union(variant.args.as_slice(),
-                                            |arg_ty| {
+                                            ref |arg_ty| {
                             tc_ty(cx, *arg_ty, cache)
                         })
                     });
@@ -2391,7 +2393,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                                -> TypeContents {
         let _i = indenter();
         let mut tc = TC::All;
-        each_inherited_builtin_bound(cx, bounds, traits, |bound| {
+        each_inherited_builtin_bound(cx, bounds, traits, ref |bound| {
             tc = tc - match bound {
                 BoundStatic => TC::Nonstatic,
                 BoundSend => TC::Nonsendable,
@@ -2498,18 +2500,21 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
             ty_struct(did, ref substs) => {
                 seen.push(did);
                 let fields = struct_fields(cx, did, substs);
-                let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
+                let r = fields.iter()
+                              .any(ref |f| {
+                                  type_requires(cx, seen, r_ty, f.mt.ty)
+                              });
                 seen.pop().unwrap();
                 r
             }
 
             ty_unboxed_closure(did, _) => {
                 let upvars = unboxed_closure_upvars(cx, did);
-                upvars.iter().any(|f| type_requires(cx, seen, r_ty, f.ty))
+                upvars.iter().any(ref |f| type_requires(cx, seen, r_ty, f.ty))
             }
 
             ty_tup(ref ts) => {
-                ts.iter().any(|t| type_requires(cx, seen, r_ty, *t))
+                ts.iter().any(ref |t| type_requires(cx, seen, r_ty, *t))
             }
 
             ty_enum(ref did, _) if seen.contains(did) => {
@@ -2519,8 +2524,8 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
             ty_enum(did, ref substs) => {
                 seen.push(did);
                 let vs = enum_variants(cx, did);
-                let r = !vs.is_empty() && vs.iter().all(|variant| {
-                    variant.args.iter().any(|aty| {
+                let r = !vs.is_empty() && vs.iter().all(ref |variant| {
+                    variant.args.iter().any(ref |aty| {
                         let sty = aty.subst(cx, substs);
                         type_requires(cx, seen, r_ty, sty)
                     })
@@ -3435,13 +3440,13 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
         "no field named `{}` found in the list of fields `{:?}`",
         token::get_name(name),
         fields.iter()
-              .map(|f| token::get_ident(f.ident).get().to_string())
+              .map(ref |f| token::get_ident(f.ident).get().to_string())
               .collect::<Vec<String>>()).as_slice());
 }
 
 pub fn impl_or_trait_item_idx(id: ast::Ident, trait_items: &[ImplOrTraitItem])
                               -> Option<uint> {
-    trait_items.iter().position(|m| m.ident() == id)
+    trait_items.iter().position(ref |m| m.ident() == id)
 }
 
 /// Returns a vector containing the indices of all type parameters that appear
@@ -3449,7 +3454,7 @@ pub fn impl_or_trait_item_idx(id: ast::Ident, trait_items: &[ImplOrTraitItem])
 /// to a bitset or some other representation.
 pub fn param_tys_in_type(ty: t) -> Vec<ParamTy> {
     let mut rslt = Vec::new();
-    walk_ty(ty, |ty| {
+    walk_ty(ty, ref |ty| {
         match get(ty).sty {
           ty_param(p) => {
             rslt.push(p);
@@ -3945,7 +3950,7 @@ pub fn substd_enum_variants(cx: &ctxt,
                          -> Vec<Rc<VariantInfo>> {
     enum_variants(cx, id).iter().map(|variant_info| {
         let substd_args = variant_info.args.iter()
-            .map(|aty| aty.subst(cx, substs)).collect();
+            .map(ref |aty| aty.subst(cx, substs)).collect();
 
         let substd_ctor_ty = variant_info.ctor_ty.subst(cx, substs);
 
@@ -3958,7 +3963,7 @@ pub fn substd_enum_variants(cx: &ctxt,
 }
 
 pub fn item_path_str(cx: &ctxt, id: ast::DefId) -> String {
-    with_path(cx, id, |path| ast_map::path_to_string(path)).to_string()
+    with_path(cx, id, ref |path| ast_map::path_to_string(path)).to_string()
 }
 
 pub enum DtorKind {
@@ -4037,31 +4042,39 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
                 match item.node {
                     ast::ItemEnum(ref enum_definition, _) => {
                         let mut last_discriminant: Option<Disr> = None;
-                        Rc::new(enum_definition.variants.iter().map(|&variant| {
-
+                        Rc::new(enum_definition.variants
+                                               .iter()
+                                               .map(ref |&variant| {
                             let mut discriminant = match last_discriminant {
                                 Some(val) => val + 1,
                                 None => INITIAL_DISCRIMINANT_VALUE
                             };
 
                             match variant.node.disr_expr {
-                                Some(ref e) => match const_eval::eval_const_expr_partial(cx, &**e) {
-                                    Ok(const_eval::const_int(val)) => {
-                                        discriminant = val as Disr
-                                    }
-                                    Ok(const_eval::const_uint(val)) => {
-                                        discriminant = val as Disr
-                                    }
-                                    Ok(_) => {
-                                        cx.sess
-                                          .span_err(e.span,
-                                                    "expected signed integer constant");
-                                    }
-                                    Err(ref err) => {
-                                        cx.sess
-                                          .span_err(e.span,
-                                                    format!("expected constant: {}",
+                                Some(ref e) => {
+                                    match const_eval::eval_const_expr_partial(
+                                        cx,
+                                        &**e) {
+                                        Ok(const_eval::const_int(val)) => {
+                                            discriminant = val as Disr
+                                        }
+                                        Ok(const_eval::const_uint(val)) => {
+                                            discriminant = val as Disr
+                                        }
+                                        Ok(_) => {
+                                            cx.sess
+                                              .span_err(e.span,
+                                                        "expected signed \
+                                                         integer constant");
+                                        }
+                                        Err(ref err) => {
+                                            cx.sess
+                                              .span_err(e.span,
+                                                        format!(
+                                                            "expected \
+                                                             constant: {}",
                                                             *err).as_slice());
+                                        }
                                     }
                                 },
                                 None => {}
@@ -4144,9 +4157,9 @@ pub fn each_attr(tcx: &ctxt, did: DefId, f: |&ast::Attribute| -> bool) -> bool {
     } else {
         info!("getting foreign attrs");
         let mut cont = true;
-        csearch::get_item_attrs(&tcx.sess.cstore, did, |attrs| {
+        csearch::get_item_attrs(&tcx.sess.cstore, did, ref |attrs| {
             if cont {
-                cont = attrs.iter().all(|attr| f(attr));
+                cont = attrs.iter().all(ref |attr| f(attr));
             }
         });
         info!("done");
@@ -4157,7 +4170,7 @@ pub fn each_attr(tcx: &ctxt, did: DefId, f: |&ast::Attribute| -> bool) -> bool {
 /// Determine whether an item is annotated with an attribute
 pub fn has_attr(tcx: &ctxt, did: DefId, attr: &str) -> bool {
     let mut found = false;
-    each_attr(tcx, did, |item| {
+    each_attr(tcx, did, ref |item| {
         if item.check_name(attr) {
             found = true;
             false
@@ -4181,7 +4194,7 @@ pub fn lookup_simd(tcx: &ctxt, did: DefId) -> bool {
 // Obtain the representation annotation for a definition.
 pub fn lookup_repr_hint(tcx: &ctxt, did: DefId) -> attr::ReprAttr {
     let mut acc = attr::ReprAny;
-    ty::each_attr(tcx, did, |meta| {
+    ty::each_attr(tcx, did, ref |meta| {
         acc = attr::find_repr_attr(tcx.sess.diagnostic(), meta, acc);
         true
     });
@@ -4242,7 +4255,7 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
         // we could cache the whole list of fields here.
         let struct_fields = cx.struct_fields.borrow();
         let mut results: SmallVector<&[field_ty]> = SmallVector::zero();
-        each_super_struct(cx, did, |s| {
+        each_super_struct(cx, did, ref |s| {
             match struct_fields.find(&s) {
                 Some(fields) => results.push(fields.as_slice()),
                 _ => {
@@ -4253,9 +4266,13 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
             }
         });
 
-        let len = results.as_slice().iter().map(|x| x.len()).sum();
+        let len = results.as_slice().iter().map(ref |x| x.len()).sum();
         let mut result: Vec<field_ty> = Vec::with_capacity(len);
-        result.extend(results.as_slice().iter().flat_map(|rs| rs.iter().map(|f| f.clone())));
+        result.extend(results.as_slice()
+                             .iter()
+                             .flat_map(ref |rs| {
+                                 rs.iter().map(ref |f| f.clone())
+                             }));
         assert!(result.len() == len);
         result
     } else {
@@ -4796,7 +4813,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
     macro_rules! byte( ($b:expr) => { ($b as u8).hash(&mut state) } );
     macro_rules! hash( ($e:expr) => { $e.hash(&mut state) } );
 
-    let region = |_state: &mut sip::SipState, r: Region| {
+    let region = ref |_state: &mut sip::SipState, r: Region| {
         match r {
             ReStatic => {}
 
@@ -4810,7 +4827,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             }
         }
     };
-    let did = |state: &mut sip::SipState, did: DefId| {
+    let did = ref |state: &mut sip::SipState, did: DefId| {
         let h = if ast_util::is_local(did) {
             svh.clone()
         } else {
@@ -4819,10 +4836,10 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
         h.as_str().hash(state);
         did.node.hash(state);
     };
-    let mt = |state: &mut sip::SipState, mt: mt| {
+    let mt = ref |state: &mut sip::SipState, mt: mt| {
         mt.mutbl.hash(state);
     };
-    ty::walk_ty(t, |t| {
+    ty::walk_ty(t, ref |t| {
         match ty::get(t).sty {
             ty_nil => byte!(0),
             ty_bot => byte!(1),

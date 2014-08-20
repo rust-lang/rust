@@ -1763,7 +1763,7 @@ impl<T: Iterator<char>> Parser<T> {
     }
 
     fn parse_ident(&mut self, ident: &str, value: JsonEvent) -> JsonEvent {
-        if ident.chars().all(|c| Some(c) == self.next_char()) {
+        if ident.chars().all(ref |c| Some(c) == self.next_char()) {
             self.bump();
             value
         } else {
@@ -2067,7 +2067,9 @@ impl ::Decoder<DecoderError> for Decoder {
             }
         };
         let idx = match names.iter()
-                             .position(|n| str::eq_slice(*n, name.as_slice())) {
+                             .position(ref |n| {
+                                 str::eq_slice(*n, name.as_slice())
+                             }) {
             Some(idx) => idx,
             None => return Err(UnknownVariantError(name))
         };
@@ -2571,14 +2573,14 @@ mod tests {
     fn test_write_enum() {
         let animal = Dog;
         assert_eq!(
-            with_str_writer(|writer| {
+            with_str_writer(ref |writer| {
                 let mut encoder = Encoder::new(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
             "\"Dog\"".to_string()
         );
         assert_eq!(
-            with_str_writer(|writer| {
+            with_str_writer(ref |writer| {
                 let mut encoder = PrettyEncoder::new(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
@@ -2587,14 +2589,14 @@ mod tests {
 
         let animal = Frog("Henry".to_string(), 349);
         assert_eq!(
-            with_str_writer(|writer| {
+            with_str_writer(ref |writer| {
                 let mut encoder = Encoder::new(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
             "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}".to_string()
         );
         assert_eq!(
-            with_str_writer(|writer| {
+            with_str_writer(ref |writer| {
                 let mut encoder = PrettyEncoder::new(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
@@ -2610,14 +2612,14 @@ mod tests {
     #[test]
     fn test_write_some() {
         let value = Some("jodhpurs".to_string());
-        let s = with_str_writer(|writer| {
+        let s = with_str_writer(ref |writer| {
             let mut encoder = Encoder::new(writer);
             value.encode(&mut encoder).unwrap();
         });
         assert_eq!(s, "\"jodhpurs\"".to_string());
 
         let value = Some("jodhpurs".to_string());
-        let s = with_str_writer(|writer| {
+        let s = with_str_writer(ref |writer| {
             let mut encoder = PrettyEncoder::new(writer);
             value.encode(&mut encoder).unwrap();
         });
@@ -2627,13 +2629,13 @@ mod tests {
     #[test]
     fn test_write_none() {
         let value: Option<String> = None;
-        let s = with_str_writer(|writer| {
+        let s = with_str_writer(ref |writer| {
             let mut encoder = Encoder::new(writer);
             value.encode(&mut encoder).unwrap();
         });
         assert_eq!(s, "null".to_string());
 
-        let s = with_str_writer(|writer| {
+        let s = with_str_writer(ref |writer| {
             let mut encoder = Encoder::new(writer);
             value.encode(&mut encoder).unwrap();
         });
@@ -3565,7 +3567,7 @@ mod tests {
 
     #[bench]
     fn bench_streaming_small(b: &mut Bencher) {
-        b.iter( || {
+        b.iter(ref || {
             let mut parser = Parser::new(
                 r#"{
                     "a": 1.0,
@@ -3586,7 +3588,7 @@ mod tests {
     }
     #[bench]
     fn bench_small(b: &mut Bencher) {
-        b.iter( || {
+        b.iter(ref || {
             let _ = from_str(r#"{
                 "a": 1.0,
                 "b": [

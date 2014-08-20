@@ -571,21 +571,21 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
           },
           'c' => {
             parse_type(s, pos, 'a', &mut *tm)
-                .and_then(|pos| parse_char(s, pos, ' '))
-                .and_then(|pos| parse_type(s, pos, 'b', &mut *tm))
-                .and_then(|pos| parse_char(s, pos, ' '))
-                .and_then(|pos| parse_type(s, pos, 'e', &mut *tm))
-                .and_then(|pos| parse_char(s, pos, ' '))
-                .and_then(|pos| parse_type(s, pos, 'T', &mut *tm))
-                .and_then(|pos| parse_char(s, pos, ' '))
-                .and_then(|pos| parse_type(s, pos, 'Y', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, ' '))
+                .and_then(ref |pos| parse_type(s, pos, 'b', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, ' '))
+                .and_then(ref |pos| parse_type(s, pos, 'e', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, ' '))
+                .and_then(ref |pos| parse_type(s, pos, 'T', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, ' '))
+                .and_then(ref |pos| parse_type(s, pos, 'Y', &mut *tm))
           }
           'D' | 'x' => {
             parse_type(s, pos, 'm', &mut *tm)
-                .and_then(|pos| parse_char(s, pos, '/'))
-                .and_then(|pos| parse_type(s, pos, 'd', &mut *tm))
-                .and_then(|pos| parse_char(s, pos, '/'))
-                .and_then(|pos| parse_type(s, pos, 'y', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, '/'))
+                .and_then(ref |pos| parse_type(s, pos, 'd', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, '/'))
+                .and_then(ref |pos| parse_type(s, pos, 'y', &mut *tm))
           }
           'd' => match match_digits_in_range(s, pos, 2u, false, 1_i32,
                                              31_i32) {
@@ -604,10 +604,10 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
           }
           'F' => {
             parse_type(s, pos, 'Y', &mut *tm)
-                .and_then(|pos| parse_char(s, pos, '-'))
-                .and_then(|pos| parse_type(s, pos, 'm', &mut *tm))
-                .and_then(|pos| parse_char(s, pos, '-'))
-                .and_then(|pos| parse_type(s, pos, 'd', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, '-'))
+                .and_then(ref |pos| parse_type(s, pos, 'm', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, '-'))
+                .and_then(ref |pos| parse_type(s, pos, 'd', &mut *tm))
           }
           'H' => {
             match match_digits_in_range(s, pos, 2u, false, 0_i32, 23_i32) {
@@ -682,17 +682,17 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
           },
           'R' => {
             parse_type(s, pos, 'H', &mut *tm)
-                .and_then(|pos| parse_char(s, pos, ':'))
-                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, ':'))
+                .and_then(ref |pos| parse_type(s, pos, 'M', &mut *tm))
           }
           'r' => {
             parse_type(s, pos, 'I', &mut *tm)
-                .and_then(|pos| parse_char(s, pos, ':'))
-                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm))
-                .and_then(|pos| parse_char(s, pos, ':'))
-                .and_then(|pos| parse_type(s, pos, 'S', &mut *tm))
-                .and_then(|pos| parse_char(s, pos, ' '))
-                .and_then(|pos| parse_type(s, pos, 'p', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, ':'))
+                .and_then(ref |pos| parse_type(s, pos, 'M', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, ':'))
+                .and_then(ref |pos| parse_type(s, pos, 'S', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, ' '))
+                .and_then(ref |pos| parse_type(s, pos, 'p', &mut *tm))
           }
           'S' => {
             match match_digits_in_range(s, pos, 2u, false, 0_i32, 60_i32) {
@@ -707,10 +707,10 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
           //'s' {}
           'T' | 'X' => {
             parse_type(s, pos, 'H', &mut *tm)
-                .and_then(|pos| parse_char(s, pos, ':'))
-                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm))
-                .and_then(|pos| parse_char(s, pos, ':'))
-                .and_then(|pos| parse_type(s, pos, 'S', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, ':'))
+                .and_then(ref |pos| parse_type(s, pos, 'M', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, ':'))
+                .and_then(ref |pos| parse_type(s, pos, 'S', &mut *tm))
           }
           't' => parse_char(s, pos, '\t'),
           'u' => {
@@ -725,10 +725,10 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
           }
           'v' => {
             parse_type(s, pos, 'e', &mut *tm)
-                .and_then(|pos|  parse_char(s, pos, '-'))
-                .and_then(|pos| parse_type(s, pos, 'b', &mut *tm))
-                .and_then(|pos| parse_char(s, pos, '-'))
-                .and_then(|pos| parse_type(s, pos, 'Y', &mut *tm))
+                .and_then(ref |pos|  parse_char(s, pos, '-'))
+                .and_then(ref |pos| parse_type(s, pos, 'b', &mut *tm))
+                .and_then(ref |pos| parse_char(s, pos, '-'))
+                .and_then(ref |pos| parse_type(s, pos, 'Y', &mut *tm))
           }
           //'W' {}
           'w' => {
@@ -1575,6 +1575,6 @@ mod tests {
 
     #[bench]
     fn bench_precise_time_ns(b: &mut Bencher) {
-        b.iter(|| precise_time_ns())
+        b.iter(ref || precise_time_ns())
     }
 }

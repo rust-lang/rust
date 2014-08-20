@@ -107,7 +107,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
     // inserts a timer into an array of timers (sorted by firing time)
     fn insert(t: Box<Inner>, active: &mut Vec<Box<Inner>>) {
-        match active.iter().position(|tm| tm.target > t.target) {
+        match active.iter().position(ref |tm| tm.target > t.target) {
             Some(pos) => { active.insert(pos, t); }
             None => { active.push(t); }
         }
@@ -172,7 +172,8 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
                         Ok(NewTimer(timer)) => insert(timer, &mut active),
 
                         Ok(RemoveTimer(id, ack)) => {
-                            match dead.iter().position(|&(i, _)| id == i) {
+                            match dead.iter()
+                                      .position(ref |&(i, _)| id == i) {
                                 Some(i) => {
                                     let (_, i) = dead.remove(i).unwrap();
                                     ack.send(i);
@@ -180,7 +181,8 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
                                 }
                                 None => {}
                             }
-                            let i = active.iter().position(|i| i.id == id);
+                            let i = active.iter()
+                                          .position(ref |i| i.id == id);
                             let i = i.expect("no timer found");
                             let t = active.remove(i).unwrap();
                             ack.send(t);
@@ -205,7 +207,7 @@ impl Timer {
     pub fn new() -> IoResult<Timer> {
         // See notes above regarding using int return value
         // instead of ()
-        unsafe { HELPER.boot(|| {}, helper); }
+        unsafe { HELPER.boot(ref || {}, helper); }
 
         static mut ID: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
         let id = unsafe { ID.fetch_add(1, atomic::Relaxed) };

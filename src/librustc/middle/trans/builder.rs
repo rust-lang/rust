@@ -51,7 +51,7 @@ impl<'a> Builder<'a> {
                                                 .get() + 1);
         }
         if self.ccx.sess().count_llvm_insns() {
-            base::with_insn_ctxt(|v| {
+            base::with_insn_ctxt(ref |v| {
                 let mut h = self.ccx.stats.llvm_insns.borrow_mut();
 
                 // Build version of path with cycles removed.
@@ -162,7 +162,7 @@ impl<'a> Builder<'a> {
         debug!("Invoke {} with args ({})",
                self.ccx.tn.val_to_string(llfn),
                args.iter()
-                   .map(|&v| self.ccx.tn.val_to_string(v))
+                   .map(ref |&v| self.ccx.tn.val_to_string(v))
                    .collect::<Vec<String>>()
                    .connect(", "));
 
@@ -428,7 +428,7 @@ impl<'a> Builder<'a> {
             if name.is_empty() {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), noname())
             } else {
-                name.with_c_str(|c| {
+                name.with_c_str(ref |c| {
                     llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), c)
                 })
             }
@@ -551,7 +551,9 @@ impl<'a> Builder<'a> {
             }
             self.inbounds_gep(base, small_vec.slice(0, ixs.len()))
         } else {
-            let v = ixs.iter().map(|i| C_i32(self.ccx, *i as i32)).collect::<Vec<ValueRef>>();
+            let v = ixs.iter()
+                       .map(ref |i| C_i32(self.ccx, *i as i32))
+                       .collect::<Vec<ValueRef>>();
             self.count_insn("gepi");
             self.inbounds_gep(base, v.as_slice())
         }
@@ -772,7 +774,7 @@ impl<'a> Builder<'a> {
             let comment_text = format!("{} {}", "#",
                                        sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");
-            let asm = comment_text.as_slice().with_c_str(|c| {
+            let asm = comment_text.as_slice().with_c_str(ref |c| {
                 unsafe {
                     llvm::LLVMConstInlineAsm(Type::func([], &Type::void(self.ccx)).to_ref(),
                                              c, noname(), False, False)
@@ -793,7 +795,7 @@ impl<'a> Builder<'a> {
         let alignstack = if alignstack { llvm::True }
                          else          { llvm::False };
 
-        let argtys = inputs.iter().map(|v| {
+        let argtys = inputs.iter().map(ref |v| {
             debug!("Asm Input Type: {:?}", self.ccx.tn.val_to_string(*v));
             val_ty(*v)
         }).collect::<Vec<_>>();
@@ -814,7 +816,7 @@ impl<'a> Builder<'a> {
         debug!("Call {} with args ({})",
                self.ccx.tn.val_to_string(llfn),
                args.iter()
-                   .map(|&v| self.ccx.tn.val_to_string(v))
+                   .map(ref |&v| self.ccx.tn.val_to_string(v))
                    .collect::<Vec<String>>()
                    .connect(", "));
 
@@ -924,7 +926,7 @@ impl<'a> Builder<'a> {
             let bb: BasicBlockRef = llvm::LLVMGetInsertBlock(self.llbuilder);
             let fn_: ValueRef = llvm::LLVMGetBasicBlockParent(bb);
             let m: ModuleRef = llvm::LLVMGetGlobalParent(fn_);
-            let t: ValueRef = "llvm.trap".with_c_str(|buf| {
+            let t: ValueRef = "llvm.trap".with_c_str(ref |buf| {
                 llvm::LLVMGetNamedFunction(m, buf)
             });
             assert!((t as int != 0));

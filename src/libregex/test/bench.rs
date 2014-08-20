@@ -15,7 +15,7 @@ use stdtest::Bencher;
 use regex::{Regex, NoExpand};
 
 fn bench_assert_match(b: &mut Bencher, re: Regex, text: &str) {
-    b.iter(|| if !re.is_match(text) { fail!("no match") });
+    b.iter(ref || if !re.is_match(text) { fail!("no match") });
 }
 
 #[bench]
@@ -64,77 +64,77 @@ fn replace_all(b: &mut Bencher) {
     // FIXME: This isn't using the $name expand stuff.
     // It's possible RE2/Go is using it, but currently, the expand in this
     // crate is actually compiling a regex, so it's incredibly slow.
-    b.iter(|| re.replace_all(text, NoExpand("")));
+    b.iter(ref || re.replace_all(text, NoExpand("")));
 }
 
 #[bench]
 fn anchored_literal_short_non_match(b: &mut Bencher) {
     let re = regex!("^zbc(d|e)");
     let text = "abcdefghijklmnopqrstuvwxyz";
-    b.iter(|| re.is_match(text));
+    b.iter(ref || re.is_match(text));
 }
 
 #[bench]
 fn anchored_literal_long_non_match(b: &mut Bencher) {
     let re = regex!("^zbc(d|e)");
     let text = "abcdefghijklmnopqrstuvwxyz".repeat(15);
-    b.iter(|| re.is_match(text.as_slice()));
+    b.iter(ref || re.is_match(text.as_slice()));
 }
 
 #[bench]
 fn anchored_literal_short_match(b: &mut Bencher) {
     let re = regex!("^.bc(d|e)");
     let text = "abcdefghijklmnopqrstuvwxyz";
-    b.iter(|| re.is_match(text));
+    b.iter(ref || re.is_match(text));
 }
 
 #[bench]
 fn anchored_literal_long_match(b: &mut Bencher) {
     let re = regex!("^.bc(d|e)");
     let text = "abcdefghijklmnopqrstuvwxyz".repeat(15);
-    b.iter(|| re.is_match(text.as_slice()));
+    b.iter(ref || re.is_match(text.as_slice()));
 }
 
 #[bench]
 fn one_pass_short_a(b: &mut Bencher) {
     let re = regex!("^.bc(d|e)*$");
     let text = "abcddddddeeeededd";
-    b.iter(|| re.is_match(text));
+    b.iter(ref || re.is_match(text));
 }
 
 #[bench]
 fn one_pass_short_a_not(b: &mut Bencher) {
     let re = regex!(".bc(d|e)*$");
     let text = "abcddddddeeeededd";
-    b.iter(|| re.is_match(text));
+    b.iter(ref || re.is_match(text));
 }
 
 #[bench]
 fn one_pass_short_b(b: &mut Bencher) {
     let re = regex!("^.bc(?:d|e)*$");
     let text = "abcddddddeeeededd";
-    b.iter(|| re.is_match(text));
+    b.iter(ref || re.is_match(text));
 }
 
 #[bench]
 fn one_pass_short_b_not(b: &mut Bencher) {
     let re = regex!(".bc(?:d|e)*$");
     let text = "abcddddddeeeededd";
-    b.iter(|| re.is_match(text));
+    b.iter(ref || re.is_match(text));
 }
 
 #[bench]
 fn one_pass_long_prefix(b: &mut Bencher) {
     let re = regex!("^abcdefghijklmnopqrstuvwxyz.*$");
     let text = "abcdefghijklmnopqrstuvwxyz";
-    b.iter(|| re.is_match(text));
+    b.iter(ref || re.is_match(text));
 }
 
 #[bench]
 fn one_pass_long_prefix_not(b: &mut Bencher) {
     let re = regex!("^.bcdefghijklmnopqrstuvwxyz.*$");
     let text = "abcdefghijklmnopqrstuvwxyz";
-    b.iter(|| re.is_match(text));
+    b.iter(ref || re.is_match(text));
 }
 
 macro_rules! throughput(
@@ -143,7 +143,11 @@ macro_rules! throughput(
         fn $name(b: &mut Bencher) {
             let text = gen_text($size);
             b.bytes = $size;
-            b.iter(|| if $regex.is_match(text.as_slice()) { fail!("match") });
+            b.iter(ref || {
+                if $regex.is_match(text.as_slice()) {
+                    fail!("match")
+                }
+            });
         }
     );
 )

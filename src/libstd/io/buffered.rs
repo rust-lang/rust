@@ -607,21 +607,21 @@ mod test {
 
     #[bench]
     fn bench_buffered_reader(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             BufferedReader::new(NullStream)
         });
     }
 
     #[bench]
     fn bench_buffered_writer(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             BufferedWriter::new(NullStream)
         });
     }
 
     #[bench]
     fn bench_buffered_stream(b: &mut Bencher) {
-        b.iter(|| {
+        b.iter(ref || {
             BufferedStream::new(NullStream);
         });
     }

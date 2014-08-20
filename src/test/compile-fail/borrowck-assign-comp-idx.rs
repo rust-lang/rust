@@ -34,14 +34,14 @@ fn b() {
 
     borrow(
         p.as_slice(),
-        || *p.get_mut(0) = 5); //~ ERROR cannot borrow `p` as mutable
+        ref || *p.get_mut(0) = 5); //~ ERROR cannot borrow `p` as mutable
 }
 
 fn c() {
     // Legal because the scope of the borrow does not include the
     // modification:
     let mut p = vec!(1);
-    borrow(p.as_slice(), ||{});
+    borrow(p.as_slice(), ref ||{});
     *p.get_mut(0) = 5;
 }
 

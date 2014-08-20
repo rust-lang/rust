@@ -153,7 +153,7 @@ impl<'f> Combine for Glb<'f> {
             fold_regions_in_sig(
                 self.get_ref().infcx.tcx,
                 &sig0,
-                |r| {
+                ref |r| {
                 generalize_region(self,
                                   mark,
                                   new_vars.as_slice(),

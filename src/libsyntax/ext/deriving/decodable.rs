@@ -54,7 +54,7 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                           vec!(box Self,
                                                box Literal(Path::new_local("__E"))), true)),
                 attributes: Vec::new(),
-                combine_substructure: combine_substructure(|a, b, c| {
+                combine_substructure: combine_substructure(ref |a, b, c| {
                     decodable_substructure(a, b, c)
                 }),
             })
@@ -166,7 +166,7 @@ fn decode_static_fields(cx: &mut ExtCtxt,
             if fields.is_empty() {
                 cx.expr_ident(trait_span, outer_pat_ident)
             } else {
-                let fields = fields.iter().enumerate().map(|(i, &span)| {
+                let fields = fields.iter().enumerate().map(ref |(i, &span)| {
                     getarg(cx, span,
                            token::intern_and_get_ident(format!("_field{}",
                                                                i).as_slice()),
@@ -178,7 +178,9 @@ fn decode_static_fields(cx: &mut ExtCtxt,
         }
         Named(ref fields) => {
             // use the field's span to get nicer error messages.
-            let fields = fields.iter().enumerate().map(|(i, &(name, span))| {
+            let fields = fields.iter()
+                               .enumerate()
+                               .map(ref |(i, &(name, span))| {
                 let arg = getarg(cx, span, token::get_ident(name), i);
                 cx.field_imm(span, name, arg)
             }).collect();

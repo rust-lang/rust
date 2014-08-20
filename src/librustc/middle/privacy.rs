@@ -255,7 +255,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
                     _ => true,
                 };
                 let tr = ty::impl_trait_ref(self.tcx, local_def(item.id));
-                let public_trait = tr.clone().map_or(false, |tr| {
+                let public_trait = tr.clone().map_or(false, ref |tr| {
                     !is_local(tr.def_id) ||
                      self.exported_items.contains(&tr.def_id.node)
                 });
@@ -686,8 +686,8 @@ impl<'a> PrivacyVisitor<'a> {
     fn check_path(&mut self, span: Span, path_id: ast::NodeId, path: &ast::Path) {
         debug!("privacy - path {}", self.nodestr(path_id));
         let orig_def = self.tcx.def_map.borrow().get_copy(&path_id);
-        let ck = |tyname: &str| {
-            let ck_public = |def: ast::DefId| {
+        let ck = ref |tyname: &str| {
+            let ck_public = ref |def: ast::DefId| {
                 let name = token::get_ident(path.segments
                                                 .last()
                                                 .unwrap()
@@ -862,9 +862,9 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                 }
             }
             ast::ExprPath(..) => {
-                let guard = |did: ast::DefId| {
+                let guard = ref |did: ast::DefId| {
                     let fields = ty::lookup_struct_fields(self.tcx, did);
-                    let any_priv = fields.iter().any(|f| {
+                    let any_priv = fields.iter().any(ref |f| {
                         f.vis != ast::Public && (
                             !is_local(f.id) ||
                             !self.private_accessible(f.id.node))
@@ -1322,7 +1322,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
                 // `true` iff this is `impl Private for ...`.
                 let not_private_trait =
                     trait_ref.as_ref().map_or(true, // no trait counts as public trait
-                                              |tr| {
+                                              ref |tr| {
                         let did = ty::trait_ref_to_def_id(self.tcx, tr);
 
                         !is_local(did) || self.trait_is_public(did.node)
@@ -1339,7 +1339,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
                 let trait_or_some_public_method =
                     trait_ref.is_some() ||
                     impl_items.iter()
-                              .any(|impl_item| {
+                              .any(ref |impl_item| {
                                   match *impl_item {
                                       ast::MethodImplItem(m) => {
                                           self.exported_items.contains(&m.id)

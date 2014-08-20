@@ -599,7 +599,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
 
     // Write the type of each of the members and check for duplicate fields.
     let mut seen_fields: HashMap<ast::Name, Span> = HashMap::new();
-    let field_tys = struct_def.fields.iter().map(|f| {
+    let field_tys = struct_def.fields.iter().map(ref |f| {
         let result = convert_field(ccx, &pty.generics, f, local_def(id));
 
         if result.name != special_idents::unnamed_field.name {
@@ -854,9 +854,9 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
             if !ty::try_add_builtin_trait(ccx.tcx, trait_def_id, &mut bounds) {
 
                 // FIXME(#5527) Could have same trait multiple times
-                if ty_trait_refs.iter().any(
-                    |other_trait| other_trait.def_id == trait_ref.def_id)
-                {
+                if ty_trait_refs.iter().any(ref |other_trait| {
+                    other_trait.def_id == trait_ref.def_id
+                }) {
                     // This means a trait inherited from the same
                     // supertrait more than once.
                     span_err!(tcx.sess, sp, E0127,

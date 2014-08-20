@@ -23,7 +23,7 @@ impl Drop for HasDtor {
 
 #[bench]
 fn alloc_obj_with_dtor(b: &mut Bencher) {
-    b.iter(|| {
+    b.iter(ref || {
         HasDtor { _x : 10 };
     })
 }
