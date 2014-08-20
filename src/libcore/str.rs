@@ -439,9 +439,13 @@ impl TwoWaySearcher {
         let byteset = needle.iter()
                             .fold(0, |a, &b| (1 << ((b & 0x3f) as uint)) | a);
 
-        // Check if the needle is periodic. If so, during searching when we
-        // find a mismatch, we must only advance the position by the length
-        // of the period, not the length of the entire needle
+
+        // The logic here (calculating critPos and period, the final if statement to see which
+        // period to use for the TwoWaySearcher) is essentially an implementation of the
+        // "small-period" function from the paper (p. 670)
+        //
+        // In the paper they check whether `needle.slice_to(critPos)` is a suffix of
+        // `needle.slice(critPos, critPos + period)`, which is precisely what this does
         if needle.slice_to(critPos) == needle.slice(period, period + critPos) {
             TwoWaySearcher {
                 critPos: critPos,
@@ -513,6 +517,9 @@ impl TwoWaySearcher {
         }
     }
 
+    // returns (i, p) where i is the "critical position", the starting index of
+    // of maximal suffix, and p is the period of the suffix
+    // see p. 668 of the paper
     #[inline]
     fn maximal_suffix(arr: &[u8], reversed: bool) -> (uint, uint) {
         let mut left = -1; // Corresponds to i in the paper
