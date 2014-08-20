@@ -89,10 +89,9 @@ closure in the new task.
 fn print_message() { println!("I am running in a different task!"); }
 spawn(print_message);
 
-// Print something profound in a different task using a `proc` expression
+// Alternatively, use a `proc` expression instead of a named function.
 // The `proc` expression evaluates to an (unnamed) owned closure.
 // That closure will call `println!(...)` when the spawned task runs.
-
 spawn(proc() println!("I am also running in a different task!") );
 ~~~~
 
@@ -352,14 +351,14 @@ fn main() {
 
 The function `pnorm` performs a simple computation on the vector (it computes the sum of its items
 at the power given as argument and takes the inverse power of this value). The Arc on the vector is
-created by the line
+created by the line:
 
 ~~~
 # use std::rand;
 # use std::sync::Arc;
 # fn main() {
 # let numbers = Vec::from_fn(1000000, |_| rand::random::<f64>());
-let numbers_arc=Arc::new(numbers);
+let numbers_arc = Arc::new(numbers);
 # }
 ~~~
 
