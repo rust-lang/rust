@@ -3771,6 +3771,173 @@ guide](http://doc.rust-lang.org/guide-pointers.html#rc-and-arc).
 
 # Patterns
 
+We've made use of patterns a few times in the guide: first with `let` bindings,
+then with `match` statements. Let's go on a whirlwind tour of all of the things
+patterns can do!
+
+A quick refresher: you can match against literals directly, and `_` acts as an
+'any' case:
+
+```{rust}
+let x = 1i;
+
+match x {
+    1 => println!("one"),
+    2 => println!("two"),
+    3 => println!("three"),
+    _ => println!("anything"),
+}
+```
+
+You can match multiple patterns with `|`:
+
+```{rust}
+let x = 1i;
+
+match x {
+    1 | 2 => println!("one or two"),
+    3 => println!("three"),
+    _ => println!("anything"),
+}
+```
+
+You can match a range of values with `..`:
+
+```{rust}
+let x = 1i;
+
+match x {
+    1 .. 5 => println!("one through five"),
+    _ => println!("anything"),
+}
+```
+
+Ranges are mostly used with integers and single characters.
+
+If you're matching multiple things, via a `|` or a `..`, you can bind
+the value to a name with `@`:
+
+```{rust}
+let x = 1i;
+
+match x {
+    x @ 1 .. 5 => println!("got {}", x),
+    _ => println!("anything"),
+}
+```
+
+If you're matching on an enum which has variants, you can use `..` to
+ignore the value in the variant:
+
+```{rust}
+enum OptionalInt {
+    Value(int),
+    Missing,
+}
+
+let x = Value(5i);
+
+match x {
+    Value(..) => println!("Got an int!"),
+    Missing   => println!("No such luck."),
+}
+```
+
+You can introduce **match guards** with `if`:
+
+```{rust}
+enum OptionalInt {
+    Value(int),
+    Missing,
+}
+
+let x = Value(5i);
+
+match x {
+    Value(x) if x > 5 => println!("Got an int bigger than five!"),
+    Value(..) => println!("Got an int!"),
+    Missing   => println!("No such luck."),
+}
+```
+
+If you're matching on a pointer, you can use the same syntax as you declared it
+with. First, `&`:
+
+```{rust}
+let x = &5i;
+
+match x {
+    &x => println!("Got a value: {}", x),
+}
+```
+
+Here, the `x` inside the `match` has type `int`. In other words, the left hand
+side of the pattern destructures the value. If we have `&5i`, then in `&x`, `x`
+would be `5i`.
+
+If you want to get a reference, use the `ref` keyword:
+
+```{rust}
+let x = 5i;
+
+match x {
+    ref x => println!("Got a reference to {}", x),
+}
+```
+
+Here, the `x` inside the `match` has the type `&int`. In other words, the `ref`
+keyword _creates_ a reference, for use in the pattern. If you need a mutable
+reference, `ref mut` will work in the same way:
+
+```{rust}
+let mut x = 5i;
+
+match x {
+    ref mut x => println!("Got a mutable reference to {}", x),
+}
+```
+
+If you have a struct, you can desugar it inside of a pattern:
+
+```{rust}
+struct Point {
+    x: int,
+    y: int,
+}
+
+let origin = Point { x: 0i, y: 0i };
+
+match origin {
+    Point { x: x, y: y } => println!("({},{})", x, y),
+}
+```
+
+If we only care about some of the values, we don't have to give them all names:
+
+```{rust}
+struct Point {
+    x: int,
+    y: int,
+}
+
+let origin = Point { x: 0i, y: 0i };
+
+match origin {
+    Point { x: x, .. } => println!("x is {}", x),
+}
+```
+
+Whew! That's a lot of different ways to match things, and they can all be
+mixed and matched, depending on what you're doing:
+
+```{rust,ignore}
+match x {
+    Foo { x: Some(ref name), y: None } => ...
+}
+```
+
+Patterns are very powerful.  Make good use of them.
+
 # Method Syntax
 
 Functions are great, but if you want to call a bunch of them on some data, it
@@ -3857,7 +4024,6 @@ fn main() {
 This **static method** builds a new `Circle` for us. Note that static methods
 are called with the `Struct::method()` syntax, rather than the `ref.method()`
 syntax.
-
 
 # Closures
 
