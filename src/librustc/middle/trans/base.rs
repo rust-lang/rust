@@ -2240,13 +2240,14 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
         ty::ty_bare_fn(ref f) => (f.sig.clone(), f.abi, false),
         ty::ty_unboxed_closure(closure_did, _) => {
             let unboxed_closures = ccx.tcx.unboxed_closures.borrow();
-            let function_type = unboxed_closures.get(&closure_did)
-                                                .closure_type
-                                                .clone();
+            let ref function_type = unboxed_closures.get(&closure_did)
+                                                    .closure_type;
+
             (function_type.sig.clone(), RustCall, true)
         }
-        _ => fail!("expected closure or function.")
+        _ => ccx.sess().bug("expected closure or function.")
     };
+
 
     // Since index 0 is the return value of the llvm func, we start
     // at either 1 or 2 depending on whether there's an env slot or not
@@ -2254,12 +2255,29 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
     let mut attrs = llvm::AttrBuilder::new();
     let ret_ty = fn_sig.output;
 
-    // These have an odd calling convention, so we skip them for now.
-    //
-    // FIXME(pcwalton): We don't have to skip them; just untuple the result.
-    if abi == RustCall {
-        return attrs;
-    }
+    // These have an odd calling convention, so we need to manually
+    // unpack the input ty's
+    let input_tys = match ty::get(fn_ty).sty {
+        ty::ty_unboxed_closure(_, _) => {
+            assert!(abi == RustCall);
+
+            match ty::get(fn_sig.inputs[0]).sty {
+                ty::ty_nil => Vec::new(),
+                ty::ty_tup(ref inputs) => inputs.clone(),
+                _ => ccx.sess().bug("expected tuple'd inputs")
+            }
+        },
+        ty::ty_bare_fn(_) if abi == RustCall => {
+            let inputs = vec![fn_sig.inputs[0]];
+
+            match ty::get(fn_sig.inputs[1]).sty {
+                ty::ty_nil => inputs,
+                ty::ty_tup(ref t_in) => inputs.append(t_in.as_slice()),
+                _ => ccx.sess().bug("expected tuple'd inputs")
+            }
+        }
+        _ => fn_sig.inputs.clone()
+    };
 
     // A function pointer is called without the declaration
     // available, so we have to apply any attributes with ABI
@@ -2315,7 +2333,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
         }
     }
 
-    for (idx, &t) in fn_sig.inputs.iter().enumerate().map(|(i, v)| (i + first_arg_offset, v)) {
+    for (idx, &t) in input_tys.iter().enumerate().map(|(i, v)| (i + first_arg_offset, v)) {
         match ty::get(t).sty {
             // this needs to be first to prevent fat pointers from falling through
             _ if !type_is_immediate(ccx, t) => {
