@@ -563,7 +563,11 @@ pub fn trait_ref_for_unboxed_function<AC:AstConv,
                         .map(|input| {
                             ast_ty_to_ty(this, rscope, &*input.ty)
                         }).collect::<Vec<_>>();
-    let input_tuple = ty::mk_tup(this.tcx(), input_types);
+    let input_tuple = if input_types.len() == 0 {
+        ty::mk_nil()
+    } else {
+        ty::mk_tup(this.tcx(), input_types)
+    };
     let output_type = ast_ty_to_ty(this,
                                    rscope,
                                    &*unboxed_function.decl.output);
