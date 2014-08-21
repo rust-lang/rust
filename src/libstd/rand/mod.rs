@@ -76,7 +76,9 @@
 //! circle, both centered at the origin. Since the area of a unit circle is pi,
 //! the ratio
 //!
+//! ```notrust
 //!     (area of unit circle) / (area of square)
+//! ```
 //!
 //! is equal to pi / 4. So if we sample many points randomly from the square,
 //! roughly pi / 4 of them should be inside the circle.
