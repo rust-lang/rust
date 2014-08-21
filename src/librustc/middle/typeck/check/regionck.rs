@@ -263,7 +263,7 @@ impl<'a> Rcx<'a> {
 
 impl<'fcx> mc::Typer for Rcx<'fcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt {
-        self.fcx.tcx()
+        self.fcx.ccx.tcx
     }
 
     fn node_ty(&self, id: ast::NodeId) -> mc::McResult<ty::t> {

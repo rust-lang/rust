@@ -79,7 +79,10 @@ type parameter).
 
 use middle::const_eval;
 use middle::def;
+use middle::freevars;
 use middle::lang_items::IteratorItem;
+use middle::mem_categorization::McResult;
+use middle::mem_categorization;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::subst;
@@ -110,6 +113,7 @@ use middle::typeck::no_params;
 use middle::typeck::{require_same_types, vtable_map};
 use middle::typeck::{MethodCall, MethodMap};
 use middle::typeck::{TypeAndSubsts};
+use middle::typeck;
 use middle::lang_items::TypeIdLangItem;
 use lint;
 use util::common::{block_query, indenter, loop_query};
@@ -259,6 +263,39 @@ pub struct FnCtxt<'a> {
     inh: &'a Inherited<'a>,
 
     ccx: &'a CrateCtxt<'a>,
+}
+
+impl<'a> mem_categorization::Typer for FnCtxt<'a> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+        self.ccx.tcx
+    }
+    fn node_ty(&self, id: ast::NodeId) -> McResult<ty::t> {
+        self.ccx.tcx.node_ty(id)
+    }
+    fn node_method_ty(&self, method_call: typeck::MethodCall)
+                      -> Option<ty::t> {
+        self.ccx.tcx.node_method_ty(method_call)
+    }
+    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
+        self.ccx.tcx.adjustments()
+    }
+    fn is_method_call(&self, id: ast::NodeId) -> bool {
+        self.ccx.tcx.is_method_call(id)
+    }
+    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId> {
+        self.ccx.tcx.temporary_scope(rvalue_id)
+    }
+    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
+        self.ccx.tcx.upvar_borrow(upvar_id)
+    }
+    fn capture_mode(&self, closure_expr_id: ast::NodeId)
+                    -> freevars::CaptureMode {
+        self.ccx.tcx.capture_mode(closure_expr_id)
+    }
+    fn unboxed_closures<'a>(&'a self)
+                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure>> {
+        &self.inh.unboxed_closures
+    }
 }
 
 impl<'a> Inherited<'a> {
