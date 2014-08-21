@@ -130,16 +130,11 @@ impl OverloadedCallType {
 
     fn from_method_id(tcx: &ty::ctxt, method_id: ast::DefId)
                       -> OverloadedCallType {
-        let method_descriptor =
-            match tcx.impl_or_trait_items.borrow_mut().find(&method_id) {
-                Some(&ty::MethodTraitItem(ref method_descriptor)) => {
-                    (*method_descriptor).clone()
-                }
-                None => {
-                    tcx.sess.bug("overloaded call method wasn't in method \
-                                  map")
-                }
-            };
+        let method_descriptor = match ty::impl_or_trait_item(tcx, method_id) {
+            ty::MethodTraitItem(ref method_descriptor) => {
+                (*method_descriptor).clone()
+            }
+        };
         let impl_id = match method_descriptor.container {
             ty::TraitContainer(_) => {
                 tcx.sess.bug("statically resolved overloaded call method \
@@ -157,6 +152,19 @@ impl OverloadedCallType {
         OverloadedCallType::from_trait_id(tcx, trait_ref.def_id)
     }
 
+    fn from_unboxed_closure(tcx: &ty::ctxt, closure_did: ast::DefId)
+                            -> OverloadedCallType {
+        let trait_did =
+            tcx.unboxed_closures
+               .borrow()
+               .find(&closure_did)
+               .expect("OverloadedCallType::from_unboxed_closure: didn't \
+                        find closure id")
+               .kind
+               .trait_did(tcx);
+        OverloadedCallType::from_trait_id(tcx, trait_did)
+    }
+
     fn from_method_origin(tcx: &ty::ctxt, origin: &MethodOrigin)
                           -> OverloadedCallType {
         match *origin {
@@ -164,7 +172,7 @@ impl OverloadedCallType {
                 OverloadedCallType::from_method_id(tcx, def_id)
             }
             MethodStaticUnboxedClosure(def_id) => {
-                OverloadedCallType::from_method_id(tcx, def_id)
+                OverloadedCallType::from_unboxed_closure(tcx, def_id)
             }
             MethodParam(ref method_param) => {
                 OverloadedCallType::from_trait_id(tcx, method_param.trait_id)
