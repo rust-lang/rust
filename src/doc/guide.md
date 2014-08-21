@@ -1073,8 +1073,8 @@ destructuring `let`.
 ## Enums
 
 Finally, Rust has a "sum type", an **enum**. Enums are an incredibly useful
-feature of Rust, and are used throughout the standard library. Enums look
-like this:
+feature of Rust, and are used throughout the standard library. This is an enum
+that is provided by the Rust standard library:
 
 ```{rust}
 enum Ordering {
@@ -1084,9 +1084,8 @@ enum Ordering {
 }
 ```
 
-This is an enum that is provided by the Rust standard library. An `Ordering`
-can only be _one_ of `Less`, `Equal`, or `Greater` at any given time. Here's
-an example:
+An `Ordering` can only be _one_ of `Less`, `Equal`, or `Greater` at any given
+time. Here's an example:
 
 ```{rust}
 fn cmp(a: int, b: int) -> Ordering {
