@@ -595,13 +595,23 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
 /// compact data
 pub struct PrettyEncoder<'a> {
     writer: &'a mut io::Writer,
+    curr_indent: uint,
     indent: uint,
 }
 
 impl<'a> PrettyEncoder<'a> {
     /// Creates a new encoder whose output will be written to the specified writer
     pub fn new<'a>(writer: &'a mut io::Writer) -> PrettyEncoder<'a> {
-        PrettyEncoder { writer: writer, indent: 0 }
+        PrettyEncoder { writer: writer, curr_indent: 0, indent: 2, }
+    }
+
+    /// Set the number of spaces to indent for each level.
+    /// This is safe to set during encoding.
+    pub fn set_indent<'a>(&mut self, indent: uint) {
+        // self.indent very well could be 0 so we need to use checked division.
+        let level = self.curr_indent.checked_div(&self.indent).unwrap_or(0);
+        self.indent = indent;
+        self.curr_indent = level * self.indent;
     }
 }
 
@@ -656,15 +666,15 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         if cnt == 0 {
             escape_str(self.writer, name)
         } else {
-            self.indent += 2;
+            self.curr_indent += self.indent;
             try!(write!(self.writer, "[\n"));
-            try!(spaces(self.writer, self.indent));
+            try!(spaces(self.writer, self.curr_indent));
             try!(escape_str(self.writer, name));
             try!(write!(self.writer, ",\n"));
             try!(f(self));
-            self.indent -= 2;
+            self.curr_indent -= self.indent;
             try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.indent));
+            try!(spaces(self.writer, self.curr_indent));
             write!(self.writer, "]")
         }
     }
@@ -675,7 +685,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         if idx != 0 {
             try!(write!(self.writer, ",\n"));
         }
-        try!(spaces(self.writer, self.indent));
+        try!(spaces(self.writer, self.curr_indent));
         f(self)
     }
 
@@ -703,11 +713,11 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             write!(self.writer, "{{}}")
         } else {
             try!(write!(self.writer, "{{"));
-            self.indent += 2;
+            self.curr_indent += self.indent;
             try!(f(self));
-            self.indent -= 2;
+            self.curr_indent -= self.indent;
             try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.indent));
+            try!(spaces(self.writer, self.curr_indent));
             write!(self.writer, "}}")
         }
     }
@@ -721,7 +731,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         } else {
             try!(write!(self.writer, ",\n"));
         }
-        try!(spaces(self.writer, self.indent));
+        try!(spaces(self.writer, self.curr_indent));
         try!(escape_str(self.writer, name));
         try!(write!(self.writer, ": "));
         f(self)
@@ -765,11 +775,11 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             write!(self.writer, "[]")
         } else {
             try!(write!(self.writer, "["));
-            self.indent += 2;
+            self.curr_indent += self.indent;
             try!(f(self));
-            self.indent -= 2;
+            self.curr_indent -= self.indent;
             try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.indent));
+            try!(spaces(self.writer, self.curr_indent));
             write!(self.writer, "]")
         }
     }
@@ -782,7 +792,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         } else {
             try!(write!(self.writer, ",\n"));
         }
-        try!(spaces(self.writer, self.indent));
+        try!(spaces(self.writer, self.curr_indent));
         f(self)
     }
 
@@ -793,11 +803,11 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             write!(self.writer, "{{}}")
         } else {
             try!(write!(self.writer, "{{"));
-            self.indent += 2;
+            self.curr_indent += self.indent;
             try!(f(self));
-            self.indent -= 2;
+            self.curr_indent -= self.indent;
             try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.indent));
+            try!(spaces(self.writer, self.curr_indent));
             write!(self.writer, "}}")
         }
     }
@@ -810,7 +820,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         } else {
             try!(write!(self.writer, ",\n"));
         }
-        try!(spaces(self.writer, self.indent));
+        try!(spaces(self.writer, self.curr_indent));
         // ref #12967, make sure to wrap a key in double quotes,
         // in the event that its of a type that omits them (eg numbers)
         let mut buf = MemWriter::new();
@@ -3194,6 +3204,63 @@ mod tests {
         match from_str(json_str) {
             Err(_) => fail!("Unable to parse json_str: {}", json_str),
             _ => {} // it parsed and we are good to go
+        }
+    }
+
+    #[test]
+    fn test_prettyencoder_indent_level_param() {
+        use std::str::from_utf8;
+        use std::io::MemWriter;
+        use std::collections::TreeMap;
+
+        let mut tree = TreeMap::new();
+
+        tree.insert("hello".into_string(), String("guten tag".into_string()));
+        tree.insert("goodbye".into_string(), String("sayonara".into_string()));
+
+        let json = List(
+            // The following layout below should look a lot like
+            // the pretty-printed JSON (indent * x)
+            vec!
+            ( // 0x
+                String("greetings".into_string()), // 1x
+                Object(tree), // 1x + 2x + 2x + 1x
+            ) // 0x
+            // End JSON list (7 lines)
+        );
+
+        // Helper function for counting indents
+        fn indents(source: &str) -> uint {
+            let trimmed = source.trim_left_chars(' ');
+            source.len() - trimmed.len()
+        }
+
+        // Test up to 4 spaces of indents (more?)
+        for i in range(0, 4u) {
+            let mut writer = MemWriter::new();
+            {
+                let ref mut encoder = PrettyEncoder::new(&mut writer);
+                encoder.set_indent(i);
+                json.encode(encoder).unwrap();
+            }
+
+            let bytes = writer.unwrap();
+            let printed = from_utf8(bytes.as_slice()).unwrap();
+
+            // Check for indents at each line
+            let lines: Vec<&str> = printed.lines().collect();
+            assert_eq!(lines.len(), 7); // JSON should be 7 lines
+
+            assert_eq!(indents(lines[0]), 0 * i); // [
+            assert_eq!(indents(lines[1]), 1 * i); //   "greetings",
+            assert_eq!(indents(lines[2]), 1 * i); //   {
+            assert_eq!(indents(lines[3]), 2 * i); //     "hello": "guten tag",
+            assert_eq!(indents(lines[4]), 2 * i); //     "goodbye": "sayonara"
+            assert_eq!(indents(lines[5]), 1 * i); //   },
+            assert_eq!(indents(lines[6]), 0 * i); // ]
+
+            // Finally, test that the pretty-printed JSON is valid
+            from_str(printed).ok().expect("Pretty-printed JSON is invalid!");
         }
     }
 
