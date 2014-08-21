@@ -24,7 +24,7 @@ pub mod rustrt {
     }
 }
 
-pub fn fact(n: uint) -> uint {
+pub fn fact(n: libc::uintptr_t) -> libc::uintptr_t {
     unsafe {
         println!("n = {}", n);
         rustrt::rust_dbg_call(cb, n)
@@ -32,9 +32,9 @@ pub fn fact(n: uint) -> uint {
 }
 
 pub extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
-    if data == 1u {
+    if data == 1 {
         data
     } else {
-        fact(data - 1u) * data
+        fact(data - 1) * data
     }
 }

@@ -701,6 +701,7 @@ mod imp {
     static IMAGE_FILE_MACHINE_IA64: libc::DWORD = 0x0200;
     static IMAGE_FILE_MACHINE_AMD64: libc::DWORD = 0x8664;
 
+    #[cfg(stage0)]
     #[packed]
     struct SYMBOL_INFO {
         SizeOfStruct: libc::c_ulong,
@@ -722,6 +723,30 @@ mod imp {
         // the struct size up to MAX_SYM_NAME.
         Name: [libc::c_char, ..MAX_SYM_NAME],
     }
+
+    #[cfg(not(stage0))]
+    #[repr(C, packed)]
+    struct SYMBOL_INFO {
+        SizeOfStruct: libc::c_ulong,
+        TypeIndex: libc::c_ulong,
+        Reserved: [u64, ..2],
+        Index: libc::c_ulong,
+        Size: libc::c_ulong,
+        ModBase: u64,
+        Flags: libc::c_ulong,
+        Value: u64,
+        Address: u64,
+        Register: libc::c_ulong,
+        Scope: libc::c_ulong,
+        Tag: libc::c_ulong,
+        NameLen: libc::c_ulong,
+        MaxNameLen: libc::c_ulong,
+        // note that windows has this as 1, but it basically just means that
+        // the name is inline at the end of the struct. For us, we just bump
+        // the struct size up to MAX_SYM_NAME.
+        Name: [libc::c_char, ..MAX_SYM_NAME],
+    }
+
 
     #[repr(C)]
     enum ADDRESS_MODE {
@@ -772,6 +797,7 @@ mod imp {
 
         static MAXIMUM_SUPPORTED_EXTENSION: uint = 512;
 
+        #[repr(C)]
         pub struct CONTEXT {
             ContextFlags: libc::DWORD,
             Dr0: libc::DWORD,
@@ -800,6 +826,7 @@ mod imp {
             ExtendedRegisters: [u8, ..MAXIMUM_SUPPORTED_EXTENSION],
         }
 
+        #[repr(C)]
         pub struct FLOATING_SAVE_AREA {
             ControlWord: libc::DWORD,
             StatusWord: libc::DWORD,
@@ -829,6 +856,7 @@ mod imp {
         use libc::{c_longlong, c_ulonglong};
         use libc::types::os::arch::extra::{WORD, DWORD, DWORDLONG};
 
+        #[repr(C)]
         pub struct CONTEXT {
             P1Home: DWORDLONG,
             P2Home: DWORDLONG,
@@ -886,11 +914,13 @@ mod imp {
             LastExceptionFromRip: DWORDLONG,
         }
 
+        #[repr(C)]
         pub struct M128A {
             Low:  c_ulonglong,
             High: c_longlong
         }
 
+        #[repr(C)]
         pub struct FLOATING_SAVE_AREA {
             _Dummy: [u8, ..512] // FIXME: Fill this out
         }
@@ -907,6 +937,7 @@ mod imp {
         }
     }
 
+    #[repr(C)]
     struct Cleanup {
         handle: libc::HANDLE,
         SymCleanup: SymCleanupFn,

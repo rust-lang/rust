@@ -72,6 +72,7 @@ pub static unwinder_private_data_size: uint = 5;
 #[cfg(target_arch = "mipsel")]
 pub static unwinder_private_data_size: uint = 2;
 
+#[repr(C)]
 pub struct _Unwind_Exception {
     pub exception_class: _Unwind_Exception_Class,
     pub exception_cleanup: _Unwind_Exception_Cleanup_Fn,

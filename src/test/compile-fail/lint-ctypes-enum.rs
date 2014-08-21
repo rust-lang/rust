@@ -18,9 +18,9 @@ enum T { E, F, G }
 
 extern {
    fn zf(x: Z);
-   fn uf(x: U);
-   fn bf(x: B); //~ ERROR found enum type without foreign-function-safe
-   fn tf(x: T); //~ ERROR found enum type without foreign-function-safe
+   fn uf(x: U); //~ ERROR found type without foreign-function-safe
+   fn bf(x: B); //~ ERROR found type without foreign-function-safe
+   fn tf(x: T); //~ ERROR found type without foreign-function-safe
 }
 
 pub fn main() { }

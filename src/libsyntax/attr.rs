@@ -418,19 +418,14 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[Gc<MetaItem>]) {
 }
 
 
-/// Fold this over attributes to parse #[repr(...)] forms.
+/// Parse #[repr(...)] forms.
 ///
 /// Valid repr contents: any of the primitive integral type names (see
-/// `int_type_of_word`, below) to specify the discriminant type; and `C`, to use
-/// the same discriminant size that the corresponding C enum would.  These are
-/// not allowed on univariant or zero-variant enums, which have no discriminant.
-///
-/// If a discriminant type is so specified, then the discriminant will be
-/// present (before fields, if any) with that type; representation
-/// optimizations which would remove it will not be done.
-pub fn find_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
-    -> ReprAttr {
-    let mut acc = acc;
+/// `int_type_of_word`, below) to specify enum discriminant type; `C`, to use
+/// the same discriminant size that the corresponding C enum would or C
+/// structure layout, and `packed` to remove padding.
+pub fn find_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAttr> {
+    let mut acc = Vec::new();
     match attr.node.value.node {
         ast::MetaList(ref s, ref items) if s.equiv(&("repr")) => {
             mark_used(attr);
@@ -439,28 +434,26 @@ pub fn find_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
                     ast::MetaWord(ref word) => {
                         let hint = match word.get() {
                             // Can't use "extern" because it's not a lexical identifier.
-                            "C" => ReprExtern,
+                            "C" => Some(ReprExtern),
+                            "packed" => Some(ReprPacked),
                             _ => match int_type_of_word(word.get()) {
-                                Some(ity) => ReprInt(item.span, ity),
+                                Some(ity) => Some(ReprInt(item.span, ity)),
                                 None => {
                                     // Not a word we recognize
                                     diagnostic.span_err(item.span,
                                                         "unrecognized representation hint");
-                                    ReprAny
+                                    None
                                 }
                             }
                         };
-                        if hint != ReprAny {
-                            if acc == ReprAny {
-                                acc = hint;
-                            } else if acc != hint {
-                                diagnostic.span_warn(item.span,
-                                                     "conflicting representation hint ignored")
-                            }
+
+                        match hint {
+                            Some(h) => acc.push(h),
+                            None => { }
                         }
                     }
                     // Not a word:
-                    _ => diagnostic.span_err(item.span, "unrecognized representation hint")
+                    _ => diagnostic.span_err(item.span, "unrecognized enum representation hint")
                 }
             }
         }
@@ -490,7 +483,8 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
 pub enum ReprAttr {
     ReprAny,
     ReprInt(Span, IntType),
-    ReprExtern
+    ReprExtern,
+    ReprPacked,
 }
 
 impl ReprAttr {
@@ -498,7 +492,8 @@ impl ReprAttr {
         match *self {
             ReprAny => false,
             ReprInt(_sp, ity) => ity.is_ffi_safe(),
-            ReprExtern => true
+            ReprExtern => true,
+            ReprPacked => false
         }
     }
 }
@@ -523,7 +518,7 @@ impl IntType {
             SignedInt(ast::TyI16) | UnsignedInt(ast::TyU16) |
             SignedInt(ast::TyI32) | UnsignedInt(ast::TyU32) |
             SignedInt(ast::TyI64) | UnsignedInt(ast::TyU64) => true,
-            _ => false
+            SignedInt(ast::TyI) | UnsignedInt(ast::TyU) => false
         }
     }
 }
