@@ -4217,13 +4217,13 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                     let inh = blank_inherited_fields(ccx);
                     let fcx = blank_fn_ctxt(ccx, &inh, rty, e.id);
                     let declty = match hint {
-                        attr::ReprAny | attr::ReprExtern => ty::mk_int(),
+                        attr::ReprAny | attr::ReprPacked | attr::ReprExtern => ty::mk_int(),
                         attr::ReprInt(_, attr::SignedInt(ity)) => {
                             ty::mk_mach_int(ity)
                         }
                         attr::ReprInt(_, attr::UnsignedInt(ity)) => {
                             ty::mk_mach_uint(ity)
-                        }
+                        },
                     };
                     check_const_with_ty(&fcx, e.span, &*e, declty);
                     // check_expr (from check_const pass) doesn't guarantee
@@ -4262,6 +4262,9 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                             "discriminant type specified here");
                     }
                 }
+                attr::ReprPacked => {
+                    ccx.tcx.sess.bug("range_to_inttype: found ReprPacked on an enum");
+                }
             }
             disr_vals.push(current_disr_val);
 
@@ -4275,7 +4278,9 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
         return variants;
     }
 
-    let hint = ty::lookup_repr_hint(ccx.tcx, ast::DefId { krate: ast::LOCAL_CRATE, node: id });
+    let hint = *ty::lookup_repr_hints(ccx.tcx, ast::DefId { krate: ast::LOCAL_CRATE, node: id })
+                    .as_slice().get(0).unwrap_or(&attr::ReprAny);
+
     if hint != attr::ReprAny && vs.len() <= 1 {
         if vs.len() == 1 {
             span_err!(ccx.tcx.sess, sp, E0083,

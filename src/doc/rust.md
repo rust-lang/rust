@@ -1308,6 +1308,9 @@ struct Cookie;
 let c = [Cookie, Cookie, Cookie, Cookie];
 ~~~~
 
+The precise memory layout of a structure is not specified. One can specify a
+particular layout using the [`repr` attribute](#ffi-attributes).
+
 By using the `struct_inherit` feature gate, structures may use single inheritance. A Structure may only
 inherit from a single other structure, called the _super-struct_. The inheriting structure (sub-struct)
 acts as if all fields in the super-struct were present in the sub-struct. Fields declared in a sub-struct
@@ -1941,6 +1944,23 @@ interpreted:
 - `linkage` - on a static, this specifies the [linkage
   type](http://llvm.org/docs/LangRef.html#linkage-types).
 
+On `enum`s:
+
+- `repr` - on C-like enums, this sets the underlying type used for
+  representation. Takes one argument, which is the primitive
+  type this enum should be represented for, or `C`, which specifies that it
+  should be the default `enum` size of the C ABI for that platform. Note that
+  enum representation in C is undefined, and this may be incorrect when the C
+  code is compiled with certain flags.
+
+On `struct`s:
+
+- `repr` - specifies the representation to use for this struct. Takes a list
+  of options. The currently accepted ones are `C` and `packed`, which may be
+  combined. `C` will use a C ABI comptible struct layout, and `packed` will
+  remove any padding between fields (note that this is very fragile and may
+  break platforms which require aligned access).
+
 ### Miscellaneous attributes
 
 - `export_name` - on statics and functions, this determines the name of the
@@ -1958,12 +1978,6 @@ interpreted:
   crate at compile-time and use any syntax extensions or lints that the crate
   defines. They can both be specified, `#[phase(link, plugin)]` to use a crate
   both at runtime and compiletime.
-- `repr` - on C-like enums, this sets the underlying type used for
-  representation. Useful for FFI. Takes one argument, which is the primitive
-  type this enum should be represented for, or `C`, which specifies that it
-  should be the default `enum` size of the C ABI for that platform. Note that
-  enum representation in C is undefined, and this may be incorrect when the C
-  code is compiled with certain flags.
 - `simd` - on certain tuple structs, derive the arithmetic operators, which
   lower to the target's SIMD instructions, if any; the `simd` feature gate
   is necessary to use this attribute.

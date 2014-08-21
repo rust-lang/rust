@@ -12,19 +12,19 @@
 use std::mem;
 use std::gc::Gc;
 
-#[packed]
+#[repr(packed)]
 struct S4 {
     a: u8,
     b: [u8, .. 3],
 }
 
-#[packed]
+#[repr(packed)]
 struct S5 {
     a: u8,
     b: u32
 }
 
-#[packed]
+#[repr(packed)]
 struct S13 {
     a: i64,
     b: f32,
@@ -36,14 +36,14 @@ enum Foo {
     Baz = 2
 }
 
-#[packed]
+#[repr(packed)]
 struct S3_Foo {
     a: u8,
     b: u16,
     c: Foo
 }
 
-#[packed]
+#[repr(packed)]
 struct S7_Option {
     a: f32,
     b: u8,

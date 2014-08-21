@@ -27,7 +27,6 @@
 
 use metadata::csearch;
 use middle::def::*;
-use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::typeck::astconv::ast_ty_to_ty;
 use middle::typeck::infer;
 use middle::{typeck, ty, def, pat_util, stability};
@@ -362,12 +361,17 @@ impl LintPass for CTypes {
                                          "found rust type `uint` in foreign module, while \
                                           libc::c_uint or libc::c_ulong should be used");
                         }
-                        def::DefTy(def_id) => {
-                            if !adt::is_ffi_safe(cx.tcx, def_id) {
+                        def::DefTy(..) => {
+                            let tty = match cx.tcx.ast_ty_to_ty_cache.borrow().find(&ty.id) {
+                                Some(&ty::atttce_resolved(t)) => t,
+                                _ => fail!("ast_ty_to_ty_cache was incomplete after typeck!")
+                            };
+
+                            if !ty::is_ffi_safe(cx.tcx, tty) {
                                 cx.span_lint(CTYPES, ty.span,
-                                             "found enum type without foreign-function-safe
+                                             "found type without foreign-function-safe
                                              representation annotation in foreign module, consider \
-                                             adding a #[repr(...)] attribute to the enumeration");
+                                             adding a #[repr(...)] attribute to the type");
                             }
                         }
                         _ => ()
@@ -770,9 +774,10 @@ impl LintPass for NonCamelCaseTypes {
             }
         }
 
-        let has_extern_repr = it.attrs.iter().fold(attr::ReprAny, |acc, attr| {
-            attr::find_repr_attr(cx.tcx.sess.diagnostic(), attr, acc)
-        }) == attr::ReprExtern;
+        let has_extern_repr = it.attrs.iter().map(|attr| {
+            attr::find_repr_attrs(cx.tcx.sess.diagnostic(), attr).iter()
+                .any(|r| r == &attr::ReprExtern)
+        }).any(|x| x);
         if has_extern_repr { return }
 
         match it.node {
@@ -783,6 +788,7 @@ impl LintPass for NonCamelCaseTypes {
                 check_case(cx, "trait", it.ident, it.span)
             }
             ast::ItemEnum(ref enum_definition, _) => {
+                if has_extern_repr { return }
                 check_case(cx, "type", it.ident, it.span);
                 for variant in enum_definition.variants.iter() {
                     check_case(cx, "variant", variant.node.name, variant.span);

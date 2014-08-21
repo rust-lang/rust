@@ -77,7 +77,7 @@
 
 #![allow(unused_variable)]
 
-#[packed]
+#[repr(packed)]
 struct Packed {
     x: i16,
     y: i32,
@@ -88,7 +88,7 @@ impl Drop for Packed {
     fn drop(&mut self) {}
 }
 
-#[packed]
+#[repr(packed)]
 struct PackedInPacked {
     a: i32,
     b: Packed,
@@ -113,7 +113,7 @@ impl Drop for Unpacked {
     fn drop(&mut self) {}
 }
 
-#[packed]
+#[repr(packed)]
 struct UnpackedInPacked {
     a: i16,
     b: Unpacked,
@@ -121,7 +121,7 @@ struct UnpackedInPacked {
     d: i64
 }
 
-#[packed]
+#[repr(packed)]
 struct PackedInPackedWithDrop {
     a: i32,
     b: Packed,
@@ -144,7 +144,7 @@ impl Drop for PackedInUnpackedWithDrop {
     fn drop(&mut self) {}
 }
 
-#[packed]
+#[repr(packed)]
 struct UnpackedInPackedWithDrop {
     a: i16,
     b: Unpacked,

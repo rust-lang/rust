@@ -23,14 +23,14 @@ mod rustrt {
 }
 
 extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
-    if data == 1u {
+    if data == 1 {
         data
     } else {
-        count(data - 1u) + count(data - 1u)
+        count(data - 1) + count(data - 1)
     }
 }
 
-fn count(n: uint) -> uint {
+fn count(n: libc::uintptr_t) -> libc::uintptr_t {
     unsafe {
         task::deschedule();
         rustrt::rust_dbg_call(cb, n)
@@ -40,9 +40,9 @@ fn count(n: uint) -> uint {
 pub fn main() {
     for _ in range(0, 10u) {
         task::spawn(proc() {
-            let result = count(5u);
+            let result = count(5);
             println!("result = {}", result);
-            assert_eq!(result, 16u);
+            assert_eq!(result, 16);
         });
     }
 }
