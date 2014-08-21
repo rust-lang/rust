@@ -66,21 +66,15 @@ impl UnixStream {
     ///
     /// If a `timeout` with zero or negative duration is specified then
     /// the function returns `Err`, with the error kind set to `TimedOut`.
-    /// If the timeout is larger than 2^63 milliseconds, the function also
-    /// returns `Err` with the error kind set to `TimedOut`.
     #[experimental = "the timeout argument is likely to change types"]
     pub fn connect_timeout<P: ToCStr>(path: &P,
                                       timeout: Duration) -> IoResult<UnixStream> {
         if timeout <= Duration::milliseconds(0) {
             return Err(standard_error(TimedOut));
         }
-        let timeout_ms = timeout.num_milliseconds().map(|x| { x as u64 });
-        if timeout_ms.is_none() {
-            return Err(standard_error(TimedOut));
-        }
 
         LocalIo::maybe_raise(|io| {
-            let s = io.unix_connect(&path.to_c_str(), timeout_ms);
+            let s = io.unix_connect(&path.to_c_str(), Some(timeout.num_milliseconds() as u64));
             s.map(|p| UnixStream { obj: p })
         }).map_err(IoError::from_rtio_error)
     }

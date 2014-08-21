@@ -225,7 +225,7 @@ impl Callback for TimerCallback {
 }
 
 fn in_ms_u64(d: Duration) -> u64 {
-    let ms = d.num_milliseconds().unwrap_or(0);
+    let ms = d.num_milliseconds();
     if ms < 0 { return 0 };
     return ms as u64;
 }
