@@ -263,6 +263,7 @@ Rust code:
 
 ~~~~no_run
 
+#[repr(C)]
 struct RustObject {
     a: i32,
     // other members
