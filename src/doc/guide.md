@@ -3668,6 +3668,173 @@ In order to truly understand this error, we have to learn a few new concepts:
 
 ## Ownership, borrowing, and lifetimes
 
+Whenever a resource of some kind is created, something must be responsible
+for destroying that resource as well. Given that we're discussing pointers
+right now, let's discuss this in the context of memory allocation, though
+it applies to other resources as well.
+
+When you allocate heap memory, you need a mechanism to free that memory.  Many
+languages let the programmer control the allocation, and then use a garbage
+collector to handle the deallocation. This is a valid, time-tested strategy,
+but it's not without its drawbacks. Because the programmer does not have to
+think as much about deallocation, allocation becomes something commonplace,
+because it's easy. And if you need precise control over when something is
+deallocated, leaving it up to your runtime can make this difficult.
+
+Rust chooses a different path, and that path is called **ownership**. Any
+binding that creates a resource is the **owner** of that resource.  Being an
+owner gives you three privileges, with two restrictions:
+
+1. You control when that resource is deallocated.
+2. You may lend that resource, immutably, to as many borrowers as you'd like.
+3. You may lend that resource, mutably, to a single borrower. **BUT**
+4. Once you've done so, you may not also lend it out otherwise, mutably or
+   immutably.
+5. You may not lend it out mutably if you're currently lending it to someone.
+
+What's up with all this 'lending' and 'borrowing'? When you allocate memory,
+you get a pointer to that memory. This pointer allows you to manipulate said
+memory. If you are the owner of a pointer, then you may allow another
+binding to temporarily borrow that pointer, and then they can manipulate the
+memory. The length of time that the borrower is borrowing the pointer
+from you is called a **lifetime**.
+
+If two distinct bindings share a pointer, and the memory that pointer points to
+is immutable, then there are no problems. But if it's mutable, both pointers
+can attempt to write to the memory at the same time, causing a **race
+condition**. Therefore, if someone wants to mutate something that they've
+borrowed from you, you must not have lent out that pointer to anyone else.
+
+Rust has a sophisticated system called the **borrow checker** to make sure that
+everyone plays by these rules. At compile time, it verifies that none of these
+rules are broken. If there's no problem, our program compiles successfully, and
+there is no runtime overhead for any of this. The borrow checker works only at
+compile time. If the borrow checker did find a problem, it will report a
+**lifetime error**, and your program will refuse to compile.
+
+That's a lot to take in. It's also one of the _most_ important concepts in
+all of Rust. Let's see this syntax in action:
+
+```{rust}
+{ 
+    let x = 5i; // x is the owner of this integer, which is memory on the stack.
+
+    // other code here...
+   
+} // privilege 1: when x goes out of scope, this memory is deallocated
+
+/// this function borrows an integer. It's given back automatically when the
+/// function returns.
+fn foo(x: &int) -> &int { x } 
+
+{ 
+    let x = 5i; // x is the owner of this integer, which is memory on the stack.
+
+    // privilege 2: you may lend that resource, to as many borrowers as you'd like
+    let y = &x;
+    let z = &x;
+
+    foo(&x); // functions can borrow too!
+
+    let a = &x; // we can do this alllllll day!
+} 
+
+{ 
+    let mut x = 5i; // x is the owner of this integer, which is memory on the stack.
+
+    let y = &mut x; // privilege 3: you may lend that resource to a single borrower,
+                    // mutably
+}   
+```
+
+If you are a borrower, you get a few privileges as well, but must also obey a
+restriction:
+
+1. If the borrow is immutable, you may read the data the pointer points to.
+2. If the borrow is mutable, you may read and write the data the pointer points to.
+3. You may lend the pointer to someone else in an immutable fashion, **BUT**
+4. When you do so, they must return it to you before you must give your own
+   borrow back.
+
+This last requirement can seem odd, but it also makes sense. If you have to
+return something, and you've lent it to someone, they need to give it back to
+you for you to give it back! If we didn't, then the owner could deallocate
+the memory, and the person we've loaned it out to would have a pointer to
+invalid memory. This is called a 'dangling pointer.'
+
+Let's re-examine the error that led us to talk about all of this, which was a
+violation of the restrictions placed on owners who lend something out mutably.
+The code:
+
+```{rust,ignore}
+let mut x = 5i;
+let y = &mut x;
+let z = &mut x;
+```
+
+The error:
+
+```{notrust,ignore}
+error: cannot borrow `x` as mutable more than once at a time
+     let z = &mut x;
+                  ^
+note: previous borrow of `x` occurs here; the mutable borrow prevents subsequent moves, borrows, or modification of `x` until the borrow ends
+     let y = &mut x;
+                  ^
+note: previous borrow ends here
+ fn main() {
+     let mut x = 5i;
+     let y = &mut x;
+     let z = &mut x;
+ }
+ ^
+```
+
+This error comes in three parts. Let's go over each in turn.
+
+```{notrust,ignore}
+error: cannot borrow `x` as mutable more than once at a time
+     let z = &mut x;
+                  ^
+```
+
+This error states the restriction: you cannot lend out something mutable more
+than once at the same time. The borrow checker knows the rules!
+
+```{notrust,ignore}
+note: previous borrow of `x` occurs here; the mutable borrow prevents subsequent moves, borrows, or modification of `x` until the borrow ends
+     let y = &mut x;
+                  ^
+```
+
+Some compiler errors come with notes to help you fix the error. This error comes
+with two notes, and this is the first. This note informs us of exactly where
+the first mutable borrow occurred. The error showed us the second. So now we
+see both parts of the problem. It also alludes to rule #3, by reminding us that
+we can't change `x` until the borrow is over.
+
+```{notrust,ignore}
+note: previous borrow ends here
+ fn main() {
+     let mut x = 5i;
+     let y = &mut x;
+     let z = &mut x;
+ }
+ ^
+```
+
+Here's the second note, which lets us know where the first borrow would be over.
+This is useful, because if we wait to try to borrow `x` after this borrow is
+over, then everything will work.
+
+These rules are very simple, but that doesn't mean that they're easy. For more
+advanced patterns, please consult the [Lifetime Guide](guide-lifetimes.html).
+You'll also learn what this type signature with the `'a` syntax is:
+
+```{rust,ignore}
+pub fn as_maybe_owned(&self) -> MaybeOwned<'a> { ... }
+```
+
 ## Boxes
 
 All of our references so far have been to variables we've created on the stack.
