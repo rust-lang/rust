@@ -70,6 +70,49 @@
 //! println!("{}", tuple)
 //! ```
 //!
+//! ## Monte Carlo estimation of π
+//!
+//! For this example, imagine we have a square with sides of length 2 and a unit
+//! circle, both centered at the origin. Since the area of a unit circle is π,
+//! we have:
+//!
+//! ```notrust
+//!     (area of unit circle) / (area of square) = π / 4
+//! ```
+//!
+//! So if we sample many points randomly from the square, roughly π / 4 of them
+//! should be inside the circle.
+//!
+//! We can use the above fact to estimate the value of π: pick many points in the
+//! square at random, calculate the fraction that fall within the circle, and
+//! multiply this fraction by 4.
+//!
+//! ```
+//! use std::rand;
+//! use std::rand::distributions::{IndependentSample, Range};
+//!
+//! fn main() {
+//!    let between = Range::new(-1f64, 1.);
+//!    let mut rng = rand::task_rng();
+//!
+//!    let total = 1_000_000u;
+//!    let mut in_circle = 0u;
+//!
+//!    for _ in range(0u, total) {
+//!        let a = between.ind_sample(&mut rng);
+//!        let b = between.ind_sample(&mut rng);
+//!        if a*a + b*b <= 1. {
+//!            in_circle += 1;
+//!        }
+//!    }
+//!
+//!    // prints something close to 3.14159...
+//!    println!("{}", 4. * (in_circle as f64) / (total as f64));
+//! }
+//! ```
+//!
+//! ## Monty Hall Problem
+//!
 //! This is a simulation of the [Monty Hall Problem][]:
 //!
 //! > Suppose you're on a game show, and you're given the choice of three doors:
