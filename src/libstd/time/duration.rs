@@ -51,10 +51,17 @@ pub struct Duration {
     nanos: i32, // Always 0 <= nanos < NANOS_PER_SEC
 }
 
-/// The minimum possible `Duration`.
-pub static MIN: Duration = Duration { secs: i64::MIN, nanos: 0 };
-/// The maximum possible `Duration`.
-pub static MAX: Duration = Duration { secs: i64::MAX, nanos: NANOS_PER_SEC - 1 };
+/// The minimum possible `Duration`: `i64::MIN` milliseconds.
+pub static MIN: Duration = Duration {
+    secs: i64::MIN / MILLIS_PER_SEC - 1,
+    nanos: NANOS_PER_SEC + (i64::MIN % MILLIS_PER_SEC) as i32 * NANOS_PER_MILLI
+};
+
+/// The maximum possible `Duration`: `i64::MAX` milliseconds.
+pub static MAX: Duration = Duration {
+    secs: i64::MAX / MILLIS_PER_SEC,
+    nanos: (i64::MAX % MILLIS_PER_SEC) as i32 * NANOS_PER_MILLI
+};
 
 impl Duration {
     /// Makes a new `Duration` with given number of weeks.
@@ -94,9 +101,15 @@ impl Duration {
     }
 
     /// Makes a new `Duration` with given number of seconds.
+    /// Fails when the duration is more than `i64::MAX` milliseconds
+    /// or less than `i64::MIN` milliseconds.
     #[inline]
     pub fn seconds(seconds: i64) -> Duration {
-        Duration { secs: seconds, nanos: 0 }
+        let d = Duration { secs: seconds, nanos: 0 };
+        if d < MIN || d > MAX {
+            fail!("Duration::seconds out of bounds");
+        }
+        d
     }
 
     /// Makes a new `Duration` with given number of milliseconds.
@@ -167,11 +180,12 @@ impl Duration {
     }
 
     /// Returns the total number of whole milliseconds in the duration,
-    /// or `None` on overflow (exceeding 2^63 milliseconds in either direction).
-    pub fn num_milliseconds(&self) -> Option<i64> {
-        let secs_part = try_opt!(self.num_seconds().checked_mul(&MILLIS_PER_SEC));
+    pub fn num_milliseconds(&self) -> i64 {
+        // A proper Duration will not overflow, because MIN and MAX are defined
+        // such that the range is exactly i64 milliseconds.
+        let secs_part = self.num_seconds() * MILLIS_PER_SEC;
         let nanos_part = self.nanos_mod_sec() / NANOS_PER_MILLI;
-        secs_part.checked_add(&(nanos_part as i64))
+        secs_part + nanos_part as i64
     }
 
     /// Returns the total number of whole microseconds in the duration,
@@ -211,13 +225,7 @@ impl num::Zero for Duration {
 impl Neg<Duration> for Duration {
     #[inline]
     fn neg(&self) -> Duration {
-        if self.secs == i64::MIN && self.nanos == 0 {
-            // The minimum value cannot be negated due to overflow. Use the
-            // maximum value, which is one nanosecond less than the negated minimum.
-            MAX
-        } else if self.secs == i64::MIN {
-            Duration { secs: i64::MAX, nanos: NANOS_PER_SEC - self.nanos }
-        } else if self.nanos == 0 {
+        if self.nanos == 0 {
             Duration { secs: -self.secs, nanos: 0 }
         } else {
             Duration { secs: -self.secs - 1, nanos: NANOS_PER_SEC - self.nanos }
@@ -245,7 +253,10 @@ impl num::CheckedAdd for Duration {
             nanos -= NANOS_PER_SEC;
             secs = try_opt!(secs.checked_add(&1));
         }
-        Some(Duration { secs: secs, nanos: nanos }) 
+        let d = Duration { secs: secs, nanos: nanos };
+        // Even if d is within the bounds of i64 seconds,
+        // it might still overflow i64 milliseconds.
+        if d < MIN || d > MAX { None } else { Some(d) }
     }
 }
 
@@ -269,7 +280,10 @@ impl num::CheckedSub for Duration {
             nanos += NANOS_PER_SEC;
             secs = try_opt!(secs.checked_sub(&1));
         }
-        Some(Duration { secs: secs, nanos: nanos })
+        let d = Duration { secs: secs, nanos: nanos };
+        // Even if d is within the bounds of i64 seconds,
+        // it might still overflow i64 milliseconds.
+        if d < MIN || d > MAX { None } else { Some(d) }
     }
 }
 
@@ -407,26 +421,22 @@ mod tests {
         assert_eq!(Duration::milliseconds(1001).num_seconds(), 1);
         assert_eq!(Duration::milliseconds(-999).num_seconds(), 0);
         assert_eq!(Duration::milliseconds(-1001).num_seconds(), -1);
-        assert_eq!(Duration::seconds(i64::MAX).num_seconds(), i64::MAX);
-        assert_eq!(Duration::seconds(i64::MIN).num_seconds(), i64::MIN);
-        assert_eq!(MAX.num_seconds(), i64::MAX);
-        assert_eq!(MIN.num_seconds(), i64::MIN);
     }
 
     #[test]
     fn test_duration_num_milliseconds() {
         let d: Duration = Zero::zero();
-        assert_eq!(d.num_milliseconds(), Some(0));
-        assert_eq!(Duration::milliseconds(1).num_milliseconds(), Some(1));
-        assert_eq!(Duration::milliseconds(-1).num_milliseconds(), Some(-1));
-        assert_eq!(Duration::microseconds(999).num_milliseconds(), Some(0));
-        assert_eq!(Duration::microseconds(1001).num_milliseconds(), Some(1));
-        assert_eq!(Duration::microseconds(-999).num_milliseconds(), Some(0));
-        assert_eq!(Duration::microseconds(-1001).num_milliseconds(), Some(-1));
-        assert_eq!(Duration::milliseconds(i64::MAX).num_milliseconds(), Some(i64::MAX));
-        assert_eq!(Duration::milliseconds(i64::MIN).num_milliseconds(), Some(i64::MIN));
-        assert_eq!(MAX.num_milliseconds(), None);
-        assert_eq!(MIN.num_milliseconds(), None);
+        assert_eq!(d.num_milliseconds(), 0);
+        assert_eq!(Duration::milliseconds(1).num_milliseconds(), 1);
+        assert_eq!(Duration::milliseconds(-1).num_milliseconds(), -1);
+        assert_eq!(Duration::microseconds(999).num_milliseconds(), 0);
+        assert_eq!(Duration::microseconds(1001).num_milliseconds(), 1);
+        assert_eq!(Duration::microseconds(-999).num_milliseconds(), 0);
+        assert_eq!(Duration::microseconds(-1001).num_milliseconds(), -1);
+        assert_eq!(Duration::milliseconds(i64::MAX).num_milliseconds(), i64::MAX);
+        assert_eq!(Duration::milliseconds(i64::MIN).num_milliseconds(), i64::MIN);
+        assert_eq!(MAX.num_milliseconds(), i64::MAX);
+        assert_eq!(MIN.num_milliseconds(), i64::MIN);
     }
 
     #[test]
@@ -477,13 +487,13 @@ mod tests {
 
     #[test]
     fn test_duration_checked_ops() {
-        assert_eq!(Duration::seconds(i64::MAX).checked_add(&Duration::milliseconds(999)),
-                   Some(Duration::seconds(i64::MAX - 1) + Duration::milliseconds(1999)));
-        assert!(Duration::seconds(i64::MAX).checked_add(&Duration::milliseconds(1000)).is_none());
+        assert_eq!(Duration::milliseconds(i64::MAX - 1).checked_add(&Duration::microseconds(999)),
+                   Some(Duration::milliseconds(i64::MAX - 2) + Duration::microseconds(1999)));
+        assert!(Duration::milliseconds(i64::MAX).checked_add(&Duration::microseconds(1000)).is_none());
 
-        assert_eq!(Duration::seconds(i64::MIN).checked_sub(&Duration::seconds(0)),
-                   Some(Duration::seconds(i64::MIN)));
-        assert!(Duration::seconds(i64::MIN).checked_sub(&Duration::seconds(1)).is_none());
+        assert_eq!(Duration::milliseconds(i64::MIN).checked_sub(&Duration::milliseconds(0)),
+                   Some(Duration::milliseconds(i64::MIN)));
+        assert!(Duration::milliseconds(i64::MIN).checked_sub(&Duration::milliseconds(1)).is_none());
     }
 
     #[test]
