@@ -195,9 +195,10 @@ impl<'a> MarkSymbolVisitor<'a> {
             ast_map::NodeItem(item) => {
                 match item.node {
                     ast::ItemStruct(..) => {
-                        let has_extern_repr = item.attrs.iter().fold(attr::ReprAny, |acc, attr| {
-                            attr::find_repr_attr(self.tcx.sess.diagnostic(), attr, acc)
-                        }) == attr::ReprExtern;
+                        let has_extern_repr = item.attrs.iter().fold(false, |acc, attr| {
+                            acc || attr::find_repr_attrs(self.tcx.sess.diagnostic(), attr)
+                                         .iter().any(|&x| x == attr::ReprExtern)
+                        });
 
                         visit::walk_item(self, &*item, MarkSymbolVisitorContext {
                             struct_has_extern_repr: has_extern_repr,

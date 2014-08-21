@@ -263,12 +263,13 @@ Rust code:
 
 ~~~~no_run
 
+#[repr(C)]
 struct RustObject {
     a: i32,
     // other members
 }
 
-extern fn callback(target: *mut RustObject, a:i32) {
+extern "C" fn callback(target: *mut RustObject, a:i32) {
     println!("I'm called from C with value {0}", a);
     unsafe {
         // Update the value in RustObject with the value received from the callback
@@ -506,16 +507,16 @@ to define a block for all windows systems, not just x86 ones.
 
 # Interoperability with foreign code
 
-Rust guarantees that the layout of a `struct` is compatible with the platform's representation in C.
-A `#[packed]` attribute is available, which will lay out the struct members without padding.
-However, there are currently no guarantees about the layout of an `enum`.
+Rust guarantees that the layout of a `struct` is compatible with the platform's representation in C
+only if the `#[repr(C)]` attribute is applied to it.  `#[repr(C, packed)]` can be used to lay out
+struct members without padding.  `#[repr(C)]` can also be applied to an enum.
 
-Rust's owned and managed boxes use non-nullable pointers as handles which point to the contained
+Rust's owned boxes (`Box<T>`) use non-nullable pointers as handles which point to the contained
 object. However, they should not be manually created because they are managed by internal
-allocators. References can safely be assumed to be non-nullable pointers directly to the
-type. However, breaking the borrow checking or mutability rules is not guaranteed to be safe, so
-prefer using raw pointers (`*`) if that's needed because the compiler can't make as many assumptions
-about them.
+allocators. References can safely be assumed to be non-nullable pointers directly to the type.
+However, breaking the borrow checking or mutability rules is not guaranteed to be safe, so prefer
+using raw pointers (`*`) if that's needed because the compiler can't make as many assumptions about
+them.
 
 Vectors and strings share the same basic memory layout, and utilities are available in the `vec` and
 `str` modules for working with C APIs. However, strings are not terminated with `\0`. If you need a

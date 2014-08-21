@@ -68,7 +68,8 @@ impl Stack {
 
         // FIXME: Using the FFI to call a C macro. Slow
         stk.valgrind_id = unsafe {
-            rust_valgrind_stack_register(stk.start(), stk.end())
+            rust_valgrind_stack_register(stk.start() as *const libc::uintptr_t,
+                                         stk.end() as *const libc::uintptr_t)
         };
         return stk;
     }

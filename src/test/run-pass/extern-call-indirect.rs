@@ -22,14 +22,14 @@ mod rustrt {
 }
 
 extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
-    if data == 1u {
+    if data == 1 {
         data
     } else {
-        fact(data - 1u) * data
+        fact(data - 1) * data
     }
 }
 
-fn fact(n: uint) -> uint {
+fn fact(n: libc::uintptr_t) -> libc::uintptr_t {
     unsafe {
         println!("n = {}", n);
         rustrt::rust_dbg_call(cb, n)
@@ -37,7 +37,7 @@ fn fact(n: uint) -> uint {
 }
 
 pub fn main() {
-    let result = fact(10u);
+    let result = fact(10);
     println!("result = {}", result);
-    assert_eq!(result, 3628800u);
+    assert_eq!(result, 3628800);
 }

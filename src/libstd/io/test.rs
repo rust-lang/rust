@@ -146,6 +146,7 @@ mod darwin_fd_limit {
 
     use libc;
     type rlim_t = libc::uint64_t;
+    #[repr(C)]
     struct rlimit {
         rlim_cur: rlim_t,
         rlim_max: rlim_t

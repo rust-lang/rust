@@ -46,6 +46,8 @@
 #![allow(unsigned_negate)]
 
 use libc::c_ulonglong;
+use std::collections::Map;
+use std::num::Int;
 use std::rc::Rc;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
@@ -178,7 +180,8 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
         }
         ty::ty_enum(def_id, ref substs) => {
             let cases = get_cases(cx.tcx(), def_id, substs);
-            let hint = ty::lookup_repr_hint(cx.tcx(), def_id);
+            let hint = *ty::lookup_repr_hints(cx.tcx(), def_id).as_slice().get(0)
+                .unwrap_or(&attr::ReprAny);
 
             let dtor = ty::ty_dtor(cx.tcx(), def_id).has_drop_flag();
 
@@ -263,36 +266,6 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
             }).collect(), dtor);
         }
         _ => cx.sess().bug("adt::represent_type called on non-ADT type")
-    }
-}
-
-/// Determine, without doing translation, whether an ADT must be FFI-safe.
-/// For use in lint or similar, where being sound but slightly incomplete is acceptable.
-pub fn is_ffi_safe(tcx: &ty::ctxt, def_id: ast::DefId) -> bool {
-    match ty::get(ty::lookup_item_type(tcx, def_id).ty).sty {
-        ty::ty_enum(def_id, _) => {
-            let variants = ty::enum_variants(tcx, def_id);
-            // Univariant => like struct/tuple.
-            if variants.len() <= 1 {
-                return true;
-            }
-            let hint = ty::lookup_repr_hint(tcx, def_id);
-            // Appropriate representation explicitly selected?
-            if hint.is_ffi_safe() {
-                return true;
-            }
-            // Option<Box<T>> and similar are used in FFI.  Rather than try to
-            // resolve type parameters and recognize this case exactly, this
-            // overapproximates -- assuming that if a non-C-like enum is being
-            // used in FFI then the user knows what they're doing.
-            if variants.iter().any(|vi| !vi.args.is_empty()) {
-                return true;
-            }
-            false
-        }
-        // struct, tuple, etc.
-        // (is this right in the present of typedefs?)
-        _ => true
     }
 }
 
@@ -427,6 +400,9 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
         }
         attr::ReprAny => {
             attempts = choose_shortest;
+        },
+        attr::ReprPacked => {
+            cx.tcx.sess.bug("range_to_inttype: found ReprPacked on an enum");
         }
     }
     for &ity in attempts.iter() {
