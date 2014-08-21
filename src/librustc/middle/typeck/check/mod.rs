@@ -2715,7 +2715,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         // Tuple up the arguments and insert the resulting function type into
         // the `unboxed_closures` table.
-        fn_ty.sig.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.inputs)];
+        fn_ty.sig.inputs = if fn_ty.sig.inputs.len() == 0 {
+            vec![ty::mk_nil()]
+        } else {
+            vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.inputs)]
+        };
 
         let kind = match kind {
             ast::FnUnboxedClosureKind => ty::FnUnboxedClosureKind,
