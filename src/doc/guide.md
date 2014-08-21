@@ -535,7 +535,7 @@ arguments we pass to functions and macros, if you're passing more than one.
 When you just use the curly braces, Rust will attempt to display the
 value in a meaningful way by checking out its type. If you want to specify the
 format in a more detailed manner, there are a [wide number of options
-available](/std/fmt/index.html). For now, we'll just stick to the default:
+available](std/fmt/index.html). For now, we'll just stick to the default:
 integers aren't very complicated to print.
 
 So, we've cleared up all of the confusion around bindings, with one exception:
@@ -3520,15 +3520,15 @@ out.
 In systems programming, pointers are an incredibly important topic. Rust has a
 very rich set of pointers, and they operate differently than in many other
 languages. They are important enough that we have a specific [Pointer
-Guide](/guide-pointers.html) that goes into pointers in much detail. In fact,
+Guide](guide-pointers.html) that goes into pointers in much detail. In fact,
 while you're currently reading this guide, which covers the language in broad
 overview, there are a number of other guides that put a specific topic under a
 microscope. You can find the list of guides on the [documentation index
-page](/index.html#guides).
+page](index.html#guides).
 
 In this section, we'll assume that you're familiar with pointers as a general
 concept. If you aren't, please read the [introduction to
-pointers](/guide-pointers.html#an-introduction) section of the Pointer Guide,
+pointers](guide-pointers.html#an-introduction) section of the Pointer Guide,
 and then come back here. We'll wait.
 
 Got the gist? Great. Let's talk about pointers in Rust.
@@ -5211,4 +5211,177 @@ fail.
 
 # Macros
 
+One of Rust's most advanced features is its system of **macro**s. While
+functions allow you to provide abstractions over values and operations, macros
+allow you to provide abstractions over syntax. Do you wish Rust had the ability
+to do something that it can't currently do? You may be able to write a macro
+to extend Rust's capabilities.
+
+You've already used one macro extensively: `println!`. When we invoke
+a Rust macro, we need to use the exclamation mark (`!`). There's two reasons
+that this is true: the first is that it makes it clear when you're using a
+macro. The second is that macros allow for flexible syntax, and so Rust must
+be able to tell where a macro starts and ends. The `!(...)` helps with this.
+
+Let's talk some more about `println!`. We could have implemented `println!` as
+a function, but it would be worse. Why? Well, what macros allow you to do
+is write code that generates more code. So when we call `println!` like this:
+
+```{rust}
+let x = 5i;
+println!("x is: {}", x);
+```
+
+The `println!` macro does a few things:
+
+1. It parses the string to find any `{}`s
+2. It checks that the number of `{}`s matches the number of other arguments.
+3. It generates a bunch of Rust code, taking this in mind.
+
+What this means is that you get type checking at compile time, because
+Rust will generate code that takes all of the types into account. If
+`println!` was a function, it could still do this type checking, but it
+would happen at run time rather than compile time.
+
+We can check this out using a special flag to `rustc`. This code, in a file
+`print.rs`:
+
+```{rust}
+fn main() {
+    let x = "Hello";
+    println!("x is: {:s}", x);
+}
+```
+
+Can have its macros expanded like this: `rustc print.rs --pretty=expanded`, will
+give us this huge result:
+
+```{rust,ignore}
+#![feature(phase)]
+#![no_std]
+#![feature(globs)]
+#[phase(plugin, link)]
+extern crate std = "std";
+extern crate rt = "native";
+use std::prelude::*;
+fn main() {
+    let x = "Hello";
+    match (&x,) {
+        (__arg0,) => {
+            #[inline]
+            #[allow(dead_code)]
+            static __STATIC_FMTSTR: [::std::fmt::rt::Piece<'static>, ..2u] =
+                [::std::fmt::rt::String("x is: "),
+                 ::std::fmt::rt::Argument(::std::fmt::rt::Argument{position:
+                                                                       ::std::fmt::rt::ArgumentNext,
+                                                                   format:
+                                                                       ::std::fmt::rt::FormatSpec{fill:
+                                                                                                      ' ',
+                                                                                                  align:
+                                                                                                      ::std::fmt::rt::AlignUnknown,
+                                                                                                  flags:
+                                                                                                      0u,
+                                                                                                  precision:
+                                                                                                      ::std::fmt::rt::CountImplied,
+                                                                                                  width:
+                                                                                                      ::std::fmt::rt::CountImplied,},})];
+            let __args_vec =
+                &[::std::fmt::argument(::std::fmt::secret_string, __arg0)];
+            let __args =
+                unsafe {
+                    ::std::fmt::Arguments::new(__STATIC_FMTSTR, __args_vec)
+                };
+            ::std::io::stdio::println_args(&__args)
+        }
+    };
+}
+```
+
+Intense. Here's a trimmed down version that's a bit easier to read:
+
+```{rust,ignore}
+fn main() {
+    let x = 5i;
+    match (&x,) {
+        (__arg0,) => {
+            static __STATIC_FMTSTR:  =
+                [String("x is: "),
+                 Argument(Argument {
+                    position: ArgumentNext,
+                    format: FormatSpec {
+                        fill: ' ',
+                        align: AlignUnknown,
+                        flags: 0u,
+                        precision: CountImplied,
+                        width: CountImplied,
+                    },
+                },
+               ];
+            let __args_vec = &[argument(secret_string, __arg0)];
+            let __args = unsafe { Arguments::new(__STATIC_FMTSTR, __args_vec) };
+
+            println_args(&__args)
+        }
+    };
+}
+```
+
+Whew! This isn't too terrible. You can see that we still `let x = 5i`, 
+but then things get a little bit hairy. Three more bindings get set: a
+static format string, an argument vector, and the aruments. We then
+invoke the `println_args` function with the generated arguments.
+
+This is the code (well, the full version) that Rust actually compiles. You can
+see all of the extra information that's here. We get all of the type safety and
+options that it provides, but at compile time, and without needing to type all
+of this out. This is how macros are powerful. Without them, you would need to
+type all of this by hand to get a type checked `println`.
+
+For more on macros, please consult [the Macros Guide](guide-macros.html).
+Macros are a very advanced and still slightly experimental feature, but don't
+require a deep understanding to call, since they look just like functions. The
+Guide can help you if you want to write your own.
+
 # Unsafe
+
+Finally, there's one more concept that you should be aware in Rust: `unsafe`.
+There are two circumstances where Rust's safety provisions don't work well.
+The first is when interfacing with C code, and the second is when building
+certain kinds of abstractions.
+
+Rust has support for FFI, (which you can read about in the [FFI
+Guide](guide-ffi.html)) but Rust can't guarantee that the C code will be safe,
+like Rust's will. Therefore, Rust marks such functions with the `unsafe`
+keyword, which indicates that the function may not behave properly.
+
+Second, if you'd like to create some sort of shared-memory data structure, Rust
+won't allow it, because memory must be owned by a single owner. However, if
+you're planning on making access to that shared memory safe, such as with a
+mutex, _you_ know that it's safe, but Rust can't know. Writing an `unsafe`
+block allows you to ask the compiler to trust you. In this case, the _internal_
+implementation of the mutex is considered unsafe, but the _external_ interface
+we present is safe. This allows it to be effectively used in normal Rust, while
+being able to implement functionality that the compiler can't double check for
+us.
+
+Doesn't an escape hatch undermine the safety of the entire system? Well, if
+Rust code segfaults, it _must_ be because of unsafe code somewhere. By
+annotating exactly where that is, you have a significantly smaller area to
+search.
+
+We haven't even talked about any examples here, and that's because I want to
+emphasize that you should not be writing unsafe code unless you know exactly
+what you're doing. The vast majority of Rust developers will only interact with
+it when doing FFI, and advanced library authors may use it to build certain
+kinds of abstraction.
+
+# Conclusion
+
+We covered a lot of ground here. When you've mastered everything in this Guide,
+you will have a firm grasp of basic Rust development. There's a whole lot more
+out there, we've just covered the surface. There's tons of topics that you can
+dig deeper into, and we've built specialized guides for many of them. To learn
+more, dig into the [full documentation
+index](http://doc.rust-lang.org/index.html).
+
+Happy hacking!
