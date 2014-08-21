@@ -70,20 +70,20 @@
 //! println!("{}", tuple)
 //! ```
 //!
-//! ## Monte Carlo estimation of pi
+//! ## Monte Carlo estimation of π
 //!
 //! For this example, imagine we have a square with sides of length 2 and a unit
-//! circle, both centered at the origin. Since the area of a unit circle is pi,
-//! the ratio
+//! circle, both centered at the origin. Since the area of a unit circle is π,
+//! we have:
 //!
 //! ```notrust
-//!     (area of unit circle) / (area of square)
+//!     (area of unit circle) / (area of square) = π / 4
 //! ```
 //!
-//! is equal to pi / 4. So if we sample many points randomly from the square,
-//! roughly pi / 4 of them should be inside the circle.
+//! So if we sample many points randomly from the square, roughly π / 4 of them
+//! should be inside the circle.
 //!
-//! We can use the above fact to estimate the value of pi: pick many points in the
+//! We can use the above fact to estimate the value of π: pick many points in the
 //! square at random, calculate the fraction that fall within the circle, and
 //! multiply this fraction by 4.
 //!
