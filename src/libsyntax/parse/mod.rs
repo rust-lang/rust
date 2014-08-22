@@ -412,14 +412,21 @@ pub fn str_lit(lit: &str) -> String {
     loop {
         match chars.next() {
             Some((i, c)) => {
-                let em = error(i);
                 match c {
                     '\\' => {
-                        if chars.peek().expect(em.as_slice()).val1() == '\n' {
+                        let ch = chars.peek().unwrap_or_else(|| {
+                            fail!("{}", error(i).as_slice())
+                        }).val1();
+
+                        if ch == '\n' {
                             eat(&mut chars);
-                        } else if chars.peek().expect(em.as_slice()).val1() == '\r' {
+                        } else if ch == '\r' {
                             chars.next();
-                            if chars.peek().expect(em.as_slice()).val1() != '\n' {
+                            let ch = chars.peek().unwrap_or_else(|| {
+                                fail!("{}", error(i).as_slice())
+                            }).val1();
+
+                            if ch != '\n' {
                                 fail!("lexer accepted bare CR");
                             }
                             eat(&mut chars);
@@ -433,7 +440,11 @@ pub fn str_lit(lit: &str) -> String {
                         }
                     },
                     '\r' => {
-                        if chars.peek().expect(em.as_slice()).val1() != '\n' {
+                        let ch = chars.peek().unwrap_or_else(|| {
+                            fail!("{}", error(i).as_slice())
+                        }).val1();
+
+                        if ch != '\n' {
                             fail!("lexer accepted bare CR");
                         }
                         chars.next();
