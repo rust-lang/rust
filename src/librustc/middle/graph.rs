@@ -50,12 +50,12 @@ pub struct Node<N> {
 
 pub struct Edge<E> {
     next_edge: [EdgeIndex, ..2], // see module comment
-    source: NodeIndex,
-    target: NodeIndex,
+    pub source: NodeIndex,
+    pub target: NodeIndex,
     pub data: E,
 }
 
-#[deriving(Clone, PartialEq, Show)]
+#[deriving(Clone, PartialEq, PartialOrd, Show)]
 pub struct NodeIndex(pub uint);
 pub static InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 
@@ -64,9 +64,20 @@ pub struct EdgeIndex(pub uint);
 pub static InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
 
 // Use a private field here to guarantee no more instances are created:
+#[deriving(PartialEq, Eq)]
 pub struct Direction { repr: uint }
 pub static Outgoing: Direction = Direction { repr: 0 };
 pub static Incoming: Direction = Direction { repr: 1 };
+
+impl Direction {
+    pub fn reverse(self) -> Direction {
+        if self == Outgoing {
+            Incoming
+        } else {
+            Outgoing
+        }
+    }
+}
 
 impl NodeIndex {
     fn get(&self) -> uint { let NodeIndex(v) = *self; v }

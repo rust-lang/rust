@@ -188,7 +188,8 @@ debugging_opts!(
         FLOWGRAPH_PRINT_LOANS,
         FLOWGRAPH_PRINT_MOVES,
         FLOWGRAPH_PRINT_ASSIGNS,
-        FLOWGRAPH_PRINT_ALL
+        FLOWGRAPH_PRINT_ALL,
+        PRINT_DOMINATORS
     ]
     0
 )
@@ -232,7 +233,9 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("flowgraph-print-assigns", "Include assignment analysis data in \
                        --pretty flowgraph output", FLOWGRAPH_PRINT_ASSIGNS),
      ("flowgraph-print-all", "Include all dataflow analysis data in \
-                       --pretty flowgraph output", FLOWGRAPH_PRINT_ALL))
+                       --pretty flowgraph output", FLOWGRAPH_PRINT_ALL),
+     ("print-dominators", "Print dominators with flow graph",
+                       PRINT_DOMINATORS))
 }
 
 /// Declare a macro that will define all CodegenOptions fields and parsers all
