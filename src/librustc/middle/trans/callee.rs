@@ -288,7 +288,7 @@ fn resolve_default_method_vtables(bcx: &Block,
 /// `Trait` so that a by-value self method can be called.
 pub fn trans_unboxing_shim(bcx: &Block,
                            llshimmedfn: ValueRef,
-                           method: &ty::Method,
+                           fty: &ty::BareFnTy,
                            method_id: ast::DefId,
                            substs: subst::Substs)
                            -> ValueRef {
@@ -297,29 +297,29 @@ pub fn trans_unboxing_shim(bcx: &Block,
     let tcx = bcx.tcx();
 
     // Transform the self type to `Box<self_type>`.
-    let self_type = *method.fty.sig.inputs.get(0);
+    let self_type = *fty.sig.inputs.get(0);
     let boxed_self_type = ty::mk_uniq(tcx, self_type);
     let boxed_function_type = ty::FnSig {
-        binder_id: method.fty.sig.binder_id,
-        inputs: method.fty.sig.inputs.iter().enumerate().map(|(i, typ)| {
+        binder_id: fty.sig.binder_id,
+        inputs: fty.sig.inputs.iter().enumerate().map(|(i, typ)| {
             if i == 0 {
                 boxed_self_type
             } else {
                 *typ
             }
         }).collect(),
-        output: method.fty.sig.output,
+        output: fty.sig.output,
         variadic: false,
     };
     let boxed_function_type = ty::BareFnTy {
-        fn_style: method.fty.fn_style,
-        abi: method.fty.abi,
+        fn_style: fty.fn_style,
+        abi: fty.abi,
         sig: boxed_function_type,
     };
     let boxed_function_type =
         ty::mk_bare_fn(tcx, boxed_function_type).subst(tcx, &substs);
     let function_type =
-        ty::mk_bare_fn(tcx, method.fty.clone()).subst(tcx, &substs);
+        ty::mk_bare_fn(tcx, (*fty).clone()).subst(tcx, &substs);
 
     let function_name = ty::with_path(tcx, method_id, |path| {
         link::mangle_internal_name_by_path_and_seq(path, "unboxing_shim")
