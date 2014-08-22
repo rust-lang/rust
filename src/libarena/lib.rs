@@ -563,7 +563,7 @@ mod tests {
 
     struct Noncopy {
         string: String,
-        array: Vec<int> ,
+        array: Vec<int>,
     }
 
     #[test]
