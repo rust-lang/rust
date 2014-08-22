@@ -399,8 +399,11 @@ pub mod eabi {
     use libunwind as uw;
     use libc::{c_void, c_int};
 
+    #[repr(C)]
     struct EXCEPTION_RECORD;
+    #[repr(C)]
     struct CONTEXT;
+    #[repr(C)]
     struct DISPATCHER_CONTEXT;
 
     #[repr(C)]
