@@ -515,12 +515,64 @@ fn get_vtable(bcx: &Block,
                         bcx,
                         closure_def_id);
 
-                let llfn = trans_fn_ref_with_vtables(
+                let mut llfn = trans_fn_ref_with_vtables(
                     bcx,
                     closure_def_id,
                     ExprId(0),
-                    callee_substs,
+                    callee_substs.clone(),
                     VecPerParamSpace::empty());
+
+                {
+                    let unboxed_closures = bcx.tcx()
+                                              .unboxed_closures
+                                              .borrow();
+                    let closure_info =
+                        unboxed_closures.find(&closure_def_id)
+                                        .expect("get_vtable(): didn't find \
+                                                 unboxed closure");
+                    if closure_info.kind == ty::FnOnceUnboxedClosureKind {
+                        // Untuple the arguments and create an unboxing shim.
+                        let mut new_inputs = vec![
+                            ty::mk_unboxed_closure(bcx.tcx(),
+                                                   closure_def_id,
+                                                   ty::ReStatic)
+                        ];
+                        match ty::get(closure_info.closure_type
+                                                  .sig
+                                                  .inputs[0]).sty {
+                            ty::ty_tup(ref elements) => {
+                                for element in elements.iter() {
+                                    new_inputs.push(*element)
+                                }
+                            }
+                            ty::ty_nil => {}
+                            _ => {
+                                bcx.tcx().sess.bug("get_vtable(): closure \
+                                                    type wasn't a tuple")
+                            }
+                        }
+
+                        let closure_type = ty::BareFnTy {
+                            fn_style: closure_info.closure_type.fn_style,
+                            abi: Rust,
+                            sig: ty::FnSig {
+                                binder_id: closure_info.closure_type
+                                                       .sig
+                                                       .binder_id,
+                                inputs: new_inputs,
+                                output: closure_info.closure_type.sig.output,
+                                variadic: false,
+                            },
+                        };
+                        debug!("get_vtable(): closure type is {}",
+                               closure_type.repr(bcx.tcx()));
+                        llfn = trans_unboxing_shim(bcx,
+                                                   llfn,
+                                                   &closure_type,
+                                                   closure_def_id,
+                                                   callee_substs);
+                    }
+                }
 
                 (vec!(llfn)).move_iter()
             }
@@ -603,7 +655,7 @@ fn emit_vtable_methods(bcx: &Block,
                     if m.explicit_self == ty::ByValueExplicitSelfCategory {
                         fn_ref = trans_unboxing_shim(bcx,
                                                      fn_ref,
-                                                     &*m,
+                                                     &m.fty,
                                                      m_id,
                                                      substs.clone());
                     }
