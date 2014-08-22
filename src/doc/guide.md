@@ -2896,9 +2896,11 @@ pub fn print_hello() {
 }
 ```
 
-When we include a module like this, we don't need to make the `mod` declaration,
-it's just understood. This helps prevent 'rightward drift': when you end up
-indenting so many times that your code is hard to read.
+When we include a module like this, we don't need to make the `mod` declaration
+in `hello.rs`, because it's already been declared in `lib.rs`. `hello.rs` just
+contains the body of the module which is defined (by the `pub mod hello`) in
+`lib.rs`.  This helps prevent 'rightward drift': when you end up indenting so
+many times that your code is hard to read.
 
 Finally, make a new directory, `src/goodbye`, and make a new file in it,
 `src/goodbye/mod.rs`:
