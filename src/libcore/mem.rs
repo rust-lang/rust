@@ -19,6 +19,16 @@ use ptr;
 
 pub use intrinsics::transmute;
 
+/// Moves a thing into the void.
+///
+/// The forget function will take ownership of the provided value but neglect
+/// to run any required cleanup or memory management operations on it.
+///
+/// This function is the unsafe version of the `drop` function because it does
+/// not run any destructors.
+#[stable]
+pub use intrinsics::forget;
+
 /// Returns the size of a type in bytes.
 #[inline]
 #[stable]
@@ -336,17 +346,6 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 #[inline]
 #[stable]
 pub fn drop<T>(_x: T) { }
-
-/// Moves a thing into the void.
-///
-/// The forget function will take ownership of the provided value but neglect
-/// to run any required cleanup or memory management operations on it.
-///
-/// This function is the unsafe version of the `drop` function because it does
-/// not run any destructors.
-#[inline]
-#[stable]
-pub unsafe fn forget<T>(thing: T) { intrinsics::forget(thing) }
 
 /// Interprets `src` as `&U`, and then reads `src` without moving the contained
 /// value.
