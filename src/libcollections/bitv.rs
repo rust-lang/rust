@@ -2566,7 +2566,9 @@ mod tests {
         let mut r = rng();
         let mut bitv = 0 as uint;
         b.iter(|| {
-            bitv |= 1 << ((r.next_u32() as uint) % uint::BITS);
+            for _ in range(0u, 100) {
+                bitv |= 1 << ((r.next_u32() as uint) % uint::BITS);
+            }
             &bitv
         })
     }
@@ -2576,7 +2578,9 @@ mod tests {
         let mut r = rng();
         let mut bitv = Bitv::with_capacity(BENCH_BITS, false);
         b.iter(|| {
-            bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
+            for _ in range(0u, 100) {
+                bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
+            }
             &bitv
         })
     }
@@ -2586,7 +2590,9 @@ mod tests {
         let mut r = rng();
         let mut bitv = Bitv::with_capacity(uint::BITS, false);
         b.iter(|| {
-            bitv.set((r.next_u32() as uint) % uint::BITS, true);
+            for _ in range(0u, 100) {
+                bitv.set((r.next_u32() as uint) % uint::BITS, true);
+            }
             &bitv
         })
     }
@@ -2596,7 +2602,9 @@ mod tests {
         let mut r = rng();
         let mut bitv = BitvSet::new();
         b.iter(|| {
-            bitv.insert((r.next_u32() as uint) % uint::BITS);
+            for _ in range(0u, 100) {
+                bitv.insert((r.next_u32() as uint) % uint::BITS);
+            }
             &bitv
         })
     }
@@ -2606,7 +2614,9 @@ mod tests {
         let mut r = rng();
         let mut bitv = BitvSet::new();
         b.iter(|| {
-            bitv.insert((r.next_u32() as uint) % BENCH_BITS);
+            for _ in range(0u, 100) {
+                bitv.insert((r.next_u32() as uint) % BENCH_BITS);
+            }
             &bitv
         })
     }
@@ -2616,18 +2626,21 @@ mod tests {
         let mut b1 = Bitv::with_capacity(BENCH_BITS, false);
         let b2 = Bitv::with_capacity(BENCH_BITS, false);
         b.iter(|| {
-            b1.union(&b2);
+            b1.union(&b2)
         })
     }
 
     #[bench]
-    fn bench_btv_small_iter(b: &mut Bencher) {
+    fn bench_bitv_small_iter(b: &mut Bencher) {
         let bitv = Bitv::with_capacity(uint::BITS, false);
         b.iter(|| {
-            let mut _sum = 0;
-            for pres in bitv.iter() {
-                _sum += pres as uint;
+            let mut sum = 0;
+            for _ in range(0u, 10) {
+                for pres in bitv.iter() {
+                    sum += pres as uint;
+                }
             }
+            sum
         })
     }
 
@@ -2635,10 +2648,11 @@ mod tests {
     fn bench_bitv_big_iter(b: &mut Bencher) {
         let bitv = Bitv::with_capacity(BENCH_BITS, false);
         b.iter(|| {
-            let mut _sum = 0;
+            let mut sum = 0;
             for pres in bitv.iter() {
-                _sum += pres as uint;
+                sum += pres as uint;
             }
+            sum
         })
     }
 
@@ -2647,10 +2661,11 @@ mod tests {
         let bitv = BitvSet::from_bitv(from_fn(BENCH_BITS,
                                               |idx| {idx % 3 == 0}));
         b.iter(|| {
-            let mut _sum = 0;
+            let mut sum = 0;
             for idx in bitv.iter() {
-                _sum += idx;
+                sum += idx;
             }
+            sum
         })
     }
 }
