@@ -273,9 +273,9 @@ mod imp {
 
         try!(writeln!(w, "stack backtrace:"));
         // 100 lines should be enough
-        static SIZE: libc::c_int = 100;
+        static SIZE: uint = 100;
         let mut buf: [*mut libc::c_void, ..SIZE] = unsafe {mem::zeroed()};
-        let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE) as uint};
+        let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE as libc::c_int) as uint};
 
         // skipping the first one as it is write itself
         result::fold_(range(1, cnt).map(|i| {

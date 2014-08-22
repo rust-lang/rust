@@ -333,7 +333,10 @@ pub mod eabi {
             uw::_URC_HANDLER_FOUND // catch!
         }
         else { // cleanup phase
-            uw::_URC_INSTALL_CONTEXT
+            unsafe {
+                __gcc_personality_sj0(_version, actions, _exception_class, _ue_header,
+                                      _context)
+            }
         }
     }
 }
