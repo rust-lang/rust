@@ -571,7 +571,6 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                 }
             } else {
                 let mut j = 1;
-                let mut last_valid_opt_id = None;
                 names = Vec::new();
                 while j < curlen {
                     let range = cur.as_slice().char_range_at(j);
@@ -584,27 +583,24 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                        interpreted correctly
                     */
 
-                    match find_opt(opts.as_slice(), opt.clone()) {
-                      Some(id) => last_valid_opt_id = Some(id),
-                      None => {
-                        let arg_follows =
-                            last_valid_opt_id.is_some() &&
-                            match opts[last_valid_opt_id.unwrap()]
-                              .hasarg {
+                    let opt_id = match find_opt(opts.as_slice(), opt.clone()) {
+                      Some(id) => id,
+                      None => return Err(UnrecognizedOption(opt.to_string()))
+                    };
 
-                              Yes | Maybe => true,
-                              No => false
-                            };
-                        if arg_follows && j < curlen {
-                            i_arg = Some(cur.as_slice()
-                                            .slice(j, curlen).to_string());
-                            break;
-                        } else {
-                            last_valid_opt_id = None;
-                        }
-                      }
-                    }
                     names.push(opt);
+
+                    let arg_follows = match opts[opt_id].hasarg {
+                        Yes | Maybe => true,
+                        No => false
+                    };
+
+                    if arg_follows && range.next < curlen {
+                        i_arg = Some(cur.as_slice()
+                                        .slice(range.next, curlen).to_string());
+                        break;
+                    }
+
                     j = range.next;
                 }
             }
@@ -617,7 +613,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                 };
                 match opts[optid].hasarg {
                   No => {
-                    if !i_arg.is_none() {
+                    if name_pos == names.len() && !i_arg.is_none() {
                         return Err(UnexpectedArgument(nm.to_string()));
                     }
                     vals.get_mut(optid).push(Given);
@@ -1439,6 +1435,21 @@ mod tests {
         assert!(matches.opts_present(["M".to_string()]));
         assert_eq!(matches.opts_str(["M".to_string()]).unwrap(), ".".to_string());
 
+    }
+
+    #[test]
+    fn test_nospace_conflict() {
+        let args = vec!("-vvLverbose".to_string(), "-v".to_string() );
+        let opts = vec!(optmulti("L", "", "library directory", "LIB"),
+                     optflagmulti("v", "verbose", "Verbose"));
+        let matches = &match getopts(args.as_slice(), opts.as_slice()) {
+          result::Ok(m) => m,
+          result::Err(e) => fail!( "{}", e )
+        };
+        assert!(matches.opts_present(["L".to_string()]));
+        assert_eq!(matches.opts_str(["L".to_string()]).unwrap(), "verbose".to_string());
+        assert!(matches.opts_present(["v".to_string()]));
+        assert_eq!(3, matches.opt_count("v"));
     }
 
     #[test]
