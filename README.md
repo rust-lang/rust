@@ -71,7 +71,7 @@ To easily build on windows we can use [MSYS2](http://sourceforge.net/projects/ms
 3. With that now start `mingw32_shell.bat` from where you installed MSYS2 (i.e. `C:\msys`).
 4. From there just navigate to where you have Rust's source code, configure and build it:
 
-        $ ./configure --build=i686-pc-mingw32
+        $ ./configure
         $ make && make install
 
 [repo]: https://github.com/rust-lang/rust
