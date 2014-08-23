@@ -348,7 +348,7 @@ impl IoError {
                 // libuv maps this error code to EISDIR. we do too. if it is found
                 // to be incorrect, we can add in some more machinery to only
                 // return this message when ERROR_INVALID_FUNCTION after certain
-                // win32 calls.
+                // Windows calls.
                 libc::ERROR_INVALID_FUNCTION => (InvalidInput,
                                                  "illegal operation on a directory"),
 

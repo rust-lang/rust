@@ -11,7 +11,6 @@
 use common::Config;
 
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 use std::os::getenv;
 
 /// Conversion table from triple OS name to Rust SYSNAME
@@ -36,7 +35,6 @@ pub fn get_os(triple: &str) -> &'static str {
 }
 
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 pub fn make_new_path(path: &str) -> String {
 
     // Windows just uses PATH as the library search path, so we have to
@@ -50,11 +48,9 @@ pub fn make_new_path(path: &str) -> String {
 }
 
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 pub fn lib_path_env_var() -> &'static str { "PATH" }
 
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 pub fn path_div() -> &'static str { ";" }
 
 pub fn logv(config: &Config, s: String) {
