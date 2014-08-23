@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Blocking win32-based file I/O
+//! Blocking Windows-based file I/O
 
 use alloc::arc::Arc;
 use libc::{c_int, c_void};
 use libc;
 use std::c_str::CString;
 use std::mem;
-use std::os::win32::fill_utf16_buf_and_decode;
+use std::os::windows::fill_utf16_buf_and_decode;
 use std::ptr;
 use std::rt::rtio;
 use std::rt::rtio::{IoResult, IoError};

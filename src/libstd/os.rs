@@ -139,7 +139,7 @@ pub fn getcwd() -> Path {
 }
 
 #[cfg(windows)]
-pub mod win32 {
+pub mod windows {
     use libc::types::os::arch::extra::DWORD;
     use libc;
     use option::{None, Option};
@@ -362,7 +362,7 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
 pub fn getenv(n: &str) -> Option<String> {
     unsafe {
         with_env_lock(|| {
-            use os::win32::{fill_utf16_buf_and_decode};
+            use os::windows::{fill_utf16_buf_and_decode};
             let n: Vec<u16> = n.utf16_units().collect();
             let n = n.append_one(0);
             fill_utf16_buf_and_decode(|buf, sz| {
@@ -707,7 +707,7 @@ pub fn self_exe_name() -> Option<Path> {
     #[cfg(windows)]
     fn load_self() -> Option<Vec<u8>> {
         unsafe {
-            use os::win32::fill_utf16_buf_and_decode;
+            use os::windows::fill_utf16_buf_and_decode;
             fill_utf16_buf_and_decode(|buf, sz| {
                 libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
             }).map(|s| s.into_string().into_bytes())
@@ -1315,7 +1315,7 @@ pub fn page_size() -> uint {
 
 /// A memory mapped file or chunk of memory. This is a very system-specific
 /// interface to the OS's memory mapping facilities (`mmap` on POSIX,
-/// `VirtualAlloc`/`CreateFileMapping` on win32). It makes no attempt at
+/// `VirtualAlloc`/`CreateFileMapping` on Windows). It makes no attempt at
 /// abstracting platform differences, besides in error values returned. Consider
 /// yourself warned.
 ///
@@ -1385,7 +1385,7 @@ pub enum MapError {
     ErrZeroLength,
     /// Unrecognized error. The inner value is the unrecognized errno.
     ErrUnknown(int),
-    /// ## The following are win32-specific
+    /// ## The following are Windows-specific
     ///
     /// Unsupported combination of protection flags
     /// (`MapReadable`/`MapWritable`/`MapExecutable`).
@@ -1843,14 +1843,13 @@ pub mod consts {
 }
 
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 pub mod consts {
     pub use os::arch_consts::ARCH;
 
     pub static FAMILY: &'static str = "windows";
 
     /// A string describing the specific operating system in use: in this
-    /// case, `win32`.
+    /// case, `windows`.
     pub static SYSNAME: &'static str = "windows";
 
     /// Specifies the filename prefix used for shared libraries on this

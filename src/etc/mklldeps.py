@@ -68,8 +68,6 @@ for llconfig in sys.argv[4:]:
     ]
 
     f.write("#[cfg(" + ', '.join(cfg) + ")]\n")
-    if os == "windows": # NOTE: Remove after snapshot
-        f.write("#[cfg(stage0, target_arch = \"%s\", target_os = \"win32\")]\n" % (arch,))
 
     version = run([llconfig, '--version']).strip()
 
