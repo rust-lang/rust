@@ -1843,7 +1843,6 @@ pub mod consts {
 }
 
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 pub mod consts {
     pub use os::arch_consts::ARCH;
 

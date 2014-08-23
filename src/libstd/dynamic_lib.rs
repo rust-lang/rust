@@ -279,7 +279,6 @@ pub mod dl {
 }
 
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 pub mod dl {
     use c_str::ToCStr;
     use iter::Iterator;

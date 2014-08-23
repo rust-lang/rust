@@ -733,7 +733,6 @@ extern {}
 extern {}
 
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 #[link(name = "ws2_32")]
 #[link(name = "psapi")]
 #[link(name = "iphlpapi")]
