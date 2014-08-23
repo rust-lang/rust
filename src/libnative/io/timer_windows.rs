@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Timers based on win32 WaitableTimers
+//! Timers based on Windows WaitableTimers
 //!
 //! This implementation is meant to be used solely on windows. As with other
 //! implementations, there is a worker thread which is doing all the waiting on

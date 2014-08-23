@@ -64,7 +64,7 @@
 * sanity while editing, filling-in-details and eliminating duplication) into
 * definitions common-to-all (held in modules named c95, c99, posix88, posix01
 * and posix08) and definitions that appear only on *some* platforms (named
-* 'extra'). This would be things like significant OSX foundation kit, or win32
+* 'extra'). This would be things like significant OSX foundation kit, or Windows
 * library kernel32.dll, or various fancy glibc, linux or BSD extensions.
 *
 * In addition to the per-platform 'extra' modules, we define a module of
@@ -1195,7 +1195,6 @@ pub mod types {
     }
 
     #[cfg(target_os = "windows")]
-    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod os {
         pub mod common {
             pub mod posix01 {
@@ -1203,7 +1202,7 @@ pub mod types {
                 use types::os::arch::extra::{int64, time64_t};
                 use types::os::arch::posix88::{dev_t, ino_t};
 
-                // pub Note: this is the struct called stat64 in win32. Not stat,
+                // pub Note: this is the struct called stat64 in Windows. Not stat,
                 // nor stati64.
                 #[repr(C)]
                 pub struct stat {
@@ -1220,7 +1219,7 @@ pub mod types {
                     pub st_ctime: time64_t,
                 }
 
-                // note that this is called utimbuf64 in win32
+                // note that this is called utimbuf64 in Windows
                 #[repr(C)]
                 pub struct utimbuf {
                     pub actime: time64_t,
@@ -1915,7 +1914,6 @@ pub mod consts {
     // into this module.
 
     #[cfg(target_os = "windows")]
-    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod os {
         pub mod c95 {
             use types::os::arch::c95::{c_int, c_uint};
@@ -4000,7 +3998,6 @@ pub mod funcs {
     // with the same POSIX functions and types as other platforms.
 
     #[cfg(target_os = "windows")]
-    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod posix88 {
         pub mod stat_ {
             use types::os::common::posix01::{stat, utimbuf};
@@ -4430,7 +4427,6 @@ pub mod funcs {
     }
 
     #[cfg(target_os = "windows")]
-    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod posix01 {
         pub mod stat_ {
         }
@@ -4447,7 +4443,6 @@ pub mod funcs {
 
 
     #[cfg(target_os = "windows")]
-    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     #[cfg(target_os = "macos")]
@@ -4586,7 +4581,6 @@ pub mod funcs {
 
 
     #[cfg(target_os = "windows")]
-    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod bsd44 {
     }
 
@@ -4613,7 +4607,6 @@ pub mod funcs {
 
 
     #[cfg(target_os = "windows")]
-    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     pub mod extra {
 
         pub mod kernel32 {

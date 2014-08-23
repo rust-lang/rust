@@ -17,7 +17,6 @@ use header;
 use procsrv;
 use util::logv;
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 use util;
 
 use std::io::File;
@@ -819,7 +818,6 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
     }).collect::<Vec<String> >();
 
     #[cfg(target_os = "windows")]
-    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     fn to_lower( s : &str ) -> String {
         let i = s.chars();
         let c : Vec<char> = i.map( |c| {
@@ -833,7 +831,6 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
     }
 
     #[cfg(target_os = "windows")]
-    #[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
     fn prefix_matches( line : &str, prefix : &str ) -> bool {
         to_lower(line).as_slice().starts_with(to_lower(prefix).as_slice())
     }
@@ -1251,7 +1248,6 @@ fn make_cmdline(_libpath: &str, prog: &str, args: &[String]) -> String {
 }
 
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 fn make_cmdline(libpath: &str, prog: &str, args: &[String]) -> String {
     format!("{} {} {}", lib_path_cmd_prefix(libpath), prog, args.connect(" "))
 }
@@ -1259,7 +1255,6 @@ fn make_cmdline(libpath: &str, prog: &str, args: &[String]) -> String {
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
 // for diagnostic purposes
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
 fn lib_path_cmd_prefix(path: &str) -> String {
     format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
 }

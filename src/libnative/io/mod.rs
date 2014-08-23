@@ -46,7 +46,7 @@ mod util;
 #[path = "file_unix.rs"]
 pub mod file;
 #[cfg(windows)]
-#[path = "file_win32.rs"]
+#[path = "file_windows.rs"]
 pub mod file;
 
 #[cfg(target_os = "macos")]
@@ -59,8 +59,7 @@ pub mod file;
 pub mod timer;
 
 #[cfg(target_os = "windows")]
-#[cfg(stage0, target_os = "win32")] // NOTE: Remove after snapshot
-#[path = "timer_win32.rs"]
+#[path = "timer_windows.rs"]
 pub mod timer;
 
 #[cfg(unix)]
@@ -68,15 +67,15 @@ pub mod timer;
 pub mod pipe;
 
 #[cfg(windows)]
-#[path = "pipe_win32.rs"]
+#[path = "pipe_windows.rs"]
 pub mod pipe;
 
 #[cfg(windows)]
-#[path = "tty_win32.rs"]
+#[path = "tty_windows.rs"]
 mod tty;
 
 #[cfg(unix)]    #[path = "c_unix.rs"]  mod c;
-#[cfg(windows)] #[path = "c_win32.rs"] mod c;
+#[cfg(windows)] #[path = "c_windows.rs"] mod c;
 
 fn unimpl() -> IoError {
     #[cfg(unix)] use libc::ENOSYS as ERROR;
