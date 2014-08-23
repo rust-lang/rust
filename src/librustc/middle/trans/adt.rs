@@ -876,7 +876,7 @@ pub fn trans_drop_flag_ptr<'b>(mut bcx: &'b Block<'b>, r: &Repr,
  * depending on which case of an enum it is.
  *
  * To understand the alignment situation, consider `enum E { V64(u64),
- * V32(u32, u32) }` on win32.  The type has 8-byte alignment to
+ * V32(u32, u32) }` on Windows.  The type has 8-byte alignment to
  * accommodate the u64, but `V32(x, y)` would have LLVM type `{i32,
  * i32, i32}`, which is 4-byte aligned.
  *
