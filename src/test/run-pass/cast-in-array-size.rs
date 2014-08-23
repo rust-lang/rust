@@ -16,4 +16,5 @@ fn main() {
     let _a: [bool, ..1 as uint];
     let _b: [int, ..SIZE as uint] = [1, ..SIZE as uint];
     let _c: [bool, ..'\n' as uint] = [true, ..'\n' as uint];
+    let _d: [bool, ..true as uint] = [true, ..true as uint];
 }
