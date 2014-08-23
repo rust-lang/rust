@@ -419,6 +419,8 @@ struct TwoWaySearcher {
     memory: uint
 }
 
+// This is the Two-Way search algorithm, which was introduced in the paper:
+// Crochemore, M., Perrin, D., 1991, Two-way string-matching, Journal of the ACM 38(3):651-675.
 impl TwoWaySearcher {
     fn new(needle: &[u8]) -> TwoWaySearcher {
         let (critPos1, period1) = TwoWaySearcher::maximal_suffix(needle, false);
@@ -437,7 +439,14 @@ impl TwoWaySearcher {
         let byteset = needle.iter()
                             .fold(0, |a, &b| (1 << ((b & 0x3f) as uint)) | a);
 
-        if needle.slice_to(critPos) == needle.slice_from(needle.len() - critPos) {
+
+        // The logic here (calculating critPos and period, the final if statement to see which
+        // period to use for the TwoWaySearcher) is essentially an implementation of the
+        // "small-period" function from the paper (p. 670)
+        //
+        // In the paper they check whether `needle.slice_to(critPos)` is a suffix of
+        // `needle.slice(critPos, critPos + period)`, which is precisely what this does
+        if needle.slice_to(critPos) == needle.slice(period, period + critPos) {
             TwoWaySearcher {
                 critPos: critPos,
                 period: period,
@@ -508,6 +517,9 @@ impl TwoWaySearcher {
         }
     }
 
+    // returns (i, p) where i is the "critical position", the starting index of
+    // of maximal suffix, and p is the period of the suffix
+    // see p. 668 of the paper
     #[inline]
     fn maximal_suffix(arr: &[u8], reversed: bool) -> (uint, uint) {
         let mut left = -1; // Corresponds to i in the paper
