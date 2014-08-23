@@ -856,7 +856,7 @@ pub fn get_cc_prog(sess: &Session) -> String {
     // In the future, FreeBSD will use clang as default compiler.
     // It would be flexible to use cc (system's default C compiler)
     // instead of hard-coded gcc.
-    // For win32, there is no cc command, so we add a condition to make it use gcc.
+    // For Windows, there is no cc command, so we add a condition to make it use gcc.
     match sess.targ_cfg.os {
         abi::OsWindows => "gcc",
         _ => "cc",
