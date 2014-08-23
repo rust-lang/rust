@@ -20,7 +20,13 @@ use tables::{derived_property, property, general_category, conversions, charwidt
 
 /// Returns whether the specified `char` is considered a Unicode alphabetic
 /// code point
-pub fn is_alphabetic(c: char) -> bool   { derived_property::Alphabetic(c) }
+pub fn is_alphabetic(c: char) -> bool {
+    match c {
+        'a' .. 'z' | 'A' .. 'Z' => true,
+        c if c > '\x7f' => derived_property::Alphabetic(c),
+        _ => false
+    }
+}
 
 /// Returns whether the specified `char` satisfies the 'XID_Start' Unicode property
 ///
@@ -44,7 +50,13 @@ pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
 /// This is defined according to the terms of the Unicode Derived Core Property 'Lowercase'.
 ///
 #[inline]
-pub fn is_lowercase(c: char) -> bool { derived_property::Lowercase(c) }
+pub fn is_lowercase(c: char) -> bool {
+    match c {
+        'a' .. 'z' => true,
+        c if c > '\x7f' => derived_property::Lowercase(c),
+        _ => false
+    }
+}
 
 ///
 /// Indicates whether a `char` is in upper case
@@ -52,7 +64,13 @@ pub fn is_lowercase(c: char) -> bool { derived_property::Lowercase(c) }
 /// This is defined according to the terms of the Unicode Derived Core Property 'Uppercase'.
 ///
 #[inline]
-pub fn is_uppercase(c: char) -> bool { derived_property::Uppercase(c) }
+pub fn is_uppercase(c: char) -> bool {
+    match c {
+        'A' .. 'Z' => true,
+        c if c > '\x7f' => derived_property::Uppercase(c),
+        _ => false
+    }
+}
 
 ///
 /// Indicates whether a `char` is whitespace
@@ -61,10 +79,11 @@ pub fn is_uppercase(c: char) -> bool { derived_property::Uppercase(c) }
 ///
 #[inline]
 pub fn is_whitespace(c: char) -> bool {
-    // As an optimization ASCII whitespace characters are checked separately
-    c == ' '
-        || ('\x09' <= c && c <= '\x0d')
-        || property::White_Space(c)
+    match c {
+        ' ' | '\x09' .. '\x0d' => true,
+        c if c > '\x7f' => property::White_Space(c),
+        _ => false
+    }
 }
 
 ///
@@ -75,8 +94,8 @@ pub fn is_whitespace(c: char) -> bool {
 ///
 #[inline]
 pub fn is_alphanumeric(c: char) -> bool {
-    derived_property::Alphabetic(c)
-        || general_category::N(c)
+    is_alphabetic(c)
+        || is_digit(c)
 }
 
 ///
@@ -91,7 +110,11 @@ pub fn is_control(c: char) -> bool { general_category::Cc(c) }
 /// Indicates whether the `char` is numeric (Nd, Nl, or No)
 #[inline]
 pub fn is_digit(c: char) -> bool {
-    general_category::N(c)
+    match c {
+        '0' .. '9' => true,
+        c if c > '\x7f' => general_category::N(c),
+        _ => false
+    }
 }
 
 /// Convert a char to its uppercase equivalent
