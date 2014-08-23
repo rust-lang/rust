@@ -156,10 +156,11 @@
 // FIXME: Relationship to Atomic types and RWLock
 
 use clone::Clone;
-use cmp::PartialEq;
+use cmp::{PartialEq, Eq};
 use kinds::{marker, Copy};
 use ops::{Deref, DerefMut, Drop};
 use option::{None, Option, Some};
+use std::fmt;
 
 /// A mutable memory location that admits only `Copy` data.
 #[unstable = "likely to be renamed; otherwise stable"]
@@ -319,6 +320,16 @@ impl<T: Clone> Clone for RefCell<T> {
 impl<T: PartialEq> PartialEq for RefCell<T> {
     fn eq(&self, other: &RefCell<T>) -> bool {
         *self.borrow() == *other.borrow()
+    }
+}
+
+#[unstable = "waiting for `Eq` to become stable"]
+impl<T: Eq> Eq for RefCell<T> {}
+
+#[unstable = "waiting for `Show` to become stable"]
+impl<T: fmt::Show> fmt::Show for RefCell<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.borrow().fmt(f)
     }
 }
 
