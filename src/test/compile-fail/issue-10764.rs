@@ -12,4 +12,4 @@ fn f(_: extern "Rust" fn()) {}
 extern fn bar() {}
 
 fn main() { f(bar) }
-//~^ ERROR: expected `fn()` but found `extern "C" fn()`
+//~^ ERROR: expected `fn()`, found `extern "C" fn()`

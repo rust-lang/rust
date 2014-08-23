@@ -14,8 +14,8 @@ fn bar(_s: u32) { }
 
 fn main() {
     foo(1*(1 as int));
-    //~^ ERROR: mismatched types: expected `i16` but found `int` (expected `i16` but found `int`)
+    //~^ ERROR: mismatched types: expected `i16`, found `int` (expected `i16`, found `int`)
 
     bar(1*(1 as uint));
-    //~^ ERROR: mismatched types: expected `u32` but found `uint` (expected `u32` but found `uint`)
+    //~^ ERROR: mismatched types: expected `u32`, found `uint` (expected `u32`, found `uint`)
 }

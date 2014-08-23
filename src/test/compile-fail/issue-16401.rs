@@ -13,7 +13,7 @@ use std::raw::Slice;
 fn main() {
     match () {
         Slice { data: data, len: len } => (),
-        //~^ ERROR mismatched types: expected `()` but found a structure pattern
+        //~^ ERROR mismatched types: expected `()`, found a structure pattern
         _ => unreachable!()
     }
 }

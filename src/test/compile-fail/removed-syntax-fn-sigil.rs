@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn f() {
-    let x: fn~() = || (); //~ ERROR expected `(` but found `~`
+    let x: fn~() = || (); //~ ERROR expected `(`, found `~`
 }

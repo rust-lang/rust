@@ -20,7 +20,7 @@ struct bar {
 
 fn want_foo(f: foo) {}
 fn have_bar(b: bar) {
-    want_foo(b); //~ ERROR (expected struct foo but found struct bar)
+    want_foo(b); //~ ERROR (expected struct foo, found struct bar)
 }
 
 fn main() {}

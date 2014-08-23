@@ -11,5 +11,5 @@
 fn f() {
     let a_box = box mut 42;
     //~^  ERROR found `mut` in ident position
-    //~^^ ERROR expected `;` but found `42`
+    //~^^ ERROR expected `;`, found `42`
 }

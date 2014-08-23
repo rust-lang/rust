@@ -10,6 +10,6 @@
 
 fn main() {
     match () {
-        [()] => { } //~ ERROR mismatched types: expected `()` but found a vector pattern
+        [()] => { } //~ ERROR mismatched types: expected `()`, found a vector pattern
     }
 }

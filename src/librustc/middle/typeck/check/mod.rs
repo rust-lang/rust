@@ -2313,7 +2313,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             ty::ty_closure(box ty::ClosureTy {sig: ref sig, ..}) => sig,
             _ => {
                 fcx.type_error_message(call_expr.span, |actual| {
-                    format!("expected function but found `{}`", actual)
+                    format!("expected function, found `{}`", actual)
                 }, fn_ty, None);
                 &error_fn_sig
             }
@@ -3811,7 +3811,7 @@ impl Repr for Expectation {
 pub fn require_uint(fcx: &FnCtxt, sp: Span, t: ty::t) {
     if !type_is_uint(fcx, sp, t) {
         fcx.type_error_message(sp, |actual| {
-            format!("mismatched types: expected `uint` type but found `{}`",
+            format!("mismatched types: expected `uint` type, found `{}`",
                     actual)
         }, t, None);
     }
@@ -3820,7 +3820,7 @@ pub fn require_uint(fcx: &FnCtxt, sp: Span, t: ty::t) {
 pub fn require_integral(fcx: &FnCtxt, sp: Span, t: ty::t) {
     if !type_is_integral(fcx, sp, t) {
         fcx.type_error_message(sp, |actual| {
-            format!("mismatched types: expected integral type but found `{}`",
+            format!("mismatched types: expected integral type, found `{}`",
                     actual)
         }, t, None);
     }
@@ -4336,28 +4336,28 @@ pub fn polytype_for_def(fcx: &FnCtxt,
       def::DefTy(_) |
       def::DefPrimTy(_) |
       def::DefTyParam(..)=> {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found type");
       }
       def::DefMod(..) | def::DefForeignMod(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found module");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found module");
       }
       def::DefUse(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found use");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found use");
       }
       def::DefRegion(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found region");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found region");
       }
       def::DefTyParamBinder(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type parameter");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found type parameter");
       }
       def::DefLabel(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found label");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found label");
       }
       def::DefSelfTy(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found self ty");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found self ty");
       }
       def::DefMethod(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found method");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found method");
       }
     }
 }
@@ -4585,8 +4585,8 @@ pub fn instantiate_path(fcx: &FnCtxt,
                 } else if i == type_count {
                     span_err!(fcx.tcx().sess, typ.span, E0087,
                         "too many type parameters provided: \
-                         expected at most {} parameter(s) \
-                         but found {} parameter(s)",
+                         expected at most {} parameter(s), \
+                         found {} parameter(s)",
                          type_count, segment.types.len());
                     substs.types.truncate(space, 0);
                 }
@@ -4603,7 +4603,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
                 } else if i == region_count {
                     span_err!(fcx.tcx().sess, lifetime.span, E0088,
                         "too many lifetime parameters provided: \
-                         expected {} parameter(s) but found {} parameter(s)",
+                         expected {} parameter(s), found {} parameter(s)",
                         region_count,
                         segment.lifetimes.len());
                     substs.mut_regions().truncate(space, 0);
@@ -4652,7 +4652,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
                 if desired.len() != required_len { "at least " } else { "" };
             span_err!(fcx.tcx().sess, span, E0089,
                 "too few type parameters provided: expected {}{} parameter(s) \
-                 but found {} parameter(s)",
+                , found {} parameter(s)",
                 qualifier, required_len, provided_len);
             substs.types.replace(space,
                                  Vec::from_elem(desired.len(), ty::mk_err()));
@@ -4705,8 +4705,8 @@ pub fn instantiate_path(fcx: &FnCtxt,
         // Otherwise, too few were provided. Report an error and then
         // use inference variables.
         span_err!(fcx.tcx().sess, span, E0090,
-            "too few lifetime parameters provided: expected {} parameter(s) \
-             but found {} parameter(s)",
+            "too few lifetime parameters provided: expected {} parameter(s), \
+             found {} parameter(s)",
             desired.len(), provided_len);
 
         substs.mut_regions().replace(

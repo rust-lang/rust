@@ -10,4 +10,4 @@
 
 type v = [mut int];
     //~^  ERROR found `mut` in ident position
-    //~^^ ERROR expected `]` but found `int`
+    //~^^ ERROR expected `]`, found `int`

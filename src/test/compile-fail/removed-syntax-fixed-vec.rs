@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type v = [int * 3]; //~ ERROR expected `]` but found `*`
+type v = [int * 3]; //~ ERROR expected `]`, found `*`

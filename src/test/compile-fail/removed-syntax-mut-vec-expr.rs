@@ -11,5 +11,5 @@
 fn f() {
     let v = [mut 1, 2, 3, 4];
     //~^  ERROR found `mut` in ident position
-    //~^^ ERROR expected `]` but found `1`
+    //~^^ ERROR expected `]`, found `1`
 }

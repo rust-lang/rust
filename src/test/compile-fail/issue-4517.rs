@@ -13,6 +13,6 @@ fn bar(int_param: int) {}
 fn main() {
     let foo: [u8, ..4] = [1u8, ..4u];
     bar(foo);
-    //~^ ERROR mismatched types: expected `int` but found `[u8, .. 4]`
-    //         (expected int but found vector)
+    //~^ ERROR mismatched types: expected `int`, found `[u8, .. 4]`
+    //         (expected int, found vector)
 }

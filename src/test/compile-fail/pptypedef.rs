@@ -12,8 +12,8 @@ fn let_in<T>(x: T, f: |T|) {}
 
 fn main() {
     let_in(3u, |i| { assert!(i == 3i); });
-    //~^ ERROR expected `uint` but found `int`
+    //~^ ERROR expected `uint`, found `int`
 
     let_in(3i, |i| { assert!(i == 3u); });
-    //~^ ERROR expected `int` but found `uint`
+    //~^ ERROR expected `int`, found `uint`
 }

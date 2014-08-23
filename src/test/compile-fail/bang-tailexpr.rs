@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn f() -> ! {
-    3i //~ ERROR expected `!` but found `int`
+    3i //~ ERROR expected `!`, found `int`
 }
 fn main() { }

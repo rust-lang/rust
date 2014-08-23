@@ -15,12 +15,12 @@ trait Tr<T> {
 // these compile as if Self: Tr<U>, even tho only Self: Tr<Self or T>
 trait A:    Tr<Self> {
     fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR expected Tr<U>, but found Tr<Self>
+        Tr::op(u)   //~ ERROR expected Tr<U>, found Tr<Self>
     }
 }
 trait B<T>: Tr<T> {
     fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR expected Tr<U>, but found Tr<T>
+        Tr::op(u)   //~ ERROR expected Tr<U>, found Tr<T>
     }
 }
 
