@@ -15,13 +15,14 @@ import sys
 # msys1/msys2 automatically converts `/abs/path1:/abs/path2` into
 # `c:\real\abs\path1;c:\real\abs\path2` (semicolons) if shell thinks
 # the value is list of paths.
+# (if there is only one path, it becomes `c:/real/abs/path`.)
 # this causes great confusion and error: shell and Makefile doesn't like
 # windows paths so it is really error-prone. revert it for peace.
 def normalize_path(v):
-    # c:\path -> /c/path
-    if ':\\' in v:
-        v = '/' + v.replace(':\\', '/')
     v = v.replace('\\', '/')
+    # c:/path -> /c/path
+    if ':/' in v:
+        v = '/' + v.replace(':/', '/')
     return v
 
 

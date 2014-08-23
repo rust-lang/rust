@@ -299,13 +299,19 @@ case $CFG_OSTYPE in
         CFG_OSTYPE=apple-darwin
         ;;
 
-    MINGW32*)
+    MINGW*)
+        # msys' `uname` does not print gcc configuration, but prints msys
+        # configuration. so we cannot believe `uname -m`:
+        # msys1 is always i686 and msys2 is always x86_64.
+        # instead, msys defines $MSYSTEM which is MINGW32 on i686 and
+        # MINGW64 on x86_64.
+        CFG_CPUTYPE=i686
         CFG_OSTYPE=pc-mingw32
-        ;;
-
-    MINGW64*)
-        # msys2, MSYSTEM=MINGW64
-        CFG_OSTYPE=w64-mingw32
+        if [ "$MSYSTEM" = MINGW64 ]
+        then
+            CFG_CPUTYPE=x86_64
+            CFG_OSTYPE=w64-mingw32
+        fi
         ;;
 
 # Thad's Cygwin identifers below
