@@ -208,6 +208,7 @@ mod imp {
 
 #[cfg(not(jemalloc), unix)]
 mod imp {
+    use core::cmp;
     use core::mem;
     use core::ptr;
     use libc;
@@ -248,7 +249,7 @@ mod imp {
     pub unsafe fn reallocate(ptr: *mut u8, size: uint, align: uint,
                              old_size: uint) -> *mut u8 {
         let new_ptr = allocate(size, align);
-        ptr::copy_memory(new_ptr, ptr as *const u8, old_size);
+        ptr::copy_memory(new_ptr, ptr as *const u8, cmp::min(size, old_size));
         deallocate(ptr, old_size, align);
         return new_ptr;
     }
