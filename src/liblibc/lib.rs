@@ -1357,8 +1357,16 @@ pub mod types {
             pub mod c99 {
                 pub type c_longlong = i64;
                 pub type c_ulonglong = u64;
+
+                #[cfg(target_arch = "x86")]
                 pub type intptr_t = i32;
+                #[cfg(target_arch = "x86_64")]
+                pub type intptr_t = i64;
+
+                #[cfg(target_arch = "x86")]
                 pub type uintptr_t = u32;
+                #[cfg(target_arch = "x86_64")]
+                pub type uintptr_t = u64;
             }
 
             pub mod posix88 {
