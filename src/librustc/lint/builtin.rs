@@ -754,7 +754,7 @@ impl LintPass for NonCamelCaseTypes {
 
             // start with a non-lowercase letter rather than non-uppercase
             // ones (some scripts don't have a concept of upper/lowercase)
-            !ident.char_at(0).is_lowercase() && !ident.contains_char('_')
+            ident.len() > 0 && !ident.char_at(0).is_lowercase() && !ident.contains_char('_')
         }
 
         fn to_camel_case(s: &str) -> String {
