@@ -3325,7 +3325,8 @@ To do that, we'll need to make a new module. Make a new file, `src/lib.rs`,
 and put this in it:
 
 ```{rust}
-fn add_three_times_four(x: int) -> int {
+# fn main() {}
+pub fn add_three_times_four(x: int) -> int {
     (x + 3) * 4
 }
 ```
