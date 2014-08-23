@@ -11,7 +11,7 @@
 // aux-build:privacy-tuple-struct.rs
 // ignore-fast
 
-extern crate other = "privacy-tuple-struct";
+extern crate "privacy-tuple-struct" as other;
 
 mod a {
     pub struct A(());

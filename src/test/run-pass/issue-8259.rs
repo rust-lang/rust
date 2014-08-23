@@ -10,7 +10,7 @@
 
 // aux-build:issue-8259.rs
 
-extern crate other = "issue-8259";
+extern crate "issue-8259" as other;
 static a: other::Foo<'static> = other::A;
 
 pub fn main() {}

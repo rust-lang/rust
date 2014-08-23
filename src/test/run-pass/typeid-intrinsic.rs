@@ -11,8 +11,8 @@
 // aux-build:typeid-intrinsic.rs
 // aux-build:typeid-intrinsic2.rs
 
-extern crate other1 = "typeid-intrinsic";
-extern crate other2 = "typeid-intrinsic2";
+extern crate "typeid-intrinsic" as other1;
+extern crate "typeid-intrinsic2" as other2;
 
 use std::hash;
 use std::intrinsics;

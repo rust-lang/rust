@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate foo = "issue-13872-1";
+extern crate "issue-13872-1" as foo;
 
 pub use foo::B;

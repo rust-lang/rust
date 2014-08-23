@@ -10,7 +10,7 @@
 
 // aux-build:trait_inheritance_auto_xc_2_aux.rs
 
-extern crate aux = "trait_inheritance_auto_xc_2_aux";
+extern crate "trait_inheritance_auto_xc_2_aux" as aux;
 
 // aux defines impls of Foo, Bar and Baz for A
 use aux::{Foo, Bar, Baz, A};

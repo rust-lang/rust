@@ -9,6 +9,6 @@
 // except according to those terms.
 
 // Issue #1706
-extern crate stdlib = "std";
+extern crate "std" as stdlib;
 
 pub fn main() {}

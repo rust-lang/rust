@@ -15,7 +15,7 @@
 
 #![feature(linkage)]
 
-extern crate other = "linkage1";
+extern crate "linkage1" as other;
 
 extern {
     #[linkage = "extern_weak"]

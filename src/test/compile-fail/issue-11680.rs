@@ -10,7 +10,7 @@
 
 // aux-build:issue-11680.rs
 
-extern crate other = "issue-11680";
+extern crate "issue-11680" as other;
 
 fn main() {
     let _b = other::Bar(1);
