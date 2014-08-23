@@ -10,7 +10,7 @@
 
 // aux-build:priv-impl-prim-ty.rs
 
-extern crate bar = "priv-impl-prim-ty";
+extern crate "priv-impl-prim-ty" as bar;
 
 pub fn main() {
     bar::frob(1i);

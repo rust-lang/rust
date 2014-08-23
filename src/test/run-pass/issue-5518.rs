@@ -10,6 +10,6 @@
 
 // aux-build:issue-5518.rs
 
-extern crate other = "issue-5518";
+extern crate "issue-5518" as other;
 
 fn main() {}

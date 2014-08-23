@@ -10,7 +10,7 @@
 
 // aux-build:issue-12612-1.rs
 
-extern crate foo = "issue-12612-1";
+extern crate "issue-12612-1" as foo;
 
 use foo::bar;
 

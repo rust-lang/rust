@@ -13,6 +13,6 @@
 #![crate_id="crateresolve4b#0.1"]
 #![crate_type = "lib"]
 
-extern crate crateresolve4a = "crateresolve4a#0.2";
+extern crate "crateresolve4a#0.2" as crateresolve4a;
 
 pub fn f() -> int { crateresolve4a::g() }

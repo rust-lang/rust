@@ -10,6 +10,6 @@
 
 #![feature(phase)]
 
-#[phase(plugin, link)] extern crate std2 = "std";
+#[phase(plugin, link)] extern crate "std" as std2;
 
 fn main() {}

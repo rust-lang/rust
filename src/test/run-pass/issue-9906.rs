@@ -10,7 +10,7 @@
 
 // aux-build:issue-9906.rs
 
-extern crate testmod = "issue-9906";
+extern crate "issue-9906" as testmod;
 
 pub fn main() {
     testmod::foo();

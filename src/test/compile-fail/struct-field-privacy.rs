@@ -10,7 +10,7 @@
 
 // aux-build:struct-field-privacy.rs
 
-extern crate xc = "struct-field-privacy";
+extern crate "struct-field-privacy" as xc;
 
 struct A {
     a: int,

@@ -14,7 +14,7 @@
 
 #![no_std]
 
-extern crate lang_lib = "lang-item-public";
+extern crate "lang-item-public" as lang_lib;
 
 #[cfg(target_os = "linux")]
 #[link(name = "c")]

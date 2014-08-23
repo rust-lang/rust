@@ -11,7 +11,7 @@
 // aux-build:issue-12133-rlib.rs
 // aux-build:issue-12133-dylib.rs
 
-extern crate a = "issue-12133-rlib";
-extern crate b = "issue-12133-dylib";
+extern crate "issue-12133-rlib" as a;
+extern crate "issue-12133-dylib" as b;
 
 fn main() {}

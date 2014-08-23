@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:static-function-pointer-aux.rs
-extern crate aux = "static-function-pointer-aux";
+extern crate "static-function-pointer-aux" as aux;
 
 fn f(x: int) -> int { x }
 

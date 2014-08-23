@@ -11,7 +11,7 @@
 // aux-build:issue-5521.rs
 
 
-extern crate foo = "issue-5521";
+extern crate "issue-5521" as foo;
 
 fn bar(a: foo::map) {
     if false {

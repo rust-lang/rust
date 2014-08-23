@@ -10,7 +10,7 @@
 
 // aux-build:issue-11225-1.rs
 
-extern crate foo = "issue-11225-1";
+extern crate "issue-11225-1" as foo;
 
 pub fn main() {
     foo::foo(1i);

@@ -16,7 +16,7 @@
 // Regression test for issue #13560, the test itself is all in the dependent
 // libraries. The fail which previously failed to compile is the one numbered 3.
 
-extern crate t2 = "issue-13560-2";
-extern crate t3 = "issue-13560-3";
+extern crate "issue-13560-2" as t2;
+extern crate "issue-13560-3" as t3;
 
 fn main() {}

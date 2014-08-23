@@ -2,8 +2,8 @@
 #![no_std]
 #![feature(globs)]
 #[phase(plugin, link)]
-extern crate std = "std";
-extern crate rt = "native";
+extern crate "std" as std;
+extern crate "native" as rt;
 #[prelude_import]
 use std::prelude::*;
 // Copyright 2014 The Rust Project Developers. See the COPYRIGHT

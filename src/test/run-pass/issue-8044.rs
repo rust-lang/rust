@@ -10,7 +10,7 @@
 
 // aux-build:issue-8044.rs
 
-extern crate minimal = "issue-8044";
+extern crate "issue-8044" as minimal;
 use minimal::{BTree, leaf};
 
 pub fn main() {

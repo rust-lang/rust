@@ -10,7 +10,7 @@
 
 // aux-build:issue-7899.rs
 
-extern crate testcrate = "issue-7899";
+extern crate "issue-7899" as testcrate;
 
 fn main() {
     let f = testcrate::V2(1.0f32, 2.0f32);
