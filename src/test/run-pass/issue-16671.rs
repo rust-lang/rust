@@ -8,12 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let x = 1i;
-    proc() { x = 2; };
-    //~^ ERROR: cannot assign to immutable captured outer variable in a proc `x`
+#![forbid(warnings)]
 
-    let s = std::io::stdin();
-    proc() { s.lines(); };
-    //~^ ERROR: cannot borrow immutable captured outer variable in a proc `s` as mutable
+// Pretty printing tests complain about `use std::predule::*`
+#![allow(unused_imports)]
+
+// A var moved into a proc, that has a mutable loan path should
+// not trigger a misleading unused_mut warning.
+
+pub fn main() {
+    let mut stdin = std::io::stdin();
+    spawn(proc() {
+        let _ = stdin.lines();
+    });
 }
