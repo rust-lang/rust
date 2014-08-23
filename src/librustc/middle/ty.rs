@@ -3603,17 +3603,17 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
     match *err {
         terr_mismatch => "types differ".to_string(),
         terr_fn_style_mismatch(values) => {
-            format!("expected {} fn but found {} fn",
+            format!("expected {} fn, found {} fn",
                     values.expected.to_string(),
                     values.found.to_string())
         }
         terr_abi_mismatch(values) => {
-            format!("expected {} fn but found {} fn",
+            format!("expected {} fn, found {} fn",
                     values.expected.to_string(),
                     values.found.to_string())
         }
         terr_onceness_mismatch(values) => {
-            format!("expected {} fn but found {} fn",
+            format!("expected {} fn, found {} fn",
                     values.expected.to_string(),
                     values.found.to_string())
         }
@@ -3630,20 +3630,20 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
         terr_ptr_mutability => "pointers differ in mutability".to_string(),
         terr_ref_mutability => "references differ in mutability".to_string(),
         terr_ty_param_size(values) => {
-            format!("expected a type with {} type params \
-                     but found one with {} type params",
+            format!("expected a type with {} type params, \
+                     found one with {} type params",
                     values.expected,
                     values.found)
         }
         terr_tuple_size(values) => {
-            format!("expected a tuple with {} elements \
-                     but found one with {} elements",
+            format!("expected a tuple with {} elements, \
+                     found one with {} elements",
                     values.expected,
                     values.found)
         }
         terr_record_size(values) => {
-            format!("expected a record with {} fields \
-                     but found one with {} fields",
+            format!("expected a record with {} fields, \
+                     found one with {} fields",
                     values.expected,
                     values.found)
         }
@@ -3651,7 +3651,7 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
             "record elements differ in mutability".to_string()
         }
         terr_record_fields(values) => {
-            format!("expected a record with field `{}` but found one \
+            format!("expected a record with field `{}`, found one \
                      with field `{}`",
                     token::get_ident(values.expected),
                     token::get_ident(values.found))
@@ -3670,57 +3670,57 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
         }
         terr_regions_insufficiently_polymorphic(br, _) => {
             format!("expected bound lifetime parameter {}, \
-                     but found concrete lifetime",
+                     found concrete lifetime",
                     bound_region_ptr_to_string(cx, br))
         }
         terr_regions_overly_polymorphic(br, _) => {
             format!("expected concrete lifetime, \
-                     but found bound lifetime parameter {}",
+                     found bound lifetime parameter {}",
                     bound_region_ptr_to_string(cx, br))
         }
         terr_trait_stores_differ(_, ref values) => {
-            format!("trait storage differs: expected `{}` but found `{}`",
+            format!("trait storage differs: expected `{}`, found `{}`",
                     trait_store_to_string(cx, (*values).expected),
                     trait_store_to_string(cx, (*values).found))
         }
         terr_sorts(values) => {
-            format!("expected {} but found {}",
+            format!("expected {}, found {}",
                     ty_sort_string(cx, values.expected),
                     ty_sort_string(cx, values.found))
         }
         terr_traits(values) => {
-            format!("expected trait `{}` but found trait `{}`",
+            format!("expected trait `{}`, found trait `{}`",
                     item_path_str(cx, values.expected),
                     item_path_str(cx, values.found))
         }
         terr_builtin_bounds(values) => {
             if values.expected.is_empty() {
-                format!("expected no bounds but found `{}`",
+                format!("expected no bounds, found `{}`",
                         values.found.user_string(cx))
             } else if values.found.is_empty() {
-                format!("expected bounds `{}` but found no bounds",
+                format!("expected bounds `{}`, found no bounds",
                         values.expected.user_string(cx))
             } else {
-                format!("expected bounds `{}` but found bounds `{}`",
+                format!("expected bounds `{}`, found bounds `{}`",
                         values.expected.user_string(cx),
                         values.found.user_string(cx))
             }
         }
         terr_integer_as_char => {
-            "expected an integral type but found `char`".to_string()
+            "expected an integral type, found `char`".to_string()
         }
         terr_int_mismatch(ref values) => {
-            format!("expected `{}` but found `{}`",
+            format!("expected `{}`, found `{}`",
                     values.expected.to_string(),
                     values.found.to_string())
         }
         terr_float_mismatch(ref values) => {
-            format!("expected `{}` but found `{}`",
+            format!("expected `{}`, found `{}`",
                     values.expected.to_string(),
                     values.found.to_string())
         }
         terr_variadic_mismatch(ref values) => {
-            format!("expected {} fn but found {} function",
+            format!("expected {} fn, found {} function",
                     if values.expected { "variadic" } else { "non-variadic" },
                     if values.found { "variadic" } else { "non-variadic" })
         }
@@ -4548,7 +4548,7 @@ pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> 
         const_eval::const_int(count) => if count < 0 {
             tcx.ty_ctxt().sess.span_err(count_expr.span,
                                         "expected positive integer for \
-                                         repeat count but found negative integer");
+                                         repeat count, found negative integer");
             return 0;
         } else {
             return count as uint
@@ -4557,38 +4557,38 @@ pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> 
         const_eval::const_float(count) => {
             tcx.ty_ctxt().sess.span_err(count_expr.span,
                                         "expected positive integer for \
-                                         repeat count but found float");
+                                         repeat count, found float");
             return count as uint;
         }
         const_eval::const_str(_) => {
             tcx.ty_ctxt().sess.span_err(count_expr.span,
                                         "expected positive integer for \
-                                         repeat count but found string");
+                                         repeat count, found string");
             return 0;
         }
         const_eval::const_bool(_) => {
             tcx.ty_ctxt().sess.span_err(count_expr.span,
                                         "expected positive integer for \
-                                         repeat count but found boolean");
+                                         repeat count, found boolean");
             return 0;
         }
         const_eval::const_binary(_) => {
             tcx.ty_ctxt().sess.span_err(count_expr.span,
                                         "expected positive integer for \
-                                         repeat count but found binary array");
+                                         repeat count, found binary array");
             return 0;
         }
         const_eval::const_nil => {
             tcx.ty_ctxt().sess.span_err(count_expr.span,
                                         "expected positive integer for \
-                                         repeat count but found ()");
+                                         repeat count, found ()");
             return 0;
         }
       },
       Err(..) => {
         tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                    "expected constant integer for repeat count \
-                                     but found variable");
+                                    "expected constant integer for repeat count, \
+                                     found variable");
         return 0;
       }
     }

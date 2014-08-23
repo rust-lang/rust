@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pure fn f() {} //~ ERROR expected item but found `pure`
+pure fn f() {} //~ ERROR expected item, found `pure`

@@ -21,7 +21,7 @@ fn give_any(f: ||:) {
 
 fn give_owned(f: ||:Send) {
     take_any(f);
-    take_const_owned(f); //~ ERROR expected bounds `Send+Sync` but found bounds `Send`
+    take_const_owned(f); //~ ERROR expected bounds `Send+Sync`, found bounds `Send`
 }
 
 fn main() {}

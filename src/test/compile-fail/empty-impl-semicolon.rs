@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-impl Foo; //~ ERROR expected `{` but found `;`
+impl Foo; //~ ERROR expected `{`, found `;`

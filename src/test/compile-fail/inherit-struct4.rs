@@ -12,7 +12,7 @@
 #![feature(struct_inherit)]
 
 // With lifetime parameters.
-struct S5<'a> : S4 { //~ ERROR wrong number of lifetime parameters: expected 1 but found 0
+struct S5<'a> : S4 { //~ ERROR wrong number of lifetime parameters: expected 1, found 0
     f4: int,
 }
 

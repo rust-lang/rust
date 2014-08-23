@@ -799,7 +799,7 @@ impl<'a> InferCtxt<'a> {
             _ => {
                 // if I leave out : String, it infers &str and complains
                 |actual: String| {
-                    format!("mismatched types: expected `{}` but found `{}`",
+                    format!("mismatched types: expected `{}`, found `{}`",
                             self.ty_to_string(resolved_expected),
                             actual)
                 }

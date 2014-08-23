@@ -206,7 +206,7 @@ fn relate_trait_refs(vcx: &VtableContext,
                 !ty::trait_ref_contains_error(&r_exp_trait_ref)
             {
                 let tcx = vcx.tcx();
-                span_err!(tcx.sess, span, E0095, "expected {}, but found {} ({})",
+                span_err!(tcx.sess, span, E0095, "expected {}, found {} ({})",
                           ppaux::trait_ref_to_string(tcx, &r_exp_trait_ref),
                           ppaux::trait_ref_to_string(tcx, &r_act_trait_ref),
                           ty::type_err_to_str(tcx, err));

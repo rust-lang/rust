@@ -20,7 +20,7 @@ type bar = Gc<foo>;
 
 fn want_foo(f: foo) {}
 fn have_bar(b: bar) {
-    want_foo(b); //~ ERROR (expected struct foo but found Gc-ptr)
+    want_foo(b); //~ ERROR (expected struct foo, found Gc-ptr)
 }
 
 fn main() {}

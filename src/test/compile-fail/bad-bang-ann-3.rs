@@ -12,7 +12,7 @@
 
 fn bad_bang(i: uint) -> ! {
     return 7u;
-    //~^ ERROR expected `!` but found `uint`
+    //~^ ERROR expected `!`, found `uint`
 }
 
 fn main() { bad_bang(5u); }

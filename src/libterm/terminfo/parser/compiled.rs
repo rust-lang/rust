@@ -184,7 +184,7 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
     // Check magic number
     let magic = try!(file.read_le_u16());
     if magic != 0x011A {
-        return Err(format!("invalid magic number: expected {:x} but found {:x}",
+        return Err(format!("invalid magic number: expected {:x}, found {:x}",
                            0x011Au, magic as uint));
     }
 

@@ -20,7 +20,7 @@ mod y {
 
 fn bar(x: x::foo) -> y::foo {
     return x;
-    //~^ ERROR mismatched types: expected `y::foo` but found `x::foo`
+    //~^ ERROR mismatched types: expected `y::foo`, found `x::foo`
 }
 
 fn main() {

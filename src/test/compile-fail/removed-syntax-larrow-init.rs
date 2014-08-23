@@ -11,5 +11,5 @@
 fn removed_moves() {
     let mut x = 0;
     let y <- x;
-    //~^ ERROR expected `;` but found `<-`
+    //~^ ERROR expected `;`, found `<-`
 }

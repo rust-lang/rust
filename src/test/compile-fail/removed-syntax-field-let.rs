@@ -11,5 +11,5 @@
 struct s {
     let foo: (),
     //~^  ERROR found `let` in ident position
-    //~^^ ERROR expected `:` but found `foo`
+    //~^^ ERROR expected `:`, found `foo`
 }

@@ -12,5 +12,5 @@
 
 pub fn main() {
     struct Foo { x: int }
-    let mut Foo { x: x } = Foo { x: 3 }; //~ ERROR: expected `;` but found `{`
+    let mut Foo { x: x } = Foo { x: 3 }; //~ ERROR: expected `;`, found `{`
 }
