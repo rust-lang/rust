@@ -1957,18 +1957,12 @@ fn main() {
 }
 ```
 
-... and then recompile:
+Try running our new program a few times:
 
 ```{notrust,ignore}
-$ cargo build
-  Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$
-```
-
-Excellent! Try running our new program a few times:
-
-```{notrust,ignore}
-$ ./target/guessing_game
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 7
 Please input your guess.
@@ -1986,6 +1980,7 @@ The secret number is: -29
 Please input your guess.
 42
 You guessed: 42
+$
 ```
 
 Wait. Negative 29? We wanted a number between one and a hundred! We have two
@@ -2019,9 +2014,9 @@ fn main() {
 And trying it out:
 
 ```{notrust,ignore}
-$ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$ ./target/guessing_game 
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 57
 Please input your guess.
@@ -2290,9 +2285,9 @@ We use a `match` to either give us the `uint` inside of the `Option`, or we
 print an error message and return. Let's give this a shot:
 
 ```{notrust,ignore}
-$ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$ ./target/guessing_game 
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 17
 Please input your guess.
@@ -2356,9 +2351,9 @@ fn cmp(a: uint, b: uint) -> Ordering {
 Let's try it!
 
 ```{notrust,ignore}
-$ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$ ./target/guessing_game 
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 58
 Please input your guess.
@@ -2434,9 +2429,9 @@ And try it out. But wait, didn't we just add an infinite loop? Yup. Remember
 that `return`? If we give a non-number answer, we'll `return` and quit. Observe:
 
 ```{notrust,ignore}
-$ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$ ./target/guessing_game 
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 59
 Please input your guess.
@@ -2566,10 +2561,10 @@ fn cmp(a: uint, b: uint) -> Ordering {
 
 Now we should be good! Let's try:
 
-```{rust,ignore}
-$ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$ ./target/guessing_game 
+```{notrust,ignore}
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 61
 Please input your guess.
@@ -3718,18 +3713,18 @@ That's a lot to take in. It's also one of the _most_ important concepts in
 all of Rust. Let's see this syntax in action:
 
 ```{rust}
-{ 
+{
     let x = 5i; // x is the owner of this integer, which is memory on the stack.
 
     // other code here...
-   
+
 } // privilege 1: when x goes out of scope, this memory is deallocated
 
 /// this function borrows an integer. It's given back automatically when the
 /// function returns.
-fn foo(x: &int) -> &int { x } 
+fn foo(x: &int) -> &int { x }
 
-{ 
+{
     let x = 5i; // x is the owner of this integer, which is memory on the stack.
 
     // privilege 2: you may lend that resource, to as many borrowers as you'd like
@@ -3739,14 +3734,14 @@ fn foo(x: &int) -> &int { x }
     foo(&x); // functions can borrow too!
 
     let a = &x; // we can do this alllllll day!
-} 
+}
 
-{ 
+{
     let mut x = 5i; // x is the owner of this integer, which is memory on the stack.
 
     let y = &mut x; // privilege 3: you may lend that resource to a single borrower,
                     // mutably
-}   
+}
 ```
 
 If you are a borrower, you get a few privileges as well, but must also obey a
@@ -4535,7 +4530,7 @@ let one_to_one_hundred = range(0i, 100i).collect();
 ```
 
 As you can see, we call `collect()` on our iterator. `collect()` takes
-as many values as the iterator will give it, and returns a collection 
+as many values as the iterator will give it, and returns a collection
 of the results. So why won't this compile? Rust can't determine what
 type of things you want to collect, and so you need to let it know.
 Here's the version that does compile:
@@ -5508,7 +5503,7 @@ fn main() {
 }
 ```
 
-Whew! This isn't too terrible. You can see that we still `let x = 5i`, 
+Whew! This isn't too terrible. You can see that we still `let x = 5i`,
 but then things get a little bit hairy. Three more bindings get set: a
 static format string, an argument vector, and the aruments. We then
 invoke the `println_args` function with the generated arguments.
