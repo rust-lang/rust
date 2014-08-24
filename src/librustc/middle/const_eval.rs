@@ -517,26 +517,29 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
                 match ty::get(ety).sty {
                     ty::ty_float(_) => {
                         match val {
+                            const_bool(b) => Ok(const_float(b as f64)),
                             const_uint(u) => Ok(const_float(u as f64)),
                             const_int(i) => Ok(const_float(i as f64)),
                             const_float(f) => Ok(const_float(f)),
-                            _ => Err("can't cast float to str".to_string()),
+                            _ => Err("can't cast this type to float".to_string()),
                         }
                     }
                     ty::ty_uint(_) => {
                         match val {
+                            const_bool(b) => Ok(const_uint(b as u64)),
                             const_uint(u) => Ok(const_uint(u)),
                             const_int(i) => Ok(const_uint(i as u64)),
                             const_float(f) => Ok(const_uint(f as u64)),
-                            _ => Err("can't cast str to uint".to_string()),
+                            _ => Err("can't cast this type to uint".to_string()),
                         }
                     }
-                    ty::ty_int(_) | ty::ty_bool => {
+                    ty::ty_int(_) => {
                         match val {
+                            const_bool(b) => Ok(const_int(b as i64)),
                             const_uint(u) => Ok(const_int(u as i64)),
                             const_int(i) => Ok(const_int(i)),
                             const_float(f) => Ok(const_int(f as i64)),
-                            _ => Err("can't cast str to int".to_string()),
+                            _ => Err("can't cast this type to int".to_string()),
                         }
                     }
                     _ => Err("can't cast this type".to_string())
