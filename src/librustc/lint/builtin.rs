@@ -768,9 +768,13 @@ impl LintPass for NonCamelCaseTypes {
             let s = token::get_ident(ident);
 
             if !is_camel_case(ident) {
-                cx.span_lint(NON_CAMEL_CASE_TYPES, span,
-                    format!("{} `{}` should have a camel case name such as `{}`",
-                            sort, s, to_camel_case(s.get())).as_slice());
+                let c = to_camel_case(s.get());
+                let m = if c.is_empty() {
+                    format!("{} `{}` should have a camel case name such as `CamelCase`", sort, s)
+                } else {
+                    format!("{} `{}` should have a camel case name such as `{}`", sort, s, c)
+                };
+                cx.span_lint(NON_CAMEL_CASE_TYPES, span, m.as_slice());
             }
         }
 
