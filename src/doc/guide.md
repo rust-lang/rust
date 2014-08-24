@@ -5531,9 +5531,9 @@ There are two circumstances where Rust's safety provisions don't work well.
 The first is when interfacing with C code, and the second is when building
 certain kinds of abstractions.
 
-Rust has support for FFI, (which you can read about in the [FFI
-Guide](guide-ffi.html)) but Rust can't guarantee that the C code will be safe,
-like Rust's will. Therefore, Rust marks such functions with the `unsafe`
+Rust has support for FFI (which you can read about in the [FFI
+Guide](guide-ffi.html)), but can't guarantee that the C code will be safe.
+Therefore, Rust marks such functions with the `unsafe`
 keyword, which indicates that the function may not behave properly.
 
 Second, if you'd like to create some sort of shared-memory data structure, Rust
