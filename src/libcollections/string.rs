@@ -26,7 +26,7 @@ use hash;
 use str;
 use str::{CharRange, StrAllocating, MaybeOwned, Owned};
 use str::Slice as MaybeOwnedSlice; // So many `Slice`s...
-use vec::Vec;
+use vec::{AsVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
@@ -808,6 +808,24 @@ impl<S: Str> Add<S, String> for String {
     }
 }
 
+/// Wrapper type providing a `&String` reference via `Deref`.
+#[experimental]
+pub struct AsString<'a> {
+    x: AsVec<'a, u8>
+}
+
+impl<'a> Deref<String> for AsString<'a> {
+    fn deref<'b>(&'b self) -> &'b String {
+        unsafe { mem::transmute(&*self.x) }
+    }
+}
+
+/// Convert a string slice to a wrapper type providing a `&String` reference.
+#[experimental]
+pub fn as_string<'a>(x: &'a str) -> AsString<'a> {
+    AsString { x: as_vec(x.as_bytes()) }
+}
+
 /// Unsafe operations
 pub mod raw {
     use core::mem;
@@ -873,8 +891,14 @@ mod tests {
     use {Mutable, MutableSeq};
     use str;
     use str::{Str, StrSlice, Owned, Slice};
-    use super::String;
+    use super::{as_string, String};
     use vec::Vec;
+
+    #[test]
+    fn test_as_string() {
+        let x = "foo";
+        assert_eq!(x, as_string(xs).as_slice());
+    }
 
     #[test]
     fn test_from_str() {
