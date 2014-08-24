@@ -536,6 +536,13 @@ pub mod write {
         llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(builder, fpm);
         llvm::LLVMPassManagerBuilderPopulateModulePassManager(builder, mpm);
         llvm::LLVMPassManagerBuilderDispose(builder);
+
+        match opt {
+            llvm::CodeGenLevelDefault | llvm::CodeGenLevelAggressive => {
+                "mergefunc".with_c_str(|s| llvm::LLVMRustAddPass(mpm, s));
+            }
+            _ => {}
+        };
     }
 }
 
