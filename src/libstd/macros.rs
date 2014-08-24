@@ -96,7 +96,7 @@ macro_rules! fail(
 macro_rules! assert(
     ($cond:expr) => (
         if !$cond {
-            fail!("assertion failed: {:s}", stringify!($cond))
+            fail!(concat!("assertion failed: ", stringify!($cond)))
         }
     );
     ($cond:expr, $($arg:expr),+) => (
