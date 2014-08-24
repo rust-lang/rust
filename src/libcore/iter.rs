@@ -728,6 +728,10 @@ pub trait ExactSize<A> : DoubleEndedIterator<A> {
     /// Return the exact length of the iterator.
     fn len(&self) -> uint {
         let (lower, upper) = self.size_hint();
+        // Note: This assertion is overly defensive, but it checks the invariant
+        // guaranteed by the trait. If this trait were rust-internal,
+        // we could use debug_assert!; assert_eq! will check all Rust user
+        // implementations too.
         assert_eq!(upper, Some(lower));
         lower
     }
@@ -1195,21 +1199,20 @@ impl<A, B, T: ExactSize<A>, U: ExactSize<B>> DoubleEndedIterator<(A, B)>
 for Zip<T, U> {
     #[inline]
     fn next_back(&mut self) -> Option<(A, B)> {
-        let (a_sz, a_upper) = self.a.size_hint();
-        let (b_sz, b_upper) = self.b.size_hint();
-        assert!(a_upper == Some(a_sz));
-        assert!(b_upper == Some(b_sz));
-        if a_sz < b_sz {
-            for _ in range(0, b_sz - a_sz) { self.b.next_back(); }
-        } else if a_sz > b_sz {
-            for _ in range(0, a_sz - b_sz) { self.a.next_back(); }
+        let a_sz = self.a.len();
+        let b_sz = self.b.len();
+        if a_sz != b_sz {
+            // Adjust a, b to equal length
+            if a_sz > b_sz {
+                for _ in range(0, a_sz - b_sz) { self.a.next_back(); }
+            } else {
+                for _ in range(0, b_sz - a_sz) { self.b.next_back(); }
+            }
         }
-        let (a_sz, _) = self.a.size_hint();
-        let (b_sz, _) = self.b.size_hint();
-        assert!(a_sz == b_sz);
         match (self.a.next_back(), self.b.next_back()) {
             (Some(x), Some(y)) => Some((x, y)),
-            _ => None
+            (None, None) => None,
+            _ => unreachable!(),
         }
     }
 }
@@ -1395,9 +1398,8 @@ impl<A, T: ExactSize<A>> DoubleEndedIterator<(uint, A)> for Enumerate<T> {
     fn next_back(&mut self) -> Option<(uint, A)> {
         match self.iter.next_back() {
             Some(a) => {
-                let (lower, upper) = self.iter.size_hint();
-                assert!(upper == Some(lower));
-                Some((self.count + lower, a))
+                let len = self.iter.len();
+                Some((self.count + len, a))
             }
             _ => None
         }
