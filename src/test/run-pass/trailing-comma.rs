@@ -8,9 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(_: int,) {}
+fn f<T,>(_: T,) {}
+
+struct Foo<T,>;
+
+struct Bar;
+
+impl Bar {
+    fn f(_: int,) {}
+    fn g(self, _: int,) {}
+    fn h(self,) {}
+}
+
+enum Baz {
+    Qux(int,),
+}
 
 pub fn main() {
-    f(0i,);
+    f::<int,>(0i,);
     let (_, _,) = (1i, 1i,);
+
+    let x: Foo<int,> = Foo::<int,>;
+
+    Bar::f(0i,);
+    Bar.g(0i,);
+    Bar.h();
+
+    let x = Qux(1,);
 }
