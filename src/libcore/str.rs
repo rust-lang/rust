@@ -1717,6 +1717,13 @@ pub trait StrSlice<'a> {
     fn utf16_units(&self) -> Utf16CodeUnits<'a>;
 }
 
+#[inline(never)]
+fn slice_error_fail(s: &str, begin: uint, end: uint) -> ! {
+    assert!(begin <= end);
+    fail!("index {} and/or {} in `{}` do not lie on character boundary",
+          begin, end, s);
+}
+
 impl<'a> StrSlice<'a> for &'a str {
     #[inline]
     fn contains<'a>(&self, needle: &'a str) -> bool {
@@ -1820,22 +1827,34 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn slice(&self, begin: uint, end: uint) -> &'a str {
-        assert!(self.is_char_boundary(begin) && self.is_char_boundary(end),
-                "index {} and/or {} in `{}` do not lie on character boundary", begin,
-                end, *self);
-        unsafe { raw::slice_bytes(*self, begin, end) }
+        // is_char_boundary checks that the index is in [0, .len()]
+        if begin <= end &&
+           self.is_char_boundary(begin) &&
+           self.is_char_boundary(end) {
+            unsafe { raw::slice_unchecked(*self, begin, end) }
+        } else {
+            slice_error_fail(*self, begin, end)
+        }
     }
 
     #[inline]
     fn slice_from(&self, begin: uint) -> &'a str {
-        self.slice(begin, self.len())
+        // is_char_boundary checks that the index is in [0, .len()]
+        if self.is_char_boundary(begin) {
+            unsafe { raw::slice_unchecked(*self, begin, self.len()) }
+        } else {
+            slice_error_fail(*self, begin, self.len())
+        }
     }
 
     #[inline]
     fn slice_to(&self, end: uint) -> &'a str {
-        assert!(self.is_char_boundary(end), "index {} in `{}` does not lie on \
-                a character boundary", end, *self);
-        unsafe { raw::slice_bytes(*self, 0, end) }
+        // is_char_boundary checks that the index is in [0, .len()]
+        if self.is_char_boundary(end) {
+            unsafe { raw::slice_unchecked(*self, 0, end) }
+        } else {
+            slice_error_fail(*self, 0, end)
+        }
     }
 
     fn slice_chars(&self, begin: uint, end: uint) -> &'a str {
@@ -1910,9 +1929,10 @@ impl<'a> StrSlice<'a> for &'a str {
     #[inline]
     fn is_char_boundary(&self, index: uint) -> bool {
         if index == self.len() { return true; }
-        if index > self.len() { return false; }
-        let b = self.as_bytes()[index];
-        return b < 128u8 || b >= 192u8;
+        match self.as_bytes().get(index) {
+            None => false,
+            Some(&b) => b < 128u8 || b >= 192u8,
+        }
     }
 
     #[inline]
