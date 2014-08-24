@@ -1507,8 +1507,8 @@ pub trait StrSlice<'a> {
     ///
     /// # Example
     ///
-    /// This example manually iterate through the characters of a
-    /// string; this should normally by done by `.chars()` or
+    /// This example manually iterates through the characters of a
+    /// string; this should normally be done by `.chars()` or
     /// `.char_indices`.
     ///
     /// ```rust
