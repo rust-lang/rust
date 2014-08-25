@@ -17,9 +17,9 @@ fn main() {
 
     identity_u8(x);  // after this, `x` is assumed to have type `u8`
     identity_u16(x);
-    //~^ ERROR mismatched types: expected `u16` but found `u8`
+    //~^ ERROR mismatched types: expected `u16`, found `u8`
     identity_u16(y);
-    //~^ ERROR mismatched types: expected `u16` but found `i32`
+    //~^ ERROR mismatched types: expected `u16`, found `i32`
 
     let a = 3i;
 
@@ -27,6 +27,6 @@ fn main() {
 
     identity_i(a); // ok
     identity_u16(a);
-    //~^ ERROR mismatched types: expected `u16` but found `int`
+    //~^ ERROR mismatched types: expected `u16`, found `int`
 
 }

@@ -13,7 +13,7 @@ struct Foo<T,U>(T);
 fn main() {
     match Foo(1.1) {
         1 => {}
-        //~^ ERROR expected `Foo<<generic float #0>,<generic #2>>` but found `<generic integer #0>`
+        //~^ ERROR expected `Foo<<generic float #0>,<generic #2>>`, found `<generic integer #0>`
     }
 
 }

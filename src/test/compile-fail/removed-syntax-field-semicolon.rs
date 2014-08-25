@@ -10,5 +10,5 @@
 
 struct s {
     bar: ();
-    //~^ ERROR expected `,`, or `}` but found `;`
+    //~^ ERROR expected `,`, or `}`, found `;`
 }

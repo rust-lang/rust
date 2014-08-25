@@ -10,7 +10,7 @@
 
 fn foo<T, U>(x: T, y: U) {
     let mut xx = x;
-    xx = y; //~ ERROR expected `T` but found `U`
+    xx = y; //~ ERROR expected `T`, found `U`
 }
 
 fn main() {

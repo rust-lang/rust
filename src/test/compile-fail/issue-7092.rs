@@ -14,7 +14,7 @@ enum Whatever {
 fn foo(x: Whatever) {
     match x {
         Some(field) => field.access(),
-        //~^ ERROR: mismatched types: expected `Whatever` but found
+        //~^ ERROR: mismatched types: expected `Whatever`, found
     }
 }
 

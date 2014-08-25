@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const i: int = 42; //~ ERROR expected item but found `const`
+const i: int = 42; //~ ERROR expected item, found `const`

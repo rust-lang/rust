@@ -65,6 +65,6 @@ fn main() {
 
         // positive test so that this test will be updated when the
         // compiler changes.
-        assert!(err.as_slice().contains("expected item but found"))
+        assert!(err.as_slice().contains("expected item, found"))
     }
 }

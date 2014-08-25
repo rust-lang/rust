@@ -24,25 +24,25 @@ type PairF<U> = Pair<f32,U>;
 
 fn main() {
     let pt = PointF {
-        //~^ ERROR expected f32 but found int
+        //~^ ERROR expected f32, found int
         x: 1i,
         y: 2i,
     };
 
     let pt2 = Point::<f32> {
-        //~^ ERROR expected f32 but found int
+        //~^ ERROR expected f32, found int
         x: 3i,
         y: 4i,
     };
 
     let pair = PairF {
-        //~^ ERROR expected f32 but found int
+        //~^ ERROR expected f32, found int
         x: 5i,
         y: 6i,
     };
 
     let pair2 = PairF::<int> {
-        //~^ ERROR expected f32 but found int
+        //~^ ERROR expected f32, found int
         x: 7i,
         y: 8i,
     };

@@ -122,7 +122,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
                 // we need to create a new context, when we're
                 // - outside `unsafe` and found a `unsafe` block
                 //   (normal case)
-                // - inside `unsafe` but found an `unsafe` block
+                // - inside `unsafe`, found an `unsafe` block
                 //   created internally to the compiler
                 //
                 // The second case is necessary to ensure that the

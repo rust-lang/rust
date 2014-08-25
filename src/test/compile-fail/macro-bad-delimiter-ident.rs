@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    foo! bar < //~ ERROR expected `(` or `{`, but found `<`
+    foo! bar < //~ ERROR expected `(` or `{`, found `<`
 }

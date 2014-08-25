@@ -16,5 +16,5 @@ fn removed_with() {
 
     let a = S { foo: (), bar: () };
     let b = S { foo: () with a };
-    //~^ ERROR expected one of `,`, `}` but found `with`
+    //~^ ERROR expected one of `,`, `}`, found `with`
 }

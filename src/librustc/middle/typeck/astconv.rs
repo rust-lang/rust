@@ -191,7 +191,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
 
         if supplied_num_region_params != 0 || anon_regions.is_err() {
             span_err!(tcx.sess, path.span, E0107,
-                "wrong number of lifetime parameters: expected {} but found {}",
+                "wrong number of lifetime parameters: expected {}, found {}",
                 expected_num_region_params, supplied_num_region_params);
         }
 
@@ -216,7 +216,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
             "expected"
         };
         this.tcx().sess.span_fatal(path.span,
-            format!("wrong number of type arguments: {} {} but found {}",
+            format!("wrong number of type arguments: {} {}, found {}",
                     expected,
                     required_ty_param_count,
                     supplied_ty_param_count).as_slice());
@@ -227,7 +227,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
             "expected"
         };
         this.tcx().sess.span_fatal(path.span,
-            format!("wrong number of type arguments: {} {} but found {}",
+            format!("wrong number of type arguments: {} {}, found {}",
                     expected,
                     formal_ty_param_count,
                     supplied_ty_param_count).as_slice());

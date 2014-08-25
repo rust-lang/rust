@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:mismatched types: expected `char` but found
+// error-pattern:mismatched types: expected `char`, found
 // Issue #876
 
 #![no_implicit_prelude]
