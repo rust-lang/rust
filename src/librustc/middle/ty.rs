@@ -3634,6 +3634,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprLit(ref lit) if lit_is_str(&**lit) => {
             RvalueDpsExpr
         }
+        ast::ExprIfLet(..) => fail!("non-desugared ExprIfLet"),
 
         ast::ExprCast(..) => {
             match tcx.node_types.borrow().find(&(expr.id as uint)) {
