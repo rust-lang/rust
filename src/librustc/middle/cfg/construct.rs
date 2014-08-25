@@ -324,7 +324,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 expr_exit
             }
 
-            ast::ExprMatch(ref discr, ref arms) => {
+            ast::ExprMatch(ref discr, ref arms, _) => {
                 //
                 //     [pred]
                 //       |

@@ -1013,7 +1013,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprIf(ref cond, ref thn, ref els) => {
             controlflow::trans_if(bcx, expr.id, &**cond, &**thn, els.as_ref().map(|e| &**e), dest)
         }
-        ast::ExprMatch(ref discr, ref arms) => {
+        ast::ExprMatch(ref discr, ref arms, _) => {
             _match::trans_match(bcx, expr, &**discr, arms.as_slice(), dest)
         }
         ast::ExprBlock(ref blk) => {

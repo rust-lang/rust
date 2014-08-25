@@ -4144,7 +4144,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             fcx.write_nil(id);
         }
       }
-      ast::ExprMatch(ref discrim, ref arms) => {
+      ast::ExprMatch(ref discrim, ref arms, _) => {
         _match::check_match(fcx, expr, &**discrim, arms.as_slice());
       }
       ast::ExprFnBlock(_, ref decl, ref body) => {
