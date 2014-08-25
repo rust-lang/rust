@@ -169,7 +169,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                     fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                        |expected, actual| {
                        expected.map_or("".to_string(), |e| {
-                        format!("mismatched types: expected `{}` but found {}",
+                        format!("mismatched types: expected `{}`, found {}",
                                 e, actual)
                         })},
                         Some(expected),
@@ -223,7 +223,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                                                |expected, actual| {
                                                expected.map_or("".to_string(),
                                                               |e| {
-                        format!("mismatched types: expected `{}` but found {}",
+                        format!("mismatched types: expected `{}`, found {}",
                                 e, actual)
                     })
                 },
@@ -395,7 +395,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
         Some(&def::DefTy(..)) => {
             let name = pprust::path_to_string(path);
             span_err!(tcx.sess, span, E0028,
-                "mismatched types: expected `{}` but found `{}`",
+                "mismatched types: expected `{}`, found `{}`",
                 fcx.infcx().ty_to_string(expected), name);
         }
         _ => {
@@ -548,7 +548,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                             expected.map_or("".to_string(),
                                             |e| {
                                 format!("mismatched types: expected \
-                                        `{}` but found {}", e, actual)
+                                        `{}`, found {}", e, actual)
                             })},
                             Some(expected),
                             "a structure pattern".to_string(),
@@ -607,8 +607,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                                                  |expected,
                                                                   actual| {
                         expected.map_or("".to_string(), |e| {
-                            format!("mismatched types: expected `{}` \
-                                     but found {}", e, actual)
+                            format!("mismatched types: expected `{}`, \
+                                     found {}", e, actual)
                         }
                     )},
                     Some(expected),
@@ -645,7 +645,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                 |expected, actual| {
                     expected.map_or("".to_string(),
                                     |e| {
-                        format!("mismatched types: expected `{}` but found {}",
+                        format!("mismatched types: expected `{}`, found {}",
                                 e, actual)
                     })
                 },
@@ -763,7 +763,7 @@ fn check_pointer_pat(pcx: &pat_ctxt,
                 span,
                 |expected, actual| {
                     expected.map_or("".to_string(), |e| {
-                        format!("mismatched types: expected `{}` but found {}",
+                        format!("mismatched types: expected `{}`, found {}",
                                 e, actual)
                     })
                 },

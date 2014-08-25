@@ -151,7 +151,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     clobs.push(clob);
 
                     if OPTIONS.iter().any(|opt| s.equiv(opt)) {
-                        cx.span_warn(p.last_span, "expected a clobber, but found an option");
+                        cx.span_warn(p.last_span, "expected a clobber, found an option");
                     }
                 }
 

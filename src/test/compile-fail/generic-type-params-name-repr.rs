@@ -21,23 +21,23 @@ struct HashMap<K, V, H = Hash<K>>;
 fn main() {
     // Ensure that the printed type doesn't include the default type params...
     let _: Foo<int> = ();
-    //~^ ERROR mismatched types: expected `Foo<int>` but found `()`
+    //~^ ERROR mismatched types: expected `Foo<int>`, found `()`
 
     // ...even when they're present, but the same types as the defaults.
     let _: Foo<int, B, C> = ();
-    //~^ ERROR mismatched types: expected `Foo<int>` but found `()`
+    //~^ ERROR mismatched types: expected `Foo<int>`, found `()`
 
     // Including cases where the default is using previous type params.
     let _: HashMap<String, int> = ();
-    //~^ ERROR mismatched types: expected `HashMap<collections::string::String,int>` but found `()`
+    //~^ ERROR mismatched types: expected `HashMap<collections::string::String,int>`, found `()`
     let _: HashMap<String, int, Hash<String>> = ();
-    //~^ ERROR mismatched types: expected `HashMap<collections::string::String,int>` but found `()`
+    //~^ ERROR mismatched types: expected `HashMap<collections::string::String,int>`, found `()`
 
     // But not when there's a different type in between.
     let _: Foo<A, int, C> = ();
-    //~^ ERROR mismatched types: expected `Foo<A,int>` but found `()`
+    //~^ ERROR mismatched types: expected `Foo<A,int>`, found `()`
 
     // And don't print <> at all when there's just defaults.
     let _: Foo<A, B, C> = ();
-    //~^ ERROR mismatched types: expected `Foo` but found `()`
+    //~^ ERROR mismatched types: expected `Foo`, found `()`
 }

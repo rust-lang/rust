@@ -17,7 +17,7 @@ type T2 = int;
 
 fn bar(x: T1) -> T2 {
     return x;
-    //~^ ERROR mismatched types: expected `T2` but found `T1`
+    //~^ ERROR mismatched types: expected `T2`, found `T1`
 }
 
 fn main() {

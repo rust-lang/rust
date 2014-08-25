@@ -11,4 +11,4 @@
 // Verifies that the expected token errors for `extern crate` are
 // raised
 
-extern "C" mod foo; //~ERROR expected `{` or `fn` but found `mod`
+extern "C" mod foo; //~ERROR expected `{` or `fn`, found `mod`

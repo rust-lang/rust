@@ -128,7 +128,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
                 }
                 _ => {
                     ecx.span_err(p.span,
-                                 format!("expected ident for named argument, but found `{}`",
+                                 format!("expected ident for named argument, found `{}`",
                                          p.this_token_to_string()).as_slice());
                     return (invocation, None);
                 }

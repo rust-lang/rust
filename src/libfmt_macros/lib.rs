@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
                 self.cur.next();
             }
             Some((_, other)) => {
-                self.err(format!("expected `{}` but found `{}`",
+                self.err(format!("expected `{}`, found `{}`",
                                  c,
                                  other).as_slice());
             }

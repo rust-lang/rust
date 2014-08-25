@@ -16,8 +16,8 @@ fn expect_proc(_: proc()) {}
 
 fn main() {
     expect_closure(proc() {});
-    //~^ ERROR mismatched types: expected `||` but found `proc()` (expected closure, found proc)
+    //~^ ERROR mismatched types: expected `||`, found `proc()` (expected closure, found proc)
 
     expect_proc(|| {});
-    //~^ ERROR mismatched types: expected `proc()` but found `||` (expected proc, found closure)
+    //~^ ERROR mismatched types: expected `proc()`, found `||` (expected proc, found closure)
 }
