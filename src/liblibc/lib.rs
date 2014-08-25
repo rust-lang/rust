@@ -490,6 +490,7 @@ pub mod types {
                     pub sun_path: [c_char, ..108]
                 }
 
+                #[repr(C)]
                 pub struct ifaddrs {
                     pub ifa_next: *mut ifaddrs,
                     pub ifa_name: *mut c_char,
@@ -700,6 +701,7 @@ pub mod types {
             pub mod bsd44 {}
             pub mod extra {
                 use types::os::arch::c95::{c_ushort, c_int, c_uchar};
+                #[repr(C)]
                 pub struct sockaddr_ll {
                     pub sll_family: c_ushort,
                     pub sll_protocol: c_ushort,
@@ -931,6 +933,7 @@ pub mod types {
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char, ..104]
                 }
+                #[repr(C)]
                 pub struct ifaddrs {
                     pub ifa_next: *mut ifaddrs,
                     pub ifa_name: *mut c_char,
@@ -1759,6 +1762,7 @@ pub mod types {
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char, ..104]
                 }
+                #[repr(C)]
                 pub struct ifaddrs {
                     pub ifa_next: *mut ifaddrs,
                     pub ifa_name: *mut c_char,
