@@ -22,7 +22,7 @@ use stream::StreamWatcher;
 use super::{Loop, Request, UvError, Buf, status_to_io_result,
             uv_error_to_io_error, UvHandle, slice_to_uv_buf,
             wait_until_woken_after, wakeup};
-use timeout::{AccessTimeout, AcceptTimeout, ConnectCtx};
+use timeout::{AccessTimeout, ConnectCtx, AcceptTimeout};
 use uvio::UvIoFactory;
 use uvll;
 
@@ -158,20 +158,20 @@ pub struct TcpWatcher {
     // stream object, so we use these access guards in order to arbitrate among
     // multiple concurrent reads and writes. Note that libuv *can* read and
     // write simultaneously, it just can't read and read simultaneously.
-    read_access: AccessTimeout,
-    write_access: AccessTimeout,
+    read_access: AccessTimeout<()>,
+    write_access: AccessTimeout<()>,
 }
 
 pub struct TcpListener {
     home: HomeHandle,
-    handle: *mut uvll::uv_pipe_t,
-    outgoing: Sender<Result<Box<rtio::RtioTcpStream + Send>, IoError>>,
-    incoming: Receiver<Result<Box<rtio::RtioTcpStream + Send>, IoError>>,
+    handle: *mut uvll::uv_tcp_t,
 }
 
 pub struct TcpAcceptor {
-    listener: Box<TcpListener>,
-    timeout: AcceptTimeout,
+    home: HomeHandle,
+    handle: *mut uvll::uv_tcp_t,
+    access: AcceptTimeout<Box<rtio::RtioTcpStream + Send>>,
+    refcount: Refcount,
 }
 
 // TCP watchers (clients/streams)
@@ -192,8 +192,8 @@ impl TcpWatcher {
             handle: handle,
             stream: StreamWatcher::new(handle, true),
             refcount: Refcount::new(),
-            read_access: AccessTimeout::new(),
-            write_access: AccessTimeout::new(),
+            read_access: AccessTimeout::new(()),
+            write_access: AccessTimeout::new(()),
         }
     }
 
@@ -291,7 +291,7 @@ impl rtio::RtioTcpStream for TcpWatcher {
         let task = {
             let m = self.fire_homing_missile();
             self.read_access.access.close(&m);
-    self.stream.cancel_read(uvll::EOF as libc::ssize_t)
+            self.stream.cancel_read(uvll::EOF as libc::ssize_t)
         };
         let _ = task.map(|t| t.reawaken());
         Ok(())
@@ -354,12 +354,9 @@ impl TcpListener {
         assert_eq!(unsafe {
             uvll::uv_tcp_init(io.uv_loop(), handle)
         }, 0);
-        let (tx, rx) = channel();
         let l = box TcpListener {
             home: io.make_handle(),
             handle: handle,
-            outgoing: tx,
-            incoming: rx,
         };
         let mut storage = unsafe { mem::zeroed() };
         let _len = addr_to_sockaddr(address, &mut storage);
@@ -390,17 +387,21 @@ impl rtio::RtioSocket for TcpListener {
 }
 
 impl rtio::RtioTcpListener for TcpListener {
-    fn listen(self: Box<TcpListener>)
+    fn listen(mut self: Box<TcpListener>)
               -> Result<Box<rtio::RtioTcpAcceptor + Send>, IoError> {
-        // create the acceptor object from ourselves
-        let mut acceptor = box TcpAcceptor {
-            listener: self,
-            timeout: AcceptTimeout::new(),
-        };
+        let _m = self.fire_homing_missile();
 
-        let _m = acceptor.fire_homing_missile();
+        // create the acceptor object from ourselves
+        let acceptor = (box TcpAcceptor {
+            handle: self.handle,
+            home: self.home.clone(),
+            access: AcceptTimeout::new(),
+            refcount: Refcount::new(),
+        }).install();
+        self.handle = 0 as *mut _;
+
         // FIXME: the 128 backlog should be configurable
-        match unsafe { uvll::uv_listen(acceptor.listener.handle, 128, listen_cb) } {
+        match unsafe { uvll::uv_listen(acceptor.handle, 128, listen_cb) } {
             0 => Ok(acceptor as Box<rtio::RtioTcpAcceptor + Send>),
             n => Err(uv_error_to_io_error(UvError(n))),
         }
@@ -409,7 +410,7 @@ impl rtio::RtioTcpListener for TcpListener {
 
 extern fn listen_cb(server: *mut uvll::uv_stream_t, status: c_int) {
     assert!(status != uvll::ECANCELED);
-    let tcp: &mut TcpListener = unsafe { UvHandle::from_uv_handle(&server) };
+    let tcp: &mut TcpAcceptor = unsafe { UvHandle::from_uv_handle(&server) };
     let msg = match status {
         0 => {
             let loop_ = Loop::wrap(unsafe {
@@ -421,11 +422,15 @@ extern fn listen_cb(server: *mut uvll::uv_stream_t, status: c_int) {
         }
         n => Err(uv_error_to_io_error(UvError(n)))
     };
-    tcp.outgoing.send(msg);
+
+    // If we're running then we have exclusive access, so the unsafe_get() is ok
+    unsafe { tcp.access.push(msg); }
 }
 
 impl Drop for TcpListener {
     fn drop(&mut self) {
+        if self.handle.is_null() { return }
+
         let _m = self.fire_homing_missile();
         self.close();
     }
@@ -434,40 +439,68 @@ impl Drop for TcpListener {
 // TCP acceptors (bound servers)
 
 impl HomingIO for TcpAcceptor {
-    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { self.listener.home() }
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
 }
 
 impl rtio::RtioSocket for TcpAcceptor {
     fn socket_name(&mut self) -> Result<rtio::SocketAddr, IoError> {
         let _m = self.fire_homing_missile();
-        socket_name(Tcp, self.listener.handle)
+        socket_name(Tcp, self.handle)
     }
+}
+
+impl UvHandle<uvll::uv_tcp_t> for TcpAcceptor {
+    fn uv_handle(&self) -> *mut uvll::uv_tcp_t { self.handle }
 }
 
 impl rtio::RtioTcpAcceptor for TcpAcceptor {
     fn accept(&mut self) -> Result<Box<rtio::RtioTcpStream + Send>, IoError> {
-        self.timeout.accept(&self.listener.incoming)
+        let m = self.fire_homing_missile();
+        let loop_ = self.uv_loop();
+        self.access.accept(m, &loop_)
     }
 
     fn accept_simultaneously(&mut self) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
-            uvll::uv_tcp_simultaneous_accepts(self.listener.handle, 1)
+            uvll::uv_tcp_simultaneous_accepts(self.handle, 1)
         })
     }
 
     fn dont_accept_simultaneously(&mut self) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
-            uvll::uv_tcp_simultaneous_accepts(self.listener.handle, 0)
+            uvll::uv_tcp_simultaneous_accepts(self.handle, 0)
         })
     }
 
     fn set_timeout(&mut self, ms: Option<u64>) {
         let _m = self.fire_homing_missile();
-        match ms {
-            None => self.timeout.clear(),
-            Some(ms) => self.timeout.set_timeout(ms, &mut *self.listener),
+        let loop_ = self.uv_loop();
+        self.access.set_timeout(ms, &loop_, &self.home);
+    }
+
+    fn clone(&self) -> Box<rtio::RtioTcpAcceptor + Send> {
+        box TcpAcceptor {
+            refcount: self.refcount.clone(),
+            home: self.home.clone(),
+            handle: self.handle,
+            access: self.access.clone(),
+        } as Box<rtio::RtioTcpAcceptor + Send>
+    }
+
+    fn close_accept(&mut self) -> Result<(), IoError> {
+        let m = self.fire_homing_missile();
+        self.access.close(m);
+        Ok(())
+    }
+}
+
+impl Drop for TcpAcceptor {
+    fn drop(&mut self) {
+        let _m = self.fire_homing_missile();
+        if self.refcount.decrement() {
+            self.close();
         }
     }
 }
@@ -482,8 +515,8 @@ pub struct UdpWatcher {
 
     // See above for what these fields are
     refcount: Refcount,
-    read_access: AccessTimeout,
-    write_access: AccessTimeout,
+    read_access: AccessTimeout<()>,
+    write_access: AccessTimeout<()>,
 
     blocked_sender: Option<BlockedTask>,
 }
@@ -507,8 +540,8 @@ impl UdpWatcher {
             handle: unsafe { uvll::malloc_handle(uvll::UV_UDP) },
             home: io.make_handle(),
             refcount: Refcount::new(),
-            read_access: AccessTimeout::new(),
-            write_access: AccessTimeout::new(),
+            read_access: AccessTimeout::new(()),
+            write_access: AccessTimeout::new(()),
             blocked_sender: None,
         };
         assert_eq!(unsafe {

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use libc;
+use std::cmp;
 use std::mem;
 use std::os;
 use std::ptr;
@@ -166,10 +167,18 @@ pub fn connect_timeout(fd: net::sock_t,
     }
 }
 
-pub fn await(fd: net::sock_t, deadline: Option<u64>,
+pub fn await(fds: &[net::sock_t], deadline: Option<u64>,
              status: SocketStatus) -> IoResult<()> {
     let mut set: c::fd_set = unsafe { mem::zeroed() };
-    c::fd_set(&mut set, fd);
+    let mut max = 0;
+    for &fd in fds.iter() {
+        c::fd_set(&mut set, fd);
+        max = cmp::max(max, fd + 1);
+    }
+    if cfg!(windows) {
+        max = fds.len() as net::sock_t;
+    }
+
     let (read, write) = match status {
         Readable => (&mut set as *mut _, ptr::mut_null()),
         Writable => (ptr::mut_null(), &mut set as *mut _),
@@ -188,8 +197,9 @@ pub fn await(fd: net::sock_t, deadline: Option<u64>,
                 &mut tv as *mut _
             }
         };
-        let n = if cfg!(windows) {1} else {fd as libc::c_int + 1};
-        let r = unsafe { c::select(n, read, write, ptr::mut_null(), tvp) };
+        let r = unsafe {
+            c::select(max as libc::c_int, read, write, ptr::mut_null(), tvp)
+        };
         r
     }) {
         -1 => Err(last_error()),

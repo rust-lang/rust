@@ -26,6 +26,14 @@ pub static ENABLE_INSERT_MODE: libc::DWORD = 0x20;
 pub static ENABLE_LINE_INPUT: libc::DWORD = 0x2;
 pub static ENABLE_PROCESSED_INPUT: libc::DWORD = 0x1;
 pub static ENABLE_QUICK_EDIT_MODE: libc::DWORD = 0x40;
+pub static WSA_INVALID_EVENT: WSAEVENT = 0 as WSAEVENT;
+
+pub static FD_ACCEPT: libc::c_long = 0x08;
+pub static FD_MAX_EVENTS: uint = 10;
+pub static WSA_INFINITE: libc::DWORD = libc::INFINITE;
+pub static WSA_WAIT_TIMEOUT: libc::DWORD = libc::consts::os::extra::WAIT_TIMEOUT;
+pub static WSA_WAIT_EVENT_0: libc::DWORD = libc::consts::os::extra::WAIT_OBJECT_0;
+pub static WSA_WAIT_FAILED: libc::DWORD = libc::consts::os::extra::WAIT_FAILED;
 
 #[repr(C)]
 #[cfg(target_arch = "x86")]
@@ -53,6 +61,16 @@ pub struct WSADATA {
 pub type LPWSADATA = *mut WSADATA;
 
 #[repr(C)]
+pub struct WSANETWORKEVENTS {
+    pub lNetworkEvents: libc::c_long,
+    pub iErrorCode: [libc::c_int, ..FD_MAX_EVENTS],
+}
+
+pub type LPWSANETWORKEVENTS = *mut WSANETWORKEVENTS;
+
+pub type WSAEVENT = libc::HANDLE;
+
+#[repr(C)]
 pub struct fd_set {
     fd_count: libc::c_uint,
     fd_array: [libc::SOCKET, ..FD_SETSIZE],
@@ -68,6 +86,21 @@ extern "system" {
     pub fn WSAStartup(wVersionRequested: libc::WORD,
                       lpWSAData: LPWSADATA) -> libc::c_int;
     pub fn WSAGetLastError() -> libc::c_int;
+    pub fn WSACloseEvent(hEvent: WSAEVENT) -> libc::BOOL;
+    pub fn WSACreateEvent() -> WSAEVENT;
+    pub fn WSAEventSelect(s: libc::SOCKET,
+                          hEventObject: WSAEVENT,
+                          lNetworkEvents: libc::c_long) -> libc::c_int;
+    pub fn WSASetEvent(hEvent: WSAEVENT) -> libc::BOOL;
+    pub fn WSAWaitForMultipleEvents(cEvents: libc::DWORD,
+                                    lphEvents: *const WSAEVENT,
+                                    fWaitAll: libc::BOOL,
+                                    dwTimeout: libc::DWORD,
+                                    fAltertable: libc::BOOL) -> libc::DWORD;
+    pub fn WSAEnumNetworkEvents(s: libc::SOCKET,
+                                hEventObject: WSAEVENT,
+                                lpNetworkEvents: LPWSANETWORKEVENTS)
+                                -> libc::c_int;
 
     pub fn ioctlsocket(s: libc::SOCKET, cmd: libc::c_long,
                        argp: *mut libc::c_ulong) -> libc::c_int;
@@ -81,6 +114,12 @@ extern "system" {
                       optname: libc::c_int,
                       optval: *mut libc::c_char,
                       optlen: *mut libc::c_int) -> libc::c_int;
+
+    pub fn SetEvent(hEvent: libc::HANDLE) -> libc::BOOL;
+    pub fn WaitForMultipleObjects(nCount: libc::DWORD,
+                                  lpHandles: *const libc::HANDLE,
+                                  bWaitAll: libc::BOOL,
+                                  dwMilliseconds: libc::DWORD) -> libc::DWORD;
 
     pub fn CancelIo(hFile: libc::HANDLE) -> libc::BOOL;
     pub fn CancelIoEx(hFile: libc::HANDLE,

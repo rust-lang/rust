@@ -212,6 +212,15 @@ impl UnixAcceptor {
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
         self.obj.set_timeout(timeout_ms)
     }
+
+    /// Closes the accepting capabilities of this acceptor.
+    ///
+    /// This function has the same semantics as `TcpAcceptor::close_accept`, and
+    /// more information can be found in that documentation.
+    #[experimental]
+    pub fn close_accept(&mut self) -> IoResult<()> {
+        self.obj.close_accept().map_err(IoError::from_rtio_error)
+    }
 }
 
 impl Acceptor<UnixStream> for UnixAcceptor {
@@ -219,6 +228,25 @@ impl Acceptor<UnixStream> for UnixAcceptor {
         self.obj.accept().map(|s| {
             UnixStream { obj: s }
         }).map_err(IoError::from_rtio_error)
+    }
+}
+
+impl Clone for UnixAcceptor {
+    /// Creates a new handle to this unix acceptor, allowing for simultaneous
+    /// accepts.
+    ///
+    /// The underlying unix acceptor will not be closed until all handles to the
+    /// acceptor have been deallocated. Incoming connections will be received on
+    /// at most once acceptor, the same connection will not be accepted twice.
+    ///
+    /// The `close_accept` method will shut down *all* acceptors cloned from the
+    /// same original acceptor, whereas the `set_timeout` method only affects
+    /// the selector that it is called on.
+    ///
+    /// This function is useful for creating a handle to invoke `close_accept`
+    /// on to wake up any other task blocked in `accept`.
+    fn clone(&self) -> UnixAcceptor {
+        UnixAcceptor { obj: self.obj.clone() }
     }
 }
 
@@ -701,5 +729,74 @@ mod tests {
         tx.send(());
 
         rx2.recv();
+    })
+
+    #[cfg(not(windows))]
+    iotest!(fn clone_accept_smoke() {
+        let addr = next_test_unix();
+        let l = UnixListener::bind(&addr);
+        let mut a = l.listen().unwrap();
+        let mut a2 = a.clone();
+
+        let addr2 = addr.clone();
+        spawn(proc() {
+            let _ = UnixStream::connect(&addr2);
+        });
+        spawn(proc() {
+            let _ = UnixStream::connect(&addr);
+        });
+
+        assert!(a.accept().is_ok());
+        drop(a);
+        assert!(a2.accept().is_ok());
+    })
+
+    iotest!(fn clone_accept_concurrent() {
+        let addr = next_test_unix();
+        let l = UnixListener::bind(&addr);
+        let a = l.listen().unwrap();
+        let a2 = a.clone();
+
+        let (tx, rx) = channel();
+        let tx2 = tx.clone();
+
+        spawn(proc() { let mut a = a; tx.send(a.accept()) });
+        spawn(proc() { let mut a = a2; tx2.send(a.accept()) });
+
+        let addr2 = addr.clone();
+        spawn(proc() {
+            let _ = UnixStream::connect(&addr2);
+        });
+        spawn(proc() {
+            let _ = UnixStream::connect(&addr);
+        });
+
+        assert!(rx.recv().is_ok());
+        assert!(rx.recv().is_ok());
+    })
+
+    iotest!(fn close_accept_smoke() {
+        let addr = next_test_unix();
+        let l = UnixListener::bind(&addr);
+        let mut a = l.listen().unwrap();
+
+        a.close_accept().unwrap();
+        assert_eq!(a.accept().err().unwrap().kind, EndOfFile);
+    })
+
+    iotest!(fn close_accept_concurrent() {
+        let addr = next_test_unix();
+        let l = UnixListener::bind(&addr);
+        let a = l.listen().unwrap();
+        let mut a2 = a.clone();
+
+        let (tx, rx) = channel();
+        spawn(proc() {
+            let mut a = a;
+            tx.send(a.accept());
+        });
+        a2.close_accept().unwrap();
+
+        assert_eq!(rx.recv().err().unwrap().kind, EndOfFile);
     })
 }
