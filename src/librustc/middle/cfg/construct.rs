@@ -225,6 +225,8 @@ impl<'a> CFGBuilder<'a> {
                 self.add_node(expr.id, [then_exit, else_exit])           // 4, 5
             }
 
+            ast::ExprIfLet(..) => fail!("non-desugared ExprIfLet"),
+
             ast::ExprWhile(ref cond, ref body) => {
                 //
                 //         [pred]

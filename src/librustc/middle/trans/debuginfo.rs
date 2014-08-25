@@ -3603,6 +3603,11 @@ fn populate_scope_map(cx: &CrateContext,
                 }
             }
 
+            ast::ExprIfLet(..) => {
+                cx.sess().span_bug(exp.span, "debuginfo::populate_scope_map() - \
+                                              Found unexpanded if-let.");
+            }
+
             ast::ExprWhile(ref cond_exp, ref loop_body) => {
                 walk_expr(cx, &**cond_exp, scope_stack, scope_map);
 

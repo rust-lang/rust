@@ -356,6 +356,8 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 }
             }
 
+            ast::ExprIfLet(..) => fail!("non-desugared ExprIfLet"),
+
             ast::ExprMatch(ref discr, ref arms) => {
                 // treatment of the discriminant is handled while
                 // walking the arms:

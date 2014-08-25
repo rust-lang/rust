@@ -514,6 +514,8 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
           ast::ExprForLoop(..) => {
             Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
           }
+
+          ast::ExprIfLet(..) => fail!("non-desugared ExprIfLet")
         }
     }
 
