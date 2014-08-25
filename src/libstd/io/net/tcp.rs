@@ -442,6 +442,53 @@ impl TcpAcceptor {
     #[experimental = "the type of the argument and name of this function are \
                       subject to change"]
     pub fn set_timeout(&mut self, ms: Option<u64>) { self.obj.set_timeout(ms); }
+
+    /// Closes the accepting capabilities of this acceptor.
+    ///
+    /// This function is similar to `TcpStream`'s `close_{read,write}` methods
+    /// in that it will affect *all* cloned handles of this acceptor's original
+    /// handle.
+    ///
+    /// Once this function succeeds, all future calls to `accept` will return
+    /// immediately with an error, preventing all future calls to accept. The
+    /// underlying socket will not be relinquished back to the OS until all
+    /// acceptors have been deallocated.
+    ///
+    /// This is useful for waking up a thread in an accept loop to indicate that
+    /// it should exit.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![allow(experimental)]
+    /// use std::io::{TcpListener, Listener, Acceptor, EndOfFile};
+    ///
+    /// let mut a = TcpListener::bind("127.0.0.1", 8482).listen().unwrap();
+    /// let a2 = a.clone();
+    ///
+    /// spawn(proc() {
+    ///     let mut a2 = a2;
+    ///     for socket in a2.incoming() {
+    ///         match socket {
+    ///             Ok(s) => { /* handle s */ }
+    ///             Err(ref e) if e.kind == EndOfFile => break, // closed
+    ///             Err(e) => fail!("unexpected error: {}", e),
+    ///         }
+    ///     }
+    /// });
+    ///
+    /// # fn wait_for_sigint() {}
+    /// // Now that our accept loop is running, wait for the program to be
+    /// // requested to exit.
+    /// wait_for_sigint();
+    ///
+    /// // Signal our accept loop to exit
+    /// assert!(a.close_accept().is_ok());
+    /// ```
+    #[experimental]
+    pub fn close_accept(&mut self) -> IoResult<()> {
+        self.obj.close_accept().map_err(IoError::from_rtio_error)
+    }
 }
 
 impl Acceptor<TcpStream> for TcpAcceptor {
@@ -450,6 +497,25 @@ impl Acceptor<TcpStream> for TcpAcceptor {
             Ok(s) => Ok(TcpStream::new(s)),
             Err(e) => Err(IoError::from_rtio_error(e)),
         }
+    }
+}
+
+impl Clone for TcpAcceptor {
+    /// Creates a new handle to this TCP acceptor, allowing for simultaneous
+    /// accepts.
+    ///
+    /// The underlying TCP acceptor will not be closed until all handles to the
+    /// acceptor have been deallocated. Incoming connections will be received on
+    /// at most once acceptor, the same connection will not be accepted twice.
+    ///
+    /// The `close_accept` method will shut down *all* acceptors cloned from the
+    /// same original acceptor, whereas the `set_timeout` method only affects
+    /// the selector that it is called on.
+    ///
+    /// This function is useful for creating a handle to invoke `close_accept`
+    /// on to wake up any other task blocked in `accept`.
+    fn clone(&self) -> TcpAcceptor {
+        TcpAcceptor { obj: self.obj.clone() }
     }
 }
 
@@ -1410,5 +1476,70 @@ mod test {
         tx.send(());
         rxdone.recv();
         rxdone.recv();
+    })
+
+    iotest!(fn clone_accept_smoke() {
+        let addr = next_test_ip4();
+        let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
+        let mut a = l.listen().unwrap();
+        let mut a2 = a.clone();
+
+        spawn(proc() {
+            let _ = TcpStream::connect(addr.ip.to_string().as_slice(), addr.port);
+        });
+        spawn(proc() {
+            let _ = TcpStream::connect(addr.ip.to_string().as_slice(), addr.port);
+        });
+
+        assert!(a.accept().is_ok());
+        assert!(a2.accept().is_ok());
+    })
+
+    iotest!(fn clone_accept_concurrent() {
+        let addr = next_test_ip4();
+        let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
+        let a = l.listen().unwrap();
+        let a2 = a.clone();
+
+        let (tx, rx) = channel();
+        let tx2 = tx.clone();
+
+        spawn(proc() { let mut a = a; tx.send(a.accept()) });
+        spawn(proc() { let mut a = a2; tx2.send(a.accept()) });
+
+        spawn(proc() {
+            let _ = TcpStream::connect(addr.ip.to_string().as_slice(), addr.port);
+        });
+        spawn(proc() {
+            let _ = TcpStream::connect(addr.ip.to_string().as_slice(), addr.port);
+        });
+
+        assert!(rx.recv().is_ok());
+        assert!(rx.recv().is_ok());
+    })
+
+    iotest!(fn close_accept_smoke() {
+        let addr = next_test_ip4();
+        let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
+        let mut a = l.listen().unwrap();
+
+        a.close_accept().unwrap();
+        assert_eq!(a.accept().err().unwrap().kind, EndOfFile);
+    })
+
+    iotest!(fn close_accept_concurrent() {
+        let addr = next_test_ip4();
+        let l = TcpListener::bind(addr.ip.to_string().as_slice(), addr.port);
+        let a = l.listen().unwrap();
+        let mut a2 = a.clone();
+
+        let (tx, rx) = channel();
+        spawn(proc() {
+            let mut a = a;
+            tx.send(a.accept());
+        });
+        a2.close_accept().unwrap();
+
+        assert_eq!(rx.recv().err().unwrap().kind, EndOfFile);
     })
 }

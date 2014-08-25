@@ -31,20 +31,20 @@ pub struct PipeWatcher {
     refcount: Refcount,
 
     // see comments in TcpWatcher for why these exist
-    write_access: AccessTimeout,
-    read_access: AccessTimeout,
+    write_access: AccessTimeout<()>,
+    read_access: AccessTimeout<()>,
 }
 
 pub struct PipeListener {
     home: HomeHandle,
     pipe: *mut uvll::uv_pipe_t,
-    outgoing: Sender<IoResult<Box<rtio::RtioPipe + Send>>>,
-    incoming: Receiver<IoResult<Box<rtio::RtioPipe + Send>>>,
 }
 
 pub struct PipeAcceptor {
-    listener: Box<PipeListener>,
-    timeout: AcceptTimeout,
+    home: HomeHandle,
+    handle: *mut uvll::uv_pipe_t,
+    access: AcceptTimeout<Box<rtio::RtioPipe + Send>>,
+    refcount: Refcount,
 }
 
 // PipeWatcher implementation and traits
@@ -71,8 +71,8 @@ impl PipeWatcher {
             home: home,
             defused: false,
             refcount: Refcount::new(),
-            read_access: AccessTimeout::new(),
-            write_access: AccessTimeout::new(),
+            read_access: AccessTimeout::new(()),
+            write_access: AccessTimeout::new(()),
         }
     }
 
@@ -233,12 +233,9 @@ impl PipeListener {
                 // If successful, unwrap the PipeWatcher because we control how
                 // we close the pipe differently. We can't rely on
                 // StreamWatcher's default close method.
-                let (tx, rx) = channel();
                 let p = box PipeListener {
                     home: io.make_handle(),
                     pipe: pipe.unwrap(),
-                    incoming: rx,
-                    outgoing: tx,
                 };
                 Ok(p.install())
             }
@@ -248,17 +245,21 @@ impl PipeListener {
 }
 
 impl rtio::RtioUnixListener for PipeListener {
-    fn listen(self: Box<PipeListener>)
+    fn listen(mut self: Box<PipeListener>)
               -> IoResult<Box<rtio::RtioUnixAcceptor + Send>> {
-        // create the acceptor object from ourselves
-        let mut acceptor = box PipeAcceptor {
-            listener: self,
-            timeout: AcceptTimeout::new(),
-        };
+        let _m = self.fire_homing_missile();
 
-        let _m = acceptor.fire_homing_missile();
+        // create the acceptor object from ourselves
+        let acceptor = (box PipeAcceptor {
+            handle: self.pipe,
+            home: self.home.clone(),
+            access: AcceptTimeout::new(),
+            refcount: Refcount::new(),
+        }).install();
+        self.pipe = 0 as *mut _;
+
         // FIXME: the 128 backlog should be configurable
-        match unsafe { uvll::uv_listen(acceptor.listener.pipe, 128, listen_cb) } {
+        match unsafe { uvll::uv_listen(acceptor.handle, 128, listen_cb) } {
             0 => Ok(acceptor as Box<rtio::RtioUnixAcceptor + Send>),
             n => Err(uv_error_to_io_error(UvError(n))),
         }
@@ -276,7 +277,7 @@ impl UvHandle<uvll::uv_pipe_t> for PipeListener {
 extern fn listen_cb(server: *mut uvll::uv_stream_t, status: libc::c_int) {
     assert!(status != uvll::ECANCELED);
 
-    let pipe: &mut PipeListener = unsafe { UvHandle::from_uv_handle(&server) };
+    let pipe: &mut PipeAcceptor = unsafe { UvHandle::from_uv_handle(&server) };
     let msg = match status {
         0 => {
             let loop_ = Loop::wrap(unsafe {
@@ -288,11 +289,15 @@ extern fn listen_cb(server: *mut uvll::uv_stream_t, status: libc::c_int) {
         }
         n => Err(uv_error_to_io_error(UvError(n)))
     };
-    pipe.outgoing.send(msg);
+
+    // If we're running then we have exclusive access, so the unsafe_get() is ok
+    unsafe { pipe.access.push(msg); }
 }
 
 impl Drop for PipeListener {
     fn drop(&mut self) {
+        if self.pipe.is_null() { return }
+
         let _m = self.fire_homing_missile();
         self.close();
     }
@@ -302,19 +307,48 @@ impl Drop for PipeListener {
 
 impl rtio::RtioUnixAcceptor for PipeAcceptor {
     fn accept(&mut self) -> IoResult<Box<rtio::RtioPipe + Send>> {
-        self.timeout.accept(&self.listener.incoming)
+        let m = self.fire_homing_missile();
+        let loop_ = self.uv_loop();
+        self.access.accept(m, &loop_)
     }
 
-    fn set_timeout(&mut self, timeout_ms: Option<u64>) {
-        match timeout_ms {
-            None => self.timeout.clear(),
-            Some(ms) => self.timeout.set_timeout(ms, &mut *self.listener),
-        }
+    fn set_timeout(&mut self, ms: Option<u64>) {
+        let _m = self.fire_homing_missile();
+        let loop_ = self.uv_loop();
+        self.access.set_timeout(ms, &loop_, &self.home);
+    }
+
+    fn clone(&self) -> Box<rtio::RtioUnixAcceptor + Send> {
+        box PipeAcceptor {
+            refcount: self.refcount.clone(),
+            home: self.home.clone(),
+            handle: self.handle,
+            access: self.access.clone(),
+        } as Box<rtio::RtioUnixAcceptor + Send>
+    }
+
+    fn close_accept(&mut self) -> IoResult<()> {
+        let m = self.fire_homing_missile();
+        self.access.close(m);
+        Ok(())
     }
 }
 
 impl HomingIO for PipeAcceptor {
-    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.listener.home }
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
+}
+
+impl UvHandle<uvll::uv_pipe_t> for PipeAcceptor {
+    fn uv_handle(&self) -> *mut uvll::uv_pipe_t { self.handle }
+}
+
+impl Drop for PipeAcceptor {
+    fn drop(&mut self) {
+        let _m = self.fire_homing_missile();
+        if self.refcount.decrement() {
+            self.close();
+        }
+    }
 }
 
 #[cfg(test)]
