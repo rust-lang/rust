@@ -1371,6 +1371,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
 
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id(rbml_w, local_def(nitem.id));
+    encode_visibility(rbml_w, nitem.vis);
     match nitem.node {
       ForeignItemFn(..) => {
         encode_family(rbml_w, style_fn_family(NormalFn));
