@@ -390,13 +390,15 @@
         function initSearchNav() {
             var hoverTimeout, $results = $('.search-results .result');
 
-            $results.on('click', function() {
-                var dst = $(this).find('a')[0];
-                if (window.location.pathname == dst.pathname) {
-                    $('#search').addClass('hidden');
-                    $('#main').removeClass('hidden');
+            $results.on('click', function(e) {
+                if (e.which == 1) {
+                    var dst = $(this).find('a')[0];
+                    if (window.location.pathname == dst.pathname) {
+                        $('#search').addClass('hidden');
+                        $('#main').removeClass('hidden');
+                    }
+                    document.location.href = dst.href;
                 }
-                document.location.href = dst.href;
             }).on('mouseover', function() {
                 var $el = $(this);
                 clearTimeout(hoverTimeout);
