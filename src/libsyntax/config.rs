@@ -210,10 +210,10 @@ fn fold_expr(cx: &mut Context, expr: P<ast::Expr>) -> P<ast::Expr> {
         fold::noop_fold_expr(ast::Expr {
             id: id,
             node: match node {
-                ast::ExprMatch(m, arms) => {
+                ast::ExprMatch(m, arms, source) => {
                     ast::ExprMatch(m, arms.into_iter()
                                         .filter(|a| (cx.in_cfg)(a.attrs.as_slice()))
-                                        .collect())
+                                        .collect(), source)
                 }
                 _ => node
             },
