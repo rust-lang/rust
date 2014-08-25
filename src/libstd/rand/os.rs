@@ -85,6 +85,7 @@ mod imp {
         marker: marker::NoCopy
     }
 
+    #[repr(C)]
     struct SecRandom;
 
     static kSecRandomDefault: *const SecRandom = 0 as *const SecRandom;
