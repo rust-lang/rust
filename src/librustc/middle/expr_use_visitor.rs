@@ -234,7 +234,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                          decl: &ast::FnDecl,
                          body: &ast::Block) {
         for arg in decl.inputs.iter() {
-            let arg_ty = ty::node_id_to_type(self.tcx(), arg.pat.id);
+            let arg_ty = return_if_err!(self.typer.node_ty(arg.pat.id));
 
             let arg_cmt = self.mc.cat_rvalue(
                 arg.id,
@@ -414,7 +414,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
 
                 // Fetch the type of the value that the iteration yields to
                 // produce the pattern's categorized mutable type.
-                let pattern_type = ty::node_id_to_type(self.tcx(), pat.id);
+                let pattern_type = return_if_err!(self.typer.node_ty(pat.id));
                 let pat_cmt = self.mc.cat_rvalue(pat.id,
                                                  pat.span,
                                                  ty::ReScope(blk.id),
@@ -828,7 +828,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                        pat.repr(tcx));
 
                 // pat_ty: the type of the binding being produced.
-                let pat_ty = ty::node_id_to_type(tcx, pat.id);
+                let pat_ty = return_if_err!(typer.node_ty(pat.id));
 
                 // Each match binding is effectively an assignment to the
                 // binding being produced.
@@ -971,7 +971,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
         let var_id = upvar_def.def_id().node;
-        let var_ty = ty::node_id_to_type(self.tcx(), var_id);
+        let var_ty = try!(self.typer.node_ty(var_id));
         self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }
 }
