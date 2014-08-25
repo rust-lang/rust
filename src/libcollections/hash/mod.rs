@@ -67,6 +67,7 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use alloc::rc::Rc;
+use core::cell::RefCell;
 use core::intrinsics::TypeId;
 use core::mem;
 
@@ -236,6 +237,13 @@ impl<S: Writer, T: Hash<S>> Hash<S> for Rc<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
         (**self).hash(state);
+    }
+}
+
+impl<S: Writer, T: Hash<S>> Hash<S> for RefCell<T> {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.borrow().hash(state);
     }
 }
 
