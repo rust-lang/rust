@@ -12,5 +12,5 @@ enum State { ST_NULL, ST_WHITESPACE }
 
 fn main() {
     [ST_NULL, ..(ST_WHITESPACE as uint)];
-    //~^ ERROR expected constant integer for repeat count but found variable
+    //~^ ERROR expected constant integer for repeat count, found variable
 }

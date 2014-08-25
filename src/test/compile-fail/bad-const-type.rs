@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:expected `collections::string::String` but found `int`
+// error-pattern:expected `collections::string::String`, found `int`
 
 static i: String = 10i;
 fn main() { println!("{}", i); }

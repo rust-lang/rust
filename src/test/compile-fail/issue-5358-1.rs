@@ -13,7 +13,7 @@ struct S(Either<uint, uint>);
 
 fn main() {
     match S(Left(5)) {
-        Right(_) => {}  //~ ERROR mismatched types: expected `S` but found `Either
+        Right(_) => {}  //~ ERROR mismatched types: expected `S`, found `Either
         _ => {}
     }
 }

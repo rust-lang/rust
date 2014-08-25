@@ -32,7 +32,7 @@ impl<'a> set_f<'a> for c<'a> {
     }
 
     fn set_f_bad(&self, b: Gc<b>) {
-        self.f = b; //~ ERROR mismatched types: expected `Gc<Gc<&'a int>>` but found `Gc<Gc<&int>>`
+        self.f = b; //~ ERROR mismatched types: expected `Gc<Gc<&'a int>>`, found `Gc<Gc<&int>>`
         //~^ ERROR cannot infer
     }
 }

@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
         } else {
             let token_str = Parser::token_to_string(t);
             let this_token_str = self.this_token_to_string();
-            self.fatal(format!("expected `{}` but found `{}`",
+            self.fatal(format!("expected `{}`, found `{}`",
                                token_str,
                                this_token_str).as_slice())
         }
@@ -448,11 +448,11 @@ impl<'a> Parser<'a> {
             let actual = self.this_token_to_string();
             self.fatal(
                 (if expected.len() != 1 {
-                    (format!("expected one of `{}` but found `{}`",
+                    (format!("expected one of `{}`, found `{}`",
                              expect,
                              actual))
                 } else {
-                    (format!("expected `{}` but found `{}`",
+                    (format!("expected `{}`, found `{}`",
                              expect,
                              actual))
                 }).as_slice()
@@ -1321,7 +1321,7 @@ impl<'a> Parser<'a> {
 
               _ => {
                   let token_str = p.this_token_to_string();
-                  p.fatal((format!("expected `;` or `{{` but found `{}`",
+                  p.fatal((format!("expected `;` or `{{`, found `{}`",
                                    token_str)).as_slice())
               }
             }
@@ -3382,7 +3382,7 @@ impl<'a> Parser<'a> {
                         ""
                     };
                     let tok_str = self.this_token_to_string();
-                    self.fatal(format!("expected {}`(` or `{{`, but found `{}`",
+                    self.fatal(format!("expected {}`(` or `{{`, found `{}`",
                                        ident_str,
                                        tok_str).as_slice())
                 }
@@ -3931,7 +3931,7 @@ impl<'a> Parser<'a> {
             },
             _ => {
                 let token_str = self.this_token_to_string();
-                self.fatal(format!("expected `self` but found `{}`",
+                self.fatal(format!("expected `self`, found `{}`",
                                    token_str).as_slice())
             }
         }
@@ -4462,7 +4462,7 @@ impl<'a> Parser<'a> {
         } else {
             let token_str = self.this_token_to_string();
             self.fatal(format!("expected `{}`, `(`, or `;` after struct \
-                                name but found `{}`", "{",
+                                name, found `{}`", "{",
                                token_str).as_slice())
         }
 
@@ -4493,7 +4493,7 @@ impl<'a> Parser<'a> {
                 let span = self.span;
                 let token_str = self.this_token_to_string();
                 self.span_fatal(span,
-                                format!("expected `,`, or `}}` but found `{}`",
+                                format!("expected `,`, or `}}`, found `{}`",
                                         token_str).as_slice())
             }
         }
@@ -4573,7 +4573,7 @@ impl<'a> Parser<'a> {
               }
               _ => {
                   let token_str = self.this_token_to_string();
-                  self.fatal(format!("expected item but found `{}`",
+                  self.fatal(format!("expected item, found `{}`",
                                      token_str).as_slice())
               }
             }
@@ -5114,7 +5114,7 @@ impl<'a> Parser<'a> {
             let span = self.span;
             let token_str = self.this_token_to_string();
             self.span_fatal(span,
-                            format!("expected `{}` or `fn` but found `{}`", "{",
+                            format!("expected `{}` or `fn`, found `{}`", "{",
                                     token_str).as_slice());
         }
 

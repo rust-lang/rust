@@ -15,7 +15,7 @@ struct BarStruct;
 
 impl<'a> BarStruct {
     fn foo(&'a mut self) -> Gc<BarStruct> { self }
-    //~^ ERROR: error: mismatched types: expected `Gc<BarStruct>` but found `&'a mut BarStruct
+    //~^ ERROR: error: mismatched types: expected `Gc<BarStruct>`, found `&'a mut BarStruct
 }
 
 fn main() {}

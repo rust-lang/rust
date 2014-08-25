@@ -10,7 +10,7 @@
 
 // Test syntax checks for `type` keyword.
 
-struct S1 for type; //~ ERROR expected `{`, `(`, or `;` after struct name but found `for`
+struct S1 for type; //~ ERROR expected `{`, `(`, or `;` after struct name, found `for`
 
 pub fn main() {
 }

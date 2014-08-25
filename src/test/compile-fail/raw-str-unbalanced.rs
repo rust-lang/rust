@@ -10,5 +10,5 @@
 
 static s: &'static str =
     r#"
-      "## //~ ERROR expected `;` but found `#`
+      "## //~ ERROR expected `;`, found `#`
 ;
