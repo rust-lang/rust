@@ -941,7 +941,7 @@ impl rtio::RtioCustomSocket for Socket {
 impl Drop for Socket {
     fn drop(&mut self) {
         unsafe {
-            close(self.fd)
+            os::close(self.fd)
         }
     }
 }
