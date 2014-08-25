@@ -1205,6 +1205,12 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                        folder.fold_block(tr),
                        fl.map(|x| folder.fold_expr(x)))
             }
+            ExprIfLet(pat, expr, tr, fl) => {
+                ExprIfLet(folder.fold_pat(pat),
+                          folder.fold_expr(expr),
+                          folder.fold_block(tr),
+                          fl.map(|x| folder.fold_expr(x)))
+            }
             ExprWhile(cond, body, opt_ident) => {
                 ExprWhile(folder.fold_expr(cond),
                           folder.fold_block(body),
