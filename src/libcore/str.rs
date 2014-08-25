@@ -426,15 +426,12 @@ impl TwoWaySearcher {
         let (critPos1, period1) = TwoWaySearcher::maximal_suffix(needle, false);
         let (critPos2, period2) = TwoWaySearcher::maximal_suffix(needle, true);
 
-        let critPos;
-        let period;
-        if critPos1 > critPos2 {
-            critPos = critPos1;
-            period = period1;
-        } else {
-            critPos = critPos2;
-            period = period2;
-        }
+        let (critPos, period) =
+            if critPos1 > critPos2 {
+                (critPos1, period1)
+            } else {
+                (critPos2, period2)
+            };
 
         let byteset = needle.iter()
                             .fold(0, |a, &b| (1 << ((b & 0x3f) as uint)) | a);
@@ -528,35 +525,31 @@ impl TwoWaySearcher {
         let mut period = 1; // Corresponds to p in the paper
 
         while right + offset < arr.len() {
-            let a;
-            let b;
-            if reversed {
-                a = arr[left + offset];
-                b = arr[right + offset];
-            } else {
-                a = arr[right + offset];
-                b = arr[left + offset];
-            }
-            if a < b {
-                // Suffix is smaller, period is entire prefix so far.
-                right += offset;
-                offset = 1;
-                period = right - left;
-            } else if a == b {
-                // Advance through repetition of the current period.
-                if offset == period {
-                    right += offset;
-                    offset = 1;
+            let (a, b) =
+                if reversed {
+                    (arr[left + offset], arr[right + offset])
                 } else {
-                    offset += 1;
-                }
-            } else {
-                // Suffix is larger, start over from current location.
-                left = right;
-                right += 1;
-                offset = 1;
-                period = 1;
-            }
+                    (arr[right + offset], arr[left + offset])
+                };
+            let (left_temp, right_temp, offset_temp, period_temp) =
+                if a < b {
+                    // Suffix is smaller, period is entire prefix so far.
+                    (left, right + offset, 1, right - left)
+                } else if a == b {
+                    // Advance through repetition of the current period.
+                    if offset == period {
+                        (left, right + offset, 1, period)
+                    } else {
+                        (left, right, offset + 1, period)
+                    }
+                } else {
+                    // Suffix is larger, start over from current location.
+                    (right, right + 1, 1, 1)
+                };
+            left = left_temp;
+            right = right_temp;
+            offset = offset_temp;
+            period = period_temp;
         }
         (left + 1, period)
     }
