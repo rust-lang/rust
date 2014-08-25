@@ -1312,6 +1312,8 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                 sess.note(str::from_utf8(output.as_slice()).unwrap());
                 sess.abort_if_errors();
             }
+            debug!("linker stderr:\n{}", str::from_utf8_owned(prog.error).unwrap());
+            debug!("linker stdout:\n{}", str::from_utf8_owned(prog.output).unwrap());
         },
         Err(e) => {
             sess.err(format!("could not exec the linker `{}`: {}",
