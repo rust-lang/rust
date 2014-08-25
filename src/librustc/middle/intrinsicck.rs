@@ -73,9 +73,13 @@ struct IntrinsicCheckingVisitor<'a> {
 
 impl<'a> IntrinsicCheckingVisitor<'a> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
+        let intrinsic = match ty::get(ty::lookup_item_type(self.tcx, def_id).ty).sty {
+            ty::ty_bare_fn(ref bfty) => bfty.abi == RustIntrinsic,
+            _ => return false
+        };
         if def_id.krate == ast::LOCAL_CRATE {
             match self.tcx.map.get(def_id.node) {
-                NodeForeignItem(ref item) => {
+                NodeForeignItem(ref item) if intrinsic => {
                     token::get_ident(item.ident) ==
                         token::intern_and_get_ident("transmute")
                 }
@@ -83,11 +87,11 @@ impl<'a> IntrinsicCheckingVisitor<'a> {
             }
         } else {
             match csearch::get_item_path(self.tcx, def_id).last() {
-                None => false,
-                Some(ref last) => {
+                Some(ref last) if intrinsic => {
                     token::get_name(last.name()) ==
                         token::intern_and_get_ident("transmute")
                 }
+                _ => false,
             }
         }
     }
