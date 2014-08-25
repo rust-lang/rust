@@ -116,11 +116,25 @@ impl<'a> Arguments<'a> {
     #[cfg(not(stage0))]
     #[doc(hidden)] #[inline]
     pub unsafe fn new<'a>(pieces: &'static [&'static str],
-                          fmt: &'static [rt::Argument<'static>],
                           args: &'a [Argument<'a>]) -> Arguments<'a> {
         Arguments {
             pieces: mem::transmute(pieces),
-            fmt: mem::transmute(fmt),
+            fmt: None,
+            args: args
+        }
+    }
+
+    /// This function is used to specify nonstandard formatting parameters.
+    /// The `pieces` array must be at least as long as `fmt` to construct
+    /// a valid Arguments structure.
+    #[cfg(not(stage0))]
+    #[doc(hidden)] #[inline]
+    pub unsafe fn with_placeholders<'a>(pieces: &'static [&'static str],
+                                        fmt: &'static [rt::Argument<'static>],
+                                        args: &'a [Argument<'a>]) -> Arguments<'a> {
+        Arguments {
+            pieces: mem::transmute(pieces),
+            fmt: Some(mem::transmute(fmt)),
             args: args
         }
     }
@@ -144,8 +158,14 @@ impl<'a> Arguments<'a> {
 /// and `format` functions can be safely performed.
 #[cfg(not(stage0))]
 pub struct Arguments<'a> {
+    // Format string pieces to print.
     pieces: &'a [&'a str],
-    fmt: &'a [rt::Argument<'a>],
+
+    // Placeholder specs, or `None` if all specs are default (as in "{}{}").
+    fmt: Option<&'a [rt::Argument<'a>]>,
+
+    // Dynamic arguments for interpolation, to be interleaved with string
+    // pieces. (Every argument is preceded by a string piece.)
     args: &'a [Argument<'a>],
 }
 
@@ -276,6 +296,18 @@ uniform_fn_call_workaround! {
     secret_upper_exp, UpperExp;
 }
 
+#[cfg(not(stage0))]
+static DEFAULT_ARGUMENT: rt::Argument<'static> = rt::Argument {
+    position: rt::ArgumentNext,
+    format: rt::FormatSpec {
+        fill: ' ',
+        align: rt::AlignUnknown,
+        flags: 0,
+        precision: rt::CountImplied,
+        width: rt::CountImplied,
+    }
+};
+
 /// The `write` function takes an output stream, a precompiled format string,
 /// and a list of arguments. The arguments will be formatted according to the
 /// specified format string into the output stream provided.
@@ -299,11 +331,25 @@ pub fn write(output: &mut FormatWriter, args: &Arguments) -> Result {
 
     let mut pieces = args.pieces.iter();
 
-    for arg in args.fmt.iter() {
-        try!(formatter.buf.write(pieces.next().unwrap().as_bytes()));
-        try!(formatter.run(arg));
+    match args.fmt {
+        None => {
+            // We can use default formatting parameters for all arguments.
+            for _ in range(0, args.args.len()) {
+                try!(formatter.buf.write(pieces.next().unwrap().as_bytes()));
+                try!(formatter.run(&DEFAULT_ARGUMENT));
+            }
+        }
+        Some(fmt) => {
+            // Every spec has a corresponding argument that is preceded by
+            // a string piece.
+            for (arg, piece) in fmt.iter().zip(pieces.by_ref()) {
+                try!(formatter.buf.write(piece.as_bytes()));
+                try!(formatter.run(arg));
+            }
+        }
     }
 
+    // There can be only one trailing string piece left.
     match pieces.next() {
         Some(piece) => {
             try!(formatter.buf.write(piece.as_bytes()));
