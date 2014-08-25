@@ -800,7 +800,7 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
             visitor.visit_block(&**block, env.clone())
         }
         ExprLoop(ref block, _) => visitor.visit_block(&**block, env.clone()),
-        ExprMatch(ref subexpression, ref arms) => {
+        ExprMatch(ref subexpression, ref arms, _) => {
             visitor.visit_expr(&**subexpression, env.clone());
             for arm in arms.iter() {
                 visitor.visit_arm(arm, env.clone())

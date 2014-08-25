@@ -122,7 +122,7 @@ fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             arms.push_all_move(else_if_arms);
             arms.push(else_arm);
 
-            let match_expr = fld.cx.expr_match(span, expr, arms);
+            let match_expr = fld.cx.expr(span, ast::ExprMatch(expr, arms, ast::MatchIfLetDesugar));
             fld.fold_expr(match_expr)
         }
 

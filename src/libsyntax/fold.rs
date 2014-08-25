@@ -1148,9 +1148,10 @@ pub fn noop_fold_expr<T: Folder>(e: Gc<Expr>, folder: &mut T) -> Gc<Expr> {
             ExprLoop(folder.fold_block(body),
                      opt_ident.map(|x| folder.fold_ident(x)))
         }
-        ExprMatch(expr, ref arms) => {
+        ExprMatch(expr, ref arms, source) => {
             ExprMatch(folder.fold_expr(expr),
-                      arms.iter().map(|x| folder.fold_arm(x)).collect())
+                      arms.iter().map(|x| folder.fold_arm(x)).collect(),
+                      source)
         }
         ExprFnBlock(capture_clause, ref decl, ref body) => {
             ExprFnBlock(capture_clause,

@@ -139,7 +139,7 @@ pub fn check_crate(tcx: &ty::ctxt, krate: &Crate) {
 fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
     visit::walk_expr(cx, ex, ());
     match ex.node {
-        ExprMatch(scrut, ref arms) => {
+        ExprMatch(scrut, ref arms, source) => {
             // First, check legality of move bindings.
             for arm in arms.iter() {
                 check_legality_of_move_bindings(cx,
@@ -178,7 +178,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
             check_for_static_nan(cx, inlined_arms.as_slice());
 
             // Fourth, check for unreachable arms.
-            check_arms(cx, inlined_arms.as_slice());
+            check_arms(cx, inlined_arms.as_slice(), source);
 
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
@@ -251,13 +251,23 @@ fn check_for_static_nan(cx: &MatchCheckCtxt, arms: &[Arm]) {
 }
 
 // Check for unreachable patterns
-fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
+fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm], source: MatchSource) {
     let mut seen = Matrix(vec!());
     for arm in arms.iter() {
         for &pat in arm.pats.iter() {
             let v = vec![pat];
             match is_useful(cx, &seen, v.as_slice(), LeaveOutWitness) {
-                NotUseful => span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern"),
+                NotUseful => {
+                    if source == MatchIfLetDesugar {
+                        // find the first arm pattern so we can use its span
+                        let first_arm = &arms[0]; // we know there's at least 1 arm
+                        let first_pat = first_arm.pats.get(0); // and it's safe to assume 1 pat
+                        let span = first_pat.span;
+                        span_err!(cx.tcx.sess, span, E0159, "irrefutable if-let pattern")
+                    } else {
+                        span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern")
+                    }
+                }
                 Useful => (),
                 UsefulWithWitness(_) => unreachable!()
             }

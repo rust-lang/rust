@@ -541,7 +541,7 @@ pub enum Expr_ {
     // Conditionless loop (can be exited with break, cont, or ret)
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
-    ExprMatch(Gc<Expr>, Vec<Arm>),
+    ExprMatch(Gc<Expr>, Vec<Arm>, MatchSource),
     ExprFnBlock(CaptureClause, P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
     ExprUnboxedFn(CaptureClause, UnboxedClosureKind, P<FnDecl>, P<Block>),
@@ -573,6 +573,12 @@ pub enum Expr_ {
 
     /// No-op: used solely so we can pretty-print faithfully
     ExprParen(Gc<Expr>)
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum MatchSource {
+    MatchNormal,
+    MatchIfLetDesugar
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]

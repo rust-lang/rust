@@ -860,7 +860,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn expr_match(&self, span: Span, arg: Gc<ast::Expr>,
                   arms: Vec<ast::Arm>) -> Gc<Expr> {
-        self.expr(span, ast::ExprMatch(arg, arms))
+        self.expr(span, ast::ExprMatch(arg, arms, ast::MatchNormal))
     }
 
     fn expr_if(&self, span: Span,

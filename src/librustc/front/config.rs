@@ -206,7 +206,7 @@ fn fold_block(cx: &mut Context, b: ast::P<ast::Block>) -> ast::P<ast::Block> {
 
 fn fold_expr(cx: &mut Context, expr: Gc<ast::Expr>) -> Gc<ast::Expr> {
     let expr = match expr.node {
-        ast::ExprMatch(ref m, ref arms) => {
+        ast::ExprMatch(ref m, ref arms, source) => {
             let arms = arms.iter()
                 .filter(|a| (cx.in_cfg)(a.attrs.as_slice()))
                 .map(|a| a.clone())
@@ -214,7 +214,7 @@ fn fold_expr(cx: &mut Context, expr: Gc<ast::Expr>) -> Gc<ast::Expr> {
             box(GC) ast::Expr {
                 id: expr.id,
                 span: expr.span.clone(),
-                node: ast::ExprMatch(m.clone(), arms),
+                node: ast::ExprMatch(m.clone(), arms, source),
             }
         }
         _ => expr.clone()
