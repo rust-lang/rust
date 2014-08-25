@@ -232,7 +232,7 @@ already understand lifetimes.
 
 ## The impact
 
-To asses the value of the proposed rules, we conducted a survey of the code
+To assess the value of the proposed rules, we conducted a survey of the code
 defined _in_ `libstd` (as opposed to the code it reexports). This corpus is
 large and central enough to be representative, but small enough to easily
 analyze.
