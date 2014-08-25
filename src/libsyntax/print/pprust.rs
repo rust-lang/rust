@@ -1281,6 +1281,19 @@ impl<'a> State<'a> {
                         try!(self.print_block(&**t));
                         self.print_else(e)
                     }
+                    // "another else-if-let"
+                    ast::ExprIfLet(ref pat, ref expr, ref blk, elseopt) => {
+                        try!(self.cbox(indent_unit - 1u));
+                        try!(self.ibox(0u));
+                        try!(word(&mut self.s, " else if let "));
+                        try!(self.print_pat(&**pat));
+                        try!(space(&mut self.s));
+                        try!(self.word_space("="));
+                        try!(self.print_expr(&**expr));
+                        try!(space(&mut self.s));
+                        try!(self.print_block(&**blk));
+                        self.print_else(elseopt)
+                    }
                     // "final else"
                     ast::ExprBlock(ref b) => {
                         try!(self.cbox(indent_unit - 1u));
@@ -1299,10 +1312,21 @@ impl<'a> State<'a> {
     }
 
     pub fn print_if(&mut self, test: &ast::Expr, blk: &ast::Block,
-                    elseopt: Option<Gc<ast::Expr>>, chk: bool) -> IoResult<()> {
+                    elseopt: Option<Gc<ast::Expr>>) -> IoResult<()> {
         try!(self.head("if"));
-        if chk { try!(self.word_nbsp("check")); }
         try!(self.print_expr(test));
+        try!(space(&mut self.s));
+        try!(self.print_block(blk));
+        self.print_else(elseopt)
+    }
+
+    pub fn print_if_let(&mut self, pat: &ast::Pat, expr: &ast::Expr, blk: &ast::Block,
+                        elseopt: Option<P<ast::Expr>>) -> IoResult<()> {
+        try!(self.head("if let"));
+        try!(self.print_pat(pat));
+        try!(space(&mut self.s));
+        try!(self.word_space("="));
+        try!(self.print_expr(expr));
         try!(space(&mut self.s));
         try!(self.print_block(blk));
         self.print_else(elseopt)
@@ -1462,7 +1486,10 @@ impl<'a> State<'a> {
                 try!(self.print_type(&**ty));
             }
             ast::ExprIf(ref test, ref blk, elseopt) => {
-                try!(self.print_if(&**test, &**blk, elseopt, false));
+                try!(self.print_if(&**test, &**blk, elseopt));
+            }
+            ast::ExprIfLet(ref pat, ref expr, ref blk, elseopt) => {
+                try!(self.print_if_let(&**pat, &**expr, &** blk, elseopt));
             }
             ast::ExprWhile(ref test, ref blk) => {
                 try!(self.head("while"));

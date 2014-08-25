@@ -23,7 +23,7 @@ use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, Explicit
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
-use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
+use ast::{ExprField, ExprFnBlock, ExprIf, ExprIfLet, ExprIndex};
 use ast::{ExprLit, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary, ExprUnboxedFn};
@@ -569,13 +569,10 @@ impl<'a> Parser<'a> {
     /// If the next token is the given keyword, eat it and return
     /// true. Otherwise, return false.
     pub fn eat_keyword(&mut self, kw: keywords::Keyword) -> bool {
-        match self.token {
-            token::IDENT(sid, false) if kw.to_name() == sid.name => {
-                self.bump();
-                true
-            }
-            _ => false
-        }
+        if self.is_keyword(kw) {
+            self.bump();
+            true
+        } else { false }
     }
 
     /// If the given word is not a keyword, signal an error.
@@ -2714,8 +2711,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse an 'if' expression ('if' token already eaten)
+    /// Parse an 'if' or 'if let' expression ('if' token already eaten)
     pub fn parse_if_expr(&mut self) -> Gc<Expr> {
+        if self.is_keyword(keywords::Let) {
+            return self.parse_if_let_expr();
+        }
         let lo = self.last_span.lo;
         let cond = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
         let thn = self.parse_block();
@@ -2727,6 +2727,21 @@ impl<'a> Parser<'a> {
             hi = elexpr.span.hi;
         }
         self.mk_expr(lo, hi, ExprIf(cond, thn, els))
+    }
+
+    /// Parse an 'if let' expression ('if' token already eaten)
+    pub fn parse_if_let_expr(&mut self) -> Gc<Expr> {
+        let lo = self.last_span.lo;
+        self.expect_keyword(keywords::Let);
+        let pat = self.parse_pat();
+        self.expect(&token::EQ);
+        let expr = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
+        let thn = self.parse_block();
+        let els = if self.eat_keyword(keywords::Else) {
+            Some(self.parse_else_expr())
+        } else { None };
+        let hi = els.map_or(thn.span.hi, |expr| expr.span.hi);
+        self.mk_expr(lo, hi, ExprIfLet(pat, expr, thn, els))
     }
 
     // `|args| expr`
