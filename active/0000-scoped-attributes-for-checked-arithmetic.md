@@ -114,6 +114,8 @@ In general:
  * [John Regehr on June 23][JR23]
  * [Lars Bergstrom on June 24][LB24]
 
+Further credit is due to the commenters in the [GitHub discussion thread][GH].
+
 [GL18]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010363.html
 [GM18]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010371.html
 [JM20]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010410.html
@@ -124,6 +126,7 @@ In general:
 [DM24]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010598.html
 [JM24]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010596.html
 [LB24]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010579.html
+[GH]: https://github.com/rust-lang/rfcs/pull/146
 
 
 # Detailed design
@@ -142,16 +145,16 @@ goal to make sure that it will not.
 
 However, the compiler is *not* allowed to assume that overflow cannot happen,
 nor to optimize based on this assumption. Where overflow or underflow can be
-statically detected, the implementation is free to diagnose it with a warning
-or an error at compile time, and/or to represent the overflowing value at
-runtime with some form of bottom (e.g. task failure).
+statically detected, the implementation is free, and encouraged, to diagnose
+it with a warning or an error at compile time, and/or to represent the 
+overflowing value at runtime with some form of bottom (e.g. task failure).
 
 Notes:
 
  * In theory, the implementation returns an unspecified result. In practice,
    however, this will most likely be the same as the wraparound result.
-   Implementations should avoid unnecessarily exacerbating program errors
-   with further unpredictability or surprising behavior.
+   Implementations should avoid needlessly exacerbating program errors with
+   additional unpredictability or surprising behavior.
 
  * "Terminating execution in some fashion" will most likely mean failing the
    task, but the defined semantics of the types do not foreclose on other
@@ -163,6 +166,9 @@ Notes:
    specific, or any, result being returned on overflow, but the compiler would
    also not be allowed to assume that overflow won't happen and optimize based
    on this assumption.
+
+To state it plainly: This is for the programmer's benefit, and not the 
+optimizer's.
 
 See also Appendix A.
 
@@ -187,6 +193,11 @@ will most likely wrap).
 Significantly, turning `overflow_checks` on or off should only produce an
 observable difference in the behavior of the program, beyond the time it takes
 to execute, if the program has an overflow bug.
+
+It should also be emphasized that `overflow_checks(off)` only disables *runtime*
+overflow checks. Compile-time analysis can and should still be performed where
+possible. Perhaps the name could be chosen to make this more obvious, such as
+`runtime_overflow_checks`, but that starts to get overly verbose.
 
 Illustration of use:
 
@@ -453,7 +464,7 @@ so.
 
 C and C++ define `INT_MIN / -1` and `INT_MIN % -1` to be undefined behavior, to
 make it possible to use a division and remainder instruction to compute them.
-Mathematically, however, modulus can never overflow and `INT_MIN % -1` has value,
+Mathematically, however, modulus can never overflow and `INT_MIN % -1` has value
 `0`. Should Rust consider these to be instances of overflow, or should it
 guarantee that they return the correct mathematical result, at the cost of a
 runtime branch? Division is already slow, so a branch here may be an affordable
