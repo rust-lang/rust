@@ -1801,7 +1801,6 @@ Let's try compiling what Cargo gave us:
 ```{bash}
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$
 ```
 
 Excellent! Open up your `src/main.rs` again. We'll be writing all of
@@ -1817,7 +1816,6 @@ $ cargo run
    Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
      Running `target/guessing_game`
 Hello, world!
-$
 ```
 
 Great! The `run` command comes in handy when you need to rapidly iterate on a project.
@@ -1962,7 +1960,6 @@ fn main() {
 ```{notrust,ignore}
 $ cargo build
   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$
 ```
 
 Excellent! Try running our new program a few times:
@@ -2298,7 +2295,6 @@ The secret number is: 17
 Please input your guess.
 5
 Please input a number!
-$
 ```
 
 Uh, what? But we did!
@@ -2365,7 +2361,6 @@ Please input your guess.
   76
 You guessed: 76
 Too big!
-$
 ```
 
 Nice! You can see I even added spaces before my guess, and it still figured
@@ -2454,7 +2449,6 @@ You win!
 Please input your guess.
 quit
 Please input a number!
-$
 ```
 
 Ha! `quit` actually quits. As does any other non-number input. Well, this is
@@ -2771,7 +2765,6 @@ $ cargo run
    Compiling modules v0.0.1 (file:///home/you/projects/modules)
      Running `target/modules`
 Hello, world!
-$
 ```
 
 Nice!
@@ -2923,7 +2916,6 @@ This should all compile as usual:
 ```{notrust,ignore}
 $ cargo build
    Compiling modules v0.0.1 (file:///home/you/projects/modules)
-$
 ```
 
 We've seen how the `::` operator can be used to call into modules, but when
@@ -3097,7 +3089,6 @@ $ cargo run
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
      Running `target/testing`
 Hello, world!
-$
 ```
 
 Great. Rust's infrastructure supports tests in two sorts of places, and they're
@@ -3250,7 +3241,6 @@ running 1 test
 test foo ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
-$
 ```
 
 Nice! Our test passes, as we expected. Let's get rid of that warning for our `main`
