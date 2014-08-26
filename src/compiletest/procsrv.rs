@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate dynamic_lib;
+
 use std::io::process::{ProcessExit, Command, Process, ProcessOutput};
-use std::dynamic_lib::DynamicLibrary;
+use self::dynamic_lib::DynamicLibrary;
 
 fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
     // Need to be sure to put both the lib_path and the aux path in the dylib

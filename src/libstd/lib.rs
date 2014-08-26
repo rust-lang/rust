@@ -258,7 +258,6 @@ pub mod sync;
 /* Runtime and platform support */
 
 pub mod c_vec;
-pub mod dynamic_lib;
 pub mod os;
 pub mod io;
 pub mod path;

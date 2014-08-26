@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::dynamic_lib::DynamicLibrary;
+extern crate dynamic_lib;
+
+use dynamic_lib::DynamicLibrary;
 
 #[no_mangle]
 pub fn foo() { bar(); }

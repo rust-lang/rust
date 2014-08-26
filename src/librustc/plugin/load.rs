@@ -13,10 +13,10 @@
 use driver::session::Session;
 use metadata::creader::PluginMetadataReader;
 use plugin::registry::Registry;
+use dynamic_lib::DynamicLibrary;
 
 use std::mem;
 use std::os;
-use std::dynamic_lib::DynamicLibrary;
 use syntax::ast;
 use syntax::attr;
 use syntax::visit;

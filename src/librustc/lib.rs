@@ -47,6 +47,7 @@ extern crate rustc_back = "rustc_back";
 extern crate serialize;
 extern crate rbml;
 extern crate time;
+extern crate dynamic_lib;
 #[phase(plugin, link)] extern crate log;
 #[phase(plugin, link)] extern crate syntax;
 
