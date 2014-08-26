@@ -86,6 +86,8 @@
 //!
 //! ```
 //! // Create a shared channel which can be sent along from many tasks
+//! // where tx is the sending half (tx for transmission), and rx is the receiving
+//! // half (rx for receiving).
 //! let (tx, rx) = channel();
 //! for i in range(0i, 10i) {
 //!     let tx = tx.clone();
@@ -473,6 +475,8 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// # Example
 ///
 /// ```
+/// // tx is is the sending half (tx for transmission), and rx is the receiving
+/// // half (rx for receiving).
 /// let (tx, rx) = channel();
 ///
 /// // Spawn off an expensive computation
