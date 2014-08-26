@@ -1813,7 +1813,7 @@ Try it out:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Hello, world!
 ```
@@ -1955,17 +1955,12 @@ fn main() {
 }
 ```
 
-... and then recompile:
+Try running our new program a few times:
 
 ```{notrust,ignore}
-$ cargo build
-  Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-```
-
-Excellent! Try running our new program a few times:
-
-```{notrust,ignore}
-$ ./target/guessing_game
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 7
 Please input your guess.
@@ -2016,9 +2011,9 @@ fn main() {
 And trying it out:
 
 ```{notrust,ignore}
-$ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$ ./target/guessing_game
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 57
 Please input your guess.
@@ -2287,9 +2282,9 @@ We use a `match` to either give us the `uint` inside of the `Option`, or we
 print an error message and return. Let's give this a shot:
 
 ```{notrust,ignore}
-$ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$ ./target/guessing_game
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 17
 Please input your guess.
@@ -2352,9 +2347,9 @@ fn cmp(a: uint, b: uint) -> Ordering {
 Let's try it!
 
 ```{notrust,ignore}
-$ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$ ./target/guessing_game
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 58
 Please input your guess.
@@ -2429,9 +2424,9 @@ And try it out. But wait, didn't we just add an infinite loop? Yup. Remember
 that `return`? If we give a non-number answer, we'll `return` and quit. Observe:
 
 ```{notrust,ignore}
-$ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$ ./target/guessing_game
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 59
 Please input your guess.
@@ -2560,10 +2555,10 @@ fn cmp(a: uint, b: uint) -> Ordering {
 
 Now we should be good! Let's try:
 
-```{rust,ignore}
-$ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-$ ./target/guessing_game
+```{notrust,ignore}
+$ cargo run
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+     Running `target/guessing_game`
 Guess the number!
 The secret number is: 61
 Please input your guess.
