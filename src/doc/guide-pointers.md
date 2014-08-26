@@ -625,11 +625,53 @@ See [Returning Pointers](#returning-pointers) below for more.
 
 # Rc and Arc
 
-This part is coming soon.
+The `Rc<T>` and `Arc<T>` types are related, but not identical. They are useful
+for having multiple owners for a bit of immutable data.
+
+They get their names from  **reference counted**, which is a name for the
+strategy they use to deal with multiple owners. "Reference counting" is a
+method where you count the number of times something is referenced. When it
+drops to zero, you know that you can deallocate a resource.
+
+`Rc<T>` is named 'arr cee' after the first two letters of 'reference counting.'
+`Arc<T>` (said like 'ark') provides an 'atomic reference count'ed type. The
+difference is that `Arc<T>` is threadsafe, but more expensive when updating the
+count. The types are otherwise identical, and so we'll just talk about `Arc<T>`
+for the rest of this section.
+
+You can use the `clone()` method to get an additional reference to an `Arc<T>`.
+This method hands out another reference to its data, and then increments the
+count. When each reference goes out of scope, it decreases the count, and if
+the count is zero, it frees the resource.
+
+As an example:
+
+```{rust}
+fn foo () {
+    let x = Arc::new(5i); // `x` has a count of 1.
+
+    {
+        let y = x.clone(); // `x` has a count of 2.
+
+        {
+            let z = x.clone() // `x` has a count of 3.
+        } // `x` has a count of 2
+    } // `x` has a count of 1
+} // `x` has a count of 0, and is destroyed
+```
+
+The `Arc<T>` type doesn't handle circular references, though: if you have
+multiple `Arc<T>`s  that refer to each other, their counts will always stay at
+one, even if nothing points to them, and you'll leak memory. In that case, the
+`Weak<T>` type can create a **weak pointer** to handle this case. If a group of
+references are all weak, then they can all be freed.
 
 ## Best practices
 
-This part is coming soon.
+Use `Rc<T>` when you don't need thread safety, and `Arc<T>` when you do.
+
+If you may introduce a reference cycle, consider adding a `Weak<T>` so that you
+don't leak memory.
 
 # Gc
 
