@@ -161,6 +161,28 @@ mod test {
     use libc;
     use mem;
 
+    // This is a basic smoke test that loading from the exe works, in order to provide
+    // some Windows coverage (FIXME #8818)
+    #[test]
+    #[ignore(cfg(target_os="android"))] // FIXME(#10379)
+    fn test_loading_internal_smoke() {
+
+        let none: Option<Path> = None; // appease the typechecker
+        let thislib = match DynamicLibrary::open(none) {
+            Err(error) => fail!("Could not load self as module: {}", error),
+            Ok(thislib) => thislib
+        };
+
+        // 'main' is the only function that happens to have DllExport on windows,
+        // so let's try to load it (using the wrong sig since we're not calling it)
+        let _main: extern fn() = unsafe {
+            match thislib.symbol("main") {
+                Err(error) => fail!("Could not load function testcos: {}", error),
+                Ok(cosine) => mem::transmute::<*mut u8, _>(cosine)
+            }
+        };
+    }
+
     #[test]
     #[ignore(cfg(windows))] // FIXME #8818
     #[ignore(cfg(target_os="android"))] // FIXME(#10379)
