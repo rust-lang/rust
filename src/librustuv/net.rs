@@ -851,8 +851,8 @@ pub struct SocketWatcher {
 
     // See above for what these are
     refcount: Refcount,
-    read_access: AccessTimeout,
-    write_access: AccessTimeout,
+    read_access: AccessTimeout<()>,
+    write_access: AccessTimeout<()>,
 
 }
 
@@ -920,8 +920,8 @@ impl SocketWatcher {
             home: io.make_handle(),
             socket: socket,
             refcount: Refcount::new(),
-            read_access: AccessTimeout::new(),
-            write_access: AccessTimeout::new(),
+            read_access: AccessTimeout::new(()),
+            write_access: AccessTimeout::new(()),
         };
 
         // Make socket non-blocking - required for libuv
