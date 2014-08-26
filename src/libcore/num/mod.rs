@@ -160,6 +160,8 @@ pub trait Signed: Num + Neg<Self> {
     /// Computes the absolute value.
     ///
     /// For `f32` and `f64`, `NaN` will be returned if the number is `NaN`.
+    ///
+    /// For signed integers, `::MIN` will be returned if the number is `::MIN`.
     fn abs(&self) -> Self;
 
     /// The positive difference of two numbers.
@@ -176,7 +178,7 @@ pub trait Signed: Num + Neg<Self> {
     /// * `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
     /// * `NaN` if the number is `NaN`
     ///
-    /// For `int`:
+    /// For signed integers:
     ///
     /// * `0` if the number is zero
     /// * `1` if the number is positive
@@ -272,6 +274,8 @@ signed_float_impl!(f64, f64::NAN, f64::INFINITY, f64::NEG_INFINITY,
 /// Computes the absolute value.
 ///
 /// For `f32` and `f64`, `NaN` will be returned if the number is `NaN`
+///
+/// For signed integers, `::MIN` will be returned if the number is `::MIN`.
 #[inline(always)]
 pub fn abs<T: Signed>(value: T) -> T {
     value.abs()
@@ -294,7 +298,7 @@ pub fn abs_sub<T: Signed>(x: T, y: T) -> T {
 /// * `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
 /// * `NaN` if the number is `NaN`
 ///
-/// For int:
+/// For signed integers:
 ///
 /// * `0` if the number is zero
 /// * `1` if the number is positive
