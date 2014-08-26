@@ -2168,12 +2168,13 @@ fn lookup_method_for_for_loop(fcx: &FnCtxt,
         }
     };
 
+    let expr_type = fcx.expr_ty(&*iterator_expr);
     let method = method::lookup_in_trait(fcx,
                                          iterator_expr.span,
                                          Some(&*iterator_expr),
                                          token::intern("next"),
                                          trait_did,
-                                         fcx.expr_ty(&*iterator_expr),
+                                         expr_type,
                                          [],
                                          DontAutoderefReceiver,
                                          IgnoreStaticMethods);
@@ -2184,8 +2185,9 @@ fn lookup_method_for_for_loop(fcx: &FnCtxt,
         Some(ref method) => method.ty,
         None => {
             fcx.tcx().sess.span_err(iterator_expr.span,
-                                    "`for` loop expression does not \
-                                     implement the `Iterator` trait");
+                                    format!("`for` loop expression has type `{}` which does \
+                                             not implement the `Iterator` trait",
+                                            fcx.infcx().ty_to_string(expr_type)).as_slice());
             ty::mk_err()
         }
     };
