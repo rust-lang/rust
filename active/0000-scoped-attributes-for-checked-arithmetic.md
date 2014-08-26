@@ -6,52 +6,56 @@
 # Summary
 
 Change the semantics of the built-in fixed-size integer types from being defined
-as wrapping around on overflow to either returning an unspecified result or not
-returning at all. Allow overflow checks to be turned on or off per-scope with an
-attribute. Add a compiler option to force checking for testing and debugging
-purposes. Add a `WrappingOps` trait to the standard library, with operations
-defined as wrapping on overflow, for the limited number of cases where this is
+as wrapping around on overflow to it being considered a program error (but *not*
+undefined behavior in the C sense), with whether to check for it at compile
+and/or runtime being left up to the implementation. Add an attribute to allow
+runtime overflow checks to be turned on or off per-scope, similarly to lints.
+Add a compiler option to force checking to be on for testing and debugging
+purposes. Add a `WrappingOps` trait to the standard library with operations
+defined as wrapping on overflow for the limited number of cases where this is
 the desired semantics, such as hash functions.
 
 
 # Motivation
 
-The semantics of the basic arithmetic operators on the built-in fixed-size
-integer types are currently defined to wrap around on overflow. Wrapping around
-on overflow is well-defined behavior, which means that it's better than C. Yet
-we should avoid falling prey to the soft bigotry of low expectations.
+The semantics of the basic arithmetic operators and casts on the built-in
+fixed-size integer types are currently defined to wrap around on overflow. This
+is is well-defined behavior, so it is already an improvement over C. Yet we
+should avoid falling into the trap of low expectations.
 
-In the large majority of cases, wrapping around on overflow is not an
+In the large majority of cases, wrapping around on overflow is not a useful or
 appropriate semantics: programs will generally not work correctly with the
 wrapped-around value. Much of the time, programs are merely optimistic that
-overflow won't happen, but this often turns out to be mistaken. When it does
-happen, unexpected behavior and potentially even security bugs can result. It
-should be emphasized that wrapping around on overflow is *not* a memory safety
-issue in the safe subset of Rust, which greatly mitigates, but does not
-eliminate, the harm that overflow bugs can cause. However, in `unsafe` blocks,
-and when interfacing with existing C libraries, it can be a memory safety issue,
-and furthermore, not all security bugs are memory safety bugs. By
+overflow won't happen, but this frequently turns out to be mistaken. When
+overflow does happen, unexpected behavior and potentially even security bugs can
+result.
+
+It should be emphasized that wrapping around on overflow is *not* a memory
+safety issue in the safe subset of Rust, which greatly mitigates, but does not
+eliminate, the harm that overflow bugs can cause. However, in `unsafe` blocks
+and when interfacing with existing C libraries, it *can* be a memory safety
+issue; and furthermore, not all security bugs are memory safety bugs. By
 indiscriminately using wraparound-on-overflow semantics in every case, whether
-or not it is appropriate, it becomes difficult to impossible for programmers,
-compilers, and analysis tools to reliably determine where overflow is the
-expected behavior, and where the possibility of it should be considered a
-defect.
+or not it is sensible, it becomes difficult to impossible for programmers,
+compilers, and analysis tools to reliably determine in which cases overflow is
+the expected behavior, and in which cases it should be considered a defect.
 
-It is a fact that checked arithmetic poses an unacceptable performance burden in
-many cases, especially in a performance-sensitive language like Rust. As such, a
-perfect, one-size-fits-all solution is regrettably not possible. However, we can
-make better compromises than we currently do.
+In many cases, runtime overflow checks unfortunately present an unacceptable
+performance burden, especially in a performance-conscious language like Rust.
+As such, a perfect, one-size-fits-all solution is regrettably not possible.
+However, it is very much within our power to make better compromises than we
+currently do.
 
-While in many cases, the performance cost of checking for overflow is not
-acceptable, in many other cases, it is. Developers should be able to make the
-tradeoff themselves in a convenient and granular way.
+While the performance cost of checking for overflow is not acceptable in many
+cases, in many others, it is. Developers should be able to make the tradeoff
+themselves in a convenient and granular way.
 
-The cases where wraparound on overflow is explicitly desired are comparatively
-rare. The only use cases for wrapping arithmetic that are known to the author at
-the time of writing are hashes, checksums, and emulation of processors with
-wraparound arithmetic instructions. Therefore, it should be acceptable to not 
-provide symbolic operators, but require using named methods in
-these cases.
+The circumstances where wraparound on overflow is explicitly desired are
+comparatively rare. The only use cases for wrapping arithmetic that are known to
+the author at the time of writing are hashes, checksums, and emulation of
+hardware instructions with wraparound semantics. Therefore, it should be
+acceptable to only provide named methods for wraparound arithmetic, and not
+symbolic operators.
 
 
 ## Goals of this proposal
@@ -60,24 +64,23 @@ these cases.
    from where it is not.
 
  * Provide programmers with the tools they need to flexibly make the tradeoff
-   between higher performance and catching more mistakes.
+   between higher performance and more reliably catching mistakes.
 
- * Be minimally disruptive to the language as it is and have a small surface
-   area.
+ * Be well-contained and minimally disruptive to the language as it is.
 
 
-## Non-goals of this proposal
+## *Non*-goals of this proposal
 
  * Make checked arithmetic fast. Let me emphasize: *the actual performance of
    checked arithmetic is wholly irrelevant to the content of this proposal*. It
    will be relevant to the decisions programmers make when employing the tools
-   this proposal proposes to supply them with, but it is not to the tools
-   themselves.
+   this proposal proposes to supply them with, but to the tools themselves it
+   is not.
 
  * Prepare for future processor architectures and/or compiler advances which may
    improve the performance of checked arithmetic. If there were mathematical
-   proof that faster checked arithmetic is impossible, the proposal would be the
-   same.
+   proof that faster checked arithmetic is impossible, the proposal would still
+   be the same.
 
 
 ## Acknowledgements and further reading
@@ -91,7 +94,7 @@ On the limited use cases for wrapping arithmetic:
 
  * [Jerry Morrison on June 20][JM20]
 
-On the value of distinguishing where overflow is valid, and where it is not:
+On the value of distinguishing where overflow is valid from where it is not:
 
  * [Gregory Maxwell on June 18][GM18]
  * [Gregory Maxwell on June 24][GM24]
@@ -127,20 +130,28 @@ In general:
 
 ## Semantics of overflow with the built-in types
 
-Currently, the built-in arithmetic operators `+`, `-`, `*`, `/`, and `%` on the
-built-in types `i8`..`i64`, `u8`..`u64`, `int`, and `uint` are defined as
-wrapping around on overflow. Change this to define them, on overflow, as either
-returning an unspecified result, or not returning at all (i.e. terminating
-execution in some fashion, "returning bottom"), instead.
+Currently, the built-in arithmetic operators `+`, `-`, `*`, `/`, and `%`, as
+well as casts using `as` on the built-in types `i8`..`i64`, `u8`..`u64`, `int`,
+and `uint` are defined as wrapping around on overflow. Change this to define
+them, on overflow, as either returning an unspecified result, or not returning
+at all (i.e. terminating execution in some fashion, "returning bottom") instead.
 
 The implication is that overflow is considered to be an abnormal circumstance,
-and the programmer expects it not to happen, resp. it is her goal to make sure
-that it will not.
+a program error, and the programmer expects it not to happen, resp. it is her
+goal to make sure that it will not.
+
+However, the compiler is *not* allowed to assume that overflow cannot happen,
+nor to optimize based on this assumption. Where overflow or underflow can be
+statically detected, the implementation is free to diagnose it with a warning
+or an error at compile time, and/or to represent the overflowing value at
+runtime with some form of bottom (e.g. task failure).
 
 Notes:
 
- * In practice, the unspecified result will most likely be the wraparound
-   result, but in theory, it's up to the implementation.
+ * In theory, the implementation returns an unspecified result. In practice,
+   however, this will most likely be the same as the wraparound result.
+   Implementations should avoid unnecessarily exacerbating program errors
+   with further unpredictability or surprising behavior.
 
  * "Terminating execution in some fashion" will most likely mean failing the
    task, but the defined semantics of the types do not foreclose on other
@@ -150,27 +161,34 @@ Notes:
    result of the operation is left unspecified, as opposed to the entire
    program's meaning, as in C. The programmer would not be allowed to rely on a
    specific, or any, result being returned on overflow, but the compiler would
-   also not be allowed to assume that overflow won't happen.
+   also not be allowed to assume that overflow won't happen and optimize based
+   on this assumption.
 
+See also Appendix A.
 
-## Scoped attributes to control checking
+## Scoped attributes to control runtime checking
 
-This depends on [RFC PR 16][16] being accepted.
+This depends on [RFC 40][40] being implemented.
 
-Introduce an `overflow_checks` attribute which can be used to turn overflow
-checks on or off in a given scope. `#[overflow_checks(on)]` turns them on,
-`#[overflow_checks(off)]` turns them off. The attribute can be applied to a 
-whole `crate`, a `mod`ule, an `fn`, or (as per [RFC PR 16][16]) a given block or
-a single expression. When applied to a block, this is analogous to the 
+Introduce an `overflow_checks` attribute which can be used to turn runtime
+overflow checks on or off in a given scope. `#[overflow_checks(on)]` turns them
+on, `#[overflow_checks(off)]` turns them off. The attribute can be applied to a
+whole `crate`, a `mod`ule, an `fn`, or (as per [RFC 40][40]) a given block or
+a single expression. When applied to a block, this is analogous to the
 `checked { }` blocks of C#. As with lint attributes, an `overflow_checks`
-attribute on an inner scope or item will override the effects of any 
-`overflow_checks` attributes on outer scopes or items. (Overflow checks can in 
-fact be thought of as a kind of run-time lint.) Where overflow checks are in 
-effect, overflow with the basic arithmetic operations on the built-in fixed-size
-integer types invokes `fail!()`. Where they are not, the checks are omitted, and
-the result of the operations is left unspecified (but will most likely wrap).
+attribute on an inner scope or item will override the effects of any
+`overflow_checks` attributes on outer scopes or items. Overflow checks can, in
+fact, be thought of as a kind of run-time lint. Where overflow checks are in
+effect, overflow with the basic arithmetic operations and casts on the built-in
+fixed-size integer types will invoke task failure. Where they are not, the
+checks  are omitted, and the result of the operations is left unspecified (but
+will most likely wrap).
 
-Illustration:
+Significantly, turning `overflow_checks` on or off should only produce an
+observable difference in the behavior of the program, beyond the time it takes
+to execute, if the program has an overflow bug.
+
+Illustration of use:
 
     // checks are on for this crate
     #![overflow_checks(on)]
@@ -200,11 +218,11 @@ Illustration:
 
     ...
 
-[16]: https://github.com/rust-lang/rfcs/pull/16
+[40]: https://github.com/rust-lang/rfcs/blob/master/active/0040-more-attributes.md
 
 ### The default
 
-There is a significant decision to be made with respect to the default behavior
+There is an important decision to be made with respect to the default behavior
 where neither `overflow_checks(on)` nor `off` has been explicitly specified. The
 author does not presume to know the correct answer, and leaves this open to
 debate. The following defaults are possible:
@@ -286,46 +304,73 @@ The recommendation is to not use `Vec<Wrapping<int>>`, but to use `Vec<int>` and
 the `wrapping_`* methods directly, instead.
 
 
+# Required implementation work
+
+## Backwards incompatible parts
+
+ * Amend the language definition to remove the guarantee that over- and
+   underflow wraps around when using the built-in arithmetic operators and casts
+   on the built-in types. Specify that such over- and underflow counts as a
+   program error, and that it is up to the implementation whether to diagnose it
+   at compile time where possible, and whether to insert checks at runtime, or
+   to return an unspecified result (but without optimizing based on the
+   assumption that overflow cannot happen).
+
+ * Add the `WrappingOps` trait and implementations of it for the built-in types.
+
+ * Port existing code which relies on wraparound semantics - primarily hash
+   functions - to use the `wrapping_`* methods.
+
+Any code which does not explicitly depend on wraparound semantics, which is the
+large majority of existing code, is not affected.
+
+
+## Backwards compatible parts
+
+ * Implement [RFC 40][40] for attributes on statements and expressions.
+
+ * Implement the `overflow_checks` attribute and the `--force-overflow-checks`
+   compiler flag.
+
+ * Potentially emit warnings or errors at compile time when static analysis can
+   show that over- or underflow would happen.
+
+After the backwards incompatible changes have been made, these can be done at
+any point without breaking the semantics of existing programs. The only effect
+would be to make it easier to discover bugs.
+
+
 # Drawbacks
-
- * Required implementation work:
-
-   * Implement [RFC PR 16][16].
-
-   * Implement the `overflow_checks` attribute.
-
-   * Port existing code which relies on wraparound semantics (primarily hash
-     functions) to use the `wrapping_`* methods.
 
  * Code where `overflow_checks(off)` is in effect could end up accidentally
    relying on overflow. Given the relative scarcity of cases where overflow is a
    favorable circumstance, the risk of this happening seems minor.
 
  * Having to think about whether wraparound arithmetic is appropriate may
-   cause an increased cognitive burden. However, wraparound arithmetic is 
+   cause an increased cognitive burden. However, wraparound arithmetic is
    almost never appropriate. Therefore, programmers should be able to keep using
-   the built-in integer types and to not think about it. Where wraparound 
+   the built-in integer types and to not think about this. Where wraparound
    semantics are required, it is generally a specialized use case with the
    implementor well aware of the requirement.
 
  * The built-in types become "special": the ability to control overflow checks
    using scoped attributes doesn't extend to user-defined types. If you make a
    `struct MyNum(int)` and `impl Add for MyNum` using the native `+` operation
-   on `int`s, whether overflow checks happen for `MyNum` is determined by 
-   whether `overflow_checks` is `on` or `off` where `impl Add for MyNum` is 
-   declared, not whether they are `on` or `off` where the overloaded operators 
-   are used. 
+   on `int`s, whether overflow checks happen for `MyNum` is determined by
+   whether `overflow_checks` is `on` or `off` where `impl Add for MyNum` is
+   declared, not whether they are `on` or `off` where the overloaded operators
+   are used.
 
    The author considers this to be a serious shortcoming. *However*, it has the
    saving grace of being no worse than the status quo, i.e. the change is still
-   a Pareto-improvement. Under the status quo, neither the built-in types nor 
+   a Pareto-improvement. Under the status quo, neither the built-in types nor
    user-defined types can have overflow checks controlled by scoped attributes.
-   Under this proposal, the situation is improved with built-in types gaining 
-   this capability. In light of this, making further improvements, namely 
+   Under this proposal, the situation is improved with built-in types gaining
+   this capability. In light of this, making further improvements, namely
    extending the capability to user-defined types, can be left to future work.
 
  * Someone may conduct a benchmark of Rust with overflow checks turned on, post
-   it to the Internet, and mislead the audience into thinking that Rust is a 
+   it to the Internet, and mislead the audience into thinking that Rust is a
    slow language.
 
 
@@ -333,7 +378,7 @@ the `wrapping_`* methods directly, instead.
 
 ## Do nothing for now
 
-Defer any action until later, as suggested by:
+Defer any action until later, as advocated by:
 
  * [Patrick Walton on June 22][PW22]
 
@@ -353,11 +398,11 @@ without the `WrappingOps` trait and to avoid having unspecified results. See:
 
  * [Daniel Micay on June 24][DM24_2]
 
-Reasons this was not pursued: Having the declared semantics of a type change
-based on context is weird. It should be possible to make the choice between
-turning checks `on` or `off` solely based on performance considerations. It
-should be possible to distinguish cases where checking was too expensive and
-where wraparound was desired. Wraparound is not usually desired.
+Reasons this was not pursued: The official semantics of a type should not change
+based on the context. It should be possible to make the choice between turning
+checks `on` or `off` solely based on performance considerations. It should be
+possible to distinguish cases where checking was too expensive from where
+wraparound was desired. (Wraparound is not usually desired.)
 
 ## Different operators
 
@@ -400,12 +445,40 @@ Reasons this was not pursued: My brain melted. :(
 "What should the default be where neither `overflow_checks(on)` nor `off` has
 been explicitly specified?", as discussed in the main text.
 
+Instead of a single `WrappingOps` trait, should there perhaps be a separate
+trait for each operation, as with the built-in arithmetic traits `Add`, `Sub`,
+and so on? The only purpose of `WrappingOps` is to be implemented for the
+built-in numeric types, so it's not clear that there would be a benefit to doing
+so.
+
+C and C++ define `INT_MIN / -1` and `INT_MIN % -1` to be undefined behavior, to
+make it possible to use a division and remainder instruction to compute them.
+Mathematically, however, modulus can never overflow and `INT_MIN % -1` has value,
+`0`. Should Rust consider these to be instances of overflow, or should it
+guarantee that they return the correct mathematical result, at the cost of a
+runtime branch? Division is already slow, so a branch here may be an affordable
+cost. If we do this, it would obviate the need for the `wrapping_div` and
+`wrapping_rem` methods, and they could be removed. This isn't intrinsically tied
+to the current RFC, and could be discussed separately.
+
+It is not clear whether, or how, overflowing casts between types should be
+provided. For casts between signed and unsigned integers of the same size,
+the [`Transmute` trait for safe transmutes][transmute] would be appropriate in
+the future, or the unsafe `transmute()` function in the present. For other casts
+(between different sized-types, between floats and integers), special operations
+might have to be provided if supporting them is desirable.
+
+[transmute]: https://github.com/rust-lang/rfcs/pull/91
+
 
 # Future work
 
  * Extend the ability to make use of local `overflow_checks(on|off)` attributes
-   to user-defined types, as discussed under Drawbacks. (The author has some
-   preliminary ideas, however, they are preliminary.)
+   to user-defined types, as discussed under Drawbacks. For newtypes of the
+   built-in types which simply want their arithmetic operations to forward to
+   the built-in ones, this could be accomplished by just adding a newtype
+   deriving feature, which we would eventually like to do anyways. For more
+   involved cases, there may not be an easy solution.
 
  * Look into adopting imprecise exceptions and a similar design to Ada's, and to
    what is explored in the research on AIR (As Infinitely Ranged) semantics, to
@@ -422,3 +495,31 @@ been explicitly specified?", as discussed in the main text.
 [DM24_2]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010590.html
 [CZ22]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010483.html
 [JR23_2]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010527.html
+
+
+# Appendix A: On the precise meaning of unspecified results.
+
+*In theory*, the below loop would be allowed to print "hello" any number of
+times from 127 to infinity (inclusive), and may print "hello" a different number
+of times on different runs of the program, and may print "hedgehogs", but may
+not print "penguins".
+
+    fn main() {
+        let mut i: i8 = 1;
+
+        while i > 0 {
+            println!("hello");
+            i = i + 1;
+            if i != i { println!("penguins"); }
+            if i + 1 != i + 1 { println!("hedgehogs"); }
+        }
+    }
+
+Thus, for example, LLVM's `undef` could not be used to represent the value of
+`100i8 + 100`, because `undef` can be two different values in different usage
+points.
+
+*In practice*, implementations should avoid unnecessarily surprising behavior,
+and the above loop should almost always print "hello" 127 times, and nothing
+else. Implementations would also be encouraged to diagnose at compile time the
+fact that this loop, as well as `100i8 + 100`, will always overflow.
