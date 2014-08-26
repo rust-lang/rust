@@ -2184,10 +2184,15 @@ fn lookup_method_for_for_loop(fcx: &FnCtxt,
     let method_type = match method {
         Some(ref method) => method.ty,
         None => {
-            fcx.tcx().sess.span_err(iterator_expr.span,
-                                    format!("`for` loop expression has type `{}` which does \
-                                             not implement the `Iterator` trait",
-                                            fcx.infcx().ty_to_string(expr_type)).as_slice());
+            let true_expr_type = fcx.infcx().resolve_type_vars_if_possible(expr_type);
+
+            if !ty::type_is_error(true_expr_type) {
+                let ty_string = fcx.infcx().ty_to_string(true_expr_type);
+                fcx.tcx().sess.span_err(iterator_expr.span,
+                                        format!("`for` loop expression has type `{}` which does \
+                                                 not implement the `Iterator` trait",
+                                                ty_string).as_slice());
+            }
             ty::mk_err()
         }
     };
