@@ -193,24 +193,46 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
             datum = unpack_datum!(bcx, add_env(bcx, expr, datum));
         }
         AutoDerefRef(ref adj) => {
-            // Extracting a value from a box counts as a deref, but if we are
-            // just converting Box<[T, ..n]> to Box<[T]> we aren't really doing
-            // a deref (and wouldn't if we could treat Box like a normal struct).
-            let autoderefs = match adj.autoref {
-                Some(ty::AutoUnsizeUniq(..)) => adj.autoderefs - 1,
-                _ => adj.autoderefs
+            let (autoderefs, use_autoref) = match adj.autoref {
+                // Extracting a value from a box counts as a deref, but if we are
+                // just converting Box<[T, ..n]> to Box<[T]> we aren't really doing
+                // a deref (and wouldn't if we could treat Box like a normal struct).
+                Some(ty::AutoUnsizeUniq(..)) => (adj.autoderefs - 1, true),
+                // We are a bit paranoid about adjustments and thus might have a re-
+                // borrow here which merely derefs and then refs again (it might have
+                // a different region or mutability, but we don't care here. It might
+                // also be just in case we need to unsize. But if there are no nested
+                // adjustments then it should be a no-op).
+                Some(ty::AutoPtr(_, _, None)) if adj.autoderefs == 1 => {
+                    match ty::get(datum.ty).sty {
+                        // Don't skip a conversion from Box<T> to &T, etc.
+                        ty::ty_rptr(..) => {
+                            let method_call = MethodCall::autoderef(expr.id, adj.autoderefs-1);
+                            let method = bcx.tcx().method_map.borrow().find(&method_call).is_some();
+                            if method {
+                                // Don't skip an overloaded deref.
+                                (adj.autoderefs, true)
+                            } else {
+                                (adj.autoderefs - 1, false)
+                            }
+                        }
+                        _ => (adj.autoderefs, true),
+                    }
+                }
+                _ => (adj.autoderefs, true)
             };
 
             if autoderefs > 0 {
-                let lval = unpack_datum!(bcx,
-                                         datum.to_lvalue_datum(bcx, "auto_deref", expr.id));
-
+                // Schedule cleanup.
+                let lval = unpack_datum!(bcx, datum.to_lvalue_datum(bcx, "auto_deref", expr.id));
                 datum = unpack_datum!(
                     bcx, deref_multiple(bcx, expr, lval.to_expr_datum(), autoderefs));
             }
 
-            match adj.autoref {
-                Some(ref a) => {
+            // (You might think there is a more elegant way to do this than a
+            // use_autoref bool, but then you remember that the borrow checker exists).
+            match (use_autoref, &adj.autoref) {
+                (true, &Some(ref a)) => {
                     datum = unpack_datum!(bcx, apply_autoref(a,
                                                              bcx,
                                                              expr,
@@ -221,7 +243,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
         }
     }
     debug!("after adjustments, datum={}", datum.to_string(bcx.ccx()));
-    return DatumBlock {bcx: bcx, datum: datum};
+    return DatumBlock::new(bcx, datum);
 
     fn apply_autoref<'a>(autoref: &ty::AutoRef,
                          bcx: &'a Block<'a>,
