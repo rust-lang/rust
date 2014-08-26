@@ -604,17 +604,34 @@ pub fn run_passes(sess: &Session,
     };
 
     let link_obj = |output_path: &Path| {
-        let mut cmd = Command::new("ld");
+        let pname = get_cc_prog(sess);
+        let mut cmd = Command::new(pname.as_slice());
+
+        cmd.args(sess.targ_cfg.target_strs.cc_args.as_slice());
+        cmd.arg("-nostdlib");
 
         for index in range(0, trans.modules.len()) {
             cmd.arg(crate_output.with_extension(format!("{}.o", index).as_slice()));
         }
 
         cmd.arg("-r").arg("-o").arg(output_path);
+
+        if (sess.opts.debugging_opts & config::PRINT_LINK_ARGS) != 0 {
+            println!("{}", &cmd);
+        }
+
         cmd.stdin(::std::io::process::Ignored)
            .stdout(::std::io::process::InheritFd(1))
            .stderr(::std::io::process::InheritFd(2));
-        cmd.status().unwrap();
+        match cmd.status() {
+            Ok(_) => {},
+            Err(e) => {
+                sess.err(format!("could not exec the linker `{}`: {}",
+                                 pname,
+                                 e).as_slice());
+                sess.abort_if_errors();
+            },
+        }
     };
 
     // Flag to indicate whether the user explicitly requested bitcode.
