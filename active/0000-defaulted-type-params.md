@@ -1,3 +1,7 @@
+- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- RFC PR: (leave this empty)
+- Rust Issue: (leave this empty)
+
 # Summary
 
 Rust currently includes feature-gated support for type parameters that
@@ -18,6 +22,8 @@ parameters:
    
 Points 2 and 4 extend the current behavior of type parameter defaults,
 aiming to address some shortcomings of the current implementation.
+
+This RFC would remove the feature gate on defaulted type parameters.
 
 # Motivation
 
@@ -94,6 +100,10 @@ older behavior.
  algorithms.
 
 # Detailed Design
+
+## Remove feature gate
+
+This RFC would remove the feature gate on defaulted type parameters.
 
 ## Type parameters with defaults
 
