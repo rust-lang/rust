@@ -25,6 +25,7 @@ use middle::trans::datum::*;
 use middle::trans::expr::{SaveIn, Ignore};
 use middle::trans::expr;
 use middle::trans::glue;
+use middle::trans::machine;
 use middle::trans::monomorphize;
 use middle::trans::type_::Type;
 use middle::trans::type_of::*;
@@ -39,6 +40,9 @@ use syntax::abi::{Rust, RustCall};
 use syntax::parse::token;
 use syntax::{ast, ast_map, visit};
 use syntax::ast_util::PostExpansionMethod;
+
+// drop_glue pointer, size, align.
+static VTABLE_OFFSET: uint = 3;
 
 /**
 The main "translation" pass for methods.  Generates code
@@ -450,7 +454,7 @@ pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
                                     GEPi(bcx, llpair,
                                          [0u, abi::trt_field_vtable]),
                                     Type::vtable(ccx).ptr_to().ptr_to()));
-    let mptr = Load(bcx, GEPi(bcx, llvtable, [0u, n_method + 1]));
+    let mptr = Load(bcx, GEPi(bcx, llvtable, [0u, n_method + VTABLE_OFFSET]));
     let mptr = PointerCast(bcx, mptr, llcallee_ty.ptr_to());
 
     return Callee {
@@ -580,9 +584,15 @@ fn get_vtable(bcx: &Block,
         }
     });
 
+    let size_ty = sizing_type_of(ccx, self_ty);
+    let size = machine::llsize_of_alloc(ccx, size_ty);
+    let ll_size = C_uint(ccx, size as uint);
+    let align = align_of(ccx, self_ty);
+    let ll_align = C_uint(ccx, align as uint);
+
     // Generate a destructor for the vtable.
     let drop_glue = glue::get_drop_glue(ccx, self_ty);
-    let vtable = make_vtable(ccx, drop_glue, methods);
+    let vtable = make_vtable(ccx, drop_glue, ll_size, ll_align, methods);
 
     ccx.vtables.borrow_mut().insert(hash_id, vtable);
     vtable
@@ -591,11 +601,14 @@ fn get_vtable(bcx: &Block,
 /// Helper function to declare and initialize the vtable.
 pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
                                           drop_glue: ValueRef,
+                                          size: ValueRef,
+                                          align: ValueRef,
                                           ptrs: I)
                                           -> ValueRef {
     let _icx = push_ctxt("meth::make_vtable");
 
-    let components: Vec<_> = Some(drop_glue).move_iter().chain(ptrs).collect();
+    let head = vec![drop_glue, size, align];
+    let components: Vec<_> = head.move_iter().chain(ptrs).collect();
 
     unsafe {
         let tbl = C_struct(ccx, components.as_slice(), false);
@@ -666,6 +679,26 @@ fn emit_vtable_methods(bcx: &Block,
     }).collect()
 }
 
+pub fn vtable_ptr<'a>(bcx: &'a Block<'a>,
+                      id: ast::NodeId,
+                      self_ty: ty::t) -> ValueRef {
+    let ccx = bcx.ccx();
+    let origins = {
+        let vtable_map = ccx.tcx.vtable_map.borrow();
+        // This trait cast might be because of implicit coercion
+        let adjs = ccx.tcx.adjustments.borrow();
+        let adjust = adjs.find(&id);
+        let method_call = if adjust.is_some() && ty::adjust_is_object(adjust.unwrap()) {
+            MethodCall::autoobject(id)
+        } else {
+            MethodCall::expr(id)
+        };
+        let vres = vtable_map.get(&method_call).get_self().unwrap();
+        resolve_param_vtables_under_param_substs(ccx.tcx(), bcx.fcx.param_substs, vres)
+    };
+    get_vtable(bcx, self_ty, origins)
+}
+
 pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
                             datum: Datum<Expr>,
                             id: ast::NodeId,
@@ -688,27 +721,16 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
         SaveIn(dest) => dest
     };
 
-    let ccx = bcx.ccx();
     let v_ty = datum.ty;
-    let llbox_ty = type_of(bcx.ccx(), datum.ty);
+    let llbox_ty = type_of(bcx.ccx(), v_ty);
 
     // Store the pointer into the first half of pair.
-    let mut llboxdest = GEPi(bcx, lldest, [0u, abi::trt_field_box]);
-    llboxdest = PointerCast(bcx, llboxdest, llbox_ty.ptr_to());
+    let llboxdest = GEPi(bcx, lldest, [0u, abi::trt_field_box]);
+    let llboxdest = PointerCast(bcx, llboxdest, llbox_ty.ptr_to());
     bcx = datum.store_to(bcx, llboxdest);
 
     // Store the vtable into the second half of pair.
-    let origins = {
-        let vtable_map = ccx.tcx.vtable_map.borrow();
-        // This trait cast might be because of implicit coercion
-        let method_call = match ccx.tcx.adjustments.borrow().find(&id) {
-            Some(&ty::AutoObject(..)) => MethodCall::autoobject(id),
-            _ => MethodCall::expr(id)
-        };
-        let vres = vtable_map.get(&method_call).get_self().unwrap();
-        resolve_param_vtables_under_param_substs(ccx.tcx(), bcx.fcx.param_substs, vres)
-    };
-    let vtable = get_vtable(bcx, v_ty, origins);
+    let vtable = vtable_ptr(bcx, id, v_ty);
     let llvtabledest = GEPi(bcx, lldest, [0u, abi::trt_field_vtable]);
     let llvtabledest = PointerCast(bcx, llvtabledest, val_ty(vtable).ptr_to());
     Store(bcx, vtable, llvtabledest);

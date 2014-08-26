@@ -65,7 +65,7 @@ use middle::trans::glue;
 use middle::trans::inline;
 use middle::trans::intrinsic;
 use middle::trans::machine;
-use middle::trans::machine::{llalign_of_min, llsize_of, llsize_of_real};
+use middle::trans::machine::{llsize_of, llsize_of_real};
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::tvec;
@@ -364,20 +364,19 @@ fn require_alloc_fn(bcx: &Block, info_ty: ty::t, it: LangItem) -> ast::DefId {
 // a given type, but with a potentially dynamic size.
 
 pub fn malloc_raw_dyn<'a>(bcx: &'a Block<'a>,
-                          ptr_ty: ty::t,
+                          llty_ptr: Type,
+                          info_ty: ty::t,
                           size: ValueRef,
                           align: ValueRef)
                           -> Result<'a> {
     let _icx = push_ctxt("malloc_raw_exchange");
-    let ccx = bcx.ccx();
 
     // Allocate space:
     let r = callee::trans_lang_call(bcx,
-        require_alloc_fn(bcx, ptr_ty, ExchangeMallocFnLangItem),
+        require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem),
         [size, align],
         None);
 
-    let llty_ptr = type_of::type_of(ccx, ptr_ty);
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
 
@@ -395,7 +394,7 @@ pub fn malloc_raw_dyn_managed<'a>(
     // Grab the TypeRef type of box_ptr_ty.
     let box_ptr_ty = ty::mk_box(bcx.tcx(), t);
     let llty = type_of(ccx, box_ptr_ty);
-    let llalign = C_uint(ccx, llalign_of_min(ccx, llty) as uint);
+    let llalign = C_uint(ccx, type_of::align_of(ccx, box_ptr_ty) as uint);
 
     // Allocate space:
     let drop_glue = glue::get_drop_glue(ccx, t);
@@ -711,14 +710,33 @@ pub fn iter_structural_ty<'r,
         return cx;
     }
 
+    let (data_ptr, info) = if ty::type_is_sized(cx.tcx(), t) {
+        (av, None)
+    } else {
+        let data = GEPi(cx, av, [0, abi::slice_elt_base]);
+        let info = GEPi(cx, av, [0, abi::slice_elt_len]);
+        (Load(cx, data), Some(Load(cx, info)))
+    };
+
     let mut cx = cx;
     match ty::get(t).sty {
       ty::ty_struct(..) => {
           let repr = adt::represent_type(cx.ccx(), t);
           expr::with_field_tys(cx.tcx(), t, None, |discr, field_tys| {
               for (i, field_ty) in field_tys.iter().enumerate() {
-                  let llfld_a = adt::trans_field_ptr(cx, &*repr, av, discr, i);
-                  cx = f(cx, llfld_a, field_ty.mt.ty);
+                  let field_ty = field_ty.mt.ty;
+                  let llfld_a = adt::trans_field_ptr(cx, &*repr, data_ptr, discr, i);
+
+                  let val = if ty::type_is_sized(cx.tcx(), field_ty) {
+                      llfld_a
+                  } else {
+                      let boxed_ty = ty::mk_open(cx.tcx(), field_ty);
+                      let scratch = datum::rvalue_scratch_datum(cx, boxed_ty, "__fat_ptr_iter");
+                      Store(cx, llfld_a, GEPi(cx, scratch.val, [0, abi::slice_elt_base]));
+                      Store(cx, info.unwrap(), GEPi(cx, scratch.val, [0, abi::slice_elt_len]));
+                      scratch.val
+                  };
+                  cx = f(cx, val, field_ty);
               }
           })
       }
@@ -726,19 +744,19 @@ pub fn iter_structural_ty<'r,
           let repr = adt::represent_type(cx.ccx(), t);
           let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id);
           for (i, upvar) in upvars.iter().enumerate() {
-              let llupvar = adt::trans_field_ptr(cx, &*repr, av, 0, i);
+              let llupvar = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
               cx = f(cx, llupvar, upvar.ty);
           }
       }
       ty::ty_vec(_, Some(n)) => {
+        let (base, len) = tvec::get_fixed_base_and_len(cx, data_ptr, n);
         let unit_ty = ty::sequence_element_type(cx.tcx(), t);
-        let (base, len) = tvec::get_fixed_base_and_byte_len(cx, av, unit_ty, n);
         cx = tvec::iter_vec_raw(cx, base, unit_ty, len, f);
       }
       ty::ty_tup(ref args) => {
           let repr = adt::represent_type(cx.ccx(), t);
           for (i, arg) in args.iter().enumerate() {
-              let llfld_a = adt::trans_field_ptr(cx, &*repr, av, 0, i);
+              let llfld_a = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
               cx = f(cx, llfld_a, *arg);
           }
       }
@@ -782,7 +800,7 @@ pub fn iter_structural_ty<'r,
                       let variant_cx =
                           iter_variant(variant_cx,
                                        &*repr,
-                                       av,
+                                       data_ptr,
                                        &**variant,
                                        substs,
                                        |x,y,z| f(x,y,z));
@@ -956,14 +974,23 @@ pub fn invoke<'a>(
               llfn: ValueRef,
               llargs: Vec<ValueRef> ,
               fn_ty: ty::t,
-              call_info: Option<NodeInfo>)
+              call_info: Option<NodeInfo>,
+              // FIXME(15064) is_lang_item is a horrible hack, please remove it
+              // at the soonest opportunity.
+              is_lang_item: bool)
               -> (ValueRef, &'a Block<'a>) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable.get() {
         return (C_null(Type::i8(bcx.ccx())), bcx);
     }
 
-    let attributes = get_fn_llvm_attributes(bcx.ccx(), fn_ty);
+    // FIXME(15064) Lang item methods may (in the reflect case) not have proper
+    // types, so doing an attribute lookup will fail.
+    let attributes = if is_lang_item {
+        llvm::AttrBuilder::new()
+    } else {
+        get_fn_llvm_attributes(bcx.ccx(), fn_ty)
+    };
 
     match bcx.opt_node_id {
         None => {
@@ -1150,7 +1177,7 @@ pub fn memcpy_ty(bcx: &Block, dst: ValueRef, src: ValueRef, t: ty::t) {
     if ty::type_is_structural(t) {
         let llty = type_of::type_of(ccx, t);
         let llsz = llsize_of(ccx, llty);
-        let llalign = llalign_of_min(ccx, llty);
+        let llalign = type_of::align_of(ccx, t);
         call_memcpy(bcx, dst, src, llsz, llalign as u32);
     } else {
         store_ty(bcx, Load(bcx, src), dst, t);
@@ -1161,9 +1188,7 @@ pub fn zero_mem(cx: &Block, llptr: ValueRef, t: ty::t) {
     if cx.unreachable.get() { return; }
     let _icx = push_ctxt("zero_mem");
     let bcx = cx;
-    let ccx = cx.ccx();
-    let llty = type_of::type_of(ccx, t);
-    memzero(&B(bcx), llptr, llty);
+    memzero(&B(bcx), llptr, t);
 }
 
 // Always use this function instead of storing a zero constant to the memory
@@ -1171,9 +1196,11 @@ pub fn zero_mem(cx: &Block, llptr: ValueRef, t: ty::t) {
 // allocation for large data structures, and the generated code will be
 // awful. (A telltale sign of this is large quantities of
 // `mov [byte ptr foo],0` in the generated code.)
-fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
+fn memzero(b: &Builder, llptr: ValueRef, ty: ty::t) {
     let _icx = push_ctxt("memzero");
     let ccx = b.ccx;
+
+    let llty = type_of::type_of(ccx, ty);
 
     let intrinsic_key = match ccx.sess().targ_cfg.arch {
         X86 | Arm | Mips | Mipsel => "llvm.memset.p0i8.i32",
@@ -1183,8 +1210,8 @@ fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     let llintrinsicfn = ccx.get_intrinsic(&intrinsic_key);
     let llptr = b.pointercast(llptr, Type::i8(ccx).ptr_to());
     let llzeroval = C_u8(ccx, 0);
-    let size = machine::llsize_of(ccx, ty);
-    let align = C_i32(ccx, llalign_of_min(ccx, ty) as i32);
+    let size = machine::llsize_of(ccx, llty);
+    let align = C_i32(ccx, type_of::align_of(ccx, ty) as i32);
     let volatile = C_bool(ccx, false);
     b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile], None);
 }
@@ -1215,13 +1242,14 @@ pub fn alloca_no_lifetime(cx: &Block, ty: Type, name: &str) -> ValueRef {
     Alloca(cx, ty, name)
 }
 
-pub fn alloca_zeroed(cx: &Block, ty: Type, name: &str) -> ValueRef {
+pub fn alloca_zeroed(cx: &Block, ty: ty::t, name: &str) -> ValueRef {
+    let llty = type_of::type_of(cx.ccx(), ty);
     if cx.unreachable.get() {
         unsafe {
-            return llvm::LLVMGetUndef(ty.ptr_to().to_ref());
+            return llvm::LLVMGetUndef(llty.ptr_to().to_ref());
         }
     }
-    let p = alloca_no_lifetime(cx, ty, name);
+    let p = alloca_no_lifetime(cx, llty, name);
     let b = cx.fcx.ccx.builder();
     b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
     memzero(&b, p, ty);
@@ -1640,7 +1668,8 @@ fn copy_unboxed_closure_args_to_allocas<'a>(
     for j in range(0, args.len()) {
         let tuple_element_type = untupled_arg_types[j];
         let tuple_element_datum =
-            tuple_datum.get_element(tuple_element_type,
+            tuple_datum.get_element(bcx,
+                                    tuple_element_type,
                                     |llval| GEPi(bcx, llval, [0, j]));
         let tuple_element_datum = tuple_element_datum.to_expr_datum();
         let tuple_element_datum =
@@ -2302,9 +2331,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
         match ty::get(ret_ty).sty {
             // `~` pointer return values never alias because ownership
             // is transferred
-            ty::ty_uniq(it) if match ty::get(it).sty {
-                ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
-            } => {}
+            ty::ty_uniq(it) if !ty::type_is_sized(ccx.tcx(), it) => {}
             ty::ty_uniq(_) => {
                 attrs.ret(llvm::NoAliasAttribute);
             }
@@ -2315,9 +2342,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
         match ty::get(ret_ty).sty {
             // These are not really pointers but pairs, (pointer, len)
             ty::ty_uniq(it) |
-            ty::ty_rptr(_, ty::mt { ty: it, .. }) if match ty::get(it).sty {
-                ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
-            } => {}
+            ty::ty_rptr(_, ty::mt { ty: it, .. }) if !ty::type_is_sized(ccx.tcx(), it) => {}
             ty::ty_uniq(inner) | ty::ty_rptr(_, ty::mt { ty: inner, .. }) => {
                 let llret_sz = llsize_of_real(ccx, type_of::type_of(ccx, inner));
                 attrs.ret(llvm::DereferenceableAttribute(llret_sz));
@@ -2584,7 +2609,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                     // We need the translated value here, because for enums the
                     // LLVM type is not fully determined by the Rust type.
-                    let (v, inlineable) = consts::const_expr(ccx, &**expr, is_local);
+                    let (v, inlineable, _) = consts::const_expr(ccx, &**expr, is_local);
                     ccx.const_values.borrow_mut().insert(id, v);
                     let mut inlineable = inlineable;
 

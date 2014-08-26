@@ -346,7 +346,8 @@ mod tests {
         assert_eq!(hasher.hash(&'a'), 97);
 
         assert_eq!(hasher.hash(&("a")), 97 + 0xFF);
-        assert_eq!(hasher.hash(& &[1u8, 2u8, 3u8]), 9);
+        let cs: &[u8] = &[1u8, 2u8, 3u8];
+        assert_eq!(hasher.hash(& cs), 9);
 
         unsafe {
             let ptr: *const int = mem::transmute(5i);

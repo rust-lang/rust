@@ -295,7 +295,8 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
             for p in input.iter() {
                 let mut it = p.as_slice().splitn(1, |b| *b == b'=');
                 let key = Vec::from_slice(it.next().unwrap());
-                let val = Vec::from_slice(it.next().unwrap_or(&[]));
+                let default: &[u8] = &[];
+                let val = Vec::from_slice(it.next().unwrap_or(default));
                 pairs.push((key, val));
             }
             pairs

@@ -1265,12 +1265,14 @@ mod tests {
     fn test_trim_left_chars() {
         let v: &[char] = &[];
         assert_eq!(" *** foo *** ".trim_left_chars(v), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_left_chars(&['*', ' ']), "foo *** ");
-        assert_eq!(" ***  *** ".trim_left_chars(&['*', ' ']), "");
-        assert_eq!("foo *** ".trim_left_chars(&['*', ' ']), "foo *** ");
+        let chars: &[char] = &['*', ' '];
+        assert_eq!(" *** foo *** ".trim_left_chars(chars), "foo *** ");
+        assert_eq!(" ***  *** ".trim_left_chars(chars), "");
+        assert_eq!("foo *** ".trim_left_chars(chars), "foo *** ");
 
         assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11");
-        assert_eq!("12foo1bar12".trim_left_chars(&['1', '2']), "foo1bar12");
+        let chars: &[char] = &['1', '2'];
+        assert_eq!("12foo1bar12".trim_left_chars(chars), "foo1bar12");
         assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_digit()), "foo1bar123");
     }
 
@@ -1278,12 +1280,14 @@ mod tests {
     fn test_trim_right_chars() {
         let v: &[char] = &[];
         assert_eq!(" *** foo *** ".trim_right_chars(v), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_right_chars(&['*', ' ']), " *** foo");
-        assert_eq!(" ***  *** ".trim_right_chars(&['*', ' ']), "");
-        assert_eq!(" *** foo".trim_right_chars(&['*', ' ']), " *** foo");
+        let chars: &[char] = &['*', ' '];
+        assert_eq!(" *** foo *** ".trim_right_chars(chars), " *** foo");
+        assert_eq!(" ***  *** ".trim_right_chars(chars), "");
+        assert_eq!(" *** foo".trim_right_chars(chars), " *** foo");
 
         assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar");
-        assert_eq!("12foo1bar12".trim_right_chars(&['1', '2']), "12foo1bar");
+        let chars: &[char] = &['1', '2'];
+        assert_eq!("12foo1bar12".trim_right_chars(chars), "12foo1bar");
         assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_digit()), "123foo1bar");
     }
 
@@ -1291,12 +1295,14 @@ mod tests {
     fn test_trim_chars() {
         let v: &[char] = &[];
         assert_eq!(" *** foo *** ".trim_chars(v), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_chars(&['*', ' ']), "foo");
-        assert_eq!(" ***  *** ".trim_chars(&['*', ' ']), "");
-        assert_eq!("foo".trim_chars(&['*', ' ']), "foo");
+        let chars: &[char] = &['*', ' '];
+        assert_eq!(" *** foo *** ".trim_chars(chars), "foo");
+        assert_eq!(" ***  *** ".trim_chars(chars), "");
+        assert_eq!("foo".trim_chars(chars), "foo");
 
         assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar");
-        assert_eq!("12foo1bar12".trim_chars(&['1', '2']), "foo1bar");
+        let chars: &[char] = &['1', '2'];
+        assert_eq!("12foo1bar12".trim_chars(chars), "foo1bar");
         assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_digit()), "foo1bar");
     }
 
@@ -1443,7 +1449,8 @@ mod tests {
             184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
             109
         ];
-        assert_eq!("".as_bytes(), &[]);
+        let b: &[u8] = &[];
+        assert_eq!("".as_bytes(), b);
         assert_eq!("abc".as_bytes(), b"abc");
         assert_eq!("ศไทย中华Việt Nam".as_bytes(), v.as_slice());
     }
@@ -1542,19 +1549,23 @@ mod tests {
     #[test]
     fn test_truncate_utf16_at_nul() {
         let v = [];
-        assert_eq!(truncate_utf16_at_nul(v), &[]);
+        let b: &[u16] = &[];
+        assert_eq!(truncate_utf16_at_nul(v), b);
 
         let v = [0, 2, 3];
-        assert_eq!(truncate_utf16_at_nul(v), &[]);
+        assert_eq!(truncate_utf16_at_nul(v), b);
 
         let v = [1, 0, 3];
-        assert_eq!(truncate_utf16_at_nul(v), &[1]);
+        let b: &[u16] = &[1];
+        assert_eq!(truncate_utf16_at_nul(v), b);
 
         let v = [1, 2, 0];
-        assert_eq!(truncate_utf16_at_nul(v), &[1, 2]);
+        let b: &[u16] = &[1, 2];
+        assert_eq!(truncate_utf16_at_nul(v), b);
 
         let v = [1, 2, 3];
-        assert_eq!(truncate_utf16_at_nul(v), &[1, 2, 3]);
+        let b: &[u16] = &[1, 2, 3];
+        assert_eq!(truncate_utf16_at_nul(v), b);
     }
 
     #[test]
@@ -1960,7 +1971,7 @@ mod tests {
         use std::iter::order;
         // official Unicode test data
         // from http://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt
-        let test_same = [
+        let test_same: [(_, &[_]), .. 325] = [
             ("\u0020\u0020", &["\u0020", "\u0020"]), ("\u0020\u0308\u0020", &["\u0020\u0308",
             "\u0020"]), ("\u0020\u000D", &["\u0020", "\u000D"]), ("\u0020\u0308\u000D",
             &["\u0020\u0308", "\u000D"]), ("\u0020\u000A", &["\u0020", "\u000A"]),
@@ -2169,7 +2180,7 @@ mod tests {
             ("\u0646\u200D\u0020", &["\u0646\u200D", "\u0020"]),
         ];
 
-        let test_diff = [
+        let test_diff: [(_, &[_], &[_]), .. 23] = [
             ("\u0020\u0903", &["\u0020\u0903"], &["\u0020", "\u0903"]), ("\u0020\u0308\u0903",
             &["\u0020\u0308\u0903"], &["\u0020\u0308", "\u0903"]), ("\u000D\u0308\u0903",
             &["\u000D", "\u0308\u0903"], &["\u000D", "\u0308", "\u0903"]), ("\u000A\u0308\u0903",
@@ -2218,9 +2229,11 @@ mod tests {
         // test the indices iterators
         let s = "a̐éö̲\r\n";
         let gr_inds = s.grapheme_indices(true).collect::<Vec<(uint, &str)>>();
-        assert_eq!(gr_inds.as_slice(), &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")]);
+        let b: &[_] = &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
+        assert_eq!(gr_inds.as_slice(), b);
         let gr_inds = s.grapheme_indices(true).rev().collect::<Vec<(uint, &str)>>();
-        assert_eq!(gr_inds.as_slice(), &[(11, "\r\n"), (6, "ö̲"), (3, "é"), (0u, "a̐")]);
+        let b: &[_] = &[(11, "\r\n"), (6, "ö̲"), (3, "é"), (0u, "a̐")];
+        assert_eq!(gr_inds.as_slice(), b);
         let mut gr_inds = s.grapheme_indices(true);
         let e1 = gr_inds.size_hint();
         assert_eq!(e1, (1, Some(13)));
@@ -2232,7 +2245,8 @@ mod tests {
         // make sure the reverse iterator does the right thing with "\n" at beginning of string
         let s = "\n\r\n\r";
         let gr = s.graphemes(true).rev().collect::<Vec<&str>>();
-        assert_eq!(gr.as_slice(), &["\r", "\r\n", "\n"]);
+        let b: &[_] = &["\r", "\r\n", "\n"];
+        assert_eq!(gr.as_slice(), b);
     }
 
     #[test]
@@ -2494,7 +2508,8 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').count();
 
-        b.iter(|| assert_eq!(s.split(&[' ']).count(), len));
+        let c: &[char] = &[' '];
+        b.iter(|| assert_eq!(s.split(c).count(), len));
     }
 
     #[bench]

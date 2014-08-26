@@ -21,8 +21,7 @@ fn nested<'x>(x: &'x int) {
     });
 
     ignore::< <'z>|&'z int| -> &'z int>(|z| {
-        if false { return x; }  //~ ERROR mismatched types
-        //~^ ERROR cannot infer
+        if false { return x; }  //~ ERROR cannot infer an appropriate lifetime for automatic
         if false { return ay; }
         return z;
     });

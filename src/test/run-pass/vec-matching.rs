@@ -23,12 +23,14 @@ fn b() {
         [a, b, ..c] => {
             assert_eq!(a, 1);
             assert_eq!(b, 2);
-            assert_eq!(c, &[3]);
+            let expected: &[_] = &[3];
+            assert_eq!(c, expected);
         }
     }
     match x {
         [..a, b, c] => {
-            assert_eq!(a, &[1]);
+            let expected: &[_] = &[1];
+            assert_eq!(a, expected);
             assert_eq!(b, 2);
             assert_eq!(c, 3);
         }
@@ -36,7 +38,8 @@ fn b() {
     match x {
         [a, ..b, c] => {
             assert_eq!(a, 1);
-            assert_eq!(b, &[2]);
+            let expected: &[_] = &[2];
+            assert_eq!(b, expected);
             assert_eq!(c, 3);
         }
     }
@@ -69,7 +72,8 @@ fn d() {
 }
 
 fn e() {
-    match &[1i, 2, 3] {
+    let x: &[int] = &[1i, 2, 3];
+    match x {
         [1, 2] => (),
         [..] => ()
     }

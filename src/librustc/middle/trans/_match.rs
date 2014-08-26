@@ -280,7 +280,7 @@ fn trans_opt<'a>(mut bcx: &'a Block<'a>, o: &Opt) -> opt_result<'a> {
     match *o {
         lit(lit_expr) => {
             let lit_ty = ty::node_id_to_type(bcx.tcx(), lit_expr.id);
-            let (llval, _) = consts::const_expr(ccx, &*lit_expr, true);
+            let (llval, _, _) = consts::const_expr(ccx, &*lit_expr, true);
             let lit_datum = immediate_rvalue(llval, lit_ty);
             let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
             return single_result(Result::new(bcx, lit_datum.val));
@@ -289,8 +289,8 @@ fn trans_opt<'a>(mut bcx: &'a Block<'a>, o: &Opt) -> opt_result<'a> {
             return adt::trans_case(bcx, &**repr, disr_val);
         }
         range(ref l1, ref l2) => {
-            let (l1, _) = consts::const_expr(ccx, &**l1, true);
-            let (l2, _) = consts::const_expr(ccx, &**l2, true);
+            let (l1, _, _) = consts::const_expr(ccx, &**l1, true);
+            let (l2, _, _) = consts::const_expr(ccx, &**l2, true);
             return range_result(Result::new(bcx, l1), Result::new(bcx, l2));
         }
         vec_len(n, vec_len_eq, _) => {
@@ -692,7 +692,7 @@ fn extract_vec_elems<'a>(
     let vec_datum = match_datum(bcx, val, pat_id);
     let (base, len) = vec_datum.get_vec_base_and_len(bcx);
     let vec_ty = node_id_type(bcx, pat_id);
-    let vt = tvec::vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty));
+    let vt = tvec::vec_types(bcx, ty::sequence_element_type(bcx.tcx(), ty::type_content(vec_ty)));
 
     let mut elems = Vec::from_fn(elem_count, |i| {
         match slice {
@@ -863,7 +863,7 @@ fn compare_values<'a>(
     match ty::get(rhs_t).sty {
         ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
             ty::ty_str => compare_str(cx, lhs, rhs, rhs_t),
-            ty::ty_vec(mt, _) => match ty::get(mt.ty).sty {
+            ty::ty_vec(ty, _) => match ty::get(ty).sty {
                 ty::ty_uint(ast::TyU8) => {
                     // NOTE: cast &[u8] to &str and abuse the str_eq lang item,
                     // which calls memcmp().

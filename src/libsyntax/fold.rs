@@ -1088,9 +1088,6 @@ pub fn noop_fold_pat<T: Folder>(p: Gc<Pat>, folder: &mut T) -> Gc<Pat> {
 pub fn noop_fold_expr<T: Folder>(e: Gc<Expr>, folder: &mut T) -> Gc<Expr> {
     let id = folder.new_id(e.id);
     let node = match e.node {
-        ExprVstore(e, v) => {
-            ExprVstore(folder.fold_expr(e), v)
-        }
         ExprBox(p, e) => {
             ExprBox(folder.fold_expr(p), folder.fold_expr(e))
         }

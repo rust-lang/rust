@@ -59,6 +59,7 @@ fn main() {
         }
     }
     unsafe {
-        assert_eq!(&[1, 2, 3], ORDER.as_slice());
+        let expected: &[_] = &[1, 2, 3];
+        assert_eq!(expected, ORDER.as_slice());
     }
 }

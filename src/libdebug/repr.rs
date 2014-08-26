@@ -275,6 +275,8 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
     }
 
     // Type no longer exists, vestigial function.
+    // NOTE: remove after snapshot
+    #[cfg(stage0)]
     fn visit_estr_fixed(&mut self, _n: uint, _sz: uint,
                         _align: uint) -> bool { fail!(); }
 
@@ -328,6 +330,8 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         })
     }
 
+    // NOTE: remove after snapshot
+    #[cfg(stage0)]
     fn visit_evec_fixed(&mut self, n: uint, sz: uint, _align: uint,
                         _: uint, inner: *const TyDesc) -> bool {
         let assumed_size = if sz == 0 { n } else { sz };
@@ -335,6 +339,16 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
             this.write_vec_range(b, assumed_size, inner)
         })
     }
+
+    #[cfg(not(stage0))]
+    fn visit_evec_fixed(&mut self, n: uint, sz: uint, _align: uint,
+                        inner: *const TyDesc) -> bool {
+        let assumed_size = if sz == 0 { n } else { sz };
+        self.get::<()>(|this, b| {
+            this.write_vec_range(b, assumed_size, inner)
+        })
+    }
+
 
     fn visit_enter_rec(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {

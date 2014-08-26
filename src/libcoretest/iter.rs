@@ -368,7 +368,7 @@ fn test_collect() {
 
 #[test]
 fn test_all() {
-    let v: Box<&[int]> = box &[1i, 2, 3, 4, 5];
+    let v: Box<[int]> = box [1i, 2, 3, 4, 5];
     assert!(v.iter().all(|&x| x < 10));
     assert!(!v.iter().all(|&x| x % 2 == 0));
     assert!(!v.iter().all(|&x| x > 100));
@@ -377,7 +377,7 @@ fn test_all() {
 
 #[test]
 fn test_any() {
-    let v: Box<&[int]> = box &[1i, 2, 3, 4, 5];
+    let v: Box<[int]> = box [1i, 2, 3, 4, 5];
     assert!(v.iter().any(|&x| x < 10));
     assert!(v.iter().any(|&x| x % 2 == 0));
     assert!(!v.iter().any(|&x| x > 100));

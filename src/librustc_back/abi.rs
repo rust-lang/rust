@@ -20,14 +20,8 @@ pub static fn_field_box: uint = 1u;
 
 // The two fields of a trait object/trait instance: vtable and box.
 // The vtable contains the type descriptor as first element.
-pub static trt_field_vtable: uint = 0u;
-pub static trt_field_box: uint = 1u;
-
-pub static vec_elt_fill: uint = 0u;
-
-pub static vec_elt_alloc: uint = 1u;
-
-pub static vec_elt_elems: uint = 2u;
+pub static trt_field_box: uint = 0u;
+pub static trt_field_vtable: uint = 1u;
 
 pub static slice_elt_base: uint = 0u;
 pub static slice_elt_len: uint = 1u;

@@ -11,15 +11,14 @@
 trait A {}
 
 struct Struct {
-    r: A //~ ERROR reference to trait `A` where a type is expected; try `Box<A>` or `&A`
+    r: A
 }
 
 fn new_struct(r: A) -> Struct {
-    //~^ ERROR reference to trait `A` where a type is expected; try `Box<A>` or `&A`
-    Struct { r: r }
+    //~^ ERROR variable `r` has dynamically sized type `A`
+    Struct { r: r } //~ ERROR trying to initialise a dynamically sized struct
 }
 
 trait Curve {}
 enum E {X(Curve)}
-//~^ ERROR reference to trait `Curve` where a type is expected; try `Box<Curve>` or `&Curve`
 fn main() {}

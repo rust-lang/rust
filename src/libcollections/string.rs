@@ -531,7 +531,8 @@ impl String {
     ///
     /// ```
     /// let s = String::from_str("hello");
-    /// assert_eq!(s.as_bytes(), &[104, 101, 108, 108, 111]);
+    /// let b: &[_] = &[104, 101, 108, 108, 111];
+    /// assert_eq!(s.as_bytes(), b);
     /// ```
     #[inline]
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
@@ -552,7 +553,8 @@ impl String {
     ///     bytes[1] = 51;
     ///     bytes[4] = 48;
     /// }
-    /// assert_eq!(s.as_bytes(), &[104, 51, 108, 108, 48]);
+    /// let b: &[_] = &[104, 51, 108, 108, 48];
+    /// assert_eq!(s.as_bytes(), b);
     /// assert_eq!(s.as_slice(), "h3ll0")
     /// ```
     #[inline]

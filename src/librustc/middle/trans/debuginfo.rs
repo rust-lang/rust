@@ -56,10 +56,11 @@ This file consists of three conceptual sections:
 ## Recursive Types
 
 Some kinds of types, such as structs and enums can be recursive. That means that
-the type definition of some type X refers to some other type which in turn (transitively)
-refers to X. This introduces cycles into the type referral graph. A naive algorithm doing
-an on-demand, depth-first traversal of this graph when describing types, can get trapped
-in an endless loop when it reaches such a cycle.
+the type definition of some type X refers to some other type which in turn
+(transitively) refers to X. This introduces cycles into the type referral graph.
+A naive algorithm doing an on-demand, depth-first traversal of this graph when
+describing types, can get trapped in an endless loop when it reaches such a
+cycle.
 
 For example, the following simple type for a singly-linked list...
 
@@ -402,7 +403,7 @@ impl TypeMap {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(inner_type_id.as_slice());
             },
-            ty::ty_vec(ty::mt { ty: inner_type, .. }, optional_length) => {
+            ty::ty_vec(inner_type, optional_length) => {
                 match optional_length {
                     Some(len) => {
                         unique_type_id.push_str(format!("[{}]", len).as_slice());
@@ -592,18 +593,6 @@ impl TypeMap {
                                                .as_slice(),
                                            variant_name);
         let interner_key = self.unique_id_interner.intern(Rc::new(enum_variant_type_id));
-        UniqueTypeId(interner_key)
-    }
-
-    fn get_unique_type_id_of_heap_vec_box(&mut self,
-                                          cx: &CrateContext,
-                                          element_type: ty::t)
-                                       -> UniqueTypeId {
-        let element_type_id = self.get_unique_type_id_of_type(cx, element_type);
-        let heap_vec_box_type_id = format!("{{HEAP_VEC_BOX<{}>}}",
-                                           self.get_unique_type_id_as_string(element_type_id)
-                                               .as_slice());
-        let interner_key = self.unique_id_interner.intern(Rc::new(heap_vec_box_type_id));
         UniqueTypeId(interner_key)
     }
 
@@ -2718,81 +2707,6 @@ fn fixed_vec_metadata(cx: &CrateContext,
     return MetadataCreationResult::new(metadata, false);
 }
 
-fn heap_vec_metadata(cx: &CrateContext,
-                     vec_pointer_type: ty::t,
-                     element_type: ty::t,
-                     unique_type_id: UniqueTypeId,
-                     span: Span)
-                  -> MetadataCreationResult {
-    let element_type_metadata = type_metadata(cx, element_type, span);
-    let element_llvm_type = type_of::type_of(cx, element_type);
-    let (element_size, element_align) = size_and_align_of(cx, element_llvm_type);
-
-    return_if_metadata_created_in_meantime!(cx, unique_type_id);
-
-    let vecbox_llvm_type = Type::vec(cx, &element_llvm_type);
-    let vec_pointer_type_name = compute_debuginfo_type_name(cx,
-                                                            vec_pointer_type,
-                                                            true);
-    let vec_pointer_type_name = vec_pointer_type_name.as_slice();
-
-    let member_llvm_types = vecbox_llvm_type.field_types();
-
-    let int_type_metadata = type_metadata(cx, ty::mk_int(), span);
-    let array_type_metadata = unsafe {
-        llvm::LLVMDIBuilderCreateArrayType(
-            DIB(cx),
-            bytes_to_bits(element_size),
-            bytes_to_bits(element_align),
-            element_type_metadata,
-            create_DIArray(DIB(cx), [llvm::LLVMDIBuilderGetOrCreateSubrange(DIB(cx), 0, 0)]))
-    };
-
-    let member_descriptions = [
-        MemberDescription {
-            name: "fill".to_string(),
-            llvm_type: *member_llvm_types.get(0),
-            type_metadata: int_type_metadata,
-            offset: ComputedMemberOffset,
-        },
-        MemberDescription {
-            name: "alloc".to_string(),
-            llvm_type: *member_llvm_types.get(1),
-            type_metadata: int_type_metadata,
-            offset: ComputedMemberOffset,
-        },
-        MemberDescription {
-            name: "elements".to_string(),
-            llvm_type: *member_llvm_types.get(2),
-            type_metadata: array_type_metadata,
-            offset: ComputedMemberOffset,
-        }
-    ];
-
-    assert!(member_descriptions.len() == member_llvm_types.len());
-
-    let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.name.as_slice());
-
-    let vec_box_unique_id = debug_context(cx).type_map
-                                             .borrow_mut()
-                                             .get_unique_type_id_of_heap_vec_box(cx,
-                                                                                 element_type);
-
-    let vecbox_metadata = composite_type_metadata(cx,
-                                                  vecbox_llvm_type,
-                                                  vec_pointer_type_name,
-                                                  vec_box_unique_id,
-                                                  member_descriptions,
-                                                  UNKNOWN_SCOPE_METADATA,
-                                                  file_metadata,
-                                                  span);
-
-    MetadataCreationResult::new(pointer_type_metadata(cx,
-                                                      vec_pointer_type,
-                                                      vecbox_metadata), false)
-}
-
 fn vec_slice_metadata(cx: &CrateContext,
                       vec_type: ty::t,
                       element_type: ty::t,
@@ -2885,47 +2799,42 @@ fn subroutine_type_metadata(cx: &CrateContext,
         false);
 }
 
+// FIXME(1563) This is all a bit of a hack because 'trait pointer' is an ill-
+// defined concept. For the case of an actual trait pointer (i.e., Box<Trait>,
+// &Trait), trait_object_type should be the whole thing (e.g, Box<Trait>) and
+// trait_type should be the actual trait (e.g., Trait). Where the trait is part
+// of a DST struct, there is no trait_object_type and the results of this
+// function will be a little bit weird.
 fn trait_pointer_metadata(cx: &CrateContext,
-                          // trait_pointer_type must be the type of the fat
-                          // pointer to the concrete trait object
-                          trait_pointer_type: ty::t,
+                          trait_type: ty::t,
+                          trait_object_type: Option<ty::t>,
                           unique_type_id: UniqueTypeId)
                        -> DIType {
     // The implementation provided here is a stub. It makes sure that the trait
     // type is assigned the correct name, size, namespace, and source location.
     // But it does not describe the trait's methods.
 
-    let trait_object_type = match ty::get(trait_pointer_type).sty {
-        ty::ty_uniq(pointee_type) => pointee_type,
-        ty::ty_rptr(_, ty::mt { ty, .. }) => ty,
-        _ => {
-            let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_pointer_type);
-            cx.sess().bug(format!("debuginfo: Unexpected trait-pointer type in \
-                                   trait_pointer_metadata(): {}",
-                                   pp_type_name.as_slice()).as_slice());
-        }
-    };
-
-    let def_id = match ty::get(trait_object_type).sty {
+    let def_id = match ty::get(trait_type).sty {
         ty::ty_trait(box ty::TyTrait { def_id, .. }) => def_id,
         _ => {
-            let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_object_type);
+            let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_type);
             cx.sess().bug(format!("debuginfo: Unexpected trait-object type in \
                                    trait_pointer_metadata(): {}",
                                    pp_type_name.as_slice()).as_slice());
         }
     };
 
-    let trait_pointer_type_name =
-        compute_debuginfo_type_name(cx, trait_pointer_type, false);
+    let trait_object_type = trait_object_type.unwrap_or(trait_type);
+    let trait_type_name =
+        compute_debuginfo_type_name(cx, trait_object_type, false);
 
     let (containing_scope, _) = get_namespace_and_span_for_item(cx, def_id);
 
-    let trait_pointer_llvm_type = type_of::type_of(cx, trait_pointer_type);
+    let trait_llvm_type = type_of::type_of(cx, trait_object_type);
 
     composite_type_metadata(cx,
-                            trait_pointer_llvm_type,
-                            trait_pointer_type_name.as_slice(),
+                            trait_llvm_type,
+                            trait_type_name.as_slice(),
                             unique_type_id,
                             [],
                             containing_scope,
@@ -2989,27 +2898,33 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_box(pointee_type) => {
             at_box_metadata(cx, t, pointee_type, unique_type_id)
         }
-        ty::ty_vec(ref mt, Some(len)) => {
-            fixed_vec_metadata(cx, unique_type_id, mt.ty, len, usage_site_span)
+        ty::ty_vec(typ, Some(len)) => {
+            fixed_vec_metadata(cx, unique_type_id, typ, len, usage_site_span)
         }
-        ty::ty_uniq(pointee_type) => {
-            match ty::get(pointee_type).sty {
-                ty::ty_vec(ref mt, None) => {
-                    heap_vec_metadata(cx, pointee_type, mt.ty, unique_type_id, usage_site_span)
+        // FIXME Can we do better than this for unsized vec/str fields?
+        ty::ty_vec(typ, None) => fixed_vec_metadata(cx, unique_type_id, typ, 0, usage_site_span),
+        ty::ty_str => fixed_vec_metadata(cx, unique_type_id, ty::mk_i8(), 0, usage_site_span),
+        ty::ty_trait(..) => {
+            MetadataCreationResult::new(
+                        trait_pointer_metadata(cx, t, None, unique_type_id),
+            false)
+        }
+        ty::ty_uniq(ty) | ty::ty_ptr(ty::mt{ty, ..}) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
+            match ty::get(ty).sty {
+                ty::ty_vec(typ, None) => {
+                    vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
                 }
                 ty::ty_str => {
-                    let i8_t = ty::mk_i8();
-                    heap_vec_metadata(cx, pointee_type, i8_t, unique_type_id, usage_site_span)
+                    vec_slice_metadata(cx, t, ty::mk_u8(), unique_type_id, usage_site_span)
                 }
                 ty::ty_trait(..) => {
                     MetadataCreationResult::new(
-                        trait_pointer_metadata(cx, t, unique_type_id),
+                        trait_pointer_metadata(cx, ty, Some(t), unique_type_id),
                         false)
                 }
                 _ => {
-                    let pointee_metadata = type_metadata(cx,
-                                                         pointee_type,
-                                                         usage_site_span);
+                    let pointee_metadata = type_metadata(cx, ty, usage_site_span);
+
                     match debug_context(cx).type_map
                                            .borrow()
                                            .find_metadata_for_unique_id(unique_type_id) {
@@ -3019,33 +2934,6 @@ fn type_metadata(cx: &CrateContext,
 
                     MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee_metadata),
                                                 false)
-                }
-            }
-        }
-        ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {
-            match ty::get(mt.ty).sty {
-                ty::ty_vec(ref mt, None) => {
-                    vec_slice_metadata(cx, t, mt.ty, unique_type_id, usage_site_span)
-                }
-                ty::ty_str => {
-                    vec_slice_metadata(cx, t, ty::mk_u8(), unique_type_id, usage_site_span)
-                }
-                ty::ty_trait(..) => {
-                    MetadataCreationResult::new(
-                        trait_pointer_metadata(cx, t, unique_type_id),
-                        false)
-                }
-                _ => {
-                    let pointee = type_metadata(cx, mt.ty, usage_site_span);
-
-                    match debug_context(cx).type_map
-                                           .borrow()
-                                           .find_metadata_for_unique_id(unique_type_id) {
-                        Some(metadata) => return metadata,
-                        None => { /* proceed normally */ }
-                    };
-
-                    MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee), false)
                 }
             }
         }
@@ -3544,7 +3432,6 @@ fn populate_scope_map(cx: &CrateContext,
             ast::ExprAgain(_) |
             ast::ExprPath(_)  => {}
 
-            ast::ExprVstore(ref sub_exp, _)   |
             ast::ExprCast(ref sub_exp, _)     |
             ast::ExprAddrOf(_, ref sub_exp)  |
             ast::ExprField(ref sub_exp, _, _) |
@@ -3820,7 +3707,7 @@ fn push_debuginfo_type_name(cx: &CrateContext,
 
             push_debuginfo_type_name(cx, inner_type, true, output);
         },
-        ty::ty_vec(ty::mt { ty: inner_type, .. }, optional_length) => {
+        ty::ty_vec(inner_type, optional_length) => {
             output.push_char('[');
             push_debuginfo_type_name(cx, inner_type, true, output);
 
@@ -3933,6 +3820,7 @@ fn push_debuginfo_type_name(cx: &CrateContext,
         }
         ty::ty_err      |
         ty::ty_infer(_) |
+        ty::ty_open(_) |
         ty::ty_param(_) => {
             cx.sess().bug(format!("debuginfo: Trying to create type name for \
                 unexpected type: {}", ppaux::ty_to_string(cx.tcx(), t)).as_slice());

@@ -560,21 +560,6 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
 
     check_block_with_expected(&fcx, body, ExpectHasType(ret_ty));
 
-    // We unify the tail expr's type with the
-    // function result type, if there is a tail expr.
-    match body.expr {
-        Some(ref tail_expr) => {
-            // Special case: we print a special error if there appears
-            // to be do-block/for-loop confusion
-            demand::suptype_with_fn(&fcx, tail_expr.span, false,
-                fcx.ret_ty, fcx.expr_ty(&**tail_expr),
-                |sp, e, a, s| {
-                    fcx.report_mismatched_return_types(sp, e, a, s);
-                });
-        }
-        None => {}
-    }
-
     for (input, arg) in decl.inputs.iter().zip(arg_tys.iter()) {
         fcx.write_ty(input.id, *arg);
     }
@@ -1164,7 +1149,7 @@ fn check_cast(fcx: &FnCtxt,
     if ty::type_is_scalar(t_1) {
         // Supply the type as a hint so as to influence integer
         // literals and other things that might care.
-        check_expr_with_hint(fcx, e, t_1)
+        check_expr_with_expectation(fcx, e, ExpectCastableToType(t_1))
     } else {
         check_expr(fcx, e)
     }
@@ -2048,7 +2033,6 @@ fn check_argument_types(fcx: &FnCtxt,
                 }
 
                 check_expr_coercable_to_type(fcx, &**arg, formal_ty);
-
             }
         }
     }
@@ -2436,8 +2420,20 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 // The tightest thing we can say is "must unify with
                 // else branch". Note that in the case of a "has type"
                 // constraint, this limitation does not hold.
-                let expected = expected.only_has_type();
 
+                // If the expected type is just a type variable, then don't use
+                // an expected type. Otherwise, we might write parts of the type
+                // when checking the 'then' block which are incompatible with the
+                // 'else' branch.
+                let expected = match expected.only_has_type() {
+                    ExpectHasType(ety) => {
+                        match infer::resolve_type(fcx.infcx(), Some(sp), ety, force_tvar) {
+                            Ok(rty) if !ty::type_is_ty_var(rty) => ExpectHasType(rty),
+                            _ => NoExpectation
+                        }
+                    }
+                    _ => NoExpectation
+                };
                 check_block_with_expected(fcx, then_blk, expected);
                 let then_ty = fcx.node_ty(then_blk.id);
                 check_expr_with_expectation(fcx, &**else_expr, expected);
@@ -3070,96 +3066,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
     type ExprCheckerWithTy = fn(&FnCtxt, &ast::Expr, ty::t);
 
-    fn check_fn_for_vec_elements_expected(fcx: &FnCtxt,
-                                          expected: Expectation)
-                                         -> (ExprCheckerWithTy, ty::t) {
-        let tcx = fcx.ccx.tcx;
-        let (coerce, t) = match expected {
-            // If we're given an expected type, we can try to coerce to it
-            ExpectHasType(t) if ty::type_is_vec(t) => (true, ty::sequence_element_type(tcx, t)),
-            // Otherwise we just leave the type to be resolved later
-            _ => (false, fcx.infcx().next_ty_var())
-        };
-        if coerce {
-            (check_expr_coercable_to_type, t)
-        } else {
-            (check_expr_has_type, t)
-        }
-    }
-
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
     match expr.node {
-        ast::ExprVstore(ev, vst) => {
-            let (check, t) = check_fn_for_vec_elements_expected(fcx, expected);
-            let typ = match ev.node {
-                ast::ExprVec(ref args) => {
-                    let mutability = match vst {
-                        ast::ExprVstoreMutSlice => ast::MutMutable,
-                        _ => ast::MutImmutable,
-                    };
-                    let mut any_error = false;
-                    let mut any_bot = false;
-                    for e in args.iter() {
-                        check(fcx, &**e, t);
-                        let arg_t = fcx.expr_ty(&**e);
-                        if ty::type_is_error(arg_t) {
-                            any_error = true;
-                        }
-                        else if ty::type_is_bot(arg_t) {
-                            any_bot = true;
-                        }
-                    }
-                    if any_error {
-                        ty::mk_err()
-                    } else if any_bot {
-                        ty::mk_bot()
-                    } else {
-                        ast_expr_vstore_to_ty(fcx, &*ev, vst, ||
-                            ty::mt{ ty: ty::mk_vec(tcx,
-                                                   ty::mt {ty: t, mutbl: mutability},
-                                                   None),
-                                                   mutbl: mutability })
-                    }
-                }
-                ast::ExprRepeat(ref element, ref count_expr) => {
-                    check_expr_with_hint(fcx, &**count_expr, ty::mk_uint());
-                    let _ = ty::eval_repeat_count(fcx, &**count_expr);
-                    let mutability = match vst {
-                        ast::ExprVstoreMutSlice => ast::MutMutable,
-                        _ => ast::MutImmutable,
-                    };
-                    check(fcx, &**element, t);
-                    let arg_t = fcx.expr_ty(&**element);
-                    if ty::type_is_error(arg_t) {
-                        ty::mk_err()
-                    } else if ty::type_is_bot(arg_t) {
-                        ty::mk_bot()
-                    } else {
-                        ast_expr_vstore_to_ty(fcx, &*ev, vst, ||
-                            ty::mt{ ty: ty::mk_vec(tcx,
-                                                   ty::mt {ty: t, mutbl: mutability},
-                                                   None),
-                                                   mutbl: mutability})
-                    }
-                }
-                ast::ExprLit(_) => {
-                    if vst == ast::ExprVstoreSlice {
-                        span_err!(tcx.sess, expr.span, E0064,
-                            "`&\"string\"` has been removed; use `\"string\"` instead");
-                    } else {
-                        span_err!(tcx.sess, expr.span, E0065,
-                            "`box \"string\"` has been removed; use \
-                             `\"string\".to_string()` instead");
-                    }
-                    ty::mk_err()
-                }
-                _ => tcx.sess.span_bug(expr.span, "vstore modifier on non-sequence"),
-            };
-            fcx.write_ty(ev.id, typ);
-            fcx.write_ty(id, typ);
-        }
-
       ast::ExprBox(ref place, ref subexpr) => {
           check_expr(fcx, &**place);
           check_expr(fcx, &**subexpr);
@@ -3230,7 +3139,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         }
       }
       ast::ExprUnary(unop, ref oprnd) => {
-        let expected = expected.only_has_type();
         let expected_inner = expected.map(fcx, |sty| {
             match unop {
                 ast::UnBox | ast::UnUniq => match *sty {
@@ -3337,22 +3245,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                                     hint,
                                                     lvalue_pref);
 
-        // Note: at this point, we cannot say what the best lifetime
-        // is to use for resulting pointer.  We want to use the
-        // shortest lifetime possible so as to avoid spurious borrowck
-        // errors.  Moreover, the longest lifetime will depend on the
-        // precise details of the value whose address is being taken
-        // (and how long it is valid), which we don't know yet until type
-        // inference is complete.
-        //
-        // Therefore, here we simply generate a region variable.  The
-        // region inferencer will then select the ultimate value.
-        // Finally, borrowck is charged with guaranteeing that the
-        // value whose address was taken can actually be made to live
-        // as long as it needs to live.
-        let region = fcx.infcx().next_region_var(
-            infer::AddrOfRegion(expr.span));
-
         let tm = ty::mt { ty: fcx.expr_ty(&**oprnd), mutbl: mutbl };
         let oprnd_t = if ty::type_is_error(tm.ty) {
             ty::mk_err()
@@ -3360,7 +3252,31 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             ty::mk_bot()
         }
         else {
-            ty::mk_rptr(tcx, region, tm)
+            // Note: at this point, we cannot say what the best lifetime
+            // is to use for resulting pointer.  We want to use the
+            // shortest lifetime possible so as to avoid spurious borrowck
+            // errors.  Moreover, the longest lifetime will depend on the
+            // precise details of the value whose address is being taken
+            // (and how long it is valid), which we don't know yet until type
+            // inference is complete.
+            //
+            // Therefore, here we simply generate a region variable.  The
+            // region inferencer will then select the ultimate value.
+            // Finally, borrowck is charged with guaranteeing that the
+            // value whose address was taken can actually be made to live
+            // as long as it needs to live.
+            match oprnd.node {
+                // String literals are already, implicitly converted to slices.
+                //ast::ExprLit(lit) if ast_util::lit_is_str(lit) => fcx.expr_ty(oprnd),
+                // Empty slices live in static memory.
+                ast::ExprVec(ref elements) if elements.len() == 0 => {
+                    ty::mk_rptr(tcx, ty::ReStatic, tm)
+                }
+                _ => {
+                    let region = fcx.infcx().next_region_var(infer::AddrOfRegion(expr.span));
+                    ty::mk_rptr(tcx, region, tm)
+                }
+            }
         };
         fcx.write_ty(id, oprnd_t);
       }
@@ -3393,7 +3309,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             }
           },
           Some(ref e) => {
-              check_expr_has_type(fcx, &**e, ret_ty);
+              check_expr_coercable_to_type(fcx, &**e, ret_ty);
           }
         }
         fcx.write_bot(id);
@@ -3547,29 +3463,66 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         check_cast(fcx, &**e, &**t, id, expr.span);
       }
       ast::ExprVec(ref args) => {
-        let (check, t) = check_fn_for_vec_elements_expected(fcx, expected);
-        for e in args.iter() {
-            check(fcx, &**e, t);
-        }
-        let typ = ty::mk_vec(tcx, ty::mt {ty: t, mutbl: ast::MutImmutable},
-                             Some(args.len()));
+        let uty = match expected {
+            ExpectHasType(uty) => {
+                match ty::get(uty).sty {
+                        ty::ty_vec(ty, _) => Some(ty),
+                        _ => None
+                }
+            }
+            _ => None
+        };
+
+        let typ = match uty {
+            Some(uty) => {
+                for e in args.iter() {
+                    check_expr_coercable_to_type(fcx, &**e, uty);
+                }
+                uty
+            }
+            None => {
+                let t: ty::t = fcx.infcx().next_ty_var();
+                for e in args.iter() {
+                    check_expr_has_type(fcx, &**e, t);
+                }
+                t
+            }
+        };
+        let typ = ty::mk_vec(tcx, typ, Some(args.len()));
         fcx.write_ty(id, typ);
       }
       ast::ExprRepeat(ref element, ref count_expr) => {
         check_expr_has_type(fcx, &**count_expr, ty::mk_uint());
         let count = ty::eval_repeat_count(fcx, &**count_expr);
-        let (check, t) = check_fn_for_vec_elements_expected(fcx, expected);
-        check(fcx, &**element, t);
-        let element_ty = fcx.expr_ty(&**element);
+
+        let uty = match expected {
+            ExpectHasType(uty) => {
+                match ty::get(uty).sty {
+                        ty::ty_vec(ty, _) => Some(ty),
+                        _ => None
+                }
+            }
+            _ => None
+        };
+
+        let (element_ty, t) = match uty {
+            Some(uty) => {
+                check_expr_coercable_to_type(fcx, &**element, uty);
+                (uty, uty)
+            }
+            None => {
+                let t: ty::t = fcx.infcx().next_ty_var();
+                check_expr_has_type(fcx, &**element, t);
+                (fcx.expr_ty(&**element), t)
+            }
+        };
+
         if ty::type_is_error(element_ty) {
             fcx.write_error(id);
-        }
-        else if ty::type_is_bot(element_ty) {
+        } else if ty::type_is_bot(element_ty) {
             fcx.write_bot(id);
-        }
-        else {
-            let t = ty::mk_vec(tcx, ty::mt {ty: t, mutbl: ast::MutImmutable},
-                               Some(count));
+        } else {
+            let t = ty::mk_vec(tcx, t, Some(count));
             fcx.write_ty(id, t);
         }
       }
@@ -3585,12 +3538,17 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         let mut err_field = false;
 
         let elt_ts = elts.iter().enumerate().map(|(i, e)| {
-            let opt_hint = match flds {
-                Some(ref fs) if i < fs.len() => ExpectHasType(*fs.get(i)),
-                _ => NoExpectation
+            let t = match flds {
+                Some(ref fs) if i < fs.len() => {
+                    let ety = *fs.get(i);
+                    check_expr_coercable_to_type(fcx, &**e, ety);
+                    ety
+                }
+                _ => {
+                    check_expr_with_expectation(fcx, &**e, NoExpectation);
+                    fcx.expr_ty(&**e)
+                }
             };
-            check_expr_with_expectation(fcx, &**e, opt_hint);
-            let t = fcx.expr_ty(&**e);
             err_field = err_field || ty::type_is_error(t);
             bot_field = bot_field || ty::type_is_bot(t);
             t
@@ -3702,9 +3660,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 autoderef(fcx, expr.span, raw_base_t, Some(base.id),
                           lvalue_pref, |base_t, _| ty::index(base_t));
               match field_ty {
-                  Some(mt) => {
+                  Some(ty) => {
                       check_expr_has_type(fcx, &**idx, ty::mk_uint());
-                      fcx.write_ty(id, mt.ty);
+                      fcx.write_ty(id, ty);
                       fcx.write_autoderef_adjustment(base.id, autoderefs);
                   }
                   None => {
@@ -3967,34 +3925,42 @@ fn check_block_with_expected(fcx: &FnCtxt,
         }
         match blk.expr {
             None => if any_err {
-                fcx.write_error(blk.id);
+                    fcx.write_error(blk.id);
+                }
+                else if any_bot {
+                    fcx.write_bot(blk.id);
+                }
+                else  {
+                    fcx.write_nil(blk.id);
+                },
+            Some(e) => {
+                if any_bot && !warned {
+                    fcx.ccx
+                       .tcx
+                       .sess
+                       .add_lint(lint::builtin::UNREACHABLE_CODE,
+                                 e.id,
+                                 e.span,
+                                 "unreachable expression".to_string());
+                }
+                let ety = match expected {
+                    ExpectHasType(ety) => {
+                        check_expr_coercable_to_type(fcx, &*e, ety);
+                        ety
+                    }
+                    _ => {
+                        check_expr_with_expectation(fcx, &*e, expected);
+                        fcx.expr_ty(&*e)
+                    }
+                };
+
+                fcx.write_ty(blk.id, ety);
+                if any_err {
+                    fcx.write_error(blk.id);
+                } else if any_bot {
+                    fcx.write_bot(blk.id);
+                }
             }
-            else if any_bot {
-                fcx.write_bot(blk.id);
-            }
-            else  {
-                fcx.write_nil(blk.id);
-            },
-          Some(e) => {
-            if any_bot && !warned {
-                fcx.ccx
-                   .tcx
-                   .sess
-                   .add_lint(lint::builtin::UNREACHABLE_CODE,
-                             e.id,
-                             e.span,
-                             "unreachable expression".to_string());
-            }
-            check_expr_with_expectation(fcx, &*e, expected);
-              let ety = fcx.expr_ty(&*e);
-              fcx.write_ty(blk.id, ety);
-              if any_err {
-                  fcx.write_error(blk.id);
-              }
-              else if any_bot {
-                  fcx.write_bot(blk.id);
-              }
-          }
         };
     });
 
@@ -4040,9 +4006,8 @@ pub fn check_const_with_ty(fcx: &FnCtxt,
     // emit a error.
     GatherLocalsVisitor { fcx: fcx }.visit_expr(e, ());
 
-    check_expr(fcx, e);
-    let cty = fcx.expr_ty(e);
-    demand::suptype(fcx, e.span, declty, cty);
+    check_expr_with_hint(fcx, e, declty);
+    demand::coerce(fcx, e.span, declty, e);
     regionck::regionck_expr(fcx, e);
     writeback::resolve_type_vars_in_expr(fcx, e);
 }
@@ -4131,6 +4096,7 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
         _ => ()
     }
 }
+
 
 pub fn check_enum_variants_sized(ccx: &CrateCtxt,
                                  vs: &[ast::P<ast::Variant>]) {
@@ -4747,39 +4713,39 @@ pub fn type_is_uint(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
     return ty::type_is_uint(typ_s);
 }
 
-pub fn ast_expr_vstore_to_ty(fcx: &FnCtxt,
-                             e: &ast::Expr,
-                             v: ast::ExprVstore,
-                             mk_inner: || -> ty::mt)
-                             -> ty::t {
-    match v {
-        ast::ExprVstoreUniq => ty::mk_uniq(fcx.ccx.tcx, mk_inner().ty),
-        ast::ExprVstoreSlice | ast::ExprVstoreMutSlice => {
-            match e.node {
-                ast::ExprLit(..) => {
-                    // string literals and *empty slices* live in static memory
-                    ty::mk_rptr(fcx.ccx.tcx, ty::ReStatic, mk_inner())
-                }
-                ast::ExprVec(ref elements) if elements.len() == 0 => {
-                    // string literals and *empty slices* live in static memory
-                    ty::mk_rptr(fcx.ccx.tcx, ty::ReStatic, mk_inner())
-                }
-                ast::ExprRepeat(..) |
-                ast::ExprVec(..) => {
-                    // vector literals are temporaries on the stack
-                    match fcx.tcx().region_maps.temporary_scope(e.id) {
-                        Some(scope) => ty::mk_rptr(fcx.ccx.tcx, ty::ReScope(scope), mk_inner()),
-                        None => ty::mk_rptr(fcx.ccx.tcx, ty::ReStatic, mk_inner()),
-                    }
-                }
-                _ => {
-                    fcx.ccx.tcx.sess.span_bug(e.span,
-                                              "vstore with unexpected \
-                                               contents")
-                }
-            }
-        }
-    }
+pub fn type_is_scalar(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_scalar(typ_s);
+}
+
+pub fn type_is_char(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_char(typ_s);
+}
+
+pub fn type_is_bare_fn(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_bare_fn(typ_s);
+}
+
+pub fn type_is_floating_point(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_floating_point(typ_s);
+}
+
+pub fn type_is_unsafe_ptr(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_unsafe_ptr(typ_s);
+}
+
+pub fn type_is_region_ptr(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_region_ptr(typ_s);
+}
+
+pub fn type_is_c_like_enum(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_c_like_enum(fcx.ccx.tcx, typ_s);
 }
 
 // Returns true if b contains a break that can exit from b

@@ -22,9 +22,9 @@ mod argparse {
 
     impl<'a> Flag<'a> {
         pub fn set_desc(self, s: &str) -> Flag<'a> {
-            Flag { //~ ERROR cannot infer
+            Flag {
                 name: self.name,
-                desc: s,
+                desc: s, //~ ERROR cannot infer an appropriate lifetime for automatic coercion due t
                 max_count: self.max_count,
                 value: self.value
             }

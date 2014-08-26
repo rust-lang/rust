@@ -398,10 +398,7 @@ pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
                             Some(ty::mk_mach_float(ft))
                         }
                         ast::TyStr => {
-                            span_err!(tcx.sess, ast_ty.span, E0037,
-                                      "bare `str` is not a type");
-                            // return /something/ so they can at least get more errors
-                            Some(ty::mk_uniq(tcx, ty::mk_str(tcx)))
+                            Some(ty::mk_str(tcx))
                         }
                     }
                 }
@@ -462,21 +459,7 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
                                                rscope,
                                                &mt,
                                                Uniq,
-                                               |typ| {
-                            match ty::get(typ).sty {
-                                ty::ty_str => {
-                                    span_err!(this.tcx().sess, path.span, E0111,
-                                              "`Box<str>` is not a type");
-                                    ty::mk_err()
-                                }
-                                ty::ty_vec(_, None) => {
-                                        span_err!(this.tcx().sess, path.span, E0112,
-                                                  "`Box<[T]>` is not a type");
-                                    ty::mk_err()
-                                }
-                                _ => ty::mk_uniq(this.tcx(), typ),
-                            }
-                        }))
+                                               |typ| ty::mk_uniq(this.tcx(), typ)));
                     }
                     span_err!(this.tcx().sess, path.span, E0113,
                               "not enough type parameters supplied to `Box<T>`");
@@ -537,12 +520,6 @@ enum PointerTy {
     Uniq
 }
 
-fn ast_ty_to_mt<AC:AstConv, RS:RegionScope>(this: &AC,
-                                            rscope: &RS,
-                                            ty: &ast::Ty) -> ty::mt {
-    ty::mt {ty: ast_ty_to_ty(this, rscope, ty), mutbl: ast::MutImmutable}
-}
-
 pub fn trait_ref_for_unboxed_function<AC:AstConv,
                                       RS:RegionScope>(
                                       this: &AC,
@@ -601,11 +578,8 @@ fn mk_pointer<AC:AstConv,
 
     match a_seq_ty.ty.node {
         ast::TyVec(ref ty) => {
-            let mut mt = ast_ty_to_mt(this, rscope, &**ty);
-            if a_seq_ty.mutbl == ast::MutMutable {
-                mt.mutbl = ast::MutMutable;
-            }
-            return constr(ty::mk_vec(tcx, mt, None));
+            let ty = ast_ty_to_ty(this, rscope, &**ty);
+            return constr(ty::mk_vec(tcx, ty, None));
         }
         ast::TyUnboxedFn(ref unboxed_function) => {
             let ty::TraitRef {
@@ -662,10 +636,24 @@ fn mk_pointer<AC:AstConv,
                 Some(&def::DefTrait(trait_def_id)) => {
                     let result = ast_path_to_trait_ref(
                         this, rscope, trait_def_id, None, path);
-                    let trait_store = match ptr_ty {
-                        Uniq => ty::UniqTraitStore,
+                    let static_region = match ptr_ty {
+                        RPtr(r) if r == ty::ReStatic => true,
+                        _ => false
+                    };
+                    let bounds = conv_builtin_bounds(this.tcx(),
+                                                     path.span,
+                                                     bounds,
+                                                     static_region);
+                    let tr = ty::mk_trait(tcx,
+                                          result.def_id,
+                                          result.substs.clone(),
+                                          bounds);
+                    return match ptr_ty {
+                        Uniq => {
+                            return ty::mk_uniq(tcx, tr);
+                        }
                         RPtr(r) => {
-                            ty::RegionTraitStore(r, a_seq_ty.mutbl)
+                            return ty::mk_rptr(tcx, r, ty::mt{mutbl: a_seq_ty.mutbl, ty: tr});
                         }
                         _ => {
                             tcx.sess.span_err(
@@ -675,24 +663,6 @@ fn mk_pointer<AC:AstConv,
                             return ty::mk_err();
                         }
                     };
-                    let bounds = conv_builtin_bounds(this.tcx(),
-                                                     path.span,
-                                                     bounds,
-                                                     trait_store);
-                    let tr = ty::mk_trait(tcx,
-                                          result.def_id,
-                                          result.substs.clone(),
-                                          bounds);
-                    // We could just match on ptr_ty, but we need to pass a trait
-                    // store to conv_builtin_bounds, so mathc twice for now.
-                    return match trait_store {
-                        ty::UniqTraitStore => {
-                            return ty::mk_uniq(tcx, tr);
-                        }
-                        ty::RegionTraitStore(r, m) => {
-                            return ty::mk_rptr(tcx, r, ty::mt{mutbl: m, ty: tr});
-                        }
-                    }
                 }
                 _ => {}
             }
@@ -738,10 +708,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                            |ty| ty::mk_uniq(tcx, ty))
             }
             ast::TyVec(ty) => {
-                tcx.sess.span_err(ast_ty.span, "bare `[]` is not a type");
-                // return /something/ so they can at least get more errors
-                let vec_ty = ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, &*ty), None);
-                ty::mk_uniq(tcx, vec_ty)
+                ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &*ty), None)
             }
             ast::TyPtr(ref mt) => {
                 ty::mk_ptr(tcx, ty::mt {
@@ -777,15 +744,14 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 let bound_region = opt_ast_region_to_region(this, rscope,
                                                             ast_ty.span, region);
 
-                let store = ty::RegionTraitStore(bound_region, ast::MutMutable);
-
                 // Use corresponding trait store to figure out default bounds
                 // if none were specified.
                 let bounds = conv_builtin_bounds(this.tcx(),
                                                  ast_ty.span,
                                                  &f.bounds,
-                                                 store);
+                                                 bound_region == ty::ReStatic);
 
+                let store = ty::RegionTraitStore(bound_region, ast::MutMutable);
                 let fn_decl = ty_of_closure(this,
                                             ast_ty.id,
                                             f.fn_style,
@@ -803,7 +769,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 let bounds = conv_builtin_bounds(this.tcx(),
                                                  ast_ty.span,
                                                  &f.bounds,
-                                                 ty::UniqTraitStore);
+                                                 false);
 
                 let fn_decl = ty_of_closure(this,
                                             ast_ty.id,
@@ -841,15 +807,17 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                     _ => { },
                 }
                 match a_def {
-                    def::DefTrait(_) => {
-                        let path_str = path_to_string(path);
-                        tcx.sess.span_err(
-                            ast_ty.span,
-                            format!("reference to trait `{name}` where a \
-                                     type is expected; try `Box<{name}>` or \
-                                     `&{name}`",
-                                    name=path_str).as_slice());
-                        ty::mk_err()
+                    def::DefTrait(trait_def_id) => {
+                    let result = ast_path_to_trait_ref(
+                        this, rscope, trait_def_id, None, path);
+                    let bounds = conv_builtin_bounds(this.tcx(),
+                                                     path.span,
+                                                     bounds,
+                                                     false);
+                    ty::mk_trait(tcx,
+                                 result.def_id,
+                                 result.substs.clone(),
+                                 bounds)
                     }
                     def::DefTy(did) | def::DefStruct(did) => {
                         ast_path_to_ty(this, rscope, did, path).ty
@@ -887,10 +855,10 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                     Ok(ref r) => {
                         match *r {
                             const_eval::const_int(i) =>
-                                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, &*ty),
+                                ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &*ty),
                                            Some(i as uint)),
                             const_eval::const_uint(i) =>
-                                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, &*ty),
+                                ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &*ty),
                                            Some(i as uint)),
                             _ => {
                                 tcx.sess.span_fatal(
@@ -1211,7 +1179,7 @@ pub fn ty_of_closure<AC:AstConv>(
 fn conv_builtin_bounds(tcx: &ty::ctxt,
                        span: Span,
                        ast_bounds: &Option<OwnedSlice<ast::TyParamBound>>,
-                       store: ty::TraitStore)
+                       static_region: bool)
                        -> ty::BuiltinBounds {
     //! Converts a list of bounds from the AST into a `BuiltinBounds`
     //! struct. Reports an error if any of the bounds that appear
@@ -1224,8 +1192,8 @@ fn conv_builtin_bounds(tcx: &ty::ctxt,
     //! override this with an empty bounds list, e.g. "Box<fn:()>" or
     //! "Box<Trait:>".
 
-    match (ast_bounds, store) {
-        (&Some(ref bound_vec), _) => {
+    match ast_bounds {
+        &Some(ref bound_vec) => {
             let mut builtin_bounds = ty::empty_builtin_bounds();
             for ast_bound in bound_vec.iter() {
                 match *ast_bound {
@@ -1265,12 +1233,10 @@ fn conv_builtin_bounds(tcx: &ty::ctxt,
             builtin_bounds
         },
         // &'static Trait is sugar for &'static Trait:'static.
-        (&None, ty::RegionTraitStore(ty::ReStatic, _)) => {
+        &None if static_region => {
             let mut set = ty::empty_builtin_bounds(); set.add(ty::BoundStatic); set
         }
-        // No bounds are automatically applied for &'r Trait or ~Trait
-        (&None, ty::RegionTraitStore(..)) |
-        (&None, ty::UniqTraitStore) => ty::empty_builtin_bounds(),
+        &None => ty::empty_builtin_bounds(),
     }
 }
 

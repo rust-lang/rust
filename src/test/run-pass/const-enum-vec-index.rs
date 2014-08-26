@@ -12,6 +12,9 @@ enum E { V1(int), V0 }
 static C: &'static [E] = &[V0, V1(0xDEADBEE)];
 static C0: E = C[0];
 static C1: E = C[1];
+static D: &'static [E, ..2] = &[V0, V1(0xDEADBEE)];
+static D0: E = C[0];
+static D1: E = C[1];
 
 pub fn main() {
     match C0 {
@@ -19,6 +22,15 @@ pub fn main() {
         _ => fail!()
     }
     match C1 {
+        V1(n) => assert!(n == 0xDEADBEE),
+        _ => fail!()
+    }
+
+    match D0 {
+        V0 => (),
+        _ => fail!()
+    }
+    match D1 {
         V1(n) => assert!(n == 0xDEADBEE),
         _ => fail!()
     }

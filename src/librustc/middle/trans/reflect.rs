@@ -66,7 +66,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
     pub fn c_size_and_align(&mut self, t: ty::t) -> Vec<ValueRef> {
         let tr = type_of(self.bcx.ccx(), t);
         let s = machine::llsize_of_real(self.bcx.ccx(), tr);
-        let a = machine::llalign_of_min(self.bcx.ccx(), tr);
+        let a = align_of(self.bcx.ccx(), t);
         return vec!(self.c_uint(s as uint),
              self.c_uint(a as uint));
     }
@@ -94,6 +94,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
             ty::MethodTraitItem(ref method) => (*method).clone(),
         };
         let mth_ty = ty::mk_bare_fn(tcx, method.fty.clone());
+        debug!("Emit call visit method: visit_{}: {}", ty_name, ty_to_string(tcx, mth_ty));
         let v = self.visitor_val;
         debug!("passing {} args:", args.len());
         let mut bcx = self.bcx;
@@ -149,13 +150,24 @@ impl<'a, 'b> Reflector<'a, 'b> {
           ty::ty_float(ast::TyF32) => self.leaf("f32"),
           ty::ty_float(ast::TyF64) => self.leaf("f64"),
 
+          ty::ty_open(_) | ty::ty_str | ty::ty_vec(_, None) | ty::ty_trait(..) => {
+              // Unfortunately we can't do anything here because at runtime we
+              // pass around the value by pointer (*u8). But unsized pointers are
+              // fat and so we can't just cast them to *u8 and back. So we have
+              // to work with the pointer directly (see ty_rptr/ty_uniq).
+              fail!("Can't reflect unsized type")
+          }
+          // FIXME(15049) Reflection for unsized structs.
+          ty::ty_struct(..) if !ty::type_is_sized(bcx.tcx(), t) => {
+              fail!("Can't reflect unsized type")
+          }
+
           // Should rename to vec_*.
-          ty::ty_vec(ref mt, Some(sz)) => {
-              let extra = (vec!(self.c_uint(sz))).append(self.c_size_and_align(t).as_slice());
-              let extra = extra.append(self.c_mt(mt).as_slice());
+          ty::ty_vec(ty, Some(sz)) => {
+              let mut extra = (vec!(self.c_uint(sz))).append(self.c_size_and_align(t).as_slice());
+              extra.push(self.c_tydesc(ty));
               self.visit("evec_fixed", extra.as_slice())
           }
-          ty::ty_vec(..) | ty::ty_str | ty::ty_trait(..) => fail!("unexpected unsized type"),
           // Should remove mt from box and uniq.
           ty::ty_box(typ) => {
               let extra = self.c_mt(&ty::mt {
@@ -164,14 +176,12 @@ impl<'a, 'b> Reflector<'a, 'b> {
               });
               self.visit("box", extra.as_slice())
           }
+          ty::ty_ptr(ref mt) => {
+              let extra = self.c_mt(mt);
+              self.visit("ptr", extra.as_slice())
+          }
           ty::ty_uniq(typ) => {
               match ty::get(typ).sty {
-                  ty::ty_vec(ref mt, None) => {
-                      let extra = Vec::new();
-                      let extra = extra.append(self.c_mt(mt).as_slice());
-                      self.visit("evec_uniq", extra.as_slice())
-                  }
-                  ty::ty_str => self.visit("estr_uniq", &[]),
                   ty::ty_trait(..) => {
                       let extra = [
                           self.c_slice(token::intern_and_get_ident(
@@ -179,6 +189,12 @@ impl<'a, 'b> Reflector<'a, 'b> {
                       ];
                       self.visit("trait", extra);
                   }
+                  // FIXME(15049) allow reflection of Box<[T]>. You'll need to
+                  // restore visit_evec_uniq.
+                  ty::ty_vec(_, None) => {
+                      fail!("Box<[T]> theoretically doesn't exist, so don't try to reflect it")
+                  }
+                  ty::ty_str => fail!("Can't reflect Box<str> which shouldn't be used anyway"),
                   _ => {
                       let extra = self.c_mt(&ty::mt {
                           ty: typ,
@@ -188,17 +204,11 @@ impl<'a, 'b> Reflector<'a, 'b> {
                   }
               }
           }
-          ty::ty_ptr(ref mt) => {
-              let extra = self.c_mt(mt);
-              self.visit("ptr", extra.as_slice())
-          }
           ty::ty_rptr(_, ref mt) => {
               match ty::get(mt.ty).sty {
-                  ty::ty_vec(ref mt, None) => {
-                      let (name, extra) = ("slice".to_string(), Vec::new());
-                      let extra = extra.append(self.c_mt(mt).as_slice());
-                      self.visit(format!("evec_{}", name).as_slice(),
-                                 extra.as_slice())
+                  ty::ty_vec(ty, None) => {
+                      let extra = self.c_mt(&ty::mt{ty: ty, mutbl: mt.mutbl});
+                      self.visit("evec_slice", extra.as_slice())
                   }
                   ty::ty_str => self.visit("estr_slice", &[]),
                   ty::ty_trait(..) => {
@@ -267,12 +277,18 @@ impl<'a, 'b> Reflector<'a, 'b> {
                       special_idents::unnamed_field.name;
               }
 
+              // This and the type_is_sized check on individual field types are
+              // because we cannot reflect unsized types (see note above). We
+              // just pretend the unsized field does not exist and print nothing.
+              // This is sub-optimal.
+              let len = fields.len();
+
               let extra = (vec!(
                   self.c_slice(
                       token::intern_and_get_ident(ty_to_string(tcx,
                                                             t).as_slice())),
                   self.c_bool(named_fields),
-                  self.c_uint(fields.len())
+                  self.c_uint(len)
               )).append(self.c_size_and_align(t).as_slice());
               self.bracketed("class", extra.as_slice(), |this| {
                   for (i, field) in fields.iter().enumerate() {

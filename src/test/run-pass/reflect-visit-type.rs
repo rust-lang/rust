@@ -61,6 +61,8 @@ impl TyVisitor for MyVisitor {
     fn visit_char(&mut self) -> bool { true }
 
     fn visit_estr_slice(&mut self) -> bool { true }
+    // NOTE: remove after snapshot
+    #[cfg(stage0)]
     fn visit_estr_fixed(&mut self,
                         _sz: uint, _sz2: uint,
                         _align: uint) -> bool { true }
@@ -72,7 +74,7 @@ impl TyVisitor for MyVisitor {
 
     fn visit_evec_slice(&mut self, _mtbl: uint, _inner: *const TyDesc) -> bool { true }
     fn visit_evec_fixed(&mut self, _n: uint, _sz: uint, _align: uint,
-                        _mtbl: uint, _inner: *const TyDesc) -> bool { true }
+                        _inner: *const TyDesc) -> bool { true }
 
     fn visit_enter_rec(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool { true }

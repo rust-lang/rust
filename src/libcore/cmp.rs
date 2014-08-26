@@ -112,12 +112,13 @@ impl Ordering {
     /// assert_eq!(Greater.reverse(), Less);
     ///
     ///
-    /// let mut data = &mut [2u, 10, 5, 8];
+    /// let mut data: &mut [_] = &mut [2u, 10, 5, 8];
     ///
     /// // sort the array from largest to smallest.
     /// data.sort_by(|a, b| a.cmp(b).reverse());
     ///
-    /// assert_eq!(data, &mut [10u, 8, 5, 2]);
+    /// let b: &mut [_] = &mut [10u, 8, 5, 2];
+    /// assert!(data == b);
     /// ```
     #[inline]
     #[experimental]

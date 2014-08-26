@@ -14,7 +14,7 @@ struct A<'a> {
 }
 
 pub fn main() {
-    let b = &["foo".to_string()];
+    let b: &[String] = &["foo".to_string()];
     let a = A {
         a: &["test".to_string()],
         b: Some(b),

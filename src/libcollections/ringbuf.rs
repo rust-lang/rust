@@ -243,7 +243,8 @@ impl<T> RingBuf<T> {
     /// buf.push(5i);
     /// buf.push(3);
     /// buf.push(4);
-    /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), &[&5, &3, &4]);
+    /// let b: &[_] = &[&5, &3, &4];
+    /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), b);
     /// ```
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
         Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
@@ -263,7 +264,8 @@ impl<T> RingBuf<T> {
     /// for num in buf.mut_iter() {
     ///     *num = *num - 2;
     /// }
-    /// assert_eq!(buf.mut_iter().collect::<Vec<&mut int>>().as_slice(), &[&mut 3, &mut 1, &mut 2]);
+    /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
+    /// assert_eq!(buf.mut_iter().collect::<Vec<&mut int>>().as_slice(), b);
     /// ```
     pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
         let start_index = raw_index(self.lo, self.elts.len(), 0);
@@ -865,12 +867,18 @@ mod tests {
         for i in range(0i, 5) {
             d.push_back(i);
         }
-        assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), &[&0,&1,&2,&3,&4]);
+        {
+            let b: &[_] = &[&0,&1,&2,&3,&4];
+            assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), b);
+        }
 
         for i in range(6i, 9) {
             d.push_front(i);
         }
-        assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), &[&8,&7,&6,&0,&1,&2,&3,&4]);
+        {
+            let b: &[_] = &[&8,&7,&6,&0,&1,&2,&3,&4];
+            assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), b);
+        }
 
         let mut it = d.iter();
         let mut len = d.len();
@@ -890,12 +898,16 @@ mod tests {
         for i in range(0i, 5) {
             d.push_back(i);
         }
-        assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), &[&4,&3,&2,&1,&0]);
+        {
+            let b: &[_] = &[&4,&3,&2,&1,&0];
+            assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), b);
+        }
 
         for i in range(6i, 9) {
             d.push_front(i);
         }
-        assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), &[&4,&3,&2,&1,&0,&6,&7,&8]);
+        let b: &[_] = &[&4,&3,&2,&1,&0,&6,&7,&8];
+        assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), b);
     }
 
     #[test]

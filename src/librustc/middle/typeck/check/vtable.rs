@@ -10,7 +10,7 @@
 
 
 use middle::ty;
-use middle::ty::{AutoAddEnv, AutoDerefRef, AutoObject, ParamTy};
+use middle::ty::{AutoDerefRef, ParamTy};
 use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::{FnCtxt, impl_self_ty};
@@ -388,7 +388,6 @@ fn search_for_vtable(vcx: &VtableContext,
                      trait_ref: Rc<ty::TraitRef>,
                      is_early: bool)
                      -> Option<vtable_origin> {
-    debug!("nrc - search_for_vtable");
     let tcx = vcx.tcx();
 
     // First, check to see whether this is a call to the `call` method of an
@@ -630,14 +629,8 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
     let _indent = indenter();
 
     let cx = fcx.ccx;
-    let resolve_object_cast = |src: &ast::Expr, target_ty: ty::t, key: MethodCall| {
-      // Look up vtables for the type we're casting to,
-      // passing in the source and target type.  The source
-      // must be a pointer type suitable to the object sigil,
-      // e.g.: `&x as &Trait` or `box x as Box<Trait>`
-      // Bounds of type's contents are not checked here, but in kind.rs.
-      let src_ty = structurally_resolved_type(fcx, ex.span,
-                                              fcx.expr_ty(src));
+    let check_object_cast = |src_ty: ty::t, target_ty: ty::t| {
+      // Check that a cast is of correct types.
       match (&ty::get(target_ty).sty, &ty::get(src_ty).sty) {
           (&ty::ty_rptr(_, ty::mt{ty, mutbl}), &ty::ty_rptr(_, mt))
             if !mutability_allowed(mt.mutbl, mutbl) => {
@@ -648,74 +641,14 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                   _ => {}
               }
           }
-
-          (&ty::ty_uniq(ty), &ty::ty_uniq(..) ) |
-          (&ty::ty_rptr(_, ty::mt{ty, ..}), &ty::ty_rptr(..)) => {
-              match ty::get(ty).sty {
-                  ty::ty_trait(box ty::TyTrait {
-                      def_id: target_def_id, substs: ref target_substs, ..
-                  }) => {
-                      debug!("nrc correct path");
-                      let typ = match &ty::get(src_ty).sty {
-                          &ty::ty_uniq(typ) => typ,
-                          &ty::ty_rptr(_, mt) => mt.ty,
-                          _ => fail!("shouldn't get here"),
-                      };
-
-                      let vcx = fcx.vtable_context();
-
-                      // Take the type parameters from the object
-                      // type, but set the Self type (which is
-                      // unknown, for the object type) to be the type
-                      // we are casting from.
-                      let mut target_types = target_substs.types.clone();
-                      assert!(target_types.get_self().is_none());
-                      target_types.push(subst::SelfSpace, typ);
-
-                      let target_trait_ref = Rc::new(ty::TraitRef {
-                          def_id: target_def_id,
-                          substs: subst::Substs {
-                              regions: target_substs.regions.clone(),
-                              types: target_types
-                          }
-                      });
-
-                      let param_bounds = ty::ParamBounds {
-                          builtin_bounds: ty::empty_builtin_bounds(),
-                          trait_bounds: vec!(target_trait_ref)
-                      };
-                      let vtables =
-                            lookup_vtables_for_param(&vcx,
-                                                     ex.span,
-                                                     None,
-                                                     &param_bounds,
-                                                     typ,
-                                                     is_early);
-
-                      if !is_early {
-                          let mut r = VecPerParamSpace::empty();
-                          r.push(subst::SelfSpace, vtables);
-                          insert_vtables(fcx, key, r);
-                      }
-
-                      // Now, if this is &trait, we need to link the
-                      // regions.
-                      match (&ty::get(src_ty).sty, &ty::get(target_ty).sty) {
-                          (&ty::ty_rptr(ra, _), &ty::ty_rptr(rb, _)) => {
-                              debug!("nrc - make subr");
-                              infer::mk_subr(fcx.infcx(),
-                                             false,
-                                             infer::RelateObjectBound(ex.span),
-                                             rb,
-                                             ra);
-                          }
-                          _ => {}
-                      }
-                  }
-                  _ => {}
-              }
+          (&ty::ty_uniq(..), &ty::ty_uniq(..) ) => {}
+          (&ty::ty_rptr(r_t, _), &ty::ty_rptr(r_s, _)) => {
+              infer::mk_subr(fcx.infcx(),
+                             false,
+                             infer::RelateObjectBound(ex.span),
+                             r_t,
+                             r_s);
           }
-
           (&ty::ty_uniq(ty), _) => {
               match ty::get(ty).sty {
                   ty::ty_trait(..) => {
@@ -737,7 +670,55 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                   _ => {}
               }
           }
+          _ => {}
+      }
+    };
+    let resolve_object_cast = |src_ty: ty::t, target_ty: ty::t, key: MethodCall| {
+      // Look up vtables for the type we're casting to,
+      // passing in the source and target type.  The source
+      // must be a pointer type suitable to the object sigil,
+      // e.g.: `&x as &Trait` or `box x as Box<Trait>`
+      // Bounds of type's contents are not checked here, but in kind.rs.
+      match ty::get(target_ty).sty {
+          ty::ty_trait(box ty::TyTrait {
+              def_id: target_def_id, substs: ref target_substs, ..
+          }) => {
+              let vcx = fcx.vtable_context();
 
+              // Take the type parameters from the object
+              // type, but set the Self type (which is
+              // unknown, for the object type) to be the type
+              // we are casting from.
+              let mut target_types = target_substs.types.clone();
+              assert!(target_types.get_self().is_none());
+              target_types.push(subst::SelfSpace, src_ty);
+
+              let target_trait_ref = Rc::new(ty::TraitRef {
+                  def_id: target_def_id,
+                  substs: subst::Substs {
+                      regions: target_substs.regions.clone(),
+                      types: target_types
+                  }
+              });
+
+              let param_bounds = ty::ParamBounds {
+                  builtin_bounds: ty::empty_builtin_bounds(),
+                  trait_bounds: vec!(target_trait_ref)
+              };
+              let vtables =
+                    lookup_vtables_for_param(&vcx,
+                                             ex.span,
+                                             None,
+                                             &param_bounds,
+                                             src_ty,
+                                             is_early);
+
+              if !is_early {
+                  let mut r = VecPerParamSpace::empty();
+                  r.push(subst::SelfSpace, vtables);
+                  insert_vtables(fcx, key, r);
+              }
+          }
           _ => {}
       }
     };
@@ -792,8 +773,16 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
       ast::ExprCast(ref src, _) => {
           debug!("vtable resolution on expr {}", ex.repr(fcx.tcx()));
           let target_ty = fcx.expr_ty(ex);
-          let key = MethodCall::expr(ex.id);
-          resolve_object_cast(&**src, target_ty, key);
+          let src_ty = structurally_resolved_type(fcx, ex.span,
+                                                  fcx.expr_ty(&**src));
+          check_object_cast(src_ty, target_ty);
+          match (ty::deref(src_ty, false), ty::deref(target_ty, false)) {
+              (Some(s), Some(t)) => {
+                  let key = MethodCall::expr(ex.id);
+                  resolve_object_cast(s.ty, t.ty, key)
+              }
+              _ => {}
+          }
       }
       _ => ()
     }
@@ -802,7 +791,25 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
     match fcx.inh.adjustments.borrow().find(&ex.id) {
         Some(adjustment) => {
             match *adjustment {
-                AutoDerefRef(adj) => {
+                _ if ty::adjust_is_object(adjustment) => {
+                    let src_ty = structurally_resolved_type(fcx, ex.span,
+                                                            fcx.expr_ty(ex));
+                    match ty::type_of_adjust(fcx.tcx(), adjustment) {
+                        Some(target_ty) => {
+                            check_object_cast(src_ty, target_ty)
+                        }
+                        None => {}
+                    }
+
+                    match trait_cast_types(fcx, adjustment, src_ty, ex.span) {
+                        Some((s, t)) => {
+                            let key = MethodCall::autoobject(ex.id);
+                            resolve_object_cast(s, t, key)
+                        }
+                        None => fail!("Couldn't extract types from adjustment")
+                    }
+                }
+                AutoDerefRef(ref adj) => {
                     for autoderef in range(0, adj.autoderefs) {
                         let method_call = MethodCall::autoderef(ex.id, autoderef);
                         match fcx.inh.method_map.borrow().find(&method_call) {
@@ -823,34 +830,72 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                         }
                     }
                 }
-                AutoObject(store,
-                           bounds,
-                           def_id,
-                           ref substs) => {
-                    debug!("doing trait adjustment for expr {} {} \
-                            (early? {})",
-                           ex.id,
-                           ex.repr(fcx.tcx()),
-                           is_early);
-
-                    let trait_ty = ty::mk_trait(cx.tcx,
-                                                def_id,
-                                                substs.clone(),
-                                                bounds);
-                    let object_ty = match store {
-                        ty::UniqTraitStore => ty::mk_uniq(cx.tcx, trait_ty),
-                        ty::RegionTraitStore(r, m) => {
-                            ty::mk_rptr(cx.tcx, r, ty::mt {ty: trait_ty, mutbl: m})
-                        }
-                    };
-
-                    let key = MethodCall::autoobject(ex.id);
-                    resolve_object_cast(ex, object_ty, key);
-                }
-                AutoAddEnv(..) => {}
+                _ => {}
             }
         }
         None => {}
+    }
+}
+
+// When we coerce (possibly implicitly) from a concrete type to a trait type, this
+// function returns the concrete type and trait. This might happen arbitrarily
+// deep in the adjustment. This function will fail if the adjustment does not
+// match the source type.
+// This function will always return types if ty::adjust_is_object is true for the
+// adjustment
+fn trait_cast_types(fcx: &FnCtxt,
+                    adj: &ty::AutoAdjustment,
+                    src_ty: ty::t,
+                    sp: Span)
+                    -> Option<(ty::t, ty::t)> {
+    fn trait_cast_types_autoref(fcx: &FnCtxt,
+                                autoref: &ty::AutoRef,
+                                src_ty: ty::t,
+                                sp: Span)
+                                -> Option<(ty::t, ty::t)> {
+        fn trait_cast_types_unsize(fcx: &FnCtxt,
+                                   k: &ty::UnsizeKind,
+                                   src_ty: ty::t,
+                                   sp: Span)
+                                   -> Option<(ty::t, ty::t)> {
+            match k {
+                &ty::UnsizeVtable(bounds, def_id, ref substs) => {
+                    Some((src_ty, ty::mk_trait(fcx.tcx(), def_id, substs.clone(), bounds)))
+                }
+                &ty::UnsizeStruct(box ref k, tp_index) => match ty::get(src_ty).sty {
+                    ty::ty_struct(_, ref substs) => {
+                        let ty_substs = substs.types.get_slice(subst::TypeSpace);
+                        let field_ty = structurally_resolved_type(fcx, sp, ty_substs[tp_index]);
+                        trait_cast_types_unsize(fcx, k, field_ty, sp)
+                    }
+                    _ => fail!("Failed to find a ty_struct to correspond with \
+                                UnsizeStruct whilst walking adjustment. Found {}",
+                                ppaux::ty_to_string(fcx.tcx(), src_ty))
+                },
+                _ => None
+            }
+        }
+
+        match autoref {
+            &ty::AutoUnsize(ref k) |
+            &ty::AutoUnsizeUniq(ref k) => trait_cast_types_unsize(fcx, k, src_ty, sp),
+            &ty::AutoPtr(_, _, Some(box ref autoref)) => {
+                trait_cast_types_autoref(fcx, autoref, src_ty, sp)
+            }
+            _ => None
+        }
+    }
+
+    match adj {
+        &ty::AutoDerefRef(AutoDerefRef{autoref: Some(ref autoref), autoderefs}) => {
+            let mut derefed_type = src_ty;
+            for _ in range(0, autoderefs) {
+                derefed_type = ty::deref(derefed_type, false).unwrap().ty;
+                derefed_type = structurally_resolved_type(fcx, sp, derefed_type)
+            }
+            trait_cast_types_autoref(fcx, autoref, derefed_type, sp)
+        }
+        _ => None
     }
 }
 

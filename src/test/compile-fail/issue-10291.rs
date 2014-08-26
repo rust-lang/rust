@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn test<'x>(x: &'x int) { //~ NOTE the lifetime 'x as defined
+fn test<'x>(x: &'x int) {
     drop::< <'z>|&'z int| -> &'z int>(|z| {
-        //~^ ERROR mismatched types
-        //~^^ ERROR cannot infer an appropriate lifetime
         x
+        //~^ ERROR cannot infer an appropriate lifetime
     });
 }
 

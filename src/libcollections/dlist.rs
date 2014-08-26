@@ -1088,7 +1088,8 @@ mod tests {
         let n = list_from([1i,2,3]);
         spawn(proc() {
             check_links(&n);
-            assert_eq!(&[&1,&2,&3], n.iter().collect::<Vec<&int>>().as_slice());
+            let a: &[_] = &[&1,&2,&3];
+            assert_eq!(a, n.iter().collect::<Vec<&int>>().as_slice());
         });
     }
 

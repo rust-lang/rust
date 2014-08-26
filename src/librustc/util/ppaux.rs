@@ -19,7 +19,7 @@ use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{mt, t, ParamTy};
 use middle::ty::{ty_bool, ty_char, ty_bot, ty_box, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
-use middle::ty::{ty_nil, ty_param, ty_ptr, ty_rptr, ty_tup};
+use middle::ty::{ty_nil, ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
 use middle::ty::{ty_unboxed_closure};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
@@ -370,6 +370,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
           buf.push_str(mt_to_string(cx, tm).as_slice());
           buf
       }
+      ty_open(typ) => format!("opened<{}>", ty_to_string(cx, typ)),
       ty_tup(ref elems) => {
         let strs: Vec<String> = elems.iter().map(|elem| ty_to_string(cx, *elem)).collect();
         format!("({})", strs.connect(","))
@@ -407,7 +408,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
           let trait_def = ty::lookup_trait_def(cx, did);
           let ty = parameterized(cx, base.as_slice(),
                                  substs, &trait_def.generics);
-          let bound_sep = if bounds.is_empty() { "" } else { ":" };
+          let bound_sep = if bounds.is_empty() { "" } else { "+" };
           let bound_str = bounds.repr(cx);
           format!("{}{}{}",
                   ty,
@@ -416,12 +417,12 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
       }
       ty_str => "str".to_string(),
       ty_unboxed_closure(..) => "closure".to_string(),
-      ty_vec(ref mt, sz) => {
+      ty_vec(t, sz) => {
           match sz {
               Some(n) => {
-                  format!("[{}, .. {}]", mt_to_string(cx, mt), n)
+                  format!("[{}, .. {}]", ty_to_string(cx, t), n)
               }
-              None => format!("[{}]", ty_to_string(cx, mt.ty)),
+              None => format!("[{}]", ty_to_string(cx, t)),
           }
       }
     }
