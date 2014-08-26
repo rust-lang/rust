@@ -2388,13 +2388,16 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
             // actually know the concrete type of Self thus we don't know how
             // many bytes to mark as dereferenceable so instead we just mark
             // it as nonnull which still holds true
-            ty::ty_rptr(b, ty::mt { ty: it, mutbl }) if match ty::get(it).sty {
+            ty::ty_rptr(ref b, ty::mt {
+                ty: it,
+                mutbl
+            }) if match ty::get(it).sty {
                 ty::ty_param(_) => true, _ => false
             } && mutbl == ast::MutMutable => {
                 attrs.arg(idx, llvm::NoAliasAttribute)
                      .arg(idx, llvm::NonNullAttribute);
 
-                match b {
+                match *b {
                     ReLateBound(_, BrAnon(_)) => {
                         attrs.arg(idx, llvm::NoCaptureAttribute);
                     }
@@ -2407,7 +2410,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
             // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
             // `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely on
             // memory dependencies rather than pointer equality
-            ty::ty_rptr(b, mt) if mt.mutbl == ast::MutMutable ||
+            ty::ty_rptr(ref b, mt) if mt.mutbl == ast::MutMutable ||
                                   !ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe() => {
 
                 let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
@@ -2418,7 +2421,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t)
                     attrs.arg(idx, llvm::ReadOnlyAttribute);
                 }
 
-                match b {
+                match *b {
                     ReLateBound(_, BrAnon(_)) => {
                         attrs.arg(idx, llvm::NoCaptureAttribute);
                     }

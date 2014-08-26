@@ -34,7 +34,7 @@ use syntax::print::pprust;
 pub fn check_match(fcx: &FnCtxt,
                    expr: &ast::Expr,
                    discrim: &ast::Expr,
-                   arms: &[ast::Arm]) {
+                   arms: &[Gc<ast::Arm>]) {
     let tcx = fcx.ccx.tcx;
 
     let discrim_ty = fcx.infcx().next_ty_var();
@@ -676,13 +676,15 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                   return;
               }
           },
-          ty::ty_rptr(r, mt) => match ty::get(mt.ty).sty {
-              ty::ty_vec(ty, None) => (ty, r, mt.mutbl, None),
-              _ => {
-                  check_err("a vector pattern".to_string());
-                  return;
+          ty::ty_rptr(ref r, mt) => {
+              match ty::get(mt.ty).sty {
+                  ty::ty_vec(ty, None) => (ty, (*r).clone(), mt.mutbl, None),
+                  _ => {
+                      check_err("a vector pattern".to_string());
+                      return;
+                  }
               }
-          },
+          }
           _ => {
               check_err("a vector pattern".to_string());
               return;

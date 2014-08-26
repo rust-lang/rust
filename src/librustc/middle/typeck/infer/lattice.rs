@@ -120,7 +120,7 @@ pub fn var_ids<T:Combine>(this: &T,
                           -> Vec<RegionVid> {
     map.iter().map(|(_, r)| match *r {
             ty::ReInfer(ty::ReVar(r)) => { r }
-            r => {
+            ref r => {
                 this.infcx().tcx.sess.span_bug(
                     this.trace().origin.span(),
                     format!("found non-region-vid: {:?}", r).as_slice());
@@ -128,8 +128,8 @@ pub fn var_ids<T:Combine>(this: &T,
         }).collect()
 }
 
-pub fn is_var_in_set(new_vars: &[RegionVid], r: ty::Region) -> bool {
-    match r {
+pub fn is_var_in_set(new_vars: &[RegionVid], r: &ty::Region) -> bool {
+    match *r {
         ty::ReInfer(ty::ReVar(ref v)) => new_vars.iter().any(|x| x == v),
         _ => false
     }

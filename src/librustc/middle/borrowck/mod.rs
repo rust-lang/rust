@@ -18,13 +18,18 @@ use middle::dataflow::BitwiseOperator;
 use middle::dataflow::DataFlowOperator;
 use middle::def;
 use middle::expr_use_visitor as euv;
+use middle::freevars;
+use middle::loop_analysis::{LoopAnalysis, LoopAnalyzer};
 use middle::mem_categorization as mc;
 use middle::ty;
+use middle::typeck;
+use util::nodemap::{DefIdMap, NodeMap};
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
-use std::cell::{Cell};
-use std::rc::Rc;
+use std::cell::{Cell, RefCell};
 use std::gc::{Gc, GC};
+use std::mem;
+use std::rc::Rc;
 use std::string::String;
 use syntax::ast;
 use syntax::ast_map;
@@ -75,6 +80,7 @@ pub fn check_crate(tcx: &ty::ctxt,
                    krate: &ast::Crate) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
+        loop_analysis: None,
         stats: box(GC) BorrowStats {
             loaned_paths_same: Cell::new(0),
             loaned_paths_imm: Cell::new(0),
@@ -133,6 +139,18 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                sp: Span,
                id: ast::NodeId) {
     debug!("borrowck_fn(id={})", id);
+
+    // Perform loop analysis...
+    let mut old_loop_analysis = None;
+    match *fk {
+        visit::FkItemFn(..) | visit::FkMethod(..) => {
+            old_loop_analysis = mem::replace(&mut this.loop_analysis, None);
+            this.loop_analysis =
+                Some(LoopAnalyzer::new(this.tcx).analyze_block(body));
+        }
+        visit::FkFnBlock(..) => {}
+    }
+
     let cfg = cfg::CFG::new(this.tcx, body);
     let AnalysisData { all_loans,
                        loans: loan_dfcx,
@@ -143,6 +161,14 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                              all_loans.as_slice(), decl, body);
 
     visit::walk_fn(this, fk, decl, body, sp, ());
+
+    // Restore the old loop analysis.
+    match *fk {
+        visit::FkItemFn(..) | visit::FkMethod(..) => {
+            this.loop_analysis = old_loop_analysis
+        }
+        visit::FkFnBlock(..) => {}
+    }
 }
 
 fn build_borrowck_dataflow_data<'a>(this: &mut BorrowckCtxt<'a>,
@@ -167,7 +193,10 @@ fn build_borrowck_dataflow_data<'a>(this: &mut BorrowckCtxt<'a>,
                              all_loans.len());
     for (loan_idx, loan) in all_loans.iter().enumerate() {
         loan_dfcx.add_gen(loan.gen_scope, loan_idx);
-        loan_dfcx.add_kill(loan.kill_scope, loan_idx);
+        for kill_scope in loan.kill_scopes.iter() {
+            debug!("add_kill({})", this.tcx.map.node_to_string(*kill_scope));
+            loan_dfcx.add_kill(*kill_scope, loan_idx);
+        }
     }
     loan_dfcx.add_kills_from_flow_exits(cfg);
     loan_dfcx.propagate(cfg, body);
@@ -204,8 +233,11 @@ pub fn build_borrowck_dataflow_data_for_fn<'a>(
     tcx: &'a ty::ctxt,
     input: FnPartsWithCFG<'a>) -> (BorrowckCtxt<'a>, AnalysisData<'a>) {
 
+    let p = input.fn_parts;
+
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
+        loop_analysis: Some(LoopAnalyzer::new(tcx).analyze_block(&*p.body)),
         stats: box(GC) BorrowStats {
             loaned_paths_same: Cell::new(0),
             loaned_paths_imm: Cell::new(0),
@@ -213,8 +245,6 @@ pub fn build_borrowck_dataflow_data_for_fn<'a>(
             guaranteed_paths: Cell::new(0),
         }
     };
-
-    let p = input.fn_parts;
 
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx,
                                                      &p.kind,
@@ -233,8 +263,63 @@ pub fn build_borrowck_dataflow_data_for_fn<'a>(
 pub struct BorrowckCtxt<'a> {
     tcx: &'a ty::ctxt,
 
+    loop_analysis: Option<LoopAnalysis>,
+
     // Statistics:
     stats: Gc<BorrowStats>,
+}
+
+impl<'a> mc::Typer for BorrowckCtxt<'a> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+        self.tcx
+    }
+
+    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<ty::t> {
+        Ok(ty::node_id_to_type(self.tcx, id))
+    }
+
+    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t> {
+        self.tcx
+            .method_map
+            .borrow()
+            .find(&method_call)
+            .map(|method| method.ty)
+    }
+
+    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
+        &self.tcx.adjustments
+    }
+
+    fn is_method_call(&self, id: ast::NodeId) -> bool {
+        self.tcx
+            .method_map
+            .borrow()
+            .contains_key(&typeck::MethodCall::expr(id))
+    }
+
+    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId> {
+        self.tcx.region_maps.temporary_scope(rvalue_id)
+    }
+
+    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
+        self.tcx.upvar_borrow_map.borrow().get_copy(&upvar_id)
+    }
+
+    fn capture_mode(&self, closure_expr_id: ast::NodeId)
+                    -> freevars::CaptureMode {
+        self.tcx.capture_modes.borrow().get_copy(&closure_expr_id)
+    }
+
+    fn unboxed_closures(&self) -> &RefCell<DefIdMap<ty::UnboxedClosure>> {
+        &self.tcx.unboxed_closures
+    }
+
+    fn loop_analysis(&self) -> Option<&LoopAnalysis> {
+        match self.loop_analysis {
+            None => None,
+            Some(ref loop_analysis) => Some(loop_analysis),
+        }
+    }
 }
 
 pub struct BorrowStats {
@@ -262,7 +347,7 @@ pub struct Loan {
     kind: ty::BorrowKind,
     restricted_paths: Vec<Rc<LoanPath>>,
     gen_scope: ast::NodeId,
-    kill_scope: ast::NodeId,
+    kill_scopes: Vec<ast::NodeId>,
     span: Span,
     cause: euv::LoanCause,
 }
@@ -337,9 +422,9 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
             Some(Rc::new(LpUpvar(upvar_id)))
         }
 
-        mc::cat_deref(ref cmt_base, _, pk) => {
+        mc::cat_deref(ref cmt_base, _, ref pk) => {
             opt_loan_path(cmt_base).map(|lp| {
-                Rc::new(LpExtend(lp, cmt.mutbl, LpDeref(pk)))
+                Rc::new(LpExtend(lp, cmt.mutbl, LpDeref((*pk).clone())))
             })
         }
 
@@ -391,9 +476,14 @@ pub enum MovedValueUseKind {
 // Misc
 
 impl<'a> BorrowckCtxt<'a> {
-    pub fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region)
-                           -> bool {
-        self.tcx.region_maps.is_subregion_of(r_sub, r_sup)
+    pub fn loop_analysis(&self) -> &LoopAnalysis {
+        match self.loop_analysis {
+            None => {
+                self.tcx.sess.bug("BorrowckCtxt::loop_analysis() called when \
+                                   no loop analysis present")
+            }
+            Some(ref loop_analysis) => loop_analysis,
+        }
     }
 
     pub fn is_subscope_of(&self, r_sub: ast::NodeId, r_sup: ast::NodeId)
@@ -491,9 +581,7 @@ impl<'a> BorrowckCtxt<'a> {
     }
 
     pub fn report(&self, err: BckError) {
-        self.span_err(
-            err.span,
-            self.bckerr_to_string(&err).as_slice());
+        self.span_err(err.span, self.bckerr_to_string(&err).as_slice());
         self.note_and_explain_bckerr(err);
     }
 
@@ -745,18 +833,19 @@ impl<'a> BorrowckCtxt<'a> {
         }
     }
 
-    pub fn note_and_explain_bckerr(&self, err: BckError) {
+    fn note_and_explain_bckerr(&self, err: BckError) {
         let code = err.code;
         match code {
             err_mutbl(..) => { }
 
-            err_out_of_scope(super_scope, sub_scope) => {
+            err_out_of_scope(ref super_scope, ref sub_scope) => {
                 note_and_explain_region(
                     self.tcx,
                     "reference must be valid for ",
                     sub_scope,
                     "...");
-                let suggestion = if is_statement_scope(self.tcx, super_scope) {
+                let suggestion = if is_statement_scope(self.tcx,
+                                                       super_scope) {
                     "; consider using a `let` binding to increase its lifetime"
                 } else {
                     ""
@@ -768,7 +857,7 @@ impl<'a> BorrowckCtxt<'a> {
                     suggestion);
             }
 
-            err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
+            err_borrowed_pointer_too_short(ref loan_scope, ref ptr_scope) => {
                 let descr = match opt_loan_path(&err.cmt) {
                     Some(lp) => {
                         format!("`{}`", self.loan_path_to_string(&*lp))
@@ -791,8 +880,8 @@ impl<'a> BorrowckCtxt<'a> {
     }
 
     pub fn append_loan_path_to_string(&self,
-                                   loan_path: &LoanPath,
-                                   out: &mut String) {
+                                      loan_path: &LoanPath,
+                                      out: &mut String) {
         match *loan_path {
             LpUpvar(ty::UpvarId{ var_id: id, closure_expr_id: _ }) |
             LpVar(id) => {
@@ -853,10 +942,11 @@ impl<'a> BorrowckCtxt<'a> {
     }
 }
 
-fn is_statement_scope(tcx: &ty::ctxt, region: ty::Region) -> bool {
-     match region {
-         ty::ReScope(node_id) => {
-             match tcx.map.find(node_id) {
+fn is_statement_scope(tcx: &ty::ctxt, region: &ty::Region) -> bool {
+     match *region {
+         ty::ReSemeRegion(ref seme_region) => {
+             let scope_id = seme_region.lub_scope(tcx);
+             match tcx.map.find(scope_id) {
                  Some(ast_map::NodeStmt(_)) => true,
                  _ => false
              }
@@ -881,12 +971,12 @@ impl DataFlowOperator for LoanDataFlowOperator {
 
 impl Repr for Loan {
     fn repr(&self, tcx: &ty::ctxt) -> String {
-        format!("Loan_{:?}({}, {:?}, {:?}-{:?}, {})",
+        format!("Loan_{:?}({}, {:?}, {:?}-[{}], {})",
                  self.index,
                  self.loan_path.repr(tcx),
                  self.kind,
                  self.gen_scope,
-                 self.kill_scope,
+                 self.kill_scopes,
                  self.restricted_paths.repr(tcx))
     }
 }

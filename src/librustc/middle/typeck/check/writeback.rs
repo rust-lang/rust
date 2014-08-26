@@ -199,8 +199,8 @@ impl<'cx> WritebackCx<'cx> {
         }
 
         for (upvar_id, upvar_borrow) in self.fcx.inh.upvar_borrow_map.borrow().iter() {
-            let r = upvar_borrow.region;
-            let r = self.resolve(&r, ResolvingUpvar(*upvar_id));
+            let r = self.resolve(&upvar_borrow.region,
+                                 ResolvingUpvar(*upvar_id));
             let new_upvar_borrow = ty::UpvarBorrow { kind: upvar_borrow.kind,
                                                      region: r };
             debug!("Upvar borrow for {} resolved to {}",
@@ -494,7 +494,7 @@ impl<'cx> TypeFolder for Resolver<'cx> {
         }
     }
 
-    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+    fn fold_region(&mut self, r: &ty::Region) -> ty::Region {
         match resolve_region(self.infcx, r, resolve_all | force_all) {
             Ok(r) => r,
             Err(e) => {

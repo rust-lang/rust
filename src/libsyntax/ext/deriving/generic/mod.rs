@@ -914,7 +914,7 @@ impl<'a> MethodDef<'a> {
         // (Variant2, Variant2, ...) => Body2
         // ...
         // where each tuple has length = self_args.len()
-        let mut match_arms : Vec<ast::Arm> = variants.iter().enumerate()
+        let mut match_arms : Vec<Gc<ast::Arm>> = variants.iter().enumerate()
             .map(|(index, &variant)| {
 
                 // These self_pats have form Variant1, Variant2, ...
@@ -1012,7 +1012,7 @@ impl<'a> MethodDef<'a> {
         //   unreachable-pattern error.
         //
         if variants.len() > 1 && self_args.len() > 1 {
-            let arms : Vec<ast::Arm> = variants.iter().enumerate()
+            let arms: Vec<Gc<ast::Arm>> = variants.iter().enumerate()
                 .map(|(index, &variant)| {
                     let pat = variant_to_pat(cx, sp, &*variant);
                     let lit = ast::LitInt(index as u64, ast::UnsignedIntLit(ast::TyU));

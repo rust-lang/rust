@@ -102,12 +102,12 @@ impl<'f> Combine for Lub<'f> {
         Ok(a.intersection(b))
     }
 
-    fn contraregions(&self, a: ty::Region, b: ty::Region)
+    fn contraregions(&self, a: &ty::Region, b: &ty::Region)
                     -> cres<ty::Region> {
         self.glb().regions(a, b)
     }
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
+    fn regions(&self, a: &ty::Region, b: &ty::Region) -> cres<ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
                a.repr(self.fields.infcx.tcx),
@@ -143,8 +143,14 @@ impl<'f> Combine for Lub<'f> {
             fold_regions_in_sig(
                 self.fields.infcx.tcx,
                 &sig0,
-                |r| generalize_region(self, mark, new_vars.as_slice(),
-                                      sig0.binder_id, &a_map, r));
+                |r| {
+                    generalize_region(self,
+                                      mark,
+                                      new_vars.as_slice(),
+                                      sig0.binder_id,
+                                      &a_map,
+                                      r)
+                });
         return Ok(sig1);
 
         fn generalize_region(this: &Lub,
@@ -152,13 +158,13 @@ impl<'f> Combine for Lub<'f> {
                              new_vars: &[RegionVid],
                              new_scope: NodeId,
                              a_map: &HashMap<ty::BoundRegion, ty::Region>,
-                             r0: ty::Region)
+                             r0: &ty::Region)
                              -> ty::Region {
             // Regions that pre-dated the LUB computation stay as they are.
             if !is_var_in_set(new_vars, r0) {
                 assert!(!r0.is_bound());
                 debug!("generalize_region(r0={:?}): not new variable", r0);
-                return r0;
+                return (*r0).clone();
             }
 
             let tainted = this.fields.infcx.region_vars.tainted(mark, r0);
@@ -166,12 +172,12 @@ impl<'f> Combine for Lub<'f> {
             // Variables created during LUB computation which are
             // *related* to regions that pre-date the LUB computation
             // stay as they are.
-            if !tainted.iter().all(|r| is_var_in_set(new_vars, *r)) {
+            if !tainted.iter().all(|r| is_var_in_set(new_vars, r)) {
                 debug!("generalize_region(r0={:?}): \
                         non-new-variables found in {:?}",
                        r0, tainted);
                 assert!(!r0.is_bound());
-                return r0;
+                return (*r0).clone();
             }
 
             // Otherwise, the variable must be associated with at

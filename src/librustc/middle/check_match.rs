@@ -167,7 +167,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                     pats: arm.pats.iter().map(|pat| {
                         static_inliner.fold_pat(*pat)
                     }).collect(),
-                    ..arm.clone()
+                    ..(**arm).clone()
                 })
                 .collect::<Vec<Arm>>();
 
@@ -982,7 +982,7 @@ impl<'a> Delegate for MutationChecker<'a> {
               _: NodeId,
               span: Span,
               _: cmt,
-              _: Region,
+              _: &Region,
               kind: BorrowKind,
               _: LoanCause) {
         match kind {

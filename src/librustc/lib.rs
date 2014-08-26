@@ -37,6 +37,7 @@ This API is completely unstable and subject to change.
 #![feature(import_shadowing)]
 
 extern crate arena;
+extern crate collections;
 extern crate debug;
 extern crate flate;
 extern crate getopts;
@@ -94,6 +95,7 @@ pub mod middle {
     pub mod kind;
     pub mod lang_items;
     pub mod liveness;
+    pub mod loop_analysis;
     pub mod mem_categorization;
     pub mod pat_util;
     pub mod privacy;
@@ -102,6 +104,7 @@ pub mod middle {
     pub mod resolve;
     pub mod resolve_lifetime;
     pub mod save;
+    pub mod seme_region;
     pub mod stability;
     pub mod subst;
     pub mod trans;

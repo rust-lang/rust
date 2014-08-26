@@ -122,13 +122,13 @@ fn enc_region_substs(w: &mut SeekableMemWriter, cx: &ctxt, substs: &subst::Regio
         subst::NonerasedRegions(ref regions) => {
             mywrite!(w, "n");
             enc_vec_per_param_space(w, cx, regions,
-                                    |w, cx, &r| enc_region(w, cx, r));
+                                    |w, cx, r| enc_region(w, cx, r));
         }
     }
 }
 
-pub fn enc_region(w: &mut SeekableMemWriter, cx: &ctxt, r: ty::Region) {
-    match r {
+pub fn enc_region(w: &mut SeekableMemWriter, cx: &ctxt, r: &ty::Region) {
+    match *r {
         ty::ReLateBound(id, br) => {
             mywrite!(w, "b[{}|", id);
             enc_bound_region(w, cx, br);
@@ -146,8 +146,12 @@ pub fn enc_region(w: &mut SeekableMemWriter, cx: &ctxt, r: ty::Region) {
             enc_bound_region(w, cx, fr.bound_region);
             mywrite!(w, "]");
         }
-        ty::ReScope(nid) => {
-            mywrite!(w, "s{}|", nid);
+        ty::ReSemeRegion(ref seme_region) => {
+            mywrite!(w, "s[{}", seme_region.entry);
+            for exit in seme_region.exits.iter() {
+                mywrite!(w, "|{}", *exit);
+            }
+            mywrite!(w, "]");
         }
         ty::ReStatic => {
             mywrite!(w, "t");
@@ -183,10 +187,12 @@ pub fn enc_trait_ref(w: &mut SeekableMemWriter, cx: &ctxt, s: &ty::TraitRef) {
     enc_substs(w, cx, &s.substs);
 }
 
-pub fn enc_trait_store(w: &mut SeekableMemWriter, cx: &ctxt, s: ty::TraitStore) {
-    match s {
+pub fn enc_trait_store(w: &mut SeekableMemWriter,
+                       cx: &ctxt,
+                       s: &ty::TraitStore) {
+    match *s {
         ty::UniqTraitStore => mywrite!(w, "~"),
-        ty::RegionTraitStore(re, m) => {
+        ty::RegionTraitStore(ref re, m) => {
             mywrite!(w, "&");
             enc_region(w, cx, re);
             enc_mutability(w, m);
@@ -247,7 +253,7 @@ fn enc_sty(w: &mut SeekableMemWriter, cx: &ctxt, st: &ty::sty) {
         ty::ty_box(typ) => { mywrite!(w, "@"); enc_ty(w, cx, typ); }
         ty::ty_uniq(typ) => { mywrite!(w, "~"); enc_ty(w, cx, typ); }
         ty::ty_ptr(mt) => { mywrite!(w, "*"); enc_mt(w, cx, mt); }
-        ty::ty_rptr(r, mt) => {
+        ty::ty_rptr(ref r, mt) => {
             mywrite!(w, "&");
             enc_region(w, cx, r);
             enc_mt(w, cx, mt);
@@ -283,7 +289,7 @@ fn enc_sty(w: &mut SeekableMemWriter, cx: &ctxt, st: &ty::sty) {
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::ty_unboxed_closure(def, region) => {
+        ty::ty_unboxed_closure(def, ref region) => {
             mywrite!(w, "k{}", (cx.ds)(def));
             enc_region(w, cx, region);
         }
@@ -325,7 +331,7 @@ pub fn enc_bare_fn_ty(w: &mut SeekableMemWriter, cx: &ctxt, ft: &ty::BareFnTy) {
 pub fn enc_closure_ty(w: &mut SeekableMemWriter, cx: &ctxt, ft: &ty::ClosureTy) {
     enc_fn_style(w, ft.fn_style);
     enc_onceness(w, ft.onceness);
-    enc_trait_store(w, cx, ft.store);
+    enc_trait_store(w, cx, &ft.store);
     enc_existential_bounds(w, cx, &ft.bounds);
     enc_fn_sig(w, cx, &ft.sig);
     enc_abi(w, ft.abi);
@@ -358,15 +364,17 @@ pub fn enc_builtin_bounds(w: &mut SeekableMemWriter, _cx: &ctxt, bs: &ty::Builti
     mywrite!(w, ".");
 }
 
-pub fn enc_existential_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::ExistentialBounds) {
-    enc_region(w, cx, bs.region_bound);
+pub fn enc_existential_bounds(w: &mut SeekableMemWriter,
+                              cx: &ctxt,
+                              bs: &ty::ExistentialBounds) {
+    enc_region(w, cx, &bs.region_bound);
     enc_builtin_bounds(w, cx, &bs.builtin_bounds);
 }
 
 pub fn enc_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
     enc_builtin_bounds(w, cx, &bs.builtin_bounds);
 
-    for &r in bs.opt_region_bound.iter() {
+    for r in bs.opt_region_bound.iter() {
         mywrite!(w, "R");
         enc_region(w, cx, r);
     }

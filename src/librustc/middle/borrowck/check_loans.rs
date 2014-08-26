@@ -114,10 +114,9 @@ impl<'a> euv::Delegate for CheckLoanCtxt<'a> {
               borrow_id: ast::NodeId,
               borrow_span: Span,
               cmt: mc::cmt,
-              loan_region: ty::Region,
+              loan_region: &ty::Region,
               bk: ty::BorrowKind,
-              loan_cause: euv::LoanCause)
-    {
+              loan_cause: euv::LoanCause) {
         debug!("borrow(borrow_id={}, cmt={}, loan_region={}, \
                bk={}, loan_cause={:?})",
                borrow_id, cmt.repr(self.tcx()), loan_region,
@@ -195,7 +194,7 @@ pub fn check_loans(bccx: &BorrowckCtxt,
     };
 
     {
-        let mut euv = euv::ExprUseVisitor::new(&mut clcx, bccx.tcx);
+        let mut euv = euv::ExprUseVisitor::new(&mut clcx, bccx);
         euv.walk_fn(decl, body);
     }
 }
@@ -238,11 +237,14 @@ impl<'a> CheckLoanCtxt<'a> {
 
         let tcx = self.tcx();
         self.each_issued_loan(scope_id, |loan| {
-            if tcx.region_maps.is_subscope_of(scope_id, loan.kill_scope) {
-                op(loan)
-            } else {
-                true
+            let mut result = true;
+            for kill_scope in loan.kill_scopes.iter() {
+                if tcx.region_maps.is_subscope_of(scope_id, *kill_scope) {
+                    result = op(loan);
+                    break
+                }
             }
+            result
         })
     }
 
@@ -369,8 +371,6 @@ impl<'a> CheckLoanCtxt<'a> {
                new_loan.repr(self.tcx()));
 
         // Should only be called for loans that are in scope at the same time.
-        assert!(self.tcx().region_maps.scopes_intersect(old_loan.kill_scope,
-                                                        new_loan.kill_scope));
 
         self.report_error_if_loan_conflicts_with_restriction(
             old_loan, new_loan, old_loan, new_loan) &&
@@ -504,9 +504,11 @@ impl<'a> CheckLoanCtxt<'a> {
                 old_loan.span,
                 format!("{}; {}", borrow_summary, rule_summary).as_slice());
 
-            let old_loan_span = self.tcx().map.span(old_loan.kill_scope);
-            self.bccx.span_end_note(old_loan_span,
-                                    "previous borrow ends here");
+            for kill_scope in old_loan.kill_scopes.iter() {
+                let old_loan_span = self.tcx().map.span(*kill_scope);
+                self.bccx.span_end_note(old_loan_span,
+                                        "previous borrow ends here");
+            }
 
             return false;
         }

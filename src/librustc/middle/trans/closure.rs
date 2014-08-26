@@ -137,14 +137,14 @@ fn tuplify_box_ty(tcx: &ty::ctxt, t: ty::t) -> ty::t {
 }
 
 fn allocate_cbox<'a>(bcx: &'a Block<'a>,
-                     store: ty::TraitStore,
+                     store: &ty::TraitStore,
                      cdata_ty: ty::t)
                      -> Result<'a> {
     let _icx = push_ctxt("closure::allocate_cbox");
     let tcx = bcx.tcx();
 
     // Allocate and initialize the box:
-    match store {
+    match *store {
         ty::UniqTraitStore => {
             let ty = type_of(bcx.ccx(), cdata_ty);
             let size = llsize_of(bcx.ccx(), ty);
@@ -172,7 +172,7 @@ pub struct ClosureResult<'a> {
 pub fn store_environment<'a>(
                          bcx: &'a Block<'a>,
                          bound_values: Vec<EnvValue> ,
-                         store: ty::TraitStore)
+                         store: &ty::TraitStore)
                          -> ClosureResult<'a> {
     let _icx = push_ctxt("closure::store_environment");
     let ccx = bcx.ccx();
@@ -231,9 +231,8 @@ pub fn store_environment<'a>(
 fn build_closure<'a>(bcx0: &'a Block<'a>,
                      freevar_mode: freevars::CaptureMode,
                      freevars: &Vec<freevars::freevar_entry>,
-                     store: ty::TraitStore)
-                     -> ClosureResult<'a>
-{
+                     store: &ty::TraitStore)
+                     -> ClosureResult<'a> {
     let _icx = push_ctxt("closure::build_closure");
 
     // If we need to, package up the iterator body to call
@@ -255,7 +254,7 @@ fn build_closure<'a>(bcx0: &'a Block<'a>,
 fn load_environment<'a>(bcx: &'a Block<'a>,
                         cdata_ty: ty::t,
                         freevars: &Vec<freevars::freevar_entry>,
-                        store: ty::TraitStore)
+                        store: &ty::TraitStore)
                         -> &'a Block<'a> {
     let _icx = push_ctxt("closure::load_environment");
 
@@ -281,7 +280,7 @@ fn load_environment<'a>(bcx: &'a Block<'a>,
     let mut i = 0u;
     for freevar in freevars.iter() {
         let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
-        match store {
+        match *store {
             ty::RegionTraitStore(..) => { upvarptr = Load(bcx, upvarptr); }
             ty::UniqTraitStore => {}
         }
@@ -355,7 +354,7 @@ fn fill_fn_pair(bcx: &Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef)
 
 pub fn trans_expr_fn<'a>(
                      bcx: &'a Block<'a>,
-                     store: ty::TraitStore,
+                     store: &ty::TraitStore,
                      decl: &ast::FnDecl,
                      body: &ast::Block,
                      id: ast::NodeId,

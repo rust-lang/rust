@@ -107,6 +107,7 @@ pub enum Node {
     NodeArg(Gc<Pat>),
     NodeLocal(Gc<Pat>),
     NodePat(Gc<Pat>),
+    NodeArm(Gc<Arm>),
     NodeBlock(P<Block>),
 
     /// NodeStructCtor represents a tuple struct.
@@ -133,6 +134,7 @@ enum MapEntry {
     EntryArg(NodeId, Gc<Pat>),
     EntryLocal(NodeId, Gc<Pat>),
     EntryPat(NodeId, Gc<Pat>),
+    EntryArm(NodeId, Gc<Arm>),
     EntryBlock(NodeId, P<Block>),
     EntryStructCtor(NodeId, Gc<StructDef>),
     EntryLifetime(NodeId, Gc<Lifetime>),
@@ -161,6 +163,7 @@ impl MapEntry {
             EntryArg(id, _) => id,
             EntryLocal(id, _) => id,
             EntryPat(id, _) => id,
+            EntryArm(id, _) => id,
             EntryBlock(id, _) => id,
             EntryStructCtor(id, _) => id,
             EntryLifetime(id, _) => id,
@@ -180,6 +183,7 @@ impl MapEntry {
             EntryArg(_, p) => NodeArg(p),
             EntryLocal(_, p) => NodeLocal(p),
             EntryPat(_, p) => NodePat(p),
+            EntryArm(_, p) => NodeArm(p),
             EntryBlock(_, p) => NodeBlock(p),
             EntryStructCtor(_, p) => NodeStructCtor(p),
             EntryLifetime(_, p) => NodeLifetime(p),
@@ -461,6 +465,7 @@ impl Map {
             Some(NodeStmt(stmt)) => stmt.span,
             Some(NodeArg(pat)) | Some(NodeLocal(pat)) => pat.span,
             Some(NodePat(pat)) => pat.span,
+            Some(NodeArm(arm)) => arm.span,
             Some(NodeBlock(block)) => block.span,
             Some(NodeStructCtor(_)) => self.expect_item(self.get_parent(id)).span,
             _ => return None,
@@ -714,6 +719,12 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         pat
     }
 
+    fn fold_arm(&mut self, arm: Gc<Arm>) -> Gc<Arm> {
+        let arm = fold::noop_fold_arm(arm, self);
+        self.insert(arm.id, EntryArm(self.parent, arm));
+        arm
+    }
+
     fn fold_expr(&mut self, expr: Gc<Expr>) -> Gc<Expr> {
         let expr = fold::noop_fold_expr(expr, self);
 
@@ -870,6 +881,7 @@ impl<'a> NodePrinter for pprust::State<'a> {
             NodeExpr(a)        => self.print_expr(&*a),
             NodeStmt(a)        => self.print_stmt(&*a),
             NodePat(a)         => self.print_pat(&*a),
+            NodeArm(a)         => self.print_arm(&*a),
             NodeBlock(a)       => self.print_block(&*a),
             NodeLifetime(a)    => self.print_lifetime(&*a),
 
@@ -945,6 +957,9 @@ fn node_id_to_string(map: &Map, id: NodeId) -> String {
         }
         Some(NodePat(ref pat)) => {
             format!("pat {} (id={})", pprust::pat_to_string(&**pat), id)
+        }
+        Some(NodeArm(ref arm)) => {
+            format!("arm {} (id={})", pprust::arm_to_string(&**arm), id)
         }
         Some(NodeBlock(ref block)) => {
             format!("block {} (id={})", pprust::block_to_string(&**block), id)

@@ -648,7 +648,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
           (&ty::ty_uniq(..), &ty::ty_uniq(..) )
           | (&ty::ty_ptr(..), &ty::ty_ptr(..) )
           | (&ty::ty_ptr(..), &ty::ty_rptr(..)) => {}
-          (&ty::ty_rptr(r_t, _), &ty::ty_rptr(r_s, _)) => {
+          (&ty::ty_rptr(ref r_t, _), &ty::ty_rptr(ref r_s, _)) => {
               infer::mk_subr(fcx.infcx(),
                              infer::RelateObjectBound(ex.span),
                              r_t,
@@ -876,8 +876,12 @@ fn trait_cast_types(fcx: &FnCtxt,
                                    sp: Span)
                                    -> Option<(ty::t, ty::t)> {
             match k {
-                &ty::UnsizeVtable(bounds, def_id, ref substs) => {
-                    Some((src_ty, ty::mk_trait(fcx.tcx(), def_id, substs.clone(), bounds)))
+                &ty::UnsizeVtable(ref bounds, def_id, ref substs) => {
+                    Some((src_ty,
+                          ty::mk_trait(fcx.tcx(),
+                                       def_id,
+                                       substs.clone(),
+                                       (*bounds).clone())))
                 }
                 &ty::UnsizeStruct(box ref k, tp_index) => match ty::get(src_ty).sty {
                     ty::ty_struct(_, ref substs) => {
@@ -989,12 +993,12 @@ pub fn resolve_impl(tcx: &ty::ctxt,
 
     let trait_def = ty::lookup_trait_def(tcx, impl_trait_ref.def_id);
     let vtbls = lookup_vtables(&vcx,
-                                   impl_item.span,
-                                   &trait_def.generics.types,
-                                   &impl_trait_ref.substs,
-                                   false);
+                               impl_item.span,
+                               &trait_def.generics.types,
+                               &impl_trait_ref.substs,
+                               false);
 
-    infcx.resolve_regions_and_report_errors();
+    infcx.resolve_regions_and_report_errors(None);
 
     let vtbls = writeback::resolve_impl_res(infcx, impl_item.span, &vtbls);
     let impl_def_id = ast_util::local_def(impl_item.id);
@@ -1014,7 +1018,10 @@ pub fn trans_resolve_method(tcx: &ty::ctxt, id: ast::NodeId,
     let unboxed_closures = RefCell::new(DefIdMap::new());
     let vcx = VtableContext {
         infcx: &infer::new_infer_ctxt(tcx),
-        param_env: &ty::construct_parameter_environment(tcx, &ty::Generics::empty(), id),
+        param_env: &ty::construct_parameter_environment(
+            tcx,
+            &ty::Generics::empty(),
+            id),
         unboxed_closures: &unboxed_closures,
     };
 

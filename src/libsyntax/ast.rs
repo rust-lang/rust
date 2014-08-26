@@ -481,6 +481,8 @@ pub struct Arm {
     pub pats: Vec<Gc<Pat>>,
     pub guard: Option<Gc<Expr>>,
     pub body: Gc<Expr>,
+    pub id: NodeId,
+    pub span: Span,
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -531,7 +533,7 @@ pub enum Expr_ {
     // Conditionless loop (can be exited with break, cont, or ret)
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
-    ExprMatch(Gc<Expr>, Vec<Arm>),
+    ExprMatch(Gc<Expr>, Vec<Gc<Arm>>),
     ExprFnBlock(CaptureClause, P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
     ExprUnboxedFn(CaptureClause, UnboxedClosureKind, P<FnDecl>, P<Block>),
@@ -556,7 +558,7 @@ pub enum Expr_ {
     ExprMac(Mac),
 
     /// A struct literal expression.
-    ExprStruct(Path, Vec<Field> , Option<Gc<Expr>> /* base */),
+    ExprStruct(Path, Vec<Field>, Option<Gc<Expr>> /* base */),
 
     /// A vector literal constructed from one repeated element.
     ExprRepeat(Gc<Expr> /* element */, Gc<Expr> /* count */),

@@ -162,14 +162,14 @@ pub trait Combine {
             assert_eq!(num_region_params, b_rs.len());
             let mut rs = vec!();
             for i in range(0, num_region_params) {
-                let a_r = a_rs[i];
-                let b_r = b_rs[i];
+                let a_r = &a_rs[i];
+                let b_r = &b_rs[i];
                 let variance = variances[i];
                 let r = match variance {
                     ty::Invariant => this.equate().regions(a_r, b_r),
                     ty::Covariant => this.regions(a_r, b_r),
                     ty::Contravariant => this.contraregions(a_r, b_r),
-                    ty::Bivariant => Ok(a_r),
+                    ty::Bivariant => Ok((*a_r).clone()),
                 };
                 rs.push(try!(r));
             }
@@ -190,24 +190,25 @@ pub trait Combine {
     fn closure_tys(&self, a: &ty::ClosureTy,
                    b: &ty::ClosureTy) -> cres<ty::ClosureTy> {
 
-        let store = match (a.store, b.store) {
-            (ty::RegionTraitStore(a_r, a_m),
-             ty::RegionTraitStore(b_r, b_m)) if a_m == b_m => {
+        let store = match (&a.store, &b.store) {
+            (&ty::RegionTraitStore(ref a_r, a_m),
+             &ty::RegionTraitStore(ref b_r, b_m)) if a_m == b_m => {
                 let r = try!(self.contraregions(a_r, b_r));
                 ty::RegionTraitStore(r, a_m)
             }
 
-            _ if a.store == b.store => {
-                a.store
-            }
+            _ if a.store == b.store => a.store.clone(),
 
             _ => {
-                return Err(ty::terr_sigil_mismatch(expected_found(self, a.store, b.store)))
+                return Err(ty::terr_sigil_mismatch(expected_found(
+                            self,
+                            a.store.clone(),
+                            b.store.clone())))
             }
         };
         let fn_style = try!(self.fn_styles(a.fn_style, b.fn_style));
         let onceness = try!(self.oncenesses(a.onceness, b.onceness));
-        let bounds = try!(self.existential_bounds(a.bounds, b.bounds));
+        let bounds = try!(self.existential_bounds(&a.bounds, &b.bounds));
         let sig = try!(self.fn_sigs(&a.sig, &b.sig));
         let abi = try!(self.abi(a.abi, b.abi));
         Ok(ty::ClosureTy {
@@ -239,11 +240,10 @@ pub trait Combine {
     fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<Onceness>;
 
     fn existential_bounds(&self,
-                          a: ty::ExistentialBounds,
-                          b: ty::ExistentialBounds)
-                          -> cres<ty::ExistentialBounds>
-    {
-        let r = try!(self.contraregions(a.region_bound, b.region_bound));
+                          a: &ty::ExistentialBounds,
+                          b: &ty::ExistentialBounds)
+                          -> cres<ty::ExistentialBounds> {
+        let r = try!(self.contraregions(&a.region_bound, &b.region_bound));
         let nb = try!(self.builtin_bounds(a.builtin_bounds, b.builtin_bounds));
         Ok(ty::ExistentialBounds { region_bound: r,
                                    builtin_bounds: nb })
@@ -254,32 +254,35 @@ pub trait Combine {
                       b: ty::BuiltinBounds)
                       -> cres<ty::BuiltinBounds>;
 
-    fn contraregions(&self, a: ty::Region, b: ty::Region)
+    fn contraregions(&self, a: &ty::Region, b: &ty::Region)
                   -> cres<ty::Region>;
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region>;
+    fn regions(&self, a: &ty::Region, b: &ty::Region) -> cres<ty::Region>;
 
     fn trait_stores(&self,
                     vk: ty::terr_vstore_kind,
-                    a: ty::TraitStore,
-                    b: ty::TraitStore)
+                    a: &ty::TraitStore,
+                    b: &ty::TraitStore)
                     -> cres<ty::TraitStore> {
         debug!("{}.trait_stores(a={}, b={})", self.tag(), a, b);
 
         match (a, b) {
-            (ty::RegionTraitStore(a_r, a_m),
-             ty::RegionTraitStore(b_r, b_m)) if a_m == b_m => {
+            (&ty::RegionTraitStore(ref a_r, a_m),
+             &ty::RegionTraitStore(ref b_r, b_m)) if a_m == b_m => {
                 self.contraregions(a_r, b_r).and_then(|r| {
                     Ok(ty::RegionTraitStore(r, a_m))
                 })
             }
 
             _ if a == b => {
-                Ok(a)
+                Ok((*a).clone())
             }
 
             _ => {
-                Err(ty::terr_trait_stores_differ(vk, expected_found(self, a, b)))
+                Err(ty::terr_trait_stores_differ(vk, expected_found(
+                            self,
+                            (*a).clone(),
+                            (*b).clone())))
             }
         }
 
@@ -454,7 +457,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       if a_.def_id == b_.def_id => {
           debug!("Trying to match traits {:?} and {:?}", a, b);
           let substs = try!(this.substs(a_.def_id, &a_.substs, &b_.substs));
-          let bounds = try!(this.existential_bounds(a_.bounds, b_.bounds));
+          let bounds = try!(this.existential_bounds(&a_.bounds, &b_.bounds));
           Ok(ty::mk_trait(tcx,
                           a_.def_id,
                           substs.clone(),
@@ -467,8 +470,8 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
             Ok(ty::mk_struct(tcx, a_id, substs))
       }
 
-      (&ty::ty_unboxed_closure(a_id, a_region),
-       &ty::ty_unboxed_closure(b_id, b_region))
+      (&ty::ty_unboxed_closure(a_id, ref a_region),
+       &ty::ty_unboxed_closure(b_id, ref b_region))
       if a_id == b_id => {
           // All ty_unboxed_closure types with the same id represent
           // the (anonymous) type of the same closure expression. So
@@ -491,7 +494,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
             check_ptr_to_unsized(this, a, b, a_mt.ty, b_mt.ty, ty::mk_ptr(tcx, mt))
       }
 
-      (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
+      (&ty::ty_rptr(ref a_r, ref a_mt), &ty::ty_rptr(ref b_r, ref b_mt)) => {
             let r = try!(this.contraregions(a_r, b_r));
             // FIXME(14985)  If we have mutable references to trait objects, we
             // used to use covariant subtyping. I have preserved this behaviour,

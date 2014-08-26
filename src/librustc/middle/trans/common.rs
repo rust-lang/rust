@@ -19,6 +19,7 @@ use llvm::{True, False, Bool};
 use middle::def;
 use middle::freevars;
 use middle::lang_items::LangItem;
+use middle::loop_analysis::LoopAnalysis;
 use middle::mem_categorization as mc;
 use middle::subst;
 use middle::subst::Subst;
@@ -532,6 +533,10 @@ impl<'a> mc::Typer for Block<'a> {
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> freevars::CaptureMode {
         self.tcx().capture_modes.borrow().get_copy(&closure_expr_id)
+    }
+
+    fn loop_analysis(&self) -> Option<&LoopAnalysis> {
+        None
     }
 }
 

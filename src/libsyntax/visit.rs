@@ -788,7 +788,7 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
         ExprMatch(ref subexpression, ref arms) => {
             visitor.visit_expr(&**subexpression, env.clone());
             for arm in arms.iter() {
-                visitor.visit_arm(arm, env.clone())
+                visitor.visit_arm(&**arm, env.clone())
             }
         }
         ExprFnBlock(_, ref function_declaration, ref body) => {

@@ -426,7 +426,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
                 _ => quote_expr!(self.cx, nlist.add($pc, &*groups)),
             };
             self.arm_inst(pc, body)
-        }).collect::<Vec<ast::Arm>>();
+        }).collect::<Vec<Gc<ast::Arm>>>();
 
         self.match_insts(arms)
     }
@@ -516,7 +516,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
                 _ => self.empty_block(),
             };
             self.arm_inst(pc, body)
-        }).collect::<Vec<ast::Arm>>();
+        }).collect::<Vec<Gc<ast::Arm>>>();
 
         self.match_insts(arms)
     }
@@ -535,7 +535,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
             let pat = self.cx.pat(self.sp, ast::PatRange(quote_expr!(self.cx, $start),
                                                          quote_expr!(self.cx, $end)));
             self.cx.arm(self.sp, vec!(pat), expr_true)
-        }).collect::<Vec<ast::Arm>>();
+        }).collect::<Vec<Gc<ast::Arm>>>();
 
         arms.push(self.wild_arm_expr(quote_expr!(self.cx, false)));
 
@@ -570,7 +570,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
     // A wild-card arm is automatically added that executes a no-op. It will
     // never be used, but is added to satisfy the compiler complaining about
     // non-exhaustive patterns.
-    fn match_insts(&self, mut arms: Vec<ast::Arm>) -> Gc<ast::Expr> {
+    fn match_insts(&self, mut arms: Vec<Gc<ast::Arm>>) -> Gc<ast::Expr> {
         arms.push(self.wild_arm_expr(self.empty_block()));
         self.cx.expr_match(self.sp, quote_expr!(self.cx, pc), arms)
     }
@@ -581,15 +581,15 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 
     // Creates a match arm for the instruction at `pc` with the expression
     // `body`.
-    fn arm_inst(&self, pc: uint, body: Gc<ast::Expr>) -> ast::Arm {
+    fn arm_inst(&self, pc: uint, body: Gc<ast::Expr>) -> Gc<ast::Arm> {
         let pc_pat = self.cx.pat_lit(self.sp, quote_expr!(self.cx, $pc));
 
         self.cx.arm(self.sp, vec!(pc_pat), body)
     }
 
     // Creates a wild-card match arm with the expression `body`.
-    fn wild_arm_expr(&self, body: Gc<ast::Expr>) -> ast::Arm {
-        ast::Arm {
+    fn wild_arm_expr(&self, body: Gc<ast::Expr>) -> Gc<ast::Arm> {
+        box(GC) ast::Arm {
             attrs: vec!(),
             pats: vec!(box(GC) ast::Pat{
                 id: ast::DUMMY_NODE_ID,
@@ -598,6 +598,8 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
             }),
             guard: None,
             body: body,
+            id: ast::DUMMY_NODE_ID,
+            span: self.sp,
         }
     }
 

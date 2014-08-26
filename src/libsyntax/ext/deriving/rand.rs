@@ -119,7 +119,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span,
 
                 let thing = rand_thing(cx, v_span, ident, summary, |cx, sp| rand_call(cx, sp));
                 cx.arm(v_span, vec!( pat ), thing)
-            }).collect::<Vec<ast::Arm> >();
+            }).collect::<Vec<Gc<ast::Arm>>>();
 
             // _ => {} at the end. Should never occur
             arms.push(cx.arm_unreachable(trait_span));

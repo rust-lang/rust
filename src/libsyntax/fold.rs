@@ -98,7 +98,7 @@ pub trait Folder {
         noop_fold_stmt(s, self)
     }
 
-    fn fold_arm(&mut self, a: &Arm) -> Arm {
+    fn fold_arm(&mut self, a: Gc<Arm>) -> Gc<Arm> {
         noop_fold_arm(a, self)
     }
 
@@ -318,12 +318,14 @@ pub fn noop_fold_view_path<T: Folder>(view_path: Gc<ViewPath>, fld: &mut T) -> G
     }
 }
 
-pub fn noop_fold_arm<T: Folder>(a: &Arm, fld: &mut T) -> Arm {
-    Arm {
+pub fn noop_fold_arm<T: Folder>(a: Gc<Arm>, fld: &mut T) -> Gc<Arm> {
+    box(GC) Arm {
         attrs: a.attrs.iter().map(|x| fld.fold_attribute(*x)).collect(),
         pats: a.pats.iter().map(|x| fld.fold_pat(*x)).collect(),
         guard: a.guard.map(|x| fld.fold_expr(x)),
         body: fld.fold_expr(a.body),
+        id: fld.new_id(a.id),
+        span: fld.new_span(a.span),
     }
 }
 
@@ -1149,7 +1151,7 @@ pub fn noop_fold_expr<T: Folder>(e: Gc<Expr>, folder: &mut T) -> Gc<Expr> {
         }
         ExprMatch(expr, ref arms) => {
             ExprMatch(folder.fold_expr(expr),
-                      arms.iter().map(|x| folder.fold_arm(x)).collect())
+                      arms.iter().map(|x| folder.fold_arm(*x)).collect())
         }
         ExprFnBlock(capture_clause, ref decl, ref body) => {
             ExprFnBlock(capture_clause,

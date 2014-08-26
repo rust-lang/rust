@@ -1480,7 +1480,7 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.bopen());
                 for arm in arms.iter() {
-                    try!(self.print_arm(arm));
+                    try!(self.print_arm(&**arm));
                 }
                 try!(self.bclose_(expr.span, indent_unit));
             }
@@ -1931,7 +1931,7 @@ impl<'a> State<'a> {
         self.ann.post(self, NodePat(pat))
     }
 
-    fn print_arm(&mut self, arm: &ast::Arm) -> IoResult<()> {
+    pub fn print_arm(&mut self, arm: &ast::Arm) -> IoResult<()> {
         // I have no idea why this check is necessary, but here it
         // is :(
         if arm.attrs.is_empty() {

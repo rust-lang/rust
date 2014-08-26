@@ -216,7 +216,7 @@ impl<'f> Coerce<'f> {
     pub fn subtype(&self, a: ty::t, b: ty::t) -> CoerceResult {
         match Sub(self.get_ref().clone()).tys(a, b) {
             Ok(_) => Ok(None),         // No coercion required.
-            Err(ref e) => Err(*e)
+            Err(ref e) => Err((*e).clone())
         }
     }
 
@@ -266,7 +266,7 @@ impl<'f> Coerce<'f> {
         };
 
         let a_borrowed = ty::mk_rptr(self.get_ref().infcx.tcx,
-                                     r_borrow,
+                                     r_borrow.clone(),
                                      mt {ty: inner_ty, mutbl: mutbl_b});
         try!(sub.tys(a_borrowed, b));
 
@@ -292,7 +292,8 @@ impl<'f> Coerce<'f> {
                 let sub = Sub(self.get_ref().clone());
                 let coercion = Coercion(self.get_ref().trace.clone());
                 let r_borrow = self.get_ref().infcx.next_region_var(coercion);
-                let unsized_ty = ty::mk_slice(self.get_ref().infcx.tcx, r_borrow,
+                let unsized_ty = ty::mk_slice(self.get_ref().infcx.tcx,
+                                              r_borrow.clone(),
                                               mt {ty: t_a, mutbl: mutbl_b});
                 try!(self.get_ref().infcx.try(|| sub.tys(unsized_ty, b)));
                 Ok(Some(AutoDerefRef(AutoDerefRef {
@@ -334,7 +335,7 @@ impl<'f> Coerce<'f> {
                             let coercion = Coercion(self.get_ref().trace.clone());
                             let r_borrow = self.get_ref().infcx.next_region_var(coercion);
                             let ty = ty::mk_rptr(self.get_ref().infcx.tcx,
-                                                 r_borrow,
+                                                 r_borrow.clone(),
                                                  ty::mt{ty: ty, mutbl: mt_b.mutbl});
                             try!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
@@ -407,12 +408,16 @@ impl<'f> Coerce<'f> {
                     Some((ty, ty::UnsizeLength(len)))
                 }
                 (&ty::ty_trait(..), &ty::ty_trait(..)) => None,
-                (_, &ty::ty_trait(box ty::TyTrait { def_id, ref substs, bounds })) => {
+                (_, &ty::ty_trait(box ty::TyTrait {
+                    def_id,
+                    ref substs,
+                    ref bounds
+                })) => {
                     let ty = ty::mk_trait(tcx,
                                           def_id,
                                           substs.clone(),
-                                          bounds);
-                    Some((ty, ty::UnsizeVtable(bounds,
+                                          (*bounds).clone());
+                    Some((ty, ty::UnsizeVtable((*bounds).clone(),
                                                def_id,
                                                substs.clone())))
                 }
@@ -479,8 +484,15 @@ impl<'f> Coerce<'f> {
         let r_a = self.get_ref().infcx.next_region_var(coercion);
 
         self.coerce_object(a, sty_a, b,
-                           |tr| ty::mk_rptr(tcx, r_a, ty::mt{ mutbl: b_mutbl, ty: tr }),
-                           || AutoPtr(r_a, b_mutbl, None))
+                           |tr| {
+                               ty::mk_rptr(tcx,
+                                           r_a.clone(),
+                                           ty::mt {
+                                               mutbl: b_mutbl,
+                                               ty: tr,
+                                           })
+                           },
+                           || AutoPtr(r_a.clone(), b_mutbl, None))
     }
 
     fn coerce_unsafe_object(&self,
@@ -514,10 +526,13 @@ impl<'f> Coerce<'f> {
                 ty::ty_trait(box ty::TyTrait {
                         def_id,
                         ref substs,
-                        bounds,
+                        ref bounds,
                         ..
                     }) => {
-                    let tr = ty::mk_trait(tcx, def_id, substs.clone(), bounds);
+                    let tr = ty::mk_trait(tcx,
+                                          def_id,
+                                          substs.clone(),
+                                          (*bounds).clone());
                     try!(self.subtype(mk_ty(tr), b));
                     Ok(Some(AutoDerefRef(AutoDerefRef {
                         autoderefs: 1,
@@ -575,7 +590,7 @@ impl<'f> Coerce<'f> {
                 _ => return self.subtype(a, b)
             };
 
-            let adj = ty::AutoAddEnv(fn_ty_b.store);
+            let adj = ty::AutoAddEnv(fn_ty_b.store.clone());
             let a_closure = ty::mk_closure(self.get_ref().infcx.tcx,
                                            ty::ClosureTy {
                                                 sig: fn_ty_a.sig.clone(),

@@ -104,7 +104,7 @@ impl<'a> ty_fold::TypeFolder for ResolveState<'a> {
         self.resolve_type(t)
     }
 
-    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+    fn fold_region(&mut self, r: &ty::Region) -> ty::Region {
         self.resolve_region(r)
     }
 }
@@ -141,8 +141,7 @@ impl<'a> ResolveState<'a> {
         }
     }
 
-    pub fn resolve_region_chk(&mut self,
-                              orig: ty::Region)
+    pub fn resolve_region_chk(&mut self, orig: &ty::Region)
                               -> fres<ty::Region> {
         self.err = None;
         let resolved = indent(|| self.resolve_region(orig) );
@@ -189,11 +188,11 @@ impl<'a> ResolveState<'a> {
         }
     }
 
-    pub fn resolve_region(&mut self, orig: ty::Region) -> ty::Region {
+    pub fn resolve_region(&mut self, orig: &ty::Region) -> ty::Region {
         debug!("Resolve_region({})", orig.repr(self.infcx.tcx));
-        match orig {
+        match *orig {
           ty::ReInfer(ty::ReVar(rid)) => self.resolve_region_var(rid),
-          _ => orig
+          _ => (*orig).clone()
         }
     }
 

@@ -21,6 +21,7 @@ pub use middle::typeck::infer::resolve::{resolve_ivar, resolve_all};
 pub use middle::typeck::infer::resolve::{resolve_nested_tvar};
 pub use middle::typeck::infer::resolve::{resolve_rvar};
 
+use middle::loop_analysis::LoopAnalysis;
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
@@ -58,7 +59,6 @@ pub mod lub;
 pub mod region_inference;
 pub mod resolve;
 pub mod sub;
-pub mod test;
 pub mod type_variable;
 pub mod unify;
 
@@ -363,8 +363,8 @@ pub fn can_mk_subty(cx: &InferCtxt, a: ty::t, b: ty::t) -> ures {
 
 pub fn mk_subr(cx: &InferCtxt,
                origin: SubregionOrigin,
-               a: ty::Region,
-               b: ty::Region) {
+               a: &ty::Region,
+               b: &ty::Region) {
     debug!("mk_subr({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
     let snapshot = cx.region_vars.start_snapshot();
     cx.region_vars.make_subregion(origin, a, b);
@@ -374,7 +374,7 @@ pub fn mk_subr(cx: &InferCtxt,
 pub fn verify_param_bound(cx: &InferCtxt,
                           origin: SubregionOrigin,
                           param_ty: ty::ParamTy,
-                          a: ty::Region,
+                          a: &ty::Region,
                           bs: Vec<ty::Region>) {
     debug!("verify_param_bound({}, {} <: {})",
            param_ty.repr(cx.tcx),
@@ -460,7 +460,7 @@ pub fn resolve_type(cx: &InferCtxt,
     cx.commit_unconditionally(|| resolver.resolve_type_chk(a))
 }
 
-pub fn resolve_region(cx: &InferCtxt, r: ty::Region, modes: uint)
+pub fn resolve_region(cx: &InferCtxt, r: &ty::Region, modes: uint)
                       -> fres<ty::Region> {
     let mut resolver = resolver(cx, modes, None);
     resolver.resolve_region_chk(r)
@@ -474,7 +474,7 @@ trait then {
 impl then for ures {
     fn then<T:Clone>(&self, f: || -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err> {
-        self.and_then(|_i| f())
+        self.clone().and_then(|_i| f())
     }
 }
 
@@ -486,7 +486,7 @@ impl<T> ToUres for cres<T> {
     fn to_ures(&self) -> ures {
         match *self {
           Ok(ref _v) => Ok(()),
-          Err(ref e) => Err((*e))
+          Err(ref e) => Err((*e).clone())
         }
     }
 }
@@ -627,10 +627,7 @@ impl<'a> InferCtxt<'a> {
         r
     }
 
-    pub fn add_given(&self,
-                     sub: ty::FreeRegion,
-                     sup: ty::RegionVid)
-    {
+    pub fn add_given(&self, sub: ty::FreeRegion, sup: ty::RegionVid) {
         self.region_vars.add_given(sub, sup);
     }
 }
@@ -701,9 +698,12 @@ impl<'a> InferCtxt<'a> {
         self.region_vars.new_bound(binder_id)
     }
 
-    pub fn resolve_regions_and_report_errors(&self) {
-        let errors = self.region_vars.resolve_regions();
-        self.report_region_errors(&errors); // see error_reporting.rs
+    pub fn resolve_regions_and_report_errors(
+            &self,
+            loop_analysis: Option<&LoopAnalysis>) {
+        let errors = self.region_vars.resolve_regions(loop_analysis);
+        // See `error_reporting.rs`.
+        self.report_region_errors(&errors);
     }
 
     pub fn ty_to_string(&self, t: ty::t) -> String {
@@ -808,9 +808,6 @@ impl<'a> InferCtxt<'a> {
                                 error_str).as_slice());
                 }
             }
-            for err in err.iter() {
-                ty::note_and_explain_type_err(self.tcx, *err)
-            }
         }
     }
 
@@ -872,7 +869,7 @@ impl<'a> InferCtxt<'a> {
 
 pub fn fold_regions_in_sig(tcx: &ty::ctxt,
                            fn_sig: &ty::FnSig,
-                           fldr: |r: ty::Region| -> ty::Region)
+                           fldr: |r: &ty::Region| -> ty::Region)
                            -> ty::FnSig {
     ty_fold::RegionFolder::regions(tcx, fldr).fold_sig(fn_sig)
 }

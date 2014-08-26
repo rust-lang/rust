@@ -81,6 +81,7 @@ use middle::const_eval;
 use middle::def;
 use middle::freevars;
 use middle::lang_items::IteratorItem;
+use middle::loop_analysis::{LoopAnalysis, LoopAnalyzer};
 use middle::mem_categorization::McResult;
 use middle::mem_categorization;
 use middle::pat_util::pat_id_map;
@@ -205,10 +206,15 @@ pub struct Inherited<'a> {
     region_obligations: RefCell<NodeMap<Vec<RegionObligation>>>,
 }
 
-struct RegionObligation {
-    sub_region: ty::Region,
+pub struct RegionObligation {
+    sub_region: RegionObligationRegion,
     sup_type: ty::t,
     origin: infer::SubregionOrigin,
+}
+
+pub enum RegionObligationRegion {
+    RegionObligationRegion(ty::Region),
+    RegionObligationScope(ast::NodeId),
 }
 
 /// When type-checking an expression, we propagate downward
@@ -320,6 +326,9 @@ impl<'a> mem_categorization::Typer for FnCtxt<'a> {
                         -> &'a RefCell<DefIdMap<ty::UnboxedClosure>> {
         &self.inh.unboxed_closures
     }
+    fn loop_analysis(&self) -> Option<&LoopAnalysis> {
+        None
+    }
 }
 
 impl<'a> Inherited<'a> {
@@ -367,7 +376,7 @@ fn static_inherited_fields<'a>(ccx: &'a CrateCtxt<'a>) -> Inherited<'a> {
     let param_env = ty::ParameterEnvironment {
         free_substs: subst::Substs::empty(),
         bounds: subst::VecPerParamSpace::empty(),
-        implicit_region_bound: ty::ReStatic,
+        implicit_region_bound: ty::RegionImplicitRegionBound(ty::ReStatic),
     };
     Inherited::new(ccx.tcx, param_env)
 }
@@ -443,7 +452,10 @@ fn check_bare_fn(ccx: &CrateCtxt,
                                decl, id, body, &inh);
 
             vtable::resolve_in_block(&fcx, body);
-            regionck::regionck_fn(&fcx, id, body);
+
+            let loop_analysis =
+                LoopAnalyzer::new(ccx.tcx).analyze_block(body);
+            regionck::regionck_fn(&fcx, loop_analysis, id, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
@@ -770,8 +782,7 @@ fn check_type_well_formed(ccx: &CrateCtxt, item: &ast::Item) {
 
     fn check_type_defn(ccx: &CrateCtxt,
                        item: &ast::Item,
-                       lookup_fields: |&FnCtxt| -> Vec<ty::t>)
-    {
+                       lookup_fields: |&FnCtxt| -> Vec<ty::t>) {
         let item_def_id = local_def(item.id);
         let polytype = ty::lookup_item_type(ccx.tcx, item_def_id);
         let param_env =
@@ -1260,13 +1271,12 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 "method `{}` has an incompatible type for trait: {}",
                 token::get_ident(trait_m.ident),
                 ty::type_err_to_str(tcx, terr));
-            ty::note_and_explain_type_err(tcx, terr);
         }
     }
 
     // Finally, resolve all regions. This catches wily misuses of lifetime
     // parameters.
-    infcx.resolve_regions_and_report_errors();
+    infcx.resolve_regions_and_report_errors(None);
 
     fn check_region_bounds_on_impl_method(tcx: &ty::ctxt,
                                           span: Span,
@@ -1275,8 +1285,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                                           impl_generics: &ty::Generics,
                                           trait_to_skol_substs: &Substs,
                                           impl_to_skol_substs: &Substs)
-                                          -> bool
-    {
+                                          -> bool {
         /*!
 
         Check that region bounds on impl method are the same as those
@@ -1364,14 +1373,14 @@ fn compare_impl_method(tcx: &ty::ctxt,
             let missing: Vec<ty::Region> =
                 trait_bounds.iter()
                 .filter(|&b| !impl_bounds.contains(b))
-                .map(|&b| b)
+                .map(|b| (*b).clone())
                 .collect();
 
             // Collect set present in impl but not in trait.
             let extra: Vec<ty::Region> =
                 impl_bounds.iter()
                 .filter(|&b| !trait_bounds.contains(b))
-                .map(|&b| b)
+                .map(|b| (*b).clone())
                 .collect();
 
             debug!("missing={} extra={}",
@@ -1761,7 +1770,7 @@ impl<'a> FnCtxt<'a> {
                                  sub,
                                  sup) {
             Ok(None) => Ok(()),
-            Err(ref e) => Err((*e)),
+            Err(ref e) => Err((*e).clone()),
             Ok(Some(adjustment)) => {
                 self.write_adjustment(expr.id, adjustment);
                 Ok(())
@@ -1780,8 +1789,8 @@ impl<'a> FnCtxt<'a> {
 
     pub fn mk_subr(&self,
                    origin: infer::SubregionOrigin,
-                   sub: ty::Region,
-                   sup: ty::Region) {
+                   sub: &ty::Region,
+                   sup: &ty::Region) {
         infer::mk_subr(self.infcx(), origin, sub, sup)
     }
 
@@ -1816,8 +1825,7 @@ impl<'a> FnCtxt<'a> {
     pub fn register_region_obligation(&self,
                                       origin: infer::SubregionOrigin,
                                       ty: ty::t,
-                                      r: ty::Region)
-    {
+                                      r: RegionObligationRegion) {
         /*!
          * Registers an obligation for checking later, during
          * regionck, that the type `ty` must outlive the region `r`.
@@ -1826,9 +1834,11 @@ impl<'a> FnCtxt<'a> {
         let mut region_obligations = self.inh.region_obligations.borrow_mut();
         let v = region_obligations.find_or_insert_with(self.body_id,
                                                        |_| Vec::new());
-        v.push(RegionObligation { sub_region: r,
-                                  sup_type: ty,
-                                  origin: origin });
+        v.push(RegionObligation {
+            sub_region: r,
+            sup_type: ty,
+            origin: origin,
+        });
     }
 
     pub fn add_region_obligations_for_parameters(&self,
@@ -1875,7 +1885,7 @@ impl<'a> FnCtxt<'a> {
 
         assert_eq!(generics.regions.iter().len(),
                    substs.regions().iter().len());
-        for (region_def, &region_param) in
+        for (region_def, region_param) in
             generics.regions.iter().zip(
                 substs.regions().iter())
         {
@@ -1889,8 +1899,7 @@ impl<'a> FnCtxt<'a> {
             span: Span,
             param_ty: ty::ParamTy,
             param_bound: &ty::ParamBounds,
-            ty: ty::t)
-        {
+            ty: ty::t) {
             // For each declared region bound `T:r`, `T` must outlive `r`.
             let region_bounds =
                 ty::required_region_bounds(
@@ -1898,9 +1907,12 @@ impl<'a> FnCtxt<'a> {
                     param_bound.opt_region_bound.as_slice(),
                     param_bound.builtin_bounds,
                     param_bound.trait_bounds.as_slice());
-            for &r in region_bounds.iter() {
+            for r in region_bounds.iter() {
                 let origin = infer::RelateParamBound(span, param_ty, ty);
-                fcx.register_region_obligation(origin, ty, r);
+                fcx.register_region_obligation(
+                    origin,
+                    ty,
+                    RegionObligationRegion((*r).clone()));
             }
         }
 
@@ -1908,9 +1920,8 @@ impl<'a> FnCtxt<'a> {
             fcx: &FnCtxt,
             span: Span,
             region_bounds: &[ty::Region],
-            region_param: ty::Region)
-        {
-            for &b in region_bounds.iter() {
+            region_param: &ty::Region) {
+            for b in region_bounds.iter() {
                 // For each bound `region:b`, `b <= region` must hold
                 // (i.e., `region` must outlive `b`).
                 let origin = infer::RelateRegionParamBound(span);
@@ -3074,7 +3085,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             // are lies, but we ignore them so it doesn't matter.
             //
             // FIXME(pcwalton): Refactor this API.
-            ty::region_existential_bound(ty::ReStatic),
+            &ty::region_existential_bound(ty::ReStatic),
             ty::RegionTraitStore(ty::ReStatic, ast::MutImmutable),
 
             decl,
@@ -3086,7 +3097,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 fcx.ccx.tcx.sess.span_bug(expr.span,
                                           "can't make anon regions here?!")
             }
-            Ok(regions) => *regions.get(0),
+            Ok(regions) => (*regions.get(0)).clone(),
         };
         let closure_type = ty::mk_unboxed_closure(fcx.ccx.tcx,
                                                   local_def(expr.id),
@@ -3165,7 +3176,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         (&ty::UniqTraitStore, _) => ast::Once,
                         (&ty::RegionTraitStore(..), _) => ast::Many,
                     };
-                    (Some(sig), onceness, cenv.bounds)
+                    (Some(sig), onceness, cenv.bounds.clone())
                 }
                 _ => {
                     // Not an error! Means we're inferring the closure type
@@ -3181,7 +3192,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                             (ty::region_existential_bound(region), ast::Many)
                         }
                     };
-                    (None, onceness, bounds)
+                    (None, onceness, bounds.clone())
                 }
             }
         };
@@ -3191,7 +3202,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                            expr.id,
                                            ast::NormalFn,
                                            expected_onceness,
-                                           expected_bounds,
+                                           &expected_bounds,
                                            store,
                                            decl,
                                            abi::Rust,
@@ -3499,9 +3510,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                       fcx.write_ty(id, ty::mk_uniq(tcx, referent_ty));
                       checked = true
                   } else if tcx.lang_items.managed_heap() == Some(def_id) {
-                      fcx.register_region_obligation(infer::Managed(expr.span),
-                                                     referent_ty,
-                                                     ty::ReStatic);
+                      fcx.register_region_obligation(
+                          infer::Managed(expr.span),
+                          referent_ty,
+                          RegionObligationRegion(ty::ReStatic));
                       fcx.write_ty(id, ty::mk_box(tcx, referent_ty));
                       checked = true
                   }
@@ -4067,7 +4079,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                             .ty_to_string(
                                                 actual_structure_type),
                                          type_error_description).as_slice());
-                    ty::note_and_explain_type_err(tcx, &type_error);
                 }
             }
         }
@@ -4137,12 +4148,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
     unifier();
 }
 
-fn constrain_path_type_parameters(fcx: &FnCtxt,
-                                  expr: &ast::Expr)
-{
+fn constrain_path_type_parameters(fcx: &FnCtxt, expr: &ast::Expr) {
     fcx.opt_node_ty_substs(expr.id, |item_substs| {
         for &ty in item_substs.substs.types.iter() {
-            let default_bound = ty::ReScope(expr.id);
+            let default_bound = RegionObligationScope(expr.id);
             let origin = infer::RelateDefaultParamBound(expr.span, ty);
             fcx.register_region_obligation(origin, ty, default_bound);
         }
@@ -4447,6 +4456,7 @@ pub fn check_const_with_ty(fcx: &FnCtxt,
 
     check_expr_with_hint(fcx, e, declty);
     demand::coerce(fcx, e.span, declty, e);
+
     regionck::regionck_expr(fcx, e);
     writeback::resolve_type_vars_in_expr(fcx, e);
 }
@@ -5549,3 +5559,13 @@ impl Repr for RegionObligation {
                 self.origin.repr(tcx))
     }
 }
+
+impl Repr for RegionObligationRegion {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
+        match *self {
+            RegionObligationRegion(ref region) => region.repr(tcx),
+            RegionObligationScope(scope_id) => format!("Scope({})", scope_id),
+        }
+    }
+}
+

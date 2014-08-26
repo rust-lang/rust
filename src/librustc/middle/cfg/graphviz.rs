@@ -28,7 +28,7 @@ pub struct LabelledCFG<'a>{
     pub name: String,
 }
 
-fn replace_newline_with_backslash_l(s: String) -> String {
+pub fn replace_newline_with_backslash_l(s: String) -> String {
     // Replacing newlines with \\l causes each line to be left-aligned,
     // improving presentation of (long) pretty-printed expressions.
     if s.as_slice().contains("\n") {

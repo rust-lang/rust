@@ -64,6 +64,8 @@
 
 use middle::def;
 use middle::freevars;
+use middle::loop_analysis::LoopAnalysis;
+use middle::seme_region::SemeRegion;
 use middle::ty;
 use middle::typeck;
 use util::nodemap::{DefIdMap, NodeMap};
@@ -180,16 +182,16 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(OwnedPtr))
         }
 
-        ty::ty_rptr(r, mt) => {
+        ty::ty_rptr(ref r, mt) => {
             let kind = ty::BorrowKind::from_mutbl(mt.mutbl);
-            Some(deref_ptr(BorrowedPtr(kind, r)))
+            Some(deref_ptr(BorrowedPtr(kind, (*r).clone())))
         }
 
         ty::ty_closure(box ty::ClosureTy {
-                store: ty::RegionTraitStore(r, _),
+                store: ty::RegionTraitStore(ref r, _),
                 ..
             }) => {
-            Some(deref_ptr(BorrowedPtr(ty::ImmBorrow, r)))
+            Some(deref_ptr(BorrowedPtr(ty::ImmBorrow, (*r).clone())))
         }
 
         ty::ty_box(..) => {
@@ -265,17 +267,18 @@ pub type McResult<T> = Result<T, ()>;
  * can be sure that only `Ok` results will occur.
  */
 pub trait Typer {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt;
+    fn tcx(&self) -> &ty::ctxt;
     fn node_ty(&self, id: ast::NodeId) -> McResult<ty::t>;
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t>;
-    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>>;
+    fn node_method_ty(&self, method_call: typeck::MethodCall)
+                      -> Option<ty::t>;
+    fn adjustments(&self) -> &RefCell<NodeMap<ty::AutoAdjustment>>;
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> freevars::CaptureMode;
-    fn unboxed_closures<'a>(&'a self)
-                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure>>;
+    fn unboxed_closures(&self) -> &RefCell<DefIdMap<ty::UnboxedClosure>>;
+    fn loop_analysis(&self) -> Option<&LoopAnalysis>;
 }
 
 impl MutabilityCategory {
@@ -295,8 +298,8 @@ impl MutabilityCategory {
     }
 
     pub fn from_pointer_kind(base_mutbl: MutabilityCategory,
-                             ptr: PointerKind) -> MutabilityCategory {
-        match ptr {
+                             ptr: &PointerKind) -> MutabilityCategory {
+        match *ptr {
             OwnedPtr => {
                 base_mutbl.inherit()
             }
@@ -568,14 +571,14 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                       // Decide whether to use implicit reference or by copy/move
                       // capture for the upvar. This, combined with the onceness,
                       // determines whether the closure can move out of it.
-                      let var_is_refd = match (closure_ty.store, closure_ty.onceness) {
+                      let var_is_refd = match (&closure_ty.store, closure_ty.onceness) {
                           // Many-shot stack closures can never move out.
-                          (ty::RegionTraitStore(..), ast::Many) => true,
+                          (&ty::RegionTraitStore(..), ast::Many) => true,
                           // 1-shot stack closures can move out.
-                          (ty::RegionTraitStore(..), ast::Once) => false,
+                          (&ty::RegionTraitStore(..), ast::Once) => false,
                           // Heap closures always capture by copy/move, and can
                           // move out if they are once.
-                          (ty::UniqTraitStore, _) => false,
+                          (&ty::UniqTraitStore, _) => false,
 
                       };
                       if var_is_refd {
@@ -670,21 +673,21 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
         let upvar_ty = ty::mk_err();
 
         let base_cmt = Rc::new(cmt_ {
-            id:id,
-            span:span,
-            cat:cat_upvar(upvar_id, upvar_borrow),
-            mutbl:McImmutable,
-            ty:upvar_ty,
+            id: id,
+            span: span,
+            cat: cat_upvar(upvar_id, upvar_borrow.clone()),
+            mutbl: McImmutable,
+            ty: upvar_ty,
         });
 
-        let ptr = BorrowedPtr(upvar_borrow.kind, upvar_borrow.region);
+        let ptr = BorrowedPtr(upvar_borrow.kind, upvar_borrow.region.clone());
 
         let deref_cmt = Rc::new(cmt_ {
-            id:id,
-            span:span,
-            cat:cat_deref(base_cmt, 0, ptr),
-            mutbl:MutabilityCategory::from_borrow_kind(upvar_borrow.kind),
-            ty:var_ty,
+            id: id,
+            span: span,
+            cat: cat_deref(base_cmt, 0, ptr),
+            mutbl: MutabilityCategory::from_borrow_kind(upvar_borrow.kind),
+            ty: var_ty,
         });
 
         Ok(deref_cmt)
@@ -699,7 +702,20 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
             Some(scope) => {
                 match ty::get(expr_ty).sty {
                     ty::ty_vec(_, Some(0)) => self.cat_rvalue(id, span, ty::ReStatic, expr_ty),
-                    _ => self.cat_rvalue(id, span, ty::ReScope(scope), expr_ty)
+                    _ => {
+                        let rvalue_region =
+                            match self.typer.loop_analysis() {
+                                None => ty::ReStatic,
+                                Some(loop_analysis) => {
+                                    ty::ReSemeRegion(
+                                        SemeRegion::from_scope(
+                                            self.typer.tcx(),
+                                            loop_analysis,
+                                            scope))
+                                }
+                            };
+                        self.cat_rvalue(id, span, rvalue_region, expr_ty)
+                    }
                 }
             }
             None => {
@@ -800,7 +816,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                 };
                 // for unique ptrs, we inherit mutability from the
                 // owning reference.
-                (MutabilityCategory::from_pointer_kind(base_cmt.mutbl, ptr),
+                (MutabilityCategory::from_pointer_kind(base_cmt.mutbl, &ptr),
                  cat_deref(base_cmt, deref_cnt, ptr))
             }
             deref_interior(interior) => {
@@ -885,16 +901,17 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                              base_cmt: cmt)
                              -> cmt {
         match deref_kind(self.tcx(), base_cmt.ty) {
-            deref_ptr(ptr) => {
+            deref_ptr(ref ptr) => {
                 // for unique ptrs, we inherit mutability from the
                 // owning reference.
-                let m = MutabilityCategory::from_pointer_kind(base_cmt.mutbl, ptr);
+                let m = MutabilityCategory::from_pointer_kind(base_cmt.mutbl,
+                                                              ptr);
 
                 // the deref is explicit in the resulting cmt
                 Rc::new(cmt_ {
                     id:elt.id(),
                     span:elt.span(),
-                    cat:cat_deref(base_cmt.clone(), 0, ptr),
+                    cat:cat_deref(base_cmt.clone(), 0, (*ptr).clone()),
                     mutbl:m,
                     ty: match ty::deref(base_cmt.ty, false) {
                         Some(mt) => mt.ty,
@@ -942,10 +959,12 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
              */
 
             match ty::get(slice_ty).sty {
-                ty::ty_rptr(r, ref mt) => match ty::get(mt.ty).sty {
-                    ty::ty_vec(_, None) => (mt.mutbl, r),
-                    _ => vec_slice_info(tcx, pat, mt.ty),
-                },
+                ty::ty_rptr(ref r, ref mt) => {
+                    match ty::get(mt.ty).sty {
+                        ty::ty_vec(_, None) => (mt.mutbl, (*r).clone()),
+                        _ => vec_slice_info(tcx, pat, mt.ty),
+                    }
+                }
 
                 _ => {
                     tcx.sess.span_bug(pat.span,
@@ -1179,13 +1198,13 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
           cat_arg(..) => {
               "argument".to_string()
           }
-          cat_deref(ref base, _, pk) => {
+          cat_deref(ref base, _, ref pk) => {
               match base.cat {
                   cat_upvar(..) => {
                       "captured outer variable".to_string()
                   }
                   _ => {
-                      match pk {
+                      match *pk {
                           Implicit(..) => {
                             "dereference (dereference is implicit, due to indexing)".to_string()
                           }
@@ -1336,16 +1355,19 @@ impl Repr for cmt_ {
 impl Repr for categorization {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
+            cat_rvalue(ref region) => format!("rvalue({})", region.repr(tcx)),
             cat_static_item |
-            cat_rvalue(..) |
             cat_copied_upvar(..) |
             cat_local(..) |
             cat_upvar(..) |
             cat_arg(..) => {
                 format!("{:?}", *self)
             }
-            cat_deref(ref cmt, derefs, ptr) => {
-                format!("{}-{}{}->", cmt.cat.repr(tcx), ptr_sigil(ptr), derefs)
+            cat_deref(ref cmt, derefs, ref ptr) => {
+                format!("{}-{}{}->",
+                        cmt.cat.repr(tcx),
+                        ptr_sigil(ptr),
+                        derefs)
             }
             cat_interior(ref cmt, interior) => {
                 format!("{}.{}", cmt.cat.repr(tcx), interior.repr(tcx))
@@ -1360,8 +1382,8 @@ impl Repr for categorization {
     }
 }
 
-pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
-    match ptr {
+pub fn ptr_sigil(ptr: &PointerKind) -> &'static str {
+    match *ptr {
         OwnedPtr => "Box",
         GcPtr => "Gc",
         BorrowedPtr(ty::ImmBorrow, _) |

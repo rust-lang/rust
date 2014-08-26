@@ -22,6 +22,8 @@ Most of the documentation on regions can be found in
 
 
 use driver::session::Session;
+use middle::loop_analysis::LoopAnalysis;
+use middle::seme_region::SemeRegion;
 use middle::ty::{FreeRegion};
 use middle::ty;
 use util::nodemap::NodeMap;
@@ -82,6 +84,11 @@ pub struct RegionMaps {
     free_region_map: RefCell<HashMap<FreeRegion, Vec<FreeRegion>>>,
     rvalue_scopes: RefCell<NodeMap<ast::NodeId>>,
     terminating_scopes: RefCell<HashSet<ast::NodeId>>,
+
+    /// Maps the outermost scopes of functions to the IDs of the functions
+    /// themselves. This is used to find the appropriate loop analysis for a
+    /// scope.
+    function_scopes: RefCell<NodeMap<ast::NodeId>>,
 }
 
 #[deriving(Clone)]
@@ -160,6 +167,19 @@ impl RegionMaps {
         }
     }
 
+    /// Returns the ID of the innermost function that encloses this scope.
+    pub fn enclosing_function(&self, mut id: ast::NodeId) -> ast::NodeId {
+        loop {
+            match self.function_scopes.borrow().find(&id) {
+                Some(&r) => return r,
+                None => {}
+            }
+            id = self.opt_encl_scope(id)
+                     .expect("RegionMaps::enclosing_function(): id doesn't \
+                              seem to be in a function")
+        }
+    }
+
     pub fn var_scope(&self, var_id: ast::NodeId) -> ast::NodeId {
         /*!
          * Returns the lifetime of the local variable `var_id`
@@ -206,11 +226,15 @@ impl RegionMaps {
         return Some(id);
     }
 
-    pub fn var_region(&self, id: ast::NodeId) -> ty::Region {
+    pub fn var_region(&self,
+                      tcx: &ty::ctxt,
+                      loop_analysis: Option<&LoopAnalysis>,
+                      id: ast::NodeId)
+                      -> ty::Region {
         //! Returns the lifetime of the variable `id`.
 
-        let scope = ty::ReScope(self.var_scope(id));
-        debug!("var_region({}) = {:?}", id, scope);
+        let scope = scope_region(tcx, loop_analysis, self.var_scope(id));
+        debug!("var_region({}) = {}", id, scope);
         scope
     }
 
@@ -260,8 +284,9 @@ impl RegionMaps {
     }
 
     pub fn is_subregion_of(&self,
-                           sub_region: ty::Region,
-                           super_region: ty::Region)
+                           tcx: &ty::ctxt,
+                           sub_region: &ty::Region,
+                           super_region: &ty::Region)
                            -> bool {
         /*!
          * Determines whether one region is a subregion of another.  This is
@@ -272,27 +297,39 @@ impl RegionMaps {
         debug!("is_subregion_of(sub_region={:?}, super_region={:?})",
                sub_region, super_region);
 
-        sub_region == super_region || {
+        *sub_region == *super_region || {
             match (sub_region, super_region) {
-                (ty::ReEmpty, _) |
-                (_, ty::ReStatic) => {
+                (&ty::ReEmpty, _) |
+                (_, &ty::ReStatic) => {
                     true
                 }
 
-                (ty::ReScope(sub_scope), ty::ReScope(super_scope)) => {
+                (&ty::ReSemeRegion(ref sub_seme_region),
+                 &ty::ReSemeRegion(ref super_seme_region)) => {
+                    // FIXME(pcwalton): Make this more precise.
+                    let sub_scope = sub_seme_region.lub_scope(tcx);
+                    let super_scope = super_seme_region.lub_scope(tcx);
                     self.is_subscope_of(sub_scope, super_scope)
                 }
 
-                (ty::ReScope(sub_scope), ty::ReFree(ref fr)) => {
+                (&ty::ReSemeRegion(ref sub_seme_region),
+                 &ty::ReFree(ref fr)) => {
+                    let sub_scope = sub_seme_region.lub_scope(tcx);
                     self.is_subscope_of(sub_scope, fr.scope_id)
                 }
 
-                (ty::ReFree(sub_fr), ty::ReFree(super_fr)) => {
+                (&ty::ReFree(sub_fr), &ty::ReFree(super_fr)) => {
                     self.sub_free_region(sub_fr, super_fr)
                 }
 
-                (ty::ReEarlyBound(param_id_a, param_space_a, index_a, _),
-                 ty::ReEarlyBound(param_id_b, param_space_b, index_b, _)) => {
+                (&ty::ReEarlyBound(param_id_a,
+                                   param_space_a,
+                                   index_a,
+                                   _),
+                 &ty::ReEarlyBound(param_id_b,
+                                   param_space_b,
+                                   index_b,
+                                   _)) => {
                     // This case is used only to make sure that explicitly-
                     // specified `Self` types match the real self type in
                     // implementations.
@@ -421,6 +458,13 @@ fn resolve_arm(visitor: &mut RegionResolutionVisitor,
                cx: Context) {
     visitor.region_maps.mark_as_terminating_scope(arm.body.id);
 
+    record_superlifetime(visitor, cx, arm.id, arm.span);
+
+    let new_cx = Context {
+        var_parent: Some(arm.id),
+        parent: Some(arm.id),
+    };
+
     match arm.guard {
         Some(expr) => {
             visitor.region_maps.mark_as_terminating_scope(expr.id);
@@ -428,7 +472,7 @@ fn resolve_arm(visitor: &mut RegionResolutionVisitor,
         None => { }
     }
 
-    visit::walk_arm(visitor, arm, cx);
+    visit::walk_arm(visitor, arm, new_cx);
 }
 
 fn resolve_pat(visitor: &mut RegionResolutionVisitor,
@@ -840,11 +884,13 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
             cx
         }
     };
+
+    visitor.region_maps.function_scopes.borrow_mut().insert(body.id, id);
+
     visitor.visit_block(body, body_cx);
 }
 
 impl<'a> Visitor<Context> for RegionResolutionVisitor<'a> {
-
     fn visit_block(&mut self, b: &Block, cx: Context) {
         resolve_block(self, b, cx);
     }
@@ -881,6 +927,7 @@ pub fn resolve_crate(sess: &Session, krate: &ast::Crate) -> RegionMaps {
         free_region_map: RefCell::new(HashMap::new()),
         rvalue_scopes: RefCell::new(NodeMap::new()),
         terminating_scopes: RefCell::new(HashSet::new()),
+        function_scopes: RefCell::new(NodeMap::new()),
     };
     {
         let mut visitor = RegionResolutionVisitor {
@@ -903,5 +950,17 @@ pub fn resolve_inlined_item(sess: &Session,
         region_maps: region_maps,
     };
     visit::walk_inlined_item(&mut visitor, item, cx);
+}
+
+pub fn scope_region(tcx: &ty::ctxt,
+                    loop_analysis: Option<&LoopAnalysis>,
+                    id: ast::NodeId)
+                    -> ty::Region {
+    match loop_analysis {
+        None => ty::ReSemeRegion(SemeRegion::dummy()),
+        Some(loop_analysis) => {
+            ty::ReSemeRegion(SemeRegion::from_scope(tcx, loop_analysis, id))
+        }
+    }
 }
 

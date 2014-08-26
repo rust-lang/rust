@@ -730,12 +730,12 @@ impl<'a> ConstraintContext<'a> {
                 /* leaf type -- noop */
             }
 
-            ty::ty_unboxed_closure(_, region) => {
+            ty::ty_unboxed_closure(_, ref region) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(region, contra);
             }
 
-            ty::ty_rptr(region, ref mt) => {
+            ty::ty_rptr(ref region, ref mt) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(region, contra);
                 self.add_constraints_from_mt(mt, variance);
@@ -824,8 +824,11 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_sig(sig, variance);
             }
 
-            ty::ty_closure(box ty::ClosureTy { ref sig,
-                    store: ty::RegionTraitStore(region, _), .. }) => {
+            ty::ty_closure(box ty::ClosureTy {
+                ref sig,
+                store: ty::RegionTraitStore(ref region, _),
+                ..
+            }) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(region, contra);
                 self.add_constraints_from_sig(sig, variance);
@@ -865,7 +868,7 @@ impl<'a> ConstraintContext<'a> {
                 self.declared_variance(p.def_id, def_id,
                                        RegionParam, p.space, p.index);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_r = *substs.regions().get(p.space, p.index);
+            let substs_r = substs.regions().get(p.space, p.index);
             self.add_constraints_from_region(substs_r, variance_i);
         }
     }
@@ -885,9 +888,9 @@ impl<'a> ConstraintContext<'a> {
     /// Adds constraints appropriate for a region appearing in a
     /// context with ambient variance `variance`
     fn add_constraints_from_region(&mut self,
-                                   region: ty::Region,
+                                   region: &ty::Region,
                                    variance: VarianceTermPtr<'a>) {
-        match region {
+        match *region {
             ty::ReEarlyBound(param_id, _, _, _) => {
                 if self.is_to_be_inferred(param_id) {
                     let index = self.inferred_index(param_id);
@@ -902,7 +905,7 @@ impl<'a> ConstraintContext<'a> {
                 // methods or in fn types.
             }
 
-            ty::ReFree(..) | ty::ReScope(..) | ty::ReInfer(..) |
+            ty::ReFree(..) | ty::ReSemeRegion(..) | ty::ReInfer(..) |
             ty::ReEmpty => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.

@@ -1972,6 +1972,7 @@ impl<A: Add<A, A> + PartialOrd + Clone + ToPrimitive> Iterator<A> for Range<A> {
         // the i64/u64 might lie within their range.
         let bound = match self.state.to_i64() {
             Some(a) => {
+                let a = a;
                 let sz = self.stop.to_i64().map(|b| b.checked_sub(&a));
                 match sz {
                     Some(Some(bound)) => bound.to_uint(),
@@ -1980,6 +1981,7 @@ impl<A: Add<A, A> + PartialOrd + Clone + ToPrimitive> Iterator<A> for Range<A> {
             },
             None => match self.state.to_u64() {
                 Some(a) => {
+                    let a = a;
                     let sz = self.stop.to_u64().map(|b| b.checked_sub(&a));
                     match sz {
                         Some(Some(bound)) => bound.to_uint(),

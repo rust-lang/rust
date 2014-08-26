@@ -365,7 +365,8 @@ impl<'a> CFGBuilder<'a> {
                                                    pats_exit);           // 4
                     let body_exit = self.expr(arm.body.clone(),
                                               guard_exit);               // 5
-                    self.add_contained_edge(body_exit, expr_exit);       // 6
+                    let arm_exit = self.add_node(arm.id, [body_exit]);   // 6
+                    self.add_contained_edge(arm_exit, expr_exit);        // 6
                 }
                 expr_exit
             }
@@ -546,6 +547,7 @@ impl<'a> CFGBuilder<'a> {
 
     fn add_node(&mut self, id: ast::NodeId, preds: &[CFGIndex]) -> CFGIndex {
         assert!(!self.exit_map.contains_key(&id));
+        debug!("add_node({})", id);
         let node = self.graph.add_node(CFGNodeData {id: id});
         if id != ast::DUMMY_NODE_ID {
             assert!(!self.exit_map.contains_key(&id));

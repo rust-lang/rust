@@ -148,7 +148,9 @@ impl Reader for MemReader {
         {
             let input = self.buf.slice(self.pos, self.pos + write_len);
             let output = buf.mut_slice(0, write_len);
-            assert_eq!(input.len(), output.len());
+            let input_len = input.len();
+            let output_len = output.len();
+            assert_eq!(input_len, output_len);
             slice::bytes::copy_memory(output, input);
         }
         self.pos += write_len;

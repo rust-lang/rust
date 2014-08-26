@@ -17,7 +17,7 @@ use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                       span: Span,
@@ -113,11 +113,13 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span,
                         let body = cx.expr_some(span, variant);
 
                         // arm for `_ if $guard => $body`
-                        let arm = ast::Arm {
+                        let arm = box(GC) ast::Arm {
                             attrs: vec!(),
                             pats: vec!(cx.pat_wild(span)),
                             guard: Some(guard),
                             body: body,
+                            id: ast::DUMMY_NODE_ID,
+                            span: span,
                         };
 
                         arms.push(arm);
@@ -133,11 +135,13 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span,
             }
 
             // arm for `_ => None`
-            let arm = ast::Arm {
+            let arm = box(GC) ast::Arm {
                 attrs: vec!(),
                 pats: vec!(cx.pat_wild(trait_span)),
                 guard: None,
                 body: cx.expr_none(trait_span),
+                id: ast::DUMMY_NODE_ID,
+                span: trait_span,
             };
             arms.push(arm);
 

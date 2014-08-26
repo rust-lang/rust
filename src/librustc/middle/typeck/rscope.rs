@@ -59,22 +59,21 @@ pub struct SpecificRscope {
 }
 
 impl SpecificRscope {
-    pub fn new(r: ty::Region) -> SpecificRscope {
-        SpecificRscope { default: r }
+    pub fn new(r: &ty::Region) -> SpecificRscope {
+        SpecificRscope {
+            default: (*r).clone()
+        }
     }
 }
 
 impl RegionScope for SpecificRscope {
     fn default_region_bound(&self, _span: Span) -> Option<ty::Region> {
-        Some(self.default)
+        Some(self.default.clone())
     }
 
-    fn anon_regions(&self,
-                    _span: Span,
-                    count: uint)
-                    -> Result<Vec<ty::Region> , ()>
-    {
-        Ok(Vec::from_elem(count, self.default))
+    fn anon_regions(&self, _span: Span, count: uint)
+                    -> Result<Vec<ty::Region>, ()> {
+        Ok(Vec::from_elem(count, self.default.clone()))
     }
 }
 
@@ -101,16 +100,12 @@ impl BindingRscope {
 }
 
 impl RegionScope for BindingRscope {
-    fn default_region_bound(&self, _span: Span) -> Option<ty::Region>
-    {
+    fn default_region_bound(&self, _span: Span) -> Option<ty::Region> {
         Some(self.next_region())
     }
 
-    fn anon_regions(&self,
-                    _: Span,
-                    count: uint)
-                    -> Result<Vec<ty::Region> , ()>
-    {
+    fn anon_regions(&self, _: Span, count: uint)
+                    -> Result<Vec<ty::Region>, ()> {
         Ok(Vec::from_fn(count, |_| self.next_region()))
     }
 }

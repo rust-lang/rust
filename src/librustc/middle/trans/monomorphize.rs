@@ -246,6 +246,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeExpr(..) |
         ast_map::NodeStmt(..) |
         ast_map::NodeArg(..) |
+        ast_map::NodeArm(..) |
         ast_map::NodeBlock(..) |
         ast_map::NodePat(..) |
         ast_map::NodeLocal(..) => {
