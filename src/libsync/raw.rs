@@ -127,24 +127,51 @@ impl<Q: Send> Sem<Q> {
         f(&mut *self.inner.get())
     }
 
+    /// Returns `true` iff `f` was run.
+    unsafe fn try_with(&self, f: |&mut SemInner<Q>|) -> bool {
+        let _g = match self.lock.try_lock() {
+                None => return false,
+                Some(g) => g,
+            };
+        f(&mut *self.inner.get());
+        true
+    }
+
+    fn when_acquired(state: &mut SemInner<Q>, waiter_nobe: &mut Option<Receiver<()>>) {
+        state.count -= 1;
+        if state.count < 0 {
+            // Create waiter nobe, enqueue ourself, and tell
+            // outer scope we need to block.
+            *waiter_nobe = Some(state.waiters.wait_end());
+        }
+    }
+
+    fn post_acquisition(waiter_nobe: Option<Receiver<()>>) {
+        // Uncomment if you wish to test for sem races. Not
+        // valgrind-friendly.
+        /* for _ in range(0u, 1000) { task::deschedule(); } */
+        // Need to wait outside the exclusive.
+        if waiter_nobe.is_some() {
+            let _ = waiter_nobe.unwrap().recv();
+        }
+    }
+
     pub fn acquire(&self) {
         unsafe {
             let mut waiter_nobe = None;
-            self.with(|state| {
-                state.count -= 1;
-                if state.count < 0 {
-                    // Create waiter nobe, enqueue ourself, and tell
-                    // outer scope we need to block.
-                    waiter_nobe = Some(state.waiters.wait_end());
-                }
-            });
-            // Uncomment if you wish to test for sem races. Not
-            // valgrind-friendly.
-            /* for _ in range(0u, 1000) { task::deschedule(); } */
-            // Need to wait outside the exclusive.
-            if waiter_nobe.is_some() {
-                let _ = waiter_nobe.unwrap().recv();
-            }
+            self.with(|state| Sem::when_acquired(state, &mut waiter_nobe));
+            Sem::<Q>::post_acquisition(waiter_nobe);
+        }
+    }
+
+    /// Returns `Some(())` when successfully acquired, and `None` on failure.
+    pub fn try_acquire(&self) -> Option<()> {
+        unsafe {
+            let mut waiter_nobe = None;
+            let did_work =
+                self.try_with(|state| Sem::when_acquired(state, &mut waiter_nobe));
+            Sem::<Q>::post_acquisition(waiter_nobe);
+            if did_work { Some(()) } else { None }
         }
     }
 
@@ -162,6 +189,10 @@ impl<Q: Send> Sem<Q> {
     pub fn access<'a>(&'a self) -> SemGuard<'a, Q> {
         self.acquire();
         SemGuard { sem: self }
+    }
+
+    pub fn try_access<'a>(&'a self) -> Option<SemGuard<'a, Q>> {
+        self.try_acquire().map(|()| SemGuard { sem: self })
     }
 }
 
@@ -186,6 +217,19 @@ impl Sem<Vec<WaitQueue>> {
             guard: self.access(),
             cvar: Condvar { sem: self, order: Nothing, nocopy: marker::NoCopy },
         }
+    }
+
+    pub fn try_access_cond<'a>(&'a self) -> Option<SemCondGuard<'a>> {
+        self.try_access()
+            .map(|guard|
+                 SemCondGuard {
+                     guard: guard,
+                     cvar: Condvar {
+                         sem: self,
+                         order: Nothing,
+                         nocopy: marker::NoCopy
+                     },
+                 })
     }
 }
 
@@ -426,13 +470,25 @@ impl Mutex {
         Mutex { sem: Sem::new_and_signal(1, num_condvars) }
     }
 
-    /// Acquires ownership of this mutex, returning an RAII guard which will
+    /// Acquires ownership of this mutex, returning a RAII guard which will
     /// unlock the mutex when dropped. The associated condition variable can
     /// also be accessed through the returned guard.
     pub fn lock<'a>(&'a self) -> MutexGuard<'a> {
         let SemCondGuard { guard, cvar } = self.sem.access_cond();
         MutexGuard { _guard: guard, cond: cvar }
     }
+
+    /// Attempts to acquire ownership of the mutex, without spinning or
+    /// blocking. If acquisition was successful, a RAII guard will be returned
+    /// which will unlock the mutex when dropped. The associated condition
+    /// variable can also be accessed through the returned guard.
+    pub fn try_lock<'a>(&'a self) -> Option<MutexGuard<'a>> {
+        self.sem.try_access_cond()
+            .map(|cguard| {
+                let SemCondGuard { guard, cvar } = cguard;
+                 MutexGuard { _guard: guard, cond: cvar }
+                })
+   }
 }
 
 /****************************************************************************
