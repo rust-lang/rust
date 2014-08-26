@@ -1853,7 +1853,8 @@ mod test_treemap {
         check_equal(ctrl.as_slice(), &map);
         assert!(map.find(&5).is_none());
 
-        let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(&[42]);
+        let seed: &[_] = &[42];
+        let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
 
         for _ in range(0u, 3) {
             for _ in range(0u, 90) {

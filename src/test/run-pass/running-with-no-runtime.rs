@@ -43,14 +43,22 @@ fn main() {
     let args = os::args();
     let me = args.get(0).as_slice();
 
-    pass(Command::new(me).arg(&[1u8]).output().unwrap());
-    pass(Command::new(me).arg(&[2u8]).output().unwrap());
-    pass(Command::new(me).arg(&[3u8]).output().unwrap());
-    pass(Command::new(me).arg(&[4u8]).output().unwrap());
-    pass(Command::new(me).arg(&[5u8]).output().unwrap());
-    pass(Command::new(me).arg(&[6u8]).output().unwrap());
-    pass(Command::new(me).arg(&[7u8]).output().unwrap());
-    pass(Command::new(me).arg(&[8u8]).output().unwrap());
+    let x: &[u8] = &[1u8];
+    pass(Command::new(me).arg(x).output().unwrap());
+    let x: &[u8] = &[2u8];
+    pass(Command::new(me).arg(x).output().unwrap());
+    let x: &[u8] = &[3u8];
+    pass(Command::new(me).arg(x).output().unwrap());
+    let x: &[u8] = &[4u8];
+    pass(Command::new(me).arg(x).output().unwrap());
+    let x: &[u8] = &[5u8];
+    pass(Command::new(me).arg(x).output().unwrap());
+    let x: &[u8] = &[6u8];
+    pass(Command::new(me).arg(x).output().unwrap());
+    let x: &[u8] = &[7u8];
+    pass(Command::new(me).arg(x).output().unwrap());
+    let x: &[u8] = &[8u8];
+    pass(Command::new(me).arg(x).output().unwrap());
 }
 
 fn pass(output: ProcessOutput) {

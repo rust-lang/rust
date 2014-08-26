@@ -638,11 +638,13 @@ pub trait MutableOrdSlice<T> {
     /// # Example
     ///
     /// ```rust
-    /// let v = &mut [0i, 1, 2];
+    /// let v: &mut [_] = &mut [0i, 1, 2];
     /// v.next_permutation();
-    /// assert_eq!(v, &mut [0i, 2, 1]);
+    /// let b: &mut [_] = &mut [0i, 2, 1];
+    /// assert!(v == b);
     /// v.next_permutation();
-    /// assert_eq!(v, &mut [1i, 0, 2]);
+    /// let b: &mut [_] = &mut [1i, 0, 2];
+    /// assert!(v == b);
     /// ```
     fn next_permutation(self) -> bool;
 
@@ -654,11 +656,13 @@ pub trait MutableOrdSlice<T> {
     /// # Example
     ///
     /// ```rust
-    /// let v = &mut [1i, 0, 2];
+    /// let v: &mut [_] = &mut [1i, 0, 2];
     /// v.prev_permutation();
-    /// assert_eq!(v, &mut [0i, 2, 1]);
+    /// let b: &mut [_] = &mut [0i, 2, 1];
+    /// assert!(v == b);
     /// v.prev_permutation();
-    /// assert_eq!(v, &mut [0i, 1, 2]);
+    /// let b: &mut [_] = &mut [0i, 1, 2];
+    /// assert!(v == b);
     /// ```
     fn prev_permutation(self) -> bool;
 }
@@ -845,9 +849,11 @@ mod tests {
     #[test]
     fn test_tail() {
         let mut a = vec![11i];
-        assert_eq!(a.tail(), &[]);
+        let b: &[int] = &[];
+        assert_eq!(a.tail(), b);
         a = vec![11i, 12];
-        assert_eq!(a.tail(), &[12]);
+        let b: &[int] = &[12];
+        assert_eq!(a.tail(), b);
     }
 
     #[test]
@@ -860,9 +866,11 @@ mod tests {
     #[test]
     fn test_tailn() {
         let mut a = vec![11i, 12, 13];
-        assert_eq!(a.tailn(0), &[11, 12, 13]);
+        let b: &[int] = &[11, 12, 13];
+        assert_eq!(a.tailn(0), b);
         a = vec![11i, 12, 13];
-        assert_eq!(a.tailn(2), &[13]);
+        let b: &[int] = &[13];
+        assert_eq!(a.tailn(2), b);
     }
 
     #[test]
@@ -875,9 +883,11 @@ mod tests {
     #[test]
     fn test_init() {
         let mut a = vec![11i];
-        assert_eq!(a.init(), &[]);
+        let b: &[int] = &[];
+        assert_eq!(a.init(), b);
         a = vec![11i, 12];
-        assert_eq!(a.init(), &[11]);
+        let b: &[int] = &[11];
+        assert_eq!(a.init(), b);
     }
 
     #[test]
@@ -890,9 +900,11 @@ mod tests {
     #[test]
     fn test_initn() {
         let mut a = vec![11i, 12, 13];
-        assert_eq!(a.as_slice().initn(0), &[11, 12, 13]);
+        let b: &[int] = &[11, 12, 13];
+        assert_eq!(a.as_slice().initn(0), b);
         a = vec![11i, 12, 13];
-        assert_eq!(a.as_slice().initn(2), &[11]);
+        let b: &[int] = &[11];
+        assert_eq!(a.as_slice().initn(2), b);
     }
 
     #[test]
@@ -945,18 +957,22 @@ mod tests {
 
     #[test]
     fn test_slice_from() {
-        let vec = &[1i, 2, 3, 4];
+        let vec: &[int] = &[1, 2, 3, 4];
         assert_eq!(vec.slice_from(0), vec);
-        assert_eq!(vec.slice_from(2), &[3, 4]);
-        assert_eq!(vec.slice_from(4), &[]);
+        let b: &[int] = &[3, 4];
+        assert_eq!(vec.slice_from(2), b);
+        let b: &[int] = &[];
+        assert_eq!(vec.slice_from(4), b);
     }
 
     #[test]
     fn test_slice_to() {
-        let vec = &[1i, 2, 3, 4];
+        let vec: &[int] = &[1, 2, 3, 4];
         assert_eq!(vec.slice_to(4), vec);
-        assert_eq!(vec.slice_to(2), &[1, 2]);
-        assert_eq!(vec.slice_to(0), &[]);
+        let b: &[int] = &[1, 2];
+        assert_eq!(vec.slice_to(2), b);
+        let b: &[int] = &[];
+        assert_eq!(vec.slice_to(0), b);
     }
 
 
@@ -1210,23 +1226,30 @@ mod tests {
         let v : &mut[int] = &mut[1i, 2, 3, 4, 5];
         assert!(v.prev_permutation() == false);
         assert!(v.next_permutation());
-        assert_eq!(v, &mut[1, 2, 3, 5, 4]);
+        let b: &mut[int] = &mut[1, 2, 3, 5, 4];
+        assert!(v == b);
         assert!(v.prev_permutation());
-        assert_eq!(v, &mut[1, 2, 3, 4, 5]);
+        let b: &mut[int] = &mut[1, 2, 3, 4, 5];
+        assert!(v == b);
         assert!(v.next_permutation());
         assert!(v.next_permutation());
-        assert_eq!(v, &mut[1, 2, 4, 3, 5]);
+        let b: &mut[int] = &mut[1, 2, 4, 3, 5];
+        assert!(v == b);
         assert!(v.next_permutation());
-        assert_eq!(v, &mut[1, 2, 4, 5, 3]);
+        let b: &mut[int] = &mut[1, 2, 4, 5, 3];
+        assert!(v == b);
 
         let v : &mut[int] = &mut[1i, 0, 0, 0];
         assert!(v.next_permutation() == false);
         assert!(v.prev_permutation());
-        assert_eq!(v, &mut[0, 1, 0, 0]);
+        let b: &mut[int] = &mut[0, 1, 0, 0];
+        assert!(v == b);
         assert!(v.prev_permutation());
-        assert_eq!(v, &mut[0, 0, 1, 0]);
+        let b: &mut[int] = &mut[0, 0, 1, 0];
+        assert!(v == b);
         assert!(v.prev_permutation());
-        assert_eq!(v, &mut[0, 0, 0, 1]);
+        let b: &mut[int] = &mut[0, 0, 0, 1];
+        assert!(v == b);
         assert!(v.prev_permutation() == false);
     }
 
@@ -1234,27 +1257,31 @@ mod tests {
     fn test_lexicographic_permutations_empty_and_short() {
         let empty : &mut[int] = &mut[];
         assert!(empty.next_permutation() == false);
-        assert_eq!(empty, &mut[]);
+        let b: &mut[int] = &mut[];
+        assert!(empty == b);
         assert!(empty.prev_permutation() == false);
-        assert_eq!(empty, &mut[]);
+        assert!(empty == b);
 
         let one_elem : &mut[int] = &mut[4i];
         assert!(one_elem.prev_permutation() == false);
-        assert_eq!(one_elem, &mut[4]);
+        let b: &mut[int] = &mut[4];
+        assert!(one_elem == b);
         assert!(one_elem.next_permutation() == false);
-        assert_eq!(one_elem, &mut[4]);
+        assert!(one_elem == b);
 
         let two_elem : &mut[int] = &mut[1i, 2];
         assert!(two_elem.prev_permutation() == false);
-        assert_eq!(two_elem, &mut[1, 2]);
+        let b : &mut[int] = &mut[1, 2];
+        let c : &mut[int] = &mut[2, 1];
+        assert!(two_elem == b);
         assert!(two_elem.next_permutation());
-        assert_eq!(two_elem, &mut[2, 1]);
+        assert!(two_elem == c);
         assert!(two_elem.next_permutation() == false);
-        assert_eq!(two_elem, &mut[2, 1]);
+        assert!(two_elem == c);
         assert!(two_elem.prev_permutation());
-        assert_eq!(two_elem, &mut[1, 2]);
+        assert!(two_elem == b);
         assert!(two_elem.prev_permutation() == false);
-        assert_eq!(two_elem, &mut[1, 2]);
+        assert!(two_elem == b);
     }
 
     #[test]
@@ -1408,7 +1435,10 @@ mod tests {
         assert_eq!(v.concat_vec(), vec![]);
         assert_eq!([vec![1i], vec![2i,3i]].concat_vec(), vec![1, 2, 3]);
 
-        assert_eq!([&[1i], &[2i,3i]].concat_vec(), vec![1, 2, 3]);
+        let v: [&[int], ..2] = [&[1], &[2, 3]];
+        assert_eq!(v.connect_vec(&0), vec![1, 0, 2, 3]);
+        let v: [&[int], ..3] = [&[1], &[2], &[3]];
+        assert_eq!(v.connect_vec(&0), vec![1, 0, 2, 0, 3]);
     }
 
     #[test]
@@ -1418,8 +1448,10 @@ mod tests {
         assert_eq!([vec![1i], vec![2i, 3]].connect_vec(&0), vec![1, 0, 2, 3]);
         assert_eq!([vec![1i], vec![2i], vec![3i]].connect_vec(&0), vec![1, 0, 2, 0, 3]);
 
-        assert_eq!([&[1i], &[2i, 3]].connect_vec(&0), vec![1, 0, 2, 3]);
-        assert_eq!([&[1i], &[2i], &[3]].connect_vec(&0), vec![1, 0, 2, 0, 3]);
+        let v: [&[int], ..2] = [&[1], &[2, 3]];
+        assert_eq!(v.connect_vec(&0), vec![1, 0, 2, 3]);
+        let v: [&[int], ..3] = [&[1], &[2], &[3]];
+        assert_eq!(v.connect_vec(&0), vec![1, 0, 2, 0, 3]);
     }
 
     #[test]
@@ -1577,11 +1609,16 @@ mod tests {
 
     #[test]
     fn test_total_ord() {
-        [1i, 2, 3, 4].cmp(& &[1, 2, 3]) == Greater;
-        [1i, 2, 3].cmp(& &[1, 2, 3, 4]) == Less;
-        [1i, 2, 3, 4].cmp(& &[1, 2, 3, 4]) == Equal;
-        [1i, 2, 3, 4, 5, 5, 5, 5].cmp(& &[1, 2, 3, 4, 5, 6]) == Less;
-        [2i, 2].cmp(& &[1, 2, 3, 4]) == Greater;
+        let c: &[int] = &[1, 2, 3];
+        [1, 2, 3, 4].cmp(& c) == Greater;
+        let c: &[int] = &[1, 2, 3, 4];
+        [1, 2, 3].cmp(& c) == Less;
+        let c: &[int] = &[1, 2, 3, 6];
+        [1, 2, 3, 4].cmp(& c) == Equal;
+        let c: &[int] = &[1, 2, 3, 4, 5, 6];
+        [1, 2, 3, 4, 5, 5, 5, 5].cmp(& c) == Less;
+        let c: &[int] = &[1, 2, 3, 4];
+        [2, 2].cmp(& c) == Greater;
     }
 
     #[test]
@@ -1705,74 +1742,95 @@ mod tests {
     fn test_splitator() {
         let xs = &[1i,2,3,4,5];
 
+        let splits: &[&[int]] = &[&[1], &[3], &[5]];
         assert_eq!(xs.split(|x| *x % 2 == 0).collect::<Vec<&[int]>>().as_slice(),
-                   &[&[1], &[3], &[5]]);
+                   splits);
+        let splits: &[&[int]] = &[&[], &[2,3,4,5]];
         assert_eq!(xs.split(|x| *x == 1).collect::<Vec<&[int]>>().as_slice(),
-                   &[&[], &[2,3,4,5]]);
+                   splits);
+        let splits: &[&[int]] = &[&[1,2,3,4], &[]];
         assert_eq!(xs.split(|x| *x == 5).collect::<Vec<&[int]>>().as_slice(),
-                   &[&[1,2,3,4], &[]]);
+                   splits);
+        let splits: &[&[int]] = &[&[1,2,3,4,5]];
         assert_eq!(xs.split(|x| *x == 10).collect::<Vec<&[int]>>().as_slice(),
-                   &[&[1,2,3,4,5]]);
+                   splits);
+        let splits: &[&[int]] = &[&[], &[], &[], &[], &[], &[]];
         assert_eq!(xs.split(|_| true).collect::<Vec<&[int]>>().as_slice(),
-                   &[&[], &[], &[], &[], &[], &[]]);
+                   splits);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.split(|x| *x == 5).collect::<Vec<&[int]>>().as_slice(), &[&[]]);
+        let splits: &[&[int]] = &[&[]];
+        assert_eq!(xs.split(|x| *x == 5).collect::<Vec<&[int]>>().as_slice(), splits);
     }
 
     #[test]
     fn test_splitnator() {
         let xs = &[1i,2,3,4,5];
 
+        let splits: &[&[int]] = &[&[1,2,3,4,5]];
         assert_eq!(xs.splitn(0, |x| *x % 2 == 0).collect::<Vec<&[int]>>().as_slice(),
-                   &[&[1,2,3,4,5]]);
+                   splits);
+        let splits: &[&[int]] = &[&[1], &[3,4,5]];
         assert_eq!(xs.splitn(1, |x| *x % 2 == 0).collect::<Vec<&[int]>>().as_slice(),
-                   &[&[1], &[3,4,5]]);
+                   splits);
+        let splits: &[&[int]] = &[&[], &[], &[], &[4,5]];
         assert_eq!(xs.splitn(3, |_| true).collect::<Vec<&[int]>>().as_slice(),
-                   &[&[], &[], &[], &[4,5]]);
+                   splits);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.splitn(1, |x| *x == 5).collect::<Vec<&[int]>>().as_slice(), &[&[]]);
+        let splits: &[&[int]] = &[&[]];
+        assert_eq!(xs.splitn(1, |x| *x == 5).collect::<Vec<&[int]>>().as_slice(), splits);
     }
 
     #[test]
     fn test_rsplitator() {
         let xs = &[1i,2,3,4,5];
 
+        let splits: &[&[int]] = &[&[5], &[3], &[1]];
         assert_eq!(xs.split(|x| *x % 2 == 0).rev().collect::<Vec<&[int]>>().as_slice(),
-                   &[&[5], &[3], &[1]]);
+                   splits);
+        let splits: &[&[int]] = &[&[2,3,4,5], &[]];
         assert_eq!(xs.split(|x| *x == 1).rev().collect::<Vec<&[int]>>().as_slice(),
-                   &[&[2,3,4,5], &[]]);
+                   splits);
+        let splits: &[&[int]] = &[&[], &[1,2,3,4]];
         assert_eq!(xs.split(|x| *x == 5).rev().collect::<Vec<&[int]>>().as_slice(),
-                   &[&[], &[1,2,3,4]]);
+                   splits);
+        let splits: &[&[int]] = &[&[1,2,3,4,5]];
         assert_eq!(xs.split(|x| *x == 10).rev().collect::<Vec<&[int]>>().as_slice(),
-                   &[&[1,2,3,4,5]]);
+                   splits);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.split(|x| *x == 5).rev().collect::<Vec<&[int]>>().as_slice(), &[&[]]);
+        let splits: &[&[int]] = &[&[]];
+        assert_eq!(xs.split(|x| *x == 5).rev().collect::<Vec<&[int]>>().as_slice(), splits);
     }
 
     #[test]
     fn test_rsplitnator() {
         let xs = &[1,2,3,4,5];
 
+        let splits: &[&[int]] = &[&[1,2,3,4,5]];
         assert_eq!(xs.rsplitn(0, |x| *x % 2 == 0).collect::<Vec<&[int]>>().as_slice(),
-                   &[&[1,2,3,4,5]]);
+                   splits);
+        let splits: &[&[int]] = &[&[5], &[1,2,3]];
         assert_eq!(xs.rsplitn(1, |x| *x % 2 == 0).collect::<Vec<&[int]>>().as_slice(),
-                   &[&[5], &[1,2,3]]);
+                   splits);
+        let splits: &[&[int]] = &[&[], &[], &[], &[1,2]];
         assert_eq!(xs.rsplitn(3, |_| true).collect::<Vec<&[int]>>().as_slice(),
-                   &[&[], &[], &[], &[1,2]]);
+                   splits);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.rsplitn(1, |x| *x == 5).collect::<Vec<&[int]>>().as_slice(), &[&[]]);
+        let splits: &[&[int]] = &[&[]];
+        assert_eq!(xs.rsplitn(1, |x| *x == 5).collect::<Vec<&[int]>>().as_slice(), splits);
     }
 
     #[test]
     fn test_windowsator() {
         let v = &[1i,2,3,4];
 
-        assert_eq!(v.windows(2).collect::<Vec<&[int]>>().as_slice(), &[&[1,2], &[2,3], &[3,4]]);
-        assert_eq!(v.windows(3).collect::<Vec<&[int]>>().as_slice(), &[&[1i,2,3], &[2,3,4]]);
+        let wins: &[&[int]] = &[&[1,2], &[2,3], &[3,4]];
+        assert_eq!(v.windows(2).collect::<Vec<&[int]>>().as_slice(), wins);
+        let wins: &[&[int]] = &[&[1i,2,3], &[2,3,4]];
+        assert_eq!(v.windows(3).collect::<Vec<&[int]>>().as_slice(), wins);
         assert!(v.windows(6).next().is_none());
     }
 
@@ -1787,16 +1845,23 @@ mod tests {
     fn test_chunksator() {
         let v = &[1i,2,3,4,5];
 
-        assert_eq!(v.chunks(2).collect::<Vec<&[int]>>().as_slice(), &[&[1i,2], &[3,4], &[5]]);
-        assert_eq!(v.chunks(3).collect::<Vec<&[int]>>().as_slice(), &[&[1i,2,3], &[4,5]]);
-        assert_eq!(v.chunks(6).collect::<Vec<&[int]>>().as_slice(), &[&[1i,2,3,4,5]]);
+        let chunks: &[&[int]] = &[&[1i,2], &[3,4], &[5]];
+        assert_eq!(v.chunks(2).collect::<Vec<&[int]>>().as_slice(), chunks);
+        let chunks: &[&[int]] = &[&[1i,2,3], &[4,5]];
+        assert_eq!(v.chunks(3).collect::<Vec<&[int]>>().as_slice(), chunks);
+        let chunks: &[&[int]] = &[&[1i,2,3,4,5]];
+        assert_eq!(v.chunks(6).collect::<Vec<&[int]>>().as_slice(), chunks);
 
-        assert_eq!(v.chunks(2).rev().collect::<Vec<&[int]>>().as_slice(), &[&[5i], &[3,4], &[1,2]]);
+        let chunks: &[&[int]] = &[&[5i], &[3,4], &[1,2]];
+        assert_eq!(v.chunks(2).rev().collect::<Vec<&[int]>>().as_slice(), chunks);
         let mut it = v.chunks(2);
         assert_eq!(it.indexable(), 3);
-        assert_eq!(it.idx(0).unwrap(), &[1,2]);
-        assert_eq!(it.idx(1).unwrap(), &[3,4]);
-        assert_eq!(it.idx(2).unwrap(), &[5]);
+        let chunk: &[int] = &[1,2];
+        assert_eq!(it.idx(0).unwrap(), chunk);
+        let chunk: &[int] = &[3,4];
+        assert_eq!(it.idx(1).unwrap(), chunk);
+        let chunk: &[int] = &[5];
+        assert_eq!(it.idx(2).unwrap(), chunk);
         assert_eq!(it.idx(3), None);
     }
 
@@ -1864,10 +1929,12 @@ mod tests {
 
         let empty_mut: &mut [int] = &mut[];
         test_show_vec!(empty_mut, "[]".to_string());
-        test_show_vec!(&mut[1i], "[1]".to_string());
-        test_show_vec!(&mut[1i, 2, 3], "[1, 2, 3]".to_string());
-        test_show_vec!(&mut[&mut[], &mut[1u], &mut[1u, 1u]],
-                       "[[], [1], [1, 1]]".to_string());
+        let v: &mut[int] = &mut[1];
+        test_show_vec!(v, "[1]".to_string());
+        let v: &mut[int] = &mut[1, 2, 3];
+        test_show_vec!(v, "[1, 2, 3]".to_string());
+        let v: &mut [&mut[uint]] = &mut[&mut[], &mut[1u], &mut[1u, 1u]];
+        test_show_vec!(v, "[[], [1], [1, 1]]".to_string());
     }
 
     #[test]

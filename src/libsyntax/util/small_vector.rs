@@ -64,7 +64,10 @@ impl<T> SmallVector<T> {
 
     pub fn as_slice<'a>(&'a self) -> &'a [T] {
         match self.repr {
-            Zero => &[],
+            Zero => {
+                let result: &[T] = &[];
+                result
+            }
             One(ref v) => slice::ref_slice(v),
             Many(ref vs) => vs.as_slice()
         }

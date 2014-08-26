@@ -36,14 +36,14 @@ fn foo4<'a, 'b>(x: &'a Foo) -> (&'b int, &'a int, &'b int) {
 struct Bar<'x, 'y, 'z> { bar: &'y int, baz: int }
 fn bar1<'a>(x: &Bar) -> (&'a int, &'a int, &'a int) {
 //~^ NOTE: consider using an explicit lifetime parameter as shown: fn bar1<'b, 'c, 'a>(x: &'a Bar<'b, 'a, 'c>) -> (&'a int, &'a int, &'a int)
-    (x.bar, &x.baz, &x.baz) //~ ERROR: mismatched types
+    (x.bar, &x.baz, &x.baz) //~ ERROR: cannot infer
     //~^ ERROR: cannot infer
     //~^^ ERROR: cannot infer
 }
 
 fn bar2<'a, 'b, 'c>(x: &Bar<'a, 'b, 'c>) -> (&'a int, &'a int, &'a int) {
 //~^ NOTE: consider using an explicit lifetime parameter as shown: fn bar2<'a, 'c>(x: &'a Bar<'a, 'a, 'c>) -> (&'a int, &'a int, &'a int)
-    (x.bar, &x.baz, &x.baz) //~ ERROR: mismatched types
+    (x.bar, &x.baz, &x.baz) //~ ERROR: cannot infer
     //~^ ERROR: cannot infer
     //~^^ ERROR: cannot infer
 }
@@ -53,21 +53,19 @@ struct Dog<'y> { dog: &'y int }
 
 fn cat2<'x, 'y>(x: Cat<'x, Dog<'y>>) -> &'x int {
 //~^ NOTE: consider using an explicit lifetime parameter as shown: fn cat2<'x>(x: Cat<'x, Dog<'x>>) -> &'x int
-    x.t.dog //~ ERROR: mismatched types
+    x.t.dog //~ ERROR: cannot infer
 }
 
 struct Baz<'x> {
     bar: &'x int
 }
 
-
 impl<'a> Baz<'a> {
     fn baz2<'b>(&self, x: &int) -> (&'b int, &'b int) {
         // The lifetime that gets assigned to `x` seems somewhat random.
         // I have disabled this test for the time being. --pcwalton
         (self.bar, x) //~ ERROR: cannot infer
-        //~^ ERROR: mismatched types
-        //~^^ ERROR: mismatched types
+        //~^ ERROR: cannot infer
     }
 }
 

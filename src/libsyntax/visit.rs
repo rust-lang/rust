@@ -729,9 +729,6 @@ pub fn walk_mac<E, V: Visitor<E>>(_: &mut V, _: &Mac, _: E) {
 
 pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, env: E) {
     match expression.node {
-        ExprVstore(ref subexpression, _) => {
-            visitor.visit_expr(&**subexpression, env.clone())
-        }
         ExprBox(ref place, ref subexpression) => {
             visitor.visit_expr(&**place, env.clone());
             visitor.visit_expr(&**subexpression, env.clone())

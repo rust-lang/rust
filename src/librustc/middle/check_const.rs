@@ -62,7 +62,7 @@ fn check_item(v: &mut CheckCrateVisitor, it: &Item, _is_const: bool) {
 fn check_pat(v: &mut CheckCrateVisitor, p: &Pat, _is_const: bool) {
     fn is_str(e: &Expr) -> bool {
         match e.node {
-            ExprVstore(expr, ExprVstoreUniq) => {
+            ExprBox(_, expr) => {
                 match expr.node {
                     ExprLit(lit) => ast_util::lit_is_str(lit),
                     _ => false,
@@ -169,8 +169,6 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
                 None => {}
             }
           }
-          ExprVstore(_, ExprVstoreMutSlice) |
-          ExprVstore(_, ExprVstoreSlice) |
           ExprVec(_) |
           ExprAddrOf(MutImmutable, _) |
           ExprParen(..) |
@@ -179,13 +177,14 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
           ExprTup(..) |
           ExprRepeat(..) |
           ExprStruct(..) => { }
-          ExprAddrOf(..) => {
-              span_err!(v.tcx.sess, e.span, E0017,
-                  "references in constants may only refer to immutable values");
-          },
-          ExprVstore(_, ExprVstoreUniq) => {
-              span_err!(v.tcx.sess, e.span, E0018,
-                  "cannot allocate vectors in constant expressions");
+          ExprAddrOf(_, inner) => {
+                match inner.node {
+                    // Mutable slices are allowed.
+                    ExprVec(_) => {}
+                    _ => span_err!(v.tcx.sess, e.span, E0017,
+                                   "references in constants may only refer to immutable values")
+
+                }
           },
 
           _ => {

@@ -154,26 +154,29 @@ mod test {
         assert_eq!(Ok(0), reader.read([]));
 
         assert_eq!(Ok(3), reader.read(buf));
-        assert_eq!(&[1,2,3], buf.as_slice());
+        let a: &[u8] = &[1,2,3];
+        assert_eq!(a, buf.as_slice());
 
         assert_eq!(Ok(3), reader.read(buf));
-        assert_eq!(&[4,5,6], buf.as_slice());
+        let a: &[u8] = &[4,5,6];
+        assert_eq!(a, buf.as_slice());
 
         assert_eq!(Ok(2), reader.read(buf));
-        assert_eq!(&[7,8,6], buf.as_slice());
+        let a: &[u8] = &[7,8,6];
+        assert_eq!(a, buf.as_slice());
 
         match reader.read(buf.as_mut_slice()) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(&[7,8,6], buf.as_slice());
+        assert_eq!(a, buf.as_slice());
 
         // Ensure it continues to fail in the same way.
         match reader.read(buf.as_mut_slice()) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(&[7,8,6], buf.as_slice());
+        assert_eq!(a, buf.as_slice());
     }
 
     #[test]

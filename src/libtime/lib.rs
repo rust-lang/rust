@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1060,7 +1060,6 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
           'w' => (tm.tm_wday as int).to_string(),
           'Y' => (tm.tm_year as int + 1900).to_string(),
           'y' => format!("{:02d}", (tm.tm_year as int + 1900) % 100),
-          'Z' => "".to_string(),    // FIXME(pcwalton): Implement this.
           'z' => {
             let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
             let mut m = num::abs(tm.tm_gmtoff) / 60_i32;

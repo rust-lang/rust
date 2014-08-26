@@ -68,15 +68,21 @@ fn main() {
     assert_eq!(match_vecs_snoc::<uint>(&[], &[]), "both empty");
     assert_eq!(match_vecs_snoc(&[1i, 2, 3], &[]), "one empty");
 
-    assert_eq!(match_nested_vecs_cons(None, Ok(&[4u, 2u])), "None, Ok(at least two elements)");
+    assert_eq!(match_nested_vecs_cons(None, Ok::<&[_], ()>(&[4u, 2u])),
+               "None, Ok(at least two elements)");
     assert_eq!(match_nested_vecs_cons::<uint>(None, Err(())), "None, Ok(less than one element)");
-    assert_eq!(match_nested_vecs_cons::<bool>(Some(&[]), Ok(&[])), "Some(empty), Ok(empty)");
-    assert_eq!(match_nested_vecs_cons(Some(&[1i]), Err(())), "Some(non-empty), any");
-    assert_eq!(match_nested_vecs_cons(Some(&[(42i, ())]), Ok(&[(1i, ())])), "Some(non-empty), any");
+    assert_eq!(match_nested_vecs_cons::<bool>(Some::<&[_]>(&[]), Ok::<&[_], ()>(&[])),
+               "Some(empty), Ok(empty)");
+    assert_eq!(match_nested_vecs_cons(Some::<&[_]>(&[1i]), Err(())), "Some(non-empty), any");
+    assert_eq!(match_nested_vecs_cons(Some::<&[_]>(&[(42i, ())]), Ok::<&[_], ()>(&[(1i, ())])),
+               "Some(non-empty), any");
 
-    assert_eq!(match_nested_vecs_snoc(None, Ok(&[4u, 2u])), "None, Ok(at least two elements)");
+    assert_eq!(match_nested_vecs_snoc(None, Ok::<&[_], ()>(&[4u, 2u])),
+               "None, Ok(at least two elements)");
     assert_eq!(match_nested_vecs_snoc::<uint>(None, Err(())), "None, Ok(less than one element)");
-    assert_eq!(match_nested_vecs_snoc::<bool>(Some(&[]), Ok(&[])), "Some(empty), Ok(empty)");
-    assert_eq!(match_nested_vecs_snoc(Some(&[1i]), Err(())), "Some(non-empty), any");
-    assert_eq!(match_nested_vecs_snoc(Some(&[(42i, ())]), Ok(&[(1i, ())])), "Some(non-empty), any");
+    assert_eq!(match_nested_vecs_snoc::<bool>(Some::<&[_]>(&[]), Ok::<&[_], ()>(&[])),
+               "Some(empty), Ok(empty)");
+    assert_eq!(match_nested_vecs_snoc(Some::<&[_]>(&[1i]), Err(())), "Some(non-empty), any");
+    assert_eq!(match_nested_vecs_snoc(Some::<&[_]>(&[(42i, ())]), Ok::<&[_], ()>(&[(1i, ())])),
+               "Some(non-empty), any");
 }

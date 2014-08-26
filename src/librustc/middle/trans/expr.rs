@@ -40,6 +40,7 @@ use metadata::csearch;
 use middle::def;
 use middle::lang_items::MallocFnLangItem;
 use middle::mem_categorization::Typer;
+use middle::subst;
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::asm;
@@ -62,15 +63,15 @@ use middle::trans::inline;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty::struct_fields;
-use middle::ty::{AutoBorrowObj, AutoDerefRef, AutoAddEnv, AutoObject, AutoUnsafe};
-use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef};
+use middle::ty::{AutoDerefRef, AutoAddEnv, AutoUnsafe};
+use middle::ty::{AutoPtr};
 use middle::ty;
 use middle::typeck;
 use middle::typeck::MethodCall;
 use util::common::indenter;
 use util::ppaux::Repr;
 use util::nodemap::NodeMap;
-use middle::trans::machine::{llalign_of_min, llsize_of, llsize_of_alloc};
+use middle::trans::machine::{llsize_of, llsize_of_alloc};
 use middle::trans::type_::Type;
 
 use syntax::ast;
@@ -160,6 +161,14 @@ pub fn trans<'a>(bcx: &'a Block<'a>,
     return DatumBlock::new(bcx, datum);
 }
 
+pub fn get_len(bcx: &Block, fat_ptr: ValueRef) -> ValueRef {
+    GEPi(bcx, fat_ptr, [0u, abi::slice_elt_len])
+}
+
+pub fn get_dataptr(bcx: &Block, fat_ptr: ValueRef) -> ValueRef {
+    GEPi(bcx, fat_ptr, [0u, abi::slice_elt_base])
+}
+
 fn apply_adjustments<'a>(bcx: &'a Block<'a>,
                          expr: &ast::Expr,
                          datum: Datum<Expr>)
@@ -184,71 +193,289 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
             datum = unpack_datum!(bcx, add_env(bcx, expr, datum));
         }
         AutoDerefRef(ref adj) => {
-            if adj.autoderefs > 0 {
+            let (autoderefs, use_autoref) = match adj.autoref {
+                // Extracting a value from a box counts as a deref, but if we are
+                // just converting Box<[T, ..n]> to Box<[T]> we aren't really doing
+                // a deref (and wouldn't if we could treat Box like a normal struct).
+                Some(ty::AutoUnsizeUniq(..)) => (adj.autoderefs - 1, true),
+                // We are a bit paranoid about adjustments and thus might have a re-
+                // borrow here which merely derefs and then refs again (it might have
+                // a different region or mutability, but we don't care here. It might
+                // also be just in case we need to unsize. But if there are no nested
+                // adjustments then it should be a no-op).
+                Some(ty::AutoPtr(_, _, None)) if adj.autoderefs == 1 => {
+                    match ty::get(datum.ty).sty {
+                        // Don't skip a conversion from Box<T> to &T, etc.
+                        ty::ty_rptr(..) => {
+                            let method_call = MethodCall::autoderef(expr.id, adj.autoderefs-1);
+                            let method = bcx.tcx().method_map.borrow().find(&method_call).is_some();
+                            if method {
+                                // Don't skip an overloaded deref.
+                                (adj.autoderefs, true)
+                            } else {
+                                (adj.autoderefs - 1, false)
+                            }
+                        }
+                        _ => (adj.autoderefs, true),
+                    }
+                }
+                _ => (adj.autoderefs, true)
+            };
+
+            if autoderefs > 0 {
+                // Schedule cleanup.
+                let lval = unpack_datum!(bcx, datum.to_lvalue_datum(bcx, "auto_deref", expr.id));
                 datum = unpack_datum!(
-                    bcx, deref_multiple(bcx, expr, datum, adj.autoderefs));
+                    bcx, deref_multiple(bcx, expr, lval.to_expr_datum(), autoderefs));
             }
 
-            datum = match adj.autoref {
-                None => {
-                    datum
+            // (You might think there is a more elegant way to do this than a
+            // use_autoref bool, but then you remember that the borrow checker exists).
+            match (use_autoref, &adj.autoref) {
+                (true, &Some(ref a)) => {
+                    datum = unpack_datum!(bcx, apply_autoref(a,
+                                                             bcx,
+                                                             expr,
+                                                             datum));
                 }
-                Some(AutoUnsafe(..)) | // region + unsafe ptrs have same repr
-                Some(AutoPtr(..)) => {
-                    unpack_datum!(bcx, auto_ref(bcx, datum, expr))
-                }
-                Some(AutoBorrowVec(..)) => {
-                    unpack_datum!(bcx, auto_slice(bcx, expr, datum))
-                }
-                Some(AutoBorrowVecRef(..)) => {
-                    unpack_datum!(bcx, auto_slice_and_ref(bcx, expr, datum))
-                }
-                Some(AutoBorrowObj(..)) => {
-                    unpack_datum!(bcx, auto_borrow_obj(bcx, expr, datum))
-                }
-            };
-        }
-        AutoObject(..) => {
-            let adjusted_ty = ty::expr_ty_adjusted(bcx.tcx(), expr);
-            let scratch = rvalue_scratch_datum(bcx, adjusted_ty, "__adjust");
-            bcx = meth::trans_trait_cast(
-                bcx, datum, expr.id, SaveIn(scratch.val));
-            datum = scratch.to_expr_datum();
+                _ => {}
+            }
         }
     }
     debug!("after adjustments, datum={}", datum.to_string(bcx.ccx()));
-    return DatumBlock {bcx: bcx, datum: datum};
+    return DatumBlock::new(bcx, datum);
 
-    fn auto_slice<'a>(
-                  bcx: &'a Block<'a>,
-                  expr: &ast::Expr,
-                  datum: Datum<Expr>)
-                  -> DatumBlock<'a, Expr> {
-        // This is not the most efficient thing possible; since slices
-        // are two words it'd be better if this were compiled in
-        // 'dest' mode, but I can't find a nice way to structure the
-        // code and keep it DRY that accommodates that use case at the
-        // moment.
+    fn apply_autoref<'a>(autoref: &ty::AutoRef,
+                         bcx: &'a Block<'a>,
+                         expr: &ast::Expr,
+                         datum: Datum<Expr>)
+                         -> DatumBlock<'a, Expr> {
+        let mut bcx = bcx;
+        let mut datum = datum;
 
+        let datum = match autoref {
+            &AutoUnsafe(..) => {
+                debug!("  AutoUnsafe");
+                unpack_datum!(bcx, ref_ptr(bcx, expr, datum))
+            }
+            &AutoPtr(_, _, ref a) => {
+                debug!("  AutoPtr");
+                match a {
+                    &Some(box ref a) => datum = unpack_datum!(bcx,
+                                                              apply_autoref(a, bcx, expr, datum)),
+                    _ => {}
+                }
+                unpack_datum!(bcx, ref_ptr(bcx, expr, datum))
+            }
+            &ty::AutoUnsize(ref k) => {
+                debug!("  AutoUnsize");
+                unpack_datum!(bcx, unsize_expr(bcx, expr, datum, k))
+            }
+
+            &ty::AutoUnsizeUniq(ty::UnsizeLength(len)) => {
+                debug!("  AutoUnsizeUniq(UnsizeLength)");
+                unpack_datum!(bcx, unsize_unique_vec(bcx, expr, datum, len))
+            }
+            &ty::AutoUnsizeUniq(ref k) => {
+                debug!("  AutoUnsizeUniq");
+                unpack_datum!(bcx, unsize_unique_expr(bcx, expr, datum, k))
+            }
+        };
+
+        DatumBlock::new(bcx, datum)
+    }
+
+    fn ref_ptr<'a>(bcx: &'a Block<'a>,
+                   expr: &ast::Expr,
+                   datum: Datum<Expr>)
+                   -> DatumBlock<'a, Expr> {
+        if !ty::type_is_sized(bcx.tcx(), datum.ty) {
+            debug!("Taking address of unsized type {}",
+                   bcx.ty_to_string(datum.ty));
+            ref_fat_ptr(bcx, expr, datum)
+        } else {
+            debug!("Taking address of sized type {}",
+                   bcx.ty_to_string(datum.ty));
+            auto_ref(bcx, datum, expr)
+        }
+    }
+
+    // Retrieve the information we are losing (making dynamic) in an unsizing
+    // adjustment.
+    // When making a dtor, we need to do different things depending on the
+    // ownership of the object.. mk_ty is a function for turning unsized_type
+    // into a type to be destructed. If we want to end up with a Box pointer,
+    // then mk_ty should make a Box pointer (T -> Box<T>), if we want a
+    // borrowed reference then it should be T -> &T.
+    fn unsized_info<'a>(bcx: &'a Block<'a>,
+                        kind: &ty::UnsizeKind,
+                        id: ast::NodeId,
+                        unsized_ty: ty::t,
+                        mk_ty: |ty::t| -> ty::t) -> ValueRef {
+        match kind {
+            &ty::UnsizeLength(len) => C_uint(bcx.ccx(), len),
+            &ty::UnsizeStruct(box ref k, tp_index) => match ty::get(unsized_ty).sty {
+                ty::ty_struct(_, ref substs) => {
+                    let ty_substs = substs.types.get_slice(subst::TypeSpace);
+                    // The dtor for a field treats it like a value, so mk_ty
+                    // should just be the identity function.
+                    unsized_info(bcx, k, id, ty_substs[tp_index], |t| t)
+                }
+                _ => bcx.sess().bug(format!("UnsizeStruct with bad sty: {}",
+                                          bcx.ty_to_string(unsized_ty)).as_slice())
+            },
+            &ty::UnsizeVtable(..) =>
+                PointerCast(bcx,
+                            meth::vtable_ptr(bcx, id, mk_ty(unsized_ty)),
+                            Type::vtable_ptr(bcx.ccx()))
+        }
+    }
+
+    fn unsize_expr<'a>(bcx: &'a Block<'a>,
+                       expr: &ast::Expr,
+                       datum: Datum<Expr>,
+                       k: &ty::UnsizeKind)
+                       -> DatumBlock<'a, Expr> {
+        let tcx = bcx.tcx();
+        let datum_ty = datum.ty;
+        let unsized_ty = ty::unsize_ty(tcx, datum_ty, k, expr.span);
+        let dest_ty = ty::mk_open(tcx, unsized_ty);
+        // Closures for extracting and manipulating the data and payload parts of
+        // the fat pointer.
+        let base = match k {
+            &ty::UnsizeStruct(..) =>
+                |bcx, val| PointerCast(bcx,
+                                       val,
+                                       type_of::type_of(bcx.ccx(), unsized_ty).ptr_to()),
+            &ty::UnsizeLength(..) =>
+                |bcx, val| GEPi(bcx, val, [0u, 0u]),
+            &ty::UnsizeVtable(..) =>
+                |_bcx, val| PointerCast(bcx, val, Type::i8p(bcx.ccx()))
+        };
+        let info = |bcx, _val| unsized_info(bcx,
+                                            k,
+                                            expr.id,
+                                            ty::deref_or_dont(datum_ty),
+                                            |t| ty::mk_rptr(tcx,
+                                                            ty::ReStatic,
+                                                            ty::mt{
+                                                                ty: t,
+                                                                mutbl: ast::MutImmutable
+                                                            }));
+        into_fat_ptr(bcx, expr, datum, dest_ty, base, info)
+    }
+
+    fn ref_fat_ptr<'a>(bcx: &'a Block<'a>,
+                       expr: &ast::Expr,
+                       datum: Datum<Expr>)
+                       -> DatumBlock<'a, Expr> {
+        let tcx = bcx.tcx();
+        let dest_ty = ty::close_type(tcx, datum.ty);
+        let base = |bcx, val| Load(bcx, get_dataptr(bcx, val));
+        let len = |bcx, val| Load(bcx, get_len(bcx, val));
+        into_fat_ptr(bcx, expr, datum, dest_ty, base, len)
+    }
+
+    fn into_fat_ptr<'a>(bcx: &'a Block<'a>,
+                        expr: &ast::Expr,
+                        datum: Datum<Expr>,
+                        dest_ty: ty::t,
+                        base: |&'a Block<'a>, ValueRef| -> ValueRef,
+                        info: |&'a Block<'a>, ValueRef| -> ValueRef)
+                        -> DatumBlock<'a, Expr> {
+        let mut bcx = bcx;
+
+        // Arrange cleanup
+        let lval = unpack_datum!(bcx,
+                                 datum.to_lvalue_datum(bcx, "into_fat_ptr", expr.id));
+        let base = base(bcx, lval.val);
+        let info = info(bcx, lval.val);
+
+        let scratch = rvalue_scratch_datum(bcx, dest_ty, "__fat_ptr");
+        Store(bcx, base, get_dataptr(bcx, scratch.val));
+        Store(bcx, info, get_len(bcx, scratch.val));
+
+        DatumBlock::new(bcx, scratch.to_expr_datum())
+    }
+
+    fn unsize_unique_vec<'a>(bcx: &'a Block<'a>,
+                             expr: &ast::Expr,
+                             datum: Datum<Expr>,
+                             len: uint)
+                             -> DatumBlock<'a, Expr> {
         let mut bcx = bcx;
         let tcx = bcx.tcx();
-        let unit_ty = ty::sequence_element_type(tcx, datum.ty);
 
-        // Arrange cleanup, if not already done. This is needed in
-        // case we are auto-slicing an owned vector or some such.
-        let datum = unpack_datum!(
-            bcx, datum.to_lvalue_datum(bcx, "auto_slice", expr.id));
+        let datum_ty = datum.ty;
+        // Arrange cleanup
+        let lval = unpack_datum!(bcx,
+                                 datum.to_lvalue_datum(bcx, "unsize_unique_vec", expr.id));
 
-        let (base, len) = datum.get_vec_base_and_len(bcx);
+        let ll_len = C_uint(bcx.ccx(), len);
+        let unit_ty = ty::sequence_element_type(tcx, ty::type_content(datum_ty));
+        let vec_ty = ty::mk_uniq(tcx, ty::mk_vec(tcx, unit_ty, None));
+        let scratch = rvalue_scratch_datum(bcx, vec_ty, "__unsize_unique");
 
-        // this type may have a different region/mutability than the
-        // real one, but it will have the same runtime representation
-        let slice_ty = ty::mk_slice(tcx, ty::ReStatic,
-                                    ty::mt { ty: unit_ty, mutbl: ast::MutImmutable });
+        if len == 0 {
+            Store(bcx,
+                  C_null(type_of::type_of(bcx.ccx(), unit_ty).ptr_to()),
+                  get_dataptr(bcx, scratch.val));
+        } else {
+            // Box<[(), ..n]> will not allocate, but ~[()] expects an
+            // allocation of n bytes, so we must allocate here (yuck).
+            let llty = type_of::type_of(bcx.ccx(), unit_ty);
+            if llsize_of_alloc(bcx.ccx(), llty) == 0 {
+                let ptr_unit_ty = type_of::type_of(bcx.ccx(), unit_ty).ptr_to();
+                let align = C_uint(bcx.ccx(), 8);
+                let alloc_result = malloc_raw_dyn(bcx, ptr_unit_ty, vec_ty, ll_len, align);
+                bcx = alloc_result.bcx;
+                let base = get_dataptr(bcx, scratch.val);
+                Store(bcx, alloc_result.val, base);
+            } else {
+                let base = get_dataptr(bcx, scratch.val);
+                let base = PointerCast(bcx,
+                                       base,
+                                       type_of::type_of(bcx.ccx(), datum_ty).ptr_to());
+                bcx = lval.store_to(bcx, base);
+            }
+        }
 
-        let scratch = rvalue_scratch_datum(bcx, slice_ty, "__adjust");
-        Store(bcx, base, GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));
-        Store(bcx, len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
+        Store(bcx, ll_len, get_len(bcx, scratch.val));
+        DatumBlock::new(bcx, scratch.to_expr_datum())
+    }
+
+    fn unsize_unique_expr<'a>(bcx: &'a Block<'a>,
+                              expr: &ast::Expr,
+                              datum: Datum<Expr>,
+                              k: &ty::UnsizeKind)
+                              -> DatumBlock<'a, Expr> {
+        let mut bcx = bcx;
+        let tcx = bcx.tcx();
+
+        let datum_ty = datum.ty;
+        let unboxed_ty = match ty::get(datum_ty).sty {
+            ty::ty_uniq(t) => t,
+            _ => bcx.sess().bug(format!("Expected ty_uniq, found {}",
+                                        bcx.ty_to_string(datum_ty)).as_slice())
+        };
+        let result_ty = ty::mk_uniq(tcx, ty::unsize_ty(tcx, unboxed_ty, k, expr.span));
+
+        let lval = unpack_datum!(bcx,
+                                 datum.to_lvalue_datum(bcx, "unsize_unique_expr", expr.id));
+
+        let scratch = rvalue_scratch_datum(bcx, result_ty, "__uniq_fat_ptr");
+        let llbox_ty = type_of::type_of(bcx.ccx(), datum_ty);
+        let base = PointerCast(bcx, get_dataptr(bcx, scratch.val), llbox_ty.ptr_to());
+        bcx = lval.store_to(bcx, base);
+
+        let info = unsized_info(bcx, k, expr.id, unboxed_ty, |t| ty::mk_uniq(tcx, t));
+        Store(bcx, info, get_len(bcx, scratch.val));
+
+        let scratch = unpack_datum!(bcx,
+                                    scratch.to_expr_datum().to_lvalue_datum(bcx,
+                                                                            "fresh_uniq_fat_ptr",
+                                                                            expr.id));
+
         DatumBlock::new(bcx, scratch.to_expr_datum())
     }
 
@@ -266,32 +493,6 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
         let fn_ptr = datum.to_llscalarish(bcx);
         let def = ty::resolve_expr(bcx.tcx(), expr);
         closure::make_closure_from_bare_fn(bcx, closure_ty, def, fn_ptr)
-    }
-
-    fn auto_slice_and_ref<'a>(
-                          bcx: &'a Block<'a>,
-                          expr: &ast::Expr,
-                          datum: Datum<Expr>)
-                          -> DatumBlock<'a, Expr> {
-        let DatumBlock { bcx, datum } = auto_slice(bcx, expr, datum);
-        auto_ref(bcx, datum, expr)
-    }
-
-    fn auto_borrow_obj<'a>(mut bcx: &'a Block<'a>,
-                           expr: &ast::Expr,
-                           source_datum: Datum<Expr>)
-                           -> DatumBlock<'a, Expr> {
-        let tcx = bcx.tcx();
-        let target_obj_ty = expr_ty_adjusted(bcx, expr);
-        debug!("auto_borrow_obj(target={})", target_obj_ty.repr(tcx));
-
-        // Arrange cleanup, if not already done. This is needed in
-        // case we are auto-borrowing a Box<Trait> to &Trait
-        let datum = unpack_datum!(
-            bcx, source_datum.to_lvalue_datum(bcx, "autoborrowobj", expr.id));
-        let mut datum = datum.to_expr_datum();
-        datum.ty = target_obj_ty;
-        DatumBlock::new(bcx, datum)
     }
 }
 
@@ -398,20 +599,31 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
         ast::ExprIndex(ref base, ref idx) => {
             trans_index(bcx, expr, &**base, &**idx, MethodCall::expr(expr.id))
         }
-        ast::ExprVstore(ref contents, ast::ExprVstoreUniq) => {
-            fcx.push_ast_cleanup_scope(contents.id);
-            let datum = unpack_datum!(
-                bcx, tvec::trans_uniq_vstore(bcx, expr, &**contents));
-            bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, contents.id);
-            DatumBlock::new(bcx, datum)
-        }
         ast::ExprBox(_, ref contents) => {
             // Special case for `Box<T>` and `Gc<T>`
             let box_ty = expr_ty(bcx, expr);
             let contents_ty = expr_ty(bcx, &**contents);
             match ty::get(box_ty).sty {
                 ty::ty_uniq(..) => {
-                    trans_uniq_expr(bcx, box_ty, &**contents, contents_ty)
+                    let is_vec = match contents.node {
+                        ast::ExprRepeat(..) | ast::ExprVec(..) => true,
+                        ast::ExprLit(lit) => match lit.node {
+                            ast::LitStr(..) => true,
+                            _ => false
+                        },
+                        _ => false
+                    };
+
+                    if is_vec {
+                        // Special case for owned vectors.
+                        fcx.push_ast_cleanup_scope(contents.id);
+                        let datum = unpack_datum!(
+                            bcx, tvec::trans_uniq_vec(bcx, expr, &**contents));
+                        bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, contents.id);
+                        DatumBlock::new(bcx, datum)
+                    } else {
+                        trans_uniq_expr(bcx, box_ty, &**contents, contents_ty)
+                    }
                 }
                 ty::ty_box(..) => {
                     trans_managed_expr(bcx, box_ty, &**contents, contents_ty)
@@ -419,6 +631,7 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
                 _ => bcx.sess().span_bug(expr.span,
                                          "expected unique or managed box")
             }
+
         }
         ast::ExprLit(ref lit) => trans_immediate_lit(bcx, expr, (**lit).clone()),
         ast::ExprBinary(op, ref lhs, ref rhs) => {
@@ -428,7 +641,19 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
             trans_unary(bcx, expr, op, &**x)
         }
         ast::ExprAddrOf(_, ref x) => {
-            trans_addr_of(bcx, expr, &**x)
+            match x.node {
+                ast::ExprRepeat(..) | ast::ExprVec(..) => {
+                    // Special case for slices.
+                    fcx.push_ast_cleanup_scope(x.id);
+                    let datum = unpack_datum!(
+                        bcx, tvec::trans_slice_vec(bcx, expr, &**x));
+                    bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, x.id);
+                    DatumBlock::new(bcx, datum)
+                }
+                _ => {
+                    trans_addr_of(bcx, expr, &**x)
+                }
+            }
         }
         ast::ExprCast(ref val, _) => {
             // Datum output mode means this is a scalar cast:
@@ -454,14 +679,27 @@ fn trans_rec_field<'a>(bcx: &'a Block<'a>,
     let _icx = push_ctxt("trans_rec_field");
 
     let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, base, "field"));
-    let repr = adt::represent_type(bcx.ccx(), base_datum.ty);
-    with_field_tys(bcx.tcx(), base_datum.ty, None, |discr, field_tys| {
-            let ix = ty::field_idx_strict(bcx.tcx(), field.name, field_tys);
-            let d = base_datum.get_element(
-                field_tys[ix].mt.ty,
-                |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, ix));
+    let bare_ty = ty::unopen_type(base_datum.ty);
+    let repr = adt::represent_type(bcx.ccx(), bare_ty);
+    with_field_tys(bcx.tcx(), bare_ty, None, |discr, field_tys| {
+        let ix = ty::field_idx_strict(bcx.tcx(), field.name, field_tys);
+        let d = base_datum.get_element(
+            bcx,
+            field_tys[ix].mt.ty,
+            |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, ix));
+
+        if ty::type_is_sized(bcx.tcx(), d.ty) {
             DatumBlock { datum: d.to_expr_datum(), bcx: bcx }
-        })
+        } else {
+            let scratch = rvalue_scratch_datum(bcx, ty::mk_open(bcx.tcx(), d.ty), "");
+            Store(bcx, d.val, get_dataptr(bcx, scratch.val));
+            let info = Load(bcx, get_len(bcx, base_datum.val));
+            Store(bcx, info, get_len(bcx, scratch.val));
+
+            DatumBlock::new(bcx, scratch.to_expr_datum())
+
+        }
+    })
 }
 
 fn trans_index<'a>(bcx: &'a Block<'a>,
@@ -727,7 +965,6 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
     let _icx = push_ctxt("trans_rvalue_dps_unadjusted");
     let mut bcx = bcx;
     let tcx = bcx.tcx();
-    let fcx = bcx.fcx;
 
     match expr.node {
         ast::ExprParen(ref e) => {
@@ -772,14 +1009,8 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
                 }
             }
         }
-        ast::ExprVstore(ref contents, ast::ExprVstoreSlice) |
-        ast::ExprVstore(ref contents, ast::ExprVstoreMutSlice) => {
-            fcx.push_ast_cleanup_scope(contents.id);
-            bcx = tvec::trans_slice_vstore(bcx, expr, &**contents, dest);
-            fcx.pop_and_trans_ast_cleanup_scope(bcx, contents.id)
-        }
         ast::ExprVec(..) | ast::ExprRepeat(..) => {
-            tvec::trans_fixed_vstore(bcx, expr, expr, dest)
+            tvec::trans_fixed_vstore(bcx, expr, dest)
         }
         ast::ExprFnBlock(_, ref decl, ref body) |
         ast::ExprProc(ref decl, ref body) => {
@@ -1146,7 +1377,8 @@ pub fn trans_adt<'a>(mut bcx: &'a Block<'a>,
                 let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
                 for &(i, t) in base.fields.iter() {
                     let datum = base_datum.get_element(
-                            t, |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, i));
+                            bcx, t, |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, i));
+                    assert!(ty::type_is_sized(bcx.tcx(), datum.ty));
                     let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
                     bcx = datum.store_to(bcx, dest);
                 }
@@ -1253,13 +1485,12 @@ fn trans_uniq_expr<'a>(bcx: &'a Block<'a>,
                         -> DatumBlock<'a, Expr> {
     let _icx = push_ctxt("trans_uniq_expr");
     let fcx = bcx.fcx;
+    assert!(ty::type_is_sized(bcx.tcx(), contents_ty));
     let llty = type_of::type_of(bcx.ccx(), contents_ty);
     let size = llsize_of(bcx.ccx(), llty);
-    let align = C_uint(bcx.ccx(), llalign_of_min(bcx.ccx(), llty) as uint);
-    // We need to a make a pointer type because box_ty is ty_bot
-    // if content_ty is, e.g. box fail!().
-    let real_box_ty = ty::mk_uniq(bcx.tcx(), contents_ty);
-    let Result { bcx, val } = malloc_raw_dyn(bcx, real_box_ty, size, align);
+    let align = C_uint(bcx.ccx(), type_of::align_of(bcx.ccx(), contents_ty) as uint);
+    let llty_ptr = llty.ptr_to();
+    let Result { bcx, val } = malloc_raw_dyn(bcx, llty_ptr, box_ty, size, align);
     // Unique boxes do not allocate for zero-size types. The standard library
     // may assume that `free` is never called on the pointer returned for
     // `Box<ZeroSizeType>`.
@@ -1303,8 +1534,28 @@ fn trans_addr_of<'a>(bcx: &'a Block<'a>,
     let _icx = push_ctxt("trans_addr_of");
     let mut bcx = bcx;
     let sub_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, subexpr, "addr_of"));
-    let ty = expr_ty(bcx, expr);
-    return immediate_rvalue_bcx(bcx, sub_datum.val, ty).to_expr_datumblock();
+    match ty::get(sub_datum.ty).sty {
+        ty::ty_open(_) => {
+            // Opened DST value, close to a fat pointer
+            debug!("Closing fat pointer {}", bcx.ty_to_string(sub_datum.ty));
+
+            let scratch = rvalue_scratch_datum(bcx,
+                                               ty::close_type(bcx.tcx(), sub_datum.ty),
+                                               "fat_addr_of");
+            let base = Load(bcx, get_dataptr(bcx, sub_datum.val));
+            Store(bcx, base, get_dataptr(bcx, scratch.val));
+
+            let len = Load(bcx, get_len(bcx, sub_datum.val));
+            Store(bcx, len, get_len(bcx, scratch.val));
+
+            DatumBlock::new(bcx, scratch.to_expr_datum())
+        }
+        _ => {
+            // Sized value, ref to a thin pointer
+            let ty = expr_ty(bcx, expr);
+            immediate_rvalue_bcx(bcx, sub_datum.val, ty).to_expr_datumblock()
+        }
+    }
 }
 
 // Important to get types for both lhs and rhs, because one might be _|_
@@ -1592,15 +1843,18 @@ pub enum cast_kind {
     cast_other,
 }
 
-pub fn cast_type_kind(t: ty::t) -> cast_kind {
+pub fn cast_type_kind(tcx: &ty::ctxt, t: ty::t) -> cast_kind {
     match ty::get(t).sty {
         ty::ty_char        => cast_integral,
         ty::ty_float(..)   => cast_float,
         ty::ty_ptr(..)     => cast_pointer,
-        ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty{
-            ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..) => cast_other,
-            _ => cast_pointer,
-        },
+        ty::ty_rptr(_, mt) => {
+            if ty::type_is_sized(tcx, mt.ty) {
+                cast_pointer
+            } else {
+                cast_other
+            }
+        }
         ty::ty_bare_fn(..) => cast_pointer,
         ty::ty_int(..)     => cast_integral,
         ty::ty_uint(..)    => cast_integral,
@@ -1620,8 +1874,8 @@ fn trans_imm_cast<'a>(bcx: &'a Block<'a>,
 
     let t_in = expr_ty(bcx, expr);
     let t_out = node_id_type(bcx, id);
-    let k_in = cast_type_kind(t_in);
-    let k_out = cast_type_kind(t_out);
+    let k_in = cast_type_kind(bcx.tcx(), t_in);
+    let k_out = cast_type_kind(bcx.tcx(), t_out);
     let s_in = k_in == cast_integral && ty::type_is_signed(t_in);
     let ll_t_in = type_of::arg_type_of(ccx, t_in);
     let ll_t_out = type_of::arg_type_of(ccx, t_out);
@@ -1809,10 +2063,14 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
 
     let r = match ty::get(datum.ty).sty {
         ty::ty_uniq(content_ty) => {
-            match ty::get(content_ty).sty {
-                ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..)
-                    => bcx.tcx().sess.span_bug(expr.span, "unexpected unsized box"),
-                _ => deref_owned_pointer(bcx, expr, datum, content_ty),
+            if ty::type_is_sized(bcx.tcx(), content_ty) {
+                deref_owned_pointer(bcx, expr, datum, content_ty)
+            } else {
+                // A fat pointer and an opened DST value have the same represenation
+                // just different types.
+                DatumBlock::new(bcx, Datum::new(datum.val,
+                                                ty::mk_open(bcx.tcx(), content_ty),
+                                                datum.kind))
             }
         }
 
@@ -1827,21 +2085,21 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
 
         ty::ty_ptr(ty::mt { ty: content_ty, .. }) |
         ty::ty_rptr(_, ty::mt { ty: content_ty, .. }) => {
-            match ty::get(content_ty).sty {
-                ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..)
-                    => bcx.tcx().sess.span_bug(expr.span, "unexpected unsized reference"),
-                _ => {
-                    assert!(!ty::type_needs_drop(bcx.tcx(), datum.ty));
+            if ty::type_is_sized(bcx.tcx(), content_ty) {
+                let ptr = datum.to_llscalarish(bcx);
 
-                    let ptr = datum.to_llscalarish(bcx);
-
-                    // Always generate an lvalue datum, even if datum.mode is
-                    // an rvalue.  This is because datum.mode is only an
-                    // rvalue for non-owning pointers like &T or *T, in which
-                    // case cleanup *is* scheduled elsewhere, by the true
-                    // owner (or, in the case of *T, by the user).
-                    DatumBlock::new(bcx, Datum::new(ptr, content_ty, LvalueExpr))
-                }
+                // Always generate an lvalue datum, even if datum.mode is
+                // an rvalue.  This is because datum.mode is only an
+                // rvalue for non-owning pointers like &T or *T, in which
+                // case cleanup *is* scheduled elsewhere, by the true
+                // owner (or, in the case of *T, by the user).
+                DatumBlock::new(bcx, Datum::new(ptr, content_ty, LvalueExpr))
+            } else {
+                // A fat pointer and an opened DST value have the same represenation
+                // just different types.
+                DatumBlock::new(bcx, Datum::new(datum.val,
+                                                ty::mk_open(bcx.tcx(), content_ty),
+                                                datum.kind))
             }
         }
 

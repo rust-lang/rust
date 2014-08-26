@@ -11,7 +11,7 @@
 // Test that we cannot return a stack allocated slice
 
 fn function(x: int) -> &'static [int] {
-    &[x] //~ ERROR mismatched types
+    &[x] //~ ERROR borrowed value does not live long enough
 }
 
 fn main() {

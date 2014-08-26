@@ -16,11 +16,11 @@ pub fn expr_break_label_15() {
         'inner: loop {
             if x == 1i {
                 break 'outer;
-                "unreachable"
+                "unreachable";
             }
             if y >= 2i {
                 break;
-                "unreachable"
+                "unreachable";
             }
             y -= 3i;
         }

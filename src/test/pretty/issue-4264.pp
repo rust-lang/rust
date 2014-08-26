@@ -48,8 +48,8 @@ pub fn bar() {
                        as core::fmt::rt::Piece<'static>)] as
                      [core::fmt::rt::Piece<'static>, .. 1]);
              let __args_vec =
-                 (&([] as &'static [core::fmt::Argument<'static>]) as
-                     &'static [core::fmt::Argument<'static>]);
+                 (&([] as [core::fmt::Argument<'static>, .. 0]) as
+                     &'static [core::fmt::Argument<'static>, .. 0]);
              let __args =
                  (unsafe {
                       ((::std::fmt::Arguments::new as
@@ -58,7 +58,7 @@ pub fn bar() {
                                                                                                                                                [core::fmt::rt::Piece<'static>, .. 1]),
                                                                                                                                            (__args_vec
                                                                                                                                                as
-                                                                                                                                               &'static [core::fmt::Argument<'static>]))
+                                                                                                                                               &'static [core::fmt::Argument<'static>, .. 0]))
                           as core::fmt::Arguments<'static>)
                   } as core::fmt::Arguments<'static>);
 

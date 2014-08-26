@@ -193,6 +193,8 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    // NOTE: remove after snapshot
+    #[cfg(stage0)]
     fn visit_estr_fixed(&mut self, n: uint,
                         sz: uint,
                         align: uint) -> bool {
@@ -237,10 +239,21 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    #[cfg(stage0)]
     fn visit_evec_fixed(&mut self, n: uint, sz: uint, align: uint,
                         mtbl: uint, inner: *const TyDesc) -> bool {
         self.align(align);
         if ! self.inner.visit_evec_fixed(n, sz, align, mtbl, inner) {
+            return false;
+        }
+        self.bump(sz);
+        true
+    }
+    #[cfg(not(stage0))]
+    fn visit_evec_fixed(&mut self, n: uint, sz: uint, align: uint,
+                        inner: *const TyDesc) -> bool {
+        self.align(align);
+        if ! self.inner.visit_evec_fixed(n, sz, align, inner) {
             return false;
         }
         self.bump(sz);

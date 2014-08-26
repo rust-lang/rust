@@ -221,8 +221,14 @@ impl<T> Option<T> {
     #[inline]
     pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
         match *self {
-            Some(ref mut x) => slice::mut_ref_slice(x),
-            None => &mut []
+            Some(ref mut x) => {
+                let result: &mut [T] = slice::mut_ref_slice(x);
+                result
+            }
+            None => {
+                let result: &mut [T] = &mut [];
+                result
+            }
         }
     }
 
@@ -524,7 +530,10 @@ impl<T> Slice<T> for Option<T> {
     fn as_slice<'a>(&'a self) -> &'a [T] {
         match *self {
             Some(ref x) => slice::ref_slice(x),
-            None => &[]
+            None => {
+                let result: &[_] = &[];
+                result
+            }
         }
     }
 }

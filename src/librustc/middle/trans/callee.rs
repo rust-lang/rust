@@ -51,6 +51,7 @@ use middle::typeck;
 use middle::typeck::coherence::make_substs_for_receiver_types;
 use middle::typeck::MethodCall;
 use util::ppaux::Repr;
+use util::ppaux::ty_to_string;
 
 use std::gc::Gc;
 use syntax::abi as synabi;
@@ -853,7 +854,8 @@ pub fn trans_call_inner<'a>(
                                       llfn,
                                       llargs,
                                       callee_ty,
-                                      call_info);
+                                      call_info,
+                                      dest.is_none());
         bcx = b;
         llresult = llret;
 
@@ -968,6 +970,7 @@ fn trans_args_under_call_abi<'a>(
             let repr_ptr = &*repr;
             for i in range(0, field_types.len()) {
                 let arg_datum = tuple_lvalue_datum.get_element(
+                    bcx,
                     *field_types.get(i),
                     |srcval| {
                         adt::trans_field_ptr(bcx, repr_ptr, srcval, 0, i)
@@ -1194,6 +1197,8 @@ pub fn trans_arg_datum<'a>(
             let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, formal_arg_ty);
             debug!("casting actual type ({}) to match formal ({})",
                    bcx.val_to_string(val), bcx.llty_str(llformal_arg_ty));
+            debug!("Rust types: {}; {}", ty_to_string(bcx.tcx(), arg_datum_ty),
+                                         ty_to_string(bcx.tcx(), formal_arg_ty));
             val = PointerCast(bcx, val, llformal_arg_ty);
         }
     }

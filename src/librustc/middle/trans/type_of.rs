@@ -14,7 +14,9 @@ use middle::subst;
 use middle::trans::adt;
 use middle::trans::common::*;
 use middle::trans::foreign;
+use middle::trans::machine;
 use middle::ty;
+use util::ppaux;
 use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
@@ -160,6 +162,11 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
     }
 
     let llsizingty = match ty::get(t).sty {
+        _ if !ty::lltype_is_sized(cx.tcx(), t) => {
+            cx.sess().bug(format!("trying to take the sizing type of {}, an unsized type",
+                                  ppaux::ty_to_string(cx.tcx(), t)).as_slice())
+        }
+
         ty::ty_nil | ty::ty_bot => Type::nil(cx),
         ty::ty_bool => Type::bool(cx),
         ty::ty_char => Type::char(cx),
@@ -169,32 +176,24 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
 
         ty::ty_box(..) |
         ty::ty_ptr(..) => Type::i8p(cx),
-        ty::ty_uniq(ty) => {
-            match ty::get(ty).sty {
-                ty::ty_trait(..) => Type::opaque_trait(cx),
-                _ => Type::i8p(cx),
-            }
-        }
-        ty::ty_rptr(_, mt) => {
-            match ty::get(mt.ty).sty {
-                ty::ty_vec(_, None) | ty::ty_str => {
-                    Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false)
-                }
-                ty::ty_trait(..) => Type::opaque_trait(cx),
-                _ => Type::i8p(cx),
+        ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
+            if ty::type_is_sized(cx.tcx(), ty) {
+                Type::i8p(cx)
+            } else {
+                Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false)
             }
         }
 
         ty::ty_bare_fn(..) => Type::i8p(cx),
         ty::ty_closure(..) => Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false),
 
-        ty::ty_vec(mt, Some(size)) => {
-            Type::array(&sizing_type_of(cx, mt.ty), size as u64)
+        ty::ty_vec(ty, Some(size)) => {
+            Type::array(&sizing_type_of(cx, ty), size as u64)
         }
 
         ty::ty_tup(..) | ty::ty_enum(..) | ty::ty_unboxed_closure(..) => {
             let repr = adt::represent_type(cx, t);
-            adt::sizing_type_of(cx, &*repr)
+            adt::sizing_type_of(cx, &*repr, false)
         }
 
         ty::ty_struct(..) => {
@@ -204,15 +203,19 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
                 Type::vector(&type_of(cx, et), n as u64)
             } else {
                 let repr = adt::represent_type(cx, t);
-                adt::sizing_type_of(cx, &*repr)
+                adt::sizing_type_of(cx, &*repr, false)
             }
         }
 
-        ty::ty_infer(..) | ty::ty_param(..) |
-        ty::ty_err(..) | ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..) => {
-            cx.sess().bug(format!("fictitious type {:?} in sizing_type_of()",
-                                  ty::get(t).sty).as_slice())
+        ty::ty_open(_) => {
+            Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false)
         }
+
+        ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
+            cx.sess().bug(format!("fictitious type {} in sizing_type_of()",
+                                  ppaux::ty_to_string(cx.tcx(), t)).as_slice())
+        }
+        ty::ty_vec(_, None) | ty::ty_trait(..) | ty::ty_str => fail!("unreachable")
     };
 
     cx.llsizingtypes.borrow_mut().insert(t, llsizingty);
@@ -229,13 +232,30 @@ pub fn arg_type_of(cx: &CrateContext, t: ty::t) -> Type {
 
 // NB: If you update this, be sure to update `sizing_type_of()` as well.
 pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
+    fn type_of_unsize_info(cx: &CrateContext, t: ty::t) -> Type {
+        // It is possible to end up here with a sized type. This happens with a
+        // struct which might be unsized, but is monomorphised to a sized type.
+        // In this case we'll fake a fat pointer with no unsize info (we use 0).
+        // However, its still a fat pointer, so we need some type use.
+        if ty::type_is_sized(cx.tcx(), t) {
+            return Type::i8p(cx);
+        }
+
+        match ty::get(ty::unsized_part_of_type(cx.tcx(), t)).sty {
+            ty::ty_str | ty::ty_vec(..) => Type::uint_from_ty(cx, ast::TyU),
+            ty::ty_trait(_) => Type::vtable_ptr(cx),
+            _ => fail!("Unexpected type returned from unsized_part_of_type : {}",
+                       t.repr(cx.tcx()))
+        }
+    }
+
     // Check the cache.
     match cx.lltypes.borrow().find(&t) {
         Some(&llty) => return llty,
         None => ()
     }
 
-    debug!("type_of {} {:?}", t.repr(cx.tcx()), t);
+    debug!("type_of {} {:?}", t.repr(cx.tcx()), ty::get(t).sty);
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
@@ -283,34 +303,36 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_box(typ) => {
           Type::at_box(cx, type_of(cx, typ)).ptr_to()
       }
-      ty::ty_uniq(typ) => {
-          match ty::get(typ).sty {
-              ty::ty_vec(mt, None) => Type::vec(cx, &type_of(cx, mt.ty)).ptr_to(),
-              ty::ty_str => Type::vec(cx, &Type::i8(cx)).ptr_to(),
-              ty::ty_trait(..) => Type::opaque_trait(cx),
-              _ => type_of(cx, typ).ptr_to(),
-          }
-      }
       ty::ty_ptr(ref mt) => type_of(cx, mt.ty).ptr_to(),
-      ty::ty_rptr(_, ref mt) => {
-          match ty::get(mt.ty).sty {
-              ty::ty_vec(mt, None) => {
-                  let p_ty = type_of(cx, mt.ty).ptr_to();
-                  let u_ty = Type::uint_from_ty(cx, ast::TyU);
-                  Type::struct_(cx, [p_ty, u_ty], false)
-              }
+
+      ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
+          match ty::get(ty).sty {
               ty::ty_str => {
-                  // This means we get a nicer name in the output
+                  // This means we get a nicer name in the output (str is always
+                  // unsized).
                   cx.tn.find_type("str_slice").unwrap()
               }
               ty::ty_trait(..) => Type::opaque_trait(cx),
-              _ => type_of(cx, mt.ty).ptr_to(),
+              _ if !ty::type_is_sized(cx.tcx(), ty) => {
+                  let p_ty = type_of(cx, ty).ptr_to();
+                  Type::struct_(cx, [p_ty, type_of_unsize_info(cx, ty)], false)
+              }
+              _ => type_of(cx, ty).ptr_to(),
           }
       }
 
-      ty::ty_vec(ref mt, Some(n)) => {
-          Type::array(&type_of(cx, mt.ty), n as u64)
+      ty::ty_vec(ty, Some(n)) => {
+          Type::array(&type_of(cx, ty), n as u64)
       }
+      ty::ty_vec(ty, None) => {
+          type_of(cx, ty)
+      }
+
+      ty::ty_trait(..) => {
+          Type::opaque_trait_data(cx)
+      }
+
+      ty::ty_str => Type::i8(cx),
 
       ty::ty_bare_fn(_) => {
           type_of_fn_from_ty(cx, t).ptr_to()
@@ -339,12 +361,27 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
           }
       }
 
-      ty::ty_vec(_, None) => cx.sess().bug("type_of with unsized ty_vec"),
-      ty::ty_str => cx.sess().bug("type_of with unsized (bare) ty_str"),
-      ty::ty_trait(..) => cx.sess().bug("type_of with unsized ty_trait"),
+      ty::ty_open(t) => match ty::get(t).sty {
+          ty::ty_struct(..) => {
+              let p_ty = type_of(cx, t).ptr_to();
+              Type::struct_(cx, [p_ty, type_of_unsize_info(cx, t)], false)
+          }
+          ty::ty_vec(ty, None) => {
+              let p_ty = type_of(cx, ty).ptr_to();
+              Type::struct_(cx, [p_ty, type_of_unsize_info(cx, t)], false)
+          }
+          ty::ty_str => {
+              let p_ty = Type::i8p(cx);
+              Type::struct_(cx, [p_ty, type_of_unsize_info(cx, t)], false)
+          }
+          ty::ty_trait(..) => Type::opaque_trait(cx),
+          _ => cx.sess().bug(format!("ty_open with sized type: {}",
+                                     ppaux::ty_to_string(cx.tcx(), t)).as_slice())
+      },
+
       ty::ty_infer(..) => cx.sess().bug("type_of with ty_infer"),
       ty::ty_param(..) => cx.sess().bug("type_of with ty_param"),
-      ty::ty_err(..) => cx.sess().bug("type_of with ty_err")
+      ty::ty_err(..) => cx.sess().bug("type_of with ty_err"),
     };
 
     debug!("--> mapped t={} {:?} to llty={}",
@@ -365,6 +402,11 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     }
 
     return llty;
+}
+
+pub fn align_of(cx: &CrateContext, t: ty::t) -> u64 {
+    let llty = sizing_type_of(cx, t);
+    machine::llalign_of_min(cx, llty)
 }
 
 // Want refinements! (Or case classes, I guess

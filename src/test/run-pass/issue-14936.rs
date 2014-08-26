@@ -30,7 +30,8 @@ macro_rules! demo {
                      : "r"(&wrap(y, "in", &mut history)));
             }
             assert_eq!((x,y), (1,1));
-            assert_eq!(history.as_slice(), &["out", "in"]);
+            let b: &[_] = &["out", "in"];
+            assert_eq!(history.as_slice(), b);
         }
     }
 }

@@ -11,7 +11,9 @@
 
 // Used to cause ICE
 
-static VEC: [u32, ..256] = vec!(); //~ ERROR mismatched types
+// error-pattern: mismatched types
+
+static VEC: [u32, ..256] = vec!();
 
 fn main() {}
 

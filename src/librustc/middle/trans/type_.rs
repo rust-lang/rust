@@ -215,7 +215,7 @@ impl Type {
 
     pub fn vec(ccx: &CrateContext, ty: &Type) -> Type {
         Type::struct_(ccx,
-            [Type::int(ccx), Type::int(ccx), Type::array(ty, 0)],
+            [Type::array(ty, 0), Type::int(ccx)],
         false)
     }
 
@@ -231,9 +231,16 @@ impl Type {
         ], false)
     }
 
+    pub fn vtable_ptr(ccx: &CrateContext) -> Type {
+        Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to().ptr_to()
+    }
+
     pub fn opaque_trait(ccx: &CrateContext) -> Type {
-        let vtable = Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to().ptr_to();
-        Type::struct_(ccx, [vtable, Type::i8p(ccx)], false)
+        Type::struct_(ccx, [Type::opaque_trait_data(ccx).ptr_to(), Type::vtable_ptr(ccx)], false)
+    }
+
+    pub fn opaque_trait_data(ccx: &CrateContext) -> Type {
+        Type::i8(ccx)
     }
 
     pub fn kind(&self) -> TypeKind {

@@ -112,7 +112,7 @@ impl Context {
                 // the stack limit to 0 to make morestack never fail
                 None => stack::record_rust_managed_stack_bounds(0, uint::MAX),
             }
-            rust_swap_registers(out_regs, in_regs)
+            rust_swap_registers(out_regs, in_regs);
         }
     }
 }

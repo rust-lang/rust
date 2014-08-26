@@ -413,39 +413,42 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     for &adjustment in rcx.fcx.inh.adjustments.borrow().find(&expr.id).iter() {
         debug!("adjustment={:?}", adjustment);
         match *adjustment {
-            ty::AutoDerefRef(ty::AutoDerefRef {autoderefs, autoref: opt_autoref}) => {
+            ty::AutoDerefRef(ty::AutoDerefRef {autoderefs, autoref: ref opt_autoref}) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
                 constrain_autoderefs(rcx, expr, autoderefs, expr_ty);
-                for autoref in opt_autoref.iter() {
-                    link_autoref(rcx, expr, autoderefs, autoref);
+                match ty::adjusted_object_region(adjustment) {
+                    Some(trait_region) => {
+                        // Determine if we are casting `expr` to a trait
+                        // instance.  If so, we have to be sure that the type of
+                        // the source obeys the trait's region bound.
+                        //
+                        // Note: there is a subtle point here concerning type
+                        // parameters.  It is possible that the type of `source`
+                        // contains type parameters, which in turn may contain
+                        // regions that are not visible to us (only the caller
+                        // knows about them).  The kind checker is ultimately
+                        // responsible for guaranteeing region safety in that
+                        // particular case.  There is an extensive comment on the
+                        // function check_cast_for_escaping_regions() in kind.rs
+                        // explaining how it goes about doing that.
 
-                    // Require that the resulting region encompasses
-                    // the current node.
-                    //
-                    // FIXME(#6268) remove to support nested method calls
-                    constrain_regions_in_type_of_node(
-                        rcx, expr.id, ty::ReScope(expr.id),
-                        infer::AutoBorrow(expr.span));
+                        constrain_regions_in_type(rcx, trait_region,
+                                                  infer::RelateObjectBound(expr.span), expr_ty);
+                    }
+                    None => {
+                        for autoref in opt_autoref.iter() {
+                            link_autoref(rcx, expr, autoderefs, autoref);
+
+                            // Require that the resulting region encompasses
+                            // the current node.
+                            //
+                            // FIXME(#6268) remove to support nested method calls
+                            constrain_regions_in_type_of_node(
+                                rcx, expr.id, ty::ReScope(expr.id),
+                                infer::AutoBorrow(expr.span));
+                        }
+                    }
                 }
-            }
-            ty::AutoObject(ty::RegionTraitStore(trait_region, _), _, _, _) => {
-                // Determine if we are casting `expr` to a trait
-                // instance.  If so, we have to be sure that the type of
-                // the source obeys the trait's region bound.
-                //
-                // Note: there is a subtle point here concerning type
-                // parameters.  It is possible that the type of `source`
-                // contains type parameters, which in turn may contain
-                // regions that are not visible to us (only the caller
-                // knows about them).  The kind checker is ultimately
-                // responsible for guaranteeing region safety in that
-                // particular case.  There is an extensive comment on the
-                // function check_cast_for_escaping_regions() in kind.rs
-                // explaining how it goes about doing that.
-
-                let source_ty = rcx.resolve_node_type(expr.id);
-                constrain_regions_in_type(rcx, trait_region,
-                                            infer::RelateObjectBound(expr.span), source_ty);
             }
             _ => {}
         }
@@ -1176,24 +1179,12 @@ fn link_autoref(rcx: &Rcx,
     debug!("expr_cmt={}", expr_cmt.repr(rcx.tcx()));
 
     match *autoref {
-        ty::AutoPtr(r, m) => {
+        ty::AutoPtr(r, m, _) => {
             link_region(rcx, expr.span, r,
-                        ty::BorrowKind::from_mutbl(m), expr_cmt);
+                ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
 
-        ty::AutoBorrowVec(r, m) | ty::AutoBorrowVecRef(r, m) => {
-            let cmt_index = mc.cat_index(expr, expr_cmt, autoderefs+1);
-            link_region(rcx, expr.span, r,
-                        ty::BorrowKind::from_mutbl(m), cmt_index);
-        }
-
-        ty::AutoBorrowObj(r, m) => {
-            let cmt_deref = mc.cat_deref_obj(expr, expr_cmt);
-            link_region(rcx, expr.span, r,
-                        ty::BorrowKind::from_mutbl(m), cmt_deref);
-        }
-
-        ty::AutoUnsafe(_) => {}
+        ty::AutoUnsafe(_) | ty::AutoUnsizeUniq(_) | ty::AutoUnsize(_) => {}
     }
 }
 

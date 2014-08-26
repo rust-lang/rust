@@ -259,6 +259,7 @@ impl<'cx> WritebackCx<'cx> {
             }
 
             Some(adjustment) => {
+                let adj_object = ty::adjust_is_object(&adjustment);
                 let resolved_adjustment = match adjustment {
                     ty::AutoAddEnv(store) => {
                         // FIXME(eddyb) #2190 Allow only statically resolved
@@ -286,23 +287,16 @@ impl<'cx> WritebackCx<'cx> {
                             self.visit_vtable_map_entry(reason, method_call);
                         }
 
+                        if adj_object {
+                            let method_call = MethodCall::autoobject(id);
+                            self.visit_method_map_entry(reason, method_call);
+                            self.visit_vtable_map_entry(reason, method_call);
+                        }
+
                         ty::AutoDerefRef(ty::AutoDerefRef {
                             autoderefs: adj.autoderefs,
                             autoref: self.resolve(&adj.autoref, reason),
                         })
-                    }
-
-                    ty::AutoObject(trait_store, bb, def_id, substs) => {
-                        let method_call = MethodCall::autoobject(id);
-                        self.visit_method_map_entry(reason, method_call);
-                        self.visit_vtable_map_entry(reason, method_call);
-
-                        ty::AutoObject(
-                            self.resolve(&trait_store, reason),
-                            self.resolve(&bb, reason),
-                            def_id,
-                            self.resolve(&substs, reason)
-                        )
                     }
                 };
                 debug!("Adjustments for node {}: {:?}", id, resolved_adjustment);
