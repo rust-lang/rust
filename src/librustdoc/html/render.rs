@@ -819,16 +819,17 @@ impl DocFolder for Cache {
         // Index this method for searching later on
         match item.name {
             Some(ref s) => {
-                let parent = match item.inner {
+                let (parent, is_method) = match item.inner {
                     clean::TyMethodItem(..) |
                     clean::StructFieldItem(..) |
                     clean::VariantItem(..) => {
-                        (Some(*self.parent_stack.last().unwrap()),
-                         Some(self.stack.slice_to(self.stack.len() - 1)))
+                        ((Some(*self.parent_stack.last().unwrap()),
+                          Some(self.stack.slice_to(self.stack.len() - 1))),
+                          false)
                     }
                     clean::MethodItem(..) => {
                         if self.parent_stack.len() == 0 {
-                            (None, None)
+                            ((None, None), false)
                         } else {
                             let last = self.parent_stack.last().unwrap();
                             let did = *last;
@@ -844,17 +845,18 @@ impl DocFolder for Cache {
                                 Some(..) => Some(self.stack.as_slice()),
                                 None => None
                             };
-                            (Some(*last), path)
+                            ((Some(*last), path), true)
                         }
                     }
-                    _ => (None, Some(self.stack.as_slice()))
+                    _ => ((None, Some(self.stack.as_slice())), false)
                 };
                 let hidden_field = match item.inner {
                     clean::StructFieldItem(clean::HiddenStructField) => true,
                     _ => false
                 };
+
                 match parent {
-                    (parent, Some(path)) if !self.privmod && !hidden_field => {
+                    (parent, Some(path)) if is_method || (!self.privmod && !hidden_field) => {
                         self.search_index.push(IndexItem {
                             ty: shortty(&item),
                             name: s.to_string(),
@@ -863,7 +865,7 @@ impl DocFolder for Cache {
                             parent: parent,
                         });
                     }
-                    (Some(parent), None) if !self.privmod => {
+                    (Some(parent), None) if is_method || (!self.privmod && !hidden_field)=> {
                         if ast_util::is_local(parent) {
                             // We have a parent, but we don't know where they're
                             // defined yet. Wait for later to index this item.
