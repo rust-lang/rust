@@ -253,19 +253,26 @@ fn check_for_static_nan(cx: &MatchCheckCtxt, arms: &[Arm]) {
 // Check for unreachable patterns
 fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm], source: MatchSource) {
     let mut seen = Matrix(vec!());
+    let mut printed_if_let_err = false;
     for arm in arms.iter() {
         for &pat in arm.pats.iter() {
             let v = vec![pat];
             match is_useful(cx, &seen, v.as_slice(), LeaveOutWitness) {
                 NotUseful => {
                     if source == MatchIfLetDesugar {
-                        // find the first arm pattern so we can use its span
-                        let first_arm = &arms[0]; // we know there's at least 1 arm
-                        let first_pat = first_arm.pats.get(0); // and it's safe to assume 1 pat
-                        let span = first_pat.span;
-                        span_err!(cx.tcx.sess, span, E0159, "irrefutable if-let pattern")
+                        if printed_if_let_err {
+                            // we already printed an irrefutable if-let pattern error.
+                            // We don't want two, that's just confusing.
+                        } else {
+                            // find the first arm pattern so we can use its span
+                            let first_arm = &arms[0]; // we know there's at least 1 arm
+                            let first_pat = first_arm.pats.get(0); // and it's safe to assume 1 pat
+                            let span = first_pat.span;
+                            span_err!(cx.tcx.sess, span, E0159, "irrefutable if-let pattern");
+                            printed_if_let_err = true;
+                        }
                     } else {
-                        span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern")
+                        span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern");
                     }
                 }
                 Useful => (),
