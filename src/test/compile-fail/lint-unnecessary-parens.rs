@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![deny(unnecessary_parens)]
+#![feature(if_let)]
 
 #[deriving(Eq, PartialEq)]
 struct X { y: bool }
