@@ -299,8 +299,7 @@ impl<'a> mem_categorization::Typer for FnCtxt<'a> {
 }
 
 impl<'a> Inherited<'a> {
-    fn new(tcx: &'a ty::ctxt,
-           param_env: ty::ParameterEnvironment)
+    fn new(tcx: &'a ty::ctxt, param_env: ty::ParameterEnvironment)
            -> Inherited<'a> {
         Inherited {
             infcx: infer::new_infer_ctxt(tcx),

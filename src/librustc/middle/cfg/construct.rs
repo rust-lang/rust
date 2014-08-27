@@ -11,7 +11,7 @@
 use middle::cfg::*;
 use middle::def;
 use middle::graph;
-use middle::typeck;
+use middle::mem_categorization::Typer;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
@@ -19,8 +19,8 @@ use util::nodemap::NodeMap;
 
 use std::gc::Gc;
 
-struct CFGBuilder<'a> {
-    tcx: &'a ty::ctxt,
+struct CFGBuilder<'a,T> {
+    typer: &'a T,
     exit_map: NodeMap<CFGIndex>,
     graph: CFGGraph,
     fn_exit: CFGIndex,
@@ -33,8 +33,7 @@ struct LoopScope {
     break_index: CFGIndex,    // where to go on a `break
 }
 
-pub fn construct(tcx: &ty::ctxt,
-                 blk: &ast::Block) -> CFG {
+pub fn construct<T>(typer: &T, blk: &ast::Block) -> CFG where T: Typer {
     let mut graph = graph::Graph::new();
     let entry = add_initial_dummy_node(&mut graph);
 
@@ -49,23 +48,25 @@ pub fn construct(tcx: &ty::ctxt,
         exit_map: NodeMap::new(),
         graph: graph,
         fn_exit: fn_exit,
-        tcx: tcx,
+        typer: typer,
         loop_scopes: Vec::new()
     };
     block_exit = cfg_builder.block(blk, entry);
     cfg_builder.add_contained_edge(block_exit, fn_exit);
     let CFGBuilder {exit_map, graph, ..} = cfg_builder;
-    CFG {exit_map: exit_map,
-         graph: graph,
-         entry: entry,
-         exit: fn_exit}
+    CFG {
+        exit_map: exit_map,
+        graph: graph,
+        entry: entry,
+        exit: fn_exit,
+    }
 }
 
 fn add_initial_dummy_node(g: &mut CFGGraph) -> CFGIndex {
     g.add_node(CFGNodeData { id: ast::DUMMY_NODE_ID })
 }
 
-impl<'a> CFGBuilder<'a> {
+impl<'a,T> CFGBuilder<'a,T> where T: Typer {
     fn block(&mut self, blk: &ast::Block, pred: CFGIndex) -> CFGIndex {
         let mut stmts_exit = pred;
         for stmt in blk.stmts.iter() {
@@ -88,7 +89,7 @@ impl<'a> CFGBuilder<'a> {
             }
 
             ast::StmtMac(..) => {
-                self.tcx.sess.span_bug(stmt.span, "unexpanded macro");
+                self.typer.tcx().sess.span_bug(stmt.span, "unexpanded macro");
             }
         }
     }
@@ -147,7 +148,7 @@ impl<'a> CFGBuilder<'a> {
             }
 
             ast::PatMac(_) => {
-                self.tcx.sess.span_bug(pat.span, "unexpanded macro");
+                self.typer.tcx().sess.span_bug(pat.span, "unexpanded macro");
             }
         }
     }
@@ -504,7 +505,7 @@ impl<'a> CFGBuilder<'a> {
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
 
-        let return_ty = ty::node_id_to_type(self.tcx, call_expr.id);
+        let return_ty = self.typer.node_ty(call_expr.id).unwrap();
         let fails = ty::type_is_bot(return_ty);
         if fails {
             self.add_node(ast::DUMMY_NODE_ID, [])
@@ -572,7 +573,7 @@ impl<'a> CFGBuilder<'a> {
         while scope_id != to_loop.loop_id {
 
             data.exiting_scopes.push(scope_id);
-            scope_id = self.tcx.region_maps.encl_scope(scope_id);
+            scope_id = self.typer.tcx().region_maps.encl_scope(scope_id);
         }
         self.graph.add_edge(from_index, to_index, data);
     }
@@ -598,24 +599,27 @@ impl<'a> CFGBuilder<'a> {
             }
 
             Some(_) => {
-                match self.tcx.def_map.borrow().find(&expr.id) {
+                match self.typer.tcx().def_map.borrow().find(&expr.id) {
                     Some(&def::DefLabel(loop_id)) => {
                         for l in self.loop_scopes.iter() {
                             if l.loop_id == loop_id {
                                 return *l;
                             }
                         }
-                        self.tcx.sess.span_bug(
+                        self.typer.tcx().sess.span_bug(
                             expr.span,
                             format!("no loop scope for id {:?}",
                                     loop_id).as_slice());
                     }
 
                     r => {
-                        self.tcx.sess.span_bug(
-                            expr.span,
-                            format!("bad entry `{:?}` in def_map for label",
-                                    r).as_slice());
+                        self.typer
+                            .tcx()
+                            .sess
+                            .span_bug(expr.span,
+                                      format!("bad entry `{:?}` in def_map \
+                                               for label",
+                                              r).as_slice());
                     }
                 }
             }
@@ -623,7 +627,6 @@ impl<'a> CFGBuilder<'a> {
     }
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {
-        let method_call = typeck::MethodCall::expr(expr.id);
-        self.tcx.method_map.borrow().contains_key(&method_call)
+        self.typer.is_method_call(expr.id)
     }
 }

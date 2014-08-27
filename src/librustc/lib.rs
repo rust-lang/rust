@@ -37,6 +37,7 @@ This API is completely unstable and subject to change.
 #![feature(import_shadowing)]
 
 extern crate arena;
+extern crate collections;
 extern crate debug;
 extern crate flate;
 extern crate getopts;

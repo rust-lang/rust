@@ -22,8 +22,9 @@ use metadata::creader;
 use middle::borrowck::{FnPartsWithCFG};
 use middle::borrowck;
 use middle::borrowck::graphviz as borrowck_dot;
-use middle::cfg;
+use middle::cfg::dominance::Dominators;
 use middle::cfg::graphviz::LabelledCFG;
+use middle::cfg;
 use middle::{trans, freevars, stability, kind, ty, typeck, reachable};
 use middle::dependency_format;
 use middle;
@@ -1060,6 +1061,10 @@ fn print_flowgraph<W:io::Writer>(variants: Vec<borrowck_dot::Variant>,
         blocks::FnLikeCode(fn_like) => cfg::CFG::new(ty_cx, &*fn_like.body()),
     };
     debug!("cfg: {:?}", cfg);
+
+    if ty_cx.sess.debugging_opt(config::PRINT_DOMINATORS) {
+        Dominators::new(&cfg).print();
+    }
 
     match code {
         _ if variants.len() == 0 => {

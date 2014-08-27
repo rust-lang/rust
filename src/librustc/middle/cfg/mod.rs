@@ -16,11 +16,12 @@ Uses `Graph` as the underlying representation.
 */
 
 use middle::graph;
-use middle::ty;
+use middle::mem_categorization::Typer;
 use syntax::ast;
 use util::nodemap::NodeMap;
 
 mod construct;
+pub mod dominance;
 pub mod graphviz;
 
 pub struct CFG {
@@ -47,8 +48,7 @@ pub type CFGNode = graph::Node<CFGNodeData>;
 pub type CFGEdge = graph::Edge<CFGEdgeData>;
 
 impl CFG {
-    pub fn new(tcx: &ty::ctxt,
-               blk: &ast::Block) -> CFG {
-        construct::construct(tcx, blk)
+    pub fn new<T>(typer: &T, blk: &ast::Block) -> CFG where T: Typer {
+        construct::construct(typer, blk)
     }
 }

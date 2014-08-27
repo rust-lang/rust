@@ -13,6 +13,7 @@
 #![allow(non_camel_case_types)]
 
 use middle::cfg;
+use middle::cfg::dominance::Dominators;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::BitwiseOperator;
 use middle::dataflow::DataFlowOperator;
@@ -124,6 +125,7 @@ pub struct AnalysisData<'a> {
     pub all_loans: Vec<Loan>,
     pub loans: DataFlowContext<'a, LoanDataFlowOperator>,
     pub move_data: move_data::FlowedMoveData<'a>,
+    pub dominators: Dominators,
 }
 
 fn borrowck_fn(this: &mut BorrowckCtxt,
@@ -134,10 +136,12 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                id: ast::NodeId) {
     debug!("borrowck_fn(id={})", id);
     let cfg = cfg::CFG::new(this.tcx, body);
-    let AnalysisData { all_loans,
-                       loans: loan_dfcx,
-                       move_data:flowed_moves } =
-        build_borrowck_dataflow_data(this, fk, decl, &cfg, body, sp, id);
+    let AnalysisData {
+        all_loans,
+        loans: loan_dfcx,
+        move_data:flowed_moves,
+        dominators: _
+    } = build_borrowck_dataflow_data(this, fk, decl, &cfg, body, sp, id);
 
     check_loans::check_loans(this, &loan_dfcx, flowed_moves,
                              all_loans.as_slice(), decl, body);
@@ -151,7 +155,8 @@ fn build_borrowck_dataflow_data<'a>(this: &mut BorrowckCtxt<'a>,
                                     cfg: &cfg::CFG,
                                     body: &ast::Block,
                                     sp: Span,
-                                    id: ast::NodeId) -> AnalysisData<'a> {
+                                    id: ast::NodeId)
+                                    -> AnalysisData<'a> {
     // Check the body of fn items.
     let id_range = ast_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
     let (all_loans, move_data) =
@@ -179,9 +184,14 @@ fn build_borrowck_dataflow_data<'a>(this: &mut BorrowckCtxt<'a>,
                                                       decl,
                                                       body);
 
-    AnalysisData { all_loans: all_loans,
-                   loans: loan_dfcx,
-                   move_data:flowed_moves }
+    let dominators = Dominators::new(cfg);
+
+    AnalysisData {
+        all_loans: all_loans,
+        loans: loan_dfcx,
+        move_data: flowed_moves,
+        dominators: dominators,
+    }
 }
 
 /// This and a `ty::ctxt` is all you need to run the dataflow analyses
