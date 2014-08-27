@@ -381,17 +381,23 @@ pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::Test
 
 fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
     match full_version_line {
-        Some(full_version_line) => {
+        Some(ref full_version_line)
+          if full_version_line.as_slice().trim().len() > 0 => {
             let full_version_line = full_version_line.as_slice().trim();
-            let re = Regex::new(r"[^0-9]([0-9]\.[0-9])([^0-9]|$)").unwrap();
+
+            let re = Regex::new(r"(^|[^0-9])([0-9]\.[0-9])([^0-9]|$)").unwrap();
 
             match re.captures(full_version_line) {
                 Some(captures) => {
-                    Some(captures.at(1).to_string())
+                    Some(captures.at(2).to_string())
                 }
-                None => None
+                None => {
+                    println!("Could not extract GDB version from line '{}'",
+                             full_version_line);
+                    None
+                }
             }
         },
-        None => None
+        _ => None
     }
 }
