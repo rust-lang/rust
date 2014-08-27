@@ -11,8 +11,8 @@
 // aux-build:issue-12612-1.rs
 // aux-build:issue-12612-2.rs
 
-extern crate foo = "issue-12612-1";
-extern crate bar = "issue-12612-2";
+extern crate "issue-12612-1" as foo;
+extern crate "issue-12612-2" as bar;
 
 mod test {
     use bar::baz;

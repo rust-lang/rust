@@ -10,5 +10,5 @@
 
 // aux-build:issue-4545.rs
 
-extern crate somelib = "issue-4545";
+extern crate "issue-4545" as somelib;
 pub fn main() { somelib::mk::<int>(); }

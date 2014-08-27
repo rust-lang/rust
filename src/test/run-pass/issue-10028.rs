@@ -10,7 +10,7 @@
 
 // aux-build:issue-10028.rs
 
-extern crate issue10028 = "issue-10028";
+extern crate "issue-10028" as issue10028;
 
 use issue10028::ZeroLengthThingWithDestructor;
 

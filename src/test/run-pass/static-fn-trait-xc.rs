@@ -10,7 +10,7 @@
 
 // aux-build:static_fn_trait_xc_aux.rs
 
-extern crate mycore = "static_fn_trait_xc_aux";
+extern crate "static_fn_trait_xc_aux" as mycore;
 
 use mycore::num;
 

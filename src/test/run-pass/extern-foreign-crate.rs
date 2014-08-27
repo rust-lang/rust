@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate mystd = "std";
+extern crate "std" as mystd;
 
 pub fn main() {}

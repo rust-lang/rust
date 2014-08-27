@@ -10,7 +10,7 @@
 
 // aux-build:weak-lang-items.rs
 
-extern crate other = "weak-lang-items";
+extern crate "weak-lang-items" as other;
 
 use std::task;
 
