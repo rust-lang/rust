@@ -37,4 +37,6 @@ struct foo7 {
     bar: int,
 }
 
+type __ = int; //~ ERROR type `__` should have a camel case name such as `CamelCase`
+
 fn main() { }
