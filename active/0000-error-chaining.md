@@ -152,7 +152,7 @@ The standard `Error` trait follows very the widespread pattern found
 in `Exception` base classes in many languages:
 
 ```rust
-pub trait Error {
+pub trait Error: Send + Any {
     fn description(&self) -> &str;
 
     fn detail(&self) -> Option<&str> { None }
