@@ -620,6 +620,19 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     sup,
                     "");
             }
+            infer::MiscRegion(span) => {
+                self.tcx.sess.span_err(span, "reference is not valid");
+                note_and_explain_region(
+                    self.tcx,
+                    "the reference is valid for ",
+                    sub,
+                    "");
+                note_and_explain_region(
+                    self.tcx,
+                    "but the referenced data is only valid for ",
+                    sup,
+                    "");
+            }
         }
     }
 
@@ -1424,6 +1437,9 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                     span,
                     "...so that the pointer does not outlive the \
                     data it points at");
+            }
+            infer::MiscRegion(span) => {
+                self.tcx.sess.span_note(span, "...so that reference is valid")
             }
         }
     }

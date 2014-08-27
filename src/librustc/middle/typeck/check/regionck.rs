@@ -669,14 +669,23 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             });
         }
         ty::ty_unboxed_closure(_, region) => {
+            debug!("regionck: constraining region of unboxed closure");
             freevars::with_freevars(tcx, expr.id, |freevars| {
-                // No free variables means that there is no environment and
-                // hence the closure has static lifetime. Otherwise, the
-                // closure must not outlive the variables it closes over
-                // by-reference.
-                if !freevars.is_empty() {
-                    constrain_free_variables(rcx, region, expr, freevars);
-                }
+                if freevars.is_empty() {
+                    // No free variables means that there is no
+                    // environment and hence the closure has static
+                    // lifetime. Otherwise, the closure must not outlive
+                    // the variables it closes over by-reference.
+                    rcx.fcx.mk_subr(false,
+                                    infer::MiscRegion(expr.span),
+                                    ty::ReStatic,
+                                    region);
+                } else {
+                    constrain_free_variables(rcx,
+                                             region,
+                                             expr,
+                                             freevars);
+                } 
             })
         }
         _ => ()
@@ -712,6 +721,8 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         let infcx = rcx.fcx.infcx();
         debug!("constrain_free_variables({}, {})",
                region.repr(tcx), expr.repr(tcx));
+        let capture_mode = freevars::get_capture_mode(tcx, expr.id);
+        let mut all_static = capture_mode == freevars::CaptureByValue;
         for freevar in freevars.iter() {
             debug!("freevar def is {:?}", freevar.def);
 
@@ -719,29 +730,70 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             let def = freevar.def;
             let def_id = def.def_id();
             assert!(def_id.krate == ast::LOCAL_CRATE);
-            let upvar_id = ty::UpvarId { var_id: def_id.node,
-                                         closure_expr_id: expr.id };
+            let upvar_id = ty::UpvarId {
+                var_id: def_id.node,
+                closure_expr_id: expr.id,
+            };
 
-            // Create a region variable to represent this borrow. This borrow
-            // must outlive the region on the closure.
-            let origin = infer::UpvarRegion(upvar_id, expr.span);
-            let freevar_region = infcx.next_region_var(origin);
-            rcx.fcx.mk_subr(true, infer::FreeVariable(freevar.span, def_id.node),
-                            region, freevar_region);
+            if capture_mode == freevars::CaptureByRef {
+                // Create a region variable to represent this borrow. This
+                // borrow must outlive the region on the closure.
+                let origin = infer::UpvarRegion(upvar_id, expr.span);
+                let freevar_region = infcx.next_region_var(origin);
+                rcx.fcx.mk_subr(true,
+                                infer::FreeVariable(freevar.span,
+                                                    def_id.node),
+                                region,
+                                freevar_region);
 
-            // Create a UpvarBorrow entry. Note that we begin with a
-            // const borrow_kind, but change it to either mut or
-            // immutable as dictated by the uses.
-            let upvar_borrow = ty::UpvarBorrow { kind: ty::ImmBorrow,
-                                                 region: freevar_region };
-            rcx.fcx.inh.upvar_borrow_map.borrow_mut().insert(upvar_id,
-                                                             upvar_borrow);
+                // Create a UpvarBorrow entry. Note that we begin with a
+                // const borrow_kind, but change it to either mut or
+                // immutable as dictated by the uses.
+                let upvar_borrow = ty::UpvarBorrow {
+                    kind: ty::ImmBorrow,
+                    region: freevar_region,
+                };
+                rcx.fcx
+                   .inh
+                   .upvar_borrow_map
+                   .borrow_mut()
+                   .insert(upvar_id, upvar_borrow);
 
-            // Guarantee that the closure does not outlive the variable itself.
-            let en_region = region_of_def(rcx.fcx, def);
-            debug!("en_region = {}", en_region.repr(tcx));
-            rcx.fcx.mk_subr(true, infer::FreeVariable(freevar.span, def_id.node),
-                            region, en_region);
+                // Guarantee that the closure does not outlive the variable
+                // itself.
+                let en_region = region_of_def(rcx.fcx, def);
+                debug!("en_region = {}", en_region.repr(tcx));
+                rcx.fcx.mk_subr(true,
+                                infer::FreeVariable(freevar.span,
+                                                    def_id.node),
+                                region,
+                                en_region);
+            }
+
+            // FIXME(pcwalton): As a hack, if the type of the variable being
+            // closed over has no regions and this is a by-value capture,
+            // record a `'static` bound.
+            let local_type = rcx.fcx.local_ty(freevar.span, def_id.node);
+            let local_type =
+                rcx.fcx.infcx().resolve_type_vars_if_possible(local_type);
+            if all_static && !ty::type_is_static(rcx.tcx(), local_type) {
+                debug!("regionck: not static: {}",
+                       rcx.fcx
+                          .local_ty(freevar.span, def_id.node)
+                          .repr(rcx.tcx()));
+                all_static = false
+            }
+        }
+
+        // FIXME(pcwalton): As a hack, if the type of the variable being
+        // closed over has no regions and this is a by-value capture,
+        // record a `'static` bound.
+        if all_static {
+            debug!("regionck: all static!");
+            rcx.fcx.mk_subr(false,
+                            infer::MiscRegion(expr.span),
+                            ty::ReStatic,
+                            region);
         }
     }
 
@@ -1025,9 +1077,14 @@ fn constrain_regions_in_type_of_node(
                            rcx.fcx.inh.adjustments.borrow().find(&id),
                            |method_call| rcx.resolve_method_type(method_call));
     debug!("constrain_regions_in_type_of_node(\
-            ty={}, ty0={}, id={}, minimum_lifetime={:?})",
+            ty={},\
+            ty0={},\
+            id={},\
+            minimum_lifetime={:?},\
+            origin={:?})",
            ty_to_string(tcx, ty), ty_to_string(tcx, ty0),
-           id, minimum_lifetime);
+           id, minimum_lifetime,
+           origin);
     constrain_regions_in_type(rcx, minimum_lifetime, origin, ty);
 }
 
