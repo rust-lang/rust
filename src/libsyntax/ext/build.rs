@@ -52,6 +52,9 @@ pub trait AstBuilder {
                ty: P<ast::Ty>,
                lifetime: Option<ast::Lifetime>,
                mutbl: ast::Mutability) -> P<ast::Ty>;
+    fn ty_ptr(&self, span: Span,
+              ty: P<ast::Ty>,
+              mutbl: ast::Mutability) -> P<ast::Ty>;
     fn ty_uniq(&self, span: Span, ty: P<ast::Ty>) -> P<ast::Ty>;
 
     fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty>;
@@ -369,6 +372,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 ast::TyRptr(lifetime, self.ty_mt(ty, mutbl)))
     }
 
+    fn ty_ptr(&self,
+              span: Span,
+              ty: P<ast::Ty>,
+              mutbl: ast::Mutability)
+        -> P<ast::Ty> {
+        self.ty(span,
+                ast::TyPtr(self.ty_mt(ty, mutbl)))
+    }
     fn ty_uniq(&self, span: Span, ty: P<ast::Ty>) -> P<ast::Ty> {
         self.ty(span, ast::TyUniq(ty))
     }
