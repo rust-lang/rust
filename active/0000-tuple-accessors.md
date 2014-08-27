@@ -5,7 +5,8 @@
 Summary
 =======
 
-Add simple syntax for accessing values within tuples and tuple structs.
+Add simple syntax for accessing values within tuples and tuple structs behind a
+feature gate.
 
 Motivation
 ==========
@@ -26,11 +27,12 @@ Detailed design
 ===============
 
 Add syntax of the form `<expr>.<integer>` for accessing values within tuples and
-tuple structs.  This syntax is recognised wherever an unsuffixed integer or
-float literal is found in place of the normal field or method name expected when
-accessing fields with `.`. Float literals in this position are expanded into two
-field accesses, so that an expression of the form `a.1.3` is equivalent to
-`(a.1).3`.
+tuple structs. This (and the functionality it provides) would only be allowed
+when the feature gate `tuple_indexing` is enabled. This syntax is recognised
+wherever an unsuffixed integer literal is found in place of the normal field or
+method name expected when accessing fields with `.`. Because the parser would be
+expecting an integer, not a float, an expression like `expr.0.1` would be a
+syntax error (because `0.1` would be treated as a single token).
 
 Tuple/tuple struct field access behaves the same way as accessing named fields
 on normal structs:
