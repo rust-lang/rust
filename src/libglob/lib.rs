@@ -24,7 +24,8 @@
  */
 
 #![crate_name = "glob"]
-#![experimental]
+#![deprecated = "This is now a cargo package located at: \
+                 https://github.com/rust-lang/glob"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
@@ -32,6 +33,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/master/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![allow(deprecated)]
 
 use std::cell::Cell;
 use std::{cmp, os, path};
@@ -64,6 +66,7 @@ pub struct Paths {
 /// `puppies.jpg` and `hamsters.gif`:
 ///
 /// ```rust
+/// # #![allow(deprecated)]
 /// use glob::glob;
 ///
 /// for path in glob("/media/pictures/*.jpg") {
