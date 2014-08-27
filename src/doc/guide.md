@@ -2804,8 +2804,7 @@ be named, by convention.
 Next, we added an `extern crate modules` to the top of our `src/main.rs`. This,
 as you can guess, lets Rust know that our crate relies on another, external
 crate. We also had to modify our call to `print_hello`: now that it's in
-another crate, we need to first specify the crate, then the module inside of it,
-then the function name.
+another crate, we need to specify that crate first.
 
 This doesn't _quite_ work yet. Try it:
 
