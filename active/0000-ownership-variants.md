@@ -43,10 +43,14 @@ The proposed rules depend on which variant is the default, but use
 If `foo` uses/produces an immutable borrow by default, use:
 
 * The `_mut` suffix (e.g. `foo_mut`) for the mutably borrowed variant.
-* The `_owned` suffix (e.g. `foo_owned`) for the owned variant.
+* The `_move` suffix (e.g. `foo_move`) for the owned variant.
 
 A consequence is that the iterator methods become: `iter`, `iter_mut`,
-and `iter_owned`.
+and `iter_move`.
+
+**NOTE**: This convention covers only the *method* names for
+  iterators, not the names of the iterator types. That will be the
+  subject of a follow up RFC.
 
 ### Owned by default
 
@@ -77,16 +81,17 @@ Using a suffix makes it easier to visually group variants together,
 especially when sorted alphabetically. It puts the emphasis on the
 functionality, rather than the qualifier.
 
-### Why `owned`?
+### Why `move`?
 
 Historically, Rust has used `move` as a way to signal ownership
-transfer (and to connect to C++ terminology). However, the overall
-narrative about Rust has been evolving to focus on *ownership* as the
-essential concept, with borrowing giving various lesser forms of
-ownership.
+transfer and to connect to C++ terminology. The main disadvantage is
+that it does not emphasize ownership, which is our current narrative.
+On the other hand, in Rust all data is owned, so using `_owned` as a
+qualifier is a bit strange.
 
-On the other hand, the `ref` variants do not say "borrowed", so in
-some sense this choice is inconsistent.
+The `Copy` trait poses a problem for any terminology about ownership
+transfer. The proposed mental model is that with `Copy` data you are
+"moving a copy".
 
 See Alternatives for more discussion.
 
@@ -120,17 +125,16 @@ This is perhaps not so bad, though, because as it is we often
 abbreviate type names. In any case, we need a convention (separate
 RFC) for how to refer to type names in methods.
 
-## `move` instead of `owned`
+## `owned` instead of `move`
 
-Historically we've used `move` to signal ownership transfer, but that
-usage has gone away to a large degree thanks to move-by-default
-semantics. The advantages of using `move` as a qualifier are:
+The overall narrative about Rust has been evolving to focus on
+*ownership* as the essential concept, with borrowing giving various
+lesser forms of ownership, so `_owned` would be a reasonable
+alternative to `_move`.
 
-- Familiarity, especially from C++
-- A bit more congruent with `ref`
-
-The main disadvantage is that it does not emphasize ownership, which
-is our current narrative.
+On the other hand, the `ref` variants do not say "borrowed", so in
+some sense this choice is inconsistent. In addition, the terminology
+is less familiar to those coming from C++.
 
 ## `val` instead of `owned`
 
