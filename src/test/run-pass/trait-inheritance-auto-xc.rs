@@ -10,7 +10,7 @@
 
 // aux-build:trait_inheritance_auto_xc_aux.rs
 
-extern crate aux = "trait_inheritance_auto_xc_aux";
+extern crate "trait_inheritance_auto_xc_aux" as aux;
 
 use aux::{Foo, Bar, Baz, Quux};
 

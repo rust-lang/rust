@@ -10,7 +10,7 @@
 
 // aux-build:xcrate-trait-lifetime-param.rs
 
-extern crate other = "xcrate-trait-lifetime-param";
+extern crate "xcrate-trait-lifetime-param" as other;
 
 struct Reader<'a> {
     b : &'a [u8]

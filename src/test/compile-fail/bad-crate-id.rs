@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate foo = ""; //~ ERROR: crate name must not be empty
+extern crate "" as foo; //~ ERROR: crate name must not be empty
 
 fn main() {}

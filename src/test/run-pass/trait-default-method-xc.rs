@@ -10,7 +10,7 @@
 
 // aux-build:trait_default_method_xc_aux.rs
 
-extern crate aux = "trait_default_method_xc_aux";
+extern crate "trait_default_method_xc_aux" as aux;
 use aux::{A, TestEquality, Something};
 use aux::B;
 

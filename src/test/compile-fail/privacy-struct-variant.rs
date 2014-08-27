@@ -12,7 +12,7 @@
 
 #![feature(struct_variant)]
 
-extern crate other = "privacy-struct-variant";
+extern crate "privacy-struct-variant" as other;
 
 mod a {
     pub enum Foo {

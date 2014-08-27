@@ -13,6 +13,6 @@
 #![crate_type = "rlib"]
 #![feature(phase)]
 
-#[phase(plugin)] extern crate t1 = "issue-13560-1";
-#[phase(plugin, link)] extern crate t2 = "issue-13560-2";
+#[phase(plugin)] extern crate "issue-13560-1" as t1;
+#[phase(plugin, link)] extern crate "issue-13560-2" as t2;
 

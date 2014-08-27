@@ -15,7 +15,7 @@
 #![feature(phase)]
 
 #[phase(plugin)]
-extern crate extension = "syntax-extension-with-dll-deps-2";
+extern crate "syntax-extension-with-dll-deps-2" as extension;
 
 fn main() {
     foo!();
