@@ -10,7 +10,7 @@
 
 // aux-build:unreachable-variant.rs
 
-extern crate other = "unreachable-variant";
+extern crate "unreachable-variant" as other;
 
 fn main() {
     let _x = other::super_sekrit::baz; //~ ERROR is private

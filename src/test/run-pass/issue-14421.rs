@@ -10,7 +10,7 @@
 
 // aux-build:issue-14421.rs
 
-extern crate bug_lib = "issue-14421";
+extern crate "issue-14421" as bug_lib;
 
 use bug_lib::B;
 use bug_lib::make;

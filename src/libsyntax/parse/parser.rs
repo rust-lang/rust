@@ -4807,7 +4807,8 @@ impl<'a> Parser<'a> {
     /// # Example
     ///
     /// extern crate url;
-    /// extern crate foo = "bar";
+    /// extern crate foo = "bar"; //deprecated
+    /// extern crate "bar" as foo;
     fn parse_item_extern_crate(&mut self,
                                 lo: BytePos,
                                 visibility: Visibility,
@@ -4818,6 +4819,8 @@ impl<'a> Parser<'a> {
             token::IDENT(..) => {
                 let the_ident = self.parse_ident();
                 self.expect_one_of(&[], &[token::EQ, token::SEMI]);
+                // NOTE - #16689 change this to a warning once
+                //        the 'as' support is in stage0
                 let path = if self.token == token::EQ {
                     self.bump();
                     Some(self.parse_str())
@@ -4825,7 +4828,14 @@ impl<'a> Parser<'a> {
 
                 self.expect(&token::SEMI);
                 (path, the_ident)
-            }
+            },
+            token::LIT_STR(..) | token::LIT_STR_RAW(..) => {
+                let path = self.parse_str();
+                self.expect_keyword(keywords::As);
+                let the_ident = self.parse_ident();
+                self.expect(&token::SEMI);
+                (Some(path), the_ident)
+            },
             _ => {
                 let span = self.span;
                 let token_str = self.this_token_to_string();

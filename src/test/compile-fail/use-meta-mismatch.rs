@@ -10,6 +10,6 @@
 
 // error-pattern:can't find crate for `extra`
 
-extern crate extra = "fake-crate";
+extern crate "fake-crate" as extra;
 
 fn main() { }

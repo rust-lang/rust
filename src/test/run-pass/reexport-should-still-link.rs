@@ -10,7 +10,7 @@
 
 // aux-build:reexport-should-still-link.rs
 
-extern crate foo = "reexport-should-still-link";
+extern crate "reexport-should-still-link" as foo;
 
 pub fn main() {
     foo::bar();
