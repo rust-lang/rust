@@ -298,7 +298,8 @@ pub enum AutoRef {
 
     /// Convert from T to *T
     /// Value to thin pointer
-    AutoUnsafe(ast::Mutability),
+    /// The second field allows us to wrap other AutoRef adjustments.
+    AutoUnsafe(ast::Mutability, Option<Box<AutoRef>>),
 }
 
 // Ugly little helper function. The first bool in the returned tuple is true if
@@ -326,6 +327,7 @@ fn autoref_object_region(autoref: &AutoRef) -> (bool, bool, Option<Region>) {
                 (b, u, Some(adj_r))
             }
         }
+        &AutoUnsafe(_, Some(box ref autoref)) => autoref_object_region(autoref),
         _ => (false, false, None)
     }
 }
@@ -377,6 +379,12 @@ pub fn type_of_adjust(cx: &ctxt, adj: &AutoAdjustment) -> Option<t> {
             &AutoPtr(r, m, Some(box ref autoref)) => {
                 match type_of_autoref(cx, autoref) {
                     Some(t) => Some(mk_rptr(cx, r, mt {mutbl: m, ty: t})),
+                    None => None
+                }
+            }
+            &AutoUnsafe(m, Some(box ref autoref)) => {
+                match type_of_autoref(cx, autoref) {
+                    Some(t) => Some(mk_ptr(cx, mt {mutbl: m, ty: t})),
                     None => None
                 }
             }
@@ -1898,7 +1906,7 @@ pub fn type_is_self(ty: t) -> bool {
 
 fn type_is_slice(ty: t) -> bool {
     match get(ty).sty {
-        ty_rptr(_, mt) => match get(mt.ty).sty {
+        ty_ptr(mt) | ty_rptr(_, mt) => match get(mt.ty).sty {
             ty_vec(_, None) | ty_str => true,
             _ => false,
         },
@@ -1996,7 +2004,8 @@ pub fn type_is_unique(ty: t) -> bool {
 
 pub fn type_is_fat_ptr(cx: &ctxt, ty: t) -> bool {
     match get(ty).sty {
-        ty_rptr(_, mt{ty, ..}) | ty_uniq(ty) if !type_is_sized(cx, ty) => true,
+        ty_ptr(mt{ty, ..}) | ty_rptr(_, mt{ty, ..})
+        | ty_uniq(ty) if !type_is_sized(cx, ty) => true,
         _ => false,
     }
 }
@@ -2896,7 +2905,7 @@ pub fn is_type_representable(cx: &ctxt, sp: Span, ty: t) -> Representability {
 
 pub fn type_is_trait(ty: t) -> bool {
     match get(ty).sty {
-        ty_uniq(ty) | ty_rptr(_, mt { ty, ..}) => match get(ty).sty {
+        ty_uniq(ty) | ty_rptr(_, mt { ty, ..}) | ty_ptr(mt { ty, ..}) => match get(ty).sty {
             ty_trait(..) => true,
             _ => false
         },
@@ -3392,8 +3401,12 @@ pub fn adjust_ty(cx: &ctxt,
                 })
             }
 
-            AutoUnsafe(m) => {
-                mk_ptr(cx, mt {ty: ty, mutbl: m})
+            AutoUnsafe(m, ref a) => {
+                let adjusted_ty = match a {
+                    &Some(box ref a) => adjust_for_autoref(cx, span, ty, a),
+                    &None => ty
+                };
+                mk_ptr(cx, mt {ty: adjusted_ty, mutbl: m})
             }
 
             AutoUnsize(ref k) => unsize_ty(cx, ty, k, span),
@@ -3444,7 +3457,8 @@ impl AutoRef {
             ty::AutoPtr(r, m, Some(ref a)) => ty::AutoPtr(f(r), m, Some(box a.map_region(f))),
             ty::AutoUnsize(ref k) => ty::AutoUnsize(k.clone()),
             ty::AutoUnsizeUniq(ref k) => ty::AutoUnsizeUniq(k.clone()),
-            ty::AutoUnsafe(m) => ty::AutoUnsafe(m),
+            ty::AutoUnsafe(m, None) => ty::AutoUnsafe(m, None),
+            ty::AutoUnsafe(m, Some(ref a)) => ty::AutoUnsafe(m, Some(box a.map_region(f))),
         }
     }
 }

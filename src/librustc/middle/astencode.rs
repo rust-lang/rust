@@ -1073,9 +1073,18 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
                         this.emit_enum_variant_arg(0, |this| Ok(this.emit_unsize_kind(ecx, uk)))
                     })
                 }
-                &ty::AutoUnsafe(m) => {
-                    this.emit_enum_variant("AutoUnsafe", 3, 1, |this| {
-                        this.emit_enum_variant_arg(0, |this| m.encode(this))
+                &ty::AutoUnsafe(m, None) => {
+                    this.emit_enum_variant("AutoUnsafe", 3, 2, |this| {
+                        this.emit_enum_variant_arg(0, |this| m.encode(this));
+                        this.emit_enum_variant_arg(1,
+                            |this| this.emit_option(|this| this.emit_option_none()))
+                    })
+                }
+                &ty::AutoUnsafe(m, Some(box ref a)) => {
+                    this.emit_enum_variant("AutoUnsafe", 3, 2, |this| {
+                        this.emit_enum_variant_arg(0, |this| m.encode(this));
+                        this.emit_enum_variant_arg(1, |this| this.emit_option(
+                            |this| this.emit_option_some(|this| Ok(this.emit_autoref(ecx, a)))))
                     })
                 }
             }
@@ -1635,8 +1644,16 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                     3 => {
                         let m: ast::Mutability =
                             this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
+                        let a: Option<Box<ty::AutoRef>> =
+                            this.read_enum_variant_arg(1, |this| this.read_option(|this, b| {
+                                if b {
+                                    Ok(Some(box this.read_autoref(xcx)))
+                                } else {
+                                    Ok(None)
+                                }
+                            })).unwrap();
 
-                        ty::AutoUnsafe(m)
+                        ty::AutoUnsafe(m, a)
                     }
                     _ => fail!("bad enum variant for ty::AutoRef")
                 })

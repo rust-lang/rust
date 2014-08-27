@@ -466,7 +466,10 @@ pub fn super_fold_autoref<T:TypeFolder>(this: &mut T,
         ty::AutoPtr(r, m, Some(ref a)) => {
             ty::AutoPtr(this.fold_region(r), m, Some(box super_fold_autoref(this, &**a)))
         }
-        ty::AutoUnsafe(m) => ty::AutoUnsafe(m),
+        ty::AutoUnsafe(m, None) => ty::AutoUnsafe(m, None),
+        ty::AutoUnsafe(m, Some(ref a)) => {
+            ty::AutoUnsafe(m, Some(box super_fold_autoref(this, &**a)))
+        }
         ty::AutoUnsize(ref k) => ty::AutoUnsize(k.fold_with(this)),
         ty::AutoUnsizeUniq(ref k) => ty::AutoUnsizeUniq(k.fold_with(this)),
     }
