@@ -203,11 +203,11 @@ returning:
 ```rust
 // E here is an "input" for dispatch, so conversions from multiple error
 // types can be provided
-pub trait FromError<E>: Error {
+pub trait FromError<E> {
     fn from_err(err: E) -> Self;
 }
 
-impl<E: Error> FromError<E> for E {
+impl<E> FromError<E> for E {
     fn from_err(err: E) -> E {
         err
     }
