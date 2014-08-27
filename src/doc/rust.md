@@ -2457,6 +2457,8 @@ The currently implemented features of the reference compiler are:
             whether this will continue as a feature or not. For these reasons,
             the glob import statement has been hidden behind this feature flag.
 
+* `if_let` - Allows use of the `if let` desugaring syntax.
+
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
 

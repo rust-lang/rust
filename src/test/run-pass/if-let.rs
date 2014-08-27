@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(if_let)]
+
 pub fn main() {
     let x = Some(3i);
     if let Some(y) = x {
