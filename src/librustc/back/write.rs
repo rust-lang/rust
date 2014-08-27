@@ -588,12 +588,15 @@ pub fn run_passes(sess: &Session,
             //    to copy `foo.0.x` to `foo.x`.
             fs::copy(&crate_output.with_extension(ext),
                      &crate_output.path(output_type)).unwrap();
+            if !sess.opts.cg.save_temps {
+                // The user just wants `foo.x`, not `foo.0.x`.
+                remove(sess, &crate_output.with_extension(ext));
+            }
         } else {
             if crate_output.single_output_file.is_some() {
                 // 2) Multiple codegen units, with `-o some_name`.  We have
                 //    no good solution for this case, so warn the user.
-                sess.warn(format!("ignoring specified output filename \
-                                   because multiple .{} files were produced",
+                sess.warn(format!("ignoring -o because multiple .{} files were produced",
                                   ext).as_slice());
             } else {
                 // 3) Multiple codegen units, but no `-o some_name`.  We
@@ -670,7 +673,7 @@ pub fn run_passes(sess: &Session,
     //  - crate.metadata.bc
     //  - crate.metadata.o
     //  - crate.o (linked from crate.##.o)
-    //  - crate.bc (copied from crate.0.bc, or an empty bitcode file)
+    //  - crate.bc (copied from crate.0.bc)
     // We may create additional files if requested by the user (through
     // `-C save-temps` or `--emit=` flags).
 
