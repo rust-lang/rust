@@ -174,9 +174,8 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         ty::ty_uint(t) => Type::uint_from_ty(cx, t),
         ty::ty_float(t) => Type::float_from_ty(cx, t),
 
-        ty::ty_box(..) |
-        ty::ty_ptr(..) => Type::i8p(cx),
-        ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
+        ty::ty_box(..) => Type::i8p(cx),
+        ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {
             if ty::type_is_sized(cx.tcx(), ty) {
                 Type::i8p(cx)
             } else {
@@ -303,9 +302,8 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_box(typ) => {
           Type::at_box(cx, type_of(cx, typ)).ptr_to()
       }
-      ty::ty_ptr(ref mt) => type_of(cx, mt.ty).ptr_to(),
 
-      ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
+      ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {
           match ty::get(ty).sty {
               ty::ty_str => {
                   // This means we get a nicer name in the output (str is always
