@@ -23,7 +23,7 @@ The motivation for having any construct at all for this is to simplify the cases
 a `match` statement with a single non-trivial case. This is predominately used for unwrapping
 `Option<T>` values, but can be used elsewhere.
 
-The idiomatic solution today for testing and unwrawpping an `Option<T>` looks like
+The idiomatic solution today for testing and unwrapping an `Option<T>` looks like
 
 ```rust
 match optVal {
@@ -51,7 +51,7 @@ This is generally considered to be a less idiomatic solution than the `match`. I
 fixing rightward drift, but it ends up testing the value twice (which should be optimized away, but
 semantically speaking still happens), with the second test being a method that potentially
 introduces failure. From context, the failure won't happen, but it still imposes a semantic burden
-on the reader. Finally, it requies having a pre-existing let-binding for the optional value; if the
+on the reader. Finally, it requires having a pre-existing let-binding for the optional value; if the
 value is a temporary, then a new let-binding in the parent scope is required in order to be able to
 test and unwrap in two separate expressions.
 
@@ -67,7 +67,7 @@ if let Some(x) = optVal {
 
 The `if let` construct is based on the precedent set by Swift, which introduced its own `if let`
 statement. In Swift, `if let var = expr { ... }` is directly tied to the notion of optional values,
-and unwraps the optional value that `expr` evalutes to. In this proposal, the equivalent is `if let
+and unwraps the optional value that `expr` evaluates to. In this proposal, the equivalent is `if let
 Some(var) = expr { ... }`.
 
 Given the following rough grammar for an `if` condition:
@@ -99,6 +99,10 @@ provided.
 Optionally, one or more `else if` (not `else if let`) blocks can be placed in the same `match` using
 pattern guards on `_`. This could be done to simplify the code when pretty-printing the expansion
 result. Otherwise, this is an unnecessary transformation.
+
+Due to some uncertainty regarding potentially-surprising fallout of AST rewrites, and some worries
+about exhaustiveness-checking (e.g. a tautological `if let` would be an error, which may be
+unexpected), this is put behind a feature gate named `if_let`.
 
 ## Examples
 
