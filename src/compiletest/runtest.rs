@@ -473,6 +473,9 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
             match config.gdb_version {
                 Some(ref version) => {
+                    println!("NOTE: compiletest thinks it is using GDB version {}",
+                             version.as_slice());
+
                     if header::gdb_version_to_int(version.as_slice()) >
                         header::gdb_version_to_int("7.4") {
                         // Add the directory containing the pretty printers to
@@ -488,7 +491,10 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                 .as_slice());
                     }
                 }
-                _ => { /* nothing to do */ }
+                _ => {
+                    println!("NOTE: compiletest does not know which version of \
+                              GDB it is using");
+                }
             }
 
             // Load the target executable
