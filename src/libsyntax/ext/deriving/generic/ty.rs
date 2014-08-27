@@ -28,6 +28,8 @@ use std::gc::Gc;
 pub enum PtrTy<'a> {
     /// &'lifetime mut
     Borrowed(Option<&'a str>, ast::Mutability),
+    /// *mut
+    Raw(ast::Mutability),
 }
 
 /// A path, e.g. `::std::option::Option::<int>` (global). Has support
@@ -82,7 +84,7 @@ impl<'a> Path<'a> {
     }
 }
 
-/// A type. Supports pointers (except for *), Self, and literals
+/// A type. Supports pointers, Self, and literals
 #[deriving(Clone)]
 pub enum Ty<'a> {
     Self,
@@ -143,6 +145,7 @@ impl<'a> Ty<'a> {
                         let lt = mk_lifetime(cx, span, lt);
                         cx.ty_rptr(span, raw_ty, lt, mutbl)
                     }
+                    Raw(mutbl) => cx.ty_ptr(span, raw_ty, mutbl)
                 }
             }
             Literal(ref p) => { p.to_ty(cx, span, self_ty, self_generics) }
@@ -273,6 +276,7 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s).name));
                         ast::SelfRegion(lt, mutbl, special_idents::self_)
                     }
+                    Raw(_) => cx.span_bug(span, "attempted to use *self in deriving definition")
                 });
             let self_expr = cx.expr_deref(span, self_path);
             (self_expr, self_ty)
