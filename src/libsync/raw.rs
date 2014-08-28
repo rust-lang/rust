@@ -266,7 +266,7 @@ impl<'a> Condvar<'a> {
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
             (|| {
-                let _ = wait_end.take_unwrap().recv();
+                let _ = wait_end.take().unwrap().recv();
             }).finally(|| {
                 // Reacquire the condvar.
                 match self.order {
@@ -325,7 +325,7 @@ impl<'a> Condvar<'a> {
                               condvar_id,
                               "cond.signal_on()",
                               || {
-                queue.take_unwrap().broadcast()
+                queue.take().unwrap().broadcast()
             })
         }
     }

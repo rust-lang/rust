@@ -649,7 +649,7 @@ impl<'a, A> MutItems<'a, A> {
                     None => return self.list.push_front_node(ins_node),
                     Some(prev) => prev,
                 };
-                let node_own = prev_node.next.take_unwrap();
+                let node_own = prev_node.next.take().unwrap();
                 ins_node.next = link_with_prev(node_own, Rawlink::some(&mut *ins_node));
                 prev_node.next = link_with_prev(ins_node, Rawlink::some(prev_node));
                 self.list.length += 1;

@@ -468,7 +468,7 @@ impl Clean<TyParam> for ast::TyParam {
 
 impl Clean<TyParam> for ty::TypeParameterDef {
     fn clean(&self) -> TyParam {
-        get_cx().external_typarams.borrow_mut().get_mut_ref()
+        get_cx().external_typarams.borrow_mut().as_mut().unwrap()
                 .insert(self.def_id, self.ident.clean());
         TyParam {
             name: self.ident.clean(),
@@ -549,8 +549,8 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
         };
         let fqn = csearch::get_item_path(tcx, did);
         let fqn = fqn.move_iter().map(|i| i.to_string()).collect();
-        cx.external_paths.borrow_mut().get_mut_ref().insert(did,
-                                                            (fqn, TypeTrait));
+        cx.external_paths.borrow_mut().as_mut().unwrap().insert(did,
+                                                                (fqn, TypeTrait));
         TraitBound(ResolvedPath {
             path: path,
             typarams: None,
@@ -571,7 +571,7 @@ impl Clean<TyParamBound> for ty::TraitRef {
                      .collect::<Vec<String>>();
         let path = external_path(fqn.last().unwrap().as_slice(),
                                  &self.substs);
-        cx.external_paths.borrow_mut().get_mut_ref().insert(self.def_id,
+        cx.external_paths.borrow_mut().as_mut().unwrap().insert(self.def_id,
                                                             (fqn, TypeTrait));
         TraitBound(ResolvedPath {
             path: path,
@@ -1299,7 +1299,7 @@ impl Clean<Type> for ty::t {
                 };
                 let path = external_path(fqn.last().unwrap().to_string().as_slice(),
                                          substs);
-                get_cx().external_paths.borrow_mut().get_mut_ref()
+                get_cx().external_paths.borrow_mut().as_mut().unwrap()
                                        .insert(did, (fqn, kind));
                 ResolvedPath {
                     path: path,
@@ -2091,7 +2091,7 @@ fn register_def(cx: &core::DocContext, def: def::Def) -> ast::DefId {
     match kind {
         TypeTrait => {
             let t = inline::build_external_trait(tcx, did);
-            cx.external_traits.borrow_mut().get_mut_ref().insert(did, t);
+            cx.external_traits.borrow_mut().as_mut().unwrap().insert(did, t);
         }
         _ => {}
     }
@@ -2158,7 +2158,7 @@ fn lang_struct(did: Option<ast::DefId>, t: ty::t, name: &str,
     let fqn: Vec<String> = fqn.move_iter().map(|i| {
         i.to_string()
     }).collect();
-    get_cx().external_paths.borrow_mut().get_mut_ref()
+    get_cx().external_paths.borrow_mut().as_mut().unwrap()
                            .insert(did, (fqn, TypeStruct));
     ResolvedPath {
         typarams: None,

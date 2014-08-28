@@ -166,7 +166,7 @@ impl<'a> Drop for StatRecorder<'a> {
             let end = time::precise_time_ns();
             let elapsed = ((end - self.start) / 1_000_000) as uint;
             let iend = self.ccx.stats.n_llvm_insns.get();
-            self.ccx.stats.fn_stats.borrow_mut().push((self.name.take_unwrap(),
+            self.ccx.stats.fn_stats.borrow_mut().push((self.name.take().unwrap(),
                                                        elapsed,
                                                        iend - self.istart));
             self.ccx.stats.n_fns.set(self.ccx.stats.n_fns.get() + 1);
