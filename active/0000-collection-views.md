@@ -130,7 +130,7 @@ Let's look at how we now `insert_or_update`:
 
 ```
 let mut view = map.view(key);
-if view.is_empty() {
+if !view.is_empty() {
     let v = view.get_mut().unwrap();
     let new_v = *v + 1;
     *v = new_v;
