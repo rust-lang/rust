@@ -360,7 +360,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
             }
             ast::ExprIfLet(..) => {
                 self.gate_feature("if_let", e.span,
-                                  "`if let` desugaring is experimental");
+                                  "`if let` syntax is experimental");
             }
             _ => {}
         }

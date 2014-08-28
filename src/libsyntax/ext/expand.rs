@@ -132,26 +132,22 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
         }
 
         // Desugar support for ExprIfLet in the ExprIf else position
-        ast::ExprIf(cond, blk, mut elseopt) => {
-            // NOTE: replace with 'if let' after snapshot
-            match elseopt {
-                Some(els) => match els.node {
-                    ast::ExprIfLet(..) => {
-                        // wrap the if-let expr in a block
-                        let blk = P(ast::Block {
-                            view_items: vec![],
-                            stmts: vec![],
-                            expr: Some(els),
-                            id: ast::DUMMY_NODE_ID,
-                            rules: ast::DefaultBlock,
-                            span: els.span
-                        });
-                        elseopt = Some(fld.cx.expr_block(blk));
-                    }
-                    _ => ()
-                },
-                None => ()
-            };
+        ast::ExprIf(cond, blk, elseopt) => {
+            let elseopt = elseopt.map(|els| match els.node {
+                ast::ExprIfLet(..) => {
+                    // wrap the if-let expr in a block
+                    let blk = P(ast::Block {
+                        view_items: vec![],
+                        stmts: vec![],
+                        expr: Some(els),
+                        id: ast::DUMMY_NODE_ID,
+                        rules: ast::DefaultBlock,
+                        span: els.span
+                    });
+                    fld.cx.expr_block(blk)
+                }
+                _ => els
+            });
             let if_expr = fld.cx.expr(e.span, ast::ExprIf(cond, blk, elseopt));
             noop_fold_expr(if_expr, fld)
         }
