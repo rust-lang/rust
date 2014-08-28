@@ -572,7 +572,9 @@ impl<'a> Parser<'a> {
         if self.is_keyword(kw) {
             self.bump();
             true
-        } else { false }
+        } else {
+            false
+        }
     }
 
     /// If the given word is not a keyword, signal an error.
@@ -2739,7 +2741,9 @@ impl<'a> Parser<'a> {
         let thn = self.parse_block();
         let els = if self.eat_keyword(keywords::Else) {
             Some(self.parse_else_expr())
-        } else { None };
+        } else {
+            None
+        };
         let hi = els.map_or(thn.span.hi, |expr| expr.span.hi);
         self.mk_expr(lo, hi, ExprIfLet(pat, expr, thn, els))
     }

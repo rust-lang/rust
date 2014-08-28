@@ -3430,7 +3430,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         check_then_else(fcx, &**cond, &**then_blk, opt_else_expr.clone(),
                         id, expr.span, expected);
       }
-      ast::ExprIfLet(..) => fail!("non-desugared ExprIfLet"),
+      ast::ExprIfLet(..) => {
+          tcx.sess.span_bug(expr.span, "non-desugared ExprIfLet");
+      }
       ast::ExprWhile(ref cond, ref body) => {
         check_expr_has_type(fcx, &**cond, ty::mk_bool());
         check_block_no_value(fcx, &**body);

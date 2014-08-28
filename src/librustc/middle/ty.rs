@@ -3429,7 +3429,9 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             RvalueDpsExpr
         }
 
-        ast::ExprIfLet(..) => fail!("non-desugared ExprIfLet"),
+        ast::ExprIfLet(..) => {
+            tcx.sess.span_bug(expr.span, "non-desugared ExprIfLet");
+        }
 
         ast::ExprLit(lit) if lit_is_str(lit) => {
             RvalueDpsExpr

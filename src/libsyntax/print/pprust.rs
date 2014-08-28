@@ -1489,7 +1489,7 @@ impl<'a> State<'a> {
                 try!(self.print_if(&**test, &**blk, elseopt));
             }
             ast::ExprIfLet(ref pat, ref expr, ref blk, elseopt) => {
-                try!(self.print_if_let(&**pat, &**expr, &** blk, elseopt));
+                try!(self.print_if_let(&**pat, &**expr, &**blk, elseopt));
             }
             ast::ExprWhile(ref test, ref blk) => {
                 try!(self.head("while"));

@@ -347,7 +347,7 @@ impl<'a> Visitor<()> for Context<'a> {
                 // should not have happened, but the ExprMatch check is included just
                 // in case.
                 self.gate_feature("if_let", e.span,
-                                  "`if let` desugaring is experimental");
+                                  "`if let` syntax is experimental");
             }
             _ => {}
         }

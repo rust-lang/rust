@@ -515,7 +515,9 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
             Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
           }
 
-          ast::ExprIfLet(..) => fail!("non-desugared ExprIfLet")
+          ast::ExprIfLet(..) => {
+            self.tcx().sess.span_bug(expr.span, "non-desugared ExprIfLet");
+          }
         }
     }
 
