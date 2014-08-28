@@ -390,7 +390,8 @@ mod tests {
                    Duration::days(1) + Duration::seconds(3));
         assert_eq!(Duration::days(10) - Duration::seconds(1000), Duration::seconds(863000));
         assert_eq!(Duration::days(10) - Duration::seconds(1000000), Duration::seconds(-136000));
-        assert_eq!(Duration::days(2) + Duration::seconds(86399) + Duration::nanoseconds(1234567890),
+        assert_eq!(Duration::days(2) + Duration::seconds(86399) +
+                   Duration::nanoseconds(1234567890),
                    Duration::days(3) + Duration::nanoseconds(234567890));
         assert_eq!(-Duration::days(3), Duration::days(-3));
         assert_eq!(-(Duration::days(3) + Duration::seconds(70)),
@@ -489,11 +490,13 @@ mod tests {
     fn test_duration_checked_ops() {
         assert_eq!(Duration::milliseconds(i64::MAX - 1).checked_add(&Duration::microseconds(999)),
                    Some(Duration::milliseconds(i64::MAX - 2) + Duration::microseconds(1999)));
-        assert!(Duration::milliseconds(i64::MAX).checked_add(&Duration::microseconds(1000)).is_none());
+        assert!(Duration::milliseconds(i64::MAX).checked_add(&Duration::microseconds(1000))
+                                                .is_none());
 
         assert_eq!(Duration::milliseconds(i64::MIN).checked_sub(&Duration::milliseconds(0)),
                    Some(Duration::milliseconds(i64::MIN)));
-        assert!(Duration::milliseconds(i64::MIN).checked_sub(&Duration::milliseconds(1)).is_none());
+        assert!(Duration::milliseconds(i64::MIN).checked_sub(&Duration::milliseconds(1))
+                                                .is_none());
     }
 
     #[test]
