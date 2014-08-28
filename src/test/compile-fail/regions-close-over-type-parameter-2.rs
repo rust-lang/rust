@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,25 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test for what happens when a type parameter `A` is closed over into
+// an object. This should yield errors unless `A` (and the object)
+// both have suitable bounds.
 
-trait Repeat<A> { fn get(&self) -> A; }
+trait Foo { fn get(&self); }
 
-impl<A:Clone> Repeat<A> for A {
-    fn get(&self) -> A { self.clone() }
+impl<A> Foo for A {
+    fn get(&self) { }
 }
 
-fn repeater<A:Clone>(v: A) -> Box<Repeat<A>> {
-    box v as Box<Repeat<A>> // No
+fn repeater3<'a,A:'a>(v: A) -> Box<Foo+'a> {
+    box v as Box<Foo+'a>
 }
 
 fn main() {
     // Error results because the type of is inferred to be
     // ~Repeat<&'blk int> where blk is the lifetime of the block below.
 
-    let y = {
+    let _ = {
         let tmp0 = 3i;
         let tmp1 = &tmp0; //~ ERROR `tmp0` does not live long enough
-        repeater(tmp1)
+        repeater3(tmp1)
     };
-    assert!(3 == *(y.get()));
 }

@@ -135,10 +135,10 @@ pub trait TDynBenchFn {
 pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),
-    StaticMetricFn(proc(&mut MetricMap)),
+    StaticMetricFn(proc(&mut MetricMap):'static),
     DynTestFn(proc():Send),
-    DynMetricFn(proc(&mut MetricMap)),
-    DynBenchFn(Box<TDynBenchFn>)
+    DynMetricFn(proc(&mut MetricMap):'static),
+    DynBenchFn(Box<TDynBenchFn+'static>)
 }
 
 impl TestFn {

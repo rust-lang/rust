@@ -87,7 +87,6 @@ use middle::ty;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::{FnCtxt, PreferMutLvalue, impl_self_ty};
 use middle::typeck::check;
-use middle::typeck::infer::MiscVariable;
 use middle::typeck::infer;
 use middle::typeck::MethodCallee;
 use middle::typeck::{MethodOrigin, MethodParam};
@@ -240,6 +239,7 @@ fn construct_transformed_self_ty_for_object(
     span: Span,
     trait_def_id: ast::DefId,
     rcvr_substs: &subst::Substs,
+    rcvr_bounds: ty::ExistentialBounds,
     method_ty: &ty::Method)
     -> ty::t
 {
@@ -276,8 +276,7 @@ fn construct_transformed_self_ty_for_object(
             tcx.sess.span_bug(span, "static method for object type receiver");
         }
         ByValueExplicitSelfCategory => {
-            let tr = ty::mk_trait(tcx, trait_def_id, obj_substs,
-                                  ty::empty_builtin_bounds());
+            let tr = ty::mk_trait(tcx, trait_def_id, obj_substs, rcvr_bounds);
             ty::mk_uniq(tcx, tr)
         }
         ByReferenceExplicitSelfCategory(..) | ByBoxExplicitSelfCategory => {
@@ -286,12 +285,12 @@ fn construct_transformed_self_ty_for_object(
                 ty::ty_rptr(r, mt) => { // must be SelfRegion
                     let r = r.subst(tcx, rcvr_substs); // handle Early-Bound lifetime
                     let tr = ty::mk_trait(tcx, trait_def_id, obj_substs,
-                                          ty::empty_builtin_bounds());
+                                          rcvr_bounds);
                     ty::mk_rptr(tcx, r, ty::mt{ ty: tr, mutbl: mt.mutbl })
                 }
                 ty::ty_uniq(_) => { // must be SelfUniq
                     let tr = ty::mk_trait(tcx, trait_def_id, obj_substs,
-                                          ty::empty_builtin_bounds());
+                                          rcvr_bounds);
                     ty::mk_uniq(tcx, tr)
                 }
                 _ => {
@@ -442,8 +441,9 @@ impl<'a> LookupContext<'a> {
         let span = self.self_expr.map_or(self.span, |e| e.span);
         check::autoderef(self.fcx, span, self_ty, None, PreferMutLvalue, |self_ty, _| {
             match get(self_ty).sty {
-                ty_trait(box TyTrait { def_id, ref substs, .. }) => {
-                    self.push_inherent_candidates_from_object(def_id, substs);
+                ty_trait(box TyTrait { def_id, ref substs, bounds, .. }) => {
+                    self.push_inherent_candidates_from_object(
+                        def_id, substs, bounds);
                     self.push_inherent_impl_candidates_for_type(def_id);
                 }
                 ty_enum(did, _) |
@@ -538,15 +538,13 @@ impl<'a> LookupContext<'a> {
         }
 
         let vcx = self.fcx.vtable_context();
-        let region_params =
-            vec!(vcx.infcx.next_region_var(MiscVariable(self.span)));
 
         // Get the tupled type of the arguments.
         let arguments_type = *closure_function_type.sig.inputs.get(0);
         let return_type = closure_function_type.sig.output;
 
         let closure_region =
-            vcx.infcx.next_region_var(MiscVariable(self.span));
+            vcx.infcx.next_region_var(infer::MiscVariable(self.span));
         let unboxed_closure_type = ty::mk_unboxed_closure(self.tcx(),
                                                           closure_did,
                                                           closure_region);
@@ -555,7 +553,7 @@ impl<'a> LookupContext<'a> {
                 RcvrMatchesIfSubtype(unboxed_closure_type),
             rcvr_substs: subst::Substs::new_trait(
                 vec![arguments_type, return_type],
-                region_params,
+                vec![],
                 *vcx.infcx.next_ty_vars(1).get(0)),
             method_ty: method,
             origin: MethodStaticUnboxedClosure(closure_did),
@@ -595,11 +593,11 @@ impl<'a> LookupContext<'a> {
 
     fn push_inherent_candidates_from_object(&mut self,
                                             did: DefId,
-                                            substs: &subst::Substs) {
+                                            substs: &subst::Substs,
+                                            bounds: ty::ExistentialBounds) {
         debug!("push_inherent_candidates_from_object(did={}, substs={})",
                self.did_to_string(did),
                substs.repr(self.tcx()));
-        let _indenter = indenter();
         let tcx = self.tcx();
         let span = self.span;
 
@@ -617,28 +615,30 @@ impl<'a> LookupContext<'a> {
             substs: rcvr_substs.clone()
         });
 
-        self.push_inherent_candidates_from_bounds_inner(&[trait_ref.clone()],
-            |new_trait_ref, m, method_num, _bound_num| {
-            let vtable_index = get_method_index(tcx, &*new_trait_ref,
-                                                trait_ref.clone(), method_num);
-            let mut m = (*m).clone();
-            // We need to fix up the transformed self type.
-            *m.fty.sig.inputs.get_mut(0) =
-                construct_transformed_self_ty_for_object(
-                    tcx, span, did, &rcvr_substs, &m);
+        self.push_inherent_candidates_from_bounds_inner(
+            &[trait_ref.clone()],
+            |_this, new_trait_ref, m, method_num, _bound_num| {
+                let vtable_index =
+                    get_method_index(tcx, &*new_trait_ref,
+                                     trait_ref.clone(), method_num);
+                let mut m = (*m).clone();
+                // We need to fix up the transformed self type.
+                *m.fty.sig.inputs.get_mut(0) =
+                    construct_transformed_self_ty_for_object(
+                        tcx, span, did, &rcvr_substs, bounds, &m);
 
-            Some(Candidate {
-                rcvr_match_condition: RcvrMatchesIfObject(did),
-                rcvr_substs: new_trait_ref.substs.clone(),
-                method_ty: Rc::new(m),
-                origin: MethodObject(MethodObject {
+                Some(Candidate {
+                    rcvr_match_condition: RcvrMatchesIfObject(did),
+                    rcvr_substs: new_trait_ref.substs.clone(),
+                    method_ty: Rc::new(m),
+                    origin: MethodObject(MethodObject {
                         trait_id: new_trait_ref.def_id,
                         object_trait_id: did,
                         method_num: method_num,
                         real_index: vtable_index
                     })
-            })
-        });
+                })
+            });
     }
 
     fn push_inherent_candidates_from_param(&mut self,
@@ -666,7 +666,7 @@ impl<'a> LookupContext<'a> {
             self.fcx.inh.param_env.bounds.get(space, index).trait_bounds
             .as_slice();
         self.push_inherent_candidates_from_bounds_inner(bounds,
-            |trait_ref, m, method_num, bound_num| {
+            |this, trait_ref, m, method_num, bound_num| {
                 match restrict_to {
                     Some(trait_did) => {
                         if trait_did != trait_ref.def_id {
@@ -675,6 +675,18 @@ impl<'a> LookupContext<'a> {
                     }
                     _ => {}
                 }
+                debug!("found match: trait_ref={} substs={} m={}",
+                       trait_ref.repr(this.tcx()),
+                       trait_ref.substs.repr(this.tcx()),
+                       m.repr(this.tcx()));
+                assert_eq!(m.generics.types.get_slice(subst::TypeSpace).len(),
+                           trait_ref.substs.types.get_slice(subst::TypeSpace).len());
+                assert_eq!(m.generics.regions.get_slice(subst::TypeSpace).len(),
+                           trait_ref.substs.regions().get_slice(subst::TypeSpace).len());
+                assert_eq!(m.generics.types.get_slice(subst::SelfSpace).len(),
+                           trait_ref.substs.types.get_slice(subst::SelfSpace).len());
+                assert_eq!(m.generics.regions.get_slice(subst::SelfSpace).len(),
+                           trait_ref.substs.regions().get_slice(subst::SelfSpace).len());
                 Some(Candidate {
                     rcvr_match_condition: RcvrMatchesIfSubtype(self_ty),
                     rcvr_substs: trait_ref.substs.clone(),
@@ -691,13 +703,15 @@ impl<'a> LookupContext<'a> {
 
     // Do a search through a list of bounds, using a callback to actually
     // create the candidates.
-    fn push_inherent_candidates_from_bounds_inner(&mut self,
-                                                  bounds: &[Rc<TraitRef>],
-                                                  mk_cand: |tr: Rc<TraitRef>,
-                                                            m: Rc<ty::Method>,
-                                                            method_num: uint,
-                                                            bound_num: uint|
-                                                            -> Option<Candidate>) {
+    fn push_inherent_candidates_from_bounds_inner(
+        &mut self,
+        bounds: &[Rc<TraitRef>],
+        mk_cand: |this: &mut LookupContext,
+                  tr: Rc<TraitRef>,
+                  m: Rc<ty::Method>,
+                  method_num: uint,
+                  bound_num: uint|
+                  -> Option<Candidate>) {
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
 
@@ -719,7 +733,8 @@ impl<'a> LookupContext<'a> {
                         ty::MethodTraitItem(ref method) => (*method).clone(),
                     };
 
-                    match mk_cand(bound_trait_ref,
+                    match mk_cand(self,
+                                  bound_trait_ref,
                                   method,
                                   pos,
                                   this_bound_idx) {
@@ -1337,6 +1352,11 @@ impl<'a> LookupContext<'a> {
                         self.ty_to_string(transformed_self_ty)).as_slice());
             }
         }
+
+        self.fcx.add_region_obligations_for_parameters(
+            self.span,
+            &all_substs,
+            &candidate.method_ty.generics);
 
         MethodCallee {
             origin: candidate.origin,

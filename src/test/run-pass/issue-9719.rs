@@ -16,7 +16,7 @@ mod a {
     pub trait X {}
     impl X for int {}
 
-    pub struct Z<'a>(Enum<&'a X>);
+    pub struct Z<'a>(Enum<&'a X+'a>);
     fn foo() { let x = 42i; let z = Z(A(&x as &X)); let _ = z; }
 }
 
@@ -24,7 +24,7 @@ mod b {
     trait X {}
     impl X for int {}
     struct Y<'a>{
-        x:Option<&'a X>,
+        x:Option<&'a X+'a>,
     }
 
     fn bar() {
@@ -36,7 +36,7 @@ mod b {
 mod c {
     pub trait X { fn f(&self); }
     impl X for int { fn f(&self) {} }
-    pub struct Z<'a>(Option<&'a X>);
+    pub struct Z<'a>(Option<&'a X+'a>);
     fn main() { let x = 42i; let z = Z(Some(&x as &X)); let _ = z; }
 }
 

@@ -4,10 +4,12 @@ digraph block {
     N2[label="expr 3i"];
     N3[label="expr 33i"];
     N4[label="expr 3i + 33i"];
-    N5[label="block { 3i + 33i; }"];
+    N5[label="stmt 3i + 33i;"];
+    N6[label="block { 3i + 33i; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
     N4 -> N5;
-    N5 -> N1;
+    N5 -> N6;
+    N6 -> N1;
 }

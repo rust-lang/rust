@@ -80,7 +80,14 @@ pub trait DataFlowOperator : BitwiseOperator {
     fn initial_value(&self) -> bool;
 }
 
+#[cfg(stage0)]
 struct PropagationContext<'a, 'b, O> {
+    dfcx: &'a mut DataFlowContext<'b, O>,
+    changed: bool
+}
+
+#[cfg(not(stage0))]
+struct PropagationContext<'a, 'b:'a, O:'a> {
     dfcx: &'a mut DataFlowContext<'b, O>,
     changed: bool
 }
@@ -458,7 +465,7 @@ impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
         });
     }
 
-    fn pretty_print_to(&self, wr: Box<io::Writer>,
+    fn pretty_print_to(&self, wr: Box<io::Writer+'static>,
                        blk: &ast::Block) -> io::IoResult<()> {
         let mut ps = pprust::rust_printer_annotated(wr, self);
         try!(ps.cbox(pprust::indent_unit));

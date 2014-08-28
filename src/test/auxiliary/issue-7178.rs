@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct Foo<'a, A>(&'a A);
+pub struct Foo<'a, A:'a>(&'a A);
 
 impl<'a, A> Foo<'a, A> {
     pub fn new(a: &'a A) -> Foo<'a, A> {

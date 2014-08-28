@@ -13,16 +13,16 @@
 fn foo<T>() {}
 
 trait Bar1 {}
-impl Bar1 for proc() {}
+impl Bar1 for proc():'static {}
 
 trait Bar2 {}
-impl Bar2 for proc(): Send {}
+impl Bar2 for proc():Send {}
 
 trait Bar3 {}
 impl<'b> Bar3 for <'a>|&'a int|: 'b + Send -> &'a int {}
 
 trait Bar4 {}
-impl Bar4 for proc<'a>(&'a int) -> &'a int {}
+impl Bar4 for proc<'a>(&'a int):'static -> &'a int {}
 
 struct Foo<'a> {
     a: ||: 'a,
@@ -30,9 +30,9 @@ struct Foo<'a> {
     c: <'b>||: 'a,
     d: ||: 'a + Sync,
     e: <'b>|int|: 'a + Sync -> &'b f32,
-    f: proc(),
-    g: proc(): 'static + Sync,
-    h: proc<'b>(int): Sync -> &'b f32,
+    f: proc():'static,
+    g: proc():'static+Sync,
+    h: proc<'b>(int):'static+Sync -> &'b f32,
 }
 
 fn f<'a>(a: &'a int, f: <'b>|&'b int| -> &'b int) -> &'a int {

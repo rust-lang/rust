@@ -64,6 +64,7 @@ pub struct EdgeIndex(pub uint);
 pub static InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
 
 // Use a private field here to guarantee no more instances are created:
+#[deriving(Show)]
 pub struct Direction { repr: uint }
 pub static Outgoing: Direction = Direction { repr: 0 };
 pub static Incoming: Direction = Direction { repr: 1 };

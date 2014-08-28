@@ -75,6 +75,7 @@ use middle::typeck::infer::region_inference::RegionResolutionError;
 use middle::typeck::infer::region_inference::ConcreteFailure;
 use middle::typeck::infer::region_inference::SubSupConflict;
 use middle::typeck::infer::region_inference::SupSupConflict;
+use middle::typeck::infer::region_inference::ParamBoundFailure;
 use middle::typeck::infer::region_inference::ProcessedErrors;
 use middle::typeck::infer::region_inference::SameRegions;
 use std::cell::{Cell, RefCell};
@@ -89,9 +90,12 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::codemap;
 use syntax::parse::token;
 use syntax::print::pprust;
-use util::ppaux::UserString;
 use util::ppaux::bound_region_to_string;
 use util::ppaux::note_and_explain_region;
+
+// Note: only import UserString, not Repr, since user-facing error
+// messages shouldn't include debug serializations.
+use util::ppaux::UserString;
 
 pub trait ErrorReporting {
     fn report_region_errors(&self,
@@ -117,6 +121,12 @@ pub trait ErrorReporting {
                                origin: SubregionOrigin,
                                sub: Region,
                                sup: Region);
+
+    fn report_param_bound_failure(&self,
+                                  origin: SubregionOrigin,
+                                  param_ty: ty::ParamTy,
+                                  sub: Region,
+                                  sups: Vec<Region>);
 
     fn report_sub_sup_conflict(&self,
                                var_origin: RegionVariableOrigin,
@@ -145,7 +155,7 @@ trait ErrorReportingHelpers {
                                 var_origin: RegionVariableOrigin);
 
     fn note_region_origin(&self,
-                          origin: SubregionOrigin);
+                          origin: &SubregionOrigin);
 
     fn give_expl_lifetime_param(&self,
                                 decl: &ast::FnDecl,
@@ -165,6 +175,10 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             match error.clone() {
                 ConcreteFailure(origin, sub, sup) => {
                     self.report_concrete_failure(origin, sub, sup);
+                }
+
+                ParamBoundFailure(origin, param_ty, sub, sups) => {
+                    self.report_param_bound_failure(origin, param_ty, sub, sups);
                 }
 
                 SubSupConflict(var_origin,
@@ -410,6 +424,62 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                      found.user_string(self.tcx)))
     }
 
+    fn report_param_bound_failure(&self,
+                                  origin: SubregionOrigin,
+                                  param_ty: ty::ParamTy,
+                                  sub: Region,
+                                  _sups: Vec<Region>) {
+
+        // FIXME: it would be better to report the first error message
+        // with the span of the parameter itself, rather than the span
+        // where the error was detected. But that span is not readily
+        // accessible.
+
+        match sub {
+            ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
+                // Does the required lifetime have a nice name we can print?
+                self.tcx.sess.span_err(
+                    origin.span(),
+                    format!(
+                        "the parameter type `{}` may not live long enough; \
+                         consider adding an explicit lifetime bound `{}:{}`...",
+                        param_ty.user_string(self.tcx),
+                        param_ty.user_string(self.tcx),
+                        sub.user_string(self.tcx)).as_slice());
+            }
+
+            ty::ReStatic => {
+                // Does the required lifetime have a nice name we can print?
+                self.tcx.sess.span_err(
+                    origin.span(),
+                    format!(
+                        "the parameter type `{}` may not live long enough; \
+                         consider adding an explicit lifetime bound `{}:'static`...",
+                        param_ty.user_string(self.tcx),
+                        param_ty.user_string(self.tcx)).as_slice());
+            }
+
+            _ => {
+                // If not, be less specific.
+                self.tcx.sess.span_err(
+                    origin.span(),
+                    format!(
+                        "the parameter type `{}` may not live long enough; \
+                         consider adding an explicit lifetime bound to `{}`",
+                        param_ty.user_string(self.tcx),
+                        param_ty.user_string(self.tcx)).as_slice());
+                note_and_explain_region(
+                    self.tcx,
+                    format!("the parameter type `{}` must be valid for ",
+                            param_ty.user_string(self.tcx)).as_slice(),
+                    sub,
+                    "...");
+            }
+        }
+
+        self.note_region_origin(&origin);
+    }
+
     fn report_concrete_failure(&self,
                                origin: SubregionOrigin,
                                sub: Region,
@@ -538,6 +608,67 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     sup,
                     "");
             }
+            infer::RelateProcBound(span, var_node_id, ty) => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!(
+                        "the type `{}` of captured variable `{}` \
+                         outlives the `proc()` it \
+                         is captured in",
+                        self.ty_to_string(ty),
+                        ty::local_var_name_str(self.tcx,
+                                               var_node_id)).as_slice());
+                note_and_explain_region(
+                    self.tcx,
+                    "`proc()` is valid for ",
+                    sub,
+                    "");
+                note_and_explain_region(
+                    self.tcx,
+                    format!("the type `{}` is only valid for ",
+                            self.ty_to_string(ty)).as_slice(),
+                    sup,
+                    "");
+            }
+            infer::RelateParamBound(span, param_ty, ty) => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!("the type `{}` (provided as the value of \
+                             the parameter `{}`) does not fulfill the \
+                             required lifetime",
+                            self.ty_to_string(ty),
+                            param_ty.user_string(self.tcx)).as_slice());
+                note_and_explain_region(self.tcx,
+                                        "type must outlive ",
+                                        sub,
+                                        "");
+            }
+            infer::RelateRegionParamBound(span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    "declared lifetime bound not satisfied");
+                note_and_explain_region(
+                    self.tcx,
+                    "lifetime parameter instantiated with ",
+                    sup,
+                    "");
+                note_and_explain_region(
+                    self.tcx,
+                    "but lifetime parameter must outlive ",
+                    sub,
+                    "");
+            }
+            infer::RelateDefaultParamBound(span, ty) => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!("the type `{}` (provided as the value of \
+                             a type parameter) is not valid at this point",
+                            self.ty_to_string(ty)).as_slice());
+                note_and_explain_region(self.tcx,
+                                        "type must outlive ",
+                                        sub,
+                                        "");
+            }
             infer::CallRcvr(span) => {
                 self.tcx.sess.span_err(
                     span,
@@ -593,6 +724,18 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     sup,
                     "");
             }
+            infer::ExprTypeIsNotInScope(t, span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!("type of expression contains references \
+                             that are not valid during the expression: `{}`",
+                            self.ty_to_string(t)).as_slice());
+                note_and_explain_region(
+                    self.tcx,
+                    "type is only valid for ",
+                    sup,
+                    "");
+            }
             infer::BindingTypeIsNotValidAtDecl(span) => {
                 self.tcx.sess.span_err(
                     span,
@@ -606,9 +749,9 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             infer::ReferenceOutlivesReferent(ty, span) => {
                 self.tcx.sess.span_err(
                     span,
-                    format!("in type `{}`, pointer has a longer lifetime than \
-                          the data it references",
-                         ty.user_string(self.tcx)).as_slice());
+                    format!("in type `{}`, reference has a longer lifetime \
+                             than the data it references",
+                            self.ty_to_string(ty)).as_slice());
                 note_and_explain_region(
                     self.tcx,
                     "the pointer is valid for ",
@@ -619,6 +762,11 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     "but the referenced data is only valid for ",
                     sup,
                     "");
+            }
+            infer::Managed(span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!("cannot put borrowed references into managed memory").as_slice());
             }
         }
     }
@@ -637,7 +785,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             sup_region,
             "...");
 
-        self.note_region_origin(sup_origin);
+        self.note_region_origin(&sup_origin);
 
         note_and_explain_region(
             self.tcx,
@@ -645,7 +793,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             sub_region,
             "...");
 
-        self.note_region_origin(sub_origin);
+        self.note_region_origin(&sub_origin);
     }
 
     fn report_sup_sup_conflict(&self,
@@ -662,7 +810,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             region1,
             "...");
 
-        self.note_region_origin(origin1);
+        self.note_region_origin(&origin1);
 
         note_and_explain_region(
             self.tcx,
@@ -670,7 +818,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             region2,
             "...");
 
-        self.note_region_origin(origin2);
+        self.note_region_origin(&origin2);
     }
 
     fn report_processed_errors(&self,
@@ -920,8 +1068,12 @@ impl<'a> Rebuilder<'a> {
                                -> OwnedSlice<ast::TyParamBound> {
         ty_param_bounds.map(|tpb| {
             match tpb {
-                &ast::StaticRegionTyParamBound => ast::StaticRegionTyParamBound,
-                &ast::OtherRegionTyParamBound(s) => ast::OtherRegionTyParamBound(s),
+                &ast::RegionTyParamBound(lt) => {
+                    // FIXME -- it's unclear whether I'm supposed to
+                    // substitute lifetime here. I suspect we need to
+                    // be passing down a map.
+                    ast::RegionTyParamBound(lt)
+                }
                 &ast::UnboxedFnTyParamBound(unboxed_function_type) => {
                     ast::UnboxedFnTyParamBound(unboxed_function_type)
                 }
@@ -1291,8 +1443,8 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                     var_description).as_slice());
     }
 
-    fn note_region_origin(&self, origin: SubregionOrigin) {
-        match origin {
+    fn note_region_origin(&self, origin: &SubregionOrigin) {
+        match *origin {
             infer::Subtype(ref trace) => {
                 let desc = match trace.origin {
                     infer::Misc(_) => {
@@ -1384,8 +1536,16 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
             infer::RelateObjectBound(span) => {
                 self.tcx.sess.span_note(
                     span,
-                    "...so that source pointer does not outlive \
-                     lifetime bound of the object type");
+                    "...so that it can be closed over into an object");
+            }
+            infer::RelateProcBound(span, var_node_id, _ty) => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!(
+                        "...so that the variable `{}` can be captured \
+                         into a proc",
+                        ty::local_var_name_str(self.tcx,
+                                               var_node_id)).as_slice());
             }
             infer::CallRcvr(span) => {
                 self.tcx.sess.span_note(
@@ -1414,16 +1574,52 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                     "...so that reference is valid \
                      at the time of implicit borrow");
             }
+            infer::ExprTypeIsNotInScope(t, span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    format!("...so type `{}` of expression is valid during the \
+                             expression",
+                            self.ty_to_string(t)).as_slice());
+            }
             infer::BindingTypeIsNotValidAtDecl(span) => {
                 self.tcx.sess.span_note(
                     span,
                     "...so that variable is valid at time of its declaration");
             }
-            infer::ReferenceOutlivesReferent(_, span) => {
+            infer::ReferenceOutlivesReferent(ty, span) => {
                 self.tcx.sess.span_note(
                     span,
-                    "...so that the pointer does not outlive the \
-                    data it points at");
+                    format!("...so that the reference type `{}` \
+                             does not outlive the data it points at",
+                            self.ty_to_string(ty)).as_slice());
+            }
+            infer::Managed(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that the value can be stored in managed memory.");
+            }
+            infer::RelateParamBound(span, param_ty, t) => {
+                self.tcx.sess.span_note(
+                    span,
+                    format!("...so that the parameter `{}`, \
+                             when instantiated with `{}`, \
+                             will meet its declared lifetime bounds.",
+                            param_ty.user_string(self.tcx),
+                            self.ty_to_string(t)).as_slice());
+            }
+            infer::RelateDefaultParamBound(span, t) => {
+                self.tcx.sess.span_note(
+                    span,
+                    format!("...so that type parameter \
+                             instantiated with `{}`, \
+                             will meet its declared lifetime bounds.",
+                            self.ty_to_string(t)).as_slice());
+            }
+            infer::RelateRegionParamBound(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    format!("...so that the declared lifetime parameter bounds \
+                                are satisfied").as_slice());
             }
         }
     }

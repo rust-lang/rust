@@ -28,7 +28,7 @@ fn f<T>(val: T) {
 fn main() {
     let t: S<&int> = S;
     let a = &t as &Gettable<&int>;
-    //~^ ERROR instantiating a type parameter with an incompatible type `&int`
+    //~^ ERROR instantiating a type parameter with an incompatible type
     let t: Box<S<String>> = box S;
     let a = t as Box<Gettable<String>>;
     //~^ ERROR instantiating a type parameter with an incompatible type

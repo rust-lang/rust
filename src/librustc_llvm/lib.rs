@@ -192,7 +192,7 @@ impl AttrHelper for SpecialAttribute {
 }
 
 pub struct AttrBuilder {
-    attrs: Vec<(uint, Box<AttrHelper>)>
+    attrs: Vec<(uint, Box<AttrHelper+'static>)>
 }
 
 impl AttrBuilder {
@@ -203,12 +203,12 @@ impl AttrBuilder {
     }
 
     pub fn arg<'a, T: AttrHelper + 'static>(&'a mut self, idx: uint, a: T) -> &'a mut AttrBuilder {
-        self.attrs.push((idx, box a as Box<AttrHelper>));
+        self.attrs.push((idx, box a as Box<AttrHelper+'static>));
         self
     }
 
     pub fn ret<'a, T: AttrHelper + 'static>(&'a mut self, a: T) -> &'a mut AttrBuilder {
-        self.attrs.push((ReturnIndex as uint, box a as Box<AttrHelper>));
+        self.attrs.push((ReturnIndex as uint, box a as Box<AttrHelper+'static>));
         self
     }
 

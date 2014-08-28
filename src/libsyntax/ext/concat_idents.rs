@@ -18,8 +18,8 @@ use parse::token::{str_to_ident};
 
 use std::gc::GC;
 
-pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-                         -> Box<base::MacResult> {
+pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+                              -> Box<base::MacResult+'cx> {
     let mut res_str = String::new();
     for (i, e) in tts.iter().enumerate() {
         if i & 1 == 1 {

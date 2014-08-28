@@ -14,7 +14,7 @@ struct A;
 
 impl Foo for A {}
 
-struct B<'a>(&'a Foo);
+struct B<'a>(&'a Foo+'a);
 
 fn foo<'a>(a: &Foo) -> B<'a> {
     B(a)    //~ ERROR cannot infer an appropriate lifetime

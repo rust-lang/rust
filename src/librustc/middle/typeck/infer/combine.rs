@@ -221,7 +221,7 @@ pub trait Combine {
         };
         let fn_style = if_ok!(self.fn_styles(a.fn_style, b.fn_style));
         let onceness = if_ok!(self.oncenesses(a.onceness, b.onceness));
-        let bounds = if_ok!(self.bounds(a.bounds, b.bounds));
+        let bounds = if_ok!(self.existential_bounds(a.bounds, b.bounds));
         let sig = if_ok!(self.fn_sigs(&a.sig, &b.sig));
         let abi = if_ok!(self.abi(a.abi, b.abi));
         Ok(ty::ClosureTy {
@@ -251,9 +251,26 @@ pub trait Combine {
     }
 
     fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<Onceness>;
-    fn bounds(&self, a: BuiltinBounds, b: BuiltinBounds) -> cres<BuiltinBounds>;
+
+    fn existential_bounds(&self,
+                          a: ty::ExistentialBounds,
+                          b: ty::ExistentialBounds)
+                          -> cres<ty::ExistentialBounds>
+    {
+        let r = try!(self.contraregions(a.region_bound, b.region_bound));
+        let nb = try!(self.builtin_bounds(a.builtin_bounds, b.builtin_bounds));
+        Ok(ty::ExistentialBounds { region_bound: r,
+                                   builtin_bounds: nb })
+    }
+
+    fn builtin_bounds(&self,
+                      a: ty::BuiltinBounds,
+                      b: ty::BuiltinBounds)
+                      -> cres<ty::BuiltinBounds>;
+
     fn contraregions(&self, a: ty::Region, b: ty::Region)
                   -> cres<ty::Region>;
+
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region>;
 
     fn trait_stores(&self,
@@ -479,7 +496,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       if a_.def_id == b_.def_id => {
           debug!("Trying to match traits {:?} and {:?}", a, b);
           let substs = if_ok!(this.substs(a_.def_id, &a_.substs, &b_.substs));
-          let bounds = if_ok!(this.bounds(a_.bounds, b_.bounds));
+          let bounds = if_ok!(this.existential_bounds(a_.bounds, b_.bounds));
           Ok(ty::mk_trait(tcx,
                           a_.def_id,
                           substs.clone(),

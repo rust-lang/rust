@@ -105,9 +105,9 @@ pub trait BoxAny {
 }
 
 #[stable]
-impl BoxAny for Box<Any> {
+impl BoxAny for Box<Any+'static> {
     #[inline]
-    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
+    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any+'static>> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -132,7 +132,7 @@ impl<T: fmt::Show> fmt::Show for Box<T> {
     }
 }
 
-impl fmt::Show for Box<Any> {
+impl fmt::Show for Box<Any+'static> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")
     }

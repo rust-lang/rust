@@ -14,7 +14,6 @@ type Foo = Vec<u8>;
 
 impl Drop for Foo {
 //~^ ERROR cannot provide an extension implementation
-//~^^ ERROR multiple applicable methods
     fn drop(&mut self) {
         println!("kaboom");
     }

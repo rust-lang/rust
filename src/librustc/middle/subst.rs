@@ -611,7 +611,7 @@ impl<'a> TypeFolder for SubstFolder<'a> {
 
         let t1 = match ty::get(t).sty {
             ty::ty_param(p) => {
-                check(self, t, self.substs.types.opt_get(p.space, p.idx))
+                check(self, p, t, self.substs.types.opt_get(p.space, p.idx))
             }
             _ => {
                 ty_fold::super_fold_ty(self, t)
@@ -627,6 +627,7 @@ impl<'a> TypeFolder for SubstFolder<'a> {
         return t1;
 
         fn check(this: &SubstFolder,
+                 p: ty::ParamTy,
                  source_ty: ty::t,
                  opt_ty: Option<&ty::t>)
                  -> ty::t {
@@ -636,8 +637,9 @@ impl<'a> TypeFolder for SubstFolder<'a> {
                     let span = this.span.unwrap_or(DUMMY_SP);
                     this.tcx().sess.span_bug(
                         span,
-                        format!("Type parameter {} out of range \
+                        format!("Type parameter `{}` ({}) out of range \
                                  when substituting (root type={})",
+                                p.repr(this.tcx()),
                                 source_ty.repr(this.tcx()),
                                 this.root_ty.repr(this.tcx())).as_slice());
                 }

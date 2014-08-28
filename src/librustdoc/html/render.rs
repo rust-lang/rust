@@ -1610,12 +1610,12 @@ fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
 
 fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
-    let mut parents = String::new();
-    if t.parents.len() > 0 {
-        parents.push_str(": ");
-        for (i, p) in t.parents.iter().enumerate() {
-            if i > 0 { parents.push_str(" + "); }
-            parents.push_str(format!("{}", *p).as_slice());
+    let mut bounds = String::new();
+    if t.bounds.len() > 0 {
+        bounds.push_str(": ");
+        for (i, p) in t.bounds.iter().enumerate() {
+            if i > 0 { bounds.push_str(" + "); }
+            bounds.push_str(format!("{}", *p).as_slice());
         }
     }
 
@@ -1624,7 +1624,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                   VisSpace(it.visibility),
                   it.name.get_ref().as_slice(),
                   t.generics,
-                  parents));
+                  bounds));
     let required = t.items.iter()
                           .filter(|m| {
                               match **m {

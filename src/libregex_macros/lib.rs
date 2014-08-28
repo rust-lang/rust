@@ -77,7 +77,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 /// strategy is identical and vm.rs has comments and will be easier to follow.
 #[allow(experimental)]
 fn native(cx: &mut ExtCtxt, sp: codemap::Span, tts: &[ast::TokenTree])
-          -> Box<MacResult> {
+          -> Box<MacResult+'static> {
     let regex = match parse(cx, tts) {
         Some(r) => r,
         // error is logged in 'parse' with cx.span_err

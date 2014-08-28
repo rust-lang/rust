@@ -942,6 +942,8 @@ trait rbml_writer_helpers {
                      ecx: &e::EncodeContext,
                      pty: ty::Polytype);
     fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &subst::Substs);
+    fn emit_existential_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::ExistentialBounds);
+    fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds);
     fn emit_auto_adjustment(&mut self, ecx: &e::EncodeContext, adj: &ty::AutoAdjustment);
     fn emit_autoref(&mut self, ecx: &e::EncodeContext, autoref: &ty::AutoRef);
     fn emit_auto_deref_ref(&mut self, ecx: &e::EncodeContext, auto_deref_ref: &ty::AutoDerefRef);
@@ -999,6 +1001,18 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
                 Ok(this.emit_ty(ecx, pty.ty))
             })
         });
+    }
+
+    fn emit_existential_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::ExistentialBounds) {
+        self.emit_opaque(|this| Ok(tyencode::enc_existential_bounds(this.writer,
+                                                                    &ecx.ty_str_ctxt(),
+                                                                    bounds)));
+    }
+
+    fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds) {
+        self.emit_opaque(|this| Ok(tyencode::enc_builtin_bounds(this.writer,
+                                                                &ecx.ty_str_ctxt(),
+                                                                bounds)));
     }
 
     fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &subst::Substs) {
@@ -1100,9 +1114,10 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
                         this.emit_enum_variant_arg(1, |this| idx.encode(this))
                     })
                 }
-                ty::UnsizeVtable(b, def_id, ref substs) => {
+                ty::UnsizeVtable(ref b, def_id, ref substs) => {
                     this.emit_enum_variant("UnsizeVtable", 2, 3, |this| {
-                        this.emit_enum_variant_arg(0, |this| b.encode(this));
+                        this.emit_enum_variant_arg(
+                            0, |this| Ok(this.emit_existential_bounds(ecx, b)));
                         this.emit_enum_variant_arg(1, |this| def_id.encode(this));
                         this.emit_enum_variant_arg(2, |this| Ok(this.emit_substs(ecx, substs)))
                     })
@@ -1131,7 +1146,7 @@ impl<'a> write_tag_and_id for Encoder<'a> {
     }
 }
 
-struct SideTableEncodingIdVisitor<'a,'b> {
+struct SideTableEncodingIdVisitor<'a,'b:'a> {
     ecx_ptr: *const libc::c_void,
     new_rbml_w: &'a mut Encoder<'b>,
 }
@@ -1380,6 +1395,7 @@ trait rbml_decoder_decoder_helpers {
                            -> ty::TypeParameterDef;
     fn read_polytype(&mut self, xcx: &ExtendedDecodeContext)
                      -> ty::Polytype;
+    fn read_existential_bounds(&mut self, xcx: &ExtendedDecodeContext) -> ty::ExistentialBounds;
     fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> subst::Substs;
     fn read_auto_adjustment(&mut self, xcx: &ExtendedDecodeContext) -> ty::AutoAdjustment;
     fn read_unboxed_closure(&mut self, xcx: &ExtendedDecodeContext)
@@ -1514,6 +1530,17 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
         }).unwrap()
     }
 
+    fn read_existential_bounds(&mut self, xcx: &ExtendedDecodeContext) -> ty::ExistentialBounds
+    {
+        self.read_opaque(|this, doc| {
+            Ok(tydecode::parse_existential_bounds_data(doc.data,
+                                                       xcx.dcx.cdata.cnum,
+                                                       doc.start,
+                                                       xcx.dcx.tcx,
+                                                       |s, a| this.convert_def_id(xcx, s, a)))
+        }).unwrap()
+    }
+
     fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> subst::Substs {
         self.read_opaque(|this, doc| {
             Ok(tydecode::parse_substs_data(doc.data,
@@ -1638,8 +1665,9 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                         ty::UnsizeStruct(box uk, idx)
                     }
                     2 => {
-                        let b: ty::BuiltinBounds =
-                            this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
+                        let b =
+                            this.read_enum_variant_arg(
+                                0, |this| Ok(this.read_existential_bounds(xcx))).unwrap();
                         let def_id: ast::DefId =
                             this.read_enum_variant_arg(1, |this| Decodable::decode(this)).unwrap();
                         let substs = this.read_enum_variant_arg(2,

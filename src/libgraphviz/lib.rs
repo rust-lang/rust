@@ -271,6 +271,7 @@ pub fn main() {
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
+#![feature(issue_5723_bootstrap)]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/master/")]
@@ -499,7 +500,7 @@ pub trait GraphWalk<'a, N, E> {
 
 /// Renders directed graph `g` into the writer `w` in DOT syntax.
 /// (Main entry point for the library.)
-pub fn render<'a, N, E, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, W:Writer>(
+pub fn render<'a, N:'a, E:'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, W:Writer>(
               g: &'a G,
               w: &mut W) -> io::IoResult<()>
 {

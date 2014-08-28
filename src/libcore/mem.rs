@@ -369,7 +369,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 #[inline]
 #[unstable = "this function may be removed in the future due to its \
               questionable utility"]
-pub unsafe fn copy_lifetime<'a, S, T>(_ptr: &'a S, ptr: &T) -> &'a T {
+pub unsafe fn copy_lifetime<'a, S, T:'a>(_ptr: &'a S, ptr: &T) -> &'a T {
     transmute(ptr)
 }
 
@@ -377,7 +377,7 @@ pub unsafe fn copy_lifetime<'a, S, T>(_ptr: &'a S, ptr: &T) -> &'a T {
 #[inline]
 #[unstable = "this function may be removed in the future due to its \
               questionable utility"]
-pub unsafe fn copy_mut_lifetime<'a, S, T>(_ptr: &'a mut S,
+pub unsafe fn copy_mut_lifetime<'a, S, T:'a>(_ptr: &'a mut S,
                                           ptr: &mut T) -> &'a mut T {
     transmute(ptr)
 }

@@ -14,7 +14,6 @@ use ast;
 use codemap::{Span, Spanned, DUMMY_SP};
 use ext::base::{ExtCtxt, MacResult, MacroDef};
 use ext::base::{NormalTT, TTMacroExpander};
-use ext::base;
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_or_else};
@@ -113,11 +112,11 @@ struct MacroRulesMacroExpander {
 }
 
 impl TTMacroExpander for MacroRulesMacroExpander {
-    fn expand(&self,
-              cx: &mut ExtCtxt,
-              sp: Span,
-              arg: &[ast::TokenTree])
-              -> Box<MacResult> {
+    fn expand<'cx>(&self,
+                   cx: &'cx mut ExtCtxt,
+                   sp: Span,
+                   arg: &[ast::TokenTree])
+                   -> Box<MacResult+'cx> {
         generic_extension(cx,
                           sp,
                           self.name,
@@ -137,13 +136,13 @@ impl MacResult for MacroRulesDefiner {
 }
 
 /// Given `lhses` and `rhses`, this is the new macro we create
-fn generic_extension(cx: &ExtCtxt,
-                     sp: Span,
-                     name: Ident,
-                     arg: &[ast::TokenTree],
-                     lhses: &[Rc<NamedMatch>],
-                     rhses: &[Rc<NamedMatch>])
-                     -> Box<MacResult> {
+fn generic_extension<'cx>(cx: &'cx ExtCtxt,
+                          sp: Span,
+                          name: Ident,
+                          arg: &[ast::TokenTree],
+                          lhses: &[Rc<NamedMatch>],
+                          rhses: &[Rc<NamedMatch>])
+                          -> Box<MacResult+'cx> {
     if cx.trace_macros() {
         println!("{}! {} {} {}",
                  token::get_ident(name),
@@ -195,7 +194,7 @@ fn generic_extension(cx: &ExtCtxt,
                 // Weird, but useful for X-macros.
                 return box ParserAnyMacro {
                     parser: RefCell::new(p),
-                } as Box<MacResult>
+                } as Box<MacResult+'cx>
               }
               Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
                 best_fail_spot = sp;
@@ -213,11 +212,11 @@ fn generic_extension(cx: &ExtCtxt,
 /// This procedure performs the expansion of the
 /// macro_rules! macro. It parses the RHS and adds
 /// an extension to the current context.
-pub fn add_new_extension(cx: &mut ExtCtxt,
-                         sp: Span,
-                         name: Ident,
-                         arg: Vec<ast::TokenTree> )
-                         -> Box<base::MacResult> {
+pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
+                              sp: Span,
+                              name: Ident,
+                              arg: Vec<ast::TokenTree> )
+                              -> Box<MacResult+'cx> {
     // these spans won't matter, anyways
     fn ms(m: Matcher_) -> Matcher {
         Spanned {
@@ -274,5 +273,5 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
             name: token::get_ident(name).to_string(),
             ext: NormalTT(exp, Some(sp))
         }))
-    } as Box<MacResult>
+    } as Box<MacResult+'cx>
 }

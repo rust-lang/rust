@@ -15,10 +15,10 @@ use print;
 
 use std::rc::Rc;
 
-pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
-                         sp: codemap::Span,
-                         tt: &[ast::TokenTree])
-                         -> Box<base::MacResult> {
+pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
+                              sp: codemap::Span,
+                              tt: &[ast::TokenTree])
+                              -> Box<base::MacResult+'cx> {
 
     cx.print_backtrace();
     println!("{}", print::pprust::tt_to_string(&ast::TTDelim(

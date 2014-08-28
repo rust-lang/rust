@@ -17,7 +17,7 @@ trait A {
 }
 
 impl A for int {
-    fn foo<T: Ord + Ord>(&self) {}
+    fn foo<T: Ord>(&self) {} // Ord implies Eq, so this is ok.
 }
 
 fn main() {}

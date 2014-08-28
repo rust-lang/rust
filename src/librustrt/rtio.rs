@@ -120,7 +120,7 @@ pub struct ProcessConfig<'a> {
 }
 
 pub struct LocalIo<'a> {
-    factory: &'a mut IoFactory,
+    factory: &'a mut IoFactory+'a,
 }
 
 #[unsafe_destructor]
@@ -174,7 +174,7 @@ impl<'a> LocalIo<'a> {
         }
     }
 
-    pub fn new<'a>(io: &'a mut IoFactory) -> LocalIo<'a> {
+    pub fn new<'a>(io: &'a mut IoFactory+'a) -> LocalIo<'a> {
         LocalIo { factory: io }
     }
 

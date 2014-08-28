@@ -144,14 +144,17 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
     debug!("checking impl with self type {}", ty::get(self_ty).sty);
-    check_builtin_bounds(cx, self_ty, trait_def.bounds, |missing| {
-        span_err!(cx.tcx.sess, self_type.span, E0142,
-                  "the type `{}', which does not fulfill `{}`, cannot implement this trait",
-                  ty_to_string(cx.tcx, self_ty), missing.user_string(cx.tcx));
-        span_note!(cx.tcx.sess, self_type.span,
-                   "types implementing this trait must fulfill `{}`",
-                   trait_def.bounds.user_string(cx.tcx));
-    });
+    check_builtin_bounds(
+        cx, self_ty, trait_def.bounds.builtin_bounds,
+        |missing| {
+            span_err!(cx.tcx.sess, self_type.span, E0142,
+                      "the type `{}', which does not fulfill `{}`, \
+                       cannot implement this trait",
+                      ty_to_string(cx.tcx, self_ty), missing.user_string(cx.tcx));
+            span_note!(cx.tcx.sess, self_type.span,
+                       "types implementing this trait must fulfill `{}`",
+                       trait_def.bounds.user_string(cx.tcx));
+        });
 
     // If this is a destructor, check kinds.
     if cx.tcx.lang_items.drop_trait() == Some(trait_def_id) {
@@ -297,17 +300,15 @@ fn with_appropriate_checker(cx: &Context,
     match ty::get(fty).sty {
         ty::ty_closure(box ty::ClosureTy {
             store: ty::UniqTraitStore,
-            bounds: mut bounds, ..
+            bounds: bounds,
+            ..
         }) => {
-            // Procs can't close over non-static references!
-            bounds.add(ty::BoundStatic);
-
-            b(|cx, fv| check_for_uniq(cx, fv, bounds))
+            b(|cx, fv| check_for_uniq(cx, fv, bounds.builtin_bounds))
         }
 
         ty::ty_closure(box ty::ClosureTy {
             store: ty::RegionTraitStore(region, _), bounds, ..
-        }) => b(|cx, fv| check_for_block(cx, fv, bounds, region)),
+        }) => b(|cx, fv| check_for_block(cx, fv, bounds.builtin_bounds, region)),
 
         ty::ty_bare_fn(_) => {
             b(check_for_bare)
@@ -377,13 +378,6 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                                                          expression_type);
 
     match e.node {
-        ExprBox(ref loc, ref interior) => {
-            let def = ty::resolve_expr(cx.tcx, &**loc);
-            if Some(def.def_id()) == cx.tcx.lang_items.managed_heap() {
-                let interior_type = ty::expr_ty(cx.tcx, &**interior);
-                let _ = check_static(cx.tcx, interior_type, interior.span);
-            }
-        }
         ExprCast(ref source, _) => {
             let source_ty = ty::expr_ty(cx.tcx, &**source);
             let target_ty = ty::expr_ty(cx.tcx, e);
@@ -562,7 +556,6 @@ fn check_trait_cast(cx: &mut Context,
                     target_ty: ty::t,
                     span: Span,
                     method_call: MethodCall) {
-    check_cast_for_escaping_regions(cx, source_ty, target_ty, span);
     match ty::get(target_ty).sty {
         ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ ty, .. }) => {
             match ty::get(ty).sty {
@@ -580,7 +573,8 @@ fn check_trait_cast(cx: &mut Context,
                                 vtable_res)
                         }
                     };
-                    check_trait_cast_bounds(cx, span, source_ty, bounds);
+                    check_trait_cast_bounds(cx, span, source_ty,
+                                            bounds.builtin_bounds);
                 }
                 _ => {}
             }
@@ -620,7 +614,7 @@ pub fn check_builtin_bounds(cx: &Context,
     let kind = ty::type_contents(cx.tcx, ty);
     let mut missing = ty::empty_builtin_bounds();
     for bound in bounds.iter() {
-        if !kind.meets_bound(cx.tcx, bound) {
+        if !kind.meets_builtin_bound(cx.tcx, bound) {
             missing.add(bound);
         }
     }
@@ -761,132 +755,6 @@ fn check_copy(cx: &Context, ty: ty::t, sp: Span, reason: &str) {
             "copying a value of non-copyable type `{}`",
             ty_to_string(cx.tcx, ty));
         span_note!(cx.tcx.sess, sp, "{}", reason.as_slice());
-    }
-}
-
-pub fn check_static(tcx: &ty::ctxt, ty: ty::t, sp: Span) -> bool {
-    if !ty::type_is_static(tcx, ty) {
-        match ty::get(ty).sty {
-            ty::ty_param(..) => {
-                span_err!(tcx.sess, sp, E0149,
-                    "value may contain references; \
-                     add `'static` bound to `{}`",
-                     ty_to_string(tcx, ty));
-            }
-            _ => {
-                span_err!(tcx.sess, sp, E0150,
-                    "value may contain references");
-            }
-        }
-        false
-    } else {
-        true
-    }
-}
-
-/// This is rather subtle.  When we are casting a value to an instantiated
-/// trait like `a as trait<'r>`, regionck already ensures that any references
-/// that appear in the type of `a` are bounded by `'r` (ed.: rem
-/// FIXME(#5723)).  However, it is possible that there are *type parameters*
-/// in the type of `a`, and those *type parameters* may have references
-/// within them.  We have to guarantee that the regions which appear in those
-/// type parameters are not obscured.
-///
-/// Therefore, we ensure that one of three conditions holds:
-///
-/// (1) The trait instance cannot escape the current fn.  This is
-/// guaranteed if the region bound `&r` is some scope within the fn
-/// itself.  This case is safe because whatever references are
-/// found within the type parameter, they must enclose the fn body
-/// itself.
-///
-/// (2) The type parameter appears in the type of the trait.  For
-/// example, if the type parameter is `T` and the trait type is
-/// `deque<T>`, then whatever references may appear in `T` also
-/// appear in `deque<T>`.
-///
-/// (3) The type parameter is sendable (and therefore does not contain
-/// references).
-///
-/// FIXME(#5723)---This code should probably move into regionck.
-pub fn check_cast_for_escaping_regions(
-    cx: &Context,
-    source_ty: ty::t,
-    target_ty: ty::t,
-    source_span: Span)
-{
-    // Determine what type we are casting to; if it is not a trait, then no
-    // worries.
-    if !ty::type_is_trait(target_ty) {
-        return;
-    }
-
-    // Collect up the regions that appear in the target type.  We want to
-    // ensure that these lifetimes are shorter than all lifetimes that are in
-    // the source type.  See test `src/test/compile-fail/regions-trait-2.rs`
-    let mut target_regions = Vec::new();
-    ty::walk_regions_and_ty(
-        cx.tcx,
-        target_ty,
-        |r| {
-            if !r.is_bound() {
-                target_regions.push(r);
-            }
-        },
-        |_| ());
-
-    // Check, based on the region associated with the trait, whether it can
-    // possibly escape the enclosing fn item (note that all type parameters
-    // must have been declared on the enclosing fn item).
-    if target_regions.iter().any(|r| is_ReScope(*r)) {
-        return; /* case (1) */
-    }
-
-    // Assuming the trait instance can escape, then ensure that each parameter
-    // either appears in the trait type or is sendable.
-    let target_params = ty::param_tys_in_type(target_ty);
-    ty::walk_regions_and_ty(
-        cx.tcx,
-        source_ty,
-
-        |_r| {
-            // FIXME(#5723) --- turn this check on once &Objects are usable
-            //
-            // if !target_regions.iter().any(|t_r| is_subregion_of(cx, *t_r, r)) {
-            //     cx.tcx.sess.span_err(
-            //         source_span,
-            //         format!("source contains reference with lifetime \
-            //               not found in the target type `{}`",
-            //              ty_to_string(cx.tcx, target_ty)));
-            //     note_and_explain_region(
-            //         cx.tcx, "source data is only valid for ", r, "");
-            // }
-        },
-
-        |ty| {
-            match ty::get(ty).sty {
-                ty::ty_param(source_param) => {
-                    if source_param.space == subst::SelfSpace {
-                        // FIXME (#5723) -- there is no reason that
-                        // Self should be exempt from this check,
-                        // except for historical accident. Bottom
-                        // line, we need proper region bounding.
-                    } else if target_params.iter().any(|x| x == &source_param) {
-                        /* case (2) */
-                    } else {
-                        check_static(cx.tcx, ty, source_span); /* case (3) */
-                    }
-                }
-                _ => {}
-            }
-        });
-
-    #[allow(non_snake_case_functions)]
-    fn is_ReScope(r: ty::Region) -> bool {
-        match r {
-            ty::ReScope(..) => true,
-            _ => false
-        }
     }
 }
 

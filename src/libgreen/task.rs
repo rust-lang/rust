@@ -488,7 +488,9 @@ impl Runtime for GreenTask {
 
     fn can_block(&self) -> bool { false }
 
-    fn wrap(self: Box<GreenTask>) -> Box<Any> { self as Box<Any> }
+    fn wrap(self: Box<GreenTask>) -> Box<Any+'static> {
+        self as Box<Any+'static>
+    }
 }
 
 #[cfg(test)]
