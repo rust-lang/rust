@@ -30,9 +30,9 @@ trait MyTrait { }
 impl MyTrait for Box<DroppableStruct> {}
 impl MyTrait for Box<DroppableEnum> {}
 
-struct Whatever { w: Box<MyTrait> }
+struct Whatever { w: Box<MyTrait+'static> }
 impl  Whatever {
-    fn new(w: Box<MyTrait>) -> Whatever {
+    fn new(w: Box<MyTrait+'static>) -> Whatever {
         Whatever { w: w }
     }
 }

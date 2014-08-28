@@ -11,7 +11,7 @@
 // Tests (negatively) the ability for the Self type in default methods
 // to use capabilities granted by builtin kinds as supertraits.
 
-trait Foo : Sync {
+trait Foo : Sync+'static {
     fn foo(self, mut chan: Sender<Self>) {
         chan.send(self); //~ ERROR does not fulfill `Send`
     }

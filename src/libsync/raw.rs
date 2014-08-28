@@ -103,7 +103,14 @@ struct SemInner<Q> {
 }
 
 #[must_use]
+#[cfg(stage0)]
 struct SemGuard<'a, Q> {
+    sem: &'a Sem<Q>,
+}
+
+#[must_use]
+#[cfg(not(stage0))]
+struct SemGuard<'a, Q:'a> {
     sem: &'a Sem<Q>,
 }
 

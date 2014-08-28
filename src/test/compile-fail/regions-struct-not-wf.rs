@@ -8,13 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Various examples of structs whose fields are not well-formed.
 
-trait Foo { }
+#![no_std]
+#![allow(dead_code)]
 
-fn foo<'a>(x: Box<Foo + 'a>) { //~ ERROR only the 'static lifetime is accepted here
+struct Ref<'a, T> { //~ ERROR the parameter type `T` may not live long enough
+    field: &'a T
 }
 
-fn bar<'a, T:'a>() { //~ ERROR only the 'static lifetime is accepted here
+struct RefOk<'a, T:'a> {
+    field: &'a T
+}
+
+struct RefIndirect<'a, T> { //~ ERROR the parameter type `T` may not live long enough
+    field: RefOk<'a, T>
+}
+
+struct DoubleRef<'a, 'b, T> { //~ ERROR reference has a longer lifetime than the data it references
+    field: &'a &'b T
 }
 
 fn main() { }

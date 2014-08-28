@@ -12,15 +12,9 @@
 
 use std::cmp::PartialEq;
 
-trait Hahaha: PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + //~ ERROR duplicate supertrait
-              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
-              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
-              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
-              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
-              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
-              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
-              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
-              PartialEq {}
+trait Hahaha: PartialEq + PartialEq {
+    //~^ ERROR trait `PartialEq` already appears in the list of bounds
+}
 
 struct Lol(int);
 

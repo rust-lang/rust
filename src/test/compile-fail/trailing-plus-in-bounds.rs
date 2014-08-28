@@ -11,7 +11,7 @@
 use std::fmt::Show;
 
 fn main() {
-    let x: Box<Show+> = box 3 as Box<Show+>;
+    let x: Box<Show+> = box 3i as Box<Show+>;
     //~^ ERROR at least one type parameter bound must be specified
     //~^^ ERROR at least one type parameter bound must be specified
 }

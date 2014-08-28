@@ -28,7 +28,15 @@ pub struct AccessTimeout<T> {
     pub access: access::Access<T>,
 }
 
+#[cfg(stage0)]
 pub struct Guard<'a, T> {
+    state: &'a mut TimeoutState,
+    pub access: access::Guard<'a, T>,
+    pub can_timeout: bool,
+}
+
+#[cfg(not(stage0))]
+pub struct Guard<'a, T:'static> {
     state: &'a mut TimeoutState,
     pub access: access::Guard<'a, T>,
     pub can_timeout: bool,

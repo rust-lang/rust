@@ -6,10 +6,12 @@ digraph block {
     N4[label="expr 20u"];
     N5[label="expr [2u, 0u, 20u]"];
     N6[label="local v"];
-    N7[label="expr v"];
-    N8[label="expr 20u"];
-    N9[label="expr v[20u]"];
-    N10[label="block { let v = [2u, 0u, 20u]; v[20u]; }"];
+    N7[label="stmt let v = [2u, 0u, 20u];"];
+    N8[label="expr v"];
+    N9[label="expr 20u"];
+    N10[label="expr v[20u]"];
+    N11[label="stmt v[20u];"];
+    N12[label="block { let v = [2u, 0u, 20u]; v[20u]; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -19,5 +21,7 @@ digraph block {
     N7 -> N8;
     N8 -> N9;
     N9 -> N10;
-    N10 -> N1;
+    N10 -> N11;
+    N11 -> N12;
+    N12 -> N1;
 }

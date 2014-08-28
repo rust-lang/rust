@@ -16,6 +16,6 @@ fn f<T:'static>(_: T) {}
 fn main() {
     let x = box(GC) 3i;
     f(x);
-    let x = &3i;
-    f(x);   //~ ERROR instantiating a type parameter with an incompatible type
+    let x = &3i; //~ ERROR borrowed value does not live long enough
+    f(x);
 }

@@ -10,8 +10,8 @@
 
 use abi;
 use ast::{FnMutUnboxedClosureKind, FnOnceUnboxedClosureKind};
-use ast::{FnUnboxedClosureKind, MethodImplItem, P, OtherRegionTyParamBound};
-use ast::{StaticRegionTyParamBound, TraitTyParamBound, UnboxedClosureKind};
+use ast::{FnUnboxedClosureKind, MethodImplItem, P};
+use ast::{RegionTyParamBound, TraitTyParamBound, UnboxedClosureKind};
 use ast::{UnboxedFnTyParamBound, RequiredMethod, ProvidedMethod};
 use ast;
 use ast_util;
@@ -60,16 +60,16 @@ pub struct State<'a> {
     literals: Option<Vec<comments::Literal> >,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
     boxes: Vec<pp::Breaks>,
-    ann: &'a PpAnn,
+    ann: &'a PpAnn+'a,
     encode_idents_with_hygiene: bool,
 }
 
-pub fn rust_printer(writer: Box<io::Writer>) -> State<'static> {
+pub fn rust_printer(writer: Box<io::Writer+'static>) -> State<'static> {
     static NO_ANN: NoAnn = NoAnn;
     rust_printer_annotated(writer, &NO_ANN)
 }
 
-pub fn rust_printer_annotated<'a>(writer: Box<io::Writer>,
+pub fn rust_printer_annotated<'a>(writer: Box<io::Writer+'static>,
                                   ann: &'a PpAnn) -> State<'a> {
     State {
         s: pp::mk_printer(writer, default_columns),
@@ -98,7 +98,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        krate: &ast::Crate,
                        filename: String,
                        input: &mut io::Reader,
-                       out: Box<io::Writer>,
+                       out: Box<io::Writer+'static>,
                        ann: &'a PpAnn,
                        is_expanded: bool) -> IoResult<()> {
     let mut s = State::new_from_input(cm,
@@ -118,7 +118,7 @@ impl<'a> State<'a> {
                           span_diagnostic: &diagnostic::SpanHandler,
                           filename: String,
                           input: &mut io::Reader,
-                          out: Box<io::Writer>,
+                          out: Box<io::Writer+'static>,
                           ann: &'a PpAnn,
                           is_expanded: bool) -> State<'a> {
         let (cmnts, lits) = comments::gather_comments_and_literals(
@@ -138,7 +138,7 @@ impl<'a> State<'a> {
     }
 
     pub fn new(cm: &'a CodeMap,
-               out: Box<io::Writer>,
+               out: Box<io::Writer+'static>,
                ann: &'a PpAnn,
                comments: Option<Vec<comments::Comment>>,
                literals: Option<Vec<comments::Literal>>) -> State<'a> {
@@ -594,17 +594,16 @@ impl<'a> State<'a> {
                 };
                 try!(self.print_ty_fn(Some(f.abi),
                                       None,
-                                      &None,
                                       f.fn_style,
                                       ast::Many,
                                       &*f.decl,
                                       None,
-                                      &None,
+                                      &OwnedSlice::empty(),
                                       Some(&generics),
                                       None,
                                       None));
             }
-            ast::TyClosure(f, ref region) => {
+            ast::TyClosure(f) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
                     ty_params: OwnedSlice::empty(),
@@ -615,7 +614,6 @@ impl<'a> State<'a> {
                 };
                 try!(self.print_ty_fn(None,
                                       Some('&'),
-                                      region,
                                       f.fn_style,
                                       f.onceness,
                                       &*f.decl,
@@ -636,7 +634,6 @@ impl<'a> State<'a> {
                 };
                 try!(self.print_ty_fn(None,
                                       Some('~'),
-                                      &None,
                                       f.fn_style,
                                       f.onceness,
                                       &*f.decl,
@@ -649,12 +646,11 @@ impl<'a> State<'a> {
             ast::TyUnboxedFn(f) => {
                 try!(self.print_ty_fn(None,
                                       None,
-                                      &None,
                                       ast::NormalFn,
                                       ast::Many,
                                       &*f.decl,
                                       None,
-                                      &None,
+                                      &OwnedSlice::empty(),
                                       None,
                                       None,
                                       Some(f.kind)));
@@ -837,7 +833,7 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose(item.span));
             }
-            ast::ItemTrait(ref generics, ref unbound, ref traits, ref methods) => {
+            ast::ItemTrait(ref generics, ref unbound, ref bounds, ref methods) => {
                 try!(self.head(visibility_qualified(item.vis,
                                                     "trait").as_slice()));
                 try!(self.print_ident(item.ident));
@@ -851,16 +847,7 @@ impl<'a> State<'a> {
                     }
                     _ => {}
                 }
-                if traits.len() != 0u {
-                    try!(word(&mut self.s, ":"));
-                    for (i, trait_) in traits.iter().enumerate() {
-                        try!(self.nbsp());
-                        if i != 0 {
-                            try!(self.word_space("+"));
-                        }
-                        try!(self.print_path(&trait_.path, false));
-                    }
-                }
+                try!(self.print_bounds(":", bounds));
                 try!(self.print_where_clause(generics));
                 try!(word(&mut self.s, " "));
                 try!(self.bopen());
@@ -1073,12 +1060,11 @@ impl<'a> State<'a> {
         try!(self.print_outer_attributes(m.attrs.as_slice()));
         try!(self.print_ty_fn(None,
                               None,
-                              &None,
                               m.fn_style,
                               ast::Many,
                               &*m.decl,
                               Some(m.ident),
-                              &None,
+                              &OwnedSlice::empty(),
                               Some(&m.generics),
                               Some(m.explicit_self.node),
                               None));
@@ -1808,7 +1794,7 @@ impl<'a> State<'a> {
 
         match *opt_bounds {
             None => Ok(()),
-            Some(ref bounds) => self.print_bounds(&None, bounds, true, true),
+            Some(ref bounds) => self.print_bounds("+", bounds)
         }
     }
 
@@ -2132,30 +2118,12 @@ impl<'a> State<'a> {
     }
 
     pub fn print_bounds(&mut self,
-                        region: &Option<ast::Lifetime>,
-                        bounds: &OwnedSlice<ast::TyParamBound>,
-                        print_colon_anyway: bool,
-                        print_plus_before_bounds: bool)
+                        prefix: &str,
+                        bounds: &OwnedSlice<ast::TyParamBound>)
                         -> IoResult<()> {
-        let separator = if print_plus_before_bounds {
-            "+"
-        } else {
-            ":"
-        };
-        if !bounds.is_empty() || region.is_some() {
-            try!(word(&mut self.s, separator));
+        if !bounds.is_empty() {
+            try!(word(&mut self.s, prefix));
             let mut first = true;
-            match *region {
-                Some(ref lt) => {
-                    let token = token::get_name(lt.name);
-                    if token.get() != "'static" {
-                        try!(self.nbsp());
-                        first = false;
-                        try!(self.print_lifetime(lt));
-                    }
-                }
-                None => {}
-            }
             for bound in bounds.iter() {
                 try!(self.nbsp());
                 if first {
@@ -2165,27 +2133,27 @@ impl<'a> State<'a> {
                 }
 
                 try!(match *bound {
-                    TraitTyParamBound(ref tref) => self.print_trait_ref(tref),
-                    StaticRegionTyParamBound => word(&mut self.s, "'static"),
+                    TraitTyParamBound(ref tref) => {
+                        self.print_trait_ref(tref)
+                    }
+                    RegionTyParamBound(ref lt) => {
+                        self.print_lifetime(lt)
+                    }
                     UnboxedFnTyParamBound(ref unboxed_function_type) => {
                         self.print_ty_fn(None,
                                          None,
-                                         &None,
                                          ast::NormalFn,
                                          ast::Many,
                                          &*unboxed_function_type.decl,
                                          None,
-                                         &None,
+                                         &OwnedSlice::empty(),
                                          None,
                                          None,
                                          Some(unboxed_function_type.kind))
                     }
-                    OtherRegionTyParamBound(_) => Ok(())
                 })
             }
             Ok(())
-        } else if print_colon_anyway {
-            word(&mut self.s, separator)
         } else {
             Ok(())
         }
@@ -2212,23 +2180,29 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    fn print_type_parameters(&mut self,
-                             lifetimes: &[ast::LifetimeDef],
-                             ty_params: &[ast::TyParam])
-                             -> IoResult<()> {
-        let total = lifetimes.len() + ty_params.len();
+    pub fn print_generics(&mut self,
+                          generics: &ast::Generics)
+                          -> IoResult<()>
+    {
+        let total = generics.lifetimes.len() + generics.ty_params.len();
+        if total == 0 {
+            return Ok(());
+        }
+
+        try!(word(&mut self.s, "<"));
+
         let mut ints = Vec::new();
         for i in range(0u, total) {
             ints.push(i);
         }
 
-        self.commasep(Inconsistent, ints.as_slice(), |s, &idx| {
-            if idx < lifetimes.len() {
-                let lifetime = &lifetimes[idx];
+        try!(self.commasep(Inconsistent, ints.as_slice(), |s, &idx| {
+            if idx < generics.lifetimes.len() {
+                let lifetime = generics.lifetimes.get(idx);
                 s.print_lifetime_def(lifetime)
             } else {
-                let idx = idx - lifetimes.len();
-                let param = &ty_params[idx];
+                let idx = idx - generics.lifetimes.len();
+                let param = generics.ty_params.get(idx);
                 match param.unbound {
                     Some(TraitTyParamBound(ref tref)) => {
                         try!(s.print_trait_ref(tref));
@@ -2237,10 +2211,7 @@ impl<'a> State<'a> {
                     _ => {}
                 }
                 try!(s.print_ident(param.ident));
-                try!(s.print_bounds(&None,
-                                    &param.bounds,
-                                    false,
-                                    false));
+                try!(s.print_bounds(":", &param.bounds));
                 match param.default {
                     Some(ref default) => {
                         try!(space(&mut s.s));
@@ -2250,19 +2221,10 @@ impl<'a> State<'a> {
                     _ => Ok(())
                 }
             }
-        })
-    }
+        }));
 
-    pub fn print_generics(&mut self, generics: &ast::Generics)
-                          -> IoResult<()> {
-        if generics.lifetimes.len() + generics.ty_params.len() > 0 {
-            try!(word(&mut self.s, "<"));
-            try!(self.print_type_parameters(generics.lifetimes.as_slice(),
-                                            generics.ty_params.as_slice()));
-            word(&mut self.s, ">")
-        } else {
-            Ok(())
-        }
+        try!(word(&mut self.s, ">"));
+        Ok(())
     }
 
     pub fn print_where_clause(&mut self, generics: &ast::Generics)
@@ -2283,7 +2245,7 @@ impl<'a> State<'a> {
             }
 
             try!(self.print_ident(predicate.ident));
-            try!(self.print_bounds(&None, &predicate.bounds, false, false));
+            try!(self.print_bounds(":", &predicate.bounds));
         }
 
         Ok(())
@@ -2421,12 +2383,11 @@ impl<'a> State<'a> {
     pub fn print_ty_fn(&mut self,
                        opt_abi: Option<abi::Abi>,
                        opt_sigil: Option<char>,
-                       opt_region: &Option<ast::Lifetime>,
                        fn_style: ast::FnStyle,
                        onceness: ast::Onceness,
                        decl: &ast::FnDecl,
                        id: Option<ast::Ident>,
-                       opt_bounds: &Option<OwnedSlice<ast::TyParamBound>>,
+                       bounds: &OwnedSlice<ast::TyParamBound>,
                        generics: Option<&ast::Generics>,
                        opt_explicit_self: Option<ast::ExplicitSelf_>,
                        opt_unboxed_closure_kind:
@@ -2495,9 +2456,7 @@ impl<'a> State<'a> {
             try!(self.pclose());
         }
 
-        opt_bounds.as_ref().map(|bounds| {
-            self.print_bounds(opt_region, bounds, true, false)
-        });
+        try!(self.print_bounds(":", bounds));
 
         try!(self.maybe_print_comment(decl.output.span.lo));
 

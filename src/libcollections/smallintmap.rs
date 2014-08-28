@@ -489,8 +489,17 @@ macro_rules! double_ended_iterator {
     }
 }
 
-/// Forward iterator over a map.
+/// Note: stage0-specific version that lacks bound on A.
+#[cfg(stage0)]
 pub struct Entries<'a, T> {
+    front: uint,
+    back: uint,
+    iter: slice::Items<'a, Option<T>>
+}
+
+/// Forward iterator over a map.
+#[cfg(not(stage0))]
+pub struct Entries<'a, T:'a> {
     front: uint,
     back: uint,
     iter: slice::Items<'a, Option<T>>
@@ -499,9 +508,18 @@ pub struct Entries<'a, T> {
 iterator!(impl Entries -> (uint, &'a T), get_ref)
 double_ended_iterator!(impl Entries -> (uint, &'a T), get_ref)
 
+/// Note: stage0-specific version that lacks bound on A.
+#[cfg(stage0)]
+pub struct MutEntries<'a, T> {
+    front: uint,
+    back: uint,
+    iter: slice::MutItems<'a, Option<T>>
+}
+
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
-pub struct MutEntries<'a, T> {
+#[cfg(not(stage0))]
+pub struct MutEntries<'a, T:'a> {
     front: uint,
     back: uint,
     iter: slice::MutItems<'a, Option<T>>

@@ -11,7 +11,7 @@
 // Test that the lambda kind is inferred correctly as a return
 // expression
 
-fn unique() -> proc() { return proc() (); }
+fn unique() -> proc():'static { return proc() (); }
 
 pub fn main() {
 }

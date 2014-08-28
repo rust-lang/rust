@@ -147,6 +147,13 @@ pub fn parse_ty_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty:
     parse_ty(&mut st, conv)
 }
 
+pub fn parse_region_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
+                         conv: conv_did) -> ty::Region {
+    debug!("parse_region_data {}", data_log_string(data, pos));
+    let mut st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_region(&mut st, conv)
+}
+
 pub fn parse_bare_fn_ty_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
                              conv: conv_did) -> ty::BareFnTy {
     debug!("parse_bare_fn_ty_data {}", data_log_string(data, pos));
@@ -166,6 +173,27 @@ pub fn parse_substs_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: 
     debug!("parse_substs_data {}", data_log_string(data, pos));
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_substs(&mut st, conv)
+}
+
+pub fn parse_bounds_data(data: &[u8], crate_num: ast::CrateNum,
+                         pos: uint, tcx: &ty::ctxt, conv: conv_did)
+                         -> ty::ParamBounds {
+    let mut st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_bounds(&mut st, conv)
+}
+
+pub fn parse_existential_bounds_data(data: &[u8], crate_num: ast::CrateNum,
+                                     pos: uint, tcx: &ty::ctxt, conv: conv_did)
+                                     -> ty::ExistentialBounds {
+    let mut st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_existential_bounds(&mut st, conv)
+}
+
+pub fn parse_builtin_bounds_data(data: &[u8], crate_num: ast::CrateNum,
+                                 pos: uint, tcx: &ty::ctxt, conv: conv_did)
+                                 -> ty::BuiltinBounds {
+    let mut st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_builtin_bounds(&mut st, conv)
 }
 
 fn parse_size(st: &mut PState) -> Option<uint> {
@@ -355,9 +383,9 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         assert_eq!(next(st), '[');
         let def = parse_def(st, NominalType, |x,y| conv(x,y));
         let substs = parse_substs(st, |x,y| conv(x,y));
-        let bounds = parse_bounds(st, |x,y| conv(x,y));
+        let bounds = parse_existential_bounds(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
-        return ty::mk_trait(st.tcx, def, substs, bounds.builtin_bounds);
+        return ty::mk_trait(st.tcx, def, substs, bounds);
       }
       'p' => {
         let did = parse_def(st, TypeParameter, |x,y| conv(x,y));
@@ -515,14 +543,14 @@ fn parse_closure_ty(st: &mut PState, conv: conv_did) -> ty::ClosureTy {
     let fn_style = parse_fn_style(next(st));
     let onceness = parse_onceness(next(st));
     let store = parse_trait_store(st, |x,y| conv(x,y));
-    let bounds = parse_bounds(st, |x,y| conv(x,y));
+    let bounds = parse_existential_bounds(st, |x,y| conv(x,y));
     let sig = parse_sig(st, |x,y| conv(x,y));
     let abi = parse_abi_set(st);
     ty::ClosureTy {
         fn_style: fn_style,
         onceness: onceness,
         store: store,
-        bounds: bounds.builtin_bounds,
+        bounds: bounds,
         sig: sig,
         abi: abi,
     }
@@ -601,7 +629,7 @@ fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef
     assert_eq!(next(st), '|');
     let index = parse_uint(st);
     assert_eq!(next(st), '|');
-    let bounds = Rc::new(parse_bounds(st, |x,y| conv(x,y)));
+    let bounds = parse_bounds(st, |x,y| conv(x,y));
     let default = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)));
 
     ty::TypeParameterDef {
@@ -614,27 +642,51 @@ fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef
     }
 }
 
+fn parse_existential_bounds(st: &mut PState, conv: conv_did) -> ty::ExistentialBounds {
+    let r = parse_region(st, |x,y| conv(x,y));
+    let bb = parse_builtin_bounds(st, conv);
+    return ty::ExistentialBounds { region_bound: r, builtin_bounds: bb };
+}
+
+fn parse_builtin_bounds(st: &mut PState, _conv: conv_did) -> ty::BuiltinBounds {
+    let mut builtin_bounds = ty::empty_builtin_bounds();
+
+    loop {
+        match next(st) {
+            'S' => {
+                builtin_bounds.add(ty::BoundSend);
+            }
+            'Z' => {
+                builtin_bounds.add(ty::BoundSized);
+            }
+            'P' => {
+                builtin_bounds.add(ty::BoundCopy);
+            }
+            'T' => {
+                builtin_bounds.add(ty::BoundSync);
+            }
+            '.' => {
+                return builtin_bounds;
+            }
+            c => {
+                fail!("parse_bounds: bad builtin bounds ('{}')", c)
+            }
+        }
+    }
+}
+
 fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
+    let builtin_bounds = parse_builtin_bounds(st, |x,y| conv(x,y));
+
     let mut param_bounds = ty::ParamBounds {
-        builtin_bounds: ty::empty_builtin_bounds(),
+        opt_region_bound: None,
+        builtin_bounds: builtin_bounds,
         trait_bounds: Vec::new()
     };
     loop {
         match next(st) {
-            'S' => {
-                param_bounds.builtin_bounds.add(ty::BoundSend);
-            }
-            'O' => {
-                param_bounds.builtin_bounds.add(ty::BoundStatic);
-            }
-            'Z' => {
-                param_bounds.builtin_bounds.add(ty::BoundSized);
-            }
-            'P' => {
-                param_bounds.builtin_bounds.add(ty::BoundCopy);
-            }
-            'T' => {
-                param_bounds.builtin_bounds.add(ty::BoundSync);
+            'R' => {
+                param_bounds.opt_region_bound = Some(parse_region(st, |x, y| conv (x, y)));
             }
             'I' => {
                 param_bounds.trait_bounds.push(Rc::new(parse_trait_ref(st, |x,y| conv(x,y))));

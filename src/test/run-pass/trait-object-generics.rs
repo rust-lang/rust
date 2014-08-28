@@ -21,7 +21,7 @@ pub struct Impl<A1, A2, A3> {
      * task <unnamed> failed at 'index out of bounds: the len is 1 but the index is 1',
      * src/librustc/middle/subst.rs:58
      */
-    t: Box<Trait2<A2>>
+    t: Box<Trait2<A2>+'static>
 }
 
 impl<A1, A2, A3> Impl<A1, A2, A3> {

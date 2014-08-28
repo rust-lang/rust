@@ -95,7 +95,7 @@ pub struct ReprVisitor<'a> {
     ptr: *const u8,
     ptr_stk: Vec<*const u8>,
     var_stk: Vec<VariantState>,
-    writer: &'a mut io::Writer,
+    writer: &'a mut io::Writer+'a,
     last_err: Option<io::IoError>,
 }
 

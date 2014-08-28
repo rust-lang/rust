@@ -15,7 +15,7 @@
 //
 // This test began its life as a test for issue #4325.
 
-struct Node<'b, T> {
+struct Node<'b, T:'b> {
   val: T,
   next: Option<&'b Node<'b, T>>
 }

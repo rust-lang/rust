@@ -26,7 +26,7 @@ fn call_this(f: |&str|:Send) {
     f("Hello!");
 }
 
-fn call_that(f: <'a>|&'a int, &'a int|: -> int) {
+fn call_that(f: <'a>|&'a int, &'a int| -> int) {
     let (ten, forty_two) = (10, 42);
     println!("Your lucky number is {}", f(&ten, &forty_two));
 }

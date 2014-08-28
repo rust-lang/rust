@@ -13,8 +13,8 @@
  *
  * The hash should concentrate entropy in the lower bits.
  */
-type HashFn<K> = proc(K) -> uint;
-type EqFn<K> = proc(K, K) -> bool;
+type HashFn<K> = proc(K):'static -> uint;
+type EqFn<K> = proc(K, K):'static -> bool;
 
 struct LM { resize_at: uint, size: uint }
 

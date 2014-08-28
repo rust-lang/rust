@@ -9,12 +9,12 @@
 // except according to those terms.
 
 fn f() { }
-struct S(||); //~ ERROR missing lifetime specifier
+struct S(||); //~ ERROR explicit lifetime bound required
 pub static C: S = S(f);
 
 
 fn g() { }
-type T = ||;  //~ ERROR missing lifetime specifier
+type T = ||;  //~ ERROR explicit lifetime bound required
 pub static D: T = g;
 
 fn main() {}

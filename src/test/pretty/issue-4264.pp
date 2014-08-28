@@ -48,8 +48,8 @@ pub fn bar() {
                        as core::fmt::rt::Piece<'static>)] as
                      [core::fmt::rt::Piece<'static>, .. 1]);
              let __args_vec =
-                 (&([] as [core::fmt::Argument<'static>, .. 0]) as
-                     &'static [core::fmt::Argument<'static>, .. 0]);
+                 (&([] as [core::fmt::Argument<'_>, .. 0]) as
+                     &[core::fmt::Argument<'_>, .. 0]);
              let __args =
                  (unsafe {
                       ((::std::fmt::Arguments::new as
@@ -58,9 +58,9 @@ pub fn bar() {
                                                                                                                                                [core::fmt::rt::Piece<'static>, .. 1]),
                                                                                                                                            (__args_vec
                                                                                                                                                as
-                                                                                                                                               &'static [core::fmt::Argument<'static>, .. 0]))
-                          as core::fmt::Arguments<'static>)
-                  } as core::fmt::Arguments<'static>);
+                                                                                                                                               &[core::fmt::Argument<'_>, .. 0]))
+                          as core::fmt::Arguments<'_>)
+                  } as core::fmt::Arguments<'_>);
 
 
 
@@ -72,9 +72,9 @@ pub fn bar() {
              ((::std::fmt::format as
                   fn(&core::fmt::Arguments<'_>) -> collections::string::String)((&(__args
                                                                                       as
-                                                                                      core::fmt::Arguments<'static>)
+                                                                                      core::fmt::Arguments<'_>)
                                                                                     as
-                                                                                    &core::fmt::Arguments<'static>))
+                                                                                    &core::fmt::Arguments<'_>))
                  as collections::string::String)
          }
      } as collections::string::String);

@@ -315,27 +315,6 @@ mod test {
         assert_eq!(consumer.pop(), None);
     }
 
-    // This behaviour is blocked by the type system if using the safe constructor
-    #[test]
-    fn pop_peeked_unchecked() {
-        let q = unsafe { Queue::new(0) };
-        q.push(vec![1i]);
-        q.push(vec![2]);
-        let peeked = q.peek().unwrap();
-
-        assert_eq!(*peeked, vec![1]);
-        assert_eq!(q.pop(), Some(vec![1]));
-
-        assert_eq!(*peeked, vec![1]);
-        q.push(vec![7]);
-
-        // Note: This should actually expect 1, but this test is to highlight
-        // the unsafety allowed by the unchecked usage. A Rust user would not
-        // expect their peeked value to mutate like this without the type system
-        // complaining.
-        assert_eq!(*peeked, vec![7]);
-    }
-
     #[test]
     fn peek() {
         let (mut consumer, mut producer) = queue(0);

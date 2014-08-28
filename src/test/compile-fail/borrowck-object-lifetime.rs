@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that borrows that occur due to calls to object methods
+// properly "claim" the object path.
 
 trait Foo {
     fn borrowed(&self) -> &();
+    fn mut_borrowed(&mut self) -> &();
 }
 
-fn borrowed_receiver(x: &Foo) -> &() {
-    x.borrowed()
+fn borrowed_receiver(x: &Foo) {
+    let _y = x.borrowed();
+    let _z = x.borrowed();
 }
 
-fn owned_receiver(x: Box<Foo>) -> &'static () {
-    x.borrowed() //~ ERROR `*x` does not live long enough
+fn mut_borrowed_receiver(x: &mut Foo) {
+    let _y = x.borrowed();
+    let _z = x.mut_borrowed(); //~ ERROR cannot borrow
 }
 
 fn mut_owned_receiver(mut x: Box<Foo>) {

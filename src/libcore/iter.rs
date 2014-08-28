@@ -673,7 +673,7 @@ pub trait MutableDoubleEndedIterator {
     fn reverse_(&mut self);
 }
 
-impl<'a, A, T: DoubleEndedIterator<&'a mut A>> MutableDoubleEndedIterator for T {
+impl<'a, A:'a, T: DoubleEndedIterator<&'a mut A>> MutableDoubleEndedIterator for T {
     // FIXME: #5898: should be called `reverse`
     /// Use an iterator to reverse a container in-place
     fn reverse_(&mut self) {
@@ -777,18 +777,26 @@ impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterato
 
 /// A mutable reference to an iterator
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[cfg(not(stage0))]
+pub struct ByRef<'a, T:'a> {
+    iter: &'a mut T
+}
+
+/// Dox
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[cfg(stage0)]
 pub struct ByRef<'a, T> {
     iter: &'a mut T
 }
 
-impl<'a, A, T: Iterator<A>> Iterator<A> for ByRef<'a, T> {
+impl<'a, A, T: Iterator<A>+'a> Iterator<A> for ByRef<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.iter.next() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<'a, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for ByRef<'a, T> {
+impl<'a, A, T: DoubleEndedIterator<A>+'a> DoubleEndedIterator<A> for ByRef<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.iter.next_back() }
 }

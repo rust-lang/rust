@@ -102,7 +102,8 @@ impl<'f> Combine for Sub<'f> {
         })
     }
 
-    fn bounds(&self, a: BuiltinBounds, b: BuiltinBounds) -> cres<BuiltinBounds> {
+    fn builtin_bounds(&self, a: BuiltinBounds, b: BuiltinBounds)
+                      -> cres<BuiltinBounds> {
         // More bounds is a subtype of fewer bounds.
         //
         // e.g., fn:Copy() <: fn(), because the former is a function

@@ -45,8 +45,10 @@ fn with_used_diagnostics<T>(f: |&mut HashMap<Name, Span>| -> T) -> T {
     }
 }
 
-pub fn expand_diagnostic_used(ecx: &mut ExtCtxt, span: Span,
-                              token_tree: &[TokenTree]) -> Box<MacResult> {
+pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
+                                   span: Span,
+                                   token_tree: &[TokenTree])
+                                   -> Box<MacResult+'cx> {
     let code = match token_tree {
         [ast::TTTok(_, token::IDENT(code, _))] => code,
         _ => unreachable!()
@@ -75,8 +77,10 @@ pub fn expand_diagnostic_used(ecx: &mut ExtCtxt, span: Span,
     MacExpr::new(quote_expr!(ecx, ()))
 }
 
-pub fn expand_register_diagnostic(ecx: &mut ExtCtxt, span: Span,
-                                  token_tree: &[TokenTree]) -> Box<MacResult> {
+pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
+                                       span: Span,
+                                       token_tree: &[TokenTree])
+                                       -> Box<MacResult+'cx> {
     let (code, description) = match token_tree {
         [ast::TTTok(_, token::IDENT(ref code, _))] => {
             (code, None)
@@ -101,8 +105,10 @@ pub fn expand_register_diagnostic(ecx: &mut ExtCtxt, span: Span,
     MacItem::new(quote_item!(ecx, mod $sym {}).unwrap())
 }
 
-pub fn expand_build_diagnostic_array(ecx: &mut ExtCtxt, span: Span,
-                                     token_tree: &[TokenTree]) -> Box<MacResult> {
+pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
+                                          span: Span,
+                                          token_tree: &[TokenTree])
+                                          -> Box<MacResult+'cx> {
     let name = match token_tree {
         [ast::TTTok(_, token::IDENT(ref name, _))] => name,
         _ => unreachable!()
