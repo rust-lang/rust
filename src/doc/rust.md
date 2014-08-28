@@ -3564,34 +3564,36 @@ let (a, b) = p;
 assert!(b != "world");
 ~~~~
 
-### Vector types
+### Vector, Array, and Slice types
 
-The vector type constructor represents a homogeneous array of values of a given type.
-A vector has a fixed size.
-(Operations like `vec.push` operate solely on owned vectors.)
-A vector type can be annotated with a _definite_ size, such as `[int, ..10]`.
-Such a definite-sized vector type is a first-class type, since its size is known statically.
-A vector without such a size is said to be of _indefinite_ size,
-and is therefore not a _first-class_ type.
-An indefinite-size vector can only be instantiated through a pointer type,
-such as `&[T]` or `Vec<T>`.
-The kind of a vector type depends on the kind of its element type,
-as with other simple structural types.
+Rust has three different types for a list of items:
 
-Expressions producing vectors of definite size cannot be evaluated in a
-context expecting a vector of indefinite size; one must copy the
-definite-sized vector contents into a distinct vector of indefinite size.
+* `Vec<T>`, a 'vector'
+* `[T ..N]`, an 'array'
+* `&[T]`, a 'slice'.
 
-An example of a vector type and its use:
+A vector is a heap-allocated list of `T`. A vector has ownership over the data
+inside of it. It is also able to grow and change in size. It's important to note
+that `Vec<T>` is a library type, it's not actually part of the core language.
 
-~~~~
-let v: &[int] = &[7, 5, 3];
-let i: int = v[2];
-assert!(i == 3);
-~~~~
+An array has a fixed size, and can be allocated on either the stack or the heap.
 
-All in-bounds elements of a vector are always initialized,
-and access to a vector is always bounds-checked.
+A slice is a 'view' into a vector or array. It doesn't own the data it points
+to, it borrows it.
+
+An example of each kind:
+
+```{rust}
+let vec: Vec<int>  = vec![1, 2, 3];
+let arr: [int, ..3] = [1, 2, 3];
+let s: &[int]      = vec.as_slice();
+```
+
+As you can see, the `vec!` macro allows you to create a `Vec<T>` easily. The
+`vec!` macro is also part of the standard library, rather than the language.
+
+All in-bounds elements of vectors, arrays, and slices are always initialized,
+and access to a vector, array, or slice is always bounds-checked.
 
 ### Structure types
 
