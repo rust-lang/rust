@@ -148,7 +148,13 @@ normal control flow.
 
 If you look at the actual patch that does this, you'll see that Entry itself is exceptional
 simple to implement. Most of the logic is trivial. The biggest amount of work was just
-capturing the search state correctly, and even that was mostly a cut-and-paste job. 
+capturing the search state correctly, and even that was mostly a cut-and-paste job.
+
+With Views, we also open up the gate for... *adaptors*! 
+You really want `insert_or_update`? We can provide that for you! Generically!
+However we believe such discussion is out-of-scope for this RFC. Adaptors can
+be tackled in a back-compat manner after this has landed, and we have a better sense
+of what we need or want.
 
 # Drawbacks
 
@@ -179,5 +185,8 @@ View design. However, it's not clear why this is done by them. We believe it's s
 validate what the method *actually did*. If this is the case, then Views make this functionality
 obsolete. However, if this is *still* desirable, we could tweak `set` to do this as well.
 Do we want this functionality?
+
+Do we want to introduce a proper standard trait, or keep it all concrete and ad-hoc for a while
+to figure out what does and doesn't work?
 
 Naming bikesheds!
