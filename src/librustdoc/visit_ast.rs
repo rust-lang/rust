@@ -317,12 +317,12 @@ impl<'a> RustdocVisitor<'a> {
                 };
                 om.statics.push(s);
             },
-            ast::ItemTrait(ref gen, _, ref tr, ref items) => {
+            ast::ItemTrait(ref gen, _, ref b, ref items) => {
                 let t = Trait {
                     name: item.ident,
                     items: items.iter().map(|x| (*x).clone()).collect(),
                     generics: gen.clone(),
-                    parents: tr.iter().map(|x| (*x).clone()).collect(),
+                    bounds: b.iter().map(|x| (*x).clone()).collect(),
                     id: item.id,
                     attrs: item.attrs.iter().map(|x| *x).collect(),
                     whence: item.span,

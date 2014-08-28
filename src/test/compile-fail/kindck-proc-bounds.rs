@@ -8,24 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn is_send<T: Send>() {}
+fn is_freeze<T: Sync>() {}
 
-trait A<T> {}
-struct B<'a, T>(&'a A<T>);
+fn foo<'a>() {
+    is_send::<proc()>();
+    //~^ ERROR: instantiating a type parameter with an incompatible type
 
-trait X {}
-impl<'a, T> X for B<'a, T> {}
-
-fn f<'a, T, U>(v: Box<A<T>>) -> Box<X> {
-    box B(v) as Box<X> //~ ERROR value may contain references; add `'static` bound to `T`
+    is_freeze::<proc()>();
+    //~^ ERROR: instantiating a type parameter with an incompatible type
 }
 
-fn g<'a, T, U>(v: Box<A<U>>) -> Box<X> {
-    box B(v) as Box<X> //~ ERROR value may contain references; add `'static` bound to `U`
-}
-
-fn h<'a, T: 'static>(v: Box<A<T>>) -> Box<X> {
-    box B(v) as Box<X> // ok
-}
-
-fn main() {}
-
+fn main() { }

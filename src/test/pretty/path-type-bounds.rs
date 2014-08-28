@@ -14,7 +14,7 @@
 trait Tr { }
 impl Tr for int { }
 
-fn foo(x: Box<Tr+ Sync>) -> Box<Tr+ Sync> { x }
+fn foo<'a>(x: Box<Tr+ Sync + 'a>) -> Box<Tr+ Sync + 'a> { x }
 
 fn main() {
     let x: Box<Tr+ Sync>;

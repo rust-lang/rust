@@ -72,8 +72,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("fourcc", expand_syntax_ext);
 }
 
-pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-                         -> Box<base::MacResult> {
+pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+                              -> Box<base::MacResult+'cx> {
     let (expr, endian) = parse_tts(cx, tts);
 
     let little = match endian {

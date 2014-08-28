@@ -180,6 +180,18 @@ pub struct Mutex<T> {
 
 /// An guard which is created by locking a mutex. Through this guard the
 /// underlying data can be accessed.
+#[cfg(not(stage0))]
+pub struct MutexGuard<'a, T:'a> {
+    // FIXME #12808: strange name to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _data: &'a mut T,
+    /// Inner condition variable connected to the locked mutex that this guard
+    /// was created from. This can be used for atomic-unlock-and-deschedule.
+    pub cond: Condvar<'a>,
+}
+
+/// stage0 only
+#[cfg(stage0)]
 pub struct MutexGuard<'a, T> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -280,6 +292,18 @@ pub struct RWLock<T> {
 
 /// A guard which is created by locking an rwlock in write mode. Through this
 /// guard the underlying data can be accessed.
+#[cfg(not(stage0))]
+pub struct RWLockWriteGuard<'a, T:'a> {
+    // FIXME #12808: strange name to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _data: &'a mut T,
+    /// Inner condition variable that can be used to sleep on the write mode of
+    /// this rwlock.
+    pub cond: Condvar<'a>,
+}
+
+/// stage0 only
+#[cfg(stage0)]
 pub struct RWLockWriteGuard<'a, T> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -291,6 +315,16 @@ pub struct RWLockWriteGuard<'a, T> {
 
 /// A guard which is created by locking an rwlock in read mode. Through this
 /// guard the underlying data can be accessed.
+#[cfg(not(stage0))]
+pub struct RWLockReadGuard<'a, T:'a> {
+    // FIXME #12808: strange names to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _data: &'a T,
+    _guard: raw::RWLockReadGuard<'a>,
+}
+
+/// Stage0 only
+#[cfg(stage0)]
 pub struct RWLockReadGuard<'a, T> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref

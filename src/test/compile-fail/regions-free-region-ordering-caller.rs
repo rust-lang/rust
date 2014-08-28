@@ -16,18 +16,18 @@ struct Paramd<'a> { x: &'a uint }
 
 fn call2<'a, 'b>(a: &'a uint, b: &'b uint) {
     let z: Option<&'b &'a uint> = None;
-    //~^ ERROR pointer has a longer lifetime than the data it references
+    //~^ ERROR reference has a longer lifetime than the data it references
 }
 
 fn call3<'a, 'b>(a: &'a uint, b: &'b uint) {
     let y: Paramd<'a> = Paramd { x: a };
     let z: Option<&'b Paramd<'a>> = None;
-    //~^ ERROR pointer has a longer lifetime than the data it references
+    //~^ ERROR reference has a longer lifetime than the data it references
 }
 
 fn call4<'a, 'b>(a: &'a uint, b: &'b uint) {
-    let z: Option<|&'a &'b uint|> = None;
-    //~^ ERROR pointer has a longer lifetime than the data it references
+    let z: Option<&'a &'b uint> = None;
+    //~^ ERROR reference has a longer lifetime than the data it references
 }
 
 

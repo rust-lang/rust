@@ -69,11 +69,11 @@ impl<'a, T> Iterator<T> for Iterate<'a, T> {
 }
 
 // a linked list using borrowed next.
-enum List<'a, T> {
+enum List<'a, T:'a> {
     Nil,
     Cons(T, &'a List<'a, T>)
 }
-struct ListIterator<'a, T> {
+struct ListIterator<'a, T:'a> {
     cur: &'a List<'a, T>
 }
 impl<'a, T> List<'a, T> {

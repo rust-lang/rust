@@ -25,6 +25,7 @@
 
 #![feature(macro_rules, globs, managed_boxes, default_type_params, phase)]
 #![feature(quote, struct_variant, unsafe_destructor, import_shadowing)]
+#![feature(issue_5723_bootstrap)]
 #![allow(deprecated)]
 
 // NOTE(stage0, pcwalton): Remove after snapshot.

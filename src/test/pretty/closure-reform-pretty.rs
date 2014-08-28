@@ -17,7 +17,7 @@ fn call_it(f: proc(String) -> String) { }
 
 fn call_this(f: |&str|: Send) { }
 
-fn call_that(f: <'a>|&'a int, &'a int|: -> int) { }
+fn call_that(f: <'a>|&'a int, &'a int| -> int) { }
 
 fn call_extern(f: fn() -> int) { }
 

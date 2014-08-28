@@ -407,8 +407,14 @@ impl<'a> TraitDef<'a> {
                     cx.typarambound(p.to_path(cx, self.span,
                                                   type_ident, generics))
                 }).collect();
+
             // require the current trait
             bounds.push(cx.typarambound(trait_path.clone()));
+
+            // also add in any bounds from the declaration
+            for declared_bound in ty_param.bounds.iter() {
+                bounds.push((*declared_bound).clone());
+            }
 
             cx.typaram(self.span,
                        ty_param.ident,

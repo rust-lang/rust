@@ -85,6 +85,11 @@ pub trait TypeFolder {
         super_fold_trait_store(self, s)
     }
 
+    fn fold_existential_bounds(&mut self, s: ty::ExistentialBounds)
+                               -> ty::ExistentialBounds {
+        super_fold_existential_bounds(self, s)
+    }
+
     fn fold_autoref(&mut self, ar: &ty::AutoRef) -> ty::AutoRef {
         super_fold_autoref(self, ar)
     }
@@ -236,9 +241,16 @@ impl TypeFoldable for ty::BuiltinBounds {
     }
 }
 
+impl TypeFoldable for ty::ExistentialBounds {
+    fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> ty::ExistentialBounds {
+        folder.fold_existential_bounds(*self)
+    }
+}
+
 impl TypeFoldable for ty::ParamBounds {
     fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> ty::ParamBounds {
         ty::ParamBounds {
+            opt_region_bound: self.opt_region_bound.fold_with(folder),
             builtin_bounds: self.builtin_bounds.fold_with(folder),
             trait_bounds: self.trait_bounds.fold_with(folder),
         }
@@ -259,8 +271,14 @@ impl TypeFoldable for ty::TypeParameterDef {
 }
 
 impl TypeFoldable for ty::RegionParameterDef {
-    fn fold_with<F:TypeFolder>(&self, _folder: &mut F) -> ty::RegionParameterDef {
-        *self
+    fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> ty::RegionParameterDef {
+        ty::RegionParameterDef {
+            name: self.name,
+            def_id: self.def_id,
+            space: self.space,
+            index: self.index,
+            bounds: self.bounds.fold_with(folder)
+        }
     }
 }
 
@@ -340,7 +358,7 @@ pub fn super_fold_closure_ty<T:TypeFolder>(this: &mut T,
         sig: fty.sig.fold_with(this),
         fn_style: fty.fn_style,
         onceness: fty.onceness,
-        bounds: fty.bounds,
+        bounds: fty.bounds.fold_with(this),
         abi: fty.abi,
     }
 }
@@ -389,7 +407,7 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
             ty::ty_trait(box ty::TyTrait {
                 def_id: def_id,
                 substs: substs.fold_with(this),
-                bounds: bounds
+                bounds: this.fold_existential_bounds(bounds),
             })
         }
         ty::ty_tup(ref ts) => {
@@ -427,6 +445,15 @@ pub fn super_fold_trait_store<T:TypeFolder>(this: &mut T,
         ty::RegionTraitStore(r, m) => {
             ty::RegionTraitStore(r.fold_with(this), m)
         }
+    }
+}
+
+pub fn super_fold_existential_bounds<T:TypeFolder>(this: &mut T,
+                                                   bounds: ty::ExistentialBounds)
+                                                   -> ty::ExistentialBounds {
+    ty::ExistentialBounds {
+        region_bound: bounds.region_bound.fold_with(this),
+        builtin_bounds: bounds.builtin_bounds,
     }
 }
 

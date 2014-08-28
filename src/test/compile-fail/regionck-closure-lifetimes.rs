@@ -15,7 +15,7 @@ fn env<'a>(blk: |p: ||: 'a|) {
 
     let mut state = 0i;
     let statep = &mut state;
-    blk(|| *statep = 1i); //~ ERROR cannot infer
+    blk(|| *statep = 1i); //~ ERROR captured variable `statep` does not outlive
 }
 
 fn no_env_no_for<'a>(blk: |p: |||: 'a) {

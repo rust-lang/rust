@@ -340,6 +340,15 @@ struct ArmData<'a, 'b> {
  * As we proceed `bound_ptrs` are filled with pointers to values to be bound,
  * these pointers are stored in llmatch variables just before executing `data` arm.
  */
+#[cfg(not(stage0))]
+struct Match<'a, 'b:'a> {
+    pats: Vec<Gc<ast::Pat>>,
+    data: &'a ArmData<'a, 'b>,
+    bound_ptrs: Vec<(Ident, ValueRef)>
+}
+
+///Dox
+#[cfg(stage0)]
 struct Match<'a, 'b> {
     pats: Vec<Gc<ast::Pat>>,
     data: &'a ArmData<'a, 'b>,

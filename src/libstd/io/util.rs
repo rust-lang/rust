@@ -126,12 +126,12 @@ impl Buffer for NullReader {
 /// The `Writer`s are delegated to in order. If any `Writer` returns an error,
 /// that error is returned immediately and remaining `Writer`s are not called.
 pub struct MultiWriter {
-    writers: Vec<Box<Writer>>
+    writers: Vec<Box<Writer+'static>>
 }
 
 impl MultiWriter {
     /// Creates a new `MultiWriter`
-    pub fn new(writers: Vec<Box<Writer>>) -> MultiWriter {
+    pub fn new(writers: Vec<Box<Writer+'static>>) -> MultiWriter {
         MultiWriter { writers: writers }
     }
 }

@@ -34,8 +34,8 @@ pub enum TestName {
 }
 
 pub enum TestFn {
-    DynTestFn(proc()),
-    DynBenchFn(proc(&mut int))
+    DynTestFn(proc():'static),
+    DynBenchFn(proc(&mut int):'static)
 }
 
 pub struct TestDesc {

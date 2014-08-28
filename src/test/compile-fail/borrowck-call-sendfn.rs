@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct Foo {
-    f: proc()
+    f: proc():'static
 }
 
 fn call(x: Foo) {

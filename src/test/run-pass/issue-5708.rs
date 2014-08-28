@@ -29,7 +29,7 @@ impl Inner for int {
 }
 
 struct Outer<'a> {
-    inner: &'a Inner
+    inner: &'a Inner+'a
 }
 
 impl<'a> Outer<'a> {
@@ -51,7 +51,7 @@ pub fn main() {
 trait MyTrait<T> { }
 
 pub struct MyContainer<'a, T> {
-    foos: Vec<&'a MyTrait<T>> ,
+    foos: Vec<&'a MyTrait<T>+'a> ,
 }
 
 impl<'a, T> MyContainer<'a, T> {

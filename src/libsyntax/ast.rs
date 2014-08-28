@@ -224,16 +224,17 @@ pub static DUMMY_NODE_ID: NodeId = -1;
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum TyParamBound {
     TraitTyParamBound(TraitRef),
-    StaticRegionTyParamBound,
     UnboxedFnTyParamBound(UnboxedFnTy),
-    OtherRegionTyParamBound(Span) // FIXME -- just here until work for #5723 lands
+    RegionTyParamBound(Lifetime)
 }
+
+pub type TyParamBounds = OwnedSlice<TyParamBound>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct TyParam {
     pub ident: Ident,
     pub id: NodeId,
-    pub bounds: OwnedSlice<TyParamBound>,
+    pub bounds: TyParamBounds,
     pub unbound: Option<TyParamBound>,
     pub default: Option<P<Ty>>,
     pub span: Span
@@ -892,11 +893,7 @@ pub struct ClosureTy {
     pub fn_style: FnStyle,
     pub onceness: Onceness,
     pub decl: P<FnDecl>,
-    /// Optional optvec distinguishes between "fn()" and "fn:()" so we can
-    /// implement issue #7264. None means "fn()", which means infer a default
-    /// bound based on pointer sigil during typeck. Some(Empty) means "fn:()",
-    /// which means use no bounds (e.g., not even Owned on a ~fn()).
-    pub bounds: Option<OwnedSlice<TyParamBound>>,
+    pub bounds: TyParamBounds,
 }
 
 #[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -923,12 +920,12 @@ pub enum Ty_ {
     TyFixedLengthVec(P<Ty>, Gc<Expr>),
     TyPtr(MutTy),
     TyRptr(Option<Lifetime>, MutTy),
-    TyClosure(Gc<ClosureTy>, Option<Lifetime>),
+    TyClosure(Gc<ClosureTy>),
     TyProc(Gc<ClosureTy>),
     TyBareFn(Gc<BareFnTy>),
     TyUnboxedFn(Gc<UnboxedFnTy>),
     TyTup(Vec<P<Ty>> ),
-    TyPath(Path, Option<OwnedSlice<TyParamBound>>, NodeId), // for #7264; see above
+    TyPath(Path, Option<TyParamBounds>, NodeId), // for #7264; see above
     /// No-op; kept solely so that we can pretty-print faithfully
     TyParen(P<Ty>),
     TyTypeof(Gc<Expr>),
@@ -1281,7 +1278,7 @@ pub enum Item_ {
     ItemTrait(Generics,
               Option<TyParamBound>, // (optional) default bound not required for Self.
                                     // Currently, only Sized makes sense here.
-              Vec<TraitRef> ,
+              TyParamBounds,
               Vec<TraitItem>),
     ItemImpl(Generics,
              Option<TraitRef>, // (optional) trait this impl implements

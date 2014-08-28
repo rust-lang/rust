@@ -145,8 +145,8 @@ impl rt::Runtime for Ops {
         Local::put(cur_task);
     }
 
-    fn wrap(self: Box<Ops>) -> Box<Any> {
-        self as Box<Any>
+    fn wrap(self: Box<Ops>) -> Box<Any+'static> {
+        self as Box<Any+'static>
     }
 
     fn stack_bounds(&self) -> (uint, uint) { self.stack_bounds }

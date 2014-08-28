@@ -108,6 +108,7 @@
 #![feature(macro_rules, globs, managed_boxes, linkage)]
 #![feature(default_type_params, phase, lang_items, unsafe_destructor)]
 #![feature(import_shadowing)]
+#![feature(issue_5723_bootstrap)]
 
 // Don't link to std. We are std.
 #![no_std]

@@ -15,7 +15,7 @@ trait GetRef<'a, T> {
     fn get(&self) -> &'a T;
 }
 
-struct Box<'a, T> {
+struct Box<'a, T:'a> {
     t: &'a T
 }
 

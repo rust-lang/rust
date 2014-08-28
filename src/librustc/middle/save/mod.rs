@@ -50,6 +50,7 @@ use syntax::attr;
 use syntax::codemap::*;
 use syntax::parse::token;
 use syntax::parse::token::{get_ident,keywords};
+use syntax::owned_slice::OwnedSlice;
 use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::print::pprust::{path_to_string,ty_to_string};
@@ -653,7 +654,7 @@ impl <'l> DxrVisitor<'l> {
                      item: &ast::Item,
                      e: DxrVisitorEnv,
                      generics: &ast::Generics,
-                     trait_refs: &Vec<ast::TraitRef>,
+                     trait_refs: &OwnedSlice<ast::TyParamBound>,
                      methods: &Vec<ast::TraitItem>) {
         let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
 
@@ -665,7 +666,16 @@ impl <'l> DxrVisitor<'l> {
                            e.cur_scope);
 
         // super-traits
-        for trait_ref in trait_refs.iter() {
+        for super_bound in trait_refs.iter() {
+            let trait_ref = match *super_bound {
+                ast::TraitTyParamBound(ref trait_ref) => {
+                    trait_ref
+                }
+                ast::UnboxedFnTyParamBound(..) | ast::RegionTyParamBound(..) => {
+                    continue;
+                }
+            };
+
             match self.lookup_type_ref(trait_ref.ref_id) {
                 Some(id) => {
                     let sub_span = self.span.sub_span_for_type_name(trait_ref.path.span);
@@ -1499,7 +1509,7 @@ pub fn process_crate(sess: &Session,
                                   collected_paths: vec!(),
                                   collecting: false,
                                   fmt: FmtStrs::new(box Recorder {
-                                                        out: output_file as Box<Writer>,
+                                                        out: output_file as Box<Writer+'static>,
                                                         dump_spans: false,
                                                     },
                                                     SpanUtils {

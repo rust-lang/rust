@@ -31,7 +31,7 @@ impl Drop for B {
 }
 
 struct A<'r> {
-    p: &'r X
+    p: &'r X+'r
 }
 
 fn make_a(p:&X) -> A {

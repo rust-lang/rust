@@ -293,8 +293,18 @@ impl<T> RingBuf<T> {
     }
 }
 
-/// `RingBuf` iterator.
+/// Note: stage0-specific version that lacks bound on A.
+#[cfg(stage0)]
 pub struct Items<'a, T> {
+    lo: uint,
+    index: uint,
+    rindex: uint,
+    elts: &'a [Option<T>],
+}
+
+/// `RingBuf` iterator.
+#[cfg(not(stage0))]
+pub struct Items<'a, T:'a> {
     lo: uint,
     index: uint,
     rindex: uint,
@@ -348,8 +358,17 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     }
 }
 
-/// `RingBuf` mutable iterator.
+/// Note: stage0-specific version that lacks bound on A.
+#[cfg(stage0)]
 pub struct MutItems<'a, T> {
+    remaining1: &'a mut [Option<T>],
+    remaining2: &'a mut [Option<T>],
+    nelts: uint,
+}
+
+/// `RingBuf` mutable iterator.
+#[cfg(not(stage0))]
+pub struct MutItems<'a, T:'a> {
     remaining1: &'a mut [Option<T>],
     remaining2: &'a mut [Option<T>],
     nelts: uint,

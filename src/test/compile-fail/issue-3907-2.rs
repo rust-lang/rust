@@ -11,12 +11,12 @@
 // aux-build:issue_3907.rs
 extern crate issue_3907;
 
-type Foo = issue_3907::Foo;
+type Foo = issue_3907::Foo+'static;
 
 struct S {
     name: int
 }
 
-fn bar(_x: Foo) {} //~ ERROR variable `_x` has dynamically sized type `issue_3907::Foo`
+fn bar(_x: Foo) {} //~ ERROR variable `_x` has dynamically sized type
 
 fn main() {}

@@ -1221,8 +1221,8 @@ struct VisiblePrivateTypesVisitor<'a> {
     public_items: &'a PublicItems,
 }
 
-struct CheckTypeForPrivatenessVisitor<'a, 'b> {
-    inner: &'b VisiblePrivateTypesVisitor<'a>,
+struct CheckTypeForPrivatenessVisitor<'a, 'b:'a> {
+    inner: &'a VisiblePrivateTypesVisitor<'b>,
     /// whether the type refers to private types.
     contains_private: bool,
     /// whether we've recurred at all (i.e. if we're pointing at the

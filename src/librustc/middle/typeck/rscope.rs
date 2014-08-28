@@ -30,17 +30,51 @@ pub trait RegionScope {
                     span: Span,
                     count: uint)
                     -> Result<Vec<ty::Region> , ()>;
+
+    fn default_region_bound(&self, span: Span) -> Option<ty::Region>;
 }
 
-// A scope in which all regions must be explicitly named
+// A scope in which all regions must be explicitly named. This is used
+// for types that appear in structs and so on.
 pub struct ExplicitRscope;
 
 impl RegionScope for ExplicitRscope {
+    fn default_region_bound(&self, _span: Span) -> Option<ty::Region> {
+        None
+    }
+
     fn anon_regions(&self,
                     _span: Span,
                     _count: uint)
                     -> Result<Vec<ty::Region> , ()> {
         Err(())
+    }
+}
+
+// A scope in which any omitted region defaults to `default`. This is
+// used after the `->` in function signatures, but also for backwards
+// compatibility with object types. The latter use may go away.
+pub struct SpecificRscope {
+    default: ty::Region
+}
+
+impl SpecificRscope {
+    pub fn new(r: ty::Region) -> SpecificRscope {
+        SpecificRscope { default: r }
+    }
+}
+
+impl RegionScope for SpecificRscope {
+    fn default_region_bound(&self, _span: Span) -> Option<ty::Region> {
+        Some(self.default)
+    }
+
+    fn anon_regions(&self,
+                    _span: Span,
+                    count: uint)
+                    -> Result<Vec<ty::Region> , ()>
+    {
+        Ok(Vec::from_elem(count, self.default))
     }
 }
 
@@ -58,30 +92,26 @@ impl BindingRscope {
             anon_bindings: Cell::new(0),
         }
     }
-}
 
-impl RegionScope for BindingRscope {
-    fn anon_regions(&self,
-                    _: Span,
-                    count: uint)
-                    -> Result<Vec<ty::Region>, ()> {
+    fn next_region(&self) -> ty::Region {
         let idx = self.anon_bindings.get();
-        self.anon_bindings.set(idx + count);
-        Ok(Vec::from_fn(count, |i| ty::ReLateBound(self.binder_id,
-                                                   ty::BrAnon(idx + i))))
+        self.anon_bindings.set(idx + 1);
+        ty::ReLateBound(self.binder_id, ty::BrAnon(idx))
     }
 }
 
-/// A scope in which we generate one specific region. This occurs after the
-/// `->` (i.e. in the return type) of function signatures.
-pub struct ImpliedSingleRscope {
-    pub region: ty::Region,
-}
+impl RegionScope for BindingRscope {
+    fn default_region_bound(&self, _span: Span) -> Option<ty::Region>
+    {
+        Some(self.next_region())
+    }
 
-impl RegionScope for ImpliedSingleRscope {
-    fn anon_regions(&self, _: Span, count: uint)
-                    -> Result<Vec<ty::Region>,()> {
-        Ok(Vec::from_elem(count, self.region.clone()))
+    fn anon_regions(&self,
+                    _: Span,
+                    count: uint)
+                    -> Result<Vec<ty::Region> , ()>
+    {
+        Ok(Vec::from_fn(count, |_| self.next_region()))
     }
 }
 

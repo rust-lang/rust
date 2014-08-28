@@ -19,8 +19,7 @@ use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
-use middle::subst::VecPerParamSpace;
-use middle::ty::{node_id_to_type, lookup_item_type};
+use middle::ty::{lookup_item_type};
 use middle::astencode;
 use middle::ty;
 use middle::typeck;
@@ -150,45 +149,6 @@ pub fn def_to_string(did: DefId) -> String {
     format!("{}:{}", did.krate, did.node)
 }
 
-fn encode_ty_type_param_defs(rbml_w: &mut Encoder,
-                             ecx: &EncodeContext,
-                             params: &VecPerParamSpace<ty::TypeParameterDef>,
-                             tag: uint) {
-    let ty_str_ctxt = &tyencode::ctxt {
-        diag: ecx.diag,
-        ds: def_to_string,
-        tcx: ecx.tcx,
-        abbrevs: &ecx.type_abbrevs
-    };
-    for param in params.iter() {
-        rbml_w.start_tag(tag);
-        tyencode::enc_type_param_def(rbml_w.writer, ty_str_ctxt, param);
-        rbml_w.end_tag();
-    }
-}
-
-fn encode_region_param_defs(rbml_w: &mut Encoder,
-                            params: &VecPerParamSpace<ty::RegionParameterDef>) {
-    for param in params.iter() {
-        rbml_w.start_tag(tag_region_param_def);
-
-        rbml_w.start_tag(tag_region_param_def_ident);
-        encode_name(rbml_w, param.name);
-        rbml_w.end_tag();
-
-        rbml_w.wr_tagged_str(tag_region_param_def_def_id,
-                             def_to_string(param.def_id).as_slice());
-
-        rbml_w.wr_tagged_u64(tag_region_param_def_space,
-                             param.space.to_uint() as u64);
-
-        rbml_w.wr_tagged_u64(tag_region_param_def_index,
-                             param.index as u64);
-
-        rbml_w.end_tag();
-    }
-}
-
 fn encode_item_variances(rbml_w: &mut Encoder,
                          ecx: &EncodeContext,
                          id: ast::NodeId) {
@@ -201,9 +161,7 @@ fn encode_item_variances(rbml_w: &mut Encoder,
 fn encode_bounds_and_type(rbml_w: &mut Encoder,
                           ecx: &EncodeContext,
                           pty: &ty::Polytype) {
-    encode_ty_type_param_defs(rbml_w, ecx, &pty.generics.types,
-                              tag_items_data_item_ty_param_bounds);
-    encode_region_param_defs(rbml_w, &pty.generics.regions);
+    encode_generics(rbml_w, ecx, &pty.generics, tag_item_generics);
     encode_type(ecx, rbml_w, pty.ty);
 }
 
@@ -238,11 +196,46 @@ pub fn write_type(ecx: &EncodeContext,
     tyencode::enc_ty(rbml_w.writer, ty_str_ctxt, typ);
 }
 
+pub fn write_region(ecx: &EncodeContext,
+                    rbml_w: &mut Encoder,
+                    r: ty::Region) {
+    let ty_str_ctxt = &tyencode::ctxt {
+        diag: ecx.diag,
+        ds: def_to_string,
+        tcx: ecx.tcx,
+        abbrevs: &ecx.type_abbrevs
+    };
+    tyencode::enc_region(rbml_w.writer, ty_str_ctxt, r);
+}
+
+fn encode_bounds(rbml_w: &mut Encoder,
+                 ecx: &EncodeContext,
+                 bounds: &ty::ParamBounds,
+                 tag: uint) {
+    rbml_w.start_tag(tag);
+
+    let ty_str_ctxt = &tyencode::ctxt { diag: ecx.diag,
+                                        ds: def_to_string,
+                                        tcx: ecx.tcx,
+                                        abbrevs: &ecx.type_abbrevs };
+    tyencode::enc_bounds(rbml_w.writer, ty_str_ctxt, bounds);
+
+    rbml_w.end_tag();
+}
+
 fn encode_type(ecx: &EncodeContext,
                rbml_w: &mut Encoder,
                typ: ty::t) {
     rbml_w.start_tag(tag_items_data_item_type);
     write_type(ecx, rbml_w, typ);
+    rbml_w.end_tag();
+}
+
+fn encode_region(ecx: &EncodeContext,
+                 rbml_w: &mut Encoder,
+                 r: ty::Region) {
+    rbml_w.start_tag(tag_items_data_region);
+    write_region(ecx, rbml_w, r);
     rbml_w.end_tag();
 }
 
@@ -728,7 +721,6 @@ fn encode_info_for_struct(ecx: &EncodeContext,
     /* Each class has its own index, since different classes
        may have fields with the same name */
     let mut index = Vec::new();
-    let tcx = ecx.tcx;
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
     for field in fields.iter() {
@@ -745,7 +737,8 @@ fn encode_info_for_struct(ecx: &EncodeContext,
                token::get_name(nm), id);
         encode_struct_field_family(rbml_w, field.vis);
         encode_name(rbml_w, nm);
-        encode_type(ecx, rbml_w, node_id_to_type(tcx, id));
+        encode_bounds_and_type(rbml_w, ecx,
+                               &lookup_item_type(ecx.tcx, local_def(id)));
         encode_def_id(rbml_w, local_def(id));
 
         let stab = stability::lookup(ecx.tcx, field.id);
@@ -773,7 +766,6 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     encode_bounds_and_type(rbml_w, ecx,
                            &lookup_item_type(ecx.tcx, local_def(ctor_id)));
     encode_name(rbml_w, name.name);
-    encode_type(ecx, rbml_w, node_id_to_type(ecx.tcx, ctor_id));
     ecx.tcx.map.with_path(ctor_id, |path| encode_path(rbml_w, path));
     encode_parent_item(rbml_w, local_def(struct_id));
 
@@ -793,13 +785,60 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     rbml_w.end_tag();
 }
 
+fn encode_generics(rbml_w: &mut Encoder,
+                   ecx: &EncodeContext,
+                   generics: &ty::Generics,
+                   tag: uint)
+{
+    rbml_w.start_tag(tag);
+
+    // Type parameters
+    let ty_str_ctxt = &tyencode::ctxt {
+        diag: ecx.diag,
+        ds: def_to_string,
+        tcx: ecx.tcx,
+        abbrevs: &ecx.type_abbrevs
+    };
+    for param in generics.types.iter() {
+        rbml_w.start_tag(tag_type_param_def);
+        tyencode::enc_type_param_def(rbml_w.writer, ty_str_ctxt, param);
+        rbml_w.end_tag();
+    }
+
+    // Region parameters
+    for param in generics.regions.iter() {
+        rbml_w.start_tag(tag_region_param_def);
+
+        rbml_w.start_tag(tag_region_param_def_ident);
+        encode_name(rbml_w, param.name);
+        rbml_w.end_tag();
+
+        rbml_w.wr_tagged_str(tag_region_param_def_def_id,
+                             def_to_string(param.def_id).as_slice());
+
+        rbml_w.wr_tagged_u64(tag_region_param_def_space,
+                             param.space.to_uint() as u64);
+
+        rbml_w.wr_tagged_u64(tag_region_param_def_index,
+                             param.index as u64);
+
+        for &bound_region in param.bounds.iter() {
+            encode_region(ecx, rbml_w, bound_region);
+        }
+
+        rbml_w.end_tag();
+    }
+
+    rbml_w.end_tag();
+}
+
 fn encode_method_ty_fields(ecx: &EncodeContext,
                            rbml_w: &mut Encoder,
                            method_ty: &ty::Method) {
     encode_def_id(rbml_w, method_ty.def_id);
     encode_name(rbml_w, method_ty.ident.name);
-    encode_ty_type_param_defs(rbml_w, ecx, &method_ty.generics.types,
-                              tag_item_method_tps);
+    encode_generics(rbml_w, ecx, &method_ty.generics,
+                    tag_method_ty_generics);
     encode_method_fty(ecx, rbml_w, &method_ty.fty);
     encode_visibility(rbml_w, method_ty.vis);
     encode_explicit_self(rbml_w, &method_ty.explicit_self);
@@ -982,7 +1021,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         } else {
             encode_family(rbml_w, 'c');
         }
-        encode_type(ecx, rbml_w, node_id_to_type(tcx, item.id));
+        encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_symbol(ecx, rbml_w, item.id);
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
@@ -1222,17 +1261,14 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
         }
       }
-      ItemTrait(_, _, ref super_traits, ref ms) => {
+      ItemTrait(_, _, _, ref ms) => {
         add_to_index(item, rbml_w, index);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'I');
         encode_item_variances(rbml_w, ecx, item.id);
         let trait_def = ty::lookup_trait_def(tcx, def_id);
-        encode_ty_type_param_defs(rbml_w, ecx,
-                                  &trait_def.generics.types,
-                                  tag_items_data_item_ty_param_bounds);
-        encode_region_param_defs(rbml_w, &trait_def.generics.regions);
+        encode_generics(rbml_w, ecx, &trait_def.generics, tag_item_generics);
         encode_trait_ref(rbml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
         encode_name(rbml_w, item.ident.name);
         encode_attributes(rbml_w, item.attrs.as_slice());
@@ -1253,13 +1289,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
             rbml_w.end_tag();
         }
         encode_path(rbml_w, path.clone());
-        // FIXME(#8559): This should use the tcx's supertrait cache instead of
-        // reading the AST's list, because the former has already filtered out
-        // the builtin-kinds-as-supertraits. See corresponding fixme in decoder.
-        for ast_trait_ref in super_traits.iter() {
-            let trait_ref = ty::node_id_to_trait_ref(ecx.tcx, ast_trait_ref.ref_id);
-            encode_trait_ref(rbml_w, ecx, &*trait_ref, tag_item_super_trait_ref);
-        }
+
+        encode_bounds(rbml_w, ecx, &trait_def.bounds, tag_trait_def_bounds);
 
         // Encode the implementations of this trait.
         encode_extension_implementations(ecx, rbml_w, def_id);
@@ -1390,7 +1421,8 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         } else {
             encode_family(rbml_w, 'c');
         }
-        encode_type(ecx, rbml_w, node_id_to_type(ecx.tcx, nitem.id));
+        encode_bounds_and_type(rbml_w, ecx,
+                               &lookup_item_type(ecx.tcx,local_def(nitem.id)));
         encode_symbol(ecx, rbml_w, nitem.id);
         encode_name(rbml_w, nitem.ident.name);
       }
@@ -1434,7 +1466,7 @@ fn my_visit_foreign_item(ni: &ForeignItem,
     });
 }
 
-struct EncodeVisitor<'a,'b> {
+struct EncodeVisitor<'a,'b:'a> {
     rbml_w_for_visit_item: &'a mut Encoder<'b>,
     ecx_ptr:*const int,
     index: &'a mut Vec<entry<i64>>,
@@ -1738,7 +1770,7 @@ fn encode_unboxed_closures<'a>(
 }
 
 fn encode_struct_field_attrs(rbml_w: &mut Encoder, krate: &Crate) {
-    struct StructFieldVisitor<'a, 'b> {
+    struct StructFieldVisitor<'a, 'b:'a> {
         rbml_w: &'a mut Encoder<'b>,
     }
 
@@ -1760,7 +1792,7 @@ fn encode_struct_field_attrs(rbml_w: &mut Encoder, krate: &Crate) {
 
 
 
-struct ImplVisitor<'a,'b,'c> {
+struct ImplVisitor<'a,'b:'a,'c:'a> {
     ecx: &'a EncodeContext<'b>,
     rbml_w: &'a mut Encoder<'c>,
 }

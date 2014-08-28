@@ -35,7 +35,7 @@ use middle::trans::tvec;
 use middle::trans::type_::Type;
 use middle::trans::type_of::{type_of, sizing_type_of, align_of};
 use middle::ty;
-use util::ppaux::ty_to_short_str;
+use util::ppaux::{ty_to_short_str, Repr};
 use util::ppaux;
 
 use arena::TypedArena;
@@ -131,6 +131,7 @@ pub fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
 pub fn drop_ty<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
                -> &'a Block<'a> {
     // NB: v is an *alias* of type t here, not a direct value.
+    debug!("drop_ty(t={})", t.repr(bcx.tcx()));
     let _icx = push_ctxt("drop_ty");
     if ty::type_needs_drop(bcx.tcx(), t) {
         let ccx = bcx.ccx();
@@ -213,6 +214,7 @@ fn make_visit_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
     let _icx = push_ctxt("make_visit_glue");
     let mut bcx = bcx;
     let (visitor_trait, object_ty) = match ty::visitor_object_ty(bcx.tcx(),
+                                                                 ty::ReStatic,
                                                                  ty::ReStatic) {
         Ok(pair) => pair,
         Err(s) => {

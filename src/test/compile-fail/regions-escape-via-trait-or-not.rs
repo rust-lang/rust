@@ -8,17 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait deref {
+#![no_std]
+
+#![allow(dead_code)]
+
+trait Deref {
     fn get(self) -> int;
 }
 
-impl<'a> deref for &'a int {
+impl<'a> Deref for &'a int {
     fn get(self) -> int {
         *self
     }
 }
 
-fn with<R:deref>(f: |x: &int| -> R) -> int {
+fn with<R:Deref>(f: |x: &int| -> R) -> int {
     f(&3).get()
 }
 
