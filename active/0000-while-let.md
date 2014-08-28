@@ -73,6 +73,12 @@ be.
 As with `if let`, this could plausibly be done with a macro, but it would be ugly and produce bad
 error messages.
 
+`while let` could be extended to support alternative patterns, just as match arms do. This is not
+part of the main proposal for the same reason it was left out of `if let`, which is that a) it looks
+weird, and b) it's a bit of an odd coupling with the `let` keyword as alternatives like this aren't
+going to be introducing variable bindings. However, it would make `while let` more general and able
+to replace more instances of `loop { match { ... } }` than is possible with the main design.
+
 # Unresolved questions
 
 None.
