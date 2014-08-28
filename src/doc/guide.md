@@ -3300,7 +3300,7 @@ To learn more, run the command again with --verbose.
 
 Rust can't find this function. That makes sense, as we didn't write it yet!
 
-In order to share this codes with our tests, we'll need to make a library crate.
+In order to share this code with our tests, we'll need to make a library crate.
 This is also just good software design: as we mentioned before, it's a good idea
 to put most of your functionality into a library crate, and have your executable
 crate use that library. This allows for code re-use.
