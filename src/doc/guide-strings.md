@@ -121,6 +121,62 @@ fn compare(string: String) {
 Converting a `String` to a `&str` is cheap, but converting the `&str` to a
 `String` involves an allocation.
 
+## Indexing strings
+
+You may be tempted to try to access a certain character of a `String`, like
+this:
+
+```{rust,ignore}
+let s = "hello".to_string();
+
+println!("{}", s[0]);
+```
+
+This does not compile. This is on purpose. In the world of UTF-8, direct
+indexing is basically never what you want to do. The reason is that each
+charater can be a variable number of bytes. This means that you have to iterate
+through the characters anyway, which is a O(n) operation. 
+
+To iterate over a string, use the `graphemes()` method on `&str`:
+
+```{rust}
+let s = "αἰθήρ";
+
+for l in s.graphemes(true) {
+    println!("{}", l);
+}
+```
+
+This will print out each character in turn, as you'd expect: first "α", then
+"ἰ", etc. You can see that this is different than just the individual bytes.
+Here's a version that prints out each byte:
+
+```{rust}
+let s = "αἰθήρ";
+
+for l in s.as_bytes().iter() {
+    println!("{}", l);
+}
+```
+
+This will print:
+
+```{notrust,ignore}
+206
+177
+225
+188
+176
+206
+184
+206
+174
+207
+129
+```
+
+Many more bytes than graphemes!
+
 # Other Documentation
 
 * [the `&str` API documentation](/std/str/index.html)
