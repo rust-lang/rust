@@ -167,15 +167,18 @@ found in the examples
 
 # Alternatives
 
-* We can just put our foot down, say "no efficient complex manipulations", and drop 
+* Just put our foot down, say "no efficient complex manipulations", and drop 
 all the internal mutation stuff without a replacement.
 
-* We can try to build out saner/standard internal manipulation methods.
+* Try to build out saner/standard internal manipulation methods.
 
-* Try to make this functionality a subset of *Cursors*, which would be effectively a mut_iter
-where the returned references borrow Self, and mutation can be performed at the location of
-the cursor. However preventing invalidation would be more expensive, and some things
-might be more awkward.
+* Try to make this functionality a subset of [Cursors](http://discuss.rust-lang.org/t/pseudo-rfc-cursors-reversible-iterators/386/7), 
+which would be effectively a bi-directional mut_iter
+where the returned references borrow the cursor preventing aliasing/safety issues, 
+so that mutation can be performed at the location of the cursor. 
+However, preventing invalidation would be more expensive, and it's not clear that
+cursor semantics would make sense on e.g. a HashMap, as you can't insert *any* key 
+in *any* location.
 
 # Unresolved questions
 
