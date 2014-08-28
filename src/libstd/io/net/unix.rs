@@ -61,7 +61,7 @@ impl UnixStream {
     /// Connect to a pipe named by `path`, timing out if the specified number of
     /// milliseconds.
     ///
-    /// This function is similar to `connect`, except that if `timeout_ms`
+    /// This function is similar to `connect`, except that if `timeout`
     /// elapses the function will return an error of kind `TimedOut`.
     ///
     /// If a `timeout` with zero or negative duration is specified then
