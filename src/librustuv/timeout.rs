@@ -148,7 +148,7 @@ impl<T: Send> AccessTimeout<T> {
             self.timer = Some(timer);
         }
 
-        let timer = self.timer.get_mut_ref();
+        let timer = self.timer.as_mut().unwrap();
         unsafe {
             let cx = uvll::get_data_for_uv_handle(timer.handle);
             let cx = cx as *mut TimerContext;

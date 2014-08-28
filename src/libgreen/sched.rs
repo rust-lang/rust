@@ -203,7 +203,7 @@ impl Scheduler {
         let mut sched_task = self.run(sched_task);
 
         // Close the idle callback.
-        let mut sched = sched_task.sched.take_unwrap();
+        let mut sched = sched_task.sched.take().unwrap();
         sched.idle_callback.take();
         // Make one go through the loop to run the close callback.
         let mut stask = sched.run(sched_task);
@@ -702,7 +702,7 @@ impl Scheduler {
             assert!(sched.sched_task.is_none());
             sched.sched_task = Some(stask);
         });
-        (cur.sched.take_unwrap(), cur)
+        (cur.sched.take().unwrap(), cur)
     }
 
     fn resume_task_immediately_cl(sched: Box<Scheduler>,
@@ -738,7 +738,7 @@ impl Scheduler {
                                             f: |&mut Scheduler, BlockedTask|) {
         // Trickier - we need to get the scheduler task out of self
         // and use it as the destination.
-        let stask = self.sched_task.take_unwrap();
+        let stask = self.sched_task.take().unwrap();
         // Otherwise this is the same as below.
         self.switch_running_tasks_and_then(cur, stask, f)
     }
@@ -788,7 +788,7 @@ impl Scheduler {
                 sched.enqueue_task(last_task);
             }
         });
-        (cur.sched.take_unwrap(), cur)
+        (cur.sched.take().unwrap(), cur)
     }
 
     // * Task Context Helpers
@@ -800,9 +800,9 @@ impl Scheduler {
                                   -> ! {
         // Similar to deschedule running task and then, but cannot go through
         // the task-blocking path. The task is already dying.
-        let stask = self.sched_task.take_unwrap();
+        let stask = self.sched_task.take().unwrap();
         let _cur = self.change_task_context(cur, stask, |sched, mut dead_task| {
-            let coroutine = dead_task.coroutine.take_unwrap();
+            let coroutine = dead_task.coroutine.take().unwrap();
             coroutine.recycle(&mut sched.stack_pool);
             sched.task_state.decrement();
         });
@@ -818,7 +818,7 @@ impl Scheduler {
     }
 
     pub fn run_task_later(mut cur: Box<GreenTask>, next: Box<GreenTask>) {
-        let mut sched = cur.sched.take_unwrap();
+        let mut sched = cur.sched.take().unwrap();
         sched.enqueue_task(next);
         cur.put_with_sched(sched);
     }
@@ -838,7 +838,7 @@ impl Scheduler {
             self.yield_check_count = reset_yield_check(&mut self.rng);
             // Tell the scheduler to start stealing on the next iteration
             self.steal_for_yield = true;
-            let stask = self.sched_task.take_unwrap();
+            let stask = self.sched_task.take().unwrap();
             let cur = self.change_task_context(cur, stask, |sched, task| {
                 sched.enqueue_task(task);
             });
@@ -878,7 +878,7 @@ impl Scheduler {
     pub fn sched_id(&self) -> uint { self as *const Scheduler as uint }
 
     pub fn run_cleanup_job(&mut self) {
-        let cleanup_job = self.cleanup_job.take_unwrap();
+        let cleanup_job = self.cleanup_job.take().unwrap();
         cleanup_job.run(self)
     }
 
@@ -1235,7 +1235,7 @@ mod test {
 
             fn run(next: Box<GreenTask>) {
                 let mut task = GreenTask::convert(Local::take());
-                let sched = task.sched.take_unwrap();
+                let sched = task.sched.take().unwrap();
                 sched.run_task(task, next)
             }
 

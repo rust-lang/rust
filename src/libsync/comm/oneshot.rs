@@ -107,7 +107,7 @@ impl<T: Send> Packet<T> {
             // Couldn't send the data, the port hung up first. Return the data
             // back up the stack.
             DISCONNECTED => {
-                Err(self.data.take_unwrap())
+                Err(self.data.take().unwrap())
             }
 
             // Not possible, these are one-use channels
@@ -244,7 +244,7 @@ impl<T: Send> Packet<T> {
             // There's data on the channel, so make sure we destroy it promptly.
             // This is why not using an arc is a little difficult (need the box
             // to stay valid while we take the data).
-            DATA => { self.data.take_unwrap(); }
+            DATA => { self.data.take().unwrap(); }
 
             // We're the only ones that can block on this port
             _ => unreachable!()

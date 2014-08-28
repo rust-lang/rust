@@ -132,9 +132,9 @@ extern fn timer_cb(handle: *mut uvll::uv_timer_t) {
     let _f = ForbidSwitch::new("timer callback can't switch");
     let timer: &mut TimerWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
 
-    match timer.action.take_unwrap() {
+    match timer.action.take().unwrap() {
         WakeTask => {
-            let task = timer.blocker.take_unwrap();
+            let task = timer.blocker.take().unwrap();
             let _ = task.wake().map(|t| t.reawaken());
         }
         CallOnce(mut cb) => { cb.call() }

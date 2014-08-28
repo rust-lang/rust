@@ -182,7 +182,7 @@ impl<W: Writer> BufferedWriter<W> {
     pub fn unwrap(mut self) -> W {
         // FIXME(#12628): is failing the right thing to do if flushing fails?
         self.flush_buf().unwrap();
-        self.inner.take_unwrap()
+        self.inner.take().unwrap()
     }
 }
 

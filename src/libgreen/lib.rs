@@ -305,7 +305,7 @@ pub fn start(argc: int, argv: *const *const u8,
     let mut main = Some(main);
     let mut ret = None;
     simple::task().run(|| {
-        ret = Some(run(event_loop_factory, main.take_unwrap()));
+        ret = Some(run(event_loop_factory, main.take().unwrap()));
     }).destroy();
     // unsafe is ok b/c we're sure that the runtime is gone
     unsafe { rt::cleanup() }

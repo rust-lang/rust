@@ -70,7 +70,7 @@ impl TempDir {
     /// temporary directory is prevented.
     pub fn unwrap(self) -> Path {
         let mut tmpdir = self;
-        tmpdir.path.take_unwrap()
+        tmpdir.path.take().unwrap()
     }
 
     /// Access the wrapped `std::path::Path` to the temporary directory.

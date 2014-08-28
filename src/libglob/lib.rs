@@ -106,7 +106,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
     let mut root = os::getcwd();
     let pat_root = Path::new(pattern).root_path();
     if pat_root.is_some() {
-        if check_windows_verbatim(pat_root.get_ref()) {
+        if check_windows_verbatim(pat_root.as_ref().unwrap()) {
             // FIXME: How do we want to handle verbatim paths? I'm inclined to return nothing,
             // since we can't very well find all UNC shares with a 1-letter server name.
             return Paths {
@@ -116,7 +116,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
                 todo: Vec::new(),
             };
         }
-        root.push(pat_root.get_ref());
+        root.push(pat_root.as_ref().unwrap());
     }
 
     let root_len = pat_root.map_or(0u, |p| p.as_vec().len());

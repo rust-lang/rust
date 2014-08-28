@@ -141,6 +141,8 @@
 //! }
 //! ```
 
+#![stable]
+
 use cmp::{PartialEq, Eq, Ord};
 use default::Default;
 use slice::Slice;
@@ -155,6 +157,7 @@ use slice;
 
 /// The `Option` type.
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Show)]
+#[stable]
 pub enum Option<T> {
     /// No value
     None,
@@ -173,6 +176,7 @@ impl<T> Option<T> {
 
     /// Returns `true` if the option is a `Some` value
     #[inline]
+    #[stable]
     pub fn is_some(&self) -> bool {
         match *self {
             Some(_) => true,
@@ -182,6 +186,7 @@ impl<T> Option<T> {
 
     /// Returns `true` if the option is a `None` value
     #[inline]
+    #[stable]
     pub fn is_none(&self) -> bool {
         !self.is_some()
     }
@@ -207,18 +212,21 @@ impl<T> Option<T> {
     /// println!("still can print num_as_str: {}", num_as_str);
     /// ```
     #[inline]
+    #[stable]
     pub fn as_ref<'r>(&'r self) -> Option<&'r T> {
         match *self { Some(ref x) => Some(x), None => None }
     }
 
     /// Convert from `Option<T>` to `Option<&mut T>`
     #[inline]
+    #[unstable = "waiting for mut conventions"]
     pub fn as_mut<'r>(&'r mut self) -> Option<&'r mut T> {
         match *self { Some(ref mut x) => Some(x), None => None }
     }
 
     /// Convert from `Option<T>` to `&mut [T]` (without copying)
     #[inline]
+    #[unstable = "waiting for mut conventions"]
     pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
         match *self {
             Some(ref mut x) => {
@@ -243,6 +251,7 @@ impl<T> Option<T> {
     /// Fails if the value is a `None` with a custom failure message provided by
     /// `msg`.
     #[inline]
+    #[unstable = "waiting for conventions"]
     pub fn expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
@@ -262,6 +271,7 @@ impl<T> Option<T> {
     /// Instead, prefer to use pattern matching and handle the `None`
     /// case explicitly.
     #[inline]
+    #[unstable = "waiting for conventions"]
     pub fn unwrap(self) -> T {
         match self {
             Some(val) => val,
@@ -271,6 +281,7 @@ impl<T> Option<T> {
 
     /// Returns the contained value or a default.
     #[inline]
+    #[unstable = "waiting for conventions"]
     pub fn unwrap_or(self, def: T) -> T {
         match self {
             Some(x) => x,
@@ -280,6 +291,7 @@ impl<T> Option<T> {
 
     /// Returns the contained value or computes it from a closure.
     #[inline]
+    #[unstable = "waiting for conventions"]
     pub fn unwrap_or_else(self, f: || -> T) -> T {
         match self {
             Some(x) => x,
@@ -303,30 +315,45 @@ impl<T> Option<T> {
     /// let num_as_int: Option<uint> = num_as_str.map(|n| n.len());
     /// ```
     #[inline]
+    #[unstable = "waiting for unboxed closures"]
     pub fn map<U>(self, f: |T| -> U) -> Option<U> {
         match self { Some(x) => Some(f(x)), None => None }
     }
 
     /// Applies a function to the contained value or returns a default.
     #[inline]
+    #[unstable = "waiting for unboxed closures"]
     pub fn map_or<U>(self, def: U, f: |T| -> U) -> U {
         match self { None => def, Some(t) => f(t) }
     }
 
+    /// Applies a function to the contained value or computes a default.
+    #[inline]
+    #[unstable = "waiting for unboxed closures"]
+    pub fn map_or_else<U>(self, def: || -> U, f: |T| -> U) -> U {
+        match self { None => def(), Some(t) => f(t) }
+    }
+
+    /// Deprecated.
+    ///
     /// Applies a function to the contained value or does nothing.
     /// Returns true if the contained value was mutated.
+    #[deprecated = "removed due to lack of use"]
     pub fn mutate(&mut self, f: |T| -> T) -> bool {
         if self.is_some() {
-            *self = Some(f(self.take_unwrap()));
+            *self = Some(f(self.take().unwrap()));
             true
         } else { false }
     }
 
+    /// Deprecated.
+    ///
     /// Applies a function to the contained value or sets it to a default.
     /// Returns true if the contained value was mutated, or false if set to the default.
+    #[deprecated = "removed due to lack of use"]
     pub fn mutate_or_set(&mut self, def: T, f: |T| -> T) -> bool {
         if self.is_some() {
-            *self = Some(f(self.take_unwrap()));
+            *self = Some(f(self.take().unwrap()));
             true
         } else {
             *self = Some(def);
@@ -340,18 +367,21 @@ impl<T> Option<T> {
 
     /// Returns an iterator over the possibly contained value.
     #[inline]
+    #[unstable = "waiting for iterator conventions"]
     pub fn iter<'r>(&'r self) -> Item<&'r T> {
         Item{opt: self.as_ref()}
     }
 
     /// Returns a mutable iterator over the possibly contained value.
     #[inline]
+    #[unstable = "waiting for iterator conventions"]
     pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
         Item{opt: self.as_mut()}
     }
 
     /// Returns a consuming iterator over the possibly contained value.
     #[inline]
+    #[unstable = "waiting for iterator conventions"]
     pub fn move_iter(self) -> Item<T> {
         Item{opt: self}
     }
@@ -362,6 +392,7 @@ impl<T> Option<T> {
 
     /// Returns `None` if the option is `None`, otherwise returns `optb`.
     #[inline]
+    #[stable]
     pub fn and<U>(self, optb: Option<U>) -> Option<U> {
         match self {
             Some(_) => optb,
@@ -372,6 +403,7 @@ impl<T> Option<T> {
     /// Returns `None` if the option is `None`, otherwise calls `f` with the
     /// wrapped value and returns the result.
     #[inline]
+    #[unstable = "waiting for unboxed closures"]
     pub fn and_then<U>(self, f: |T| -> Option<U>) -> Option<U> {
         match self {
             Some(x) => f(x),
@@ -381,6 +413,7 @@ impl<T> Option<T> {
 
     /// Returns the option if it contains a value, otherwise returns `optb`.
     #[inline]
+    #[stable]
     pub fn or(self, optb: Option<T>) -> Option<T> {
         match self {
             Some(_) => self,
@@ -391,6 +424,7 @@ impl<T> Option<T> {
     /// Returns the option if it contains a value, otherwise calls `f` and
     /// returns the result.
     #[inline]
+    #[unstable = "waiting for unboxed closures"]
     pub fn or_else(self, f: || -> Option<T>) -> Option<T> {
         match self {
             Some(_) => self,
@@ -404,12 +438,16 @@ impl<T> Option<T> {
 
     /// Takes the value out of the option, leaving a `None` in its place.
     #[inline]
+    #[stable]
     pub fn take(&mut self) -> Option<T> {
         mem::replace(self, None)
     }
 
+    /// Deprecated.
+    ///
     /// Filters an optional value using a given function.
     #[inline(always)]
+    #[deprecated = "removed due to lack of use"]
     pub fn filtered(self, f: |t: &T| -> bool) -> Option<T> {
         match self {
             Some(x) => if f(&x) { Some(x) } else { None },
@@ -417,8 +455,11 @@ impl<T> Option<T> {
         }
     }
 
+    /// Deprecated.
+    ///
     /// Applies a function zero or more times until the result is `None`.
     #[inline]
+    #[deprecated = "removed due to lack of use"]
     pub fn while_some(self, f: |v: T| -> Option<T>) {
         let mut opt = self;
         loop {
@@ -433,6 +474,8 @@ impl<T> Option<T> {
     // Common special cases
     /////////////////////////////////////////////////////////////////////////
 
+    /// Deprecated: use `take().unwrap()` instead.
+    ///
     /// The option dance. Moves a value out of an option type and returns it,
     /// replacing the original with `None`.
     ///
@@ -440,6 +483,7 @@ impl<T> Option<T> {
     ///
     /// Fails if the value equals `None`.
     #[inline]
+    #[deprecated = "use take().unwrap() instead"]
     pub fn take_unwrap(&mut self) -> T {
         match self.take() {
             Some(x) => x,
@@ -447,6 +491,8 @@ impl<T> Option<T> {
         }
     }
 
+    /// Deprecated: use `as_ref().unwrap()` instead.
+    ///
     /// Gets an immutable reference to the value inside an option.
     ///
     /// # Failure
@@ -460,6 +506,7 @@ impl<T> Option<T> {
     /// Instead, prefer to use pattern matching and handle the `None`
     /// case explicitly.
     #[inline]
+    #[deprecated = "use .as_ref().unwrap() instead"]
     pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
             Some(ref x) => x,
@@ -467,6 +514,8 @@ impl<T> Option<T> {
         }
     }
 
+    /// Deprecated: use `as_mut().unwrap()` instead.
+    ///
     /// Gets a mutable reference to the value inside an option.
     ///
     /// # Failure
@@ -480,6 +529,7 @@ impl<T> Option<T> {
     /// Instead, prefer to use pattern matching and handle the `None`
     /// case explicitly.
     #[inline]
+    #[deprecated = "use .as_mut().unwrap() instead"]
     pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
             Some(ref mut x) => x,
@@ -512,6 +562,7 @@ impl<T: Default> Option<T> {
     /// assert_eq!(0i, bad_year);
     /// ```
     #[inline]
+    #[unstable = "waiting for conventions"]
     pub fn unwrap_or_default(self) -> T {
         match self {
             Some(x) => x,
@@ -527,6 +578,7 @@ impl<T: Default> Option<T> {
 impl<T> Slice<T> for Option<T> {
     /// Convert from `Option<T>` to `&[T]` (without copying)
     #[inline]
+    #[stable]
     fn as_slice<'a>(&'a self) -> &'a [T] {
         match *self {
             Some(ref x) => slice::ref_slice(x),
@@ -552,6 +604,7 @@ impl<T> Default for Option<T> {
 /// The `Item` iterator is returned by the `iter`, `mut_iter` and `move_iter`
 /// methods on `Option`.
 #[deriving(Clone)]
+#[unstable = "waiting for iterator conventions"]
 pub struct Item<A> {
     opt: Option<A>
 }
@@ -584,54 +637,62 @@ impl<A> ExactSize<A> for Item<A> {}
 // Free functions
 /////////////////////////////////////////////////////////////////////////////
 
-/// Takes each element in the `Iterator`: if it is `None`, no further
-/// elements are taken, and the `None` is returned. Should no `None` occur, a
-/// vector containing the values of each `Option` is returned.
-///
-/// Here is an example which increments every integer in a vector,
-/// checking for overflow:
-///
-/// ```rust
-/// use std::option;
-/// use std::uint;
-///
-/// let v = vec!(1u, 2u);
-/// let res: Option<Vec<uint>> = option::collect(v.iter().map(|x: &uint|
-///     if *x == uint::MAX { None }
-///     else { Some(x + 1) }
-/// ));
-/// assert!(res == Some(vec!(2u, 3u)));
-/// ```
+/// Deprecated: use `Iterator::collect` instead.
 #[inline]
-pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> Option<V> {
-    // FIXME(#11084): This could be replaced with Iterator::scan when this
-    // performance bug is closed.
+#[deprecated = "use Iterator::collect instead"]
+pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(mut iter: Iter) -> Option<V> {
+    iter.collect()
+}
 
-    struct Adapter<Iter> {
-        iter: Iter,
-        found_none: bool,
-    }
+impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
+    /// Takes each element in the `Iterator`: if it is `None`, no further
+    /// elements are taken, and the `None` is returned. Should no `None` occur, a
+    /// container with the values of each `Option` is returned.
+    ///
+    /// Here is an example which increments every integer in a vector,
+    /// checking for overflow:
+    ///
+    /// ```rust
+    /// use std::uint;
+    ///
+    /// let v = vec!(1u, 2u);
+    /// let res: Option<Vec<uint>> = v.iter().map(|x: &uint|
+    ///     if *x == uint::MAX { None }
+    ///     else { Some(x + 1) }
+    /// ).collect();
+    /// assert!(res == Some(vec!(2u, 3u)));
+    /// ```
+    #[inline]
+    fn from_iter<I: Iterator<Option<A>>>(iter: I) -> Option<V> {
+        // FIXME(#11084): This could be replaced with Iterator::scan when this
+        // performance bug is closed.
 
-    impl<T, Iter: Iterator<Option<T>>> Iterator<T> for Adapter<Iter> {
-        #[inline]
-        fn next(&mut self) -> Option<T> {
-            match self.iter.next() {
-                Some(Some(value)) => Some(value),
-                Some(None) => {
-                    self.found_none = true;
-                    None
+        struct Adapter<Iter> {
+            iter: Iter,
+            found_none: bool,
+        }
+
+        impl<T, Iter: Iterator<Option<T>>> Iterator<T> for Adapter<Iter> {
+            #[inline]
+            fn next(&mut self) -> Option<T> {
+                match self.iter.next() {
+                    Some(Some(value)) => Some(value),
+                    Some(None) => {
+                        self.found_none = true;
+                        None
+                    }
+                    None => None,
                 }
-                None => None,
             }
         }
-    }
 
-    let mut adapter = Adapter { iter: iter, found_none: false };
-    let v: V = FromIterator::from_iter(adapter.by_ref());
+        let mut adapter = Adapter { iter: iter, found_none: false };
+        let v: V = FromIterator::from_iter(adapter.by_ref());
 
-    if adapter.found_none {
-        None
-    } else {
-        Some(v)
+        if adapter.found_none {
+            None
+        } else {
+            Some(v)
+        }
     }
 }

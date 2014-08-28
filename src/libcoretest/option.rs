@@ -73,7 +73,7 @@ fn test_option_dance() {
     let mut y = Some(5i);
     let mut y2 = 0;
     for _x in x.iter() {
-        y2 = y.take_unwrap();
+        y2 = y.take().unwrap();
     }
     assert_eq!(y2, 5);
     assert!(y.is_none());
@@ -82,8 +82,8 @@ fn test_option_dance() {
 #[test] #[should_fail]
 fn test_option_too_much_dance() {
     let mut y = Some(marker::NoCopy);
-    let _y2 = y.take_unwrap();
-    let _y3 = y.take_unwrap();
+    let _y2 = y.take().unwrap();
+    let _y3 = y.take().unwrap();
 }
 
 #[test]
