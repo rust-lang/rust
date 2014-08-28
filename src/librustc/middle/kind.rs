@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use middle::freevars::freevar_entry;
 use middle::freevars;
 use middle::subst;
@@ -593,15 +592,15 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
         TyPath(_, _, id) => {
             match cx.tcx.item_substs.borrow().find(&id) {
-                None => { }
+                None => {}
                 Some(ref item_substs) => {
                     let def_map = cx.tcx.def_map.borrow();
                     let did = def_map.get_copy(&id).def_id();
-                    let generics = ty::lookup_item_type(cx.tcx, did).generics;
-                    for def in generics.types.iter() {
+                    let ty = ty::lookup_item_type(cx.tcx, did);
+                    for def in ty.generics.types.iter() {
                         let ty = *item_substs.substs.types.get(def.space,
                                                                def.index);
-                        check_typaram_bounds(cx, aty.span, ty, def)
+                        check_typaram_bounds(cx, aty.span, ty, def);
                     }
                 }
             }
@@ -645,6 +644,20 @@ pub fn check_typaram_bounds(cx: &Context,
     });
 }
 
+// Check that the programmer has not added the `Sized` bound to a trait type
+// which would fool the compiler into thinking that trait types are sized, when
+// they are really unsized.
+fn check_false_sized(cx: &Context, sp: Span, ty: ty::t) {
+    match ty::get(ty).sty {
+        ty::ty_trait(..) if ty::type_is_sized(cx.tcx, ty) => {
+            span_err!(cx.tcx.sess, sp, E0159,
+                      "explicitly adding `Sized` bound to an unsized type `{}`",
+                       ty_to_string(cx.tcx, ty));
+        }
+        _ => {}
+    }
+}
+
 fn check_bounds_on_structs_or_enums_in_type_if_possible(cx: &mut Context,
                                                         span: Span,
                                                         ty: ty::t) {
@@ -674,7 +687,8 @@ fn check_bounds_on_structs_or_enums_in_type_if_possible(cx: &mut Context,
                                                   .zip(polytype.generics
                                                                .types
                                                                .iter()) {
-                    check_typaram_bounds(cx, span, *ty, type_param_def)
+                    check_typaram_bounds(cx, span, *ty, type_param_def);
+                    check_false_sized(cx, span, *ty);
                 }
 
                 // Check trait bounds.
@@ -702,6 +716,7 @@ fn check_bounds_on_structs_or_enums_in_type_if_possible(cx: &mut Context,
                                             cx.tcx)).as_slice());
                 })
             }
+            ty::ty_uniq(ty) => check_false_sized(cx, span, ty),
             _ => {}
         }
     });
