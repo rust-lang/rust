@@ -172,6 +172,11 @@ all the internal mutation stuff without a replacement.
 
 * We can try to build out saner/standard internal manipulation methods.
 
+* Try to make this functionality a subset of *Cursors*, which would be effectively a mut_iter
+where the returned references borrow Self, and mutation can be performed at the location of
+the cursor. However preventing invalidation would be more expensive, and some things
+might be more awkward.
+
 # Unresolved questions
 
 One thing omitted from the design was a "take" method on the Entry. The reason for this
