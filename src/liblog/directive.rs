@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use regex::Regex;
 use std::ascii::AsciiExt;
 use std::cmp;
 
@@ -28,14 +29,23 @@ fn parse_log_level(level: &str) -> Option<u32> {
     }).map(|p| cmp::min(p, ::MAX_LOG_LEVEL))
 }
 
-/// Parse a logging specification string (e.g: "crate1,crate2::mod3,crate3::x=1")
+/// Parse a logging specification string (e.g: "crate1,crate2::mod3,crate3::x=1/foo")
 /// and return a vector with log directives.
 ///
 /// Valid log levels are 0-255, with the most likely ones being 1-4 (defined in
 /// std::).  Also supports string log levels of error, warn, info, and debug
-pub fn parse_logging_spec(spec: &str) -> Vec<LogDirective> {
+pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<Regex>) {
     let mut dirs = Vec::new();
-    for s in spec.split(',') {
+
+    let mut parts = spec.split('/');
+    let mods = parts.next();
+    let filter = parts.next();
+    if parts.next().is_some() {
+        println!("warning: invalid logging spec '{}', \
+                 ignoring it (too many '/'s)", spec);
+        return (dirs, None);
+    }
+    mods.map(|m| { for s in m.split(',') {
         if s.len() == 0 { continue }
         let mut parts = s.split('=');
         let (log_level, name) = match (parts.next(), parts.next().map(|s| s.trim()), parts.next()) {
@@ -68,8 +78,19 @@ pub fn parse_logging_spec(spec: &str) -> Vec<LogDirective> {
             name: name.map(|s| s.to_string()),
             level: log_level,
         });
-    }
-    return dirs;
+    }});
+
+    let filter = filter.map_or(None, |filter| {
+        match Regex::new(filter) {
+            Ok(re) => Some(re),
+            Err(e) => {
+                println!("warning: invalid regex filter - {}", e);
+                None
+            }
+        }
+    });
+
+    return (dirs, filter);
 }
 
 #[cfg(test)]
@@ -78,7 +99,7 @@ mod tests {
 
     #[test]
     fn parse_logging_spec_valid() {
-        let dirs = parse_logging_spec("crate1::mod1=1,crate1::mod2,crate2=4");
+        let (dirs, filter) = parse_logging_spec("crate1::mod1=1,crate1::mod2,crate2=4");
         let dirs = dirs.as_slice();
         assert_eq!(dirs.len(), 3);
         assert_eq!(dirs[0].name, Some("crate1::mod1".to_string()));
@@ -89,57 +110,99 @@ mod tests {
 
         assert_eq!(dirs[2].name, Some("crate2".to_string()));
         assert_eq!(dirs[2].level, 4);
+        assert!(filter.is_none());
     }
 
     #[test]
     fn parse_logging_spec_invalid_crate() {
         // test parse_logging_spec with multiple = in specification
-        let dirs = parse_logging_spec("crate1::mod1=1=2,crate2=4");
+        let (dirs, filter) = parse_logging_spec("crate1::mod1=1=2,crate2=4");
         let dirs = dirs.as_slice();
         assert_eq!(dirs.len(), 1);
         assert_eq!(dirs[0].name, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, 4);
+        assert!(filter.is_none());
     }
 
     #[test]
     fn parse_logging_spec_invalid_log_level() {
         // test parse_logging_spec with 'noNumber' as log level
-        let dirs = parse_logging_spec("crate1::mod1=noNumber,crate2=4");
+        let (dirs, filter) = parse_logging_spec("crate1::mod1=noNumber,crate2=4");
         let dirs = dirs.as_slice();
         assert_eq!(dirs.len(), 1);
         assert_eq!(dirs[0].name, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, 4);
+        assert!(filter.is_none());
     }
 
     #[test]
     fn parse_logging_spec_string_log_level() {
         // test parse_logging_spec with 'warn' as log level
-        let dirs = parse_logging_spec("crate1::mod1=wrong,crate2=warn");
+        let (dirs, filter) = parse_logging_spec("crate1::mod1=wrong,crate2=warn");
         let dirs = dirs.as_slice();
         assert_eq!(dirs.len(), 1);
         assert_eq!(dirs[0].name, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, ::WARN);
+        assert!(filter.is_none());
     }
 
     #[test]
     fn parse_logging_spec_empty_log_level() {
         // test parse_logging_spec with '' as log level
-        let dirs = parse_logging_spec("crate1::mod1=wrong,crate2=");
+        let (dirs, filter) = parse_logging_spec("crate1::mod1=wrong,crate2=");
         let dirs = dirs.as_slice();
         assert_eq!(dirs.len(), 1);
         assert_eq!(dirs[0].name, Some("crate2".to_string()));
         assert_eq!(dirs[0].level, ::MAX_LOG_LEVEL);
+        assert!(filter.is_none());
     }
 
     #[test]
     fn parse_logging_spec_global() {
         // test parse_logging_spec with no crate
-        let dirs = parse_logging_spec("warn,crate2=4");
+        let (dirs, filter) = parse_logging_spec("warn,crate2=4");
         let dirs = dirs.as_slice();
         assert_eq!(dirs.len(), 2);
         assert_eq!(dirs[0].name, None);
         assert_eq!(dirs[0].level, 2);
         assert_eq!(dirs[1].name, Some("crate2".to_string()));
         assert_eq!(dirs[1].level, 4);
+        assert!(filter.is_none());
+    }
+
+    #[test]
+    fn parse_logging_spec_valid_filter() {
+        let (dirs, filter) = parse_logging_spec("crate1::mod1=1,crate1::mod2,crate2=4/abc");
+        let dirs = dirs.as_slice();
+        assert_eq!(dirs.len(), 3);
+        assert_eq!(dirs[0].name, Some("crate1::mod1".to_string()));
+        assert_eq!(dirs[0].level, 1);
+
+        assert_eq!(dirs[1].name, Some("crate1::mod2".to_string()));
+        assert_eq!(dirs[1].level, ::MAX_LOG_LEVEL);
+
+        assert_eq!(dirs[2].name, Some("crate2".to_string()));
+        assert_eq!(dirs[2].level, 4);
+        assert!(filter.is_some() && filter.unwrap().to_string().as_slice() == "abc");
+    }
+
+    #[test]
+    fn parse_logging_spec_invalid_crate_filter() {
+        let (dirs, filter) = parse_logging_spec("crate1::mod1=1=2,crate2=4/a.c");
+        let dirs = dirs.as_slice();
+        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs[0].name, Some("crate2".to_string()));
+        assert_eq!(dirs[0].level, 4);
+        assert!(filter.is_some() && filter.unwrap().to_string().as_slice() == "a.c");
+    }
+
+    #[test]
+    fn parse_logging_spec_empty_with_filter() {
+        let (dirs, filter) = parse_logging_spec("crate1/a*c");
+        let dirs = dirs.as_slice();
+        assert_eq!(dirs.len(), 1);
+        assert_eq!(dirs[0].name, Some("crate1".to_string()));
+        assert_eq!(dirs[0].level, ::MAX_LOG_LEVEL);
+        assert!(filter.is_some() && filter.unwrap().to_string().as_slice() == "a*c");
     }
 }
