@@ -14,7 +14,8 @@
 
 trait X<T> {}
 
-struct S<T> {f: Box<X<T>>, g: Box<X<T>>}
+struct S<T> {f: Box<X<T>+'static>,
+             g: Box<X<T>+'static>}
 
 struct F;
 impl X<int> for F {}

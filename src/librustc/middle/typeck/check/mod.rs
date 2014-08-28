@@ -102,7 +102,6 @@ use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
 use middle::typeck::check::method::{DontAutoderefReceiver};
 use middle::typeck::check::method::{IgnoreStaticMethods, ReportStaticMethods};
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
-use middle::typeck::check::regionmanip::relate_free_regions;
 use middle::typeck::check::vtable::VtableContext;
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
@@ -173,6 +172,43 @@ pub struct Inherited<'a> {
     vtable_map: vtable_map,
     upvar_borrow_map: RefCell<ty::UpvarBorrowMap>,
     unboxed_closures: RefCell<DefIdMap<ty::UnboxedClosure>>,
+
+    // A mapping from each fn's id to its signature, with all bound
+    // regions replaced with free ones. Unlike the other tables, this
+    // one is never copied into the tcx: it is only used by regionck.
+    fn_sig_map: RefCell<NodeMap<Vec<ty::t>>>,
+
+    // A set of constraints that regionck must validate. Each
+    // constraint has the form `T:'a`, meaning "some type `T` must
+    // outlive the lifetime 'a". These constraints derive from
+    // instantiated type parameters. So if you had a struct defined
+    // like
+    //
+    //     struct Foo<T:'static> { ... }
+    //
+    // then in some expression `let x = Foo { ... }` it will
+    // instantiate the type parameter `T` with a fresh type `$0`. At
+    // the same time, it will record a region obligation of
+    // `$0:'static`. This will get checked later by regionck.  (We
+    // can't generally check these things right away because we have
+    // to wait until types are resolved.)
+    //
+    // These are stored in a map keyed to the id of the innermost
+    // enclosing fn body / static initializer expression. This is
+    // because the location where the obligation was incurred can be
+    // relevant with respect to which sublifetime assumptions are in
+    // place. The reason that we store under the fn-id, and not
+    // something more fine-grained, is so that it is easier for
+    // regionck to be sure that it has found *all* the region
+    // obligations (otherwise, it's easy to fail to walk to a
+    // particular node-id).
+    region_obligations: RefCell<NodeMap<Vec<RegionObligation>>>,
+}
+
+struct RegionObligation {
+    sub_region: ty::Region,
+    sup_type: ty::t,
+    origin: infer::SubregionOrigin,
 }
 
 /// When type-checking an expression, we propagate downward
@@ -232,6 +268,8 @@ enum IsBinopAssignment{
 
 #[deriving(Clone)]
 pub struct FnCtxt<'a> {
+    body_id: ast::NodeId,
+
     // This flag is set to true if, during the writeback phase, we encounter
     // a type error in this function.
     writeback_errors: Cell<bool>,
@@ -243,22 +281,8 @@ pub struct FnCtxt<'a> {
     err_count_on_creation: uint,
 
     ret_ty: ty::t,
-    ps: RefCell<FnStyleState>,
 
-    // Sometimes we generate region pointers where the precise region
-    // to use is not known. For example, an expression like `&x.f`
-    // where `x` is of type `@T`: in this case, we will be rooting
-    // `x` onto the stack frame, and we could choose to root it until
-    // the end of (almost) any enclosing block or expression.  We
-    // want to pick the narrowest block that encompasses all uses.
-    //
-    // What we do in such cases is to generate a region variable with
-    // `region_lb` as a lower bound.  The regionck pass then adds
-    // other constraints based on how the variable is used and region
-    // inference selects the ultimate value.  Finally, borrowck is
-    // charged with guaranteeing that the value whose address was taken
-    // can actually be made to live as long as it needs to live.
-    region_lb: Cell<ast::NodeId>,
+    ps: RefCell<FnStyleState>,
 
     inh: &'a Inherited<'a>,
 
@@ -313,6 +337,8 @@ impl<'a> Inherited<'a> {
             vtable_map: RefCell::new(FnvHashMap::new()),
             upvar_borrow_map: RefCell::new(HashMap::new()),
             unboxed_closures: RefCell::new(DefIdMap::new()),
+            fn_sig_map: RefCell::new(NodeMap::new()),
+            region_obligations: RefCell::new(NodeMap::new()),
         }
     }
 }
@@ -322,25 +348,26 @@ pub fn blank_fn_ctxt<'a>(
                      ccx: &'a CrateCtxt<'a>,
                      inh: &'a Inherited<'a>,
                      rty: ty::t,
-                     region_bnd: ast::NodeId)
+                     body_id: ast::NodeId)
                      -> FnCtxt<'a> {
     FnCtxt {
+        body_id: body_id,
         writeback_errors: Cell::new(false),
         err_count_on_creation: ccx.tcx.sess.err_count(),
         ret_ty: rty,
         ps: RefCell::new(FnStyleState::function(ast::NormalFn, 0)),
-        region_lb: Cell::new(region_bnd),
         inh: inh,
         ccx: ccx
     }
 }
 
-fn blank_inherited_fields<'a>(ccx: &'a CrateCtxt<'a>) -> Inherited<'a> {
+fn static_inherited_fields<'a>(ccx: &'a CrateCtxt<'a>) -> Inherited<'a> {
     // It's kind of a kludge to manufacture a fake function context
     // and statement context, but we might as well do write the code only once
     let param_env = ty::ParameterEnvironment {
         free_substs: subst::Substs::empty(),
-        bounds: subst::VecPerParamSpace::empty()
+        bounds: subst::VecPerParamSpace::empty(),
+        implicit_region_bound: ty::ReStatic,
     };
     Inherited::new(ccx.tcx, param_env)
 }
@@ -352,6 +379,15 @@ impl<'a> ExprTyProvider for FnCtxt<'a> {
 
     fn ty_ctxt<'a>(&'a self) -> &'a ty::ctxt {
         self.ccx.tcx
+    }
+}
+
+struct CheckTypeWellFormedVisitor<'a> { ccx: &'a CrateCtxt<'a> }
+
+impl<'a> Visitor<()> for CheckTypeWellFormedVisitor<'a> {
+    fn visit_item(&mut self, i: &ast::Item, _: ()) {
+        check_type_well_formed(self.ccx, i);
+        visit::walk_item(self, i, ());
     }
 }
 
@@ -374,6 +410,13 @@ impl<'a> Visitor<()> for CheckItemSizedTypesVisitor<'a> {
 }
 
 pub fn check_item_types(ccx: &CrateCtxt, krate: &ast::Crate) {
+    let mut visit = CheckTypeWellFormedVisitor { ccx: ccx };
+    visit::walk_crate(&mut visit, krate, ());
+
+    // If types are not well-formed, it leads to all manner of errors
+    // downstream, so stop reporting errors at this point.
+    ccx.tcx.sess.abort_if_errors();
+
     let mut visit = CheckItemTypesVisitor { ccx: ccx };
     visit::walk_crate(&mut visit, krate, ());
 
@@ -396,11 +439,11 @@ fn check_bare_fn(ccx: &CrateCtxt,
     match ty::get(fty).sty {
         ty::ty_bare_fn(ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
-            let fcx = check_fn(ccx, fn_ty.fn_style, &fn_ty.sig,
+            let fcx = check_fn(ccx, fn_ty.fn_style, id, &fn_ty.sig,
                                decl, id, body, &inh);
 
             vtable::resolve_in_block(&fcx, body);
-            regionck::regionck_fn(&fcx, body);
+            regionck::regionck_fn(&fcx, id, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
@@ -465,7 +508,7 @@ impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
         // non-obvious: the `blk` variable maps to region lb, so
         // we have to keep this up-to-date.  This
         // is... unfortunate.  It'd be nice to not need this.
-        self.fcx.with_region_lb(b.id, || visit::walk_block(self, b, ()));
+        visit::walk_block(self, b, ());
     }
 
     // Since an expr occurs as part of the type fixed size arrays we
@@ -487,13 +530,16 @@ impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
 
 }
 
-fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
-                fn_style: ast::FnStyle,
-                fn_sig: &ty::FnSig,
-                decl: &ast::FnDecl,
-                id: ast::NodeId,
-                body: &ast::Block,
-                inherited: &'a Inherited<'a>) -> FnCtxt<'a>
+fn check_fn<'a>(
+    ccx: &'a CrateCtxt<'a>,
+    fn_style: ast::FnStyle,
+    fn_style_id: ast::NodeId,
+    fn_sig: &ty::FnSig,
+    decl: &ast::FnDecl,
+    fn_id: ast::NodeId,
+    body: &ast::Block,
+    inherited: &'a Inherited<'a>)
+    -> FnCtxt<'a>
 {
     /*!
      * Helper used by check_bare_fn and check_expr_fn.  Does the
@@ -514,30 +560,42 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
         ty::ReFree(ty::FreeRegion {scope_id: body.id, bound_region: br})
     });
 
-    relate_free_regions(tcx, &fn_sig);
-
     let arg_tys = fn_sig.inputs.as_slice();
     let ret_ty = fn_sig.output;
 
-    debug!("check_fn(arg_tys={}, ret_ty={})",
+    debug!("check_fn(arg_tys={}, ret_ty={}, fn_id={})",
            arg_tys.repr(tcx),
-           ret_ty.repr(tcx));
+           ret_ty.repr(tcx),
+           fn_id);
 
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
     let fcx = FnCtxt {
+        body_id: body.id,
         writeback_errors: Cell::new(false),
         err_count_on_creation: err_count_on_creation,
         ret_ty: ret_ty,
-        ps: RefCell::new(FnStyleState::function(fn_style, id)),
-        region_lb: Cell::new(body.id),
+        ps: RefCell::new(FnStyleState::function(fn_style, fn_style_id)),
         inh: inherited,
         ccx: ccx
     };
 
-    {
+    // Remember return type so that regionck can access it later.
+    let fn_sig_tys: Vec<ty::t> =
+        arg_tys.iter()
+        .chain([ret_ty].iter())
+        .map(|&ty| ty)
+        .collect();
+    debug!("fn-sig-map: fn_id={} fn_sig_tys={}",
+           fn_id,
+           fn_sig_tys.repr(tcx));
+    inherited.fn_sig_map
+        .borrow_mut()
+        .insert(fn_id, fn_sig_tys);
 
+    {
         let mut visit = GatherLocalsVisitor { fcx: &fcx, };
+
         // Add formal parameters.
         for (arg_ty, input) in arg_tys.iter().zip(decl.inputs.iter()) {
             // Create type variables for each argument.
@@ -659,6 +717,71 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
 
     if ty::lookup_simd(tcx, local_def(id)) {
         check_simd(tcx, span, id);
+    }
+}
+
+fn check_type_well_formed(ccx: &CrateCtxt, item: &ast::Item) {
+    /*!
+     * Checks that the field types (in a struct def'n) or
+     * argument types (in an enum def'n) are well-formed,
+     * meaning that they do not require any constraints not
+     * declared in the struct definition itself.
+     * For example, this definition would be illegal:
+     *
+     *     struct Ref<'a, T> { x: &'a T }
+     *
+     * because the type did not declare that `T:'a`.
+     *
+     * We do this check as a pre-pass before checking fn bodies
+     * because if these constraints are not included it frequently
+     * leads to confusing errors in fn bodies. So it's better to check
+     * the types first.
+     */
+
+    debug!("check_type_well_formed(it.id={}, it.ident={})",
+           item.id,
+           ty::item_path_str(ccx.tcx, local_def(item.id)));
+
+    match item.node {
+        ast::ItemStruct(..) => {
+            check_type_defn(ccx, item, |fcx| {
+                ty::struct_fields(ccx.tcx, local_def(item.id),
+                                  &fcx.inh.param_env.free_substs)
+                    .iter()
+                    .map(|f| f.mt.ty)
+                    .collect()
+            });
+        }
+        ast::ItemEnum(..) => {
+            check_type_defn(ccx, item, |fcx| {
+                ty::substd_enum_variants(ccx.tcx, local_def(item.id),
+                                         &fcx.inh.param_env.free_substs)
+                    .iter()
+                    .flat_map(|variant| {
+                        variant.args
+                            .iter()
+                            .map(|&arg_ty| arg_ty)
+                    })
+                    .collect()
+            });
+        }
+        _ => {}
+    }
+
+    fn check_type_defn(ccx: &CrateCtxt,
+                       item: &ast::Item,
+                       lookup_fields: |&FnCtxt| -> Vec<ty::t>)
+    {
+        let item_def_id = local_def(item.id);
+        let polytype = ty::lookup_item_type(ccx.tcx, item_def_id);
+        let param_env =
+            ty::construct_parameter_environment(ccx.tcx,
+                                                &polytype.generics,
+                                                item.id);
+        let inh = Inherited::new(ccx.tcx, param_env);
+        let fcx = blank_fn_ctxt(ccx, &inh, polytype.ty, item.id);
+        let field_tys = lookup_fields(&fcx);
+        regionck::regionck_type_defn(&fcx, item.span, field_tys.as_slice());
     }
 }
 
@@ -977,9 +1100,6 @@ fn compare_impl_method(tcx: &ty::ctxt,
         return;
     }
 
-    let it = trait_m.generics.types.get_slice(subst::FnSpace).iter()
-        .zip(impl_m.generics.types.get_slice(subst::FnSpace).iter());
-
     // This code is best explained by example. Consider a trait:
     //
     //     trait Trait<T> {
@@ -1041,20 +1161,27 @@ fn compare_impl_method(tcx: &ty::ctxt,
     let impl_to_skol_substs =
         subst::Substs::new(skol_tps.clone(), skol_regions.clone());
 
-    // Compute skolemized form of impl method ty.
-    let impl_fty = ty::mk_bare_fn(tcx, impl_m.fty.clone());
-    let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
-
-    // Compute skolemized form of trait method ty.
+    // Create mapping from trait to skolemized.
     let trait_to_skol_substs =
         trait_to_impl_substs
         .subst(tcx, &impl_to_skol_substs)
         .with_method(Vec::from_slice(skol_tps.get_slice(subst::FnSpace)),
                      Vec::from_slice(skol_regions.get_slice(subst::FnSpace)));
-    let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
-    let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
+
+    // Check region bounds.
+    if !check_region_bounds_on_impl_method(tcx,
+                                           impl_m_span,
+                                           impl_m,
+                                           &trait_m.generics,
+                                           &impl_m.generics,
+                                           &trait_to_skol_substs,
+                                           &impl_to_skol_substs) {
+        return;
+    }
 
     // Check bounds.
+    let it = trait_m.generics.types.get_slice(subst::FnSpace).iter()
+        .zip(impl_m.generics.types.get_slice(subst::FnSpace).iter());
     for (i, (trait_param_def, impl_param_def)) in it.enumerate() {
         // Check that the impl does not require any builtin-bounds
         // that the trait does not guarantee:
@@ -1110,6 +1237,12 @@ fn compare_impl_method(tcx: &ty::ctxt,
         }
     }
 
+    // Compute skolemized form of impl and trait method tys.
+    let impl_fty = ty::mk_bare_fn(tcx, impl_m.fty.clone());
+    let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
+    let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
+    let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
+
     // Check the impl method type IM is a subtype of the trait method
     // type TM. To see why this makes sense, think of a vtable. The
     // expected type of the function pointers in the vtable is the
@@ -1134,6 +1267,152 @@ fn compare_impl_method(tcx: &ty::ctxt,
     // Finally, resolve all regions. This catches wily misuses of lifetime
     // parameters.
     infcx.resolve_regions_and_report_errors();
+
+    fn check_region_bounds_on_impl_method(tcx: &ty::ctxt,
+                                          span: Span,
+                                          impl_m: &ty::Method,
+                                          trait_generics: &ty::Generics,
+                                          impl_generics: &ty::Generics,
+                                          trait_to_skol_substs: &Substs,
+                                          impl_to_skol_substs: &Substs)
+                                          -> bool
+    {
+        /*!
+
+        Check that region bounds on impl method are the same as those
+        on the trait. In principle, it could be ok for there to be
+        fewer region bounds on the impl method, but this leads to an
+        annoying corner case that is painful to handle (described
+        below), so for now we can just forbid it.
+
+        Example (see
+        `src/test/compile-fail/regions-bound-missing-bound-in-impl.rs`):
+
+            trait Foo<'a> {
+                fn method1<'b>();
+                fn method2<'b:'a>();
+            }
+
+            impl<'a> Foo<'a> for ... {
+                fn method1<'b:'a>() { .. case 1, definitely bad .. }
+                fn method2<'b>() { .. case 2, could be ok .. }
+            }
+
+        The "definitely bad" case is case #1. Here, the impl adds an
+        extra constraint not present in the trait.
+
+        The "maybe bad" case is case #2. Here, the impl adds an extra
+        constraint not present in the trait. We could in principle
+        allow this, but it interacts in a complex way with early/late
+        bound resolution of lifetimes. Basically the presence or
+        absence of a lifetime bound affects whether the lifetime is
+        early/late bound, and right now the code breaks if the trait
+        has an early bound lifetime parameter and the method does not.
+
+        */
+
+        let trait_params = trait_generics.regions.get_slice(subst::FnSpace);
+        let impl_params = impl_generics.regions.get_slice(subst::FnSpace);
+
+        debug!("check_region_bounds_on_impl_method: \
+               trait_generics={} \
+               impl_generics={}",
+               trait_generics.repr(tcx),
+               impl_generics.repr(tcx));
+
+        // Must have same number of early-bound lifetime parameters.
+        // Unfortunately, if the user screws up the bounds, then this
+        // will change classification between early and late.  E.g.,
+        // if in trait we have `<'a,'b:'a>`, and in impl we just have
+        // `<'a,'b>`, then we have 2 early-bound lifetime parameters
+        // in trait but 0 in the impl. But if we report "expected 2
+        // but found 0" it's confusing, because it looks like there
+        // are zero. Since I don't quite know how to phrase things at
+        // the moment, give a kind of vague error message.
+        if trait_params.len() != impl_params.len() {
+            tcx.sess.span_err(
+                span,
+                format!("lifetime parameters or bounds on method `{}` do \
+                         not match the trait declaration",
+                        token::get_ident(impl_m.ident)).as_slice());
+            return false;
+        }
+
+        // Each parameter `'a:'b+'c+'d` in trait should have the same
+        // set of bounds in the impl, after subst.
+        for (trait_param, impl_param) in
+            trait_params.iter().zip(
+                impl_params.iter())
+        {
+            let trait_bounds =
+                trait_param.bounds.subst(tcx, trait_to_skol_substs);
+            let impl_bounds =
+                impl_param.bounds.subst(tcx, impl_to_skol_substs);
+
+            debug!("check_region_bounds_on_impl_method: \
+                   trait_param={} \
+                   impl_param={} \
+                   trait_bounds={} \
+                   impl_bounds={}",
+                   trait_param.repr(tcx),
+                   impl_param.repr(tcx),
+                   trait_bounds.repr(tcx),
+                   impl_bounds.repr(tcx));
+
+            // Collect the set of bounds present in trait but not in
+            // impl.
+            let missing: Vec<ty::Region> =
+                trait_bounds.iter()
+                .filter(|&b| !impl_bounds.contains(b))
+                .map(|&b| b)
+                .collect();
+
+            // Collect set present in impl but not in trait.
+            let extra: Vec<ty::Region> =
+                impl_bounds.iter()
+                .filter(|&b| !trait_bounds.contains(b))
+                .map(|&b| b)
+                .collect();
+
+            debug!("missing={} extra={}",
+                   missing.repr(tcx), extra.repr(tcx));
+
+            let err = if missing.len() != 0 || extra.len() != 0 {
+                tcx.sess.span_err(
+                    span,
+                    format!(
+                        "the lifetime parameter `{}` declared in the impl \
+                         has a distinct set of bounds \
+                         from its counterpart `{}` \
+                         declared in the trait",
+                        impl_param.name.user_string(tcx),
+                        trait_param.name.user_string(tcx)).as_slice());
+                true
+            } else {
+                false
+            };
+
+            if missing.len() != 0 {
+                tcx.sess.span_note(
+                    span,
+                    format!("the impl is missing the following bounds: `{}`",
+                            missing.user_string(tcx)).as_slice());
+            }
+
+            if extra.len() != 0 {
+                tcx.sess.span_note(
+                    span,
+                    format!("the impl has the following extra bounds: `{}`",
+                            extra.user_string(tcx)).as_slice());
+            }
+
+            if err {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
 
 fn check_cast(fcx: &FnCtxt,
@@ -1163,6 +1442,7 @@ fn check_cast(fcx: &FnCtxt,
         fcx.write_error(id);
         return
     }
+
     if ty::type_is_bot(t_e) {
         fcx.write_bot(id);
         return
@@ -1301,6 +1581,8 @@ impl<'a> AstConv for FnCtxt<'a> {
 }
 
 impl<'a> FnCtxt<'a> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.ccx.tcx }
+
     pub fn infcx<'b>(&'b self) -> &'b infer::InferCtxt<'a> {
         &self.inh.infcx
     }
@@ -1319,6 +1601,10 @@ impl<'a> FnCtxt<'a> {
 }
 
 impl<'a> RegionScope for infer::InferCtxt<'a> {
+    fn default_region_bound(&self, span: Span) -> Option<ty::Region> {
+        Some(self.next_region_var(infer::MiscVariable(span)))
+    }
+
     fn anon_regions(&self, span: Span, count: uint)
                     -> Result<Vec<ty::Region> , ()> {
         Ok(Vec::from_fn(count, |_| {
@@ -1494,19 +1780,10 @@ impl<'a> FnCtxt<'a> {
     }
 
     pub fn mk_subr(&self,
-                   a_is_expected: bool,
                    origin: infer::SubregionOrigin,
                    sub: ty::Region,
                    sup: ty::Region) {
-        infer::mk_subr(self.infcx(), a_is_expected, origin, sub, sup)
-    }
-
-    pub fn with_region_lb<R>(&self, lb: ast::NodeId, f: || -> R) -> R {
-        let old_region_lb = self.region_lb.get();
-        self.region_lb.set(lb);
-        let v = f();
-        self.region_lb.set(old_region_lb);
-        v
+        infer::mk_subr(self.infcx(), origin, sub, sup)
     }
 
     pub fn type_error_message(&self,
@@ -1535,6 +1812,112 @@ impl<'a> FnCtxt<'a> {
                                    a: ty::t,
                                    err: &ty::type_err) {
         self.infcx().report_mismatched_types(sp, e, a, err)
+    }
+
+    pub fn register_region_obligation(&self,
+                                      origin: infer::SubregionOrigin,
+                                      ty: ty::t,
+                                      r: ty::Region)
+    {
+        /*!
+         * Registers an obligation for checking later, during
+         * regionck, that the type `ty` must outlive the region `r`.
+         */
+
+        let mut region_obligations = self.inh.region_obligations.borrow_mut();
+        let v = region_obligations.find_or_insert_with(self.body_id,
+                                                       |_| Vec::new());
+        v.push(RegionObligation { sub_region: r,
+                                  sup_type: ty,
+                                  origin: origin });
+    }
+
+    pub fn add_region_obligations_for_parameters(&self,
+                                                 span: Span,
+                                                 substs: &Substs,
+                                                 generics: &ty::Generics)
+    {
+        /*!
+         * Given a set of generic parameter definitions (`generics`)
+         * and the values provided for each of them (`substs`),
+         * creates and registers suitable region obligations.
+         *
+         * For example, if there is a function:
+         *
+         *    fn foo<'a,T:'a>(...)
+         *
+         * and a reference:
+         *
+         *    let f = foo;
+         *
+         * Then we will create a fresh region variable `'$0` and a
+         * fresh type variable `$1` for `'a` and `T`. This routine
+         * will add a region obligation `$1:'$0` and register it
+         * locally.
+         */
+
+        debug!("add_region_obligations_for_parameters(substs={}, generics={})",
+               substs.repr(self.tcx()),
+               generics.repr(self.tcx()));
+
+        assert_eq!(generics.types.iter().len(),
+                   substs.types.iter().len());
+        for (type_def, &type_param) in
+            generics.types.iter().zip(
+                substs.types.iter())
+        {
+            let param_ty = ty::ParamTy { space: type_def.space,
+                                         idx: type_def.index,
+                                         def_id: type_def.def_id };
+            let bounds = type_def.bounds.subst(self.tcx(), substs);
+            add_region_obligations_for_type_parameter(
+                self, span, param_ty, &bounds, type_param);
+        }
+
+        assert_eq!(generics.regions.iter().len(),
+                   substs.regions().iter().len());
+        for (region_def, &region_param) in
+            generics.regions.iter().zip(
+                substs.regions().iter())
+        {
+            let bounds = region_def.bounds.subst(self.tcx(), substs);
+            add_region_obligations_for_region_parameter(
+                self, span, bounds.as_slice(), region_param);
+        }
+
+        fn add_region_obligations_for_type_parameter(
+            fcx: &FnCtxt,
+            span: Span,
+            param_ty: ty::ParamTy,
+            param_bound: &ty::ParamBounds,
+            ty: ty::t)
+        {
+            // For each declared region bound `T:r`, `T` must outlive `r`.
+            let region_bounds =
+                ty::required_region_bounds(
+                    fcx.tcx(),
+                    param_bound.opt_region_bound.as_slice(),
+                    param_bound.builtin_bounds,
+                    param_bound.trait_bounds.as_slice());
+            for &r in region_bounds.iter() {
+                let origin = infer::RelateParamBound(span, param_ty, ty);
+                fcx.register_region_obligation(origin, ty, r);
+            }
+        }
+
+        fn add_region_obligations_for_region_parameter(
+            fcx: &FnCtxt,
+            span: Span,
+            region_bounds: &[ty::Region],
+            region_param: ty::Region)
+        {
+            for &b in region_bounds.iter() {
+                // For each bound `region:b`, `b <= region` must hold
+                // (i.e., `region` must outlive `b`).
+                let origin = infer::RelateRegionParamBound(span);
+                fcx.mk_subr(origin, b, region_param);
+            }
+        }
     }
 }
 
@@ -2269,7 +2652,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                            lvalue_pref: LvaluePreference,
                            unifier: ||)
 {
-    debug!(">> typechecking");
+    debug!(">> typechecking: expr={} expected={}",
+           expr.repr(fcx.tcx()), expected.repr(fcx.tcx()));
 
     // A generic function for doing all of the checking for call expressions
     fn check_call(fcx: &FnCtxt,
@@ -2674,17 +3058,19 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                              kind: ast::UnboxedClosureKind,
                              decl: &ast::FnDecl,
                              body: ast::P<ast::Block>) {
-        // The `RegionTraitStore` is a lie, but we ignore it so it doesn't
-        // matter.
-        //
-        // FIXME(pcwalton): Refactor this API.
         let mut fn_ty = astconv::ty_of_closure(
             fcx,
             expr.id,
             ast::NormalFn,
             ast::Many,
-            ty::empty_builtin_bounds(),
+
+            // The `RegionTraitStore` and region_existential_bounds
+            // are lies, but we ignore them so it doesn't matter.
+            //
+            // FIXME(pcwalton): Refactor this API.
+            ty::region_existential_bound(ty::ReStatic),
             ty::RegionTraitStore(ty::ReStatic, ast::MutImmutable),
+
             decl,
             abi::RustCall,
             None);
@@ -2703,6 +3089,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         check_fn(fcx.ccx,
                  ast::NormalFn,
+                 expr.id,
                  &fn_ty.sig,
                  decl,
                  expr.id,
@@ -2776,13 +3163,17 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 }
                 _ => {
                     // Not an error! Means we're inferring the closure type
-                    let mut bounds = ty::empty_builtin_bounds();
-                    let onceness = match expr.node {
+                    let (bounds, onceness) = match expr.node {
                         ast::ExprProc(..) => {
-                            bounds.add(ty::BoundSend);
-                            ast::Once
+                            let mut bounds = ty::region_existential_bound(ty::ReStatic);
+                            bounds.builtin_bounds.add(ty::BoundSend); // FIXME
+                            (bounds, ast::Once)
                         }
-                        _ => ast::Many
+                        _ => {
+                            let region = fcx.infcx().next_region_var(
+                                infer::AddrOfRegion(expr.span));
+                            (ty::region_existential_bound(region), ast::Many)
+                        }
                     };
                     (None, onceness, bounds)
                 }
@@ -2808,7 +3199,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // If the closure is a stack closure and hasn't had some non-standard
         // style inferred for it, then check it under its parent's style.
         // Otherwise, use its own
-        let (inherited_style, id) = match store {
+        let (inherited_style, inherited_style_id) = match store {
             ty::RegionTraitStore(..) => (fcx.ps.borrow().fn_style,
                                          fcx.ps.borrow().def),
             ty::UniqTraitStore => (ast::NormalFn, expr.id)
@@ -2816,9 +3207,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         check_fn(fcx.ccx,
                  inherited_style,
+                 inherited_style_id,
                  &fty_sig,
-                 decl,
-                 id,
+                 &*decl,
+                 expr.id,
                  &*body,
                  fcx.inh);
     }
@@ -3080,13 +3472,15 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                   // places: the exchange heap and the managed heap.
                   let definition = lookup_def(fcx, path.span, place.id);
                   let def_id = definition.def_id();
+                  let referent_ty = fcx.expr_ty(&**subexpr);
                   if tcx.lang_items.exchange_heap() == Some(def_id) {
-                      fcx.write_ty(id, ty::mk_uniq(tcx,
-                                                   fcx.expr_ty(&**subexpr)));
+                      fcx.write_ty(id, ty::mk_uniq(tcx, referent_ty));
                       checked = true
                   } else if tcx.lang_items.managed_heap() == Some(def_id) {
-                      fcx.write_ty(id, ty::mk_box(tcx,
-                                                  fcx.expr_ty(&**subexpr)));
+                      fcx.register_region_obligation(infer::Managed(expr.span),
+                                                     referent_ty,
+                                                     ty::ReStatic);
+                      fcx.write_ty(id, ty::mk_box(tcx, referent_ty));
                       checked = true
                   }
               }
@@ -3270,7 +3664,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 //ast::ExprLit(lit) if ast_util::lit_is_str(lit) => fcx.expr_ty(oprnd),
                 // Empty slices live in static memory.
                 ast::ExprVec(ref elements) if elements.len() == 0 => {
-                    ty::mk_rptr(tcx, ty::ReStatic, tm)
+                    // Note: we do not assign a lifetime of
+                    // static. This is because the resulting type
+                    // `&'static [T]` would require that T outlives
+                    // `'static`!
+                    let region = fcx.infcx().next_region_var(
+                        infer::AddrOfSlice(expr.span));
+                    ty::mk_rptr(tcx, region, tm)
                 }
                 _ => {
                     let region = fcx.infcx().next_region_var(infer::AddrOfRegion(expr.span));
@@ -3281,9 +3681,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         fcx.write_ty(id, oprnd_t);
       }
       ast::ExprPath(ref pth) => {
-        let defn = lookup_def(fcx, pth.span, id);
-        let pty = polytype_for_def(fcx, expr.span, defn);
-        instantiate_path(fcx, pth, pty, defn, expr.span, expr.id);
+          let defn = lookup_def(fcx, pth.span, id);
+          let pty = polytype_for_def(fcx, expr.span, defn);
+          instantiate_path(fcx, pth, pty, defn, expr.span, expr.id);
+
+          // We always require that the type provided as the value for
+          // a type parameter outlives the moment of instantiation.
+          constrain_path_type_parameters(fcx, expr);
       }
       ast::ExprInlineAsm(ref ia) => {
           for &(_, ref input) in ia.inputs.iter() {
@@ -3708,6 +4112,18 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
     unifier();
 }
 
+fn constrain_path_type_parameters(fcx: &FnCtxt,
+                                  expr: &ast::Expr)
+{
+    fcx.opt_node_ty_substs(expr.id, |item_substs| {
+        for &ty in item_substs.substs.types.iter() {
+            let default_bound = ty::ReScope(expr.id);
+            let origin = infer::RelateDefaultParamBound(expr.span, ty);
+            fcx.register_region_obligation(origin, ty, default_bound);
+        }
+    });
+}
+
 impl Expectation {
     fn only_has_type(self) -> Expectation {
         match self {
@@ -3889,80 +4305,78 @@ fn check_block_with_expected(fcx: &FnCtxt,
         replace(&mut *fcx_ps, fn_style_state)
     };
 
-    fcx.with_region_lb(blk.id, || {
-        let mut warned = false;
-        let mut last_was_bot = false;
-        let mut any_bot = false;
-        let mut any_err = false;
-        for s in blk.stmts.iter() {
-            check_stmt(fcx, &**s);
-            let s_id = ast_util::stmt_id(&**s);
-            let s_ty = fcx.node_ty(s_id);
-            if last_was_bot && !warned && match s.node {
-                  ast::StmtDecl(decl, _) => {
-                      match decl.node {
-                          ast::DeclLocal(_) => true,
-                          _ => false,
-                      }
-                  }
-                  ast::StmtExpr(_, _) | ast::StmtSemi(_, _) => true,
-                  _ => false
-                } {
-                fcx.ccx
-                   .tcx
-                   .sess
-                   .add_lint(lint::builtin::UNREACHABLE_CODE,
-                             s_id,
-                             s.span,
-                             "unreachable statement".to_string());
-                warned = true;
+    let mut warned = false;
+    let mut last_was_bot = false;
+    let mut any_bot = false;
+    let mut any_err = false;
+    for s in blk.stmts.iter() {
+        check_stmt(fcx, &**s);
+        let s_id = ast_util::stmt_id(&**s);
+        let s_ty = fcx.node_ty(s_id);
+        if last_was_bot && !warned && match s.node {
+            ast::StmtDecl(decl, _) => {
+                match decl.node {
+                    ast::DeclLocal(_) => true,
+                    _ => false,
+                }
             }
-            if ty::type_is_bot(s_ty) {
-                last_was_bot = true;
-            }
-            any_bot = any_bot || ty::type_is_bot(s_ty);
-            any_err = any_err || ty::type_is_error(s_ty);
+            ast::StmtExpr(_, _) | ast::StmtSemi(_, _) => true,
+            _ => false
+        } {
+            fcx.ccx
+                .tcx
+                .sess
+                .add_lint(lint::builtin::UNREACHABLE_CODE,
+                          s_id,
+                          s.span,
+                          "unreachable statement".to_string());
+            warned = true;
         }
-        match blk.expr {
-            None => if any_err {
-                    fcx.write_error(blk.id);
-                }
-                else if any_bot {
-                    fcx.write_bot(blk.id);
-                }
-                else  {
-                    fcx.write_nil(blk.id);
-                },
-            Some(e) => {
-                if any_bot && !warned {
-                    fcx.ccx
-                       .tcx
-                       .sess
-                       .add_lint(lint::builtin::UNREACHABLE_CODE,
-                                 e.id,
-                                 e.span,
-                                 "unreachable expression".to_string());
-                }
-                let ety = match expected {
-                    ExpectHasType(ety) => {
-                        check_expr_coercable_to_type(fcx, &*e, ety);
-                        ety
-                    }
-                    _ => {
-                        check_expr_with_expectation(fcx, &*e, expected);
-                        fcx.expr_ty(&*e)
-                    }
-                };
-
-                fcx.write_ty(blk.id, ety);
-                if any_err {
-                    fcx.write_error(blk.id);
-                } else if any_bot {
-                    fcx.write_bot(blk.id);
-                }
+        if ty::type_is_bot(s_ty) {
+            last_was_bot = true;
+        }
+        any_bot = any_bot || ty::type_is_bot(s_ty);
+        any_err = any_err || ty::type_is_error(s_ty);
+    }
+    match blk.expr {
+        None => if any_err {
+            fcx.write_error(blk.id);
+        }
+        else if any_bot {
+            fcx.write_bot(blk.id);
+        }
+        else  {
+            fcx.write_nil(blk.id);
+        },
+        Some(e) => {
+            if any_bot && !warned {
+                fcx.ccx
+                    .tcx
+                    .sess
+                    .add_lint(lint::builtin::UNREACHABLE_CODE,
+                              e.id,
+                              e.span,
+                              "unreachable expression".to_string());
             }
-        };
-    });
+            let ety = match expected {
+                ExpectHasType(ety) => {
+                    check_expr_coercable_to_type(fcx, &*e, ety);
+                    ety
+                }
+                _ => {
+                    check_expr_with_expectation(fcx, &*e, expected);
+                    fcx.expr_ty(&*e)
+                }
+            };
+
+            fcx.write_ty(blk.id, ety);
+            if any_err {
+                fcx.write_error(blk.id);
+            } else if any_bot {
+                fcx.write_bot(blk.id);
+            }
+        }
+    };
 
     *fcx.ps.borrow_mut() = prev;
 }
@@ -3980,7 +4394,7 @@ pub fn check_const_in_type(tcx: &ty::ctxt,
         trait_map: NodeMap::new(),
         tcx: tcx,
     };
-    let inh = blank_inherited_fields(&ccx);
+    let inh = static_inherited_fields(&ccx);
     let fcx = blank_fn_ctxt(&ccx, &inh, expected_type, expr.id);
     check_const_with_ty(&fcx, expr.span, expr, expected_type);
 }
@@ -3989,7 +4403,7 @@ pub fn check_const(ccx: &CrateCtxt,
                    sp: Span,
                    e: &ast::Expr,
                    id: ast::NodeId) {
-    let inh = blank_inherited_fields(ccx);
+    let inh = static_inherited_fields(ccx);
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, &inh, rty, e.id);
     let declty = fcx.ccx.tcx.tcache.borrow().get(&local_def(id)).ty;
@@ -4184,7 +4598,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                 Some(e) => {
                     debug!("disr expr, checking {}", pprust::expr_to_string(&*e));
 
-                    let inh = blank_inherited_fields(ccx);
+                    let inh = static_inherited_fields(ccx);
                     let fcx = blank_fn_ctxt(ccx, &inh, rty, e.id);
                     let declty = match hint {
                         attr::ReprAny | attr::ReprPacked | attr::ReprExtern => ty::mk_int(),
@@ -4494,6 +4908,9 @@ pub fn instantiate_path(fcx: &FnCtxt,
         adjust_region_parameters(fcx, span, space, region_defs, &mut substs);
         assert_eq!(substs.regions().len(space), region_defs.len(space));
     }
+
+    fcx.add_region_obligations_for_parameters(
+        span, &substs, &polytype.generics);
 
     fcx.write_ty_substs(node_id, polytype.ty, ty::ItemSubsts {
         substs: substs,
@@ -4888,11 +5305,13 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                   Ok(t) => t,
                   Err(s) => { tcx.sess.span_fatal(it.span, s.as_slice()); }
               };
-              let region = ty::ReLateBound(it.id, ty::BrAnon(0));
-              let visitor_object_ty = match ty::visitor_object_ty(tcx, region) {
-                  Ok((_, vot)) => vot,
-                  Err(s) => { tcx.sess.span_fatal(it.span, s.as_slice()); }
-              };
+              let region0 = ty::ReLateBound(it.id, ty::BrAnon(0));
+              let region1 = ty::ReLateBound(it.id, ty::BrAnon(1));
+              let visitor_object_ty =
+                    match ty::visitor_object_ty(tcx, region0, region1) {
+                        Ok((_, vot)) => vot,
+                        Err(s) => { tcx.sess.span_fatal(it.span, s.as_slice()); }
+                    };
 
               let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
                   ty: tydesc_ty,
@@ -5097,3 +5516,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     }
 }
 
+impl Repr for RegionObligation {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
+        format!("RegionObligation(sub_region={}, sup_type={}, origin={})",
+                self.sub_region.repr(tcx),
+                self.sup_type.repr(tcx),
+                self.origin.repr(tcx))
+    }
+}

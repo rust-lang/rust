@@ -10,7 +10,7 @@
 
 
 pub enum Thing {
-    A(Box<Foo>)
+    A(Box<Foo+'static>)
 }
 
 pub trait Foo {}
@@ -20,7 +20,7 @@ pub struct Struct;
 impl Foo for Struct {}
 
 pub fn main() {
-    match A(box Struct as Box<Foo>) {
+    match A(box Struct as Box<Foo+'static>) {
         A(_a) => 0i,
     };
 }

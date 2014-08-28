@@ -29,6 +29,7 @@
 
 #![feature(phase, globs, macro_rules, unsafe_destructor)]
 #![feature(import_shadowing)]
+#![feature(issue_5723_bootstrap)]
 #![deny(missing_doc)]
 #![no_std]
 

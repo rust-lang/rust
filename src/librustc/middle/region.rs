@@ -25,6 +25,7 @@ use driver::session::Session;
 use middle::ty::{FreeRegion};
 use middle::ty;
 use util::nodemap::NodeMap;
+use util::common::can_reach;
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -78,7 +79,7 @@ The region maps encode information about region relationships.
 pub struct RegionMaps {
     scope_map: RefCell<NodeMap<ast::NodeId>>,
     var_map: RefCell<NodeMap<ast::NodeId>>,
-    free_region_map: RefCell<HashMap<FreeRegion, Vec<FreeRegion> >>,
+    free_region_map: RefCell<HashMap<FreeRegion, Vec<FreeRegion>>>,
     rvalue_scopes: RefCell<NodeMap<ast::NodeId>>,
     terminating_scopes: RefCell<HashSet<ast::NodeId>>,
 }
@@ -255,34 +256,7 @@ impl RegionMaps {
          * (that is, the user can give two different names to the same lifetime).
          */
 
-        if sub == sup {
-            return true;
-        }
-
-        // Do a little breadth-first-search here.  The `queue` list
-        // doubles as a way to detect if we've seen a particular FR
-        // before.  Note that we expect this graph to be an *extremely
-        // shallow* tree.
-        let mut queue = vec!(sub);
-        let mut i = 0;
-        while i < queue.len() {
-            match self.free_region_map.borrow().find(queue.get(i)) {
-                Some(parents) => {
-                    for parent in parents.iter() {
-                        if *parent == sup {
-                            return true;
-                        }
-
-                        if !queue.iter().any(|x| x == parent) {
-                            queue.push(*parent);
-                        }
-                    }
-                }
-                None => {}
-            }
-            i += 1;
-        }
-        return false;
+        can_reach(&*self.free_region_map.borrow(), sub, sup)
     }
 
     pub fn is_subregion_of(&self,
@@ -300,6 +274,7 @@ impl RegionMaps {
 
         sub_region == super_region || {
             match (sub_region, super_region) {
+                (ty::ReEmpty, _) |
                 (_, ty::ReStatic) => {
                     true
                 }

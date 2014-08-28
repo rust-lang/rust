@@ -32,7 +32,7 @@ struct Test3<'a, 'b, 'c> { //~ ERROR regions=[[+, +, +];[];[]]
 // Mutability induces invariance:
 
 #[rustc_variance]
-struct Test4<'a, 'b> { //~ ERROR regions=[[-, o];[];[]]
+struct Test4<'a, 'b:'a> { //~ ERROR regions=[[-, o];[];[]]
     x: &'a mut &'b int,
 }
 
@@ -64,7 +64,7 @@ struct Test7<'a> { //~ ERROR regions=[[*];[];[]]
 // Try enums too.
 
 #[rustc_variance]
-enum Test8<'a, 'b, 'c> { //~ ERROR regions=[[+, -, o];[];[]]
+enum Test8<'a, 'b, 'c:'b> { //~ ERROR regions=[[+, -, o];[];[]]
     Test8A(extern "Rust" fn(&'a int)),
     Test8B(&'b [int]),
     Test8C(&'b mut &'c str),

@@ -498,9 +498,8 @@ impl TypeMap {
 
                 unique_type_id.push_char(':');
 
-                for bound in bounds.iter() {
+                for bound in bounds.builtin_bounds.iter() {
                     match bound {
-                        ty::BoundStatic => unique_type_id.push_str("'static"),
                         ty::BoundSend => unique_type_id.push_str("Send"),
                         ty::BoundSized => unique_type_id.push_str("Sized"),
                         ty::BoundCopy => unique_type_id.push_str("Copy"),

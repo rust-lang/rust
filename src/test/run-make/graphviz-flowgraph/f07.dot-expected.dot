@@ -15,7 +15,8 @@ digraph block {
     N13[label="expr x"];
     N14[label="expr y"];
     N15[label="expr x + y"];
-    N16[label="block { match [7i, 77i, 777i, 7777i] { [x, y, ..] => x + y, }; }"];
+    N16[label="stmt match [7i, 77i, 777i, 7777i] { [x, y, ..] => x + y, };"];
+    N17[label="block { match [7i, 77i, 777i, 7777i] { [x, y, ..] => x + y, }; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -31,5 +32,6 @@ digraph block {
     N14 -> N15;
     N15 -> N7;
     N7 -> N16;
-    N16 -> N1;
+    N16 -> N17;
+    N17 -> N1;
 }

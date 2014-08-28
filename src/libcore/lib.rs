@@ -58,7 +58,7 @@
 
 #![no_std]
 #![feature(globs, intrinsics, lang_items, macro_rules, managed_boxes, phase)]
-#![feature(simd, unsafe_destructor)]
+#![feature(simd, unsafe_destructor, issue_5723_bootstrap)]
 #![deny(missing_doc)]
 
 mod macros;

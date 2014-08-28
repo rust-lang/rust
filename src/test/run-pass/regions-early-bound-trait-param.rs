@@ -30,7 +30,7 @@ fn object_invoke1<'d>(x: &'d Trait<'d>) -> (int, int) {
 }
 
 struct Struct1<'e> {
-    f: &'e Trait<'e>
+    f: &'e Trait<'e>+'e
 }
 
 fn field_invoke1<'f, 'g>(x: &'g Struct1<'f>) -> (int,int) {
@@ -40,7 +40,7 @@ fn field_invoke1<'f, 'g>(x: &'g Struct1<'f>) -> (int,int) {
 }
 
 struct Struct2<'h, 'i> {
-    f: &'h Trait<'i>
+    f: &'h Trait<'i>+'h
 }
 
 fn object_invoke2<'j, 'k>(x: &'k Trait<'j>) -> int {
@@ -78,8 +78,8 @@ impl<'s> Trait<'s> for (int,int) {
     }
 }
 
-impl<'t> MakerTrait<'t> for Box<Trait<'t>> {
-    fn mk() -> Box<Trait<'t>> { box() (4i,5i) as Box<Trait> }
+impl<'t> MakerTrait<'t> for Box<Trait<'t>+'static> {
+    fn mk() -> Box<Trait<'t>+'static> { box() (4i,5i) as Box<Trait> }
 }
 
 enum List<'l> {

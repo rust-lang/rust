@@ -355,7 +355,7 @@ impl fmt::Show for clean::Type {
             }
             clean::Self(..) => f.write("Self".as_bytes()),
             clean::Primitive(prim) => primitive_link(f, prim, prim.to_string()),
-            clean::Closure(ref decl, ref region) => {
+            clean::Closure(ref decl) => {
                 write!(f, "{style}{lifetimes}|{args}|{bounds}{arrow}",
                        style = FnStyleSpace(decl.fn_style),
                        lifetimes = if decl.lifetimes.len() == 0 {
@@ -370,13 +370,6 @@ impl fmt::Show for clean::Type {
                        },
                        bounds = {
                            let mut ret = String::new();
-                           match *region {
-                               Some(ref lt) => {
-                                   ret.push_str(format!(": {}",
-                                                        *lt).as_slice());
-                               }
-                               None => {}
-                           }
                            for bound in decl.bounds.iter() {
                                 match *bound {
                                     clean::RegionBound => {}

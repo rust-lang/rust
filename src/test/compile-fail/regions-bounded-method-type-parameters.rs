@@ -8,19 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let mut x = Some(1);
-    let mut p: proc(&mut Option<int>) = proc(_) {};
-    match x {
-        Some(ref y) => {
-            p = proc(z: &mut Option<int>) {
-                *z = None;
-                let _ = y;
-                //~^ ERROR cannot capture variable of type `&int`, which does not fulfill `'static`
-            };
-        }
-        None => {}
-    }
-    p(&mut x);
+#![no_std]
+
+// Check that explicit region bounds are allowed on the various
+// nominal types (but not on other types) and that they are type
+// checked.
+
+struct Foo;
+
+impl Foo {
+    fn some_method<A:'static>(self) { }
 }
 
+fn caller<'a>(x: &int) {
+    Foo.some_method::<&'a int>();
+    //~^ ERROR does not fulfill the required lifetime
+}
+
+fn main() { }

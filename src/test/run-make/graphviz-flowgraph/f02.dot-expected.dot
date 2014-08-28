@@ -2,8 +2,10 @@ digraph block {
     N0[label="entry"];
     N1[label="exit"];
     N2[label="local _x"];
-    N3[label="block { let _x: int; }"];
+    N3[label="stmt let _x: int;"];
+    N4[label="block { let _x: int; }"];
     N0 -> N2;
     N2 -> N3;
-    N3 -> N1;
+    N3 -> N4;
+    N4 -> N1;
 }

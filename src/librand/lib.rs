@@ -269,10 +269,17 @@ pub trait Rng {
     }
 }
 
+/// Note: stage0-specific version that lacks bound on A.
+#[cfg(stage0)]
+pub struct Generator<'a, T, R> {
+    rng: &'a mut R,
+}
+
 /// Iterator which will generate a stream of random items.
 ///
 /// This iterator is created via the `gen_iter` method on `Rng`.
-pub struct Generator<'a, T, R> {
+#[cfg(not(stage0))]
+pub struct Generator<'a, T, R:'a> {
     rng: &'a mut R,
 }
 
@@ -282,10 +289,17 @@ impl<'a, T: Rand, R: Rng> Iterator<T> for Generator<'a, T, R> {
     }
 }
 
+/// Note: stage0-specific version.
+#[cfg(stage0)]
+pub struct AsciiGenerator<'a, R> {
+    rng: &'a mut R,
+}
+
 /// Iterator which will continuously generate random ascii characters.
 ///
 /// This iterator is created via the `gen_ascii_chars` method on `Rng`.
-pub struct AsciiGenerator<'a, R> {
+#[cfg(not(stage0))]
+pub struct AsciiGenerator<'a, R:'a> {
     rng: &'a mut R,
 }
 

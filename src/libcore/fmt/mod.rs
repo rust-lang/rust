@@ -92,7 +92,7 @@ pub struct Formatter<'a> {
     /// Optionally specified precision for numeric types
     pub precision: Option<uint>,
 
-    buf: &'a mut FormatWriter,
+    buf: &'a mut FormatWriter+'a,
     curarg: slice::Items<'a, Argument<'a>>,
     args: &'a [Argument<'a>],
 }
@@ -524,7 +524,7 @@ impl<'a, T: Show> Show for &'a T {
 impl<'a, T: Show> Show for &'a mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_show(&**self, f) }
 }
-impl<'a> Show for &'a Show {
+impl<'a> Show for &'a Show+'a {
     fn fmt(&self, f: &mut Formatter) -> Result { (*self).fmt(f) }
 }
 
@@ -692,7 +692,7 @@ macro_rules! tuple (
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
-impl<'a> Show for &'a any::Any {
+impl<'a> Show for &'a any::Any+'a {
     fn fmt(&self, f: &mut Formatter) -> Result { f.pad("&Any") }
 }
 

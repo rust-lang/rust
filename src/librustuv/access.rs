@@ -26,7 +26,14 @@ pub struct Access<T> {
     inner: Arc<UnsafeCell<Inner<T>>>,
 }
 
+#[cfg(stage0)]
 pub struct Guard<'a, T> {
+    access: &'a mut Access<T>,
+    missile: Option<HomingMissile>,
+}
+
+#[cfg(not(stage0))]
+pub struct Guard<'a, T:'static> {
     access: &'a mut Access<T>,
     missile: Option<HomingMissile>,
 }

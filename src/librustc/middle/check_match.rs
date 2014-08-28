@@ -1018,7 +1018,7 @@ fn check_legality_of_bindings_in_at_patterns(cx: &MatchCheckCtxt, pat: &Pat) {
     visitor.visit_pat(pat, true);
 }
 
-struct AtBindingPatternVisitor<'a,'b> {
+struct AtBindingPatternVisitor<'a,'b:'a> {
     cx: &'a MatchCheckCtxt<'b>,
 }
 

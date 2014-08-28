@@ -3,9 +3,11 @@ digraph block {
     N1[label="exit"];
     N2[label="expr 4i"];
     N3[label="local _x"];
-    N4[label="block { let _x = 4i; }"];
+    N4[label="stmt let _x = 4i;"];
+    N5[label="block { let _x = 4i; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
-    N4 -> N1;
+    N4 -> N5;
+    N5 -> N1;
 }

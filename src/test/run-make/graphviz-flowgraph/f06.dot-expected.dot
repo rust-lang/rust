@@ -5,11 +5,13 @@ digraph block {
     N3[label="expr S6{val: 6,}"];
     N4[label="local _x"];
     N5[label="pat S6 { val: _x }"];
-    N6[label="block { let S6 { val: _x } = S6{val: 6,}; }"];
+    N6[label="stmt let S6 { val: _x } = S6{val: 6,};"];
+    N7[label="block { let S6 { val: _x } = S6{val: 6,}; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
     N4 -> N5;
     N5 -> N6;
-    N6 -> N1;
+    N6 -> N7;
+    N7 -> N1;
 }

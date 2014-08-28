@@ -27,8 +27,6 @@ pub static tag_items_data_item: uint = 0x04;
 
 pub static tag_items_data_item_family: uint = 0x05;
 
-pub static tag_items_data_item_ty_param_bounds: uint = 0x06;
-
 pub static tag_items_data_item_type: uint = 0x07;
 
 pub static tag_items_data_item_symbol: uint = 0x08;
@@ -179,7 +177,6 @@ pub static tag_lang_items_missing: uint = 0x74;
 
 pub static tag_item_unnamed_field: uint = 0x75;
 pub static tag_items_data_item_visibility: uint = 0x76;
-pub static tag_items_data_item_sized: uint = 0x77;
 
 pub static tag_item_method_tps: uint = 0x79;
 pub static tag_item_method_fty: uint = 0x7a;
@@ -222,12 +219,6 @@ pub struct LinkMeta {
     pub crate_hash: Svh,
 }
 
-pub static tag_region_param_def: uint = 0x90;
-pub static tag_region_param_def_ident: uint = 0x91;
-pub static tag_region_param_def_def_id: uint = 0x92;
-pub static tag_region_param_def_space: uint = 0x93;
-pub static tag_region_param_def_index: uint = 0x94;
-
 pub static tag_unboxed_closures: uint = 0x95;
 pub static tag_unboxed_closure: uint = 0x96;
 pub static tag_unboxed_closure_type: uint = 0x97;
@@ -238,4 +229,19 @@ pub static tag_struct_field: uint = 0x9a;
 pub static tag_struct_field_id: uint = 0x9b;
 
 pub static tag_attribute_is_sugared_doc: uint = 0x9c;
+
+pub static tag_trait_def_bounds: uint = 0x9d;
+
+pub static tag_items_data_region: uint = 0x9e;
+
+pub static tag_region_param_def: uint = 0xa0;
+pub static tag_region_param_def_ident: uint = 0xa1;
+pub static tag_region_param_def_def_id: uint = 0xa2;
+pub static tag_region_param_def_space: uint = 0xa3;
+pub static tag_region_param_def_index: uint = 0xa4;
+
+pub static tag_type_param_def: uint = 0xa5;
+
+pub static tag_item_generics: uint = 0xa6;
+pub static tag_method_ty_generics: uint = 0xa7;
 

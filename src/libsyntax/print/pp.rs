@@ -155,7 +155,7 @@ pub struct PrintStackElem {
 
 static SIZE_INFINITY: int = 0xffff;
 
-pub fn mk_printer(out: Box<io::Writer>, linewidth: uint) -> Printer {
+pub fn mk_printer(out: Box<io::Writer+'static>, linewidth: uint) -> Printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
     let n: uint = 3 * linewidth;
@@ -260,7 +260,7 @@ pub fn mk_printer(out: Box<io::Writer>, linewidth: uint) -> Printer {
 /// the method called 'pretty_print', and the 'PRINT' process is the method
 /// called 'print'.
 pub struct Printer {
-    pub out: Box<io::Writer>,
+    pub out: Box<io::Writer+'static>,
     buf_len: uint,
     /// Width of lines we're constrained to
     margin: int,

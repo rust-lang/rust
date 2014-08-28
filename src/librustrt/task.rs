@@ -103,7 +103,7 @@ pub struct Task {
     pub name: Option<SendStr>,
 
     state: TaskState,
-    imp: Option<Box<Runtime + Send>>,
+    imp: Option<Box<Runtime + Send + 'static>>,
 }
 
 // Once a task has entered the `Armed` state it must be destroyed via `drop`,
@@ -353,14 +353,14 @@ impl Task {
     /// Inserts a runtime object into this task, transferring ownership to the
     /// task. It is illegal to replace a previous runtime object in this task
     /// with this argument.
-    pub fn put_runtime(&mut self, ops: Box<Runtime + Send>) {
+    pub fn put_runtime(&mut self, ops: Box<Runtime + Send + 'static>) {
         assert!(self.imp.is_none());
         self.imp = Some(ops);
     }
 
     /// Removes the runtime from this task, transferring ownership to the
     /// caller.
-    pub fn take_runtime(&mut self) -> Box<Runtime + Send> {
+    pub fn take_runtime(&mut self) -> Box<Runtime + Send + 'static> {
         assert!(self.imp.is_some());
         self.imp.take().unwrap()
     }
@@ -390,7 +390,7 @@ impl Task {
                 Ok(t) => Some(t),
                 Err(t) => {
                     let data = mem::transmute::<_, raw::TraitObject>(t).data;
-                    let obj: Box<Runtime + Send> =
+                    let obj: Box<Runtime + Send + 'static> =
                         mem::transmute(raw::TraitObject {
                             vtable: vtable,
                             data: data,

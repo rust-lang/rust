@@ -17,7 +17,10 @@ pub struct X<T> {
 }
 
 // reordering these bounds stops the ICE
-impl<T: Default + PartialEq + Default> Default for X<T> {
+//
+// nmatsakis: This test used to have the bounds Default + PartialEq +
+// Default, but having duplicate bounds became illegal.
+impl<T: Default + PartialEq> Default for X<T> {
     fn default() -> X<T> {
         X { a: Default::default() }
     }

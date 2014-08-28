@@ -14,7 +14,7 @@
 
 trait A {}
 
-struct B<'a, T> {
+struct B<'a, T:'a> {
     f: &'a T
 }
 

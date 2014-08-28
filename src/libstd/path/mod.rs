@@ -825,8 +825,16 @@ pub trait GenericPathUnsafe {
     unsafe fn push_unchecked<T: BytesContainer>(&mut self, path: T);
 }
 
-/// Helper struct for printing paths with format!()
+/// Note: stage0-specific version that lacks bound.
+#[cfg(stage0)]
 pub struct Display<'a, P> {
+    path: &'a P,
+    filename: bool
+}
+
+/// Helper struct for printing paths with format!()
+#[cfg(not(stage0))]
+pub struct Display<'a, P:'a> {
     path: &'a P,
     filename: bool
 }
