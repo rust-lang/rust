@@ -97,8 +97,8 @@ impl TcpStream {
     /// the specified duration.
     ///
     /// This is the same as the `connect` method, except that if the timeout
-    /// specified (in milliseconds) elapses before a connection is made an error
-    /// will be returned. The error's kind will be `TimedOut`.
+    /// specified elapses before a connection is made an error will be
+    /// returned. The error's kind will be `TimedOut`.
     ///
     /// Note that the `addr` argument may one day be split into a separate host
     /// and port, similar to the API seen in `connect`.
