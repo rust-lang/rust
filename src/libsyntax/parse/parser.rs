@@ -579,7 +579,9 @@ impl<'a> Parser<'a> {
         if self.is_keyword(kw) {
             self.bump();
             true
-        } else { false }
+        } else {
+            false
+        }
     }
 
     /// If the given word is not a keyword, signal an error.
