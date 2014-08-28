@@ -596,7 +596,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 wait_until_woken_after(&mut cx.task, &loop_, || {
                     unsafe { uvll::set_data_for_uv_handle(handle, &mut cx) }
                 });
-                match cx.result.take_unwrap() {
+                match cx.result.take().unwrap() {
                     (n, _) if n < 0 =>
                         Err(uv_error_to_io_error(UvError(n as c_int))),
                     (n, addr) => Ok((n as uint, addr.unwrap()))
@@ -657,7 +657,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         // here.
         let data = if guard.can_timeout {Some(Vec::from_slice(buf))} else {None};
         let uv_buf = if guard.can_timeout {
-            slice_to_uv_buf(data.get_ref().as_slice())
+            slice_to_uv_buf(data.as_ref().unwrap().as_slice())
         } else {
             slice_to_uv_buf(buf)
         };

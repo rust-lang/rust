@@ -66,7 +66,7 @@ impl Drop for UvEventLoop {
         // Lastly, after we've closed the pool of handles we pump the event loop
         // one last time to run any closing callbacks to make sure the loop
         // shuts down cleanly.
-        let handle = self.uvio.handle_pool.get_ref().handle();
+        let handle = self.uvio.handle_pool.as_ref().unwrap().handle();
         drop(self.uvio.handle_pool.take());
         self.run();
 
@@ -132,7 +132,7 @@ impl UvIoFactory {
         // It's understood by the homing code that the "local id" is just the
         // pointer of the local I/O factory cast to a uint.
         let id: uint = unsafe { mem::transmute_copy(&self) };
-        HomeHandle::new(id, &mut **self.handle_pool.get_mut_ref())
+        HomeHandle::new(id, &mut **self.handle_pool.as_mut().unwrap())
     }
 }
 

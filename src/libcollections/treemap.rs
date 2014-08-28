@@ -1545,7 +1545,7 @@ impl<K: Ord, V> TreeNode<K, V> {
 // Remove left horizontal link by rotating right
 fn skew<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
     if node.left.as_ref().map_or(false, |x| x.level == node.level) {
-        let mut save = node.left.take_unwrap();
+        let mut save = node.left.take().unwrap();
         swap(&mut node.left, &mut save.right); // save.right now None
         swap(node, &mut save);
         node.right = Some(save);
@@ -1557,7 +1557,7 @@ fn skew<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
 fn split<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
     if node.right.as_ref().map_or(false,
       |x| x.right.as_ref().map_or(false, |y| y.level == node.level)) {
-        let mut save = node.right.take_unwrap();
+        let mut save = node.right.take().unwrap();
         swap(&mut node.right, &mut save.left); // save.left now None
         save.level += 1;
         swap(node, &mut save);
@@ -1661,7 +1661,7 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
           Equal => {
             if save.left.is_some() {
                 if save.right.is_some() {
-                    let mut left = save.left.take_unwrap();
+                    let mut left = save.left.take().unwrap();
                     if left.right.is_some() {
                         heir_swap(save, &mut left.right);
                     } else {
@@ -1671,13 +1671,13 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
                     save.left = Some(left);
                     (remove(&mut save.left, key), true)
                 } else {
-                    let new = save.left.take_unwrap();
+                    let new = save.left.take().unwrap();
                     let box TreeNode{value, ..} = replace(save, new);
-                    *save = save.left.take_unwrap();
+                    *save = save.left.take().unwrap();
                     (Some(value), true)
                 }
             } else if save.right.is_some() {
-                let new = save.right.take_unwrap();
+                let new = save.right.take().unwrap();
                 let box TreeNode{value, ..} = replace(save, new);
                 (Some(value), true)
             } else {

@@ -139,7 +139,7 @@ pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
         unsafe {
             rt::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
         }
-        exit_code = Some(run(main.take_unwrap()));
+        exit_code = Some(run(main.take().unwrap()));
     }).destroy());
     unsafe { rt::cleanup(); }
     // If the exit code wasn't set, then the task block must have failed.

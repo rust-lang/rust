@@ -147,7 +147,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             decl_internal_rust_fn(ccx, mono_ty, s.as_slice())
         };
 
-        ccx.monomorphized.borrow_mut().insert(hash_id.take_unwrap(), lldecl);
+        ccx.monomorphized.borrow_mut().insert(hash_id.take().unwrap(), lldecl);
         lldecl
     };
 

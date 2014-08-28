@@ -86,7 +86,7 @@ impl GetAddrInfoRequest {
                 });
 
                 match cx.status {
-                    0 => Ok(accum_addrinfo(cx.addrinfo.get_ref())),
+                    0 => Ok(accum_addrinfo(cx.addrinfo.as_ref().unwrap())),
                     n => Err(UvError(n))
                 }
             }

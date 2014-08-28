@@ -2199,7 +2199,12 @@ pub fn iterate<'a, T: Clone>(f: |T|: 'a -> T, seed: T) -> Iterate<'a, T> {
         if *first {
             *first = false;
         } else {
-            val.mutate(|x| (*f)(x));
+            match val.take() {
+                Some(x) => {
+                    *val = Some((*f)(x))
+                }
+                None => {}
+            }
         }
         val.clone()
     })

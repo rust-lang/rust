@@ -122,7 +122,7 @@ impl<T: Send> Queue<T> {
                 *self.tail.get() = next;
                 assert!((*tail).value.is_none());
                 assert!((*next).value.is_some());
-                let ret = (*next).value.take_unwrap();
+                let ret = (*next).value.take().unwrap();
                 let _: Box<Node<T>> = mem::transmute(tail);
                 return Data(ret);
             }
