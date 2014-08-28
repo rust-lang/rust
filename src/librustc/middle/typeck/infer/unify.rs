@@ -555,3 +555,12 @@ impl SimplyUnifiable for ast::FloatTy {
         return ty::terr_float_mismatch(err);
     }
 }
+
+impl<K:Repr,V:Repr> Repr for VarValue<K,V> {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
+        match *self {
+            Redirect(ref k) => format!("Redirect({})", k.repr(tcx)),
+            Root(ref v, r) => format!("Root({}, {})", v.repr(tcx), r)
+        }
+    }
+}

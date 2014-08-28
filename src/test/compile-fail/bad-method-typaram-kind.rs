@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo<T>() {
+fn foo<T:'static>() {
     1u.bar::<T>(); //~ ERROR: does not fulfill `Send`
 }
 

@@ -77,7 +77,7 @@ struct AminoAcid {
     p: f32,
 }
 
-struct RepeatFasta<'a, W> {
+struct RepeatFasta<'a, W:'a> {
     alu: &'static str,
     out: &'a mut W
 }
@@ -126,7 +126,7 @@ fn make_lookup(a: &[AminoAcid]) -> [AminoAcid, ..LOOKUP_SIZE] {
     lookup
 }
 
-struct RandomFasta<'a, W> {
+struct RandomFasta<'a, W:'a> {
     seed: u32,
     lookup: [AminoAcid, ..LOOKUP_SIZE],
     out: &'a mut W,

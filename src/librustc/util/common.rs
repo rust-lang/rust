@@ -10,6 +10,8 @@
 
 #![allow(non_camel_case_types)]
 
+use std::hash::{Hash, Hasher};
+use std::collections::HashMap;
 use syntax::ast;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -104,4 +106,52 @@ pub fn block_query(b: ast::P<ast::Block>, p: |&ast::Expr| -> bool) -> bool {
     };
     visit::walk_block(&mut v, &*b, ());
     return v.flag;
+}
+
+// K: Eq + Hash<S>, V, S, H: Hasher<S>
+pub fn can_reach<S,H:Hasher<S>,T:Eq+Clone+Hash<S>>(
+    edges_map: &HashMap<T,Vec<T>,H>,
+    source: T,
+    destination: T)
+    -> bool
+{
+    /*!
+     * Determines whether there exists a path from `source` to
+     * `destination`.  The graph is defined by the `edges_map`, which
+     * maps from a node `S` to a list of its adjacent nodes `T`.
+     *
+     * Efficiency note: This is implemented in an inefficient way
+     * because it is typically invoked on very small graphs. If the graphs
+     * become larger, a more efficient graph representation and algorithm
+     * would probably be advised.
+     */
+
+    if source == destination {
+        return true;
+    }
+
+    // Do a little breadth-first-search here.  The `queue` list
+    // doubles as a way to detect if we've seen a particular FR
+    // before.  Note that we expect this graph to be an *extremely
+    // shallow* tree.
+    let mut queue = vec!(source);
+    let mut i = 0;
+    while i < queue.len() {
+        match edges_map.find(queue.get(i)) {
+            Some(edges) => {
+                for target in edges.iter() {
+                    if *target == destination {
+                        return true;
+                    }
+
+                    if !queue.iter().any(|x| x == target) {
+                        queue.push((*target).clone());
+                    }
+                }
+            }
+            None => {}
+        }
+        i += 1;
+    }
+    return false;
 }

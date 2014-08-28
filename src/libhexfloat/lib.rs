@@ -105,7 +105,7 @@ fn hex_float_lit_err(s: &str) -> Option<(uint, String)> {
 }
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-                         -> Box<base::MacResult> {
+                         -> Box<base::MacResult+'static> {
     let (expr, ty_lit) = parse_tts(cx, tts);
 
     let ty = match ty_lit {

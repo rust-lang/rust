@@ -481,21 +481,30 @@ impl Clean<TyParam> for ty::TypeParameterDef {
 
 #[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub enum TyParamBound {
-    RegionBound,
+    RegionBound, // FIXME(#16518) -- need to include name of actual region
     TraitBound(Type)
 }
 
 impl Clean<TyParamBound> for ast::TyParamBound {
     fn clean(&self) -> TyParamBound {
         match *self {
-            ast::StaticRegionTyParamBound => RegionBound,
-            ast::OtherRegionTyParamBound(_) => RegionBound,
+            ast::RegionTyParamBound(_) => RegionBound,
             ast::UnboxedFnTyParamBound(_) => {
                 // FIXME(pcwalton): Wrong.
                 RegionBound
             }
             ast::TraitTyParamBound(ref t) => TraitBound(t.clean()),
         }
+    }
+}
+
+impl Clean<Vec<TyParamBound>> for ty::ExistentialBounds {
+    fn clean(&self) -> Vec<TyParamBound> {
+        let mut vec = vec!(RegionBound);
+        for bb in self.builtin_bounds.iter() {
+            vec.push(bb.clean());
+        }
+        vec
     }
 }
 
@@ -525,7 +534,6 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
         };
         let empty = subst::Substs::empty();
         let (did, path) = match *self {
-            ty::BoundStatic => return RegionBound,
             ty::BoundSend =>
                 (tcx.lang_items.send_trait().unwrap(),
                  external_path("Send", &empty)),
@@ -810,10 +818,7 @@ impl Clean<ClosureDecl> for ast::ClosureTy {
             decl: self.decl.clean(),
             onceness: self.onceness,
             fn_style: self.fn_style,
-            bounds: match self.bounds {
-                Some(ref x) => x.clean(),
-                None        => Vec::new()
-            },
+            bounds: self.bounds.clean()
         }
     }
 }
@@ -909,7 +914,7 @@ impl Clean<RetStyle> for ast::RetStyle {
 pub struct Trait {
     pub items: Vec<TraitItem>,
     pub generics: Generics,
-    pub parents: Vec<Type>,
+    pub bounds: Vec<TyParamBound>,
 }
 
 impl Clean<Item> for doctree::Trait {
@@ -924,7 +929,7 @@ impl Clean<Item> for doctree::Trait {
             inner: TraitItem(Trait {
                 items: self.items.clean(),
                 generics: self.generics.clean(),
-                parents: self.parents.clean(),
+                bounds: self.bounds.clean(),
             }),
         }
     }
@@ -1060,7 +1065,7 @@ pub enum Type {
     Self(ast::DefId),
     /// Primitives are just the fixed-size numeric types (plus int/uint/float), and char.
     Primitive(Primitive),
-    Closure(Box<ClosureDecl>, Option<Lifetime>),
+    Closure(Box<ClosureDecl>),
     Proc(Box<ClosureDecl>),
     /// extern "ABI" fn
     BareFunction(Box<BareFunctionDecl>),
@@ -1208,7 +1213,7 @@ impl Clean<Type> for ast::Ty {
                              tpbs.clean().map(|x| x),
                              id)
             }
-            TyClosure(ref c, region) => Closure(box c.clean(), region.clean()),
+            TyClosure(ref c) => Closure(box c.clean()),
             TyProc(ref c) => Proc(box c.clean()),
             TyBareFn(ref barefn) => BareFunction(box barefn.clean()),
             TyParen(ref ty) => ty.clean(),
@@ -1273,11 +1278,11 @@ impl Clean<Type> for ty::t {
                     decl: (ast_util::local_def(0), &fty.sig).clean(),
                     onceness: fty.onceness,
                     fn_style: fty.fn_style,
-                    bounds: fty.bounds.iter().map(|i| i.clean()).collect(),
+                    bounds: fty.bounds.clean(),
                 };
                 match fty.store {
                     ty::UniqTraitStore => Proc(decl),
-                    ty::RegionTraitStore(ref r, _) => Closure(decl, r.clean()),
+                    ty::RegionTraitStore(..) => Closure(decl),
                 }
             }
             ty::ty_struct(did, ref substs) |

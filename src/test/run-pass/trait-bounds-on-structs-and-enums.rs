@@ -12,11 +12,11 @@ trait U {}
 trait T<X: U> {}
 
 trait S2<Y: U> {
-    fn m(x: Box<T<Y>>) {}
+    fn m(x: Box<T<Y>+'static>) {}
 }
 
 struct St<X: U> {
-    f: Box<T<X>>,
+    f: Box<T<X>+'static>,
 }
 
 impl<X: U> St<X> {

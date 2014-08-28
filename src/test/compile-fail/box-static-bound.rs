@@ -12,7 +12,7 @@
 use std::gc::{Gc, GC};
 
 fn f<T>(x: T) -> Gc<T> {
-    box(GC) x  //~ ERROR value may contain references
+    box(GC) x  //~ ERROR the parameter type `T` may not live long enough
 }
 
 fn g<T:'static>(x: T) -> Gc<T> {

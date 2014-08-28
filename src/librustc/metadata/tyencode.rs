@@ -127,7 +127,7 @@ fn enc_region_substs(w: &mut SeekableMemWriter, cx: &ctxt, substs: &subst::Regio
     }
 }
 
-fn enc_region(w: &mut SeekableMemWriter, cx: &ctxt, r: ty::Region) {
+pub fn enc_region(w: &mut SeekableMemWriter, cx: &ctxt, r: ty::Region) {
     match r {
         ty::ReLateBound(id, br) => {
             mywrite!(w, "b[{}|", id);
@@ -232,13 +232,11 @@ fn enc_sty(w: &mut SeekableMemWriter, cx: &ctxt, st: &ty::sty) {
         ty::ty_trait(box ty::TyTrait {
                 def_id,
                 ref substs,
-                bounds
+                ref bounds
             }) => {
             mywrite!(w, "x[{}|", (cx.ds)(def_id));
             enc_substs(w, cx, substs);
-            let bounds = ty::ParamBounds {builtin_bounds: bounds,
-                                          trait_bounds: Vec::new()};
-            enc_bounds(w, cx, &bounds);
+            enc_existential_bounds(w, cx, bounds);
             mywrite!(w, "]");
         }
         ty::ty_tup(ref ts) => {
@@ -328,9 +326,7 @@ pub fn enc_closure_ty(w: &mut SeekableMemWriter, cx: &ctxt, ft: &ty::ClosureTy) 
     enc_fn_style(w, ft.fn_style);
     enc_onceness(w, ft.onceness);
     enc_trait_store(w, cx, ft.store);
-    let bounds = ty::ParamBounds {builtin_bounds: ft.bounds,
-                                  trait_bounds: Vec::new()};
-    enc_bounds(w, cx, &bounds);
+    enc_existential_bounds(w, cx, &ft.bounds);
     enc_fn_sig(w, cx, &ft.sig);
     enc_abi(w, ft.abi);
 }
@@ -349,15 +345,30 @@ fn enc_fn_sig(w: &mut SeekableMemWriter, cx: &ctxt, fsig: &ty::FnSig) {
     enc_ty(w, cx, fsig.output);
 }
 
-fn enc_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
-    for bound in bs.builtin_bounds.iter() {
+pub fn enc_builtin_bounds(w: &mut SeekableMemWriter, _cx: &ctxt, bs: &ty::BuiltinBounds) {
+    for bound in bs.iter() {
         match bound {
             ty::BoundSend => mywrite!(w, "S"),
-            ty::BoundStatic => mywrite!(w, "O"),
             ty::BoundSized => mywrite!(w, "Z"),
             ty::BoundCopy => mywrite!(w, "P"),
             ty::BoundSync => mywrite!(w, "T"),
         }
+    }
+
+    mywrite!(w, ".");
+}
+
+pub fn enc_existential_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::ExistentialBounds) {
+    enc_region(w, cx, bs.region_bound);
+    enc_builtin_bounds(w, cx, &bs.builtin_bounds);
+}
+
+pub fn enc_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
+    enc_builtin_bounds(w, cx, &bs.builtin_bounds);
+
+    for &r in bs.opt_region_bound.iter() {
+        mywrite!(w, "R");
+        enc_region(w, cx, r);
     }
 
     for tp in bs.trait_bounds.iter() {
@@ -372,6 +383,6 @@ pub fn enc_type_param_def(w: &mut SeekableMemWriter, cx: &ctxt, v: &ty::TypePara
     mywrite!(w, "{}:{}|{}|{}|",
              token::get_ident(v.ident), (cx.ds)(v.def_id),
              v.space.to_uint(), v.index);
-    enc_bounds(w, cx, &*v.bounds);
+    enc_bounds(w, cx, &v.bounds);
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
 }

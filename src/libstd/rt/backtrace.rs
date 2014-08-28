@@ -291,7 +291,7 @@ mod imp {
 
         struct Context<'a> {
             idx: int,
-            writer: &'a mut Writer,
+            writer: &'a mut Writer+'a,
             last_error: Option<IoError>,
         }
 

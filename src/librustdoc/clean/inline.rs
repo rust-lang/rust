@@ -159,18 +159,12 @@ pub fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> clean::Trait {
             clean::RequiredMethod(trait_item)
         }
     });
-    let supertraits = ty::trait_supertraits(tcx, did);
-    let mut parents = supertraits.iter().map(|i| {
-        match i.clean() {
-            clean::TraitBound(ty) => ty,
-            clean::RegionBound => unreachable!()
-        }
-    });
-
+    let trait_def = ty::lookup_trait_def(tcx, did);
+    let bounds = trait_def.bounds.clean();
     clean::Trait {
         generics: (&def.generics, subst::TypeSpace).clean(),
         items: items.collect(),
-        parents: parents.collect()
+        bounds: bounds,
     }
 }
 

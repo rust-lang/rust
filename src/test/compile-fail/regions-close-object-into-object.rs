@@ -8,18 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn is_send<T: Send>() {}
-fn is_freeze<T: Sync>() {}
-fn is_static<T: 'static>() {}
 
-fn main() {
-    is_send::<proc()>();
-    //~^ ERROR: instantiating a type parameter with an incompatible type
+trait A<T> {}
+struct B<'a, T>(&'a A<T>+'a);
 
-    is_freeze::<proc()>();
-    //~^ ERROR: instantiating a type parameter with an incompatible type
+trait X {}
+impl<'a, T> X for B<'a, T> {}
 
-    is_static::<proc()>();
-    //~^ ERROR: instantiating a type parameter with an incompatible type
+fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
+    box B(v) as Box<X>
 }
+
+fn g<'a, T: 'static>(v: Box<A<T>>) -> Box<X+'static> {
+    box B(v) as Box<X> //~ ERROR cannot infer
+}
+
+fn h<'a, T, U>(v: Box<A<U>+'static>) -> Box<X+'static> {
+    box B(v) as Box<X>
+}
+
+fn i<'a, T, U>(v: Box<A<U>>) -> Box<X+'static> {
+    box B(v) as Box<X> //~ ERROR cannot infer
+}
+
+fn main() {}
 

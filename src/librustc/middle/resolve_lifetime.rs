@@ -21,7 +21,6 @@ use driver::session::Session;
 use middle::subst;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::{lifetime_to_string};
@@ -99,8 +98,10 @@ impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
             ast::ItemStruct(_, ref generics) |
             ast::ItemImpl(ref generics, _, _, _) |
             ast::ItemTrait(ref generics, _, _, _) => {
-                self.check_lifetime_names(&generics.lifetimes);
-                EarlyScope(subst::TypeSpace, &generics.lifetimes, &root)
+                let scope: ScopeChain =
+                    EarlyScope(subst::TypeSpace, &generics.lifetimes, &root);
+                self.check_lifetime_defs(&generics.lifetimes, &scope);
+                scope
             }
         };
         debug!("entering scope {:?}", scope);
@@ -126,7 +127,7 @@ impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
 
     fn visit_ty(&mut self, ty: &ast::Ty, scope: Scope<'a>) {
         match ty.node {
-            ast::TyClosure(c, _) | ast::TyProc(c) => {
+            ast::TyClosure(c) | ast::TyProc(c) => {
                 push_fn_scope(self, ty, scope, &c.lifetimes);
             }
             ast::TyBareFn(c) => push_fn_scope(self, ty, scope, &c.lifetimes),
@@ -137,8 +138,8 @@ impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
                          ty: &ast::Ty,
                          scope: Scope,
                          lifetimes: &Vec<ast::LifetimeDef>) {
-            let scope1 = LateScope(ty.id, lifetimes, scope);
-            this.check_lifetime_names(lifetimes);
+            let scope1: ScopeChain = LateScope(ty.id, lifetimes, scope);
+            this.check_lifetime_defs(lifetimes, &scope1);
             debug!("pushing fn scope id={} due to type", ty.id);
             visit::walk_ty(this, ty, &scope1);
             debug!("popping fn scope id={} due to type", ty.id);
@@ -204,24 +205,22 @@ impl<'a> LifetimeContext<'a> {
          * the ordering is not important there.
          */
 
-        self.check_lifetime_names(&generics.lifetimes);
-
-        let referenced_idents = free_lifetimes(&generics.ty_params,
-                                               &generics.where_clause);
+        let referenced_idents = early_bound_lifetime_names(generics);
         debug!("pushing fn scope id={} due to fn item/method\
                referenced_idents={:?}",
                n,
                referenced_idents.iter().map(lifetime_show).collect::<Vec<token::InternedString>>());
         if referenced_idents.is_empty() {
-            let scope1 = LateScope(n, &generics.lifetimes, scope);
-            walk(self, &scope1)
+            let scope1: ScopeChain = LateScope(n, &generics.lifetimes, scope);
+            self.check_lifetime_defs(&generics.lifetimes, &scope1);
+            walk(self, &scope1);
         } else {
             let (early, late) = generics.lifetimes.clone().partition(
                 |l| referenced_idents.iter().any(|&i| i == l.lifetime.name));
 
             let scope1 = EarlyScope(subst::FnSpace, &early, scope);
-            let scope2 = LateScope(n, &late, &scope1);
-
+            let scope2: ScopeChain = LateScope(n, &late, &scope1);
+            self.check_lifetime_defs(&generics.lifetimes, &scope2);
             walk(self, &scope2);
         }
         debug!("popping fn scope id={} due to fn item/method", n);
@@ -335,7 +334,9 @@ impl<'a> LifetimeContext<'a> {
                     token::get_name(lifetime_ref.name)).as_slice());
     }
 
-    fn check_lifetime_names(&self, lifetimes: &Vec<ast::LifetimeDef>) {
+    fn check_lifetime_defs<'b>(&mut self,
+                               lifetimes: &Vec<ast::LifetimeDef>,
+                               scope: Scope<'b>) {
         for i in range(0, lifetimes.len()) {
             let lifetime_i = lifetimes.get(i);
 
@@ -364,11 +365,7 @@ impl<'a> LifetimeContext<'a> {
             }
 
             for bound in lifetime_i.bounds.iter() {
-                if !self.sess.features.issue_5723_bootstrap.get() {
-                    self.sess.span_err(
-                        bound.span,
-                        "region bounds require `issue_5723_bootstrap`");
-                }
+                self.resolve_lifetime_ref(bound, scope);
             }
         }
     }
@@ -404,8 +401,7 @@ fn search_lifetimes(lifetimes: &Vec<ast::LifetimeDef>,
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::LifetimeDef> {
-    let referenced_idents = free_lifetimes(&generics.ty_params,
-                                           &generics.where_clause);
+    let referenced_idents = early_bound_lifetime_names(generics);
     if referenced_idents.is_empty() {
         return Vec::new();
     }
@@ -416,34 +412,72 @@ pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::Lifeti
         .collect()
 }
 
-pub fn free_lifetimes(ty_params: &OwnedSlice<ast::TyParam>,
-                      where_clause: &ast::WhereClause)
-                      -> Vec<ast::Name> {
+fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
     /*!
-     * Gathers up and returns the names of any lifetimes that appear
-     * free in `ty_params`. Of course, right now, all lifetimes appear
-     * free, since we don't currently have any binders in type parameter
-     * declarations; just being forwards compatible with future extensions.
+     * Given a set of generic declarations, returns a list of names
+     * containing all early bound lifetime names for those
+     * generics. (In fact, this list may also contain other names.)
      */
 
-    let mut collector = FreeLifetimeCollector { names: vec!() };
-    for ty_param in ty_params.iter() {
-        visit::walk_ty_param_bounds(&mut collector, &ty_param.bounds, ());
-    }
-    for predicate in where_clause.predicates.iter() {
-        visit::walk_ty_param_bounds(&mut collector, &predicate.bounds, ());
-    }
-    return collector.names;
+    // Create two lists, dividing the lifetimes into early/late bound.
+    // Initially, all of them are considered late, but we will move
+    // things from late into early as we go if we find references to
+    // them.
+    let mut early_bound = Vec::new();
+    let mut late_bound = generics.lifetimes.iter()
+                                           .map(|l| l.lifetime.name)
+                                           .collect();
 
-    struct FreeLifetimeCollector {
-        names: Vec<ast::Name>,
+    // Any lifetime that appears in a type bound is early.
+    {
+        let mut collector =
+            FreeLifetimeCollector { early_bound: &mut early_bound,
+                                    late_bound: &mut late_bound };
+        for ty_param in generics.ty_params.iter() {
+            visit::walk_ty_param_bounds(&mut collector, &ty_param.bounds, ());
+        }
+        for predicate in generics.where_clause.predicates.iter() {
+            visit::walk_ty_param_bounds(&mut collector, &predicate.bounds, ());
+        }
     }
 
-    impl Visitor<()> for FreeLifetimeCollector {
+    // Any lifetime that either has a bound or is referenced by a
+    // bound is early.
+    for lifetime_def in generics.lifetimes.iter() {
+        if !lifetime_def.bounds.is_empty() {
+            shuffle(&mut early_bound, &mut late_bound,
+                    lifetime_def.lifetime.name);
+            for bound in lifetime_def.bounds.iter() {
+                shuffle(&mut early_bound, &mut late_bound,
+                        bound.name);
+            }
+        }
+    }
+    return early_bound;
+
+    struct FreeLifetimeCollector<'a> {
+        early_bound: &'a mut Vec<ast::Name>,
+        late_bound: &'a mut Vec<ast::Name>,
+    }
+
+    impl<'a> Visitor<()> for FreeLifetimeCollector<'a> {
         fn visit_lifetime_ref(&mut self,
                               lifetime_ref: &ast::Lifetime,
                               _: ()) {
-            self.names.push(lifetime_ref.name);
+            shuffle(self.early_bound, self.late_bound,
+                    lifetime_ref.name);
+        }
+    }
+
+    fn shuffle(early_bound: &mut Vec<ast::Name>,
+               late_bound: &mut Vec<ast::Name>,
+               name: ast::Name) {
+        match late_bound.iter().position(|n| *n == name) {
+            Some(index) => {
+                late_bound.swap_remove(index);
+                early_bound.push(name);
+            }
+            None => { }
         }
     }
 }

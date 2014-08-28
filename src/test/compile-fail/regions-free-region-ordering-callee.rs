@@ -31,6 +31,12 @@ fn ordering3<'a, 'b>(x: &'a uint, y: &'b uint) -> &'a &'b uint {
 }
 
 fn ordering4<'a, 'b>(a: &'a uint, b: &'b uint, x: |&'a &'b uint|) {
+    // Do not infer ordering from closure argument types.
+    let z: Option<&'a &'b uint> = None;
+    //~^ ERROR reference has a longer lifetime than the data it references
+}
+
+fn ordering5<'a, 'b>(a: &'a uint, b: &'b uint, x: Option<&'a &'b uint>) {
     let z: Option<&'a &'b uint> = None;
 }
 

@@ -10,7 +10,7 @@
 
 // Test that a `&mut` inside of an `&` is freezable.
 
-struct MutSlice<'a, T> {
+struct MutSlice<'a, T:'a> {
     data: &'a mut [T]
 }
 

@@ -15,7 +15,7 @@ use std::path::{Path};
 use std::path;
 use std::result;
 
-type rsrc_loader = proc(path: &Path) -> result::Result<String, String>;
+type rsrc_loader = proc(path: &Path):'static -> result::Result<String, String>;
 
 fn tester()
 {

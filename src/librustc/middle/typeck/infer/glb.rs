@@ -96,7 +96,10 @@ impl<'f> Combine for Glb<'f> {
         }
     }
 
-    fn bounds(&self, a: BuiltinBounds, b: BuiltinBounds) -> cres<BuiltinBounds> {
+    fn builtin_bounds(&self,
+                      a: ty::BuiltinBounds,
+                      b: ty::BuiltinBounds)
+                      -> cres<ty::BuiltinBounds> {
         // More bounds is a subtype of fewer bounds, so
         // the GLB (mutual subtype) is the union.
         Ok(a.union(b))

@@ -15,7 +15,7 @@
 // variance inference works in the first place.
 
 struct Invariant<'a> {
-    f: &'static mut &'a int
+    f: &'a mut &'a int
 }
 
 fn use_<'b>(c: Invariant<'b>) {

@@ -16,9 +16,8 @@ fn main() {
     let mut f;
     {
         let c = 1;
-        let c_ref = &c;
+        let c_ref = &c; //~ ERROR `c` does not live long enough
         f = |&mut: a: int, b: int| { a + b + *c_ref };
-        //~^ ERROR cannot infer an appropriate lifetime
     }
 }
 

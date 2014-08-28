@@ -945,11 +945,11 @@ pub trait Reader {
     }
 }
 
-impl Reader for Box<Reader> {
+impl Reader for Box<Reader+'static> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
 }
 
-impl<'a> Reader for &'a mut Reader {
+impl<'a> Reader for &'a mut Reader+'a {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
 }
 
@@ -976,6 +976,13 @@ unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -
     })
 }
 
+/// Note: stage0-specific version that lacks bound.
+#[cfg(stage0)]
+pub struct RefReader<'a, R> {
+    /// The underlying reader which this is referencing
+    inner: &'a mut R
+}
+
 /// A `RefReader` is a struct implementing `Reader` which contains a reference
 /// to another reader. This is often useful when composing streams.
 ///
@@ -1000,7 +1007,8 @@ unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -
 ///
 /// # }
 /// ```
-pub struct RefReader<'a, R> {
+#[cfg(not(stage0))]
+pub struct RefReader<'a, R:'a> {
     /// The underlying reader which this is referencing
     inner: &'a mut R
 }
@@ -1058,12 +1066,21 @@ pub trait Writer {
     ///
     /// This function will return any I/O error reported while formatting.
     fn write_fmt(&mut self, fmt: &fmt::Arguments) -> IoResult<()> {
-        // Create a shim which translates a Writer to a FormatWriter and saves
-        // off I/O errors. instead of discarding them
+        // Note: stage0-specific version that lacks bound.
+        #[cfg(stage0)]
         struct Adaptor<'a, T> {
             inner: &'a mut T,
             error: IoResult<()>,
         }
+
+        // Create a shim which translates a Writer to a FormatWriter and saves
+        // off I/O errors. instead of discarding them
+        #[cfg(not(stage0))]
+        struct Adaptor<'a, T:'a> {
+            inner: &'a mut T,
+            error: IoResult<()>,
+        }
+
         impl<'a, T: Writer> fmt::FormatWriter for Adaptor<'a, T> {
             fn write(&mut self, bytes: &[u8]) -> fmt::Result {
                 match self.inner.write(bytes) {
@@ -1278,7 +1295,7 @@ pub trait Writer {
     }
 }
 
-impl Writer for Box<Writer> {
+impl Writer for Box<Writer+'static> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
 
@@ -1286,7 +1303,7 @@ impl Writer for Box<Writer> {
     fn flush(&mut self) -> IoResult<()> { self.flush() }
 }
 
-impl<'a> Writer for &'a mut Writer {
+impl<'a> Writer for &'a mut Writer+'a {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
 
@@ -1318,7 +1335,38 @@ impl<'a> Writer for &'a mut Writer {
 /// println!("input processed: {}", output.unwrap());
 /// # }
 /// ```
+#[cfg(stage0)]
 pub struct RefWriter<'a, W> {
+    /// The underlying writer which this is referencing
+    inner: &'a mut W
+}
+
+/// A `RefWriter` is a struct implementing `Writer` which contains a reference
+/// to another writer. This is often useful when composing streams.
+///
+/// # Example
+///
+/// ```
+/// # fn main() {}
+/// # fn process_input<R: Reader>(r: R) {}
+/// # fn foo () {
+/// use std::io::util::TeeReader;
+/// use std::io::{stdin, MemWriter};
+///
+/// let mut output = MemWriter::new();
+///
+/// {
+///     // Don't give ownership of 'output' to the 'tee'. Instead we keep a
+///     // handle to it in the outer scope
+///     let mut tee = TeeReader::new(stdin(), output.by_ref());
+///     process_input(tee);
+/// }
+///
+/// println!("input processed: {}", output.unwrap());
+/// # }
+/// ```
+#[cfg(not(stage0))]
+pub struct RefWriter<'a, W:'a> {
     /// The underlying writer which this is referencing
     inner: &'a mut W
 }
@@ -1351,7 +1399,26 @@ impl<T: Reader + Writer> Stream for T {}
 ///
 /// Any error other than `EndOfFile` that is produced by the underlying Reader
 /// is returned by the iterator and should be handled by the caller.
+#[cfg(stage0)]
 pub struct Lines<'r, T> {
+    buffer: &'r mut T,
+}
+
+/// An iterator that reads a line on each iteration,
+/// until `.read_line()` encounters `EndOfFile`.
+///
+/// # Notes about the Iteration Protocol
+///
+/// The `Lines` may yield `None` and thus terminate
+/// an iteration, but continue to yield elements if iteration
+/// is attempted again.
+///
+/// # Error
+///
+/// Any error other than `EndOfFile` that is produced by the underlying Reader
+/// is returned by the iterator and should be handled by the caller.
+#[cfg(not(stage0))]
+pub struct Lines<'r, T:'r> {
     buffer: &'r mut T,
 }
 
@@ -1378,7 +1445,26 @@ impl<'r, T: Buffer> Iterator<IoResult<String>> for Lines<'r, T> {
 ///
 /// Any error other than `EndOfFile` that is produced by the underlying Reader
 /// is returned by the iterator and should be handled by the caller.
+#[cfg(stage0)]
 pub struct Chars<'r, T> {
+    buffer: &'r mut T
+}
+
+/// An iterator that reads a utf8-encoded character on each iteration,
+/// until `.read_char()` encounters `EndOfFile`.
+///
+/// # Notes about the Iteration Protocol
+///
+/// The `Chars` may yield `None` and thus terminate
+/// an iteration, but continue to yield elements if iteration
+/// is attempted again.
+///
+/// # Error
+///
+/// Any error other than `EndOfFile` that is produced by the underlying Reader
+/// is returned by the iterator and should be handled by the caller.
+#[cfg(not(stage0))]
+pub struct Chars<'r, T:'r> {
     buffer: &'r mut T
 }
 
@@ -1611,6 +1697,12 @@ pub trait Acceptor<T> {
     }
 }
 
+/// Note: stage0-specific version that lacks bound on A.
+#[cfg(stage0)]
+pub struct IncomingConnections<'a, A> {
+    inc: &'a mut A,
+}
+
 /// An infinite iterator over incoming connection attempts.
 /// Calling `next` will block the task until a connection is attempted.
 ///
@@ -1618,7 +1710,8 @@ pub trait Acceptor<T> {
 /// `Some`. The `Some` contains the `IoResult` representing whether the
 /// connection attempt was successful.  A successful connection will be wrapped
 /// in `Ok`. A failed connection is represented as an `Err`.
-pub struct IncomingConnections<'a, A> {
+#[cfg(not(stage0))]
+pub struct IncomingConnections<'a, A:'a> {
     inc: &'a mut A,
 }
 

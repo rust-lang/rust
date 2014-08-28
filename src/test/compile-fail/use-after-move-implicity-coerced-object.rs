@@ -23,10 +23,10 @@ impl fmt::Show for Number {
 }
 
 struct List {
-    list: Vec<Box<ToString>> }
+    list: Vec<Box<ToString+'static>> }
 
 impl List {
-    fn push(&mut self, n: Box<ToString>) {
+    fn push(&mut self, n: Box<ToString+'static>) {
         self.list.push(n);
     }
 }

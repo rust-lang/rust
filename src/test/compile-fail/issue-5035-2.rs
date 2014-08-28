@@ -9,8 +9,8 @@
 // except according to those terms.
 
 trait I {}
-type K = I;
+type K = I+'static;
 
-fn foo(_x: K) {} //~ ERROR: variable `_x` has dynamically sized type `I`
+fn foo(_x: K) {} //~ ERROR: variable `_x` has dynamically sized type
 
 fn main() {}

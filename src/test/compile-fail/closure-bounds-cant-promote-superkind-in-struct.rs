@@ -13,7 +13,7 @@ struct X {
 }
 
 fn foo(blk: ||:'static) -> X {
-    return X { field: blk }; //~ ERROR expected bounds `'static+Send`
+    return X { field: blk }; //~ ERROR expected bounds `Send`
 }
 
 fn main() {

@@ -79,6 +79,13 @@ pub struct Weighted<T> {
     pub item: T,
 }
 
+/// Note: stage0-specific version that lacks bound on A.
+#[cfg(stage0)]
+pub struct WeightedChoice<'a, T> {
+    items: &'a mut [Weighted<T>],
+    weight_range: Range<uint>
+}
+
 /// A distribution that selects from a finite collection of weighted items.
 ///
 /// Each item has an associated weight that influences how likely it
@@ -105,7 +112,8 @@ pub struct Weighted<T> {
 ///      println!("{}", wc.ind_sample(&mut rng));
 /// }
 /// ```
-pub struct WeightedChoice<'a, T> {
+#[cfg(not(stage0))]
+pub struct WeightedChoice<'a, T:'a> {
     items: &'a mut [Weighted<T>],
     weight_range: Range<uint>
 }
