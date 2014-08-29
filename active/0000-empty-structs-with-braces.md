@@ -56,13 +56,13 @@ in the language now.
 # Detailed design
 
  * Allow `S` to be defined via either `struct S;` (as today)
-   or `struct S {}` (new)
+   or `struct S {}` ("new")
 
  * Allow instances of `S` to be constructed via either the
-   expression `S` (as today) or the expression `S {}` (new)
+   expression `S` (as today) or the expression `S {}` ("new")
 
  * Allow instances of `S` to be pattern matched via either the
-   pattern `S` (as today) or the pattern `S {}` (new).
+   pattern `S` (as today) or the pattern `S {}` ("new").
 
 Revise the grammar of struct item definitions so that one can write
 either `struct S;` or `struct S { }`.  The two forms are synonymous.
