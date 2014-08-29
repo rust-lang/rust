@@ -560,9 +560,9 @@ mod tests {
         assert_eq!(d.len(), 0u);
         d.push_front(17i);
         d.push_front(42i);
-        d.push_back(137);
+        d.push(137);
         assert_eq!(d.len(), 3u);
-        d.push_back(137);
+        d.push(137);
         assert_eq!(d.len(), 4u);
         debug!("{:?}", d.front());
         assert_eq!(*d.front().unwrap(), 42);
@@ -571,21 +571,21 @@ mod tests {
         let mut i = d.pop_front();
         debug!("{:?}", i);
         assert_eq!(i, Some(42));
-        i = d.pop_back();
+        i = d.pop();
         debug!("{:?}", i);
         assert_eq!(i, Some(137));
-        i = d.pop_back();
+        i = d.pop();
         debug!("{:?}", i);
         assert_eq!(i, Some(137));
-        i = d.pop_back();
+        i = d.pop();
         debug!("{:?}", i);
         assert_eq!(i, Some(17));
         assert_eq!(d.len(), 0u);
-        d.push_back(3);
+        d.push(3);
         assert_eq!(d.len(), 1u);
         d.push_front(2);
         assert_eq!(d.len(), 2u);
-        d.push_back(4);
+        d.push(4);
         assert_eq!(d.len(), 3u);
         d.push_front(1);
         assert_eq!(d.len(), 4u);
@@ -610,22 +610,22 @@ mod tests {
         assert_eq!(deq.len(), 0);
         deq.push_front(a);
         deq.push_front(b);
-        deq.push_back(c);
+        deq.push(c);
         assert_eq!(deq.len(), 3);
-        deq.push_back(d);
+        deq.push(d);
         assert_eq!(deq.len(), 4);
         assert_eq!(deq.front(), Some(&b));
         assert_eq!(deq.back(), Some(&d));
         assert_eq!(deq.pop_front(), Some(b));
-        assert_eq!(deq.pop_back(), Some(d));
-        assert_eq!(deq.pop_back(), Some(c));
-        assert_eq!(deq.pop_back(), Some(a));
+        assert_eq!(deq.pop(), Some(d));
+        assert_eq!(deq.pop(), Some(c));
+        assert_eq!(deq.pop(), Some(a));
         assert_eq!(deq.len(), 0);
-        deq.push_back(c);
+        deq.push(c);
         assert_eq!(deq.len(), 1);
         deq.push_front(b);
         assert_eq!(deq.len(), 2);
-        deq.push_back(d);
+        deq.push(d);
         assert_eq!(deq.len(), 3);
         deq.push_front(a);
         assert_eq!(deq.len(), 4);
@@ -641,22 +641,22 @@ mod tests {
         assert_eq!(deq.len(), 0);
         deq.push_front(a.clone());
         deq.push_front(b.clone());
-        deq.push_back(c.clone());
+        deq.push(c.clone());
         assert_eq!(deq.len(), 3);
-        deq.push_back(d.clone());
+        deq.push(d.clone());
         assert_eq!(deq.len(), 4);
         assert_eq!((*deq.front().unwrap()).clone(), b.clone());
         assert_eq!((*deq.back().unwrap()).clone(), d.clone());
         assert_eq!(deq.pop_front().unwrap(), b.clone());
-        assert_eq!(deq.pop_back().unwrap(), d.clone());
-        assert_eq!(deq.pop_back().unwrap(), c.clone());
-        assert_eq!(deq.pop_back().unwrap(), a.clone());
+        assert_eq!(deq.pop().unwrap(), d.clone());
+        assert_eq!(deq.pop().unwrap(), c.clone());
+        assert_eq!(deq.pop().unwrap(), a.clone());
         assert_eq!(deq.len(), 0);
-        deq.push_back(c.clone());
+        deq.push(c.clone());
         assert_eq!(deq.len(), 1);
         deq.push_front(b.clone());
         assert_eq!(deq.len(), 2);
-        deq.push_back(d.clone());
+        deq.push(d.clone());
         assert_eq!(deq.len(), 3);
         deq.push_front(a.clone());
         assert_eq!(deq.len(), 4);
@@ -680,7 +680,7 @@ mod tests {
 
         let mut deq = RingBuf::new();
         for i in range(0u, 66) {
-            deq.push_back(i);
+            deq.push(i);
         }
 
         for i in range(0u, 66) {
@@ -718,7 +718,7 @@ mod tests {
     fn bench_push_back(b: &mut test::Bencher) {
         let mut deq = RingBuf::new();
         b.iter(|| {
-            deq.push_back(0i);
+            deq.push(0i);
         })
     }
 
@@ -797,10 +797,10 @@ mod tests {
     #[test]
     fn test_with_capacity() {
         let mut d = RingBuf::with_capacity(0);
-        d.push_back(1i);
+        d.push(1i);
         assert_eq!(d.len(), 1);
         let mut d = RingBuf::with_capacity(50);
-        d.push_back(1i);
+        d.push(1i);
         assert_eq!(d.len(), 1);
     }
 
@@ -848,11 +848,11 @@ mod tests {
     #[test]
     fn test_reserve_exact() {
         let mut d = RingBuf::new();
-        d.push_back(0u64);
+        d.push(0u64);
         d.reserve_exact(50);
         assert_eq!(d.elts.capacity(), 50);
         let mut d = RingBuf::new();
-        d.push_back(0u32);
+        d.push(0u32);
         d.reserve_exact(50);
         assert_eq!(d.elts.capacity(), 50);
     }
@@ -860,11 +860,11 @@ mod tests {
     #[test]
     fn test_reserve() {
         let mut d = RingBuf::new();
-        d.push_back(0u64);
+        d.push(0u64);
         d.reserve(50);
         assert_eq!(d.elts.capacity(), 64);
         let mut d = RingBuf::new();
-        d.push_back(0u32);
+        d.push(0u32);
         d.reserve(50);
         assert_eq!(d.elts.capacity(), 64);
     }
@@ -884,7 +884,7 @@ mod tests {
         assert_eq!(d.iter().size_hint(), (0, Some(0)));
 
         for i in range(0i, 5) {
-            d.push_back(i);
+            d.push(i);
         }
         {
             let b: &[_] = &[&0,&1,&2,&3,&4];
@@ -915,7 +915,7 @@ mod tests {
         assert_eq!(d.iter().rev().next(), None);
 
         for i in range(0i, 5) {
-            d.push_back(i);
+            d.push(i);
         }
         {
             let b: &[_] = &[&4,&3,&2,&1,&0];
@@ -934,11 +934,11 @@ mod tests {
         let mut d = RingBuf::with_capacity(3);
         assert!(d.mut_iter().rev().next().is_none());
 
-        d.push_back(1i);
-        d.push_back(2);
-        d.push_back(3);
+        d.push(1i);
+        d.push(2);
+        d.push(3);
         assert_eq!(d.pop_front(), Some(1));
-        d.push_back(4);
+        d.push(4);
 
         assert_eq!(d.mut_iter().rev().map(|x| *x).collect::<Vec<int>>(),
                    vec!(4, 3, 2));
@@ -1011,13 +1011,13 @@ mod tests {
         let mut d = RingBuf::new();
         d.push_front(17i);
         d.push_front(42);
-        d.push_back(137);
-        d.push_back(137);
+        d.push(137);
+        d.push(137);
         assert_eq!(d.len(), 4u);
         let mut e = d.clone();
         assert_eq!(e.len(), 4u);
         while !d.is_empty() {
-            assert_eq!(d.pop_back(), e.pop_back());
+            assert_eq!(d.pop(), e.pop());
         }
         assert_eq!(d.len(), 0u);
         assert_eq!(e.len(), 0u);
@@ -1030,15 +1030,15 @@ mod tests {
         d.push_front(137i);
         d.push_front(17);
         d.push_front(42);
-        d.push_back(137);
+        d.push(137);
         let mut e = RingBuf::with_capacity(0);
-        e.push_back(42);
-        e.push_back(17);
-        e.push_back(137);
-        e.push_back(137);
+        e.push(42);
+        e.push(17);
+        e.push(137);
+        e.push(137);
         assert!(&e == &d);
-        e.pop_back();
-        e.push_back(0);
+        e.pop();
+        e.push(0);
         assert!(e != d);
         e.clear();
         assert!(e == RingBuf::new());
