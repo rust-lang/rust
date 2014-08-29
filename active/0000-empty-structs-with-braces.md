@@ -223,19 +223,10 @@ to me.)
 ## Ancient History
 
 A parsing ambiguity was the original motivation for disallowing the
-syntax `struct S {}` in favor of `struct S;` for an empty struct
-declaration.  The ambiguity and various options for dealing with it
+syntax `S {}` in favor of `S` for constructing an instance of
+an empty struct.  The ambiguity and various options for dealing with it
 were well documented on the [associated mailing list thread][RustDev
 Thread].  Both syntaxes were simultaneously supported at the time.
-Support for `struct S {}` was removed because that was the most
-expedient option.  In particular, at that time, the option of "Place a
-parser restriction on those contexts where `{` terminates the
-expression and say that struct literals cannot appear there unless
-they are in parentheses." was explicitly not chosen, in favor of
-continuing to use the disambiguation rule in use at the time, namely
-that the presence of a label (e.g. `S { a_label: ... }`) was *the* way
-to distinguish a struct constructor from an identifier followed by a
-control block, and thus, "there must be one label."
 
 In particular, at the time that mailing list thread was created, the
 code match `match x {} ...` would be parsed as `match (x {}) ...`, not
@@ -244,15 +235,31 @@ be parsed as an if-expression whose test component is the struct
 literal `x {}`.  Thus, at the time of [Rust PR 5137], if the input to
 a `match` or `if` was an identifier expression, one had to put
 parentheses around the identifier to force it to be interpreted as
-input, and not as a struct constructor.
+input to the `match`/`if`, and not as a struct constructor.
 
-Things have changed since then; namely, we have now adopted the
-aforementioned parser restriction [Rust RFC 25].  (The text of RFC 25
-does not explicitly address `match`, but we have effectively expanded
-it to include a curly-brace delimited block of match-arms in the
-definition of "block".)  Today, one uses parentheses around struct
-literals in some contexts (such as `for e in (S {x: 3}) { ... }` or
-`match (S {x: 3}) { ... }`
+Of the options for resolving this discussed on the mailing list
+thread, the one selected (removing `S {}` construction expressions)
+was chosen as the most expedient option.
+
+At that time, the option of "Place a parser restriction on those
+contexts where `{` terminates the expression and say that struct
+literals cannot appear there unless they are in parentheses." was
+explicitly not chosen, in favor of continuing to use the
+disambiguation rule in use at the time, namely that the presence of a
+label (e.g. `S { a_label: ... }`) was *the* way to distinguish a
+struct constructor from an identifier followed by a control block, and
+thus, "there must be one label."
+
+Naturally, if the construction syntax were to be disallowed, it made
+sense to also remove the `struct S {}` declaration syntax.
+
+Things have changed since the time of that mailing list thread;
+namely, we have now adopted the aforementioned parser restriction
+[Rust RFC 25].  (The text of RFC 25 does not explicitly address
+`match`, but we have effectively expanded it to include a curly-brace
+delimited block of match-arms in the definition of "block".)  Today,
+one uses parentheses around struct literals in some contexts (such as
+`for e in (S {x: 3}) { ... }` or `match (S {x: 3}) { ... }`
 
 Note that there was never an ambiguity for uses of `struct S0 { }` in item
 position.  The issue was solely about expression position prior to the
