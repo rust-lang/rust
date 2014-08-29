@@ -403,11 +403,11 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
         ty::ty_uniq(content_ty) => {
             match ty::get(content_ty).sty {
                 ty::ty_vec(ty, None) => {
-                    tvec::make_drop_glue_unboxed(bcx, v0, ty)
+                    tvec::make_drop_glue_unboxed(bcx, v0, ty, true)
                 }
                 ty::ty_str => {
                     let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
-                    tvec::make_drop_glue_unboxed(bcx, v0, unit_ty)
+                    tvec::make_drop_glue_unboxed(bcx, v0, unit_ty, true)
                 }
                 ty::ty_trait(..) => {
                     let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
@@ -507,7 +507,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                  None);
             bcx
         }
-        ty::ty_vec(ty, None) => tvec::make_drop_glue_unboxed(bcx, v0, ty),
+        ty::ty_vec(ty, None) => tvec::make_drop_glue_unboxed(bcx, v0, ty, false),
         _ => {
             assert!(ty::type_is_sized(bcx.tcx(), t));
             if ty::type_needs_drop(bcx.tcx(), t) &&
