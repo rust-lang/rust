@@ -32,7 +32,7 @@ While this yields code that is relatively free of extraneous
 curly-braces, this special case handling of empty structs presents
 problems for two cases of interest: automatic code generators
 (including, but not limited to, Rust macros) and conditionalized code
-(i.e. code with `cfg` attributes; see appendix [#the_cfg_problem]).
+(i.e. code with `cfg` attributes; see appendix [The CFG problem][#the_cfg_problem]).
 The heart of the code-generator argument is: Why force all
 to-be-written code-generators and macros with special-case handling of
 the empty struct case (in terms of whether or not to include the
