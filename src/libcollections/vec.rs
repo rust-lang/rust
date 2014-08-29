@@ -99,6 +99,7 @@ use slice::{Items, MutItems};
 /// to use `Vec::with_capacity` whenever possible to specify how big the vector
 /// is expected to get.
 #[unsafe_no_drop_flag]
+#[stable]
 pub struct Vec<T> {
     len: uint,
     cap: uint,
@@ -116,6 +117,7 @@ impl<T> Vec<T> {
     /// let mut vec: Vec<int> = Vec::new();
     /// ```
     #[inline]
+    #[stable]
     pub fn new() -> Vec<T> {
         // We want ptr to never be NULL so instead we set it to some arbitrary
         // non-null value which is fine since we never call deallocate on the ptr
@@ -152,6 +154,7 @@ impl<T> Vec<T> {
     /// vec.push(11);
     /// ```
     #[inline]
+    #[stable]
     pub fn with_capacity(capacity: uint) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
             Vec { len: 0, cap: uint::MAX, ptr: EMPTY as *mut T }
@@ -177,6 +180,8 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![0, 2, 4]);
     /// ```
     #[inline]
+    #[unstable = "the naming is uncertain as well as this migrating to unboxed \
+                  closures in the future"]
     pub fn from_fn(length: uint, op: |uint| -> T) -> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
@@ -229,6 +234,7 @@ impl<T> Vec<T> {
     ///     }
     /// }
     /// ```
+    #[experimental]
     pub unsafe fn from_raw_parts(length: uint, capacity: uint,
                                  ptr: *mut T) -> Vec<T> {
         Vec { len: length, cap: capacity, ptr: ptr }
@@ -249,6 +255,7 @@ impl<T> Vec<T> {
     /// assert_eq!(odd, vec![1, 3]);
     /// ```
     #[inline]
+    #[experimental]
     pub fn partition(self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
         let mut lefts  = Vec::new();
         let mut rights = Vec::new();
@@ -277,6 +284,7 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, vec![1, 2, 3, 4]);
     /// ```
     #[inline]
+    #[deprecated = "this function has been deprecated in favor of extend()"]
     pub fn append(mut self, second: &[T]) -> Vec<T> {
         self.push_all(second);
         self
@@ -291,6 +299,7 @@ impl<T: Clone> Vec<T> {
     /// let vec = Vec::from_slice(slice);
     /// ```
     #[inline]
+    #[deprecated = "this function has been deprecated in favor of to_vec()"]
     pub fn from_slice(values: &[T]) -> Vec<T> {
         let mut vector = Vec::new();
         vector.push_all(values);
@@ -307,6 +316,7 @@ impl<T: Clone> Vec<T> {
     /// println!("{}", vec); // prints [hi, hi, hi]
     /// ```
     #[inline]
+    #[unstable = "this functionality may become more generic over all collections"]
     pub fn from_elem(length: uint, value: T) -> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
@@ -333,6 +343,7 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, vec![1, 2, 3, 4]);
     /// ```
     #[inline]
+    #[experimental]
     pub fn push_all(&mut self, other: &[T]) {
         self.reserve_additional(other.len());
 
@@ -359,15 +370,16 @@ impl<T: Clone> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec!["hello"];
-    /// vec.grow(2, &("world"));
+    /// vec.grow(2, "world");
     /// assert_eq!(vec, vec!["hello", "world", "world"]);
     /// ```
-    pub fn grow(&mut self, n: uint, value: &T) {
+    #[stable]
+    pub fn grow(&mut self, n: uint, value: T) {
         self.reserve_additional(n);
         let mut i: uint = 0u;
 
         while i < n {
-            self.push((*value).clone());
+            self.push(value.clone());
             i += 1u;
         }
     }
@@ -382,15 +394,17 @@ impl<T: Clone> Vec<T> {
     /// # Example
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let mut vec = vec!["a", "b", "c"];
     /// vec.grow_set(1, &("fill"), "d");
     /// vec.grow_set(4, &("fill"), "e");
     /// assert_eq!(vec, vec!["a", "d", "c", "fill", "e"]);
     /// ```
+    #[deprecated = "call .grow() and .push() manually instead"]
     pub fn grow_set(&mut self, index: uint, initval: &T, value: T) {
         let l = self.len();
         if index >= l {
-            self.grow(index - l + 1u, initval);
+            self.grow(index - l + 1u, initval.clone());
         }
         *self.get_mut(index) = value;
     }
@@ -409,6 +423,7 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(even, vec![2i, 4]);
     /// assert_eq!(odd, vec![1i, 3]);
     /// ```
+    #[experimental]
     pub fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
         let mut lefts = Vec::new();
         let mut rights = Vec::new();
@@ -449,6 +464,7 @@ impl<T:Clone> Clone for Vec<T> {
     }
 }
 
+#[experimental = "waiting on Index stability"]
 impl<T> Index<uint,T> for Vec<T> {
     #[inline]
     #[allow(deprecated)] // allow use of get
@@ -506,6 +522,8 @@ impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
         self.as_mut_slice().slice_mut_(start, end)
     }
 }
+
+#[experimental = "waiting on FromIterator stability"]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I:Iterator<T>>(mut iterator: I) -> Vec<T> {
@@ -518,6 +536,7 @@ impl<T> FromIterator<T> for Vec<T> {
     }
 }
 
+#[experimental = "waiting on Extendable stability"]
 impl<T> Extendable<T> for Vec<T> {
     #[inline]
     fn extend<I: Iterator<T>>(&mut self, mut iterator: I) {
@@ -529,6 +548,7 @@ impl<T> Extendable<T> for Vec<T> {
     }
 }
 
+#[unstable = "waiting on PartialEq stability"]
 impl<T: PartialEq> PartialEq for Vec<T> {
     #[inline]
     fn eq(&self, other: &Vec<T>) -> bool {
@@ -536,6 +556,7 @@ impl<T: PartialEq> PartialEq for Vec<T> {
     }
 }
 
+#[unstable = "waiting on PartialOrd stability"]
 impl<T: PartialOrd> PartialOrd for Vec<T> {
     #[inline]
     fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
@@ -543,13 +564,16 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
     }
 }
 
+#[unstable = "waiting on Eq stability"]
 impl<T: Eq> Eq for Vec<T> {}
 
+#[experimental]
 impl<T: PartialEq, V: Slice<T>> Equiv<V> for Vec<T> {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
 
+#[unstable = "waiting on Ord stability"]
 impl<T: Ord> Ord for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
@@ -557,15 +581,19 @@ impl<T: Ord> Ord for Vec<T> {
     }
 }
 
+#[experimental = "waiting on Collection stability"]
 impl<T> Collection for Vec<T> {
     #[inline]
+    #[stable]
     fn len(&self) -> uint {
         self.len
     }
 }
 
 impl<T: Clone> CloneableVector<T> for Vec<T> {
+    #[deprecated = "call .clone() instead"]
     fn to_vec(&self) -> Vec<T> { self.clone() }
+    #[deprecated = "move the vector instead"]
     fn into_vec(self) -> Vec<T> { self }
 }
 
@@ -600,6 +628,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.capacity(), 10);
     /// ```
     #[inline]
+    #[stable]
     pub fn capacity(&self) -> uint {
         self.cap
     }
@@ -683,6 +712,7 @@ impl<T> Vec<T> {
     /// let mut vec = vec![1i, 2, 3];
     /// vec.shrink_to_fit();
     /// ```
+    #[stable]
     pub fn shrink_to_fit(&mut self) {
         if mem::size_of::<T>() == 0 { return }
 
@@ -717,6 +747,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![1, 2, 3]);
     /// ```
     #[inline]
+    #[deprecated = "call .push() instead"]
     pub fn append_one(mut self, x: T) -> Vec<T> {
         self.push(x);
         self
@@ -734,6 +765,7 @@ impl<T> Vec<T> {
     /// vec.truncate(2);
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
+    #[stable]
     pub fn truncate(&mut self, len: uint) {
         unsafe {
             // drop any extra elements
@@ -757,6 +789,7 @@ impl<T> Vec<T> {
     /// foo(vec.as_mut_slice());
     /// ```
     #[inline]
+    #[stable]
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
             mem::transmute(RawSlice {
@@ -796,7 +829,6 @@ impl<T> Vec<T> {
         }
     }
 
-
     /// Sets the length of a vector.
     ///
     /// This will explicitly set the size of the vector, without actually
@@ -812,6 +844,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[inline]
+    #[stable]
     pub unsafe fn set_len(&mut self, len: uint) {
         self.len = len;
     }
@@ -850,6 +883,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![1i, 4, 3]);
     /// ```
     #[inline]
+    #[unstable = "this is likely to be moved to actual indexing"]
     pub fn get_mut<'a>(&'a mut self, index: uint) -> &'a mut T {
         &mut self.as_mut_slice()[index]
     }
@@ -1020,6 +1054,7 @@ impl<T> Vec<T> {
     /// assert_eq!(v.swap_remove(2), None);
     /// ```
     #[inline]
+    #[unstable = "the naming of this function may be altered"]
     pub fn swap_remove(&mut self, index: uint) -> Option<T> {
         let length = self.len();
         if length > 0 && index < length - 1 {
@@ -1088,6 +1123,7 @@ impl<T> Vec<T> {
     /// vec.insert(4, 5);
     /// assert_eq!(vec, vec![1, 4, 2, 3, 5]);
     /// ```
+    #[stable]
     pub fn insert(&mut self, index: uint, element: T) {
         let len = self.len();
         assert!(index <= len);
@@ -1124,6 +1160,7 @@ impl<T> Vec<T> {
     /// // v is unchanged:
     /// assert_eq!(v, vec![1, 3]);
     /// ```
+    #[stable]
     pub fn remove(&mut self, index: uint) -> Option<T> {
         let len = self.len();
         if index < len {
@@ -1410,6 +1447,7 @@ impl<T> Vec<T> {
     /// vec.retain(|x| x%2 == 0);
     /// assert_eq!(vec, vec![2, 4]);
     /// ```
+    #[unstable = "the closure argument may become an unboxed closure"]
     pub fn retain(&mut self, f: |&T| -> bool) {
         let len = self.len();
         let mut del = 0u;
@@ -1441,6 +1479,7 @@ impl<T> Vec<T> {
     /// vec.grow_fn(3, |i| i);
     /// assert_eq!(vec, vec![0, 1, 0, 1, 2]);
     /// ```
+    #[unstable = "this function may be renamed or change to unboxed closures"]
     pub fn grow_fn(&mut self, n: uint, f: |uint| -> T) {
         self.reserve_additional(n);
         for i in range(0u, n) {
@@ -1467,8 +1506,10 @@ impl<T:Ord> Vec<T> {
     }
 }
 
+#[experimental = "waiting on Mutable stability"]
 impl<T> Mutable for Vec<T> {
     #[inline]
+    #[stable]
     fn clear(&mut self) {
         self.truncate(0)
     }
@@ -1499,6 +1540,7 @@ impl<T: PartialEq> Vec<T> {
     /// vec.dedup();
     /// assert_eq!(vec, vec![1i, 2, 3, 2]);
     /// ```
+    #[unstable = "this function may be renamed"]
     pub fn dedup(&mut self) {
         unsafe {
             // Although we have a mutable reference to `self`, we cannot make
@@ -1596,6 +1638,7 @@ impl<T> Slice<T> for Vec<T> {
     /// foo(vec.as_slice());
     /// ```
     #[inline]
+    #[stable]
     fn as_slice<'a>(&'a self) -> &'a [T] {
         unsafe { mem::transmute(RawSlice { data: self.as_ptr(), len: self.len }) }
     }
@@ -1627,18 +1670,21 @@ impl<T> Drop for Vec<T> {
     }
 }
 
+#[stable]
 impl<T> Default for Vec<T> {
     fn default() -> Vec<T> {
         Vec::new()
     }
 }
 
+#[experimental = "waiting on Show stability"]
 impl<T:fmt::Show> fmt::Show for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_slice().fmt(f)
     }
 }
 
+#[experimental = "waiting on MutableSeq stability"]
 impl<T> MutableSeq<T> for Vec<T> {
     /// Appends an element to the back of a collection.
     ///
@@ -1654,6 +1700,7 @@ impl<T> MutableSeq<T> for Vec<T> {
     /// assert_eq!(vec, vec!(1, 2, 3));
     /// ```
     #[inline]
+    #[stable]
     fn push(&mut self, value: T) {
         if mem::size_of::<T>() == 0 {
             // zero-size types consume no memory, so we can't rely on the address space running out
@@ -1680,6 +1727,7 @@ impl<T> MutableSeq<T> for Vec<T> {
     }
 
     #[inline]
+    #[stable]
     fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
@@ -1765,6 +1813,7 @@ impl<T> Drop for MoveItems<T> {
 /// vector contains the first element of the i-th tuple of the input iterator,
 /// and the i-th element of the second vector contains the second element
 /// of the i-th tuple of the input iterator.
+#[unstable = "this functionality may become more generic over time"]
 pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (Vec<T>, Vec<U>) {
     let (lo, _) = iter.size_hint();
     let mut ts = Vec::with_capacity(lo);
@@ -1777,6 +1826,7 @@ pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (Vec<T>, Vec<U>) {
 }
 
 /// Unsafe vector operations.
+#[unstable]
 pub mod raw {
     use super::Vec;
     use core::ptr;
@@ -1786,6 +1836,7 @@ pub mod raw {
     /// The elements of the buffer are copied into the vector without cloning,
     /// as if `ptr::read()` were called on them.
     #[inline]
+    #[unstable]
     pub unsafe fn from_buf<T>(ptr: *const T, elts: uint) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
