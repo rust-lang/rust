@@ -29,7 +29,7 @@ impl Trait for Struct {
 
 fn g(x: Box<Trait>) {
     x.printme();
-    let y: &Trait = x;
+    let y: &Trait = &*x;
     y.printme();
 }
 

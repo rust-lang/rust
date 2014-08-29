@@ -327,7 +327,6 @@ impl<'f> Coerce<'f> {
 
         let sty_b = &ty::get(b).sty;
         match (sty_a, sty_b) {
-            (&ty::ty_uniq(_), &ty::ty_rptr(..)) => Err(ty::terr_mismatch),
             (&ty::ty_rptr(_, ty::mt{ty: t_a, ..}), &ty::ty_rptr(_, mt_b)) => {
                 self.unpack_actual_value(t_a, |sty_a| {
                     match self.unsize_ty(sty_a, mt_b.ty) {
@@ -511,7 +510,7 @@ impl<'f> Coerce<'f> {
         let tcx = self.get_ref().infcx.tcx;
 
         match *sty_a {
-            ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
+            ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
                 ty::ty_trait(box ty::TyTrait {
                         def_id,
                         ref substs,
