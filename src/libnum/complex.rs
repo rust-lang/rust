@@ -12,13 +12,13 @@
 //! Complex numbers.
 
 use std::fmt;
-use std::num::{Zero,One,ToStrRadix};
+use std::num::{Zero, One, ToStrRadix};
 
 // FIXME #1284: handle complex NaN & infinity etc. This
 // probably doesn't map to C's _Complex correctly.
 
 /// A complex number in Cartesian form.
-#[deriving(PartialEq,Clone)]
+#[deriving(PartialEq, Clone, Hash)]
 pub struct Complex<T> {
     /// Real portion of the complex number
     pub re: T,
@@ -36,10 +36,8 @@ impl<T: Clone + Num> Complex<T> {
         Complex { re: re, im: im }
     }
 
-    /**
-    Returns the square of the norm (since `T` doesn't necessarily
-    have a sqrt function), i.e. `re^2 + im^2`.
-    */
+    /// Returns the square of the norm (since `T` doesn't necessarily
+    /// have a sqrt function), i.e. `re^2 + im^2`.
     #[inline]
     pub fn norm_sqr(&self) -> T {
         self.re * self.re + self.im * self.im
@@ -193,7 +191,8 @@ mod test {
     #![allow(non_uppercase_statics)]
 
     use super::{Complex64, Complex};
-    use std::num::{Zero,One,Float};
+    use std::num::{Zero, One, Float};
+    use std::hash::hash;
 
     pub static _0_0i : Complex64 = Complex { re: 0.0, im: 0.0 };
     pub static _1_0i : Complex64 = Complex { re: 1.0, im: 0.0 };
@@ -366,5 +365,15 @@ mod test {
         test(_neg1_1i, "-1+1i".to_string());
         test(-_neg1_1i, "1-1i".to_string());
         test(_05_05i, "0.5+0.5i".to_string());
+    }
+
+    #[test]
+    fn test_hash() {
+        let a = Complex::new(0i32, 0i32);
+        let b = Complex::new(1i32, 0i32);
+        let c = Complex::new(0i32, 1i32);
+        assert!(hash(&a) != hash(&b));
+        assert!(hash(&b) != hash(&c));
+        assert!(hash(&c) != hash(&a));
     }
 }
