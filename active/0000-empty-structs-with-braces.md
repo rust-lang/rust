@@ -225,8 +225,8 @@ to me.)
 A parsing ambiguity was the original motivation for disallowing the
 syntax `S {}` in favor of `S` for constructing an instance of
 an empty struct.  The ambiguity and various options for dealing with it
-were well documented on the [associated mailing list thread][RustDev
-Thread].  Both syntaxes were simultaneously supported at the time.
+were well documented on the [rust-dev thread].
+Both syntaxes were simultaneously supported at the time.
 
 In particular, at the time that mailing list thread was created, the
 code match `match x {} ...` would be parsed as `match (x {}) ...`, not
@@ -319,7 +319,7 @@ or by [Status Quo].
 [Empty Tuple Structs]: #empty-tuple-structs
 [Precedent for flexible syntax in Rust]: #precedent-for-flexible-syntax-in-rust
 
-[RustDev Thread]: https://mail.mozilla.org/pipermail/rust-dev/2013-February/003282.html
+[rust-dev thread]: https://mail.mozilla.org/pipermail/rust-dev/2013-February/003282.html
 
 [Rust Issue 5167]: https://github.com/rust-lang/rust/issues/5167
 
