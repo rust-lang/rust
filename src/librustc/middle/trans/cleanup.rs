@@ -640,7 +640,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
         while !popped_scopes.is_empty() {
             let mut scope = popped_scopes.pop().unwrap();
 
-            if scope.cleanups.iter().any(|c| cleanup_is_suitable_for(*c, label))
+            if scope.cleanups.iter().any(|c| cleanup_is_suitable_for(&**c, label))
             {
                 let name = scope.block_name("clean");
                 debug!("generating cleanups for {}", name);
@@ -649,7 +649,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
                                             None);
                 let mut bcx_out = bcx_in;
                 for cleanup in scope.cleanups.iter().rev() {
-                    if cleanup_is_suitable_for(*cleanup, label) {
+                    if cleanup_is_suitable_for(&**cleanup, label) {
                         bcx_out = cleanup.trans(bcx_out);
                     }
                 }

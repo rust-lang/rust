@@ -570,7 +570,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
             n => {
                 let f: Callback = unsafe { mem::transmute(n) };
                 let (file, line) = *file_line;
-                f(msg, file, line);
+                f(&*msg, file, line);
             }
         }
     };

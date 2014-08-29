@@ -203,7 +203,7 @@ fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
         let mut my_stdout = local_stdout.replace(None).unwrap_or_else(|| {
             box stdout() as Box<Writer + Send>
         });
-        let result = f(my_stdout);
+        let result = f(&mut *my_stdout);
         local_stdout.replace(Some(my_stdout));
         result
     } else {
