@@ -2028,7 +2028,7 @@ fn try_overloaded_call(fcx: &FnCtxt,
             span_err!(fcx.tcx().sess, call_expression.span, E0056,
                 "overloaded calls are experimental");
             span_note!(fcx.tcx().sess, call_expression.span,
-                "add `#[feature(overloaded_calls)]` to \
+                "add `#![feature(overloaded_calls)]` to \
                 the crate attributes to enable");
         }
 
