@@ -10,6 +10,6 @@
 
 fn f() {
     let a_box = box mut 42;
-    //~^  ERROR found `mut` in ident position
+    //~^  ERROR expected identifier, found keyword `mut`
     //~^^ ERROR expected `;`, found `42`
 }

@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let super: int; //~ ERROR found `super` in ident position
+    let super: int; //~ ERROR expected identifier, found keyword `super`
 }

@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn true() { } //~ ERROR found `true` in ident position
+fn true() { } //~ ERROR expected identifier, found keyword `true`
 fn main() { }
