@@ -2671,9 +2671,9 @@ $ cargo new modules --bin
 Let's double check our work by compiling:
 
 ```{bash,ignore}
-$ cargo build
+$ cargo run
    Compiling modules v0.0.1 (file:///home/you/projects/modules)
-$ ./target/modules
+     Running `target/modules`
 Hello, world!
 ```
 
