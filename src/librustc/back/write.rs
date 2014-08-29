@@ -607,6 +607,19 @@ pub fn run_passes(sess: &Session,
     };
 
     let link_obj = |output_path: &Path| {
+        // Some builds of MinGW GCC will pass --force-exe-suffix to ld, which
+        // will automatically add a .exe extension if the extension is not
+        // already .exe or .dll.  To ensure consistent behavior on Windows, we
+        // add the .exe suffix explicitly and then rename the output file to
+        // the desired path.  This will give the correct behavior whether or
+        // not GCC adds --force-exe-suffix.
+        let windows_output_path =
+            if sess.targ_cfg.os == abi::OsWindows {
+                Some(output_path.with_extension("o.exe"))
+            } else {
+                None
+            };
+
         let pname = get_cc_prog(sess);
         let mut cmd = Command::new(pname.as_slice());
 
@@ -617,7 +630,9 @@ pub fn run_passes(sess: &Session,
             cmd.arg(crate_output.with_extension(format!("{}.o", index).as_slice()));
         }
 
-        cmd.arg("-r").arg("-o").arg(output_path);
+        cmd.arg("-r")
+           .arg("-o")
+           .arg(windows_output_path.as_ref().unwrap_or(output_path));
 
         if (sess.opts.debugging_opts & config::PRINT_LINK_ARGS) != 0 {
             println!("{}", &cmd);
@@ -634,6 +649,15 @@ pub fn run_passes(sess: &Session,
                                  e).as_slice());
                 sess.abort_if_errors();
             },
+        }
+
+        match windows_output_path {
+            Some(ref windows_path) => {
+                fs::rename(windows_path, output_path).unwrap();
+            },
+            None => {
+                // The file is already named according to `output_path`.
+            }
         }
     };
 
