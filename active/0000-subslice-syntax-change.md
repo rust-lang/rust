@@ -41,6 +41,11 @@ grammar syntax as in Rust manual):
     slice_pattern : "[" [[pattern | subslice_pattern] ","]* "]" ;
     subslice_pattern : ["mut"? ident]? ".." ["@" slice_pattern]? ;
 
+To compare, currently it looks like:
+
+    slice_pattern : "[" [[pattern | subslice_pattern] ","]* "]" ;
+    subslice_pattern : ".." ["mut"? ident ["@" slice_pattern]?]? ;
+
 # Drawbacks
 
 Backward incompatible.
