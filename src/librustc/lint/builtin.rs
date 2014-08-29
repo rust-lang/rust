@@ -736,20 +736,16 @@ impl LintPass for UnusedResult {
     }
 }
 
-declare_lint!(NON_CAMEL_CASE_TYPES, Warn,
-              "types, variants and traits should have camel case names")
+declare_lint!(pub NON_CAMEL_CASE_TYPES, Warn,
+              "types, variants, traits and type parameters should have camel case names")
 
 pub struct NonCamelCaseTypes;
 
-impl LintPass for NonCamelCaseTypes {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NON_CAMEL_CASE_TYPES)
-    }
-
-    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
+impl NonCamelCaseTypes {
+    fn check_case(&self, cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
         fn is_camel_case(ident: ast::Ident) -> bool {
             let ident = token::get_ident(ident);
-            assert!(!ident.get().is_empty());
+            if ident.get().is_empty() { return true; }
             let ident = ident.get().trim_chars('_');
 
             // start with a non-lowercase letter rather than non-uppercase
@@ -764,20 +760,26 @@ impl LintPass for NonCamelCaseTypes {
             )).collect()
         }
 
-        fn check_case(cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
-            let s = token::get_ident(ident);
+        let s = token::get_ident(ident);
 
-            if !is_camel_case(ident) {
-                let c = to_camel_case(s.get());
-                let m = if c.is_empty() {
-                    format!("{} `{}` should have a camel case name such as `CamelCase`", sort, s)
-                } else {
-                    format!("{} `{}` should have a camel case name such as `{}`", sort, s, c)
-                };
-                cx.span_lint(NON_CAMEL_CASE_TYPES, span, m.as_slice());
-            }
+        if !is_camel_case(ident) {
+            let c = to_camel_case(s.get());
+            let m = if c.is_empty() {
+                format!("{} `{}` should have a camel case name such as `CamelCase`", sort, s)
+            } else {
+                format!("{} `{}` should have a camel case name such as `{}`", sort, s, c)
+            };
+            cx.span_lint(NON_CAMEL_CASE_TYPES, span, m.as_slice());
         }
+    }
+}
 
+impl LintPass for NonCamelCaseTypes {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(NON_CAMEL_CASE_TYPES)
+    }
+
+    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
         let has_extern_repr = it.attrs.iter().map(|attr| {
             attr::find_repr_attrs(cx.tcx.sess.diagnostic(), attr).iter()
                 .any(|r| r == &attr::ReprExtern)
@@ -786,19 +788,25 @@ impl LintPass for NonCamelCaseTypes {
 
         match it.node {
             ast::ItemTy(..) | ast::ItemStruct(..) => {
-                check_case(cx, "type", it.ident, it.span)
+                self.check_case(cx, "type", it.ident, it.span)
             }
             ast::ItemTrait(..) => {
-                check_case(cx, "trait", it.ident, it.span)
+                self.check_case(cx, "trait", it.ident, it.span)
             }
             ast::ItemEnum(ref enum_definition, _) => {
                 if has_extern_repr { return }
-                check_case(cx, "type", it.ident, it.span);
+                self.check_case(cx, "type", it.ident, it.span);
                 for variant in enum_definition.variants.iter() {
-                    check_case(cx, "variant", variant.node.name, variant.span);
+                    self.check_case(cx, "variant", variant.node.name, variant.span);
                 }
             }
             _ => ()
+        }
+    }
+
+    fn check_generics(&mut self, cx: &Context, it: &ast::Generics) {
+        for gen in it.ty_params.iter() {
+            self.check_case(cx, "type parameter", gen.ident, gen.span);
         }
     }
 }
@@ -836,17 +844,18 @@ fn method_context(cx: &Context, m: &ast::Method) -> MethodContext {
     }
 }
 
-declare_lint!(NON_SNAKE_CASE_FUNCTIONS, Warn,
-              "methods and functions should have snake case names")
+declare_lint!(pub NON_SNAKE_CASE, Warn,
+              "methods, functions, lifetime parameters and modules should have snake case names")
 
-pub struct NonSnakeCaseFunctions;
+pub struct NonSnakeCase;
 
-impl NonSnakeCaseFunctions {
+impl NonSnakeCase {
     fn check_snake_case(&self, cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
         fn is_snake_case(ident: ast::Ident) -> bool {
             let ident = token::get_ident(ident);
-            assert!(!ident.get().is_empty());
-            let ident = ident.get().trim_chars('_');
+            if ident.get().is_empty() { return true; }
+            let ident = ident.get().trim_left_chars('\'');
+            let ident = ident.trim_chars('_');
 
             let mut allow_underscore = true;
             ident.chars().all(|c| {
@@ -865,7 +874,7 @@ impl NonSnakeCaseFunctions {
                 let mut buf = String::new();
                 if s.is_empty() { continue; }
                 for ch in s.chars() {
-                    if !buf.is_empty() && ch.is_uppercase() {
+                    if !buf.is_empty() && buf.as_slice() != "'" && ch.is_uppercase() {
                         words.push(buf);
                         buf = String::new();
                     }
@@ -879,16 +888,16 @@ impl NonSnakeCaseFunctions {
         let s = token::get_ident(ident);
 
         if !is_snake_case(ident) {
-            cx.span_lint(NON_SNAKE_CASE_FUNCTIONS, span,
+            cx.span_lint(NON_SNAKE_CASE, span,
                 format!("{} `{}` should have a snake case name such as `{}`",
                         sort, s, to_snake_case(s.get())).as_slice());
         }
     }
 }
 
-impl LintPass for NonSnakeCaseFunctions {
+impl LintPass for NonSnakeCase {
     fn get_lints(&self) -> LintArray {
-        lint_array!(NON_SNAKE_CASE_FUNCTIONS)
+        lint_array!(NON_SNAKE_CASE)
     }
 
     fn check_fn(&mut self, cx: &Context,
@@ -908,12 +917,52 @@ impl LintPass for NonSnakeCaseFunctions {
         }
     }
 
+    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
+        match it.node {
+            ast::ItemMod(_) => {
+                self.check_snake_case(cx, "module", it.ident, it.span);
+            }
+            _ => {}
+        }
+    }
+
     fn check_ty_method(&mut self, cx: &Context, t: &ast::TypeMethod) {
         self.check_snake_case(cx, "trait method", t.ident, t.span);
     }
+
+    fn check_lifetime_decl(&mut self, cx: &Context, t: &ast::LifetimeDef) {
+        self.check_snake_case(cx, "lifetime", t.lifetime.name.ident(), t.lifetime.span);
+    }
+
+    fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
+        match &p.node {
+            &ast::PatIdent(_, ref path1, _) => {
+                match cx.tcx.def_map.borrow().find(&p.id) {
+                    Some(&def::DefLocal(_, _)) | Some(&def::DefBinding(_, _)) |
+                            Some(&def::DefArg(_, _)) => {
+                        self.check_snake_case(cx, "variable", path1.node, p.span);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn check_struct_def(&mut self, cx: &Context, s: &ast::StructDef,
+            _: ast::Ident, _: &ast::Generics, _: ast::NodeId) {
+        for sf in s.fields.iter() {
+            match sf.node {
+                ast::StructField_ { kind: ast::NamedField(ident, _), .. } => {
+                    self.check_snake_case(cx, "structure field", ident, sf.span);
+                }
+                _ => {}
+            }
+        }
+    }
 }
 
-declare_lint!(NON_UPPERCASE_STATICS, Allow,
+declare_lint!(pub NON_UPPERCASE_STATICS, Allow,
               "static constants should have uppercase identifiers")
 
 pub struct NonUppercaseStatics;
@@ -942,17 +991,6 @@ impl LintPass for NonUppercaseStatics {
             _ => {}
         }
     }
-}
-
-declare_lint!(NON_UPPERCASE_PATTERN_STATICS, Warn,
-              "static constants in match patterns should be all caps")
-
-pub struct NonUppercasePatternStatics;
-
-impl LintPass for NonUppercasePatternStatics {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NON_UPPERCASE_PATTERN_STATICS)
-    }
 
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
@@ -960,7 +998,7 @@ impl LintPass for NonUppercasePatternStatics {
             (&ast::PatIdent(_, ref path1, _), Some(&def::DefStatic(_, false))) => {
                 let s = token::get_ident(path1.node);
                 if s.get().chars().any(|c| c.is_lowercase()) {
-                    cx.span_lint(NON_UPPERCASE_PATTERN_STATICS, path1.span,
+                    cx.span_lint(NON_UPPERCASE_STATICS, path1.span,
                         format!("static constant in pattern `{}` should have an uppercase \
                                  name such as `{}`",
                                 s.get(), s.get().chars().map(|c| c.to_uppercase())
@@ -968,54 +1006,6 @@ impl LintPass for NonUppercasePatternStatics {
                 }
             }
             _ => {}
-        }
-    }
-}
-
-declare_lint!(UPPERCASE_VARIABLES, Warn,
-              "variable and structure field names should start with a lowercase character")
-
-pub struct UppercaseVariables;
-
-impl LintPass for UppercaseVariables {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UPPERCASE_VARIABLES)
-    }
-
-    fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
-        match &p.node {
-            &ast::PatIdent(_, ref path1, _) => {
-                match cx.tcx.def_map.borrow().find(&p.id) {
-                    Some(&def::DefLocal(_, _)) | Some(&def::DefBinding(_, _)) |
-                            Some(&def::DefArg(_, _)) => {
-                        let s = token::get_ident(path1.node);
-                        if s.get().len() > 0 && s.get().char_at(0).is_uppercase() {
-                            cx.span_lint(UPPERCASE_VARIABLES, path1.span,
-                                         "variable names should start with \
-                                          a lowercase character");
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn check_struct_def(&mut self, cx: &Context, s: &ast::StructDef,
-            _: ast::Ident, _: &ast::Generics, _: ast::NodeId) {
-        for sf in s.fields.iter() {
-            match sf.node {
-                ast::StructField_ { kind: ast::NamedField(ident, _), .. } => {
-                    let s = token::get_ident(ident);
-                    if s.get().char_at(0).is_uppercase() {
-                        cx.span_lint(UPPERCASE_VARIABLES, sf.span,
-                                     "structure field names should start with \
-                                      a lowercase character");
-                    }
-                }
-                _ => {}
-            }
         }
     }
 }
@@ -1153,7 +1143,7 @@ impl LintPass for UnsafeBlock {
     }
 }
 
-declare_lint!(UNUSED_MUT, Warn,
+declare_lint!(pub UNUSED_MUT, Warn,
               "detect mut variables which don't need to be mutable")
 
 pub struct UnusedMut;

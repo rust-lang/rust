@@ -157,7 +157,7 @@ impl fmt::Show for Os {
     }
 }
 
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 #[test]
 fn lookup_Rust() {
     let abi = lookup("Rust");

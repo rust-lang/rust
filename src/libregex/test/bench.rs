@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![allow(non_snake_case_functions)]
+#![allow(non_snake_case)]
 
 use std::rand::{Rng, task_rng};
 use stdtest::Bencher;

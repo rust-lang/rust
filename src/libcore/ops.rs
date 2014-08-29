@@ -775,7 +775,7 @@ macro_rules! def_fn_mut(
         FnMut<($($args,)*),Result>
         for extern "Rust" fn($($args: $args,)*) -> Result {
             #[rust_call_abi_hack]
-            #[allow(uppercase_variables)]
+            #[allow(non_snake_case)]
             fn call_mut(&mut self, args: ($($args,)*)) -> Result {
                 let ($($args,)*) = args;
                 (*self)($($args,)*)

@@ -11,7 +11,7 @@
 // no-pretty-expanded FIXME #15189
 
 #![feature(phase)]
-#![allow(non_snake_case_functions)]
+#![allow(non_snake_case)]
 #[phase(plugin)] extern crate green;
 
 use std::from_str::FromStr;

@@ -66,6 +66,10 @@ pub struct LintStore {
 
     /// Current levels of each lint, and where they were set.
     levels: HashMap<LintId, LevelSource>,
+
+    /// Map of registered lint groups to what lints they expand to. The bool
+    /// is true if the lint group was added by a plugin.
+    lint_groups: HashMap<&'static str, (Vec<LintId>, bool)>,
 }
 
 impl LintStore {
@@ -90,11 +94,16 @@ impl LintStore {
             passes: Some(vec!()),
             by_name: HashMap::new(),
             levels: HashMap::new(),
+            lint_groups: HashMap::new(),
         }
     }
 
     pub fn get_lints<'t>(&'t self) -> &'t [(&'static Lint, bool)] {
         self.lints.as_slice()
+    }
+
+    pub fn get_lint_groups<'t>(&'t self) -> Vec<(&'static str, Vec<LintId>, bool)> {
+        self.lint_groups.iter().map(|(k, &(ref v, b))| (*k, v.clone(), b)).collect()
     }
 
     pub fn register_pass(&mut self, sess: Option<&Session>,
@@ -123,6 +132,25 @@ impl LintStore {
         self.passes.get_mut_ref().push(pass);
     }
 
+    pub fn register_group(&mut self, sess: Option<&Session>,
+                          from_plugin: bool, name: &'static str,
+                          to: Vec<LintId>) {
+        let new = self.lint_groups.insert(name, (to, from_plugin));
+
+        if !new {
+            let msg = format!("duplicate specification of lint group {}", name);
+            match (sess, from_plugin) {
+                // We load builtin lints first, so a duplicate is a compiler bug.
+                // Use early_error when handling -W help with no crate.
+                (None, _) => early_error(msg.as_slice()),
+                (Some(sess), false) => sess.bug(msg.as_slice()),
+
+                // A duplicate name from a plugin is a user error.
+                (Some(sess), true)  => sess.err(msg.as_slice()),
+            }
+        }
+    }
+
     pub fn register_builtin(&mut self, sess: Option<&Session>) {
         macro_rules! add_builtin ( ( $sess:ident, $($name:ident),*, ) => (
             {$(
@@ -136,6 +164,10 @@ impl LintStore {
             )*}
         ))
 
+        macro_rules! add_lint_group ( ( $sess:ident, $name:expr, $($lint:ident),* ) => (
+            self.register_group($sess, false, $name, vec![$(LintId::of(builtin::$lint)),*]);
+        ))
+
         add_builtin!(sess,
                      HardwiredLints,
                      WhileTrue,
@@ -146,10 +178,8 @@ impl LintStore {
                      PathStatement,
                      UnusedResult,
                      NonCamelCaseTypes,
-                     NonSnakeCaseFunctions,
+                     NonSnakeCase,
                      NonUppercaseStatics,
-                     NonUppercasePatternStatics,
-                     UppercaseVariables,
                      UnnecessaryParens,
                      UnusedUnsafe,
                      UnsafeBlock,
@@ -164,6 +194,13 @@ impl LintStore {
                               MissingDoc,
         )
 
+        add_lint_group!(sess, "bad_style",
+                        NON_CAMEL_CASE_TYPES, NON_SNAKE_CASE, NON_UPPERCASE_STATICS)
+
+        add_lint_group!(sess, "unused",
+                        UNUSED_IMPORTS, UNUSED_VARIABLE, DEAD_ASSIGNMENT, DEAD_CODE,
+                        UNUSED_MUT, UNREACHABLE_CODE)
+
         // We have one lint pass defined in this module.
         self.register_pass(sess, false, box GatherNodeLevels as LintPassObject);
     }
@@ -172,8 +209,20 @@ impl LintStore {
         for &(ref lint_name, level) in sess.opts.lint_opts.iter() {
             match self.by_name.find_equiv(&lint_name.as_slice()) {
                 Some(&lint_id) => self.set_level(lint_id, (level, CommandLine)),
-                None => sess.err(format!("unknown {} flag: {}",
-                                         level.as_str(), lint_name).as_slice()),
+                None => {
+                    match self.lint_groups.iter().map(|(&x, &(ref y, _))| (x, y.clone()))
+                                                 .collect::<HashMap<&'static str, Vec<LintId>>>()
+                                                 .find_equiv(&lint_name.as_slice()) {
+                        Some(v) => {
+                            v.iter()
+                             .map(|lint_id: &LintId|
+                                     self.set_level(*lint_id, (level, CommandLine)))
+                             .collect::<Vec<()>>();
+                        }
+                        None => sess.err(format!("unknown {} flag: {}",
+                                                 level.as_str(), lint_name).as_slice()),
+                    }
+                }
             }
         }
     }
@@ -307,7 +356,7 @@ impl<'a> Context<'a> {
             krate: krate,
             exported_items: exported_items,
             lints: lint_store,
-            level_stack: vec!(),
+            level_stack: vec![],
             node_levels: RefCell::new(HashMap::new()),
         }
     }
@@ -361,35 +410,46 @@ impl<'a> Context<'a> {
         let mut pushed = 0u;
 
         for result in gather_attrs(attrs).move_iter() {
-            let (lint_id, level, span) = match result {
+            let v = match result {
                 Err(span) => {
                     self.tcx.sess.span_err(span, "malformed lint attribute");
                     continue;
                 }
                 Ok((lint_name, level, span)) => {
                     match self.lints.by_name.find_equiv(&lint_name.get()) {
-                        Some(&lint_id) => (lint_id, level, span),
+                        Some(&lint_id) => vec![(lint_id, level, span)],
                         None => {
-                            self.span_lint(builtin::UNRECOGNIZED_LINT, span,
-                                           format!("unknown `{}` attribute: `{}`",
-                                                   level.as_str(), lint_name).as_slice());
-                            continue;
+                            match self.lints.lint_groups.find_equiv(&lint_name.get()) {
+                                Some(&(ref v, _)) => v.iter()
+                                                      .map(|lint_id: &LintId|
+                                                           (*lint_id, level, span))
+                                                      .collect(),
+                                None => {
+                                    self.span_lint(builtin::UNRECOGNIZED_LINT, span,
+                                               format!("unknown `{}` attribute: `{}`",
+                                                       level.as_str(), lint_name).as_slice());
+                                    continue;
+                                }
+                            }
                         }
                     }
                 }
             };
 
-            let now = self.lints.get_level_source(lint_id).val0();
-            if now == Forbid && level != Forbid {
-                let lint_name = lint_id.as_str();
-                self.tcx.sess.span_err(span,
-                                       format!("{}({}) overruled by outer forbid({})",
-                                               level.as_str(), lint_name, lint_name).as_slice());
-            } else if now != level {
-                let src = self.lints.get_level_source(lint_id).val1();
-                self.level_stack.push((lint_id, (now, src)));
-                pushed += 1;
-                self.lints.set_level(lint_id, (level, Node(span)));
+            for (lint_id, level, span) in v.move_iter() {
+                let now = self.lints.get_level_source(lint_id).val0();
+                if now == Forbid && level != Forbid {
+                    let lint_name = lint_id.as_str();
+                    self.tcx.sess.span_err(span,
+                                           format!("{}({}) overruled by outer forbid({})",
+                                                   level.as_str(), lint_name,
+                                                   lint_name).as_slice());
+                } else if now != level {
+                    let src = self.lints.get_level_source(lint_id).val1();
+                    self.level_stack.push((lint_id, (now, src)));
+                    pushed += 1;
+                    self.lints.set_level(lint_id, (level, Node(span)));
+                }
             }
         }
 

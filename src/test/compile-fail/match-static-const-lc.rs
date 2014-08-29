@@ -11,8 +11,9 @@
 // Issue #7526: lowercase static constants in patterns look like bindings
 
 #![allow(dead_code)]
-#![deny(non_uppercase_pattern_statics)]
+#![deny(non_uppercase_statics)]
 
+#[allow(non_uppercase_statics)]
 pub static a : int = 97;
 
 fn f() {
@@ -25,6 +26,7 @@ fn f() {
 }
 
 mod m {
+    #[allow(non_uppercase_statics)]
     pub static aha : int = 7;
 }
 

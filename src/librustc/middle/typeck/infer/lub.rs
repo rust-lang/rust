@@ -33,7 +33,7 @@ pub struct Lub<'f> {
     fields: CombineFields<'f>
 }
 
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 pub fn Lub<'f>(cf: CombineFields<'f>) -> Lub<'f> {
     Lub { fields: cf }
 }
