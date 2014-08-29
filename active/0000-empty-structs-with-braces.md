@@ -90,7 +90,12 @@ Some people like "There is only one way to do it."  But, there is
 precendent in Rust for violating "one way to do it" in favor of
 syntactic convenience or regularity; see
 the [Precedent for flexible syntax in Rust] appendix.
-Also, see [Always Require Braces] alternative below.
+Also, see the [Always Require Braces] alternative below.
+
+I have attempted to summarize the previous discussion from [RFC PR
+147] in the [Recent History] appendix; some of the points there
+include drawbacks to this approach and to the [Always Require Braces]
+alternative.
 
 # Alternatives
 
@@ -100,11 +105,12 @@ Alternative 1: "Always Require Braces".  Specifically, require empty
 curly braces on empty structs.  People who like the current syntax of
 curly-brace free structs can encode them this way: `enum S0 { S0 }`
 This would address all of the same issues outlined above. (Also, the
-author (pnkfelix) would be happy to take this tack.)  The main reason
-not to take this tack is that some people may like writing empty
-structs without braces, but do not want to switch to the unary enum
-version.  See "I wouldn't want to force noisier syntax ..." in the
-[Recent History] appendix.
+author (pnkfelix) would be happy to take this tack.)
+
+The main reason not to take this tack is that some people may like
+writing empty structs without braces, but do not want to switch to the
+unary enum version.  See "I wouldn't want to force noisier syntax ..."
+in the [Recent History] appendix.
 
 ## Status quo
 
