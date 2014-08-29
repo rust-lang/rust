@@ -297,7 +297,7 @@ $ mv hello_world.rs src/hello_world.rs
 ```
 
 Cargo expects your source files to live inside a `src` directory. That leaves
-the top level for other things, like READMEs, licence information, and anything
+the top level for other things, like READMEs, license information, and anything
 not related to your code. Cargo helps us keep our projects nice and tidy. A
 place for everything, and everything in its place.
 
@@ -1743,7 +1743,7 @@ fn main() {
 }
 ```
 
-Sometimes, this makes things more readable. Sometimes, less. Use your judgement
+Sometimes, this makes things more readable. Sometimes, less. Use your judgment
 here.
 
 That's all you need to get basic input from the standard input! It's not too
@@ -2659,7 +2659,7 @@ modules, which can contain other modules, as deeply as you'd like.
 Note that we haven't mentioned anything about files yet. Rust does not impose a
 particular relationship between your filesystem structure and your module
 structure. That said, there is a conventional approach to how Rust looks for
-modules on the file system, but it's also overrideable.
+modules on the file system, but it's also overridable.
 
 Enough talk, let's build something! Let's make a new project called `modules`.
 
@@ -3511,7 +3511,7 @@ exporting the name again, somewhere else.
 
 We've now covered the basics of testing. Rust's tools are primitive, but they
 work well in the simple cases. There are some Rustaceans working on building
-more complicated frameworks on top of all of this, but thery're just starting
+more complicated frameworks on top of all of this, but they're just starting
 out.
 
 # Pointers
@@ -5494,7 +5494,7 @@ fn main() {
 
 Whew! This isn't too terrible. You can see that we still `let x = 5i`,
 but then things get a little bit hairy. Three more bindings get set: a
-static format string, an argument vector, and the aruments. We then
+static format string, an argument vector, and the arguments. We then
 invoke the `println_args` function with the generated arguments.
 
 This is the code (well, the full version) that Rust actually compiles. You can
