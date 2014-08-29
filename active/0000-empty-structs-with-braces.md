@@ -32,7 +32,7 @@ While this yields code that is relatively free of extraneous
 curly-braces, this special case handling of empty structs presents
 problems for two cases of interest: automatic code generators
 (including, but not limited to, Rust macros) and conditionalized code
-(i.e. code with `cfg` attributes; see appendix [The CFG problem][#the_cfg_problem]).
+(i.e. code with `cfg` attributes; see appendix [The CFG problem].
 The heart of the code-generator argument is: Why force all
 to-be-written code-generators and macros with special-case handling of
 the empty struct case (in terms of whether or not to include the
@@ -292,6 +292,8 @@ only `S0 {}`), or by the status quo (accept only `S0`).
 * "I find it strange anyone would prefer `let x = Foo{};` over `let x = Foo;`" ==> Favors Status Quo; strongly opposes Alternative 1.
 * "I agree that 'instantiation-should-follow-declation', that is, structs declared `;, (), {}` should only be instantiated [via] `;, (), { }` respectively" ==> Opposes leniency of this RFC in that it allows expression to use include or omit `{}` on an empty struct, regardless of declaration form, and vice-versa.
 * "The code generation argument is reasonable, but I wouldn't want to force noisier syntax on all 'normal' code just to make macros work better." ==> Favors: This RFC
+
+[The CFG problem]: #the_cfg_problem
 
 [RustDev Thread]: https://mail.mozilla.org/pipermail/rust-dev/2013-February/003282.html
 
