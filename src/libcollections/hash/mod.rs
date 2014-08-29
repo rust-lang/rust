@@ -293,7 +293,6 @@ impl<S: Writer, T: Hash<S>, U: Hash<S>> Hash<S> for Result<T, U> {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
     use std::mem;
 
     use slice::ImmutableSlice;

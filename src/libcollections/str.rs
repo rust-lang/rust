@@ -2374,7 +2374,6 @@ mod bench {
     use test::Bencher;
     use test::black_box;
     use super::*;
-    use std::option::{None, Some};
     use std::iter::{Iterator, DoubleEndedIterator};
     use std::collections::Collection;
 

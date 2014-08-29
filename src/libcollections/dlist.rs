@@ -805,21 +805,21 @@ mod tests {
     fn test_basic() {
         let mut m: DList<Box<int>> = DList::new();
         assert_eq!(m.pop_front(), None);
-        assert_eq!(m.pop_back(), None);
+        assert_eq!(m.pop(), None);
         assert_eq!(m.pop_front(), None);
         m.push_front(box 1);
         assert_eq!(m.pop_front(), Some(box 1));
-        m.push_back(box 2);
-        m.push_back(box 3);
+        m.push(box 2);
+        m.push(box 3);
         assert_eq!(m.len(), 2);
         assert_eq!(m.pop_front(), Some(box 2));
         assert_eq!(m.pop_front(), Some(box 3));
         assert_eq!(m.len(), 0);
         assert_eq!(m.pop_front(), None);
-        m.push_back(box 1);
-        m.push_back(box 3);
-        m.push_back(box 5);
-        m.push_back(box 7);
+        m.push(box 1);
+        m.push(box 3);
+        m.push(box 5);
+        m.push(box 7);
         assert_eq!(m.pop_front(), Some(box 1));
 
         let mut n = DList::new();
@@ -856,19 +856,19 @@ mod tests {
         {
             let mut m = DList::new();
             let mut n = DList::new();
-            n.push_back(2i);
+            n.push(2i);
             m.append(n);
             assert_eq!(m.len(), 1);
-            assert_eq!(m.pop_back(), Some(2));
+            assert_eq!(m.pop(), Some(2));
             check_links(&m);
         }
         {
             let mut m = DList::new();
             let n = DList::new();
-            m.push_back(2i);
+            m.push(2i);
             m.append(n);
             assert_eq!(m.len(), 1);
-            assert_eq!(m.pop_back(), Some(2));
+            assert_eq!(m.pop(), Some(2));
             check_links(&m);
         }
 
@@ -889,10 +889,10 @@ mod tests {
         {
             let mut m = DList::new();
             let mut n = DList::new();
-            n.push_back(2i);
+            n.push(2i);
             m.prepend(n);
             assert_eq!(m.len(), 1);
-            assert_eq!(m.pop_back(), Some(2));
+            assert_eq!(m.pop(), Some(2));
             check_links(&m);
         }
 
@@ -950,9 +950,9 @@ mod tests {
     #[test]
     fn test_iterator_clone() {
         let mut n = DList::new();
-        n.push_back(2i);
-        n.push_back(3);
-        n.push_back(4);
+        n.push(2i);
+        n.push(3);
+        n.push(4);
         let mut it = n.iter();
         it.next();
         let mut jt = it.clone();
@@ -1007,7 +1007,7 @@ mod tests {
         let mut n = DList::new();
         assert!(n.mut_iter().next().is_none());
         n.push_front(4i);
-        n.push_back(5);
+        n.push(5);
         let mut it = n.mut_iter();
         assert_eq!(it.size_hint(), (2, Some(2)));
         assert!(it.next().is_some());
@@ -1081,8 +1081,8 @@ mod tests {
         assert_eq!(n.pop_front(), Some(1));
 
         let mut m = DList::new();
-        m.push_back(2i);
-        m.push_back(4);
+        m.push(2i);
+        m.push(4);
         m.insert_ordered(3);
         check_links(&m);
         assert_eq!(vec![2,3,4], m.move_iter().collect::<Vec<int>>());
@@ -1119,7 +1119,7 @@ mod tests {
         assert!(n == m);
         n.push_front(1);
         assert!(n != m);
-        m.push_back(1);
+        m.push(1);
         assert!(n == m);
 
         let n = list_from([2i,3,4]);
@@ -1134,9 +1134,9 @@ mod tests {
 
       assert!(hash::hash(&x) == hash::hash(&y));
 
-      x.push_back(1i);
-      x.push_back(2);
-      x.push_back(3);
+      x.push(1i);
+      x.push(2);
+      x.push(3);
 
       y.push_front(3i);
       y.push_front(2);
@@ -1216,19 +1216,19 @@ mod tests {
             let r: u8 = rand::random();
             match r % 6 {
                 0 => {
-                    m.pop_back();
+                    m.pop();
                     v.pop();
                 }
                 1 => {
                     m.pop_front();
-                    v.shift();
+                    v.remove(0);
                 }
                 2 | 4 =>  {
                     m.push_front(-i);
-                    v.unshift(-i);
+                    v.insert(0, -i);
                 }
                 3 | 5 | _ => {
-                    m.push_back(i);
+                    m.push(i);
                     v.push(i);
                 }
             }
@@ -1264,7 +1264,7 @@ mod tests {
     fn bench_push_back(b: &mut test::Bencher) {
         let mut m: DList<int> = DList::new();
         b.iter(|| {
-            m.push_back(0);
+            m.push(0);
         })
     }
 
@@ -1272,8 +1272,8 @@ mod tests {
     fn bench_push_back_pop_back(b: &mut test::Bencher) {
         let mut m: DList<int> = DList::new();
         b.iter(|| {
-            m.push_back(0);
-            m.pop_back();
+            m.push(0);
+            m.pop();
         })
     }
 
