@@ -32,7 +32,7 @@ While this yields code that is relatively free of extraneous
 curly-braces, this special case handling of empty structs presents
 problems for two cases of interest: automatic code generators
 (including, but not limited to, Rust macros) and conditionalized code
-(i.e. code with `cfg` attributes; see appendix [The CFG problem].
+(i.e. code with `cfg` attributes; see the [CFG problem] appendix).
 The heart of the code-generator argument is: Why force all
 to-be-written code-generators and macros with special-case handling of
 the empty struct case (in terms of whether or not to include the
@@ -49,7 +49,7 @@ and also in extra noise introduced into commit histories).
 This RFC proposes going back to the state we were in circa February
 2013, when both `S0` and `S0 { }` were accepted syntaxes for an empty
 struct.  The parsing ambiguity that motivated removing support for
-`S0 { }` is no longer present (see [#ancient_history]).
+`S0 { }` is no longer present (see the [Ancient History] appendix).
 Supporting empty braces in the syntax for empty structs is easy to do
 in the language now.
 
@@ -89,11 +89,12 @@ of parentheses to disambiguate struct literals in such contexts.  (See
 Some people like "There is only one way to do it."  But, there is
 precendent in Rust for violating "one way to do it" in favor of
 syntactic convenience or regularity; see
-the appendix
-[Precedent for flexible syntax in Rust][#precedent_for_flexible_syntax_in_rust].
-Also, see Alternative 1: "Always Require Braces" below.
+the [Precedent for flexible syntax in Rust] appendix.
+Also, see [Always Require Braces] alternative below.
 
 # Alternatives
+
+## Always Require Braces
 
 Alternative 1: "Always Require Braces".  Specifically, require empty
 curly braces on empty structs.  People who like the current syntax of
@@ -102,25 +103,32 @@ This would address all of the same issues outlined above. (Also, the
 author (pnkfelix) would be happy to take this tack.)  The main reason
 not to take this tack is that some people may like writing empty
 structs without braces, but do not want to switch to the unary enum
-version.  See "I wouldn't want to force noisier syntax ..." in
-[#recent_history].
+version.  See "I wouldn't want to force noisier syntax ..." in the
+[Recent History] appendix.
 
-Alternative 2: Status quo.  Macros and code-generators in general
-will need to handle empty structs as a special case.  We may
-continue hitting bugs like 
+## Status quo
 
-# Unresolved questions
+Alternative 2: Status quo.  Macros and code-generators in general will
+need to handle empty structs as a special case.  We may continue
+hitting bugs like [CFG parse bug].  Some users will be annoyed but
+most will probably cope.
 
 ## Empty Tuple Structs
 
+One might say "why are you including support for curly braces, but not
+parentheses?"  Or in other words, "what about empty tuple structs?"
+
 The code-generation argument could be applied to tuple-structs as
 well, to claim that we should allow the syntax `S0()`.  I am less
-inclined to add a special case for that.  Note that we should not
-attempt to generalize this RFC as proposed to include tuple structs,
-i.e. so that given `struct S0 {}`, the expressions `T0`, `T0 {}`, and
-`T0()` would be synonymous.  The reason is that
-given a tuple struct `struct T2(int, int)`, the identifier `T2` is
-*already* bound to the constructor function:
+inclined to add a special case for that; I think tuple-structs are
+less frequently used (especially with many fields); they are largely
+for ad-hoc data such as newtype wrappers, not for code generators.
+
+Note that we should not attempt to generalize this RFC as proposed to
+include tuple structs, i.e. so that given `struct S0 {}`, the
+expressions `T0`, `T0 {}`, and `T0()` would be synonymous.  The reason
+is that given a tuple struct `struct T2(int, int)`, the identifier
+`T2` is *already* bound to a constructor function:
 
 ```rust
 fn main() {
@@ -140,10 +148,14 @@ T0();` of trying to treat `T0` simultaneously as an instance of the
 struct and as a constructor function.  So, the handling of empty
 structs proposed by this RFC does not generalize to tuple structs.
 
-(Note that if we adopt alternative 1, then the issue of how tuple
-structs are handled is totally orthogonal -- we could add support for
-`struct T0()` as a distinct type from `struct S0 {}`, if we so wished,
-or leave it aside.)
+(Note that if we adopt alternative 1, [Always Require Braces], then
+the issue of how tuple structs are handled is totally orthogonal -- we
+could add support for `struct T0()` as a distinct type from `struct S0
+{}`, if we so wished, or leave it aside.)
+
+# Unresolved questions
+
+None
 
 # Appendices
 
@@ -281,19 +293,23 @@ team.  However, to save people the effort of reviewing the comments on
 that PR (and hopefully stave off potential bikeshedding on this PR), I
 here summarize the various viewpoints put forward on the comment
 thread there, and note for each one, whether that viewpoint would be
-addressed by this RFC (accept both syntaxes), by Alternative 1 (accept
-only `S0 {}`), or by the status quo (accept only `S0`).
+addressed by this RFC (accept both syntaxes), by [Always Require Braces],
+or by [Status Quo].
 
-
-
-* "I find `let s = S0;` jarring, think its an enum initially." ==> Favors: Alternative 1
-* "Frequently start out with an empty struct and add fields as I need them." ==> Favors: This RFC or Alternative 1
+* "I find `let s = S0;` jarring, think its an enum initially." ==> Favors: Always Require Braces
+* "Frequently start out with an empty struct and add fields as I need them." ==> Favors: This RFC or Always Require Braces
 * "Foo{} suggests is constructing something that it's not; all uses of the value `Foo` are indistinguishable from each other" ==> Favors: Status Quo
-* "I find it strange anyone would prefer `let x = Foo{};` over `let x = Foo;`" ==> Favors Status Quo; strongly opposes Alternative 1.
+* "I find it strange anyone would prefer `let x = Foo{};` over `let x = Foo;`" ==> Favors Status Quo; strongly opposes Always Require Braces.
 * "I agree that 'instantiation-should-follow-declation', that is, structs declared `;, (), {}` should only be instantiated [via] `;, (), { }` respectively" ==> Opposes leniency of this RFC in that it allows expression to use include or omit `{}` on an empty struct, regardless of declaration form, and vice-versa.
 * "The code generation argument is reasonable, but I wouldn't want to force noisier syntax on all 'normal' code just to make macros work better." ==> Favors: This RFC
 
-[The CFG problem]: #the_cfg_problem
+[Always Require Braces]: #always-require-braces
+[Status Quo]: #status-quo
+[Ancient History]: #ancient-history
+[Recent History]: #recent-history
+[CFG problem]: #the-cfg-problem
+[Empty Tuple Structs]: #empty-tuple-structs
+[Precedent for flexible syntax in Rust]: #precedent-for-flexible-syntax-in-rust
 
 [RustDev Thread]: https://mail.mozilla.org/pipermail/rust-dev/2013-February/003282.html
 
