@@ -23,8 +23,7 @@ fn a(x: &int) {
     let c1 = || set(&mut *x);
     //~^ ERROR cannot borrow
     let c2 = || set(&mut *x);
-    //~^ ERROR closure requires unique access to `x`
-    //~^^ ERROR cannot borrow
+    //~^ ERROR cannot borrow
 }
 
 fn main() {

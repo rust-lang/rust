@@ -1381,8 +1381,8 @@ fn link_by_ref(rcx: &Rcx,
            expr.repr(tcx), callee_scope);
     let mc = mc::MemCategorizationContext::new(rcx);
     let expr_cmt = ignore_err!(mc.cat_expr(expr));
-    let region_min = ty::ReScope(callee_scope);
-    link_region(rcx, expr.span, region_min, ty::ImmBorrow, expr_cmt);
+    let borrow_region = ty::ReScope(callee_scope);
+    link_region(rcx, expr.span, borrow_region, ty::ImmBorrow, expr_cmt);
 }
 
 fn link_region_from_node_type(rcx: &Rcx,
@@ -1408,102 +1408,54 @@ fn link_region_from_node_type(rcx: &Rcx,
 
 fn link_region(rcx: &Rcx,
                span: Span,
-               region_min: ty::Region,
-               kind: ty::BorrowKind,
-               cmt_borrowed: mc::cmt) {
+               borrow_region: ty::Region,
+               borrow_kind: ty::BorrowKind,
+               borrow_cmt: mc::cmt) {
     /*!
-     * Informs the inference engine that a borrow of `cmt`
-     * must have the borrow kind `kind` and lifetime `region_min`.
-     * If `cmt` is a deref of a region pointer with
-     * lifetime `r_borrowed`, this will add the constraint that
-     * `region_min <= r_borrowed`.
+     * Informs the inference engine that `borrow_cmt` is being
+     * borrowed with kind `borrow_kind` and lifetime `borrow_region`.
+     * In order to ensure borrowck is satisfied, this may create
+     * constraints between regions, as explained in
+     * `link_reborrowed_region()`.
      */
 
-    // Iterate through all the things that must be live at least
-    // for the lifetime `region_min` for the borrow to be valid:
-    let mut cmt_borrowed = cmt_borrowed;
+    let mut borrow_cmt = borrow_cmt;
+    let mut borrow_kind = borrow_kind;
+
     loop {
-        debug!("link_region(region_min={}, kind={}, cmt_borrowed={})",
-               region_min.repr(rcx.tcx()),
-               kind.repr(rcx.tcx()),
-               cmt_borrowed.repr(rcx.tcx()));
-        match cmt_borrowed.cat.clone() {
-            mc::cat_deref(base, _, mc::BorrowedPtr(_, r_borrowed)) |
-            mc::cat_deref(base, _, mc::Implicit(_, r_borrowed)) => {
-                // References to an upvar `x` are translated to
-                // `*x`, since that is what happens in the
-                // underlying machine.  We detect such references
-                // and treat them slightly differently, both to
-                // offer better error messages and because we need
-                // to infer the kind of borrow (mut, const, etc)
-                // to use for each upvar.
-                let cause = match base.cat {
-                    mc::cat_upvar(ref upvar_id, _) => {
-                        match rcx.fcx.inh.upvar_borrow_map.borrow_mut()
-                                 .find_mut(upvar_id) {
-                            Some(upvar_borrow) => {
-                                debug!("link_region: {} <= {}",
-                                       region_min.repr(rcx.tcx()),
-                                       upvar_borrow.region.repr(rcx.tcx()));
-                                adjust_upvar_borrow_kind_for_loan(
-                                    *upvar_id,
-                                    upvar_borrow,
-                                    kind);
-                                infer::ReborrowUpvar(span, *upvar_id)
-                            }
-                            None => {
-                                rcx.tcx().sess.span_bug(
-                                    span,
-                                    format!("Illegal upvar id: {}",
-                                            upvar_id.repr(
-                                                rcx.tcx())).as_slice());
-                            }
-                        }
+        debug!("link_region(borrow_region={}, borrow_kind={}, borrow_cmt={})",
+               borrow_region.repr(rcx.tcx()),
+               borrow_kind.repr(rcx.tcx()),
+               borrow_cmt.repr(rcx.tcx()));
+        match borrow_cmt.cat.clone() {
+            mc::cat_deref(ref_cmt, _,
+                          mc::Implicit(ref_kind, ref_region)) |
+            mc::cat_deref(ref_cmt, _,
+                          mc::BorrowedPtr(ref_kind, ref_region)) => {
+                match link_reborrowed_region(rcx, span,
+                                             borrow_region, borrow_kind,
+                                             ref_cmt, ref_region, ref_kind) {
+                    Some((c, k)) => {
+                        borrow_cmt = c;
+                        borrow_kind = k;
                     }
-
-                    _ => {
-                        infer::Reborrow(span)
+                    None => {
+                        return;
                     }
-                };
-
-                debug!("link_region: {} <= {}",
-                       region_min.repr(rcx.tcx()),
-                       r_borrowed.repr(rcx.tcx()));
-                rcx.fcx.mk_subr(cause, region_min, r_borrowed);
-
-                if kind != ty::ImmBorrow {
-                    // If this is a mutable borrow, then the thing
-                    // being borrowed will have to be unique.
-                    // In user code, this means it must be an `&mut`
-                    // borrow, but for an upvar, we might opt
-                    // for an immutable-unique borrow.
-                    adjust_upvar_borrow_kind_for_unique(rcx, base);
                 }
-
-                // Borrowing an `&mut` pointee for `region_min` is
-                // only valid if the pointer resides in a unique
-                // location which is itself valid for
-                // `region_min`.  We don't care about the unique
-                // part, but we may need to influence the
-                // inference to ensure that the location remains
-                // valid.
-                //
-                // FIXME(#8624) fixing borrowck will require this
-                // if m == ast::m_mutbl {
-                //    cmt_borrowed = cmt_base;
-                // } else {
-                //    return;
-                // }
-                return;
             }
+
             mc::cat_discr(cmt_base, _) |
             mc::cat_downcast(cmt_base) |
             mc::cat_deref(cmt_base, _, mc::GcPtr(..)) |
             mc::cat_deref(cmt_base, _, mc::OwnedPtr) |
             mc::cat_interior(cmt_base, _) => {
-                // Interior or owned data requires its base to be valid
-                cmt_borrowed = cmt_base;
+                // Borrowing interior or owned data requires the base
+                // to be valid and borrowable in the same fashion.
+                borrow_cmt = cmt_base;
+                borrow_kind = borrow_kind;
             }
+
             mc::cat_deref(_, _, mc::UnsafePtr(..)) |
             mc::cat_static_item |
             mc::cat_copied_upvar(..) |
@@ -1515,6 +1467,154 @@ fn link_region(rcx: &Rcx,
                 // that are not subject to inference
                 return;
             }
+        }
+    }
+}
+
+fn link_reborrowed_region(rcx: &Rcx,
+                          span: Span,
+                          borrow_region: ty::Region,
+                          borrow_kind: ty::BorrowKind,
+                          ref_cmt: mc::cmt,
+                          ref_region: ty::Region,
+                          ref_kind: ty::BorrowKind)
+                          -> Option<(mc::cmt, ty::BorrowKind)>
+{
+    /*!
+     * This is the most complicated case: the path being borrowed is
+     * itself the referent of a borrowed pointer. Let me give an
+     * example fragment of code to make clear(er) the situation:
+     *
+     *    let r: &'a mut T = ...;  // the original reference "r" has lifetime 'a
+     *    ...
+     *    &'z *r                   // the reborrow has lifetime 'z
+     *
+     * Now, in this case, our primary job is to add the inference
+     * constraint that `'z <= 'a`. Given this setup, let's clarify the
+     * parameters in (roughly) terms of the example:
+     *
+     *     A borrow of: `& 'z bk * r` where `r` has type `& 'a bk T`
+     *     borrow_region   ^~                 ref_region    ^~
+     *     borrow_kind        ^~               ref_kind        ^~
+     *     ref_cmt                 ^
+     *
+     * Here `bk` stands for some borrow-kind (e.g., `mut`, `uniq`, etc).
+     *
+     * Unfortunately, there are some complications beyond the simple
+     * scenario I just painted:
+     *
+     * 1. The reference `r` might in fact be a "by-ref" upvar. In that
+     *    case, we have two jobs. First, we are inferring whether this reference
+     *    should be an `&T`, `&mut T`, or `&uniq T` reference, and we must
+     *    adjust that based on this borrow (e.g., if this is an `&mut` borrow,
+     *    then `r` must be an `&mut` reference). Second, whenever we link
+     *    two regions (here, `'z <= 'a`), we supply a *cause*, and in this
+     *    case we adjust the cause to indicate that the reference being
+     *    "reborrowed" is itself an upvar. This provides a nicer error message
+     *    should something go wrong.
+     *
+     * 2. There may in fact be more levels of reborrowing. In the
+     *    example, I said the borrow was like `&'z *r`, but it might
+     *    in fact be a borrow like `&'z **q` where `q` has type `&'a
+     *    &'b mut T`. In that case, we want to ensure that `'z <= 'a`
+     *    and `'z <= 'b`. This is explained more below.
+     *
+     * The return value of this function indicates whether we need to
+     * recurse and process `ref_cmt` (see case 2 above).
+     */
+
+    // Detect references to an upvar `x`:
+    let cause = match ref_cmt.cat {
+        mc::cat_upvar(ref upvar_id, _) => {
+            let mut upvar_borrow_map =
+                rcx.fcx.inh.upvar_borrow_map.borrow_mut();
+            match upvar_borrow_map.find_mut(upvar_id) {
+                Some(upvar_borrow) => {
+                    // Adjust mutability that we infer for the upvar
+                    // so it can accommodate being borrowed with
+                    // mutability `kind`:
+                    adjust_upvar_borrow_kind_for_loan(*upvar_id,
+                                                      upvar_borrow,
+                                                      borrow_kind);
+
+                    infer::ReborrowUpvar(span, *upvar_id)
+                }
+                None => {
+                    rcx.tcx().sess.span_bug(
+                        span,
+                        format!("Illegal upvar id: {}",
+                                upvar_id.repr(
+                                    rcx.tcx())).as_slice());
+                }
+            }
+        }
+
+        _ => {
+            infer::Reborrow(span)
+        }
+    };
+
+    debug!("link_reborrowed_region: {} <= {}",
+           borrow_region.repr(rcx.tcx()),
+           ref_region.repr(rcx.tcx()));
+    rcx.fcx.mk_subr(cause, borrow_region, ref_region);
+
+    // Decide whether we need to recurse and link any regions within
+    // the `ref_cmt`. This is concerned for the case where the value
+    // being reborrowed is in fact a borrowed pointer found within
+    // another borrowed pointer. For example:
+    //
+    //    let p: &'b &'a mut T = ...;
+    //    ...
+    //    &'z **p
+    //
+    // What makes this case particularly tricky is that, if the data
+    // being borrowed is a `&mut` or `&uniq` borrow, borrowck requires
+    // not only that `'z <= 'a`, (as before) but also `'z <= 'b`
+    // (otherwise the user might mutate through the `&mut T` reference
+    // after `'b` expires and invalidate the borrow we are looking at
+    // now).
+    //
+    // So let's re-examine our parameters in light of this more
+    // complicated (possible) scenario:
+    //
+    //     A borrow of: `& 'z bk * * p` where `p` has type `&'b bk & 'a bk T`
+    //     borrow_region   ^~                 ref_region             ^~
+    //     borrow_kind        ^~               ref_kind                 ^~
+    //     ref_cmt                 ^~~
+    //
+    // (Note that since we have not examined `ref_cmt.cat`, we don't
+    // know whether this scenario has occurred; but I wanted to show
+    // how all the types get adjusted.)
+    match ref_kind {
+        ty::ImmBorrow => {
+            // The reference being reborrowed is a sharable ref of
+            // type `&'a T`. In this case, it doesn't matter where we
+            // *found* the `&T` pointer, the memory it references will
+            // be valid and immutable for `'a`. So we can stop here.
+            //
+            // (Note that the `borrow_kind` must also be ImmBorrow or
+            // else the user is borrowed imm memory as mut memory,
+            // which means they'll get an error downstream in borrowck
+            // anyhow.)
+            return None;
+        }
+
+        ty::MutBorrow | ty::UniqueImmBorrow => {
+            // The reference being reborrowed is either an `&mut T` or
+            // `&uniq T`. This is the case where recursion is needed.
+            //
+            // One interesting twist is that we can weaken the borrow
+            // kind when we recurse: to reborrow an `&mut` referent as
+            // mutable, borrowck requires a unique path to the `&mut`
+            // reference but not necessarily a *mutable* path.
+            let new_borrow_kind = match borrow_kind {
+                ty::ImmBorrow =>
+                    ty::ImmBorrow,
+                ty::MutBorrow | ty::UniqueImmBorrow =>
+                    ty::UniqueImmBorrow
+            };
+            return Some((ref_cmt, new_borrow_kind));
         }
     }
 }
@@ -1534,6 +1634,12 @@ fn adjust_borrow_kind_for_assignment_lhs(rcx: &Rcx,
 
 fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
                                     cmt: mc::cmt) {
+    /*!
+     * Indicates that `cmt` is being directly mutated (e.g., assigned
+     * to).  If cmt contains any by-ref upvars, this implies that
+     * those upvars must be borrowed using an `&mut` borow.
+     */
+
     let mut cmt = cmt;
     loop {
         debug!("adjust_upvar_borrow_kind_for_mut(cmt={})",

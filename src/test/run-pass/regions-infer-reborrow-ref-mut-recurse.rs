@@ -8,11 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-  let x = [1,2];
-  let y = match x {
-    [] => None,
-//~^ ERROR expected `[<generic integer #0>, .. 2]`, found a fixed vector pattern of size 0
-    [a,_] => Some(a)
-  };
+// Test an edge case in region inference: the lifetime of the borrow
+// of `*x` must be extended to at least 'a.
+
+fn foo<'a,'b>(x: &'a &'b mut int) -> &'a int {
+    let y = &*x; // should be inferred to have type &'a &'b mut int...
+
+    // ...because if we inferred, say, &'x &'b mut int where 'x <= 'a,
+    // this reborrow would be illegal:
+    &**y
+}
+
+pub fn main() {
+    /* Just want to know that it compiles. */
 }

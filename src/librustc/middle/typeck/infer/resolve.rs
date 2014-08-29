@@ -48,12 +48,11 @@
 
 
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
-use middle::ty::{type_is_bot, IntType, UintType};
+use middle::ty::{IntType, UintType};
 use middle::ty;
 use middle::ty_fold;
-use middle::typeck::infer::{Bounds, cyclic_ty, fixup_err, fres, InferCtxt};
-use middle::typeck::infer::{unresolved_float_ty, unresolved_int_ty};
-use middle::typeck::infer::{unresolved_ty};
+use middle::typeck::infer::{cyclic_ty, fixup_err, fres, InferCtxt};
+use middle::typeck::infer::{unresolved_int_ty,unresolved_float_ty,unresolved_ty};
 use syntax::codemap::Span;
 use util::common::indent;
 use util::ppaux::{Repr, ty_to_string};
@@ -132,8 +131,8 @@ impl<'a> ResolveState<'a> {
         assert!(self.v_seen.is_empty());
         match self.err {
           None => {
-            debug!("Resolved to {} + {} (modes={:x})",
-                   ty_to_string(self.infcx.tcx, rty),
+            debug!("Resolved {} to {} (modes={:x})",
+                   ty_to_string(self.infcx.tcx, typ),
                    ty_to_string(self.infcx.tcx, rty),
                    self.modes);
             return Ok(rty);
@@ -219,21 +218,16 @@ impl<'a> ResolveState<'a> {
             // tend to carry more restrictions or higher
             // perf. penalties, so it pays to know more.
 
-            let node =
-                self.infcx.type_unification_table.borrow_mut().get(tcx, vid);
-            let t1 = match node.value {
-              Bounds { ub:_, lb:Some(t) } if !type_is_bot(t) => {
-                  self.resolve_type(t)
-              }
-              Bounds { ub:Some(t), lb:_ } | Bounds { ub:_, lb:Some(t) } => {
-                  self.resolve_type(t)
-              }
-              Bounds { ub:None, lb:None } => {
-                if self.should(force_tvar) {
-                    self.err = Some(unresolved_ty(vid));
+            let t1 = match self.infcx.type_variables.borrow().probe(vid) {
+                Some(t) => {
+                    self.resolve_type(t)
                 }
-                ty::mk_var(tcx, vid)
-              }
+                None => {
+                    if self.should(force_tvar) {
+                        self.err = Some(unresolved_ty(vid));
+                    }
+                    ty::mk_var(tcx, vid)
+                }
             };
             self.v_seen.pop().unwrap();
             return t1;

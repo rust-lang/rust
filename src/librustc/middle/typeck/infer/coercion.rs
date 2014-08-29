@@ -247,7 +247,7 @@ impl<'f> Coerce<'f> {
         let a_borrowed = ty::mk_rptr(self.get_ref().infcx.tcx,
                                      r_borrow,
                                      mt {ty: inner_ty, mutbl: mutbl_b});
-        if_ok!(sub.tys(a_borrowed, b));
+        try!(sub.tys(a_borrowed, b));
 
         Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 1,
@@ -273,7 +273,7 @@ impl<'f> Coerce<'f> {
                 let r_borrow = self.get_ref().infcx.next_region_var(coercion);
                 let unsized_ty = ty::mk_slice(self.get_ref().infcx.tcx, r_borrow,
                                               mt {ty: t_a, mutbl: mutbl_b});
-                if_ok!(self.get_ref().infcx.try(|| sub.tys(unsized_ty, b)));
+                try!(self.get_ref().infcx.try(|| sub.tys(unsized_ty, b)));
                 Ok(Some(AutoDerefRef(AutoDerefRef {
                     autoderefs: 0,
                     autoref: Some(ty::AutoPtr(r_borrow,
@@ -316,7 +316,7 @@ impl<'f> Coerce<'f> {
                             let ty = ty::mk_rptr(self.get_ref().infcx.tcx,
                                                  r_borrow,
                                                  ty::mt{ty: ty, mutbl: mt_b.mutbl});
-                            if_ok!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
+                            try!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
                                     AutoPtr(AutoUnsize({:?})))", kind);
                             Ok(Some(AutoDerefRef(AutoDerefRef {
@@ -334,7 +334,7 @@ impl<'f> Coerce<'f> {
                     match self.unsize_ty(sty_a, t_b) {
                         Some((ty, kind)) => {
                             let ty = ty::mk_uniq(self.get_ref().infcx.tcx, ty);
-                            if_ok!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
+                            try!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
                                     AutoUnsizeUniq({:?}))", kind);
                             Ok(Some(AutoDerefRef(AutoDerefRef {
@@ -458,7 +458,7 @@ impl<'f> Coerce<'f> {
             }
         };
 
-        if_ok!(self.subtype(a_borrowed, b));
+        try!(self.subtype(a_borrowed, b));
         Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 1,
             autoref: Some(AutoPtr(r_a, b_mutbl, None))
@@ -512,7 +512,7 @@ impl<'f> Coerce<'f> {
                                                 sig: fn_ty_a.sig.clone(),
                                                 .. *fn_ty_b
                                            });
-            if_ok!(self.subtype(a_closure, b));
+            try!(self.subtype(a_closure, b));
             Ok(Some(adj))
         })
     }
@@ -536,7 +536,7 @@ impl<'f> Coerce<'f> {
 
         // check that the types which they point at are compatible
         let a_unsafe = ty::mk_ptr(self.get_ref().infcx.tcx, mt_a);
-        if_ok!(self.subtype(a_unsafe, b));
+        try!(self.subtype(a_unsafe, b));
 
         // although references and unsafe ptrs have the same
         // representation, we still register an AutoDerefRef so that

@@ -8,25 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that assignments to an `&mut` pointer which is found in a
-// borrowed (but otherwise non-aliasable) location is illegal.
+fn assert_send<T:Send>() { }
 
-struct S<'a> {
-    pointer: &'a mut int
+// unsafe ptrs are ok unless they point at unsendable things
+fn test70() {
+    assert_send::<*mut int>();
 }
-
-fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
-    S { pointer: &mut *p.pointer }
-    //~^ ERROR cannot infer
+fn test71<'a>() {
+    assert_send::<*mut &'a int>(); //~ ERROR does not fulfill the required lifetime
 }
 
 fn main() {
-    let mut x = 1;
-
-    {
-        let mut y = S { pointer: &mut x };
-        let z = copy_borrowed_ptr(&mut y);
-        *y.pointer += 1;
-        *z.pointer += 1;
-    }
 }
