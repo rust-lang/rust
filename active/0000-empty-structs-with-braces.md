@@ -310,6 +310,11 @@ thread there, and note for each one, whether that viewpoint would be
 addressed by this RFC (accept both syntaxes), by [Always Require Braces],
 or by [Status Quo].
 
+Note that this list of comments is *just* meant to summarize the list
+of views; it does not attempt to reflect the number of commenters who
+agreed or disagreed with a particular point.  (But since the RFC process
+is not a democracy, the number of commenters should not matter anyway.)
+
 * "I find `let s = S0;` jarring, think its an enum initially." ==> Favors: Always Require Braces
 * "Frequently start out with an empty struct and add fields as I need them." ==> Favors: This RFC or Always Require Braces
 * "Foo{} suggests is constructing something that it's not; all uses of the value `Foo` are indistinguishable from each other" ==> Favors: Status Quo
