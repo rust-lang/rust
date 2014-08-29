@@ -85,6 +85,14 @@ Like `Index`, uses of this notation will auto-deref just as if they were method
 invocations. So if `T` implements `Slice<uint, [U]>`, and `s: Smaht<T>`, then
 `s[]` compiles and has type `&[U]`.
 
+Note that slicing is "exclusive" (so `[n..m]` is the interval `n <= x
+< m`), while `..` in `match` patterns is "inclusive". To avoid
+confusion, we propose to change the `match` notation to `...` to
+reflect the distinction. The reason to change the notation, rather
+than the interpretation, is that the exclusive (respectively
+inclusive) interpretation is the right default for slicing
+(respectively matching).
+
 ## Rationale for the notation
 
 The choice of square brackets for slicing is straightforward: it matches our
@@ -98,11 +106,53 @@ for slicing has precedent in Perl and D.
 See [Wikipedia](http://en.wikipedia.org/wiki/Array_slicing) for more on the
 history of slice notation in programming languages.
 
+### The `mut` qualifier
+
+It may be surprising that `mut` is used as a qualifier in the proposed
+slice notation, but not for the indexing notation. The reason is that
+indexing includes an implicit dereference. If `v: Vec<Foo>` then
+`v[n]` has type `Foo`, not `&Foo` or `&mut Foo`. So if you want to get
+a mutable reference via indexing, you write `&mut v[n]`. More
+generally, this allows us to do resolution/typechecking prior to
+resolving the mutability.
+
+This treatment of `Index` matches the C tradition, and allows us to
+write things like `v[0] = foo` instead of `*v[0] = foo`.
+
+On the other hand, this approach is problematic for slicing, since in
+general it would yield an unsized type (under DST) -- and of course,
+slicing is meant to give you a fat pointer indicating the size of the
+slice, which we don't want to immediately deref. But the consequence
+is that we need to know the mutability of the slice up front, when we
+take it, since it determines the type of the expression.
+
 # Drawbacks
 
 The main drawback is the increase in complexity of the language syntax. This
 seems minor, especially since the notation here is essentially "finishing" what
 was started with the `Index` trait.
+
+## Limitations in the design
+
+Like the `Index` trait, this forces the result to be a reference via
+`&`, which may rule out some generalizations of slicing.
+
+One way of solving this problem is for the slice methods to take
+`self` (by value) rather than `&self`, and in turn to implement the
+trait on `&T` rather than `T`. Whether this approach is viable in the
+long run will depend on the final rules for method resolution and
+auto-ref.
+
+In general, the trait system works best when traits can be applied to
+types `T` rather than borrowed types `&T`. Ultimately, if Rust gains
+higher-kinded types (HKT), we could change the slice type `S` in the
+trait to be higher-kinded, so that it is a *family* of types indexed
+by lifetime. Then we could replace the `&'a S` in the return value
+with `S<'a>`. It should be possible to transition from the current
+`Index` and `Slice` trait designs to an HKT version in the future
+without breaking backwards compatibility by using blanket
+implementations of the new traits (say, `IndexHKT`) for types that
+implement the old ones.
 
 # Alternatives
 
