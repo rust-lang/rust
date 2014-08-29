@@ -17,7 +17,7 @@ on this; if `while let` existed it could have been implemented to map `for PAT i
 ```rust
 // the match here is so `for` can accept an rvalue for the iterator,
 // and was used in the "real" desugaring version.
-match &mut BODY {
+match &mut EXPR {
     i => {
         while let Some(PAT) = i.next() {
             BODY
