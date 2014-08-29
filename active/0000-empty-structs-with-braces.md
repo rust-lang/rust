@@ -196,7 +196,8 @@ Observe what happens when one modifies the above just a bit:
 ```
 
 Now, certain `cfg` settings yield an empty struct, even though it
-is surrounded by braces.  Today this leads to a [CFG parse bug].
+is surrounded by braces.  Today this leads to a [CFG parse bug]
+when one attempts to actually construct such a struct.
 
 If we want to support situations like this properly, we will probably
 need to further extend the `cfg` attribute so that it can be placed
