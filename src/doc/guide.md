@@ -4063,7 +4063,7 @@ match x {
 }
 ```
 
-If you have a struct, you can desugar it inside of a pattern:
+If you have a struct, you can destructure it inside of a pattern:
 
 ```{rust}
 struct Point {
