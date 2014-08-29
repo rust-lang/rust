@@ -315,7 +315,7 @@ Put this inside:
 [package]
 
 name = "hello_world"
-version = "0.1.0"
+version = "0.0.1"
 authors = [ "Your name <you@example.com>" ]
 
 [[bin]]
@@ -1813,7 +1813,7 @@ Try it out:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Hello, world!
 ```
@@ -1959,7 +1959,7 @@ Try running our new program a few times:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 7
@@ -2012,7 +2012,7 @@ And trying it out:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 57
@@ -2283,7 +2283,7 @@ print an error message and return. Let's give this a shot:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 17
@@ -2348,7 +2348,7 @@ Let's try it!
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 58
@@ -2425,7 +2425,7 @@ that `return`? If we give a non-number answer, we'll `return` and quit. Observe:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 59
@@ -2557,7 +2557,7 @@ Now we should be good! Let's try:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 61
