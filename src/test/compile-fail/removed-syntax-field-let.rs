@@ -10,6 +10,6 @@
 
 struct s {
     let foo: (),
-    //~^  ERROR found `let` in ident position
+    //~^  ERROR expected identifier, found keyword `let`
     //~^^ ERROR expected `:`, found `foo`
 }

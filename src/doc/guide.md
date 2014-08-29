@@ -630,7 +630,7 @@ In Rust, however, using `let` to introduce a binding is _not_ an expression. The
 following will produce a compile-time error:
 
 ```{ignore}
-let x = (let y = 5i); // found `let` in ident position
+let x = (let y = 5i); // expected identifier, found keyword `let`
 ```
 
 The compiler is telling us here that it was expecting to see the beginning of
