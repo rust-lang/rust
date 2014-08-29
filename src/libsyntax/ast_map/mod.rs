@@ -68,12 +68,7 @@ impl<'a> Iterator<PathElem> for LinkedPath<'a> {
     }
 }
 
-#[cfg(stage0)]
-#[deriving(Clone)]
-pub struct Values<'a, T>(pub slice::Items<'a, T>);
-
 // HACK(eddyb) move this into libstd (value wrapper for slice::Items).
-#[cfg(not(stage0))]
 #[deriving(Clone)]
 pub struct Values<'a, T:'a>(pub slice::Items<'a, T>);
 
@@ -483,15 +478,6 @@ impl Map {
     }
 }
 
-#[cfg(stage0)]
-pub struct NodesMatchingSuffix<'a, S> {
-    map: &'a Map,
-    item_name: &'a S,
-    in_which: &'a [S],
-    idx: NodeId,
-}
-
-#[cfg(not(stage0))]
 pub struct NodesMatchingSuffix<'a, S:'a> {
     map: &'a Map,
     item_name: &'a S,

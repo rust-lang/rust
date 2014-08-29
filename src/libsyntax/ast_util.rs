@@ -349,14 +349,6 @@ pub trait IdVisitingOperation {
 /// A visitor that applies its operation to all of the node IDs
 /// in a visitable thing.
 
-#[cfg(stage0)]
-pub struct IdVisitor<'a, O> {
-    pub operation: &'a O,
-    pub pass_through_items: bool,
-    pub visited_outermost: bool,
-}
-
-#[cfg(not(stage0))]
 pub struct IdVisitor<'a, O:'a> {
     pub operation: &'a O,
     pub pass_through_items: bool,

@@ -19,12 +19,8 @@
 #![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm)]
 #![feature(linkage, lang_items, unsafe_destructor, default_type_params)]
 #![feature(import_shadowing)]
-#![feature(issue_5723_bootstrap)]
 #![no_std]
 #![experimental]
-
-// NOTE(stage0, pcwalton): Remove after snapshot.
-#![allow(unknown_features)]
 
 #[phase(plugin, link)] extern crate core;
 extern crate alloc;
