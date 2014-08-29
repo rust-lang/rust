@@ -651,7 +651,7 @@ impl<'f> CombineFields<'f> {
             // The original triple was `(a_ty, dir, b_vid)` -- now we have
             // resolved `b_vid` to `b_ty`, so apply `(a_ty, dir, b_ty)`:
             //
-            // FIXME: This code is non-ideal because all these subtype
+            // FIXME(#16847): This code is non-ideal because all these subtype
             // relations wind up attributed to the same spans. We need
             // to associate causes/spans with each of the relations in
             // the stack to get this right.
@@ -674,8 +674,8 @@ impl<'f> CombineFields<'f> {
     }
 
     fn generalize(&self, t: ty::t) -> ty::t {
-        // FIXME: This is non-ideal because we don't give a very descriptive
-        // origin for this region variable.
+        // FIXME(#16847): This is non-ideal because we don't give a
+        // very descriptive origin for this region variable.
 
         let infcx = self.infcx;
         let span = self.trace.origin.span();
