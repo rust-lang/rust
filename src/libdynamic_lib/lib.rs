@@ -8,31 +8,35 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
+//! Dynamic library facilities.
+//!
+//! A simple wrapper over the platform's dynamic library facilities.
 
-Dynamic library facilities.
-
-A simple wrapper over the platform's dynamic library facilities
-
-*/
+#![crate_name = "dynamic_lib"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![license = "MIT/ASL2"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://doc.rust-lang.org/master/")]
 
 #![experimental]
 #![allow(missing_doc)]
 
-use clone::Clone;
-use collections::MutableSeq;
-use c_str::ToCStr;
-use iter::Iterator;
-use mem;
-use ops::*;
-use option::*;
-use os;
-use path::{Path,GenericPath};
-use result::*;
-use slice::{Slice,ImmutableSlice};
-use str;
-use string::String;
-use vec::Vec;
+extern crate libc;
+extern crate debug;
+
+use std::clone::Clone;
+use std::collections::MutableSeq;
+use std::c_str::ToCStr;
+use std::iter::Iterator;
+use std::mem;
+use std::os;
+use std::path::{Path,GenericPath};
+use std::slice::{Slice,ImmutableSlice};
+use std::str;
+use std::string::String;
+use std::vec::Vec;
 
 pub struct DynamicLibrary { handle: *mut u8 }
 
@@ -156,10 +160,9 @@ impl DynamicLibrary {
 
 #[cfg(test, not(target_os = "ios"))]
 mod test {
-    use super::*;
-    use prelude::*;
     use libc;
-    use mem;
+    use super::DynamicLibrary;
+    use std::mem;
 
     #[test]
     #[ignore(cfg(windows))] // FIXME #8818
@@ -213,11 +216,10 @@ mod test {
 #[cfg(target_os = "dragonfly")]
 pub mod dl {
 
-    use c_str::{CString, ToCStr};
+    use std::c_str::{CString, ToCStr};
     use libc;
-    use ptr;
-    use result::*;
-    use string::String;
+    use std::ptr;
+    use std::string::String;
 
     pub unsafe fn open_external<T: ToCStr>(filename: T) -> *mut u8 {
         filename.with_c_str(|raw_name| {
@@ -230,7 +232,7 @@ pub mod dl {
     }
 
     pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, String> {
-        use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+        use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
         static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire
@@ -280,16 +282,16 @@ pub mod dl {
 
 #[cfg(target_os = "windows")]
 pub mod dl {
-    use c_str::ToCStr;
-    use iter::Iterator;
-    use libc;
-    use os;
-    use ptr;
-    use result::{Ok, Err, Result};
-    use str::StrSlice;
-    use str;
-    use string::String;
-    use vec::Vec;
+    use std::c_str::ToCStr;
+    use std::iter::Iterator;
+    use std::libc;
+    use std::os;
+    use std::ptr;
+    use std::result::{Ok, Err, Result};
+    use std::str::StrSlice;
+    use std::str;
+    use std::string::String;
+    use std::vec::Vec;
 
     pub unsafe fn open_external<T: ToCStr>(filename: T) -> *mut u8 {
         // Windows expects Unicode data

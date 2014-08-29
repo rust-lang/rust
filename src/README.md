@@ -17,6 +17,7 @@ Source layout:
 | `libarena/`         | The arena (a fast but limited) memory allocator           |
 | `libbacktrace/`     | The libbacktrace library                                  |
 | `libcollections/`   | A collection of useful data structures and containers     |
+| `libdynamic_lib/`   | A wrapper over the platform's dynamic library facilities  |
 | `libflate/`         | Simple compression library                                |
 | `libfmt_macros/`    | Macro support for format strings                          |
 | `libfourcc/`        | Data format identifier library                            |

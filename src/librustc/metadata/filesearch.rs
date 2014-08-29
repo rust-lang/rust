@@ -10,10 +10,10 @@
 
 #![allow(non_camel_case_types)]
 
+use dynamic_lib::DynamicLibrary;
 use std::cell::RefCell;
 use std::os;
 use std::io::fs;
-use std::dynamic_lib::DynamicLibrary;
 use std::collections::HashSet;
 
 use util::fs as myfs;

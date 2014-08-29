@@ -10,15 +10,14 @@
 
 use std::cell::RefCell;
 use std::char;
-use std::dynamic_lib::DynamicLibrary;
 use std::gc::GC;
 use std::io::{Command, TempDir};
 use std::io;
 use std::os;
 use std::str;
 use std::string::String;
-
 use std::collections::{HashSet, HashMap};
+
 use testing;
 use rustc::back::link;
 use rustc::driver::config;
@@ -36,6 +35,7 @@ use fold::DocFolder;
 use html::markdown;
 use passes;
 use visit_ast::RustdocVisitor;
+use dynamic_lib::DynamicLibrary;
 
 pub fn run(input: &str,
            cfgs: Vec<String>,

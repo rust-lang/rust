@@ -57,6 +57,8 @@
  * for examples of syntax extension plugins.
  */
 
+extern crate dynamic_lib;
+
 pub use self::registry::Registry;
 
 pub mod registry;

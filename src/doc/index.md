@@ -39,6 +39,7 @@ li {list-style-type: none; }
 
 * [The `arena` allocation library](arena/index.html)
 * [The `collections` library](collections/index.html)
+* [The `dynamic_lib` library](dynamic_lib/index.html)
 * [The `flate` compression library](flate/index.html)
 * [The `fourcc` four-character code library](fourcc/index.html)
 * [The `getopts` argument parsing library](getopts/index.html)

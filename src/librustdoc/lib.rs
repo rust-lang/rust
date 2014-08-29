@@ -25,6 +25,7 @@ extern crate serialize;
 extern crate syntax;
 extern crate testing = "test";
 extern crate time;
+extern crate dynamic_lib;
 #[phase(plugin, link)] extern crate log;
 
 use std::io;
