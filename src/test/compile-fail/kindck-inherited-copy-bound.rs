@@ -8,25 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that assignments to an `&mut` pointer which is found in a
-// borrowed (but otherwise non-aliasable) location is illegal.
+// Test that Copy bounds inherited by trait are checked.
 
-struct S<'a> {
-    pointer: &'a mut int
+use std::any::Any;
+use std::any::AnyRefExt;
+
+trait Foo : Copy {
 }
 
-fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
-    S { pointer: &mut *p.pointer }
-    //~^ ERROR cannot infer
+impl<T:Copy> Foo for T {
 }
+
+fn take_param<T:Foo>(foo: &T) { }
 
 fn main() {
-    let mut x = 1;
+    let x = box 3i;
+    take_param(&x); //~ ERROR does not fulfill `Copy`
 
-    {
-        let mut y = S { pointer: &mut x };
-        let z = copy_borrowed_ptr(&mut y);
-        *y.pointer += 1;
-        *z.pointer += 1;
-    }
+    let y = &x;
+    let z = &x as &Foo; //~ ERROR does not fulfill `Copy`
 }

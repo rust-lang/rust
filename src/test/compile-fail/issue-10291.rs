@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn test<'x>(x: &'x int) {
-    drop::< <'z>|&'z int| -> &'z int>(|z| {
+    drop::< <'z>|&'z int| -> &'z int >(|z| {
         x
         //~^ ERROR cannot infer an appropriate lifetime
     });

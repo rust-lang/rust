@@ -31,7 +31,6 @@ fn use_<'short,'long>(c: Covariant<'long>,
     // contravariant with respect to its parameter 'a.
 
     let _: Covariant<'short> = c; //~ ERROR mismatched types
-    //~^ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {}

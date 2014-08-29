@@ -22,8 +22,6 @@ fn with<R>(f: |x: &int| -> R) -> R {
 fn return_it<'a>() -> &'a int {
     with(|o| o)
         //~^ ERROR cannot infer
-        //~^^ ERROR not valid during the expression
-        //~^^^ ERROR not valid at this point
 }
 
 fn main() {

@@ -8,25 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that assignments to an `&mut` pointer which is found in a
-// borrowed (but otherwise non-aliasable) location is illegal.
+// Test that, when a variable of type `&T` is captured inside a proc,
+// we correctly infer/require that its lifetime is 'static.
 
-struct S<'a> {
-    pointer: &'a mut int
+fn foo(_p: proc():'static) { }
+
+static i: int = 3;
+
+fn capture_local() {
+    let x = 3i;
+    let y = &x; //~ ERROR `x` does not live long enough
+    foo(proc() {
+        let _a = *y;
+    });
 }
 
-fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
-    S { pointer: &mut *p.pointer }
-    //~^ ERROR cannot infer
+fn capture_static() {
+    // Legal because &i can have static lifetime:
+    let y = &i;
+    foo(proc() {
+        let _a = *y;
+    });
 }
 
-fn main() {
-    let mut x = 1;
-
-    {
-        let mut y = S { pointer: &mut x };
-        let z = copy_borrowed_ptr(&mut y);
-        *y.pointer += 1;
-        *z.pointer += 1;
-    }
-}
+fn main() { }

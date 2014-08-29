@@ -136,6 +136,7 @@ pub mod util {
     pub mod common;
     pub mod ppaux;
     pub mod nodemap;
+    pub mod snapshot_vec;
 }
 
 pub mod lib {
