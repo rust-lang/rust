@@ -959,6 +959,9 @@ impl<'a> Parser<'a> {
     pub fn span_note(&mut self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_note(sp, m)
     }
+    pub fn span_help(&mut self, sp: Span, m: &str) {
+        self.sess.span_diagnostic.span_help(sp, m)
+    }
     pub fn bug(&mut self, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(self.span, m)
     }
