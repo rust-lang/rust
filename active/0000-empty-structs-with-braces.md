@@ -315,6 +315,7 @@ of views; it does not attempt to reflect the number of commenters who
 agreed or disagreed with a particular point.  (But since the RFC process
 is not a democracy, the number of commenters should not matter anyway.)
 
+* "+1" ==> Favors: This RFC (or potentially [Always Require Braces]; I think the content of [RFC PR 147] shifted over time, so it is hard to interpret the "+1" comments now).
 * "I find `let s = S0;` jarring, think its an enum initially." ==> Favors: Always Require Braces
 * "Frequently start out with an empty struct and add fields as I need them." ==> Favors: This RFC or Always Require Braces
 * "Foo{} suggests is constructing something that it's not; all uses of the value `Foo` are indistinguishable from each other" ==> Favors: Status Quo
