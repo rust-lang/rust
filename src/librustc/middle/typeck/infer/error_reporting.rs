@@ -583,6 +583,19 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     sub,
                     "");
             }
+            infer::ProcCapture(span, id) => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!("captured variable `{}` must be 'static \
+                             to be captured in a proc",
+                            ty::local_var_name_str(self.tcx, id).get())
+                        .as_slice());
+                note_and_explain_region(
+                    self.tcx,
+                    "captured variable is only valid for ",
+                    sup,
+                    "");
+            }
             infer::IndexSlice(span) => {
                 self.tcx.sess.span_err(span,
                                        "index of slice outside its lifetime");
@@ -1423,11 +1436,11 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                         bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
             }
             infer::EarlyBoundRegion(_, name) => {
-                format!(" for lifetime parameter `{}",
+                format!(" for lifetime parameter `{}`",
                         token::get_name(name).get())
             }
             infer::BoundRegionInCoherence(name) => {
-                format!(" for lifetime parameter `{} in coherence check",
+                format!(" for lifetime parameter `{}` in coherence check",
                         token::get_name(name).get())
             }
             infer::UpvarRegion(ref upvar_id, _) => {
@@ -1528,6 +1541,15 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                                 self.tcx,
                                 id).get().to_string()).as_slice());
             }
+            infer::ProcCapture(span, id) => {
+                self.tcx.sess.span_note(
+                    span,
+                    format!("...so that captured variable `{}` \
+                            is 'static",
+                            ty::local_var_name_str(
+                                self.tcx,
+                                id).get()).as_slice());
+            }
             infer::IndexSlice(span) => {
                 self.tcx.sess.span_note(
                     span,
@@ -1571,8 +1593,8 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
             infer::AutoBorrow(span) => {
                 self.tcx.sess.span_note(
                     span,
-                    "...so that reference is valid \
-                     at the time of implicit borrow");
+                    "...so that auto-reference is valid \
+                     at the time of borrow");
             }
             infer::ExprTypeIsNotInScope(t, span) => {
                 self.tcx.sess.span_note(

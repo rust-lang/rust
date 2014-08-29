@@ -29,13 +29,14 @@ use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::infer::coercion::Coerce;
-use middle::typeck::infer::combine::{Combine, CombineFields, eq_tys};
-use middle::typeck::infer::region_inference::{RegionSnapshot};
-use middle::typeck::infer::region_inference::{RegionVarBindings};
+use middle::typeck::infer::combine::{Combine, CombineFields};
+use middle::typeck::infer::region_inference::{RegionVarBindings,
+                                              RegionSnapshot};
 use middle::typeck::infer::resolve::{resolver};
+use middle::typeck::infer::equate::Equate;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::lub::Lub;
-use middle::typeck::infer::unify::{UnificationTable, Snapshot};
+use middle::typeck::infer::unify::{UnificationTable};
 use middle::typeck::infer::error_reporting::ErrorReporting;
 use std::cell::{RefCell};
 use std::collections::HashMap;
@@ -46,19 +47,20 @@ use syntax::codemap::Span;
 use util::common::indent;
 use util::ppaux::{bound_region_to_string, ty_to_string, trait_ref_to_string, Repr};
 
-pub mod doc;
-pub mod macros;
+pub mod coercion;
 pub mod combine;
+pub mod doc;
+pub mod equate;
+pub mod error_reporting;
 pub mod glb;
 pub mod lattice;
 pub mod lub;
 pub mod region_inference;
 pub mod resolve;
 pub mod sub;
-pub mod unify;
-pub mod coercion;
-pub mod error_reporting;
 pub mod test;
+pub mod type_variable;
+pub mod unify;
 
 pub type Bound<T> = Option<T>;
 
@@ -79,8 +81,7 @@ pub struct InferCtxt<'a> {
     // We instantiate UnificationTable with bounds<ty::t> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
-    type_unification_table:
-        RefCell<UnificationTable<ty::TyVid, Bounds<ty::t>>>,
+    type_variables: RefCell<type_variable::TypeVariableTable>,
 
     // Map from integral variable to the kind of integer it represents
     int_unification_table:
@@ -160,6 +161,9 @@ pub enum SubregionOrigin {
 
     // Closure bound must not outlive captured free variables
     FreeVariable(Span, ast::NodeId),
+
+    // Proc upvars must be 'static
+    ProcCapture(Span, ast::NodeId),
 
     // Index into slice must be within its lifetime
     IndexSlice(Span),
@@ -290,7 +294,7 @@ pub fn fixup_err_to_string(f: fixup_err) -> String {
 pub fn new_infer_ctxt<'a>(tcx: &'a ty::ctxt) -> InferCtxt<'a> {
     InferCtxt {
         tcx: tcx,
-        type_unification_table: RefCell::new(UnificationTable::new()),
+        type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
         int_unification_table: RefCell::new(UnificationTable::new()),
         float_unification_table: RefCell::new(UnificationTable::new()),
         region_vars: RegionVarBindings::new(tcx),
@@ -392,8 +396,8 @@ pub fn mk_eqty(cx: &InferCtxt,
             origin: origin,
             values: Types(expected_found(a_is_expected, a, b))
         };
-        let suber = cx.sub(a_is_expected, trace);
-        eq_tys(&suber, a, b)
+        try!(cx.equate(a_is_expected, trace).tys(a, b));
+        Ok(())
     })
 }
 
@@ -508,9 +512,9 @@ pub fn uok() -> ures {
 }
 
 pub struct CombinedSnapshot {
-    type_snapshot: Snapshot<ty::TyVid>,
-    int_snapshot: Snapshot<ty::IntVid>,
-    float_snapshot: Snapshot<ty::FloatVid>,
+    type_snapshot: type_variable::Snapshot,
+    int_snapshot: unify::Snapshot<ty::IntVid>,
+    float_snapshot: unify::Snapshot<ty::FloatVid>,
     region_vars_snapshot: RegionSnapshot,
 }
 
@@ -522,6 +526,10 @@ impl<'a> InferCtxt<'a> {
                        trace: trace}
     }
 
+    pub fn equate<'a>(&'a self, a_is_expected: bool, trace: TypeTrace) -> Equate<'a> {
+        Equate(self.combine_fields(a_is_expected, trace))
+    }
+
     pub fn sub<'a>(&'a self, a_is_expected: bool, trace: TypeTrace) -> Sub<'a> {
         Sub(self.combine_fields(a_is_expected, trace))
     }
@@ -530,13 +538,9 @@ impl<'a> InferCtxt<'a> {
         Lub(self.combine_fields(a_is_expected, trace))
     }
 
-    pub fn in_snapshot(&self) -> bool {
-        self.region_vars.in_snapshot()
-    }
-
     fn start_snapshot(&self) -> CombinedSnapshot {
         CombinedSnapshot {
-            type_snapshot: self.type_unification_table.borrow_mut().snapshot(),
+            type_snapshot: self.type_variables.borrow_mut().snapshot(),
             int_snapshot: self.int_unification_table.borrow_mut().snapshot(),
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
             region_vars_snapshot: self.region_vars.start_snapshot(),
@@ -550,15 +554,15 @@ impl<'a> InferCtxt<'a> {
                                float_snapshot,
                                region_vars_snapshot } = snapshot;
 
-        self.type_unification_table
+        self.type_variables
             .borrow_mut()
-            .rollback_to(self.tcx, type_snapshot);
+            .rollback_to(type_snapshot);
         self.int_unification_table
             .borrow_mut()
-            .rollback_to(self.tcx, int_snapshot);
+            .rollback_to(int_snapshot);
         self.float_unification_table
             .borrow_mut()
-            .rollback_to(self.tcx, float_snapshot);
+            .rollback_to(float_snapshot);
         self.region_vars
             .rollback_to(region_vars_snapshot);
     }
@@ -570,7 +574,7 @@ impl<'a> InferCtxt<'a> {
                                float_snapshot,
                                region_vars_snapshot } = snapshot;
 
-        self.type_unification_table
+        self.type_variables
             .borrow_mut()
             .commit(type_snapshot);
         self.int_unification_table
@@ -633,9 +637,9 @@ impl<'a> InferCtxt<'a> {
 
 impl<'a> InferCtxt<'a> {
     pub fn next_ty_var_id(&self) -> TyVid {
-        self.type_unification_table
+        self.type_variables
             .borrow_mut()
-            .new_key(Bounds { lb: None, ub: None })
+            .new_var()
     }
 
     pub fn next_ty_var(&self) -> ty::t {
@@ -933,6 +937,7 @@ impl SubregionOrigin {
             InvokeClosure(a) => a,
             DerefPointer(a) => a,
             FreeVariable(a, _) => a,
+            ProcCapture(a, _) => a,
             IndexSlice(a) => a,
             RelateObjectBound(a) => a,
             RelateProcBound(a, _, _) => a,
@@ -971,6 +976,9 @@ impl Repr for SubregionOrigin {
             }
             FreeVariable(a, b) => {
                 format!("FreeVariable({}, {})", a.repr(tcx), b)
+            }
+            ProcCapture(a, b) => {
+                format!("ProcCapture({}, {})", a.repr(tcx), b)
             }
             IndexSlice(a) => {
                 format!("IndexSlice({})", a.repr(tcx))

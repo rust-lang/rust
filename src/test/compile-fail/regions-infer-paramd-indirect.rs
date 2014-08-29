@@ -22,18 +22,17 @@ struct c<'a> {
 }
 
 trait set_f<'a> {
-    fn set_f_ok(&self, b: Gc<b<'a>>);
-    fn set_f_bad(&self, b: Gc<b>);
+    fn set_f_ok(&mut self, b: Gc<b<'a>>);
+    fn set_f_bad(&mut self, b: Gc<b>);
 }
 
 impl<'a> set_f<'a> for c<'a> {
-    fn set_f_ok(&self, b: Gc<b<'a>>) {
+    fn set_f_ok(&mut self, b: Gc<b<'a>>) {
         self.f = b;
     }
 
-    fn set_f_bad(&self, b: Gc<b>) {
+    fn set_f_bad(&mut self, b: Gc<b>) {
         self.f = b; //~ ERROR mismatched types: expected `Gc<Gc<&'a int>>`, found `Gc<Gc<&int>>`
-        //~^ ERROR cannot infer
     }
 }
 

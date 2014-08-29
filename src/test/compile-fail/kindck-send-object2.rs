@@ -8,25 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that assignments to an `&mut` pointer which is found in a
-// borrowed (but otherwise non-aliasable) location is illegal.
+// Continue kindck-send-object1.rs.
 
-struct S<'a> {
-    pointer: &'a mut int
+fn assert_send<T:Send>() { }
+trait Dummy { }
+
+fn test50() {
+    assert_send::<&'static Dummy>(); //~ ERROR does not fulfill `Send`
 }
 
-fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
-    S { pointer: &mut *p.pointer }
-    //~^ ERROR cannot infer
+fn test53() {
+    assert_send::<Box<Dummy>>(); //~ ERROR does not fulfill `Send`
 }
 
-fn main() {
-    let mut x = 1;
-
-    {
-        let mut y = S { pointer: &mut x };
-        let z = copy_borrowed_ptr(&mut y);
-        *y.pointer += 1;
-        *z.pointer += 1;
-    }
+// ...unless they are properly bounded
+fn test60() {
+    assert_send::<&'static Dummy+Send>();
 }
+fn test61() {
+    assert_send::<Box<Dummy+Send>>();
+}
+
+fn main() { }

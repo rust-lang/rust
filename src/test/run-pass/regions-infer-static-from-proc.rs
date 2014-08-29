@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![macro_escape]
+// Check that the 'static bound on a proc influences lifetimes of
+// region variables contained within (otherwise, region inference will
+// give `x` a very short lifetime).
 
-macro_rules! if_ok(
-    ($inp: expr) => (
-        match $inp {
-            Ok(v) => { v }
-            Err(e) => { return Err(e); }
-        }
-    )
-)
+static i: uint = 3;
+fn foo(_: proc():'static) {}
+fn read(_: uint) { }
+pub fn main() {
+    let x = &i;
+    foo(proc() {
+        read(*x);
+    });
+}
