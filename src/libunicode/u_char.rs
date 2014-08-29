@@ -33,7 +33,7 @@ pub fn is_alphabetic(c: char) -> bool {
 /// 'XID_Start' is a Unicode Derived Property specified in
 /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
 /// mostly similar to ID_Start but modified for closure under NFKx.
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 pub fn is_XID_start(c: char) -> bool    { derived_property::XID_Start(c) }
 
 /// Returns whether the specified `char` satisfies the 'XID_Continue' Unicode property
@@ -41,7 +41,7 @@ pub fn is_XID_start(c: char) -> bool    { derived_property::XID_Start(c) }
 /// 'XID_Continue' is a Unicode Derived Property specified in
 /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
 /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
 
 ///
@@ -174,7 +174,7 @@ pub trait UnicodeChar {
     /// 'XID_Start' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to ID_Start but modified for closure under NFKx.
-    #[allow(non_snake_case_functions)]
+    #[allow(non_snake_case)]
     fn is_XID_start(&self) -> bool;
 
     /// Returns whether the specified `char` satisfies the 'XID_Continue'
@@ -183,7 +183,7 @@ pub trait UnicodeChar {
     /// 'XID_Continue' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
-    #[allow(non_snake_case_functions)]
+    #[allow(non_snake_case)]
     fn is_XID_continue(&self) -> bool;
 
 

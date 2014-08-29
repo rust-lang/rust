@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code)] // FFI wrappers
-#![allow(non_snake_case_functions)]
+#![allow(non_snake_case)]
 
 use llvm;
 use llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect, AttrBuilder};

@@ -34,7 +34,7 @@ pub struct Glb<'f> {
     fields: CombineFields<'f>
 }
 
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 pub fn Glb<'f>(cf: CombineFields<'f>) -> Glb<'f> {
     Glb { fields: cf }
 }

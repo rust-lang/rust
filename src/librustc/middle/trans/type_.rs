@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_uppercase_pattern_statics)]
+#![allow(non_uppercase_statics)]
 
 use llvm;
 use llvm::{TypeRef, Bool, False, True, TypeKind, ValueRef};

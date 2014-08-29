@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_snake_case)]
+
 register_diagnostic!(E0001, r##"
     This error suggests that the expression arm corresponding to the noted pattern
     will never be reached as for all possible values of the expression being matched,

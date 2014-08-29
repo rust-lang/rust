@@ -838,7 +838,7 @@ fn free_handle(_handle: *mut ()) {
 
 #[cfg(unix)]
 fn translate_status(status: c_int) -> rtio::ProcessExit {
-    #![allow(non_snake_case_functions)]
+    #![allow(non_snake_case)]
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     mod imp {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(non_snake_case_functions)]
+#![deny(non_snake_case)]
 #![allow(dead_code)]
 
 struct Foo;

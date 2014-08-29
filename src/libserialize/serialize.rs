@@ -481,7 +481,7 @@ macro_rules! tuple (
     () => ();
     ( $($name:ident,)+ ) => (
         impl<E, D:Decoder<E>,$($name:Decodable<D, E>),*> Decodable<D,E> for ($($name,)*) {
-            #[allow(uppercase_variables)]
+            #[allow(non_snake_case)]
             fn decode(d: &mut D) -> Result<($($name,)*), E> {
                 d.read_tuple(|d, amt| {
                     let mut i = 0;
@@ -496,7 +496,7 @@ macro_rules! tuple (
             }
         }
         impl<E, S:Encoder<E>,$($name:Encodable<S, E>),*> Encodable<S, E> for ($($name,)*) {
-            #[allow(uppercase_variables)]
+            #[allow(non_snake_case)]
             fn encode(&self, s: &mut S) -> Result<(), E> {
                 let ($(ref $name,)*) = *self;
                 let mut n = 0;

@@ -543,7 +543,7 @@ mod imp {
     /// iOS doesn't use all of them it but adding more
     /// platform-specific configs pollutes the code too much
     #[allow(non_camel_case_types)]
-    #[allow(non_snake_case_functions)]
+    #[allow(non_snake_case)]
     #[allow(dead_code)]
     mod uw {
         use libc;
@@ -657,7 +657,7 @@ mod imp {
 /// copy of that function in my mingw install (maybe it was broken?). Instead,
 /// this takes the route of using StackWalk64 in order to walk the stack.
 #[cfg(windows)]
-#[allow(dead_code, uppercase_variables)]
+#[allow(dead_code, non_snake_case)]
 mod imp {
     use c_str::CString;
     use core_collections::Collection;
@@ -674,7 +674,7 @@ mod imp {
     use str::StrSlice;
     use dynamic_lib::DynamicLibrary;
 
-    #[allow(non_snake_case_functions)]
+    #[allow(non_snake_case)]
     extern "system" {
         fn GetCurrentProcess() -> libc::HANDLE;
         fn GetCurrentThread() -> libc::HANDLE;
