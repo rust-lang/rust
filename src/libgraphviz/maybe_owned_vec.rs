@@ -34,15 +34,7 @@ use std::slice;
 /// Some clients will have a pre-allocated vector ready to hand off in
 /// a slice; others will want to create the set on the fly and hand
 /// off ownership, via `Growable`.
-#[cfg(not(stage0))]
 pub enum MaybeOwnedVector<'a,T:'a> {
-    Growable(Vec<T>),
-    Borrowed(&'a [T]),
-}
-
-/// Stage0 only.
-#[cfg(stage0)]
-pub enum MaybeOwnedVector<'a,T> {
     Growable(Vec<T>),
     Borrowed(&'a [T]),
 }

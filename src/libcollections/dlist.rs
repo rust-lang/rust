@@ -49,16 +49,7 @@ struct Node<T> {
     value: T,
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct Items<'a, T> {
-    head: &'a Link<T>,
-    tail: Rawlink<Node<T>>,
-    nelem: uint,
-}
-
 /// An iterator over references to the items of a `DList`.
-#[cfg(not(stage0))]
 pub struct Items<'a, T:'a> {
     head: &'a Link<T>,
     tail: Rawlink<Node<T>>,
@@ -70,17 +61,7 @@ impl<'a, T> Clone for Items<'a, T> {
     fn clone(&self) -> Items<'a, T> { *self }
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct MutItems<'a, T> {
-    list: &'a mut DList<T>,
-    head: Rawlink<Node<T>>,
-    tail: Rawlink<Node<T>>,
-    nelem: uint,
-}
-
 /// An iterator over mutable references to the items of a `DList`.
-#[cfg(not(stage0))]
 pub struct MutItems<'a, T:'a> {
     list: &'a mut DList<T>,
     head: Rawlink<Node<T>>,

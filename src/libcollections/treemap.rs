@@ -668,20 +668,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     }
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct Entries<'a, K, V> {
-    stack: Vec<&'a TreeNode<K, V>>,
-    // See the comment on MutEntries; this is just to allow
-    // code-sharing (for this immutable-values iterator it *could* very
-    // well be Option<&'a TreeNode<K,V>>).
-    node: *const TreeNode<K, V>,
-    remaining_min: uint,
-    remaining_max: uint
-}
-
 /// Lazy forward iterator over a map
-#[cfg(not(stage0))]
 pub struct Entries<'a, K:'a, V:'a> {
     stack: Vec<&'a TreeNode<K, V>>,
     // See the comment on MutEntries; this is just to allow
@@ -692,49 +679,13 @@ pub struct Entries<'a, K:'a, V:'a> {
     remaining_max: uint
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct RevEntries<'a, K, V> {
-    iter: Entries<'a, K, V>,
-}
-
 /// Lazy backward iterator over a map
-#[cfg(not(stage0))]
 pub struct RevEntries<'a, K:'a, V:'a> {
     iter: Entries<'a, K, V>,
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct MutEntries<'a, K, V> {
-    stack: Vec<&'a mut TreeNode<K, V>>,
-    // Unfortunately, we require some unsafe-ness to get around the
-    // fact that we would be storing a reference *into* one of the
-    // nodes in the stack.
-    //
-    // As far as the compiler knows, this would let us invalidate the
-    // reference by assigning a new value to this node's position in
-    // its parent, which would cause this current one to be
-    // deallocated so this reference would be invalid. (i.e. the
-    // compilers complaints are 100% correct.)
-    //
-    // However, as far as you humans reading this code know (or are
-    // about to know, if you haven't read far enough down yet), we are
-    // only reading from the TreeNode.{left,right} fields. the only
-    // thing that is ever mutated is the .value field (although any
-    // actual mutation that happens is done externally, by the
-    // iterator consumer). So, don't be so concerned, rustc, we've got
-    // it under control.
-    //
-    // (This field can legitimately be null.)
-    node: *mut TreeNode<K, V>,
-    remaining_min: uint,
-    remaining_max: uint
-}
-
 /// Lazy forward iterator over a map that allows for the mutation of
 /// the values.
-#[cfg(not(stage0))]
 pub struct MutEntries<'a, K:'a, V:'a> {
     stack: Vec<&'a mut TreeNode<K, V>>,
     // Unfortunately, we require some unsafe-ness to get around the
@@ -761,14 +712,7 @@ pub struct MutEntries<'a, K:'a, V:'a> {
     remaining_max: uint
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct RevMutEntries<'a, K, V> {
-    iter: MutEntries<'a, K, V>,
-}
-
 /// Lazy backward iterator over a map
-#[cfg(not(stage0))]
 pub struct RevMutEntries<'a, K:'a, V:'a> {
     iter: MutEntries<'a, K, V>,
 }
@@ -1375,26 +1319,12 @@ impl<T: Ord> TreeSet<T> {
     }
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct SetItems<'a, T> {
-    iter: Entries<'a, T, ()>
-}
-
 /// A lazy forward iterator over a set.
-#[cfg(not(stage0))]
 pub struct SetItems<'a, T:'a> {
     iter: Entries<'a, T, ()>
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct RevSetItems<'a, T> {
-    iter: RevEntries<'a, T, ()>
-}
-
 /// A lazy backward iterator over a set.
-#[cfg(not(stage0))]
 pub struct RevSetItems<'a, T:'a> {
     iter: RevEntries<'a, T, ()>
 }
@@ -1402,57 +1332,25 @@ pub struct RevSetItems<'a, T:'a> {
 /// A lazy forward iterator over a set that consumes the set while iterating.
 pub type MoveSetItems<T> = iter::Map<'static, (T, ()), T, MoveEntries<T, ()>>;
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct DifferenceItems<'a, T> {
-    a: Peekable<&'a T, SetItems<'a, T>>,
-    b: Peekable<&'a T, SetItems<'a, T>>,
-}
-
 /// A lazy iterator producing elements in the set difference (in-order).
-#[cfg(not(stage0))]
 pub struct DifferenceItems<'a, T:'a> {
     a: Peekable<&'a T, SetItems<'a, T>>,
     b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct SymDifferenceItems<'a, T> {
-    a: Peekable<&'a T, SetItems<'a, T>>,
-    b: Peekable<&'a T, SetItems<'a, T>>,
-}
-
 /// A lazy iterator producing elements in the set symmetric difference (in-order).
-#[cfg(not(stage0))]
 pub struct SymDifferenceItems<'a, T:'a> {
     a: Peekable<&'a T, SetItems<'a, T>>,
     b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct IntersectionItems<'a, T> {
-    a: Peekable<&'a T, SetItems<'a, T>>,
-    b: Peekable<&'a T, SetItems<'a, T>>,
-}
-
 /// A lazy iterator producing elements in the set intersection (in-order).
-#[cfg(not(stage0))]
 pub struct IntersectionItems<'a, T:'a> {
     a: Peekable<&'a T, SetItems<'a, T>>,
     b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct UnionItems<'a, T> {
-    a: Peekable<&'a T, SetItems<'a, T>>,
-    b: Peekable<&'a T, SetItems<'a, T>>,
-}
-
 /// A lazy iterator producing elements in the set union (in-order).
-#[cfg(not(stage0))]
 pub struct UnionItems<'a, T:'a> {
     a: Peekable<&'a T, SetItems<'a, T>>,
     b: Peekable<&'a T, SetItems<'a, T>>,

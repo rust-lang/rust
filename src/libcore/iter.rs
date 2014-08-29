@@ -777,15 +777,7 @@ impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterato
 
 /// A mutable reference to an iterator
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[cfg(not(stage0))]
 pub struct ByRef<'a, T:'a> {
-    iter: &'a mut T
-}
-
-/// Dox
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[cfg(stage0)]
-pub struct ByRef<'a, T> {
     iter: &'a mut T
 }
 
