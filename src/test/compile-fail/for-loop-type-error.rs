@@ -8,23 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct MyStruct {
-    x: int,
-    y: int,
-}
-
-impl MyStruct {
-    fn next(&mut self) -> Option<int> {
-        Some(self.x)
-    }
-}
-
 pub fn main() {
-    let mut bogus = MyStruct {
-        x: 1,
-        y: 2,
-    };
-    for x in bogus { //~ ERROR has type `MyStruct` which does not implement the `Iterator` trait
-        drop(x);
-    }
+    let x = () + (); //~ ERROR binary operation
+
+    // this shouldn't have a flow-on error:
+    for _ in x {}
 }
