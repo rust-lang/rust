@@ -14,8 +14,8 @@ comments":
 # #![allow(unused_attribute)]
 // the "link" crate attribute is currently required for rustdoc, but normally
 // isn't needed.
-#![crate_id = "universe"]
-#![crate_type="lib"]
+#![crate_name = "universe"]
+#![crate_type = "lib"]
 
 //! Tools for dealing with universes (this is a doc comment, and is shown on
 //! the crate index page. The ! makes it apply to the parent of the comment,
