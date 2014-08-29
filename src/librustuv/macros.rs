@@ -10,11 +10,10 @@
 
 #![macro_escape]
 
-use std::fmt;
-
 macro_rules! uverrln (
     ($($arg:tt)*) => ( {
-        format_args!(::macros::dumb_println, $($arg)*)
+        use std::io::stdio;
+        format_args!(stdio::println_args, $($arg)*)
     } )
 )
 
@@ -27,8 +26,3 @@ macro_rules! uvdebug (
     })
 )
 
-pub fn dumb_println(args: &fmt::Arguments) {
-    use std::rt;
-    let mut w = rt::Stderr;
-    let _ = writeln!(&mut w, "{}", args);
-}
