@@ -103,7 +103,8 @@
 //!
 //! ~~~text
 //! Struct(~[FieldInfo {
-//!            span: <span of x>
+//!            attrs: <any attrs on x>,
+//!            span: <span of x>,
 //!            name: Some(<ident of x>),
 //!            self_: <expr for &self.x>,
 //!            other: ~[<expr for &other.x]
@@ -114,6 +115,7 @@
 //!
 //! ~~~text
 //! Struct(~[FieldInfo {
+//!           attrs: <empty vec>,
 //!           span: <span of `int`>,
 //!           name: None,
 //!           <expr for &a>
@@ -129,7 +131,8 @@
 //! ~~~text
 //! EnumMatching(0, <ast::Variant for C0>,
 //!              ~[FieldInfo {
-//!                 span: <span of int>
+//!                 attrs: <empty vec>,
+//!                 span: <span of int>,
 //!                 name: None,
 //!                 self_: <expr for &a>,
 //!                 other: ~[<expr for &b>]
@@ -141,7 +144,8 @@
 //! ~~~text
 //! EnumMatching(1, <ast::Variant for C1>,
 //!              ~[FieldInfo {
-//!                 span: <span of x>
+//!                 attrs: <any attrs on x>,
+//!                 span: <span of x>,
 //!                 name: Some(<ident of x>),
 //!                 self_: <expr for &self.x>,
 //!                 other: ~[<expr for &other.x>]
@@ -259,6 +263,10 @@ pub struct Substructure<'a> {
 
 /// Summary of the relevant parts of a struct/enum field.
 pub struct FieldInfo {
+    /// The attributes on the field in the definition
+    /// for normal structs/struct enum variants
+    pub attrs: Vec<ast::Attribute>,
+    /// The field's span
     pub span: Span,
     /// None for tuple structs/normal enum variants, Some for normal
     /// structs/struct enum variants.
@@ -743,13 +751,14 @@ impl<'a> MethodDef<'a> {
             raw_fields.get(0)
                       .iter()
                       .enumerate()
-                      .map(|(i, &(span, opt_id, field))| {
+                      .map(|(i, &(ref attrs, span, opt_id, field))| {
                 let other_fields = raw_fields.tail().iter().map(|l| {
                     match l.get(i) {
-                        &(_, _, ex) => ex
+                        &(_, _, _, ex) => ex
                     }
                 }).collect();
                 FieldInfo {
+                    attrs: attrs.clone(),
                     span: span,
                     name: opt_id,
                     self_: field,
@@ -919,7 +928,7 @@ impl<'a> MethodDef<'a> {
 
                 // These self_pats have form Variant1, Variant2, ...
                 let self_pats : Vec<(Gc<ast::Pat>,
-                                     Vec<(Span, Option<Ident>, Gc<Expr>)>)>;
+                                     Vec<(Vec<ast::Attribute>, Span, Option<Ident>, Gc<Expr>)>)>;
                 self_pats = self_arg_names.iter()
                     .map(|self_arg_name|
                          trait_.create_enum_variant_pattern(
@@ -953,7 +962,7 @@ impl<'a> MethodDef<'a> {
 
                 field_tuples = self_arg_fields.iter().enumerate()
                     // For each arg field of self, pull out its getter expr ...
-                    .map(|(field_index, &(sp, opt_ident, self_getter_expr))| {
+                    .map(|(field_index, &(ref attrs, sp, opt_ident, self_getter_expr))| {
                         // ... but FieldInfo also wants getter expr
                         // for matching other arguments of Self type;
                         // so walk across the *other* self_pats and
@@ -963,7 +972,7 @@ impl<'a> MethodDef<'a> {
                         let others = self_pats.tail().iter()
                             .map(|&(_pat, ref fields)| {
 
-                                let &(_, _opt_ident, other_getter_expr) =
+                                let &(_, _, _opt_ident, other_getter_expr) =
                                     fields.get(field_index);
 
                                 // All Self args have same variant, so
@@ -975,10 +984,12 @@ impl<'a> MethodDef<'a> {
                                 other_getter_expr
                             }).collect::<Vec<Gc<Expr>>>();
 
-                        FieldInfo { span: sp,
-                                    name: opt_ident,
-                                    self_: self_getter_expr,
-                                    other: others,
+                        FieldInfo {
+                            attrs: attrs.clone(),
+                            span: sp,
+                            name: opt_ident,
+                            self_: self_getter_expr,
+                            other: others,
                         }
                     }).collect::<Vec<FieldInfo>>();
 
@@ -1223,7 +1234,8 @@ impl<'a> TraitDef<'a> {
                              struct_def: &StructDef,
                              prefix: &str,
                              mutbl: ast::Mutability)
-                             -> (Gc<ast::Pat>, Vec<(Span, Option<Ident>, Gc<Expr>)>) {
+        -> (Gc<ast::Pat>, Vec<(Vec<ast::Attribute>, Span, Option<Ident>, Gc<Expr>)>) {
+
         if struct_def.fields.is_empty() {
             return (
                 cx.pat_ident_binding_mode(
@@ -1258,7 +1270,7 @@ impl<'a> TraitDef<'a> {
             paths.push(codemap::Spanned{span: sp, node: ident});
             let val = cx.expr(
                 sp, ast::ExprParen(cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)))));
-            ident_expr.push((sp, opt_id, val));
+            ident_expr.push((struct_field.node.attrs.clone(), sp, opt_id, val));
         }
 
         let subpats = self.create_subpatterns(cx, paths, mutbl);
@@ -1266,7 +1278,7 @@ impl<'a> TraitDef<'a> {
         // struct_type is definitely not Unknown, since struct_def.fields
         // must be nonempty to reach here
         let pattern = if struct_type == Record {
-            let field_pats = subpats.iter().zip(ident_expr.iter()).map(|(&pat, &(_, id, _))| {
+            let field_pats = subpats.iter().zip(ident_expr.iter()).map(|(&pat, &(_, _, id, _))| {
                 // id is guaranteed to be Some
                 ast::FieldPat { ident: id.unwrap(), pat: pat }
             }).collect();
@@ -1283,7 +1295,7 @@ impl<'a> TraitDef<'a> {
                                    variant: &ast::Variant,
                                    prefix: &str,
                                    mutbl: ast::Mutability)
-        -> (Gc<ast::Pat>, Vec<(Span, Option<Ident>, Gc<Expr>)> ) {
+        -> (Gc<ast::Pat>, Vec<(Vec<ast::Attribute>, Span, Option<Ident>, Gc<Expr>)> ) {
         let variant_ident = variant.node.name;
         match variant.node.kind {
             ast::TupleVariantKind(ref variant_args) => {
@@ -1304,7 +1316,7 @@ impl<'a> TraitDef<'a> {
                     paths.push(path1);
                     let expr_path = cx.expr_path(cx.path_ident(sp, ident));
                     let val = cx.expr(sp, ast::ExprParen(cx.expr_deref(sp, expr_path)));
-                    ident_expr.push((sp, None, val));
+                    ident_expr.push((Vec::new(), sp, None, val));
                 }
 
                 let subpats = self.create_subpatterns(cx, paths, mutbl);

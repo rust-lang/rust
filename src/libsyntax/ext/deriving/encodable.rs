@@ -80,6 +80,7 @@
 //! ```
 
 use ast::{MetaItem, Item, Expr, ExprRet, MutMutable, LitNil};
+use attr;
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -144,13 +145,16 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             let mut stmts = Vec::new();
             let last = fields.len() - 1;
             for (i, &FieldInfo {
+                    ref attrs,
                     name,
                     self_,
                     span,
                     ..
                 }) in fields.iter().enumerate() {
                 let name = match name {
-                    Some(id) => token::get_ident(id),
+                    Some(id) =>
+                        attr::first_attr_value_str_by_name(attrs.as_slice(), "encoded_name")
+                            .unwrap_or(token::get_ident(id)),
                     None => {
                         token::intern_and_get_ident(format!("_field{}",
                                                             i).as_slice())

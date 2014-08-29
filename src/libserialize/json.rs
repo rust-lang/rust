@@ -104,6 +104,41 @@ fn main() {
 }
 ```
 
+If you need to work with a JSON object which has keys that are not Rust
+identifiers, you can tag each such field with the `encoded_name` attribute
+to specify the name to use when serializing/deserializing.
+
+```rust
+extern crate serialize;
+use serialize::json;
+
+#[deriving(Encodable, Decodable)]
+struct Data {
+    metric: String,
+    #[encoded_name = "metric-value"]
+    value: int
+}
+
+fn main() {
+    let input = r#"{"metric":"foo","metric-value":44}"#;
+
+    // Decode the input JSON
+    let data: Data = json::decode(input).unwrap();
+
+    // Modify the input
+    let data = Data {
+        value: 32,
+        ..data
+    };
+
+    // Encode it as JSON again
+    let out: String = json::encode(&data);
+
+    println!("data: {}", out);
+    // data: {"metric":"foo","metric-value":32}
+}
+```
+
 ## Using the `ToJson` trait
 
 The examples above use the `ToJson` trait to generate the JSON string, which is required
@@ -3628,6 +3663,31 @@ mod tests {
         assert_eq!(Some(15i).to_json(), I64(15));
         assert_eq!(Some(15u).to_json(), U64(15));
         assert_eq!(None::<int>.to_json(), Null);
+    }
+
+    #[deriving(Encodable, Decodable, PartialEq, Show)]
+    struct Foo {
+        key: String,
+        #[encoded_name = "another-key"]
+        another_key: String,
+        metric: int,
+        #[encoded_name = "metric-2"]
+        another_metric: int
+    }
+
+    #[test]
+    fn test_encoded_name_attribute() {
+        use super::{encode, decode};
+
+        let s = r#"{"key":"foo","another-key":"bar","metric":12,"metric-2":21}"#;
+        let f = Foo {
+            key: "foo".to_string(),
+            another_key: "bar".to_string(),
+            metric: 12,
+            another_metric: 21
+        };
+        assert_eq!(encode(&f), s.to_string());
+        assert_eq!(decode::<Foo>(s).unwrap(), f);
     }
 
     #[bench]

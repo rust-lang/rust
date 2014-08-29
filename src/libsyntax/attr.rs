@@ -231,7 +231,10 @@ pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
                                  -> Option<InternedString> {
     attrs.iter()
         .find(|at| at.check_name(name))
-        .and_then(|at| at.value_str())
+        .and_then(|at| {
+            mark_used(at);
+            at.value_str()
+        })
 }
 
 pub fn last_meta_item_value_str_by_name(items: &[Gc<MetaItem>], name: &str)
