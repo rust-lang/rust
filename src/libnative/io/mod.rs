@@ -26,6 +26,7 @@
 use libc::c_int;
 use libc;
 use std::c_str::CString;
+use std::num::from_i32;
 use std::os;
 use std::rt::rtio;
 use std::rt::rtio::{IoResult, IoError};
@@ -117,22 +118,24 @@ fn mkerr_winbool(ret: libc::c_int) -> IoResult<()> {
 
 #[cfg(windows)]
 #[inline]
-fn retry(f: || -> libc::c_int) -> libc::c_int {
+fn retry<T:Signed + FromPrimitive>(f: || -> T) -> T {
     loop {
-        match f() {
-            -1 if os::errno() as int == libc::WSAEINTR as int => {}
-            n => return n,
+        let minus1: T = from_i32(-1).unwrap();
+        let ret = f();
+        if ret != minus1 || os::errno() as int != libc::WSAEINTR as int {
+            return ret
         }
     }
 }
 
 #[cfg(unix)]
 #[inline]
-fn retry(f: || -> libc::c_int) -> libc::c_int {
+fn retry<T:Signed + FromPrimitive>(f: || -> T) -> T {
     loop {
-        match f() {
-            -1 if os::errno() as int == libc::EINTR as int => {}
-            n => return n,
+        let minus1: T = from_i32(-1).unwrap();
+        let ret = f();
+        if ret != minus1 || os::errno() as int != libc::EINTR as int {
+            return ret
         }
     }
 }
@@ -207,6 +210,10 @@ impl rtio::IoFactory for IoFactory {
         -> IoResult<Vec<rtio::AddrinfoInfo>>
     {
         addrinfo::GetAddrInfoRequest::run(host, servname, hint)
+    }
+    fn socket_from_raw_fd(&mut self, fd: net::sock_t)
+        -> IoResult<Box<rtio::RtioCustomSocket + Send>> {
+        net::Socket::new(fd).map(|s| box s as Box<rtio::RtioCustomSocket + Send>)
     }
 
     // filesystem operations

@@ -878,6 +878,75 @@ impl rtio::RtioUdpSocket for UdpSocket {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// Arbitrary sockets
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(windows)]
+type Buflen = i32;
+#[cfg(not(windows))]
+type Buflen = u64;
+
+pub struct Socket {
+    fd: sock_t,
+}
+
+impl Socket {
+    pub fn new(sock: sock_t) -> IoResult<Socket>
+    {
+        let socket = Socket { fd: sock };
+        return Ok(socket);
+    }
+}
+
+impl rtio::RtioCustomSocket for Socket {
+    fn recv_from(&mut self, buf: &mut [u8], addr: *mut libc::sockaddr_storage)
+        -> IoResult<uint>
+    {
+        let mut caddrlen = mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
+        let len = unsafe {
+                    retry( || libc::recvfrom(self.fd, buf.as_ptr() as *mut libc::c_void,
+                                             buf.len() as Buflen, 0, addr as *mut libc::sockaddr,
+                                             &mut caddrlen))
+                  };
+        if len == -1 {
+            return Err(last_error());
+        }
+
+        return Ok(len as uint);
+    }
+
+    fn send_to(&mut self, buf: &[u8], addr: *const libc::sockaddr, slen: uint)
+        -> IoResult<uint>
+    {
+        let len = unsafe {
+                    retry( || libc::sendto(self.fd, buf.as_ptr() as *const libc::c_void,
+                                           buf.len() as Buflen, 0, addr, slen as libc::socklen_t))
+                  };
+
+        return if len < 0 {
+            Err(last_error())
+        } else {
+            Ok(len as uint)
+        };
+    }
+
+    fn clone(&self) -> Box<rtio::RtioCustomSocket + Send> {
+        box Socket {
+            fd: self.fd
+        } as Box<rtio::RtioCustomSocket + Send>
+    }
+
+}
+
+impl Drop for Socket {
+    fn drop(&mut self) {
+        unsafe {
+            os::close(self.fd)
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Timeout helpers
 //
 // The read/write functions below are the helpers for reading/writing a socket
