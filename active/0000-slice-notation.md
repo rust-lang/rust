@@ -14,6 +14,9 @@ This RFC adds *overloaded slice notation*:
 
 via two new traits, `Slice` and `SliceMut`.
 
+It also changes the notation for range `match` patterns to `...`, to
+signify that they are inclusive whereas `..` in slices are exclusive.
+
 # Motivation
 
 There are two primary motivations for introducing this feature.
