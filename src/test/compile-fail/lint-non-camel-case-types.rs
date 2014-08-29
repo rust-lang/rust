@@ -32,6 +32,8 @@ enum Foo5 {
 trait foo6 { //~ ERROR trait `foo6` should have a camel case name such as `Foo6`
 }
 
+fn f<ty>(_: ty) {} //~ ERROR type parameter `ty` should have a camel case name such as `Ty`
+
 #[repr(C)]
 struct foo7 {
     bar: int,

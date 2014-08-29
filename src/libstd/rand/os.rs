@@ -161,7 +161,7 @@ mod imp {
     static CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
     static NTE_BAD_SIGNATURE: DWORD = 0x80090006;
 
-    #[allow(non_snake_case_functions)]
+    #[allow(non_snake_case)]
     extern "system" {
         fn CryptAcquireContextA(phProv: *mut HCRYPTPROV,
                                 pszContainer: LPCSTR,

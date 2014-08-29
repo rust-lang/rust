@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types, non_snake_case_functions)]
+#![allow(non_camel_case_types, non_snake_case)]
 
 //! Code that is useful in various trans modules.
 

@@ -10,7 +10,7 @@
 
 // ignore-pretty very bad with line comments
 
-#![allow(non_snake_case_functions)]
+#![allow(non_snake_case)]
 
 use std::io;
 use std::io::stdio::StdReader;

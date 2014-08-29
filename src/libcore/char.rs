@@ -12,7 +12,7 @@
 //!
 //! For more details, see ::unicode::char (a.k.a. std::char)
 
-#![allow(non_snake_case_functions)]
+#![allow(non_snake_case)]
 #![doc(primitive = "char")]
 
 use mem::transmute;

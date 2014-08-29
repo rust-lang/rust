@@ -27,7 +27,7 @@ pub struct Equate<'f> {
     fields: CombineFields<'f>
 }
 
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 pub fn Equate<'f>(cf: CombineFields<'f>) -> Equate<'f> {
     Equate { fields: cf }
 }

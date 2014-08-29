@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_uppercase_pattern_statics)]
+#![allow(non_uppercase_statics)]
 #![allow(non_camel_case_types)]
-#![allow(non_snake_case_functions)]
+#![allow(non_snake_case)]
 #![allow(dead_code)]
 
 #![crate_name = "rustc_llvm"]

@@ -668,7 +668,7 @@ macro_rules! tuple (
     () => ();
     ( $($name:ident,)+ ) => (
         impl<$($name:Show),*> Show for ($($name,)*) {
-            #[allow(uppercase_variables, dead_assignment)]
+            #[allow(non_snake_case, dead_assignment)]
             fn fmt(&self, f: &mut Formatter) -> Result {
                 try!(write!(f, "("));
                 let ($(ref $name,)*) = *self;

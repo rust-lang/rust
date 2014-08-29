@@ -242,12 +242,16 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
     });
 
-    let Registry { syntax_exts, lint_passes, .. } = registry;
+    let Registry { syntax_exts, lint_passes, lint_groups, .. } = registry;
 
     {
         let mut ls = sess.lint_store.borrow_mut();
         for pass in lint_passes.move_iter() {
             ls.register_pass(Some(sess), true, pass);
+        }
+
+        for (name, to) in lint_groups.move_iter() {
+            ls.register_group(Some(sess), true, name, to);
         }
     }
 
