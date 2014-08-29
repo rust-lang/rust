@@ -54,25 +54,31 @@ pub fn pointer_add_byte(bcx: &Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef
 pub fn make_drop_glue_unboxed<'a>(
                               bcx: &'a Block<'a>,
                               vptr: ValueRef,
-                              unit_ty: ty::t)
+                              unit_ty: ty::t,
+                              should_deallocate: bool)
                               -> &'a Block<'a> {
     let not_null = IsNotNull(bcx, vptr);
     with_cond(bcx, not_null, |bcx| {
         let tcx = bcx.tcx();
         let _icx = push_ctxt("tvec::make_drop_glue_unboxed");
 
-        let len = get_len(bcx, vptr);
         let dataptr = get_dataptr(bcx, vptr);
         let bcx = if ty::type_needs_drop(tcx, unit_ty) {
+            let len = get_len(bcx, vptr);
             iter_vec_raw(bcx, dataptr, unit_ty, len, glue::drop_ty)
         } else {
             bcx
         };
 
-        let not_null = IsNotNull(bcx, dataptr);
-        with_cond(bcx, not_null, |bcx| {
-            glue::trans_exchange_free(bcx, dataptr, 0, 8)
-        })
+        if should_deallocate {
+            let not_null = IsNotNull(bcx, dataptr);
+            with_cond(bcx, not_null, |bcx| {
+                // FIXME: #13994: the old `Box<[T]>` will not support sized deallocation
+                glue::trans_exchange_free(bcx, dataptr, 0, 8)
+            })
+        } else {
+            bcx
+        }
     })
 }
 
