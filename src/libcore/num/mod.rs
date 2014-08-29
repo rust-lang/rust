@@ -1492,8 +1492,15 @@ pub trait Float: Signed + Primitive {
     fn powf(self, n: Self) -> Self;
 
     /// sqrt(2.0).
-    fn sqrt2() -> Self;
+    fn sqrt_2() -> Self;
     /// 1.0 / sqrt(2.0).
+    fn frac_1_sqrt_2() -> Self;
+
+    /// Deprecated: renamed to `sqrt_2`.
+    #[deprecated = "renamed to sqrt_2"]
+    fn sqrt2() -> Self;
+    /// Deprecated: renamed to `frac_1_sqrt_2`.
+    #[deprecated = "renamed to frac_1_sqrt_2"]
     fn frac_1_sqrt2() -> Self;
 
     /// Take the square root of a number.
@@ -1522,6 +1529,9 @@ pub trait Float: Signed + Primitive {
     /// 2.0 / pi.
     fn frac_2_pi() -> Self;
     /// 2.0 / sqrt(pi).
+    fn frac_2_sqrt_pi() -> Self;
+    /// Deprecated: renamed to `frac_2_sqrt_pi`.
+    #[deprecated = "renamed to frac_2_sqrt_pi"]
     fn frac_2_sqrtpi() -> Self;
 
     /// Euler's number.

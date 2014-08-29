@@ -56,7 +56,11 @@ pub mod consts {
     pub static PI: f32 = 3.14159265358979323846264338327950288_f32;
 
     /// pi * 2.0
-    pub static PI_2: f32 = 6.28318530717958647692528676655900576_f32;
+    pub static TWO_PI: f32 = 6.28318530717958647692528676655900576_f32;
+
+    /// Deprecated: renamed to `TWO_PI`.
+    #[deprecated = "renamed to TWO_PI"]
+    pub static PI_2: f32 = TWO_PI;
 
     /// pi/2.0
     pub static FRAC_PI_2: f32 = 1.57079632679489661923132169163975144_f32;
@@ -80,13 +84,25 @@ pub mod consts {
     pub static FRAC_2_PI: f32 = 0.636619772367581343075535053490057448_f32;
 
     /// 2.0/sqrt(pi)
-    pub static FRAC_2_SQRTPI: f32 = 1.12837916709551257389615890312154517_f32;
+    pub static FRAC_2_SQRT_PI: f32 = 1.12837916709551257389615890312154517_f32;
+
+    /// Deprecated: renamed to `FRAC_2_SQRT_PI`.
+    #[deprecated = "renamed to FRAC_2_SQRT_PI"]
+    pub static FRAC_2_SQRTPI: f32 = FRAC_2_SQRT_PI;
 
     /// sqrt(2.0)
-    pub static SQRT2: f32 = 1.41421356237309504880168872420969808_f32;
+    pub static SQRT_2: f32 = 1.41421356237309504880168872420969808_f32;
+
+    /// Deprecated: renamed to `SQRT_2`.
+    #[deprecated = "renamed to SQRT_2"]
+    pub static SQRT2: f32 = SQRT_2;
 
     /// 1.0/sqrt(2.0)
-    pub static FRAC_1_SQRT2: f32 = 0.707106781186547524400844362104849039_f32;
+    pub static FRAC_1_SQRT_2: f32 = 0.707106781186547524400844362104849039_f32;
+
+    /// Deprecated: renamed to `FRAC_1_SQRT_2`.
+    #[deprecated = "renamed to FRAC_1_SQRT_2"]
+    pub static FRAC_1_SQRT2: f32 = FRAC_1_SQRT_2;
 
     /// Euler's number
     pub static E: f32 = 2.71828182845904523536028747135266250_f32;
@@ -251,11 +267,21 @@ impl Float for f32 {
 
     /// sqrt(2.0)
     #[inline]
-    fn sqrt2() -> f32 { consts::SQRT2 }
+    fn sqrt_2() -> f32 { consts::SQRT_2 }
+
+    /// Deprecated: renamed to `sqrt_2`.
+    #[deprecated = "renamed to sqrt_2"]
+    #[inline]
+    fn sqrt2() -> f32 { consts::SQRT_2 }
 
     /// 1.0 / sqrt(2.0)
     #[inline]
-    fn frac_1_sqrt2() -> f32 { consts::FRAC_1_SQRT2 }
+    fn frac_1_sqrt_2() -> f32 { consts::FRAC_1_SQRT_2 }
+
+    /// Deprecated: renamed to `frac_1_sqrt_2`.
+    #[deprecated = "renamed to frac_1_sqrt_2"]
+    #[inline]
+    fn frac_1_sqrt2() -> f32 { consts::FRAC_1_SQRT_2 }
 
     #[inline]
     fn sqrt(self) -> f32 {
@@ -271,7 +297,7 @@ impl Float for f32 {
 
     /// 2.0 * pi
     #[inline]
-    fn two_pi() -> f32 { consts::PI_2 }
+    fn two_pi() -> f32 { consts::TWO_PI }
 
     /// pi / 2.0
     #[inline]
@@ -303,7 +329,12 @@ impl Float for f32 {
 
     /// 2.0 / sqrt(pi)
     #[inline]
-    fn frac_2_sqrtpi() -> f32 { consts::FRAC_2_SQRTPI }
+    fn frac_2_sqrt_pi() -> f32 { consts::FRAC_2_SQRT_PI }
+
+    /// Deprecated: renamed to `frac_2_sqrt_pi`.
+    #[deprecated = "renamed to frac_2_sqrt_pi"]
+    #[inline]
+    fn frac_2_sqrtpi() -> f32 { consts::FRAC_2_SQRT_PI }
 
     /// Euler's number
     #[inline]
