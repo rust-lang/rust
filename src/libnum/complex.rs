@@ -36,10 +36,8 @@ impl<T: Clone + Num> Complex<T> {
         Complex { re: re, im: im }
     }
 
-    /**
-    Returns the square of the norm (since `T` doesn't necessarily
-    have a sqrt function), i.e. `re^2 + im^2`.
-    */
+    /// Returns the square of the norm (since `T` doesn't necessarily
+    /// have a sqrt function), i.e. `re^2 + im^2`.
     #[inline]
     pub fn norm_sqr(&self) -> T {
         self.re * self.re + self.im * self.im
