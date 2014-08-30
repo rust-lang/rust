@@ -1017,7 +1017,7 @@ impl<'a> Liveness<'a> {
             self.propagate_through_expr(&**cond, ln)
           }
 
-          ExprWhile(ref cond, ref blk) => {
+          ExprWhile(ref cond, ref blk, _) => {
             self.propagate_through_loop(expr,
                                         WhileLoop(cond.clone()),
                                         &**blk,

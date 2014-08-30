@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1438,7 +1438,11 @@ impl<'a> State<'a> {
             ast::ExprIf(ref test, ref blk, elseopt) => {
                 try!(self.print_if(&**test, &**blk, elseopt, false));
             }
-            ast::ExprWhile(ref test, ref blk) => {
+            ast::ExprWhile(ref test, ref blk, opt_ident) => {
+                for ident in opt_ident.iter() {
+                    try!(self.print_ident(*ident));
+                    try!(self.word_space(":"));
+                }
                 try!(self.head("while"));
                 try!(self.print_expr(&**test));
                 try!(space(&mut self.s));

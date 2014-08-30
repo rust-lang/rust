@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -227,7 +227,7 @@ impl<'a> CFGBuilder<'a> {
                 self.add_node(expr.id, [then_exit, else_exit])           // 4, 5
             }
 
-            ast::ExprWhile(ref cond, ref body) => {
+            ast::ExprWhile(ref cond, ref body, _) => {
                 //
                 //         [pred]
                 //           |
