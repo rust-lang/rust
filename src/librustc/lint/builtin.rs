@@ -58,7 +58,7 @@ impl LintPass for WhileTrue {
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         match e.node {
-            ast::ExprWhile(cond, _) => {
+            ast::ExprWhile(cond, _, _) => {
                 match cond.node {
                     ast::ExprLit(lit) => {
                         match lit.node {
@@ -1073,7 +1073,7 @@ impl LintPass for UnnecessaryParens {
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         let (value, msg, struct_lit_needs_parens) = match e.node {
             ast::ExprIf(cond, _, _) => (cond, "`if` condition", true),
-            ast::ExprWhile(cond, _) => (cond, "`while` condition", true),
+            ast::ExprWhile(cond, _, _) => (cond, "`while` condition", true),
             ast::ExprMatch(head, _) => (head, "`match` head expression", true),
             ast::ExprRet(Some(value)) => (value, "`return` value", false),
             ast::ExprAssign(_, value) => (value, "assigned value", false),

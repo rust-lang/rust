@@ -24,6 +24,13 @@ macro_rules! run_once {
     }
 }
 
+macro_rules! while_x {
+    ($e: expr) => {
+        // ditto
+        'x: while 1i + 1 == 2 { $e }
+    }
+}
+
 pub fn main() {
     'x: for _ in range(0i, 1) {
         // this 'x should refer to the outer loop, lexically
@@ -35,6 +42,11 @@ pub fn main() {
         // ditto
         loop_x!(break 'x);
         fail!("break doesn't act hygienically inside infinite loop");
+    }
+
+    'x: while 1i + 1 == 2 {
+        while_x!(break 'x);
+        fail!("break doesn't act hygienically inside infinite while loop");
     }
 
     'x: for _ in range(0i, 1) {

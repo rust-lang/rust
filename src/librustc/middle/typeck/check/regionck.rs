@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -749,7 +749,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             rcx.set_repeating_scope(repeating_scope);
         }
 
-        ast::ExprWhile(ref cond, ref body) => {
+        ast::ExprWhile(ref cond, ref body, _) => {
             let repeating_scope = rcx.set_repeating_scope(cond.id);
             rcx.visit_expr(&**cond, ());
 

@@ -410,7 +410,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 self.walk_block(&**blk);
             }
 
-            ast::ExprWhile(ref cond_expr, ref blk) => {
+            ast::ExprWhile(ref cond_expr, ref blk, _) => {
                 self.consume_expr(&**cond_expr);
                 self.walk_block(&**blk);
             }

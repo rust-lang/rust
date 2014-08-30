@@ -2094,19 +2094,22 @@ impl<'a> Parser<'a> {
                     return self.parse_for_expr(None);
                 }
                 if self.eat_keyword(keywords::While) {
-                    return self.parse_while_expr();
+                    return self.parse_while_expr(None);
                 }
                 if Parser::token_is_lifetime(&self.token) {
                     let lifetime = self.get_lifetime();
                     self.bump();
                     self.expect(&token::COLON);
+                    if self.eat_keyword(keywords::While) {
+                        return self.parse_while_expr(Some(lifetime))
+                    }
                     if self.eat_keyword(keywords::For) {
                         return self.parse_for_expr(Some(lifetime))
                     }
                     if self.eat_keyword(keywords::Loop) {
                         return self.parse_loop_expr(Some(lifetime))
                     }
-                    self.fatal("expected `for` or `loop` after a label")
+                    self.fatal("expected `while`, `for`, or `loop` after a label")
                 }
                 if self.eat_keyword(keywords::Loop) {
                     return self.parse_loop_expr(None);
@@ -2762,12 +2765,12 @@ impl<'a> Parser<'a> {
         self.mk_expr(lo, hi, ExprForLoop(pat, expr, loop_block, opt_ident))
     }
 
-    pub fn parse_while_expr(&mut self) -> Gc<Expr> {
+    pub fn parse_while_expr(&mut self, opt_ident: Option<ast::Ident>) -> Gc<Expr> {
         let lo = self.last_span.lo;
         let cond = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
         let body = self.parse_block();
         let hi = body.span.hi;
-        return self.mk_expr(lo, hi, ExprWhile(cond, body));
+        return self.mk_expr(lo, hi, ExprWhile(cond, body, opt_ident));
     }
 
     pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::Ident>) -> Gc<Expr> {

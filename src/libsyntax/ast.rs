@@ -524,7 +524,8 @@ pub enum Expr_ {
     ExprLit(Gc<Lit>),
     ExprCast(Gc<Expr>, P<Ty>),
     ExprIf(Gc<Expr>, P<Block>, Option<Gc<Expr>>),
-    ExprWhile(Gc<Expr>, P<Block>),
+    // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
+    ExprWhile(Gc<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprForLoop(Gc<Pat>, Gc<Expr>, P<Block>, Option<Ident>),
     // Conditionless loop (can be exited with break, cont, or ret)

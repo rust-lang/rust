@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,22 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 pub fn main() {
-    'foo: loop {
-        loop {
-            break 'foo;
+    let mut i = 100i;
+    'w: while 1i + 1 == 2 {
+        i -= 1;
+        if i == 95 {
+            break 'w;
+            fail!("Should have broken out of loop");
         }
     }
-
-    'bar: for _ in range(0i, 100i) {
-        loop {
-            break 'bar;
-        }
-    }
-
-    'foobar: while 1i + 1 == 2 {
-        loop {
-            break 'foobar;
-        }
-    }
+    assert_eq!(i, 95);
 }
