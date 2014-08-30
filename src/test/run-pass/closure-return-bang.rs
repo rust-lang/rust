@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(f: || -> !) {}
+#![allow(dead_code)]
+
+fn f(x: || -> !) -> ! {
+    x();
+}
 
 fn main() {
-    // Type inference didn't use to be able to handle this:
-    foo(|| fail!());
-    foo(|| -> ! fail!());
-    foo(|| 22); //~ ERROR mismatched types
-    foo(|| -> ! 22); //~ ERROR mismatched types
-    let x = || -> ! 1; //~ ERROR mismatched types
+    let x: || -> ! = || fail!();
+    let _y: || -> ! = || x();
 }

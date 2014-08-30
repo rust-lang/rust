@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(f: || -> !) {}
+#![deny(unreachable_code)]
 
 fn main() {
-    // Type inference didn't use to be able to handle this:
-    foo(|| fail!());
-    foo(|| -> ! fail!());
-    foo(|| 22); //~ ERROR mismatched types
-    foo(|| -> ! 22); //~ ERROR mismatched types
-    let x = || -> ! 1; //~ ERROR mismatched types
+    let x: || -> ! = || fail!();
+    x();
+    println!("Foo bar"); //~ ERROR: unreachable statement
 }
