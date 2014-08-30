@@ -2681,7 +2681,7 @@ $ cargo new modules --bin
 
 Let's double check our work by compiling:
 
-```{bash,ignore}
+```{bash,notrust}
 $ cargo run
    Compiling modules v0.0.1 (file:///home/you/projects/modules)
      Running `target/modules`
