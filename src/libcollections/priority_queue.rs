@@ -515,14 +515,7 @@ impl<T: Ord> PriorityQueue<T> {
     }
 }
 
-/// Note: stage0-specific version that lacks bound on A.
-#[cfg(stage0)]
-pub struct Items <'a, T> {
-    iter: slice::Items<'a, T>,
-}
-
 /// `PriorityQueue` iterator.
-#[cfg(not(stage0))]
 pub struct Items <'a, T:'a> {
     iter: slice::Items<'a, T>,
 }

@@ -144,17 +144,7 @@ unsafe fn get_local_map<'a>() -> Option<&'a mut Map> {
 ///
 /// The task-local data can be accessed through this value, and when this
 /// structure is dropped it will return the borrow on the data.
-#[cfg(not(stage0))]
 pub struct Ref<T:'static> {
-    // FIXME #12808: strange names to try to avoid interfering with
-    // field accesses of the contained type via Deref
-    _inner: &'static TLDValueBox<T>,
-    _marker: marker::NoSend
-}
-
-/// stage0 only
-#[cfg(stage0)]
-pub struct Ref<T> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref
     _inner: &'static TLDValueBox<T>,

@@ -24,7 +24,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/master/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(macro_rules, phase, issue_5723_bootstrap)]
+#![feature(macro_rules, phase)]
 #![allow(missing_doc)]
 
 extern crate serialize;
@@ -662,14 +662,6 @@ pub mod writer {
     pub type EncodeResult = io::IoResult<()>;
 
     // rbml writing
-    #[cfg(stage0)]
-    pub struct Encoder<'a, W> {
-        pub writer: &'a mut W,
-        size_positions: Vec<uint>,
-    }
-
-    // rbml writing
-    #[cfg(not(stage0))]
     pub struct Encoder<'a, W:'a> {
         pub writer: &'a mut W,
         size_positions: Vec<uint>,

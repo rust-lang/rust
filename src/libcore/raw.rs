@@ -51,12 +51,6 @@ pub struct Procedure {
 ///
 /// This struct does not have a `Repr` implementation
 /// because there is no way to refer to all trait objects generically.
-#[cfg(stage0)]
-pub struct TraitObject {
-    pub vtable: *mut (),
-    pub data: *mut (),
-}
-#[cfg(not(stage0))]
 pub struct TraitObject {
     pub data: *mut (),
     pub vtable: *mut (),

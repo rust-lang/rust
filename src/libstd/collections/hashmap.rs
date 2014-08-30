@@ -409,32 +409,14 @@ mod table {
         assert_eq!(size_of::<SafeHash>(), size_of::<u64>())
     }
 
-    /// Note: stage0-specific version that lacks bound.
-    #[cfg(stage0)]
-    pub struct Entries<'a, K, V> {
-        table: &'a RawTable<K, V>,
-        idx: uint,
-        elems_seen: uint,
-    }
-
     /// Iterator over shared references to entries in a table.
-    #[cfg(not(stage0))]
     pub struct Entries<'a, K:'a, V:'a> {
         table: &'a RawTable<K, V>,
         idx: uint,
         elems_seen: uint,
     }
 
-    /// Note: stage0-specific version that lacks bound.
-    #[cfg(stage0)]
-    pub struct MutEntries<'a, K, V> {
-        table: &'a mut RawTable<K, V>,
-        idx: uint,
-        elems_seen: uint,
-    }
-
     /// Iterator over mutable references to entries in a table.
-    #[cfg(not(stage0))]
     pub struct MutEntries<'a, K:'a, V:'a> {
         table: &'a mut RawTable<K, V>,
         idx: uint,

@@ -701,30 +701,6 @@ mod imp {
     static IMAGE_FILE_MACHINE_IA64: libc::DWORD = 0x0200;
     static IMAGE_FILE_MACHINE_AMD64: libc::DWORD = 0x8664;
 
-    #[cfg(stage0)]
-    #[packed]
-    struct SYMBOL_INFO {
-        SizeOfStruct: libc::c_ulong,
-        TypeIndex: libc::c_ulong,
-        Reserved: [u64, ..2],
-        Index: libc::c_ulong,
-        Size: libc::c_ulong,
-        ModBase: u64,
-        Flags: libc::c_ulong,
-        Value: u64,
-        Address: u64,
-        Register: libc::c_ulong,
-        Scope: libc::c_ulong,
-        Tag: libc::c_ulong,
-        NameLen: libc::c_ulong,
-        MaxNameLen: libc::c_ulong,
-        // note that windows has this as 1, but it basically just means that
-        // the name is inline at the end of the struct. For us, we just bump
-        // the struct size up to MAX_SYM_NAME.
-        Name: [libc::c_char, ..MAX_SYM_NAME],
-    }
-
-    #[cfg(not(stage0))]
     #[repr(C, packed)]
     struct SYMBOL_INFO {
         SizeOfStruct: libc::c_ulong,

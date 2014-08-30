@@ -35,9 +35,6 @@
 // LLVM to optimize these function calls to themselves!
 #![no_builtins]
 
-// NOTE(stage0, pcwalton): Remove after snapshot.
-#![allow(unknown_features)]
-
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate debug;

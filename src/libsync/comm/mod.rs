@@ -386,15 +386,7 @@ pub struct Receiver<T> {
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
 #[unstable]
-#[cfg(not(stage0))]
 pub struct Messages<'a, T:'a> {
-    rx: &'a Receiver<T>
-}
-
-/// Stage0 only
-#[cfg(stage0)]
-#[unstable]
-pub struct Messages<'a, T> {
     rx: &'a Receiver<T>
 }
 
