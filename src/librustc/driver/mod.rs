@@ -33,6 +33,7 @@ use getopts;
 pub mod driver;
 pub mod session;
 pub mod config;
+pub mod pretty;
 
 
 pub fn main_args(args: &[String]) -> int {
@@ -96,11 +97,11 @@ fn run_compiler(args: &[String]) {
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
 
     let pretty = matches.opt_default("pretty", "normal").map(|a| {
-        parse_pretty(&sess, a.as_slice())
+        pretty::parse_pretty(&sess, a.as_slice())
     });
     match pretty {
         Some((ppm, opt_uii)) => {
-            driver::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
+            pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
             return;
         }
         None => {/* continue */ }
@@ -382,43 +383,6 @@ fn print_crate_info(sess: &Session,
     } else {
         false
     }
-}
-
-#[deriving(PartialEq, Show)]
-pub enum PpSourceMode {
-    PpmNormal,
-    PpmExpanded,
-    PpmTyped,
-    PpmIdentified,
-    PpmExpandedIdentified,
-}
-
-#[deriving(PartialEq, Show)]
-pub enum PpMode {
-    PpmSource(PpSourceMode),
-    PpmFlowGraph,
-}
-
-fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<driver::UserIdentifiedItem>) {
-    let mut split = name.splitn(1, '=');
-    let first = split.next().unwrap();
-    let opt_second = split.next();
-    let first = match first {
-        "normal"       => PpmSource(PpmNormal),
-        "expanded"     => PpmSource(PpmExpanded),
-        "typed"        => PpmSource(PpmTyped),
-        "expanded,identified" => PpmSource(PpmExpandedIdentified),
-        "identified"   => PpmSource(PpmIdentified),
-        "flowgraph"    => PpmFlowGraph,
-        _ => {
-            sess.fatal(format!(
-                "argument to `pretty` must be one of `normal`, \
-                 `expanded`, `flowgraph=<nodeid>`, `typed`, `identified`, \
-                 or `expanded,identified`; got {}", name).as_slice());
-        }
-    };
-    let opt_second = opt_second.and_then::<driver::UserIdentifiedItem>(from_str);
-    (first, opt_second)
 }
 
 fn parse_crate_attrs(sess: &Session, input: &Input) ->
