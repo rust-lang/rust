@@ -297,7 +297,7 @@ $ mv hello_world.rs src/hello_world.rs
 ```
 
 Cargo expects your source files to live inside a `src` directory. That leaves
-the top level for other things, like READMEs, licence information, and anything
+the top level for other things, like READMEs, license information, and anything
 not related to your code. Cargo helps us keep our projects nice and tidy. A
 place for everything, and everything in its place.
 
@@ -315,7 +315,7 @@ Put this inside:
 [package]
 
 name = "hello_world"
-version = "0.1.0"
+version = "0.0.1"
 authors = [ "Your name <you@example.com>" ]
 
 [[bin]]
@@ -630,7 +630,7 @@ In Rust, however, using `let` to introduce a binding is _not_ an expression. The
 following will produce a compile-time error:
 
 ```{ignore}
-let x = (let y = 5i); // found `let` in ident position
+let x = (let y = 5i); // expected identifier, found keyword `let`
 ```
 
 The compiler is telling us here that it was expecting to see the beginning of
@@ -1743,7 +1743,7 @@ fn main() {
 }
 ```
 
-Sometimes, this makes things more readable. Sometimes, less. Use your judgement
+Sometimes, this makes things more readable. Sometimes, less. Use your judgment
 here.
 
 That's all you need to get basic input from the standard input! It's not too
@@ -1813,7 +1813,7 @@ Try it out:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Hello, world!
 ```
@@ -1959,7 +1959,7 @@ Try running our new program a few times:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 7
@@ -2012,7 +2012,7 @@ And trying it out:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 57
@@ -2283,7 +2283,7 @@ print an error message and return. Let's give this a shot:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 17
@@ -2348,7 +2348,7 @@ Let's try it!
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 58
@@ -2425,7 +2425,7 @@ that `return`? If we give a non-number answer, we'll `return` and quit. Observe:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 59
@@ -2557,7 +2557,7 @@ Now we should be good! Let's try:
 
 ```{notrust,ignore}
 $ cargo run
-   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 61
@@ -2659,7 +2659,7 @@ modules, which can contain other modules, as deeply as you'd like.
 Note that we haven't mentioned anything about files yet. Rust does not impose a
 particular relationship between your filesystem structure and your module
 structure. That said, there is a conventional approach to how Rust looks for
-modules on the file system, but it's also overrideable.
+modules on the file system, but it's also overridable.
 
 Enough talk, let's build something! Let's make a new project called `modules`.
 
@@ -2670,10 +2670,10 @@ $ cargo new modules --bin
 
 Let's double check our work by compiling:
 
-```{bash,ignore}
-$ cargo build
+```{bash,notrust}
+$ cargo run
    Compiling modules v0.0.1 (file:///home/you/projects/modules)
-$ ./target/modules
+     Running `target/modules`
 Hello, world!
 ```
 
@@ -3011,7 +3011,7 @@ markers.
 Rust provides six attributes to indicate the stability level of various
 parts of your library. The six levels are:
 
-* deprecated: this item should no longer be used. No guarantee of backwards
+* deprecated: This item should no longer be used. No guarantee of backwards
   compatibility.
 * experimental: This item was only recently introduced or is otherwise in a
   state of flux. It may change significantly, or even be removed. No guarantee
@@ -3300,7 +3300,7 @@ To learn more, run the command again with --verbose.
 
 Rust can't find this function. That makes sense, as we didn't write it yet!
 
-In order to share this codes with our tests, we'll need to make a library crate.
+In order to share this code with our tests, we'll need to make a library crate.
 This is also just good software design: as we mentioned before, it's a good idea
 to put most of your functionality into a library crate, and have your executable
 crate use that library. This allows for code re-use.
@@ -3511,7 +3511,7 @@ exporting the name again, somewhere else.
 
 We've now covered the basics of testing. Rust's tools are primitive, but they
 work well in the simple cases. There are some Rustaceans working on building
-more complicated frameworks on top of all of this, but thery're just starting
+more complicated frameworks on top of all of this, but they're just starting
 out.
 
 # Pointers
@@ -5494,7 +5494,7 @@ fn main() {
 
 Whew! This isn't too terrible. You can see that we still `let x = 5i`,
 but then things get a little bit hairy. Three more bindings get set: a
-static format string, an argument vector, and the aruments. We then
+static format string, an argument vector, and the arguments. We then
 invoke the `println_args` function with the generated arguments.
 
 This is the code (well, the full version) that Rust actually compiles. You can
@@ -5510,7 +5510,7 @@ Guide can help you if you want to write your own.
 
 # Unsafe
 
-Finally, there's one more concept that you should be aware in Rust: `unsafe`.
+Finally, there's one more Rust concept that you should be aware of: `unsafe`.
 There are two circumstances where Rust's safety provisions don't work well.
 The first is when interfacing with C code, and the second is when building
 certain kinds of abstractions.

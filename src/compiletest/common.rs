@@ -130,6 +130,9 @@ pub struct Config {
     // Host triple for the compiler being invoked
     pub host: String,
 
+    // Version of GDB
+    pub gdb_version: Option<String>,
+
     // Path to the android tools
     pub android_cross_path: Path,
 

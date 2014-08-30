@@ -20,4 +20,4 @@
 #![feature = "foo"] //~ ERROR: malformed feature
 
 #![feature(test_removed_feature)] //~ ERROR: feature has been removed
-#![feature(test_accepted_feature)] //~ WARNING: feature has added
+#![feature(test_accepted_feature)] //~ WARNING: feature has been added

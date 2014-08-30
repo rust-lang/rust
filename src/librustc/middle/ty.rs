@@ -3305,6 +3305,11 @@ pub fn adjust_ty(cx: &ctxt,
                  -> ty::t {
     /*! See `expr_ty_adjusted` */
 
+    match get(unadjusted_ty).sty {
+        ty_err => return unadjusted_ty,
+        _ => {}
+    }
+
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {

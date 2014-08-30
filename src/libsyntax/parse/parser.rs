@@ -599,7 +599,7 @@ impl<'a> Parser<'a> {
             let token_str = self.this_token_to_string();
             let span = self.span;
             self.span_err(span,
-                          format!("found `{}` in ident position",
+                          format!("expected identifier, found keyword `{}`",
                                   token_str).as_slice());
         }
     }

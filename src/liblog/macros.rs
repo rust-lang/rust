@@ -24,11 +24,31 @@
 /// #![feature(phase)]
 /// #[phase(plugin, link)] extern crate log;
 ///
-/// # fn main() {
-/// log!(log::DEBUG, "this is a debug message");
-/// log!(log::WARN, "this is a warning {}", "message");
-/// log!(6, "this is a custom logging level: {level}", level=6u);
-/// # }
+/// fn main() {
+///     log!(log::WARN, "this is a warning {}", "message");
+///     log!(log::DEBUG, "this is a debug message");
+///     log!(6, "this is a custom logging level: {level}", level=6u);
+/// }
+/// ```
+///
+/// Assumes the binary is `main`:
+///
+/// ```{.bash}
+/// $ RUST_LOG=warn ./main
+/// WARN:main: this is a warning message
+/// ```
+///
+/// ```{.bash}
+/// $ RUST_LOG=debug ./main
+/// DEBUG:main: this is a debug message
+/// WARN:main: this is a warning message
+/// ```
+///
+/// ```{.bash}
+/// $ RUST_LOG=6 ./main
+/// DEBUG:main: this is a debug message
+/// WARN:main: this is a warning message
+/// 6:main: this is a custom logging level: 6
 /// ```
 #[macro_export]
 macro_rules! log(
@@ -53,11 +73,19 @@ macro_rules! log(
 /// #![feature(phase)]
 /// #[phase(plugin, link)] extern crate log;
 ///
-/// # fn main() {
-/// # let error = 3u;
-/// error!("the build has failed with error code: {}", error);
-/// # }
+/// fn main() {
+///     let error = 3u;
+///     error!("the build has failed with error code: {}", error);
+/// }
 /// ```
+///
+/// Assumes the binary is `main`:
+///
+/// ```{.bash}
+/// $ RUST_LOG=error ./main
+/// ERROR:main: the build has failed with error code: 3
+/// ```
+///
 #[macro_export]
 macro_rules! error(
     ($($arg:tt)*) => (log!(::log::ERROR, $($arg)*))
@@ -71,10 +99,17 @@ macro_rules! error(
 /// #![feature(phase)]
 /// #[phase(plugin, link)] extern crate log;
 ///
-/// # fn main() {
-/// # let code = 3u;
-/// warn!("you may like to know that a process exited with: {}", code);
-/// # }
+/// fn main() {
+///     let code = 3u;
+///     warn!("you may like to know that a process exited with: {}", code);
+/// }
+/// ```
+///
+/// Assumes the binary is `main`:
+///
+/// ```{.bash}
+/// $ RUST_LOG=warn ./main
+/// WARN:main: you may like to know that a process exited with: 3
 /// ```
 #[macro_export]
 macro_rules! warn(
@@ -89,10 +124,17 @@ macro_rules! warn(
 /// #![feature(phase)]
 /// #[phase(plugin, link)] extern crate log;
 ///
-/// # fn main() {
-/// # let ret = 3i;
-/// info!("this function is about to return: {}", ret);
-/// # }
+/// fn main() {
+///     let ret = 3i;
+///     info!("this function is about to return: {}", ret);
+/// }
+/// ```
+///
+/// Assumes the binary is `main`:
+///
+/// ```{.bash}
+/// $ RUST_LOG=info ./main
+/// INFO:main: this function is about to return: 3
 /// ```
 #[macro_export]
 macro_rules! info(
@@ -109,9 +151,16 @@ macro_rules! info(
 /// #![feature(phase)]
 /// #[phase(plugin, link)] extern crate log;
 ///
-/// # fn main() {
-/// debug!("x = {x}, y = {y}", x=10i, y=20i);
-/// # }
+/// fn main() {
+///     debug!("x = {x}, y = {y}", x=10i, y=20i);
+/// }
+/// ```
+///
+/// Assumes the binary is `main`:
+///
+/// ```{.bash}
+/// $ RUST_LOG=debug ./main
+/// DEBUG:main: x = 10, y = 20
 /// ```
 #[macro_export]
 macro_rules! debug(
@@ -126,14 +175,26 @@ macro_rules! debug(
 /// #![feature(phase)]
 /// #[phase(plugin, link)] extern crate log;
 ///
-/// # fn main() {
-/// # struct Point { x: int, y: int }
-/// # fn some_expensive_computation() -> Point { Point { x: 1, y: 2 } }
-/// if log_enabled!(log::DEBUG) {
-///     let x = some_expensive_computation();
-///     debug!("x.x = {}, x.y = {}", x.x, x.y);
+/// struct Point { x: int, y: int }
+/// fn some_expensive_computation() -> Point { Point { x: 1, y: 2 } }
+///
+/// fn main() {
+///     if log_enabled!(log::DEBUG) {
+///         let x = some_expensive_computation();
+///         debug!("x.x = {}, x.y = {}", x.x, x.y);
+///     }
 /// }
-/// # }
+/// ```
+///
+/// Assumes the binary is `main`:
+///
+/// ```{.bash}
+/// $ RUST_LOG=error ./main
+/// ```
+///
+/// ```{.bash}
+/// $ RUST_LOG=debug ./main
+/// DEBUG:main: x.x = 1, x.y = 2
 /// ```
 #[macro_export]
 macro_rules! log_enabled(
