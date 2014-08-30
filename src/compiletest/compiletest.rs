@@ -81,6 +81,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optflag("", "jit", "run tests under the JIT"),
           optopt("", "target", "the target to build for", "TARGET"),
           optopt("", "host", "the host to build for", "HOST"),
+          optopt("", "gdb-version", "the version of GDB used", "MAJOR.MINOR"),
           optopt("", "android-cross-path", "Android NDK standalone path", "PATH"),
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
@@ -157,6 +158,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         jit: matches.opt_present("jit"),
         target: opt_str2(matches.opt_str("target")),
         host: opt_str2(matches.opt_str("host")),
+        gdb_version: extract_gdb_version(matches.opt_str("gdb-version")),
         android_cross_path: opt_path(matches, "android-cross-path"),
         adb_path: opt_str2(matches.opt_str("adb-path")),
         adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
@@ -375,4 +377,27 @@ pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::Test
     test::DynMetricFn(proc(mm) {
         runtest::run_metrics(config, testfile, mm)
     })
+}
+
+fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
+    match full_version_line {
+        Some(ref full_version_line)
+          if full_version_line.as_slice().trim().len() > 0 => {
+            let full_version_line = full_version_line.as_slice().trim();
+
+            let re = Regex::new(r"(^|[^0-9])([0-9]\.[0-9])([^0-9]|$)").unwrap();
+
+            match re.captures(full_version_line) {
+                Some(captures) => {
+                    Some(captures.at(2).to_string())
+                }
+                None => {
+                    println!("Could not extract GDB version from line '{}'",
+                             full_version_line);
+                    None
+                }
+            }
+        },
+        _ => None
+    }
 }
