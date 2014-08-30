@@ -61,11 +61,6 @@ impl TyVisitor for MyVisitor {
     fn visit_char(&mut self) -> bool { true }
 
     fn visit_estr_slice(&mut self) -> bool { true }
-    // NOTE: remove after snapshot
-    #[cfg(stage0)]
-    fn visit_estr_fixed(&mut self,
-                        _sz: uint, _sz2: uint,
-                        _align: uint) -> bool { true }
 
     fn visit_box(&mut self, _mtbl: uint, _inner: *const TyDesc) -> bool { true }
     fn visit_uniq(&mut self, _mtbl: uint, _inner: *const TyDesc) -> bool { true }

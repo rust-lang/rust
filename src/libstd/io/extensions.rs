@@ -37,25 +37,6 @@ use ptr::RawPtr;
 ///
 /// Any error other than `EndOfFile` that is produced by the underlying Reader
 /// is returned by the iterator and should be handled by the caller.
-#[cfg(stage0)]
-pub struct Bytes<'r, T> {
-    reader: &'r mut T,
-}
-
-/// An iterator that reads a single byte on each iteration,
-/// until `.read_byte()` returns `EndOfFile`.
-///
-/// # Notes about the Iteration Protocol
-///
-/// The `Bytes` may yield `None` and thus terminate
-/// an iteration, but continue to yield elements if iteration
-/// is attempted again.
-///
-/// # Error
-///
-/// Any error other than `EndOfFile` that is produced by the underlying Reader
-/// is returned by the iterator and should be handled by the caller.
-#[cfg(not(stage0))]
 pub struct Bytes<'r, T:'r> {
     reader: &'r mut T,
 }

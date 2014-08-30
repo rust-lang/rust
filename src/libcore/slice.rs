@@ -1125,17 +1125,8 @@ impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
 
 /// An iterator over the slices of a vector separated by elements that
 /// match a predicate function.
-#[cfg(not(stage0))]
 #[experimental = "needs review"]
 pub struct Splits<'a, T:'a> {
-    v: &'a [T],
-    pred: |t: &T|: 'a -> bool,
-    finished: bool
-}
-
-/// Dox.
-#[cfg(stage0)]
-pub struct Splits<'a, T> {
     v: &'a [T],
     pred: |t: &T|: 'a -> bool,
     finished: bool
@@ -1192,17 +1183,8 @@ impl<'a, T> DoubleEndedIterator<&'a [T]> for Splits<'a, T> {
 
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
-#[cfg(not(stage0))]
 #[experimental = "needs review"]
 pub struct MutSplits<'a, T:'a> {
-    v: &'a mut [T],
-    pred: |t: &T|: 'a -> bool,
-    finished: bool
-}
-
-/// Dox
-#[cfg(stage0)]
-pub struct MutSplits<'a, T> {
     v: &'a mut [T],
     pred: |t: &T|: 'a -> bool,
     finished: bool
@@ -1270,17 +1252,8 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T> {
 
 /// An iterator over the slices of a vector separated by elements that
 /// match a predicate function, splitting at most a fixed number of times.
-#[cfg(not(stage0))]
 #[experimental = "needs review"]
 pub struct SplitsN<'a, T:'a> {
-    iter: Splits<'a, T>,
-    count: uint,
-    invert: bool
-}
-
-/// Dox.
-#[cfg(stage0)]
-pub struct SplitsN<'a, T> {
     iter: Splits<'a, T>,
     count: uint,
     invert: bool
@@ -1315,17 +1288,6 @@ impl<'a, T> Iterator<&'a [T]> for SplitsN<'a, T> {
 
 /// An iterator over the (overlapping) slices of length `size` within
 /// a vector.
-#[cfg(stage0)]
-#[deriving(Clone)]
-#[experimental = "needs review"]
-pub struct Windows<'a, T> {
-    v: &'a [T],
-    size: uint
-}
-
-/// An iterator over the (overlapping) slices of length `size` within
-/// a vector.
-#[cfg(not(stage0))]
 #[deriving(Clone)]
 #[experimental = "needs review"]
 pub struct Windows<'a, T:'a> {
@@ -1361,21 +1323,8 @@ impl<'a, T> Iterator<&'a [T]> for Windows<'a, T> {
 ///
 /// When the vector len is not evenly divided by the chunk size,
 /// the last slice of the iteration will be the remainder.
-#[cfg(stage0)]
 #[deriving(Clone)]
 #[experimental = "needs review"]
-pub struct Chunks<'a, T> {
-    v: &'a [T],
-    size: uint
-}
-
-/// An iterator over a vector in (non-overlapping) chunks (`size`
-/// elements at a time).
-///
-/// When the vector len is not evenly divided by the chunk size,
-/// the last slice of the iteration will be the remainder.
-#[cfg(not(stage0))]
-#[deriving(Clone)]
 pub struct Chunks<'a, T:'a> {
     v: &'a [T],
     size: uint
@@ -1447,16 +1396,8 @@ impl<'a, T> RandomAccessIterator<&'a [T]> for Chunks<'a, T> {
 /// An iterator over a vector in (non-overlapping) mutable chunks (`size`  elements at a time). When
 /// the vector len is not evenly divided by the chunk size, the last slice of the iteration will be
 /// the remainder.
-#[cfg(not(stage0))]
 #[experimental = "needs review"]
 pub struct MutChunks<'a, T:'a> {
-    v: &'a mut [T],
-    chunk_size: uint
-}
-
-/// Dox.
-#[cfg(stage0)]
-pub struct MutChunks<'a, T> {
     v: &'a mut [T],
     chunk_size: uint
 }
