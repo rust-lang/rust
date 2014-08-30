@@ -528,8 +528,8 @@ the `libc` module, and Rust links against `libc` and `libm` by default.
 # The "nullable pointer optimization"
 
 Certain types are defined to not be `null`. This includes references (`&T`,
-`&mut T`), owning pointers (`~T`), and function pointers (`extern "abi"
-fn()`). When interfacing with C, pointers that might be null are often used.
+`&mut T`), boxes (`Box<T>`), and function pointers (`extern "abi" fn()`).
+When interfacing with C, pointers that might be null are often used.
 As a special case, a generic `enum` that contains exactly two variants, one of
 which contains no data and the other containing a single field, is eligible
 for the "nullable pointer optimization". When such an enum is instantiated
