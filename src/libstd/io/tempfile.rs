@@ -12,7 +12,6 @@
 
 use io::{fs, IoResult};
 use io;
-use iter::range;
 use libc;
 use ops::Drop;
 use option::{Option, None, Some};
@@ -33,15 +32,16 @@ impl TempDir {
     /// will have the suffix `suffix`. The directory will be automatically
     /// deleted once the returned wrapper is destroyed.
     ///
-    /// If no directory can be created, None is returned.
-    pub fn new_in(tmpdir: &Path, suffix: &str) -> Option<TempDir> {
+    /// If no directory can be created, `Err` is returned.
+    pub fn new_in(tmpdir: &Path, suffix: &str) -> IoResult<TempDir> {
         if !tmpdir.is_absolute() {
             return TempDir::new_in(&os::make_absolute(tmpdir), suffix);
         }
 
         static mut CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 
-        for _ in range(0u, 1000) {
+        let mut attempts = 0u;
+        loop {
             let filename =
                 format!("rs-{}-{}-{}",
                         unsafe { libc::getpid() },
@@ -49,19 +49,23 @@ impl TempDir {
                         suffix);
             let p = tmpdir.join(filename);
             match fs::mkdir(&p, io::UserRWX) {
-                Err(..) => {}
-                Ok(()) => return Some(TempDir { path: Some(p), disarmed: false })
+                Err(error) => {
+                    if attempts >= 1000 {
+                        return Err(error)
+                    }
+                    attempts += 1;
+                }
+                Ok(()) => return Ok(TempDir { path: Some(p), disarmed: false })
             }
         }
-        None
     }
 
     /// Attempts to make a temporary directory inside of `os::tmpdir()` whose
     /// name will have the suffix `suffix`. The directory will be automatically
     /// deleted once the returned wrapper is destroyed.
     ///
-    /// If no directory can be created, None is returned.
-    pub fn new(suffix: &str) -> Option<TempDir> {
+    /// If no directory can be created, `Err` is returned.
+    pub fn new(suffix: &str) -> IoResult<TempDir> {
         TempDir::new_in(&os::tmpdir(), suffix)
     }
 

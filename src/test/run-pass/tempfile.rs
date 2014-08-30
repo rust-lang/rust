@@ -160,8 +160,8 @@ fn recursive_mkdir_rel_2() {
 pub fn test_rmdir_recursive_ok() {
     let rwx = io::UserRWX;
 
-    let tmpdir = TempDir::new("test").expect("test_rmdir_recursive_ok: \
-                                              couldn't create temp dir");
+    let tmpdir = TempDir::new("test").ok().expect("test_rmdir_recursive_ok: \
+                                                   couldn't create temp dir");
     let tmpdir = tmpdir.path();
     let root = tmpdir.join("foo");
 
@@ -190,7 +190,7 @@ pub fn dont_double_fail() {
 }
 
 fn in_tmpdir(f: ||) {
-    let tmpdir = TempDir::new("test").expect("can't make tmpdir");
+    let tmpdir = TempDir::new("test").ok().expect("can't make tmpdir");
     assert!(os::change_dir(tmpdir.path()));
 
     f();
