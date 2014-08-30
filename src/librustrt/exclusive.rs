@@ -26,17 +26,7 @@ pub struct Exclusive<T> {
     data: UnsafeCell<T>,
 }
 
-/// stage0 only
-#[cfg(stage0)]
-pub struct ExclusiveGuard<'a, T> {
-    // FIXME #12808: strange name to try to avoid interfering with
-    // field accesses of the contained type via Deref
-    _data: &'a mut T,
-    _guard: mutex::LockGuard<'a>,
-}
-
 /// An RAII guard returned via `lock`
-#[cfg(not(stage0))]
 pub struct ExclusiveGuard<'a, T:'a> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref

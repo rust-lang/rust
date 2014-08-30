@@ -23,9 +23,6 @@
 #![feature(unsafe_destructor, import_shadowing)]
 #![no_std]
 
-// NOTE(stage0, pcwalton): Remove after snapshot.
-#![allow(unknown_features)]
-
 #[phase(plugin, link)] extern crate core;
 extern crate unicode;
 extern crate alloc;

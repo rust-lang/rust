@@ -29,12 +29,8 @@
 
 #![feature(phase, globs, macro_rules, unsafe_destructor)]
 #![feature(import_shadowing)]
-#![feature(issue_5723_bootstrap)]
 #![deny(missing_doc)]
 #![no_std]
-
-// NOTE(stage0, pcwalton): Remove after snapshot.
-#![allow(unknown_features)]
 
 #[phase(plugin, link)] extern crate core;
 extern crate alloc;
