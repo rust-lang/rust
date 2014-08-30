@@ -90,11 +90,16 @@ pub fn main() {
     t!(format!("{:4s}", "a"), "a   ");
     t!(format!("{:>4s}", "a"), "   a");
     t!(format!("{:<4s}", "a"), "a   ");
+    t!(format!("{:^5s}", "a"),  "  a  ");
+    t!(format!("{:^5s}", "aa"), " aa  ");
+    t!(format!("{:^4s}", "a"),  " a  ");
+    t!(format!("{:^4s}", "aa"), " aa ");
     t!(format!("{:.4s}", "a"), "a");
     t!(format!("{:4.4s}", "a"), "a   ");
     t!(format!("{:4.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
     t!(format!("{:<4.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
     t!(format!("{:>4.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(format!("{:^4.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
     t!(format!("{:>10.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
     t!(format!("{:2.4s}", "aaaaa"), "aaaa");
     t!(format!("{:2.4s}", "aaaa"), "aaaa");
