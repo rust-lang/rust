@@ -333,7 +333,7 @@ argument := integer | identifier
 
 format_spec := [[fill]align][sign]['#'][0][width]['.' precision][type]
 fill := character
-align := '<' | '>'
+align := '<' | '^' | '>'
 sign := '+' | '-'
 width := count
 precision := count | '*'
@@ -357,6 +357,7 @@ parameter. This indicates that if the value being formatted is smaller than
 are specified by `fill`, and the alignment can be one of two options:
 
 * `<` - the argument is left-aligned in `width` columns
+* `^` - the argument is center-aligned in `width` columns
 * `>` - the argument is right-aligned in `width` columns
 
 ### Sign/#/0
