@@ -4000,7 +4000,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             }
             Some(def::DefTrait(def_id)) => {
                 span_err!(tcx.sess, path.span, E0159,
-                    "`{}` is a trait not a structure",
+                    "use of trait `{}` as a struct constructor",
                     pprust::path_to_string(path));
                 check_struct_fields_on_error(fcx,
                                              id,
