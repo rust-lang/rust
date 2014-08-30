@@ -4223,7 +4223,7 @@ don't need to declare one. This is different from named functions, which
 default to returning unit (`()`).
 
 There's one big difference between a closure and named functions, and it's in
-the name: a function "closes over its environment." What's that mean? It means
+the name: a closure "closes over its environment." What's that mean? It means
 this:
 
 ```{rust}
