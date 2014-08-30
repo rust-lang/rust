@@ -397,7 +397,7 @@ pub mod eabi {
 #[cfg(windows, target_arch = "x86_64", not(test))]
 #[doc(hidden)]
 #[allow(visible_private_types)]
-#[allow(non_camel_case_types)]
+#[allow(non_camel_case_types, non_snake_case)]
 pub mod eabi {
     use libunwind as uw;
     use libc::{c_void, c_int};
