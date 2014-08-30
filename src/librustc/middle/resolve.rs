@@ -23,7 +23,7 @@ use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate};
 use syntax::ast::{DeclItem, DefId, Expr, ExprAgain, ExprBreak, ExprField};
-use syntax::ast::{ExprFnBlock, ExprForLoop, ExprLoop, ExprMethodCall};
+use syntax::ast::{ExprFnBlock, ExprForLoop, ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprProc, ExprStruct, ExprUnboxedFn, FnDecl};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemEnum, ItemFn, ItemForeignMod};
@@ -5622,7 +5622,7 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr, ());
             }
 
-            ExprLoop(_, Some(label)) => {
+            ExprLoop(_, Some(label)) | ExprWhile(_, _, Some(label)) => {
                 self.with_label_rib(|this| {
                     let def_like = DlDef(DefLabel(expr.id));
 

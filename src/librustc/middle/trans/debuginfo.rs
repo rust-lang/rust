@@ -3512,7 +3512,7 @@ fn populate_scope_map(cx: &CrateContext,
                 }
             }
 
-            ast::ExprWhile(ref cond_exp, ref loop_body) => {
+            ast::ExprWhile(ref cond_exp, ref loop_body, _) => {
                 walk_expr(cx, &**cond_exp, scope_stack, scope_map);
 
                 with_new_scope(cx,

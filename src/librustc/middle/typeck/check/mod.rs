@@ -3757,7 +3757,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         check_then_else(fcx, &**cond, &**then_blk, opt_else_expr.clone(),
                         id, expr.span, expected);
       }
-      ast::ExprWhile(ref cond, ref body) => {
+      ast::ExprWhile(ref cond, ref body, _) => {
         check_expr_has_type(fcx, &**cond, ty::mk_bool());
         check_block_no_value(fcx, &**body);
         let cond_ty = fcx.expr_ty(&**cond);

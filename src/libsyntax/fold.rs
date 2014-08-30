@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1132,18 +1132,20 @@ pub fn noop_fold_expr<T: Folder>(e: Gc<Expr>, folder: &mut T) -> Gc<Expr> {
                    folder.fold_block(tr),
                    fl.map(|x| folder.fold_expr(x)))
         }
-        ExprWhile(cond, body) => {
-            ExprWhile(folder.fold_expr(cond), folder.fold_block(body))
+        ExprWhile(cond, body, opt_ident) => {
+            ExprWhile(folder.fold_expr(cond),
+                      folder.fold_block(body),
+                      opt_ident.map(|i| folder.fold_ident(i)))
         }
-        ExprForLoop(pat, iter, body, ref maybe_ident) => {
+        ExprForLoop(pat, iter, body, ref opt_ident) => {
             ExprForLoop(folder.fold_pat(pat),
                         folder.fold_expr(iter),
                         folder.fold_block(body),
-                        maybe_ident.map(|i| folder.fold_ident(i)))
+                        opt_ident.map(|i| folder.fold_ident(i)))
         }
         ExprLoop(body, opt_ident) => {
             ExprLoop(folder.fold_block(body),
-                     opt_ident.map(|x| folder.fold_ident(x)))
+                     opt_ident.map(|i| folder.fold_ident(i)))
         }
         ExprMatch(expr, ref arms) => {
             ExprMatch(folder.fold_expr(expr),
