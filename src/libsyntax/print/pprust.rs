@@ -33,6 +33,8 @@ use std::io;
 use std::mem;
 
 pub enum AnnNode<'a> {
+    NodeIdent(&'a ast::Ident),
+    NodeName(&'a ast::Name),
     NodeBlock(&'a ast::Block),
     NodeItem(&'a ast::Item),
     NodeExpr(&'a ast::Expr),
@@ -1729,14 +1731,16 @@ impl<'a> State<'a> {
     pub fn print_ident(&mut self, ident: ast::Ident) -> IoResult<()> {
         if self.encode_idents_with_hygiene {
             let encoded = ident.encode_with_hygiene();
-            word(&mut self.s, encoded.as_slice())
+            try!(word(&mut self.s, encoded.as_slice()))
         } else {
-            word(&mut self.s, token::get_ident(ident).get())
+            try!(word(&mut self.s, token::get_ident(ident).get()))
         }
+        self.ann.post(self, NodeIdent(&ident))
     }
 
     pub fn print_name(&mut self, name: ast::Name) -> IoResult<()> {
-        word(&mut self.s, token::get_name(name).get())
+        try!(word(&mut self.s, token::get_name(name).get()));
+        self.ann.post(self, NodeName(&name))
     }
 
     pub fn print_for_decl(&mut self, loc: &ast::Local,
