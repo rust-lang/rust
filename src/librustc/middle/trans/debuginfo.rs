@@ -3512,6 +3512,11 @@ fn populate_scope_map(cx: &CrateContext,
                 }
             }
 
+            ast::ExprIfLet(..) => {
+                cx.sess().span_bug(exp.span, "debuginfo::populate_scope_map() - \
+                                              Found unexpanded if-let.");
+            }
+
             ast::ExprWhile(ref cond_exp, ref loop_body) => {
                 walk_expr(cx, &**cond_exp, scope_stack, scope_map);
 
@@ -3590,7 +3595,7 @@ fn populate_scope_map(cx: &CrateContext,
                 }
             }
 
-            ast::ExprMatch(ref discriminant_exp, ref arms) => {
+            ast::ExprMatch(ref discriminant_exp, ref arms, _) => {
                 walk_expr(cx, &**discriminant_exp, scope_stack, scope_map);
 
                 // For each arm we have to first walk the pattern as these might

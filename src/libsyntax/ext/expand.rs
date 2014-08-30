@@ -66,6 +66,91 @@ fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             }
         }
 
+        // Desugar ExprIfLet
+        // From: `if let <pat> = <expr> <body> [<elseopt>]`
+        ast::ExprIfLet(pat, expr, body, mut elseopt) => {
+            let span = e.span;
+
+            // to:
+            //
+            //   match <expr> {
+            //     <pat> => <body>,
+            //     [_ if <elseopt_if_cond> => <elseopt_if_body>,]
+            //     _ => [<elseopt> | ()]
+            //   }
+
+            // `<pat> => <body>`
+            let pat_arm = {
+                let body_expr = fld.cx.expr_block(body);
+                fld.cx.arm(pat.span, vec![pat], body_expr)
+            };
+
+            // `[_ if <elseopt_if_cond> => <elseopt_if_body>,]`
+            let else_if_arms = {
+                let mut arms = vec![];
+                loop {
+                    // NOTE: replace with 'if let' after snapshot
+                    match elseopt {
+                        Some(els) => match els.node {
+                            // else if
+                            ast::ExprIf(cond, then, elseopt_) => {
+                                let pat_under = fld.cx.pat_wild(span);
+                                elseopt = elseopt_;
+                                arms.push(ast::Arm {
+                                    attrs: vec![],
+                                    pats: vec![pat_under],
+                                    guard: Some(cond),
+                                    body: fld.cx.expr_block(then)
+                                });
+                            }
+                            _ => break
+                        },
+                        None => break
+                    }
+                }
+                arms
+            };
+
+            // `_ => [<elseopt> | ()]`
+            let else_arm = {
+                let pat_under = fld.cx.pat_wild(span);
+                let else_expr = match elseopt {
+                    Some(els) => els,
+                    None => fld.cx.expr_lit(span, ast::LitNil)
+                };
+                fld.cx.arm(span, vec![pat_under], else_expr)
+            };
+
+            let mut arms = Vec::with_capacity(else_if_arms.len() + 2);
+            arms.push(pat_arm);
+            arms.push_all_move(else_if_arms);
+            arms.push(else_arm);
+
+            let match_expr = fld.cx.expr(span, ast::ExprMatch(expr, arms, ast::MatchIfLetDesugar));
+            fld.fold_expr(match_expr)
+        }
+
+        // Desugar support for ExprIfLet in the ExprIf else position
+        ast::ExprIf(cond, blk, elseopt) => {
+            let elseopt = elseopt.map(|els| match els.node {
+                ast::ExprIfLet(..) => {
+                    // wrap the if-let expr in a block
+                    let blk = P(ast::Block {
+                        view_items: vec![],
+                        stmts: vec![],
+                        expr: Some(els),
+                        id: ast::DUMMY_NODE_ID,
+                        rules: ast::DefaultBlock,
+                        span: els.span
+                    });
+                    fld.cx.expr_block(blk)
+                }
+                _ => els
+            });
+            let if_expr = fld.cx.expr(e.span, ast::ExprIf(cond, blk, elseopt));
+            noop_fold_expr(if_expr, fld)
+        }
+
         ast::ExprLoop(loop_block, opt_ident) => {
             let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
             fld.cx.expr(e.span, ast::ExprLoop(loop_block, opt_ident))

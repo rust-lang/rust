@@ -25,6 +25,7 @@ use std::gc::Gc;
 pub fn expr_requires_semi_to_be_stmt(e: Gc<ast::Expr>) -> bool {
     match e.node {
         ast::ExprIf(..)
+        | ast::ExprIfLet(..)
         | ast::ExprMatch(..)
         | ast::ExprBlock(_)
         | ast::ExprWhile(..)

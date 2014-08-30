@@ -775,6 +775,12 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
             visitor.visit_block(&**if_block, env.clone());
             walk_expr_opt(visitor, optional_else, env.clone())
         }
+        ExprIfLet(ref pattern, ref subexpression, ref if_block, optional_else) => {
+            visitor.visit_pat(&**pattern, env.clone());
+            visitor.visit_expr(&**subexpression, env.clone());
+            visitor.visit_block(&**if_block, env.clone());
+            walk_expr_opt(visitor, optional_else, env.clone())
+        }
         ExprWhile(ref subexpression, ref block) => {
             visitor.visit_expr(&**subexpression, env.clone());
             visitor.visit_block(&**block, env.clone())
@@ -785,7 +791,7 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
             visitor.visit_block(&**block, env.clone())
         }
         ExprLoop(ref block, _) => visitor.visit_block(&**block, env.clone()),
-        ExprMatch(ref subexpression, ref arms) => {
+        ExprMatch(ref subexpression, ref arms, _) => {
             visitor.visit_expr(&**subexpression, env.clone());
             for arm in arms.iter() {
                 visitor.visit_arm(arm, env.clone())

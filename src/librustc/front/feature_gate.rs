@@ -70,6 +70,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("unboxed_closures", Active),
     ("import_shadowing", Active),
 
+    ("if_let", Active),
+
     // if you change this list without updating src/doc/rust.md, cmr will be sad
 
     // A temporary feature gate used to enable parser extensions needed
@@ -336,6 +338,14 @@ impl<'a> Visitor<()> for Context<'a> {
                                   e.span,
                                   "unboxed closures are a work-in-progress \
                                    feature with known bugs");
+            }
+            ast::ExprIfLet(..) |
+            ast::ExprMatch(_, _, ast::MatchIfLetDesugar) => {
+                // note: at the point where we check feature-gates, the AST desugaring
+                // should not have happened, but the ExprMatch check is included just
+                // in case.
+                self.gate_feature("if_let", e.span,
+                                  "`if let` syntax is experimental");
             }
             _ => {}
         }

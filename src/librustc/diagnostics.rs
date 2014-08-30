@@ -19,6 +19,11 @@ register_diagnostic!(E0001, r##"
     one is too specific or the ordering is incorrect.
 "##)
 
+register_diagnostic!(E0159, r##"
+    This error is produced by an `if let` expression where the pattern is irrefutable.
+    An `if let` that can never fail is considered an error.
+"##)
+
 register_diagnostics!(
     E0002,
     E0003,

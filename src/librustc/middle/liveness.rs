@@ -491,6 +491,9 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::walk_expr(ir, expr, ());
       }
+      ExprIfLet(..) => {
+          ir.tcx.sess.span_bug(expr.span, "non-desugared ExprIfLet");
+      }
       ExprForLoop(ref pat, _, _, _) => {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
             debug!("adding local variable {} from for loop with bm {:?}",
@@ -1017,6 +1020,10 @@ impl<'a> Liveness<'a> {
             self.propagate_through_expr(&**cond, ln)
           }
 
+          ExprIfLet(..) => {
+              self.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprIfLet");
+          }
+
           ExprWhile(ref cond, ref blk) => {
             self.propagate_through_loop(expr,
                                         WhileLoop(cond.clone()),
@@ -1035,7 +1042,7 @@ impl<'a> Liveness<'a> {
             self.propagate_through_loop(expr, LoopLoop, &**blk, succ)
           }
 
-          ExprMatch(ref e, ref arms) => {
+          ExprMatch(ref e, ref arms, _) => {
             //
             //      (e)
             //       |
@@ -1452,6 +1459,9 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprUnboxedFn(..) |
       ExprPath(..) | ExprBox(..) | ExprForLoop(..) => {
         visit::walk_expr(this, expr, ());
+      }
+      ExprIfLet(..) => {
+        this.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprIfLet");
       }
     }
 }
