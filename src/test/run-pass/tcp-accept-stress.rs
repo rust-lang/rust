@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-macos #16872 spurious deadlock
+
 #![feature(phase)]
 
 #[phase(plugin)]
