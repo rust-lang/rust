@@ -28,8 +28,7 @@ use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use syntax::fold::{Folder, noop_fold_pat};
 use syntax::print::pprust::pat_to_string;
 use syntax::parse::token;
-use syntax::visit;
-use syntax::visit::{Visitor, FnKind};
+use syntax::visit::{mod, Visitor, FnKind};
 use util::ppaux::ty_to_string;
 
 struct Matrix(Vec<Vec<Gc<Pat>>>);
@@ -103,7 +102,9 @@ pub enum Constructor {
     /// Ranges of literal values (2..5).
     ConstantRange(const_val, const_val),
     /// Array patterns of length n.
-    Slice(uint)
+    Slice(uint),
+    /// Array patterns with a subslice.
+    SliceWithSubslice(uint, uint)
 }
 
 #[deriving(Clone, PartialEq)]
@@ -267,13 +268,6 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
                 seen = Matrix(rows);
             }
         }
-    }
-}
-
-fn raw_pat(p: Gc<Pat>) -> Gc<Pat> {
-    match p.node {
-        PatIdent(_, _, Some(s)) => { raw_pat(s) }
-        _ => { p }
     }
 }
 
@@ -821,6 +815,14 @@ pub fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
                     pats.push_all(after.as_slice());
                     Some(pats)
                 },
+                SliceWithSubslice(prefix, suffix)
+                    if before.len() == prefix
+                        && after.len() == suffix
+                        && slice.is_some() => {
+                    let mut pats = before.clone();
+                    pats.push_all(after.as_slice());
+                    Some(pats)
+                }
                 _ => None
             }
         }
