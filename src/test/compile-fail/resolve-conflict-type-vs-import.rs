@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::mem::transmute;
-//~^ ERROR import `transmute` conflicts with value in this module
+use std::slice::Items;
+//~^ ERROR import `Items` conflicts with type in this module
 
-fn transmute() {}
+struct Items;
 
 fn main() {
 }
