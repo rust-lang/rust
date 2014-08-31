@@ -395,8 +395,8 @@
                 if (window.location.pathname == dst.pathname) {
                     $('#search').addClass('hidden');
                     $('#main').removeClass('hidden');
+                    document.location.href = dst.href;
                 }
-                document.location.href = dst.href;
             }).on('mouseover', function() {
                 var $el = $(this);
                 clearTimeout(hoverTimeout);
@@ -451,7 +451,7 @@
                 shown = [];
 
                 results.forEach(function(item) {
-                    var name, type;
+                    var name, type, href, displayPath;
 
                     if (shown.indexOf(item) !== -1) {
                         return;
@@ -461,43 +461,35 @@
                     name = item.name;
                     type = itemTypes[item.ty];
 
-                    output += '<tr class="' + type + ' result"><td>';
-
                     if (type === 'mod') {
-                        output += item.path +
-                            '::<a href="' + rootPath +
-                            item.path.replace(/::/g, '/') + '/' +
-                            name + '/index.html" class="' +
-                            type + '">' + name + '</a>';
+                        displayPath = item.path + '::';
+                        href = rootPath + item.path.replace(/::/g, '/') + '/' +
+                               name + '/index.html';
                     } else if (type === 'static' || type === 'reexport') {
-                        output += item.path +
-                            '::<a href="' + rootPath +
-                            item.path.replace(/::/g, '/') +
-                            '/index.html" class="' + type +
-                            '">' + name + '</a>';
+                        displayPath = item.path + '::';
+                        href = rootPath + item.path.replace(/::/g, '/') +
+                               '/index.html';
                     } else if (item.parent !== undefined) {
                         var myparent = item.parent;
                         var anchor = '#' + type + '.' + name;
-                        output += item.path + '::' + myparent.name +
-                            '::<a href="' + rootPath +
-                            item.path.replace(/::/g, '/') +
-                            '/' + itemTypes[myparent.ty] +
-                            '.' + myparent.name +
-                            '.html' + anchor +
-                            '" class="' + type +
-                            '">' + name + '</a>';
+                        displayPath = item.path + '::' + myparent.name + '::';
+                        href = rootPath + item.path.replace(/::/g, '/') +
+                               '/' + itemTypes[myparent.ty] +
+                               '.' + myparent.name +
+                               '.html' + anchor;
                     } else {
-                        output += item.path +
-                            '::<a href="' + rootPath +
-                            item.path.replace(/::/g, '/') +
-                            '/' + type +
-                            '.' + name +
-                            '.html" class="' + type +
-                            '">' + name + '</a>';
+                        displayPath = item.path + '::';
+                        href = rootPath + item.path.replace(/::/g, '/') +
+                               '/' + type + '.' + name + '.html';
                     }
 
-                    output += '</td><td><span class="desc">' + item.desc +
-                        '</span></td></tr>';
+                    output += '<tr class="' + type + ' result"><td>' +
+                              '<a href="' + href + '">' +
+                              displayPath + '<span class="' + type + '">' +
+                              name + '</span></a></td><td>' +
+                              '<a href="' + href + '">' +
+                              '<span class="desc">' + item.desc +
+                              '&nbsp;</span></a></td></tr>';
                 });
             } else {
                 output += 'No results :( <a href="https://duckduckgo.com/?q=' +
