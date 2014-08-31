@@ -3668,15 +3668,20 @@ because it's easy. And if you need precise control over when something is
 deallocated, leaving it up to your runtime can make this difficult.
 
 Rust chooses a different path, and that path is called **ownership**. Any
-binding that creates a resource is the **owner** of that resource.  Being an
-owner gives you three privileges, with two restrictions:
+binding that creates a resource is the **owner** of that resource.
+
+Being an owner affords you some privileges:
 
 1. You control when that resource is deallocated.
 2. You may lend that resource, immutably, to as many borrowers as you'd like.
-3. You may lend that resource, mutably, to a single borrower. **BUT**
-4. Once you've done so, you may not also lend it out otherwise, mutably or
-   immutably.
-5. You may not lend it out mutably if you're currently lending it to someone.
+3. You may lend that resource, mutably, to a single borrower.
+
+But it also comes with some restrictions:
+
+1. If someone is borrowing your resource (either mutably or immutably), you may
+   not mutate the resource or mutably lend it to someone.
+2. If someone is mutably borrowing your resource, you may not lend it out at
+   all (mutably or immutably) or access it in any way.
 
 What's up with all this 'lending' and 'borrowing'? When you allocate memory,
 you get a pointer to that memory. This pointer allows you to manipulate said
