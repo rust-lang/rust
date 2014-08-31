@@ -545,8 +545,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> Gc<ast::Expr> {
     let mut visible_path = match cx.toplevel_reexport {
         Some(id) => vec![id],
         None => {
-            cx.sess.span_bug(
-                DUMMY_SP,
+            cx.sess.bug(
                 "expected to find top-level re-export name, but found None"
             );
         }
