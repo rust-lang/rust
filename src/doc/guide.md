@@ -3011,7 +3011,7 @@ markers.
 Rust provides six attributes to indicate the stability level of various
 parts of your library. The six levels are:
 
-* deprecated: this item should no longer be used. No guarantee of backwards
+* deprecated: This item should no longer be used. No guarantee of backwards
   compatibility.
 * experimental: This item was only recently introduced or is otherwise in a
   state of flux. It may change significantly, or even be removed. No guarantee
