@@ -5510,7 +5510,7 @@ Guide can help you if you want to write your own.
 
 # Unsafe
 
-Finally, there's one more concept that you should be aware in Rust: `unsafe`.
+Finally, there's one more Rust concept that you should be aware of: `unsafe`.
 There are two circumstances where Rust's safety provisions don't work well.
 The first is when interfacing with C code, and the second is when building
 certain kinds of abstractions.
