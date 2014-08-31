@@ -513,10 +513,9 @@ fn search_for_vtable(vcx: &VtableContext,
                                           is_early) {
             Some(ref substs) => (*substs).clone(),
             None => {
-                assert!(is_early);
                 // Bail out with a bogus answer
                 return Some(vtable_error);
-            }
+            },
         };
 
         debug!("The fixed-up substs are {} - \
@@ -565,12 +564,16 @@ fn fixup_substs(vcx: &VtableContext,
     let t = ty::mk_trait(tcx,
                          id, substs,
                          ty::region_existential_bound(ty::ReStatic));
-    fixup_ty(vcx, span, t, is_early).map(|t_f| {
-        match ty::get(t_f).sty {
-          ty::ty_trait(ref inner) => inner.substs.clone(),
-          _ => fail!("t_f should be a trait")
-        }
-    })
+    match fixup_ty(vcx, span, t, is_early) {
+        Some( t_f ) => {
+            match ty::get(t_f).sty {
+                ty::ty_trait(ref inner) => Some(inner.substs.clone()),
+                ty::ty_err => None,
+                _ => fail!("t_f should be a trait")
+            }
+        },
+        None => None
+    }
 }
 
 fn fixup_ty(vcx: &VtableContext,
