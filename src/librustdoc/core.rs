@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -80,7 +80,7 @@ pub struct CrateAnalysis {
 pub type Externs = HashMap<String, Vec<String>>;
 
 /// Parses, resolves, and typechecks the given crate
-fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>,
+fn get_ast_and_resolve(cpath: &Path, libs: Vec<Path>, cfgs: Vec<String>,
                        externs: Externs, triple: Option<String>)
                        -> (DocContext, CrateAnalysis) {
     use syntax::codemap::dummy_spanned;
@@ -153,7 +153,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>,
     })
 }
 
-pub fn run_core(libs: HashSet<Path>, cfgs: Vec<String>, externs: Externs,
+pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
                 path: &Path, triple: Option<String>)
                 -> (clean::Crate, CrateAnalysis) {
     let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs, externs, triple);

@@ -369,11 +369,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     info!("starting to run rustc");
     let (mut krate, analysis) = std::task::try(proc() {
         let cr = cr;
-        core::run_core(libs.move_iter().collect(),
-                       cfgs,
-                       externs,
-                       &cr,
-                       triple)
+        core::run_core(libs, cfgs, externs, &cr, triple)
     }).map_err(|boxed_any|format!("{:?}", boxed_any)).unwrap();
     info!("finished with rustc");
     analysiskey.replace(Some(analysis));
