@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 use std::cell::RefCell;
 
 trait Trait {}
 
 pub fn main() {
     let x: Vec<Trait + Sized> = Vec::new();
-    //~^ ERROR explicitly adding `Sized` bound to an unsized type `Trait+Sized`
-    //~^^ ERROR explicitly adding `Sized` bound to an unsized type `Trait+Sized`
-    let x: Vec<Box<Trait + Sized>> = Vec::new();
-    //~^ ERROR explicitly adding `Sized` bound to an unsized type `Trait+Sized`
-    //~^^ ERROR explicitly adding `Sized` bound to an unsized type `Trait+Sized`
+    //~^ ERROR instantiating a type parameter with an incompatible type `Trait+Sized`, which does not fulfill `Sized`
+    //~^^ ERROR instantiating a type parameter with an incompatible type `Trait+Sized`, which does not fulfill `Sized`
+    //~^^^ ERROR instantiating a type parameter with an incompatible type `Trait+Sized`, which does not fulfill `Sized`
     let x: Vec<Box<RefCell<Trait + Sized>>> = Vec::new();
-    //~^ ERROR explicitly adding `Sized` bound to an unsized type `Trait+Sized`
-    //~^^ ERROR explicitly adding `Sized` bound to an unsized type `Trait+Sized`
+    //~^ ERROR instantiating a type parameter with an incompatible type `Trait+Sized`, which does not fulfill `Sized`
+    //~^^ ERROR instantiating a type parameter with an incompatible type `Trait+Sized`, which does not fulfill `Sized`
 }
