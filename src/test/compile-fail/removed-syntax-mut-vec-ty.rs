@@ -9,5 +9,5 @@
 // except according to those terms.
 
 type v = [mut int];
-    //~^  ERROR found `mut` in ident position
+    //~^  ERROR expected identifier, found keyword `mut`
     //~^^ ERROR expected `]`, found `int`
