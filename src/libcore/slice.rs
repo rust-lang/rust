@@ -520,14 +520,14 @@ pub trait MutableSlice<'a, T> {
     fn mut_split(self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T>;
 
     /**
-     * Returns an iterator over `size` elements of the vector at a time.
-     * The chunks are mutable and do not overlap. If `size` does not divide the
-     * length of the vector, then the last chunk will not have length
-     * `size`.
+     * Returns an iterator over `chunk_size` elements of the vector at a time.
+     * The chunks are mutable and do not overlap. If `chunk_size` does
+     * not divide the length of the vector, then the last chunk will not
+     * have length `chunk_size`.
      *
      * # Failure
      *
-     * Fails if `size` is 0.
+     * Fails if `chunk_size` is 0.
      */
     fn mut_chunks(self, chunk_size: uint) -> MutChunks<'a, T>;
 
