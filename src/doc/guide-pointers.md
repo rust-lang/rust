@@ -729,6 +729,31 @@ This part is coming soon.
 
 This part is coming soon.
 
+# Patterns and `ref`
+
+When you're trying to match something that's stored in a pointer, there may be
+a situation where matching directly isn't the best option available. Let's see
+how to properly handle this:
+
+```{rust,ignore}
+fn possibly_print(x: &Option<String>) {
+    match *x {
+        // BAD: cannot move out of a `&`
+        Some(s) => println!("{}", s)
+
+        // GOOD: instead take a reference into the memory of the `Option`
+        Some(ref s) => println!("{}", *s),
+        None => {}
+    }
+}
+```
+
+The `ref s` here means that `s` will be of type `&String`, rather than type
+`String`.
+
+This is important when the type you're trying to get access to has a destructor
+and you don't want to move it, you just want a reference to it.
+
 # Cheat Sheet
 
 Here's a quick rundown of Rust's pointer types:
