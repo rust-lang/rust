@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,492 +7,451 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
 
-// NB. this is not deprecated for removal, just deprecating the
-// current implementation. If the major pain-points are addressed
-// (overuse of by-value self and .clone), this can be removed.
-#![deprecated = "the current implementation is extremely inefficient, \
-                 prefer a HashMap, TreeMap or TrieMap"]
-#![allow(deprecated)]
-
-//! Starting implementation of a B-tree for Rust.
-//! Structure inspired by Github user davidhalperin's gist.
-
-// A B-tree contains a root node (which contains a vector of elements),
-// a length (the height of the tree), and lower and upper bounds on the
-// number of elements that a given node can contain.
+// This implementation is largely based on the one described in *Open Data Structures*, which
+// can be freely downloaded at http://opendatastructures.org/, and whose contents are as of this
+// writing (August 2014) freely licensed under the following Creative Commons Attribution
+// License: [CC BY 2.5 CA](http://creativecommons.org/licenses/by/2.5/ca/).
 
 use core::prelude::*;
 
 use alloc::boxed::Box;
-use core::fmt;
-use core::fmt::Show;
-
-use MutableSeq;
 use vec::Vec;
+use core::mem;
+use core::iter::range_inclusive;
+use {Mutable, MutableMap, Map, MutableSeq};
 
-#[allow(missing_doc)]
-pub struct BTree<K, V> {
-    root: Node<K, V>,
-    len: uint,
-    lower_bound: uint,
-    upper_bound: uint
+/// "Order" of the B-tree, from which all other properties are derived
+static B: uint = 6;
+/// Maximum number of elements in a node
+static capacity: uint = 2 * B - 1;
+/// Minimum number of elements in a node
+static min_load: uint = B - 1;
+/// Maximum number of children in a node
+static edge_capacity: uint = capacity + 1;
+/// Amount to take off the tail of a node being split
+static split_len: uint = B - 1;
+
+/// Represents a search path for mutating
+type SearchStack<K,V> = Vec<(*mut Node<K,V>, uint)>;
+
+/// Represents the result of an Insertion: either the item fit, or the node had to split
+enum InsertionResult<K,V>{
+    Fit,
+    Split(K, V, Box<Node<K,V>>),
 }
 
-impl<K: Ord, V> BTree<K, V> {
-    /// Returns new `BTree` with root node (leaf) and user-supplied lower bound
-    /// The lower bound applies to every node except the root node.
-    pub fn new(k: K, v: V, lb: uint) -> BTree<K, V> {
+/// A B-Tree Node
+struct Node<K,V> {
+    length: uint,
+    keys: [Option<K>, ..capacity],
+    edges: [Option<Box<Node<K,V>>>, ..edge_capacity],
+    vals: [Option<V>, ..capacity],
+}
+
+
+/// A B-Tree of Order 6
+pub struct BTree<K,V>{
+    root: Option<Box<Node<K,V>>>,
+    length: uint,
+    depth: uint,
+}
+
+impl<K,V> BTree<K,V> {
+    /// Make a new empty BTree
+    pub fn new() -> BTree<K,V> {
         BTree {
-            root: Node::new_leaf(vec!(LeafElt::new(k, v))),
-            len: 1,
-            lower_bound: lb,
-            upper_bound: 2 * lb
-        }
-    }
-
-    /// Helper function for `clone`: returns new BTree with supplied root node,
-    /// length, and lower bound. For use when the length is known already.
-    fn new_with_node_len(n: Node<K, V>,
-                         length: uint,
-                         lb: uint) -> BTree<K, V> {
-        BTree {
-            root: n,
-            len: length,
-            lower_bound: lb,
-            upper_bound: 2 * lb
+            length: 0,
+            depth: 0,
+            root: None,
         }
     }
 }
 
-// We would probably want to remove the dependence on the Clone trait in the future.
-// It is here as a crutch to ensure values can be passed around through the tree's nodes
-// especially during insertions and deletions.
-impl<K: Clone + Ord, V: Clone> BTree<K, V> {
-    /// Returns the value of a given key, which may not exist in the tree.
-    /// Calls the root node's get method.
-    pub fn get(self, k: K) -> Option<V> {
-        return self.root.get(k);
-    }
+impl<K: Ord, V> Map<K,V> for BTree<K,V> {
+    // Searching in a B-Tree is pretty straightforward.
+    //
+    // Start at the root. Try to find the key in the current node. If we find it, return it.
+    // If it's not in there, follow the edge *before* the smallest key larger than
+    // the search key. If no such key exists (they're *all* smaller), then just take the last
+    // edge in the node. If we're in a leaf and we don't find our key, then it's not
+    // in the tree.
+    fn find(&self, key: &K) -> Option<&V> {
+        match self.root.as_ref() {
+            None => None,
+            Some(root) => {
+                let mut cur_node = &**root;
+                let leaf_depth = self.depth;
 
-    /// An insert method that uses the `clone` method for support.
-    pub fn insert(mut self, k: K, v: V) -> BTree<K, V> {
-        let (a, b) = self.root.clone().insert(k, v, self.upper_bound.clone());
-        if b {
-            match a.clone() {
-                LeafNode(leaf) => {
-                    self.root = Node::new_leaf(leaf.clone().elts);
+                'main: for cur_depth in range_inclusive(1, leaf_depth) {
+                    let is_leaf = leaf_depth == cur_depth;
+                    let node_len = cur_node.length;
+
+                    // linear search the node's keys because we're small
+                    // FIXME(Gankro): if we ever get generic integer arguments
+                    // to support variable choices of `B`, then this should be
+                    // tuned to fall into binary search at some arbitrary level
+                    for i in range(0, node_len) {
+                        match cur_node.keys[i].as_ref().unwrap().cmp(key) {
+                            Less => {}, // keep walkin' son
+                            Equal => return cur_node.vals[i].as_ref(),
+                            Greater => if is_leaf {
+                                return None
+                            } else {
+                                cur_node = &**cur_node.edges[i].as_ref().unwrap();
+                                continue 'main;
+                            }
+                        }
+                    }
+
+                    // all the keys are smaller than the one we're searching for
+                    if is_leaf {
+                        // We're a leaf, so that's it, it's just not in here
+                        return None
+                    } else {
+                        // We're an internal node, so we can always fall back to
+                        // the "everything bigger than my keys" edge: the last one
+                        cur_node = &**cur_node.edges[node_len].as_ref().unwrap();
+                    }
                 }
-                BranchNode(branch) => {
-                    self.root = Node::new_branch(branch.clone().elts,
-                                                 branch.clone().rightmost_child);
-                }
-            }
-        }
-        self
-    }
-}
-
-impl<K: Clone + Ord, V: Clone> Clone for BTree<K, V> {
-    fn clone(&self) -> BTree<K, V> {
-        BTree::new_with_node_len(self.root.clone(), self.len, self.lower_bound)
-    }
-}
-
-impl<K: Ord, V: Eq> PartialEq for BTree<K, V> {
-    fn eq(&self, other: &BTree<K, V>) -> bool {
-        self.root.cmp(&other.root) == Equal
-    }
-}
-
-impl<K: Ord, V: Eq> Eq for BTree<K, V> {}
-
-impl<K: Ord, V: Eq> PartialOrd for BTree<K, V> {
-    fn partial_cmp(&self, other: &BTree<K, V>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<K: Ord, V: Eq> Ord for BTree<K, V> {
-    /// Returns an ordering based on the root nodes of each `BTree`.
-    fn cmp(&self, other: &BTree<K, V>) -> Ordering {
-        self.root.cmp(&other.root)
-    }
-}
-
-impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for BTree<K, V> {
-    /// Returns a string representation of the `BTree`.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.root.fmt(f)
-    }
-}
-
-
-// Node types
-//
-// A node is either a LeafNode or a BranchNode, which contain either a Leaf or a Branch.
-// Branches contain BranchElts, which contain a left child (another node) and a key-value
-// pair. Branches also contain the rightmost child of the elements in the array.
-// Leaves contain LeafElts, which do not have children.
-enum Node<K, V> {
-    LeafNode(Leaf<K, V>),
-    BranchNode(Branch<K, V>)
-}
-
-
-impl<K: Ord, V> Node<K, V> {
-    /// Creates a new leaf node given a vector of elements.
-    fn new_leaf(vec: Vec<LeafElt<K, V>>) -> Node<K,V> {
-        LeafNode(Leaf::new(vec))
-    }
-
-    /// Creates a new branch node given a vector of an elements and a pointer to a rightmost child.
-    fn new_branch(vec: Vec<BranchElt<K, V>>, right: Box<Node<K, V>>)
-                  -> Node<K, V> {
-        BranchNode(Branch::new(vec, right))
-    }
-
-    /// Determines whether the given Node contains a Branch or a Leaf.
-    /// Used in testing.
-    fn is_leaf(&self) -> bool {
-        match self {
-            &LeafNode(..) => true,
-            &BranchNode(..) => false
-        }
-    }
-
-    /// A binary search function for Nodes.
-    /// Calls either the Branch's or the Leaf's bsearch function.
-    fn bsearch_node(&self, k: K) -> Option<uint> {
-         match self {
-             &LeafNode(ref leaf) => leaf.bsearch_leaf(k),
-             &BranchNode(ref branch) => branch.bsearch_branch(k)
-         }
-     }
-}
-
-impl<K: Clone + Ord, V: Clone> Node<K, V> {
-    /// Returns the corresponding value to the provided key.
-    /// `get()` is called in different ways on a branch or a leaf.
-    fn get(&self, k: K) -> Option<V> {
-        match *self {
-            LeafNode(ref leaf) => return leaf.get(k),
-            BranchNode(ref branch) => return branch.get(k)
-        }
-    }
-
-    /// Matches on the `Node`, then performs and returns the appropriate insert method.
-    fn insert(self, k: K, v: V, ub: uint) -> (Node<K, V>, bool) {
-        match self {
-            LeafNode(leaf) => leaf.insert(k, v, ub),
-            BranchNode(branch) => branch.insert(k, v, ub)
-        }
-    }
-}
-
-impl<K: Clone + Ord, V: Clone> Clone for Node<K, V> {
-    /// Returns a new `Node` based on whether or not it is a branch or a leaf.
-    fn clone(&self) -> Node<K, V> {
-        match *self {
-            LeafNode(ref leaf) => {
-                Node::new_leaf(leaf.elts.clone())
-            }
-            BranchNode(ref branch) => {
-                Node::new_branch(branch.elts.clone(),
-                                 branch.rightmost_child.clone())
+                unreachable!();
             }
         }
     }
 }
 
-impl<K: Ord, V: Eq> PartialEq for Node<K, V> {
-    fn eq(&self, other: &Node<K, V>) -> bool {
-        match *self{
-            BranchNode(ref branch) => {
-                if other.is_leaf() {
-                    return false;
-                }
-                match *other {
-                    BranchNode(ref branch2) => branch.cmp(branch2) == Equal,
-                    LeafNode(..) => false
-                }
-            }
-            LeafNode(ref leaf) => {
-                match *other {
-                    LeafNode(ref leaf2) => leaf.cmp(leaf2) == Equal,
-                    BranchNode(..) => false
-                }
-            }
-        }
-    }
-}
+impl<K: Ord, V> MutableMap<K,V> for BTree<K,V> {
+    // See `find` for implementation notes, this is basically a copy-paste with mut's added
+    fn find_mut(&mut self, key: &K) -> Option<&mut V> {
+        match self.root.as_mut() {
+            None => None,
+            Some(root) => {
+                // Borrowck hack
+                let mut temp_node = &mut **root;
+                let leaf_depth = self.depth;
 
-impl<K: Ord, V: Eq> Eq for Node<K, V> {}
+                'main: for cur_depth in range_inclusive(1, leaf_depth) {
+                    let cur_node = temp_node;
+                    let is_leaf = leaf_depth == cur_depth;
+                    let node_len = cur_node.length;
 
-impl<K: Ord, V: Eq> PartialOrd for Node<K, V> {
-    fn partial_cmp(&self, other: &Node<K, V>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
+                    for i in range(0, node_len) {
+                        match cur_node.keys[i].as_ref().unwrap().cmp(key) {
+                            Less => {},
+                            Equal => return cur_node.vals[i].as_mut(),
+                            Greater => if is_leaf {
+                                return None
+                            } else {
+                                temp_node = &mut **cur_node.edges[i].as_mut().unwrap();
+                                continue 'main;
+                            }
+                        }
+                    }
 
-impl<K: Ord, V: Eq> Ord for Node<K, V> {
-    /// Implementation of `Ord` for `Node`s.
-    fn cmp(&self, other: &Node<K, V>) -> Ordering {
-        match *self {
-            LeafNode(ref leaf) => {
-                match *other {
-                    LeafNode(ref leaf2) => leaf.cmp(leaf2),
-                    BranchNode(_) => Less
+                    if is_leaf {
+                        return None
+                    } else {
+                        temp_node = &mut **cur_node.edges[node_len].as_mut().unwrap();
+                    }
                 }
-            }
-            BranchNode(ref branch) => {
-                match *other {
-                    BranchNode(ref branch2) => branch.cmp(branch2),
-                    LeafNode(_) => Greater
-                }
+                unreachable!();
             }
         }
     }
-}
 
-impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for Node<K, V> {
-    /// Returns a string representation of a `Node`.
-    /// Will iterate over the Node and show `Key: x, value: y, child: ()`
-    /// for all elements in the `Node`. `child` only exists if the `Node` contains
-    /// a branch.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            LeafNode(ref leaf) => leaf.fmt(f),
-            BranchNode(ref branch) => branch.fmt(f),
+    // Insertion in a B-Tree is a bit complicated.
+    //
+    // First we do the same kind of search described in
+    // `find`. But we need to maintain a stack of all the nodes/edges in our search path.
+    // If we find a match for the key we're trying to insert, just swap the.vals and return the
+    // old ones. However, when we bottom out in a leaf, we attempt to insert our key-value pair
+    // at the same location we would want to follow another edge.
+    //
+    // If the node has room, then this is done in the obvious way by shifting elements. However,
+    // if the node itself is full, we split node into two, and give its median
+    // key-value pair to its parent to insert the new node with. Of course, the parent may also be
+    // full, and insertion can propogate until we reach the root. If we reach the root, and
+    // it is *also* full, then we split the root and place the two nodes under a newly made root.
+    //
+    // Note that we subtly deviate from Open Data Structures in our implementation of split.
+    // ODS describes inserting into the node *regardless* of its capacity, and then
+    // splitting *afterwards* if it happens to be overfull. However, this is inefficient.
+    // Instead, we split beforehand, and then insert the key-value pair into the appropriate
+    // result node. This has two consequences:
+    //
+    // 1) While ODS produces a left node of size B-1, and a right node of size B,
+    // we may potentially reverse this. However, this shouldn't effect the analysis.
+    //
+    // 2) While ODS may potentially return the pair we *just* inserted after
+    // the split, we will never do this. Again, this shouldn't effect the analysis.
+
+    fn swap(&mut self, mut key: K, mut value: V) -> Option<V> {
+        // FIXME(Gankro): this is gross because of the lexical borrows
+        // if pcwalton's work pans out, this can be made much better!
+        // See `find` for a more idealized structure
+        if self.root.is_none() {
+            self.root = Some(Node::make_leaf_root(key, value));
+            self.length += 1;
+            self.depth += 1;
+            None
+        } else {
+            let visit_stack = {
+                // We need this temp_node for borrowck wrangling
+                let mut temp_node = &mut **self.root.as_mut().unwrap();
+                let leaf_depth = self.depth;
+                // visit_stack is a stack of rawptrs to nodes paired with indices, respectively
+                // representing the nodes and edges of our search path. We have to store rawptrs
+                // because as far as Rust is concerned, we can mutate aliased data with such a
+                // stack. It is of course correct, but what it doesn't know is that we will only
+                // be popping and using these ptrs one at a time in `insert_stack`. The alternative
+                // to doing this is to take the Node boxes from their parents. This actually makes
+                // borrowck *really* happy and everything is pretty smooth. However, this creates
+                // *tons* of pointless writes, and requires us to always walk all the way back to
+                // the root after an insertion, even if we only needed to change a leaf. Therefore,
+                // we accept this potential unsafety and complexity in the name of performance.
+                let mut visit_stack = Vec::with_capacity(self.depth);
+
+                'main: for cur_depth in range_inclusive(1, leaf_depth) {
+                    let is_leaf = leaf_depth == cur_depth;
+                    let cur_node = temp_node;
+                    let node_len = cur_node.length;
+                    let cur_node_ptr = cur_node as *mut _;
+
+                    // See `find` for a description of this search
+                    for i in range(0, node_len) {
+                        let cmp = cur_node.keys[i].as_ref().unwrap().cmp(&key);
+                        match cmp {
+                            Less => {}, // keep walkin' son, she's too small
+                            Equal => {
+                                // Perfect match, swap the contents and return the old ones
+                                mem::swap(cur_node.vals[i].as_mut().unwrap(), &mut value);
+                                mem::swap(cur_node.keys[i].as_mut().unwrap(), &mut key);
+                                return Some(value);
+                            },
+                            Greater => if is_leaf {
+                                // We've found where to insert this key/value pair
+                                visit_stack.push((cur_node_ptr, i));
+                                break 'main;
+                            } else {
+                                // We've found the subtree to insert this key/value pair in
+                                visit_stack.push((cur_node_ptr, i));
+                                temp_node = &mut **cur_node.edges[i].as_mut().unwrap();
+                                continue 'main;
+                            }
+                        }
+                    }
+
+                    // all the keys are smaller than the one we're searching for, so try to go down
+                    // the last edge in our node
+                    visit_stack.push((cur_node_ptr, node_len));
+
+                    if is_leaf {
+                        // We're at a leaf, so we're done
+                        break 'main;
+                    } else {
+                        // We're at an internal node, so we need to keep going
+                        temp_node = &mut **cur_node.edges[node_len].as_mut().unwrap();
+                        continue 'main;
+                    }
+                }
+                visit_stack
+            };
+
+            // If we get here then we need to insert a new element
+            self.insert_stack(visit_stack, key, value);
+            None
+        }
+    }
+
+    // Deletion is the most complicated operation for a B-Tree.
+    //
+    // First we do the same kind of search described in
+    // `find`. But we need to maintain a stack of all the nodes/edges in our search path.
+    // If we don't find the key, then we just return `None` and do nothing. If we do find the
+    // key, we perform two operations: remove the item, and then possibly handle underflow.
+    //
+    // # removing the item
+    //      If the node is a leaf, we just remove the item, and shift
+    //      any items after it back to fill the hole.
+    //
+    //      If the node is an internal node, we *swap* the item with the smallest item in
+    //      in its right subtree (which must reside in a leaf), and then revert to the leaf
+    //      case
+    //
+    // # handling underflow
+    //      After removing an item, there may be too few items in the node. We want nodes
+    //      to be mostly full for efficiency, although we make an exception for the root, which
+    //      may have as few as one item. If this is the case, we may first try to steal
+    //      an item from our left or right neighbour.
+    //
+    //      To steal from the left (right) neighbour,
+    //      we take the largest (smallest) item and child from it. We then swap the taken item
+    //      with the item in their mutual parent that seperates them, and then insert the
+    //      parent's item and the taken child into the first (last) index of the underflowed node.
+    //
+    //      However, stealing has the possibility of underflowing our neighbour. If this is the
+    //      case, we instead *merge* with our neighbour. This of course reduces the number of
+    //      children in the parent. Therefore, we also steal the item that seperates the now
+    //      merged nodes, and insert it into the merged node.
+    //
+    //      Merging may cause the parent to underflow. If this is the case, then we must repeat
+    //      the underflow handling process on the parent. If merging merges the last two children
+    //      of the root, then we replace the root with the merged node.
+
+    fn pop(&mut self, key: &K) -> Option<V> {
+        // See `pop` for a discussion of why this is gross
+        if self.root.is_none() {
+            // We're empty, get lost!
+            None
+        } else {
+            let visit_stack = {
+                // We need this temp_node for borrowck wrangling
+                let mut temp_node = &mut **self.root.as_mut().unwrap();
+                let leaf_depth = self.depth;
+                // See `pop` for a description of this variable
+                let mut visit_stack = Vec::with_capacity(self.depth);
+
+                'main: for cur_depth in range_inclusive(1, leaf_depth) {
+                    let is_leaf = leaf_depth == cur_depth;
+                    let cur_node = temp_node;
+                    let node_len = cur_node.length;
+                    let cur_node_ptr = cur_node as *mut _;
+
+                    // See `find` for a description of this search
+                    for i in range(0, node_len) {
+                        let cmp = cur_node.keys[i].as_ref().unwrap().cmp(key);
+                        match cmp {
+                            Less => {}, // keep walkin' son, she's too small
+                            Equal => {
+                                // Perfect match. Terminate the stack here, and move to the
+                                // next phase (remove_stack).
+                                visit_stack.push((cur_node_ptr, i));
+                                break 'main;
+                            },
+                            Greater => if is_leaf {
+                                // The key isn't in this tree
+                                return None;
+                            } else {
+                                // We've found the subtree the key must be in
+                                visit_stack.push((cur_node_ptr, i));
+                                temp_node = &mut **cur_node.edges[i].as_mut().unwrap();
+                                continue 'main;
+                            }
+                        }
+                    }
+
+                    // all the keys are smaller than the one we're searching for, so try to go down
+                    // the last edge in our node
+                    if is_leaf {
+                        // We're at a leaf, so it's just not in here
+                        return None;
+                    } else {
+                        // We're at an internal node, so we need to keep going
+                        visit_stack.push((cur_node_ptr, node_len));
+                        temp_node = &mut **cur_node.edges[node_len].as_mut().unwrap();
+                        continue 'main;
+                    }
+                }
+                visit_stack
+            };
+
+            // If we get here then we found the key, let's remove it
+            Some(self.remove_stack(visit_stack))
         }
     }
 }
 
+impl<K,V> BTree<K,V> {
+    /// insert the key and value into the top element in the stack, and if that node has to split
+    /// recursively insert the split contents into the stack until splits stop. Then replace the
+    /// stack back into the tree.
+    ///
+    /// Assumes that the stack represents a search path from the root to a leaf, and that the
+    /// search path is non-empty
+    fn insert_stack(&mut self, mut stack: SearchStack<K,V>, key: K, value: V) {
+        self.length += 1;
 
-// A leaf is a vector with elements that contain no children. A leaf also
-// does not contain a rightmost child.
-struct Leaf<K, V> {
-    elts: Vec<LeafElt<K, V>>
-}
+        // Insert the key and value into the leaf at the top of the stack
+        let (node, index) = stack.pop().unwrap();
+        let mut insertion = unsafe {
+            (*node).insert_as_leaf(index, key, value)
+        };
 
-// Vector of values with children, plus a rightmost child (greater than all)
-struct Branch<K, V> {
-    elts: Vec<BranchElt<K,V>>,
-    rightmost_child: Box<Node<K, V>>,
-}
-
-
-impl<K: Ord, V> Leaf<K, V> {
-    /// Creates a new `Leaf` from a vector of `LeafElts`.
-    fn new(vec: Vec<LeafElt<K, V>>) -> Leaf<K, V> {
-        Leaf {
-            elts: vec
-        }
-    }
-
-    /// Searches a leaf for a spot for a new element using a binary search.
-    /// Returns `None` if the element is already in the vector.
-    fn bsearch_leaf(&self, k: K) -> Option<uint> {
-        let mut high: uint = self.elts.len();
-        let mut low: uint = 0;
-        let mut midpoint: uint = (high - low) / 2 ;
-        if midpoint == high {
-            midpoint = 0;
-        }
         loop {
-            let order = self.elts[midpoint].key.cmp(&k);
-            match order {
-                Equal => {
-                    return None;
+            match insertion {
+                Fit => {
+                    // The last insertion went off without a hitch, no splits! We can stop
+                    // inserting now.
+                    return;
                 }
-                Greater => {
-                    if midpoint > 0 {
-                        if self.elts[midpoint - 1].key.cmp(&k) == Less {
-                            return Some(midpoint);
-                        }
-                        else {
-                            let tmp = midpoint;
-                            midpoint = midpoint / 2;
-                            high = tmp;
-                            continue;
-                        }
+                Split(key, value, right) => match stack.pop() {
+                    // The last insertion triggered a split, so get the next element on the
+                    // stack to revursively insert the split node into.
+                    None => {
+                        // The stack was empty; we've split the root, and need to make a new one.
+                        let left = self.root.take().unwrap();
+                        self.root = Some(Node::make_internal_root(key, value, left, right));
+                        self.depth += 1;
+                        return;
                     }
-                    else {
-                        return Some(0);
-                    }
-                }
-                Less => {
-                    if midpoint + 1 < self.elts.len() {
-                        if self.elts[midpoint + 1].key.cmp(&k) == Greater {
-                            return Some(midpoint);
+                    Some((node, index)) => {
+                        // The stack wasn't empty, do the insertion and recurse
+                        unsafe {
+                            insertion = (*node).insert_as_internal(index, key, value, right);
                         }
-                        else {
-                            let tmp = midpoint;
-                            midpoint = (high + low) / 2;
-                            low = tmp;
-                        }
-                    }
-                    else {
-                        return Some(self.elts.len());
+                        continue;
                     }
                 }
             }
         }
     }
-}
 
+    /// Remove the key and value in the top element of the stack, then handle underflows
+    fn remove_stack(&mut self, mut stack: SearchStack<K,V>) -> V {
+        self.length -= 1;
 
-impl<K: Clone + Ord, V: Clone> Leaf<K, V> {
-    /// Returns the corresponding value to the supplied key.
-    fn get(&self, k: K) -> Option<V> {
-        for s in self.elts.iter() {
-            let order = s.key.cmp(&k);
-            match order {
-                Equal => return Some(s.value.clone()),
-                _ => {}
-            }
+        if stack.len() < self.depth {
+            // We found the key in an internal node, but that's annoying,
+            // so let's swap it with a leaf key and pretend we *did* find it in a leaf.
+            // Note that after calling this, the tree is in an inconsistent state, but will
+            // be consistent after we remove the swapped value just below
+            leafify_stack(&mut stack);
         }
-        return None;
-    }
 
-    /// Uses `clone()` to facilitate inserting new elements into a tree.
-    fn insert(mut self, k: K, v: V, ub: uint) -> (Node<K, V>, bool) {
-        let to_insert = LeafElt::new(k, v);
-        let index: Option<uint> = self.bsearch_leaf(to_insert.clone().key);
-        //Check index to see whether we actually inserted the element into the vector.
-        match index {
-            //If the index is None, the new element already exists in the vector.
-            None => {
-                return (Node::new_leaf(self.clone().elts), false);
-            }
-            //If there is an index, insert at that index.
-            Some(i) => {
-                if i >= self.elts.len() {
-                    self.elts.push(to_insert.clone());
-                }
-                else {
-                    self.elts.insert(i, to_insert.clone());
-                }
-            }
-        }
-        //If we have overfilled the vector (by making its size greater than the
-        //upper bound), we return a new Branch with one element and two children.
-        if self.elts.len() > ub {
-            let midpoint_opt = self.elts.remove(ub / 2);
-            let midpoint = midpoint_opt.unwrap();
-            let (left_leaf, right_leaf) = self.elts.partition(|le|
-                                                              le.key.cmp(&midpoint.key.clone())
-                                                              == Less);
-            let branch_return = Node::new_branch(vec!(BranchElt::new(midpoint.key.clone(),
-                                                                  midpoint.value.clone(),
-                                                             box Node::new_leaf(left_leaf))),
-                                            box Node::new_leaf(right_leaf));
-            return (branch_return, true);
-        }
-        (Node::new_leaf(self.elts.clone()), true)
-    }
-}
+        // Remove the key-value pair from the leaf, check if the node is underfull, and then
+        // promptly forget the leaf and ptr to avoid ownership issues
+        let (value, mut underflow) = unsafe {
+            let (node_ptr, index) = stack.pop().unwrap();
+            let node = &mut *node_ptr;
+            let (_key, value) = node.remove_as_leaf(index);
+            let underflow = node.length < min_load;
+            (value, underflow)
+        };
 
-impl<K: Clone + Ord, V: Clone> Clone for Leaf<K, V> {
-    /// Returns a new `Leaf` with the same elts.
-    fn clone(&self) -> Leaf<K, V> {
-        Leaf::new(self.elts.clone())
-    }
-}
-
-impl<K: Ord, V: Eq> PartialEq for Leaf<K, V> {
-    fn eq(&self, other: &Leaf<K, V>) -> bool {
-        self.elts == other.elts
-    }
-}
-
-impl<K: Ord, V: Eq> Eq for Leaf<K, V> {}
-
-impl<K: Ord, V: Eq> PartialOrd for Leaf<K, V> {
-    fn partial_cmp(&self, other: &Leaf<K, V>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<K: Ord, V: Eq> Ord for Leaf<K, V> {
-    /// Returns an ordering based on the first element of each `Leaf`.
-    fn cmp(&self, other: &Leaf<K, V>) -> Ordering {
-        if self.elts.len() > other.elts.len() {
-            return Greater;
-        }
-        if self.elts.len() < other.elts.len() {
-            return Less;
-        }
-        self.elts[0].cmp(&other.elts[0])
-    }
-}
-
-
-impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for Leaf<K, V> {
-    /// Returns a string representation of a `Leaf`.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, s) in self.elts.iter().enumerate() {
-            if i != 0 { try!(write!(f, " // ")) }
-            try!(write!(f, "{}", *s))
-        }
-        Ok(())
-    }
-}
-
-
-impl<K: Ord, V> Branch<K, V> {
-    /// Creates a new `Branch` from a vector of `BranchElts` and a rightmost child (a node).
-    fn new(vec: Vec<BranchElt<K, V>>, right: Box<Node<K, V>>)
-           -> Branch<K, V> {
-        Branch {
-            elts: vec,
-            rightmost_child: right
-        }
-    }
-
-    fn bsearch_branch(&self, k: K) -> Option<uint> {
-        let mut midpoint: uint = self.elts.len() / 2;
-        let mut high: uint = self.elts.len();
-        let mut low: uint = 0u;
-        if midpoint == high {
-            midpoint = 0u;
-        }
         loop {
-            let order = self.elts[midpoint].key.cmp(&k);
-            match order {
-                Equal => {
-                    return None;
+            match stack.pop() {
+                None => {
+                    // We've reached the root, so no matter what, we're done. We manually access
+                    // the root via the tree itself to avoid creating any dangling pointers.
+                    if self.root.as_ref().unwrap().length == 0 {
+                        // We've emptied out the root, so make its only child the new root.
+                        // If the root is a leaf, this will set the root to `None`
+                        self.depth -= 1;
+                        self.root = self.root.take().unwrap().edges[0].take();
+                    }
+                    return value;
                 }
-                Greater => {
-                    if midpoint > 0 {
-                        if self.elts[midpoint - 1].key.cmp(&k) == Less {
-                            return Some(midpoint);
+                Some((parent_ptr, index)) => {
+                    if underflow {
+                        // Underflow! Handle it!
+                        unsafe {
+                            let parent = &mut *parent_ptr;
+                            parent.handle_underflow(index);
+                            underflow = parent.length < min_load;
                         }
-                        else {
-                            let tmp = midpoint;
-                            midpoint = (midpoint - low) / 2;
-                            high = tmp;
-                            continue;
-                        }
-                    }
-                    else {
-                        return Some(0);
-                    }
-                }
-                Less => {
-                    if midpoint + 1 < self.elts.len() {
-                        if self.elts[midpoint + 1].key.cmp(&k) == Greater {
-                            return Some(midpoint);
-                        }
-                        else {
-                            let tmp = midpoint;
-                            midpoint = (high - midpoint) / 2;
-                            low = tmp;
-                        }
-                    }
-                    else {
-                        return Some(self.elts.len());
+                    } else {
+                        // All done!
+                        return value;
                     }
                 }
             }
@@ -500,420 +459,481 @@ impl<K: Ord, V> Branch<K, V> {
     }
 }
 
-impl<K: Clone + Ord, V: Clone> Branch<K, V> {
-    /// Returns the corresponding value to the supplied key.
-    /// If the key is not there, find the child that might hold it.
-    fn get(&self, k: K) -> Option<V> {
-        for s in self.elts.iter() {
-            let order = s.key.cmp(&k);
-            match order {
-                Less => return s.left.get(k),
-                Equal => return Some(s.value.clone()),
-                _ => {}
+impl<K,V> Node<K,V> {
+    /// Make a new node
+    fn new() -> Node<K,V> {
+        Node {
+            length: 0,
+            // FIXME(Gankro): this is gross, I guess you need a macro? [None, ..capacity] uses copy
+            keys:   [None, None, None, None, None, None, None, None, None, None, None],
+            vals: [None, None, None, None, None, None, None, None, None, None, None],
+            edges:  [None, None, None, None, None, None, None, None, None, None, None, None],
+        }
+    }
+
+
+    /// Make a leaf root from scratch
+    fn make_leaf_root(key: K, value: V) -> Box<Node<K,V>> {
+        let mut node = box Node::new();
+        node.insert_fit_as_leaf(0, key, value);
+        node
+    }
+
+    /// Make an internal root from scratch
+    fn make_internal_root(key: K, value: V, left: Box<Node<K,V>>, right: Box<Node<K,V>>)
+            -> Box<Node<K,V>> {
+        let mut node = box Node::new();
+        node.keys[0] = Some(key);
+        node.vals[0] = Some(value);
+        node.edges[0] = Some(left);
+        node.edges[1] = Some(right);
+        node.length = 1;
+        node
+    }
+
+    /// Try to insert this key-value pair at the given index in this internal node
+    /// If the node is full, we have to split it.
+    fn insert_as_leaf(&mut self, index: uint, key: K, value: V) -> InsertionResult<K,V> {
+        let len = self.length;
+        if len < capacity {
+            // The element can fit, just insert it
+            self.insert_fit_as_leaf(index, key, value);
+            Fit
+        } else {
+            // The element can't fit, this node is full. Split it into two nodes.
+            let (new_key, new_val, mut new_right) = self.split();
+            let left_len = self.length;
+
+            if index <= left_len {
+                self.insert_fit_as_leaf(index, key, value);
+            } else {
+                new_right.insert_fit_as_leaf(index - left_len - 1, key, value);
+            }
+
+            Split(new_key, new_val, new_right)
+        }
+    }
+
+    /// Try to insert this key-value pair at the given index in this internal node
+    /// If the node is full, we have to split it.
+    fn insert_as_internal(&mut self, index: uint, key: K, value: V, right: Box<Node<K,V>>)
+            -> InsertionResult<K,V> {
+        let len = self.length;
+        if len < capacity {
+            // The element can fit, just insert it
+            self.insert_fit_as_internal(index, key, value, right);
+            Fit
+        } else {
+            // The element can't fit, this node is full. Split it into two nodes.
+            let (new_key, new_val, mut new_right) = self.split();
+            let left_len = self.length;
+
+            if index <= left_len {
+                self.insert_fit_as_internal(index, key, value, right);
+            } else {
+                new_right.insert_fit_as_internal(index - left_len - 1, key, value, right);
+            }
+
+            Split(new_key, new_val, new_right)
+        }
+    }
+
+    /// We have somehow verified that this key-value pair will fit in this internal node,
+    /// so insert under that assumption.
+    fn insert_fit_as_leaf(&mut self, index: uint, key: K, value: V) {
+        let len = self.length;
+        shift_and_insert(self.keys.mut_slice_to(len + 1), index, Some(key));
+        shift_and_insert(self.vals.mut_slice_to(len + 1), index, Some(value));
+        self.length += 1;
+    }
+
+    /// We have somehow verified that this key-value pair will fit in this internal node,
+    /// so insert under that assumption
+    fn insert_fit_as_internal(&mut self, index: uint, key: K, value: V, right: Box<Node<K,V>>) {
+        let len = self.length;
+        shift_and_insert(self.keys.mut_slice_to(len + 1), index, Some(key));
+        shift_and_insert(self.vals.mut_slice_to(len + 1), index, Some(value));
+        shift_and_insert(self.edges.mut_slice_to(len + 2), index + 1, Some(right));
+        self.length += 1;
+    }
+
+    /// node is full, so split it into two nodes, and yield the middle-most key-value pair
+    /// because we have one too many, and our parent now has one too few
+    fn split(&mut self) -> (K, V, Box<Node<K, V>>) {
+        let mut right = box Node::new();
+
+        steal_last(self.vals.as_mut_slice(), right.vals.as_mut_slice(), split_len);
+        steal_last(self.keys.as_mut_slice(), right.keys.as_mut_slice(), split_len);
+        // FIXME(Gankro): This isn't necessary for leaf nodes
+        steal_last(self.edges.as_mut_slice(), right.edges.as_mut_slice(), split_len + 1);
+
+        // How much each node got
+        let left_len = capacity - split_len;
+        let right_len = split_len;
+
+        // But we're gonna pop one off the end of the left one, so subtract one
+        self.length = left_len - 1;
+        right.length = right_len;
+
+        // Pop it
+        let key = self.keys[left_len - 1].take().unwrap();
+        let val = self.vals[left_len - 1].take().unwrap();
+
+        (key, val, right)
+    }
+
+
+    /// Remove the key-value pair at the given index
+    fn remove_as_leaf(&mut self, index: uint) -> (K, V) {
+        let len = self.length;
+        let key = remove_and_shift(self.keys.mut_slice_to(len), index).unwrap();
+        let value = remove_and_shift(self.vals.mut_slice_to(len), index).unwrap();
+        self.length -= 1;
+        (key, value)
+    }
+
+    /// Handle an underflow in this node's child. We favour handling "to the left" because we know
+    /// we're empty, but our neighbour can be full. Handling to the left means when we choose to
+    /// steal, we pop off the end of our neighbour (always fast) and "unshift" ourselves
+    /// (always slow, but at least faster since we know we're half-empty).
+    /// Handling "to the right" reverses these roles. Of course, we merge whenever possible
+    /// because we want dense nodes, and merging is about equal work regardless of direction.
+    fn handle_underflow(&mut self, underflowed_child_index: uint) {
+        if underflowed_child_index > 0 {
+            self.handle_underflow_to_left(underflowed_child_index);
+        } else {
+            self.handle_underflow_to_right(underflowed_child_index);
+        }
+    }
+
+    fn handle_underflow_to_left(&mut self, underflowed_child_index: uint) {
+        // Right is underflowed. Try to steal from left,
+        // but merge left and right if left is low too.
+        let mut left = self.edges[underflowed_child_index - 1].take().unwrap();
+        let left_len = left.length;
+        if left_len > min_load {
+            // Steal! Stealing is roughly analagous to a binary tree rotation.
+            // In this case, we're "rotating" right.
+
+            // Take the biggest stuff off left
+            let mut key = remove_and_shift(left.keys.mut_slice_to(left_len), left_len - 1);
+            let mut val = remove_and_shift(left.vals.mut_slice_to(left_len), left_len - 1);
+            let edge = remove_and_shift(left.edges.mut_slice_to(left_len + 1), left_len);
+            left.length -= 1;
+
+            // Swap the parent's seperating key-value pair with left's
+            mem::swap(&mut self.keys[underflowed_child_index - 1], &mut key);
+            mem::swap(&mut self.vals[underflowed_child_index - 1], &mut val);
+
+            // Put them at the start of right
+            {
+                let right = self.edges[underflowed_child_index].as_mut().unwrap();
+                let right_len = right.length;
+                shift_and_insert(right.keys.mut_slice_to(right_len + 1), 0, key);
+                shift_and_insert(right.vals.mut_slice_to(right_len + 1), 0, val);
+                shift_and_insert(right.edges.mut_slice_to(right_len + 2), 0, edge);
+                right.length += 1;
+            }
+
+            // Put left back where we found it
+            self.edges[underflowed_child_index - 1] = Some(left);
+        } else {
+            // Merge! Left and right will be smooshed into one node, along with the key-value
+            // pair that seperated them in their parent.
+            let len = self.length;
+
+            // Permanently remove left's index, and the key-value pair that seperates
+            // left and right
+            let key = remove_and_shift(self.keys.mut_slice_to(len), underflowed_child_index - 1);
+            let val = remove_and_shift(self.vals.mut_slice_to(len), underflowed_child_index - 1);
+            remove_and_shift(self.edges.mut_slice_to(len + 1), underflowed_child_index - 1);
+
+            self.length -= 1;
+
+            // Give left right's stuff, and put left where right was. Note that all the indices
+            // in the parent have been shifted left at this point.
+            let right = self.edges[underflowed_child_index - 1].take().unwrap();
+            left.absorb(key, val, right);
+            self.edges[underflowed_child_index - 1] = Some(left);
+        }
+    }
+
+    fn handle_underflow_to_right(&mut self, underflowed_child_index: uint) {
+        // Left is underflowed. Try to steal from the right,
+        // but merge left and right if right is low too.
+        let mut right = self.edges[underflowed_child_index + 1].take().unwrap();
+        let right_len = right.length;
+        if right_len > min_load {
+            // Steal! Stealing is roughly analagous to a binary tree rotation.
+            // In this case, we're "rotating" left.
+
+            // Take the smallest stuff off right
+            let mut key = remove_and_shift(right.keys.mut_slice_to(right_len), 0);
+            let mut val = remove_and_shift(right.vals.mut_slice_to(right_len), 0);
+            let edge = remove_and_shift(right.edges.mut_slice_to(right_len + 1), 0);
+            right.length -= 1;
+
+            // Swap the parent's seperating key-value pair with right's
+            mem::swap(&mut self.keys[underflowed_child_index], &mut key);
+            mem::swap(&mut self.vals[underflowed_child_index], &mut val);
+
+            // Put them at the end of left
+            {
+                let left = self.edges[underflowed_child_index].as_mut().unwrap();
+                let left_len = left.length;
+                shift_and_insert(left.keys.mut_slice_to(left_len + 1), left_len, key);
+                shift_and_insert(left.vals.mut_slice_to(left_len + 1), left_len, val);
+                shift_and_insert(left.edges.mut_slice_to(left_len + 2), left_len + 1, edge);
+                left.length += 1;
+            }
+
+            // Put right back where we found it
+            self.edges[underflowed_child_index + 1] = Some(right);
+        } else {
+            // Merge! Left and right will be smooshed into one node, along with the key-value
+            // pair that seperated them in their parent.
+            let len = self.length;
+
+            // Permanently remove right's index, and the key-value pair that seperates
+            // left and right
+            let key = remove_and_shift(self.keys.mut_slice_to(len), underflowed_child_index);
+            let val = remove_and_shift(self.vals.mut_slice_to(len), underflowed_child_index);
+            remove_and_shift(self.edges.mut_slice_to(len + 1), underflowed_child_index + 1);
+
+            self.length -= 1;
+
+            // Give left right's stuff. Note that unlike handle_underflow_to_left, we don't need
+            // to compensate indices, and we don't need to put left "back".
+            let left = self.edges[underflowed_child_index].as_mut().unwrap();
+            left.absorb(key, val, right);
+        }
+    }
+
+    /// Take all the values from right, seperated by the given key and value
+    fn absorb(&mut self, key: Option<K>, value: Option<V>, mut right: Box<Node<K,V>>) {
+        let len = self.length;
+        let r_len = right.length;
+
+        self.keys[len] = key;
+        self.vals[len] = value;
+
+        merge(self.keys.mut_slice_to(len + r_len + 1), right.keys.mut_slice_to(r_len));
+        merge(self.vals.mut_slice_to(len + r_len + 1), right.vals.mut_slice_to(r_len));
+        merge(self.edges.mut_slice_to(len + r_len +  2), right.edges.mut_slice_to(r_len + 1));
+
+        self.length += r_len + 1;
+    }
+}
+
+/// Subroutine for removal. Takes a search stack for a key that terminates at an
+/// internal node, and makes it mutates the tree and search stack to make it a search
+/// stack for that key that terminates at a leaf. This leaves the tree in an inconsistent
+/// state that must be repaired by the caller by removing the key in question.
+fn leafify_stack<K,V>(stack: &mut SearchStack<K,V>) {
+    let (node_ptr, index) = stack.pop().unwrap();
+    unsafe {
+        // First, get ptrs to the found key-value pair
+        let node = &mut *node_ptr;
+        let (key_ptr, val_ptr) = {
+            (&mut node.keys[index] as *mut _, &mut node.vals[index] as *mut _)
+        };
+
+        // Go into the right subtree of the found key
+        stack.push((node_ptr, index + 1));
+        let mut temp_node = &mut **node.edges[index + 1].as_mut().unwrap();
+
+        loop {
+            // Walk into the smallest subtree of this
+            let node = temp_node;
+            let node_ptr = node as *mut _;
+            stack.push((node_ptr, 0));
+            let next = node.edges[0].as_mut();
+            if next.is_some() {
+                // This node is internal, go deeper
+                temp_node = &mut **next.unwrap();
+            } else {
+                // This node is a leaf, do the swap and return
+                mem::swap(&mut *key_ptr, &mut node.keys[0]);
+                mem::swap(&mut *val_ptr, &mut node.vals[0]);
+                break;
             }
         }
-        self.rightmost_child.get(k)
-    }
-
-    /// An insert method that uses `.clone()` for support.
-    fn insert(mut self, k: K, v: V, ub: uint) -> (Node<K, V>, bool) {
-        let mut new_branch = Node::new_branch(self.clone().elts, self.clone().rightmost_child);
-        let mut outcome = false;
-        let index: Option<uint> = new_branch.bsearch_node(k.clone());
-        //First, find which path down the tree will lead to the appropriate leaf
-        //for the key-value pair.
-        match index.clone() {
-            None => {
-                return (Node::new_branch(self.clone().elts,
-                                         self.clone().rightmost_child),
-                        outcome);
-            }
-            Some(i) => {
-                if i == self.elts.len() {
-                    let new_outcome = self.clone().rightmost_child.insert(k.clone(),
-                                                                          v.clone(),
-                                                                          ub.clone());
-                    new_branch = new_outcome.clone().val0();
-                    outcome = new_outcome.val1();
-                }
-                else {
-                    let new_outcome = self.elts[i].left.clone().insert(k.clone(),
-                                                                       v.clone(),
-                                                                       ub.clone());
-                    new_branch = new_outcome.clone().val0();
-                    outcome = new_outcome.val1();
-                }
-                //Check to see whether a branch or a leaf was returned from the
-                //tree traversal.
-                match new_branch.clone() {
-                    //If we have a leaf, we do not need to resize the tree,
-                    //so we can return false.
-                    LeafNode(..) => {
-                        if i == self.elts.len() {
-                            self.rightmost_child = box new_branch.clone();
-                        }
-                        else {
-                            self.elts.get_mut(i).left = box new_branch.clone();
-                        }
-                        return (Node::new_branch(self.clone().elts,
-                                                 self.clone().rightmost_child),
-                                true);
-                    }
-                    //If we have a branch, we might need to refactor the tree.
-                    BranchNode(..) => {}
-                }
-            }
-        }
-        //If we inserted something into the tree, do the following:
-        if outcome {
-            match new_branch.clone() {
-                //If we have a new leaf node, integrate it into the current branch
-                //and return it, saying we have inserted a new element.
-                LeafNode(..) => {
-                    if index.unwrap() == self.elts.len() {
-                        self.rightmost_child = box new_branch;
-                    }
-                    else {
-                        self.elts.get_mut(index.unwrap()).left = box new_branch;
-                    }
-                    return (Node::new_branch(self.clone().elts,
-                                             self.clone().rightmost_child),
-                            true);
-                }
-                //If we have a new branch node, attempt to insert it into the tree
-                //as with the key-value pair, then check to see if the node is overfull.
-                BranchNode(branch) => {
-                    let new_elt = branch.elts[0].clone();
-                    let new_elt_index = self.bsearch_branch(new_elt.clone().key);
-                    match new_elt_index {
-                        None => {
-                            return (Node::new_branch(self.clone().elts,
-                                                     self.clone().rightmost_child),
-                                    false);
-                            }
-                        Some(i) => {
-                            self.elts.insert(i, new_elt);
-                            if i + 1 >= self.elts.len() {
-                                self.rightmost_child = branch.clone().rightmost_child;
-                            }
-                            else {
-                                self.elts.get_mut(i + 1).left =
-                                    branch.clone().rightmost_child;
-                            }
-                        }
-                    }
-                }
-            }
-            //If the current node is overfilled, create a new branch with one element
-            //and two children.
-            if self.elts.len() > ub {
-                let midpoint = self.elts.remove(ub / 2).unwrap();
-                let (new_left, new_right) = self.clone().elts.partition(|le|
-                                                                midpoint.key.cmp(&le.key)
-                                                                        == Greater);
-                new_branch = Node::new_branch(
-                    vec!(BranchElt::new(midpoint.clone().key,
-                                     midpoint.clone().value,
-                                     box Node::new_branch(new_left,
-                                                       midpoint.clone().left))),
-                    box Node::new_branch(new_right, self.clone().rightmost_child));
-                return (new_branch, true);
-            }
-        }
-        (Node::new_branch(self.elts.clone(), self.rightmost_child.clone()), outcome)
     }
 }
 
-impl<K: Clone + Ord, V: Clone> Clone for Branch<K, V> {
-    /// Returns a new branch using the clone methods of the `Branch`'s internal variables.
-    fn clone(&self) -> Branch<K, V> {
-        Branch::new(self.elts.clone(), self.rightmost_child.clone())
+/// Basically `Vec.insert(index)`. Assumes that the last element in the slice is
+/// Somehow "empty" and can be overwritten.
+fn shift_and_insert<T>(slice: &mut [T], index: uint, elem: T) {
+    // FIXME(Gankro): This should probably be a copy_memory and a write?
+    for i in range(index, slice.len() - 1).rev() {
+        slice.swap(i, i + 1);
+    }
+    slice[index] = elem;
+}
+
+/// Basically `Vec.remove(index)`.
+fn remove_and_shift<T>(slice: &mut [Option<T>], index: uint) -> Option<T> {
+    let result = slice[index].take();
+    // FIXME(Gankro): This should probably be a copy_memory and write?
+    for i in range(index, slice.len() - 1) {
+        slice.swap(i, i + 1);
+    }
+    result
+}
+
+/// Subroutine for splitting a node. Put the `split_len` last elements from left,
+/// (which should be full) and put them at the start of right (which should be empty)
+fn steal_last<T>(left: &mut[T], right: &mut[T], amount: uint) {
+    // Is there a better way to do this?
+    // Maybe copy_nonoverlapping_memory and then bulk None out the old Location?
+    let offset = left.len() - amount;
+    for (a,b) in left.mut_slice_from(offset).mut_iter()
+            .zip(right.mut_slice_to(amount).mut_iter()) {
+        mem::swap(a, b);
     }
 }
 
-impl<K: Ord, V: Eq> PartialEq for Branch<K, V> {
-    fn eq(&self, other: &Branch<K, V>) -> bool {
-        self.elts == other.elts
+/// Subroutine for merging the contents of right into left
+/// Assumes left has space for all of right
+fn merge<T>(left: &mut[Option<T>], right: &mut[Option<T>]) {
+    let left_len = left.len();
+    let right_len = right.len();
+    for i in range(0, right_len) {
+        left[left_len - right_len + i] = right[i].take();
     }
 }
 
-impl<K: Ord, V: Eq> Eq for Branch<K, V> {}
-
-impl<K: Ord, V: Eq> PartialOrd for Branch<K, V> {
-    fn partial_cmp(&self, other: &Branch<K, V>) -> Option<Ordering> {
-        Some(self.cmp(other))
+impl<K,V> Collection for BTree<K,V>{
+    fn len(&self) -> uint {
+        self.length
     }
 }
 
-impl<K: Ord, V: Eq> Ord for Branch<K, V> {
-    /// Compares the first elements of two `Branch`es to determine an
-    /// `Ordering`.
-    fn cmp(&self, other: &Branch<K, V>) -> Ordering {
-        if self.elts.len() > other.elts.len() {
-            return Greater;
-        }
-        if self.elts.len() < other.elts.len() {
-            return Less;
-        }
-        self.elts[0].cmp(&other.elts[0])
-    }
-}
-
-impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for Branch<K, V> {
-    /// Returns a string representation of a `Branch`.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, s) in self.elts.iter().enumerate() {
-            if i != 0 { try!(write!(f, " // ")) }
-            try!(write!(f, "{}", *s))
-        }
-        write!(f, " // rightmost child: ({}) ", *self.rightmost_child)
-    }
-}
-
-//A LeafElt contains no left child, but a key-value pair.
-struct LeafElt<K, V> {
-    key: K,
-    value: V
-}
-
-//A BranchElt has a left child in insertion to a key-value pair.
-struct BranchElt<K, V> {
-    left: Box<Node<K, V>>,
-    key: K,
-    value: V
-}
-
-impl<K: Ord, V> LeafElt<K, V> {
-    /// Creates a new `LeafElt` from a supplied key-value pair.
-    fn new(k: K, v: V) -> LeafElt<K, V> {
-        LeafElt {
-            key: k,
-            value: v
-        }
-    }
-}
-
-impl<K: Clone + Ord, V: Clone> Clone for LeafElt<K, V> {
-    /// Returns a new `LeafElt` by cloning the key and value.
-    fn clone(&self) -> LeafElt<K, V> {
-        LeafElt::new(self.key.clone(), self.value.clone())
-    }
-}
-
-impl<K: Ord, V: Eq> PartialEq for LeafElt<K, V> {
-    fn eq(&self, other: &LeafElt<K, V>) -> bool {
-        self.key == other.key && self.value == other.value
-    }
-}
-
-impl<K: Ord, V: Eq> Eq for LeafElt<K, V> {}
-
-impl<K: Ord, V: Eq> PartialOrd for LeafElt<K, V> {
-    fn partial_cmp(&self, other: &LeafElt<K, V>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<K: Ord, V: Eq> Ord for LeafElt<K, V> {
-    /// Returns an ordering based on the keys of the `LeafElt`s.
-    fn cmp(&self, other: &LeafElt<K, V>) -> Ordering {
-        self.key.cmp(&other.key)
-    }
-}
-
-impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for LeafElt<K, V> {
-    /// Returns a string representation of a `LeafElt`.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Key: {}, value: {};", self.key, self.value)
-    }
-}
-
-impl<K: Ord, V> BranchElt<K, V> {
-    /// Creates a new `BranchElt` from a supplied key, value, and left child.
-    fn new(k: K, v: V, n: Box<Node<K, V>>) -> BranchElt<K, V> {
-        BranchElt {
-            left: n,
-            key: k,
-            value: v
-        }
+impl<K,V> Mutable for BTree<K,V> {
+    fn clear(&mut self) {
+        // Note that this will trigger a lot of recursive destructors, but BTrees can't get
+        // very deep, so we won't worry about it for now.
+        self.root = None;
+        self.depth = 0;
+        self.length = 0;
     }
 }
 
 
-impl<K: Clone + Ord, V: Clone> Clone for BranchElt<K, V> {
-    /// Returns a new `BranchElt` by cloning the key, value, and left child.
-    fn clone(&self) -> BranchElt<K, V> {
-        BranchElt::new(self.key.clone(),
-                       self.value.clone(),
-                       self.left.clone())
-    }
-}
 
-impl<K: Ord, V: Eq> PartialEq for BranchElt<K, V>{
-    fn eq(&self, other: &BranchElt<K, V>) -> bool {
-        self.key == other.key && self.value == other.value
-    }
-}
 
-impl<K: Ord, V: Eq> Eq for BranchElt<K, V>{}
-
-impl<K: Ord, V: Eq> PartialOrd for BranchElt<K, V> {
-    fn partial_cmp(&self, other: &BranchElt<K, V>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<K: Ord, V: Eq> Ord for BranchElt<K, V> {
-    /// Fulfills `Ord` for `BranchElts`.
-    fn cmp(&self, other: &BranchElt<K, V>) -> Ordering {
-        self.key.cmp(&other.key)
-    }
-}
-
-impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for BranchElt<K, V> {
-    /// Formats as a string containing the key, value, and child (which should recur to a
-    /// leaf). Consider changing in future to be more readable.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Key: {}, value: {}, (child: {})",
-               self.key, self.value, *self.left)
-    }
-}
 
 #[cfg(test)]
-mod test_btree {
+mod test {
     use std::prelude::*;
 
-    use super::{BTree, Node, LeafElt};
-
-    use MutableSeq;
-
-    //Tests the functionality of the insert methods (which are unfinished).
-    #[test]
-    fn insert_test_one() {
-        let b = BTree::new(1i, "abc".to_string(), 2);
-        let is_insert = b.insert(2i, "xyz".to_string());
-        assert!(is_insert.root.is_leaf());
-    }
+    use super::BTree;
+    use {Map, MutableMap, Mutable, MutableSeq};
 
     #[test]
-    fn insert_test_two() {
-        let leaf_elt_1 = LeafElt::new(1i, "aaa".to_string());
-        let leaf_elt_2 = LeafElt::new(2i, "bbb".to_string());
-        let leaf_elt_3 = LeafElt::new(3i, "ccc".to_string());
-        let n = Node::new_leaf(vec!(leaf_elt_1, leaf_elt_2, leaf_elt_3));
-        let b = BTree::new_with_node_len(n, 3, 2);
-        //println!("{}", b.clone().insert(4, "ddd".to_string()).to_string());
-        assert!(b.insert(4, "ddd".to_string()).root.is_leaf());
+    fn test_basic() {
+        let mut map = BTree::new();
+        assert_eq!(map.len(), 0);
+
+        for i in range(0u, 10000) {
+            assert_eq!(map.swap(i, 10*i), None);
+            assert_eq!(map.len(), i + 1);
+        }
+
+        for i in range(0u, 10000) {
+            assert_eq!(map.find(&i).unwrap(), &(i*10));
+        }
+
+        for i in range(10000, 20000) {
+            assert_eq!(map.find(&i), None);
+        }
+
+        for i in range(0u, 10000) {
+            assert_eq!(map.swap(i, 100*i), Some(10*i));
+            assert_eq!(map.len(), 10000);
+        }
+
+        for i in range(0u, 10000) {
+            assert_eq!(map.find(&i).unwrap(), &(i*100));
+        }
+
+        for i in range(0u, 5000) {
+            assert_eq!(map.pop(&(i*2)), Some(i*200));
+            assert_eq!(map.len(), 10000 - i - 1);
+        }
+
+        for i in range(0u, 5000) {
+            assert_eq!(map.find(&(2*i)), None);
+            assert_eq!(map.find(&(2*i+1)).unwrap(), &(i*200 + 100));
+        }
+
+        for i in range(0u, 5000) {
+            assert_eq!(map.pop(&(2*i)), None);
+            assert_eq!(map.pop(&(2*i+1)), Some(i*200 + 100));
+            assert_eq!(map.len(), 5000 - i - 1);
+        }
+    }
+}
+
+
+
+
+#[cfg(test)]
+mod bench {
+    use test::Bencher;
+
+    use super::BTree;
+    use deque::bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
+
+    // Find seq
+    #[bench]
+    pub fn insert_rand_100(b: &mut Bencher) {
+        let mut m : BTree<uint,uint> = BTree::new();
+        insert_rand_n(100, &mut m, b);
     }
 
-    #[test]
-    fn insert_test_three() {
-        let leaf_elt_1 = LeafElt::new(1i, "aaa".to_string());
-        let leaf_elt_2 = LeafElt::new(2i, "bbb".to_string());
-        let leaf_elt_3 = LeafElt::new(3i, "ccc".to_string());
-        let leaf_elt_4 = LeafElt::new(4i, "ddd".to_string());
-        let n = Node::new_leaf(vec!(leaf_elt_1, leaf_elt_2, leaf_elt_3, leaf_elt_4));
-        let b = BTree::new_with_node_len(n, 3, 2);
-        //println!("{}", b.clone().insert(5, "eee".to_string()).to_string());
-        assert!(!b.insert(5, "eee".to_string()).root.is_leaf());
+    #[bench]
+    pub fn insert_rand_10_000(b: &mut Bencher) {
+        let mut m : BTree<uint,uint> = BTree::new();
+        insert_rand_n(10_000, &mut m, b);
     }
 
-    #[test]
-    fn insert_test_four() {
-        let leaf_elt_1 = LeafElt::new(1i, "aaa".to_string());
-        let leaf_elt_2 = LeafElt::new(2i, "bbb".to_string());
-        let leaf_elt_3 = LeafElt::new(3i, "ccc".to_string());
-        let leaf_elt_4 = LeafElt::new(4i, "ddd".to_string());
-        let n = Node::new_leaf(vec!(leaf_elt_1, leaf_elt_2, leaf_elt_3, leaf_elt_4));
-        let mut b = BTree::new_with_node_len(n, 3, 2);
-        b = b.clone().insert(5, "eee".to_string());
-        b = b.clone().insert(6, "fff".to_string());
-        b = b.clone().insert(7, "ggg".to_string());
-        b = b.clone().insert(8, "hhh".to_string());
-        b = b.clone().insert(0, "omg".to_string());
-        //println!("{}", b.clone().to_string());
-        assert!(!b.root.is_leaf());
+    // Insert seq
+    #[bench]
+    pub fn insert_seq_100(b: &mut Bencher) {
+        let mut m : BTree<uint,uint> = BTree::new();
+        insert_seq_n(100, &mut m, b);
     }
 
-    #[test]
-    fn bsearch_test_one() {
-        let b = BTree::new(1i, "abc".to_string(), 2u);
-        assert_eq!(Some(1), b.root.bsearch_node(2));
+    #[bench]
+    pub fn insert_seq_10_000(b: &mut Bencher) {
+        let mut m : BTree<uint,uint> = BTree::new();
+        insert_seq_n(10_000, &mut m, b);
     }
 
-    #[test]
-    fn bsearch_test_two() {
-        let b = BTree::new(1i, "abc".to_string(), 2u);
-        assert_eq!(Some(0), b.root.bsearch_node(0));
+    // Find rand
+    #[bench]
+    pub fn find_rand_100(b: &mut Bencher) {
+        let mut m : BTree<uint,uint> = BTree::new();
+        find_rand_n(100, &mut m, b);
     }
 
-    #[test]
-    fn bsearch_test_three() {
-        let leaf_elt_1 = LeafElt::new(1i, "aaa".to_string());
-        let leaf_elt_2 = LeafElt::new(2i, "bbb".to_string());
-        let leaf_elt_3 = LeafElt::new(4i, "ccc".to_string());
-        let leaf_elt_4 = LeafElt::new(5i, "ddd".to_string());
-        let n = Node::new_leaf(vec!(leaf_elt_1, leaf_elt_2, leaf_elt_3, leaf_elt_4));
-        let b = BTree::new_with_node_len(n, 3, 2);
-        assert_eq!(Some(2), b.root.bsearch_node(3));
+    #[bench]
+    pub fn find_rand_10_000(b: &mut Bencher) {
+        let mut m : BTree<uint,uint> = BTree::new();
+        find_rand_n(10_000, &mut m, b);
     }
 
-    #[test]
-    fn bsearch_test_four() {
-        let leaf_elt_1 = LeafElt::new(1i, "aaa".to_string());
-        let leaf_elt_2 = LeafElt::new(2i, "bbb".to_string());
-        let leaf_elt_3 = LeafElt::new(4i, "ccc".to_string());
-        let leaf_elt_4 = LeafElt::new(5i, "ddd".to_string());
-        let n = Node::new_leaf(vec!(leaf_elt_1, leaf_elt_2, leaf_elt_3, leaf_elt_4));
-        let b = BTree::new_with_node_len(n, 3, 2);
-        assert_eq!(Some(4), b.root.bsearch_node(800));
+    // Find seq
+    #[bench]
+    pub fn find_seq_100(b: &mut Bencher) {
+        let mut m : BTree<uint,uint> = BTree::new();
+        find_seq_n(100, &mut m, b);
     }
 
-    //Tests the functionality of the get method.
-    #[test]
-    fn get_test() {
-        let b = BTree::new(1i, "abc".to_string(), 2);
-        let val = b.get(1);
-        assert_eq!(val, Some("abc".to_string()));
+    #[bench]
+    pub fn find_seq_10_000(b: &mut Bencher) {
+        let mut m : BTree<uint,uint> = BTree::new();
+        find_seq_n(10_000, &mut m, b);
     }
-
-    //Tests the BTree's clone() method.
-    #[test]
-    fn btree_clone_test() {
-        let b = BTree::new(1i, "abc".to_string(), 2);
-        let b2 = b.clone();
-        assert!(b.root == b2.root)
-    }
-
-    //Tests the BTree's cmp() method when one node is "less than" another.
-    #[test]
-    fn btree_cmp_test_less() {
-        let b = BTree::new(1i, "abc".to_string(), 2);
-        let b2 = BTree::new(2i, "bcd".to_string(), 2);
-        assert!(&b.cmp(&b2) == &Less)
-    }
-
-    //Tests the BTree's cmp() method when two nodes are equal.
-    #[test]
-    fn btree_cmp_test_eq() {
-        let b = BTree::new(1i, "abc".to_string(), 2);
-        let b2 = BTree::new(1i, "bcd".to_string(), 2);
-        assert!(&b.cmp(&b2) == &Equal)
-    }
-
-    //Tests the BTree's cmp() method when one node is "greater than" another.
-    #[test]
-    fn btree_cmp_test_greater() {
-        let b = BTree::new(1i, "abc".to_string(), 2);
-        let b2 = BTree::new(2i, "bcd".to_string(), 2);
-        assert!(&b2.cmp(&b) == &Greater)
-    }
-
-    //Tests the BTree's to_string() method.
-    #[test]
-    fn btree_tostr_test() {
-        let b = BTree::new(1i, "abc".to_string(), 2);
-        assert_eq!(b.to_string(), "Key: 1, value: abc;".to_string())
-    }
-
 }
