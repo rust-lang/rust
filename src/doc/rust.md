@@ -2215,14 +2215,14 @@ These types help drive the compiler's analysis
 
 * `begin_unwind`
   : ___Needs filling in___
+* `managed_bound`
+  : This type implements "managed"
 * `no_copy_bound`
   : This type does not implement "copy", even if eligible
 * `no_send_bound`
   : This type does not implement "send", even if eligible
-* `no_sync_bound`
-  : This type does not implement "sync", even if eligible
-* `managed_bound`
-  : This type implements "managed"
+* `no_share_bound`
+  : This type does not implement "share", even if eligible
 * `eh_personality`
   : ___Needs filling in___
 * `exchange_free`

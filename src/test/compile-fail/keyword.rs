@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub mod break {
-    //~^ ERROR found `break` in ident position
+    //~^ ERROR expected identifier, found keyword `break`
 }
