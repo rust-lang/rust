@@ -417,7 +417,7 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
                             sess.span_err(mi.span, "feature has been removed");
                         }
                         Some(&(_, Accepted)) => {
-                            sess.span_warn(mi.span, "feature has added to rust, \
+                            sess.span_warn(mi.span, "feature has been added to Rust, \
                                                      directive not necessary");
                         }
                         None => {
