@@ -31,6 +31,7 @@ extern crate libc;
 use std::io::BufReader;
 use std::num;
 use std::string::String;
+use std::time::Duration;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 
@@ -90,10 +91,15 @@ impl Timespec {
     }
 }
 
-impl Add<Timespec, Timespec> for Timespec {
-    fn add(&self, other: &Timespec) -> Timespec {
-        let mut sec = self.sec + other.sec;
-        let mut nsec = self.nsec + other.nsec;
+impl Add<Duration, Timespec> for Timespec {
+    fn add(&self, other: &Duration) -> Timespec {
+        let d_sec = other.num_seconds();
+        // It is safe to unwrap the nanoseconds, because there cannot be
+        // more than one second left, which fits in i64 and in i32.
+        let d_nsec = (other - Duration::seconds(d_sec))
+                     .num_nanoseconds().unwrap() as i32;
+        let mut sec = self.sec + d_sec;
+        let mut nsec = self.nsec + d_nsec;
         if nsec >= NSEC_PER_SEC {
             nsec -= NSEC_PER_SEC;
             sec += 1;
@@ -102,15 +108,11 @@ impl Add<Timespec, Timespec> for Timespec {
     }
 }
 
-impl Sub<Timespec, Timespec> for Timespec {
-    fn sub(&self, other: &Timespec) -> Timespec {
-        let mut sec = self.sec - other.sec;
-        let mut nsec = self.nsec - other.nsec;
-        if nsec < 0 {
-            nsec += NSEC_PER_SEC;
-            sec -= 1;
-        }
-        Timespec::new(sec, nsec)
+impl Sub<Timespec, Duration> for Timespec {
+    fn sub(&self, other: &Timespec) -> Duration {
+        let sec = self.sec - other.sec;
+        let nsec = self.nsec - other.nsec;
+        Duration::seconds(sec) + Duration::nanoseconds(nsec as i64)
     }
 }
 
@@ -1103,6 +1105,7 @@ mod tests {
 
     use std::f64;
     use std::result::{Err, Ok};
+    use std::time::Duration;
     use self::test::Bencher;
 
     #[cfg(windows)]
@@ -1514,19 +1517,19 @@ mod tests {
 
     fn test_timespec_add() {
         let a = Timespec::new(1, 2);
-        let b = Timespec::new(2, 3);
+        let b = Duration::seconds(2) + Duration::nanoseconds(3);
         let c = a + b;
         assert_eq!(c.sec, 3);
         assert_eq!(c.nsec, 5);
 
         let p = Timespec::new(1, super::NSEC_PER_SEC - 2);
-        let q = Timespec::new(2, 2);
+        let q = Duration::seconds(2) + Duration::nanoseconds(2);
         let r = p + q;
         assert_eq!(r.sec, 4);
         assert_eq!(r.nsec, 0);
 
         let u = Timespec::new(1, super::NSEC_PER_SEC - 2);
-        let v = Timespec::new(2, 3);
+        let v = Duration::seconds(2) + Duration::nanoseconds(3);
         let w = u + v;
         assert_eq!(w.sec, 4);
         assert_eq!(w.nsec, 1);
@@ -1536,20 +1539,17 @@ mod tests {
         let a = Timespec::new(2, 3);
         let b = Timespec::new(1, 2);
         let c = a - b;
-        assert_eq!(c.sec, 1);
-        assert_eq!(c.nsec, 1);
+        assert_eq!(c.num_nanoseconds(), Some(super::NSEC_PER_SEC as i64 + 1));
 
         let p = Timespec::new(2, 0);
         let q = Timespec::new(1, 2);
         let r = p - q;
-        assert_eq!(r.sec, 0);
-        assert_eq!(r.nsec, super::NSEC_PER_SEC - 2);
+        assert_eq!(r.num_nanoseconds(), Some(super::NSEC_PER_SEC as i64 - 2));
 
         let u = Timespec::new(1, 2);
         let v = Timespec::new(2, 3);
         let w = u - v;
-        assert_eq!(w.sec, -2);
-        assert_eq!(w.nsec, super::NSEC_PER_SEC - 1);
+        assert_eq!(w.num_nanoseconds(), Some(-super::NSEC_PER_SEC as i64 - 1));
     }
 
     #[test]
