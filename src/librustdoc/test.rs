@@ -39,7 +39,7 @@ use visit_ast::RustdocVisitor;
 
 pub fn run(input: &str,
            cfgs: Vec<String>,
-           libs: HashSet<Path>,
+           libs: Vec<Path>,
            externs: core::Externs,
            mut test_args: Vec<String>,
            crate_name: Option<String>)
@@ -109,7 +109,7 @@ pub fn run(input: &str,
     0
 }
 
-fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, externs: core::Externs,
+fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
            should_fail: bool, no_run: bool, as_test_harness: bool) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
@@ -244,7 +244,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool, dont_insert_main:
 pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
     names: Vec<String>,
-    libs: HashSet<Path>,
+    libs: Vec<Path>,
     externs: core::Externs,
     cnt: uint,
     use_headers: bool,
@@ -253,7 +253,7 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn new(cratename: String, libs: HashSet<Path>, externs: core::Externs,
+    pub fn new(cratename: String, libs: Vec<Path>, externs: core::Externs,
                use_headers: bool) -> Collector {
         Collector {
             tests: Vec::new(),

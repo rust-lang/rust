@@ -30,7 +30,7 @@ pub type pick<'a> = |path: &Path|: 'a -> FileMatch;
 
 pub struct FileSearch<'a> {
     pub sysroot: &'a Path,
-    pub addl_lib_search_paths: &'a RefCell<HashSet<Path>>,
+    pub addl_lib_search_paths: &'a RefCell<Vec<Path>>,
     pub triple: &'a str,
 }
 
@@ -125,7 +125,7 @@ impl<'a> FileSearch<'a> {
 
     pub fn new(sysroot: &'a Path,
                triple: &'a str,
-               addl_lib_search_paths: &'a RefCell<HashSet<Path>>) -> FileSearch<'a> {
+               addl_lib_search_paths: &'a RefCell<Vec<Path>>) -> FileSearch<'a> {
         debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
         FileSearch {
             sysroot: sysroot,
