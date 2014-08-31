@@ -57,31 +57,31 @@ use raw::Slice as RawSlice;
 // Extension traits
 //
 
-/// Extension methods for vectors
+/// Extension methods for immutable slices.
 #[unstable = "may merge with other traits; region parameter may disappear"]
 pub trait ImmutableSlice<'a, T> {
-    /**
-     * Returns a slice of self spanning the interval [`start`, `end`).
-     *
-     * Fails when the slice (or part of it) is outside the bounds of self,
-     * or when `start` > `end`.
-     */
+    /// Returns a subslice spanning the interval [`start`, `end`).
+    ///
+    /// Fails when the end of the new slice lies beyond the end of the
+    /// original slice (i.e. when `end > self.len()`) or when `start > end`.
+    ///
+    /// Slicing with `start` equal to `end` yields an empty slice.
     #[unstable]
     fn slice(&self, start: uint, end: uint) -> &'a [T];
 
-    /**
-     * Returns a slice of self from `start` to the end of the vec.
-     *
-     * Fails when `start` points outside the bounds of self.
-     */
+    /// Returns a subslice from `start` to the end of the slice.
+    ///
+    /// Fails when `start` is strictly greater than the length of the original slice.
+    ///
+    /// Slicing from `self.len()` yields an empty slice.
     #[unstable]
     fn slice_from(&self, start: uint) -> &'a [T];
 
-    /**
-     * Returns a slice of self from the start of the vec to `end`.
-     *
-     * Fails when `end` points outside the bounds of self.
-     */
+    /// Returns a subslice from the start of the slice to `end`.
+    ///
+    /// Fails when `end` is strictly greater than the length of the original slice.
+    ///
+    /// Slicing to `0` yields an empty slice.
     #[unstable]
     fn slice_to(&self, end: uint) -> &'a [T];
 
@@ -486,21 +486,26 @@ pub trait MutableSlice<'a, T> {
     /// Primarily intended for getting a &mut [T] from a [T, ..N].
     fn as_mut_slice(self) -> &'a mut [T];
 
-    /// Return a slice that points into another slice.
+    /// Returns a mutable subslice spanning the interval [`start`, `end`).
+    ///
+    /// Fails when the end of the new slice lies beyond the end of the
+    /// original slice (i.e. when `end > self.len()`) or when `start > end`.
+    ///
+    /// Slicing with `start` equal to `end` yields an empty slice.
     fn mut_slice(self, start: uint, end: uint) -> &'a mut [T];
 
-    /**
-     * Returns a slice of self from `start` to the end of the vec.
-     *
-     * Fails when `start` points outside the bounds of self.
-     */
+    /// Returns a mutable subslice from `start` to the end of the slice.
+    ///
+    /// Fails when `start` is strictly greater than the length of the original slice.
+    ///
+    /// Slicing from `self.len()` yields an empty slice.
     fn mut_slice_from(self, start: uint) -> &'a mut [T];
 
-    /**
-     * Returns a slice of self from the start of the vec to `end`.
-     *
-     * Fails when `end` points outside the bounds of self.
-     */
+    /// Returns a mutable subslice from the start of the slice to `end`.
+    ///
+    /// Fails when `end` is strictly greater than the length of the original slice.
+    ///
+    /// Slicing to `0` yields an empty slice.
     fn mut_slice_to(self, end: uint) -> &'a mut [T];
 
     /// Returns an iterator that allows modifying each value
@@ -515,14 +520,14 @@ pub trait MutableSlice<'a, T> {
     fn mut_split(self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T>;
 
     /**
-     * Returns an iterator over `size` elements of the vector at a time.
-     * The chunks are mutable and do not overlap. If `size` does not divide the
-     * length of the vector, then the last chunk will not have length
-     * `size`.
+     * Returns an iterator over `chunk_size` elements of the vector at a time.
+     * The chunks are mutable and do not overlap. If `chunk_size` does
+     * not divide the length of the vector, then the last chunk will not
+     * have length `chunk_size`.
      *
      * # Failure
      *
-     * Fails if `size` is 0.
+     * Fails if `chunk_size` is 0.
      */
     fn mut_chunks(self, chunk_size: uint) -> MutChunks<'a, T>;
 

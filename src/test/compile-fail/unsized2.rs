@@ -13,5 +13,5 @@
 fn f<X>() {}
 
 pub fn main() {
-    f<type>(); //~ ERROR found `type` in ident position
+    f<type>(); //~ ERROR expected identifier, found keyword `type`
 }

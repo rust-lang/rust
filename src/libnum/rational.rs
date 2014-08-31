@@ -137,15 +137,14 @@ impl<T: Clone + Integer + PartialOrd>
     }
 
     /// Rounds to the nearest integer. Rounds half-way cases away from zero.
-    ///
-    /// Note: This function is currently broken and always rounds away from zero.
     #[inline]
     pub fn round(&self) -> Ratio<T> {
-        // FIXME(#15826)
         if *self < Zero::zero() {
-            Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
+            // a/b - 1/2 = (2*a - b)/(2*b)
+            Ratio::from_integer((self.numer + self.numer - self.denom) / (self.denom + self.denom))
         } else {
-            Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
+            // a/b + 1/2 = (2*a + b)/(2*b)
+            Ratio::from_integer((self.numer + self.numer + self.denom) / (self.denom + self.denom))
         }
     }
 
@@ -388,7 +387,11 @@ mod test {
     pub static _2: Rational = Ratio { numer: 2, denom: 1};
     pub static _1_2: Rational = Ratio { numer: 1, denom: 2};
     pub static _3_2: Rational = Ratio { numer: 3, denom: 2};
-    pub static _neg1_2: Rational =  Ratio { numer: -1, denom: 2};
+    pub static _neg1_2: Rational = Ratio { numer: -1, denom: 2};
+    pub static _1_3: Rational = Ratio { numer: 1, denom: 3};
+    pub static _neg1_3: Rational = Ratio { numer: -1, denom: 3};
+    pub static _2_3: Rational = Ratio { numer: 2, denom: 3};
+    pub static _neg2_3: Rational = Ratio { numer: -2, denom: 3};
 
     pub fn to_big(n: Rational) -> BigRational {
         Ratio::new(
@@ -578,6 +581,26 @@ mod test {
 
     #[test]
     fn test_round() {
+        assert_eq!(_1_3.ceil(), _1);
+        assert_eq!(_1_3.floor(), _0);
+        assert_eq!(_1_3.round(), _0);
+        assert_eq!(_1_3.trunc(), _0);
+
+        assert_eq!(_neg1_3.ceil(), _0);
+        assert_eq!(_neg1_3.floor(), -_1);
+        assert_eq!(_neg1_3.round(), _0);
+        assert_eq!(_neg1_3.trunc(), _0);
+
+        assert_eq!(_2_3.ceil(), _1);
+        assert_eq!(_2_3.floor(), _0);
+        assert_eq!(_2_3.round(), _1);
+        assert_eq!(_2_3.trunc(), _0);
+
+        assert_eq!(_neg2_3.ceil(), _0);
+        assert_eq!(_neg2_3.floor(), -_1);
+        assert_eq!(_neg2_3.round(), -_1);
+        assert_eq!(_neg2_3.trunc(), _0);
+
         assert_eq!(_1_2.ceil(), _1);
         assert_eq!(_1_2.floor(), _0);
         assert_eq!(_1_2.round(), _1);
