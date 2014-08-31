@@ -116,13 +116,14 @@ pub use consts::os::posix88::{S_IFDIR, S_IFIFO, S_IFMT, S_IFREG, S_IFLNK};
 pub use consts::os::posix88::{S_IREAD, S_IRUSR, S_IRWXU, S_IWUSR};
 pub use consts::os::posix88::{STDERR_FILENO, STDIN_FILENO, S_IXUSR};
 pub use consts::os::posix88::{STDOUT_FILENO, W_OK, X_OK};
-pub use consts::os::bsd44::{AF_INET, AF_INET6, SOCK_STREAM, SOCK_DGRAM};
+pub use consts::os::bsd44::{AF_INET, AF_INET6, SOCK_STREAM, SOCK_DGRAM, SOCK_RAW};
 pub use consts::os::bsd44::{IPPROTO_IP, IPPROTO_IPV6, IPPROTO_TCP, TCP_NODELAY};
 pub use consts::os::bsd44::{SOL_SOCKET, SO_KEEPALIVE, SO_ERROR};
 pub use consts::os::bsd44::{SO_REUSEADDR, SO_BROADCAST, SHUT_WR, IP_MULTICAST_LOOP};
 pub use consts::os::bsd44::{IP_ADD_MEMBERSHIP, IP_DROP_MEMBERSHIP};
 pub use consts::os::bsd44::{IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP};
-pub use consts::os::bsd44::{IP_MULTICAST_TTL, IP_TTL, SHUT_RD};
+pub use consts::os::bsd44::{IP_MULTICAST_TTL, IP_TTL, IP_HDRINCL, SHUT_RD};
+pub use consts::os::extra::{IPPROTO_RAW};
 
 pub use funcs::c95::ctype::{isalnum, isalpha, iscntrl, isdigit};
 pub use funcs::c95::ctype::{islower, isprint, ispunct, isspace};
@@ -178,14 +179,16 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(unix)] pub use consts::os::posix88::{ECANCELED, SIGINT, EINPROGRESS};
 #[cfg(unix)] pub use consts::os::posix88::{ENOSYS, ENOTTY, ETIMEDOUT, EMFILE};
 #[cfg(unix)] pub use consts::os::posix88::{SIGTERM, SIGKILL, SIGPIPE, PROT_NONE};
-#[cfg(unix)] pub use consts::os::posix01::{SIG_IGN};
+#[cfg(unix)] pub use consts::os::posix01::{SIG_IGN, F_GETFL, F_SETFL};
 #[cfg(unix)] pub use consts::os::bsd44::{AF_UNIX};
+#[cfg(unix)] pub use consts::os::extra::{O_NONBLOCK};
 
 #[cfg(unix)] pub use types::os::common::posix01::{pthread_t, timespec, timezone};
 
 #[cfg(unix)] pub use types::os::arch::posix88::{uid_t, gid_t};
 #[cfg(unix)] pub use types::os::arch::posix01::{pthread_attr_t};
 #[cfg(unix)] pub use types::os::arch::posix01::{stat, utimbuf};
+#[cfg(unix)] pub use types::os::common::bsd44::{ifaddrs};
 #[cfg(unix)] pub use funcs::posix88::unistd::{sysconf, setgid, setsid, setuid, pread, pwrite};
 #[cfg(unix)] pub use funcs::posix88::unistd::{getgid, getuid};
 #[cfg(unix)] pub use funcs::posix88::unistd::{_PC_NAME_MAX, utime, nanosleep, pathconf, link};
@@ -193,9 +196,11 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(unix)] pub use funcs::posix88::mman::{mmap, munmap, mprotect};
 #[cfg(unix)] pub use funcs::posix88::dirent::{opendir, readdir_r, closedir};
 #[cfg(unix)] pub use funcs::posix88::fcntl::{fcntl};
+#[cfg(unix)] pub use funcs::posix88::net::{if_nametoindex};
 #[cfg(unix)] pub use funcs::posix01::stat_::{lstat};
 #[cfg(unix)] pub use funcs::posix01::unistd::{fsync, ftruncate};
 #[cfg(unix)] pub use funcs::posix01::unistd::{readlink, symlink};
+#[cfg(unix)] pub use funcs::bsd43::{getifaddrs, freeifaddrs};
 
 #[cfg(windows)] pub use consts::os::c95::{WSAECONNREFUSED, WSAECONNRESET, WSAEACCES};
 #[cfg(windows)] pub use consts::os::c95::{WSAEWOULDBLOCK, WSAENOTCONN, WSAECONNABORTED};
@@ -236,6 +241,7 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(windows)] pub use consts::os::extra::{ERROR_PIPE_CONNECTED, WAIT_OBJECT_0};
 #[cfg(windows)] pub use consts::os::extra::{ERROR_NOT_FOUND};
 #[cfg(windows)] pub use consts::os::extra::{ERROR_OPERATION_ABORTED};
+#[cfg(windows)] pub use consts::os::extra::{FIONBIO};
 #[cfg(windows)] pub use types::os::common::bsd44::{SOCKET};
 #[cfg(windows)] pub use types::os::common::posix01::{stat, utimbuf};
 #[cfg(windows)] pub use types::os::arch::extra::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES};
@@ -268,6 +274,7 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(windows)] pub use funcs::extra::kernel32::{DisconnectNamedPipe, OpenProcess};
 #[cfg(windows)] pub use funcs::extra::kernel32::{MoveFileExW, VirtualProtect};
 #[cfg(windows)] pub use funcs::extra::msvcrt::{get_osfhandle, open_osfhandle};
+#[cfg(windows)] pub use funcs::extra::winsock::{ioctlsocket};
 
 #[cfg(target_os = "linux")] #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")] #[cfg(target_os = "dragonfly")]
@@ -275,6 +282,10 @@ pub use consts::os::posix01::{CLOCK_REALTIME, CLOCK_MONOTONIC};
 
 #[cfg(target_os = "linux")] #[cfg(target_os = "android")]
 pub use funcs::posix01::unistd::{fdatasync};
+#[cfg(target_os = "linux")] #[cfg(target_os = "android")]
+pub use types::os::arch::extra::{sockaddr_ll};
+#[cfg(target_os = "linux")] #[cfg(target_os = "android")]
+pub use consts::os::extra::{AF_PACKET};
 
 #[cfg(unix, not(target_os = "freebsd"))]
 pub use consts::os::extra::{MAP_STACK};
@@ -400,6 +411,7 @@ pub mod types {
                 pub type sighandler_t = size_t;
             }
             pub mod bsd44 {
+                use types::common::c95::{c_void};
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
@@ -477,6 +489,18 @@ pub mod types {
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char, ..108]
                 }
+
+                #[repr(C)]
+                pub struct ifaddrs {
+                    pub ifa_next: *mut ifaddrs,
+                    pub ifa_name: *mut c_char,
+                    pub ifa_flags: c_uint,
+                    pub ifa_addr: *mut sockaddr,
+                    pub ifa_netmask: *mut sockaddr,
+                    pub ifa_ifu: *mut sockaddr, // FIXME This should be a union
+                    pub ifa_data: *mut c_void
+                }
+
             }
         }
 
@@ -675,7 +699,20 @@ pub mod types {
             }
             pub mod posix08 {}
             pub mod bsd44 {}
-            pub mod extra {}
+            pub mod extra {
+                use types::os::arch::c95::{c_ushort, c_int, c_uchar};
+                #[repr(C)]
+                pub struct sockaddr_ll {
+                    pub sll_family: c_ushort,
+                    pub sll_protocol: c_ushort,
+                    pub sll_ifindex: c_int,
+                    pub sll_hatype: c_ushort,
+                    pub sll_pkttype: c_uchar,
+                    pub sll_halen: c_uchar,
+                    pub sll_addr: [c_uchar, ..8]
+                }
+            }
+
         }
 
         #[cfg(target_arch = "x86_64")]
@@ -763,6 +800,17 @@ pub mod types {
             pub mod bsd44 {
             }
             pub mod extra {
+                use types::os::arch::c95::{c_ushort, c_int, c_uchar};
+                pub struct sockaddr_ll {
+                    pub sll_family: c_ushort,
+                    pub sll_protocol: c_ushort,
+                    pub sll_ifindex: c_int,
+                    pub sll_hatype: c_ushort,
+                    pub sll_pkttype: c_uchar,
+                    pub sll_halen: c_uchar,
+                    pub sll_addr: [c_uchar, ..8]
+                }
+
             }
         }
     }
@@ -812,6 +860,7 @@ pub mod types {
                 pub type sighandler_t = size_t;
             }
             pub mod bsd44 {
+                use types::common::c95::{c_void};
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
@@ -884,6 +933,18 @@ pub mod types {
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char, ..104]
                 }
+                #[repr(C)]
+                pub struct ifaddrs {
+                    pub ifa_next: *mut ifaddrs,
+                    pub ifa_name: *mut c_char,
+                    pub ifa_flags: c_uint,
+                    pub ifa_addr: *mut sockaddr,
+                    pub ifa_netmask: *mut sockaddr,
+                    pub ifa_dstaddr: *mut sockaddr,
+                    pub ifa_data: *mut c_void
+                }
+
+
             }
         }
 
@@ -1628,6 +1689,7 @@ pub mod types {
             }
 
             pub mod bsd44 {
+                use types::common::c95::{c_void};
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = c_int;
@@ -1699,6 +1761,16 @@ pub mod types {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char, ..104]
+                }
+                #[repr(C)]
+                pub struct ifaddrs {
+                    pub ifa_next: *mut ifaddrs,
+                    pub ifa_name: *mut c_char,
+                    pub ifa_flags: c_uint,
+                    pub ifa_addr: *mut sockaddr,
+                    pub ifa_netmask: *mut sockaddr,
+                    pub ifa_dstaddr: *mut sockaddr,
+                    pub ifa_data: *mut c_void
                 }
             }
         }
@@ -2032,6 +2104,7 @@ pub mod consts {
             pub static AF_INET6: c_int = 23;
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
+            pub static SOCK_RAW: c_int = 3;
             pub static IPPROTO_TCP: c_int = 6;
             pub static IPPROTO_IP: c_int = 0;
             pub static IPPROTO_IPV6: c_int = 41;
@@ -2042,6 +2115,7 @@ pub mod consts {
             pub static IPV6_ADD_MEMBERSHIP: c_int = 5;
             pub static IPV6_DROP_MEMBERSHIP: c_int = 6;
             pub static IP_TTL: c_int = 4;
+            pub static IP_HDRINCL: c_int = 2;
 
             pub static TCP_NODELAY: c_int = 0x0001;
             pub static SOL_SOCKET: c_int = 0xffff;
@@ -2050,12 +2124,14 @@ pub mod consts {
             pub static SO_REUSEADDR: c_int = 4;
             pub static SO_ERROR: c_int = 0x1007;
 
+            pub static IFF_LOOPBACK: c_int = 4;
+
             pub static SHUT_RD: c_int = 0;
             pub static SHUT_WR: c_int = 1;
             pub static SHUT_RDWR: c_int = 2;
         }
         pub mod extra {
-            use types::os::arch::c95::c_int;
+            use types::os::arch::c95::{c_int, c_long};
             use types::os::arch::extra::{WORD, DWORD, BOOL, HANDLE};
 
             pub static TRUE : BOOL = 1;
@@ -2279,6 +2355,10 @@ pub mod consts {
             pub static PIPE_ACCEPT_REMOTE_CLIENTS: DWORD = 0x00000000;
             pub static PIPE_REJECT_REMOTE_CLIENTS: DWORD = 0x00000008;
             pub static PIPE_UNLIMITED_INSTANCES: DWORD = 255;
+
+            pub static IPPROTO_RAW: c_int = 255;
+
+            pub static FIONBIO: c_long = -0x7FFB9982;
         }
         pub mod sysconf {
         }
@@ -2737,6 +2817,12 @@ pub mod consts {
         pub mod posix01 {
             use types::os::arch::c95::{c_int, size_t};
 
+            pub static F_DUPFD : c_int = 0;
+            pub static F_GETFD : c_int = 1;
+            pub static F_SETFD : c_int = 2;
+            pub static F_GETFL : c_int = 3;
+            pub static F_SETFL : c_int = 4;
+
             pub static SIGTRAP : c_int = 5;
             pub static SIGPIPE: c_int = 13;
             pub static SIG_IGN: size_t = 1;
@@ -2826,17 +2912,21 @@ pub mod consts {
             pub static MADV_UNMERGEABLE : c_int = 13;
             pub static MADV_HWPOISON : c_int = 100;
 
+            pub static IFF_LOOPBACK: c_int = 0x8;
+
             pub static AF_UNIX: c_int = 1;
             pub static AF_INET: c_int = 2;
             pub static AF_INET6: c_int = 10;
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
+            pub static SOCK_RAW: c_int = 3;
             pub static IPPROTO_TCP: c_int = 6;
             pub static IPPROTO_IP: c_int = 0;
             pub static IPPROTO_IPV6: c_int = 41;
             pub static IP_MULTICAST_TTL: c_int = 33;
             pub static IP_MULTICAST_LOOP: c_int = 34;
             pub static IP_TTL: c_int = 2;
+            pub static IP_HDRINCL: c_int = 3;
             pub static IP_ADD_MEMBERSHIP: c_int = 35;
             pub static IP_DROP_MEMBERSHIP: c_int = 36;
             pub static IPV6_ADD_MEMBERSHIP: c_int = 20;
@@ -2903,8 +2993,12 @@ pub mod consts {
         pub mod extra {
             use types::os::arch::c95::c_int;
 
+            pub static AF_PACKET : c_int = 17;
+            pub static IPPROTO_RAW : c_int = 255;
+
             pub static O_RSYNC : c_int = 1052672;
             pub static O_DSYNC : c_int = 4096;
+            pub static O_NONBLOCK : c_int = 2048;
             pub static O_SYNC : c_int = 1052672;
 
             pub static PROT_GROWSDOWN : c_int = 0x010000000;
@@ -3240,6 +3334,12 @@ pub mod consts {
         pub mod posix01 {
             use types::os::arch::c95::{c_int, size_t};
 
+            pub static F_DUPFD : c_int = 0;
+            pub static F_GETFD : c_int = 1;
+            pub static F_SETFD : c_int = 2;
+            pub static F_GETFL : c_int = 3;
+            pub static F_SETFL : c_int = 4;
+
             pub static SIGTRAP : c_int = 5;
             pub static SIGPIPE: c_int = 13;
             pub static SIG_IGN: size_t = 1;
@@ -3338,12 +3438,14 @@ pub mod consts {
             pub static AF_UNIX: c_int = 1;
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
+            pub static SOCK_RAW: c_int = 3;
             pub static IPPROTO_TCP: c_int = 6;
             pub static IPPROTO_IP: c_int = 0;
             pub static IPPROTO_IPV6: c_int = 41;
             pub static IP_MULTICAST_TTL: c_int = 10;
             pub static IP_MULTICAST_LOOP: c_int = 11;
             pub static IP_TTL: c_int = 4;
+            pub static IP_HDRINCL: c_int = 2;
             pub static IP_ADD_MEMBERSHIP: c_int = 12;
             pub static IP_DROP_MEMBERSHIP: c_int = 13;
             pub static IPV6_ADD_MEMBERSHIP: c_int = 12;
@@ -3357,6 +3459,8 @@ pub mod consts {
             pub static SO_REUSEADDR: c_int = 0x0004;
             pub static SO_ERROR: c_int = 0x1007;
 
+            pub static IFF_LOOPBACK: c_int = 0x8;
+
             pub static SHUT_RD: c_int = 0;
             pub static SHUT_WR: c_int = 1;
             pub static SHUT_RDWR: c_int = 2;
@@ -3365,6 +3469,7 @@ pub mod consts {
             use types::os::arch::c95::c_int;
 
             pub static O_SYNC : c_int = 128;
+            pub static O_NONBLOCK : c_int = 4;
             pub static CTL_KERN: c_int = 1;
             pub static KERN_PROC: c_int = 14;
             #[cfg(target_os = "freebsd")]
@@ -3379,6 +3484,8 @@ pub mod consts {
             pub static MAP_STACK : c_int = 0x0400;
             pub static MAP_NOSYNC : c_int = 0x0800;
             pub static MAP_NOCORE : c_int = 0x020000;
+
+            pub static IPPROTO_RAW : c_int = 255;
         }
         pub mod sysconf {
             use types::os::arch::c95::c_int;
@@ -3646,6 +3753,12 @@ pub mod consts {
         pub mod posix01 {
             use types::os::arch::c95::{c_int, size_t};
 
+            pub static F_DUPFD : c_int = 0;
+            pub static F_GETFD : c_int = 1;
+            pub static F_SETFD : c_int = 2;
+            pub static F_GETFL : c_int = 3;
+            pub static F_SETFL : c_int = 4;
+
             pub static SIGTRAP : c_int = 5;
             pub static SIGPIPE: c_int = 13;
             pub static SIG_IGN: size_t = 1;
@@ -3728,12 +3841,14 @@ pub mod consts {
             pub static AF_INET6: c_int = 30;
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
+            pub static SOCK_RAW: c_int = 3;
             pub static IPPROTO_TCP: c_int = 6;
             pub static IPPROTO_IP: c_int = 0;
             pub static IPPROTO_IPV6: c_int = 41;
             pub static IP_MULTICAST_TTL: c_int = 10;
             pub static IP_MULTICAST_LOOP: c_int = 11;
             pub static IP_TTL: c_int = 4;
+            pub static IP_HDRINCL: c_int = 2;
             pub static IP_ADD_MEMBERSHIP: c_int = 12;
             pub static IP_DROP_MEMBERSHIP: c_int = 13;
             pub static IPV6_ADD_MEMBERSHIP: c_int = 12;
@@ -3747,6 +3862,8 @@ pub mod consts {
             pub static SO_REUSEADDR: c_int = 0x0004;
             pub static SO_ERROR: c_int = 0x1007;
 
+            pub static IFF_LOOPBACK: c_int = 0x8;
+
             pub static SHUT_RD: c_int = 0;
             pub static SHUT_WR: c_int = 1;
             pub static SHUT_RDWR: c_int = 2;
@@ -3756,6 +3873,7 @@ pub mod consts {
 
             pub static O_DSYNC : c_int = 4194304;
             pub static O_SYNC : c_int = 128;
+            pub static O_NONBLOCK : c_int = 4;
             pub static F_FULLFSYNC : c_int = 51;
 
             pub static MAP_COPY : c_int = 0x0002;
@@ -3766,6 +3884,8 @@ pub mod consts {
             pub static MAP_NOCACHE : c_int = 0x0400;
             pub static MAP_JIT : c_int = 0x0800;
             pub static MAP_STACK : c_int = 0;
+
+            pub static IPPROTO_RAW : c_int = 255;
         }
         pub mod sysconf {
             use types::os::arch::c95::c_int;
@@ -4326,6 +4446,15 @@ pub mod funcs {
                 pub fn shm_unlink(name: *const c_char) -> c_int;
             }
         }
+
+        pub mod net {
+            use types::os::arch::c95::{c_char, c_uint};
+
+            extern {
+                pub fn if_nametoindex(ifname: *const c_char) -> c_uint;
+            }
+        }
+
     }
 
     #[cfg(target_os = "linux")]
@@ -4439,6 +4568,9 @@ pub mod funcs {
 
         pub mod mman {
         }
+
+        pub mod net {
+        }
     }
 
 
@@ -4457,7 +4589,7 @@ pub mod funcs {
     #[cfg(not(windows))]
     pub mod bsd43 {
         use types::common::c95::{c_void};
-        use types::os::common::bsd44::{socklen_t, sockaddr};
+        use types::os::common::bsd44::{socklen_t, sockaddr, ifaddrs};
         use types::os::arch::c95::{c_int, size_t};
         use types::os::arch::posix88::ssize_t;
 
@@ -4487,6 +4619,8 @@ pub mod funcs {
             pub fn sendto(socket: c_int, buf: *const c_void, len: size_t,
                           flags: c_int, addr: *const sockaddr,
                           addrlen: socklen_t) -> ssize_t;
+            pub fn getifaddrs(ifap: *mut *mut ifaddrs) -> c_int;
+            pub fn freeifaddrs(ifa: *mut ifaddrs);
             pub fn shutdown(socket: c_int, how: c_int) -> c_int;
         }
     }
@@ -4535,9 +4669,10 @@ pub mod funcs {
     #[cfg(target_os = "dragonfly")]
     pub mod bsd44 {
         use types::common::c95::{c_void};
-        use types::os::arch::c95::{c_char, c_uchar, c_int, c_uint, size_t};
+        use types::os::arch::c95::{c_char, c_uchar, c_int, c_uint, c_ulong, size_t};
 
         extern {
+            pub fn ioctl(d: c_int, request: c_ulong, ...) -> c_int;
             pub fn sysctl(name: *mut c_int,
                           namelen: c_uint,
                           oldp: *mut c_void,
@@ -4572,6 +4707,7 @@ pub mod funcs {
 
         extern {
             pub fn getdtablesize() -> c_int;
+            pub fn ioctl(d: c_int, request: c_int, ...) -> c_int;
             pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int)
                            -> c_int;
             pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)
@@ -4813,6 +4949,15 @@ pub mod funcs {
                 #[link_name = "_open_osfhandle"]
                 pub fn open_osfhandle(osfhandle: intptr_t,
                                       flags: c_int) -> c_int;
+            }
+        }
+
+        pub mod winsock {
+            use types::os::arch::c95::{c_int, c_long, c_ulong};
+            use types::os::common::bsd44::SOCKET;
+
+            extern "system" {
+                pub fn ioctlsocket(s: SOCKET, cmd: c_long, argp: *mut c_ulong) -> c_int;
             }
         }
     }
