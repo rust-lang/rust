@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-macos #16872 spurious deadlock
-
 #![feature(phase)]
 
 #[phase(plugin)]
@@ -49,11 +47,9 @@ fn test() {
         let tx = tx.clone();
         spawn(proc() {
             let mut a = a;
-            let mut mycnt = 0u;
             loop {
                 match a.accept() {
                     Ok(..) => {
-                        mycnt += 1;
                         if cnt.fetch_add(1, atomic::SeqCst) == N * M - 1 {
                             break
                         }
@@ -62,7 +58,6 @@ fn test() {
                     Err(e) => fail!("{}", e),
                 }
             }
-            assert!(mycnt > 0);
             tx.send(());
         });
     }
@@ -77,6 +72,7 @@ fn test() {
             tx.send(());
         });
     }
+    drop(tx);
 
     // wait for senders
     assert_eq!(rx.iter().take(N).count(), N);
