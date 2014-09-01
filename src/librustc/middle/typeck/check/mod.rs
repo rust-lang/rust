@@ -3463,6 +3463,22 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         fcx.write_ty(id, enum_type);
     }
 
+    fn check_struct_fields_on_error(fcx: &FnCtxt,
+                                    id: ast::NodeId,
+                                    fields: &[ast::Field],
+                                    base_expr: Option<Gc<ast::Expr>>) {
+        // Make sure to still write the types
+        // otherwise we might ICE
+        fcx.write_error(id);
+        for field in fields.iter() {
+            check_expr(fcx, &*field.expr);
+        }
+        match base_expr {
+            Some(ref base) => check_expr(fcx, &**base),
+            None => {}
+        }
+    }
+
     type ExprCheckerWithTy = fn(&FnCtxt, &ast::Expr, ty::t);
 
     let tcx = fcx.ccx.tcx;
@@ -3982,6 +3998,16 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                           variant_id, fields.as_slice());
                 enum_id
             }
+            Some(def::DefTrait(def_id)) => {
+                span_err!(tcx.sess, path.span, E0159,
+                    "use of trait `{}` as a struct constructor",
+                    pprust::path_to_string(path));
+                check_struct_fields_on_error(fcx,
+                                             id,
+                                             fields.as_slice(),
+                                             base_expr);
+                def_id
+            },
             Some(def) => {
                 // Verify that this was actually a struct.
                 let typ = ty::lookup_item_type(fcx.ccx.tcx, def.def_id());
@@ -3998,17 +4024,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         span_err!(tcx.sess, path.span, E0071,
                             "`{}` does not name a structure",
                             pprust::path_to_string(path));
-
-                        // Make sure to still write the types
-                        // otherwise we might ICE
-                        fcx.write_error(id);
-                        for field in fields.iter() {
-                            check_expr(fcx, &*field.expr);
-                        }
-                        match base_expr {
-                            Some(ref base) => check_expr(fcx, &**base),
-                            None => {}
-                        }
+                        check_struct_fields_on_error(fcx,
+                                                     id,
+                                                     fields.as_slice(),
+                                                     base_expr);
                     }
                 }
 
