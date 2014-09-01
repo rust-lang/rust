@@ -23,15 +23,14 @@ impl Trait for A {
     }
 }
 
-pub struct Foo<Sized? T> {
+struct Foo<Sized? T> {
     f: T
 }
 
 pub fn main() {
     // raw trait object
     let x = A { f: 42 };
-    let y: *const A = &x;
-    let z: *const Trait = y;
+    let z: *const Trait = &x;
     let r = unsafe {
         (&*z).foo()
     };
@@ -39,8 +38,7 @@ pub fn main() {
 
     // raw DST struct
     let p = Foo {f: A { f: 42 }};
-    let q: *const Foo<A> = &p;
-    let o: *const Foo<Trait> = q;
+    let o: *const Foo<Trait> = &p;
     let r = unsafe {
         (&*o).f.foo()
     };
@@ -51,6 +49,8 @@ pub fn main() {
     unsafe {
         let b = (*a)[2];
         assert!(b == 3);
+        let len = (*a).len();
+        assert!(len == 3);
     }
 
     // raw DST struct with slice
@@ -58,20 +58,20 @@ pub fn main() {
     unsafe {
         let b = (&*c).f[0];
         assert!(b == 1);
+        let len = (&*c).f.len();
+        assert!(len == 3);
     }
 
     // all of the above with *mut
     let mut x = A { f: 42 };
-    let y: *mut A = &mut x;
-    let z: *mut Trait = y;
+    let z: *mut Trait = &mut x;
     let r = unsafe {
         (&*z).foo()
     };
     assert!(r == 42);
 
     let mut p = Foo {f: A { f: 42 }};
-    let q: *mut Foo<A> = &mut p;
-    let o: *mut Foo<Trait> = q;
+    let o: *mut Foo<Trait> = &mut p;
     let r = unsafe {
         (&*o).f.foo()
     };
@@ -81,11 +81,15 @@ pub fn main() {
     unsafe {
         let b = (*a)[2];
         assert!(b == 3);
+        let len = (*a).len();
+        assert!(len == 3);
     }
 
     let c: *mut Foo<[_]> = &mut Foo {f: [1i, 2, 3]};
     unsafe {
         let b = (&*c).f[0];
         assert!(b == 1);
+        let len = (&*c).f.len();
+        assert!(len == 3);
     }
 }

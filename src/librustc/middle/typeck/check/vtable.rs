@@ -896,8 +896,8 @@ fn trait_cast_types(fcx: &FnCtxt,
         match autoref {
             &ty::AutoUnsize(ref k) |
             &ty::AutoUnsizeUniq(ref k) => trait_cast_types_unsize(fcx, k, src_ty, sp),
-            &ty::AutoPtr(_, _, Some(box ref autoref))
-            | &ty::AutoUnsafe(_, Some(box ref autoref))=> {
+            &ty::AutoPtr(_, _, Some(box ref autoref)) |
+            &ty::AutoUnsafe(_, Some(box ref autoref)) => {
                 trait_cast_types_autoref(fcx, autoref, src_ty, sp)
             }
             _ => None
