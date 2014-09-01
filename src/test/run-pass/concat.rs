@@ -18,4 +18,9 @@ pub fn main() {
         concat!(1, 2i, 3u, 4f32, 4.0, 'a', true, ()),
         "12344.0atrue"
     );
+
+    assert!(match "12344.0atrue" {
+        concat!(1, 2i, 3u, 4f32, 4.0, 'a', true, ()) => true,
+        _ => false
+    })
 }
