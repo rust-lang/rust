@@ -3668,32 +3668,17 @@ let a: List<int> = Cons(7, box Cons(13, box Nil));
 
 All pointers in Rust are explicit first-class values.
 They can be copied, stored into data structures, and returned from functions.
-There are four varieties of pointer in Rust:
-
-* Owning pointers (`Box`)
-  : These point to owned heap allocations (or "boxes") in the shared, inter-task heap.
-    Each owned box has a single owning pointer; pointer and pointee retain a 1:1 relationship at all times.
-    Owning pointers are written `Box<content>`,
-    for example `Box<int>` means an owning pointer to an owned box containing an integer.
-    Copying an owned box is a "deep" operation:
-    it involves allocating a new owned box and copying the contents of the old box into the new box.
-    Releasing an owning pointer immediately releases its corresponding owned box.
+There are two varieties of pointer in Rust:
 
 * References (`&`)
   : These point to memory _owned by some other value_.
-    References arise by (automatic) conversion from owning pointers, managed pointers,
-    or by applying the borrowing operator `&` to some other value,
-    including [lvalues, rvalues or temporaries](#lvalues,-rvalues-and-temporaries).
-    A borrow expression is written `&content`.
-
-    A reference type is written `&'f type` for some lifetime-variable `f`,
-    or just `&type` when the lifetime can be elided;
-    for example `&int` means a reference to an integer.
+    A reference type is written `&type` for some lifetime-variable `f`,
+    or just `&'a type` when you need an explicit lifetime.
     Copying a reference is a "shallow" operation:
     it involves only copying the pointer itself.
     Releasing a reference typically has no effect on the value it points to,
-    with the exception of temporary values,
-    which are released when the last reference to them is released.
+    with the exception of temporary values, which are released when the last
+    reference to them is released.
 
 * Raw pointers (`*`)
   : Raw pointers are pointers without safety or liveness guarantees.
@@ -3705,6 +3690,9 @@ There are four varieties of pointer in Rust:
     Raw pointers are generally discouraged in Rust code;
     they exist to support interoperability with foreign code,
     and writing performance-critical or low-level functions.
+
+The standard library contains addtional 'smart pointer' types beyond references
+and raw pointers.
 
 ### Function types
 
