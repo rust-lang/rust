@@ -10,7 +10,7 @@
 
 // aux-build:issue-16643.rs
 
-extern crate i = "issue-16643";
+extern crate "issue-16643" as i;
 
 pub fn main() {
     i::TreeBuilder::<uint>.process_token();

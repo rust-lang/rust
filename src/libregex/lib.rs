@@ -372,7 +372,7 @@
 #![deny(missing_doc)]
 
 #[cfg(test)]
-extern crate stdtest = "test";
+extern crate "test" as stdtest;
 #[cfg(test)]
 extern crate rand;
 

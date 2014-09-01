@@ -9,9 +9,9 @@
 // except according to those terms.
 
 #[cfg(rustdoc)]
-extern crate this = "rustdoc";
+extern crate "rustdoc" as this;
 
 #[cfg(rustc)]
-extern crate this = "rustc";
+extern crate "rustc" as this;
 
 fn main() { this::main() }
