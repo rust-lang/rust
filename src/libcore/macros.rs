@@ -16,9 +16,10 @@ macro_rules! fail(
     () => (
         fail!("{}", "explicit failure")
     );
-    ($msg:expr) => (
-        fail!("{}", $msg)
-    );
+    ($msg:expr) => ({
+        static _FILE_LINE: (&'static str, uint) = (file!(), line!());
+        ::core::failure::begin_unwind_string($msg, &_FILE_LINE)
+    });
     ($fmt:expr, $($arg:tt)*) => ({
         // a closure can't have return type !, so we need a full
         // function to pass to format_args!, *and* we need the
