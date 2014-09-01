@@ -154,6 +154,16 @@ impl MacResult for MacExpr {
     fn make_expr(&self) -> Option<Gc<ast::Expr>> {
         Some(self.e)
     }
+    fn make_pat(&self) -> Option<Gc<ast::Pat>> {
+        match self.e.node {
+            ast::ExprLit(_) => Some(box(GC) ast::Pat {
+                id: ast::DUMMY_NODE_ID,
+                node: ast::PatLit(self.e),
+                span: self.e.span
+            }),
+            _ => None
+        }
+    }
 }
 /// A convenience type for macros that return a single pattern.
 pub struct MacPat {
