@@ -56,6 +56,11 @@ fn fail_bounds_check(file_line: &(&'static str, uint),
 }
 
 #[cold] #[inline(never)]
+pub fn begin_unwind_string(msg: &str, file: &(&'static str, uint)) -> ! {
+    format_args!(|fmt| begin_unwind(fmt, file), "{}", msg)
+}
+
+#[cold] #[inline(never)]
 pub fn begin_unwind(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     #[allow(ctypes)]
     extern {
