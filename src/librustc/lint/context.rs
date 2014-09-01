@@ -183,6 +183,7 @@ impl LintStore {
                      NonSnakeCase,
                      NonUppercaseStatics,
                      UnnecessaryParens,
+                     UnnecessaryImportBraces,
                      UnusedUnsafe,
                      UnsafeBlock,
                      UnusedMut,

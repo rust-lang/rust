@@ -1105,6 +1105,41 @@ impl LintPass for UnnecessaryParens {
     }
 }
 
+declare_lint!(UNNECESSARY_IMPORT_BRACES, Allow,
+              "unnecessary braces around an imported item")
+
+pub struct UnnecessaryImportBraces;
+
+impl LintPass for UnnecessaryImportBraces {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNNECESSARY_IMPORT_BRACES)
+    }
+
+    fn check_view_item(&mut self, cx: &Context, view_item: &ast::ViewItem) {
+        match view_item.node {
+            ast::ViewItemUse(ref view_path) => {
+                match view_path.node {
+                    ast::ViewPathList(_, ref items, _) => {
+                        if items.len() == 1 {
+                            match items[0].node {
+                                ast::PathListIdent {ref name, ..} => {
+                                    let m = format!("braces around {} is unnecessary",
+                                                    token::get_ident(*name).get());
+                                    cx.span_lint(UNNECESSARY_IMPORT_BRACES, view_item.span,
+                                                 m.as_slice());
+                                },
+                                _ => ()
+                            }
+                        }
+                    }
+                    _ => ()
+                }
+            },
+            _ => ()
+        }
+    }
+}
+
 declare_lint!(UNUSED_UNSAFE, Warn,
               "unnecessary use of an `unsafe` block")
 
