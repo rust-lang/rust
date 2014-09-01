@@ -996,6 +996,15 @@ impl<'a, T> Collection for &'a [T] {
     }
 }
 
+#[experimental = "trait is experimental"]
+impl<'a, T> Collection for &'a mut [T] {
+    /// Returns the length of a vector
+    #[inline]
+    fn len(&self) -> uint {
+        self.repr().len
+    }
+}
+
 #[unstable = "waiting for DST"]
 impl<'a, T> Default for &'a [T] {
     fn default() -> &'a [T] { &[] }
