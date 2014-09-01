@@ -12,7 +12,7 @@
 
 // Check explicit region bounds on methods in the cross crate case.
 
-extern crate lib = "regions-bounded-method-type-parameters-cross-crate-lib";
+extern crate "regions-bounded-method-type-parameters-cross-crate-lib" as lib;
 
 use lib::Inv;
 use lib::MaybeOwned;
