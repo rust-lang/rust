@@ -11,7 +11,7 @@
 //! This module crawls a `clean::Crate` and produces a summarization of the
 //! stability levels within the crate. The summary contains the module
 //! hierarchy, with item counts for every stability level per module. A parent
-//! module's count includes its childrens's.
+//! module's count includes its children's.
 
 use std::ops::Add;
 use std::num::Zero;

@@ -1128,7 +1128,7 @@ pub trait StrSlice<'a> {
     fn contains_char(&self, needle: char) -> bool;
 
     /// An iterator over the characters of `self`. Note, this iterates
-    /// over unicode code-points, not unicode graphemes.
+    /// over Unicode code-points, not Unicode graphemes.
     ///
     /// # Example
     ///
@@ -1505,7 +1505,7 @@ pub trait StrSlice<'a> {
     /// Pluck a character out of a string and return the index of the next
     /// character.
     ///
-    /// This function can be used to iterate over the unicode characters of a
+    /// This function can be used to iterate over the Unicode characters of a
     /// string.
     ///
     /// # Example
@@ -1549,7 +1549,7 @@ pub trait StrSlice<'a> {
     /// # Return value
     ///
     /// A record {ch: char, next: uint} containing the char value and the byte
-    /// index of the next unicode character.
+    /// index of the next Unicode character.
     ///
     /// # Failure
     ///
@@ -1559,7 +1559,7 @@ pub trait StrSlice<'a> {
 
     /// Given a byte position and a str, return the previous char and its position.
     ///
-    /// This function can be used to iterate over a unicode string in reverse.
+    /// This function can be used to iterate over a Unicode string in reverse.
     ///
     /// Returns 0 for next index if called on start index 0.
     ///

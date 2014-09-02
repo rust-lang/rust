@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-linux #7340 fails on 32-bit linux
+// ignore-linux #7340 fails on 32-bit Linux
 // ignore-macos #7340 fails on 32-bit macos
 
 use std::mem;

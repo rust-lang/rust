@@ -107,10 +107,10 @@ pub mod compiled {
     // efficient sequence of instructions. This also involves dealing with fun
     // stuff in object files and whatnot. Regardless, it turns out this causes
     // trouble with green threads and lots of optimizations turned on. The
-    // following case study was done on linux x86_64, but I would imagine that
+    // following case study was done on Linux x86_64, but I would imagine that
     // other platforms are similar.
     //
-    // On linux, the instruction sequence for loading the tls pointer global
+    // On Linux, the instruction sequence for loading the tls pointer global
     // looks like:
     //
     //      mov %fs:0x0, %rax

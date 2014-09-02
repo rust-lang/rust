@@ -148,12 +148,12 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
             match self.undo_log.pop().unwrap() {
                 OpenSnapshot => {
                     // This indicates a failure to obey the stack discipline.
-                    fail!("Cannot rollback an uncommited snapshot");
+                    fail!("Cannot rollback an uncommitted snapshot");
                 }
 
                 CommittedSnapshot => {
                     // This occurs when there are nested snapshots and
-                    // the inner is commited but outer is rolled back.
+                    // the inner is committed but outer is rolled back.
                 }
 
                 NewElem(i) => {

@@ -841,7 +841,7 @@ impl<'a, P: GenericPath> Display<'a, P> {
     /// Returns the path as a possibly-owned string.
     ///
     /// If the path is not UTF-8, invalid sequences will be replaced with the
-    /// unicode replacement char. This involves allocation.
+    /// Unicode replacement char. This involves allocation.
     #[inline]
     pub fn as_maybe_owned(&self) -> MaybeOwned<'a> {
         String::from_utf8_lossy(if self.filename {

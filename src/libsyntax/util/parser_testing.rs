@@ -81,9 +81,9 @@ pub fn strs_to_idents(ids: Vec<&str> ) -> Vec<ast::Ident> {
 
 /// Does the given string match the pattern? whitespace in the first string
 /// may be deleted or replaced with other whitespace to match the pattern.
-/// this function is unicode-ignorant; fortunately, the careful design of
+/// this function is Unicode-ignorant; fortunately, the careful design of
 /// UTF-8 mitigates this ignorance.  In particular, this function only collapses
-/// sequences of \n, \r, ' ', and \t, but it should otherwise tolerate unicode
+/// sequences of \n, \r, ' ', and \t, but it should otherwise tolerate Unicode
 /// chars. Unsurprisingly, it doesn't do NKF-normalization(?).
 pub fn matches_codepattern(a : &str, b : &str) -> bool {
     let mut idx_a = 0;

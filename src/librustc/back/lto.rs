@@ -162,7 +162,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
 
         "verify".with_c_str(|s| llvm::LLVMRustAddPass(pm, s));
 
-        time(sess.time_passes(), "LTO pases", (), |()|
+        time(sess.time_passes(), "LTO passes", (), |()|
              llvm::LLVMRunPassManager(pm, llmod));
 
         llvm::LLVMDisposePassManager(pm);

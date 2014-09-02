@@ -1386,7 +1386,7 @@ pub fn trans_adt<'a>(mut bcx: &'a Block<'a>,
         }
     }
 
-    // Now, we just overwrite the fields we've explicity specified
+    // Now, we just overwrite the fields we've explicitly specified
     for &(i, ref e) in fields.iter() {
         let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
         let e_ty = expr_ty_adjusted(bcx, &**e);

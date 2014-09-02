@@ -278,7 +278,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
         UnrecognizedHex => "invalid \\u escape (unrecognized hex)",
         NotFourDigit => "invalid \\u escape (not four digits)",
         NotUtf8 => "contents not utf-8",
-        InvalidUnicodeCodePoint => "invalid unicode code point",
+        InvalidUnicodeCodePoint => "invalid Unicode code point",
         LoneLeadingSurrogateInHexEscape => "lone leading surrogate in hex escape",
         UnexpectedEndOfHexEscape => "unexpected end of hex escape",
     }

@@ -740,7 +740,7 @@ pub fn finalize(cx: &CrateContext) {
             "Dwarf Version".with_c_str(
                 |s| llvm::LLVMRustAddModuleFlag(cx.llmod, s, 2));
         } else {
-            // FIXME(#13611) this is a kludge fix because the linux bots have
+            // FIXME(#13611) this is a kludge fix because the Linux bots have
             //               gdb 7.4 which doesn't understand dwarf4, we should
             //               do something more graceful here.
             "Dwarf Version".with_c_str(

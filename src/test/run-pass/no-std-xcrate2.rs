@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test: this has weird linking problems on linux, and it probably needs a
+// ignore-test: this has weird linking problems on Linux, and it probably needs a
 //             solution along the lines of disabling segmented stacks and/or the
 //             stack checks.
 // aux-build:no_std_crate.rs
@@ -20,7 +20,7 @@
 
 extern crate no_std_crate;
 
-// This is an unfortunate thing to have to do on linux :(
+// This is an unfortunate thing to have to do on Linux :(
 #[cfg(target_os = "linux")]
 #[doc(hidden)]
 pub mod linkhack {

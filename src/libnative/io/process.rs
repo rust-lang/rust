@@ -151,7 +151,7 @@ impl rtio::RtioProcess for Process {
         #[cfg(unix)] use libc::EINVAL as ERROR;
         #[cfg(windows)] use libc::ERROR_NOTHING_TO_TERMINATE as ERROR;
 
-        // On linux (and possibly other unices), a process that has exited will
+        // On Linux (and possibly other unices), a process that has exited will
         // continue to accept signals because it is "defunct". The delivery of
         // signals will only fail once the child has been reaped. For this
         // reason, if the process hasn't exited yet, then we attempt to collect
