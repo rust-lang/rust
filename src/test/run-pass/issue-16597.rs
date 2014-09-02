@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags:--test
+// ignore-pretty turns out the pretty-printer doesn't handle gensym'd things...
 
 #![feature(globs)]
 
