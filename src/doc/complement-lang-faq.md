@@ -83,7 +83,7 @@ We want to maintain the option to parametrize at runtime. We may eventually chan
 
 ## Why aren't values type-parametric? Why only items?
 
-Doing so would make type inference much more complex, and require the implementation strategy of runtime parametrization.
+Doing so would make type inference much more complex, and require the implementation strategy of runtime parameterization.
 
 ## Why are enumerations nominal and closed?
 

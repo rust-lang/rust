@@ -1808,7 +1808,7 @@ our code in this file. We'll talk about multiple-file projects later on in the
 guide.
 
 Before we move on, let me show you one more Cargo command: `run`. `cargo run`
-is kind of like `cargo build`, but it also then runs the produced exectuable.
+is kind of like `cargo build`, but it also then runs the produced executable.
 Try it out:
 
 ```{notrust,ignore}
