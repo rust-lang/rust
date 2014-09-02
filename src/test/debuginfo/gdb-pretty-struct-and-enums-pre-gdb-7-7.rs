@@ -12,6 +12,7 @@
 // older versions of GDB too. A more extensive test can be found in
 // gdb-pretty-struct-and-enums.rs
 
+// ignore-test FIXME(#16919)
 // ignore-tidy-linelength
 // ignore-lldb
 // ignore-android: FIXME(#10381)
