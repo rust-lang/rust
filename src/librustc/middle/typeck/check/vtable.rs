@@ -630,9 +630,13 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
 
     let cx = fcx.ccx;
     let check_object_cast = |src_ty: ty::t, target_ty: ty::t| {
+      debug!("check_object_cast {} to {}",
+             fcx.infcx().ty_to_string(src_ty),
+             fcx.infcx().ty_to_string(target_ty));
       // Check that a cast is of correct types.
       match (&ty::get(target_ty).sty, &ty::get(src_ty).sty) {
           (&ty::ty_rptr(_, ty::mt{ty, mutbl}), &ty::ty_rptr(_, mt))
+          | (&ty::ty_ptr(ty::mt{ty, mutbl}), &ty::ty_rptr(_, mt))
             if !mutability_allowed(mt.mutbl, mutbl) => {
               match ty::get(ty).sty {
                   ty::ty_trait(..) => {
@@ -641,7 +645,9 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                   _ => {}
               }
           }
-          (&ty::ty_uniq(..), &ty::ty_uniq(..) ) => {}
+          (&ty::ty_uniq(..), &ty::ty_uniq(..) )
+          | (&ty::ty_ptr(..), &ty::ty_ptr(..) )
+          | (&ty::ty_ptr(..), &ty::ty_rptr(..)) => {}
           (&ty::ty_rptr(r_t, _), &ty::ty_rptr(r_s, _)) => {
               infer::mk_subr(fcx.infcx(),
                              infer::RelateObjectBound(ex.span),
@@ -664,6 +670,16 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                   ty::ty_trait(..) => {
                       span_err!(fcx.ccx.tcx.sess, ex.span, E0099,
                                 "can only cast an &-pointer to an &-object, not a {}",
+                                ty::ty_sort_string(fcx.tcx(), src_ty));
+                  }
+                  _ => {}
+              }
+          }
+          (&ty::ty_ptr(ty::mt{ty, ..}), _) => {
+              match ty::get(ty).sty {
+                  ty::ty_trait(..) => {
+                      span_err!(fcx.ccx.tcx.sess, ex.span, E0160,
+                                "can only cast an *-pointer or &-pointer to an *-object, not a {}",
                                 ty::ty_sort_string(fcx.tcx(), src_ty));
                   }
                   _ => {}
@@ -880,7 +896,8 @@ fn trait_cast_types(fcx: &FnCtxt,
         match autoref {
             &ty::AutoUnsize(ref k) |
             &ty::AutoUnsizeUniq(ref k) => trait_cast_types_unsize(fcx, k, src_ty, sp),
-            &ty::AutoPtr(_, _, Some(box ref autoref)) => {
+            &ty::AutoPtr(_, _, Some(box ref autoref)) |
+            &ty::AutoUnsafe(_, Some(box ref autoref)) => {
                 trait_cast_types_autoref(fcx, autoref, src_ty, sp)
             }
             _ => None
@@ -891,7 +908,7 @@ fn trait_cast_types(fcx: &FnCtxt,
         &ty::AutoDerefRef(AutoDerefRef{autoref: Some(ref autoref), autoderefs}) => {
             let mut derefed_type = src_ty;
             for _ in range(0, autoderefs) {
-                derefed_type = ty::deref(derefed_type, false).unwrap().ty;
+                derefed_type = ty::deref(derefed_type, true).unwrap().ty;
                 derefed_type = structurally_resolved_type(fcx, sp, derefed_type)
             }
             trait_cast_types_autoref(fcx, autoref, derefed_type, sp)

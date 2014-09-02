@@ -762,7 +762,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                                      ty::BorrowKind::from_mutbl(m),
                                      AutoRef);
             }
-            ty::AutoUnsizeUniq(_) | ty::AutoUnsize(_) | ty::AutoUnsafe(_) => {}
+            ty::AutoUnsizeUniq(_) | ty::AutoUnsize(_) | ty::AutoUnsafe(..) => {}
         }
     }
 

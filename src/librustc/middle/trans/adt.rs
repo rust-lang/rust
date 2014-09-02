@@ -296,8 +296,9 @@ impl Case {
 
         for (i, &ty) in self.tys.iter().enumerate() {
             match ty::get(ty).sty {
-                // &T/&mut T could either be a thin or fat pointer depending on T
-                ty::ty_rptr(_, ty::mt { ty, .. }) => match ty::get(ty).sty {
+                // &T/&mut T/*T could either be a thin or fat pointer depending on T
+                ty::ty_rptr(_, ty::mt { ty, .. })
+                | ty::ty_ptr(ty::mt { ty, .. }) => match ty::get(ty).sty {
                     // &[T] and &str are a pointer and length pair
                     ty::ty_vec(_, None) | ty::ty_str => return Some(FatPointer(i, slice_elt_base)),
 

@@ -1401,7 +1401,7 @@ fn check_method_self_type<RS:RegionScope>(
         ast::SelfExplicit(ref ast_type, _) => {
             let typ = crate_context.to_ty(rs, &**ast_type);
             let base_type = match ty::get(typ).sty {
-                ty::ty_rptr(_, tm) => tm.ty,
+                ty::ty_ptr(tm) | ty::ty_rptr(_, tm) => tm.ty,
                 ty::ty_uniq(typ) => typ,
                 _ => typ,
             };
