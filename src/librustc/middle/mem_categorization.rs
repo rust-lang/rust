@@ -150,7 +150,7 @@ pub enum MutabilityCategory {
 // like `*x`, the type of this deref node is the deref'd type (`T`),
 // but in a pattern like `@x`, the `@x` pattern is again a
 // dereference, but its type is the type *before* the dereference
-// (`@T`). So use `cmt.type` to find the type of the value in a consistent
+// (`@T`). So use `cmt.ty` to find the type of the value in a consistent
 // fashion. For more details, see the method `cat_pattern`
 #[deriving(Clone, PartialEq)]
 pub struct cmt_ {

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait A {}
+// Check that dynamically sized rvalues are forbidden
 
-struct Struct {
-    r: A+'static
-}
-
-fn new_struct(r: A+'static) -> Struct {
-    //~^ ERROR variable `r` has dynamically sized type
-    Struct { r: r } //~ ERROR trying to initialise a dynamically sized struct
+pub fn main() {
+    let _x: Box<str> = box *"hello world";
     //~^ ERROR E0161
-    //~^^ ERROR E0161
-}
 
-trait Curve {}
-enum E {X(Curve+'static)}
-fn main() {}
+    let array: &[int] = &[1, 2, 3];
+    let _x: Box<[int]> = box *array;
+    //~^ ERROR E0161
+}

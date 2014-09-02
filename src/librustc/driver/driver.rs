@@ -404,6 +404,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, "borrow checking", (), |_|
          middle::borrowck::check_crate(&ty_cx, krate));
 
+    time(time_passes, "rvalue checking", (), |_|
+         middle::check_rvalues::check_crate(&ty_cx, krate));
+
     time(time_passes, "kind checking", (), |_|
          kind::check_crate(&ty_cx, krate));
 
