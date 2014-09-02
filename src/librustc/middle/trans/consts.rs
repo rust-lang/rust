@@ -243,7 +243,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                         }
                         Some(ref autoref) => {
                             match *autoref {
-                                ty::AutoUnsafe(_) |
+                                ty::AutoUnsafe(_, None) |
                                 ty::AutoPtr(ty::ReStatic, _, None) => {
                                     // Don't copy data to do a deref+ref
                                     // (i.e., skip the last auto-deref).

@@ -254,11 +254,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
         let mut datum = datum;
 
         let datum = match autoref {
-            &AutoUnsafe(..) => {
-                debug!("  AutoUnsafe");
-                unpack_datum!(bcx, ref_ptr(bcx, expr, datum))
-            }
-            &AutoPtr(_, _, ref a) => {
+            &AutoPtr(_, _, ref a) | &AutoUnsafe(_, ref a) => {
                 debug!("  AutoPtr");
                 match a {
                     &Some(box ref a) => datum = unpack_datum!(bcx,
@@ -1847,8 +1843,7 @@ pub fn cast_type_kind(tcx: &ty::ctxt, t: ty::t) -> cast_kind {
     match ty::get(t).sty {
         ty::ty_char        => cast_integral,
         ty::ty_float(..)   => cast_float,
-        ty::ty_ptr(..)     => cast_pointer,
-        ty::ty_rptr(_, mt) => {
+        ty::ty_rptr(_, mt) | ty::ty_ptr(mt) => {
             if ty::type_is_sized(tcx, mt.ty) {
                 cast_pointer
             } else {
