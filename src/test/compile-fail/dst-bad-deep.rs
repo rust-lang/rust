@@ -22,4 +22,5 @@ pub fn main() {
     let g: &Fat<[int]> = &f;
     let h: &Fat<Fat<[int]>> = &Fat { ptr: *g };
     //~^ ERROR trying to initialise a dynamically sized struct
+    //~^^ ERROR E0161
 }
