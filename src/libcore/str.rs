@@ -479,6 +479,9 @@ impl TwoWaySearcher {
                     ((haystack[self.position + needle.len() - 1] & 0x3f)
                      as uint)) & 1 == 0 {
                 self.position += needle.len();
+                if !long_period {
+                    self.memory = 0;
+                }
                 continue 'search;
             }
 
