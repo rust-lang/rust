@@ -451,6 +451,8 @@ impl Datum<Expr> {
                                name: &str,
                                expr_id: ast::NodeId)
                                -> DatumBlock<'a, Lvalue> {
+        debug!("to_lvalue_datum self: {}", self.to_string(bcx.ccx()));
+
         assert!(ty::lltype_is_sized(bcx.tcx(), self.ty),
                 "Trying to convert unsized value to lval");
         self.match_kind(
