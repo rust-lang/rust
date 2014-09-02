@@ -21,7 +21,7 @@ use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use bigint::{BigInt, BigUint, Sign, Plus, Minus};
 
 /// Represents the ratio between 2 numbers.
-#[deriving(Clone)]
+#[deriving(Clone, Hash)]
 #[allow(missing_doc)]
 pub struct Ratio<T> {
     numer: T,
@@ -380,6 +380,7 @@ mod test {
     use super::{Ratio, Rational, BigRational};
     use std::num::{Zero, One, FromStrRadix, FromPrimitive, ToStrRadix};
     use std::from_str::FromStr;
+    use std::hash::hash;
     use std::num;
 
     pub static _0 : Rational = Ratio { numer: 0, denom: 1};
@@ -750,5 +751,11 @@ mod test {
         assert!(_neg1_2.is_negative());
         assert!(! _neg1_2.is_positive());
         assert!(! _1_2.is_negative());
+    }
+
+    #[test]
+    fn test_hash() {
+        assert!(hash(&_0) != hash(&_1));
+        assert!(hash(&_0) != hash(&_3_2));
     }
 }
