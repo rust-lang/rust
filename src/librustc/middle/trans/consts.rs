@@ -170,7 +170,7 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
             }
         }
         None => {
-            cx.sess().bug(format!("can't dereference const of type {}",
+            cx.sess().bug(format!("cannot dereference const of type {}",
                                   ty_to_string(cx.tcx(), t)).as_slice())
         }
     }
@@ -225,10 +225,12 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                 ty::AutoDerefRef(ref adj) => {
                     let mut ty = ety;
                     // Save the last autoderef in case we can avoid it.
-                    for _ in range(0, adj.autoderefs-1) {
-                        let (dv, dt) = const_deref(cx, llconst, ty, false);
-                        llconst = dv;
-                        ty = dt;
+                    if adj.autoderefs > 0 {
+                        for _ in range(0, adj.autoderefs-1) {
+                            let (dv, dt) = const_deref(cx, llconst, ty, false);
+                            llconst = dv;
+                            ty = dt;
+                        }
                     }
 
                     match adj.autoref {
@@ -263,6 +265,8 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                         // work properly.
                                         let (_, dt) = const_deref(cx, llconst, ty, false);
                                         ty = dt;
+                                    } else {
+                                        llconst = const_addr_of(cx, llconst, ast::MutImmutable)
                                     }
 
                                     match ty::get(ty).sty {
