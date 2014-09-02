@@ -123,7 +123,7 @@ PKG_EXE = dist/$(PKG_NAME)-$(CFG_BUILD).exe
 $(PKG_EXE): rust.iss modpath.iss upgrade.iss LICENSE.txt rust-logo.ico \
             $(CSREQ3_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
             dist-prepare-win
-	$(CFG_PYTHON) $(S)src/etc/copy-runtime-deps.py tmp/dist/win/bin $(CFG_BUILD)
+	$(CFG_PYTHON) $(S)src/etc/make-win-dist.py tmp/dist/win $(CFG_BUILD)
 	@$(call E, ISCC: $@)
 	$(Q)"$(CFG_ISCC)" $<
 

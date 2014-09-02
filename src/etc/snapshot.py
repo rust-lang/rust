@@ -157,9 +157,9 @@ def get_winnt_runtime_deps(platform):
     path_dirs = os.environ["PATH"].split(os.pathsep)
     for name in deps:
       for dir in path_dirs:
-        matches = glob.glob(os.path.join(dir, name))
-        if matches:
-          runtime_deps.append(matches[0])
+        filepath = os.path.join(dir, name)
+        if os.path.isfile(filepath):
+          runtime_deps.append(filepath)
           break
       else:
         raise Exception("Could not find runtime dependency: %s" % name)
