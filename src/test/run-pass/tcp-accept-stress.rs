@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-macos osx really doesn't like cycling through large numbers of
+//              sockets as calls to connect() will start returning EADDRNOTAVAIL
+//              quite quickly and it takes a few seconds for the sockets to get
+//              recycled.
+
 #![feature(phase)]
 
 #[phase(plugin)]
@@ -20,7 +25,7 @@ use std::task::TaskBuilder;
 use native::NativeTaskBuilder;
 
 static N: uint = 8;
-static M: uint = 100;
+static M: uint = 20;
 
 green_start!(main)
 
@@ -40,11 +45,12 @@ fn test() {
     let mut a = l.listen().unwrap();
     let cnt = Arc::new(atomic::AtomicUint::new(0));
 
-    let (tx, rx) = channel();
+    let (srv_tx, srv_rx) = channel();
+    let (cli_tx, cli_rx) = channel();
     for _ in range(0, N) {
         let a = a.clone();
         let cnt = cnt.clone();
-        let tx = tx.clone();
+        let srv_tx = srv_tx.clone();
         spawn(proc() {
             let mut a = a;
             loop {
@@ -58,33 +64,36 @@ fn test() {
                     Err(e) => fail!("{}", e),
                 }
             }
-            tx.send(());
+            srv_tx.send(());
         });
     }
 
     for _ in range(0, N) {
-        let tx = tx.clone();
+        let cli_tx = cli_tx.clone();
         spawn(proc() {
             for _ in range(0, M) {
                 let _s = TcpStream::connect(addr.ip.to_string().as_slice(),
                                             addr.port).unwrap();
             }
-            tx.send(());
+            cli_tx.send(());
         });
     }
-    drop(tx);
+    drop((cli_tx, srv_tx));
 
     // wait for senders
-    assert_eq!(rx.iter().take(N).count(), N);
+    if cli_rx.iter().take(N).count() != N {
+        a.close_accept().unwrap();
+        fail!("clients failed");
+    }
 
     // wait for one acceptor to die
-    let _ = rx.recv();
+    let _ = srv_rx.recv();
 
     // Notify other receivers should die
     a.close_accept().unwrap();
 
     // wait for receivers
-    assert_eq!(rx.iter().take(N - 1).count(), N - 1);
+    assert_eq!(srv_rx.iter().take(N - 1).count(), N - 1);
 
     // Everything should have been accepted.
     assert_eq!(cnt.load(atomic::SeqCst), N * M);
