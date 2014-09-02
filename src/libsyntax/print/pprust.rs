@@ -180,7 +180,7 @@ pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
 
 // FIXME (Issue #16472): the thing_to_string_impls macro should go away
 // after we revise the syntax::ext::quote::ToToken impls to go directly
-// to token-trees instea of thing -> string -> token-trees.
+// to token-trees instead of thing -> string -> token-trees.
 
 macro_rules! thing_to_string_impls {
     ($to_string:ident) => {

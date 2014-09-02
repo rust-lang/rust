@@ -289,7 +289,7 @@ pub trait Set<T>: Collection {
 }
 
 /// A mutable collection of values which are distinct from one another that
-/// can be mutaed.
+/// can be mutated.
 pub trait MutableSet<T>: Set<T> + Mutable {
     /// Adds a value to the set. Returns `true` if the value was not already
     /// present in the set.

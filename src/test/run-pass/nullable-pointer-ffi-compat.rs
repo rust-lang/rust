@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // #11303, #11040:
-// This would previously crash on i686 linux due to abi differences
+// This would previously crash on i686 Linux due to abi differences
 // between returning an Option<T> and T, where T is a non nullable
 // pointer.
 // If we have an enum with two variants such that one is zero sized

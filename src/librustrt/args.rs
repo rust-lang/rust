@@ -14,7 +14,7 @@
 //! the processes `argc` and `argv` arguments to be stored
 //! in a globally-accessible location for use by the `os` module.
 //!
-//! Only valid to call on linux. Mac and Windows use syscalls to
+//! Only valid to call on Linux. Mac and Windows use syscalls to
 //! discover the command line arguments.
 //!
 //! FIXME #7756: Would be nice for this to not exist.
