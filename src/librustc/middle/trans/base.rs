@@ -566,8 +566,8 @@ pub fn compare_scalar_types<'a>(
 
     match ty::get(t).sty {
         ty::ty_nil => f(nil_type),
-        ty::ty_bool | ty::ty_ptr(_) |
-        ty::ty_uint(_) | ty::ty_char => f(unsigned_int),
+        ty::ty_bool | ty::ty_uint(_) | ty::ty_char => f(unsigned_int),
+        ty::ty_ptr(mt) if ty::type_is_sized(cx.tcx(), mt.ty) => f(unsigned_int),
         ty::ty_int(_) => f(signed_int),
         ty::ty_float(_) => f(floating_point),
             // Should never get here, because t is scalar.

@@ -157,15 +157,19 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
                 ty_unboxed_closure(def_id, _) => {
                     Some(def_id)
                 }
-                ty_rptr(_, ty::mt {ty, ..}) | ty_uniq(ty) => match ty::get(ty).sty {
-                    ty_trait(box ty::TyTrait { def_id, .. }) => {
-                        Some(def_id)
+                ty_ptr(ty::mt {ty, ..}) |
+                ty_rptr(_, ty::mt {ty, ..}) |
+                ty_uniq(ty) => {
+                    match ty::get(ty).sty {
+                        ty_trait(box ty::TyTrait { def_id, .. }) => {
+                            Some(def_id)
+                        }
+                        _ => {
+                            fail!("get_base_type() returned a type that wasn't an \
+                                   enum, struct, or trait");
+                        }
                     }
-                    _ => {
-                        fail!("get_base_type() returned a type that wasn't an \
-                               enum, struct, or trait");
-                    }
-                },
+                }
                 ty_trait(box ty::TyTrait { def_id, .. }) => {
                     Some(def_id)
                 }

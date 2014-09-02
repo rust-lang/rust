@@ -65,7 +65,7 @@ we may want to adjust precisely when coercions occur.
 */
 
 use middle::subst;
-use middle::ty::{AutoPtr, AutoDerefRef, AutoUnsize};
+use middle::ty::{AutoPtr, AutoDerefRef, AutoUnsize, AutoUnsafe};
 use middle::ty::{mt};
 use middle::ty;
 use middle::typeck::infer::{CoerceResult, resolve_type, Coercion};
@@ -100,7 +100,7 @@ impl<'f> Coerce<'f> {
         // to `&[T]`. Doing it all at once makes the target code a bit more
         // efficient and spares us from having to handle multiple coercions.
         match ty::get(b).sty {
-            ty::ty_rptr(_, mt_b) => {
+            ty::ty_ptr(mt_b) | ty::ty_rptr(_, mt_b) => {
                 match ty::get(mt_b.ty).sty {
                     ty::ty_vec(_, None) => {
                         let unsize_and_ref = self.unpack_actual_value(a, |sty_a| {
@@ -129,6 +129,33 @@ impl<'f> Coerce<'f> {
         // Note: does not attempt to resolve type variables we encounter.
         // See above for details.
         match ty::get(b).sty {
+            ty::ty_ptr(mt_b) => {
+                match ty::get(mt_b.ty).sty {
+                    ty::ty_str => {
+                        return self.unpack_actual_value(a, |sty_a| {
+                            self.coerce_unsafe_ptr(a, sty_a, b, ast::MutImmutable)
+                        });
+                    }
+
+                    ty::ty_trait(..) => {
+                        let result = self.unpack_actual_value(a, |sty_a| {
+                            self.coerce_unsafe_object(a, sty_a, b, mt_b.mutbl)
+                        });
+
+                        match result {
+                            Ok(t) => return Ok(t),
+                            Err(..) => {}
+                        }
+                    }
+
+                    _ => {
+                        return self.unpack_actual_value(a, |sty_a| {
+                            self.coerce_unsafe_ptr(a, sty_a, b, mt_b.mutbl)
+                        });
+                    }
+                };
+            }
+
             ty::ty_rptr(_, mt_b) => {
                 match ty::get(mt_b.ty).sty {
                     ty::ty_str => {
@@ -162,12 +189,6 @@ impl<'f> Coerce<'f> {
                 }) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_fn(a, sty_a, b)
-                });
-            }
-
-            ty::ty_ptr(mt_b) => {
-                return self.unpack_actual_value(a, |sty_a| {
-                    self.coerce_unsafe_ptr(a, sty_a, b, mt_b)
                 });
             }
 
@@ -329,6 +350,25 @@ impl<'f> Coerce<'f> {
                     }
                 })
             }
+            (&ty::ty_rptr(_, ty::mt{ty: t_a, ..}), &ty::ty_ptr(mt_b)) => {
+                self.unpack_actual_value(t_a, |sty_a| {
+                    match self.unsize_ty(sty_a, mt_b.ty) {
+                        Some((ty, kind)) => {
+                            let ty = ty::mk_ptr(self.get_ref().infcx.tcx,
+                                                 ty::mt{ty: ty, mutbl: mt_b.mutbl});
+                            try!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
+                            debug!("Success, coerced with AutoDerefRef(1, \
+                                    AutoPtr(AutoUnsize({:?})))", kind);
+                            Ok(Some(AutoDerefRef(AutoDerefRef {
+                                autoderefs: 1,
+                                autoref: Some(ty::AutoUnsafe(mt_b.mutbl,
+                                                             Some(box AutoUnsize(kind))))
+                            })))
+                        }
+                        _ => Err(ty::terr_mismatch)
+                    }
+                })
+            }
             (&ty::ty_uniq(t_a), &ty::ty_uniq(t_b)) => {
                 self.unpack_actual_value(t_a, |sty_a| {
                     match self.unsize_ty(sty_a, t_b) {
@@ -357,7 +397,7 @@ impl<'f> Coerce<'f> {
                  sty_a: &ty::sty,
                  ty_b: ty::t)
                  -> Option<(ty::t, ty::UnsizeKind)> {
-        debug!("unsize_ty(sty_a={:?}", sty_a);
+        debug!("unsize_ty(sty_a={:?}, ty_b={})", sty_a, ty_b.repr(self.get_ref().infcx.tcx));
 
         let tcx = self.get_ref().infcx.tcx;
 
@@ -430,15 +470,47 @@ impl<'f> Coerce<'f> {
                               b: ty::t,
                               b_mutbl: ast::Mutability) -> CoerceResult
     {
-        debug!("coerce_borrowed_object(a={}, sty_a={:?}, b={})",
-               a.repr(self.get_ref().infcx.tcx), sty_a,
-               b.repr(self.get_ref().infcx.tcx));
-
         let tcx = self.get_ref().infcx.tcx;
+
+        debug!("coerce_borrowed_object(a={}, sty_a={:?}, b={})",
+               a.repr(tcx), sty_a,
+               b.repr(tcx));
+
         let coercion = Coercion(self.get_ref().trace.clone());
         let r_a = self.get_ref().infcx.next_region_var(coercion);
 
-        let a_borrowed = match *sty_a {
+        self.coerce_object(a, sty_a, b,
+                           |tr| ty::mk_rptr(tcx, r_a, ty::mt{ mutbl: b_mutbl, ty: tr }),
+                           || AutoPtr(r_a, b_mutbl, None))
+    }
+
+    fn coerce_unsafe_object(&self,
+                            a: ty::t,
+                            sty_a: &ty::sty,
+                            b: ty::t,
+                            b_mutbl: ast::Mutability) -> CoerceResult
+    {
+        let tcx = self.get_ref().infcx.tcx;
+
+        debug!("coerce_unsafe_object(a={}, sty_a={:?}, b={})",
+               a.repr(tcx), sty_a,
+               b.repr(tcx));
+
+        self.coerce_object(a, sty_a, b,
+                           |tr| ty::mk_ptr(tcx, ty::mt{ mutbl: b_mutbl, ty: tr }),
+                           || AutoUnsafe(b_mutbl, None))
+    }
+
+    fn coerce_object(&self,
+                     a: ty::t,
+                     sty_a: &ty::sty,
+                     b: ty::t,
+                     mk_ty: |ty::t| -> ty::t,
+                     mk_adjust: || -> ty::AutoRef) -> CoerceResult
+    {
+        let tcx = self.get_ref().infcx.tcx;
+
+        match *sty_a {
             ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
                 ty::ty_trait(box ty::TyTrait {
                         def_id,
@@ -447,22 +519,20 @@ impl<'f> Coerce<'f> {
                         ..
                     }) => {
                     let tr = ty::mk_trait(tcx, def_id, substs.clone(), bounds);
-                    ty::mk_rptr(tcx, r_a, ty::mt{ mutbl: b_mutbl, ty: tr })
+                    try!(self.subtype(mk_ty(tr), b));
+                    Ok(Some(AutoDerefRef(AutoDerefRef {
+                        autoderefs: 1,
+                        autoref: Some(mk_adjust())
+                    })))
                 }
                 _ => {
-                    return self.subtype(a, b);
+                    self.subtype(a, b)
                 }
             },
             _ => {
-                return self.subtype(a, b);
+                self.subtype(a, b)
             }
-        };
-
-        try!(self.subtype(a_borrowed, b));
-        Ok(Some(AutoDerefRef(AutoDerefRef {
-            autoderefs: 1,
-            autoref: Some(AutoPtr(r_a, b_mutbl, None))
-        })))
+        }
     }
 
     pub fn coerce_borrowed_fn(&self,
@@ -521,7 +591,7 @@ impl<'f> Coerce<'f> {
                              a: ty::t,
                              sty_a: &ty::sty,
                              b: ty::t,
-                             mt_b: ty::mt)
+                             mutbl_b: ast::Mutability)
                              -> CoerceResult {
         debug!("coerce_unsafe_ptr(a={}, sty_a={:?}, b={})",
                a.repr(self.get_ref().infcx.tcx), sty_a,
@@ -534,16 +604,18 @@ impl<'f> Coerce<'f> {
             }
         };
 
-        // check that the types which they point at are compatible
+        // Check that the types which they point at are compatible.
+        // Note that we don't adjust the mutability here. We cannot change
+        // the mutability and the kind of pointer in a single coercion.
         let a_unsafe = ty::mk_ptr(self.get_ref().infcx.tcx, mt_a);
         try!(self.subtype(a_unsafe, b));
 
-        // although references and unsafe ptrs have the same
+        // Although references and unsafe ptrs have the same
         // representation, we still register an AutoDerefRef so that
-        // regionck knows that the region for `a` must be valid here
+        // regionck knows that the region for `a` must be valid here.
         Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 1,
-            autoref: Some(ty::AutoUnsafe(mt_b.mutbl))
+            autoref: Some(ty::AutoUnsafe(mutbl_b, None))
         })))
     }
 }

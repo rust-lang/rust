@@ -3650,7 +3650,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprAddrOf(mutbl, ref oprnd) => {
         let expected = expected.only_has_type();
         let hint = expected.map(fcx, |sty| {
-            match *sty { ty::ty_rptr(_, ref mt) => ExpectHasType(mt.ty),
+            match *sty { ty::ty_rptr(_, ref mt) | ty::ty_ptr(ref mt) => ExpectHasType(mt.ty),
                          _ => NoExpectation }
         });
         let lvalue_pref = match mutbl {

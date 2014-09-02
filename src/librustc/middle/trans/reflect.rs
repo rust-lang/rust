@@ -154,7 +154,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
               // Unfortunately we can't do anything here because at runtime we
               // pass around the value by pointer (*u8). But unsized pointers are
               // fat and so we can't just cast them to *u8 and back. So we have
-              // to work with the pointer directly (see ty_rptr/ty_uniq).
+              // to work with the pointer directly (see ty_ptr/ty_rptr/ty_uniq).
               fail!("Can't reflect unsized type")
           }
           // FIXME(15049) Reflection for unsized structs.
@@ -177,8 +177,24 @@ impl<'a, 'b> Reflector<'a, 'b> {
               self.visit("box", extra.as_slice())
           }
           ty::ty_ptr(ref mt) => {
-              let extra = self.c_mt(mt);
-              self.visit("ptr", extra.as_slice())
+              match ty::get(mt.ty).sty {
+                  ty::ty_vec(ty, None) => {
+                      let extra = self.c_mt(&ty::mt{ty: ty, mutbl: mt.mutbl});
+                      self.visit("evec_slice", extra.as_slice())
+                  }
+                  ty::ty_str => self.visit("estr_slice", &[]),
+                  ty::ty_trait(..) => {
+                      let extra = [
+                          self.c_slice(token::intern_and_get_ident(
+                                  ty_to_string(tcx, t).as_slice()))
+                      ];
+                      self.visit("trait", extra);
+                  }
+                  _ => {
+                      let extra = self.c_mt(mt);
+                      self.visit("ptr", extra.as_slice())
+                  }
+              }
           }
           ty::ty_uniq(typ) => {
               match ty::get(typ).sty {
