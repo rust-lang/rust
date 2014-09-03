@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use middle::freevars::freevar_entry;
 use middle::freevars;
 use middle::subst;
@@ -587,7 +586,7 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
         TyPath(_, _, id) => {
             match cx.tcx.item_substs.borrow().find(&id) {
-                None => { }
+                None => {}
                 Some(ref item_substs) => {
                     let def_map = cx.tcx.def_map.borrow();
                     let did = def_map.get_copy(&id).def_id();
@@ -595,7 +594,7 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
                     for def in generics.types.iter() {
                         let ty = *item_substs.substs.types.get(def.space,
                                                                def.index);
-                        check_typaram_bounds(cx, aty.span, ty, def)
+                        check_typaram_bounds(cx, aty.span, ty, def);
                     }
                 }
             }
@@ -668,7 +667,7 @@ fn check_bounds_on_structs_or_enums_in_type_if_possible(cx: &mut Context,
                                                   .zip(polytype.generics
                                                                .types
                                                                .iter()) {
-                    check_typaram_bounds(cx, span, *ty, type_param_def)
+                    check_typaram_bounds(cx, span, *ty, type_param_def);
                 }
 
                 // Check trait bounds.
