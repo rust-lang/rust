@@ -16,19 +16,19 @@ trait X {}
 impl<'a, T> X for B<'a, T> {}
 
 fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
-    box B(v) as Box<X>
+    box B(&*v) as Box<X>
 }
 
 fn g<'a, T: 'static>(v: Box<A<T>>) -> Box<X+'static> {
-    box B(v) as Box<X> //~ ERROR cannot infer
+    box B(&*v) as Box<X> //~ ERROR cannot infer
 }
 
 fn h<'a, T, U>(v: Box<A<U>+'static>) -> Box<X+'static> {
-    box B(v) as Box<X>
+    box B(&*v) as Box<X>
 }
 
 fn i<'a, T, U>(v: Box<A<U>>) -> Box<X+'static> {
-    box B(v) as Box<X> //~ ERROR cannot infer
+    box B(&*v) as Box<X> //~ ERROR cannot infer
 }
 
 fn main() {}

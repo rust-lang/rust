@@ -81,7 +81,7 @@ pub fn on_fail(obj: &Any + Send, file: &'static str, line: uint) {
                                  "task '{}' failed at '{}', {}:{}\n",
                                  n, msg, file, line);
                 if backtrace::log_enabled() {
-                    let _ = backtrace::write(stderr);
+                    let _ = backtrace::write(&mut *stderr);
                 }
                 local_stderr.replace(Some(stderr));
             }

@@ -29,7 +29,7 @@ impl Trait for Foo {}
 
 pub fn main() {
     {
-        let _x: &Trait = box Foo as Box<Trait>;
+        let _x: &Trait = &*(box Foo as Box<Trait>);
     }
     unsafe {
         assert!(DROP_RAN);
