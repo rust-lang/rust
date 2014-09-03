@@ -12,11 +12,21 @@ extern crate debug;
 
 static x : [int, ..4] = [1,2,3,4];
 static y : &'static [int] = &[1,2,3,4];
+static z : &'static [int, ..4] = &[1,2,3,4];
+static zz : &'static [int] = [1,2,3,4];
 
 pub fn main() {
     println!("{:?}", x[1]);
     println!("{:?}", y[1]);
+    println!("{:?}", z[1]);
+    println!("{:?}", zz[1]);
     assert_eq!(x[1], 2);
     assert_eq!(x[3], 4);
     assert_eq!(x[3], y[3]);
+    assert_eq!(z[1], 2);
+    assert_eq!(z[3], 4);
+    assert_eq!(z[3], y[3]);
+    assert_eq!(zz[1], 2);
+    assert_eq!(zz[3], 4);
+    assert_eq!(zz[3], y[3]);
 }
