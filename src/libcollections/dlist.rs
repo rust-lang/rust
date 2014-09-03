@@ -90,7 +90,7 @@ impl<T> Rawlink<T> {
     /// Convert the `Rawlink` into an Option value
     fn resolve_immut<'a>(&self) -> Option<&'a T> {
         unsafe {
-            mem::transmute(self.p.to_option())
+            self.p.as_ref()
         }
     }
 
