@@ -2410,7 +2410,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             }
 
             ty_trait(box ty::TyTrait { bounds, .. }) => {
-                object_contents(cx, bounds) | TC::ReachesFfiUnsafe
+                object_contents(cx, bounds) | TC::ReachesFfiUnsafe | TC::Nonsized
             }
 
             ty_ptr(ref mt) => {
