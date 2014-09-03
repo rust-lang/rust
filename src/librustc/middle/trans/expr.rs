@@ -1859,6 +1859,19 @@ pub fn cast_type_kind(tcx: &ty::ctxt, t: ty::t) -> cast_kind {
     }
 }
 
+fn cast_is_noop(t_in: ty::t, t_out: ty::t) -> bool {
+    if ty::type_is_boxed(t_in) || ty::type_is_boxed(t_out) {
+        return false;
+    }
+
+    match (ty::deref(t_in, true), ty::deref(t_out, true)) {
+        (Some(ty::mt{ ty: t_in, .. }), Some(ty::mt{ ty: t_out, .. })) => {
+            t_in == t_out
+        }
+        _ => false
+    }
+}
+
 fn trans_imm_cast<'a>(bcx: &'a Block<'a>,
                       expr: &ast::Expr,
                       id: ast::NodeId)
@@ -1877,7 +1890,13 @@ fn trans_imm_cast<'a>(bcx: &'a Block<'a>,
 
     // Convert the value to be cast into a ValueRef, either by-ref or
     // by-value as appropriate given its type:
-    let datum = unpack_datum!(bcx, trans(bcx, expr));
+    let mut datum = unpack_datum!(bcx, trans(bcx, expr));
+
+    if cast_is_noop(datum.ty, t_out) {
+        datum.ty = t_out;
+        return DatumBlock::new(bcx, datum);
+    }
+
     let newval = match (k_in, k_out) {
         (cast_integral, cast_integral) => {
             let llexpr = datum.to_llscalarish(bcx);

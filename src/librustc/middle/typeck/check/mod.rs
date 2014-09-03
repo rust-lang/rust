@@ -1502,10 +1502,9 @@ fn check_cast(fcx: &FnCtxt,
     } else if ty::type_is_region_ptr(t_e) && ty::type_is_unsafe_ptr(t_1) {
         fn types_compatible(fcx: &FnCtxt, sp: Span,
                             t1: ty::t, t2: ty::t) -> bool {
-            if !ty::type_is_vec(t1) {
-                // If the type being casted from is not a vector, this special
-                // case does not apply.
-                return false
+            match ty::get(t1).sty {
+                ty::ty_vec(_, Some(_)) => {}
+                _ => return false
             }
             if ty::type_needs_infer(t2) {
                 // This prevents this special case from going off when casting
@@ -1529,7 +1528,7 @@ fn check_cast(fcx: &FnCtxt,
         // need to special-case obtaining an unsafe pointer
         // from a region pointer to a vector.
 
-        /* this cast is only allowed from &[T] to *T or
+        /* this cast is only allowed from &[T, ..n] to *T or
         &T to *T. */
         match (&ty::get(t_e).sty, &ty::get(t_1).sty) {
             (&ty::ty_rptr(_, ty::mt { ty: mt1, mutbl: ast::MutImmutable }),
