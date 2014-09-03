@@ -929,6 +929,9 @@ fn link_args(cmd: &mut Command,
         cmd.arg("-nodefaultlibs");
     }
 
+    // Rust does its' own LTO
+    cmd.arg("-fno-lto").arg("-fno-use-linker-plugin");
+
     // If we're building a dylib, we don't use --gc-sections because LLVM has
     // already done the best it can do, and we also don't want to eliminate the
     // metadata. If we're building an executable, however, --gc-sections drops
