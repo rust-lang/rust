@@ -1797,7 +1797,6 @@ pub struct UnstableFileStat {
 bitflags!(
     #[doc="A set of permissions for a file or directory is represented
 by a set of flags which are or'd together."]
-    #[deriving(Show)]
     flags FilePermission: u32 {
         static UserRead     = 0o400,
         static UserWrite    = 0o200,
@@ -1834,6 +1833,14 @@ on unix-like systems."]
 impl Default for FilePermission {
     #[inline]
     fn default() -> FilePermission { FilePermission::empty() }
+}
+
+impl fmt::Show for FilePermission {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.fill = '0';
+        formatter.width = Some(3);
+        (&self.bits as &fmt::Octal).fmt(formatter)
+    }
 }
 
 #[cfg(test)]
@@ -1936,5 +1943,19 @@ mod tests {
 
         let mut r = MemReader::new(Vec::from_slice(b"hello, world!"));
         assert_eq!(r.push_at_least(5, 1, &mut buf).unwrap_err().kind, InvalidInput);
+    }
+
+    #[test]
+    fn test_show() {
+        use super::*;
+
+        assert_eq!(format!("{}", UserRead), "400".to_string());
+        assert_eq!(format!("{}", UserFile), "644".to_string());
+        assert_eq!(format!("{}", UserExec), "755".to_string());
+        assert_eq!(format!("{}", UserRWX),  "700".to_string());
+        assert_eq!(format!("{}", GroupRWX), "070".to_string());
+        assert_eq!(format!("{}", OtherRWX), "007".to_string());
+        assert_eq!(format!("{}", AllPermissions), "777".to_string());
+        assert_eq!(format!("{}", UserRead | UserWrite | OtherWrite), "602".to_string());
     }
 }
