@@ -53,6 +53,15 @@ pub fn main() {
         assert!(len == 3);
     }
 
+    // raw slice with explicit cast
+    let a = &[1i, 2, 3] as *const [_];
+    unsafe {
+        let b = (*a)[2];
+        assert!(b == 3);
+        let len = (*a).len();
+        assert!(len == 3);
+    }
+
     // raw DST struct with slice
     let c: *const Foo<[_]> = &Foo {f: [1i, 2, 3]};
     unsafe {
@@ -78,6 +87,14 @@ pub fn main() {
     assert!(r == 42);
 
     let a: *mut [_] = &mut [1i, 2, 3];
+    unsafe {
+        let b = (*a)[2];
+        assert!(b == 3);
+        let len = (*a).len();
+        assert!(len == 3);
+    }
+
+    let a = &mut [1i, 2, 3] as *mut [_];
     unsafe {
         let b = (*a)[2];
         assert!(b == 3);
