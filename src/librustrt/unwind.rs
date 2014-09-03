@@ -61,6 +61,7 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use collections::string::String;
+use collections::str::StrAllocating;
 use collections::vec::Vec;
 use core::any::Any;
 use core::atomic;
@@ -525,7 +526,8 @@ pub fn begin_unwind_fmt(msg: &fmt::Arguments, file_line: &(&'static str, uint)) 
     let mut v = Vec::new();
     let _ = write!(&mut VecWriter { v: &mut v }, "{}", msg);
 
-    begin_unwind_inner(box String::from_utf8(v).unwrap(), file_line)
+    let msg = box String::from_utf8_lossy(v.as_slice()).into_string();
+    begin_unwind_inner(msg, file_line)
 }
 
 /// This is the entry point of unwinding for fail!() and assert!().
