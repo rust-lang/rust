@@ -24,13 +24,13 @@ use {Mutable, MutableMap, Map, MutableSeq};
 /// "Order" of the B-tree, from which all other properties are derived
 static B: uint = 6;
 /// Maximum number of elements in a node
-static capacity: uint = 2 * B - 1;
+static CAPACITY: uint = 2 * B - 1;
 /// Minimum number of elements in a node
-static min_load: uint = B - 1;
+static MIN_LOAD: uint = B - 1;
 /// Maximum number of children in a node
-static edge_capacity: uint = capacity + 1;
+static EDGE_CAPACITY: uint = CAPACITY + 1;
 /// Amount to take off the tail of a node being split
-static split_len: uint = B - 1;
+static SPLIT_LEN: uint = B - 1;
 
 /// Represents a search path for mutating
 type SearchStack<K,V> = Vec<(*mut Node<K,V>, uint)>;
@@ -44,9 +44,9 @@ enum InsertionResult<K,V>{
 /// A B-Tree Node
 struct Node<K,V> {
     length: uint,
-    keys: [Option<K>, ..capacity],
-    edges: [Option<Box<Node<K,V>>>, ..edge_capacity],
-    vals: [Option<V>, ..capacity],
+    keys: [Option<K>, ..CAPACITY],
+    edges: [Option<Box<Node<K,V>>>, ..EDGE_CAPACITY],
+    vals: [Option<V>, ..CAPACITY],
 }
 
 
@@ -424,7 +424,7 @@ impl<K,V> BTree<K,V> {
             let (node_ptr, index) = stack.pop().unwrap();
             let node = &mut *node_ptr;
             let (_key, value) = node.remove_as_leaf(index);
-            let underflow = node.length < min_load;
+            let underflow = node.length < MIN_LOAD;
             (value, underflow)
         };
 
@@ -447,7 +447,7 @@ impl<K,V> BTree<K,V> {
                         unsafe {
                             let parent = &mut *parent_ptr;
                             parent.handle_underflow(index);
-                            underflow = parent.length < min_load;
+                            underflow = parent.length < MIN_LOAD;
                         }
                     } else {
                         // All done!
@@ -495,7 +495,7 @@ impl<K,V> Node<K,V> {
     /// If the node is full, we have to split it.
     fn insert_as_leaf(&mut self, index: uint, key: K, value: V) -> InsertionResult<K,V> {
         let len = self.length;
-        if len < capacity {
+        if len < CAPACITY {
             // The element can fit, just insert it
             self.insert_fit_as_leaf(index, key, value);
             Fit
@@ -519,7 +519,7 @@ impl<K,V> Node<K,V> {
     fn insert_as_internal(&mut self, index: uint, key: K, value: V, right: Box<Node<K,V>>)
             -> InsertionResult<K,V> {
         let len = self.length;
-        if len < capacity {
+        if len < CAPACITY {
             // The element can fit, just insert it
             self.insert_fit_as_internal(index, key, value, right);
             Fit
@@ -562,14 +562,14 @@ impl<K,V> Node<K,V> {
     fn split(&mut self) -> (K, V, Box<Node<K, V>>) {
         let mut right = box Node::new();
 
-        steal_last(self.vals.as_mut_slice(), right.vals.as_mut_slice(), split_len);
-        steal_last(self.keys.as_mut_slice(), right.keys.as_mut_slice(), split_len);
+        steal_last(self.vals.as_mut_slice(), right.vals.as_mut_slice(), SPLIT_LEN);
+        steal_last(self.keys.as_mut_slice(), right.keys.as_mut_slice(), SPLIT_LEN);
         // FIXME(Gankro): This isn't necessary for leaf nodes
-        steal_last(self.edges.as_mut_slice(), right.edges.as_mut_slice(), split_len + 1);
+        steal_last(self.edges.as_mut_slice(), right.edges.as_mut_slice(), SPLIT_LEN + 1);
 
         // How much each node got
-        let left_len = capacity - split_len;
-        let right_len = split_len;
+        let left_len = CAPACITY - SPLIT_LEN;
+        let right_len = SPLIT_LEN;
 
         // But we're gonna pop one off the end of the left one, so subtract one
         self.length = left_len - 1;
@@ -611,7 +611,7 @@ impl<K,V> Node<K,V> {
         // but merge left and right if left is low too.
         let mut left = self.edges[underflowed_child_index - 1].take().unwrap();
         let left_len = left.length;
-        if left_len > min_load {
+        if left_len > MIN_LOAD {
             // Steal! Stealing is roughly analagous to a binary tree rotation.
             // In this case, we're "rotating" right.
 
@@ -663,7 +663,7 @@ impl<K,V> Node<K,V> {
         // but merge left and right if right is low too.
         let mut right = self.edges[underflowed_child_index + 1].take().unwrap();
         let right_len = right.length;
-        if right_len > min_load {
+        if right_len > MIN_LOAD {
             // Steal! Stealing is roughly analagous to a binary tree rotation.
             // In this case, we're "rotating" left.
 
@@ -781,7 +781,7 @@ fn remove_and_shift<T>(slice: &mut [Option<T>], index: uint) -> Option<T> {
     result
 }
 
-/// Subroutine for splitting a node. Put the `split_len` last elements from left,
+/// Subroutine for splitting a node. Put the `SPLIT_LEN` last elements from left,
 /// (which should be full) and put them at the start of right (which should be empty)
 fn steal_last<T>(left: &mut[T], right: &mut[T], amount: uint) {
     // Is there a better way to do this?
