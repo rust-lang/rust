@@ -120,8 +120,8 @@ pub fn main() {
     assert_eq!(field_invoke2(&s2), 3);
 
     let m : Box<Trait> = make_val();
-    assert_eq!(object_invoke1(m), (4,5));
-    assert_eq!(object_invoke2(m), 5);
+    assert_eq!(object_invoke1(&*m), (4,5));
+    assert_eq!(object_invoke2(&*m), 5);
 
     // The RefMakerTrait above is pretty strange (i.e. it is strange
     // to consume a value of type T and return a &T).  Easiest thing

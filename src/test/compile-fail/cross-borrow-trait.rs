@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,33 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate debug;
+// Test that cross-borrowing (implicitly converting from `Box<T>` to `&T`) is
+// forbidden when `T` is a trait.
 
-trait T {
-    fn print(&self);
-}
-
-struct S {
-    s: int,
-}
-
-impl T for S {
-    fn print(&self) {
-        println!("{:?}", self);
-    }
-}
-
-fn print_t(t: &T) {
-    t.print();
-}
-
-fn print_s(s: &S) {
-    s.print();
-}
+struct Foo;
+trait Trait {}
+impl Trait for Foo {}
 
 pub fn main() {
-    let s: Box<S> = box S { s: 5 };
-    print_s(&*s);
-    let t: Box<T> = s as Box<T>;
-    print_t(&*t);
+    let x: Box<Trait> = box Foo;
+    let _y: &Trait = x; //~ ERROR mismatched types: expected `&Trait`, found `Box<Trait>`
 }
+
