@@ -2965,12 +2965,14 @@ pub mod consts {
             pub static AF_INET6: c_int = 10;
             pub static SOCK_STREAM: c_int = 2;
             pub static SOCK_DGRAM: c_int = 1;
+            pub static SOCK_RAW: c_int = 3;
             pub static IPPROTO_TCP: c_int = 6;
             pub static IPPROTO_IP: c_int = 0;
             pub static IPPROTO_IPV6: c_int = 41;
             pub static IP_MULTICAST_TTL: c_int = 33;
             pub static IP_MULTICAST_LOOP: c_int = 34;
             pub static IP_TTL: c_int = 2;
+            pub static IP_HDRINCL: c_int = 3;
             pub static IP_ADD_MEMBERSHIP: c_int = 35;
             pub static IP_DROP_MEMBERSHIP: c_int = 36;
             pub static IPV6_ADD_MEMBERSHIP: c_int = 20;
@@ -3021,8 +3023,12 @@ pub mod consts {
         pub mod extra {
             use types::os::arch::c95::c_int;
 
+            pub static AF_PACKET : c_int = 17;
+            pub static IPPROTO_RAW : c_int = 255;
+
             pub static O_RSYNC : c_int = 16400;
             pub static O_DSYNC : c_int = 16;
+            pub static O_NONBLOCK : c_int = 128;
             pub static O_SYNC : c_int = 16400;
 
             pub static PROT_GROWSDOWN : c_int = 0x01000000;
