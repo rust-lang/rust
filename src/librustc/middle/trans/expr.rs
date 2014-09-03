@@ -2064,10 +2064,13 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
                 typeck::AutoDeref(_) => unpack_datum!(bcx, auto_ref(bcx, datum, expr)),
                 _ => datum
             };
-            let val = unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,
-                                                              datum, None, None));
+
             let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty));
-            Datum::new(val, ref_ty, RvalueExpr(Rvalue::new(ByValue)))
+            let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_deref");
+
+            unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,
+                                                    datum, None, Some(SaveIn(scratch.val))));
+            scratch.to_expr_datum()
         }
         None => {
             // Not overloaded. We already have a pointer we know how to deref.
