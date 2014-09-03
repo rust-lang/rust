@@ -68,14 +68,15 @@ impl<Sized? X: T> T1<X> for S3<X> { //ERROR instantiating a type parameter with 
 trait T2<Z> {
 }
 impl<Sized? X> T2<X> for S3<X> { //ERROR instantiating a type parameter with an incompatible type `X
+*/
 
 // impl - struct
 trait T3<Sized? Z> {
 }
 struct S4<Y>;
-impl<Sized? X> T3<X> for S4<X> { //ERROR instantiating a type parameter with an incompatible type `X
+impl<Sized? X> T3<X> for S4<X> { //~ ERROR instantiating a type parameter with an incompatible type
 }
-*/
+
 
 pub fn main() {
 }
