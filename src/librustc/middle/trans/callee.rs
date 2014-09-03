@@ -816,7 +816,7 @@ pub fn trans_call_inner<'a>(
 
     // The code below invokes the function, using either the Rust
     // conventions (if it is a rust fn) or the native conventions
-    // (otherwise).  The important part is that, when all is sad
+    // (otherwise).  The important part is that, when all is said
     // and done, either the return value of the function will have been
     // written in opt_llretslot (if it is Some) or `llresult` will be
     // set appropriately (otherwise).
