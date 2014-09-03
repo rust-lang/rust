@@ -50,10 +50,12 @@ struct TestCtxt<'a> {
     path: Vec<ast::Ident>,
     ext_cx: ExtCtxt<'a>,
     testfns: Vec<Test>,
-    reexport_mod_ident: ast::Ident,
     reexport_test_harness_main: Option<InternedString>,
     is_test_crate: bool,
     config: ast::CrateConfig,
+
+    // top-level re-export submodule, filled out after folding is finished
+    toplevel_reexport: Option<ast::Ident>,
 }
 
 // Traverse the crate, collecting all the test functions, eliding any
@@ -83,7 +85,9 @@ pub fn modify_for_testing(sess: &Session,
 struct TestHarnessGenerator<'a> {
     cx: TestCtxt<'a>,
     tests: Vec<ast::Ident>,
-    tested_submods: Vec<ast::Ident>,
+
+    // submodule name, gensym'd identifier for re-exports
+    tested_submods: Vec<(ast::Ident, ast::Ident)>,
 }
 
 impl<'a> fold::Folder for TestHarnessGenerator<'a> {
@@ -168,10 +172,14 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             *i = nomain(*i);
         }
         if !tests.is_empty() || !tested_submods.is_empty() {
-            mod_folded.items.push(mk_reexport_mod(&mut self.cx, tests,
-                                                  tested_submods));
+            let (it, sym) = mk_reexport_mod(&mut self.cx, tests, tested_submods);
+            mod_folded.items.push(it);
+
             if !self.cx.path.is_empty() {
-                self.tested_submods.push(self.cx.path[self.cx.path.len()-1]);
+                self.tested_submods.push((self.cx.path[self.cx.path.len()-1], sym));
+            } else {
+                debug!("pushing nothing, sym: {}", sym);
+                self.cx.toplevel_reexport = Some(sym);
             }
         }
 
@@ -180,7 +188,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 }
 
 fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
-                   tested_submods: Vec<ast::Ident>) -> Gc<ast::Item> {
+                   tested_submods: Vec<(ast::Ident, ast::Ident)>) -> (Gc<ast::Item>, ast::Ident) {
     let mut view_items = Vec::new();
     let super_ = token::str_to_ident("super");
 
@@ -188,8 +196,8 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
         cx.ext_cx.view_use_simple(DUMMY_SP, ast::Public,
                                   cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
     }));
-    view_items.extend(tested_submods.move_iter().map(|r| {
-        let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, cx.reexport_mod_ident]);
+    view_items.extend(tested_submods.move_iter().map(|(r, sym)| {
+        let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, sym]);
         cx.ext_cx.view_use_simple_(DUMMY_SP, ast::Public, r, path)
     }));
 
@@ -198,14 +206,18 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
         view_items: view_items,
         items: Vec::new(),
     };
-    box(GC) ast::Item {
-        ident: cx.reexport_mod_ident.clone(),
+
+    let sym = token::gensym_ident("__test_reexports");
+    let it = box(GC) ast::Item {
+        ident: sym.clone(),
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemMod(reexport_mod),
         vis: ast::Public,
         span: DUMMY_SP,
-    }
+    };
+
+    (it, sym)
 }
 
 fn generate_test_harness(sess: &Session,
@@ -220,10 +232,10 @@ fn generate_test_harness(sess: &Session,
                              }),
         path: Vec::new(),
         testfns: Vec::new(),
-        reexport_mod_ident: token::gensym_ident("__test_reexports"),
         reexport_test_harness_main: reexport_test_harness_main,
         is_test_crate: is_test_crate(&krate),
         config: krate.config.clone(),
+        toplevel_reexport: None,
     };
 
     cx.ext_cx.bt_push(ExpnInfo {
@@ -530,7 +542,14 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> Gc<ast::Expr> {
              field("should_fail", fail_expr)]);
 
 
-    let mut visible_path = vec![cx.reexport_mod_ident.clone()];
+    let mut visible_path = match cx.toplevel_reexport {
+        Some(id) => vec![id],
+        None => {
+            cx.sess.bug(
+                "expected to find top-level re-export name, but found None"
+            );
+        }
+    };
     visible_path.extend(path.move_iter());
 
     let fn_expr = ecx.expr_path(ecx.path_global(span, visible_path));
