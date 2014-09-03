@@ -13,7 +13,6 @@
 use std::cell::RefCell;
 use std::os;
 use std::io::fs;
-use std::dynamic_lib::DynamicLibrary;
 use std::collections::HashSet;
 
 use util::fs as myfs;
@@ -134,11 +133,24 @@ impl<'a> FileSearch<'a> {
         }
     }
 
-    pub fn add_dylib_search_paths(&self) {
+    // Returns a list of directories where target-specific dylibs might be located.
+    pub fn get_dylib_search_paths(&self) -> Vec<Path> {
+        let mut paths = Vec::new();
         self.for_each_lib_search_path(|lib_search_path| {
-            DynamicLibrary::prepend_search_path(lib_search_path);
+            paths.push(lib_search_path.clone());
             FileDoesntMatch
-        })
+        });
+        paths
+    }
+
+    // Returns a list of directories where target-specific tool binaries are located.
+    pub fn get_tools_search_paths(&self) -> Vec<Path> {
+        let mut p = Path::new(self.sysroot);
+        p.push(find_libdir(self.sysroot));
+        p.push(rustlibdir());
+        p.push(self.triple);
+        p.push("bin");
+        vec![p]
     }
 }
 
