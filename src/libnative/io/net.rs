@@ -901,8 +901,8 @@ impl rtio::RtioUdpSocket for UdpSocket {
 //
 // It turns out that there's this nifty MSG_DONTWAIT flag which can be passed to
 // send/recv, but the niftiness wears off once you realize it only works well on
-// linux [1] [2]. This means that it's pretty easy to get a nonblocking
-// operation on linux (no flag fiddling, no affecting other objects), but not on
+// Linux [1] [2]. This means that it's pretty easy to get a nonblocking
+// operation on Linux (no flag fiddling, no affecting other objects), but not on
 // other platforms.
 //
 // To work around this constraint on other platforms, we end up using the
@@ -922,7 +922,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
 // operations performed in the lock are *nonblocking* to avoid holding the mutex
 // forever.
 //
-// So, in summary, linux uses MSG_DONTWAIT and doesn't need mutexes, everyone
+// So, in summary, Linux uses MSG_DONTWAIT and doesn't need mutexes, everyone
 // else uses O_NONBLOCK and mutexes with some trickery to make sure blocking
 // reads/writes are still blocking.
 //

@@ -655,7 +655,7 @@ impl UnixAcceptor {
         // using the original server pipe.
         let handle = self.listener.handle;
 
-        // If we've had an artifical call to close_accept, be sure to never
+        // If we've had an artificial call to close_accept, be sure to never
         // proceed in accepting new clients in the future
         if self.inner.closed.load(atomic::SeqCst) { return Err(util::eof()) }
 

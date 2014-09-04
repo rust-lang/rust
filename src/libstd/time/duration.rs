@@ -21,7 +21,7 @@ use result::{Result, Ok, Err};
 
 /// The number of nanoseconds in a microsecond.
 static NANOS_PER_MICRO: i32 = 1000;
-/// The number of nanosecdons in a millisecond.
+/// The number of nanoseconds in a millisecond.
 static NANOS_PER_MILLI: i32 = 1000_000;
 /// The number of nanoseconds in seconds.
 static NANOS_PER_SEC: i32 = 1_000_000_000;

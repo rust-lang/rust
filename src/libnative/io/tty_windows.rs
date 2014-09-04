@@ -15,7 +15,7 @@
 //! This module contains the implementation of a Windows specific console TTY.
 //! Also converts between UTF-16 and UTF-8. Windows has very poor support for
 //! UTF-8 and some functions will fail. In particular ReadFile and ReadConsole
-//! will fail when the codepage is set to UTF-8 and a unicode character is
+//! will fail when the codepage is set to UTF-8 and a Unicode character is
 //! entered.
 //!
 //! FIXME

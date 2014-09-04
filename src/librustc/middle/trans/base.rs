@@ -1068,7 +1068,7 @@ pub fn load_ty(cx: &Block, ptr: ValueRef, t: ty::t) -> ValueRef {
     } else if ty::type_is_bool(t) {
         Trunc(cx, LoadRangeAssert(cx, ptr, 0, 2, llvm::False), Type::i1(cx.ccx()))
     } else if ty::type_is_char(t) {
-        // a char is a unicode codepoint, and so takes values from 0
+        // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
         LoadRangeAssert(cx, ptr, 0, 0x10FFFF + 1, llvm::False)
     } else {

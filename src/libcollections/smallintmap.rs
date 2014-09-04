@@ -324,7 +324,7 @@ impl<V:Clone> SmallIntMap<V> {
     /// Updates a value in the map. If the key already exists in the map,
     /// modifies the value with `ff` taking `oldval, newval`.
     /// Otherwise, sets the value to `newval`.
-    /// Returasn `true` if the key did not already exist in the map.
+    /// Returns `true` if the key did not already exist in the map.
     ///
     /// # Example
     ///

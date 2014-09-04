@@ -504,7 +504,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // Right now there is a bug such that for the expression:
         //      foo(bar(&1))
         // the lifetime of `1` doesn't outlast the call to `bar`, so it's not
-        // vald for the call to `foo`. To work around this all arguments to the
+        // valid for the call to `foo`. To work around this all arguments to the
         // format! string are shoved into locals. Furthermore, we shove the address
         // of each variable because we don't want to move out of the arguments
         // passed to this function.
