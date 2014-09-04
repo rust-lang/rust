@@ -119,6 +119,13 @@ pub fn wild() -> Gc<Pat> {
     box (GC) Pat { id: 0, node: PatWild(PatWildSingle), span: DUMMY_SP }
 }
 
+pub fn raw_pat(p: Gc<Pat>) -> Gc<Pat> {
+    match p.node {
+        PatIdent(_, _, Some(s)) => { raw_pat(s) }
+        _ => { p }
+    }
+}
+
 pub fn def_to_path(tcx: &ty::ctxt, id: DefId) -> Path {
     ty::with_path(tcx, id, |mut path| Path {
         global: false,
