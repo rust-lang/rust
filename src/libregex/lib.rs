@@ -381,7 +381,7 @@ extern crate rand;
 #[cfg(test)]
 extern crate regex;
 
-// unicode tables for character classes are defined in libunicode
+// Unicode tables for character classes are defined in libunicode
 extern crate unicode;
 
 pub use parse::Error;

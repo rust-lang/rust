@@ -1748,7 +1748,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         //
         // We must continue to link to the upstream archives to be sure
         // to pull in native static dependencies. As the final caveat,
-        // on linux it is apparently illegal to link to a blank archive,
+        // on Linux it is apparently illegal to link to a blank archive,
         // so if an archive no longer has any object files in it after
         // we remove `lib.o`, then don't link against it at all.
         //

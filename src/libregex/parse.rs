@@ -620,9 +620,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Parses a unicode character class name, either of the form \pF where
-    // F is a one letter unicode class name or of the form \p{name} where
-    // name is the unicode class name.
+    // Parses a Unicode character class name, either of the form \pF where
+    // F is a one letter Unicode class name or of the form \p{name} where
+    // name is the Unicode class name.
     // Assumes that \p or \P has been read (and 'p' or 'P' is the current
     // character).
     fn parse_unicode_name(&mut self) -> Result<Ast, Error> {

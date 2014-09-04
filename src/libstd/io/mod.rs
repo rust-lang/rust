@@ -1418,7 +1418,7 @@ pub trait Buffer: Reader {
     fn consume(&mut self, amt: uint);
 
     /// Reads the next line of input, interpreted as a sequence of UTF-8
-    /// encoded unicode codepoints. If a newline is encountered, then the
+    /// encoded Unicode codepoints. If a newline is encountered, then the
     /// newline is contained in the returned string.
     ///
     /// # Example

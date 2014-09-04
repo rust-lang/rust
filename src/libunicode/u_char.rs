@@ -120,7 +120,7 @@ pub fn is_digit(c: char) -> bool {
 /// Convert a char to its uppercase equivalent
 ///
 /// The case-folding performed is the common or simple mapping:
-/// it maps one unicode codepoint (one char in Rust) to its uppercase equivalent according
+/// it maps one Unicode codepoint (one char in Rust) to its uppercase equivalent according
 /// to the Unicode database at ftp://ftp.unicode.org/Public/UNIDATA/UnicodeData.txt
 /// The additional SpecialCasing.txt is not considered here, as it expands to multiple
 /// codepoints in some cases.
@@ -233,7 +233,7 @@ pub trait UnicodeChar {
     /// Converts a character to its uppercase equivalent.
     ///
     /// The case-folding performed is the common or simple mapping: it maps
-    /// one unicode codepoint (one character in Rust) to its uppercase
+    /// one Unicode codepoint (one character in Rust) to its uppercase
     /// equivalent according to the Unicode database [1]. The additional
     /// `SpecialCasing.txt` is not considered here, as it expands to multiple
     /// codepoints in some cases.

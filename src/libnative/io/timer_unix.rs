@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Timers for non-linux/non-windows OSes
+//! Timers for non-Linux/non-Windows OSes
 //!
 //! This module implements timers with a worker thread, select(), and a lot of
 //! witchcraft that turns out to be horribly inaccurate timers. The unfortunate
 //! part is that I'm at a loss of what else to do one these OSes. This is also
-//! why linux has a specialized timerfd implementation and windows has its own
+//! why Linux has a specialized timerfd implementation and windows has its own
 //! implementation (they're more accurate than this one).
 //!
 //! The basic idea is that there is a worker thread that's communicated to via a

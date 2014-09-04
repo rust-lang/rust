@@ -364,7 +364,7 @@ impl<'t> CharReader<'t> {
     }
 
     /// Sets the previous and current character given any arbitrary byte
-    /// index (at a unicode codepoint boundary).
+    /// index (at a Unicode codepoint boundary).
     #[inline]
     pub fn set(&mut self, ic: uint) -> uint {
         self.prev = None;
