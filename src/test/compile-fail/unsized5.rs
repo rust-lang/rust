@@ -21,9 +21,27 @@ struct S2<Sized? X> {
     h: int,
 }
 
-enum E<Sized? X> {
+enum E1<Sized? X> {
     V1(X, int), //~ERROR type `X` is dynamically sized. dynamically sized types may only appear as t
     V2{f1: X, f: int}, //~ERROR type `f1` is dynamically sized. dynamically sized types may only app
+}
+
+// Structs/enums with unsized fields must still be instantiable.
+
+struct S3 { //~ ERROR struct cannot be instantiated
+    f: [int]
+}
+
+trait T {}
+struct S4<X: T> { //~ ERROR struct cannot be instantiated
+    f1: Box<X>,
+    f2: [X]
+}
+
+enum E2<Sized? X> { //~ ERROR enum cannot be instantiated
+    V3(int),
+    V4([X]),
+    V5{f: [X]}
 }
 
 pub fn main() {

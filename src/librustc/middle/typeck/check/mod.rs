@@ -706,6 +706,40 @@ fn check_fields_sized(tcx: &ty::ctxt,
     }
 }
 
+// Checks that the type ty can possibly be made sized. That means there exists
+// some set of type parameters such that ty::type_is_sized is true.
+// For enums, ty may be either the type of the enum itself, or the constructor
+// type for any of its variants.
+fn check_ty_may_be_sized(tcx: &ty::ctxt,
+                  ty: ty::t) -> bool {
+    let t = sized_ty(ty, tcx);
+    return ty::type_is_sized(tcx, t);
+
+    // Finds a type to be tested for sizedness for a given input type. This will
+    // replaces any type parameters with sized ones, if given an enum variant's
+    // constructor, will return the type for the enum itself.
+    fn sized_ty(ty: ty::t, tcx: &ty::ctxt) -> ty::t {
+        // For a given set Substs, returns a new Substs where all actual type
+        // parameters are sized.
+        fn sized_substs(substs: &subst::Substs) -> subst::Substs {
+            let mut substs = substs.clone();
+            let tys = Vec::from_fn(substs.types.get_slice(subst::TypeSpace).len(),
+                                   |_| ty::mk_bot());
+            substs.types.replace(subst::TypeSpace, tys);
+            substs
+        }
+
+        match ty::get(ty).sty {
+            ty::ty_enum(id, ref substs) => ty::mk_enum(tcx, id, sized_substs(substs)),
+            ty::ty_struct(id, ref substs) => ty::mk_struct(tcx, id, sized_substs(substs)),
+            ty::ty_bare_fn(ref f) => sized_ty(f.sig.output, tcx),
+            _ => tcx.sess.bug(format!("Unexpected type: {} in check_ty_may_be_sized",
+                                      ppaux::ty_to_string(tcx, ty)).as_slice())
+        }
+    }
+
+}
+
 pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
@@ -793,11 +827,19 @@ pub fn check_item_sized(ccx: &CrateCtxt, it: &ast::Item) {
 
     match it.node {
         ast::ItemEnum(ref enum_definition, _) => {
-            check_enum_variants_sized(ccx,
-                                      enum_definition.variants.as_slice());
+            if !check_enum_variants_sized(ccx, enum_definition.variants.as_slice()) {
+                span_err!(ccx.tcx.sess, it.span, E0162,
+                    "enum cannot be instantiated since it can never have a statically known size");
+            }
         }
         ast::ItemStruct(..) => {
-            check_fields_sized(ccx.tcx, &*ccx.tcx.map.expect_struct(it.id));
+            check_fields_sized(ccx.tcx, &*ccx.tcx.map.expect_struct(it.id),);
+
+            if !check_ty_may_be_sized(ccx.tcx, ty::node_id_to_type(ccx.tcx, it.id)) {
+                span_err!(ccx.tcx.sess, it.span, E0163,
+                    "struct cannot be instantiated since \
+                     it can never have a statically known size");
+            }
         }
         _ => {}
     }
@@ -4538,7 +4580,8 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
 
 
 pub fn check_enum_variants_sized(ccx: &CrateCtxt,
-                                 vs: &[ast::P<ast::Variant>]) {
+                                 vs: &[ast::P<ast::Variant>]) -> bool {
+    let mut sized_ok = true;
     for &v in vs.iter() {
         match v.node.kind {
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
@@ -4546,7 +4589,7 @@ pub fn check_enum_variants_sized(ccx: &CrateCtxt,
                 let arg_tys: Vec<ty::t> = ty::ty_fn_args(ctor_ty).iter().map(|a| *a).collect();
                 let len = arg_tys.len();
                 if len == 0 {
-                    return;
+                    continue;
                 }
                 for (i, t) in arg_tys.slice_to(len - 1).iter().enumerate() {
                     // Allow the last field in an enum to be unsized.
@@ -4560,11 +4603,19 @@ pub fn check_enum_variants_sized(ccx: &CrateCtxt,
                              ppaux::ty_to_string(ccx.tcx, *t));
                     }
                 }
+
+                sized_ok = sized_ok && check_ty_may_be_sized(ccx.tcx, ctor_ty);
             },
-            ast::StructVariantKind(struct_def) => check_fields_sized(ccx.tcx, &*struct_def),
+            ast::StructVariantKind(struct_def) => {
+                check_fields_sized(ccx.tcx, &*struct_def);
+                sized_ok = sized_ok && check_ty_may_be_sized(ccx.tcx,
+                                                             ty::node_id_to_type(ccx.tcx,
+                                                                                 v.node.id))
+            }
             _ => {}
         }
     }
+    sized_ok
 }
 
 pub fn check_enum_variants(ccx: &CrateCtxt,
