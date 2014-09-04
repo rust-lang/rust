@@ -235,10 +235,18 @@ mod tests {
     use ops::{BitOr, BitAnd, Sub, Not};
 
     bitflags!(
+        #[doc = "> The first principle is that you must not fool yourself — and"]
+        #[doc = "> you are the easiest person to fool."]
+        #[doc = "> "]
+        #[doc = "> - Richard Feynman"]
         flags Flags: u32 {
             static FlagA       = 0x00000001,
+            #[doc = "<pcwalton> macros are way better at generating code than trans is"]
             static FlagB       = 0x00000010,
             static FlagC       = 0x00000100,
+            #[doc = "* cmr bed"]
+            #[doc = "* strcat table"]
+            #[doc = "<strcat> wait what?"]
             static FlagABC     = FlagA.bits
                                | FlagB.bits
                                | FlagC.bits,
