@@ -4542,7 +4542,7 @@ pub mod funcs {
                 pub fn glob(pattern: *const c_char,
                             flags: c_int,
                             errfunc: ::Nullable<extern "C" fn(epath: *const c_char,
-                                                              errno: c_int) -> int>,
+                                                              errno: c_int) -> c_int>,
                             pglob: *mut glob_t);
                 pub fn globfree(pglob: *mut glob_t);
             }
