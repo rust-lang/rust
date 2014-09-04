@@ -53,8 +53,8 @@
  * If you also need the plugin crate available at runtime, use
  * `phase(plugin, link)`.
  *
- * See `src/test/auxiliary/macro_crate_test.rs` and `src/libfourcc`
- * for examples of syntax extension plugins.
+ * See [the compiler plugin guide](../../guide-plugin.html)
+ * for more examples.
  */
 
 pub use self::registry::Registry;
