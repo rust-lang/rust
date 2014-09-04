@@ -430,6 +430,9 @@ impl<'a, 'b> Context<'a, 'b> {
                     parse::AlignRight => {
                         self.ecx.path_global(sp, self.rtpath("AlignRight"))
                     }
+                    parse::AlignCenter => {
+                        self.ecx.path_global(sp, self.rtpath("AlignCenter"))
+                    }
                     parse::AlignUnknown => {
                         self.ecx.path_global(sp, self.rtpath("AlignUnknown"))
                     }
