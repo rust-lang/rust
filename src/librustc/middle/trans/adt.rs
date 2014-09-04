@@ -74,6 +74,7 @@ type Hint = attr::ReprAttr;
 
 
 /// Representations.
+#[deriving(Eq, PartialEq)]
 pub enum Repr {
     /// C-like enums; basically an int.
     CEnum(IntType, Disr, Disr), // discriminant range (signedness based on the IntType)
@@ -126,6 +127,7 @@ pub enum Repr {
 }
 
 /// For structs, and struct-like parts of anything fancier.
+#[deriving(Eq, PartialEq)]
 pub struct Struct {
     // If the struct is DST, then the size and alignment do not take into
     // account the unsized fields of the struct.
@@ -280,7 +282,7 @@ struct Case {
 }
 
 
-#[deriving(Show)]
+#[deriving(Eq, PartialEq, Show)]
 pub enum PointerField {
     ThinPointer(uint),
     FatPointer(uint, uint)
@@ -573,14 +575,14 @@ fn struct_llfields(cx: &CrateContext, st: &Struct, sizing: bool, dst: bool) -> V
  * This should ideally be less tightly tied to `_match`.
  */
 pub fn trans_switch(bcx: &Block, r: &Repr, scrutinee: ValueRef)
-    -> (_match::branch_kind, Option<ValueRef>) {
+    -> (_match::BranchKind, Option<ValueRef>) {
     match *r {
         CEnum(..) | General(..) |
         RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
-            (_match::switch, Some(trans_get_discr(bcx, r, scrutinee, None)))
+            (_match::Switch, Some(trans_get_discr(bcx, r, scrutinee, None)))
         }
         Univariant(..) => {
-            (_match::single, None)
+            (_match::Single, None)
         }
     }
 }
@@ -665,14 +667,14 @@ fn load_discr(bcx: &Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
  * This should ideally be less tightly tied to `_match`.
  */
 pub fn trans_case<'a>(bcx: &'a Block<'a>, r: &Repr, discr: Disr)
-                  -> _match::opt_result<'a> {
+                  -> _match::OptResult<'a> {
     match *r {
         CEnum(ity, _, _) => {
-            _match::single_result(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
+            _match::SingleResult(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
                                                               discr as u64, true)))
         }
         General(ity, _, _) => {
-            _match::single_result(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
+            _match::SingleResult(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
                                                               discr as u64, true)))
         }
         Univariant(..) => {
@@ -681,7 +683,7 @@ pub fn trans_case<'a>(bcx: &'a Block<'a>, r: &Repr, discr: Disr)
         RawNullablePointer { .. } |
         StructWrappedNullablePointer { .. } => {
             assert!(discr == 0 || discr == 1);
-            _match::single_result(Result::new(bcx, C_bool(bcx.ccx(), discr != 0)))
+            _match::SingleResult(Result::new(bcx, C_bool(bcx.ccx(), discr != 0)))
         }
     }
 }
