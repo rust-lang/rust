@@ -20,6 +20,7 @@ pub struct Layout {
     pub external_html: ExternalHtml,
     pub krate: String,
     pub playground_url: String,
+    pub use_mathjax: bool,
 }
 
 pub struct Page<'a> {
@@ -124,6 +125,7 @@ r##"<!DOCTYPE html>
     <script src="{root_path}main.js"></script>
     {play_js}
     <script async src="{root_path}search-index.js"></script>
+    {mathjax_js}
 </body>
 </html>"##,
     content   = *t,
@@ -155,6 +157,12 @@ r##"<!DOCTYPE html>
         "".to_string()
     } else {
         format!(r#"<script src="{}playpen.js"></script>"#, page.root_path)
+    },
+    mathjax_js = if layout.use_mathjax {
+        r#"<script async src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML">
+        </script>"#.to_string()
+    } else {
+        "".to_string()
     },
     )
 }

@@ -56,6 +56,7 @@ static HOEDOWN_EXT_AUTOLINK: libc::c_uint = 1 << 3;
 static HOEDOWN_EXT_STRIKETHROUGH: libc::c_uint = 1 << 4;
 static HOEDOWN_EXT_SUPERSCRIPT: libc::c_uint = 1 << 8;
 static HOEDOWN_EXT_FOOTNOTES: libc::c_uint = 1 << 2;
+static HOEDOWN_EXT_MATH: libc::c_uint = 1 << 13;
 
 static HOEDOWN_EXTENSIONS: libc::c_uint =
     HOEDOWN_EXT_NO_INTRA_EMPHASIS | HOEDOWN_EXT_TABLES |
@@ -147,10 +148,22 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     }
 }
 
+fn hoedown_extensions() -> libc::c_uint {
+    let mut extensions = HOEDOWN_EXTENSIONS;
+
+    match use_mathjax.get().as_ref() {
+        Some(use_math) if **use_math => { extensions |= HOEDOWN_EXT_MATH; }
+        _ => {}
+    }
+
+    extensions
+}
+
 local_data_key!(used_header_map: RefCell<HashMap<String, uint>>)
 local_data_key!(test_idx: Cell<uint>)
 // None == render an example, but there's no crate name
 local_data_key!(pub playground_krate: Option<String>)
+local_data_key!(pub use_mathjax: bool)
 
 pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, text: *const hoedown_buffer,
@@ -285,7 +298,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         (*renderer).blockcode = Some(block);
         (*renderer).header = Some(header);
 
-        let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
+        let document = hoedown_document_new(renderer, hoedown_extensions(), 16);
         hoedown_document_render(document, ob, s.as_ptr(),
                                 s.len() as libc::size_t);
         hoedown_document_free(document);
@@ -363,7 +376,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
         (*renderer).header = Some(header);
         (*(*renderer).opaque).opaque = tests as *mut _ as *mut libc::c_void;
 
-        let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
+        let document = hoedown_document_new(renderer, hoedown_extensions(), 16);
         hoedown_document_render(document, ob, doc.as_ptr(),
                                 doc.len() as libc::size_t);
         hoedown_document_free(document);
