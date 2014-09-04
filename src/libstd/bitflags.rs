@@ -22,7 +22,7 @@
 /// # Example
 ///
 /// ~~~rust
-/// bitflags!(
+/// bitflags! {
 ///     flags Flags: u32 {
 ///         static FlagA       = 0x00000001,
 ///         static FlagB       = 0x00000010,
@@ -31,7 +31,7 @@
 ///                            | FlagB.bits
 ///                            | FlagC.bits,
 ///     }
-/// )
+/// }
 ///
 /// fn main() {
 ///     let e1 = FlagA | FlagC;
@@ -48,12 +48,12 @@
 /// ~~~rust
 /// use std::fmt;
 ///
-/// bitflags!(
+/// bitflags! {
 ///     flags Flags: u32 {
 ///         static FlagA   = 0x00000001,
 ///         static FlagB   = 0x00000010,
 ///     }
-/// )
+/// }
 ///
 /// impl Flags {
 ///     pub fn clear(&mut self) {
@@ -110,10 +110,10 @@
 /// - `insert`: inserts the specified flags in-place
 /// - `remove`: removes the specified flags in-place
 #[macro_export]
-macro_rules! bitflags(
+macro_rules! bitflags {
     ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
         $($(#[$Flag_attr:meta])* static $Flag:ident = $value:expr),+
-    }) => (
+    }) => {
         #[deriving(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
         $(#[$attr])*
         pub struct $BitFlags {
@@ -216,18 +216,18 @@ macro_rules! bitflags(
                 $BitFlags { bits: !self.bits } & $BitFlags::all()
             }
         }
-    );
+    };
     ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
         $($(#[$Flag_attr:meta])* static $Flag:ident = $value:expr),+,
-    }) => (
-        bitflags!(
+    }) => {
+        bitflags! {
             $(#[$attr])*
             flags $BitFlags: u32 {
                 $($(#[$Flag_attr])* static $Flag = $value),+
             }
-        )
-    );
-)
+        }
+    };
+}
 
 #[cfg(test)]
 mod tests {
@@ -235,7 +235,7 @@ mod tests {
     use option::{Some, None};
     use ops::{BitOr, BitAnd, Sub, Not};
 
-    bitflags!(
+    bitflags! {
         #[doc = "> The first principle is that you must not fool yourself — and"]
         #[doc = "> you are the easiest person to fool."]
         #[doc = "> "]
@@ -252,7 +252,7 @@ mod tests {
                                | FlagB.bits
                                | FlagC.bits,
         }
-    )
+    }
 
     #[test]
     fn test_bits(){
