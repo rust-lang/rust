@@ -24,7 +24,7 @@
 //!         static FlagC       = 0x00000100,
 //!         static FlagABC     = FlagA.bits
 //!                            | FlagB.bits
-//!                            | FlagC.bits
+//!                            | FlagC.bits,
 //!     }
 //! )
 //!
@@ -46,7 +46,7 @@
 //! bitflags!(
 //!     flags Flags: u32 {
 //!         static FlagA   = 0x00000001,
-//!         static FlagB   = 0x00000010
+//!         static FlagB   = 0x00000010,
 //!     }
 //! )
 //!
@@ -215,7 +215,17 @@ macro_rules! bitflags(
                 $BitFlags { bits: !self.bits } & $BitFlags::all()
             }
         }
-    )
+    );
+    ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
+        $($(#[$Flag_attr:meta])* static $Flag:ident = $value:expr),+,
+    }) => (
+        bitflags!(
+            $(#[$attr])*
+            flags $BitFlags: u32 {
+                $($(#[$Flag_attr])* static $Flag = $value),+
+            }
+        )
+    );
 )
 
 #[cfg(test)]
@@ -231,7 +241,7 @@ mod tests {
             static FlagC       = 0x00000100,
             static FlagABC     = FlagA.bits
                                | FlagB.bits
-                               | FlagC.bits
+                               | FlagC.bits,
         }
     )
 
