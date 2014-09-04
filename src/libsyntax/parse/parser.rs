@@ -4773,11 +4773,16 @@ impl<'a> Parser<'a> {
             token::IDENT(..) => {
                 let the_ident = self.parse_ident();
                 self.expect_one_of(&[], &[token::EQ, token::SEMI]);
-                // NOTE - #16689 change this to a warning once
-                //        the 'as' support is in stage0
                 let path = if self.token == token::EQ {
                     self.bump();
-                    Some(self.parse_str())
+                    let path = self.parse_str();
+                    let span = self.span;
+                    self.span_warn(span,
+                            format!("this extern crate syntax is deprecated. \
+                            Use: extern create \"{}\" as {};",
+                            the_ident.as_str(), path.ref0().get() ).as_slice()
+                    );
+                    Some(path)
                 } else {None};
 
                 self.expect(&token::SEMI);

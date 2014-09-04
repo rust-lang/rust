@@ -23,7 +23,7 @@ extern crate libc;
 extern crate rustc;
 extern crate serialize;
 extern crate syntax;
-extern crate testing = "test";
+extern crate "test" as testing;
 extern crate time;
 #[phase(plugin, link)] extern crate log;
 
