@@ -110,7 +110,9 @@ struct hoedown_buffer {
     size: libc::size_t,
     asize: libc::size_t,
     unit: libc::size_t,
-    other: [libc::size_t, ..3],
+    data_realloc: *mut Option<extern "C" fn(*mut libc::c_void, libc::size_t)>,
+    data_free: Option<extern "C" fn(*mut libc::c_void)>,
+    buffer_free: Option<extern "C" fn(*mut libc::c_void)>,
 }
 
 // hoedown FFI
