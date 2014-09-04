@@ -81,6 +81,8 @@ pub enum Alignment {
     AlignLeft,
     /// The value will be aligned to the right.
     AlignRight,
+    /// The value will be aligned in the center.
+    AlignCenter,
     /// The value will take on a default alignment.
     AlignUnknown,
 }
@@ -279,7 +281,7 @@ impl<'a> Parser<'a> {
         match self.cur.clone().next() {
             Some((_, c)) => {
                 match self.cur.clone().skip(1).next() {
-                    Some((_, '>')) | Some((_, '<')) => {
+                    Some((_, '>')) | Some((_, '<')) | Some((_, '^')) => {
                         spec.fill = Some(c);
                         self.cur.next();
                     }
@@ -293,6 +295,8 @@ impl<'a> Parser<'a> {
             spec.align = AlignLeft;
         } else if self.consume('>') {
             spec.align = AlignRight;
+        } else if self.consume('^') {
+            spec.align = AlignCenter;
         }
         // Sign flags
         if self.consume('+') {

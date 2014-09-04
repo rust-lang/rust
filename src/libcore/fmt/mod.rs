@@ -461,19 +461,28 @@ impl<'a> Formatter<'a> {
         use char::Char;
         let align = match self.align {
             rt::AlignUnknown => default,
-            rt::AlignLeft | rt::AlignRight => self.align
+            _ => self.align
         };
-        if align == rt::AlignLeft {
-            try!(f(self));
-        }
+
+        let (pre_pad, post_pad) = match align {
+            rt::AlignLeft => (0u, padding),
+            rt::AlignRight | rt::AlignUnknown => (padding, 0u),
+            rt::AlignCenter => (padding / 2, (padding + 1) / 2),
+        };
+
         let mut fill = [0u8, ..4];
         let len = self.fill.encode_utf8(fill).unwrap_or(0);
-        for _ in range(0, padding) {
+
+        for _ in range(0, pre_pad) {
             try!(self.buf.write(fill.slice_to(len)));
         }
-        if align == rt::AlignRight {
-            try!(f(self));
+
+        try!(f(self));
+
+        for _ in range(0, post_pad) {
+            try!(self.buf.write(fill.slice_to(len)));
         }
+
         Ok(())
     }
 
