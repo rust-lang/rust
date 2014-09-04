@@ -218,11 +218,10 @@ nav.sub {
 }
 
 .content .highlighted {
-    cursor: pointer;
     color: #000 !important;
     background-color: #ccc;
 }
-.content .highlighted a { color: #000 !important; }
+.content .highlighted a, .content .highlighted span { color: #000 !important; }
 .content .highlighted.trait { background-color: #fece7e; }
 .content .highlighted.mod { background-color: #afc6e4; }
 .content .highlighted.enum { background-color: #b4d1b9; }
@@ -335,11 +334,11 @@ a {
 p a { color: #4e8bca; }
 p a:hover { text-decoration: underline; }
 
-.content a.trait, .block a.current.trait { color: #ed9603; }
-.content a.mod, .block a.current.mod { color: #4d76ae; }
-.content a.enum, .block a.current.enum { color: #5e9766; }
-.content a.struct, .block a.current.struct { color: #e53700; }
-.content a.fn, .block a.current.fn { color: #8c6067; }
+.content span.trait, .block a.current.trait { color: #ed9603; }
+.content span.mod, .block a.current.mod { color: #4d76ae; }
+.content span.enum, .block a.current.enum { color: #5e9766; }
+.content span.struct, .block a.current.struct { color: #e53700; }
+.content span.fn, .block a.current.fn { color: #8c6067; }
 .content .fnname { color: #8c6067; }
 
 .search-input {
@@ -376,6 +375,13 @@ p a:hover { text-decoration: underline; }
     overflow: hidden;
     display: block;
 }
+
+.search-results a {
+    display: block;
+}
+
+.content .search-results td:first-child { padding-right: 0; }
+.content .search-results td:first-child a { padding-right: 10px; }
 
 #help {
     background: #e9e9e9;
