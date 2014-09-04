@@ -1274,7 +1274,7 @@ mod test {
 
         error!(result, "couldn't recursively mkdir");
         error!(result, "couldn't create directory");
-        error!(result, "mode=FilePermission { bits: 448 }");
+        error!(result, "mode=0700");
         error!(result, format!("path={}", file.display()));
     })
 
