@@ -498,7 +498,7 @@ impl ReprAttr {
     }
 }
 
-#[deriving(PartialEq, Show)]
+#[deriving(Eq, Hash, PartialEq, Show)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)
