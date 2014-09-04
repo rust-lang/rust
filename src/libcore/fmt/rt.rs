@@ -43,6 +43,8 @@ pub enum Alignment {
     AlignLeft,
     /// Indication that contents should be right-aligned.
     AlignRight,
+    /// Indication that contents should be center-aligned.
+    AlignCenter,
     /// No alignment was requested.
     AlignUnknown,
 }
