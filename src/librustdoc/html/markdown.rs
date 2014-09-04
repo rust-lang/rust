@@ -65,6 +65,9 @@ static HOEDOWN_EXTENSIONS: libc::c_uint =
     HOEDOWN_EXT_FOOTNOTES;
 
 type hoedown_document = libc::c_void;  // this is opaque to us
+type hoedown_realloc_callback = extern "C" fn(*mut libc::c_void, libc::size_t)
+    -> *mut libc::size_t;
+type hoedown_free_callback = extern "C" fn(*mut libc::c_void);
 
 #[repr(C)]
 struct hoedown_renderer {
@@ -110,9 +113,9 @@ struct hoedown_buffer {
     size: libc::size_t,
     asize: libc::size_t,
     unit: libc::size_t,
-    data_realloc: *mut Option<extern "C" fn(*mut libc::c_void, libc::size_t)>,
-    data_free: Option<extern "C" fn(*mut libc::c_void)>,
-    buffer_free: Option<extern "C" fn(*mut libc::c_void)>,
+    data_realloc: Option<hoedown_realloc_callback>,
+    data_free: Option<hoedown_free_callback>,
+    buffer_free: Option<hoedown_free_callback>,
 }
 
 // hoedown FFI
