@@ -390,13 +390,17 @@
         function initSearchNav() {
             var hoverTimeout, $results = $('.search-results .result');
 
-            $results.on('click', function() {
+            $results.on('click', function(e) {
                 var dst = $(this).find('a')[0];
-                if (window.location.pathname == dst.pathname) {
-                    $('#search').addClass('hidden');
-                    $('#main').removeClass('hidden');
-                }
-                document.location.href = dst.href;
+                if (e.which == 1) {
+                    if (window.location.pathname == dst.pathname) {
+                        $('#search').addClass('hidden');
+                        $('#main').removeClass('hidden');
+                    }
+                    document.location.href = dst.href;
+                } else if (e.which == 2 && e.target.tagName.toLowerCase() != "a"){
+                    window.open(dst.href);
+                }            
             }).on('mouseover', function() {
                 var $el = $(this);
                 clearTimeout(hoverTimeout);
