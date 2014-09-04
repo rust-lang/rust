@@ -52,7 +52,7 @@ via `close` and `delete` methods.
 
 #[cfg(test)] extern crate green;
 #[cfg(test)] extern crate debug;
-#[cfg(test)] extern crate realrustuv = "rustuv";
+#[cfg(test)] extern crate "rustuv" as realrustuv;
 extern crate libc;
 extern crate alloc;
 

@@ -27,7 +27,7 @@ extern crate alloc;
 extern crate libc;
 extern crate collections;
 
-#[cfg(test)] extern crate realrustrt = "rustrt";
+#[cfg(test)] extern crate "rustrt" as realrustrt;
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate native;
 
