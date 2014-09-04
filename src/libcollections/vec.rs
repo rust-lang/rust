@@ -845,11 +845,12 @@ impl<T> Vec<T> {
     #[inline]
     pub fn into_iter(self) -> MoveItems<T> {
         unsafe {
-            let iter = mem::transmute(self.as_slice().iter());
             let ptr = self.ptr;
             let cap = self.cap;
+            let begin = self.ptr as *const T;
+            let end = (self.ptr as uint + self.len()) as *const T;
             mem::forget(self);
-            MoveItems { allocation: ptr, cap: cap, iter: iter }
+            MoveItems { allocation: ptr, cap: cap, ptr: begin, end: end }
         }
     }
 
@@ -1773,7 +1774,8 @@ impl<T> MutableSeq<T> for Vec<T> {
 pub struct MoveItems<T> {
     allocation: *mut T, // the block of memory allocated for the vector
     cap: uint, // the capacity of the vector
-    iter: Items<'static, T>
+    ptr: *const T,
+    end: *const T
 }
 
 impl<T> MoveItems<T> {
@@ -1793,17 +1795,33 @@ impl<T> Iterator<T> for MoveItems<T> {
     #[inline]
     fn next<'a>(&'a mut self) -> Option<T> {
         unsafe {
-            // Unsafely transmute from Items<'static, T> to Items<'a,
-            // T> because otherwise the type checker requires that T
-            // be bounded by 'static.
-            let iter: &mut Items<'a, T> = mem::transmute(&mut self.iter);
-            iter.next().map(|x| ptr::read(x))
+            if self.ptr == self.end {
+                None
+            } else {
+                if mem::size_of::<T>() == 0 {
+                    // purposefully don't use 'ptr.offset' because for
+                    // vectors with 0-size elements this would return the
+                    // same pointer.
+                    self.ptr = mem::transmute(self.ptr as uint + 1);
+
+                    // Use a non-null pointer value
+                    Some(ptr::read(mem::transmute(1u)))
+                } else {
+                    let old = self.ptr;
+                    self.ptr = self.ptr.offset(1);
+
+                    Some(ptr::read(old))
+                }
+            }
         }
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        self.iter.size_hint()
+        let diff = (self.end as uint) - (self.ptr as uint);
+        let size = mem::size_of::<T>();
+        let exact = diff / (if size == 0 {1} else {size});
+        (exact, Some(exact))
     }
 }
 
@@ -1811,11 +1829,21 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
     #[inline]
     fn next_back<'a>(&'a mut self) -> Option<T> {
         unsafe {
-            // Unsafely transmute from Items<'static, T> to Items<'a,
-            // T> because otherwise the type checker requires that T
-            // be bounded by 'static.
-            let iter: &mut Items<'a, T> = mem::transmute(&mut self.iter);
-            iter.next_back().map(|x| ptr::read(x))
+            if self.end == self.ptr {
+                None
+            } else {
+                if mem::size_of::<T>() == 0 {
+                    // See above for why 'ptr.offset' isn't used
+                    self.end = mem::transmute(self.end as uint - 1);
+
+                    // Use a non-null pointer value
+                    Some(ptr::read(mem::transmute(1u)))
+                } else {
+                    self.end = self.end.offset(-1);
+
+                    Some(ptr::read(mem::transmute(self.end)))
+                }
+            }
         }
     }
 }
