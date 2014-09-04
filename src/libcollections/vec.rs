@@ -848,7 +848,11 @@ impl<T> Vec<T> {
             let ptr = self.ptr;
             let cap = self.cap;
             let begin = self.ptr as *const T;
-            let end = (self.ptr as uint + self.len()) as *const T;
+            let end = if mem::size_of::<T>() == 0 {
+                (ptr as uint + self.len()) as *const T;
+            } else {
+                ptr.offset(self.len() as int)
+            };
             mem::forget(self);
             MoveItems { allocation: ptr, cap: cap, ptr: begin, end: end }
         }
