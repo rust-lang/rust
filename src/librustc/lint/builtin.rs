@@ -45,6 +45,7 @@ use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::{ast, ast_util, visit};
+use syntax::visit::Visitor;
 
 declare_lint!(WHILE_TRUE, Warn,
               "suggest using `loop { }` instead of `while true { }`")
@@ -339,6 +340,51 @@ impl LintPass for TypeLimits {
 declare_lint!(CTYPES, Warn,
               "proper use of libc types in foreign modules")
 
+struct CTypesVisitor<'a> {
+    cx: &'a Context<'a>
+}
+
+impl<'a> CTypesVisitor<'a> {
+    fn check_def(&mut self, sp: Span, ty_id: ast::NodeId, path_id: ast::NodeId) {
+        match self.cx.tcx.def_map.borrow().get_copy(&path_id) {
+            def::DefPrimTy(ast::TyInt(ast::TyI)) => {
+                self.cx.span_lint(CTYPES, sp,
+                                  "found rust type `int` in foreign module, while \
+                                   libc::c_int or libc::c_long should be used");
+            }
+            def::DefPrimTy(ast::TyUint(ast::TyU)) => {
+                self.cx.span_lint(CTYPES, sp,
+                                  "found rust type `uint` in foreign module, while \
+                                   libc::c_uint or libc::c_ulong should be used");
+            }
+            def::DefTy(..) => {
+                let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().find(&ty_id) {
+                    Some(&ty::atttce_resolved(t)) => t,
+                    _ => fail!("ast_ty_to_ty_cache was incomplete after typeck!")
+                };
+
+                if !ty::is_ffi_safe(self.cx.tcx, tty) {
+                    self.cx.span_lint(CTYPES, sp,
+                                      "found type without foreign-function-safe
+                                      representation annotation in foreign module, consider \
+                                      adding a #[repr(...)] attribute to the type");
+                }
+            }
+            _ => ()
+        }
+    }
+}
+
+impl<'a> Visitor<()> for CTypesVisitor<'a> {
+    fn visit_ty(&mut self, ty: &ast::Ty, _: ()) {
+        match ty.node {
+            ast::TyPath(_, _, id) => self.check_def(ty.span, ty.id, id),
+            _ => (),
+        }
+        visit::walk_ty(self, ty, ());
+    }
+}
+
 pub struct CTypes;
 
 impl LintPass for CTypes {
@@ -348,38 +394,8 @@ impl LintPass for CTypes {
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
         fn check_ty(cx: &Context, ty: &ast::Ty) {
-            match ty.node {
-                ast::TyPath(_, _, id) => {
-                    match cx.tcx.def_map.borrow().get_copy(&id) {
-                        def::DefPrimTy(ast::TyInt(ast::TyI)) => {
-                            cx.span_lint(CTYPES, ty.span,
-                                         "found rust type `int` in foreign module, while \
-                                          libc::c_int or libc::c_long should be used");
-                        }
-                        def::DefPrimTy(ast::TyUint(ast::TyU)) => {
-                            cx.span_lint(CTYPES, ty.span,
-                                         "found rust type `uint` in foreign module, while \
-                                          libc::c_uint or libc::c_ulong should be used");
-                        }
-                        def::DefTy(..) => {
-                            let tty = match cx.tcx.ast_ty_to_ty_cache.borrow().find(&ty.id) {
-                                Some(&ty::atttce_resolved(t)) => t,
-                                _ => fail!("ast_ty_to_ty_cache was incomplete after typeck!")
-                            };
-
-                            if !ty::is_ffi_safe(cx.tcx, tty) {
-                                cx.span_lint(CTYPES, ty.span,
-                                             "found type without foreign-function-safe
-                                             representation annotation in foreign module, consider \
-                                             adding a #[repr(...)] attribute to the type");
-                            }
-                        }
-                        _ => ()
-                    }
-                }
-                ast::TyPtr(ref mt) => { check_ty(cx, &*mt.ty) }
-                _ => {}
-            }
+            let mut vis = CTypesVisitor { cx: cx };
+            vis.visit_ty(ty, ());
         }
 
         fn check_foreign_fn(cx: &Context, decl: &ast::FnDecl) {
@@ -390,15 +406,15 @@ impl LintPass for CTypes {
         }
 
         match it.node {
-          ast::ItemForeignMod(ref nmod) if nmod.abi != abi::RustIntrinsic => {
-            for ni in nmod.items.iter() {
-                match ni.node {
-                    ast::ForeignItemFn(decl, _) => check_foreign_fn(cx, &*decl),
-                    ast::ForeignItemStatic(t, _) => check_ty(cx, &*t)
+            ast::ItemForeignMod(ref nmod) if nmod.abi != abi::RustIntrinsic => {
+                for ni in nmod.items.iter() {
+                    match ni.node {
+                        ast::ForeignItemFn(decl, _) => check_foreign_fn(cx, &*decl),
+                        ast::ForeignItemStatic(t, _) => check_ty(cx, &*t)
+                    }
                 }
             }
-          }
-          _ => {/* nothing to do */ }
+            _ => (),
         }
     }
 }
@@ -493,7 +509,7 @@ struct RawPtrDerivingVisitor<'a> {
     cx: &'a Context<'a>
 }
 
-impl<'a> visit::Visitor<()> for RawPtrDerivingVisitor<'a> {
+impl<'a> Visitor<()> for RawPtrDerivingVisitor<'a> {
     fn visit_ty(&mut self, ty: &ast::Ty, _: ()) {
         static MSG: &'static str = "use of `#[deriving]` with a raw pointer";
         match ty.node {

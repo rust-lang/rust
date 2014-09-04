@@ -232,6 +232,8 @@ pub fn tzset() {
 
 /// Holds a calendar date and time broken down into its components (year, month, day, and so on),
 /// also called a broken-down time value.
+// FIXME: use c_int instead of i32?
+#[repr(C)]
 #[deriving(Clone, PartialEq, Eq, Show)]
 pub struct Tm {
     /// Seconds after the minute - [0, 60]
