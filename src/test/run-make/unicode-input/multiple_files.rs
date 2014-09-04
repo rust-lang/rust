@@ -20,7 +20,7 @@ use std::rand::{task_rng, Rng};
 
 fn random_char() -> char {
     let mut rng = task_rng();
-    // a subset of the XID_start unicode table (ensuring that the
+    // a subset of the XID_start Unicode table (ensuring that the
     // compiler doesn't fail with an "unrecognised token" error)
     let (lo, hi): (u32, u32) = match rng.gen_range(1u32, 4u32 + 1) {
         1 => (0x41, 0x5a),

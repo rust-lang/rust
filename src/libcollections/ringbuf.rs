@@ -132,7 +132,7 @@ impl<T> RingBuf<T> {
               elts: Vec::from_fn(cmp::max(MINIMUM_CAPACITY, n), |_| None)}
     }
 
-    /// Retrieva an element in the `RingBuf` by index.
+    /// Retrieve an element in the `RingBuf` by index.
     ///
     /// Fails if there is no element with the given index.
     ///

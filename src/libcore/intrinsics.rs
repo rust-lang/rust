@@ -311,7 +311,7 @@ extern "rust-intrinsic" {
 
     /// Gives the address for the return value of the enclosing function.
     ///
-    /// Using this instrinsic in a function that does not use an out pointer
+    /// Using this intrinsic in a function that does not use an out pointer
     /// will trigger a compiler error.
     pub fn return_address() -> *const u8;
 

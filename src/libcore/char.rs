@@ -201,7 +201,7 @@ pub fn escape_unicode(c: char, f: |char|) {
 /// - Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
 /// - Single-quote, double-quote and backslash chars are backslash-escaped.
 /// - Any other chars in the range [0x20,0x7e] are not escaped.
-/// - Any other chars are given hex unicode escapes; see `escape_unicode`.
+/// - Any other chars are given hex Unicode escapes; see `escape_unicode`.
 ///
 pub fn escape_default(c: char, f: |char|) {
     match c {
@@ -290,7 +290,7 @@ pub trait Char {
     /// * Single-quote, double-quote and backslash chars are backslash-
     ///   escaped.
     /// * Any other chars in the range [0x20,0x7e] are not escaped.
-    /// * Any other chars are given hex unicode escapes; see `escape_unicode`.
+    /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
     fn escape_default(&self, f: |char|);
 
     /// Returns the amount of bytes this character would need if encoded in

@@ -1155,7 +1155,7 @@ impl Context {
 
             // We have a huge number of calls to write, so try to alleviate some
             // of the pain by using a buffered writer instead of invoking the
-            // write sycall all the time.
+            // write syscall all the time.
             let mut writer = BufferedWriter::new(w);
             if !cx.render_redirect_pages {
                 try!(layout::render(&mut writer, &cx.layout, &page,

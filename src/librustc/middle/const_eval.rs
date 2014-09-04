@@ -56,7 +56,7 @@ use std::gc::{Gc, GC};
 //        copies of general constants
 //
 //        (in theory, probably not at first: if/match on integer-const
-//         conditions / descriminants)
+//         conditions / discriminants)
 //
 //   - Non-constants: everything else.
 //

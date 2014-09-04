@@ -19,7 +19,7 @@ string types are *not* null terminated.
 
 The other problem with translating Rust strings to C strings is that Rust
 strings can validly contain a null-byte in the middle of the string (0 is a
-valid unicode codepoint). This means that not all Rust strings can actually be
+valid Unicode codepoint). This means that not all Rust strings can actually be
 translated to C strings.
 
 # Creation of a C string

@@ -1114,7 +1114,7 @@ impl<'a> StringReader<'a> {
                 self.bump();
                 valid &= self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ false, '"');
             }
-            // adjust for the ACSII " at the start of the literal
+            // adjust for the ASCII " at the start of the literal
             let id = if valid { self.name_from(start_bpos + BytePos(1)) }
                      else { token::intern("??") };
             self.bump();
