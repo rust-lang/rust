@@ -889,11 +889,13 @@ fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
+    for (_, &binding_info) in &data.bindings_map {
+        bcx.fcx.lllocals.borrow_mut().remove(&binding_info.id);
+    }
+
     with_cond(bcx, Not(bcx, val, guard_expr.debug_loc()), |bcx| {
-        // Guard does not match: remove all bindings from the lllocals table
         for (_, &binding_info) in &data.bindings_map {
             call_lifetime_end(bcx, binding_info.llmatch);
-            bcx.fcx.lllocals.borrow_mut().remove(&binding_info.id);
         }
         match chk {
             // If the default arm is the only one left, move on to the next
