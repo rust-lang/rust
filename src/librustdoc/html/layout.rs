@@ -12,6 +12,7 @@ use std::fmt;
 use std::io;
 
 use externalfiles::ExternalHtml;
+use html::markdown;
 
 #[deriving(Clone)]
 pub struct Layout {
@@ -20,6 +21,7 @@ pub struct Layout {
     pub external_html: ExternalHtml,
     pub krate: String,
     pub playground_url: String,
+    pub use_mathjax: bool,
 }
 
 pub struct Page<'a> {
@@ -34,7 +36,11 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
     dst: &mut io::Writer, layout: &Layout, page: &Page, sidebar: &S, t: &T)
     -> io::IoResult<()>
 {
-    write!(dst,
+    // Reset state on whether we've seen math, so as to avoid loading mathjax
+    // on pages that don't actually *have* math.
+    markdown::math_seen.replace(Some(false));
+
+    try!(write!(dst,
 r##"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -124,8 +130,7 @@ r##"<!DOCTYPE html>
     <script src="{root_path}main.js"></script>
     {play_js}
     <script async src="{root_path}search-index.js"></script>
-</body>
-</html>"##,
+"##,
     content   = *t,
     root_path = page.root_path,
     ty        = page.ty,
@@ -156,7 +161,16 @@ r##"<!DOCTYPE html>
     } else {
         format!(r#"<script src="{}playpen.js"></script>"#, page.root_path)
     },
-    )
+    ));
+
+    // this must be done after everything is rendered, so that
+    // `math_seen` captures all possible $$'s on this page.
+    if layout.use_mathjax && markdown::math_seen.get().map_or(false, |x| *x) {
+        try!(dst.write_str("\
+<script async src=\"https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML\"></script>"));
+    }
+
+    dst.write_str("</body>\n</html>")
 }
 
 pub fn redirect(dst: &mut io::Writer, url: &str) -> io::IoResult<()> {
