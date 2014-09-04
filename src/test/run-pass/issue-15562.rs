@@ -10,7 +10,7 @@
 
 // aux-build:issue-15562.rs
 
-extern crate i = "issue-15562";
+extern crate "issue-15562" as i;
 
 pub fn main() {
     extern {

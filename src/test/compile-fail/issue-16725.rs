@@ -10,7 +10,7 @@
 
 // aux-build:issue-16725.rs
 
-extern crate foo = "issue-16725";
+extern crate "issue-16725" as foo;
 
 fn main() {
     unsafe { foo::bar(); }
