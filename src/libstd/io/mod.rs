@@ -1838,7 +1838,7 @@ impl Default for FilePermission {
 impl fmt::Show for FilePermission {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.fill = '0';
-        formatter.width = Some(3);
+        formatter.width = Some(4);
         (&self.bits as &fmt::Octal).fmt(formatter)
     }
 }
@@ -1949,13 +1949,13 @@ mod tests {
     fn test_show() {
         use super::*;
 
-        assert_eq!(format!("{}", UserRead), "400".to_string());
-        assert_eq!(format!("{}", UserFile), "644".to_string());
-        assert_eq!(format!("{}", UserExec), "755".to_string());
-        assert_eq!(format!("{}", UserRWX),  "700".to_string());
-        assert_eq!(format!("{}", GroupRWX), "070".to_string());
-        assert_eq!(format!("{}", OtherRWX), "007".to_string());
-        assert_eq!(format!("{}", AllPermissions), "777".to_string());
-        assert_eq!(format!("{}", UserRead | UserWrite | OtherWrite), "602".to_string());
+        assert_eq!(format!("{}", UserRead), "0400".to_string());
+        assert_eq!(format!("{}", UserFile), "0644".to_string());
+        assert_eq!(format!("{}", UserExec), "0755".to_string());
+        assert_eq!(format!("{}", UserRWX),  "0700".to_string());
+        assert_eq!(format!("{}", GroupRWX), "0070".to_string());
+        assert_eq!(format!("{}", OtherRWX), "0007".to_string());
+        assert_eq!(format!("{}", AllPermissions), "0777".to_string());
+        assert_eq!(format!("{}", UserRead | UserWrite | OtherWrite), "0602".to_string());
     }
 }
