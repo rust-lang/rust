@@ -281,7 +281,7 @@ mod std {
     pub use fmt; // used for any formatting strings
     pub use io; // used for println!()
     pub use local_data; // used for local_data_key!()
-    pub use option; // used for bitflags!()
+    pub use option; // used for bitflags!{}
     pub use rt; // used for fail!()
     pub use vec; // used for vec![]
 
