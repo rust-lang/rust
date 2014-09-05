@@ -111,9 +111,6 @@ pub fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
         return ty::mk_i8();
     }
     match ty::get(t).sty {
-        ty::ty_box(typ) if !ty::type_needs_drop(tcx, typ) =>
-            ty::mk_box(tcx, ty::mk_i8()),
-
         ty::ty_uniq(typ) if !ty::type_needs_drop(tcx, typ)
                          && ty::type_is_sized(tcx, typ) => {
             let llty = sizing_type_of(ccx, typ);
@@ -121,7 +118,7 @@ pub fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
             if llsize_of_alloc(ccx, llty) == 0 {
                 ty::mk_i8()
             } else {
-                ty::mk_uniq(tcx, ty::mk_i8())
+                t
             }
         }
         _ => t
