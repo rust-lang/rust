@@ -476,6 +476,9 @@ pub fn run_passes(sess: &Session,
         sess.fatal("can't perform LTO when using multiple codegen units");
     }
 
+    // Sanity check
+    assert!(trans.modules.len() == sess.opts.cg.codegen_units);
+
     unsafe {
         configure_llvm(sess);
     }
@@ -607,6 +610,15 @@ pub fn run_passes(sess: &Session,
     };
 
     let link_obj = |output_path: &Path| {
+        // Running `ld -r` on a single input is kind of pointless.
+        if sess.opts.cg.codegen_units == 1 {
+            fs::copy(&crate_output.with_extension("0.o"),
+                     output_path).unwrap();
+            // Leave the .0.o file around, to mimic the behavior of the normal
+            // code path.
+            return;
+        }
+
         // Some builds of MinGW GCC will pass --force-exe-suffix to ld, which
         // will automatically add a .exe extension if the extension is not
         // already .exe or .dll.  To ensure consistent behavior on Windows, we
