@@ -538,7 +538,7 @@ impl TypeMap {
             // First, find out the 'real' def_id of the type. Items inlined from
             // other crates have to be mapped back to their source.
             let source_def_id = if def_id.krate == ast::LOCAL_CRATE {
-                match cx.external_srcs.borrow().find_copy(&def_id.node) {
+                match cx.external_srcs().borrow().find_copy(&def_id.node) {
                     Some(source_def_id) => {
                         // The given def_id identifies the inlined copy of a
                         // type definition, let's take the source of the copy.
@@ -552,7 +552,7 @@ impl TypeMap {
 
             // Get the crate hash as first part of the identifier.
             let crate_hash = if source_def_id.krate == ast::LOCAL_CRATE {
-                cx.link_meta.crate_hash.clone()
+                cx.link_meta().crate_hash.clone()
             } else {
                 cx.sess().cstore.get_crate_hash(source_def_id.krate)
             };
@@ -721,7 +721,7 @@ enum VariableKind {
 
 /// Create any deferred debug metadata nodes
 pub fn finalize(cx: &CrateContext) {
-    if cx.dbg_cx.is_none() {
+    if cx.dbg_cx().is_none() {
         return;
     }
 
@@ -738,18 +738,18 @@ pub fn finalize(cx: &CrateContext) {
         if cx.sess().targ_cfg.os == abi::OsMacos ||
             cx.sess().targ_cfg.os == abi::OsiOS {
             "Dwarf Version".with_c_str(
-                |s| llvm::LLVMRustAddModuleFlag(cx.llmod, s, 2));
+                |s| llvm::LLVMRustAddModuleFlag(cx.llmod(), s, 2));
         } else {
             // FIXME(#13611) this is a kludge fix because the Linux bots have
             //               gdb 7.4 which doesn't understand dwarf4, we should
             //               do something more graceful here.
             "Dwarf Version".with_c_str(
-                |s| llvm::LLVMRustAddModuleFlag(cx.llmod, s, 3));
+                |s| llvm::LLVMRustAddModuleFlag(cx.llmod(), s, 3));
         }
 
         // Prevent bitcode readers from deleting the debug info.
         "Debug Info Version".with_c_str(
-            |s| llvm::LLVMRustAddModuleFlag(cx.llmod, s,
+            |s| llvm::LLVMRustAddModuleFlag(cx.llmod(), s,
                                             llvm::LLVMRustDebugMetadataVersion));
     };
 }
@@ -760,7 +760,7 @@ pub fn finalize(cx: &CrateContext) {
 pub fn create_global_var_metadata(cx: &CrateContext,
                                   node_id: ast::NodeId,
                                   global: ValueRef) {
-    if cx.dbg_cx.is_none() {
+    if cx.dbg_cx().is_none() {
         return;
     }
 
@@ -768,11 +768,11 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     // crate should already contain debuginfo for it. More importantly, the
     // global might not even exist in un-inlined form anywhere which would lead
     // to a linker errors.
-    if cx.external_srcs.borrow().contains_key(&node_id) {
+    if cx.external_srcs().borrow().contains_key(&node_id) {
         return;
     }
 
-    let var_item = cx.tcx.map.get(node_id);
+    let var_item = cx.tcx().map.get(node_id);
 
     let (ident, span) = match var_item {
         ast_map::NodeItem(item) => {
@@ -838,7 +838,7 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
     }
 
     let cx = bcx.ccx();
-    let def_map = &cx.tcx.def_map;
+    let def_map = &cx.tcx().def_map;
 
     pat_util::pat_bindings(def_map, &*local.pat, |_, node_id, span, path1| {
         let var_ident = path1.node;
@@ -880,7 +880,7 @@ pub fn create_captured_var_metadata(bcx: &Block,
 
     let cx = bcx.ccx();
 
-    let ast_item = cx.tcx.map.find(node_id);
+    let ast_item = cx.tcx().map.find(node_id);
 
     let variable_ident = match ast_item {
         None => {
@@ -963,7 +963,7 @@ pub fn create_match_binding_metadata(bcx: &Block,
 
     let scope_metadata = scope_metadata(bcx.fcx, binding.id, binding.span);
     let aops = unsafe {
-        [llvm::LLVMDIBuilderCreateOpDeref(bcx.ccx().int_type.to_ref())]
+        [llvm::LLVMDIBuilderCreateOpDeref(bcx.ccx().int_type().to_ref())]
     };
     // Regardless of the actual type (`T`) we're always passed the stack slot (alloca)
     // for the binding. For ByRef bindings that's a `T*` but for ByMove bindings we
@@ -1002,7 +1002,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
     let fcx = bcx.fcx;
     let cx = fcx.ccx;
 
-    let def_map = &cx.tcx.def_map;
+    let def_map = &cx.tcx().def_map;
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
     pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, path1| {
@@ -1120,7 +1120,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     let empty_generics = ast_util::empty_generics();
 
-    let fnitem = cx.tcx.map.get(fn_ast_id);
+    let fnitem = cx.tcx().map.get(fn_ast_id);
 
     let (ident, fn_decl, generics, top_level_block, span, has_path) = match fnitem {
         ast_map::NodeItem(ref item) => {
@@ -1447,7 +1447,7 @@ fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
     // externally visible or by being inlined into something externally visible).
     // It might better to use the `exported_items` set from `driver::CrateAnalysis`
     // in the future, but (atm) this set is not available in the translation pass.
-    !cx.reachable.contains(&node_id)
+    !cx.reachable().contains(&node_id)
 }
 
 #[allow(non_snake_case)]
@@ -1514,7 +1514,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
     });
 
     fn fallback_path(cx: &CrateContext) -> CString {
-        cx.link_meta.crate_name.as_slice().to_c_str()
+        cx.link_meta().crate_name.as_slice().to_c_str()
     }
 }
 
@@ -1643,7 +1643,7 @@ fn scope_metadata(fcx: &FunctionContext,
     match scope_map.borrow().find_copy(&node_id) {
         Some(scope_metadata) => scope_metadata,
         None => {
-            let node = fcx.ccx.tcx.map.get(node_id);
+            let node = fcx.ccx.tcx().map.get(node_id);
 
             fcx.ccx.sess().span_bug(span,
                 format!("debuginfo: Could not find scope info for node {:?}",
@@ -2440,9 +2440,9 @@ fn prepare_enum_metadata(cx: &CrateContext,
                                   def_id: ast::DefId)
                                   -> token::InternedString {
         let name = if def_id.krate == ast::LOCAL_CRATE {
-            cx.tcx.map.get_path_elem(def_id.node).name()
+            cx.tcx().map.get_path_elem(def_id.node).name()
         } else {
-            csearch::get_item_path(&cx.tcx, def_id).last().unwrap().name()
+            csearch::get_item_path(cx.tcx(), def_id).last().unwrap().name()
         };
 
         token::get_name(name)
@@ -2685,7 +2685,7 @@ fn at_box_metadata(cx: &CrateContext,
                              content_llvm_type: Type)
                           -> bool {
         member_llvm_types.len() == 5 &&
-        member_llvm_types[0] == cx.int_type &&
+        member_llvm_types[0] == cx.int_type() &&
         member_llvm_types[1] == Type::generic_glue_fn(cx).ptr_to() &&
         member_llvm_types[2] == Type::i8(cx).ptr_to() &&
         member_llvm_types[3] == Type::i8(cx).ptr_to() &&
@@ -2787,7 +2787,7 @@ fn vec_slice_metadata(cx: &CrateContext,
                             -> bool {
         member_llvm_types.len() == 2 &&
         member_llvm_types[0] == type_of::type_of(cx, element_type).ptr_to() &&
-        member_llvm_types[1] == cx.int_type
+        member_llvm_types[1] == cx.int_type()
     }
 }
 
@@ -3090,7 +3090,7 @@ fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
     };
 
     unsafe {
-        llvm::LLVMSetCurrentDebugLocation(cx.builder.b, metadata_node);
+        llvm::LLVMSetCurrentDebugLocation(cx.raw_builder(), metadata_node);
     }
 
     debug_context(cx).current_debug_location.set(debug_location);
@@ -3125,14 +3125,14 @@ fn bytes_to_bits(bytes: u64) -> c_ulonglong {
 
 #[inline]
 fn debug_context<'a>(cx: &'a CrateContext) -> &'a CrateDebugContext {
-    let debug_context: &'a CrateDebugContext = cx.dbg_cx.get_ref();
+    let debug_context: &'a CrateDebugContext = cx.dbg_cx().get_ref();
     debug_context
 }
 
 #[inline]
 #[allow(non_snake_case)]
 fn DIB(cx: &CrateContext) -> DIBuilderRef {
-    cx.dbg_cx.get_ref().builder
+    cx.dbg_cx().get_ref().builder
 }
 
 fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
@@ -3143,7 +3143,7 @@ fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
 }
 
 fn assert_type_for_node_id(cx: &CrateContext, node_id: ast::NodeId, error_span: Span) {
-    if !cx.tcx.node_types.borrow().contains_key(&(node_id as uint)) {
+    if !cx.tcx().node_types.borrow().contains_key(&(node_id as uint)) {
         cx.sess().span_bug(error_span, "debuginfo: Could not find type for node id!");
     }
 }
@@ -3152,7 +3152,7 @@ fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: ast::DefId)
                                    -> (DIScope, Span) {
     let containing_scope = namespace_for_item(cx, def_id).scope;
     let definition_span = if def_id.krate == ast::LOCAL_CRATE {
-        cx.tcx.map.span(def_id.node)
+        cx.tcx().map.span(def_id.node)
     } else {
         // For external items there is no span information
         codemap::DUMMY_SP
@@ -3173,7 +3173,7 @@ fn populate_scope_map(cx: &CrateContext,
                       fn_entry_block: &ast::Block,
                       fn_metadata: DISubprogram,
                       scope_map: &mut HashMap<ast::NodeId, DIScope>) {
-    let def_map = &cx.tcx.def_map;
+    let def_map = &cx.tcx().def_map;
 
     struct ScopeStackEntry {
         scope_metadata: DIScope,
@@ -3290,7 +3290,7 @@ fn populate_scope_map(cx: &CrateContext,
                     scope_stack: &mut Vec<ScopeStackEntry> ,
                     scope_map: &mut HashMap<ast::NodeId, DIScope>) {
 
-        let def_map = &cx.tcx.def_map;
+        let def_map = &cx.tcx().def_map;
 
         // Unfortunately, we cannot just use pat_util::pat_bindings() or
         // ast_util::walk_pat() here because we have to visit *all* nodes in
@@ -3942,7 +3942,7 @@ impl NamespaceTreeNode {
 }
 
 fn crate_root_namespace<'a>(cx: &'a CrateContext) -> &'a str {
-    cx.link_meta.crate_name.as_slice()
+    cx.link_meta().crate_name.as_slice()
 }
 
 fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTreeNode> {

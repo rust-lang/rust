@@ -150,14 +150,14 @@ pub fn represent_node(bcx: &Block, node: ast::NodeId) -> Rc<Repr> {
 /// Decides how to represent a given type.
 pub fn represent_type(cx: &CrateContext, t: ty::t) -> Rc<Repr> {
     debug!("Representing: {}", ty_to_string(cx.tcx(), t));
-    match cx.adt_reprs.borrow().find(&t) {
+    match cx.adt_reprs().borrow().find(&t) {
         Some(repr) => return repr.clone(),
         None => {}
     }
 
     let repr = Rc::new(represent_type_uncached(cx, t));
     debug!("Represented as: {:?}", repr)
-    cx.adt_reprs.borrow_mut().insert(t, repr.clone());
+    cx.adt_reprs().borrow_mut().insert(t, repr.clone());
     repr
 }
 
@@ -423,7 +423,7 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
             attempts = choose_shortest;
         },
         attr::ReprPacked => {
-            cx.tcx.sess.bug("range_to_inttype: found ReprPacked on an enum");
+            cx.tcx().sess.bug("range_to_inttype: found ReprPacked on an enum");
         }
     }
     for &ity in attempts.iter() {

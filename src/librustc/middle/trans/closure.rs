@@ -427,12 +427,12 @@ pub fn trans_expr_fn<'a>(
 pub fn get_or_create_declaration_if_unboxed_closure(ccx: &CrateContext,
                                                     closure_id: ast::DefId)
                                                     -> Option<ValueRef> {
-    if !ccx.tcx.unboxed_closures.borrow().contains_key(&closure_id) {
+    if !ccx.tcx().unboxed_closures.borrow().contains_key(&closure_id) {
         // Not an unboxed closure.
         return None
     }
 
-    match ccx.unboxed_closure_vals.borrow().find(&closure_id) {
+    match ccx.unboxed_closure_vals().borrow().find(&closure_id) {
         Some(llfn) => {
             debug!("get_or_create_declaration_if_unboxed_closure(): found \
                     closure");
@@ -441,10 +441,10 @@ pub fn get_or_create_declaration_if_unboxed_closure(ccx: &CrateContext,
         None => {}
     }
 
-    let function_type = ty::mk_unboxed_closure(&ccx.tcx,
+    let function_type = ty::mk_unboxed_closure(ccx.tcx(),
                                                closure_id,
                                                ty::ReStatic);
-    let symbol = ccx.tcx.map.with_path(closure_id.node, |path| {
+    let symbol = ccx.tcx().map.with_path(closure_id.node, |path| {
         mangle_internal_name_by_path_and_seq(path, "unboxed_closure")
     });
 
@@ -456,8 +456,8 @@ pub fn get_or_create_declaration_if_unboxed_closure(ccx: &CrateContext,
     debug!("get_or_create_declaration_if_unboxed_closure(): inserting new \
             closure {} (type {})",
            closure_id,
-           ccx.tn.type_to_string(val_ty(llfn)));
-    ccx.unboxed_closure_vals.borrow_mut().insert(closure_id, llfn);
+           ccx.tn().type_to_string(val_ty(llfn)));
+    ccx.unboxed_closure_vals().borrow_mut().insert(closure_id, llfn);
 
     Some(llfn)
 }
@@ -554,7 +554,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         }
     };
 
-    match ccx.closure_bare_wrapper_cache.borrow().find(&fn_ptr) {
+    match ccx.closure_bare_wrapper_cache().borrow().find(&fn_ptr) {
         Some(&llval) => return llval,
         None => {}
     }
@@ -581,7 +581,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         decl_rust_fn(ccx, closure_ty, name.as_slice())
     };
 
-    ccx.closure_bare_wrapper_cache.borrow_mut().insert(fn_ptr, llfn);
+    ccx.closure_bare_wrapper_cache().borrow_mut().insert(fn_ptr, llfn);
 
     // This is only used by statics inlined from a different crate.
     if !is_local {

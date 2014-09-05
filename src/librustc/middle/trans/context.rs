@@ -11,7 +11,7 @@
 use driver::config::NoDebugInfo;
 use driver::session::Session;
 use llvm;
-use llvm::{ContextRef, ModuleRef, ValueRef};
+use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
 use llvm::{TargetData};
 use llvm::mk_target_data;
 use metadata::common::LinkMeta;
@@ -52,38 +52,38 @@ pub struct Stats {
 }
 
 pub struct CrateContext {
-    pub llmod: ModuleRef,
-    pub llcx: ContextRef,
-    pub metadata_llmod: ModuleRef,
-    pub td: TargetData,
-    pub tn: TypeNames,
-    pub externs: RefCell<ExternMap>,
-    pub item_vals: RefCell<NodeMap<ValueRef>>,
-    pub exp_map2: resolve::ExportMap2,
-    pub reachable: NodeSet,
-    pub item_symbols: RefCell<NodeMap<String>>,
-    pub link_meta: LinkMeta,
-    pub drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
-    pub tydescs: RefCell<HashMap<ty::t, Rc<tydesc_info>>>,
+    llmod: ModuleRef,
+    llcx: ContextRef,
+    metadata_llmod: ModuleRef,
+    td: TargetData,
+    tn: TypeNames,
+    externs: RefCell<ExternMap>,
+    item_vals: RefCell<NodeMap<ValueRef>>,
+    exp_map2: resolve::ExportMap2,
+    reachable: NodeSet,
+    item_symbols: RefCell<NodeMap<String>>,
+    link_meta: LinkMeta,
+    drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
+    tydescs: RefCell<HashMap<ty::t, Rc<tydesc_info>>>,
     /// Set when running emit_tydescs to enforce that no more tydescs are
     /// created.
-    pub finished_tydescs: Cell<bool>,
+    finished_tydescs: Cell<bool>,
     /// Track mapping of external ids to local items imported for inlining
-    pub external: RefCell<DefIdMap<Option<ast::NodeId>>>,
+    external: RefCell<DefIdMap<Option<ast::NodeId>>>,
     /// Backwards version of the `external` map (inlined items to where they
     /// came from)
-    pub external_srcs: RefCell<NodeMap<ast::DefId>>,
+    external_srcs: RefCell<NodeMap<ast::DefId>>,
     /// A set of static items which cannot be inlined into other crates. This
     /// will prevent in IIItem() structures from being encoded into the metadata
     /// that is generated
-    pub non_inlineable_statics: RefCell<NodeSet>,
+    non_inlineable_statics: RefCell<NodeSet>,
     /// Cache instances of monomorphized functions
-    pub monomorphized: RefCell<HashMap<MonoId, ValueRef>>,
-    pub monomorphizing: RefCell<DefIdMap<uint>>,
+    monomorphized: RefCell<HashMap<MonoId, ValueRef>>,
+    monomorphizing: RefCell<DefIdMap<uint>>,
     /// Cache generated vtables
-    pub vtables: RefCell<HashMap<(ty::t, MonoId), ValueRef>>,
+    vtables: RefCell<HashMap<(ty::t, MonoId), ValueRef>>,
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
+    const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     /// Key is an int, cast from a ValueRef holding a *T,
@@ -93,37 +93,37 @@ pub struct CrateContext {
     /// when we ptrcast, and we have to ptrcast during translation
     /// of a [T] const because we form a slice, a [*T,int] pair, not
     /// a pointer to an LLVM array type.
-    pub const_globals: RefCell<HashMap<int, ValueRef>>,
+    const_globals: RefCell<HashMap<int, ValueRef>>,
 
     /// Cache of emitted const values
-    pub const_values: RefCell<NodeMap<ValueRef>>,
+    const_values: RefCell<NodeMap<ValueRef>>,
 
     /// Cache of external const values
-    pub extern_const_values: RefCell<DefIdMap<ValueRef>>,
+    extern_const_values: RefCell<DefIdMap<ValueRef>>,
 
-    pub impl_method_cache: RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>>,
+    impl_method_cache: RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>>,
 
     /// Cache of closure wrappers for bare fn's.
-    pub closure_bare_wrapper_cache: RefCell<HashMap<ValueRef, ValueRef>>,
+    closure_bare_wrapper_cache: RefCell<HashMap<ValueRef, ValueRef>>,
 
-    pub lltypes: RefCell<HashMap<ty::t, Type>>,
-    pub llsizingtypes: RefCell<HashMap<ty::t, Type>>,
-    pub adt_reprs: RefCell<HashMap<ty::t, Rc<adt::Repr>>>,
-    pub symbol_hasher: RefCell<Sha256>,
-    pub type_hashcodes: RefCell<HashMap<ty::t, String>>,
-    pub all_llvm_symbols: RefCell<HashSet<String>>,
-    pub tcx: ty::ctxt,
-    pub stats: Stats,
-    pub int_type: Type,
-    pub opaque_vec_type: Type,
-    pub builder: BuilderRef_res,
+    lltypes: RefCell<HashMap<ty::t, Type>>,
+    llsizingtypes: RefCell<HashMap<ty::t, Type>>,
+    adt_reprs: RefCell<HashMap<ty::t, Rc<adt::Repr>>>,
+    symbol_hasher: RefCell<Sha256>,
+    type_hashcodes: RefCell<HashMap<ty::t, String>>,
+    all_llvm_symbols: RefCell<HashSet<String>>,
+    tcx: ty::ctxt,
+    stats: Stats,
+    int_type: Type,
+    opaque_vec_type: Type,
+    builder: BuilderRef_res,
 
     /// Holds the LLVM values for closure IDs.
-    pub unboxed_closure_vals: RefCell<DefIdMap<ValueRef>>,
+    unboxed_closure_vals: RefCell<DefIdMap<ValueRef>>,
 
-    pub dbg_cx: Option<debuginfo::CrateDebugContext>,
+    dbg_cx: Option<debuginfo::CrateDebugContext>,
 
-    pub eh_personality: RefCell<Option<ValueRef>>,
+    eh_personality: RefCell<Option<ValueRef>>,
 
     intrinsics: RefCell<HashMap<&'static str, ValueRef>>,
 }
@@ -235,10 +235,10 @@ impl CrateContext {
             ccx.opaque_vec_type = Type::opaque_vec(&ccx);
 
             let mut str_slice_ty = Type::named_struct(&ccx, "str_slice");
-            str_slice_ty.set_struct_body([Type::i8p(&ccx), ccx.int_type], false);
-            ccx.tn.associate_type("str_slice", &str_slice_ty);
+            str_slice_ty.set_struct_body([Type::i8p(&ccx), ccx.int_type()], false);
+            ccx.tn().associate_type("str_slice", &str_slice_ty);
 
-            ccx.tn.associate_type("tydesc", &Type::tydesc(&ccx, str_slice_ty));
+            ccx.tn().associate_type("tydesc", &Type::tydesc(&ccx, str_slice_ty));
 
             if ccx.sess().count_llvm_insns() {
                 base::init_insn_ctxt()
@@ -252,12 +252,20 @@ impl CrateContext {
         &self.tcx
     }
 
+    pub fn take_tcx(self) -> ty::ctxt {
+        self.tcx
+    }
+
     pub fn sess<'a>(&'a self) -> &'a Session {
         &self.tcx.sess
     }
 
     pub fn builder<'a>(&'a self) -> Builder<'a> {
         Builder::new(self)
+    }
+
+    pub fn raw_builder<'a>(&'a self) -> BuilderRef {
+        self.builder.b
     }
 
     pub fn tydesc_type(&self) -> Type {
@@ -286,6 +294,164 @@ impl CrateContext {
         let ref cfg = self.sess().targ_cfg;
         cfg.os != abi::OsiOS || cfg.arch != abi::Arm
     }
+
+
+    pub fn llmod(&self) -> ModuleRef {
+        self.llmod
+    }
+
+    pub fn llcx(&self) -> ContextRef {
+        self.llcx
+    }
+
+    pub fn metadata_llmod(&self) -> ModuleRef {
+        self.metadata_llmod
+    }
+
+    pub fn td<'a>(&'a self) -> &'a TargetData {
+        &self.td
+    }
+
+    pub fn tn<'a>(&'a self) -> &'a TypeNames {
+        &self.tn
+    }
+
+    pub fn externs<'a>(&'a self) -> &'a RefCell<ExternMap> {
+        &self.externs
+    }
+
+    pub fn item_vals<'a>(&'a self) -> &'a RefCell<NodeMap<ValueRef>> {
+        &self.item_vals
+    }
+
+    pub fn exp_map2<'a>(&'a self) -> &'a resolve::ExportMap2 {
+        &self.exp_map2
+    }
+
+    pub fn reachable<'a>(&'a self) -> &'a NodeSet {
+        &self.reachable
+    }
+
+    pub fn item_symbols<'a>(&'a self) -> &'a RefCell<NodeMap<String>> {
+        &self.item_symbols
+    }
+
+    pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
+        &self.link_meta
+    }
+
+    pub fn drop_glues<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, ValueRef>> {
+        &self.drop_glues
+    }
+
+    pub fn tydescs<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, Rc<tydesc_info>>> {
+        &self.tydescs
+    }
+
+    pub fn finished_tydescs<'a>(&'a self) -> &'a Cell<bool> {
+        &self.finished_tydescs
+    }
+
+    pub fn external<'a>(&'a self) -> &'a RefCell<DefIdMap<Option<ast::NodeId>>> {
+        &self.external
+    }
+
+    pub fn external_srcs<'a>(&'a self) -> &'a RefCell<NodeMap<ast::DefId>> {
+        &self.external_srcs
+    }
+
+    pub fn non_inlineable_statics<'a>(&'a self) -> &'a RefCell<NodeSet> {
+        &self.non_inlineable_statics
+    }
+
+    pub fn monomorphized<'a>(&'a self) -> &'a RefCell<HashMap<MonoId, ValueRef>> {
+        &self.monomorphized
+    }
+
+    pub fn monomorphizing<'a>(&'a self) -> &'a RefCell<DefIdMap<uint>> {
+        &self.monomorphizing
+    }
+
+    pub fn vtables<'a>(&'a self) -> &'a RefCell<HashMap<(ty::t, MonoId), ValueRef>> {
+        &self.vtables
+    }
+
+    pub fn const_cstr_cache<'a>(&'a self) -> &'a RefCell<HashMap<InternedString, ValueRef>> {
+        &self.const_cstr_cache
+    }
+
+    pub fn const_globals<'a>(&'a self) -> &'a RefCell<HashMap<int, ValueRef>> {
+        &self.const_globals
+    }
+
+    pub fn const_values<'a>(&'a self) -> &'a RefCell<NodeMap<ValueRef>> {
+        &self.const_values
+    }
+
+    pub fn extern_const_values<'a>(&'a self) -> &'a RefCell<DefIdMap<ValueRef>> {
+        &self.extern_const_values
+    }
+
+    pub fn impl_method_cache<'a>(&'a self)
+            -> &'a RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>> {
+        &self.impl_method_cache
+    }
+
+    pub fn closure_bare_wrapper_cache<'a>(&'a self) -> &'a RefCell<HashMap<ValueRef, ValueRef>> {
+        &self.closure_bare_wrapper_cache
+    }
+
+    pub fn lltypes<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, Type>> {
+        &self.lltypes
+    }
+
+    pub fn llsizingtypes<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, Type>> {
+        &self.llsizingtypes
+    }
+
+    pub fn adt_reprs<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, Rc<adt::Repr>>> {
+        &self.adt_reprs
+    }
+
+    pub fn symbol_hasher<'a>(&'a self) -> &'a RefCell<Sha256> {
+        &self.symbol_hasher
+    }
+
+    pub fn type_hashcodes<'a>(&'a self) -> &'a RefCell<HashMap<ty::t, String>> {
+        &self.type_hashcodes
+    }
+
+    pub fn all_llvm_symbols<'a>(&'a self) -> &'a RefCell<HashSet<String>> {
+        &self.all_llvm_symbols
+    }
+
+    pub fn stats<'a>(&'a self) -> &'a Stats {
+        &self.stats
+    }
+
+    pub fn int_type(&self) -> Type {
+        self.int_type
+    }
+
+    pub fn opaque_vec_type(&self) -> Type {
+        self.opaque_vec_type
+    }
+
+    pub fn unboxed_closure_vals<'a>(&'a self) -> &'a RefCell<DefIdMap<ValueRef>> {
+        &self.unboxed_closure_vals
+    }
+
+    pub fn dbg_cx<'a>(&'a self) -> &'a Option<debuginfo::CrateDebugContext> {
+        &self.dbg_cx
+    }
+
+    pub fn eh_personality<'a>(&'a self) -> &'a RefCell<Option<ValueRef>> {
+        &self.eh_personality
+    }
+
+    fn intrinsics<'a>(&'a self) -> &'a RefCell<HashMap<&'static str, ValueRef>> {
+        &self.intrinsics
+    }
 }
 
 fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef> {
@@ -293,7 +459,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
         ($name:expr fn() -> $ret:expr) => (
             if *key == $name {
                 let f = base::decl_cdecl_fn(ccx, $name, Type::func([], &$ret), ty::mk_nil());
-                ccx.intrinsics.borrow_mut().insert($name, f.clone());
+                ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
@@ -301,7 +467,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
             if *key == $name {
                 let f = base::decl_cdecl_fn(ccx, $name,
                                   Type::func([$($arg),*], &$ret), ty::mk_nil());
-                ccx.intrinsics.borrow_mut().insert($name, f.clone());
+                ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         )
@@ -437,7 +603,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                 let f = base::decl_cdecl_fn(ccx, stringify!($cname),
                                       Type::func([$($arg),*], &$ret),
                                       ty::mk_nil());
-                ccx.intrinsics.borrow_mut().insert($name, f.clone());
+                ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         )
