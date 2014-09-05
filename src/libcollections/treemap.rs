@@ -1617,18 +1617,27 @@ fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
     };
 }
 
-impl<K: Ord, V> FromIterator<(K, V)> for TreeMap<K, V> {
-    fn from_iter<T: Iterator<(K, V)>>(iter: T) -> TreeMap<K, V> {
+impl<K: Ord, V, U: Extendable<V>> FromIterator<(K, V)> for TreeMap<K, U> {
+    fn from_iter<T: Iterator<(K, V)>>(iter: T) -> TreeMap<K, U> {
         let mut map = TreeMap::new();
         map.extend(iter);
         map
     }
 }
 
-impl<K: Ord, V> Extendable<(K, V)> for TreeMap<K, V> {
+impl<K: Ord, V, U: Extendable<V>> Extendable<(K, V)> for TreeMap<K, U> {
     #[inline]
     fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
+            match self.find_mut(&k) {
+                Some(found) => {
+                    found.extend(Some(v).move_iter());
+                    continue
+                }
+                None => {}
+            }
+
+            let v = FromIterator::from_iter(Some(v).move_iter());
             self.insert(k, v);
         }
     }
@@ -2020,7 +2029,11 @@ mod test_treemap {
     #[test]
     fn test_keys() {
         let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
-        let map = vec.move_iter().collect::<TreeMap<int, char>>();
+        let mut map = TreeMap::new();
+        for (k, v) in vec.move_iter() {
+            map.insert(k, v);
+        }
+
         let keys = map.keys().map(|&k| k).collect::<Vec<int>>();
         assert_eq!(keys.len(), 3);
         assert!(keys.contains(&1));
@@ -2031,7 +2044,11 @@ mod test_treemap {
     #[test]
     fn test_values() {
         let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
-        let map = vec.move_iter().collect::<TreeMap<int, char>>();
+        let mut map = TreeMap::new();
+        for (k, v) in vec.move_iter() {
+            map.insert(k, v);
+        }
+
         let values = map.values().map(|&v| v).collect::<Vec<char>>();
         assert_eq!(values.len(), 3);
         assert!(values.contains(&'a'));
@@ -2152,13 +2169,12 @@ mod test_treemap {
 
     #[test]
     fn test_from_iter() {
-        let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        let xs = vec![(1, 'H'), (2, 'B'), (3, 'i'), (4, 'y'), (5, '!'), (6, 'e')];
 
-        let map: TreeMap<int, int> = xs.iter().map(|&x| x).collect();
+        let map = xs.iter().map(|&(k, v)| (k % 2, v)).collect::<TreeMap<int, String>>();
 
-        for &(k, v) in xs.iter() {
-            assert_eq!(map.find(&k), Some(&v));
-        }
+        assert_eq!(map.find(&1).map(|s| s.as_slice()), Some("Hi!"));
+        assert_eq!(map.find(&0).map(|s| s.as_slice()), Some("Bye"));
     }
 
     #[test]

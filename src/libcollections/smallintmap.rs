@@ -405,17 +405,26 @@ impl<V: fmt::Show> fmt::Show for SmallIntMap<V> {
     }
 }
 
-impl<V> FromIterator<(uint, V)> for SmallIntMap<V> {
-    fn from_iter<Iter: Iterator<(uint, V)>>(iter: Iter) -> SmallIntMap<V> {
+impl<V, U: Extendable<V>> FromIterator<(uint, V)> for SmallIntMap<U> {
+    fn from_iter<Iter: Iterator<(uint, V)>>(iter: Iter) -> SmallIntMap<U> {
         let mut map = SmallIntMap::new();
         map.extend(iter);
         map
     }
 }
 
-impl<V> Extendable<(uint, V)> for SmallIntMap<V> {
+impl<V, U: Extendable<V>> Extendable<(uint, V)> for SmallIntMap<U> {
     fn extend<Iter: Iterator<(uint, V)>>(&mut self, mut iter: Iter) {
         for (k, v) in iter {
+            match self.find_mut(&k) {
+                Some(found) => {
+                    found.extend(Some(v).move_iter());
+                    continue
+                },
+                None => {} // Insert below
+            }
+
+            let v = FromIterator::from_iter(Some(v).move_iter());
             self.insert(k, v);
         }
     }
@@ -856,12 +865,21 @@ mod test_map {
 
     #[test]
     fn test_from_iter() {
-        let xs: Vec<(uint, char)> = vec![(1u, 'a'), (2, 'b'), (3, 'c'), (4, 'd'), (5, 'e')];
+        let xs: Vec<(uint, char)> = vec![(1u, 'a'), (2, 'b'), (3, 'c'),
+                                         (4, 'd'), (5, 'e'), (3, 'f')];
 
-        let map: SmallIntMap<char> = xs.iter().map(|&x| x).collect();
+        let expected = vec![
+            (1u, vec!['a']),
+            (2u, vec!['b']),
+            (3u, vec!['c', 'f']),
+            (4u, vec!['d']),
+            (5u, vec!['e']),
+        ];
 
-        for &(k, v) in xs.iter() {
-            assert_eq!(map.find(&k), Some(&v));
+        let map: SmallIntMap<Vec<char>> = xs.iter().map(|&x| x).collect();
+
+        for &(k, ref v) in expected.iter() {
+            assert_eq!(map.find(&k), Some(v))
         }
     }
 

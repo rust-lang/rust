@@ -1382,8 +1382,12 @@ pub type Keys<'a, K, V> =
 pub type Values<'a, K, V> =
     iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
-    fn from_iter<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {
+impl<K: Eq + Hash<S>,
+     V,
+     S,
+     H: Hasher<S> + Default,
+     U: Extendable<V>> FromIterator<(K, V)> for HashMap<K, U, H> {
+    fn from_iter<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, U, H> {
         let (lower, _) = iter.size_hint();
         let mut map = HashMap::with_capacity_and_hasher(lower, Default::default());
         map.extend(iter);
@@ -1391,9 +1395,22 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for Has
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Extendable<(K, V)> for HashMap<K, V, H> {
+impl<K: Eq + Hash<S>,
+     V,
+     S,
+     H: Hasher<S> + Default,
+     U: Extendable<V>> Extendable<(K, V)> for HashMap<K, U, H> {
     fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
+            match self.find_mut(&k) {
+                Some(found) => {
+                    found.extend(Some(v).move_iter());
+                    continue
+                }
+                None => {}
+            }
+
+            let v = FromIterator::from_iter(Some(v).move_iter());
             self.insert(k, v);
         }
     }
@@ -1785,7 +1802,11 @@ mod test_map {
     #[test]
     fn test_keys() {
         let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
-        let map = vec.move_iter().collect::<HashMap<int, char>>();
+        let mut map = HashMap::new();
+        for (k, v) in  vec.move_iter() {
+            map.insert(k, v);
+        }
+
         let keys = map.keys().map(|&k| k).collect::<Vec<int>>();
         assert_eq!(keys.len(), 3);
         assert!(keys.contains(&1));
@@ -1796,7 +1817,11 @@ mod test_map {
     #[test]
     fn test_values() {
         let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
-        let map = vec.move_iter().collect::<HashMap<int, char>>();
+        let mut map = HashMap::new();
+        for (k, v) in vec.move_iter() {
+            map.insert(k, v);
+        }
+
         let values = map.values().map(|&v| v).collect::<Vec<char>>();
         assert_eq!(values.len(), 3);
         assert!(values.contains(&'a'));
@@ -1957,20 +1982,22 @@ mod test_map {
 
     #[test]
     fn test_from_iter() {
-        let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        let xs = vec![(1, 'H'), (2, 'B'), (3, 'i'), (4, 'y'), (5, '!'), (6, 'e')];
 
-        let map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
+        let map = xs.iter().map(|&(k, v)| (k % 2, v)).collect::<HashMap<int, String>>();
 
-        for &(k, v) in xs.iter() {
-            assert_eq!(map.find(&k), Some(&v));
-        }
+        assert_eq!(map.find(&1).map(|s| s.as_slice()), Some("Hi!"));
+        assert_eq!(map.find(&0).map(|s| s.as_slice()), Some("Bye"));
     }
 
     #[test]
     fn test_size_hint() {
         let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
-        let map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
+        let mut map = HashMap::new();
+        for (k, v) in xs.iter().map(|&x| x) {
+            map.insert(k, v);
+        }
 
         let mut iter = map.iter();
 
@@ -1983,7 +2010,10 @@ mod test_map {
     fn test_mut_size_hint() {
         let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
-        let mut map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
+        let mut map = HashMap::new();
+        for (k, v) in xs.iter().map(|&x| x) {
+            map.insert(k, v);
+        }
 
         let mut iter = map.mut_iter();
 
