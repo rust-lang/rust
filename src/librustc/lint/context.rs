@@ -103,7 +103,9 @@ impl LintStore {
     }
 
     pub fn get_lint_groups<'t>(&'t self) -> Vec<(&'static str, Vec<LintId>, bool)> {
-        self.lint_groups.iter().map(|(k, &(ref v, b))| (*k, v.clone(), b)).collect()
+        self.lint_groups.iter().map(|(k, v)| (*k,
+                                              v.ref0().clone(),
+                                              *v.ref1())).collect()
     }
 
     pub fn register_pass(&mut self, sess: Option<&Session>,
@@ -210,7 +212,7 @@ impl LintStore {
             match self.by_name.find_equiv(&lint_name.as_slice()) {
                 Some(&lint_id) => self.set_level(lint_id, (level, CommandLine)),
                 None => {
-                    match self.lint_groups.iter().map(|(&x, &(ref y, _))| (x, y.clone()))
+                    match self.lint_groups.iter().map(|(&x, pair)| (x, pair.ref0().clone()))
                                                  .collect::<HashMap<&'static str, Vec<LintId>>>()
                                                  .find_equiv(&lint_name.as_slice()) {
                         Some(v) => {
