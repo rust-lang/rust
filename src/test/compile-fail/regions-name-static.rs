@@ -9,6 +9,7 @@
 // except according to those terms.
 
 struct Foo<'static> { //~ ERROR illegal lifetime parameter name: `'static`
+//~^ ERROR illegal lifetime parameter name: `'static`
     x: &'static int
 }
 

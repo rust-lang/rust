@@ -21,6 +21,7 @@ use driver::session::Session;
 use middle::subst;
 use syntax::ast;
 use syntax::codemap::Span;
+use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::{lifetime_to_string};
@@ -98,8 +99,22 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
             ast::ItemTy(_, ref generics) |
             ast::ItemEnum(_, ref generics) |
             ast::ItemStruct(_, ref generics) |
-            ast::ItemImpl(ref generics, _, _, _) |
-            ast::ItemTrait(ref generics, _, _, _) => &generics.lifetimes
+            ast::ItemTrait(ref generics, _, _, _) => {
+                self.with(|scope, f| {
+                    f(EarlyScope(subst::TypeSpace,
+                                 &generics.lifetimes,
+                                 scope))
+                }, |v| v.check_lifetime_defs(&generics.lifetimes));
+                &generics.lifetimes
+            }
+            ast::ItemImpl(ref generics, _, _, _) => {
+                self.with(|scope, f| {
+                    f(EarlyScope(subst::TypeSpace,
+                                 &generics.lifetimes,
+                                 scope))
+                }, |v| v.check_lifetime_defs(&generics.lifetimes));
+                &generics.lifetimes
+            }
         };
 
         self.with(|_, f| f(EarlyScope(subst::TypeSpace, lifetimes, &ROOT_SCOPE)), |v| {
@@ -155,6 +170,20 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         }
         self.resolve_lifetime_ref(lifetime_ref);
     }
+
+    fn visit_generics(&mut self, generics: &ast::Generics) {
+        for ty_param in generics.ty_params.iter() {
+            self.visit_ty_param_bounds(&ty_param.bounds);
+            match ty_param.default {
+                Some(ref ty) => self.visit_ty(&**ty),
+                None => {}
+            }
+        }
+        for predicate in generics.where_clause.predicates.iter() {
+            self.visit_ident(predicate.span, predicate.ident);
+            self.visit_ty_param_bounds(&predicate.bounds);
+        }
+    }
 }
 
 impl<'a> LifetimeContext<'a> {
@@ -165,6 +194,47 @@ impl<'a> LifetimeContext<'a> {
             named_region_map: *named_region_map,
             scope: &scope1
         }))
+    }
+
+    fn visit_ty_param_bounds(&mut self,
+                             bounds: &OwnedSlice<ast::TyParamBound>) {
+        for bound in bounds.iter() {
+            match *bound {
+                ast::TraitTyParamBound(ref trait_ref) => {
+                    self.visit_trait_ref(trait_ref);
+                }
+                ast::UnboxedFnTyParamBound(ref fn_decl) => {
+                    self.visit_unboxed_fn_ty_param_bound(&**fn_decl);
+                }
+                ast::RegionTyParamBound(ref lifetime) => {
+                    self.visit_lifetime_ref(lifetime);
+                }
+            }
+        }
+    }
+
+    fn visit_trait_ref(&mut self, trait_ref: &ast::TraitRef) {
+        self.with(|scope, f| {
+            f(LateScope(trait_ref.ref_id, &trait_ref.lifetimes, scope))
+        }, |v| {
+            v.check_lifetime_defs(&trait_ref.lifetimes);
+            for lifetime in trait_ref.lifetimes.iter() {
+                v.visit_lifetime_decl(lifetime);
+            }
+            v.visit_path(&trait_ref.path, trait_ref.ref_id);
+        })
+    }
+
+    fn visit_unboxed_fn_ty_param_bound(&mut self,
+                                       bound: &ast::UnboxedFnBound) {
+        self.with(|scope, f| {
+            f(LateScope(bound.ref_id, &bound.lifetimes, scope))
+        }, |v| {
+            for argument in bound.decl.inputs.iter() {
+                v.visit_ty(&*argument.ty);
+            }
+            v.visit_ty(&*bound.decl.output);
+        })
     }
 
     /// Visits self by adding a scope and handling recursive walk over the contents with `walk`.

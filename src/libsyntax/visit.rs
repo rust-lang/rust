@@ -202,7 +202,9 @@ pub fn walk_explicit_self<'v, V: Visitor<'v>>(visitor: &mut V,
 
 /// Like with walk_method_helper this doesn't correspond to a method
 /// in Visitor, and so it gets a _helper suffix.
-pub fn walk_trait_ref_helper<'v, V: Visitor<'v>>(visitor: &mut V, trait_ref: &'v TraitRef) {
+pub fn walk_trait_ref_helper<'v,V>(visitor: &mut V, trait_ref: &'v TraitRef)
+                                   where V: Visitor<'v> {
+    walk_lifetime_decls(visitor, &trait_ref.lifetimes);
     visitor.visit_path(&trait_ref.path, trait_ref.ref_id)
 }
 
@@ -495,6 +497,7 @@ pub fn walk_ty_param_bounds<'v, V: Visitor<'v>>(visitor: &mut V,
                     visitor.visit_ty(&*argument.ty)
                 }
                 visitor.visit_ty(&*function_declaration.decl.output);
+                walk_lifetime_decls(visitor, &function_declaration.lifetimes);
             }
             RegionTyParamBound(ref lifetime) => {
                 visitor.visit_lifetime_ref(lifetime);
