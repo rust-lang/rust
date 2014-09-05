@@ -58,9 +58,12 @@ impl<T> OwnedSlice<T> {
         if len == 0 {
             OwnedSlice::empty()
         } else {
+            // drop excess capacity to avoid breaking sized deallocation
+            v.shrink_to_fit();
+
             let p = v.as_mut_ptr();
             // we own the allocation now
-            unsafe {mem::forget(v)}
+            unsafe { mem::forget(v) }
 
             OwnedSlice { data: p, len: len }
         }
