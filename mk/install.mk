@@ -14,15 +14,33 @@ else
 MAYBE_DISABLE_VERIFY=
 endif
 
-install: dist-install-dir-$(CFG_BUILD) | tmp/empty_dir
+install:
+ifeq (root user, $(USER) $(patsubst %,user,$(SUDO_USER)))
+# Build the dist as the original user
+	$(Q)sudo -u "$$SUDO_USER" $(MAKE) prepare_install
+else
+	$(Q)$(MAKE) prepare_install
+endif
 	$(Q)cd tmp/empty_dir && sh ../../tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)" "$(MAYBE_DISABLE_VERIFY)"
-# Remove tmp files while we can because they may have been created under sudo
+# Remove tmp files because it's a decent amount of disk space
 	$(Q)rm -R tmp/dist
 
-uninstall: dist-install-dir-$(CFG_BUILD) | tmp/empty_dir
+prepare_install: dist-install-dir-$(CFG_BUILD) | tmp/empty_dir
+
+uninstall:
+ifeq (root user, $(USER) $(patsubst %,user,$(SUDO_USER)))
+# Build the dist as the original user
+	$(Q)sudo -u "$$SUDO_USER" $(MAKE) prepare_uninstall
+else
+	$(Q)$(MAKE) prepare_uninstall
+endif
 	$(Q)cd tmp/empty_dir && sh ../../tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --uninstall --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)"
-# Remove tmp files while we can because they may have been created under sudo
+# Remove tmp files because it's a decent amount of disk space
 	$(Q)rm -R tmp/dist
+
+prepare_uninstall: dist-install-dir-$(CFG_BUILD) | tmp/empty_dir
+
+.PHONY: install prepare_install uninstall prepare_uninstall
 
 tmp/empty_dir:
 	mkdir -p $@
