@@ -154,7 +154,7 @@ impl<T: Clone + Integer + PartialOrd>
         Ratio::from_integer(self.numer / self.denom)
     }
 
-    ///Returns the fractional part of a number.
+    /// Returns the fractional part of a number.
     #[inline]
     pub fn fract(&self) -> Ratio<T> {
         Ratio::new_raw(self.numer % self.denom, self.denom.clone())
@@ -243,7 +243,7 @@ macro_rules! arith_impl {
     }
 }
 
-// a/b + c/d = (a*d + b*c)/(b*d
+// a/b + c/d = (a*d + b*c)/(b*d)
 arith_impl!(impl Add, add)
 
 // a/b - c/d = (a*d - b*c)/(b*d)
