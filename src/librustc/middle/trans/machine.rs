@@ -23,7 +23,7 @@ use middle::trans::type_::Type;
 // Returns the number of bytes clobbered by a Store to this type.
 pub fn llsize_of_store(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        return llvm::LLVMStoreSizeOfType(cx.td.lltd, ty.to_ref()) as u64;
+        return llvm::LLVMStoreSizeOfType(cx.td().lltd, ty.to_ref()) as u64;
     }
 }
 
@@ -31,7 +31,7 @@ pub fn llsize_of_store(cx: &CrateContext, ty: Type) -> u64 {
 // array of T. This is the "ABI" size. It includes any ABI-mandated padding.
 pub fn llsize_of_alloc(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        return llvm::LLVMABISizeOfType(cx.td.lltd, ty.to_ref()) as u64;
+        return llvm::LLVMABISizeOfType(cx.td().lltd, ty.to_ref()) as u64;
     }
 }
 
@@ -45,7 +45,7 @@ pub fn llsize_of_alloc(cx: &CrateContext, ty: Type) -> u64 {
 // below.
 pub fn llsize_of_real(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        let nbits = llvm::LLVMSizeOfTypeInBits(cx.td.lltd, ty.to_ref()) as u64;
+        let nbits = llvm::LLVMSizeOfTypeInBits(cx.td().lltd, ty.to_ref()) as u64;
         if nbits & 7 != 0 {
             // Not an even number of bytes, spills into "next" byte.
             1 + (nbits >> 3)
@@ -58,7 +58,7 @@ pub fn llsize_of_real(cx: &CrateContext, ty: Type) -> u64 {
 /// Returns the "real" size of the type in bits.
 pub fn llbitsize_of_real(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        llvm::LLVMSizeOfTypeInBits(cx.td.lltd, ty.to_ref()) as u64
+        llvm::LLVMSizeOfTypeInBits(cx.td().lltd, ty.to_ref()) as u64
     }
 }
 
@@ -79,7 +79,7 @@ pub fn llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
 // space to be consumed.
 pub fn nonzero_llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
     if llbitsize_of_real(cx, ty) == 0 {
-        unsafe { llvm::LLVMConstInt(cx.int_type.to_ref(), 1, False) }
+        unsafe { llvm::LLVMConstInt(cx.int_type().to_ref(), 1, False) }
     } else {
         llsize_of(cx, ty)
     }
@@ -91,7 +91,7 @@ pub fn nonzero_llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
 // allocations inside a stack frame, which LLVM has a free hand in.
 pub fn llalign_of_pref(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        return llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, ty.to_ref()) as u64;
+        return llvm::LLVMPreferredAlignmentOfType(cx.td().lltd, ty.to_ref()) as u64;
     }
 }
 
@@ -100,7 +100,7 @@ pub fn llalign_of_pref(cx: &CrateContext, ty: Type) -> u64 {
 // and similar ABI-mandated things.
 pub fn llalign_of_min(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        return llvm::LLVMABIAlignmentOfType(cx.td.lltd, ty.to_ref()) as u64;
+        return llvm::LLVMABIAlignmentOfType(cx.td().lltd, ty.to_ref()) as u64;
     }
 }
 
@@ -110,12 +110,12 @@ pub fn llalign_of_min(cx: &CrateContext, ty: Type) -> u64 {
 pub fn llalign_of(cx: &CrateContext, ty: Type) -> ValueRef {
     unsafe {
         return llvm::LLVMConstIntCast(
-            llvm::LLVMAlignOf(ty.to_ref()), cx.int_type.to_ref(), False);
+            llvm::LLVMAlignOf(ty.to_ref()), cx.int_type().to_ref(), False);
     }
 }
 
 pub fn llelement_offset(cx: &CrateContext, struct_ty: Type, element: uint) -> u64 {
     unsafe {
-        return llvm::LLVMOffsetOfElement(cx.td.lltd, struct_ty.to_ref(), element as u32) as u64;
+        return llvm::LLVMOffsetOfElement(cx.td().lltd, struct_ty.to_ref(), element as u32) as u64;
     }
 }

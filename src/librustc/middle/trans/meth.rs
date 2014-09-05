@@ -196,7 +196,7 @@ pub fn trans_static_method_callee(bcx: &Block,
     let vtable_key = MethodCall::expr(expr_id);
     let vtbls = resolve_vtables_in_fn_ctxt(
         bcx.fcx,
-        ccx.tcx.vtable_map.borrow().get(&vtable_key));
+        ccx.tcx().vtable_map.borrow().get(&vtable_key));
 
     match *vtbls.get_self().unwrap().get(0) {
         typeck::vtable_static(impl_did, ref rcvr_substs, ref rcvr_origins) => {
@@ -228,12 +228,12 @@ pub fn trans_static_method_callee(bcx: &Block,
 
 fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
                     -> ast::DefId {
-    match ccx.impl_method_cache.borrow().find_copy(&(impl_id, name)) {
+    match ccx.impl_method_cache().borrow().find_copy(&(impl_id, name)) {
         Some(m) => return m,
         None => {}
     }
 
-    let impl_items = ccx.tcx.impl_items.borrow();
+    let impl_items = ccx.tcx().impl_items.borrow();
     let impl_items =
         impl_items.find(&impl_id)
                   .expect("could not find impl while translating");
@@ -241,7 +241,7 @@ fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
                              .find(|&did| {
                                 match *did {
                                     ty::MethodTraitItemId(did) => {
-                                        ty::impl_or_trait_item(&ccx.tcx,
+                                        ty::impl_or_trait_item(ccx.tcx(),
                                                                did).ident()
                                                                    .name ==
                                             name
@@ -250,7 +250,7 @@ fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
                              }).expect("could not find method while \
                                         translating");
 
-    ccx.impl_method_cache.borrow_mut().insert((impl_id, name),
+    ccx.impl_method_cache().borrow_mut().insert((impl_id, name),
                                               meth_did.def_id());
     meth_did.def_id()
 }
@@ -502,7 +502,7 @@ fn get_vtable(bcx: &Block,
 
     // Check the cache.
     let hash_id = (self_ty, monomorphize::make_vtable_id(ccx, origins.get(0)));
-    match ccx.vtables.borrow().find(&hash_id) {
+    match ccx.vtables().borrow().find(&hash_id) {
         Some(&val) => { return val }
         None => { }
     }
@@ -594,7 +594,7 @@ fn get_vtable(bcx: &Block,
     let drop_glue = glue::get_drop_glue(ccx, self_ty);
     let vtable = make_vtable(ccx, drop_glue, ll_size, ll_align, methods);
 
-    ccx.vtables.borrow_mut().insert(hash_id, vtable);
+    ccx.vtables().borrow_mut().insert(hash_id, vtable);
     vtable
 }
 
@@ -614,7 +614,7 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
         let tbl = C_struct(ccx, components.as_slice(), false);
         let sym = token::gensym("vtable");
         let vt_gvar = format!("vtable{}", sym.uint()).with_c_str(|buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl).to_ref(), buf)
+            llvm::LLVMAddGlobal(ccx.llmod(), val_ty(tbl).to_ref(), buf)
         });
         llvm::LLVMSetInitializer(vt_gvar, tbl);
         llvm::LLVMSetGlobalConstant(vt_gvar, llvm::True);
@@ -684,9 +684,9 @@ pub fn vtable_ptr<'a>(bcx: &'a Block<'a>,
                       self_ty: ty::t) -> ValueRef {
     let ccx = bcx.ccx();
     let origins = {
-        let vtable_map = ccx.tcx.vtable_map.borrow();
+        let vtable_map = ccx.tcx().vtable_map.borrow();
         // This trait cast might be because of implicit coercion
-        let adjs = ccx.tcx.adjustments.borrow();
+        let adjs = ccx.tcx().adjustments.borrow();
         let adjust = adjs.find(&id);
         let method_call = if adjust.is_some() && ty::adjust_is_object(adjust.unwrap()) {
             MethodCall::autoobject(id)

@@ -715,14 +715,14 @@ fn symbol_hash(tcx: &ty::ctxt,
 }
 
 fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> String {
-    match ccx.type_hashcodes.borrow().find(&t) {
+    match ccx.type_hashcodes().borrow().find(&t) {
         Some(h) => return h.to_string(),
         None => {}
     }
 
-    let mut symbol_hasher = ccx.symbol_hasher.borrow_mut();
-    let hash = symbol_hash(ccx.tcx(), &mut *symbol_hasher, t, &ccx.link_meta);
-    ccx.type_hashcodes.borrow_mut().insert(t, hash.clone());
+    let mut symbol_hasher = ccx.symbol_hasher().borrow_mut();
+    let hash = symbol_hash(ccx.tcx(), &mut *symbol_hasher, t, ccx.link_meta());
+    ccx.type_hashcodes().borrow_mut().insert(t, hash.clone());
     hash
 }
 

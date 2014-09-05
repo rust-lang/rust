@@ -56,7 +56,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         params: real_substs.types.clone()
     };
 
-    match ccx.monomorphized.borrow().find(&hash_id) {
+    match ccx.monomorphized().borrow().find(&hash_id) {
         Some(&val) => {
             debug!("leaving monomorphic fn {}",
             ty::item_path_str(ccx.tcx(), fn_id));
@@ -83,7 +83,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     let map_node = session::expect(
         ccx.sess(),
-        ccx.tcx.map.find(fn_id.node),
+        ccx.tcx().map.find(fn_id.node),
         || {
             format!("while monomorphizing {:?}, couldn't find it in \
                      the item map (may have attempted to monomorphize \
@@ -93,7 +93,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     match map_node {
         ast_map::NodeForeignItem(_) => {
-            if ccx.tcx.map.get_foreign_abi(fn_id.node) != abi::RustIntrinsic {
+            if ccx.tcx().map.get_foreign_abi(fn_id.node) != abi::RustIntrinsic {
                 // Foreign externs don't have to be monomorphized.
                 return (get_item_val(ccx, fn_id.node), true);
             }
@@ -104,11 +104,11 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx()));
     let mono_ty = llitem_ty.subst(ccx.tcx(), real_substs);
 
-    ccx.stats.n_monos.set(ccx.stats.n_monos.get() + 1);
+    ccx.stats().n_monos.set(ccx.stats().n_monos.get() + 1);
 
     let depth;
     {
-        let mut monomorphizing = ccx.monomorphizing.borrow_mut();
+        let mut monomorphizing = ccx.monomorphizing().borrow_mut();
         depth = match monomorphizing.find(&fn_id) {
             Some(&d) => d, None => 0
         };
@@ -117,7 +117,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         // recursively more than thirty times can probably safely be assumed
         // to be causing an infinite expansion.
         if depth > ccx.sess().recursion_limit.get() {
-            ccx.sess().span_fatal(ccx.tcx.map.span(fn_id.node),
+            ccx.sess().span_fatal(ccx.tcx().map.span(fn_id.node),
                 "reached the recursion limit during monomorphization");
         }
 
@@ -131,7 +131,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         mono_ty.hash(&mut state);
 
         hash = format!("h{}", state.result());
-        ccx.tcx.map.with_path(fn_id.node, |path| {
+        ccx.tcx().map.with_path(fn_id.node, |path| {
             exported_name(path, hash.as_slice())
         })
     };
@@ -147,7 +147,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             decl_internal_rust_fn(ccx, mono_ty, s.as_slice())
         };
 
-        ccx.monomorphized.borrow_mut().insert(hash_id.take().unwrap(), lldecl);
+        ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);
         lldecl
     };
 
@@ -177,7 +177,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             }
         }
         ast_map::NodeVariant(v) => {
-            let parent = ccx.tcx.map.get_parent(fn_id.node);
+            let parent = ccx.tcx().map.get_parent(fn_id.node);
             let tvs = ty::enum_variants(ccx.tcx(), local_def(parent));
             let this_tv = tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
             let d = mk_lldecl(abi::Rust);
@@ -254,7 +254,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         }
     };
 
-    ccx.monomorphizing.borrow_mut().insert(fn_id, depth);
+    ccx.monomorphizing().borrow_mut().insert(fn_id, depth);
 
     debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx(), fn_id));
     (lldecl, true)
