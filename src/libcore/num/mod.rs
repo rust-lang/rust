@@ -406,7 +406,7 @@ pub trait Int: Primitive
     ///
     /// assert_eq!(n.count_ones(), 3);
     /// ```
-    fn count_ones(self) -> Self;
+    fn count_ones(self) -> uint;
 
     /// Returns the number of zeros in the binary representation of the integer.
     ///
@@ -418,7 +418,7 @@ pub trait Int: Primitive
     /// assert_eq!(n.count_zeros(), 5);
     /// ```
     #[inline]
-    fn count_zeros(self) -> Self {
+    fn count_zeros(self) -> uint {
         (!self).count_ones()
     }
 
@@ -432,7 +432,7 @@ pub trait Int: Primitive
     ///
     /// assert_eq!(n.leading_zeros(), 10);
     /// ```
-    fn leading_zeros(self) -> Self;
+    fn leading_zeros(self) -> uint;
 
     /// Returns the number of trailing zeros in the binary representation
     /// of the integer.
@@ -444,7 +444,7 @@ pub trait Int: Primitive
     ///
     /// assert_eq!(n.trailing_zeros(), 3);
     /// ```
-    fn trailing_zeros(self) -> Self;
+    fn trailing_zeros(self) -> uint;
 
     /// Shifts the bits to the left by a specified amount amount, `n`, wrapping
     /// the truncated bits to the end of the resulting integer.
@@ -569,13 +569,13 @@ macro_rules! int_impl {
     ($T:ty, $BITS:expr, $ctpop:path, $ctlz:path, $cttz:path, $bswap:path) => {
         impl Int for $T {
             #[inline]
-            fn count_ones(self) -> $T { unsafe { $ctpop(self) } }
+            fn count_ones(self) -> uint { unsafe { $ctpop(self) as uint } }
 
             #[inline]
-            fn leading_zeros(self) -> $T { unsafe { $ctlz(self) } }
+            fn leading_zeros(self) -> uint { unsafe { $ctlz(self) as uint } }
 
             #[inline]
-            fn trailing_zeros(self) -> $T { unsafe { $cttz(self) } }
+            fn trailing_zeros(self) -> uint { unsafe { $cttz(self) as uint } }
 
             #[inline]
             fn rotate_left(self, n: uint) -> $T {
@@ -629,13 +629,13 @@ macro_rules! int_cast_impl {
     ($T:ty, $U:ty) => {
         impl Int for $T {
             #[inline]
-            fn count_ones(self) -> $T { (self as $U).count_ones() as $T }
+            fn count_ones(self) -> uint { (self as $U).count_ones() }
 
             #[inline]
-            fn leading_zeros(self) -> $T { (self as $U).leading_zeros() as $T }
+            fn leading_zeros(self) -> uint { (self as $U).leading_zeros() }
 
             #[inline]
-            fn trailing_zeros(self) -> $T { (self as $U).trailing_zeros() as $T }
+            fn trailing_zeros(self) -> uint { (self as $U).trailing_zeros() }
 
             #[inline]
             fn rotate_left(self, n: uint) -> $T { (self as $U).rotate_left(n) as $T }
