@@ -125,13 +125,7 @@ impl Perm {
 
 
 fn reverse(tperm: &mut [i32], mut k: uint) {
-    let p = tperm.as_mut_ptr();
-
-    unsafe {
-        for off in range(0, k as int / 2) {
-            std::ptr::swap(p.offset(off), p.offset(k as int - 1 - off));
-        }
-    }
+    tperm.mut_slice_to(k).reverse()
 }
 
 fn work(mut perm: Perm, n: uint, max: uint) -> (i32, i32) {
