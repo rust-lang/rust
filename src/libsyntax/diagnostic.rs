@@ -211,7 +211,7 @@ pub fn mk_handler(e: Box<Emitter + Send>) -> Handler {
     }
 }
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Clone)]
 pub enum Level {
     Bug,
     Fatal,
