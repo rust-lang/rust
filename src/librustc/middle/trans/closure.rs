@@ -24,7 +24,6 @@ use middle::trans::common::*;
 use middle::trans::datum::{Datum, DatumBlock, Expr, Lvalue, rvalue_scratch_datum};
 use middle::trans::debuginfo;
 use middle::trans::expr;
-use middle::trans::machine::llsize_of;
 use middle::trans::type_of::*;
 use middle::trans::type_::Type;
 use middle::ty;
@@ -144,15 +143,12 @@ fn allocate_cbox<'a>(bcx: &'a Block<'a>,
     let tcx = bcx.tcx();
 
     // Allocate and initialize the box:
+    let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
     match store {
         ty::UniqTraitStore => {
-            let ty = type_of(bcx.ccx(), cdata_ty);
-            let size = llsize_of(bcx.ccx(), ty);
-            // we treat proc as @ here, which isn't ideal
-            malloc_raw_dyn_managed(bcx, cdata_ty, ClosureExchangeMallocFnLangItem, size)
+            malloc_raw_dyn_proc(bcx, cbox_ty, ClosureExchangeMallocFnLangItem)
         }
         ty::RegionTraitStore(..) => {
-            let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
             let llbox = alloc_ty(bcx, cbox_ty, "__closure");
             Result::new(bcx, llbox)
         }
