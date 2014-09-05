@@ -53,7 +53,7 @@ pub fn trans_free<'a>(cx: &'a Block<'a>, v: ValueRef) -> &'a Block<'a> {
         Some(expr::Ignore)).bcx
 }
 
-fn trans_exchange_free_internal<'a>(cx: &'a Block<'a>, v: ValueRef, size: ValueRef,
+pub fn trans_exchange_free_dyn<'a>(cx: &'a Block<'a>, v: ValueRef, size: ValueRef,
                                align: ValueRef) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_exchange_free");
     let ccx = cx.ccx();
@@ -65,10 +65,8 @@ fn trans_exchange_free_internal<'a>(cx: &'a Block<'a>, v: ValueRef, size: ValueR
 
 pub fn trans_exchange_free<'a>(cx: &'a Block<'a>, v: ValueRef, size: u64,
                                align: u64) -> &'a Block<'a> {
-    trans_exchange_free_internal(cx,
-                                 v,
-                                 C_uint(cx.ccx(), size as uint),
-                                 C_uint(cx.ccx(), align as uint))
+    trans_exchange_free_dyn(cx, v, C_uint(cx.ccx(), size as uint),
+                            C_uint(cx.ccx(), align as uint))
 }
 
 pub fn trans_exchange_free_ty<'a>(bcx: &'a Block<'a>, ptr: ValueRef,
@@ -467,7 +465,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                         let info = GEPi(bcx, v0, [0, abi::slice_elt_len]);
                         let info = Load(bcx, info);
                         let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
-                        trans_exchange_free_internal(bcx, llbox, llsize, llalign)
+                        trans_exchange_free_dyn(bcx, llbox, llsize, llalign)
                     })
                 }
                 _ => {

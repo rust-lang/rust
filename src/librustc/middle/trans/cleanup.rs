@@ -340,6 +340,27 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         self.schedule_clean(cleanup_scope, drop as CleanupObj);
     }
 
+    fn schedule_free_slice(&self,
+                           cleanup_scope: ScopeId,
+                           val: ValueRef,
+                           size: ValueRef,
+                           align: ValueRef,
+                           heap: Heap) {
+        /*!
+         * Schedules a call to `free(val)`. Note that this is a shallow
+         * operation.
+         */
+
+        let drop = box FreeSlice { ptr: val, size: size, align: align, heap: heap };
+
+        debug!("schedule_free_slice({:?}, val={}, heap={:?})",
+               cleanup_scope,
+               self.ccx.tn().val_to_string(val),
+               heap);
+
+        self.schedule_clean(cleanup_scope, drop as CleanupObj);
+    }
+
     fn schedule_clean(&self,
                       cleanup_scope: ScopeId,
                       cleanup: CleanupObj) {
@@ -926,6 +947,34 @@ impl Cleanup for FreeValue {
     }
 }
 
+pub struct FreeSlice {
+    ptr: ValueRef,
+    size: ValueRef,
+    align: ValueRef,
+    heap: Heap,
+}
+
+impl Cleanup for FreeSlice {
+    fn must_unwind(&self) -> bool {
+        true
+    }
+
+    fn clean_on_unwind(&self) -> bool {
+        true
+    }
+
+    fn trans<'a>(&self, bcx: &'a Block<'a>) -> &'a Block<'a> {
+        match self.heap {
+            HeapManaged => {
+                glue::trans_free(bcx, self.ptr)
+            }
+            HeapExchange => {
+                glue::trans_exchange_free_dyn(bcx, self.ptr, self.size, self.align)
+            }
+        }
+    }
+}
+
 pub struct LifetimeEnd {
     ptr: ValueRef,
 }
@@ -1020,6 +1069,12 @@ pub trait CleanupMethods<'a> {
                            val: ValueRef,
                            heap: Heap,
                            content_ty: ty::t);
+    fn schedule_free_slice(&self,
+                           cleanup_scope: ScopeId,
+                           val: ValueRef,
+                           size: ValueRef,
+                           align: ValueRef,
+                           heap: Heap);
     fn schedule_clean(&self,
                       cleanup_scope: ScopeId,
                       cleanup: CleanupObj);
