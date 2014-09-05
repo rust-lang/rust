@@ -76,6 +76,8 @@ trait T3<Sized? Z> {
 struct S4<Y>;
 impl<Sized? X> T3<X> for S4<X> { //~ ERROR instantiating a type parameter with an incompatible type
 }
+impl<Sized? X> S4<X> { //~ ERROR instantiating a type parameter with an incompatible type
+}
 
 
 pub fn main() {
