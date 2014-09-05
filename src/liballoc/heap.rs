@@ -178,7 +178,10 @@ mod imp {
                       flags: c_int) -> *mut c_void;
         fn je_xallocx(ptr: *mut c_void, size: size_t, extra: size_t,
                       flags: c_int) -> size_t;
+        #[cfg(stage0)]
         fn je_dallocx(ptr: *mut c_void, flags: c_int);
+        #[cfg(not(stage0))]
+        fn je_sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
         fn je_nallocx(size: size_t, flags: c_int) -> size_t;
         fn je_malloc_stats_print(write_cb: Option<extern "C" fn(cbopaque: *mut c_void,
                                                                 *const c_char)>,
@@ -229,9 +232,17 @@ mod imp {
     }
 
     #[inline]
+    #[cfg(stage0)]
     pub unsafe fn deallocate(ptr: *mut u8, _size: uint, align: uint) {
         let flags = align_to_flags(align);
         je_dallocx(ptr as *mut c_void, flags)
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    pub unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
+        let flags = align_to_flags(align);
+        je_sdallocx(ptr as *mut c_void, size as size_t, flags)
     }
 
     #[inline]
