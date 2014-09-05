@@ -520,12 +520,8 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
             with_cond(bcx, IsNotNull(bcx, env), |bcx| {
                 let dtor_ptr = GEPi(bcx, env, [0u, abi::box_field_tydesc]);
                 let dtor = Load(bcx, dtor_ptr);
-                let cdata = GEPi(bcx, env, [0u, abi::box_field_body]);
-                Call(bcx, dtor, [PointerCast(bcx, cdata, Type::i8p(bcx.ccx()))], None);
-
-                // Free the environment itself
-                // FIXME: #13994: pass align and size here
-                trans_exchange_free(bcx, env, 0, 8)
+                Call(bcx, dtor, [PointerCast(bcx, box_cell_v, Type::i8p(bcx.ccx()))], None);
+                bcx
             })
         }
         ty::ty_trait(..) => {

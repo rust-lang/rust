@@ -14,7 +14,7 @@
 
 use core::ptr::RawPtr;
 #[cfg(not(test))] use core::raw;
-#[cfg(not(test))] use util;
+#[cfg(stage0, not(test))] use util;
 
 /// Returns a pointer to `size` bytes of memory.
 ///
@@ -119,7 +119,7 @@ unsafe fn exchange_free(ptr: *mut u8, size: uint, align: uint) {
 }
 
 // FIXME: #7496
-#[cfg(not(test))]
+#[cfg(stage0, not(test))]
 #[lang="closure_exchange_malloc"]
 #[inline]
 #[allow(deprecated)]
@@ -127,6 +127,21 @@ unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint,
                                   align: uint) -> *mut u8 {
     let total_size = util::get_box_size(size, align);
     let p = allocate(total_size, 8);
+
+    let alloc = p as *mut raw::Box<()>;
+    (*alloc).drop_glue = drop_glue;
+
+    alloc as *mut u8
+}
+
+// FIXME: #7496
+#[cfg(not(stage0), not(test))]
+#[lang="closure_exchange_malloc"]
+#[inline]
+#[allow(deprecated)]
+unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint,
+                                  align: uint) -> *mut u8 {
+    let p = allocate(size, align);
 
     let alloc = p as *mut raw::Box<()>;
     (*alloc).drop_glue = drop_glue;
