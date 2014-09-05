@@ -312,7 +312,7 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
     }).unwrap_or(HashMap::new());
     let mut cache = Cache {
         impls: HashMap::new(),
-        external_paths: paths.iter().map(|(&k, &(ref v, _))| (k, v.clone()))
+        external_paths: paths.iter().map(|(&k, v)| (k, v.ref0().clone()))
                              .collect(),
         paths: paths,
         implementors: HashMap::new(),
