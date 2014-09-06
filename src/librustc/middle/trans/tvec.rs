@@ -25,6 +25,7 @@ use middle::trans::datum::*;
 use middle::trans::expr::{Dest, Ignore, SaveIn};
 use middle::trans::expr;
 use middle::trans::glue;
+use middle::trans::machine;
 use middle::trans::machine::{nonzero_llsize_of, llsize_of_alloc};
 use middle::trans::type_::Type;
 use middle::trans::type_of;
@@ -59,6 +60,7 @@ pub fn make_drop_glue_unboxed<'a>(
                               -> &'a Block<'a> {
     let not_null = IsNotNull(bcx, vptr);
     with_cond(bcx, not_null, |bcx| {
+        let ccx = bcx.ccx();
         let tcx = bcx.tcx();
         let _icx = push_ctxt("tvec::make_drop_glue_unboxed");
 
@@ -73,8 +75,11 @@ pub fn make_drop_glue_unboxed<'a>(
         if should_deallocate {
             let not_null = IsNotNull(bcx, dataptr);
             with_cond(bcx, not_null, |bcx| {
-                // FIXME: #13994: the old `Box<[T]>` will not support sized deallocation
-                glue::trans_exchange_free(bcx, dataptr, 0, 8)
+                let llty = type_of::type_of(ccx, unit_ty);
+                let llsize = machine::llsize_of(ccx, llty);
+                let llalign = C_uint(ccx, machine::llalign_of_min(ccx, llty) as uint);
+                let size = Mul(bcx, llsize, get_len(bcx, vptr));
+                glue::trans_exchange_free_dyn(bcx, dataptr, size, llalign)
             })
         } else {
             bcx
@@ -281,15 +286,16 @@ pub fn trans_uniq_vec<'a>(bcx: &'a Block<'a>,
     debug!("    vt={}, count={:?}", vt.to_string(ccx), count);
     let vec_ty = node_id_type(bcx, uniq_expr.id);
 
-    let unit_sz = nonzero_llsize_of(ccx, type_of::type_of(ccx, vt.unit_ty));
+    let llty = type_of::type_of(ccx, vt.unit_ty);
+    let unit_sz = nonzero_llsize_of(ccx, llty);
     let llcount = if count < 4u {
         C_int(ccx, 4)
     } else {
         C_uint(ccx, count)
     };
     let alloc = Mul(bcx, llcount, unit_sz);
-    let llty_ptr = type_of::type_of(ccx, vt.unit_ty).ptr_to();
-    let align = C_uint(ccx, 8);
+    let llty_ptr = llty.ptr_to();
+    let align = C_uint(ccx, machine::llalign_of_min(ccx, llty) as uint);
     let Result { bcx: bcx, val: dataptr } = malloc_raw_dyn(bcx,
                                                            llty_ptr,
                                                            vec_ty,
@@ -299,16 +305,15 @@ pub fn trans_uniq_vec<'a>(bcx: &'a Block<'a>,
     // Create a temporary scope lest execution should fail while
     // constructing the vector.
     let temp_scope = fcx.push_custom_cleanup_scope();
-    // FIXME: #13994: the old `Box<[T]> will not support sized deallocation,
-    // this is a placeholder
-    fcx.schedule_free_value(cleanup::CustomScope(temp_scope),
-                            dataptr, cleanup::HeapExchange, vt.unit_ty);
 
-        debug!("    alloc_uniq_vec() returned dataptr={}, len={}",
-               bcx.val_to_string(dataptr), count);
+    fcx.schedule_free_slice(cleanup::CustomScope(temp_scope),
+                            dataptr, alloc, align, cleanup::HeapExchange);
 
-        let bcx = write_content(bcx, &vt, uniq_expr,
-                                content_expr, SaveIn(dataptr));
+    debug!("    alloc_uniq_vec() returned dataptr={}, len={}",
+           bcx.val_to_string(dataptr), count);
+
+    let bcx = write_content(bcx, &vt, uniq_expr,
+                            content_expr, SaveIn(dataptr));
 
     fcx.pop_custom_cleanup_scope(temp_scope);
 
