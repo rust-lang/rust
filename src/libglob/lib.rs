@@ -680,6 +680,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_lots_of_files() {
         // this is a good test because it touches lots of differently named files
         glob("/*/*/*/*").skip(10000).next();
