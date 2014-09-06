@@ -53,7 +53,7 @@ pub fn trans_free<'a>(cx: &'a Block<'a>, v: ValueRef) -> &'a Block<'a> {
         Some(expr::Ignore)).bcx
 }
 
-fn trans_exchange_free_internal<'a>(cx: &'a Block<'a>, v: ValueRef, size: ValueRef,
+pub fn trans_exchange_free_dyn<'a>(cx: &'a Block<'a>, v: ValueRef, size: ValueRef,
                                align: ValueRef) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_exchange_free");
     let ccx = cx.ccx();
@@ -65,10 +65,8 @@ fn trans_exchange_free_internal<'a>(cx: &'a Block<'a>, v: ValueRef, size: ValueR
 
 pub fn trans_exchange_free<'a>(cx: &'a Block<'a>, v: ValueRef, size: u64,
                                align: u64) -> &'a Block<'a> {
-    trans_exchange_free_internal(cx,
-                                 v,
-                                 C_uint(cx.ccx(), size as uint),
-                                 C_uint(cx.ccx(), align as uint))
+    trans_exchange_free_dyn(cx, v, C_uint(cx.ccx(), size as uint),
+                            C_uint(cx.ccx(), align as uint))
 }
 
 pub fn trans_exchange_free_ty<'a>(bcx: &'a Block<'a>, ptr: ValueRef,
@@ -111,9 +109,6 @@ pub fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
         return ty::mk_i8();
     }
     match ty::get(t).sty {
-        ty::ty_box(typ) if !ty::type_needs_drop(tcx, typ) =>
-            ty::mk_box(tcx, ty::mk_i8()),
-
         ty::ty_uniq(typ) if !ty::type_needs_drop(tcx, typ)
                          && ty::type_is_sized(tcx, typ) => {
             let llty = sizing_type_of(ccx, typ);
@@ -121,7 +116,7 @@ pub fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
             if llsize_of_alloc(ccx, llty) == 0 {
                 ty::mk_i8()
             } else {
-                ty::mk_uniq(tcx, ty::mk_i8())
+                t
             }
         }
         _ => t
@@ -470,7 +465,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                         let info = GEPi(bcx, v0, [0, abi::slice_elt_len]);
                         let info = Load(bcx, info);
                         let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
-                        trans_exchange_free_internal(bcx, llbox, llsize, llalign)
+                        trans_exchange_free_dyn(bcx, llbox, llsize, llalign)
                     })
                 }
                 _ => {
@@ -523,12 +518,8 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
             with_cond(bcx, IsNotNull(bcx, env), |bcx| {
                 let dtor_ptr = GEPi(bcx, env, [0u, abi::box_field_tydesc]);
                 let dtor = Load(bcx, dtor_ptr);
-                let cdata = GEPi(bcx, env, [0u, abi::box_field_body]);
-                Call(bcx, dtor, [PointerCast(bcx, cdata, Type::i8p(bcx.ccx()))], None);
-
-                // Free the environment itself
-                // FIXME: #13994: pass align and size here
-                trans_exchange_free(bcx, env, 0, 8)
+                Call(bcx, dtor, [PointerCast(bcx, box_cell_v, Type::i8p(bcx.ccx()))], None);
+                bcx
             })
         }
         ty::ty_trait(..) => {

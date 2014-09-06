@@ -66,7 +66,7 @@ use middle::trans::glue;
 use middle::trans::inline;
 use middle::trans::intrinsic;
 use middle::trans::machine;
-use middle::trans::machine::{llsize_of, llsize_of_real};
+use middle::trans::machine::{llsize_of, llsize_of_real, llalign_of_min};
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::tvec;
@@ -382,13 +382,44 @@ pub fn malloc_raw_dyn<'a>(bcx: &'a Block<'a>,
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
 
+pub fn malloc_raw_dyn_proc<'a>(
+                      bcx: &'a Block<'a>,
+                      t: ty::t, alloc_fn: LangItem) -> Result<'a> {
+    let _icx = push_ctxt("malloc_raw_dyn_proc");
+    let ccx = bcx.ccx();
+
+    let langcall = require_alloc_fn(bcx, t, alloc_fn);
+
+    // Grab the TypeRef type of ptr_ty.
+    let ptr_ty = ty::mk_uniq(bcx.tcx(), t);
+    let ptr_llty = type_of(ccx, ptr_ty);
+
+    let llty = type_of(bcx.ccx(), t);
+    let size = llsize_of(bcx.ccx(), llty);
+    let llalign = C_uint(ccx, llalign_of_min(bcx.ccx(), llty) as uint);
+
+    // Allocate space:
+    let drop_glue = glue::get_drop_glue(ccx, ty::mk_uniq(bcx.tcx(), t));
+    let r = callee::trans_lang_call(
+        bcx,
+        langcall,
+        [
+            PointerCast(bcx, drop_glue, Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to()),
+            size,
+            llalign
+        ],
+        None);
+    Result::new(r.bcx, PointerCast(r.bcx, r.val, ptr_llty))
+}
+
+
 pub fn malloc_raw_dyn_managed<'a>(
                       bcx: &'a Block<'a>,
                       t: ty::t,
                       alloc_fn: LangItem,
                       size: ValueRef)
                       -> Result<'a> {
-    let _icx = push_ctxt("malloc_raw_managed");
+    let _icx = push_ctxt("malloc_raw_dyn_managed");
     let ccx = bcx.ccx();
 
     let langcall = require_alloc_fn(bcx, t, alloc_fn);
