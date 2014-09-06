@@ -28,7 +28,8 @@ fn kaboom(y: Bar<f32>) {}
 //~^ ERROR failed to find an implementation
 //~^^ ERROR instantiating a type parameter with an incompatible type
 
-impl<T> Foo<T> {
+impl<T> Foo<T> { //~ ERROR failed to find an implementation
+//~^ ERROR instantiating a type parameter with an incompatible type
     fn uhoh() {}
 }
 
