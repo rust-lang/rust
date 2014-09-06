@@ -22,23 +22,24 @@ use std::cell::RefCell;
 use std::gc::GC;
 use std::os;
 use std::collections::{HashMap, HashSet};
+use arena::TypedArena;
 
 use visit_ast::RustdocVisitor;
 use clean;
 use clean::Clean;
 
 /// Are we generating documentation (`Typed`) or tests (`NotTyped`)?
-pub enum MaybeTyped {
-    Typed(middle::ty::ctxt),
+pub enum MaybeTyped<'tcx> {
+    Typed(middle::ty::ctxt<'tcx>),
     NotTyped(driver::session::Session)
 }
 
 pub type ExternalPaths = RefCell<Option<HashMap<ast::DefId,
                                                 (Vec<String>, clean::TypeKind)>>>;
 
-pub struct DocContext {
+pub struct DocContext<'tcx> {
     pub krate: ast::Crate,
-    pub maybe_typed: MaybeTyped,
+    pub maybe_typed: MaybeTyped<'tcx>,
     pub src: Path,
     pub external_paths: ExternalPaths,
     pub external_traits: RefCell<Option<HashMap<ast::DefId, clean::Trait>>>,
@@ -47,7 +48,7 @@ pub struct DocContext {
     pub populated_crate_impls: RefCell<HashSet<ast::CrateNum>>,
 }
 
-impl DocContext {
+impl<'tcx> DocContext<'tcx> {
     pub fn sess<'a>(&'a self) -> &'a driver::session::Session {
         match self.maybe_typed {
             Typed(ref tcx) => &tcx.sess,
@@ -55,14 +56,14 @@ impl DocContext {
         }
     }
 
-    pub fn tcx_opt<'a>(&'a self) -> Option<&'a ty::ctxt> {
+    pub fn tcx_opt<'a>(&'a self) -> Option<&'a ty::ctxt<'tcx>> {
         match self.maybe_typed {
             Typed(ref tcx) => Some(tcx),
             NotTyped(_) => None
         }
     }
 
-    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         let tcx_opt = self.tcx_opt();
         tcx_opt.expect("tcx not present")
     }
@@ -80,9 +81,10 @@ pub struct CrateAnalysis {
 pub type Externs = HashMap<String, Vec<String>>;
 
 /// Parses, resolves, and typechecks the given crate
-fn get_ast_and_resolve(cpath: &Path, libs: Vec<Path>, cfgs: Vec<String>,
-                       externs: Externs, triple: Option<String>)
-                       -> (DocContext, CrateAnalysis) {
+fn get_ast_and_resolve<'tcx>(cpath: &Path, libs: Vec<Path>, cfgs: Vec<String>,
+                             externs: Externs, triple: Option<String>,
+                             type_arena: &'tcx TypedArena<ty::t_box_>)
+                             -> (DocContext<'tcx>, CrateAnalysis) {
     use syntax::codemap::dummy_spanned;
     use rustc::driver::driver::{FileInput,
                                 phase_1_parse_input,
@@ -131,7 +133,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: Vec<Path>, cfgs: Vec<String>,
 
     let driver::driver::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
-    } = phase_3_run_analysis_passes(sess, &krate, ast_map, name);
+    } = phase_3_run_analysis_passes(sess, &krate, ast_map, type_arena, name);
 
     debug!("crate: {:?}", krate);
     (DocContext {
@@ -156,14 +158,14 @@ fn get_ast_and_resolve(cpath: &Path, libs: Vec<Path>, cfgs: Vec<String>,
 pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
                 path: &Path, triple: Option<String>)
                 -> (clean::Crate, CrateAnalysis) {
-    let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs, externs, triple);
-    let ctxt = box(GC) ctxt;
-    super::ctxtkey.replace(Some(ctxt));
+    let type_arena = TypedArena::new();
+    let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs, externs,
+                                               triple, &type_arena);
 
     let krate = {
-        let mut v = RustdocVisitor::new(&*ctxt, Some(&analysis));
+        let mut v = RustdocVisitor::new(&ctxt, Some(&analysis));
         v.visit(&ctxt.krate);
-        v.clean()
+        v.clean(&ctxt)
     };
 
     let external_paths = ctxt.external_paths.borrow_mut().take();

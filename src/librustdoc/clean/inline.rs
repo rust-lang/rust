@@ -21,7 +21,7 @@ use rustc::middle::ty;
 use rustc::middle::subst;
 use rustc::middle::stability;
 
-use core;
+use core::DocContext;
 use doctree;
 use clean;
 
@@ -39,12 +39,11 @@ use super::Clean;
 ///
 /// The returned value is `None` if the `id` could not be inlined, and `Some`
 /// of a vector of items if it was successfully expanded.
-pub fn try_inline(id: ast::NodeId, into: Option<ast::Ident>)
+pub fn try_inline(cx: &DocContext, id: ast::NodeId, into: Option<ast::Ident>)
                   -> Option<Vec<clean::Item>> {
-    let cx = ::ctxtkey.get().unwrap();
-    let tcx = match cx.maybe_typed {
-        core::Typed(ref tycx) => tycx,
-        core::NotTyped(_) => return None,
+    let tcx = match cx.tcx_opt() {
+        Some(tcx) => tcx,
+        None => return None,
     };
     let def = match tcx.def_map.borrow().find(&id) {
         Some(def) => *def,
@@ -52,11 +51,11 @@ pub fn try_inline(id: ast::NodeId, into: Option<ast::Ident>)
     };
     let did = def.def_id();
     if ast_util::is_local(did) { return None }
-    try_inline_def(&**cx, tcx, def).map(|vec| {
+    try_inline_def(cx, tcx, def).map(|vec| {
         vec.move_iter().map(|mut item| {
             match into {
                 Some(into) if item.name.is_some() => {
-                    item.name = Some(into.clean());
+                    item.name = Some(into.clean(cx));
                 }
                 _ => {}
             }
@@ -65,15 +64,14 @@ pub fn try_inline(id: ast::NodeId, into: Option<ast::Ident>)
     })
 }
 
-fn try_inline_def(cx: &core::DocContext,
-                  tcx: &ty::ctxt,
+fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
                   def: def::Def) -> Option<Vec<clean::Item>> {
     let mut ret = Vec::new();
     let did = def.def_id();
     let inner = match def {
         def::DefTrait(did) => {
             record_extern_fqn(cx, did, clean::TypeTrait);
-            clean::TraitItem(build_external_trait(tcx, did))
+            clean::TraitItem(build_external_trait(cx, tcx, did))
         }
         def::DefFn(did, style) => {
             // If this function is a tuple struct constructor, we just skip it
@@ -82,17 +80,17 @@ fn try_inline_def(cx: &core::DocContext,
                 return None
             }
             record_extern_fqn(cx, did, clean::TypeFunction);
-            clean::FunctionItem(build_external_function(tcx, did, style))
+            clean::FunctionItem(build_external_function(cx, tcx, did, style))
         }
         def::DefStruct(did) => {
             record_extern_fqn(cx, did, clean::TypeStruct);
             ret.extend(build_impls(cx, tcx, did).move_iter());
-            clean::StructItem(build_struct(tcx, did))
+            clean::StructItem(build_struct(cx, tcx, did))
         }
         def::DefTy(did) => {
             record_extern_fqn(cx, did, clean::TypeEnum);
             ret.extend(build_impls(cx, tcx, did).move_iter());
-            build_type(tcx, did)
+            build_type(cx, tcx, did)
         }
         // Assume that the enum type is reexported next to the variant, and
         // variants don't show up in documentation specially.
@@ -103,7 +101,7 @@ fn try_inline_def(cx: &core::DocContext,
         }
         def::DefStatic(did, mtbl) => {
             record_extern_fqn(cx, did, clean::TypeStatic);
-            clean::StaticItem(build_static(tcx, did, mtbl))
+            clean::StaticItem(build_static(cx, tcx, did, mtbl))
         }
         _ => return None,
     };
@@ -112,20 +110,21 @@ fn try_inline_def(cx: &core::DocContext,
     ret.push(clean::Item {
         source: clean::Span::empty(),
         name: Some(fqn.last().unwrap().to_string()),
-        attrs: load_attrs(tcx, did),
+        attrs: load_attrs(cx, tcx, did),
         inner: inner,
         visibility: Some(ast::Public),
-        stability: stability::lookup(tcx, did).clean(),
+        stability: stability::lookup(tcx, did).clean(cx),
         def_id: did,
     });
     Some(ret)
 }
 
-pub fn load_attrs(tcx: &ty::ctxt, did: ast::DefId) -> Vec<clean::Attribute> {
+pub fn load_attrs(cx: &DocContext, tcx: &ty::ctxt,
+                  did: ast::DefId) -> Vec<clean::Attribute> {
     let mut attrs = Vec::new();
     csearch::get_item_attrs(&tcx.sess.cstore, did, |v| {
         attrs.extend(v.move_iter().map(|a| {
-            a.clean()
+            a.clean(cx)
         }));
     });
     attrs
@@ -135,22 +134,21 @@ pub fn load_attrs(tcx: &ty::ctxt, did: ast::DefId) -> Vec<clean::Attribute> {
 ///
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
-pub fn record_extern_fqn(cx: &core::DocContext,
-                         did: ast::DefId,
-                         kind: clean::TypeKind) {
-    match cx.maybe_typed {
-        core::Typed(ref tcx) => {
+pub fn record_extern_fqn(cx: &DocContext, did: ast::DefId, kind: clean::TypeKind) {
+    match cx.tcx_opt() {
+        Some(tcx) => {
             let fqn = csearch::get_item_path(tcx, did);
             let fqn = fqn.move_iter().map(|i| i.to_string()).collect();
             cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
         }
-        core::NotTyped(..) => {}
+        None => {}
     }
 }
 
-pub fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> clean::Trait {
+pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
+                            did: ast::DefId) -> clean::Trait {
     let def = ty::lookup_trait_def(tcx, did);
-    let trait_items = ty::trait_items(tcx, did).clean();
+    let trait_items = ty::trait_items(tcx, did).clean(cx);
     let provided = ty::provided_trait_methods(tcx, did);
     let mut items = trait_items.move_iter().map(|trait_item| {
         if provided.iter().any(|a| a.def_id == trait_item.def_id) {
@@ -160,29 +158,29 @@ pub fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> clean::Trait {
         }
     });
     let trait_def = ty::lookup_trait_def(tcx, did);
-    let bounds = trait_def.bounds.clean();
+    let bounds = trait_def.bounds.clean(cx);
     clean::Trait {
-        generics: (&def.generics, subst::TypeSpace).clean(),
+        generics: (&def.generics, subst::TypeSpace).clean(cx),
         items: items.collect(),
         bounds: bounds,
     }
 }
 
-fn build_external_function(tcx: &ty::ctxt,
+fn build_external_function(cx: &DocContext, tcx: &ty::ctxt,
                            did: ast::DefId,
                            style: ast::FnStyle) -> clean::Function {
     let t = ty::lookup_item_type(tcx, did);
     clean::Function {
         decl: match ty::get(t.ty).sty {
-            ty::ty_bare_fn(ref f) => (did, &f.sig).clean(),
+            ty::ty_bare_fn(ref f) => (did, &f.sig).clean(cx),
             _ => fail!("bad function"),
         },
-        generics: (&t.generics, subst::FnSpace).clean(),
+        generics: (&t.generics, subst::FnSpace).clean(cx),
         fn_style: style,
     }
 }
 
-fn build_struct(tcx: &ty::ctxt, did: ast::DefId) -> clean::Struct {
+fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Struct {
     use syntax::parse::token::special_idents::unnamed_field;
 
     let t = ty::lookup_item_type(tcx, did);
@@ -195,33 +193,32 @@ fn build_struct(tcx: &ty::ctxt, did: ast::DefId) -> clean::Struct {
             [ref f, ..] if f.name == unnamed_field.name => doctree::Tuple,
             _ => doctree::Plain,
         },
-        generics: (&t.generics, subst::TypeSpace).clean(),
-        fields: fields.clean(),
+        generics: (&t.generics, subst::TypeSpace).clean(cx),
+        fields: fields.clean(cx),
         fields_stripped: false,
     }
 }
 
-fn build_type(tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEnum {
+fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEnum {
     let t = ty::lookup_item_type(tcx, did);
     match ty::get(t.ty).sty {
         ty::ty_enum(edid, _) if !csearch::is_typedef(&tcx.sess.cstore, did) => {
             return clean::EnumItem(clean::Enum {
-                generics: (&t.generics, subst::TypeSpace).clean(),
+                generics: (&t.generics, subst::TypeSpace).clean(cx),
                 variants_stripped: false,
-                variants: ty::enum_variants(tcx, edid).clean(),
+                variants: ty::enum_variants(tcx, edid).clean(cx),
             })
         }
         _ => {}
     }
 
     clean::TypedefItem(clean::Typedef {
-        type_: t.ty.clean(),
-        generics: (&t.generics, subst::TypeSpace).clean(),
+        type_: t.ty.clean(cx),
+        generics: (&t.generics, subst::TypeSpace).clean(cx),
     })
 }
 
-fn build_impls(cx: &core::DocContext,
-               tcx: &ty::ctxt,
+fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
                did: ast::DefId) -> Vec<clean::Item> {
     ty::populate_implementations_for_type_if_necessary(tcx, did);
     let mut impls = Vec::new();
@@ -248,8 +245,7 @@ fn build_impls(cx: &core::DocContext,
             populate_impls(cx, tcx, def, &mut impls)
         });
 
-        fn populate_impls(cx: &core::DocContext,
-                          tcx: &ty::ctxt,
+        fn populate_impls(cx: &DocContext, tcx: &ty::ctxt,
                           def: decoder::DefLike,
                           impls: &mut Vec<Option<clean::Item>>) {
             match def {
@@ -269,8 +265,7 @@ fn build_impls(cx: &core::DocContext,
     impls.move_iter().filter_map(|a| a).collect()
 }
 
-fn build_impl(cx: &core::DocContext,
-              tcx: &ty::ctxt,
+fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
               did: ast::DefId) -> Option<clean::Item> {
     if !cx.inlined.borrow_mut().as_mut().unwrap().insert(did) {
         return None
@@ -280,7 +275,7 @@ fn build_impl(cx: &core::DocContext,
     // If this is an impl for a #[doc(hidden)] trait, be sure to not inline it.
     match associated_trait {
         Some(ref t) => {
-            let trait_attrs = load_attrs(tcx, t.def_id);
+            let trait_attrs = load_attrs(cx, tcx, t.def_id);
             if trait_attrs.iter().any(|a| is_doc_hidden(a)) {
                 return None
             }
@@ -288,7 +283,7 @@ fn build_impl(cx: &core::DocContext,
         None => {}
     }
 
-    let attrs = load_attrs(tcx, did);
+    let attrs = load_attrs(cx, tcx, did);
     let ty = ty::lookup_item_type(tcx, did);
     let trait_items = csearch::get_impl_items(&tcx.sess.cstore, did)
             .iter()
@@ -300,7 +295,7 @@ fn build_impl(cx: &core::DocContext,
                 if method.vis != ast::Public && associated_trait.is_none() {
                     return None
                 }
-                let mut item = method.clean();
+                let mut item = method.clean(cx);
                 item.inner = match item.inner.clone() {
                     clean::TyMethodItem(clean::TyMethod {
                         fn_style, decl, self_, generics
@@ -321,21 +316,21 @@ fn build_impl(cx: &core::DocContext,
     return Some(clean::Item {
         inner: clean::ImplItem(clean::Impl {
             derived: clean::detect_derived(attrs.as_slice()),
-            trait_: associated_trait.clean().map(|bound| {
+            trait_: associated_trait.clean(cx).map(|bound| {
                 match bound {
                     clean::TraitBound(ty) => ty,
                     clean::RegionBound => unreachable!(),
                 }
             }),
-            for_: ty.ty.clean(),
-            generics: (&ty.generics, subst::TypeSpace).clean(),
+            for_: ty.ty.clean(cx),
+            generics: (&ty.generics, subst::TypeSpace).clean(cx),
             items: trait_items,
         }),
         source: clean::Span::empty(),
         name: None,
         attrs: attrs,
         visibility: Some(ast::Inherited),
-        stability: stability::lookup(tcx, did).clean(),
+        stability: stability::lookup(tcx, did).clean(cx),
         def_id: did,
     });
 
@@ -354,7 +349,7 @@ fn build_impl(cx: &core::DocContext,
     }
 }
 
-fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
+fn build_module(cx: &DocContext, tcx: &ty::ctxt,
                 did: ast::DefId) -> clean::Module {
     let mut items = Vec::new();
     fill_in(cx, tcx, did, &mut items);
@@ -365,7 +360,7 @@ fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
 
     // FIXME: this doesn't handle reexports inside the module itself.
     //        Should they be handled?
-    fn fill_in(cx: &core::DocContext, tcx: &ty::ctxt, did: ast::DefId,
+    fn fill_in(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId,
                items: &mut Vec<clean::Item>) {
         csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, vis| {
             match def {
@@ -387,11 +382,11 @@ fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
     }
 }
 
-fn build_static(tcx: &ty::ctxt,
+fn build_static(cx: &DocContext, tcx: &ty::ctxt,
                 did: ast::DefId,
                 mutable: bool) -> clean::Static {
     clean::Static {
-        type_: ty::lookup_item_type(tcx, did).ty.clean(),
+        type_: ty::lookup_item_type(tcx, did).ty.clean(cx),
         mutability: if mutable {clean::Mutable} else {clean::Immutable},
         expr: "\n\n\n".to_string(), // trigger the "[definition]" links
     }
