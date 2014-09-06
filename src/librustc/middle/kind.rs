@@ -175,9 +175,7 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
 fn check_item(cx: &mut Context, item: &Item) {
     if !attr::contains_name(item.attrs.as_slice(), "unsafe_destructor") {
         match item.node {
-            ItemImpl(_, Some(ref trait_ref), ref self_type, _) => {
-                check_impl_of_trait(cx, item, trait_ref, &**self_type);
-
+            ItemImpl(_, ref trait_ref, ref self_type, _) => {
                 let parameter_environment =
                     ParameterEnvironment::for_item(cx.tcx, item.id);
                 cx.parameter_environments.push(parameter_environment);
@@ -188,16 +186,23 @@ fn check_item(cx: &mut Context, item: &Item) {
                     item.span,
                     ty::node_id_to_type(cx.tcx, item.id));
 
-                // Check bounds on the trait ref.
-                match ty::impl_trait_ref(cx.tcx,
-                                         ast_util::local_def(item.id)) {
-                    None => {}
-                    Some(trait_ref) => {
-                        check_bounds_on_structs_or_enums_in_trait_ref(
-                            cx,
-                            item.span,
-                            &*trait_ref);
+                match trait_ref {
+                    &Some(ref trait_ref) => {
+                        check_impl_of_trait(cx, item, trait_ref, &**self_type);
+
+                        // Check bounds on the trait ref.
+                        match ty::impl_trait_ref(cx.tcx,
+                                                 ast_util::local_def(item.id)) {
+                            None => {}
+                            Some(trait_ref) => {
+                                check_bounds_on_structs_or_enums_in_trait_ref(
+                                    cx,
+                                    item.span,
+                                    &*trait_ref);
+                            }
+                        }
                     }
+                    &None => {}
                 }
 
                 drop(cx.parameter_environments.pop());
