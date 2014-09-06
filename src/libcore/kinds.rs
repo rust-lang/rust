@@ -271,7 +271,7 @@ pub mod marker {
     /// A type which is considered "not sync", meaning that
     /// its contents are not threadsafe, hence they cannot be
     /// shared between tasks.
-    #[lang="no_share_bound"]
+    #[lang="no_sync_bound"]
     #[deriving(PartialEq,Clone)]
     pub struct NoSync;
 

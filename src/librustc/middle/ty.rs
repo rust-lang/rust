@@ -2575,7 +2575,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             tc | TC::Managed
         } else if Some(did) == cx.lang_items.no_copy_bound() {
             tc | TC::OwnsAffine
-        } else if Some(did) == cx.lang_items.no_share_bound() {
+        } else if Some(did) == cx.lang_items.no_sync_bound() {
             tc | TC::ReachesNoSync
         } else if Some(did) == cx.lang_items.unsafe_type() {
             // FIXME(#13231): This shouldn't be needed after
