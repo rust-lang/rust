@@ -30,7 +30,7 @@ extern crate time;
 
 use std::io;
 use std::io::{File, MemWriter};
-use std::collections::HashMap;
+use std::collections::{HashMap, TreeMap};
 use serialize::{json, Decodable, Encodable};
 use externalfiles::ExternalHtml;
 
@@ -494,15 +494,17 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     // }
     let mut json = std::collections::TreeMap::new();
     json.insert("schema".to_string(), json::String(SCHEMA_VERSION.to_string()));
-    let plugins_json = res.move_iter()
-                          .filter_map(|opt| {
-                              match opt {
-                                  None => None,
-                                  Some((string, json)) => {
-                                      Some((string.to_string(), json))
-                                  }
-                              }
-                          }).collect();
+
+    let mut plugins_json = TreeMap::new();
+
+    for opt in res.move_iter() {
+        match opt {
+            Some((string, json)) => {
+                plugins_json.insert(string.to_string(), json);
+            },
+            None => {}
+        }
+    }
 
     // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.

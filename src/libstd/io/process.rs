@@ -167,10 +167,13 @@ impl Command {
             None => {
                 // if the env is currently just inheriting from the parent's,
                 // materialize the parent's env into a hashtable.
-                self.env = Some(os::env_as_bytes().move_iter()
-                                   .map(|(k, v)| (k.as_slice().to_c_str(),
-                                                  v.as_slice().to_c_str()))
-                                   .collect());
+                let mut map = HashMap::new();
+                for (k, v) in os::env_as_bytes().move_iter() {
+                    map.insert(k.as_slice().to_c_str(),
+                               v.as_slice().to_c_str());
+                }
+
+                self.env = Some(map);
                 self.env.as_mut().unwrap()
             }
         }
@@ -195,8 +198,12 @@ impl Command {
     /// variable, the *rightmost* instance will determine the value.
     pub fn env_set_all<'a, T: ToCStr, U: ToCStr>(&'a mut self, env: &[(T,U)])
                                                  -> &'a mut Command {
-        self.env = Some(env.iter().map(|&(ref k, ref v)| (k.to_c_str(), v.to_c_str()))
-                                  .collect());
+        let mut map = HashMap::new();
+        for &(ref k, ref v) in env.iter() {
+            map.insert(k.to_c_str(), v.to_c_str());
+        }
+
+        self.env = Some(map);
         self
     }
 

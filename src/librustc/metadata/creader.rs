@@ -404,15 +404,17 @@ fn resolve_crate_deps(e: &mut Env,
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
-    decoder::get_crate_deps(cdata).iter().map(|dep| {
+    let mut map = HashMap::new();
+    for dep in decoder::get_crate_deps(cdata).iter() {
         debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
         let (local_cnum, _, _) = resolve_crate(e, root,
                                                dep.name.as_slice(),
                                                dep.name.as_slice(),
                                                Some(&dep.hash),
                                                span);
-        (dep.cnum, local_cnum)
-    }).collect()
+        map.insert(dep.cnum, local_cnum);
+    }
+    map
 }
 
 pub struct PluginMetadataReader<'a> {

@@ -295,11 +295,13 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
     let analysis = ::analysiskey.get();
     let public_items = analysis.as_ref().map(|a| a.public_items.clone());
     let public_items = public_items.unwrap_or(NodeSet::new());
-    let paths: HashMap<ast::DefId, (Vec<String>, ItemType)> =
-      analysis.as_ref().map(|a| {
-        let paths = a.external_paths.borrow_mut().take().unwrap();
-        paths.move_iter().map(|(k, (v, t))| {
-            (k, (v, match t {
+    let mut paths = HashMap::<ast::DefId, (Vec<String>, ItemType)>::new();
+
+    for a in analysis.as_ref().iter() {
+        let ext_paths = a.external_paths.borrow_mut().take().unwrap();
+
+        for (k, (v, t)) in ext_paths.move_iter() {
+            paths.insert(k, (v, match t {
                 clean::TypeStruct => item_type::Struct,
                 clean::TypeEnum => item_type::Enum,
                 clean::TypeFunction => item_type::Function,
@@ -307,13 +309,18 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
                 clean::TypeModule => item_type::Module,
                 clean::TypeStatic => item_type::Static,
                 clean::TypeVariant => item_type::Variant,
-            }))
-        }).collect()
-    }).unwrap_or(HashMap::new());
+            }));
+        }
+    }
+
+    let mut external_paths = HashMap::new();
+    for (&k, v) in paths.iter() {
+        external_paths.insert(k, v.ref0().clone());
+    }
+
     let mut cache = Cache {
         impls: HashMap::new(),
-        external_paths: paths.iter().map(|(&k, v)| (k, v.ref0().clone()))
-                             .collect(),
+        external_paths: external_paths,
         paths: paths,
         implementors: HashMap::new(),
         stack: Vec::new(),
