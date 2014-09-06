@@ -1951,7 +1951,7 @@ fn roundtrip(in_item: Option<Gc<ast::Item>>) {
 #[test]
 fn test_basic() {
     let cx = mk_ctxt();
-    roundtrip(quote_item!(cx,
+    roundtrip(quote_item!(&cx,
         fn foo() {}
     ));
 }
@@ -1959,7 +1959,7 @@ fn test_basic() {
 #[test]
 fn test_smalltalk() {
     let cx = mk_ctxt();
-    roundtrip(quote_item!(cx,
+    roundtrip(quote_item!(&cx,
         fn foo() -> int { 3 + 4 } // first smalltalk program ever executed.
     ));
 }
@@ -1968,7 +1968,7 @@ fn test_smalltalk() {
 #[test]
 fn test_more() {
     let cx = mk_ctxt();
-    roundtrip(quote_item!(cx,
+    roundtrip(quote_item!(&cx,
         fn foo(x: uint, y: uint) -> uint {
             let z = x + y;
             return z;
@@ -1987,7 +1987,7 @@ fn test_simplification() {
     ).unwrap();
     let item_in = e::IIItemRef(&*item);
     let item_out = simplify_ast(item_in);
-    let item_exp = ast::IIItem(quote_item!(cx,
+    let item_exp = ast::IIItem(quote_item!(&cx,
         fn new_int_alist<B>() -> alist<int, B> {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
