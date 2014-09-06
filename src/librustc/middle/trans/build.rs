@@ -352,7 +352,7 @@ pub fn Load(cx: &Block, pointer_val: ValueRef) -> ValueRef {
             let eltty = if ty.kind() == llvm::Array {
                 ty.element_type()
             } else {
-                ccx.int_type
+                ccx.int_type()
             };
             return llvm::LLVMGetUndef(eltty.to_ref());
         }
@@ -373,7 +373,7 @@ pub fn AtomicLoad(cx: &Block, pointer_val: ValueRef, order: AtomicOrdering) -> V
     unsafe {
         let ccx = cx.fcx.ccx;
         if cx.unreachable.get() {
-            return llvm::LLVMGetUndef(ccx.int_type.to_ref());
+            return llvm::LLVMGetUndef(ccx.int_type().to_ref());
         }
         B(cx).atomic_load(pointer_val, order)
     }
@@ -388,7 +388,7 @@ pub fn LoadRangeAssert(cx: &Block, pointer_val: ValueRef, lo: c_ulonglong,
         let eltty = if ty.kind() == llvm::Array {
             ty.element_type()
         } else {
-            ccx.int_type
+            ccx.int_type()
         };
         unsafe {
             llvm::LLVMGetUndef(eltty.to_ref())
@@ -658,7 +658,7 @@ pub fn _UndefReturn(cx: &Block, fn_: ValueRef) -> ValueRef {
         let retty = if ty.kind() == llvm::Integer {
             ty.return_type()
         } else {
-            ccx.int_type
+            ccx.int_type()
         };
         B(cx).count_insn("ret_undef");
         llvm::LLVMGetUndef(retty.to_ref())
@@ -786,7 +786,7 @@ pub fn IsNotNull(cx: &Block, val: ValueRef) -> ValueRef {
 pub fn PtrDiff(cx: &Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
     unsafe {
         let ccx = cx.fcx.ccx;
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(ccx.int_type.to_ref()); }
+        if cx.unreachable.get() { return llvm::LLVMGetUndef(ccx.int_type().to_ref()); }
         B(cx).ptrdiff(lhs, rhs)
     }
 }

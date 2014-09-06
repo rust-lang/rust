@@ -94,7 +94,7 @@ pub enum Dest {
 impl Dest {
     pub fn to_string(&self, ccx: &CrateContext) -> String {
         match *self {
-            SaveIn(v) => format!("SaveIn({})", ccx.tn.val_to_string(v)),
+            SaveIn(v) => format!("SaveIn({})", ccx.tn().val_to_string(v)),
             Ignore => "Ignore".to_string()
         }
     }
@@ -711,7 +711,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
     let mut bcx = bcx;
 
     // Check for overloaded index.
-    let method_ty = ccx.tcx
+    let method_ty = ccx.tcx()
                        .method_map
                        .borrow()
                        .find(&method_call)
@@ -758,14 +758,14 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
             let ix_size = machine::llbitsize_of_real(bcx.ccx(),
                                                      val_ty(ix_val));
             let int_size = machine::llbitsize_of_real(bcx.ccx(),
-                                                      ccx.int_type);
+                                                      ccx.int_type());
             let ix_val = {
                 if ix_size < int_size {
                     if ty::type_is_signed(expr_ty(bcx, idx)) {
-                        SExt(bcx, ix_val, ccx.int_type)
-                    } else { ZExt(bcx, ix_val, ccx.int_type) }
+                        SExt(bcx, ix_val, ccx.int_type())
+                    } else { ZExt(bcx, ix_val, ccx.int_type()) }
                 } else if ix_size > int_size {
-                    Trunc(bcx, ix_val, ccx.int_type)
+                    Trunc(bcx, ix_val, ccx.int_type())
                 } else {
                     ix_val
                 }
@@ -817,13 +817,28 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
             trans_def_fn_unadjusted(bcx, ref_expr, def)
         }
         def::DefStatic(did, _) => {
+            // There are three things that may happen here:
+            //  1) If the static item is defined in this crate, it will be
+            //     translated using `get_item_val`, and we return a pointer to
+            //     the result.
+            //  2) If the static item is defined in another crate, but is
+            //     marked inlineable, then it will be inlined into this crate
+            //     and then translated with `get_item_val`.  Again, we return a
+            //     pointer to the result.
+            //  3) If the static item is defined in another crate and is not
+            //     marked inlineable, then we add (or reuse) a declaration of
+            //     an external global, and return a pointer to that.
             let const_ty = expr_ty(bcx, ref_expr);
 
             fn get_did(ccx: &CrateContext, did: ast::DefId)
                        -> ast::DefId {
                 if did.krate != ast::LOCAL_CRATE {
+                    // Case 2 or 3.  Which one we're in is determined by
+                    // whether the DefId produced by `maybe_instantiate_inline`
+                    // is in the LOCAL_CRATE or not.
                     inline::maybe_instantiate_inline(ccx, did)
                 } else {
+                    // Case 1.
                     did
                 }
             }
@@ -832,6 +847,9 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                        -> ValueRef {
                 // For external constants, we don't inline.
                 if did.krate == ast::LOCAL_CRATE {
+                    // Case 1 or 2.  (The inlining in case 2 produces a new
+                    // DefId in LOCAL_CRATE.)
+
                     // The LLVM global has the type of its initializer,
                     // which may not be equal to the enum's type for
                     // non-C-like enums.
@@ -839,7 +857,8 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                     let pty = type_of::type_of(bcx.ccx(), const_ty).ptr_to();
                     PointerCast(bcx, val, pty)
                 } else {
-                    match bcx.ccx().extern_const_values.borrow().find(&did) {
+                    // Case 3.
+                    match bcx.ccx().extern_const_values().borrow().find(&did) {
                         None => {}  // Continue.
                         Some(llval) => {
                             return *llval;
@@ -852,11 +871,11 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                             &bcx.ccx().sess().cstore,
                             did);
                         let llval = symbol.as_slice().with_c_str(|buf| {
-                                llvm::LLVMAddGlobal(bcx.ccx().llmod,
+                                llvm::LLVMAddGlobal(bcx.ccx().llmod(),
                                                     llty.to_ref(),
                                                     buf)
                             });
-                        bcx.ccx().extern_const_values.borrow_mut()
+                        bcx.ccx().extern_const_values().borrow_mut()
                            .insert(did, llval);
                         llval
                     }
@@ -1439,7 +1458,7 @@ fn trans_unary<'a>(bcx: &'a Block<'a>,
     // Otherwise, we should be in the RvalueDpsExpr path.
     assert!(
         op == ast::UnDeref ||
-        !ccx.tcx.method_map.borrow().contains_key(&method_call));
+        !ccx.tcx().method_map.borrow().contains_key(&method_call));
 
     let un_ty = expr_ty(bcx, expr);
 
@@ -1706,7 +1725,7 @@ fn trans_binary<'a>(bcx: &'a Block<'a>,
     let ccx = bcx.ccx();
 
     // if overloaded, would be RvalueDpsExpr
-    assert!(!ccx.tcx.method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
+    assert!(!ccx.tcx().method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
 
     match op {
         ast::BiAnd => {
@@ -2050,7 +2069,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
     let mut bcx = bcx;
 
     // Check for overloaded deref.
-    let method_ty = ccx.tcx.method_map.borrow()
+    let method_ty = ccx.tcx().method_map.borrow()
                        .find(&method_call).map(|method| method.ty);
     let datum = match method_ty {
         Some(method_ty) => {

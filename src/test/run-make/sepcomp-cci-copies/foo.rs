@@ -1,0 +1,36 @@
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+extern crate cci_lib;
+use cci_lib::{cci_fn, CCI_STATIC};
+
+fn call1() -> uint {
+    cci_fn() + CCI_STATIC
+}
+
+mod a {
+    use cci_lib::cci_fn;
+    pub fn call2() -> uint {
+        cci_fn()
+    }
+}
+
+mod b {
+    use cci_lib::CCI_STATIC;
+    pub fn call3() -> uint {
+        CCI_STATIC
+    }
+}
+
+fn main() {
+    call1();
+    a::call2();
+    b::call3();
+}

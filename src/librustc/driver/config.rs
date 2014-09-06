@@ -16,7 +16,7 @@ use driver::driver;
 use driver::session::Session;
 
 use back;
-use back::link;
+use back::write;
 use back::target_strs;
 use back::{arm, x86, x86_64, mips, mipsel};
 use lint;
@@ -72,7 +72,7 @@ pub struct Options {
     pub debuginfo: DebugInfoLevel,
     pub lint_opts: Vec<(String, lint::Level)>,
     pub describe_lints: bool,
-    pub output_types: Vec<back::link::OutputType> ,
+    pub output_types: Vec<back::write::OutputType> ,
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
@@ -303,6 +303,13 @@ macro_rules! cgoptions(
             }
         }
 
+        fn parse_uint(slot: &mut uint, v: Option<&str>) -> bool {
+            use std::from_str::FromStr;
+            match v.and_then(FromStr::from_str) {
+                Some(i) => { *slot = i; true },
+                None => false
+            }
+        }
     }
 ) )
 
@@ -347,6 +354,8 @@ cgoptions!(
          "metadata to mangle symbol names with"),
     extra_filename: String = ("".to_string(), parse_string,
          "extra data to put in each output filename"),
+    codegen_units: uint = (1, parse_uint,
+        "divide crate into N units to optimize in parallel"),
 )
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
@@ -646,11 +655,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         for unparsed_output_type in unparsed_output_types.iter() {
             for part in unparsed_output_type.as_slice().split(',') {
                 let output_type = match part.as_slice() {
-                    "asm"  => link::OutputTypeAssembly,
-                    "ir"   => link::OutputTypeLlvmAssembly,
-                    "bc"   => link::OutputTypeBitcode,
-                    "obj"  => link::OutputTypeObject,
-                    "link" => link::OutputTypeExe,
+                    "asm"  => write::OutputTypeAssembly,
+                    "ir"   => write::OutputTypeLlvmAssembly,
+                    "bc"   => write::OutputTypeBitcode,
+                    "obj"  => write::OutputTypeObject,
+                    "link" => write::OutputTypeExe,
                     _ => {
                         early_error(format!("unknown emission type: `{}`",
                                             part).as_slice())
@@ -663,7 +672,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     output_types.as_mut_slice().sort();
     output_types.dedup();
     if output_types.len() == 0 {
-        output_types.push(link::OutputTypeExe);
+        output_types.push(write::OutputTypeExe);
     }
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| Path::new(m));

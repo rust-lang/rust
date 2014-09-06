@@ -53,7 +53,7 @@ impl Type {
     }
 
     pub fn void(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMVoidTypeInContext(ccx.llcx))
+        ty!(llvm::LLVMVoidTypeInContext(ccx.llcx()))
     }
 
     pub fn nil(ccx: &CrateContext) -> Type {
@@ -61,35 +61,35 @@ impl Type {
     }
 
     pub fn metadata(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMMetadataTypeInContext(ccx.llcx))
+        ty!(llvm::LLVMMetadataTypeInContext(ccx.llcx()))
     }
 
     pub fn i1(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt1TypeInContext(ccx.llcx))
+        ty!(llvm::LLVMInt1TypeInContext(ccx.llcx()))
     }
 
     pub fn i8(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt8TypeInContext(ccx.llcx))
+        ty!(llvm::LLVMInt8TypeInContext(ccx.llcx()))
     }
 
     pub fn i16(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt16TypeInContext(ccx.llcx))
+        ty!(llvm::LLVMInt16TypeInContext(ccx.llcx()))
     }
 
     pub fn i32(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt32TypeInContext(ccx.llcx))
+        ty!(llvm::LLVMInt32TypeInContext(ccx.llcx()))
     }
 
     pub fn i64(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt64TypeInContext(ccx.llcx))
+        ty!(llvm::LLVMInt64TypeInContext(ccx.llcx()))
     }
 
     pub fn f32(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMFloatTypeInContext(ccx.llcx))
+        ty!(llvm::LLVMFloatTypeInContext(ccx.llcx()))
     }
 
     pub fn f64(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMDoubleTypeInContext(ccx.llcx))
+        ty!(llvm::LLVMDoubleTypeInContext(ccx.llcx()))
     }
 
     pub fn bool(ccx: &CrateContext) -> Type {
@@ -105,7 +105,7 @@ impl Type {
     }
 
     pub fn int(ccx: &CrateContext) -> Type {
-        match ccx.tcx.sess.targ_cfg.arch {
+        match ccx.tcx().sess.targ_cfg.arch {
             X86 | Arm | Mips | Mipsel => Type::i32(ccx),
             X86_64 => Type::i64(ccx)
         }
@@ -113,7 +113,7 @@ impl Type {
 
     pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {
         match t {
-            ast::TyI => ccx.int_type,
+            ast::TyI => ccx.int_type(),
             ast::TyI8 => Type::i8(ccx),
             ast::TyI16 => Type::i16(ccx),
             ast::TyI32 => Type::i32(ccx),
@@ -123,7 +123,7 @@ impl Type {
 
     pub fn uint_from_ty(ccx: &CrateContext, t: ast::UintTy) -> Type {
         match t {
-            ast::TyU => ccx.int_type,
+            ast::TyU => ccx.int_type(),
             ast::TyU8 => Type::i8(ccx),
             ast::TyU16 => Type::i16(ccx),
             ast::TyU32 => Type::i32(ccx),
@@ -152,13 +152,13 @@ impl Type {
 
     pub fn struct_(ccx: &CrateContext, els: &[Type], packed: bool) -> Type {
         let els : &[TypeRef] = unsafe { mem::transmute(els) };
-        ty!(llvm::LLVMStructTypeInContext(ccx.llcx, els.as_ptr(),
+        ty!(llvm::LLVMStructTypeInContext(ccx.llcx(), els.as_ptr(),
                                           els.len() as c_uint,
                                           packed as Bool))
     }
 
     pub fn named_struct(ccx: &CrateContext, name: &str) -> Type {
-        ty!(name.with_c_str(|s| llvm::LLVMStructCreateNamed(ccx.llcx, s)))
+        ty!(name.with_c_str(|s| llvm::LLVMStructCreateNamed(ccx.llcx(), s)))
     }
 
     pub fn empty_struct(ccx: &CrateContext) -> Type {
@@ -170,13 +170,13 @@ impl Type {
     }
 
     pub fn generic_glue_fn(cx: &CrateContext) -> Type {
-        match cx.tn.find_type("glue_fn") {
+        match cx.tn().find_type("glue_fn") {
             Some(ty) => return ty,
             None => ()
         }
 
         let ty = Type::glue_fn(cx, Type::i8p(cx));
-        cx.tn.associate_type("glue_fn", &ty);
+        cx.tn().associate_type("glue_fn", &ty);
 
         ty
     }
@@ -226,7 +226,7 @@ impl Type {
     // The box pointed to by @T.
     pub fn at_box(ccx: &CrateContext, ty: Type) -> Type {
         Type::struct_(ccx, [
-            ccx.int_type, Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to(),
+            ccx.int_type(), Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to(),
             Type::i8p(ccx), Type::i8p(ccx), ty
         ], false)
     }

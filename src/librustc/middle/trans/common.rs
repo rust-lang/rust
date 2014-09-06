@@ -14,7 +14,7 @@
 
 use driver::session::Session;
 use llvm;
-use llvm::{ValueRef, BasicBlockRef, BuilderRef};
+use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef};
 use llvm::{True, False, Bool};
 use middle::def;
 use middle::freevars;
@@ -82,7 +82,7 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
         ty::ty_struct(..) | ty::ty_enum(..) | ty::ty_tup(..) |
         ty::ty_unboxed_closure(..) => {
             let llty = sizing_type_of(ccx, ty);
-            llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type)
+            llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type())
         }
         _ => type_is_zero_size(ccx, ty)
     }
@@ -297,7 +297,7 @@ pub struct FunctionContext<'a> {
     pub block_arena: &'a TypedArena<Block<'a>>,
 
     // This function's enclosing crate context.
-    pub ccx: &'a CrateContext,
+    pub ccx: &'a CrateContext<'a>,
 
     // Used and maintained by the debuginfo module.
     pub debug_context: debuginfo::FunctionDebugContext,
@@ -342,7 +342,7 @@ impl<'a> FunctionContext<'a> {
 
             self.llreturn.set(Some(unsafe {
                 "return".with_c_str(|buf| {
-                    llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx, self.llfn, buf)
+                    llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(), self.llfn, buf)
                 })
             }))
         }
@@ -365,7 +365,7 @@ impl<'a> FunctionContext<'a> {
                      -> &'a Block<'a> {
         unsafe {
             let llbb = name.with_c_str(|buf| {
-                    llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx,
+                    llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(),
                                                         self.llfn,
                                                         buf)
                 });
@@ -449,9 +449,9 @@ impl<'a> Block<'a> {
         })
     }
 
-    pub fn ccx(&self) -> &'a CrateContext { self.fcx.ccx }
+    pub fn ccx(&self) -> &'a CrateContext<'a> { self.fcx.ccx }
     pub fn tcx(&self) -> &'a ty::ctxt {
-        &self.fcx.ccx.tcx
+        self.fcx.ccx.tcx()
     }
     pub fn sess(&self) -> &'a Session { self.fcx.ccx.sess() }
 
@@ -478,11 +478,11 @@ impl<'a> Block<'a> {
     }
 
     pub fn val_to_string(&self, val: ValueRef) -> String {
-        self.ccx().tn.val_to_string(val)
+        self.ccx().tn().val_to_string(val)
     }
 
     pub fn llty_str(&self, ty: Type) -> String {
-        self.ccx().tn.type_to_string(ty)
+        self.ccx().tn().type_to_string(ty)
     }
 
     pub fn ty_to_string(&self, t: ty::t) -> String {
@@ -601,11 +601,11 @@ pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
 }
 
 pub fn C_int(ccx: &CrateContext, i: int) -> ValueRef {
-    C_integral(ccx.int_type, i as u64, true)
+    C_integral(ccx.int_type(), i as u64, true)
 }
 
 pub fn C_uint(ccx: &CrateContext, i: uint) -> ValueRef {
-    C_integral(ccx.int_type, i as u64, false)
+    C_integral(ccx.int_type(), i as u64, false)
 }
 
 pub fn C_u8(ccx: &CrateContext, i: uint) -> ValueRef {
@@ -617,25 +617,25 @@ pub fn C_u8(ccx: &CrateContext, i: uint) -> ValueRef {
 // our boxed-and-length-annotated strings.
 pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> ValueRef {
     unsafe {
-        match cx.const_cstr_cache.borrow().find(&s) {
+        match cx.const_cstr_cache().borrow().find(&s) {
             Some(&llval) => return llval,
             None => ()
         }
 
-        let sc = llvm::LLVMConstStringInContext(cx.llcx,
+        let sc = llvm::LLVMConstStringInContext(cx.llcx(),
                                                 s.get().as_ptr() as *const c_char,
                                                 s.get().len() as c_uint,
                                                 !null_terminated as Bool);
 
         let gsym = token::gensym("str");
         let g = format!("str{}", gsym.uint()).with_c_str(|buf| {
-            llvm::LLVMAddGlobal(cx.llmod, val_ty(sc).to_ref(), buf)
+            llvm::LLVMAddGlobal(cx.llmod(), val_ty(sc).to_ref(), buf)
         });
         llvm::LLVMSetInitializer(g, sc);
         llvm::LLVMSetGlobalConstant(g, True);
         llvm::SetLinkage(g, llvm::InternalLinkage);
 
-        cx.const_cstr_cache.borrow_mut().insert(s, g);
+        cx.const_cstr_cache().borrow_mut().insert(s, g);
         g
     }
 }
@@ -647,7 +647,7 @@ pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
         let len = s.get().len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s, false),
                                             Type::i8p(cx).to_ref());
-        C_named_struct(cx.tn.find_type("str_slice").unwrap(), [cs, C_uint(cx, len)])
+        C_named_struct(cx.tn().find_type("str_slice").unwrap(), [cs, C_uint(cx, len)])
     }
 }
 
@@ -658,7 +658,7 @@ pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
 
         let gsym = token::gensym("binary");
         let g = format!("binary{}", gsym.uint()).with_c_str(|buf| {
-            llvm::LLVMAddGlobal(cx.llmod, val_ty(lldata).to_ref(), buf)
+            llvm::LLVMAddGlobal(cx.llmod(), val_ty(lldata).to_ref(), buf)
         });
         llvm::LLVMSetInitializer(g, lldata);
         llvm::LLVMSetGlobalConstant(g, True);
@@ -669,9 +669,13 @@ pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
     }
 }
 
-pub fn C_struct(ccx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {
+pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {
+    C_struct_in_context(cx.llcx(), elts, packed)
+}
+
+pub fn C_struct_in_context(llcx: ContextRef, elts: &[ValueRef], packed: bool) -> ValueRef {
     unsafe {
-        llvm::LLVMConstStructInContext(ccx.llcx,
+        llvm::LLVMConstStructInContext(llcx,
                                        elts.as_ptr(), elts.len() as c_uint,
                                        packed as Bool)
     }
@@ -689,10 +693,14 @@ pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn C_bytes(ccx: &CrateContext, bytes: &[u8]) -> ValueRef {
+pub fn C_bytes(cx: &CrateContext, bytes: &[u8]) -> ValueRef {
+    C_bytes_in_context(cx.llcx(), bytes)
+}
+
+pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
-        return llvm::LLVMConstStringInContext(ccx.llcx, ptr, bytes.len() as c_uint, True);
+        return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
     }
 }
 
@@ -702,7 +710,7 @@ pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
         debug!("const_get_elt(v={}, us={:?}, r={})",
-               cx.tn.val_to_string(v), us, cx.tn.val_to_string(r));
+               cx.tn().val_to_string(v), us, cx.tn().val_to_string(r));
 
         return r;
     }
