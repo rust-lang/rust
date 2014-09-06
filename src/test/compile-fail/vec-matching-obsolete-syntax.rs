@@ -9,22 +9,14 @@
 // except according to those terms.
 
 fn main() {
-    let mut x: &[_] = &[1i, 2, 3, 4];
-
-    let mut result = vec!();
-    loop {
-        x = match x {
-            [1, n, 3, rest..] => {
-                result.push(n);
-                rest
-            }
-            [n, rest..] => {
-                result.push(n);
-                rest
-            }
-            [] =>
-                break
+    let x = [1i, 2, 3];
+    match x {
+        [a, b, ..c] => {    //~ ERROR obsolete syntax
+            assert_eq!(a, 1);
+            assert_eq!(b, 2);
+            let expected: &[_] = &[3];
+            assert_eq!(c, expected);
         }
     }
-    assert!(result.as_slice() == [2, 4]);
 }
+

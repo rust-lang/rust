@@ -13,7 +13,7 @@ fn foldl<T,U:Clone>(values: &[T],
                     function: |partial: U, element: &T| -> U)
                     -> U {
     match values {
-        [ref head, ..tail] =>
+        [ref head, tail..] =>
             foldl(tail, function(initial, head), function),
         [] => initial.clone()
     }
@@ -24,7 +24,7 @@ fn foldr<T,U:Clone>(values: &[T],
                     function: |element: &T, partial: U| -> U)
                     -> U {
     match values {
-        [..head, ref tail] =>
+        [head.., ref tail] =>
             foldr(head, function(tail, initial), function),
         [] => initial.clone()
     }

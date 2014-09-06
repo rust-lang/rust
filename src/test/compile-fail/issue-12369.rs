@@ -13,7 +13,7 @@ fn main() {
     let v: int = match sl.as_slice() {
         [] => 0,
         [a,b,c] => 3,
-        [a, ..rest] => a,
-        [10,a, ..rest] => 10 //~ ERROR: unreachable pattern
+        [a, rest..] => a,
+        [10,a, rest..] => 10 //~ ERROR: unreachable pattern
     };
 }

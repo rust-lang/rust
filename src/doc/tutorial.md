@@ -1707,7 +1707,7 @@ let score = match numbers {
     [] => 0,
     [a] => a * 10,
     [a, b] => a * 6 + b * 4,
-    [a, b, c, ..rest] => a * 5 + b * 3 + c * 2 + rest.len() as int
+    [a, b, c, rest..] => a * 5 + b * 3 + c * 2 + rest.len() as int
 };
 ~~~~
 

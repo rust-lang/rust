@@ -12,7 +12,7 @@ fn a<'a>() -> &'a int {
     let vec = vec!(1, 2, 3, 4);
     let vec: &[int] = vec.as_slice(); //~ ERROR `vec` does not live long enough
     let tail = match vec {
-        [_a, ..tail] => &tail[0],
+        [_a, tail..] => &tail[0],
         _ => fail!("foo")
     };
     tail
