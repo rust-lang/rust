@@ -177,6 +177,8 @@ nav.sub {
     color: #333;
 }
 
+.location a:first-child { font-weight: bold; }
+
 .block {
     padding: 0 10px;
     margin-bottom: 14px;
