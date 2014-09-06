@@ -10,6 +10,7 @@
 
 
 use back::link;
+use back::write;
 use driver::session::Session;
 use driver::config;
 use front;
@@ -441,10 +442,14 @@ pub fn phase_save_analysis(sess: &Session,
          middle::save::process_crate(sess, krate, analysis, odir));
 }
 
+pub struct ModuleTranslation {
+    pub llcx: ContextRef,
+    pub llmod: ModuleRef,
+}
+
 pub struct CrateTranslation {
-    pub context: ContextRef,
-    pub module: ModuleRef,
-    pub metadata_module: ModuleRef,
+    pub modules: Vec<ModuleTranslation>,
+    pub metadata_module: ModuleTranslation,
     pub link: LinkMeta,
     pub metadata: Vec<u8>,
     pub reachable: Vec<String>,
@@ -472,23 +477,23 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
                                trans: &CrateTranslation,
                                outputs: &OutputFilenames) {
     if sess.opts.cg.no_integrated_as {
-        let output_type = link::OutputTypeAssembly;
+        let output_type = write::OutputTypeAssembly;
 
         time(sess.time_passes(), "LLVM passes", (), |_|
-            link::write::run_passes(sess, trans, [output_type], outputs));
+            write::run_passes(sess, trans, [output_type], outputs));
 
-        link::write::run_assembler(sess, outputs);
+        write::run_assembler(sess, outputs);
 
         // Remove assembly source, unless --save-temps was specified
         if !sess.opts.cg.save_temps {
-            fs::unlink(&outputs.temp_path(link::OutputTypeAssembly)).unwrap();
+            fs::unlink(&outputs.temp_path(write::OutputTypeAssembly)).unwrap();
         }
     } else {
         time(sess.time_passes(), "LLVM passes", (), |_|
-            link::write::run_passes(sess,
-                                    trans,
-                                    sess.opts.output_types.as_slice(),
-                                    outputs));
+            write::run_passes(sess,
+                              trans,
+                              sess.opts.output_types.as_slice(),
+                              outputs));
     }
 }
 
@@ -532,7 +537,7 @@ pub fn stop_after_phase_2(sess: &Session) -> bool {
 }
 
 pub fn stop_after_phase_5(sess: &Session) -> bool {
-    if !sess.opts.output_types.iter().any(|&i| i == link::OutputTypeExe) {
+    if !sess.opts.output_types.iter().any(|&i| i == write::OutputTypeExe) {
         debug!("not building executable, returning early from compile_input");
         return true;
     }
@@ -548,7 +553,7 @@ fn write_out_deps(sess: &Session,
     for output_type in sess.opts.output_types.iter() {
         let file = outputs.path(*output_type);
         match *output_type {
-            link::OutputTypeExe => {
+            write::OutputTypeExe => {
                 for output in sess.crate_types.borrow().iter() {
                     let p = link::filename_for_input(sess, *output,
                                                      id, &file);
@@ -679,6 +684,7 @@ pub fn collect_crate_metadata(session: &Session,
     session.opts.cg.metadata.clone()
 }
 
+#[deriving(Clone)]
 pub struct OutputFilenames {
     pub out_directory: Path,
     pub out_filestem: String,
@@ -687,7 +693,7 @@ pub struct OutputFilenames {
 }
 
 impl OutputFilenames {
-    pub fn path(&self, flavor: link::OutputType) -> Path {
+    pub fn path(&self, flavor: write::OutputType) -> Path {
         match self.single_output_file {
             Some(ref path) => return path.clone(),
             None => {}
@@ -695,14 +701,14 @@ impl OutputFilenames {
         self.temp_path(flavor)
     }
 
-    pub fn temp_path(&self, flavor: link::OutputType) -> Path {
+    pub fn temp_path(&self, flavor: write::OutputType) -> Path {
         let base = self.out_directory.join(self.filestem());
         match flavor {
-            link::OutputTypeBitcode => base.with_extension("bc"),
-            link::OutputTypeAssembly => base.with_extension("s"),
-            link::OutputTypeLlvmAssembly => base.with_extension("ll"),
-            link::OutputTypeObject => base.with_extension("o"),
-            link::OutputTypeExe => base,
+            write::OutputTypeBitcode => base.with_extension("bc"),
+            write::OutputTypeAssembly => base.with_extension("s"),
+            write::OutputTypeLlvmAssembly => base.with_extension("ll"),
+            write::OutputTypeObject => base.with_extension("o"),
+            write::OutputTypeExe => base,
         }
     }
 
