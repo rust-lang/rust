@@ -100,33 +100,6 @@ rust_list_dir_val(struct dirent* entry_ptr) {
 }
 #endif
 
-size_t
-#if defined(__WIN32__)
-rust_list_dir_wfd_size() {
-    return sizeof(WIN32_FIND_DATAW);
-}
-#else
-rust_list_dir_wfd_size() {
-    return 0;
-}
-#endif
-
-void*
-#if defined(__WIN32__)
-rust_list_dir_wfd_fp_buf(WIN32_FIND_DATAW* wfd) {
-    if(wfd == NULL) {
-        return 0;
-    }
-    else {
-        return wfd->cFileName;
-    }
-}
-#else
-rust_list_dir_wfd_fp_buf(void* wfd) {
-    return 0;
-}
-#endif
-
 typedef struct {
     int32_t tm_sec;
     int32_t tm_min;
