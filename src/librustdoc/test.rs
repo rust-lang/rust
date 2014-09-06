@@ -170,7 +170,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, externs: core::Exte
                                       None,
                                       span_diagnostic_handler);
 
-    let outdir = TempDir::new("rustdoctest").expect("rustdoc needs a tempdir");
+    let outdir = TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir");
     let out = Some(outdir.path().clone());
     let cfg = config::build_configuration(&sess);
     let libdir = sess.target_filesearch().get_lib_path();

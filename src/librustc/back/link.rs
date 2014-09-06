@@ -647,7 +647,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // contain the metadata in a separate file. We use a temp directory
             // here so concurrent builds in the same directory don't try to use
             // the same filename for metadata (stomping over one another)
-            let tmpdir = TempDir::new("rustc").expect("needs a temp dir");
+            let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
             let metadata = tmpdir.path().join(METADATA_FILENAME);
             match fs::File::create(&metadata).write(trans.metadata
                                                          .as_slice()) {
@@ -812,7 +812,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
 // links to all upstream files as well.
 fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                  obj_filename: &Path, out_filename: &Path) {
-    let tmpdir = TempDir::new("rustc").expect("needs a temp dir");
+    let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
 
     // The invocations of cc share some flags across platforms
     let pname = get_cc_prog(sess);
