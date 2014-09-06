@@ -1660,7 +1660,7 @@ mod tests {
     #[test]
     pub fn ratchet_test() {
 
-        let dpth = TempDir::new("test-ratchet").expect("missing test for ratchet");
+        let dpth = TempDir::new("test-ratchet").ok().expect("missing test for ratchet");
         let pth = dpth.path().join("ratchet.json");
 
         let mut m1 = MetricMap::new();
