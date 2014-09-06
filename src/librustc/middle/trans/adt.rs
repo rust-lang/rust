@@ -52,7 +52,6 @@ use libc::c_ulonglong;
 use std::collections::Map;
 use std::num::Int;
 use std::rc::Rc;
-// use std::vec::Vec;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
 use middle::subst;
@@ -140,19 +139,6 @@ pub struct Struct {
     pub sized: bool,
     pub packed: bool,
     pub fields: Vec<ty::t>
-}
-
-#[deriving(Show)]
-enum BitRepr {
-    UsesBits(u64),
-    FreeBits(u64),
-    // EnumSet(HashSet<Disr>),
-    // AnyDiscr(Disr),
-    UsesVariants(Disr, Option<CEnumRepr>),
-    FreeVariants {
-        pub bits: u64,
-        pub nvariants: Disr
-    },
 }
 
 #[deriving(Show)]
@@ -878,9 +864,6 @@ pub fn trans_field_ptr(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr,
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.
     match *r {
-        // CEnum(_, _, _, 1) => {
-        //     // ptr?
-        // }
         CEnum(..) => {
             // C_integral(ll_inttype(ccx, ity), discr as u64, true)
             debug!("trans_field_ptr ix {}", ix);
