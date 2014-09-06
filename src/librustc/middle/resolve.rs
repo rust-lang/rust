@@ -4328,6 +4328,34 @@ impl<'a> Resolver<'a> {
                 self.resolve_trait_reference(id, tref, reference_type)
             }
             UnboxedFnTyParamBound(ref unboxed_function) => {
+                match self.resolve_path(unboxed_function.ref_id,
+                                        &unboxed_function.path,
+                                        TypeNS,
+                                        true) {
+                    None => {
+                        let path_str = self.path_idents_to_string(
+                            &unboxed_function.path);
+                        self.resolve_error(unboxed_function.path.span,
+                                           format!("unresolved trait `{}`",
+                                                   path_str).as_slice())
+                    }
+                    Some(def) => {
+                        match def {
+                            (DefTrait(_), _) => {
+                                self.record_def(unboxed_function.ref_id, def);
+                            }
+                            _ => {
+                                let msg =
+                                    format!("`{}` is not a trait",
+                                            self.path_idents_to_string(
+                                                &unboxed_function.path));
+                                self.resolve_error(unboxed_function.path.span,
+                                                   msg.as_slice());
+                            }
+                        }
+                    }
+                }
+
                 for argument in unboxed_function.decl.inputs.iter() {
                     self.resolve_type(&*argument.ty);
                 }

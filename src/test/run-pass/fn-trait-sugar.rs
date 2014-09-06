@@ -21,7 +21,7 @@ impl FnMut<(int,),int> for S {
     }
 }
 
-fn call_it<F:|int|->int>(mut f: F, x: int) -> int {
+fn call_it<F:FnMut(int)->int>(mut f: F, x: int) -> int {
     f.call_mut((x,)) + 3
 }
 
