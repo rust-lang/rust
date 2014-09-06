@@ -35,29 +35,28 @@ use util::ppaux::ty_to_string;
 use syntax::ast;
 use syntax::parse::token::InternedString;
 
-fn get_len(bcx: &Block, vptr: ValueRef) -> ValueRef {
+fn get_len(bcx: Block, vptr: ValueRef) -> ValueRef {
     let _icx = push_ctxt("tvec::get_lenl");
     Load(bcx, expr::get_len(bcx, vptr))
 }
 
-fn get_dataptr(bcx: &Block, vptr: ValueRef) -> ValueRef {
+fn get_dataptr(bcx: Block, vptr: ValueRef) -> ValueRef {
     let _icx = push_ctxt("tvec::get_dataptr");
     Load(bcx, expr::get_dataptr(bcx, vptr))
 }
 
-pub fn pointer_add_byte(bcx: &Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
+pub fn pointer_add_byte(bcx: Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     let _icx = push_ctxt("tvec::pointer_add_byte");
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, Type::i8p(bcx.ccx()));
     return PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
-pub fn make_drop_glue_unboxed<'a>(
-                              bcx: &'a Block<'a>,
-                              vptr: ValueRef,
-                              unit_ty: ty::t,
-                              should_deallocate: bool)
-                              -> &'a Block<'a> {
+pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                          vptr: ValueRef,
+                                          unit_ty: ty::t,
+                                          should_deallocate: bool)
+                                          -> Block<'blk, 'tcx> {
     let not_null = IsNotNull(bcx, vptr);
     with_cond(bcx, not_null, |bcx| {
         let ccx = bcx.ccx();
@@ -105,11 +104,10 @@ impl VecTypes {
     }
 }
 
-pub fn trans_fixed_vstore<'a>(
-                          bcx: &'a Block<'a>,
-                          expr: &ast::Expr,
-                          dest: expr::Dest)
-                          -> &'a Block<'a> {
+pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                      expr: &ast::Expr,
+                                      dest: expr::Dest)
+                                      -> Block<'blk, 'tcx> {
     //!
     //
     // [...] allocates a fixed-size array and moves it around "by value".
@@ -133,10 +131,10 @@ pub fn trans_fixed_vstore<'a>(
     };
 }
 
-pub fn trans_slice_vec<'a>(bcx: &'a Block<'a>,
-                           slice_expr: &ast::Expr,
-                           content_expr: &ast::Expr)
-                           -> DatumBlock<'a, Expr> {
+pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                   slice_expr: &ast::Expr,
+                                   content_expr: &ast::Expr)
+                                   -> DatumBlock<'blk, 'tcx, Expr> {
     /*!
      * &[...] allocates memory on the stack and writes the values into it,
      * returning the vector (the caller must make the reference).  "..." is
@@ -207,12 +205,11 @@ pub fn trans_slice_vec<'a>(bcx: &'a Block<'a>,
     immediate_rvalue_bcx(bcx, llfixed, vec_ty).to_expr_datumblock()
 }
 
-pub fn trans_lit_str<'a>(
-                     bcx: &'a Block<'a>,
-                     lit_expr: &ast::Expr,
-                     str_lit: InternedString,
-                     dest: Dest)
-                     -> &'a Block<'a> {
+pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                 lit_expr: &ast::Expr,
+                                 str_lit: InternedString,
+                                 dest: Dest)
+                                 -> Block<'blk, 'tcx> {
     /*!
      * Literal strings translate to slices into static memory.  This is
      * different from trans_slice_vstore() above because it doesn't need to copy
@@ -239,10 +236,10 @@ pub fn trans_lit_str<'a>(
     }
 }
 
-pub fn trans_uniq_vec<'a>(bcx: &'a Block<'a>,
-                          uniq_expr: &ast::Expr,
-                          content_expr: &ast::Expr)
-                          -> DatumBlock<'a, Expr> {
+pub fn trans_uniq_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                  uniq_expr: &ast::Expr,
+                                  content_expr: &ast::Expr)
+                                  -> DatumBlock<'blk, 'tcx, Expr> {
     /*!
      * Box<[...]> and "...".to_string() allocate boxes in the exchange heap and write
      * the array elements into them.
@@ -327,13 +324,12 @@ pub fn trans_uniq_vec<'a>(bcx: &'a Block<'a>,
     }
 }
 
-pub fn write_content<'a>(
-                     bcx: &'a Block<'a>,
-                     vt: &VecTypes,
-                     vstore_expr: &ast::Expr,
-                     content_expr: &ast::Expr,
-                     dest: Dest)
-                     -> &'a Block<'a> {
+pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                 vt: &VecTypes,
+                                 vstore_expr: &ast::Expr,
+                                 content_expr: &ast::Expr,
+                                 dest: Dest)
+                                 -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("tvec::write_content");
     let fcx = bcx.fcx;
     let mut bcx = bcx;
@@ -429,12 +425,12 @@ pub fn write_content<'a>(
     }
 }
 
-pub fn vec_types_from_expr(bcx: &Block, vec_expr: &ast::Expr) -> VecTypes {
+pub fn vec_types_from_expr(bcx: Block, vec_expr: &ast::Expr) -> VecTypes {
     let vec_ty = node_id_type(bcx, vec_expr.id);
     vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty))
 }
 
-pub fn vec_types(bcx: &Block, unit_ty: ty::t) -> VecTypes {
+pub fn vec_types(bcx: Block, unit_ty: ty::t) -> VecTypes {
     let ccx = bcx.ccx();
     let llunit_ty = type_of::type_of(ccx, unit_ty);
     let llunit_size = nonzero_llsize_of(ccx, llunit_ty);
@@ -448,7 +444,7 @@ pub fn vec_types(bcx: &Block, unit_ty: ty::t) -> VecTypes {
     }
 }
 
-pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
+pub fn elements_required(bcx: Block, content_expr: &ast::Expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
@@ -470,7 +466,7 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
     }
 }
 
-pub fn get_fixed_base_and_len(bcx: &Block,
+pub fn get_fixed_base_and_len(bcx: Block,
                               llval: ValueRef,
                               vec_length: uint)
                               -> (ValueRef, ValueRef) {
@@ -486,7 +482,7 @@ pub fn get_fixed_base_and_len(bcx: &Block,
     (base, len)
 }
 
-fn get_slice_base_and_len(bcx: &Block,
+fn get_slice_base_and_len(bcx: Block,
                           llval: ValueRef)
                           -> (ValueRef, ValueRef) {
     let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
@@ -494,7 +490,7 @@ fn get_slice_base_and_len(bcx: &Block,
     (base, len)
 }
 
-pub fn get_base_and_len(bcx: &Block,
+pub fn get_base_and_len(bcx: Block,
                         llval: ValueRef,
                         vec_ty: ty::t)
                         -> (ValueRef, ValueRef) {
@@ -528,17 +524,15 @@ pub fn get_base_and_len(bcx: &Block,
     }
 }
 
-pub type iter_vec_block<'r,'b> =
-    |&'b Block<'b>, ValueRef, ty::t|: 'r -> &'b Block<'b>;
+pub type iter_vec_block<'a, 'blk, 'tcx> =
+    |Block<'blk, 'tcx>, ValueRef, ty::t|: 'a -> Block<'blk, 'tcx>;
 
-pub fn iter_vec_loop<'r,
-                     'b>(
-                     bcx: &'b Block<'b>,
-                     data_ptr: ValueRef,
-                     vt: &VecTypes,
-                     count: ValueRef,
-                     f: iter_vec_block<'r,'b>)
-                     -> &'b Block<'b> {
+pub fn iter_vec_loop<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                     data_ptr: ValueRef,
+                                     vt: &VecTypes,
+                                     count: ValueRef,
+                                     f: iter_vec_block<'a, 'blk, 'tcx>)
+                                     -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("tvec::iter_vec_loop");
     let fcx = bcx.fcx;
 
@@ -589,14 +583,12 @@ pub fn iter_vec_loop<'r,
     next_bcx
 }
 
-pub fn iter_vec_raw<'r,
-                    'b>(
-                    bcx: &'b Block<'b>,
-                    data_ptr: ValueRef,
-                    unit_ty: ty::t,
-                    len: ValueRef,
-                    f: iter_vec_block<'r,'b>)
-                    -> &'b Block<'b> {
+pub fn iter_vec_raw<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                    data_ptr: ValueRef,
+                                    unit_ty: ty::t,
+                                    len: ValueRef,
+                                    f: iter_vec_block<'a, 'blk, 'tcx>)
+                                    -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("tvec::iter_vec_raw");
     let fcx = bcx.fcx;
 

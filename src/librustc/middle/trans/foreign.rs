@@ -247,14 +247,13 @@ pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: ty::t,
     llfn
 }
 
-pub fn trans_native_call<'a>(
-                         bcx: &'a Block<'a>,
-                         callee_ty: ty::t,
-                         llfn: ValueRef,
-                         llretptr: ValueRef,
-                         llargs_rust: &[ValueRef],
-                         passed_arg_tys: Vec<ty::t> )
-                         -> &'a Block<'a> {
+pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                     callee_ty: ty::t,
+                                     llfn: ValueRef,
+                                     llretptr: ValueRef,
+                                     llargs_rust: &[ValueRef],
+                                     passed_arg_tys: Vec<ty::t> )
+                                     -> Block<'blk, 'tcx> {
     /*!
      * Prepares a call to a native function. This requires adapting
      * from the Rust argument passing rules to the native rules.

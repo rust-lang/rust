@@ -27,8 +27,8 @@ use std::string::String;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
-                        -> &'a Block<'a> {
+pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
+                                    -> Block<'blk, 'tcx> {
     let fcx = bcx.fcx;
     let mut bcx = bcx;
     let mut constraints = Vec::new();
