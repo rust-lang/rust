@@ -41,9 +41,9 @@ use syntax::visit::Visitor;
 
 use std::gc::Gc;
 
-pub fn trans_stmt<'a>(cx: &'a Block<'a>,
-                      s: &ast::Stmt)
-                      -> &'a Block<'a> {
+pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                              s: &ast::Stmt)
+                              -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_stmt");
     let fcx = cx.fcx;
     debug!("trans_stmt({})", s.repr(cx.tcx()));
@@ -83,7 +83,8 @@ pub fn trans_stmt<'a>(cx: &'a Block<'a>,
     return bcx;
 }
 
-pub fn trans_stmt_semi<'a>(cx: &'a Block<'a>, e: &ast::Expr) -> &'a Block<'a> {
+pub fn trans_stmt_semi<'blk, 'tcx>(cx: Block<'blk, 'tcx>, e: &ast::Expr)
+                                   -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_stmt_semi");
     let ty = expr_ty(cx, e);
     if ty::type_needs_drop(cx.tcx(), ty) {
@@ -93,10 +94,10 @@ pub fn trans_stmt_semi<'a>(cx: &'a Block<'a>, e: &ast::Expr) -> &'a Block<'a> {
     }
 }
 
-pub fn trans_block<'a>(bcx: &'a Block<'a>,
-                       b: &ast::Block,
-                       mut dest: expr::Dest)
-                       -> &'a Block<'a> {
+pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                               b: &ast::Block,
+                               mut dest: expr::Dest)
+                               -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_block");
     let fcx = bcx.fcx;
     let mut bcx = bcx;
@@ -128,13 +129,13 @@ pub fn trans_block<'a>(bcx: &'a Block<'a>,
     return bcx;
 }
 
-pub fn trans_if<'a>(bcx: &'a Block<'a>,
-                    if_id: ast::NodeId,
-                    cond: &ast::Expr,
-                    thn: ast::P<ast::Block>,
-                    els: Option<Gc<ast::Expr>>,
-                    dest: expr::Dest)
-                    -> &'a Block<'a> {
+pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                            if_id: ast::NodeId,
+                            cond: &ast::Expr,
+                            thn: ast::P<ast::Block>,
+                            els: Option<Gc<ast::Expr>>,
+                            dest: expr::Dest)
+                            -> Block<'blk, 'tcx> {
     debug!("trans_if(bcx={}, if_id={}, cond={}, thn={:?}, dest={})",
            bcx.to_str(), if_id, bcx.expr_to_string(cond), thn.id,
            dest.to_string(bcx.ccx()));
@@ -204,11 +205,11 @@ pub fn trans_if<'a>(bcx: &'a Block<'a>,
     next_bcx
 }
 
-pub fn trans_while<'a>(bcx: &'a Block<'a>,
-                       loop_id: ast::NodeId,
-                       cond: &ast::Expr,
-                       body: &ast::Block)
-                       -> &'a Block<'a> {
+pub fn trans_while<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                               loop_id: ast::NodeId,
+                               cond: &ast::Expr,
+                               body: &ast::Block)
+                               -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_while");
     let fcx = bcx.fcx;
 
@@ -248,13 +249,12 @@ pub fn trans_while<'a>(bcx: &'a Block<'a>,
 }
 
 /// Translates a `for` loop.
-pub fn trans_for<'a>(
-                 mut bcx: &'a Block<'a>,
-                 loop_info: NodeInfo,
-                 pat: Gc<ast::Pat>,
-                 head: &ast::Expr,
-                 body: &ast::Block)
-                 -> &'a Block<'a> {
+pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
+                             loop_info: NodeInfo,
+                             pat: Gc<ast::Pat>,
+                             head: &ast::Expr,
+                             body: &ast::Block)
+                             -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_for");
 
     //            bcx
@@ -369,10 +369,10 @@ pub fn trans_for<'a>(
     next_bcx_in
 }
 
-pub fn trans_loop<'a>(bcx:&'a Block<'a>,
-                      loop_id: ast::NodeId,
-                      body: &ast::Block)
-                      -> &'a Block<'a> {
+pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              loop_id: ast::NodeId,
+                              body: &ast::Block)
+                              -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_loop");
     let fcx = bcx.fcx;
 
@@ -405,11 +405,11 @@ pub fn trans_loop<'a>(bcx:&'a Block<'a>,
     return next_bcx_in;
 }
 
-pub fn trans_break_cont<'a>(bcx: &'a Block<'a>,
-                            expr_id: ast::NodeId,
-                            opt_label: Option<Ident>,
-                            exit: uint)
-                            -> &'a Block<'a> {
+pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                    expr_id: ast::NodeId,
+                                    opt_label: Option<Ident>,
+                                    exit: uint)
+                                    -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_break_cont");
     let fcx = bcx.fcx;
 
@@ -438,23 +438,23 @@ pub fn trans_break_cont<'a>(bcx: &'a Block<'a>,
     return bcx;
 }
 
-pub fn trans_break<'a>(bcx: &'a Block<'a>,
-                       expr_id: ast::NodeId,
-                       label_opt: Option<Ident>)
-                       -> &'a Block<'a> {
+pub fn trans_break<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                               expr_id: ast::NodeId,
+                               label_opt: Option<Ident>)
+                               -> Block<'blk, 'tcx> {
     return trans_break_cont(bcx, expr_id, label_opt, cleanup::EXIT_BREAK);
 }
 
-pub fn trans_cont<'a>(bcx: &'a Block<'a>,
-                      expr_id: ast::NodeId,
-                      label_opt: Option<Ident>)
-                      -> &'a Block<'a> {
+pub fn trans_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              expr_id: ast::NodeId,
+                              label_opt: Option<Ident>)
+                              -> Block<'blk, 'tcx> {
     return trans_break_cont(bcx, expr_id, label_opt, cleanup::EXIT_LOOP);
 }
 
-pub fn trans_ret<'a>(bcx: &'a Block<'a>,
-                     e: Option<Gc<ast::Expr>>)
-                     -> &'a Block<'a> {
+pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                             e: Option<Gc<ast::Expr>>)
+                             -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_ret");
     let fcx = bcx.fcx;
     let mut bcx = bcx;
@@ -483,11 +483,10 @@ pub fn trans_ret<'a>(bcx: &'a Block<'a>,
     return bcx;
 }
 
-pub fn trans_fail<'a>(
-                  bcx: &'a Block<'a>,
-                  sp: Span,
-                  fail_str: InternedString)
-                  -> &'a Block<'a> {
+pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              sp: Span,
+                              fail_str: InternedString)
+                              -> Block<'blk, 'tcx> {
     let ccx = bcx.ccx();
     let _icx = push_ctxt("trans_fail_value");
 
@@ -508,12 +507,11 @@ pub fn trans_fail<'a>(
     return bcx;
 }
 
-pub fn trans_fail_bounds_check<'a>(
-                               bcx: &'a Block<'a>,
-                               sp: Span,
-                               index: ValueRef,
-                               len: ValueRef)
-                               -> &'a Block<'a> {
+pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                           sp: Span,
+                                           index: ValueRef,
+                                           len: ValueRef)
+                                           -> Block<'blk, 'tcx> {
     let ccx = bcx.ccx();
     let _icx = push_ctxt("trans_fail_bounds_check");
 
