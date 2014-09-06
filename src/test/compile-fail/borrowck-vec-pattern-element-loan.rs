@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(advanced_slice_patterns)]
+
 fn a<'a>() -> &'a [int] {
     let vec = vec!(1, 2, 3, 4);
     let vec: &[int] = vec.as_slice(); //~ ERROR does not live long enough
