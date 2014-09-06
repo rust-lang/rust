@@ -36,6 +36,7 @@ pub enum ObsoleteSyntax {
     ObsoleteManagedExpr,
     ObsoleteImportRenaming,
     ObsoleteSubsliceMatch,
+    ObsoleteExternCrateRenaming,
 }
 
 pub trait ParserObsoleteMethods {
@@ -92,6 +93,10 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ObsoleteSubsliceMatch => (
                 "subslice match syntax",
                 "instead of `..xs`, write `xs..` in a pattern"
+            ),
+            ObsoleteExternCrateRenaming => (
+                "`extern crate foo = bar` syntax",
+                "write `extern crate bar as foo` instead"
             )
         };
 
