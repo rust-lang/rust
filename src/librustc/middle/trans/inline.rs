@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -19,18 +19,18 @@ use syntax::ast;
 use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::ast_util;
 
-pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
-    -> ast::DefId {
+fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
+    -> Option<ast::DefId> {
     let _icx = push_ctxt("maybe_instantiate_inline");
     match ccx.external().borrow().find(&fn_id) {
         Some(&Some(node_id)) => {
             // Already inline
             debug!("maybe_instantiate_inline({}): already inline as node id {}",
                    ty::item_path_str(ccx.tcx(), fn_id), node_id);
-            return local_def(node_id);
+            return Some(local_def(node_id));
         }
         Some(&None) => {
-            return fn_id; // Not inlinable
+            return None; // Not inlinable
         }
         None => {
             // Not seen yet
@@ -41,10 +41,11 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
         csearch::maybe_get_item_ast(
             ccx.tcx(), fn_id,
             |a,b,c,d| astencode::decode_inlined_item(a, b, c, d));
-    return match csearch_result {
+
+    let inline_def = match csearch_result {
         csearch::not_found => {
             ccx.external().borrow_mut().insert(fn_id, None);
-            fn_id
+            return None;
         }
         csearch::found(ast::IIItem(item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(item.id));
@@ -182,4 +183,19 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             }
         }
     };
+
+    return Some(inline_def);
+}
+
+pub fn get_local_instance(ccx: &CrateContext, fn_id: ast::DefId)
+    -> Option<ast::DefId> {
+    if fn_id.krate == ast::LOCAL_CRATE {
+        Some(fn_id)
+    } else {
+        instantiate_inline(ccx, fn_id)
+    }
+}
+
+pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId) -> ast::DefId {
+    get_local_instance(ccx, fn_id).unwrap_or(fn_id)
 }
