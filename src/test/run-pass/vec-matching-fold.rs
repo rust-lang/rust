@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(advanced_slice_patterns)]
+
 fn foldl<T,U:Clone>(values: &[T],
                     initial: U,
                     function: |partial: U, element: &T| -> U)

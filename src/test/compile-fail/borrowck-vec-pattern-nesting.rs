@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(advanced_slice_patterns)]
 
 fn a() {
     let mut vec = [box 1i, box 2, box 3];
