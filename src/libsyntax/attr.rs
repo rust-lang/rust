@@ -280,7 +280,7 @@ pub enum InlineAttr {
     InlineNever,
 }
 
-/// True if something like #[inline] is found in the list of attrs.
+/// Determine what `#[inline]` attribute is present in `attrs`, if any.
 pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline]
     attrs.iter().fold(InlineNone, |ia,attr| {
@@ -302,6 +302,14 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
             _ => ia
         }
     })
+}
+
+/// True if `#[inline]` or `#[inline(always)]` is present in `attrs`.
+pub fn requests_inline(attrs: &[Attribute]) -> bool {
+    match find_inline_attr(attrs) {
+        InlineHint | InlineAlways => true,
+        InlineNone | InlineNever => false,
+    }
 }
 
 /// Tests if any `cfg(...)` meta items in `metas` match `cfg`. e.g.

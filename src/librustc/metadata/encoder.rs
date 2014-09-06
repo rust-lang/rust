@@ -892,7 +892,8 @@ fn encode_info_for_method(ecx: &EncodeContext,
                                 IITraitItemRef(local_def(parent_id),
                                                RequiredInlinedTraitItemRef(
                                                    &*ast_method)));
-        } else {
+        }
+        if !any_types {
             encode_symbol(ecx, rbml_w, m.def_id.node);
         }
         encode_method_argument_names(rbml_w, &*ast_method.pe_fn_decl());
@@ -1047,7 +1048,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_attributes(rbml_w, item.attrs.as_slice());
         if tps_len > 0u || should_inline(item.attrs.as_slice()) {
             encode_inlined_item(ecx, rbml_w, IIItemRef(item));
-        } else {
+        }
+        if tps_len == 0 {
             encode_symbol(ecx, rbml_w, item.id);
         }
         encode_visibility(rbml_w, vis);
@@ -1411,9 +1413,8 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         encode_name(rbml_w, nitem.ident.name);
         if abi == abi::RustIntrinsic {
             encode_inlined_item(ecx, rbml_w, IIForeignRef(nitem));
-        } else {
-            encode_symbol(ecx, rbml_w, nitem.id);
         }
+        encode_symbol(ecx, rbml_w, nitem.id);
       }
       ForeignItemStatic(_, mutbl) => {
         if mutbl {

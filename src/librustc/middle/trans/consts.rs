@@ -91,7 +91,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
 pub fn const_ptrcast(cx: &CrateContext, a: ValueRef, t: Type) -> ValueRef {
     unsafe {
         let b = llvm::LLVMConstPointerCast(a, t.ptr_to().to_ref());
-        assert!(cx.const_globals.borrow_mut().insert(b as int, a));
+        assert!(cx.const_globals().borrow_mut().insert(b as int, a));
         b
     }
 }
@@ -119,7 +119,7 @@ fn const_vec(cx: &CrateContext, e: &ast::Expr,
 pub fn const_addr_of(cx: &CrateContext, cv: ValueRef, mutbl: ast::Mutability) -> ValueRef {
     unsafe {
         let gv = "const".with_c_str(|name| {
-            llvm::LLVMAddGlobal(cx.llmod, val_ty(cv).to_ref(), name)
+            llvm::LLVMAddGlobal(cx.llmod(), val_ty(cv).to_ref(), name)
         });
         llvm::LLVMSetInitializer(gv, cv);
         llvm::LLVMSetGlobalConstant(gv,
@@ -130,7 +130,7 @@ pub fn const_addr_of(cx: &CrateContext, cv: ValueRef, mutbl: ast::Mutability) ->
 }
 
 fn const_deref_ptr(cx: &CrateContext, v: ValueRef) -> ValueRef {
-    let v = match cx.const_globals.borrow().find(&(v as int)) {
+    let v = match cx.const_globals().borrow().find(&(v as int)) {
         Some(&v) => v,
         None => v
     };
@@ -178,13 +178,13 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
 
 pub fn get_const_val(cx: &CrateContext,
                      mut def_id: ast::DefId) -> (ValueRef, bool) {
-    let contains_key = cx.const_values.borrow().contains_key(&def_id.node);
+    let contains_key = cx.const_values().borrow().contains_key(&def_id.node);
     if !ast_util::is_local(def_id) || !contains_key {
         if !ast_util::is_local(def_id) {
             def_id = inline::maybe_instantiate_inline(cx, def_id);
         }
 
-        match cx.tcx.map.expect_item(def_id.node).node {
+        match cx.tcx().map.expect_item(def_id.node).node {
             ast::ItemStatic(_, ast::MutImmutable, _) => {
                 trans_const(cx, ast::MutImmutable, def_id.node);
             }
@@ -192,8 +192,8 @@ pub fn get_const_val(cx: &CrateContext,
         }
     }
 
-    (cx.const_values.borrow().get_copy(&def_id.node),
-     !cx.non_inlineable_statics.borrow().contains(&def_id.node))
+    (cx.const_values().borrow().get_copy(&def_id.node),
+     !cx.non_inlineable_statics().borrow().contains(&def_id.node))
 }
 
 pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef, bool, ty::t) {
@@ -202,7 +202,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
     let mut inlineable = inlineable;
     let ety = ty::expr_ty(cx.tcx(), e);
     let mut ety_adjusted = ty::expr_ty_adjusted(cx.tcx(), e);
-    let opt_adj = cx.tcx.adjustments.borrow().find_copy(&e.id);
+    let opt_adj = cx.tcx().adjustments.borrow().find_copy(&e.id);
     match opt_adj {
         None => { }
         Some(adj) => {
@@ -523,7 +523,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
               (expr::cast_enum, expr::cast_integral) => {
                 let repr = adt::represent_type(cx, basety);
                 let discr = adt::const_get_discrim(cx, &*repr, v);
-                let iv = C_integral(cx.int_type, discr, false);
+                let iv = C_integral(cx.int_type(), discr, false);
                 let ety_cast = expr::cast_type_kind(cx.tcx(), ety);
                 match ety_cast {
                     expr::cast_integral => {
@@ -690,8 +690,17 @@ pub fn trans_const(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
         let g = base::get_item_val(ccx, id);
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
-        let v = ccx.const_values.borrow().get_copy(&id);
+        let v = ccx.const_values().borrow().get_copy(&id);
         llvm::LLVMSetInitializer(g, v);
+
+        // `get_item_val` left `g` with external linkage, but we just set an
+        // initializer for it.  But we don't know yet if `g` should really be
+        // defined in this compilation unit, so we set its linkage to
+        // `AvailableExternallyLinkage`.  (It's still a definition, but acts
+        // like a declaration for most purposes.)  If `g` really should be
+        // declared here, then `trans_item` will fix up the linkage later on.
+        llvm::SetLinkage(g, llvm::AvailableExternallyLinkage);
+
         if m != ast::MutMutable {
             llvm::LLVMSetGlobalConstant(g, True);
         }

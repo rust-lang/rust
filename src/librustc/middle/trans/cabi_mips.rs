@@ -146,7 +146,7 @@ fn coerce_to_int(ccx: &CrateContext, size: uint) -> Vec<Type> {
     let r = size % 32;
     if r > 0 {
         unsafe {
-            args.push(Type::from_ref(llvm::LLVMIntTypeInContext(ccx.llcx, r as c_uint)));
+            args.push(Type::from_ref(llvm::LLVMIntTypeInContext(ccx.llcx(), r as c_uint)));
         }
     }
 

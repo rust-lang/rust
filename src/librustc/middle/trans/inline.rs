@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{AvailableExternallyLinkage, SetLinkage};
+use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
 use metadata::csearch;
 use middle::astencode;
 use middle::trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
@@ -22,7 +22,7 @@ use syntax::ast_util;
 pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
     -> ast::DefId {
     let _icx = push_ctxt("maybe_instantiate_inline");
-    match ccx.external.borrow().find(&fn_id) {
+    match ccx.external().borrow().find(&fn_id) {
         Some(&Some(node_id)) => {
             // Already inline
             debug!("maybe_instantiate_inline({}): already inline as node id {}",
@@ -43,48 +43,74 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             |a,b,c,d| astencode::decode_inlined_item(a, b, c, d));
     return match csearch_result {
         csearch::not_found => {
-            ccx.external.borrow_mut().insert(fn_id, None);
+            ccx.external().borrow_mut().insert(fn_id, None);
             fn_id
         }
         csearch::found(ast::IIItem(item)) => {
-            ccx.external.borrow_mut().insert(fn_id, Some(item.id));
-            ccx.external_srcs.borrow_mut().insert(item.id, fn_id);
+            ccx.external().borrow_mut().insert(fn_id, Some(item.id));
+            ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
 
-            ccx.stats.n_inlines.set(ccx.stats.n_inlines.get() + 1);
+            ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
             trans_item(ccx, &*item);
 
-            // We're bringing an external global into this crate, but we don't
-            // want to create two copies of the global. If we do this, then if
-            // you take the address of the global in two separate crates you get
-            // two different addresses. This is bad for things like conditions,
-            // but it could possibly have other adverse side effects. We still
-            // want to achieve the optimizations related to this global,
-            // however, so we use the available_externally linkage which llvm
-            // provides
-            match item.node {
-                ast::ItemStatic(_, mutbl, _) => {
-                    let g = get_item_val(ccx, item.id);
-                    // see the comment in get_item_val() as to why this check is
-                    // performed here.
-                    if ast_util::static_has_significant_address(
-                            mutbl,
-                            item.attrs.as_slice()) {
-                        SetLinkage(g, AvailableExternallyLinkage);
+            let linkage = match item.node {
+                ast::ItemFn(_, _, _, ref generics, _) => {
+                    if generics.is_type_parameterized() {
+                        // Generics have no symbol, so they can't be given any
+                        // linkage.
+                        None
+                    } else {
+                        if ccx.sess().opts.cg.codegen_units == 1 {
+                            // We could use AvailableExternallyLinkage here,
+                            // but InternalLinkage allows LLVM to optimize more
+                            // aggressively (at the cost of sometimes
+                            // duplicating code).
+                            Some(InternalLinkage)
+                        } else {
+                            // With multiple compilation units, duplicated code
+                            // is more of a problem.  Also, `codegen_units > 1`
+                            // means the user is okay with losing some
+                            // performance.
+                            Some(AvailableExternallyLinkage)
+                        }
                     }
                 }
-                _ => {}
+                ast::ItemStatic(_, mutbl, _) => {
+                    if !ast_util::static_has_significant_address(mutbl, item.attrs.as_slice()) {
+                        // Inlined static items use internal linkage when
+                        // possible, so that LLVM will coalesce globals with
+                        // identical initializers.  (It only does this for
+                        // globals with unnamed_addr and either internal or
+                        // private linkage.)
+                        Some(InternalLinkage)
+                    } else {
+                        // The address is significant, so we can't create an
+                        // internal copy of the static.  (The copy would have a
+                        // different address from the original.)
+                        Some(AvailableExternallyLinkage)
+                    }
+                }
+                _ => unreachable!(),
+            };
+
+            match linkage {
+                Some(linkage) => {
+                    let g = get_item_val(ccx, item.id);
+                    SetLinkage(g, linkage);
+                }
+                None => {}
             }
 
             local_def(item.id)
         }
         csearch::found(ast::IIForeign(item)) => {
-            ccx.external.borrow_mut().insert(fn_id, Some(item.id));
-            ccx.external_srcs.borrow_mut().insert(item.id, fn_id);
+            ccx.external().borrow_mut().insert(fn_id, Some(item.id));
+            ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
             local_def(item.id)
         }
         csearch::found_parent(parent_id, ast::IIItem(item)) => {
-            ccx.external.borrow_mut().insert(parent_id, Some(item.id));
-            ccx.external_srcs.borrow_mut().insert(item.id, parent_id);
+            ccx.external().borrow_mut().insert(parent_id, Some(item.id));
+            ccx.external_srcs().borrow_mut().insert(item.id, parent_id);
 
           let mut my_id = 0;
           match item.node {
@@ -93,14 +119,14 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
               let vs_there = ty::enum_variants(ccx.tcx(), parent_id);
               for (here, there) in vs_here.iter().zip(vs_there.iter()) {
                   if there.id == fn_id { my_id = here.id.node; }
-                  ccx.external.borrow_mut().insert(there.id, Some(here.id.node));
+                  ccx.external().borrow_mut().insert(there.id, Some(here.id.node));
               }
             }
             ast::ItemStruct(ref struct_def, _) => {
               match struct_def.ctor_id {
                 None => {}
                 Some(ctor_id) => {
-                    ccx.external.borrow_mut().insert(fn_id, Some(ctor_id));
+                    ccx.external().borrow_mut().insert(fn_id, Some(ctor_id));
                     my_id = ctor_id;
                 }
               }
@@ -119,10 +145,10 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             match impl_item {
                 ast::ProvidedInlinedTraitItem(mth) |
                 ast::RequiredInlinedTraitItem(mth) => {
-                    ccx.external.borrow_mut().insert(fn_id, Some(mth.id));
-                    ccx.external_srcs.borrow_mut().insert(mth.id, fn_id);
+                    ccx.external().borrow_mut().insert(fn_id, Some(mth.id));
+                    ccx.external_srcs().borrow_mut().insert(mth.id, fn_id);
 
-                    ccx.stats.n_inlines.set(ccx.stats.n_inlines.get() + 1);
+                    ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
                 }
             }
 
@@ -147,6 +173,9 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                                  &param_substs::empty(),
                                  mth.id,
                                  []);
+                        // Use InternalLinkage so LLVM can optimize more
+                        // aggressively.
+                        SetLinkage(llfn, InternalLinkage);
                     }
                     local_def(mth.id)
                 }

@@ -25,7 +25,7 @@ use syntax::codemap::Span;
 
 pub struct Builder<'a> {
     pub llbuilder: BuilderRef,
-    pub ccx: &'a CrateContext,
+    pub ccx: &'a CrateContext<'a>,
 }
 
 // This is a really awful way to get a zero-length c-string, but better (and a
@@ -38,21 +38,22 @@ pub fn noname() -> *const c_char {
 impl<'a> Builder<'a> {
     pub fn new(ccx: &'a CrateContext) -> Builder<'a> {
         Builder {
-            llbuilder: ccx.builder.b,
+            llbuilder: ccx.raw_builder(),
             ccx: ccx,
         }
     }
 
     pub fn count_insn(&self, category: &str) {
         if self.ccx.sess().trans_stats() {
-            self.ccx.stats.n_llvm_insns.set(self.ccx
-                                                .stats
+            self.ccx.stats().n_llvm_insns.set(self.ccx
+                                                .stats()
                                                 .n_llvm_insns
                                                 .get() + 1);
         }
+        self.ccx.count_llvm_insn();
         if self.ccx.sess().count_llvm_insns() {
             base::with_insn_ctxt(|v| {
-                let mut h = self.ccx.stats.llvm_insns.borrow_mut();
+                let mut h = self.ccx.stats().llvm_insns.borrow_mut();
 
                 // Build version of path with cycles removed.
 
@@ -160,9 +161,9 @@ impl<'a> Builder<'a> {
         self.count_insn("invoke");
 
         debug!("Invoke {} with args ({})",
-               self.ccx.tn.val_to_string(llfn),
+               self.ccx.tn().val_to_string(llfn),
                args.iter()
-                   .map(|&v| self.ccx.tn.val_to_string(v))
+                   .map(|&v| self.ccx.tn().val_to_string(v))
                    .collect::<Vec<String>>()
                    .connect(", "));
 
@@ -488,7 +489,7 @@ impl<'a> Builder<'a> {
             let v = [min, max];
 
             llvm::LLVMSetMetadata(value, llvm::MD_range as c_uint,
-                                  llvm::LLVMMDNodeInContext(self.ccx.llcx,
+                                  llvm::LLVMMDNodeInContext(self.ccx.llcx(),
                                                             v.as_ptr(), v.len() as c_uint));
         }
 
@@ -497,8 +498,8 @@ impl<'a> Builder<'a> {
 
     pub fn store(&self, val: ValueRef, ptr: ValueRef) {
         debug!("Store {} -> {}",
-               self.ccx.tn.val_to_string(val),
-               self.ccx.tn.val_to_string(ptr));
+               self.ccx.tn().val_to_string(val),
+               self.ccx.tn().val_to_string(ptr));
         assert!(self.llbuilder.is_not_null());
         self.count_insn("store");
         unsafe {
@@ -508,8 +509,8 @@ impl<'a> Builder<'a> {
 
     pub fn volatile_store(&self, val: ValueRef, ptr: ValueRef) {
         debug!("Store {} -> {}",
-               self.ccx.tn.val_to_string(val),
-               self.ccx.tn.val_to_string(ptr));
+               self.ccx.tn().val_to_string(val),
+               self.ccx.tn().val_to_string(ptr));
         assert!(self.llbuilder.is_not_null());
         self.count_insn("store.volatile");
         unsafe {
@@ -520,8 +521,8 @@ impl<'a> Builder<'a> {
 
     pub fn atomic_store(&self, val: ValueRef, ptr: ValueRef, order: AtomicOrdering) {
         debug!("Store {} -> {}",
-               self.ccx.tn.val_to_string(val),
-               self.ccx.tn.val_to_string(ptr));
+               self.ccx.tn().val_to_string(val),
+               self.ccx.tn().val_to_string(ptr));
         self.count_insn("store.atomic");
         unsafe {
             let ty = Type::from_ref(llvm::LLVMTypeOf(ptr));
@@ -794,11 +795,11 @@ impl<'a> Builder<'a> {
                          else          { llvm::False };
 
         let argtys = inputs.iter().map(|v| {
-            debug!("Asm Input Type: {:?}", self.ccx.tn.val_to_string(*v));
+            debug!("Asm Input Type: {:?}", self.ccx.tn().val_to_string(*v));
             val_ty(*v)
         }).collect::<Vec<_>>();
 
-        debug!("Asm Output Type: {:?}", self.ccx.tn.type_to_string(output));
+        debug!("Asm Output Type: {:?}", self.ccx.tn().type_to_string(output));
         let fty = Type::func(argtys.as_slice(), &output);
         unsafe {
             let v = llvm::LLVMInlineAsm(
@@ -812,9 +813,9 @@ impl<'a> Builder<'a> {
         self.count_insn("call");
 
         debug!("Call {} with args ({})",
-               self.ccx.tn.val_to_string(llfn),
+               self.ccx.tn().val_to_string(llfn),
                args.iter()
-                   .map(|&v| self.ccx.tn.val_to_string(v))
+                   .map(|&v| self.ccx.tn().val_to_string(v))
                    .collect::<Vec<String>>()
                    .connect(", "));
 

@@ -335,7 +335,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
                 let sym = mangle_internal_name_by_path_and_seq(
                     ast_map::Values([].iter()).chain(None), "get_disr");
 
-                let fn_ty = ty::mk_ctor_fn(&ccx.tcx, ast::DUMMY_NODE_ID,
+                let fn_ty = ty::mk_ctor_fn(ccx.tcx(), ast::DUMMY_NODE_ID,
                                            [opaqueptrty], ty::mk_u64());
                 let llfdecl = decl_internal_rust_fn(ccx,
                                                     fn_ty,

@@ -94,8 +94,8 @@ impl VecTypes {
         format!("VecTypes {{unit_ty={}, llunit_ty={}, \
                  llunit_size={}, llunit_alloc_size={}}}",
                 ty_to_string(ccx.tcx(), self.unit_ty),
-                ccx.tn.type_to_string(self.llunit_ty),
-                ccx.tn.val_to_string(self.llunit_size),
+                ccx.tn().type_to_string(self.llunit_ty),
+                ccx.tn().val_to_string(self.llunit_size),
                 self.llunit_alloc_size)
     }
 }
@@ -546,7 +546,7 @@ pub fn iter_vec_loop<'r,
 
     let loop_counter = {
         // i = 0
-        let i = alloca(loop_bcx, bcx.ccx().int_type, "__i");
+        let i = alloca(loop_bcx, bcx.ccx().int_type(), "__i");
         Store(loop_bcx, C_uint(bcx.ccx(), 0), i);
 
         Br(loop_bcx, cond_bcx.llbb);
