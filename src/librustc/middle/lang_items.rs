@@ -296,7 +296,7 @@ lets_do_this! {
 
     NoSendItem,                      "no_send_bound",           no_send_bound;
     NoCopyItem,                      "no_copy_bound",           no_copy_bound;
-    NoSyncItem,                     "no_share_bound",          no_share_bound;
+    NoSyncItem,                      "no_sync_bound",           no_sync_bound;
     ManagedItem,                     "managed_bound",           managed_bound;
 
     IteratorItem,                    "iterator",                iterator;
