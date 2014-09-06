@@ -204,7 +204,7 @@ pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
     // Function addresses in Rust are never significant, allowing functions to be merged.
     llvm::SetUnnamedAddr(llfn, true);
 
-    if ccx.is_split_stack_supported() {
+    if ccx.is_split_stack_supported() && !ccx.sess().opts.cg.no_stack_check {
         set_split_stack(llfn);
     }
 

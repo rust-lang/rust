@@ -390,6 +390,8 @@ cgoptions!(
         "divide crate into N units to optimize in parallel"),
     remark: Passes = (SomePasses(Vec::new()), parse_passes,
         "print remarks for these optimization passes (space separated, or \"all\")"),
+    no_stack_check: bool = (false, parse_bool,
+        "disable checks for stack exhaustion (a memory-safety hazard!)"),
 )
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
