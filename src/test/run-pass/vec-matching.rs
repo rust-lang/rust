@@ -20,7 +20,7 @@ fn a() {
 fn b() {
     let x = [1i, 2, 3];
     match x {
-        [a, b, ..c] => {
+        [a, b, c..] => {
             assert_eq!(a, 1);
             assert_eq!(b, 2);
             let expected: &[_] = &[3];
@@ -28,7 +28,7 @@ fn b() {
         }
     }
     match x {
-        [..a, b, c] => {
+        [a.., b, c] => {
             let expected: &[_] = &[1];
             assert_eq!(a, expected);
             assert_eq!(b, 2);
@@ -36,7 +36,7 @@ fn b() {
         }
     }
     match x {
-        [a, ..b, c] => {
+        [a, b.., c] => {
             assert_eq!(a, 1);
             let expected: &[_] = &[2];
             assert_eq!(b, expected);

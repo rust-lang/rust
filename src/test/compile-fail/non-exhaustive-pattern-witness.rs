@@ -63,7 +63,7 @@ fn vectors_with_nested_enums() {
         [Second(true), First] => (),
         [Second(true), Second(true)] => (),
         [Second(false), _] => (),
-        [_, _, ..tail, _] => ()
+        [_, _, tail.., _] => ()
     }
 }
 
