@@ -25,7 +25,7 @@ pub fn main() {
     );
     let x: &[Foo] = x.as_slice();
     match x {
-        [_, ..tail] => {
+        [_, tail..] => {
             match tail {
                 [Foo { string: a }, //~ ERROR cannot move out of dereference of `&`-pointer
                  Foo { string: b }] => {

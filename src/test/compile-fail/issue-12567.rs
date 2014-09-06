@@ -11,10 +11,10 @@
 fn match_vecs<'a, T>(l1: &'a [T], l2: &'a [T]) {
     match (l1, l2) {
         ([], []) => println!("both empty"),
-        ([], [hd, ..tl]) | ([hd, ..tl], []) => println!("one empty"),
+        ([], [hd, tl..]) | ([hd, tl..], []) => println!("one empty"),
         //~^ ERROR: cannot move out of dereference
         //~^^ ERROR: cannot move out of dereference
-        ([hd1, ..tl1], [hd2, ..tl2]) => println!("both nonempty"),
+        ([hd1, tl1..], [hd2, tl2..]) => println!("both nonempty"),
         //~^ ERROR: cannot move out of dereference
         //~^^ ERROR: cannot move out of dereference
     }
