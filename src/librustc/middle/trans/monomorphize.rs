@@ -149,7 +149,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     };
     let setup_lldecl = |lldecl, attrs: &[ast::Attribute]| {
         base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
-        set_llvm_fn_attrs(attrs, lldecl);
+        set_llvm_fn_attrs(ccx, attrs, lldecl);
 
         let is_first = !ccx.available_monomorphizations().borrow().contains(&s);
         if is_first {
