@@ -4783,11 +4783,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     let path = self.parse_str();
                     let span = self.span;
-                    self.span_warn(span,
-                            format!("this extern crate syntax is deprecated. \
-                            Use: extern crate \"{}\" as {};",
-                            path.ref0().get(), the_ident.as_str() ).as_slice()
-                    );
+                    self.obsolete(span, ObsoleteExternCrateRenaming);
                     Some(path)
                 } else {None};
 
