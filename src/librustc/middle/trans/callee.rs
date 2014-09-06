@@ -141,8 +141,10 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
         let expr_ty = node_id_type(bcx, ref_expr.id);
         match def {
             def::DefFn(did, _) if {
-                let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
-                match bcx.tcx().map.find(def_id.node) {
+                let maybe_def_id = inline::get_local_instance(bcx.ccx(), did);
+                let maybe_ast_node = maybe_def_id.and_then(|def_id| bcx.tcx().map
+                                                                             .find(def_id.node));
+                match maybe_ast_node {
                     Some(ast_map::NodeStructCtor(_)) => true,
                     _ => false
                 }
