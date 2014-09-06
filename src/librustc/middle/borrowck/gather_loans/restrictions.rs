@@ -30,7 +30,8 @@ pub fn compute_restrictions(bccx: &BorrowckCtxt,
                             span: Span,
                             cause: euv::LoanCause,
                             cmt: mc::cmt,
-                            loan_region: ty::Region) -> RestrictionResult {
+                            loan_region: &ty::Region)
+                            -> RestrictionResult {
     let ctxt = RestrictionsContext {
         bccx: bccx,
         span: span,
@@ -47,13 +48,12 @@ pub fn compute_restrictions(bccx: &BorrowckCtxt,
 struct RestrictionsContext<'a> {
     bccx: &'a BorrowckCtxt<'a>,
     span: Span,
-    loan_region: ty::Region,
+    loan_region: &'a ty::Region,
     cause: euv::LoanCause,
 }
 
 impl<'a> RestrictionsContext<'a> {
-    fn restrict(&self,
-                cmt: mc::cmt) -> RestrictionResult {
+    fn restrict(&self, cmt: mc::cmt) -> RestrictionResult {
         debug!("restrict(cmt={})", cmt.repr(self.bccx.tcx));
 
         match cmt.cat.clone() {
@@ -125,14 +125,15 @@ impl<'a> RestrictionsContext<'a> {
             mc::cat_deref(cmt_base, _, mc::BorrowedPtr(ty::ImmBorrow, lt)) |
             mc::cat_deref(cmt_base, _, mc::Implicit(ty::ImmBorrow, lt)) => {
                 // R-Deref-Imm-Borrowed
-                if !self.bccx.is_subregion_of(self.loan_region, lt) {
-                    self.bccx.report(
-                        BckError {
-                            span: self.span,
-                            cause: self.cause,
-                            cmt: cmt_base,
-                            code: err_borrowed_pointer_too_short(
-                                self.loan_region, lt)});
+                if !self.is_subregion_of(self.loan_region, &lt) {
+                    self.bccx.report(BckError {
+                        span: self.span,
+                        cause: self.cause,
+                        cmt: cmt_base,
+                        code: err_borrowed_pointer_too_short(
+                            self.loan_region.clone(),
+                            lt),
+                    });
                     return Safe;
                 }
                 Safe
@@ -140,24 +141,25 @@ impl<'a> RestrictionsContext<'a> {
 
             mc::cat_deref(cmt_base, _, pk) => {
                 match pk {
-                    mc::BorrowedPtr(ty::MutBorrow, lt) |
-                    mc::BorrowedPtr(ty::UniqueImmBorrow, lt) |
-                    mc::Implicit(ty::MutBorrow, lt) |
-                    mc::Implicit(ty::UniqueImmBorrow, lt) => {
+                    mc::BorrowedPtr(ty::MutBorrow, ref lt) |
+                    mc::BorrowedPtr(ty::UniqueImmBorrow, ref lt) |
+                    mc::Implicit(ty::MutBorrow, ref lt) |
+                    mc::Implicit(ty::UniqueImmBorrow, ref lt) => {
                         // R-Deref-Mut-Borrowed
-                        if !self.bccx.is_subregion_of(self.loan_region, lt) {
-                            self.bccx.report(
-                                BckError {
-                                    span: self.span,
-                                    cause: self.cause,
-                                    cmt: cmt_base,
-                                    code: err_borrowed_pointer_too_short(
-                                        self.loan_region, lt)});
+                        if !self.is_subregion_of(self.loan_region, lt) {
+                            self.bccx.report(BckError {
+                                span: self.span,
+                                cause: self.cause,
+                                cmt: cmt_base,
+                                code: err_borrowed_pointer_too_short(
+                                    self.loan_region.clone(),
+                                    (*lt).clone())
+                            });
                             return Safe;
                         }
 
                         let result = self.restrict(cmt_base);
-                        self.extend(result, cmt.mutbl, LpDeref(pk))
+                        self.extend(result, cmt.mutbl, LpDeref(pk.clone()))
                     }
                     mc::UnsafePtr(..) => {
                         // We are very trusting when working with unsafe
@@ -190,5 +192,10 @@ impl<'a> RestrictionsContext<'a> {
                 SafeIf(lp, base_vec)
             }
         }
+    }
+
+    fn is_subregion_of(&self, r_sub: &ty::Region, r_sup: &ty::Region)
+                       -> bool {
+        self.bccx.tcx.region_maps.is_subregion_of(self.bccx.tcx, r_sub, r_sup)
     }
 }

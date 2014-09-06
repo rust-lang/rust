@@ -20,6 +20,7 @@ use middle::borrowck::*;
 use middle::borrowck::move_data::MoveData;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
+use middle::seme_region::SemeRegion;
 use middle::ty;
 use util::ppaux::{Repr};
 
@@ -37,8 +38,7 @@ mod move_error;
 pub fn gather_loans_in_fn(bccx: &BorrowckCtxt,
                           decl: &ast::FnDecl,
                           body: &ast::Block)
-                          -> (Vec<Loan>, move_data::MoveData)
-{
+                          -> (Vec<Loan>, move_data::MoveData) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         all_loans: Vec::new(),
@@ -48,7 +48,7 @@ pub fn gather_loans_in_fn(bccx: &BorrowckCtxt,
     };
 
     {
-        let mut euv = euv::ExprUseVisitor::new(&mut glcx, bccx.tcx);
+        let mut euv = euv::ExprUseVisitor::new(&mut glcx, bccx);
         euv.walk_fn(decl, body);
     }
 
@@ -107,10 +107,9 @@ impl<'a> euv::Delegate for GatherLoanCtxt<'a> {
               borrow_id: ast::NodeId,
               borrow_span: Span,
               cmt: mc::cmt,
-              loan_region: ty::Region,
+              loan_region: &ty::Region,
               bk: ty::BorrowKind,
-              loan_cause: euv::LoanCause)
-    {
+              loan_cause: euv::LoanCause) {
         debug!("borrow(borrow_id={}, cmt={}, loan_region={}, \
                bk={}, loan_cause={:?})",
                borrow_id, cmt.repr(self.tcx()), loan_region,
@@ -212,7 +211,7 @@ impl<'a> GatherLoanCtxt<'a> {
                        borrow_span: Span,
                        cmt: mc::cmt,
                        req_kind: ty::BorrowKind,
-                       loan_region: ty::Region,
+                       loan_region: &ty::Region,
                        cause: euv::LoanCause) {
         /*!
          * Guarantees that `addr_of(cmt)` will be valid for the duration of
@@ -231,35 +230,47 @@ impl<'a> GatherLoanCtxt<'a> {
 
         // a loan for the empty region can never be dereferenced, so
         // it is always safe
-        if loan_region == ty::ReEmpty {
+        if *loan_region == ty::ReEmpty {
             return;
         }
 
         // Check that the lifetime of the borrow does not exceed
         // the lifetime of the data being borrowed.
-        if lifetime::guarantee_lifetime(self.bccx, self.item_ub,
-                                        borrow_span, cause, cmt.clone(), loan_region,
+        if lifetime::guarantee_lifetime(self.bccx,
+                                        self.item_ub,
+                                        borrow_span,
+                                        cause,
+                                        cmt.clone(),
+                                        loan_region,
                                         req_kind).is_err() {
             return; // reported an error, no sense in reporting more.
         }
 
         // Check that we don't allow mutable borrows of non-mutable data.
-        if check_mutability(self.bccx, borrow_span, cause,
-                            cmt.clone(), req_kind).is_err() {
+        if check_mutability(self.bccx,
+                            borrow_span,
+                            cause,
+                            cmt.clone(),
+                            req_kind).is_err() {
             return; // reported an error, no sense in reporting more.
         }
 
         // Check that we don't allow mutable borrows of aliasable data.
-        if check_aliasability(self.bccx, borrow_span, cause,
-                              cmt.clone(), req_kind).is_err() {
+        if check_aliasability(self.bccx,
+                              borrow_span,
+                              cause,
+                              cmt.clone(),
+                              req_kind).is_err() {
             return; // reported an error, no sense in reporting more.
         }
 
         // Compute the restrictions that are required to enforce the
         // loan is safe.
-        let restr = restrictions::compute_restrictions(
-            self.bccx, borrow_span, cause,
-            cmt.clone(), loan_region);
+        let restr = restrictions::compute_restrictions(self.bccx,
+                                                       borrow_span,
+                                                       cause,
+                                                       cmt.clone(),
+                                                       loan_region);
 
         debug!("guarantee_valid(): restrictions={:?}", restr);
 
@@ -271,9 +282,13 @@ impl<'a> GatherLoanCtxt<'a> {
             }
 
             restrictions::SafeIf(loan_path, restricted_paths) => {
-                let loan_scope = match loan_region {
-                    ty::ReScope(id) => id,
-                    ty::ReFree(ref fr) => fr.scope_id,
+                let loan_region = match *loan_region {
+                    ty::ReSemeRegion(ref region) => (*region).clone(),
+                    ty::ReFree(ref fr) => {
+                        SemeRegion::from_scope(self.bccx.tcx,
+                                                self.bccx.loop_analysis(),
+                                                fr.scope_id)
+                    }
 
                     ty::ReStatic => {
                         // If we get here, an error must have been
@@ -297,13 +312,15 @@ impl<'a> GatherLoanCtxt<'a> {
                                     loan_region).as_slice());
                     }
                 };
-                debug!("loan_scope = {:?}", loan_scope);
+                debug!("loan_region = {}", loan_region);
 
-                let gen_scope = self.compute_gen_scope(borrow_id, loan_scope);
+                let gen_scope = self.compute_gen_scope(borrow_id,
+                                                       &loan_region);
                 debug!("gen_scope = {:?}", gen_scope);
 
-                let kill_scope = self.compute_kill_scope(loan_scope, &*loan_path);
-                debug!("kill_scope = {:?}", kill_scope);
+                let kill_scopes = self.compute_kill_scopes(&loan_region,
+                                                           &*loan_path);
+                debug!("kill_scopes = {}", kill_scopes);
 
                 if req_kind == ty::MutBorrow {
                     self.mark_loan_path_as_mutated(&*loan_path);
@@ -314,7 +331,7 @@ impl<'a> GatherLoanCtxt<'a> {
                     loan_path: loan_path,
                     kind: req_kind,
                     gen_scope: gen_scope,
-                    kill_scope: kill_scope,
+                    kill_scopes: kill_scopes,
                     span: borrow_span,
                     restricted_paths: restricted_paths,
                     cause: cause,
@@ -380,10 +397,12 @@ impl<'a> GatherLoanCtxt<'a> {
                 ty::MutBorrow => {
                     // Only mutable data can be lent as mutable.
                     if !cmt.mutbl.is_mutable() {
-                        Err(bccx.report(BckError { span: borrow_span,
-                                                   cause: cause,
-                                                   cmt: cmt,
-                                                   code: err_mutbl }))
+                        Err(bccx.report(BckError {
+                                            span: borrow_span,
+                                            cause: cause,
+                                            cmt: cmt,
+                                            code: err_mutbl,
+                                        }))
                     } else {
                         Ok(())
                     }
@@ -413,13 +432,14 @@ impl<'a> GatherLoanCtxt<'a> {
 
     pub fn compute_gen_scope(&self,
                              borrow_id: ast::NodeId,
-                             loan_scope: ast::NodeId)
+                             loan_region: &SemeRegion)
                              -> ast::NodeId {
         //! Determine when to introduce the loan. Typically the loan
         //! is introduced at the point of the borrow, but in some cases,
         //! notably method arguments, the loan may be introduced only
         //! later, once it comes into scope.
 
+        let loan_scope = loan_region.entry;
         if self.bccx.tcx.region_maps.is_subscope_of(borrow_id, loan_scope) {
             borrow_id
         } else {
@@ -427,8 +447,10 @@ impl<'a> GatherLoanCtxt<'a> {
         }
     }
 
-    pub fn compute_kill_scope(&self, loan_scope: ast::NodeId, lp: &LoanPath)
-                              -> ast::NodeId {
+    pub fn compute_kill_scopes(&self,
+                               loan_region: &SemeRegion,
+                               lp: &LoanPath)
+                               -> Vec<ast::NodeId> {
         //! Determine when the loan restrictions go out of scope.
         //! This is either when the lifetime expires or when the
         //! local variable which roots the loan-path goes out of scope,
@@ -449,12 +471,21 @@ impl<'a> GatherLoanCtxt<'a> {
         //! do not require restrictions and hence do not cause a loan.
 
         let lexical_scope = lp.kill_scope(self.bccx.tcx);
+        let loan_scopes = loan_region.exits.as_slice();
+
+        let mut loan_outlives_lexical_scope = true;
         let rm = &self.bccx.tcx.region_maps;
-        if rm.is_subscope_of(lexical_scope, loan_scope) {
-            lexical_scope
+        for loan_scope in loan_scopes.iter() {
+            if !rm.is_subscope_of(lexical_scope, *loan_scope) {
+                loan_outlives_lexical_scope = false;
+                break
+            }
+        }
+
+        if loan_outlives_lexical_scope {
+            vec![lexical_scope]
         } else {
-            assert!(self.bccx.tcx.region_maps.is_subscope_of(loan_scope, lexical_scope));
-            loan_scope
+            loan_scopes.iter().map(|x| (*x).clone()).collect::<Vec<_>>()
         }
     }
 

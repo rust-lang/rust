@@ -14,10 +14,11 @@
  * `ExprUseVisitor` determines how expressions are being used.
  */
 
-use middle::mem_categorization as mc;
 use middle::def;
 use middle::freevars;
+use middle::mem_categorization as mc;
 use middle::pat_util;
+use middle::seme_region::SemeRegion;
 use middle::ty;
 use middle::typeck::{MethodCall, MethodObject, MethodOrigin, MethodParam};
 use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure};
@@ -55,7 +56,7 @@ pub trait Delegate {
               borrow_id: ast::NodeId,
               borrow_span: Span,
               cmt: mc::cmt,
-              loan_region: ty::Region,
+              loan_region: &ty::Region,
               bk: ty::BorrowKind,
               loan_cause: LoanCause);
 
@@ -215,12 +216,13 @@ macro_rules! return_if_err(
 )
 
 impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
-    pub fn new(delegate: &'d mut Delegate,
-               typer: &'t TYPER)
+    pub fn new(delegate: &'d mut Delegate, typer: &'t TYPER)
                -> ExprUseVisitor<'d,'t,TYPER> {
-        ExprUseVisitor { typer: typer,
-                         mc: mc::MemCategorizationContext::new(typer),
-                         delegate: delegate }
+        ExprUseVisitor {
+            typer: typer,
+            mc: mc::MemCategorizationContext::new(typer),
+            delegate: delegate,
+        }
     }
 
     pub fn walk_fn(&mut self,
@@ -236,11 +238,19 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
         for arg in decl.inputs.iter() {
             let arg_ty = return_if_err!(self.typer.node_ty(arg.pat.id));
 
-            let arg_cmt = self.mc.cat_rvalue(
-                arg.id,
-                arg.pat.span,
-                ty::ReScope(body.id), // Args live only as long as the fn body.
-                arg_ty);
+            // Args live only as long as the fn body.
+            let arg_region = match self.typer.loop_analysis() {
+                None => ty::ReStatic,
+                Some(loop_analysis) => {
+                    ty::ReSemeRegion(SemeRegion::from_scope(self.typer.tcx(),
+                                                            loop_analysis,
+                                                            body.id))
+                }
+            };
+            let arg_cmt = self.mc.cat_rvalue(arg.id,
+                                             arg.pat.span,
+                                             arg_region,
+                                             arg_ty);
 
             self.walk_pat(arg_cmt, arg.pat.clone());
         }
@@ -283,7 +293,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
 
     fn borrow_expr(&mut self,
                    expr: &ast::Expr,
-                   r: ty::Region,
+                   r: &ty::Region,
                    bk: ty::BorrowKind,
                    cause: LoanCause) {
         debug!("borrow_expr(expr={}, r={}, bk={})",
@@ -362,7 +372,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 self.walk_expr(&**discr);
                 let discr_cmt = return_if_err!(self.mc.cat_expr(&**discr));
                 for arm in arms.iter() {
-                    self.walk_arm(discr_cmt.clone(), arm);
+                    self.walk_arm(discr_cmt.clone(), &**arm);
                 }
             }
 
@@ -377,7 +387,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 if !ty::type_is_bot(expr_ty) {
                     let r = ty::ty_region(self.tcx(), expr.span, expr_ty);
                     let bk = ty::BorrowKind::from_mutbl(m);
-                    self.borrow_expr(&**base, r, bk, AddrOf);
+                    self.borrow_expr(&**base, &r, bk, AddrOf);
                 } else {
                     self.walk_expr(&**base);
                 }
@@ -415,9 +425,18 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 // Fetch the type of the value that the iteration yields to
                 // produce the pattern's categorized mutable type.
                 let pattern_type = return_if_err!(self.typer.node_ty(pat.id));
+                let pat_region = match self.typer.loop_analysis() {
+                    None => ty::ReStatic,
+                    Some(loop_analysis) => {
+                        ty::ReSemeRegion(
+                            SemeRegion::from_scope(self.typer.tcx(),
+                                                   loop_analysis,
+                                                   blk.id))
+                    }
+                };
                 let pat_cmt = self.mc.cat_rvalue(pat.id,
                                                  pat.span,
-                                                 ty::ReScope(blk.id),
+                                                 pat_region,
                                                  pattern_type);
                 self.walk_pat(pat_cmt, pat.clone());
 
@@ -498,8 +517,20 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
             ty::ty_closure(ref f) => {
                 match f.onceness {
                     ast::Many => {
+                        let region = {
+                            let tcx = self.tcx();
+                            match self.typer.loop_analysis() {
+                                None => ty::ReStatic,
+                                Some(loop_analysis) => {
+                                    ty::ReSemeRegion(
+                                        SemeRegion::from_scope(tcx,
+                                                               loop_analysis,
+                                                               call.id))
+                                }
+                            }
+                        };
                         self.borrow_expr(callee,
-                                         ty::ReScope(call.id),
+                                         &region,
                                          ty::UniqueImmBorrow,
                                          ClosureInvocation);
                     }
@@ -528,14 +559,38 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 };
                 match overloaded_call_type {
                     FnMutOverloadedCall => {
+                        let region = {
+                            let tcx = self.tcx();
+                            match self.typer.loop_analysis() {
+                                None => ty::ReStatic,
+                                Some(loop_analysis) => {
+                                    ty::ReSemeRegion(SemeRegion::from_scope(
+                                        tcx,
+                                        loop_analysis,
+                                        call.id))
+                                }
+                            }
+                        };
                         self.borrow_expr(callee,
-                                         ty::ReScope(call.id),
+                                         &region,
                                          ty::MutBorrow,
                                          ClosureInvocation);
                     }
                     FnOverloadedCall => {
+                        let region = {
+                            let tcx = self.tcx();
+                            match self.typer.loop_analysis() {
+                                None => ty::ReStatic,
+                                Some(loop_analysis) => {
+                                    ty::ReSemeRegion(SemeRegion::from_scope(
+                                        tcx,
+                                        loop_analysis,
+                                        call.id))
+                                }
+                            }
+                        };
                         self.borrow_expr(callee,
-                                         ty::ReScope(call.id),
+                                         &region,
                                          ty::ImmBorrow,
                                          ClosureInvocation);
                     }
@@ -714,14 +769,18 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                     let cmt = return_if_err!(self.mc.cat_expr_autoderefd(expr, i));
                     let self_ty = *ty::ty_fn_args(method_ty).get(0);
                     let (m, r) = match ty::get(self_ty).sty {
-                        ty::ty_rptr(r, ref m) => (m.mutbl, r),
+                        ty::ty_rptr(ref r, ref m) => (m.mutbl, (*r).clone()),
                         _ => self.tcx().sess.span_bug(expr.span,
                                 format!("bad overloaded deref type {}",
                                     method_ty.repr(self.tcx())).as_slice())
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
-                    self.delegate.borrow(expr.id, expr.span, cmt,
-                                         r, bk, AutoRef);
+                    self.delegate.borrow(expr.id,
+                                         expr.span,
+                                         cmt,
+                                         &r,
+                                         bk,
+                                         AutoRef);
                 }
             }
         }
@@ -754,7 +813,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                cmt_derefd.repr(self.tcx()));
 
         match *autoref {
-            ty::AutoPtr(r, m, _) => {
+            ty::AutoPtr(ref r, m, _) => {
                 self.delegate.borrow(expr.id,
                                      expr.span,
                                      cmt_derefd,
@@ -770,8 +829,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                                 expr: &ast::Expr,
                                 receiver: &ast::Expr,
                                 args: &[Gc<ast::Expr>])
-                                -> bool
-    {
+                                -> bool {
         if !self.typer.is_method_call(expr.id) {
             return false;
         }
@@ -782,11 +840,18 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
         // methods are implicitly autoref'd which sadly does not use
         // adjustments, so we must hardcode the borrow here.
 
-        let r = ty::ReScope(expr.id);
+        let r = match self.typer.loop_analysis() {
+            None => ty::ReStatic,
+            Some(loop_analysis) => {
+                ty::ReSemeRegion(SemeRegion::from_scope(self.typer.tcx(),
+                                                        loop_analysis,
+                                                        expr.id))
+            }
+        };
         let bk = ty::ImmBorrow;
 
         for arg in args.iter() {
-            self.borrow_expr(&**arg, r, bk, OverloadedOperator);
+            self.borrow_expr(&**arg, &r, bk, OverloadedOperator);
         }
         return true;
     }
@@ -839,8 +904,12 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                             (ty::ty_region(tcx, pat.span, pat_ty),
                              ty::BorrowKind::from_mutbl(m))
                         };
-                        delegate.borrow(pat.id, pat.span, cmt_pat,
-                                             r, bk, RefBinding);
+                        delegate.borrow(pat.id,
+                                        pat.span,
+                                        cmt_pat,
+                                        &r,
+                                        bk,
+                                        RefBinding);
                     }
                     ast::PatIdent(ast::BindByValue(_), _, _) => {
                         let mode = copy_or_move(typer.tcx(), cmt_pat.ty, PatBindingMove);
@@ -892,9 +961,12 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                         // to just require that people call
                         // `vec.pop()` or `vec.unshift()`.
                         let slice_bk = ty::BorrowKind::from_mutbl(slice_mutbl);
-                        delegate.borrow(pat.id, pat.span,
-                                        slice_cmt, slice_r,
-                                        slice_bk, RefBinding);
+                        delegate.borrow(pat.id,
+                                        pat.span,
+                                        slice_cmt,
+                                        &slice_r,
+                                        slice_bk,
+                                        RefBinding);
                     }
                     _ => { }
                 }
@@ -937,7 +1009,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
             self.delegate.borrow(closure_expr.id,
                                  closure_expr.span,
                                  cmt_var,
-                                 upvar_borrow.region,
+                                 &upvar_borrow.region,
                                  upvar_borrow.kind,
                                  ClosureCapture(freevar.span));
         }

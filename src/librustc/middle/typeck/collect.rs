@@ -1416,7 +1416,7 @@ fn check_method_self_type<RS:RegionScope>(
                 format!("mismatched self type: expected `{}`",
                         ppaux::ty_to_string(crate_context.tcx, required_type))
             }));
-            infcx.resolve_regions_and_report_errors();
+            infcx.resolve_regions_and_report_errors(None);
         }
         _ => {}
     }

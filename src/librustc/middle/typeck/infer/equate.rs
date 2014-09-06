@@ -47,17 +47,18 @@ impl<'f> Combine for Equate<'f> {
         self.tys(a, b)
     }
 
-    fn contraregions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
+    fn contraregions(&self, a: &ty::Region, b: &ty::Region)
+                     -> cres<ty::Region> {
         self.regions(a, b)
     }
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
+    fn regions(&self, a: &ty::Region, b: &ty::Region) -> cres<ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
                a.repr(self.fields.infcx.tcx),
                b.repr(self.fields.infcx.tcx));
         self.infcx().region_vars.make_eqregion(Subtype(self.trace()), a, b);
-        Ok(a)
+        Ok((*a).clone())
     }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {

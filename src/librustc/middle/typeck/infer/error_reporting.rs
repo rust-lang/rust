@@ -98,8 +98,7 @@ use util::ppaux::note_and_explain_region;
 use util::ppaux::UserString;
 
 pub trait ErrorReporting {
-    fn report_region_errors(&self,
-                            errors: &Vec<RegionResolutionError>);
+    fn report_region_errors(&self, errors: &Vec<RegionResolutionError>);
 
     fn process_errors(&self, errors: &Vec<RegionResolutionError>)
                       -> Vec<RegionResolutionError>;
@@ -119,28 +118,28 @@ pub trait ErrorReporting {
 
     fn report_concrete_failure(&self,
                                origin: SubregionOrigin,
-                               sub: Region,
-                               sup: Region);
+                               sub: &Region,
+                               sup: &Region);
 
     fn report_param_bound_failure(&self,
-                                  origin: SubregionOrigin,
+                                  origin: &SubregionOrigin,
                                   param_ty: ty::ParamTy,
-                                  sub: Region,
-                                  sups: Vec<Region>);
+                                  sub: &Region,
+                                  sups: &[Region]);
 
     fn report_sub_sup_conflict(&self,
-                               var_origin: RegionVariableOrigin,
-                               sub_origin: SubregionOrigin,
-                               sub_region: Region,
-                               sup_origin: SubregionOrigin,
-                               sup_region: Region);
+                               var_origin: &RegionVariableOrigin,
+                               sub_origin: &SubregionOrigin,
+                               sub_region: &Region,
+                               sup_origin: &SubregionOrigin,
+                               sup_region: &Region);
 
     fn report_sup_sup_conflict(&self,
-                               var_origin: RegionVariableOrigin,
-                               origin1: SubregionOrigin,
-                               region1: Region,
-                               origin2: SubregionOrigin,
-                               region2: Region);
+                               var_origin: &RegionVariableOrigin,
+                               origin1: &SubregionOrigin,
+                               region1: &Region,
+                               origin2: &SubregionOrigin,
+                               region2: &Region);
 
     fn report_processed_errors(&self,
                                var_origin: &[RegionVariableOrigin],
@@ -151,11 +150,9 @@ pub trait ErrorReporting {
 }
 
 trait ErrorReportingHelpers {
-    fn report_inference_failure(&self,
-                                var_origin: RegionVariableOrigin);
+    fn report_inference_failure(&self, var_origin: &RegionVariableOrigin);
 
-    fn note_region_origin(&self,
-                          origin: &SubregionOrigin);
+    fn note_region_origin(&self, origin: &SubregionOrigin);
 
     fn give_expl_lifetime_param(&self,
                                 decl: &ast::FnDecl,
@@ -167,31 +164,38 @@ trait ErrorReportingHelpers {
 }
 
 impl<'a> ErrorReporting for InferCtxt<'a> {
-    fn report_region_errors(&self,
-                            errors: &Vec<RegionResolutionError>) {
+    fn report_region_errors(&self, errors: &Vec<RegionResolutionError>) {
         let p_errors = self.process_errors(errors);
         let errors = if p_errors.is_empty() { errors } else { &p_errors };
         for error in errors.iter() {
             match error.clone() {
-                ConcreteFailure(origin, sub, sup) => {
-                    self.report_concrete_failure(origin, sub, sup);
+                ConcreteFailure(ref origin, ref sub, ref sup) => {
+                    self.report_concrete_failure((*origin).clone(),
+                                                 sub,
+                                                 sup);
                 }
 
-                ParamBoundFailure(origin, param_ty, sub, sups) => {
-                    self.report_param_bound_failure(origin, param_ty, sub, sups);
+                ParamBoundFailure(ref origin,
+                                  param_ty,
+                                  ref sub,
+                                  ref sups) => {
+                    self.report_param_bound_failure(origin,
+                                                    param_ty,
+                                                    sub,
+                                                    sups.as_slice());
                 }
 
-                SubSupConflict(var_origin,
-                               sub_origin, sub_r,
-                               sup_origin, sup_r) => {
+                SubSupConflict(ref var_origin,
+                               ref sub_origin, ref sub_r,
+                               ref sup_origin, ref sup_r) => {
                     self.report_sub_sup_conflict(var_origin,
                                                  sub_origin, sub_r,
                                                  sup_origin, sup_r);
                 }
 
-                SupSupConflict(var_origin,
-                               origin1, r1,
-                               origin2, r2) => {
+                SupSupConflict(ref var_origin,
+                               ref origin1, ref r1,
+                               ref origin2, ref r2) => {
                     self.report_sup_sup_conflict(var_origin,
                                                  origin1, r1,
                                                  origin2, r2);
@@ -231,7 +235,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                         infer::Subtype(trace) => Some(trace),
                         _ => None,
                     };
-                    match free_regions_from_same_fn(self.tcx, sub, sup) {
+                    match free_regions_from_same_fn(self.tcx, &sub, &sup) {
                         Some(ref same_frs) if trace.is_some() => {
                             let trace = trace.unwrap();
                             let terr = ty::terr_regions_does_not_outlive(sup,
@@ -244,7 +248,9 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                 }
                 SubSupConflict(var_origin, _, sub_r, _, sup_r) => {
                     debug!("processing SubSupConflict")
-                    match free_regions_from_same_fn(self.tcx, sub_r, sup_r) {
+                    match free_regions_from_same_fn(self.tcx,
+                                                    &sub_r,
+                                                    &sup_r) {
                         Some(ref same_frs) => {
                             var_origins.push(var_origin);
                             append_to_same_regions(&mut same_regions, same_frs);
@@ -295,17 +301,17 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
         }
 
         fn free_regions_from_same_fn(tcx: &ty::ctxt,
-                                     sub: Region,
-                                     sup: Region)
+                                     sub: &Region,
+                                     sup: &Region)
                                      -> Option<FreeRegionsFromSameFn> {
             debug!("free_regions_from_same_fn(sub={:?}, sup={:?})", sub, sup);
             let (scope_id, fr1, fr2) = match (sub, sup) {
-                (ReFree(fr1), ReFree(fr2)) => {
+                (&ReFree(ref fr1), &ReFree(ref fr2)) => {
                     if fr1.scope_id != fr2.scope_id {
                         return None
                     }
                     assert!(fr1.scope_id == fr2.scope_id);
-                    (fr1.scope_id, fr1, fr2)
+                    (fr1.scope_id, (*fr1).clone(), (*fr2).clone())
                 },
                 _ => return None
             };
@@ -386,7 +392,6 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                                      trace: TypeTrace,
                                      terr: &ty::type_err) {
         self.report_type_error(trace, terr);
-        ty::note_and_explain_type_err(self.tcx, terr);
     }
 
     fn values_str(&self, values: &ValuePairs) -> Option<String> {
@@ -425,17 +430,17 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
     }
 
     fn report_param_bound_failure(&self,
-                                  origin: SubregionOrigin,
+                                  origin: &SubregionOrigin,
                                   param_ty: ty::ParamTy,
-                                  sub: Region,
-                                  _sups: Vec<Region>) {
+                                  sub: &Region,
+                                  _sups: &[Region]) {
 
         // FIXME: it would be better to report the first error message
         // with the span of the parameter itself, rather than the span
         // where the error was detected. But that span is not readily
         // accessible.
 
-        match sub {
+        match *sub {
             ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
                 // Does the required lifetime have a nice name we can print?
                 self.tcx.sess.span_err(
@@ -477,16 +482,17 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             }
         }
 
-        self.note_region_origin(&origin);
+        self.note_region_origin(origin);
     }
 
     fn report_concrete_failure(&self,
                                origin: SubregionOrigin,
-                               sub: Region,
-                               sup: Region) {
+                               sub: &Region,
+                               sup: &Region) {
         match origin {
             infer::Subtype(trace) => {
-                let terr = ty::terr_regions_does_not_outlive(sup, sub);
+                let terr = ty::terr_regions_does_not_outlive((*sup).clone(),
+                                                             (*sub).clone());
                 self.report_and_explain_type_error(trace, &terr);
             }
             infer::Reborrow(span) => {
@@ -785,11 +791,11 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
     }
 
     fn report_sub_sup_conflict(&self,
-                               var_origin: RegionVariableOrigin,
-                               sub_origin: SubregionOrigin,
-                               sub_region: Region,
-                               sup_origin: SubregionOrigin,
-                               sup_region: Region) {
+                               var_origin: &RegionVariableOrigin,
+                               sub_origin: &SubregionOrigin,
+                               sub_region: &Region,
+                               sup_origin: &SubregionOrigin,
+                               sup_region: &Region) {
         self.report_inference_failure(var_origin);
 
         note_and_explain_region(
@@ -798,7 +804,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             sup_region,
             "...");
 
-        self.note_region_origin(&sup_origin);
+        self.note_region_origin(sup_origin);
 
         note_and_explain_region(
             self.tcx,
@@ -806,15 +812,15 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             sub_region,
             "...");
 
-        self.note_region_origin(&sub_origin);
+        self.note_region_origin(sub_origin);
     }
 
     fn report_sup_sup_conflict(&self,
-                               var_origin: RegionVariableOrigin,
-                               origin1: SubregionOrigin,
-                               region1: Region,
-                               origin2: SubregionOrigin,
-                               region2: Region) {
+                               var_origin: &RegionVariableOrigin,
+                               origin1: &SubregionOrigin,
+                               region1: &Region,
+                               origin2: &SubregionOrigin,
+                               region2: &Region) {
         self.report_inference_failure(var_origin);
 
         note_and_explain_region(
@@ -823,7 +829,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             region1,
             "...");
 
-        self.note_region_origin(&origin1);
+        self.note_region_origin(origin1);
 
         note_and_explain_region(
             self.tcx,
@@ -831,7 +837,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             region2,
             "...");
 
-        self.note_region_origin(&origin2);
+        self.note_region_origin(origin2);
     }
 
     fn report_processed_errors(&self,
@@ -839,11 +845,11 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                                trace_origins: &[(TypeTrace, ty::type_err)],
                                same_regions: &[SameRegions]) {
         for vo in var_origins.iter() {
-            self.report_inference_failure(vo.clone());
+            self.report_inference_failure(vo);
         }
         self.give_suggestion(same_regions);
-        for &(ref trace, terr) in trace_origins.iter() {
-            self.report_type_error(trace.clone(), &terr);
+        for &(ref trace, ref terr) in trace_origins.iter() {
+            self.report_type_error(trace.clone(), terr);
         }
     }
 
@@ -1418,9 +1424,8 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
         self.tcx.sess.span_note(span, msg.as_slice());
     }
 
-    fn report_inference_failure(&self,
-                                var_origin: RegionVariableOrigin) {
-        let var_description = match var_origin {
+    fn report_inference_failure(&self, var_origin: &RegionVariableOrigin) {
+        let var_description = match *var_origin {
             infer::MiscVariable(_) => "".to_string(),
             infer::PatternRegion(_) => " for pattern".to_string(),
             infer::AddrOfRegion(_) => " for borrow expression".to_string(),

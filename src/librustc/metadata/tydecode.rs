@@ -16,6 +16,7 @@
 
 #![allow(non_camel_case_types)]
 
+use middle::seme_region::SemeRegion;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty;
@@ -310,9 +311,13 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
                                     bound_region: br})
       }
       's' => {
-        let id = parse_uint(st) as ast::NodeId;
-        assert_eq!(next(st), '|');
-        ty::ReScope(id)
+        assert_eq!(next(st), '[');
+        let entry = parse_uint(st) as ast::NodeId;
+        let mut exits = Vec::new();
+        while next(st) == '|' {
+            exits.push(parse_uint(st) as ast::NodeId);
+        }
+        ty::ReSemeRegion(SemeRegion::new(entry, exits))
       }
       't' => {
         ty::ReStatic

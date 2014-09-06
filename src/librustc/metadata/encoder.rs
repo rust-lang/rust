@@ -198,7 +198,7 @@ pub fn write_type(ecx: &EncodeContext,
 
 pub fn write_region(ecx: &EncodeContext,
                     rbml_w: &mut Encoder,
-                    r: ty::Region) {
+                    r: &ty::Region) {
     let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_string,
@@ -231,9 +231,7 @@ fn encode_type(ecx: &EncodeContext,
     rbml_w.end_tag();
 }
 
-fn encode_region(ecx: &EncodeContext,
-                 rbml_w: &mut Encoder,
-                 r: ty::Region) {
+fn encode_region(ecx: &EncodeContext, rbml_w: &mut Encoder, r: &ty::Region) {
     rbml_w.start_tag(tag_items_data_region);
     write_region(ecx, rbml_w, r);
     rbml_w.end_tag();
@@ -822,7 +820,7 @@ fn encode_generics(rbml_w: &mut Encoder,
         rbml_w.wr_tagged_u64(tag_region_param_def_index,
                              param.index as u64);
 
-        for &bound_region in param.bounds.iter() {
+        for bound_region in param.bounds.iter() {
             encode_region(ecx, rbml_w, bound_region);
         }
 

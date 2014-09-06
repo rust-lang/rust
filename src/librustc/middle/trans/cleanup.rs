@@ -100,8 +100,31 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         // now we just say that if there is already an AST scope on the stack,
         // this new AST scope had better be its immediate child.
         let top_scope = self.top_ast_scope();
-        if top_scope.is_some() {
-            assert_eq!(self.ccx.tcx.region_maps.opt_encl_scope(id), top_scope);
+        match top_scope {
+            None => {}
+            Some(top_scope) => {
+                let encl_scope = self.ccx.tcx.region_maps.encl_scope(id);
+                if encl_scope != top_scope {
+                    self.ccx
+                        .tcx
+                        .sess
+                        .bug(format!("typeck expected enclosing scope to be \
+                                      {}, but trans thinks it's {} when \
+                                      pushing {}",
+                                     self.ccx
+                                         .tcx
+                                         .map
+                                         .node_to_string(encl_scope),
+                                     self.ccx
+                                         .tcx
+                                         .map
+                                         .node_to_string(top_scope),
+                                     self.ccx
+                                         .tcx
+                                         .map
+                                         .node_to_string(id)).as_slice())
+                }
+            }
         }
 
         self.push_scope(CleanupScope::new(AstScopeKind(id)));

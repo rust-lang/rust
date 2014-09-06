@@ -139,7 +139,7 @@ pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
                 }
 
                 Ok(rs) => {
-                    *rs.get(0)
+                    (*rs.get(0)).clone()
                 }
             }
         }
@@ -526,7 +526,7 @@ impl PointerTy {
         match *self {
             Box => ty::ReStatic,
             Uniq => ty::ReStatic,
-            RPtr(r) => r,
+            RPtr(ref r) => (*r).clone(),
         }
     }
 }
@@ -739,8 +739,12 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             ast::TyRptr(ref region, ref mt) => {
                 let r = opt_ast_region_to_region(this, rscope, ast_ty.span, region);
                 debug!("ty_rptr r={}", r.repr(this.tcx()));
-                mk_pointer(this, rscope, mt, RPtr(r),
-                           |ty| ty::mk_rptr(tcx, r, ty::mt {ty: ty, mutbl: mt.mutbl}))
+                mk_pointer(this, rscope, mt, RPtr(r.clone()), |ty| {
+                               ty::mk_rptr(tcx, r.clone(), ty::mt {
+                                   ty: ty,
+                                   mutbl: mt.mutbl,
+                               })
+                           })
             }
             ast::TyTup(ref fields) => {
                 let flds = fields.iter()
@@ -769,9 +773,9 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                             ast_ty.id,
                                             f.fn_style,
                                             f.onceness,
-                                            bounds,
+                                            &bounds,
                                             ty::RegionTraitStore(
-                                                bounds.region_bound,
+                                                bounds.region_bound.clone(),
                                                 ast::MutMutable),
                                             &*f.decl,
                                             abi::Rust,
@@ -790,7 +794,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                             ast_ty.id,
                                             f.fn_style,
                                             f.onceness,
-                                            bounds,
+                                            &bounds,
                                             ty::UniqTraitStore,
                                             &*f.decl,
                                             abi::Rust,
@@ -986,7 +990,8 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
             // Figure out and record the explicit self category.
             let explicit_self_category =
                 determine_explicit_self_category(this, &rb, &self_info);
-            explicit_self_category_result = Some(explicit_self_category);
+            explicit_self_category_result =
+                Some(explicit_self_category.clone());
             match explicit_self_category {
                 ty::StaticExplicitSelfCategory => (None, None),
                 ty::ByValueExplicitSelfCategory => {
@@ -994,7 +999,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
                 }
                 ty::ByReferenceExplicitSelfCategory(region, mutability) => {
                     (Some(ty::mk_rptr(this.tcx(),
-                                      region,
+                                      region.clone(),
                                       ty::mt {
                                         ty: self_info.untransformed_self_ty,
                                         mutbl: mutability
@@ -1035,7 +1040,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
             ty::accumulate_lifetimes_in_type(&mut accumulator, *input_type)
         }
         if accumulator.len() == 1 {
-            implied_output_region = Some(*accumulator.get(0));
+            implied_output_region = Some((*accumulator.get(0)).clone());
         }
     }
 
@@ -1044,7 +1049,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
         _ => {
             match implied_output_region {
                 Some(implied_output_region) => {
-                    let rb = SpecificRscope::new(implied_output_region);
+                    let rb = SpecificRscope::new(&implied_output_region);
                     ast_ty_to_ty(this, &rb, &*decl.output)
                 }
                 None => {
@@ -1102,7 +1107,8 @@ fn determine_explicit_self_category<AC:AstConv,
                     actual_self);
                 match result {
                     Ok(_) => {
-                        inference_context.resolve_regions_and_report_errors();
+                        inference_context.resolve_regions_and_report_errors(
+                            None);
                         return ty::ByValueExplicitSelfCategory
                     }
                     Err(_) => {}
@@ -1110,7 +1116,7 @@ fn determine_explicit_self_category<AC:AstConv,
             }
 
             match ty::get(explicit_type).sty {
-                ty::ty_rptr(region, tm) => {
+                ty::ty_rptr(ref region, tm) => {
                     typeck::require_same_types(
                         this.tcx(),
                         None,
@@ -1119,8 +1125,9 @@ fn determine_explicit_self_category<AC:AstConv,
                         self_info.untransformed_self_ty,
                         tm.ty,
                         || "not a valid type for `self`".to_owned());
-                    return ty::ByReferenceExplicitSelfCategory(region,
-                                                               tm.mutbl)
+                    return ty::ByReferenceExplicitSelfCategory(
+                        (*region).clone(),
+                        tm.mutbl)
                 }
                 ty::ty_uniq(typ) => {
                     typeck::require_same_types(
@@ -1145,18 +1152,18 @@ fn determine_explicit_self_category<AC:AstConv,
     }
 }
 
-pub fn ty_of_closure<AC:AstConv>(
-    this: &AC,
-    id: ast::NodeId,
-    fn_style: ast::FnStyle,
-    onceness: ast::Onceness,
-    bounds: ty::ExistentialBounds,
-    store: ty::TraitStore,
-    decl: &ast::FnDecl,
-    abi: abi::Abi,
-    expected_sig: Option<ty::FnSig>)
-    -> ty::ClosureTy
-{
+pub fn ty_of_closure<AC>(
+                     this: &AC,
+                     id: ast::NodeId,
+                     fn_style: ast::FnStyle,
+                     onceness: ast::Onceness,
+                     bounds: &ty::ExistentialBounds,
+                     store: ty::TraitStore,
+                     decl: &ast::FnDecl,
+                     abi: abi::Abi,
+                     expected_sig: Option<ty::FnSig>)
+                     -> ty::ClosureTy
+                     where AC: AstConv {
     debug!("ty_of_fn_decl");
 
     // new region names that appear inside of the fn decl are bound to
@@ -1187,7 +1194,7 @@ pub fn ty_of_closure<AC:AstConv>(
         fn_style: fn_style,
         onceness: onceness,
         store: store,
-        bounds: bounds,
+        bounds: (*bounds).clone(),
         abi: abi,
         sig: ty::FnSig {binder_id: id,
                         inputs: input_tys,
@@ -1320,7 +1327,7 @@ pub fn compute_opt_region_bound(tcx: &ty::ctxt,
     // Determine whether there is exactly one unique region in the set
     // of derived region bounds. If so, use that. Otherwise, report an
     // error.
-    let r = *derived_region_bounds.get(0);
+    let r = (*derived_region_bounds.get(0)).clone();
     if derived_region_bounds.slice_from(1).iter().any(|r1| r != *r1) {
         tcx.sess.span_err(
             span,

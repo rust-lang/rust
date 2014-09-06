@@ -25,6 +25,7 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
 use metadata::tydecode::{RegionParameter};
 use metadata::tyencode;
+use middle::seme_region::SemeRegion;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::typeck::{MethodCall, MethodCallee, MethodOrigin};
@@ -506,16 +507,23 @@ impl tr for ty::Region {
             ty::ReEarlyBound(id, space, index, ident) => {
                 ty::ReEarlyBound(xcx.tr_id(id), space, index, ident)
             }
-            ty::ReScope(id) => {
-                ty::ReScope(xcx.tr_id(id))
+            ty::ReSemeRegion(ref seme_region) => {
+                ty::ReSemeRegion(seme_region.tr(xcx))
             }
-            ty::ReEmpty | ty::ReStatic | ty::ReInfer(..) => {
-                *self
-            }
+            ty::ReEmpty | ty::ReStatic | ty::ReInfer(..) => (*self).clone(),
             ty::ReFree(ref fr) => {
                 ty::ReFree(ty::FreeRegion {scope_id: xcx.tr_id(fr.scope_id),
                                             bound_region: fr.bound_region.tr(xcx)})
             }
+        }
+    }
+}
+
+impl tr for SemeRegion {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> SemeRegion {
+        SemeRegion {
+            entry: xcx.tr_id(self.entry),
+            exits: self.exits.iter().map(|id| xcx.tr_id(*id)).collect(),
         }
     }
 }
@@ -534,7 +542,7 @@ impl tr for ty::BoundRegion {
 impl tr for ty::TraitStore {
     fn tr(&self, xcx: &ExtendedDecodeContext) -> ty::TraitStore {
         match *self {
-            ty::RegionTraitStore(r, m) => {
+            ty::RegionTraitStore(ref r, m) => {
                 ty::RegionTraitStore(r.tr(xcx), m)
             }
             ty::UniqTraitStore => ty::UniqTraitStore
@@ -1026,7 +1034,7 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
 
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
-                ty::AutoAddEnv(store) => {
+                ty::AutoAddEnv(ref store) => {
                     this.emit_enum_variant("AutoAddEnv", 0, 1, |this| {
                         this.emit_enum_variant_arg(0, |this| store.encode(this))
                     })
@@ -1047,7 +1055,7 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
 
         self.emit_enum("AutoRef", |this| {
             match autoref {
-                &ty::AutoPtr(r, m, None) => {
+                &ty::AutoPtr(ref r, m, None) => {
                     this.emit_enum_variant("AutoPtr", 0, 3, |this| {
                         this.emit_enum_variant_arg(0, |this| r.encode(this));
                         this.emit_enum_variant_arg(1, |this| m.encode(this));
@@ -1055,7 +1063,7 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
                             |this| this.emit_option(|this| this.emit_option_none()))
                     })
                 }
-                &ty::AutoPtr(r, m, Some(box ref a)) => {
+                &ty::AutoPtr(ref r, m, Some(box ref a)) => {
                     this.emit_enum_variant("AutoPtr", 0, 3, |this| {
                         this.emit_enum_variant_arg(0, |this| r.encode(this));
                         this.emit_enum_variant_arg(1, |this| m.encode(this));

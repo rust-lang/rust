@@ -354,7 +354,6 @@ pub fn require_same_types(tcx: &ty::ctxt,
                                       msg(),
                                       ty::type_err_to_str(tcx,
                                                           terr)).as_slice());
-            ty::note_and_explain_type_err(tcx, terr);
             false
         }
     }

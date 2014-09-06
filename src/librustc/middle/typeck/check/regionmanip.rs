@@ -33,11 +33,11 @@ pub fn replace_late_bound_regions_in_fn_sig(
     let fn_sig = {
         let mut f = ty_fold::RegionFolder::regions(tcx, |r| {
             debug!("region r={}", r.to_string());
-            match r {
+            match *r {
                 ty::ReLateBound(s, br) if s == fn_sig.binder_id => {
-                    *map.find_or_insert_with(br, |_| mapf(br))
+                    (*map.find_or_insert_with(br, |_| mapf(br))).clone()
                 }
-                _ => r
+                _ => (*r).clone()
             }
         });
         ty_fold::super_fold_sig(&mut f, fn_sig)
@@ -57,12 +57,10 @@ struct Wf<'a> {
     out: Vec<WfConstraint>,
 }
 
-pub fn region_wf_constraints(
-    tcx: &ty::ctxt,
-    ty: ty::t,
-    outer_region: ty::Region)
-    -> Vec<WfConstraint>
-{
+pub fn region_wf_constraints(tcx: &ty::ctxt,
+                             ty: ty::t,
+                             outer_region: &ty::Region)
+                             -> Vec<WfConstraint> {
     /*!
      * This routine computes the well-formedness constraints that must
      * hold for the type `ty` to appear in a context with lifetime
@@ -70,7 +68,7 @@ pub fn region_wf_constraints(
      */
 
     let mut stack = Vec::new();
-    stack.push((outer_region, None));
+    stack.push(((*outer_region).clone(), None));
     let mut wf = Wf { tcx: tcx,
                       stack: stack,
                       out: Vec::new() };
@@ -101,7 +99,7 @@ impl<'a> Wf<'a> {
                 self.accumulate_from_closure_ty(ty, c);
             }
 
-            ty::ty_unboxed_closure(_, region) => {
+            ty::ty_unboxed_closure(_, ref region) => {
                 // An "unboxed closure type" is basically
                 // modeled here as equivalent to a struct like
                 //
@@ -130,7 +128,7 @@ impl<'a> Wf<'a> {
                 self.accumulate_from_ty(t)
             }
 
-            ty::ty_rptr(r_b, mt) => {
+            ty::ty_rptr(ref r_b, mt) => {
                 self.accumulate_from_rptr(ty, r_b, mt.ty);
             }
 
@@ -162,7 +160,7 @@ impl<'a> Wf<'a> {
 
     fn accumulate_from_rptr(&mut self,
                             ty: ty::t,
-                            r_b: ty::Region,
+                            r_b: &ty::Region,
                             ty_b: ty::t) {
         // We are walking down a type like this, and current
         // position is indicated by caret:
@@ -178,13 +176,12 @@ impl<'a> Wf<'a> {
         // Now we push `'b` onto the stack, because it must
         // constrain any borrowed content we find within `T`.
 
-        self.stack.push((r_b, Some(ty)));
+        self.stack.push(((*r_b).clone(), Some(ty)));
         self.accumulate_from_ty(ty_b);
         self.stack.pop().unwrap();
     }
 
-    fn push_region_constraint_from_top(&mut self,
-                                       r_b: ty::Region) {
+    fn push_region_constraint_from_top(&mut self, r_b: &ty::Region) {
         /*!
          * Pushes a constraint that `r_b` must outlive the
          * top region on the stack.
@@ -203,42 +200,44 @@ impl<'a> Wf<'a> {
         // be on top of stack and `'b` will be the lifetime of the content
         // we just found. So we add constraint that `'a <= 'b`.
 
-        let &(r_a, opt_ty) = self.stack.last().unwrap();
-        self.push_sub_region_constraint(opt_ty, r_a, r_b);
+        let (r_a, opt_ty) = (*self.stack.last().unwrap()).clone();
+        self.push_sub_region_constraint(opt_ty, &r_a, r_b);
     }
 
     fn push_sub_region_constraint(&mut self,
                                   opt_ty: Option<ty::t>,
-                                  r_a: ty::Region,
-                                  r_b: ty::Region) {
+                                  r_a: &ty::Region,
+                                  r_b: &ty::Region) {
         /*! Pushes a constraint that `r_a <= r_b`, due to `opt_ty` */
-        self.out.push(RegionSubRegionConstraint(opt_ty, r_a, r_b));
+        self.out.push(RegionSubRegionConstraint(opt_ty,
+                                                (*r_a).clone(),
+                                                (*r_b).clone()));
     }
 
-    fn push_param_constraint_from_top(&mut self,
-                                      param_ty: ty::ParamTy) {
+    fn push_param_constraint_from_top(&mut self, param_ty: ty::ParamTy) {
         /*!
          * Pushes a constraint that `param_ty` must outlive the
          * top region on the stack.
          */
 
-        let &(region, opt_ty) = self.stack.last().unwrap();
-        self.push_param_constraint(region, opt_ty, param_ty);
+        let (region, opt_ty) = (*self.stack.last().unwrap()).clone();
+        self.push_param_constraint(&region, opt_ty, param_ty);
     }
 
     fn push_param_constraint(&mut self,
-                             region: ty::Region,
+                             region: &ty::Region,
                              opt_ty: Option<ty::t>,
                              param_ty: ty::ParamTy) {
         /*! Pushes a constraint that `region <= param_ty`, due to `opt_ty` */
-        self.out.push(RegionSubParamConstraint(opt_ty, region, param_ty));
+        self.out.push(RegionSubParamConstraint(opt_ty,
+                                               (*region).clone(),
+                                               param_ty));
     }
 
     fn accumulate_from_adt(&mut self,
                            ty: ty::t,
                            def_id: ast::DefId,
-                           substs: &Substs)
-    {
+                           substs: &Substs) {
         // The generic declarations from the type, appropriately
         // substituted for the actual substitutions.
         let generics =
@@ -254,7 +253,7 @@ impl<'a> Wf<'a> {
             let region_variances = variances.regions.get_slice(space);
             let region_param_defs = generics.regions.get_slice(space);
             assert_eq!(region_params.len(), region_variances.len());
-            for (&region_param, (&region_variance, region_param_def)) in
+            for (region_param, (&region_variance, region_param_def)) in
                 region_params.iter().zip(
                     region_variances.iter().zip(
                         region_param_defs.iter()))
@@ -285,7 +284,7 @@ impl<'a> Wf<'a> {
                     }
                 }
 
-                for &region_bound in region_param_def.bounds.iter() {
+                for region_bound in region_param_def.bounds.iter() {
                     // The type declared a constraint like
                     //
                     //     'b : 'a
@@ -327,8 +326,8 @@ impl<'a> Wf<'a> {
 
                 // Inspect bounds on this type parameter for any
                 // region bounds.
-                for &r in type_param_def.bounds.opt_region_bound.iter() {
-                    self.stack.push((r, Some(ty)));
+                for r in type_param_def.bounds.opt_region_bound.iter() {
+                    self.stack.push(((*r).clone(), Some(ty)));
                     self.accumulate_from_ty(type_param_ty);
                     self.stack.pop().unwrap();
                 }
@@ -336,12 +335,9 @@ impl<'a> Wf<'a> {
         }
     }
 
-    fn accumulate_from_closure_ty(&mut self,
-                                  ty: ty::t,
-                                  c: &ty::ClosureTy)
-    {
+    fn accumulate_from_closure_ty(&mut self, ty: ty::t, c: &ty::ClosureTy) {
         match c.store {
-            ty::RegionTraitStore(r_b, _) => {
+            ty::RegionTraitStore(ref r_b, _) => {
                 self.push_region_constraint_from_top(r_b);
             }
             ty::UniqTraitStore => { }
@@ -388,7 +384,7 @@ impl<'a> Wf<'a> {
 
         // The content of this object type must outlive
         // `bounds.region_bound`:
-        let r_c = bounds.region_bound;
+        let r_c = &bounds.region_bound;
         self.push_region_constraint_from_top(r_c);
 
         // And then, in turn, to be well-formed, the
@@ -399,10 +395,12 @@ impl<'a> Wf<'a> {
                                        [],
                                        bounds.builtin_bounds,
                                        []);
-        for &r_d in required_region_bounds.iter() {
+        for r_d in required_region_bounds.iter() {
             // Each of these is an instance of the `'c <= 'b`
             // constraint above
-            self.out.push(RegionSubRegionConstraint(Some(ty), r_d, r_c));
+            self.out.push(RegionSubRegionConstraint(Some(ty),
+                                                    (*r_d).clone(),
+                                                    (*r_c).clone()));
         }
     }
 }

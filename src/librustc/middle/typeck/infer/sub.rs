@@ -52,22 +52,24 @@ impl<'f> Combine for Sub<'f> {
         Sub(self.fields.switch_expected()).tys(b, a)
     }
 
-    fn contraregions(&self, a: ty::Region, b: ty::Region)
-                     -> cres<ty::Region> {
-                         let opp = CombineFields {
-                             a_is_expected: !self.fields.a_is_expected,
-                             ..self.fields.clone()
-                         };
-                         Sub(opp).regions(b, a)
-                     }
+    fn contraregions(&self, a: &ty::Region, b: &ty::Region)
+                    -> cres<ty::Region> {
+        let opp = CombineFields {
+            a_is_expected: !self.fields.a_is_expected,
+            ..self.fields.clone()
+        };
+        Sub(opp).regions(b, a)
+    }
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
+    fn regions(&self, a: &ty::Region, b: &ty::Region) -> cres<ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
                a.repr(self.fields.infcx.tcx),
                b.repr(self.fields.infcx.tcx));
-        self.fields.infcx.region_vars.make_subregion(Subtype(self.trace()), a, b);
-        Ok(a)
+        self.fields.infcx.region_vars.make_subregion(Subtype(self.trace()),
+                                                     a,
+                                                     b);
+        Ok((*a).clone())
     }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
@@ -217,7 +219,7 @@ impl<'f> Combine for Sub<'f> {
         // that the skolemized regions do not "leak".
         let new_vars =
             self.fields.infcx.region_vars.vars_created_since_mark(mark);
-        for (&skol_br, &skol) in skol_map.iter() {
+        for (&skol_br, skol) in skol_map.iter() {
             let tainted = self.fields.infcx.region_vars.tainted(mark, skol);
             for tainted_region in tainted.iter() {
                 // Each skolemized should only be relatable to itself
@@ -227,7 +229,7 @@ impl<'f> Combine for Sub<'f> {
                         if new_vars.iter().any(|x| x == vid) { continue; }
                     }
                     _ => {
-                        if *tainted_region == skol { continue; }
+                        if *tainted_region == *skol { continue; }
                     }
                 };
 
@@ -235,11 +237,13 @@ impl<'f> Combine for Sub<'f> {
                 if self.a_is_expected() {
                     debug!("Not as polymorphic!");
                     return Err(ty::terr_regions_insufficiently_polymorphic(
-                        skol_br, *tainted_region));
+                            skol_br,
+                            (*tainted_region).clone()));
                 } else {
                     debug!("Overly polymorphic!");
                     return Err(ty::terr_regions_overly_polymorphic(
-                        skol_br, *tainted_region));
+                            skol_br,
+                            (*tainted_region).clone()));
                 }
             }
         }

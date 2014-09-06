@@ -1014,7 +1014,12 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             let store = ty::ty_closure_store(expr_ty);
             debug!("translating block function {} with type {}",
                    expr_to_string(expr), expr_ty.repr(tcx));
-            closure::trans_expr_fn(bcx, store, &**decl, &**body, expr.id, dest)
+            closure::trans_expr_fn(bcx,
+                                   &store,
+                                   &**decl,
+                                   &**body,
+                                   expr.id,
+                                   dest)
         }
         ast::ExprUnboxedFn(_, _, decl, body) => {
             closure::trans_unboxed_closure(bcx, &*decl, &*body, expr.id, dest)

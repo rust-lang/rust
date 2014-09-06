@@ -614,7 +614,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
 }
 
 // expand the arm of a 'match', renaming for macro hygiene
-fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
+fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> Gc<ast::Arm> {
     // expand pats... they might contain macro uses:
     let expanded_pats : Vec<Gc<ast::Pat>> = arm.pats.iter().map(|pat| fld.fold_pat(*pat)).collect();
     if expanded_pats.len() == 0 {
@@ -635,11 +635,13 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
     let rewritten_guard =
         arm.guard.map(|g| fld.fold_expr(rename_fld.fold_expr(g)));
     let rewritten_body = fld.fold_expr(rename_fld.fold_expr(arm.body));
-    ast::Arm {
+    box(GC) ast::Arm {
         attrs: arm.attrs.iter().map(|x| fld.fold_attribute(*x)).collect(),
         pats: rewritten_pats,
         guard: rewritten_guard,
         body: rewritten_body,
+        id: fld.new_id(arm.id),
+        span: fld.new_span(arm.span),
     }
 }
 
@@ -949,8 +951,8 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         expand_block(&*block, self)
     }
 
-    fn fold_arm(&mut self, arm: &ast::Arm) -> ast::Arm {
-        expand_arm(arm, self)
+    fn fold_arm(&mut self, arm: Gc<ast::Arm>) -> Gc<ast::Arm> {
+        expand_arm(&*arm, self)
     }
 
     fn fold_method(&mut self, method: Gc<ast::Method>) -> SmallVector<Gc<ast::Method>> {

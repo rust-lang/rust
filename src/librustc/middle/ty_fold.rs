@@ -77,15 +77,15 @@ pub trait TypeFolder {
         super_fold_closure_ty(self, fty)
     }
 
-    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
-        r
+    fn fold_region(&mut self, r: &ty::Region) -> ty::Region {
+        (*r).clone()
     }
 
-    fn fold_trait_store(&mut self, s: ty::TraitStore) -> ty::TraitStore {
+    fn fold_trait_store(&mut self, s: &ty::TraitStore) -> ty::TraitStore {
         super_fold_trait_store(self, s)
     }
 
-    fn fold_existential_bounds(&mut self, s: ty::ExistentialBounds)
+    fn fold_existential_bounds(&mut self, s: &ty::ExistentialBounds)
                                -> ty::ExistentialBounds {
         super_fold_existential_bounds(self, s)
     }
@@ -142,7 +142,7 @@ impl<T:TypeFoldable> TypeFoldable for VecPerParamSpace<T> {
 
 impl TypeFoldable for ty::TraitStore {
     fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> ty::TraitStore {
-        folder.fold_trait_store(*self)
+        folder.fold_trait_store(self)
     }
 }
 
@@ -190,7 +190,7 @@ impl TypeFoldable for ty::TraitRef {
 
 impl TypeFoldable for ty::Region {
     fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> ty::Region {
-        folder.fold_region(*self)
+        folder.fold_region(self)
     }
 }
 
@@ -243,7 +243,7 @@ impl TypeFoldable for ty::BuiltinBounds {
 
 impl TypeFoldable for ty::ExistentialBounds {
     fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> ty::ExistentialBounds {
-        folder.fold_existential_bounds(*self)
+        folder.fold_existential_bounds(self)
     }
 }
 
@@ -296,7 +296,7 @@ impl TypeFoldable for ty::UnsizeKind {
         match *self {
             ty::UnsizeLength(len) => ty::UnsizeLength(len),
             ty::UnsizeStruct(box ref k, n) => ty::UnsizeStruct(box k.fold_with(folder), n),
-            ty::UnsizeVtable(bounds, def_id, ref substs) => {
+            ty::UnsizeVtable(ref bounds, def_id, ref substs) => {
                 ty::UnsizeVtable(bounds.fold_with(folder), def_id, substs.fold_with(folder))
             }
         }
@@ -402,7 +402,7 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_trait(box ty::TyTrait {
                 def_id,
                 ref substs,
-                bounds
+                ref bounds
             }) => {
             ty::ty_trait(box ty::TyTrait {
                 def_id: def_id,
@@ -419,7 +419,7 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_closure(ref f) => {
             ty::ty_closure(box f.fold_with(this))
         }
-        ty::ty_rptr(r, ref tm) => {
+        ty::ty_rptr(ref r, ref tm) => {
             ty::ty_rptr(r.fold_with(this), tm.fold_with(this))
         }
         ty::ty_struct(did, ref substs) => {
@@ -438,19 +438,20 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
 }
 
 pub fn super_fold_trait_store<T:TypeFolder>(this: &mut T,
-                                            trait_store: ty::TraitStore)
+                                            trait_store: &ty::TraitStore)
                                             -> ty::TraitStore {
-    match trait_store {
+    match *trait_store {
         ty::UniqTraitStore => ty::UniqTraitStore,
-        ty::RegionTraitStore(r, m) => {
+        ty::RegionTraitStore(ref r, m) => {
             ty::RegionTraitStore(r.fold_with(this), m)
         }
     }
 }
 
-pub fn super_fold_existential_bounds<T:TypeFolder>(this: &mut T,
-                                                   bounds: ty::ExistentialBounds)
-                                                   -> ty::ExistentialBounds {
+pub fn super_fold_existential_bounds<T>(this: &mut T,
+                                        bounds: &ty::ExistentialBounds)
+                                        -> ty::ExistentialBounds
+                                        where T: TypeFolder {
     ty::ExistentialBounds {
         region_bound: bounds.region_bound.fold_with(this),
         builtin_bounds: bounds.builtin_bounds,
@@ -462,8 +463,10 @@ pub fn super_fold_autoref<T:TypeFolder>(this: &mut T,
                                         -> ty::AutoRef
 {
     match *autoref {
-        ty::AutoPtr(r, m, None) => ty::AutoPtr(this.fold_region(r), m, None),
-        ty::AutoPtr(r, m, Some(ref a)) => {
+        ty::AutoPtr(ref r, m, None) => {
+            ty::AutoPtr(this.fold_region(r), m, None)
+        }
+        ty::AutoPtr(ref r, m, Some(ref a)) => {
             ty::AutoPtr(this.fold_region(r), m, Some(box super_fold_autoref(this, &**a)))
         }
         ty::AutoUnsafe(m, None) => ty::AutoUnsafe(m, None),
@@ -519,13 +522,13 @@ impl<'a> TypeFolder for BottomUpFolder<'a> {
 pub struct RegionFolder<'a> {
     tcx: &'a ty::ctxt,
     fld_t: |ty::t|: 'a -> ty::t,
-    fld_r: |ty::Region|: 'a -> ty::Region,
+    fld_r: |&ty::Region|: 'a -> ty::Region,
     within_binder_ids: Vec<ast::NodeId>,
 }
 
 impl<'a> RegionFolder<'a> {
     pub fn general(tcx: &'a ty::ctxt,
-                   fld_r: |ty::Region|: 'a -> ty::Region,
+                   fld_r: |&ty::Region|: 'a -> ty::Region,
                    fld_t: |ty::t|: 'a -> ty::t)
                    -> RegionFolder<'a> {
         RegionFolder {
@@ -536,7 +539,7 @@ impl<'a> RegionFolder<'a> {
         }
     }
 
-    pub fn regions(tcx: &'a ty::ctxt, fld_r: |ty::Region|: 'a -> ty::Region)
+    pub fn regions(tcx: &'a ty::ctxt, fld_r: |&ty::Region|: 'a -> ty::Region)
                    -> RegionFolder<'a> {
         fn noop(t: ty::t) -> ty::t { t }
 
@@ -580,11 +583,11 @@ impl<'a> TypeFolder for RegionFolder<'a> {
         ret
     }
 
-    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
-        match r {
+    fn fold_region(&mut self, r: &ty::Region) -> ty::Region {
+        match *r {
             ty::ReLateBound(binder_id, _) if self.within_binder_ids.contains(&binder_id) => {
                 debug!("RegionFolder.fold_region({}) skipped bound region", r.repr(self.tcx()));
-                r
+                (*r).clone()
             }
             _ => {
                 debug!("RegionFolder.fold_region({}) folding free region", r.repr(self.tcx()));

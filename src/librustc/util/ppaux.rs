@@ -14,7 +14,7 @@ use middle::subst::{VecPerParamSpace,Subst};
 use middle::subst;
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
-use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
+use middle::ty::{ReFree, ReSemeRegion, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{mt, t, ParamTy};
 use middle::ty::{ty_bool, ty_char, ty_bot, ty_box, ty_struct, ty_enum};
@@ -49,7 +49,7 @@ pub trait UserString {
 
 pub fn note_and_explain_region(cx: &ctxt,
                                prefix: &str,
-                               region: ty::Region,
+                               region: &ty::Region,
                                suffix: &str) {
     match explain_region_and_span(cx, region) {
       (ref str, Some(span)) => {
@@ -80,34 +80,44 @@ fn item_scope_tag(item: &ast::Item) -> &'static str {
     }
 }
 
-pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
-                            -> (String, Option<Span>) {
-    return match region {
-      ReScope(node_id) => {
+pub fn explain_region_and_span(cx: &ctxt, region: &ty::Region)
+                               -> (String, Option<Span>) {
+    return match *region {
+      ReSemeRegion(ref seme_region) => {
+        let node_id = seme_region.lub_scope(cx);
         match cx.map.find(node_id) {
           Some(ast_map::NodeBlock(ref blk)) => {
             explain_span(cx, "block", blk.span)
           }
           Some(ast_map::NodeExpr(expr)) => {
             match expr.node {
-              ast::ExprCall(..) => explain_span(cx, "call", expr.span),
+              ast::ExprCall(..) => {
+                  explain_span(cx, "call", expr.span)
+              }
               ast::ExprMethodCall(..) => {
                 explain_span(cx, "method call", expr.span)
               },
-              ast::ExprMatch(..) => explain_span(cx, "match", expr.span),
+              ast::ExprMatch(..) => {
+                  explain_span(cx, "match", expr.span)
+              }
               _ => explain_span(cx, "expression", expr.span)
             }
           }
           Some(ast_map::NodeStmt(stmt)) => {
               explain_span(cx, "statement", stmt.span)
           }
-          Some(ast_map::NodeItem(it)) => {
-              let tag = item_scope_tag(&*it);
-              explain_span(cx, tag, it.span)
+          Some(ast_map::NodeArm(arm)) => {
+              explain_span(cx, "match arm", arm.span)
+          }
+          Some(ast_map::NodeItem(it)) if (match it.node {
+                ast::ItemFn(..) => true, _ => false
+          }) => {
+              explain_span(cx, "function body", it.span)
           }
           Some(_) | None => {
             // this really should not happen
-            (format!("unknown scope: {}.  Please report a bug.", node_id), None)
+            (format!("unknown scope: {}.  Please report a bug.", node_id),
+             None)
           }
         }
       }
@@ -189,11 +199,12 @@ pub fn bound_region_to_string(cx: &ctxt,
 // In general, if you are giving a region error message,
 // you should use `explain_region()` or, better yet,
 // `note_and_explain_region()`
-pub fn region_ptr_to_string(cx: &ctxt, region: Region) -> String {
+pub fn region_ptr_to_string(cx: &ctxt, region: &Region) -> String {
     region_to_string(cx, "&", true, region)
 }
 
-pub fn region_to_string(cx: &ctxt, prefix: &str, space: bool, region: Region) -> String {
+pub fn region_to_string(cx: &ctxt, prefix: &str, space: bool, region: &Region)
+                        -> String {
     let space_str = if space { " " } else { "" };
 
     if cx.sess.verbose() {
@@ -204,8 +215,8 @@ pub fn region_to_string(cx: &ctxt, prefix: &str, space: bool, region: Region) ->
     // the user might want to diagnose an error, but there is basically no way
     // to fit that into a short string.  Hence the recommendation to use
     // `explain_region()` or `note_and_explain_region()`.
-    match region {
-        ty::ReScope(_) => prefix.to_string(),
+    match *region {
+        ty::ReSemeRegion(..) => prefix.to_string(),
         ty::ReEarlyBound(_, _, _, name) => {
             token::get_name(name).get().to_string()
         }
@@ -231,11 +242,13 @@ pub fn mt_to_string(cx: &ctxt, m: &mt) -> String {
     format!("{}{}", mutability_to_string(m.mutbl), ty_to_string(cx, m.ty))
 }
 
-pub fn trait_store_to_string(cx: &ctxt, s: ty::TraitStore) -> String {
-    match s {
+pub fn trait_store_to_string(cx: &ctxt, s: &ty::TraitStore) -> String {
+    match *s {
         ty::UniqTraitStore => "Box ".to_string(),
-        ty::RegionTraitStore(r, m) => {
-            format!("{}{}", region_ptr_to_string(cx, r), mutability_to_string(m))
+        ty::RegionTraitStore(ref r, m) => {
+            format!("{}{}",
+                    region_ptr_to_string(cx, r),
+                    mutability_to_string(m))
         }
     }
 }
@@ -297,7 +310,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
 
         match cty.store {
             ty::UniqTraitStore => {}
-            ty::RegionTraitStore(region, _) => {
+            ty::RegionTraitStore(ref region, _) => {
                 s.push_str(region_to_string(cx, "", true, region).as_slice());
             }
         }
@@ -384,7 +397,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
               ast::MutImmutable => "const",
           }, ty_to_string(cx, tm.ty))
       }
-      ty_rptr(r, ref tm) => {
+      ty_rptr(ref r, ref tm) => {
           let mut buf = region_ptr_to_string(cx, r);
           buf.push_str(mt_to_string(cx, tm).as_slice());
           buf
@@ -461,7 +474,7 @@ pub fn parameterized(cx: &ctxt,
     match substs.regions {
         subst::ErasedRegions => { }
         subst::NonerasedRegions(ref regions) => {
-            for &r in regions.iter() {
+            for r in regions.iter() {
                 let s = region_to_string(cx, "", false, r);
                 if !s.is_empty() {
                     strs.push(s)
@@ -779,8 +792,8 @@ impl Repr for ty::Region {
 
             ty::ReFree(ref fr) => fr.repr(tcx),
 
-            ty::ReScope(id) => {
-                format!("ReScope({})", id)
+            ty::ReSemeRegion(ref seme_region) => {
+                format!("ReSemeRegion({})", seme_region)
             }
 
             ty::ReStatic => {
@@ -804,7 +817,7 @@ impl Repr for ty::Region {
 
 impl UserString for ty::Region {
     fn user_string(&self, tcx: &ctxt) -> String {
-        region_to_string(tcx, "", false, *self)
+        region_to_string(tcx, "", false, self)
     }
 }
 
@@ -984,7 +997,7 @@ impl Repr for typeck::MethodObject {
 
 impl Repr for ty::TraitStore {
     fn repr(&self, tcx: &ctxt) -> String {
-        trait_store_to_string(tcx, *self)
+        trait_store_to_string(tcx, self)
     }
 }
 
@@ -1192,13 +1205,13 @@ impl Repr for ty::ExplicitSelfCategory {
 impl Repr for regionmanip::WfConstraint {
     fn repr(&self, tcx: &ctxt) -> String {
         match *self {
-            regionmanip::RegionSubRegionConstraint(_, r_a, r_b) => {
+            regionmanip::RegionSubRegionConstraint(_, ref r_a, ref r_b) => {
                 format!("RegionSubRegionConstraint({}, {})",
                         r_a.repr(tcx),
                         r_b.repr(tcx))
             }
 
-            regionmanip::RegionSubParamConstraint(_, r, p) => {
+            regionmanip::RegionSubParamConstraint(_, ref r, p) => {
                 format!("RegionSubParamConstraint({}, {})",
                         r.repr(tcx),
                         p.repr(tcx))

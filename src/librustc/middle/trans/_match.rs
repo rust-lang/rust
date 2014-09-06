@@ -881,7 +881,8 @@ fn compile_guard<'a, 'b>(
                  m: &'a [Match<'a, 'b>],
                  vals: &[ValueRef],
                  chk: &FailureHandler,
-                 has_genuine_default: bool)
+                 has_genuine_default: bool,
+                 arm_id: ast::NodeId)
                  -> &'b Block<'b> {
     debug!("compile_guard(bcx={}, guard_expr={}, m={}, vals={})",
            bcx.to_str(),
@@ -890,6 +891,7 @@ fn compile_guard<'a, 'b>(
            vec_map_to_string(vals, |v| bcx.val_to_string(*v)));
     let _indenter = indenter();
 
+    bcx.fcx.push_ast_cleanup_scope(arm_id);
     let mut bcx = insert_lllocals(bcx, &data.bindings_map, None);
 
     let val = unpack_datum!(bcx, expr::trans(bcx, guard_expr));
@@ -901,6 +903,8 @@ fn compile_guard<'a, 'b>(
             _ => {}
         }
     }
+
+    bcx = bcx.fcx.pop_and_trans_ast_cleanup_scope(bcx, arm_id);
 
     with_cond(bcx, Not(bcx, val), |bcx| {
         // Guard does not match: remove all bindings from the lllocals table
@@ -959,7 +963,8 @@ fn compile_submatch<'a, 'b>(
                                     m.slice(1, m.len()),
                                     vals,
                                     chk,
-                                    has_genuine_default);
+                                    has_genuine_default,
+                                    data.arm.id);
             }
             _ => ()
         }
@@ -1222,7 +1227,7 @@ pub fn trans_match<'a>(
                    bcx: &'a Block<'a>,
                    match_expr: &ast::Expr,
                    discr_expr: &ast::Expr,
-                   arms: &[ast::Arm],
+                   arms: &[Gc<ast::Arm>],
                    dest: Dest)
                    -> &'a Block<'a> {
     let _icx = push_ctxt("match::trans_match");
@@ -1259,7 +1264,7 @@ struct ReassignmentChecker {
 impl euv::Delegate for ReassignmentChecker {
     fn consume(&mut self, _: ast::NodeId, _: Span, _: mc::cmt, _: euv::ConsumeMode) {}
     fn consume_pat(&mut self, _: &ast::Pat, _: mc::cmt, _: euv::ConsumeMode) {}
-    fn borrow(&mut self, _: ast::NodeId, _: Span, _: mc::cmt, _: ty::Region,
+    fn borrow(&mut self, _: ast::NodeId, _: Span, _: mc::cmt, _: &ty::Region,
               _: ty::BorrowKind, _: euv::LoanCause) {}
     fn decl_without_init(&mut self, _: ast::NodeId, _: Span) {}
 
@@ -1330,8 +1335,9 @@ fn create_bindings_map(bcx: &Block, pat: Gc<ast::Pat>,
 fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
                          match_id: ast::NodeId,
                          discr_expr: &ast::Expr,
-                         arms: &[ast::Arm],
-                         dest: Dest) -> &'a Block<'a> {
+                         arms: &[Gc<ast::Arm>],
+                         dest: Dest)
+                         -> &'a Block<'a> {
     let _icx = push_ctxt("match::trans_match_inner");
     let fcx = scope_cx.fcx;
     let mut bcx = scope_cx;
@@ -1352,7 +1358,7 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
 
     let arm_datas: Vec<ArmData> = arms.iter().map(|arm| ArmData {
         bodycx: fcx.new_id_block("case_body", arm.body.id),
-        arm: arm,
+        arm: &**arm,
         bindings_map: create_bindings_map(bcx, *arm.pats.get(0), discr_expr, &*arm.body)
     }).collect();
 
@@ -1384,10 +1390,12 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
         let mut bcx = arm_data.bodycx;
 
         // insert bindings into the lllocals map and add cleanups
-        let cs = fcx.push_custom_cleanup_scope();
-        bcx = insert_lllocals(bcx, &arm_data.bindings_map, Some(cleanup::CustomScope(cs)));
+        fcx.push_ast_cleanup_scope(arm_data.arm.id);
+        bcx = insert_lllocals(bcx,
+                              &arm_data.bindings_map,
+                              Some(cleanup::AstScope(arm_data.arm.id)));
         bcx = expr::trans_into(bcx, &*arm_data.arm.body, dest);
-        bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, cs);
+        bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, arm_data.arm.id);
         arm_cxs.push(bcx);
     }
 

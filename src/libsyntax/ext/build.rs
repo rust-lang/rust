@@ -31,9 +31,9 @@ mod syntax {
 
 pub trait AstBuilder {
     // paths
-    fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path;
+    fn path(&self, span: Span, strs: Vec<ast::Ident>) -> ast::Path;
     fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path;
-    fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path;
+    fn path_global(&self, span: Span, strs: Vec<ast::Ident>) -> ast::Path;
     fn path_all(&self, sp: Span,
                 global: bool,
                 idents: Vec<ast::Ident> ,
@@ -184,10 +184,15 @@ pub trait AstBuilder {
     fn pat_ok(&self, span: Span, pat: Gc<ast::Pat>) -> Gc<ast::Pat>;
     fn pat_err(&self, span: Span, pat: Gc<ast::Pat>) -> Gc<ast::Pat>;
 
-    fn arm(&self, span: Span, pats: Vec<Gc<ast::Pat>> , expr: Gc<ast::Expr>) -> ast::Arm;
-    fn arm_unreachable(&self, span: Span) -> ast::Arm;
+    fn arm(&self, span: Span, pats: Vec<Gc<ast::Pat>>, expr: Gc<ast::Expr>)
+           -> Gc<ast::Arm>;
+    fn arm_unreachable(&self, span: Span) -> Gc<ast::Arm>;
 
-    fn expr_match(&self, span: Span, arg: Gc<ast::Expr>, arms: Vec<ast::Arm> ) -> Gc<ast::Expr>;
+    fn expr_match(&self,
+                  span: Span,
+                  arg: Gc<ast::Expr>,
+                  arms: Vec<Gc<ast::Arm>>)
+                  -> Gc<ast::Expr>;
     fn expr_if(&self, span: Span,
                cond: Gc<ast::Expr>, then: Gc<ast::Expr>,
                els: Option<Gc<ast::Expr>>) -> Gc<ast::Expr>;
@@ -847,21 +852,27 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.pat_enum(span, path, vec!(pat))
     }
 
-    fn arm(&self, _span: Span, pats: Vec<Gc<ast::Pat>> , expr: Gc<ast::Expr>) -> ast::Arm {
-        ast::Arm {
+    fn arm(&self, span: Span, pats: Vec<Gc<ast::Pat>> , expr: Gc<ast::Expr>)
+           -> Gc<ast::Arm> {
+        box(GC) ast::Arm {
             attrs: vec!(),
             pats: pats,
             guard: None,
-            body: expr
+            body: expr,
+            id: ast::DUMMY_NODE_ID,
+            span: span,
         }
     }
 
-    fn arm_unreachable(&self, span: Span) -> ast::Arm {
+    fn arm_unreachable(&self, span: Span) -> Gc<ast::Arm> {
         self.arm(span, vec!(self.pat_wild(span)), self.expr_unreachable(span))
     }
 
-    fn expr_match(&self, span: Span, arg: Gc<ast::Expr>,
-                  arms: Vec<ast::Arm>) -> Gc<Expr> {
+    fn expr_match(&self,
+                  span: Span,
+                  arg: Gc<ast::Expr>,
+                  arms: Vec<Gc<ast::Arm>>)
+                  -> Gc<Expr> {
         self.expr(span, ast::ExprMatch(arg, arms))
     }
 

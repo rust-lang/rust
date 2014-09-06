@@ -16,6 +16,7 @@
 use middle::borrowck::*;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
+use middle::seme_region::SemeRegion;
 use middle::ty;
 use util::ppaux::Repr;
 use syntax::ast;
@@ -28,17 +29,19 @@ pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
                           span: Span,
                           cause: euv::LoanCause,
                           cmt: mc::cmt,
-                          loan_region: ty::Region,
+                          loan_region: &ty::Region,
                           _: ty::BorrowKind)
                           -> Result<(),()> {
     debug!("guarantee_lifetime(cmt={}, loan_region={})",
            cmt.repr(bccx.tcx), loan_region.repr(bccx.tcx));
-    let ctxt = GuaranteeLifetimeContext {bccx: bccx,
-                                         item_scope_id: item_scope_id,
-                                         span: span,
-                                         cause: cause,
-                                         loan_region: loan_region,
-                                         cmt_original: cmt.clone()};
+    let ctxt = GuaranteeLifetimeContext {
+        bccx: bccx,
+        item_scope_id: item_scope_id,
+        span: span,
+        cause: cause,
+        loan_region: loan_region,
+        cmt_original: cmt.clone()
+    };
     ctxt.check(&cmt, None)
 }
 
@@ -53,12 +56,11 @@ struct GuaranteeLifetimeContext<'a> {
 
     span: Span,
     cause: euv::LoanCause,
-    loan_region: ty::Region,
+    loan_region: &'a ty::Region,
     cmt_original: mc::cmt
 }
 
 impl<'a> GuaranteeLifetimeContext<'a> {
-
     fn check(&self, cmt: &mc::cmt, discr_scope: Option<ast::NodeId>) -> R {
         //! Main routine. Walks down `cmt` until we find the "guarantor".
         debug!("guarantee_lifetime.check(cmt={}, loan_region={})",
@@ -74,7 +76,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_deref(_, _, mc::BorrowedPtr(..)) |  // L-Deref-Borrowed
             mc::cat_deref(_, _, mc::Implicit(..)) |
             mc::cat_deref(_, _, mc::UnsafePtr(..)) => {
-                self.check_scope(self.scope(cmt))
+                self.check_scope(&self.scope(cmt))
             }
 
             mc::cat_static_item => {
@@ -146,11 +148,13 @@ impl<'a> GuaranteeLifetimeContext<'a> {
         }
     }
 
-    fn check_scope(&self, max_scope: ty::Region) -> R {
+    fn check_scope(&self, max_scope: &ty::Region) -> R {
         //! Reports an error if `loan_region` is larger than `valid_scope`
 
-        if !self.bccx.is_subregion_of(self.loan_region, max_scope) {
-            Err(self.report_error(err_out_of_scope(max_scope, self.loan_region)))
+        if !self.is_subregion_of(self.loan_region, max_scope) {
+            Err(self.report_error(err_out_of_scope(
+                        (*max_scope).clone(),
+                        (*self.loan_region).clone())))
         } else {
             Ok(())
         }
@@ -164,27 +168,31 @@ impl<'a> GuaranteeLifetimeContext<'a> {
         // See the SCOPE(LV) function in doc.rs
 
         match cmt.cat {
-            mc::cat_rvalue(temp_scope) => {
-                temp_scope
-            }
+            mc::cat_rvalue(ref temp_scope) => (*temp_scope).clone(),
             mc::cat_upvar(..) |
             mc::cat_copied_upvar(_) => {
-                ty::ReScope(self.item_scope_id)
+                ty::ReSemeRegion(SemeRegion::from_scope(
+                                     self.bccx.tcx,
+                                     self.bccx.loop_analysis(),
+                                     self.item_scope_id))
             }
             mc::cat_static_item => {
                 ty::ReStatic
             }
             mc::cat_local(local_id) |
             mc::cat_arg(local_id) => {
-                ty::ReScope(self.bccx.tcx.region_maps.var_scope(local_id))
+                let var_scope = self.bccx.tcx.region_maps.var_scope(local_id);
+                ty::ReSemeRegion(SemeRegion::from_scope(
+                                     self.bccx.tcx,
+                                     self.bccx.loop_analysis(),
+                                     var_scope))
             }
-            mc::cat_deref(_, _, mc::UnsafePtr(..)) => {
-                ty::ReStatic
-            }
-            mc::cat_deref(_, _, mc::BorrowedPtr(_, r)) |
-            mc::cat_deref(_, _, mc::Implicit(_, r)) => {
-                r
-            }
+
+            mc::cat_deref(_, _, mc::UnsafePtr(..)) => ty::ReStatic,
+
+            mc::cat_deref(_, _, mc::BorrowedPtr(_, ref r)) |
+            mc::cat_deref(_, _, mc::Implicit(_, ref r)) => (*r).clone(),
+
             mc::cat_downcast(ref cmt) |
             mc::cat_deref(ref cmt, _, mc::OwnedPtr) |
             mc::cat_deref(ref cmt, _, mc::GcPtr) |
@@ -196,9 +204,16 @@ impl<'a> GuaranteeLifetimeContext<'a> {
     }
 
     fn report_error(&self, code: bckerr_code) {
-        self.bccx.report(BckError { cmt: self.cmt_original.clone(),
-                                    span: self.span,
-                                    cause: self.cause,
-                                    code: code });
+        self.bccx.report(BckError {
+            cmt: self.cmt_original.clone(),
+            span: self.span,
+            cause: self.cause,
+            code: code,
+        });
+    }
+
+    fn is_subregion_of(&self, r_sub: &ty::Region, r_sup: &ty::Region)
+                       -> bool {
+        self.bccx.tcx.region_maps.is_subregion_of(self.bccx.tcx, r_sub, r_sup)
     }
 }

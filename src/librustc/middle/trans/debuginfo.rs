@@ -456,12 +456,14 @@ impl TypeMap {
                 let return_type_id = self.get_unique_type_id_as_string(return_type_id);
                 unique_type_id.push_str(return_type_id.as_slice());
             },
-            ty::ty_closure(box ty::ClosureTy { fn_style,
-                                               onceness,
-                                               store,
-                                               ref bounds,
-                                               ref sig,
-                                               abi: _ }) => {
+            ty::ty_closure(box ty::ClosureTy {
+                fn_style,
+                onceness,
+                ref store,
+                ref bounds,
+                ref sig,
+                abi: _
+            }) => {
                 if fn_style == ast::UnsafeFn {
                     unique_type_id.push_str("unsafe ");
                 }
@@ -470,7 +472,7 @@ impl TypeMap {
                     unique_type_id.push_str("once ");
                 }
 
-                match store {
+                match *store {
                     ty::UniqTraitStore => unique_type_id.push_str("~|"),
                     ty::RegionTraitStore(_, ast::MutMutable) => {
                         unique_type_id.push_str("&mut|")
@@ -872,7 +874,7 @@ pub fn create_captured_var_metadata(bcx: &Block,
                                     env_data_type: ty::t,
                                     env_pointer: ValueRef,
                                     env_index: uint,
-                                    closure_store: ty::TraitStore,
+                                    closure_store: &ty::TraitStore,
                                     span: Span) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
@@ -927,7 +929,7 @@ pub fn create_captured_var_metadata(bcx: &Block,
          llvm::LLVMDIBuilderCreateOpDeref(Type::i64(cx).to_ref())]
     };
 
-    let address_op_count = match closure_store {
+    let address_op_count = match *closure_store {
         ty::RegionTraitStore(..) => {
             address_operations.len()
         }
@@ -3783,12 +3785,13 @@ fn push_debuginfo_type_name(cx: &CrateContext,
                 push_debuginfo_type_name(cx, sig.output, true, output);
             }
         },
-        ty::ty_closure(box ty::ClosureTy { fn_style,
-                                           onceness,
-                                           store,
-                                           ref sig,
-                                           .. // omitting bounds ...
-                                           }) => {
+        ty::ty_closure(box ty::ClosureTy {
+            fn_style,
+            onceness,
+            ref store,
+            ref sig,
+            .. // omitting bounds ...
+        }) => {
             if fn_style == ast::UnsafeFn {
                 output.push_str("unsafe ");
             }
@@ -3798,7 +3801,7 @@ fn push_debuginfo_type_name(cx: &CrateContext,
             }
 
             let param_list_closing_char;
-            match store {
+            match *store {
                 ty::UniqTraitStore => {
                     output.push_str("proc(");
                     param_list_closing_char = ')';

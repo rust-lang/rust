@@ -279,12 +279,15 @@ fn with_appropriate_checker(cx: &Context,
     }
 
     fn check_for_block(cx: &Context, fv: &freevar_entry,
-                       bounds: ty::BuiltinBounds, region: ty::Region) {
+                       bounds: ty::BuiltinBounds,
+                       region: &ty::Region) {
         let id = fv.def.def_id().node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
         // FIXME(#3569): Figure out whether the implicit borrow is actually
         // mutable. Currently we assume all upvars are referenced mutably.
-        let implicit_borrowed_type = ty::mk_mut_rptr(cx.tcx, region, var_t);
+        let implicit_borrowed_type = ty::mk_mut_rptr(cx.tcx,
+                                                     (*region).clone(),
+                                                     var_t);
         check_freevar_bounds(cx, fv.span, implicit_borrowed_type,
                              bounds, Some(var_t));
     }
@@ -299,14 +302,16 @@ fn with_appropriate_checker(cx: &Context,
     match ty::get(fty).sty {
         ty::ty_closure(box ty::ClosureTy {
             store: ty::UniqTraitStore,
-            bounds: bounds,
+            bounds: ref bounds,
             ..
         }) => {
             b(|cx, fv| check_for_uniq(cx, fv, bounds.builtin_bounds))
         }
 
         ty::ty_closure(box ty::ClosureTy {
-            store: ty::RegionTraitStore(region, _), bounds, ..
+            store: ty::RegionTraitStore(ref region, _),
+            ref bounds,
+            ..
         }) => b(|cx, fv| check_for_block(cx, fv, bounds.builtin_bounds, region)),
 
         ty::ty_bare_fn(_) => {
@@ -558,7 +563,7 @@ fn check_trait_cast(cx: &mut Context,
     match ty::get(target_ty).sty {
         ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ ty, .. }) => {
             match ty::get(ty).sty {
-                ty::ty_trait(box ty::TyTrait { bounds, .. }) => {
+                ty::ty_trait(box ty::TyTrait { ref bounds, .. }) => {
                      match cx.tcx.vtable_map.borrow().find(&method_call) {
                         None => {
                             cx.tcx.sess.span_bug(span,

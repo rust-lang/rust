@@ -644,7 +644,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
 
             ty::ReLateBound(..) |
             ty::ReFree(..) |
-            ty::ReScope(..) |
+            ty::ReSemeRegion(..) |
             ty::ReInfer(..) |
             ty::ReEmpty(..) => None
         }
@@ -996,16 +996,16 @@ impl Clean<Item> for ty::Method {
         let (self_, sig) = match self.explicit_self {
             ty::StaticExplicitSelfCategory => (ast::SelfStatic.clean(),
                                                self.fty.sig.clone()),
-            s => {
+            ref s => {
                 let sig = ty::FnSig {
                     inputs: Vec::from_slice(self.fty.sig.inputs.slice_from(1)),
                     ..self.fty.sig.clone()
                 };
-                let s = match s {
+                let s = match *s {
                     ty::ByValueExplicitSelfCategory => SelfValue,
                     ty::ByReferenceExplicitSelfCategory(..) => {
                         match ty::get(self.fty.sig.inputs[0]).sty {
-                            ty::ty_rptr(r, mt) => {
+                            ty::ty_rptr(ref r, mt) => {
                                 SelfBorrowed(r.clean(), mt.mutbl.clean())
                             }
                             _ => unreachable!(),
@@ -1259,7 +1259,7 @@ impl Clean<Type> for ty::t {
             ty::ty_vec(ty, Some(i)) => FixedVector(box ty.clean(),
                                                    format!("{}", i)),
             ty::ty_ptr(mt) => RawPointer(mt.mutbl.clean(), box mt.ty.clean()),
-            ty::ty_rptr(r, mt) => BorrowedRef {
+            ty::ty_rptr(ref r, mt) => BorrowedRef {
                 lifetime: r.clean(),
                 mutability: mt.mutbl.clean(),
                 type_: box mt.ty.clean(),

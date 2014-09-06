@@ -22,16 +22,18 @@ use middle::freevars;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
+use middle::loop_analysis::LoopAnalysis;
 use middle::mem_categorization as mc;
 use middle::resolve;
 use middle::resolve_lifetime;
+use middle::seme_region::SemeRegion;
 use middle::stability;
 use middle::subst::{Subst, Substs, VecPerParamSpace};
 use middle::subst;
 use middle::ty;
 use middle::typeck;
 use middle::ty_fold;
-use middle::ty_fold::{TypeFoldable,TypeFolder};
+use middle::ty_fold::{TypeFoldable, TypeFolder};
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
 use util::ppaux::{trait_store_to_string, ty_to_string};
@@ -319,12 +321,12 @@ fn autoref_object_region(autoref: &AutoRef) -> (bool, bool, Option<Region>) {
     match autoref {
         &AutoUnsize(ref k) => (unsize_kind_is_object(k), false, None),
         &AutoUnsizeUniq(ref k) => (unsize_kind_is_object(k), true, None),
-        &AutoPtr(adj_r, _, Some(box ref autoref)) => {
+        &AutoPtr(ref adj_r, _, Some(box ref autoref)) => {
             let (b, u, r) = autoref_object_region(autoref);
             if r.is_some() || u {
                 (b, u, r)
             } else {
-                (b, u, Some(adj_r))
+                (b, u, Some((*adj_r).clone()))
             }
         }
         &AutoUnsafe(_, Some(box ref autoref)) => autoref_object_region(autoref),
@@ -365,20 +367,28 @@ pub fn type_of_adjust(cx: &ctxt, adj: &AutoAdjustment) -> Option<t> {
     fn type_of_autoref(cx: &ctxt, autoref: &AutoRef) -> Option<t> {
         match autoref {
             &AutoUnsize(ref k) => match k {
-                &UnsizeVtable(bounds, def_id, ref substs) => {
-                    Some(mk_trait(cx, def_id, substs.clone(), bounds))
+                &UnsizeVtable(ref bounds, def_id, ref substs) => {
+                    Some(mk_trait(cx,
+                                  def_id,
+                                  substs.clone(),
+                                  (*bounds).clone()))
                 }
                 _ => None
             },
             &AutoUnsizeUniq(ref k) => match k {
-                &UnsizeVtable(bounds, def_id, ref substs) => {
-                    Some(mk_uniq(cx, mk_trait(cx, def_id, substs.clone(), bounds)))
+                &UnsizeVtable(ref bounds, def_id, ref substs) => {
+                    Some(mk_uniq(cx, mk_trait(cx,
+                                              def_id,
+                                              substs.clone(),
+                                              (*bounds).clone())))
                 }
                 _ => None
             },
-            &AutoPtr(r, m, Some(box ref autoref)) => {
+            &AutoPtr(ref r, m, Some(box ref autoref)) => {
                 match type_of_autoref(cx, autoref) {
-                    Some(t) => Some(mk_rptr(cx, r, mt {mutbl: m, ty: t})),
+                    Some(t) => {
+                        Some(mk_rptr(cx, (*r).clone(), mt {mutbl: m, ty: t}))
+                    }
                     None => None
                 }
             }
@@ -679,8 +689,8 @@ pub enum Region {
     /// region parameters.
     ReFree(FreeRegion),
 
-    /// A concrete region naming some expression within the current function.
-    ReScope(NodeId),
+    /// A concrete region naming a SEME region.
+    ReSemeRegion(SemeRegion),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,
@@ -1230,7 +1240,7 @@ pub struct ParameterEnvironment {
     /// indicates it must outlive at least the function body (the user
     /// may specify stronger requirements). This field indicates the
     /// region of the callee.
-    pub implicit_region_bound: ty::Region,
+    pub implicit_region_bound: ImplicitRegionBound,
 }
 
 impl ParameterEnvironment {
@@ -1467,9 +1477,9 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
     }
 
     let mut flags = 0u;
-    fn rflags(r: Region) -> uint {
+    fn rflags(r: &Region) -> uint {
         (has_regions as uint) | {
-            match r {
+            match *r {
               ty::ReInfer(_) => needs_infer as uint,
               _ => 0u
             }
@@ -1485,14 +1495,14 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
             subst::ErasedRegions => {}
             subst::NonerasedRegions(ref regions) => {
                 for r in regions.iter() {
-                    f |= rflags(*r)
+                    f |= rflags(r)
                 }
             }
         }
         return f;
     }
     fn flags_for_bounds(bounds: &ExistentialBounds) -> uint {
-        rflags(bounds.region_bound)
+        rflags(&bounds.region_bound)
     }
     match &st {
       &ty_nil | &ty_bool | &ty_char | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
@@ -1513,7 +1523,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
               flags |= has_params as uint;
           }
       }
-      &ty_unboxed_closure(_, ref region) => flags |= rflags(*region),
+      &ty_unboxed_closure(_, ref region) => flags |= rflags(region),
       &ty_infer(_) => flags |= needs_infer as uint,
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
           flags |= sflags(substs);
@@ -1528,7 +1538,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       &ty_ptr(ref m) => {
         flags |= get(m.ty).flags;
       }
-      &ty_rptr(r, ref m) => {
+      &ty_rptr(ref r, ref m) => {
         flags |= rflags(r);
         flags |= get(m.ty).flags;
       }
@@ -1541,7 +1551,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       }
       &ty_closure(ref f) => {
         match f.store {
-            RegionTraitStore(r, _) => {
+            RegionTraitStore(ref r, _) => {
                 flags |= rflags(r);
             }
             _ => {}
@@ -1830,10 +1840,10 @@ pub fn fold_ty(cx: &ctxt, t0: t, fldop: |t| -> t) -> t {
     f.fold_ty(t0)
 }
 
-pub fn walk_regions_and_ty(cx: &ctxt, ty: t, fldr: |r: Region|, fldt: |t: t|)
+pub fn walk_regions_and_ty(cx: &ctxt, ty: t, fldr: |r: &Region|, fldt: |t: t|)
                            -> t {
     ty_fold::RegionFolder::general(cx,
-                                   |r| { fldr(r); r },
+                                   |r| { fldr(r); (*r).clone() },
                                    |t| { fldt(t); t }).fold_ty(ty)
 }
 
@@ -2409,7 +2419,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 }
             }
 
-            ty_trait(box ty::TyTrait { bounds, .. }) => {
+            ty_trait(box ty::TyTrait { ref bounds, .. }) => {
                 object_contents(cx, bounds) | TC::ReachesFfiUnsafe | TC::Nonsized
             }
 
@@ -2417,7 +2427,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 tc_ty(cx, mt.ty, cache).unsafe_pointer()
             }
 
-            ty_rptr(r, ref mt) => {
+            ty_rptr(ref r, ref mt) => {
                 TC::ReachesFfiUnsafe | match get(mt.ty).sty {
                     ty_str => borrowed_contents(r, ast::MutImmutable),
                     ty_vec(..) => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(r, mt.mutbl)),
@@ -2450,7 +2460,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 apply_lang_items(cx, did, res)
             }
 
-            ty_unboxed_closure(did, r) => {
+            ty_unboxed_closure(did, ref r) => {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut`
                 // unboxed closure.
                 let upvars = unboxed_closure_upvars(cx, did);
@@ -2586,7 +2596,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         }
     }
 
-    fn borrowed_contents(region: ty::Region,
+    fn borrowed_contents(region: &ty::Region,
                          mutbl: ast::Mutability)
                          -> TypeContents {
         /*!
@@ -2598,19 +2608,19 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             ast::MutMutable => TC::ReachesMutable | TC::OwnsAffine,
             ast::MutImmutable => TC::None,
         };
-        b | (TC::ReachesBorrowed).when(region != ty::ReStatic)
+        b | (TC::ReachesBorrowed).when(*region != ty::ReStatic)
     }
 
     fn closure_contents(cx: &ctxt, cty: &ClosureTy) -> TypeContents {
         // Closure contents are just like trait contents, but with potentially
         // even more stuff.
-        let st = object_contents(cx, cty.bounds);
+        let st = object_contents(cx, &cty.bounds);
 
         let st = match cty.store {
             UniqTraitStore => {
                 st.owned_pointer()
             }
-            RegionTraitStore(r, mutbl) => {
+            RegionTraitStore(ref r, mutbl) => {
                 st.reference(borrowed_contents(r, mutbl))
             }
         };
@@ -2625,8 +2635,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         st | ot
     }
 
-    fn object_contents(cx: &ctxt,
-                       bounds: ExistentialBounds)
+    fn object_contents(cx: &ctxt, bounds: &ExistentialBounds)
                        -> TypeContents {
         // These are the type contents of the (opaque) interior
         kind_bounds_to_contents(cx, bounds.builtin_bounds, [])
@@ -3169,7 +3178,7 @@ pub fn ty_fn_args(fty: t) -> Vec<t> {
 
 pub fn ty_closure_store(fty: t) -> TraitStore {
     match get(fty).sty {
-        ty_closure(ref f) => f.store,
+        ty_closure(ref f) => f.store.clone(),
         ty_unboxed_closure(..) => {
             // Close enough for the purposes of all the callers of this
             // function (which is soon to be deprecated anyhow).
@@ -3199,11 +3208,9 @@ pub fn is_fn_ty(fty: t) -> bool {
     }
 }
 
-pub fn ty_region(tcx: &ctxt,
-                 span: Span,
-                 ty: t) -> Region {
+pub fn ty_region(tcx: &ctxt, span: Span, ty: t) -> Region {
     match get(ty).sty {
-        ty_rptr(r, _) => r,
+        ty_rptr(ref r, _) => (*r).clone(),
         ref s => {
             tcx.sess.span_bug(
                 span,
@@ -3322,7 +3329,7 @@ pub fn adjust_ty(cx: &ctxt,
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
-                AutoAddEnv(store) => {
+                AutoAddEnv(ref store) => {
                     match ty::get(unadjusted_ty).sty {
                         ty::ty_bare_fn(ref b) => {
                             let bounds = ty::ExistentialBounds {
@@ -3332,12 +3339,14 @@ pub fn adjust_ty(cx: &ctxt,
 
                             ty::mk_closure(
                                 cx,
-                                ty::ClosureTy {fn_style: b.fn_style,
-                                               onceness: ast::Many,
-                                               store: store,
-                                               bounds: bounds,
-                                               sig: b.sig.clone(),
-                                               abi: b.abi})
+                                ty::ClosureTy {
+                                    fn_style: b.fn_style,
+                                    onceness: ast::Many,
+                                    store: (*store).clone(),
+                                    bounds: bounds,
+                                    sig: b.sig.clone(),
+                                    abi: b.abi,
+                                })
                         }
                         ref b => {
                             cx.sess.bug(
@@ -3390,12 +3399,12 @@ pub fn adjust_ty(cx: &ctxt,
                           ty: ty::t,
                           autoref: &AutoRef) -> ty::t{
         match *autoref {
-            AutoPtr(r, m, ref a) => {
+            AutoPtr(ref r, m, ref a) => {
                 let adjusted_ty = match a {
                     &Some(box ref a) => adjust_for_autoref(cx, span, ty, a),
                     &None => ty
                 };
-                mk_rptr(cx, r, mt {
+                mk_rptr(cx, (*r).clone(), mt {
                     ty: adjusted_ty,
                     mutbl: m
                 })
@@ -3444,17 +3453,19 @@ pub fn unsize_ty(cx: &ctxt,
                                   format!("UnsizeStruct with bad sty: {}",
                                           ty_to_string(cx, ty)).as_slice())
         },
-        &UnsizeVtable(bounds, def_id, ref substs) => {
-            mk_trait(cx, def_id, substs.clone(), bounds)
+        &UnsizeVtable(ref bounds, def_id, ref substs) => {
+            mk_trait(cx, def_id, substs.clone(), (*bounds).clone())
         }
     }
 }
 
 impl AutoRef {
-    pub fn map_region(&self, f: |Region| -> Region) -> AutoRef {
+    pub fn map_region(&self, f: |&Region| -> Region) -> AutoRef {
         match *self {
-            ty::AutoPtr(r, m, None) => ty::AutoPtr(f(r), m, None),
-            ty::AutoPtr(r, m, Some(ref a)) => ty::AutoPtr(f(r), m, Some(box a.map_region(f))),
+            ty::AutoPtr(ref r, m, None) => ty::AutoPtr(f(r), m, None),
+            ty::AutoPtr(ref r, m, Some(ref a)) => {
+                ty::AutoPtr(f(r), m, Some(box a.map_region(f)))
+            }
             ty::AutoUnsize(ref k) => ty::AutoUnsize(k.clone()),
             ty::AutoUnsizeUniq(ref k) => ty::AutoUnsizeUniq(k.clone()),
             ty::AutoUnsafe(m, None) => ty::AutoUnsafe(m, None),
@@ -3801,7 +3812,7 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
                     values.expected.to_string(),
                     values.found.to_string())
         }
-        terr_sigil_mismatch(values) => {
+        terr_sigil_mismatch(ref values) => {
             format!("expected {}, found {}",
                     tstore_to_closure(&values.expected),
                     tstore_to_closure(&values.found))
@@ -3864,8 +3875,8 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
         }
         terr_trait_stores_differ(_, ref values) => {
             format!("trait storage differs: expected `{}`, found `{}`",
-                    trait_store_to_string(cx, (*values).expected),
-                    trait_store_to_string(cx, (*values).found))
+                    trait_store_to_string(cx, &(*values).expected),
+                    trait_store_to_string(cx, &(*values).found))
         }
         terr_sorts(values) => {
             format!("expected {}, found {}",
@@ -3913,30 +3924,38 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
 
 pub fn note_and_explain_type_err(cx: &ctxt, err: &type_err) {
     match *err {
-        terr_regions_does_not_outlive(subregion, superregion) => {
+        terr_regions_does_not_outlive(ref subregion, ref superregion) => {
             note_and_explain_region(cx, "", subregion, "...");
-            note_and_explain_region(cx, "...does not necessarily outlive ",
-                                    superregion, "");
+            note_and_explain_region(cx,
+                                    "...does not necessarily outlive ",
+                                    superregion,
+                                    "");
         }
-        terr_regions_not_same(region1, region2) => {
+        terr_regions_not_same(ref region1, ref region2) => {
             note_and_explain_region(cx, "", region1, "...");
-            note_and_explain_region(cx, "...is not the same lifetime as ",
-                                    region2, "");
+            note_and_explain_region(cx,
+                                    "...is not the same lifetime as ",
+                                    region2,
+                                    "");
         }
-        terr_regions_no_overlap(region1, region2) => {
+        terr_regions_no_overlap(ref region1, ref region2) => {
             note_and_explain_region(cx, "", region1, "...");
-            note_and_explain_region(cx, "...does not overlap ",
-                                    region2, "");
+            note_and_explain_region(cx,
+                                    "...does not overlap ",
+                                    region2,
+                                    "");
         }
-        terr_regions_insufficiently_polymorphic(_, conc_region) => {
+        terr_regions_insufficiently_polymorphic(_, ref conc_region) => {
             note_and_explain_region(cx,
                                     "concrete lifetime that was found is ",
-                                    conc_region, "");
+                                    conc_region,
+                                    "");
         }
-        terr_regions_overly_polymorphic(_, conc_region) => {
+        terr_regions_overly_polymorphic(_, ref conc_region) => {
             note_and_explain_region(cx,
                                     "expected concrete lifetime is ",
-                                    conc_region, "");
+                                    conc_region,
+                                    "");
         }
         _ => {}
     }
@@ -4671,7 +4690,7 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
             return t_norm;
         }
 
-        fn fold_region(&mut self, _: ty::Region) -> ty::Region {
+        fn fold_region(&mut self, _: &ty::Region) -> ty::Region {
             ty::ReStatic
         }
 
@@ -5115,15 +5134,15 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
     macro_rules! byte( ($b:expr) => { ($b as u8).hash(&mut state) } );
     macro_rules! hash( ($e:expr) => { $e.hash(&mut state) } );
 
-    let region = |_state: &mut sip::SipState, r: Region| {
-        match r {
+    let region = |_state: &mut sip::SipState, r: &Region| {
+        match *r {
             ReStatic => {}
 
             ReEmpty |
             ReEarlyBound(..) |
             ReLateBound(..) |
             ReFree(..) |
-            ReScope(..) |
+            ReSemeRegion(..) |
             ReInfer(..) => {
                 tcx.sess.bug("non-static region found when hashing a type")
             }
@@ -5184,7 +5203,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
                 byte!(12);
                 mt(&mut state, m);
             }
-            ty_rptr(r, m) => {
+            ty_rptr(ref r, m) => {
                 byte!(13);
                 region(&mut state, r);
                 mt(&mut state, m);
@@ -5201,14 +5220,14 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
                 hash!(c.bounds);
                 match c.store {
                     UniqTraitStore => byte!(0),
-                    RegionTraitStore(r, m) => {
+                    RegionTraitStore(ref r, m) => {
                         byte!(1)
                         region(&mut state, r);
                         assert_eq!(m, ast::MutMutable);
                     }
                 }
             }
-            ty_trait(box ty::TyTrait { def_id: d, bounds, .. }) => {
+            ty_trait(box ty::TyTrait { def_id: d, ref bounds, .. }) => {
                 byte!(17);
                 did(&mut state, d);
                 hash!(bounds);
@@ -5229,7 +5248,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             ty_open(_) => byte!(22),
             ty_infer(_) => unreachable!(),
             ty_err => byte!(23),
-            ty_unboxed_closure(d, r) => {
+            ty_unboxed_closure(d, ref r) => {
                 byte!(24);
                 did(&mut state, d);
                 region(&mut state, r);
@@ -5251,12 +5270,10 @@ impl Variance {
     }
 }
 
-pub fn construct_parameter_environment(
-    tcx: &ctxt,
-    generics: &ty::Generics,
-    free_id: ast::NodeId)
-    -> ParameterEnvironment
-{
+pub fn construct_parameter_environment(tcx: &ctxt,
+                                       generics: &ty::Generics,
+                                       free_id: ast::NodeId)
+                                       -> ParameterEnvironment {
     /*! See `ParameterEnvironment` struct def'n for details */
 
     //
@@ -5314,14 +5331,13 @@ pub fn construct_parameter_environment(
     return ty::ParameterEnvironment {
         free_substs: free_substs,
         bounds: bounds,
-        implicit_region_bound: ty::ReScope(free_id),
+        implicit_region_bound: ScopeImplicitRegionBound(free_id),
     };
 
     fn push_region_params(regions: &mut VecPerParamSpace<ty::Region>,
                           space: subst::ParamSpace,
                           free_id: ast::NodeId,
-                          region_params: &[RegionParameterDef])
-    {
+                          region_params: &[RegionParameterDef]) {
         for r in region_params.iter() {
             regions.push(space, ty::free_region_from_def(free_id, r));
         }
@@ -5380,6 +5396,11 @@ pub fn construct_parameter_environment(
     }
 }
 
+pub enum ImplicitRegionBound {
+    RegionImplicitRegionBound(ty::Region),
+    ScopeImplicitRegionBound(ast::NodeId),
+}
+
 impl BorrowKind {
     pub fn from_mutbl(m: ast::Mutability) -> BorrowKind {
         match m {
@@ -5435,6 +5456,10 @@ impl mc::Typer for ty::ctxt {
                         -> &'a RefCell<DefIdMap<UnboxedClosure>> {
         &self.unboxed_closures
     }
+
+    fn loop_analysis(&self) -> Option<&LoopAnalysis> {
+        None
+    }
 }
 
 /// The category of explicit self.
@@ -5454,7 +5479,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                                     typ: t) {
     walk_ty(typ, |typ| {
         match get(typ).sty {
-            ty_rptr(region, _) => accumulator.push(region),
+            ty_rptr(ref region, _) => accumulator.push((*region).clone()),
             ty_enum(_, ref substs) |
             ty_trait(box TyTrait {
                 substs: ref substs,
@@ -5465,18 +5490,22 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                     subst::ErasedRegions => {}
                     subst::NonerasedRegions(ref regions) => {
                         for region in regions.iter() {
-                            accumulator.push(*region)
+                            accumulator.push((*region).clone())
                         }
                     }
                 }
             }
             ty_closure(ref closure_ty) => {
                 match closure_ty.store {
-                    RegionTraitStore(region, _) => accumulator.push(region),
+                    RegionTraitStore(ref region, _) => {
+                        accumulator.push((*region).clone())
+                    }
                     UniqTraitStore => {}
                 }
             }
-            ty_unboxed_closure(_, ref region) => accumulator.push(*region),
+            ty_unboxed_closure(_, ref region) => {
+                accumulator.push((*region).clone())
+            }
             ty_nil |
             ty_bot |
             ty_bool |

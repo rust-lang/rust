@@ -108,7 +108,7 @@ impl<'f> Combine for Glb<'f> {
         Ok(a.union(b))
     }
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
+    fn regions(&self, a: &ty::Region, b: &ty::Region) -> cres<ty::Region> {
         debug!("{}.regions({:?}, {:?})",
                self.tag(),
                a.repr(self.fields.infcx.tcx),
@@ -117,7 +117,7 @@ impl<'f> Combine for Glb<'f> {
         Ok(self.fields.infcx.region_vars.glb_regions(Subtype(self.trace()), a, b))
     }
 
-    fn contraregions(&self, a: ty::Region, b: ty::Region)
+    fn contraregions(&self, a: &ty::Region, b: &ty::Region)
                     -> cres<ty::Region> {
         self.lub().regions(a, b)
     }
@@ -179,10 +179,11 @@ impl<'f> Combine for Glb<'f> {
                              a_map: &HashMap<ty::BoundRegion, ty::Region>,
                              a_vars: &[RegionVid],
                              b_vars: &[RegionVid],
-                             r0: ty::Region) -> ty::Region {
+                             r0: &ty::Region)
+                             -> ty::Region {
             if !is_var_in_set(new_vars, r0) {
                 assert!(!r0.is_bound());
-                return r0;
+                return (*r0).clone();
             }
 
             let tainted = this.fields.infcx.region_vars.tainted(mark, r0);
@@ -191,19 +192,19 @@ impl<'f> Combine for Glb<'f> {
             let mut b_r = None;
             let mut only_new_vars = true;
             for r in tainted.iter() {
-                if is_var_in_set(a_vars, *r) {
+                if is_var_in_set(a_vars, r) {
                     if a_r.is_some() {
                         return fresh_bound_variable(this, new_binder_id);
                     } else {
-                        a_r = Some(*r);
+                        a_r = Some((*r).clone());
                     }
-                } else if is_var_in_set(b_vars, *r) {
+                } else if is_var_in_set(b_vars, r) {
                     if b_r.is_some() {
                         return fresh_bound_variable(this, new_binder_id);
                     } else {
-                        b_r = Some(*r);
+                        b_r = Some((*r).clone());
                     }
-                } else if !is_var_in_set(new_vars, *r) {
+                } else if !is_var_in_set(new_vars, r) {
                     only_new_vars = false;
                 }
             }
@@ -235,7 +236,7 @@ impl<'f> Combine for Glb<'f> {
             } else if a_r.is_none() && b_r.is_none() {
                 // Not related to bound variables from either fn:
                 assert!(!r0.is_bound());
-                return r0;
+                return (*r0).clone();
             } else {
                 // Other:
                 return fresh_bound_variable(this, new_binder_id);

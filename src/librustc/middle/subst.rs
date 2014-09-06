@@ -565,20 +565,20 @@ struct SubstFolder<'a> {
 impl<'a> TypeFolder for SubstFolder<'a> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.tcx }
 
-    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+    fn fold_region(&mut self, r: &ty::Region) -> ty::Region {
         // Note: This routine only handles regions that are bound on
         // type declarations and other outer declarations, not those
         // bound in *fn types*. Region substitution of the bound
         // regions that appear in a function signature is done using
         // the specialized routine
         // `middle::typeck::check::regionmanip::replace_late_regions_in_fn_sig()`.
-        match r {
+        match *r {
             ty::ReEarlyBound(_, space, i, region_name) => {
                 match self.substs.regions {
                     ErasedRegions => ty::ReStatic,
                     NonerasedRegions(ref regions) =>
                         match regions.opt_get(space, i) {
-                            Some(t) => *t,
+                            Some(t) => (*t).clone(),
                             None => {
                                 let span = self.span.unwrap_or(DUMMY_SP);
                                 self.tcx().sess.span_bug(
@@ -593,7 +593,7 @@ impl<'a> TypeFolder for SubstFolder<'a> {
                         }
                 }
             }
-            _ => r
+            _ => (*r).clone(),
         }
     }
 
