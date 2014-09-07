@@ -40,7 +40,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                 ret_ty: Self,
                 attributes: attrs,
                 combine_substructure: combine_substructure(|c, s, sub| {
-                    cs_clone("Clone", c, s, sub)
+                    cs_clone(c, s, sub)
                 }),
             }
         )
@@ -50,14 +50,15 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
 }
 
 fn cs_clone(
-    name: &str,
-    cx: &mut ExtCtxt, trait_span: Span,
+    cx: &mut ExtCtxt,
+    trait_span: Span,
     substr: &Substructure) -> Gc<Expr> {
     let clone_ident = substr.method_ident;
     let ctor_ident;
     let all_fields;
-    let subcall = |field: &FieldInfo|
-        cx.expr_method_call(field.span, field.self_, clone_ident, Vec::new());
+    let subcall = |field: &FieldInfo| {
+        cx.expr_method_call(field.span, field.self_, clone_ident, Vec::new())
+    };
 
     match *substr.fields {
         Struct(ref af) => {
@@ -68,16 +69,11 @@ fn cs_clone(
             ctor_ident = variant.node.name;
             all_fields = af;
         },
-        EnumNonMatchingCollapsed (..) => {
-            cx.span_bug(trait_span,
-                        format!("non-matching enum variants in \
-                                 `deriving({})`",
-                                name).as_slice())
+        EnumNonMatchingCollapsed(..) => {
+            cx.span_bug(trait_span, "non-matching enum variants in `#[deriving(Clone)]`")
         }
         StaticEnum(..) | StaticStruct(..) => {
-            cx.span_bug(trait_span,
-                        format!("static method in `deriving({})`",
-                                name).as_slice())
+            cx.span_bug(trait_span, "static method in `#[deriving(Clone)]`")
         }
     }
 
@@ -91,10 +87,8 @@ fn cs_clone(
             let ident = match field.name {
                 Some(i) => i,
                 None => {
-                    cx.span_bug(trait_span,
-                                format!("unnamed field in normal struct in \
-                                         `deriving({})`",
-                                        name).as_slice())
+                    cx.span_bug(trait_span, "unnamed field in normal struct in \
+                                             `#[deriving(Clone)]`")
                 }
             };
             cx.field_imm(field.span, ident, subcall(field))
