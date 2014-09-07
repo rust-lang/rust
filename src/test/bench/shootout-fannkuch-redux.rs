@@ -38,68 +38,151 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::cmp::max;
+use std::{cmp, iter, mem};
+use std::sync::Future;
 
-fn fact(n: uint) -> uint {
-    range(1, n + 1).fold(1, |accu, i| accu * i)
+fn rotate(x: &mut [i32]) {
+    let mut prev = x[0];
+    for place in x.mut_iter().rev() {
+        prev = mem::replace(place, prev)
+    }
 }
 
-fn fannkuch(n: uint, i: uint) -> (int, int) {
-    let mut perm = Vec::from_fn(n, |e| ((n + e - i) % n + 1) as i32);
-    let mut tperm = perm.clone();
-    let mut count = Vec::from_elem(n, 0u);
-    let mut perm_count = 0i;
-    let mut checksum = 0;
-
-    for countdown in range(1, fact(n - 1) + 1).rev() {
-        for i in range(1, n) {
-            let perm0 = *perm.get(0);
-            for j in range(0, i) {
-                *perm.get_mut(j) = *perm.get(j + 1);
-            }
-            *perm.get_mut(i) = perm0;
-
-            let count_i = count.get_mut(i);
-            if *count_i >= i {
-                *count_i = 0;
-            } else {
-                *count_i += 1;
-                break;
-            }
+fn next_permutation(perm: &mut [i32], count: &mut [i32]) {
+    for i in range(1, perm.len()) {
+        rotate(perm.mut_slice_to(i + 1));
+        let count_i = &mut count[i];
+        if *count_i >= i as i32 {
+            *count_i = 0;
+        } else {
+            *count_i += 1;
+            break
         }
-
-        tperm.clone_from(&perm);
-        let mut flips_count = 0;
-        loop {
-            let k = *tperm.get(0);
-            if k == 1 { break; }
-            tperm.mut_slice_to(k as uint).reverse();
-            flips_count += 1;
-        }
-        perm_count = max(perm_count, flips_count);
-        checksum += if countdown & 1 == 1 {flips_count} else {-flips_count}
     }
-    (checksum, perm_count)
+}
+
+struct P {
+    p: [i32, .. 16],
+}
+
+struct Perm {
+    cnt: [i32, .. 16],
+    fact: [u32, .. 16],
+    n: u32,
+    permcount: u32,
+    perm: P,
+}
+
+impl Perm {
+    fn new(n: u32) -> Perm {
+        let mut fact = [1, .. 16];
+        for i in range(1, n as uint + 1) {
+            fact[i] = fact[i - 1] * i as u32;
+        }
+        Perm {
+            cnt: [0, .. 16],
+            fact: fact,
+            n: n,
+            permcount: 0,
+            perm: P { p: [0, .. 16 ] }
+        }
+    }
+
+    fn get(&mut self, mut idx: i32) -> P {
+        let mut pp = [0u8, .. 16];
+        self.permcount = idx as u32;
+        for (i, place) in self.perm.p.mut_iter().enumerate() {
+            *place = i as i32 + 1;
+        }
+
+        for i in range(1, self.n as uint).rev() {
+            let d = idx / self.fact[i] as i32;
+            self.cnt[i] = d;
+            idx %= self.fact[i] as i32;
+            for (place, val) in pp.mut_iter().zip(self.perm.p.slice_to(i + 1).iter()) {
+                *place = (*val) as u8
+            }
+
+            let d = d as uint;
+            for j in range(0, i + 1) {
+                self.perm.p[j] = if j + d <= i {pp[j + d]} else {pp[j+d-i-1]} as i32;
+            }
+        }
+
+        self.perm
+    }
+
+    fn count(&self) -> u32 { self.permcount }
+    fn max(&self) -> u32 { self.fact[self.n as uint] }
+
+    fn next(&mut self) -> P {
+        next_permutation(self.perm.p, self.cnt);
+        self.permcount += 1;
+
+        self.perm
+    }
+}
+
+
+fn reverse(tperm: &mut [i32], mut k: uint) {
+    tperm.mut_slice_to(k).reverse()
+}
+
+fn work(mut perm: Perm, n: uint, max: uint) -> (i32, i32) {
+    let mut checksum = 0;
+    let mut maxflips = 0;
+
+    let mut p = perm.get(n as i32);
+
+    while perm.count() < max as u32 {
+        let mut flips = 0;
+
+        while p.p[0] != 1 {
+            let k = p.p[0] as uint;
+            reverse(p.p, k);
+            flips += 1;
+        }
+
+        checksum += if perm.count() % 2 == 0 {flips} else {-flips};
+        maxflips = cmp::max(maxflips, flips);
+
+        p = perm.next();
+    }
+
+    (checksum, maxflips)
+}
+
+fn fannkuch(n: i32) -> (i32, i32) {
+    let perm = Perm::new(n as u32);
+
+    let N = 4;
+    let mut futures = vec![];
+    let k = perm.max() / N;
+
+    for (i, j) in range(0, N).zip(iter::count(0, k)) {
+        let max = cmp::min(j+k, perm.max());
+
+        futures.push(Future::spawn(proc() {
+            work(perm, j as uint, max as uint)
+        }))
+    }
+
+    let mut checksum = 0;
+    let mut maxflips = 0;
+    for fut in futures.mut_iter() {
+        let (cs, mf) = fut.get();
+        checksum += cs;
+        maxflips = cmp::max(maxflips, mf);
+    }
+    (checksum, maxflips)
 }
 
 fn main() {
     let n = std::os::args().as_slice()
-                           .get(1)
-                           .and_then(|arg| from_str(arg.as_slice()))
-                           .unwrap_or(2u);
+        .get(1)
+        .and_then(|arg| from_str(arg.as_slice()))
+        .unwrap_or(2i32);
 
-    let (tx, rx) = channel();
-    for i in range(0, n) {
-        let tx = tx.clone();
-        spawn(proc() tx.send(fannkuch(n, i)));
-    }
-    drop(tx);
-
-    let mut checksum = 0;
-    let mut perm = 0;
-    for (cur_cks, cur_perm) in rx.iter() {
-        checksum += cur_cks;
-        perm = max(perm, cur_perm);
-    }
-    println!("{}\nPfannkuchen({}) = {}", checksum, n, perm);
+    let (checksum, maxflips) = fannkuch(n);
+    println!("{}\nPfannkuchen({}) = {}", checksum, n, maxflips);
 }
