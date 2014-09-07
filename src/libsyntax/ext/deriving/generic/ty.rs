@@ -14,14 +14,13 @@ explicit `Self` type to use when specifying impls to be derived.
 */
 
 use ast;
-use ast::{P,Expr,Generics,Ident};
+use ast::{Expr,Generics,Ident};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{Span,respan};
 use owned_slice::OwnedSlice;
 use parse::token::special_idents;
-
-use std::gc::Gc;
+use ptr::P;
 
 /// The types of pointers
 #[deriving(Clone)]
@@ -260,7 +259,7 @@ impl<'a> LifetimeBounds<'a> {
 }
 
 pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
-    -> (Gc<Expr>, ast::ExplicitSelf) {
+    -> (P<Expr>, ast::ExplicitSelf) {
     // this constructs a fresh `self` path, which will match the fresh `self` binding
     // created below.
     let self_path = cx.expr_self(span);

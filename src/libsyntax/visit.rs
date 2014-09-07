@@ -27,9 +27,8 @@ use abi::Abi;
 use ast::*;
 use ast;
 use codemap::Span;
+use ptr::P;
 use owned_slice::OwnedSlice;
-
-use std::gc::Gc;
 
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
@@ -121,16 +120,8 @@ pub fn walk_inlined_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v InlinedI
     match *item {
         IIItem(ref i) => visitor.visit_item(&**i),
         IIForeign(ref i) => visitor.visit_foreign_item(&**i),
-        IITraitItem(_, ref iti) => {
-            match *iti {
-                ProvidedInlinedTraitItem(ref m) => {
-                    walk_method_helper(visitor, &**m)
-                }
-                RequiredInlinedTraitItem(ref m) => {
-                    walk_method_helper(visitor, &**m)
-                }
-            }
-        }
+        IITraitItem(_, ref ti) => visitor.visit_trait_item(ti),
+        IIImplItem(_, MethodImplItem(ref m)) => walk_method_helper(visitor, &**m)
     }
 }
 
@@ -644,14 +635,14 @@ pub fn walk_decl<'v, V: Visitor<'v>>(visitor: &mut V, declaration: &'v Decl) {
 }
 
 pub fn walk_expr_opt<'v, V: Visitor<'v>>(visitor: &mut V,
-                                         optional_expression: &'v Option<Gc<Expr>>) {
+                                         optional_expression: &'v Option<P<Expr>>) {
     match *optional_expression {
         None => {}
         Some(ref expression) => visitor.visit_expr(&**expression),
     }
 }
 
-pub fn walk_exprs<'v, V: Visitor<'v>>(visitor: &mut V, expressions: &'v [Gc<Expr>]) {
+pub fn walk_exprs<'v, V: Visitor<'v>>(visitor: &mut V, expressions: &'v [P<Expr>]) {
     for expression in expressions.iter() {
         visitor.visit_expr(&**expression)
     }
