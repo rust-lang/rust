@@ -208,8 +208,8 @@ use syntax::visit;
 use syntax::visit::Visitor;
 use util::ppaux::Repr;
 
-pub fn infer_variance(tcx: &ty::ctxt,
-                      krate: &ast::Crate) {
+pub fn infer_variance(tcx: &ty::ctxt) {
+    let krate = tcx.map.krate();
     let mut arena = arena::Arena::new();
     let terms_cx = determine_parameters_to_be_inferred(tcx, &mut arena, krate);
     let constraints_cx = add_constraints_from_crate(terms_cx, krate);

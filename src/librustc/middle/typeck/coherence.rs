@@ -597,7 +597,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                         ast_items.iter()
                                  .map(|ast_item| {
                             match *ast_item {
-                                ast::MethodImplItem(ast_method) => {
+                                ast::MethodImplItem(ref ast_method) => {
                                     MethodTraitItemId(
                                         local_def(ast_method.id))
                                 }
@@ -820,9 +820,9 @@ fn subst_receiver_types_in_method_ty(tcx: &ty::ctxt,
     )
 }
 
-pub fn check_coherence(crate_context: &CrateCtxt, krate: &Crate) {
+pub fn check_coherence(crate_context: &CrateCtxt) {
     CoherenceChecker {
         crate_context: crate_context,
         inference_context: new_infer_ctxt(crate_context.tcx),
-    }.check(krate);
+    }.check(crate_context.tcx.map.krate());
 }

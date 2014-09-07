@@ -53,22 +53,22 @@ use util::ppaux::{Repr,UserString};
 
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use std::gc::Gc;
 
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{local_def, split_trait_methods, PostExpansionMethod};
+use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::codemap::Span;
 use syntax::parse::token::{special_idents};
 use syntax::parse::token;
 use syntax::print::pprust::{path_to_string};
+use syntax::ptr::P;
 use syntax::visit;
 
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
 
-pub fn collect_item_types(ccx: &CrateCtxt, krate: &ast::Crate) {
+pub fn collect_item_types(ccx: &CrateCtxt) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
                               lang_item: ast::DefId) {
         let ty::Polytype { ty: ty, .. } =
@@ -84,10 +84,10 @@ pub fn collect_item_types(ccx: &CrateCtxt, krate: &ast::Crate) {
     }
 
     let mut visitor = CollectTraitDefVisitor{ ccx: ccx };
-    visit::walk_crate(&mut visitor, krate);
+    visit::walk_crate(&mut visitor, ccx.tcx.map.krate());
 
     let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
-    visit::walk_crate(&mut visitor, krate);
+    visit::walk_crate(&mut visitor, ccx.tcx.map.krate());
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -179,7 +179,7 @@ impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
 
 pub fn get_enum_variant_types(ccx: &CrateCtxt,
                               enum_ty: ty::t,
-                              variants: &[ast::P<ast::Variant>],
+                              variants: &[P<ast::Variant>],
                               generics: &ast::Generics) {
     let tcx = ccx.tcx;
 
@@ -199,13 +199,13 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
                 enum_ty
             }
 
-            ast::StructVariantKind(struct_def) => {
+            ast::StructVariantKind(ref struct_def) => {
                 let pty = Polytype {
                     generics: ty_generics_for_type(ccx, generics),
                     ty: enum_ty
                 };
 
-                convert_struct(ccx, &*struct_def, pty, variant.node.id);
+                convert_struct(ccx, &**struct_def, pty, variant.node.id);
 
                 let input_tys: Vec<_> = struct_def.fields.iter().map(
                     |f| ty::node_id_to_type(ccx.tcx, f.node.id)).collect();
@@ -332,7 +332,7 @@ fn collect_trait_methods(ccx: &CrateCtxt,
                                   *m_id,
                                   *m_fn_style,
                                   trait_self_ty,
-                                  *m_explicit_self,
+                                  m_explicit_self,
                                   m_decl,
                                   m_abi);
         let ty_generics =
@@ -386,13 +386,12 @@ pub fn convert_field(ccx: &CrateCtxt,
     }
 }
 
-fn convert_methods(ccx: &CrateCtxt,
-                   container: ImplOrTraitItemContainer,
-                   ms: &[Gc<ast::Method>],
-                   untransformed_rcvr_ty: ty::t,
-                   rcvr_ty_generics: &ty::Generics,
-                   rcvr_visibility: ast::Visibility)
-{
+fn convert_methods<'a, I: Iterator<&'a ast::Method>>(ccx: &CrateCtxt,
+        container: ImplOrTraitItemContainer,
+        mut ms: I,
+        untransformed_rcvr_ty: ty::t,
+        rcvr_ty_generics: &ty::Generics,
+        rcvr_visibility: ast::Visibility) {
     debug!("convert_methods(untransformed_rcvr_ty={}, \
             rcvr_ty_generics={})",
            untransformed_rcvr_ty.repr(ccx.tcx),
@@ -400,14 +399,14 @@ fn convert_methods(ccx: &CrateCtxt,
 
     let tcx = ccx.tcx;
     let mut seen_methods = HashSet::new();
-    for m in ms.iter() {
+    for m in ms {
         if !seen_methods.insert(m.pe_ident().repr(ccx.tcx)) {
             tcx.sess.span_err(m.span, "duplicate method in trait impl");
         }
 
         let mty = Rc::new(ty_of_method(ccx,
                                        container,
-                                       &**m,
+                                       m,
                                        untransformed_rcvr_ty,
                                        rcvr_ty_generics,
                                        rcvr_visibility));
@@ -459,7 +458,7 @@ fn convert_methods(ccx: &CrateCtxt,
                                   m.id,
                                   m.pe_fn_style(),
                                   untransformed_rcvr_ty,
-                                  *m.pe_explicit_self(),
+                                  m.pe_explicit_self(),
                                   &*m.pe_fn_decl(),
                                   real_abi);
 
@@ -524,10 +523,10 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
         },
         ast::ItemImpl(ref generics,
                       ref opt_trait_ref,
-                      selfty,
+                      ref selfty,
                       ref impl_items) => {
             let ty_generics = ty_generics_for_type(ccx, generics);
-            let selfty = ccx.to_ty(&ExplicitRscope, &*selfty);
+            let selfty = ccx.to_ty(&ExplicitRscope, &**selfty);
             write_ty_to_tcx(tcx, it.id, selfty);
 
             tcx.tcache.borrow_mut().insert(local_def(it.id),
@@ -554,14 +553,14 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                                                &BindingRscope::new(method.id),
                                                selfty,
                                                method.pe_explicit_self());
-                        methods.push(*method);
+                        methods.push(&**method);
                     }
                 }
             }
 
             convert_methods(ccx,
                             ImplContainer(local_def(it.id)),
-                            methods.as_slice(),
+                            methods.move_iter(),
                             selfty,
                             &ty_generics,
                             parent_visibility);
@@ -600,12 +599,13 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             }
 
             // Run convert_methods on the provided methods.
-            let (_, provided_methods) =
-                split_trait_methods(trait_methods.as_slice());
             let untransformed_rcvr_ty = ty::mk_self_type(tcx, local_def(it.id));
             convert_methods(ccx,
                             TraitContainer(local_def(it.id)),
-                            provided_methods.as_slice(),
+                            trait_methods.iter().filter_map(|m| match *m {
+                                ast::RequiredMethod(_) => None,
+                                ast::ProvidedMethod(ref m) => Some(&**m)
+                            }),
                             untransformed_rcvr_ty,
                             &trait_def.generics,
                             it.vis);
@@ -615,7 +615,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             // static trait methods. This is somewhat unfortunate.
             collect_trait_methods(ccx, it.id, &*trait_def);
         },
-        ast::ItemStruct(struct_def, _) => {
+        ast::ItemStruct(ref struct_def, _) => {
             // Write the class type.
             let pty = ty_of_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, pty.ty);
@@ -624,14 +624,14 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
 
             // Write the super-struct type, if it exists.
             match struct_def.super_struct {
-                Some(ty) => {
-                    let supserty = ccx.to_ty(&ExplicitRscope, &*ty);
+                Some(ref ty) => {
+                    let supserty = ccx.to_ty(&ExplicitRscope, &**ty);
                     write_ty_to_tcx(tcx, it.id, supserty);
                 },
                 _ => {},
             }
 
-            convert_struct(ccx, &*struct_def, pty, it.id);
+            convert_struct(ccx, &**struct_def, pty, it.id);
         },
         ast::ItemTy(_, ref generics) => {
             ensure_no_ty_param_bounds(ccx, it.span, generics, "type");
@@ -683,7 +683,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
     tcx.struct_fields.borrow_mut().insert(local_def(id), Rc::new(field_tys));
 
     let super_struct = match struct_def.super_struct {
-        Some(t) => match t.node {
+        Some(ref t) => match t.node {
             ast::TyPath(_, _, path_id) => {
                 let def_map = tcx.def_map.borrow();
                 match def_map.find(&path_id) {
@@ -692,7 +692,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
                         // Check super-struct is virtual.
                         match tcx.map.find(def_id.node) {
                             Some(ast_map::NodeItem(i)) => match i.node {
-                                ast::ItemStruct(struct_def, _) => {
+                                ast::ItemStruct(ref struct_def, _) => {
                                     if !struct_def.is_virtual {
                                         span_err!(tcx.sess, t.span, E0126,
                                                   "struct inheritance is only \
@@ -908,21 +908,21 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
         _ => {}
     }
     match it.node {
-        ast::ItemStatic(t, _, _) => {
-            let typ = ccx.to_ty(&ExplicitRscope, &*t);
+        ast::ItemStatic(ref t, _, _) => {
+            let typ = ccx.to_ty(&ExplicitRscope, &**t);
             let pty = no_params(typ);
 
             tcx.tcache.borrow_mut().insert(local_def(it.id), pty.clone());
             return pty;
         }
-        ast::ItemFn(decl, fn_style, abi, ref generics, _) => {
+        ast::ItemFn(ref decl, fn_style, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn_or_method(ccx, generics,
                                                            ty::Generics::empty());
             let tofd = astconv::ty_of_bare_fn(ccx,
                                               it.id,
                                               fn_style,
                                               abi,
-                                              &*decl);
+                                              &**decl);
             let pty = Polytype {
                 generics: ty_generics,
                 ty: ty::mk_bare_fn(ccx.tcx, tofd)
@@ -935,14 +935,14 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
             ccx.tcx.tcache.borrow_mut().insert(local_def(it.id), pty.clone());
             return pty;
         }
-        ast::ItemTy(t, ref generics) => {
+        ast::ItemTy(ref t, ref generics) => {
             match tcx.tcache.borrow_mut().find(&local_def(it.id)) {
                 Some(pty) => return pty.clone(),
                 None => { }
             }
 
             let pty = {
-                let ty = ccx.to_ty(&ExplicitRscope, &*t);
+                let ty = ccx.to_ty(&ExplicitRscope, &**t);
                 Polytype {
                     generics: ty_generics_for_type(ccx, generics),
                     ty: ty
@@ -990,17 +990,17 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
                           abi: abi::Abi) -> ty::Polytype
 {
     match it.node {
-        ast::ForeignItemFn(fn_decl, ref generics) => {
+        ast::ForeignItemFn(ref fn_decl, ref generics) => {
             ty_of_foreign_fn_decl(ccx,
-                                  &*fn_decl,
+                                  &**fn_decl,
                                   local_def(it.id),
                                   generics,
                                   abi)
         }
-        ast::ForeignItemStatic(t, _) => {
+        ast::ForeignItemStatic(ref t, _) => {
             ty::Polytype {
                 generics: ty::Generics::empty(),
-                ty: ast_ty_to_ty(ccx, &ExplicitRscope, &*t)
+                ty: ast_ty_to_ty(ccx, &ExplicitRscope, &**t)
             }
         }
     }
@@ -1163,8 +1163,8 @@ fn ty_generics(ccx: &CrateCtxt,
                                     &param.unbound,
                                     param.span,
                                     where_clause);
-        let default = param.default.map(|path| {
-            let ty = ast_ty_to_ty(ccx, &ExplicitRscope, &*path);
+            let default = param.default.as_ref().map(|path| {
+            let ty = ast_ty_to_ty(ccx, &ExplicitRscope, &**path);
             let cur_idx = index;
 
             ty::walk_ty(ty, |t| {

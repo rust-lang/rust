@@ -264,7 +264,7 @@ mod svh_visitor {
             ExprTup(..)              => SawExprTup,
             ExprBinary(op, _, _)     => SawExprBinary(op),
             ExprUnary(op, _)         => SawExprUnary(op),
-            ExprLit(lit)             => SawExprLit(lit.node.clone()),
+            ExprLit(ref lit)         => SawExprLit(lit.node.clone()),
             ExprCast(..)             => SawExprCast,
             ExprIf(..)               => SawExprIf,
             ExprWhile(..)            => SawExprWhile,
