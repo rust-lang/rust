@@ -74,7 +74,7 @@ trait Sized {}
 #[lang = "copy"]
 trait Copy {}
 
-mod std {
+mod core {
     pub mod marker {
         pub use Copy;
     }

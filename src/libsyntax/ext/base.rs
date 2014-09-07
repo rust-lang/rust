@@ -544,6 +544,7 @@ pub struct ExtCtxt<'a> {
     pub cfg: ast::CrateConfig,
     pub backtrace: ExpnId,
     pub ecfg: expand::ExpansionConfig,
+    pub use_std: bool,
 
     pub mod_path: Vec<ast::Ident> ,
     pub trace_mac: bool,
@@ -563,6 +564,7 @@ impl<'a> ExtCtxt<'a> {
             backtrace: NO_EXPANSION,
             mod_path: Vec::new(),
             ecfg: ecfg,
+            use_std: true,
             trace_mac: false,
             exported_macros: Vec::new(),
             syntax_env: env,
@@ -736,6 +738,9 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn ident_of(&self, st: &str) -> ast::Ident {
         str_to_ident(st)
+    }
+    pub fn ident_of_std(&self, st: &str) -> ast::Ident {
+        self.ident_of(if self.use_std { "std" } else { st })
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
         token::intern(st)

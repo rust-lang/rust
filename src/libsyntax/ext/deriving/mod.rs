@@ -30,6 +30,22 @@ macro_rules! path {
     )
 }
 
+macro_rules! pathvec_std {
+    ($cx:expr, $first:ident :: $($rest:ident)::+) => (
+        if $cx.use_std {
+            pathvec!(std :: $($rest)::+)
+        } else {
+            pathvec!($first :: $($rest)::+)
+        }
+    )
+}
+
+macro_rules! path_std {
+    ($($x:tt)*) => (
+        ::ext::deriving::generic::ty::Path::new( pathvec_std!( $($x)* ) )
+    )
+}
+
 pub mod bounds;
 pub mod clone;
 pub mod encodable;
