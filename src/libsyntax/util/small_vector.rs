@@ -12,6 +12,8 @@ use std::mem;
 use std::slice;
 use std::vec;
 
+use fold::MoveMap;
+
 /// A vector type optimized for cases where the size is almost always 0 or 1
 pub struct SmallVector<T> {
     repr: SmallVectorRepr<T>,
@@ -20,7 +22,7 @@ pub struct SmallVector<T> {
 enum SmallVectorRepr<T> {
     Zero,
     One(T),
-    Many(Vec<T> ),
+    Many(Vec<T>),
 }
 
 impl<T> Collection for SmallVector<T> {
@@ -157,6 +159,17 @@ impl<T> Iterator<T> for MoveItems<T> {
             OneIterator(..) => (1, Some(1)),
             ManyIterator(ref inner) => inner.size_hint()
         }
+    }
+}
+
+impl<T> MoveMap<T> for SmallVector<T> {
+    fn move_map(self, f: |T| -> T) -> SmallVector<T> {
+        let repr = match self.repr {
+            Zero => Zero,
+            One(v) => One(f(v)),
+            Many(vs) => Many(vs.move_map(f))
+        };
+        SmallVector { repr: repr }
     }
 }
 
