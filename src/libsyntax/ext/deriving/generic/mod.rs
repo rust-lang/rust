@@ -254,7 +254,8 @@ pub struct Substructure<'a> {
     pub self_args: &'a [Gc<Expr>],
     /// verbatim access to any other arguments
     pub nonself_args: &'a [Gc<Expr>],
-    pub fields: &'a SubstructureFields<'a>
+    /// The data structure fields
+    pub fields: SubstructureFields<'a>
 }
 
 /// Summary of the relevant parts of a struct/enum field.
@@ -568,7 +569,7 @@ impl<'a> MethodDef<'a> {
                                 type_ident: Ident,
                                 self_args: &[Gc<Expr>],
                                 nonself_args: &[Gc<Expr>],
-                                fields: &SubstructureFields)
+                                fields: SubstructureFields)
         -> Gc<Expr> {
         let substructure = Substructure {
             type_ident: type_ident,
@@ -769,7 +770,7 @@ impl<'a> MethodDef<'a> {
             type_ident,
             self_args,
             nonself_args,
-            &Struct(fields));
+            Struct(fields));
 
         // make a series of nested matches, to destructure the
         // structs. This is actually right-to-left, but it shouldn't
@@ -795,7 +796,7 @@ impl<'a> MethodDef<'a> {
                                       trait_,
                                       type_ident,
                                       self_args, nonself_args,
-                                      &StaticStruct(struct_def, summary))
+                                      StaticStruct(struct_def, summary))
     }
 
     /**
@@ -991,7 +992,7 @@ impl<'a> MethodDef<'a> {
                                                 field_tuples);
                 let arm_expr = self.call_substructure_method(
                     cx, trait_, type_ident, self_args, nonself_args,
-                    &substructure);
+                    substructure);
 
                 cx.arm(sp, vec![single_pat], arm_expr)
             }).collect();
@@ -1044,7 +1045,7 @@ impl<'a> MethodDef<'a> {
 
             let arm_expr = self.call_substructure_method(
                 cx, trait_, type_ident, self_args, nonself_args,
-                &catch_all_substructure);
+                catch_all_substructure);
 
             // Builds the expression:
             // {
@@ -1153,7 +1154,7 @@ impl<'a> MethodDef<'a> {
         }).collect();
         self.call_substructure_method(cx, trait_, type_ident,
                                       self_args, nonself_args,
-                                      &StaticEnum(enum_def, summary))
+                                      StaticEnum(enum_def, summary))
     }
 }
 
@@ -1334,7 +1335,7 @@ pub fn cs_fold(use_foldl: bool,
                trait_span: Span,
                substructure: &Substructure)
                -> Gc<Expr> {
-    match *substructure.fields {
+    match substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             if use_foldl {
                 all_fields.iter().fold(base, |old, field| {
@@ -1380,7 +1381,7 @@ pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<Gc<Expr>>| -> Gc<Expr>,
                       trait_span: Span,
                       substructure: &Substructure)
                       -> Gc<Expr> {
-    match *substructure.fields {
+    match substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
             let called = all_fields.iter().map(|field| {

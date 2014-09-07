@@ -60,7 +60,7 @@ fn cs_clone(
         cx.expr_method_call(field.span, field.self_, clone_ident, Vec::new())
     };
 
-    match *substr.fields {
+    match substr.fields {
         Struct(ref af) => {
             ctor_ident = substr.type_ident;
             all_fields = af;
