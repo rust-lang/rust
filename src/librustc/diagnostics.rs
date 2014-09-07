@@ -160,8 +160,6 @@ register_diagnostics!(
     E0146,
     E0147,
     E0148,
-    E0149,
-    E0150,
     E0151,
     E0152,
     E0153,
