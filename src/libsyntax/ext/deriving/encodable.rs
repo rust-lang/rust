@@ -144,7 +144,7 @@ fn expand_deriving_encodable_imp<F>(cx: &mut ExtCtxt,
                 args: vec!(Ptr(box Literal(Path::new_local("__S")),
                             Borrowed(None, MutMutable))),
                 ret_ty: Literal(Path::new_(
-                    vec!("std", "result", "Result"),
+                    pathvec!(std::result::Result),
                     None,
                     vec!(box Tuple(Vec::new()), box Literal(Path::new_(
                         vec!["__S", "Error"], None, vec![], false
