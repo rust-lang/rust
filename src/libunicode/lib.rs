@@ -78,7 +78,9 @@ pub mod str {
     pub use u_str::{utf16_items, Utf16Encoder};
 }
 
+// NOTE: remove after next snapshot
 // this lets us use #[derive(..)]
+#[cfg(stage0)]
 mod std {
     pub use core::clone;
     pub use core::cmp;
