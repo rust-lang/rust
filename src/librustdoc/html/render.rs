@@ -489,10 +489,10 @@ fn write_shared(cx: &Context,
                include_bin!("static/FiraSans-Medium.woff")));
     try!(write(cx.dst.join("Heuristica-Italic.woff"),
                include_bin!("static/Heuristica-Italic.woff")));
-    try!(write(cx.dst.join("SourceSerifPro-Regular.woff"),
-               include_bin!("static/SourceSerifPro-Regular.woff")));
-    try!(write(cx.dst.join("SourceSerifPro-Bold.woff"),
-               include_bin!("static/SourceSerifPro-Bold.woff")));
+    try!(write(cx.dst.join("SourceSansPro-Regular.woff"),
+               include_bin!("static/SourceSansPro-Regular.woff")));
+    try!(write(cx.dst.join("SourceSansPro-Bold.woff"),
+               include_bin!("static/SourceSansPro-Bold.woff")));
     try!(write(cx.dst.join("SourceCodePro-Regular.woff"),
                include_bin!("static/SourceCodePro-Regular.woff")));
     try!(write(cx.dst.join("SourceCodePro-Semibold.woff"),
