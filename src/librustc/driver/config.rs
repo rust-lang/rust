@@ -30,7 +30,7 @@ use syntax::diagnostic::{ColorConfig, Auto, Always, Never};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use std::cell::{RefCell};
@@ -76,7 +76,7 @@ pub struct Options {
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
-    pub addl_lib_search_paths: RefCell<HashSet<Path>>,
+    pub addl_lib_search_paths: RefCell<Vec<Path>>,
     pub maybe_sysroot: Option<Path>,
     pub target_triple: String,
     // User-specified cfg meta items. The compiler itself will add additional
@@ -113,7 +113,7 @@ pub fn basic_options() -> Options {
         lint_opts: Vec::new(),
         describe_lints: false,
         output_types: Vec::new(),
-        addl_lib_search_paths: RefCell::new(HashSet::new()),
+        addl_lib_search_paths: RefCell::new(Vec::new()),
         maybe_sysroot: None,
         target_triple: driver::host_triple().to_string(),
         cfg: Vec::new(),

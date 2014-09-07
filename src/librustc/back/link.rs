@@ -28,7 +28,6 @@ use util::ppaux;
 use util::sha2::{Digest, Sha256};
 
 use std::char;
-use std::collections::HashSet;
 use std::io::{fs, TempDir, Command};
 use std::io;
 use std::mem;
@@ -570,10 +569,7 @@ fn link_binary_output(sess: &Session,
 fn archive_search_paths(sess: &Session) -> Vec<Path> {
     let mut rustpath = filesearch::rust_path();
     rustpath.push(sess.target_filesearch().get_lib_path());
-    // FIXME: Addl lib search paths are an unordered HashSet?
-    // Shouldn't this search be done in some order?
-    let addl_lib_paths: HashSet<Path> = sess.opts.addl_lib_search_paths.borrow().clone();
-    let mut search: Vec<Path> = addl_lib_paths.move_iter().collect();
+    let mut search: Vec<Path> = sess.opts.addl_lib_search_paths.borrow().clone();
     search.push_all(rustpath.as_slice());
     return search;
 }
