@@ -30,7 +30,7 @@ use syntax::ast::{Ident, ImplItem, Item, ItemEnum, ItemFn, ItemForeignMod};
 use syntax::ast::{ItemImpl, ItemMac, ItemMod, ItemStatic, ItemStruct};
 use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local, Method};
 use syntax::ast::{MethodImplItem, Mod, Name, NamedField, NodeId};
-use syntax::ast::{P, Pat, PatEnum, PatIdent, PatLit};
+use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path, PathListIdent, PathListMod};
 use syntax::ast::{PrimTy, Public, SelfExplicit, SelfStatic};
 use syntax::ast::{RegionTyParamBound, StmtDecl, StructField};
@@ -43,8 +43,7 @@ use syntax::ast::{UnboxedFnTyParamBound, UnnamedField, UnsafeFn, Variant};
 use syntax::ast::{ViewItem, ViewItemExternCrate, ViewItemUse, ViewPathGlob};
 use syntax::ast::{ViewPathList, ViewPathSimple, Visibility};
 use syntax::ast;
-use syntax::ast_util::{PostExpansionMethod, local_def};
-use syntax::ast_util::{trait_item_to_ty_method, walk_pat};
+use syntax::ast_util::{PostExpansionMethod, local_def, walk_pat};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
 use syntax::parse::token::special_names;
@@ -52,6 +51,7 @@ use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::codemap::{Span, DUMMY_SP, Pos};
 use syntax::owned_slice::OwnedSlice;
+use syntax::ptr::P;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -1164,7 +1164,7 @@ impl<'a> Resolver<'a> {
         // Check each statement.
         for statement in block.stmts.iter() {
             match statement.node {
-                StmtDecl(declaration, _) => {
+                StmtDecl(ref declaration, _) => {
                     match declaration.node {
                         DeclItem(_) => {
                             return true;
@@ -1277,7 +1277,7 @@ impl<'a> Resolver<'a> {
             }
 
             // These items live in both the type and value namespaces.
-            ItemStruct(struct_def, _) => {
+            ItemStruct(ref struct_def, _) => {
                 // Adding to both Type and Value namespaces or just Type?
                 let (forbid, ctor_id) = match struct_def.ctor_id {
                     Some(ctor_id)   => (ForbidDuplicateTypesAndValues, Some(ctor_id)),
@@ -1309,7 +1309,7 @@ impl<'a> Resolver<'a> {
                 parent
             }
 
-            ItemImpl(_, None, ty, ref impl_items) => {
+            ItemImpl(_, None, ref ty, ref impl_items) => {
                 // If this implements an anonymous trait, then add all the
                 // methods within to a new module, if the type was defined
                 // within this module.
@@ -1364,7 +1364,7 @@ impl<'a> Resolver<'a> {
                         // For each implementation item...
                         for impl_item in impl_items.iter() {
                             match *impl_item {
-                                MethodImplItem(method) => {
+                                MethodImplItem(ref method) => {
                                     // Add the method to the module.
                                     let ident = method.pe_ident();
                                     let method_name_bindings =
@@ -1430,37 +1430,42 @@ impl<'a> Resolver<'a> {
 
                 // Add the names of all the methods to the trait info.
                 for method in methods.iter() {
-                    let ty_m = trait_item_to_ty_method(method);
-
-                    let ident = ty_m.ident;
+                    let (m_id, m_ident, m_fn_style, m_self, m_span) = match *method {
+                        ast::RequiredMethod(ref m) => {
+                            (m.id, m.ident, m.fn_style, &m.explicit_self, m.span)
+                        }
+                        ast::ProvidedMethod(ref m) => {
+                            (m.id, m.pe_ident(), m.pe_fn_style(), m.pe_explicit_self(), m.span)
+                        }
+                    };
 
                     // Add it as a name in the trait module.
-                    let (def, static_flag) = match ty_m.explicit_self.node {
+                    let (def, static_flag) = match m_self.node {
                         SelfStatic => {
                             // Static methods become `def_static_method`s.
-                            (DefStaticMethod(local_def(ty_m.id),
+                            (DefStaticMethod(local_def(m_id),
                                               FromTrait(local_def(item.id)),
-                                              ty_m.fn_style),
+                                              m_fn_style),
                              StaticMethodTraitItemKind)
                         }
                         _ => {
                             // Non-static methods become `def_method`s.
-                            (DefMethod(local_def(ty_m.id),
+                            (DefMethod(local_def(m_id),
                                        Some(local_def(item.id))),
                              NonstaticMethodTraitItemKind)
                         }
                     };
 
                     let method_name_bindings =
-                        self.add_child(ident,
+                        self.add_child(m_ident,
                                        module_parent.clone(),
                                        ForbidDuplicateValues,
-                                       ty_m.span);
-                    method_name_bindings.define_value(def, ty_m.span, true);
+                                       m_span);
+                    method_name_bindings.define_value(def, m_span, true);
 
                     self.trait_item_map
                         .borrow_mut()
-                        .insert((ident.name, def_id), static_flag);
+                        .insert((m_ident.name, def_id), static_flag);
                 }
 
                 name_bindings.define_type(DefTrait(def_id), sp, is_public);
@@ -4068,7 +4073,7 @@ impl<'a> Resolver<'a> {
             ItemStruct(ref struct_def, ref generics) => {
                 self.resolve_struct(item.id,
                                     generics,
-                                    struct_def.super_struct,
+                                    &struct_def.super_struct,
                                     struct_def.fields.as_slice());
             }
 
@@ -4100,15 +4105,15 @@ impl<'a> Resolver<'a> {
                 });
             }
 
-            ItemFn(fn_decl, _, _, ref generics, block) => {
+            ItemFn(ref fn_decl, _, _, ref generics, ref block) => {
                 self.resolve_function(ItemRibKind,
-                                      Some(fn_decl),
+                                      Some(&**fn_decl),
                                       HasTypeParameters
                                         (generics,
                                          FnSpace,
                                          item.id,
                                          ItemRibKind),
-                                      block);
+                                      &**block);
             }
 
             ItemStatic(..) => {
@@ -4179,9 +4184,9 @@ impl<'a> Resolver<'a> {
 
     fn resolve_function(&mut self,
                         rib_kind: RibKind,
-                        optional_declaration: Option<P<FnDecl>>,
+                        optional_declaration: Option<&FnDecl>,
                         type_parameters: TypeParameters,
-                        block: P<Block>) {
+                        block: &Block) {
         // Create a value rib for the function.
         let function_value_rib = Rib::new(rib_kind);
         self.value_ribs.borrow_mut().push(function_value_rib);
@@ -4357,7 +4362,7 @@ impl<'a> Resolver<'a> {
     fn resolve_struct(&mut self,
                       id: NodeId,
                       generics: &Generics,
-                      super_struct: Option<P<Ty>>,
+                      super_struct: &Option<P<Ty>>,
                       fields: &[StructField]) {
         // If applicable, create a rib for the type parameters.
         self.with_type_parameter_rib(HasTypeParameters(generics,
@@ -4370,8 +4375,8 @@ impl<'a> Resolver<'a> {
             this.resolve_where_clause(&generics.where_clause);
 
             // Resolve the super struct.
-            match super_struct {
-                Some(t) => match t.node {
+            match *super_struct {
+                Some(ref t) => match t.node {
                     TyPath(ref path, None, path_id) => {
                         match this.resolve_path(id, path, TypeNS, true) {
                             Some((DefTy(def_id), lp)) if this.structs.contains_key(&def_id) => {
@@ -4489,7 +4494,7 @@ impl<'a> Resolver<'a> {
                 this.with_current_self_type(self_type, |this| {
                     for impl_item in impl_items.iter() {
                         match *impl_item {
-                            MethodImplItem(method) => {
+                            MethodImplItem(ref method) => {
                                 // If this is a trait impl, ensure the method
                                 // exists in trait
                                 this.check_trait_item(method.pe_ident(),
@@ -4500,7 +4505,7 @@ impl<'a> Resolver<'a> {
                                 this.resolve_method(
                                     MethodRibKind(id,
                                                   ProvidedMethod(method.id)),
-                                    &*method);
+                                    &**method);
                             }
                         }
                     }
@@ -4738,7 +4743,7 @@ impl<'a> Resolver<'a> {
                 });
             }
 
-            TyClosure(c) | TyProc(c) => {
+            TyClosure(ref c) | TyProc(ref c) => {
                 self.resolve_type_parameter_bounds(ty.id, &c.bounds,
                                                    TraitBoundingTypeParameter);
                 visit::walk_ty(self, ty);
@@ -4775,7 +4780,7 @@ impl<'a> Resolver<'a> {
                     let renamed = mtwt::resolve(ident);
 
                     match self.resolve_bare_identifier_pattern(ident, pattern.span) {
-                        FoundStructOrEnumVariant(def, lp)
+                        FoundStructOrEnumVariant(ref def, lp)
                                 if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `{}` to \
                                     struct or enum variant",
@@ -4785,7 +4790,7 @@ impl<'a> Resolver<'a> {
                                 pattern,
                                 binding_mode,
                                 "an enum variant");
-                            self.record_def(pattern.id, (def, lp));
+                            self.record_def(pattern.id, (def.clone(), lp));
                         }
                         FoundStructOrEnumVariant(..) => {
                             self.resolve_error(
@@ -4795,7 +4800,7 @@ impl<'a> Resolver<'a> {
                                          scope",
                                         token::get_name(renamed)).as_slice());
                         }
-                        FoundConst(def, lp) if mode == RefutableMode => {
+                        FoundConst(ref def, lp) if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `{}` to \
                                     constant",
                                    token::get_name(renamed));
@@ -4804,7 +4809,7 @@ impl<'a> Resolver<'a> {
                                 pattern,
                                 binding_mode,
                                 "a constant");
-                            self.record_def(pattern.id, (def, lp));
+                            self.record_def(pattern.id, (def.clone(), lp));
                         }
                         FoundConst(..) => {
                             self.resolve_error(pattern.span,
@@ -5024,7 +5029,7 @@ impl<'a> Resolver<'a> {
         if path.segments.len() > 1 {
             let def = self.resolve_module_relative_path(path, namespace);
             match (def, unqualified_def) {
-                (Some((d, _)), Some((ud, _))) if d == ud => {
+                (Some((ref d, _)), Some((ref ud, _))) if *d == *ud => {
                     self.session
                         .add_lint(lint::builtin::UNNECESSARY_QUALIFICATION,
                                   id,
@@ -5386,8 +5391,8 @@ impl<'a> Resolver<'a> {
                                                     -> Option<(Path, NodeId, FallbackChecks)> {
             match t.node {
                 TyPath(ref path, _, node_id) => Some((path.clone(), node_id, allow)),
-                TyPtr(mut_ty) => extract_path_and_node_id(&*mut_ty.ty, OnlyTraitAndStatics),
-                TyRptr(_, mut_ty) => extract_path_and_node_id(&*mut_ty.ty, allow),
+                TyPtr(ref mut_ty) => extract_path_and_node_id(&*mut_ty.ty, OnlyTraitAndStatics),
+                TyRptr(_, ref mut_ty) => extract_path_and_node_id(&*mut_ty.ty, allow),
                 // This doesn't handle the remaining `Ty` variants as they are not
                 // that commonly the self_type, it might be interesting to provide
                 // support for those in future.
@@ -5647,12 +5652,12 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprFnBlock(_, fn_decl, block) |
-            ExprProc(fn_decl, block) |
-            ExprUnboxedFn(_, _, fn_decl, block) => {
+            ExprFnBlock(_, ref fn_decl, ref block) |
+            ExprProc(ref fn_decl, ref block) |
+            ExprUnboxedFn(_, _, ref fn_decl, ref block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.id),
-                                      Some(fn_decl), NoTypeParameters,
-                                      block);
+                                      Some(&**fn_decl), NoTypeParameters,
+                                      &**block);
             }
 
             ExprStruct(ref path, _, _) => {

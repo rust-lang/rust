@@ -36,13 +36,12 @@ use middle::typeck::infer::glb::Glb;
 use syntax::codemap;
 use syntax::codemap::{Span, CodeMap, DUMMY_SP};
 use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note};
-use syntax::ast;
+use syntax::{ast, ast_map};
 use util::ppaux::{ty_to_string, UserString};
 
 use arena::TypedArena;
 
 struct Env<'a, 'tcx: 'a> {
-    krate: ast::Crate,
     infcx: &'a infer::InferCtxt<'a, 'tcx>,
 }
 
@@ -117,19 +116,22 @@ fn test_env(_test_name: &str,
     let krate_config = Vec::new();
     let input = driver::StrInput(source_string.to_string());
     let krate = driver::phase_1_parse_input(&sess, krate_config, &input);
-    let (krate, ast_map) =
-        driver::phase_2_configure_and_expand(&sess, krate, "test", None)
-            .expect("phase 2 aborted");
+    let krate = driver::phase_2_configure_and_expand(&sess, krate, "test", None)
+                    .expect("phase 2 aborted");
+
+    let mut forest = ast_map::Forest::new(krate);
+    let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
+    let krate = ast_map.krate();
 
     // run just enough stuff to build a tcx:
-    let lang_items = lang_items::collect_language_items(&krate, &sess);
+    let lang_items = lang_items::collect_language_items(krate, &sess);
     let resolve::CrateMap { def_map: def_map, .. } =
-        resolve::resolve_crate(&sess, &lang_items, &krate);
+        resolve::resolve_crate(&sess, &lang_items, krate);
     let (freevars_map, captures_map) = freevars::annotate_freevars(&def_map,
-                                                                   &krate);
-    let named_region_map = resolve_lifetime::krate(&sess, &krate);
-    let region_map = region::resolve_crate(&sess, &krate);
-    let stability_index = stability::Index::build(&krate);
+                                                                   krate);
+    let named_region_map = resolve_lifetime::krate(&sess, krate);
+    let region_map = region::resolve_crate(&sess, krate);
+    let stability_index = stability::Index::build(krate);
     let type_arena = TypedArena::new();
     let tcx = ty::mk_ctxt(sess,
                           &type_arena,
@@ -142,11 +144,7 @@ fn test_env(_test_name: &str,
                           lang_items,
                           stability_index);
     let infcx = infer::new_infer_ctxt(&tcx);
-    let env = Env {
-        krate: krate,
-        infcx: &infcx
-    };
-    body(env);
+    body(Env { infcx: &infcx });
     infcx.resolve_regions_and_report_errors();
     assert_eq!(tcx.sess.err_count(), expected_err_count);
 }
@@ -171,7 +169,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn lookup_item(&self, names: &[String]) -> ast::NodeId {
-        return match search_mod(self, &self.krate.module, 0, names) {
+        return match search_mod(self, &self.infcx.tcx.map.krate().module, 0, names) {
             Some(id) => id,
             None => {
                 fail!("no item found: `{}`", names.connect("::"));

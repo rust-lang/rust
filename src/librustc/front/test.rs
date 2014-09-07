@@ -16,10 +16,10 @@
 use driver::session::Session;
 use front::config;
 
-use std::gc::{Gc, GC};
 use std::slice;
 use std::mem;
 use std::vec;
+use syntax::{ast, ast_util};
 use syntax::ast_util::*;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
@@ -28,13 +28,13 @@ use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
-use syntax::fold::Folder;
+use syntax::fold::{Folder, MoveMap};
 use syntax::fold;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::print::pprust;
-use syntax::{ast, ast_util};
+use syntax::ptr::P;
 use syntax::util::small_vector::SmallVector;
 
 struct Test {
@@ -105,12 +105,12 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         folded
     }
 
-    fn fold_item(&mut self, i: Gc<ast::Item>) -> SmallVector<Gc<ast::Item>> {
+    fn fold_item(&mut self, i: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         self.cx.path.push(i.ident);
         debug!("current path: {}",
                ast_util::path_name_i(self.cx.path.as_slice()));
 
-        if is_test_fn(&self.cx, i) || is_bench_fn(&self.cx, i) {
+        if is_test_fn(&self.cx, &*i) || is_bench_fn(&self.cx, &*i) {
             match i.node {
                 ast::ItemFn(_, ast::UnsafeFn, _, _, _) => {
                     let sess = self.cx.sess;
@@ -123,9 +123,9 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     let test = Test {
                         span: i.span,
                         path: self.cx.path.clone(),
-                        bench: is_bench_fn(&self.cx, i),
-                        ignore: is_ignored(&self.cx, i),
-                        should_fail: should_fail(i)
+                        bench: is_bench_fn(&self.cx, &*i),
+                        ignore: is_ignored(&self.cx, &*i),
+                        should_fail: should_fail(&*i)
                     };
                     self.cx.testfns.push(test);
                     self.tests.push(i.ident);
@@ -138,14 +138,14 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
         let res = match i.node {
-            ast::ItemMod(..) => fold::noop_fold_item(&*i, self),
+            ast::ItemMod(..) => fold::noop_fold_item(i, self),
             _ => SmallVector::one(i),
         };
         self.cx.path.pop();
         res
     }
 
-    fn fold_mod(&mut self, m: &ast::Mod) -> ast::Mod {
+    fn fold_mod(&mut self, m: ast::Mod) -> ast::Mod {
         let tests = mem::replace(&mut self.tests, Vec::new());
         let tested_submods = mem::replace(&mut self.tested_submods, Vec::new());
         let mut mod_folded = fold::noop_fold_mod(m, self);
@@ -155,22 +155,25 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         // Remove any #[main] from the AST so it doesn't clash with
         // the one we're going to add. Only if compiling an executable.
 
-        fn nomain(item: Gc<ast::Item>) -> Gc<ast::Item> {
-            box(GC) ast::Item {
-                attrs: item.attrs.iter().filter_map(|attr| {
-                    if !attr.check_name("main") {
-                        Some(*attr)
-                    } else {
-                        None
-                    }
-                }).collect(),
-                .. (*item).clone()
-            }
-        }
+        mod_folded.items = mem::replace(&mut mod_folded.items, vec![]).move_map(|item| {
+            item.map(|ast::Item {id, ident, attrs, node, vis, span}| {
+                ast::Item {
+                    id: id,
+                    ident: ident,
+                    attrs: attrs.move_iter().filter_map(|attr| {
+                        if !attr.check_name("main") {
+                            Some(attr)
+                        } else {
+                            None
+                        }
+                    }).collect(),
+                    node: node,
+                    vis: vis,
+                    span: span
+                }
+            })
+        });
 
-        for i in mod_folded.items.mut_iter() {
-            *i = nomain(*i);
-        }
         if !tests.is_empty() || !tested_submods.is_empty() {
             let (it, sym) = mk_reexport_mod(&mut self.cx, tests, tested_submods);
             mod_folded.items.push(it);
@@ -188,7 +191,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 }
 
 fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
-                   tested_submods: Vec<(ast::Ident, ast::Ident)>) -> (Gc<ast::Item>, ast::Ident) {
+                   tested_submods: Vec<(ast::Ident, ast::Ident)>) -> (P<ast::Item>, ast::Ident) {
     let mut view_items = Vec::new();
     let super_ = token::str_to_ident("super");
 
@@ -208,14 +211,14 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
     };
 
     let sym = token::gensym_ident("__test_reexports");
-    let it = box(GC) ast::Item {
+    let it = P(ast::Item {
         ident: sym.clone(),
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemMod(reexport_mod),
         vis: ast::Public,
         span: DUMMY_SP,
-    };
+    });
 
     (it, sym)
 }
@@ -266,10 +269,10 @@ fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     })
 }
 
-fn is_test_fn(cx: &TestCtxt, i: Gc<ast::Item>) -> bool {
+fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     let has_test_attr = attr::contains_name(i.attrs.as_slice(), "test");
 
-    fn has_test_signature(i: Gc<ast::Item>) -> bool {
+    fn has_test_signature(i: &ast::Item) -> bool {
         match &i.node {
           &ast::ItemFn(ref decl, _, _, ref generics, _) => {
             let no_output = match decl.output.node {
@@ -295,10 +298,10 @@ fn is_test_fn(cx: &TestCtxt, i: Gc<ast::Item>) -> bool {
     return has_test_attr && has_test_signature(i);
 }
 
-fn is_bench_fn(cx: &TestCtxt, i: Gc<ast::Item>) -> bool {
+fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     let has_bench_attr = attr::contains_name(i.attrs.as_slice(), "bench");
 
-    fn has_test_signature(i: Gc<ast::Item>) -> bool {
+    fn has_test_signature(i: &ast::Item) -> bool {
         match i.node {
             ast::ItemFn(ref decl, _, _, ref generics, _) => {
                 let input_cnt = decl.inputs.len();
@@ -325,19 +328,19 @@ fn is_bench_fn(cx: &TestCtxt, i: Gc<ast::Item>) -> bool {
     return has_bench_attr && has_test_signature(i);
 }
 
-fn is_ignored(cx: &TestCtxt, i: Gc<ast::Item>) -> bool {
+fn is_ignored(cx: &TestCtxt, i: &ast::Item) -> bool {
     i.attrs.iter().any(|attr| {
         // check ignore(cfg(foo, bar))
         attr.check_name("ignore") && match attr.meta_item_list() {
             Some(ref cfgs) => {
-                attr::test_cfg(cx.config.as_slice(), cfgs.iter().map(|x| *x))
+                attr::test_cfg(cx.config.as_slice(), cfgs.iter())
             }
             None => true
         }
     })
 }
 
-fn should_fail(i: Gc<ast::Item>) -> bool {
+fn should_fail(i: &ast::Item) -> bool {
     attr::contains_name(i.attrs.as_slice(), "should_fail")
 }
 
@@ -362,9 +365,9 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     let id_test = token::str_to_ident("test");
     let (vi, vis) = if cx.is_test_crate {
         (ast::ViewItemUse(
-            box(GC) nospan(ast::ViewPathSimple(id_test,
-                                        path_node(vec!(id_test)),
-                                        ast::DUMMY_NODE_ID))),
+            P(nospan(ast::ViewPathSimple(id_test,
+                                         path_node(vec!(id_test)),
+                                         ast::DUMMY_NODE_ID)))),
          ast::Public)
     } else {
         (ast::ViewItemExternCrate(id_test, None, ast::DUMMY_NODE_ID),
@@ -378,7 +381,7 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     }
 }
 
-fn mk_test_module(cx: &mut TestCtxt) -> (Gc<ast::Item>, Option<ast::ViewItem>) {
+fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<ast::ViewItem>) {
     // Link to test crate
     let view_items = vec!(mk_std(cx));
 
@@ -421,7 +424,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (Gc<ast::Item>, Option<ast::ViewItem>) {
                                        ast::DUMMY_NODE_ID));
 
         ast::ViewItem {
-            node: ast::ViewItemUse(box(GC) use_path),
+            node: ast::ViewItemUse(P(use_path)),
             attrs: vec![],
             vis: ast::Inherited,
             span: DUMMY_SP
@@ -430,7 +433,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (Gc<ast::Item>, Option<ast::ViewItem>) {
 
     debug!("Synthetic test module:\n{}\n", pprust::item_to_string(&item));
 
-    (box(GC) item, reexport)
+    (P(item), reexport)
 }
 
 fn nospan<T>(t: T) -> codemap::Spanned<T> {
@@ -449,7 +452,7 @@ fn path_node(ids: Vec<ast::Ident> ) -> ast::Path {
     }
 }
 
-fn mk_tests(cx: &TestCtxt) -> Gc<ast::Item> {
+fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     // The vector of test_descs for this crate
     let test_descs = mk_test_descs(cx);
 
@@ -483,24 +486,24 @@ fn is_test_crate(krate: &ast::Crate) -> bool {
     }
 }
 
-fn mk_test_descs(cx: &TestCtxt) -> Gc<ast::Expr> {
+fn mk_test_descs(cx: &TestCtxt) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.testfns.len());
 
-    box(GC) ast::Expr {
+    P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprAddrOf(ast::MutImmutable,
-            box(GC) ast::Expr {
+            P(ast::Expr {
                 id: ast::DUMMY_NODE_ID,
                 node: ast::ExprVec(cx.testfns.iter().map(|test| {
                     mk_test_desc_and_fn_rec(cx, test)
-            }).collect()),
-            span: DUMMY_SP,
-        }),
+                }).collect()),
+                span: DUMMY_SP,
+            })),
         span: DUMMY_SP,
-    }
+    })
 }
 
-fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> Gc<ast::Expr> {
+fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     // FIXME #15962: should be using quote_expr, but that stringifies
     // __test_reexports, causing it to be reinterned, losing the
     // gensym information.

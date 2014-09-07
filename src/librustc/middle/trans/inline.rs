@@ -47,12 +47,12 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ccx.external().borrow_mut().insert(fn_id, None);
             return None;
         }
-        csearch::found(ast::IIItem(item)) => {
+        csearch::found(&ast::IIItem(ref item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
 
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
-            trans_item(ccx, &*item);
+            trans_item(ccx, &**item);
 
             let linkage = match item.node {
                 ast::ItemFn(_, _, _, ref generics, _) => {
@@ -104,12 +104,12 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
 
             local_def(item.id)
         }
-        csearch::found(ast::IIForeign(item)) => {
+        csearch::found(&ast::IIForeign(ref item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
             local_def(item.id)
         }
-        csearch::found_parent(parent_id, ast::IIItem(item)) => {
+        csearch::found_parent(parent_id, &ast::IIItem(ref item)) => {
             ccx.external().borrow_mut().insert(parent_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, parent_id);
 
@@ -135,32 +135,37 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             _ => ccx.sess().bug("maybe_instantiate_inline: item has a \
                                  non-enum, non-struct parent")
           }
-          trans_item(ccx, &*item);
+          trans_item(ccx, &**item);
           local_def(my_id)
         }
         csearch::found_parent(_, _) => {
             ccx.sess().bug("maybe_get_item_ast returned a found_parent \
              with a non-item parent");
         }
-        csearch::found(ast::IITraitItem(impl_did, impl_item)) => {
-            match impl_item {
-                ast::ProvidedInlinedTraitItem(mth) |
-                ast::RequiredInlinedTraitItem(mth) => {
+        csearch::found(&ast::IITraitItem(_, ref trait_item)) => {
+            match *trait_item {
+                ast::RequiredMethod(_) => ccx.sess().bug("found RequiredMethod IITraitItem"),
+                ast::ProvidedMethod(ref mth) => {
                     ccx.external().borrow_mut().insert(fn_id, Some(mth.id));
                     ccx.external_srcs().borrow_mut().insert(mth.id, fn_id);
 
                     ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
-                }
-            }
 
-            match impl_item {
-                ast::ProvidedInlinedTraitItem(mth) => {
                     // If this is a default method, we can't look up the
                     // impl type. But we aren't going to translate anyways, so
                     // don't.
                     local_def(mth.id)
                 }
-                ast::RequiredInlinedTraitItem(mth) => {
+            }
+        }
+        csearch::found(&ast::IIImplItem(impl_did, ref impl_item)) => {
+            match *impl_item {
+                ast::MethodImplItem(ref mth) => {
+                    ccx.external().borrow_mut().insert(fn_id, Some(mth.id));
+                    ccx.external_srcs().borrow_mut().insert(mth.id, fn_id);
+
+                    ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
+
                     let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
                     let unparameterized = impl_tpt.generics.types.is_empty() &&
                             mth.pe_generics().ty_params.is_empty();

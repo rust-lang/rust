@@ -99,7 +99,7 @@ impl<'a, 'v> Visitor<'v> for BlockQueryVisitor<'a> {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn block_query(b: ast::P<ast::Block>, p: |&ast::Expr| -> bool) -> bool {
+pub fn block_query(b: &ast::Block, p: |&ast::Expr| -> bool) -> bool {
     let mut v = BlockQueryVisitor {
         p: p,
         flag: false,

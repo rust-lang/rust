@@ -39,8 +39,6 @@ use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::visit::Visitor;
 
-use std::gc::Gc;
-
 pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               s: &ast::Stmt)
                               -> Block<'blk, 'tcx> {
@@ -61,7 +59,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         ast::StmtExpr(ref e, _) | ast::StmtSemi(ref e, _) => {
             bcx = trans_stmt_semi(bcx, &**e);
         }
-        ast::StmtDecl(d, _) => {
+        ast::StmtDecl(ref d, _) => {
             match d.node {
                 ast::DeclLocal(ref local) => {
                     bcx = init_local(bcx, &**local);
@@ -132,8 +130,8 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             if_id: ast::NodeId,
                             cond: &ast::Expr,
-                            thn: ast::P<ast::Block>,
-                            els: Option<Gc<ast::Expr>>,
+                            thn: &ast::Block,
+                            els: Option<&ast::Expr>,
                             dest: expr::Dest)
                             -> Block<'blk, 'tcx> {
     debug!("trans_if(bcx={}, if_id={}, cond={}, thn={:?}, dest={})",
@@ -251,7 +249,7 @@ pub fn trans_while<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// Translates a `for` loop.
 pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              loop_info: NodeInfo,
-                             pat: Gc<ast::Pat>,
+                             pat: &ast::Pat,
                              head: &ast::Expr,
                              body: &ast::Block)
                              -> Block<'blk, 'tcx> {
@@ -453,7 +451,7 @@ pub fn trans_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             e: Option<Gc<ast::Expr>>)
+                             e: Option<&ast::Expr>)
                              -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_ret");
     let fcx = bcx.fcx;

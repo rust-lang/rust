@@ -308,7 +308,7 @@ pub fn write_substs_to_tcx(tcx: &ty::ctxt,
 }
 pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
     match tcx.def_map.borrow().find(&id) {
-        Some(&x) => x,
+        Some(x) => x.clone(),
         _ => {
             tcx.sess.span_fatal(sp, "internal error looking up a definition")
         }
@@ -474,9 +474,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt,
-                   trait_map: resolve::TraitMap,
-                   krate: &ast::Crate) {
+pub fn check_crate(tcx: &ty::ctxt, trait_map: resolve::TraitMap) {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
         trait_map: trait_map,
@@ -484,20 +482,20 @@ pub fn check_crate(tcx: &ty::ctxt,
     };
 
     time(time_passes, "type collecting", (), |_|
-        collect::collect_item_types(&ccx, krate));
+        collect::collect_item_types(&ccx));
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
     tcx.sess.abort_if_errors();
 
     time(time_passes, "variance inference", (), |_|
-         variance::infer_variance(tcx, krate));
+         variance::infer_variance(tcx));
 
     time(time_passes, "coherence checking", (), |_|
-        coherence::check_coherence(&ccx, krate));
+        coherence::check_coherence(&ccx));
 
     time(time_passes, "type checking", (), |_|
-        check::check_item_types(&ccx, krate));
+        check::check_item_types(&ccx));
 
     check_for_entry_fn(&ccx);
     tcx.sess.abort_if_errors();
