@@ -274,12 +274,20 @@ pub struct FieldInfo<'a> {
     pub attrs: &'a [ast::Attribute],
 }
 
+pub struct StaticFieldInfo<'a> {
+    pub span: Span,
+    /// The field's ident.
+    pub name: Ident,
+    /// The attributes attached to this field.
+    pub attrs: &'a [ast::Attribute],
+}
+
 /// Fields for a static method
-pub enum StaticFields {
+pub enum StaticFields<'a> {
     /// Tuple structs/enum variants like this
     Unnamed(Vec<Span>),
     /// Normal structs/struct variants.
-    Named(Vec<(Ident, Span)>),
+    Named(Vec<(StaticFieldInfo<'a>)>),
 }
 
 /// A summary of the possible sets of fields. See above for details
@@ -304,9 +312,9 @@ pub enum SubstructureFields<'a> {
     EnumNonMatchingCollapsed(Vec<Ident>, &'a [Gc<ast::Variant>], &'a [Ident]),
 
     /// A static method where Self is a struct.
-    StaticStruct(&'a ast::StructDef, StaticFields),
+    StaticStruct(&'a ast::StructDef, StaticFields<'a>),
     /// A static method where Self is an enum.
-    StaticEnum(&'a ast::EnumDef, Vec<(Ident, Span, StaticFields)>),
+    StaticEnum(&'a ast::EnumDef, Vec<(Ident, Span, StaticFields<'a>)>),
 }
 
 
@@ -1187,25 +1195,37 @@ impl<'a> TraitDef<'a> {
         to_set
     }
 
-    fn summarise_struct(&self,
-                        cx: &mut ExtCtxt,
-                        struct_def: &StructDef) -> StaticFields {
-        let mut named_idents = Vec::new();
+    fn summarise_struct<'b>(&self,
+                            cx: &mut ExtCtxt,
+                            struct_def: &'b StructDef) -> StaticFields<'b> {
+        let mut named_fields = Vec::new();
         let mut just_spans = Vec::new();
-        for field in struct_def.fields.iter(){
-            let sp = self.set_expn_info(cx, field.span);
+
+        for field in struct_def.fields.iter() {
+            let span = self.set_expn_info(cx, field.span);
+
             match field.node.kind {
-                ast::NamedField(ident, _) => named_idents.push((ident, sp)),
-                ast::UnnamedField(..) => just_spans.push(sp),
+                ast::NamedField(ident, _) => {
+                    let field_info = StaticFieldInfo {
+                        span: span,
+                        name: ident,
+                        attrs: field.node.attrs.as_slice(),
+                    };
+
+                    named_fields.push(field_info);
+                }
+                ast::UnnamedField(..) => {
+                    just_spans.push(span);
+                }
             }
         }
 
-        match (just_spans.is_empty(), named_idents.is_empty()) {
+        match (just_spans.is_empty(), named_fields.is_empty()) {
             (false, false) => cx.span_bug(self.span,
                                           "a struct with named and unnamed \
                                           fields in generic `deriving`"),
             // named fields
-            (_, false) => Named(named_idents),
+            (_, false) => Named(named_fields),
             // tuple structs (includes empty structs)
             (_, _)     => Unnamed(just_spans)
         }

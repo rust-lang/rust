@@ -149,9 +149,9 @@ fn rand_thing(cx: &mut ExtCtxt,
             }
         }
         Named(ref fields) => {
-            let rand_fields = fields.iter().map(|&(ident, span)| {
-                let e = rand_call(cx, span);
-                cx.field_imm(span, ident, e)
+            let rand_fields = fields.iter().map(|field| {
+                let e = rand_call(cx, field.span);
+                cx.field_imm(field.span, field.name, e)
             }).collect();
             cx.expr_struct_ident(trait_span, ctor_ident, rand_fields)
         }

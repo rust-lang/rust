@@ -69,8 +69,8 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span,
                     }
                 }
                 Named(ref fields) => {
-                    let default_fields = fields.iter().map(|&(ident, span)| {
-                        cx.field_imm(span, ident, default_call(span))
+                    let default_fields = fields.iter().map(|field| {
+                        cx.field_imm(field.span, field.name, default_call(field.span))
                     }).collect();
                     cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
                 }
