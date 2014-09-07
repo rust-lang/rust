@@ -1,6 +1,6 @@
 - Start Date: 2014-06-05
-- RFC PR #: 107
-- Rust Issue #: 15287
+- RFC PR: [rust-lang/rfcs#107](https://github.com/rust-lang/rfcs/pull/107)
+- Rust Issue: [rust-lang/rust#15287](https://github.com/rust-lang/rust/issues/15287)
 
 # Summary
 

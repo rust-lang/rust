@@ -1,6 +1,6 @@
 - Start Date: 2014-05-17
-- RFC PR #: 79
-- Rust Issue #: 14309
+- RFC PR: [rust-lang/rfcs#79](https://github.com/rust-lang/rfcs/pull/79)
+- Rust Issue: [rust-lang/rust#14309](https://github.com/rust-lang/rust/issues/14309)
 
 # Summary
 

@@ -1,6 +1,6 @@
 - Start Date: 2014-04-18
-- RFC PR #: 50
-- Rust Issue #: 13789
+- RFC PR: [rust-lang/rfcs#50](https://github.com/rust-lang/rfcs/pull/50)
+- Rust Issue: [rust-lang/rust#13789](https://github.com/rust-lang/rust/issues/13789)
 
 # Summary
 

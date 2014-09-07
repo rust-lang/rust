@@ -1,6 +1,6 @@
 - Start Date: 2014-06-11
-- RFC PR #: 68
-- Rust Issue #: 7362
+- RFC PR: [rust-lang/rfcs#68](https://github.com/rust-lang/rfcs/pull/68)
+- Rust Issue: [rust-lang/rust#7362](https://github.com/rust-lang/rust/issues/7362)
 
 # Summary
 

@@ -1,6 +1,6 @@
 - Start Date: 2014-06-01
-- RFC PR #: 100
-- Rust Issue #: 14987
+- RFC PR: [rust-lang/rfcs#100](https://github.com/rust-lang/rfcs/pull/100)
+- Rust Issue: [rust-lang/rust#14987](https://github.com/rust-lang/rust/issues/14987)
 
 # Summary
 

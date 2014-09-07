@@ -1,6 +1,6 @@
 - Start Date: 2014-05-21
-- RFC PR #: 85
-- Rust Issue #: 14473
+- RFC PR: [rust-lang/rfcs#85](https://github.com/rust-lang/rfcs/pull/85)
+- Rust Issue: [rust-lang/rust#14473](https://github.com/rust-lang/rust/issues/14473)
 
 # Summary
 

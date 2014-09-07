@@ -1,6 +1,6 @@
 - Start Date: 2014-04-08
-- RFC PR #: 40
-- Rust Issue #: 13851
+- RFC PR: [rust-lang/rfcs#40](https://github.com/rust-lang/rfcs/pull/40)
+- Rust Issue: [rust-lang/rust#13851](https://github.com/rust-lang/rust/issues/13851)
 
 # Summary
 

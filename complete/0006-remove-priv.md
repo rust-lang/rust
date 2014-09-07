@@ -1,6 +1,6 @@
 - Start Date: 2014-03-31
-- RFC PR #: 26
-- Rust Issue #: 13535
+- RFC PR: [rust-lang/rfcs#26](https://github.com/rust-lang/rfcs/pull/26)
+- Rust Issue: [rust-lang/rust#13535](https://github.com/rust-lang/rust/issues/13535)
 
 # Summary
 

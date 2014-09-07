@@ -1,6 +1,6 @@
 - Start Date: 2014-04-12
-- RFC PR #: 42
-- Rust Issue #: 13700
+- RFC PR: [rust-lang/rfcs#42](https://github.com/rust-lang/rfcs/pull/42)
+- Rust Issue: [rust-lang/rust#13700](https://github.com/rust-lang/rust/issues/13700)
 
 # Summary
 

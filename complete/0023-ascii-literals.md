@@ -1,6 +1,6 @@
 - Start Date: 2014-05-05
-- RFC PR #: 69
-- Rust Issue #: 14646
+- RFC PR: [rust-lang/rfcs#69](https://github.com/rust-lang/rfcs/pull/69)
+- Rust Issue: [rust-lang/rust#14646](https://github.com/rust-lang/rust/issues/14646)
 
 # Summary
 

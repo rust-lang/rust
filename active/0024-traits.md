@@ -1,6 +1,6 @@
 - Start Date: 2014-06-10
-- RFC PR #: 48
-- Rust Issue #: 5527
+- RFC PR: [rust-lang/rfcs#48](https://github.com/rust-lang/rfcs/pull/48)
+- Rust Issue: [rust-lang/rust#5527](https://github.com/rust-lang/rust/issues/5527)
 
 # Summary
 

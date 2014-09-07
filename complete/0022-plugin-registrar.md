@@ -1,6 +1,6 @@
 - Start Date: 2014-05-22
-- RFC PR #: 86
-- Rust Issue #: 14637
+- RFC PR: [rust-lang/rfcs#86](https://github.com/rust-lang/rfcs/pull/86)
+- Rust Issue: [rust-lang/rust#14637](https://github.com/rust-lang/rust/issues/14637)
 
 # Summary
 

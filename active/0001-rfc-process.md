@@ -1,6 +1,6 @@
 - Start Date: 2014-03-11
-- RFC PR #: 2, 6
-- Rust Issue #: N/A
+- RFC PR: [rust-lang/rfcs#2](https://github.com/rust-lang/rfcs/pull/2), [rust-lang/rfcs#6](https://github.com/rust-lang/rfcs/pull/6)
+- Rust Issue: N/A
 
 # Summary
 
@@ -34,6 +34,7 @@ changes to the Rust distribution. What constitutes a "substantial"
 change is evolving based on community norms, but may include the following.
 
    - Any semantic or syntactic change to the language that is not a bugfix.
+   - Removing language features, including those that are feature-gated.
    - Changes to the interface between the compiler and libraries,
 including lang items and intrinsics.
    - Additions to `std`
@@ -59,7 +60,7 @@ RFC merged into the RFC repo as a markdown file. At that point the RFC
 is 'active' and may be implemented with the goal of eventual inclusion
 into Rust.
 
-* Fork the RFC repo http://github.com/rust-lang/rfcs
+* Fork the RFC repo https://github.com/rust-lang/rfcs
 * Copy `0000-template.md` to `active/0000-my-feature.md` (where
 'my-feature' is descriptive. don't assign an RFC number yet).
 * Fill in the RFC
