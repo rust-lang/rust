@@ -258,6 +258,17 @@ impl File {
         err.update_err("couldn't fstat file",
                        |e| format!("{}; path={}", e, self.path.display()))
     }
+
+    /// Obtain numeric file descriptor that can be passed to a C library call.
+    ///
+    /// It is not considered unsafe to obtain this, however calling C library
+    /// is inherently unsafe. The advantage of this method is that opening
+    /// a file and handling of error cases with pattern matching is much nicer
+    /// in Rust, then it is in C. If one is to call `libc::open()`, or other
+    /// similar function that opens files in POSIX fashion, they would need
+    /// to reimplement a large chunk of code that copies some of the functions
+    /// from this and the underlying traits and modules.
+    pub fn get_fd(&self) -> libc::c_int { self.fd.get_fd() }
 }
 
 /// Unlink a file from the underlying filesystem.

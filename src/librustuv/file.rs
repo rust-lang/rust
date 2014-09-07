@@ -458,6 +458,8 @@ impl rtio::RtioFileStream for FileWatcher {
         let _m = self.fire_homing_missile();
         FsRequest::fstat(&self.loop_, self.fd).map_err(uv_error_to_io_error)
     }
+
+    fn get_fd(&self) -> libc::c_int { self.fd }
 }
 
 #[cfg(test)]
