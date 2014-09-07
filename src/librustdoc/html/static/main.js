@@ -118,7 +118,7 @@
      * A function to compute the Levenshtein distance between two strings
      * Licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported
      * Full License can be found at http://creativecommons.org/licenses/by-sa/3.0/legalcode
-     * This code is an unmodified version of the code written by Marco de Wit 
+     * This code is an unmodified version of the code written by Marco de Wit
      * and was found at http://stackoverflow.com/a/18514751/745719
      */
     var levenshtein = (function() {
@@ -224,7 +224,7 @@
                                 });
                             }
                         } else if (
-                            (lev_distance = levenshtein(searchWords[j], val)) <= 
+                            (lev_distance = levenshtein(searchWords[j], val)) <=
                                 MAX_LEV_DISTANCE) {
                             if (typeFilter < 0 || typeFilter === searchIndex[j].ty) {
                                 results.push({
@@ -350,16 +350,16 @@
         function validateResult(name, path, keys, parent) {
             for (var i=0; i < keys.length; ++i) {
                 // each check is for validation so we negate the conditions and invalidate
-                if (!( 
+                if (!(
                     // check for an exact name match
                     name.toLowerCase().indexOf(keys[i]) > -1 ||
                     // then an exact path match
                     path.toLowerCase().indexOf(keys[i]) > -1 ||
                     // next if there is a parent, check for exact parent match
-                    (parent !== undefined && 
+                    (parent !== undefined &&
                         parent.name.toLowerCase().indexOf(keys[i]) > -1) ||
                     // lastly check to see if the name was a levenshtein match
-                    levenshtein(name.toLowerCase(), keys[i]) <= 
+                    levenshtein(name.toLowerCase(), keys[i]) <=
                         MAX_LEV_DISTANCE)) {
                     return false;
                 }
@@ -757,20 +757,21 @@
     });
 
     $(function() {
-        var toggle = "<a href='javascript:void(0)'"
-            + "class='collapse-toggle'>[<span class='inner'>-</span>]</a>";
+        var toggle = $("<a/>", {'href': 'javascript:void(0)', 'class': 'collapse-toggle'})
+            .html("[<span class='inner'>-</span>]");
 
         $(".method").each(function() {
            if ($(this).next().is(".docblock")) {
-               $(this).children().first().after(toggle);
+               $(this).children().first().after(toggle[0]);
            }
         });
 
-        var mainToggle = $(toggle);
-        mainToggle.append("<span class='toggle-label' style='display:none'>"
-            + "&nbsp;Expand&nbsp;description</span></a>")
-        var wrapper =  $("<div class='toggle-wrapper'>");
-        wrapper.append(mainToggle);
+        var mainToggle =
+            $(toggle).append(
+                $('<span/>', {'class': 'toggle-label'})
+                    .css('display', 'none')
+                    .html('&nbsp;Expand&nbsp;description'));
+        var wrapper =  $("<div class='toggle-wrapper'>").append(mainToggle);
         $("#main > .docblock").before(wrapper);
     });
 
