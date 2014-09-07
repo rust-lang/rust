@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashSet;
 use std::io;
 use std::string::String;
 
@@ -136,7 +135,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
 }
 
 /// Run any tests/code examples in the markdown file `input`.
-pub fn test(input: &str, libs: HashSet<Path>, externs: core::Externs,
+pub fn test(input: &str, libs: Vec<Path>, externs: core::Externs,
             mut test_args: Vec<String>) -> int {
     let input_str = load_or_return!(input, 1, 2);
 
