@@ -116,7 +116,7 @@ but also working properly. And printing information to the screen is a pretty
 common thing to do.
 
 The first thing that we need to do is make a file to put our code in. I like
-to make a projects directory in my home directory, and keep all my projects
+to make a `projects` directory in my home directory, and keep all my projects
 there. Rust does not care where your code lives.
 
 This actually leads to one other concern we should address: this tutorial will
