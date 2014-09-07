@@ -68,7 +68,7 @@ fn expand_deriving_decodable_imp<F>(cx: &mut ExtCtxt,
                 args: vec!(Ptr(box Literal(Path::new_local("__D")),
                             Borrowed(None, MutMutable))),
                 ret_ty: Literal(Path::new_(
-                    vec!("std", "result", "Result"),
+                    pathvec!(std::result::Result),
                     None,
                     vec!(box Self, box Literal(Path::new_(
                         vec!["__D", "Error"], None, vec![], false

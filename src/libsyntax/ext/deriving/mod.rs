@@ -18,6 +18,18 @@ use ext::base::ExtCtxt;
 use codemap::Span;
 use ptr::P;
 
+macro_rules! pathvec {
+    ($($x:ident)::+) => (
+        vec![ $( stringify!($x) ),+ ]
+    )
+}
+
+macro_rules! path {
+    ($($x:tt)*) => (
+        ::ext::deriving::generic::ty::Path::new( pathvec!( $($x)* ) )
+    )
+}
+
 pub mod bounds;
 pub mod clone;
 pub mod encodable;
