@@ -1,6 +1,6 @@
 - Start Date: 2014-07-04
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
+- RFC PR #: 155
+- Rust Issue #: 17059
 
 # Summary
 
