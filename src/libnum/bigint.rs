@@ -807,7 +807,7 @@ impl BigUint {
     pub fn bits(&self) -> uint {
         if self.is_zero() { return 0; }
         let zeros = self.data.last().unwrap().leading_zeros();
-        return self.data.len()*BigDigit::bits - (zeros as uint);
+        return self.data.len()*BigDigit::bits - zeros;
     }
 }
 
