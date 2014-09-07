@@ -310,6 +310,50 @@ pub trait Unsigned: Num {}
 
 trait_impl!(Unsigned for uint u8 u16 u32 u64)
 
+/// A trait for raising a value by an exponent.
+pub trait Pow {
+
+    /// Returns the value of raising to the provided exponent.
+    fn pow(&self, exp: uint) -> Self;
+
+}
+
+macro_rules! pow_impl(
+    ($t:ty) => {
+        impl Pow for $t {
+            fn pow(&self, exp: uint) -> $t {
+                if exp == 1 { *self }
+                else {
+                    let mut base = *self;
+                    let mut exp = exp;
+                    let mut acc: $t = one();
+                    while exp > 0 {
+                        if (exp & 1) == 1 {
+                            acc = acc * base;
+                        }
+                        base = base * base;
+                        exp = exp >> 1;
+                    }
+                    acc
+                }
+            }
+        }
+    }
+)
+
+pow_impl!(uint)
+pow_impl!(u8)
+pow_impl!(u16)
+pow_impl!(u32)
+pow_impl!(u64)
+pow_impl!(int)
+pow_impl!(i8)
+pow_impl!(i16)
+pow_impl!(i32)
+pow_impl!(i64)
+pow_impl!(f32)
+pow_impl!(f64)
+
 /// Raises a value to the power of exp, using exponentiation by squaring.
 ///
 /// # Example
@@ -320,19 +364,8 @@ trait_impl!(Unsigned for uint u8 u16 u32 u64)
 /// assert_eq!(num::pow(2i, 4), 16);
 /// ```
 #[inline]
-pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
-    if exp == 1 { base }
-    else {
-        let mut acc = one::<T>();
-        while exp > 0 {
-            if (exp & 1) == 1 {
-                acc = acc * base;
-            }
-            base = base * base;
-            exp = exp >> 1;
-        }
-        acc
-    }
+pub fn pow<T: Pow>(base: T, exp: uint) -> T {
+    base.pow(exp)
 }
 
 /// Numbers which have upper and lower bounds
