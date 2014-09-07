@@ -588,6 +588,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn ident_of(&self, st: &str) -> ast::Ident {
         str_to_ident(st)
     }
+    pub fn ident_of_std(&self, st: &str) -> ast::Ident {
+        self.ident_of(if self.ecfg.use_std { "std" } else { st })
+    }
     pub fn name_of(&self, st: &str) -> ast::Name {
         token::intern(st)
     }

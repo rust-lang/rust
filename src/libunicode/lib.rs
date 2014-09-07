@@ -76,6 +76,8 @@ pub mod str {
 }
 
 // this lets us use #[deriving(Clone)]
+// NOTE: Remove after next snapshot
+#[cfg(stage0)]
 mod std {
     pub use core::clone;
     pub use core::cmp;

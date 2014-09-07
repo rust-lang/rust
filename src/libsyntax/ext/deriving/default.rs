@@ -27,7 +27,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: quote_path!(std::default::Default),
+        path: quote_path_std!(cx, core::default::Default),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(
@@ -48,7 +48,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
 
 fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
     let default_ident = vec!(
-        cx.ident_of("std"),
+        cx.ident_of_std("core"),
         cx.ident_of("default"),
         cx.ident_of("Default"),
         cx.ident_of("default")

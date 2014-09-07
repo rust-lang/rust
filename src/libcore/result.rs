@@ -278,7 +278,7 @@
 
 use clone::Clone;
 use cmp::PartialEq;
-use std::fmt::Show;
+use fmt::Show;
 use slice;
 use slice::Slice;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};

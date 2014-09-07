@@ -166,5 +166,8 @@ pub mod shouldnt_be_public {
 
 #[cfg(not(test))]
 mod std {
-    pub use core::{fmt, option, cmp};
+    // NOTE: Remove after next snapshot
+    #[cfg(stage0)] pub use core::{option, cmp};
+
+    pub use core::fmt;
 }

@@ -273,12 +273,13 @@ mod failure;
 #[doc(hidden)]
 mod std {
     // mods used for deriving
-    pub use clone;
-    pub use cmp;
-    pub use hash;
+    // NOTE: Remove after next snapshot
+    #[cfg(stage0)] pub use clone;
+    #[cfg(stage0)] pub use cmp;
+    #[cfg(stage0)] pub use hash;
 
     pub use comm; // used for select!()
-    pub use fmt; // used for any formatting strings
+    pub use fmt; // used for fail!()
     pub use io; // used for println!()
     pub use local_data; // used for local_data_key!()
     pub use option; // used for bitflags!{}

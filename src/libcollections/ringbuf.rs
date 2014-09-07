@@ -19,10 +19,10 @@ use core::cmp;
 use core::default::Default;
 use core::fmt;
 use core::iter;
-use std::hash::{Writer, Hash};
 
 use {Deque, Mutable, MutableSeq};
 use vec::Vec;
+use hash::{Writer, Hash};
 
 static INITIAL_CAPACITY: uint = 8u; // 2^3
 static MINIMUM_CAPACITY: uint = 2u;
@@ -527,13 +527,13 @@ mod tests {
     use std::fmt::Show;
     use std::prelude::*;
     use std::gc::{GC, Gc};
-    use std::hash;
     use test::Bencher;
     use test;
 
     use {Deque, Mutable, MutableSeq};
     use super::RingBuf;
     use vec::Vec;
+    use hash;
 
     #[test]
     fn test_simple() {

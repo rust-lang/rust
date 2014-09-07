@@ -54,7 +54,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: quote_path!(std::cmp::PartialEq),
+        path: quote_path_std!(cx, core::cmp::PartialEq),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(

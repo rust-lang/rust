@@ -134,12 +134,19 @@ pub mod unit;
 pub mod fmt;
 
 #[doc(hidden)]
-mod core {
-    pub use failure;
+mod std {
+    // NOTE: Remove after next snapshot
+    #[cfg(stage0)] pub use clone;
+    #[cfg(stage0)] pub use cmp;
+    #[cfg(stage0)] pub use kinds;
+    #[cfg(stage0)] pub use option;
+
+    pub use fmt;
 }
 
 #[doc(hidden)]
-mod std {
+mod core {
+    pub use failure;
     pub use clone;
     pub use cmp;
     pub use kinds;

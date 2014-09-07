@@ -21,11 +21,11 @@ use core::mem::zeroed;
 use core::mem;
 use core::uint;
 use core::iter;
-use std::hash::{Writer, Hash};
 
 use {Mutable, Map, MutableMap, Set, MutableSet};
 use slice::{Items, MutItems};
 use slice;
+use hash::{Writer, Hash};
 
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;
@@ -1019,10 +1019,10 @@ mod test_map {
     use std::prelude::*;
     use std::iter::range_step;
     use std::uint;
-    use std::hash;
 
     use {MutableMap, Map, MutableSeq};
     use super::{TrieMap, TrieNode, Internal, External, Nothing};
+    use hash;
 
     fn check_integrity<T>(trie: &TrieNode<T>) {
         assert!(trie.count != 0);

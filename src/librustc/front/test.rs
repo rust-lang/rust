@@ -14,7 +14,7 @@
 #![allow(unused_imports)]
 
 use driver::session::Session;
-use front::config;
+use front::{config, std_inject};
 
 use std::slice;
 use std::mem;
@@ -232,6 +232,7 @@ fn generate_test_harness(sess: &Session,
                              ExpansionConfig {
                                  deriving_hash_type_parameter: false,
                                  crate_name: "test".to_string(),
+                                 use_std: std_inject::use_std(&krate),
                              }),
         path: Vec::new(),
         testfns: Vec::new(),

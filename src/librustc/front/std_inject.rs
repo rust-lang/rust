@@ -43,7 +43,7 @@ pub fn maybe_inject_prelude(sess: &Session, krate: ast::Crate) -> ast::Crate {
     }
 }
 
-fn use_std(krate: &ast::Crate) -> bool {
+pub fn use_std(krate: &ast::Crate) -> bool {
     !attr::contains_name(krate.attrs.as_slice(), "no_std")
 }
 

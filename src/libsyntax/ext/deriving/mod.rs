@@ -13,8 +13,6 @@ The compiler code necessary to implement the `#[deriving]` extensions.
 
 
 FIXME (#2810): hygiene. Search for "__" strings (in other files too).
-We also assume "extra" is the standard library, and "std" is the core
-library.
 
 */
 
@@ -32,6 +30,22 @@ macro_rules! quote_path_vec (
 macro_rules! quote_path (
     ($($x:tt)*) => (
         ::ext::deriving::generic::ty::Path::new( quote_path_vec!( $($x)* ) )
+    )
+)
+
+macro_rules! quote_path_vec_std (
+    ($cx:expr, $first:ident :: $($rest:ident)::+) => (
+        if $cx.ecfg.use_std {
+            quote_path_vec!(std :: $($rest)::+)
+        } else {
+            quote_path_vec!($first :: $($rest)::+)
+        }
+    )
+)
+
+macro_rules! quote_path_std (
+    ($($x:tt)*) => (
+        ::ext::deriving::generic::ty::Path::new( quote_path_vec_std!( $($x)* ) )
     )
 )
 

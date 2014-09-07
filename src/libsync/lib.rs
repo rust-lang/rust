@@ -76,5 +76,8 @@ mod lock;
 
 #[cfg(not(test))]
 mod std {
-    pub use core::{fmt, option, cmp, clone};
+    // NOTE: Remove after next snapshot
+    #[cfg(stage0)] pub use core::{option, cmp, clone};
+
+    pub use core::fmt;  // for fail!()
 }

@@ -38,10 +38,10 @@ use core::iter::Peekable;
 use core::iter;
 use core::mem::{replace, swap};
 use core::ptr;
-use std::hash::{Writer, Hash};
 
 use {Mutable, Set, MutableSet, MutableMap, Map, MutableSeq};
 use vec::Vec;
+use hash::{Writer, Hash};
 
 /// This is implemented as an AA tree, which is a simplified variation of
 /// a red-black tree where red (horizontal) nodes can only be added
@@ -2248,10 +2248,10 @@ mod bench {
 #[cfg(test)]
 mod test_set {
     use std::prelude::*;
-    use std::hash;
 
     use {Set, MutableSet, Mutable, MutableMap, MutableSeq};
     use super::{TreeMap, TreeSet};
+    use hash;
 
     #[test]
     fn test_clear() {

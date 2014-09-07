@@ -976,6 +976,9 @@ fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
 pub struct ExpansionConfig {
     pub deriving_hash_type_parameter: bool,
     pub crate_name: String,
+
+    // Do we refer to things through their std re-exports?
+    pub use_std: bool,
 }
 
 pub struct ExportedMacros {
@@ -1189,6 +1192,7 @@ mod test {
         ExpansionConfig {
             deriving_hash_type_parameter: false,
             crate_name: "test".to_string(),
+            use_std: true,
         }
     }
 

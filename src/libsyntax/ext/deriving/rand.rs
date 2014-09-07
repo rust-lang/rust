@@ -22,10 +22,19 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                             mitem: &MetaItem,
                             item: &Item,
                             push: |P<Item>|) {
+    let rng = if cx.ecfg.use_std {
+        quote_path!(std::rand::Rng)
+    } else {
+        quote_path!(rand::Rng)
+    };
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: quote_path!(std::rand::Rand),
+        path: if cx.ecfg.use_std {
+            quote_path!(std::rand::Rand)
+        } else {
+            quote_path!(rand::Rand)
+        },
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(
@@ -33,9 +42,7 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                 name: "rand",
                 generics: LifetimeBounds {
                     lifetimes: Vec::new(),
-                    bounds: vec!(("R",
-                                  None,
-                                  vec!( quote_path!(std::rand::Rng) ))),
+                    bounds: vec!(("R", None, vec!(rng))),
                 },
                 explicit_self: None,
                 args: vec!(
@@ -58,12 +65,18 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         [ref rng] => rng,
         _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
     };
-    let rand_ident = vec!(
-        cx.ident_of("std"),
-        cx.ident_of("rand"),
-        cx.ident_of("Rand"),
-        cx.ident_of("rand")
-    );
+    let rand_ident = if cx.ecfg.use_std {
+        vec!(
+            cx.ident_of("std"),
+            cx.ident_of("rand"),
+            cx.ident_of("Rand"),
+            cx.ident_of("rand"))
+    } else {
+        vec!(
+            cx.ident_of("rand"),
+            cx.ident_of("Rand"),
+            cx.ident_of("rand"))
+    };
     let rand_call = |cx: &mut ExtCtxt, span| {
         cx.expr_call_global(span,
                             rand_ident.clone(),
