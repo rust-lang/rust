@@ -829,7 +829,10 @@ impl<K,V> Mutable for BTree<K,V> {
 
 #[cfg(test)]
 mod test {
+    use std::prelude::*;
+
     use super::BTree;
+    use {Map, MutableMap, Mutable, MutableSeq};
 
     #[test]
     fn test_basic() {
