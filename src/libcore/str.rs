@@ -574,7 +574,9 @@ enum Searcher {
 impl Searcher {
     fn new(haystack: &[u8], needle: &[u8]) -> Searcher {
         // FIXME: Tune this.
-        if needle.len() + 20 > haystack.len() {
+        // This checks whether mathematically (that is, not constrained by
+        // wrap-around of uint) `haystack.len() - 20 < needle.len()`.
+        if haystack.len() < 20 || haystack.len() - 20 < needle.len() {
             Naive(NaiveSearcher::new())
         } else {
             let searcher = TwoWaySearcher::new(needle);
