@@ -27,7 +27,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "default", "Default")),
+        path: quote_path!(std::default::Default),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(

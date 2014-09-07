@@ -23,6 +23,18 @@ use ext::base::ExtCtxt;
 use codemap::Span;
 use ptr::P;
 
+macro_rules! quote_path_vec (
+    ($($x:ident)::+) => (
+        vec![ $( stringify!($x) ),+ ]
+    )
+)
+
+macro_rules! quote_path (
+    ($($x:tt)*) => (
+        ::ext::deriving::generic::ty::Path::new( quote_path_vec!( $($x)* ) )
+    )
+)
+
 pub mod bounds;
 pub mod clone;
 pub mod encodable;

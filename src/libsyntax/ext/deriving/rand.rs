@@ -25,7 +25,7 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "rand", "Rand")),
+        path: quote_path!(std::rand::Rand),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(
@@ -35,7 +35,7 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                     lifetimes: Vec::new(),
                     bounds: vec!(("R",
                                   None,
-                                  vec!( Path::new(vec!("std", "rand", "Rng")) )))
+                                  vec!( quote_path!(std::rand::Rng) ))),
                 },
                 explicit_self: None,
                 args: vec!(

@@ -28,7 +28,7 @@ pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "cmp", "Ord")),
+        path: quote_path!(std::cmp::Ord),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(
@@ -37,7 +37,7 @@ pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(borrowed_self()),
-                ret_ty: Literal(Path::new(vec!("std", "cmp", "Ordering"))),
+                ret_ty: Literal(quote_path!(std::cmp::Ordering)),
                 attributes: attrs,
                 combine_substructure: combine_substructure(|a, b, c| {
                     cs_cmp(a, b, c)

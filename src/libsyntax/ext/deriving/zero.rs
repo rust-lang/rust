@@ -27,7 +27,7 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "num", "Zero")),
+        path: quote_path!(std::num::Zero),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(
@@ -47,7 +47,7 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: Vec::new(),
-                ret_ty: Literal(Path::new(vec!("bool"))),
+                ret_ty: Literal(quote_path!(bool)),
                 attributes: attrs,
                 combine_substructure: combine_substructure(|cx, span, substr| {
                     cs_and(|cx, span, _, _| cx.span_bug(span,
