@@ -95,9 +95,9 @@ mod tests {
 
     #[test]
     fn test_count_zeros() {
-        assert!(A.count_zeros() == BITS as $T - 3);
-        assert!(B.count_zeros() == BITS as $T - 2);
-        assert!(C.count_zeros() == BITS as $T - 5);
+        assert!(A.count_zeros() == BITS - 3);
+        assert!(B.count_zeros() == BITS - 2);
+        assert!(C.count_zeros() == BITS - 5);
     }
 
     #[test]
