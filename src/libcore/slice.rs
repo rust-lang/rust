@@ -806,7 +806,12 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
         let mut i: uint = 0;
         let ln = self.len();
         while i < ln / 2 {
-            self.swap(i, ln - i - 1);
+            // Unsafe swap to avoid the bounds check in safe swap.
+            unsafe {
+                let pa: *mut T = self.unsafe_mut_ref(i);
+                let pb: *mut T = self.unsafe_mut_ref(ln - i - 1);
+                ptr::swap(pa, pb);
+            }
             i += 1;
         }
     }
