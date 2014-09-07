@@ -28,6 +28,12 @@ pub fn expand_deriving_rand<F>(cx: &mut ExtCtxt,
                  "`#[derive(Rand)]` is deprecated in favour of `#[derive_Rand]` from \
                   `rand_macros` on crates.io");
 
+    if !cx.use_std {
+        // FIXME(#21880): lift this requirement.
+        cx.span_err(span, "this trait cannot be derived with #![no_std]");
+        return;
+    }
+
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),

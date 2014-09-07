@@ -27,8 +27,8 @@ use core::ops::{Index, IndexMut};
 use core::ptr;
 use core::raw::Slice as RawSlice;
 
-use std::hash::{Writer, Hash, Hasher};
-use std::cmp;
+use core::hash::{Writer, Hash, Hasher};
+use core::cmp;
 
 use alloc::heap;
 

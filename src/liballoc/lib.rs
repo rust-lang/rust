@@ -126,7 +126,8 @@ pub fn oom() -> ! {
 #[doc(hidden)]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}
 
-#[cfg(not(test))]
+// NOTE: remove after next snapshot
+#[cfg(all(stage0, not(test)))]
 #[doc(hidden)]
 mod std {
     pub use core::fmt;
