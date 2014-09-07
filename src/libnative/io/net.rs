@@ -959,7 +959,7 @@ pub fn read<T>(fd: sock_t,
             // wait for the socket to become readable again.
             let _guard = lock();
             match retry(|| read(deadline.is_some())) {
-                -1 if util::wouldblock() => { assert!(deadline.is_some()); }
+                -1 if util::wouldblock() => {}
                 -1 => return Err(os::last_error()),
                n => { ret = n; break }
             }
