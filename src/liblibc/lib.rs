@@ -249,7 +249,7 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(windows)] pub use types::os::arch::extra::{LARGE_INTEGER, LPVOID, LONG};
 #[cfg(windows)] pub use types::os::arch::extra::{time64_t, OVERLAPPED, LPCWSTR};
 #[cfg(windows)] pub use types::os::arch::extra::{LPOVERLAPPED, SIZE_T, LPDWORD};
-#[cfg(windows)] pub use types::os::arch::extra::{SECURITY_ATTRIBUTES};
+#[cfg(windows)] pub use types::os::arch::extra::{SECURITY_ATTRIBUTES, WIN32_FIND_DATAW};
 #[cfg(windows)] pub use funcs::c95::string::{wcslen};
 #[cfg(windows)] pub use funcs::posix88::stat_::{wstat, wutime, wchmod, wrmdir};
 #[cfg(windows)] pub use funcs::bsd43::{closesocket};
@@ -1638,6 +1638,22 @@ pub mod types {
                 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
 
                 pub type GROUP = c_uint;
+
+                #[repr(C)]
+                pub struct WIN32_FIND_DATAW {
+                    pub dwFileAttributes: DWORD,
+                    pub ftCreationTime: FILETIME,
+                    pub ftLastAccessTime: FILETIME,
+                    pub ftLastWriteTime: FILETIME,
+                    pub nFileSizeHigh: DWORD,
+                    pub nFileSizeLow: DWORD,
+                    pub dwReserved0: DWORD,
+                    pub dwReserved1: DWORD,
+                    pub cFileName: [wchar_t, ..260], // #define MAX_PATH 260
+                    pub cAlternateFileName: [wchar_t, ..14],
+                }
+
+                pub type LPWIN32_FIND_DATAW = *mut WIN32_FIND_DATAW;
             }
         }
     }
@@ -4763,7 +4779,7 @@ pub mod funcs {
                                                LPMEMORY_BASIC_INFORMATION,
                                                LPSYSTEM_INFO, HANDLE, LPHANDLE,
                                                LARGE_INTEGER, PLARGE_INTEGER,
-                                               LPFILETIME};
+                                               LPFILETIME, LPWIN32_FIND_DATAW};
 
             extern "system" {
                 pub fn GetEnvironmentVariableW(n: LPCWSTR,
@@ -4793,9 +4809,9 @@ pub mod funcs {
                                             -> DWORD;
                 pub fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
                 pub fn GetLastError() -> DWORD;
-                pub fn FindFirstFileW(fileName: LPCWSTR, findFileData: HANDLE)
+                pub fn FindFirstFileW(fileName: LPCWSTR, findFileData: LPWIN32_FIND_DATAW)
                                       -> HANDLE;
-                pub fn FindNextFileW(findFile: HANDLE, findFileData: HANDLE)
+                pub fn FindNextFileW(findFile: HANDLE, findFileData: LPWIN32_FIND_DATAW)
                                      -> BOOL;
                 pub fn FindClose(findFile: HANDLE) -> BOOL;
                 pub fn DuplicateHandle(hSourceProcessHandle: HANDLE,
