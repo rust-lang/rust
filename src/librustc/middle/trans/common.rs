@@ -472,7 +472,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
 
     pub fn def(&self, nid: ast::NodeId) -> def::Def {
         match self.tcx().def_map.borrow().find(&nid) {
-            Some(&v) => v,
+            Some(v) => v.clone(),
             None => {
                 self.tcx().sess.bug(format!(
                     "no def associated with node id {:?}", nid).as_slice());

@@ -148,11 +148,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &ctxt, krate: &ast::Crate) {
-    let mut visitor = IntrinsicCheckingVisitor {
-        tcx: tcx,
-    };
-
-    visit::walk_crate(&mut visitor, krate);
+pub fn check_crate(tcx: &ctxt) {
+    visit::walk_crate(&mut IntrinsicCheckingVisitor { tcx: tcx },
+                      tcx.map.krate());
 }
 

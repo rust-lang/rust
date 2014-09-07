@@ -22,12 +22,12 @@ use util::nodemap::{DefIdMap};
 
 use syntax::ast::*;
 use syntax::parse::token::InternedString;
+use syntax::ptr::P;
 use syntax::visit::Visitor;
 use syntax::visit;
 use syntax::{ast, ast_map, ast_util};
 
 use std::rc::Rc;
-use std::gc::{Gc, GC};
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -83,7 +83,7 @@ pub fn join_all<It: Iterator<constness>>(mut cs: It) -> constness {
     cs.fold(integral_const, |a, b| join(a, b))
 }
 
-pub fn lookup_const(tcx: &ty::ctxt, e: &Expr) -> Option<Gc<Expr>> {
+fn lookup_const<'a>(tcx: &'a ty::ctxt, e: &Expr) -> Option<&'a Expr> {
     let opt_def = tcx.def_map.borrow().find_copy(&e.id);
     match opt_def {
         Some(def::DefStatic(def_id, false)) => {
@@ -96,83 +96,90 @@ pub fn lookup_const(tcx: &ty::ctxt, e: &Expr) -> Option<Gc<Expr>> {
     }
 }
 
-pub fn lookup_variant_by_id(tcx: &ty::ctxt,
+fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
                             enum_def: ast::DefId,
                             variant_def: ast::DefId)
-                       -> Option<Gc<Expr>> {
-    fn variant_expr(variants: &[ast::P<ast::Variant>],
-                    id: ast::NodeId) -> Option<Gc<Expr>> {
+                            -> Option<&'a Expr> {
+    fn variant_expr<'a>(variants: &'a [P<ast::Variant>], id: ast::NodeId)
+                        -> Option<&'a Expr> {
         for variant in variants.iter() {
             if variant.node.id == id {
-                return variant.node.disr_expr;
+                return variant.node.disr_expr.as_ref().map(|e| &**e);
             }
         }
         None
     }
 
     if ast_util::is_local(enum_def) {
-        {
-            match tcx.map.find(enum_def.node) {
-                None => None,
-                Some(ast_map::NodeItem(it)) => match it.node {
-                    ItemEnum(ast::EnumDef { variants: ref variants }, _) => {
-                        variant_expr(variants.as_slice(), variant_def.node)
-                    }
-                    _ => None
-                },
-                Some(_) => None
-            }
-        }
-    } else {
-        match tcx.extern_const_variants.borrow().find(&variant_def) {
-            Some(&e) => return e,
-            None => {}
-        }
-        let e = match csearch::maybe_get_item_ast(tcx, enum_def,
-            |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
-            csearch::found(ast::IIItem(item)) => match item.node {
+        match tcx.map.find(enum_def.node) {
+            None => None,
+            Some(ast_map::NodeItem(it)) => match it.node {
                 ItemEnum(ast::EnumDef { variants: ref variants }, _) => {
                     variant_expr(variants.as_slice(), variant_def.node)
                 }
                 _ => None
             },
-            _ => None
-        };
-        tcx.extern_const_variants.borrow_mut().insert(variant_def, e);
-        return e;
-    }
-}
-
-pub fn lookup_const_by_id(tcx: &ty::ctxt, def_id: ast::DefId)
-                          -> Option<Gc<Expr>> {
-    if ast_util::is_local(def_id) {
-        {
-            match tcx.map.find(def_id.node) {
-                None => None,
-                Some(ast_map::NodeItem(it)) => match it.node {
-                    ItemStatic(_, ast::MutImmutable, const_expr) => {
-                        Some(const_expr)
-                    }
-                    _ => None
-                },
-                Some(_) => None
-            }
+            Some(_) => None
         }
     } else {
-        match tcx.extern_const_statics.borrow().find(&def_id) {
-            Some(&e) => return e,
+        match tcx.extern_const_variants.borrow().find(&variant_def) {
+            Some(&ast::DUMMY_NODE_ID) => return None,
+            Some(&expr_id) => {
+                return Some(tcx.map.expect_expr(expr_id));
+            }
             None => {}
         }
-        let e = match csearch::maybe_get_item_ast(tcx, def_id,
+        let expr_id = match csearch::maybe_get_item_ast(tcx, enum_def,
             |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
-            csearch::found(ast::IIItem(item)) => match item.node {
-                ItemStatic(_, ast::MutImmutable, const_expr) => Some(const_expr),
+            csearch::found(&ast::IIItem(ref item)) => match item.node {
+                ItemEnum(ast::EnumDef { variants: ref variants }, _) => {
+                    // NOTE this doesn't do the right thing, it compares inlined
+                    // NodeId's to the original variant_def's NodeId, but they
+                    // come from different crates, so they will likely never match.
+                    variant_expr(variants.as_slice(), variant_def.node).map(|e| e.id)
+                }
                 _ => None
             },
             _ => None
         };
-        tcx.extern_const_statics.borrow_mut().insert(def_id, e);
-        return e;
+        tcx.extern_const_variants.borrow_mut().insert(variant_def,
+                                                      expr_id.unwrap_or(ast::DUMMY_NODE_ID));
+        expr_id.map(|id| tcx.map.expect_expr(id))
+    }
+}
+
+pub fn lookup_const_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
+                          -> Option<&'a Expr> {
+    if ast_util::is_local(def_id) {
+        match tcx.map.find(def_id.node) {
+            None => None,
+            Some(ast_map::NodeItem(it)) => match it.node {
+                ItemStatic(_, ast::MutImmutable, ref const_expr) => {
+                    Some(&**const_expr)
+                }
+                _ => None
+            },
+            Some(_) => None
+        }
+    } else {
+        match tcx.extern_const_statics.borrow().find(&def_id) {
+            Some(&ast::DUMMY_NODE_ID) => return None,
+            Some(&expr_id) => {
+                return Some(tcx.map.expect_expr(expr_id));
+            }
+            None => {}
+        }
+        let expr_id = match csearch::maybe_get_item_ast(tcx, def_id,
+            |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
+            csearch::found(&ast::IIItem(ref item)) => match item.node {
+                ItemStatic(_, ast::MutImmutable, ref const_expr) => Some(const_expr.id),
+                _ => None
+            },
+            _ => None
+        };
+        tcx.extern_const_statics.borrow_mut().insert(def_id,
+                                                     expr_id.unwrap_or(ast::DUMMY_NODE_ID));
+        expr_id.map(|id| tcx.map.expect_expr(id))
     }
 }
 
@@ -271,8 +278,8 @@ impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for ConstEvalVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &Ty) {
         match t.node {
-            TyFixedLengthVec(_, expr) => {
-                check::check_const_in_type(self.tcx, &*expr, ty::mk_uint());
+            TyFixedLengthVec(_, ref expr) => {
+                check::check_const_in_type(self.tcx, &**expr, ty::mk_uint());
             }
             _ => {}
         }
@@ -285,13 +292,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstEvalVisitor<'a, 'tcx> {
     }
 }
 
-pub fn process_crate(krate: &ast::Crate,
-                     tcx: &ty::ctxt) {
-    let mut v = ConstEvalVisitor {
+pub fn process_crate(tcx: &ty::ctxt) {
+    visit::walk_crate(&mut ConstEvalVisitor {
         tcx: tcx,
         ccache: DefIdMap::new(),
-    };
-    visit::walk_crate(&mut v, krate);
+    }, tcx.map.krate());
     tcx.sess.abort_if_errors();
 }
 
@@ -309,12 +314,12 @@ pub enum const_val {
     const_nil
 }
 
-pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: Gc<Expr>) -> Gc<Pat> {
+pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<Pat> {
     let pat = match expr.node {
         ExprTup(ref exprs) =>
-            PatTup(exprs.iter().map(|&expr| const_expr_to_pat(tcx, expr)).collect()),
+            PatTup(exprs.iter().map(|expr| const_expr_to_pat(tcx, &**expr)).collect()),
 
-        ExprCall(callee, ref args) => {
+        ExprCall(ref callee, ref args) => {
             let def = tcx.def_map.borrow().get_copy(&callee.id);
             tcx.def_map.borrow_mut().find_or_insert(expr.id, def);
             let path = match def {
@@ -322,20 +327,20 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: Gc<Expr>) -> Gc<Pat> {
                 def::DefVariant(_, variant_did, _) => def_to_path(tcx, variant_did),
                 _ => unreachable!()
             };
-            let pats = args.iter().map(|&expr| const_expr_to_pat(tcx, expr)).collect();
+            let pats = args.iter().map(|expr| const_expr_to_pat(tcx, &**expr)).collect();
             PatEnum(path, Some(pats))
         }
 
         ExprStruct(ref path, ref fields, None) => {
             let field_pats = fields.iter().map(|field| FieldPat {
                 ident: field.ident.node,
-                pat: const_expr_to_pat(tcx, field.expr)
+                pat: const_expr_to_pat(tcx, &*field.expr)
             }).collect();
             PatStruct(path.clone(), field_pats, false)
         }
 
         ExprVec(ref exprs) => {
-            let pats = exprs.iter().map(|&expr| const_expr_to_pat(tcx, expr)).collect();
+            let pats = exprs.iter().map(|expr| const_expr_to_pat(tcx, &**expr)).collect();
             PatVec(pats, None, vec![])
         }
 
@@ -347,7 +352,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: Gc<Expr>) -> Gc<Pat> {
                 Some(def::DefVariant(..)) =>
                     PatEnum(path.clone(), None),
                 _ => {
-                    match lookup_const(tcx, &*expr) {
+                    match lookup_const(tcx, expr) {
                         Some(actual) => return const_expr_to_pat(tcx, actual),
                         _ => unreachable!()
                     }
@@ -355,9 +360,9 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: Gc<Expr>) -> Gc<Pat> {
             }
         }
 
-        _ => PatLit(expr)
+        _ => PatLit(P(expr.clone()))
     };
-    box (GC) Pat { id: expr.id, node: pat, span: expr.span }
+    P(Pat { id: expr.id, node: pat, span: expr.span })
 }
 
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {

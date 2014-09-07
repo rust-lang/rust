@@ -24,12 +24,12 @@ use middle::typeck::require_same_types;
 use util::ppaux;
 
 use std::collections::{HashMap, HashSet};
-use std::gc::Gc;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::parse::token;
 use syntax::codemap::Span;
 use syntax::print::pprust;
+use syntax::ptr::P;
 
 pub fn check_match(fcx: &FnCtxt,
                    expr: &ast::Expr,
@@ -66,17 +66,17 @@ pub fn check_match(fcx: &FnCtxt,
         let mut guard_err = false;
         let mut guard_bot = false;
         match arm.guard {
-          Some(ref e) => {
-              check_expr_has_type(fcx, &**e, ty::mk_bool());
-              let e_ty = fcx.expr_ty(&**e);
-              if ty::type_is_error(e_ty) {
-                  guard_err = true;
-              }
-              else if ty::type_is_bot(e_ty) {
-                  guard_bot = true;
-              }
-          },
-          None => ()
+            Some(ref e) => {
+                check_expr_has_type(fcx, &**e, ty::mk_bool());
+                let e_ty = fcx.expr_ty(&**e);
+                if ty::type_is_error(e_ty) {
+                    guard_err = true;
+                }
+                else if ty::type_is_bot(e_ty) {
+                    guard_bot = true;
+                }
+            },
+            None => ()
         }
         check_expr(fcx, &*arm.body);
         let bty = fcx.node_ty(arm.body.id);
@@ -113,7 +113,7 @@ pub struct pat_ctxt<'a, 'tcx: 'a> {
 }
 
 pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
-                         subpats: &Option<Vec<Gc<ast::Pat>>>, expected: ty::t) {
+                         subpats: &Option<Vec<P<ast::Pat>>>, expected: ty::t) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -457,7 +457,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         demand::suptype(fcx, pat.span, expected, const_pty.ty);
         fcx.write_ty(pat.id, const_pty.ty);
       }
-      ast::PatIdent(bm, ref path1, sub) if pat_is_binding(&tcx.def_map, pat) => {
+      ast::PatIdent(bm, ref path1, ref sub) if pat_is_binding(&tcx.def_map, pat) => {
         let typ = fcx.local_ty(pat.span, pat.id);
 
         match bm {
@@ -491,9 +491,9 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                ppaux::ty_to_string(tcx, expected),
                pat.id);
 
-        match sub {
-          Some(ref p) => check_pat(pcx, &**p, expected),
-          _ => ()
+        match *sub {
+            Some(ref p) => check_pat(pcx, &**p, expected),
+            _ => ()
         }
       }
       // it's not a binding, it's an enum in disguise:
@@ -624,14 +624,14 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
       ast::PatRegion(ref inner) => {
           check_pointer_pat(pcx, Borrowed, &**inner, pat.id, pat.span, expected);
       }
-      ast::PatVec(ref before, slice, ref after) => {
+      ast::PatVec(ref before, ref slice, ref after) => {
         let default_region_var =
             fcx.infcx().next_region_var(
                 infer::PatternRegion(pat.span));
 
         let check_err = |found: String| {
-            for &elt in before.iter() {
-                check_pat(pcx, &*elt, ty::mk_err());
+            for elt in before.iter() {
+                check_pat(pcx, &**elt, ty::mk_err());
             }
             for elt in slice.iter() {
                 check_pat(pcx, &**elt, ty::mk_err());
@@ -690,7 +690,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         };
 
         let min_len = before.len() + after.len();
-        fixed.and_then(|count| match slice {
+        fixed.and_then(|count| match *slice {
             Some(_) if count < min_len =>
                 Some(format!("a fixed vector pattern of size at least {}", min_len)),
 
@@ -703,7 +703,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         for elt in before.iter() {
             check_pat(pcx, &**elt, elt_type);
         }
-        match slice {
+        match *slice {
             Some(ref slice_pat) => {
                 let slice_ty = ty::mk_slice(tcx,
                                             region_var,

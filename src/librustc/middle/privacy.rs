@@ -12,7 +12,6 @@
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
 
-use std::gc::Gc;
 use std::mem::replace;
 
 use metadata::csearch;
@@ -263,7 +262,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 if public_ty || public_trait {
                     for impl_item in impl_items.iter() {
                         match *impl_item {
-                            ast::MethodImplItem(method) => {
+                            ast::MethodImplItem(ref method) => {
                                 let meth_public =
                                     match method.pe_explicit_self().node {
                                         ast::SelfStatic => public_ty,
@@ -457,11 +456,10 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 // invocation.
                 // FIXME(#10573) is this the right behavior? Why not consider
                 //               where the method was defined?
-                Some(ast_map::NodeImplItem(ref ii)) => {
-                    match **ii {
-                        ast::MethodImplItem(m) => {
-                            let imp = self.tcx
-                                          .map
+                Some(ast_map::NodeImplItem(ii)) => {
+                    match *ii {
+                        ast::MethodImplItem(ref m) => {
+                            let imp = self.tcx.map
                                           .get_parent_did(closest_private_id);
                             match ty::impl_trait_ref(self.tcx, imp) {
                                 Some(..) => return Allowable,
@@ -1108,7 +1106,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                                  impls");
                 for impl_item in impl_items.iter() {
                     match *impl_item {
-                        ast::MethodImplItem(m) => {
+                        ast::MethodImplItem(ref m) => {
                             check_inherited(m.span, m.pe_vis(), "");
                         }
                     }
@@ -1169,7 +1167,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 tcx.sess.span_err(sp, "visibility has no effect inside functions");
             }
         }
-        let check_struct = |def: &Gc<ast::StructDef>| {
+        let check_struct = |def: &ast::StructDef| {
             for f in def.fields.iter() {
                match f.node.kind {
                     ast::NamedField(_, p) => check_inherited(tcx, f.span, p),
@@ -1182,7 +1180,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
             ast::ItemImpl(_, _, _, ref impl_items) => {
                 for impl_item in impl_items.iter() {
                     match *impl_item {
-                        ast::MethodImplItem(m) => {
+                        ast::MethodImplItem(ref m) => {
                             check_inherited(tcx, m.span, m.pe_vis());
                         }
                     }
@@ -1198,13 +1196,13 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                     check_inherited(tcx, v.span, v.node.vis);
 
                     match v.node.kind {
-                        ast::StructVariantKind(ref s) => check_struct(s),
+                        ast::StructVariantKind(ref s) => check_struct(&**s),
                         ast::TupleVariantKind(..) => {}
                     }
                 }
             }
 
-            ast::ItemStruct(ref def, _) => check_struct(def),
+            ast::ItemStruct(ref def, _) => check_struct(&**def),
 
             ast::ItemTrait(_, _, _, ref methods) => {
                 for m in methods.iter() {
@@ -1305,7 +1303,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
             // (i.e. we could just return here to not check them at
             // all, or some worse estimation of whether an impl is
             // publicly visible.
-            ast::ItemImpl(ref g, ref trait_ref, self_, ref impl_items) => {
+            ast::ItemImpl(ref g, ref trait_ref, ref self_, ref impl_items) => {
                 // `impl [... for] Private` is never visible.
                 let self_contains_private;
                 // impl [... for] Public<...>, but not `impl [... for]
@@ -1320,7 +1318,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                         at_outer_type: true,
                         outer_type_is_public_path: false,
                     };
-                    visitor.visit_ty(&*self_);
+                    visitor.visit_ty(&**self_);
                     self_contains_private = visitor.contains_private;
                     self_is_public_path = visitor.outer_type_is_public_path;
                 }
@@ -1349,7 +1347,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     impl_items.iter()
                               .any(|impl_item| {
                                   match *impl_item {
-                                      ast::MethodImplItem(m) => {
+                                      ast::MethodImplItem(ref m) => {
                                           self.exported_items.contains(&m.id)
                                       }
                                   }
@@ -1365,8 +1363,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                         None => {
                             for impl_item in impl_items.iter() {
                                 match *impl_item {
-                                    ast::MethodImplItem(method) => {
-                                        visit::walk_method_helper(self, &*method)
+                                    ast::MethodImplItem(ref method) => {
+                                        visit::walk_method_helper(self, &**method)
                                     }
                                 }
                             }
@@ -1393,13 +1391,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     let mut found_pub_static = false;
                     for impl_item in impl_items.iter() {
                         match *impl_item {
-                            ast::MethodImplItem(method) => {
+                            ast::MethodImplItem(ref method) => {
                                 if method.pe_explicit_self().node ==
                                         ast::SelfStatic &&
                                         self.exported_items
                                             .contains(&method.id) {
                                     found_pub_static = true;
-                                    visit::walk_method_helper(self, &*method);
+                                    visit::walk_method_helper(self, &**method);
                                 }
                             }
                         }
@@ -1487,8 +1485,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 pub fn check_crate(tcx: &ty::ctxt,
                    exp_map2: &resolve::ExportMap2,
                    external_exports: resolve::ExternalExports,
-                   last_private_map: resolve::LastPrivateMap,
-                   krate: &ast::Crate) -> (ExportedItems, PublicItems) {
+                   last_private_map: resolve::LastPrivateMap)
+                   -> (ExportedItems, PublicItems) {
+    let krate = tcx.map.krate();
+
     // Figure out who everyone's parent is
     let mut visitor = ParentVisitor {
         parents: NodeMap::new(),
