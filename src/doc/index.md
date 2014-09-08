@@ -57,7 +57,6 @@ a guide that can help you out:
 * [Strings](guide-strings.html)
 * [Pointers](guide-pointers.html)
 * [References and Lifetimes](guide-lifetimes.html)
-* [Containers and Iterators](guide-container.html)
 * [Tasks and Communication](guide-tasks.html)
 * [Foreign Function Interface](guide-ffi.html)
 * [Writing Unsafe and Low-Level Code](guide-unsafe.html)
