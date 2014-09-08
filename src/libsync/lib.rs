@@ -33,8 +33,8 @@
 #![no_std]
 
 #[phase(plugin, link)] extern crate core;
+#[phase(plugin, link)] extern crate collections;
 extern crate alloc;
-extern crate collections;
 extern crate rustrt;
 
 #[cfg(test)] extern crate test;
@@ -74,10 +74,8 @@ pub mod comm;
 
 mod lock;
 
-#[cfg(not(test))]
+// NOTE: Remove after next snapshot
+#[cfg(stage0, not(test))]
 mod std {
-    // NOTE: Remove after next snapshot
-    #[cfg(stage0)] pub use core::{option, cmp, clone};
-
-    pub use core::fmt;  // for fail!()
+    pub use core::{fmt, option, cmp, clone};
 }

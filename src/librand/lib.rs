@@ -449,6 +449,8 @@ pub struct Open01<F>(pub F);
 /// ```
 pub struct Closed01<F>(pub F);
 
+// NOTE: Remove after next snapshot
+#[cfg(stage0)]
 #[cfg(not(test))]
 mod std {
     pub use core::{option, fmt}; // fail!()
