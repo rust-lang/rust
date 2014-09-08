@@ -133,14 +133,14 @@ pub mod tuple;
 pub mod unit;
 pub mod fmt;
 
+// NOTE: Remove after next snapshot
 #[doc(hidden)]
+#[cfg(stage0)]
 mod std {
-    // NOTE: Remove after next snapshot
-    #[cfg(stage0)] pub use clone;
-    #[cfg(stage0)] pub use cmp;
-    #[cfg(stage0)] pub use kinds;
-    #[cfg(stage0)] pub use option;
-
+    pub use clone;
+    pub use cmp;
+    pub use kinds;
+    pub use option;
     pub use fmt;
 }
 

@@ -20,3 +20,20 @@ macro_rules! vec(
     });
     ($($e:expr),+,) => (vec!($($e),+))
 )
+
+/// Use the syntax described in `core::fmt` to create a value of type `String`.
+/// See `core::fmt` for more information.
+///
+/// # Example
+///
+/// ```
+/// format!("test");
+/// format!("hello {}", "world!");
+/// format!("x = {}, y = {y}", 10i, y = 30i);
+/// ```
+#[macro_export]
+macro_rules! format(
+    ($($arg:tt)*) => (
+        format_args!(::collections::string::String::format, $($arg)*)
+    )
+)

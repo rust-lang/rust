@@ -459,10 +459,8 @@ pub use core::fmt::{secret_pointer};
 /// let s = format_args!(fmt::format, "Hello, {}!", "world");
 /// assert_eq!(s, "Hello, world!".to_string());
 /// ```
-pub fn format(args: &Arguments) -> string::String{
-    let mut output = io::MemWriter::new();
-    let _ = write!(&mut output, "{}", args);
-    string::String::from_utf8(output.unwrap()).unwrap()
+pub fn format(args: &Arguments) -> string::String {
+    string::String::format(args)
 }
 
 impl<'a> Writer for Formatter<'a> {

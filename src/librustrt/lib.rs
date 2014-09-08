@@ -164,10 +164,9 @@ pub mod shouldnt_be_public {
     pub use super::local_ptr::compiled::RT_TLS_PTR;
 }
 
+// NOTE: Remove after next snapshot
+#[cfg(stage0)]
 #[cfg(not(test))]
 mod std {
-    // NOTE: Remove after next snapshot
-    #[cfg(stage0)] pub use core::{option, cmp};
-
-    pub use core::fmt;
+    pub use core::{fmt, option, cmp};
 }

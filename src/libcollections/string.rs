@@ -16,6 +16,7 @@ use core::prelude::*;
 
 use core::default::Default;
 use core::fmt;
+use core::fmt::FormatWriter;
 use core::mem;
 use core::ptr;
 // FIXME: ICE's abound if you import the `Slice` type while importing `Slice` trait
@@ -726,6 +727,28 @@ impl String {
     pub unsafe fn as_mut_vec<'a>(&'a mut self) -> &'a mut Vec<u8> {
         &mut self.vec
     }
+
+    /// The format function takes a precompiled format string and a list of
+    /// arguments, to return the resulting formatted string.
+    ///
+    /// # Arguments
+    ///
+    ///   * args - a structure of arguments generated via the `format_args!` macro.
+    ///            Because this structure can only be safely generated at
+    ///            compile-time, this function is safe.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = format_args!(String::format, "Hello, {}!", "world");
+    /// assert_eq!(s, "Hello, world!".to_string());
+    /// ```
+    pub fn format(args: &fmt::Arguments) -> String {
+        let mut output = vec!();
+        let _ = write!(&mut output, "{}", args);
+        String::from_utf8(output)
+            .ok().expect("non-utf8 result from write!()")
+    }
 }
 
 impl Collection for String {
@@ -1140,6 +1163,12 @@ mod tests {
         let b = b + String::from_str("2");
         assert_eq!(b.len(), 7);
         assert_eq!(b.as_slice(), "1234522");
+    }
+
+    #[test]
+    fn test_format() {
+        let s = format_args!(String::format, "Hello, {}!", "world");
+        assert_eq!(s.as_slice(), "Hello, world!");
     }
 
     #[bench]

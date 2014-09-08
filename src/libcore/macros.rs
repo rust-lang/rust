@@ -38,7 +38,7 @@ macro_rules! fail(
         // insufficient, since the user may have
         // `#[forbid(dead_code)]` and which cannot be overridden.
         #[inline(always)]
-        fn _run_fmt(fmt: &::std::fmt::Arguments) -> ! {
+        fn _run_fmt(fmt: &::core::fmt::Arguments) -> ! {
             static _FILE_LINE: (&'static str, uint) = (file!(), line!());
             ::core::failure::begin_unwind(fmt, &_FILE_LINE)
         }
