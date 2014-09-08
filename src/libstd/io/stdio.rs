@@ -362,7 +362,14 @@ impl Writer for StdWriter {
         // sizes. For an example, see #14940. For this reason, chunk the output
         // buffer on windows, but on unix we can just write the whole buffer all
         // at once.
-        let max_size = if cfg!(windows) {64 * 1024} else {uint::MAX};
+        //
+        // For some other references, it appears that this problem has been
+        // encountered by others [1] [2]. We choose the number 8KB just because
+        // libuv does the same.
+        //
+        // [1]: https://tahoe-lafs.org/trac/tahoe-lafs/ticket/1232
+        // [2]: http://www.mail-archive.com/log4net-dev@logging.apache.org/msg00661.html
+        let max_size = if cfg!(windows) {8192} else {uint::MAX};
         for chunk in buf.chunks(max_size) {
             try!(match self.inner {
                 TTY(ref mut tty) => tty.write(chunk),
