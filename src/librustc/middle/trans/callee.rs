@@ -141,12 +141,10 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
         let expr_ty = node_id_type(bcx, ref_expr.id);
         match def {
             def::DefFn(did, _) if {
-                let def_id = if did.krate != ast::LOCAL_CRATE {
-                    inline::maybe_instantiate_inline(bcx.ccx(), did)
-                } else {
-                    did
-                };
-                match bcx.tcx().map.find(def_id.node) {
+                let maybe_def_id = inline::get_local_instance(bcx.ccx(), did);
+                let maybe_ast_node = maybe_def_id.and_then(|def_id| bcx.tcx().map
+                                                                             .find(def_id.node));
+                match maybe_ast_node {
                     Some(ast_map::NodeStructCtor(_)) => true,
                     _ => false
                 }
@@ -162,11 +160,7 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
                 _ => false
             } => {
                 let substs = node_id_substs(bcx, ExprId(ref_expr.id));
-                let def_id = if did.krate != ast::LOCAL_CRATE {
-                    inline::maybe_instantiate_inline(bcx.ccx(), did)
-                } else {
-                    did
-                };
+                let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
                 Callee { bcx: bcx, data: Intrinsic(def_id.node, substs) }
             }
             def::DefFn(did, _) |
@@ -524,13 +518,7 @@ pub fn trans_fn_ref_with_vtables(
 
     // Check whether this fn has an inlined copy and, if so, redirect
     // def_id to the local id of the inlined copy.
-    let def_id = {
-        if def_id.krate != ast::LOCAL_CRATE {
-            inline::maybe_instantiate_inline(ccx, def_id)
-        } else {
-            def_id
-        }
-    };
+    let def_id = inline::maybe_instantiate_inline(ccx, def_id);
 
     // We must monomorphise if the fn has type parameters, is a default method,
     // or is a named tuple constructor.
