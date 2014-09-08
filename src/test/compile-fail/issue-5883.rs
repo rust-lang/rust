@@ -10,15 +10,14 @@
 
 trait A {}
 
-struct Struct {
+struct Struct { //~ ERROR struct cannot be instantiated
     r: A+'static
 }
 
 fn new_struct(r: A+'static) -> Struct {
-    //~^ ERROR variable `r` has dynamically sized type
-    Struct { r: r } //~ ERROR trying to initialise a dynamically sized struct
+    Struct { r: r }
 }
 
 trait Curve {}
-enum E {X(Curve+'static)}
+enum E {X(Curve+'static)} //~ ERROR enum cannot be instantiated
 fn main() {}

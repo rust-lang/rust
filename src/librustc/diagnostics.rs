@@ -169,5 +169,7 @@ register_diagnostics!(
     E0157,
     E0158,
     E0159,
-    E0160
+    E0160,
+    E0162,
+    E0163
 )
