@@ -769,6 +769,10 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             }
 
             rcx.visit_expr(&**head, ());
+            type_of_node_must_outlive(rcx,
+                                      infer::AddrOf(expr.span),
+                                      head.id,
+                                      ty::ReScope(expr.id));
 
             let repeating_scope = rcx.set_repeating_scope(body.id);
             rcx.visit_block(&**body, ());
