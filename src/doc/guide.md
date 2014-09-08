@@ -520,10 +520,8 @@ error: aborting due to previous error
 Could not compile `hello_world`.
 ```
 
-Rust will not let us use a value that has not been initialized. So why let us
-declare a binding without initializing it? You'd think our first example would
-have errored. Well, Rust is smarter than that. Before we get to that, let's talk
-about this stuff we've added to `println!`.
+Rust will not let us use a value that has not been initialized. Next, let's
+talk about this stuff we've added to `println!`.
 
 If you include two curly braces (`{}`, some call them moustaches...) in your
 string to print, Rust will interpret this as a request to interpolate some sort
@@ -537,12 +535,6 @@ value in a meaningful way by checking out its type. If you want to specify the
 format in a more detailed manner, there are a [wide number of options
 available](std/fmt/index.html). For now, we'll just stick to the default:
 integers aren't very complicated to print.
-
-So, we've cleared up all of the confusion around bindings, with one exception:
-why does Rust let us declare a variable binding without an initial value if we
-must initialize the binding before we use it? And how does it know that we have
-or have not initialized the binding? For that, we need to learn our next
-concept: `if`.
 
 # If
 
@@ -581,7 +573,6 @@ if x == 5i {
 ```
 
 This is all pretty standard. However, you can also do this:
-
 
 ```
 let x = 5i;
