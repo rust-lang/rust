@@ -412,29 +412,11 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let vec_ty = ty::mk_uniq(tcx, ty::mk_vec(tcx, unit_ty, None));
         let scratch = rvalue_scratch_datum(bcx, vec_ty, "__unsize_unique");
 
-        if len == 0 {
-            Store(bcx,
-                  C_null(type_of::type_of(bcx.ccx(), unit_ty).ptr_to()),
-                  get_dataptr(bcx, scratch.val));
-        } else {
-            // Box<[(), ..n]> will not allocate, but ~[()] expects an
-            // allocation of n bytes, so we must allocate here (yuck).
-            let llty = type_of::type_of(bcx.ccx(), unit_ty);
-            if llsize_of_alloc(bcx.ccx(), llty) == 0 {
-                let ptr_unit_ty = type_of::type_of(bcx.ccx(), unit_ty).ptr_to();
-                let align = C_uint(bcx.ccx(), 8);
-                let alloc_result = malloc_raw_dyn(bcx, ptr_unit_ty, vec_ty, ll_len, align);
-                bcx = alloc_result.bcx;
-                let base = get_dataptr(bcx, scratch.val);
-                Store(bcx, alloc_result.val, base);
-            } else {
-                let base = get_dataptr(bcx, scratch.val);
-                let base = PointerCast(bcx,
-                                       base,
-                                       type_of::type_of(bcx.ccx(), datum_ty).ptr_to());
-                bcx = lval.store_to(bcx, base);
-            }
-        }
+        let base = get_dataptr(bcx, scratch.val);
+        let base = PointerCast(bcx,
+                               base,
+                               type_of::type_of(bcx.ccx(), datum_ty).ptr_to());
+        bcx = lval.store_to(bcx, base);
 
         Store(bcx, ll_len, get_len(bcx, scratch.val));
         DatumBlock::new(bcx, scratch.to_expr_datum())
