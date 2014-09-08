@@ -574,4 +574,5 @@ mod std {
 mod collections {
     pub use hash;     // deriving(Hsah)
     pub use string;   // format!()
+    pub use vec;      // vec!()
 }

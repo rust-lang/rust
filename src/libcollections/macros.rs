@@ -11,10 +11,11 @@
 #![macro_escape]
 
 /// Creates a `std::vec::Vec` containing the arguments.
+#[macro_export]
 macro_rules! vec(
     ($($e:expr),*) => ({
         // leading _ to allow empty construction without a warning.
-        let mut _temp = ::vec::Vec::new();
+        let mut _temp = ::collections::vec::Vec::new();
         $(_temp.push($e);)*
         _temp
     });
