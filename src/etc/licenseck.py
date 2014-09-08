@@ -43,6 +43,7 @@ exceptions = [
     "libsync/mpmc_bounded_queue.rs", # BSD
     "libsync/mpsc_intrusive.rs", # BSD
     "test/bench/shootout-binarytrees.rs", # BSD
+    "test/bench/shootout-chameneos-redux.rs", # BSD
     "test/bench/shootout-fannkuch-redux.rs", # BSD
     "test/bench/shootout-k-nucleotide.rs", # BSD
     "test/bench/shootout-mandelbrot.rs", # BSD
