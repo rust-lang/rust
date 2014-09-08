@@ -180,7 +180,7 @@ pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[freevar_entry]| 
     }
 }
 
-pub fn get_capture_mode<T:Typer>(tcx: &T, closure_expr_id: ast::NodeId)
-                        -> CaptureMode {
+pub fn get_capture_mode<'tcx, T:Typer<'tcx>>(tcx: &T, closure_expr_id: ast::NodeId)
+                                             -> CaptureMode {
     tcx.capture_mode(closure_expr_id)
 }

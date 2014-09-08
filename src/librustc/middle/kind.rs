@@ -50,13 +50,13 @@ use syntax::visit;
 // primitives in the stdlib are explicitly annotated to only take sendable
 // types.
 
-pub struct Context<'a> {
-    tcx: &'a ty::ctxt,
+pub struct Context<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
     struct_and_enum_bounds_checked: HashSet<ty::t>,
     parameter_environments: Vec<ParameterEnvironment>,
 }
 
-impl<'a> Visitor<()> for Context<'a> {
+impl<'a, 'tcx> Visitor<()> for Context<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr, _: ()) {
         check_expr(self, ex);
     }
@@ -94,11 +94,11 @@ pub fn check_crate(tcx: &ty::ctxt,
     tcx.sess.abort_if_errors();
 }
 
-struct EmptySubstsFolder<'a> {
-    tcx: &'a ty::ctxt
+struct EmptySubstsFolder<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>
 }
-impl<'a> ty_fold::TypeFolder for EmptySubstsFolder<'a> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for EmptySubstsFolder<'a, 'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         self.tcx
     }
     fn fold_substs(&mut self, _: &subst::Substs) -> subst::Substs {

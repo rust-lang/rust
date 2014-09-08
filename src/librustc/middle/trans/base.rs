@@ -137,15 +137,16 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     _InsnCtxt { _cannot_construct_outside_of_this_module: () }
 }
 
-pub struct StatRecorder<'a> {
-    ccx: &'a CrateContext<'a>,
+pub struct StatRecorder<'a, 'tcx: 'a> {
+    ccx: &'a CrateContext<'a, 'tcx>,
     name: Option<String>,
     start: u64,
     istart: uint,
 }
 
-impl<'a> StatRecorder<'a> {
-    pub fn new(ccx: &'a CrateContext, name: String) -> StatRecorder<'a> {
+impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
+    pub fn new(ccx: &'a CrateContext<'a, 'tcx>, name: String)
+               -> StatRecorder<'a, 'tcx> {
         let start = if ccx.sess().trans_stats() {
             time::precise_time_ns()
         } else {
@@ -162,7 +163,7 @@ impl<'a> StatRecorder<'a> {
 }
 
 #[unsafe_destructor]
-impl<'a> Drop for StatRecorder<'a> {
+impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     fn drop(&mut self) {
         if self.ccx.sess().trans_stats() {
             let end = time::precise_time_ns();
@@ -343,7 +344,7 @@ pub fn get_extern_const(externs: &mut ExternMap, llmod: ModuleRef,
 // Returns a pointer to the body for the box. The box may be an opaque
 // box. The result will be casted to the type of body_t, if it is statically
 // known.
-pub fn at_box_body(bcx: &Block, body_t: ty::t, boxptr: ValueRef) -> ValueRef {
+pub fn at_box_body(bcx: Block, body_t: ty::t, boxptr: ValueRef) -> ValueRef {
     let _icx = push_ctxt("at_box_body");
     let ccx = bcx.ccx();
     let ty = Type::at_box(ccx, type_of(ccx, body_t));
@@ -351,7 +352,7 @@ pub fn at_box_body(bcx: &Block, body_t: ty::t, boxptr: ValueRef) -> ValueRef {
     GEPi(bcx, boxptr, [0u, abi::box_field_body])
 }
 
-fn require_alloc_fn(bcx: &Block, info_ty: ty::t, it: LangItem) -> ast::DefId {
+fn require_alloc_fn(bcx: Block, info_ty: ty::t, it: LangItem) -> ast::DefId {
     match bcx.tcx().lang_items.require(it) {
         Ok(id) => id,
         Err(s) => {
@@ -365,12 +366,12 @@ fn require_alloc_fn(bcx: &Block, info_ty: ty::t, it: LangItem) -> ast::DefId {
 // The following malloc_raw_dyn* functions allocate a box to contain
 // a given type, but with a potentially dynamic size.
 
-pub fn malloc_raw_dyn<'a>(bcx: &'a Block<'a>,
-                          llty_ptr: Type,
-                          info_ty: ty::t,
-                          size: ValueRef,
-                          align: ValueRef)
-                          -> Result<'a> {
+pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                  llty_ptr: Type,
+                                  info_ty: ty::t,
+                                  size: ValueRef,
+                                  align: ValueRef)
+                                  -> Result<'blk, 'tcx> {
     let _icx = push_ctxt("malloc_raw_exchange");
 
     // Allocate space:
@@ -382,9 +383,9 @@ pub fn malloc_raw_dyn<'a>(bcx: &'a Block<'a>,
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
 
-pub fn malloc_raw_dyn_proc<'a>(
-                      bcx: &'a Block<'a>,
-                      t: ty::t, alloc_fn: LangItem) -> Result<'a> {
+pub fn malloc_raw_dyn_proc<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                       t: ty::t, alloc_fn: LangItem)
+                                       -> Result<'blk, 'tcx> {
     let _icx = push_ctxt("malloc_raw_dyn_proc");
     let ccx = bcx.ccx();
 
@@ -413,12 +414,11 @@ pub fn malloc_raw_dyn_proc<'a>(
 }
 
 
-pub fn malloc_raw_dyn_managed<'a>(
-                      bcx: &'a Block<'a>,
-                      t: ty::t,
-                      alloc_fn: LangItem,
-                      size: ValueRef)
-                      -> Result<'a> {
+pub fn malloc_raw_dyn_managed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                          t: ty::t,
+                                          alloc_fn: LangItem,
+                                          size: ValueRef)
+                                          -> Result<'blk, 'tcx> {
     let _icx = push_ctxt("malloc_raw_dyn_managed");
     let ccx = bcx.ccx();
 
@@ -584,13 +584,12 @@ pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
 // Used only for creating scalar comparison glue.
 pub enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
 
-pub fn compare_scalar_types<'a>(
-                            cx: &'a Block<'a>,
-                            lhs: ValueRef,
-                            rhs: ValueRef,
-                            t: ty::t,
-                            op: ast::BinOp)
-                            -> Result<'a> {
+pub fn compare_scalar_types<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                                        lhs: ValueRef,
+                                        rhs: ValueRef,
+                                        t: ty::t,
+                                        op: ast::BinOp)
+                                        -> Result<'blk, 'tcx> {
     let f = |a| Result::new(cx, compare_scalar_values(cx, lhs, rhs, a, op));
 
     match ty::get(t).sty {
@@ -606,15 +605,14 @@ pub fn compare_scalar_types<'a>(
 
 
 // A helper function to do the actual comparison of scalar values.
-pub fn compare_scalar_values<'a>(
-                             cx: &'a Block<'a>,
-                             lhs: ValueRef,
-                             rhs: ValueRef,
-                             nt: scalar_type,
-                             op: ast::BinOp)
-                             -> ValueRef {
+pub fn compare_scalar_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                                         lhs: ValueRef,
+                                         rhs: ValueRef,
+                                         nt: scalar_type,
+                                         op: ast::BinOp)
+                                         -> ValueRef {
     let _icx = push_ctxt("compare_scalar_values");
-    fn die(cx: &Block) -> ! {
+    fn die(cx: Block) -> ! {
         cx.sess().bug("compare_scalar_values: must be a comparison operator");
     }
     match nt {
@@ -668,7 +666,7 @@ pub fn compare_scalar_values<'a>(
 }
 
 pub fn compare_simd_types(
-                    cx: &Block,
+                    cx: Block,
                     lhs: ValueRef,
                     rhs: ValueRef,
                     t: ty::t,
@@ -705,28 +703,24 @@ pub fn compare_simd_types(
     }
 }
 
-pub type val_and_ty_fn<'r,'b> =
-    |&'b Block<'b>, ValueRef, ty::t|: 'r -> &'b Block<'b>;
+pub type val_and_ty_fn<'a, 'blk, 'tcx> =
+    |Block<'blk, 'tcx>, ValueRef, ty::t|: 'a -> Block<'blk, 'tcx>;
 
 // Iterates through the elements of a structural type.
-pub fn iter_structural_ty<'r,
-                          'b>(
-                          cx: &'b Block<'b>,
-                          av: ValueRef,
-                          t: ty::t,
-                          f: val_and_ty_fn<'r,'b>)
-                          -> &'b Block<'b> {
+pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                                          av: ValueRef,
+                                          t: ty::t,
+                                          f: val_and_ty_fn<'a, 'blk, 'tcx>)
+                                          -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("iter_structural_ty");
 
-    fn iter_variant<'r,
-                    'b>(
-                    cx: &'b Block<'b>,
-                    repr: &adt::Repr,
-                    av: ValueRef,
-                    variant: &ty::VariantInfo,
-                    substs: &subst::Substs,
-                    f: val_and_ty_fn<'r,'b>)
-                    -> &'b Block<'b> {
+    fn iter_variant<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                                    repr: &adt::Repr,
+                                    av: ValueRef,
+                                    variant: &ty::VariantInfo,
+                                    substs: &subst::Substs,
+                                    f: val_and_ty_fn<'a, 'blk, 'tcx>)
+                                    -> Block<'blk, 'tcx> {
         let _icx = push_ctxt("iter_variant");
         let tcx = cx.tcx();
         let mut cx = cx;
@@ -846,8 +840,7 @@ pub fn iter_structural_ty<'r,
     return cx;
 }
 
-pub fn cast_shift_expr_rhs<'a>(
-                           cx: &'a Block<'a>,
+pub fn cast_shift_expr_rhs(cx: Block,
                            op: ast::BinOp,
                            lhs: ValueRef,
                            rhs: ValueRef)
@@ -894,14 +887,14 @@ pub fn cast_shift_rhs(op: ast::BinOp,
     }
 }
 
-pub fn fail_if_zero_or_overflows<'a>(
-                    cx: &'a Block<'a>,
-                    span: Span,
-                    divrem: ast::BinOp,
-                    lhs: ValueRef,
-                    rhs: ValueRef,
-                    rhs_t: ty::t)
-                    -> &'a Block<'a> {
+pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
+                                cx: Block<'blk, 'tcx>,
+                                span: Span,
+                                divrem: ast::BinOp,
+                                lhs: ValueRef,
+                                rhs: ValueRef,
+                                rhs_t: ty::t)
+                                -> Block<'blk, 'tcx> {
     let (zero_text, overflow_text) = if divrem == ast::BiDiv {
         ("attempted to divide by zero",
          "attempted to divide with overflow")
@@ -998,16 +991,15 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
     }
 }
 
-pub fn invoke<'a>(
-              bcx: &'a Block<'a>,
-              llfn: ValueRef,
-              llargs: Vec<ValueRef> ,
-              fn_ty: ty::t,
-              call_info: Option<NodeInfo>,
-              // FIXME(15064) is_lang_item is a horrible hack, please remove it
-              // at the soonest opportunity.
-              is_lang_item: bool)
-              -> (ValueRef, &'a Block<'a>) {
+pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                          llfn: ValueRef,
+                          llargs: Vec<ValueRef> ,
+                          fn_ty: ty::t,
+                          call_info: Option<NodeInfo>,
+                          // FIXME(15064) is_lang_item is a horrible hack, please remove it
+                          // at the soonest opportunity.
+                          is_lang_item: bool)
+                          -> (ValueRef, Block<'blk, 'tcx>) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable.get() {
         return (C_null(Type::i8(bcx.ccx())), bcx);
@@ -1066,7 +1058,7 @@ pub fn invoke<'a>(
     }
 }
 
-pub fn need_invoke(bcx: &Block) -> bool {
+pub fn need_invoke(bcx: Block) -> bool {
     if bcx.sess().no_landing_pads() {
         return false;
     }
@@ -1079,13 +1071,13 @@ pub fn need_invoke(bcx: &Block) -> bool {
     bcx.fcx.needs_invoke()
 }
 
-pub fn load_if_immediate(cx: &Block, v: ValueRef, t: ty::t) -> ValueRef {
+pub fn load_if_immediate(cx: Block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("load_if_immediate");
     if type_is_immediate(cx.ccx(), t) { return load_ty(cx, v, t); }
     return v;
 }
 
-pub fn load_ty(cx: &Block, ptr: ValueRef, t: ty::t) -> ValueRef {
+pub fn load_ty(cx: Block, ptr: ValueRef, t: ty::t) -> ValueRef {
     /*!
      * Helper for loading values from memory. Does the necessary conversion if
      * the in-memory type differs from the type used for SSA values. Also
@@ -1105,7 +1097,7 @@ pub fn load_ty(cx: &Block, ptr: ValueRef, t: ty::t) -> ValueRef {
     }
 }
 
-pub fn store_ty(cx: &Block, v: ValueRef, dst: ValueRef, t: ty::t) {
+pub fn store_ty(cx: Block, v: ValueRef, dst: ValueRef, t: ty::t) {
     /*!
      * Helper for storing values in memory. Does the necessary conversion if
      * the in-memory type differs from the type used for SSA values.
@@ -1117,33 +1109,31 @@ pub fn store_ty(cx: &Block, v: ValueRef, dst: ValueRef, t: ty::t) {
     };
 }
 
-pub fn ignore_lhs(_bcx: &Block, local: &ast::Local) -> bool {
+pub fn ignore_lhs(_bcx: Block, local: &ast::Local) -> bool {
     match local.pat.node {
         ast::PatWild(ast::PatWildSingle) => true, _ => false
     }
 }
 
-pub fn init_local<'a>(bcx: &'a Block<'a>, local: &ast::Local)
-                  -> &'a Block<'a> {
+pub fn init_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, local: &ast::Local)
+                              -> Block<'blk, 'tcx> {
     debug!("init_local(bcx={}, local.id={:?})", bcx.to_str(), local.id);
     let _indenter = indenter();
     let _icx = push_ctxt("init_local");
     _match::store_local(bcx, local)
 }
 
-pub fn raw_block<'a>(
-                 fcx: &'a FunctionContext<'a>,
-                 is_lpad: bool,
-                 llbb: BasicBlockRef)
-                 -> &'a Block<'a> {
-    common::Block::new(llbb, is_lpad, None, fcx)
+pub fn raw_block<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
+                             is_lpad: bool,
+                             llbb: BasicBlockRef)
+                             -> Block<'blk, 'tcx> {
+    common::BlockS::new(llbb, is_lpad, None, fcx)
 }
 
-pub fn with_cond<'a>(
-                 bcx: &'a Block<'a>,
-                 val: ValueRef,
-                 f: |&'a Block<'a>| -> &'a Block<'a>)
-                 -> &'a Block<'a> {
+pub fn with_cond<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                             val: ValueRef,
+                             f: |Block<'blk, 'tcx>| -> Block<'blk, 'tcx>)
+                             -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("with_cond");
     let fcx = bcx.fcx;
     let next_cx = fcx.new_temp_block("next");
@@ -1156,7 +1146,7 @@ pub fn with_cond<'a>(
     next_cx
 }
 
-pub fn call_lifetime_start(cx: &Block, ptr: ValueRef) {
+pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
     if cx.sess().opts.optimize == config::No {
         return;
     }
@@ -1170,7 +1160,7 @@ pub fn call_lifetime_start(cx: &Block, ptr: ValueRef) {
     Call(cx, lifetime_start, [llsize, ptr], None);
 }
 
-pub fn call_lifetime_end(cx: &Block, ptr: ValueRef) {
+pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
     if cx.sess().opts.optimize == config::No {
         return;
     }
@@ -1184,7 +1174,7 @@ pub fn call_lifetime_end(cx: &Block, ptr: ValueRef) {
     Call(cx, lifetime_end, [llsize, ptr], None);
 }
 
-pub fn call_memcpy(cx: &Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
+pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
     let _icx = push_ctxt("call_memcpy");
     let ccx = cx.ccx();
     let key = match ccx.sess().targ_cfg.arch {
@@ -1200,7 +1190,7 @@ pub fn call_memcpy(cx: &Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, 
     Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile], None);
 }
 
-pub fn memcpy_ty(bcx: &Block, dst: ValueRef, src: ValueRef, t: ty::t) {
+pub fn memcpy_ty(bcx: Block, dst: ValueRef, src: ValueRef, t: ty::t) {
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
     if ty::type_is_structural(t) {
@@ -1213,7 +1203,7 @@ pub fn memcpy_ty(bcx: &Block, dst: ValueRef, src: ValueRef, t: ty::t) {
     }
 }
 
-pub fn zero_mem(cx: &Block, llptr: ValueRef, t: ty::t) {
+pub fn zero_mem(cx: Block, llptr: ValueRef, t: ty::t) {
     if cx.unreachable.get() { return; }
     let _icx = push_ctxt("zero_mem");
     let bcx = cx;
@@ -1245,7 +1235,7 @@ fn memzero(b: &Builder, llptr: ValueRef, ty: ty::t) {
     b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile], None);
 }
 
-pub fn alloc_ty(bcx: &Block, t: ty::t, name: &str) -> ValueRef {
+pub fn alloc_ty(bcx: Block, t: ty::t, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);
@@ -1254,13 +1244,13 @@ pub fn alloc_ty(bcx: &Block, t: ty::t, name: &str) -> ValueRef {
     return val;
 }
 
-pub fn alloca(cx: &Block, ty: Type, name: &str) -> ValueRef {
+pub fn alloca(cx: Block, ty: Type, name: &str) -> ValueRef {
     let p = alloca_no_lifetime(cx, ty, name);
     call_lifetime_start(cx, p);
     p
 }
 
-pub fn alloca_no_lifetime(cx: &Block, ty: Type, name: &str) -> ValueRef {
+pub fn alloca_no_lifetime(cx: Block, ty: Type, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloca");
     if cx.unreachable.get() {
         unsafe {
@@ -1271,7 +1261,7 @@ pub fn alloca_no_lifetime(cx: &Block, ty: Type, name: &str) -> ValueRef {
     Alloca(cx, ty, name)
 }
 
-pub fn alloca_zeroed(cx: &Block, ty: ty::t, name: &str) -> ValueRef {
+pub fn alloca_zeroed(cx: Block, ty: ty::t, name: &str) -> ValueRef {
     let llty = type_of::type_of(cx.ccx(), ty);
     if cx.unreachable.get() {
         unsafe {
@@ -1285,7 +1275,7 @@ pub fn alloca_zeroed(cx: &Block, ty: ty::t, name: &str) -> ValueRef {
     p
 }
 
-pub fn arrayalloca(cx: &Block, ty: Type, v: ValueRef) -> ValueRef {
+pub fn arrayalloca(cx: Block, ty: Type, v: ValueRef) -> ValueRef {
     let _icx = push_ctxt("arrayalloca");
     if cx.unreachable.get() {
         unsafe {
@@ -1440,15 +1430,15 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
 //
 // Be warned! You must call `init_function` before doing anything with the
 // returned function context.
-pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
-                       llfndecl: ValueRef,
-                       id: ast::NodeId,
-                       has_env: bool,
-                       output_type: ty::t,
-                       param_substs: &'a param_substs,
-                       sp: Option<Span>,
-                       block_arena: &'a TypedArena<Block<'a>>)
-                       -> FunctionContext<'a> {
+pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
+                             llfndecl: ValueRef,
+                             id: ast::NodeId,
+                             has_env: bool,
+                             output_type: ty::t,
+                             param_substs: &'a param_substs,
+                             sp: Option<Span>,
+                             block_arena: &'a TypedArena<common::BlockS<'a, 'tcx>>)
+                             -> FunctionContext<'a, 'tcx> {
     param_substs.validate();
 
     debug!("new_fn_ctxt(path={}, id={}, param_substs={})",
@@ -1494,9 +1484,9 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
 
 /// Performs setup on a newly created function, creating the entry scope block
 /// and allocating space for the return pointer.
-pub fn init_function<'a>(fcx: &'a FunctionContext<'a>,
-                         skip_retptr: bool,
-                         output_type: ty::t) -> &'a Block<'a> {
+pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
+                               skip_retptr: bool,
+                               output_type: ty::t) -> Block<'a, 'tcx> {
     let entry_bcx = fcx.new_temp_block("entry-block");
 
     // Use a dummy instruction as the insertion point for all allocas.
@@ -1564,9 +1554,8 @@ pub fn create_datums_for_fn_args(fcx: &FunctionContext,
 /// datums.
 ///
 /// FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
-fn create_datums_for_fn_args_under_call_abi<
-        'a>(
-        mut bcx: &'a Block<'a>,
+fn create_datums_for_fn_args_under_call_abi(
+        mut bcx: Block,
         arg_scope: cleanup::CustomScopeIndex,
         arg_tys: &[ty::t])
         -> Vec<RvalueDatum> {
@@ -1632,12 +1621,12 @@ fn create_datums_for_fn_args_under_call_abi<
     result
 }
 
-fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
-                            arg_scope: cleanup::CustomScopeIndex,
-                            bcx: &'a Block<'a>,
-                            args: &[ast::Arg],
-                            arg_datums: Vec<RvalueDatum> )
-                            -> &'a Block<'a> {
+fn copy_args_to_allocas<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
+                                    arg_scope: cleanup::CustomScopeIndex,
+                                    bcx: Block<'blk, 'tcx>,
+                                    args: &[ast::Arg],
+                                    arg_datums: Vec<RvalueDatum> )
+                                    -> Block<'blk, 'tcx> {
     debug!("copy_args_to_allocas");
 
     let _icx = push_ctxt("copy_args_to_allocas");
@@ -1664,13 +1653,13 @@ fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
     bcx
 }
 
-fn copy_unboxed_closure_args_to_allocas<'a>(
-                                        mut bcx: &'a Block<'a>,
+fn copy_unboxed_closure_args_to_allocas<'blk, 'tcx>(
+                                        mut bcx: Block<'blk, 'tcx>,
                                         arg_scope: cleanup::CustomScopeIndex,
                                         args: &[ast::Arg],
                                         arg_datums: Vec<RvalueDatum>,
                                         monomorphized_arg_types: &[ty::t])
-                                        -> &'a Block<'a> {
+                                        -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("copy_unboxed_closure_args_to_allocas");
     let arg_scope_id = cleanup::CustomScope(arg_scope);
 
@@ -1720,9 +1709,9 @@ fn copy_unboxed_closure_args_to_allocas<'a>(
 
 // Ties up the llstaticallocas -> llloadenv -> lltop edges,
 // and builds the return block.
-pub fn finish_fn<'a>(fcx: &'a FunctionContext<'a>,
-                     last_bcx: &'a Block<'a>,
-                     retty: ty::t) {
+pub fn finish_fn<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
+                             last_bcx: Block<'blk, 'tcx>,
+                             retty: ty::t) {
     let _icx = push_ctxt("finish_fn");
 
     // This shouldn't need to recompute the return type,
@@ -1744,7 +1733,7 @@ pub fn finish_fn<'a>(fcx: &'a FunctionContext<'a>,
 }
 
 // Builds the return block for a function.
-pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block, retty: ty::t) {
+pub fn build_return_block(fcx: &FunctionContext, ret_cx: Block, retty: ty::t) {
     if fcx.llretslotptr.get().is_none() ||
        (!fcx.needs_ret_allocas && fcx.caller_expects_out_pointer) {
         return RetVoid(ret_cx);
@@ -1813,8 +1802,8 @@ pub fn trans_closure(ccx: &CrateContext,
                      abi: Abi,
                      has_env: bool,
                      is_unboxed_closure: IsUnboxedClosureFlag,
-                     maybe_load_env: <'a>|&'a Block<'a>, ScopeId|
-                                         -> &'a Block<'a>) {
+                     maybe_load_env: <'blk, 'tcx> |Block<'blk, 'tcx>, ScopeId|
+                                                  -> Block<'blk, 'tcx>) {
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
     let _icx = push_ctxt("trans_closure");
@@ -1980,11 +1969,11 @@ pub fn trans_enum_variant(ccx: &CrateContext,
         llfndecl);
 }
 
-pub fn trans_named_tuple_constructor<'a>(mut bcx: &'a Block<'a>,
-                                         ctor_ty: ty::t,
-                                         disr: ty::Disr,
-                                         args: callee::CallArgs,
-                                         dest: expr::Dest) -> Result<'a> {
+pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
+                                                 ctor_ty: ty::t,
+                                                 disr: ty::Disr,
+                                                 args: callee::CallArgs,
+                                                 dest: expr::Dest) -> Result<'blk, 'tcx> {
 
     let ccx = bcx.fcx.ccx;
     let tcx = ccx.tcx();
@@ -2142,11 +2131,11 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
     }
 }
 
-pub struct TransItemVisitor<'a> {
-    pub ccx: &'a CrateContext<'a>,
+pub struct TransItemVisitor<'a, 'tcx: 'a> {
+    pub ccx: &'a CrateContext<'a, 'tcx>,
 }
 
-impl<'a> Visitor<()> for TransItemVisitor<'a> {
+impl<'a, 'tcx> Visitor<()> for TransItemVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item, _:()) {
         trans_item(self.ccx, i);
     }
@@ -2911,20 +2900,20 @@ pub fn p2i(ccx: &CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r SharedCrateContext,
-                                      ie: encoder::EncodeInlinedItem<'r>)
-    -> encoder::EncodeParams<'r> {
-        encoder::EncodeParams {
-            diag: cx.sess().diagnostic(),
-            tcx: cx.tcx(),
-            reexports2: cx.exp_map2(),
-            item_symbols: cx.item_symbols(),
-            non_inlineable_statics: cx.non_inlineable_statics(),
-            link_meta: cx.link_meta(),
-            cstore: &cx.sess().cstore,
-            encode_inlined_item: ie,
-            reachable: cx.reachable(),
-        }
+pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'tcx>,
+                                            ie: encoder::EncodeInlinedItem<'a>)
+                                            -> encoder::EncodeParams<'a, 'tcx> {
+    encoder::EncodeParams {
+        diag: cx.sess().diagnostic(),
+        tcx: cx.tcx(),
+        reexports2: cx.exp_map2(),
+        item_symbols: cx.item_symbols(),
+        non_inlineable_statics: cx.non_inlineable_statics(),
+        link_meta: cx.link_meta(),
+        cstore: &cx.sess().cstore,
+        encode_inlined_item: ie,
+        reachable: cx.reachable(),
+    }
 }
 
 pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {

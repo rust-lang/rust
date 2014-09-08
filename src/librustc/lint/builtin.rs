@@ -340,11 +340,11 @@ impl LintPass for TypeLimits {
 declare_lint!(CTYPES, Warn,
               "proper use of libc types in foreign modules")
 
-struct CTypesVisitor<'a> {
-    cx: &'a Context<'a>
+struct CTypesVisitor<'a, 'tcx: 'a> {
+    cx: &'a Context<'a, 'tcx>
 }
 
-impl<'a> CTypesVisitor<'a> {
+impl<'a, 'tcx> CTypesVisitor<'a, 'tcx> {
     fn check_def(&mut self, sp: Span, ty_id: ast::NodeId, path_id: ast::NodeId) {
         match self.cx.tcx.def_map.borrow().get_copy(&path_id) {
             def::DefPrimTy(ast::TyInt(ast::TyI)) => {
@@ -375,7 +375,7 @@ impl<'a> CTypesVisitor<'a> {
     }
 }
 
-impl<'a> Visitor<()> for CTypesVisitor<'a> {
+impl<'a, 'tcx> Visitor<()> for CTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty, _: ()) {
         match ty.node {
             ast::TyPath(_, _, id) => self.check_def(ty.span, ty.id, id),
@@ -505,11 +505,11 @@ impl LintPass for HeapMemory {
 declare_lint!(RAW_POINTER_DERIVING, Warn,
               "uses of #[deriving] with raw pointers are rarely correct")
 
-struct RawPtrDerivingVisitor<'a> {
-    cx: &'a Context<'a>
+struct RawPtrDerivingVisitor<'a, 'tcx: 'a> {
+    cx: &'a Context<'a, 'tcx>
 }
 
-impl<'a> Visitor<()> for RawPtrDerivingVisitor<'a> {
+impl<'a, 'tcx> Visitor<()> for RawPtrDerivingVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty, _: ()) {
         static MSG: &'static str = "use of `#[deriving]` with a raw pointer";
         match ty.node {

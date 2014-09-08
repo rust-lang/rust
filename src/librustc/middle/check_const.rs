@@ -21,11 +21,11 @@ use syntax::{ast_util, ast_map};
 use syntax::visit::Visitor;
 use syntax::visit;
 
-pub struct CheckCrateVisitor<'a> {
-    tcx: &'a ty::ctxt,
+pub struct CheckCrateVisitor<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
 }
 
-impl<'a> Visitor<bool> for CheckCrateVisitor<'a> {
+impl<'a, 'tcx> Visitor<bool> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &Item, env: bool) {
         check_item(self, i, env);
     }

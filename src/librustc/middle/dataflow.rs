@@ -32,8 +32,8 @@ use util::nodemap::NodeMap;
 pub enum EntryOrExit { Entry, Exit }
 
 #[deriving(Clone)]
-pub struct DataFlowContext<'a, O> {
-    tcx: &'a ty::ctxt,
+pub struct DataFlowContext<'a, 'tcx: 'a, O> {
+    tcx: &'a ty::ctxt<'tcx>,
 
     /// a name for the analysis using this dataflow instance
     analysis_name: &'static str,
@@ -80,8 +80,8 @@ pub trait DataFlowOperator : BitwiseOperator {
     fn initial_value(&self) -> bool;
 }
 
-struct PropagationContext<'a, 'b:'a, O:'a> {
-    dfcx: &'a mut DataFlowContext<'b, O>,
+struct PropagationContext<'a, 'b: 'a, 'tcx: 'b, O: 'a> {
+    dfcx: &'a mut DataFlowContext<'b, 'tcx, O>,
     changed: bool
 }
 
@@ -92,14 +92,14 @@ fn to_cfgidx_or_die(id: ast::NodeId, index: &NodeMap<CFGIndex>) -> CFGIndex {
     })
 }
 
-impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
+impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
     fn has_bitset_for_nodeid(&self, n: ast::NodeId) -> bool {
         assert!(n != ast::DUMMY_NODE_ID);
         self.nodeid_to_index.contains_key(&n)
     }
 }
 
-impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
+impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O> {
     fn pre(&self,
            ps: &mut pprust::State,
            node: pprust::AnnNode) -> io::IoResult<()> {
@@ -182,14 +182,14 @@ fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
     }
 }
 
-impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
-    pub fn new(tcx: &'a ty::ctxt,
+impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
+    pub fn new(tcx: &'a ty::ctxt<'tcx>,
                analysis_name: &'static str,
                decl: Option<&ast::FnDecl>,
                cfg: &cfg::CFG,
                oper: O,
                id_range: IdRange,
-               bits_per_id: uint) -> DataFlowContext<'a, O> {
+               bits_per_id: uint) -> DataFlowContext<'a, 'tcx, O> {
         let words_per_id = (bits_per_id + uint::BITS - 1) / uint::BITS;
         let num_nodes = cfg.graph.all_nodes().len();
 
@@ -427,8 +427,8 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
     }
 }
 
-impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
-//                          ^^^^^^^^^^^^^ only needed for pretty printing
+impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
+//                                ^^^^^^^^^^^^^ only needed for pretty printing
     pub fn propagate(&mut self, cfg: &cfg::CFG, blk: &ast::Block) {
         //! Performs the data flow analysis.
 
@@ -469,7 +469,7 @@ impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
     }
 }
 
-impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
+impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
     fn walk_cfg(&mut self,
                 cfg: &cfg::CFG,
                 in_out: &mut [uint]) {

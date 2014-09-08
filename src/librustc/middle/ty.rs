@@ -50,6 +50,7 @@ use std::mem;
 use std::ops;
 use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
+use arena::TypedArena;
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
@@ -418,10 +419,13 @@ pub struct TransmuteRestriction {
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
-pub struct ctxt {
+pub struct ctxt<'tcx> {
+    /// The arena that types are allocated from.
+    type_arena: &'tcx TypedArena<t_box_>,
+
     /// Specifically use a speedy hash algorithm for this hash map, it's used
     /// quite often.
-    pub interner: RefCell<FnvHashMap<intern_key, Box<t_box_>>>,
+    interner: RefCell<FnvHashMap<intern_key, &'tcx t_box_>>,
     pub next_id: Cell<uint>,
     pub sess: Session,
     pub def_map: resolve::DefMap,
@@ -1373,21 +1377,22 @@ impl UnboxedClosureKind {
     }
 }
 
-pub fn mk_ctxt(s: Session,
-               dm: resolve::DefMap,
-               named_region_map: resolve_lifetime::NamedRegionMap,
-               map: ast_map::Map,
-               freevars: freevars::freevar_map,
-               capture_modes: freevars::CaptureModeMap,
-               region_maps: middle::region::RegionMaps,
-               lang_items: middle::lang_items::LanguageItems,
-               stability: stability::Index)
-               -> ctxt {
+pub fn mk_ctxt<'tcx>(s: Session,
+                     type_arena: &'tcx TypedArena<t_box_>,
+                     dm: resolve::DefMap,
+                     named_region_map: resolve_lifetime::NamedRegionMap,
+                     map: ast_map::Map,
+                     freevars: freevars::freevar_map,
+                     capture_modes: freevars::CaptureModeMap,
+                     region_maps: middle::region::RegionMaps,
+                     lang_items: middle::lang_items::LanguageItems,
+                     stability: stability::Index) -> ctxt<'tcx> {
     ctxt {
+        type_arena: type_arena,
+        interner: RefCell::new(FnvHashMap::new()),
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
         variance_computed: Cell::new(false),
-        interner: RefCell::new(FnvHashMap::new()),
         next_id: Cell::new(primitives::LAST_PRIMITIVE_ID),
         sess: s,
         def_map: dm,
@@ -1554,11 +1559,11 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       }
     }
 
-    let t = box t_box_ {
+    let t = cx.type_arena.alloc(t_box_ {
         sty: st,
         id: cx.next_id.get(),
         flags: flags,
-    };
+    });
 
     let sty_ptr = &t.sty as *const sty;
 
@@ -3463,10 +3468,10 @@ impl AutoRef {
     }
 }
 
-pub fn method_call_type_param_defs<T>(typer: &T,
-                                      origin: typeck::MethodOrigin)
-                                      -> VecPerParamSpace<TypeParameterDef>
-                                      where T: mc::Typer {
+pub fn method_call_type_param_defs<'tcx, T>(typer: &T,
+                                            origin: typeck::MethodOrigin)
+                                            -> VecPerParamSpace<TypeParameterDef>
+                                            where T: mc::Typer<'tcx> {
     match origin {
         typeck::MethodStatic(did) => {
             ty::lookup_item_type(typer.tcx(), did).generics.types.clone()
@@ -4655,10 +4660,10 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
     let u = TypeNormalizer(cx).fold_ty(t);
     return u;
 
-    struct TypeNormalizer<'a>(&'a ctxt);
+    struct TypeNormalizer<'a, 'tcx: 'a>(&'a ctxt<'tcx>);
 
-    impl<'a> TypeFolder for TypeNormalizer<'a> {
-        fn tcx<'a>(&'a self) -> &'a ctxt { let TypeNormalizer(c) = *self; c }
+    impl<'a, 'tcx> TypeFolder<'tcx> for TypeNormalizer<'a, 'tcx> {
+        fn tcx<'a>(&'a self) -> &'a ctxt<'tcx> { let TypeNormalizer(c) = *self; c }
 
         fn fold_ty(&mut self, t: ty::t) -> ty::t {
             match self.tcx().normalized_cache.borrow().find_copy(&t) {
@@ -4697,70 +4702,55 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
     }
 }
 
-pub trait ExprTyProvider {
-    fn expr_ty(&self, ex: &ast::Expr) -> t;
-    fn ty_ctxt<'a>(&'a self) -> &'a ctxt;
-}
-
-impl ExprTyProvider for ctxt {
-    fn expr_ty(&self, ex: &ast::Expr) -> t {
-        expr_ty(self, ex)
-    }
-
-    fn ty_ctxt<'a>(&'a self) -> &'a ctxt {
-        self
-    }
-}
-
 // Returns the repeat count for a repeating vector expression.
-pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> uint {
+pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
     match const_eval::eval_const_expr_partial(tcx, count_expr) {
       Ok(ref const_val) => match *const_val {
         const_eval::const_int(count) => if count < 0 {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                        "expected positive integer for \
-                                         repeat count, found negative integer");
-            return 0;
+            tcx.sess.span_err(count_expr.span,
+                              "expected positive integer for \
+                               repeat count, found negative integer");
+            0
         } else {
-            return count as uint
+            count as uint
         },
-        const_eval::const_uint(count) => return count as uint,
+        const_eval::const_uint(count) => count as uint,
         const_eval::const_float(count) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                        "expected positive integer for \
-                                         repeat count, found float");
-            return count as uint;
+            tcx.sess.span_err(count_expr.span,
+                              "expected positive integer for \
+                               repeat count, found float");
+            count as uint
         }
         const_eval::const_str(_) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                        "expected positive integer for \
-                                         repeat count, found string");
-            return 0;
+            tcx.sess.span_err(count_expr.span,
+                              "expected positive integer for \
+                               repeat count, found string");
+            0
         }
         const_eval::const_bool(_) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                        "expected positive integer for \
-                                         repeat count, found boolean");
-            return 0;
+            tcx.sess.span_err(count_expr.span,
+                              "expected positive integer for \
+                               repeat count, found boolean");
+            0
         }
         const_eval::const_binary(_) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                        "expected positive integer for \
-                                         repeat count, found binary array");
-            return 0;
+            tcx.sess.span_err(count_expr.span,
+                              "expected positive integer for \
+                               repeat count, found binary array");
+            0
         }
         const_eval::const_nil => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                        "expected positive integer for \
-                                         repeat count, found ()");
-            return 0;
+            tcx.sess.span_err(count_expr.span,
+                              "expected positive integer for \
+                               repeat count, found ()");
+            0
         }
       },
       Err(..) => {
-        tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                    "expected constant integer for repeat count, \
-                                     found variable");
-        return 0;
+        tcx.sess.span_err(count_expr.span,
+                          "expected constant integer for repeat count, \
+                           found variable");
+        0
       }
     }
 }
@@ -5397,8 +5387,8 @@ impl BorrowKind {
     }
 }
 
-impl mc::Typer for ty::ctxt {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         self
     }
 

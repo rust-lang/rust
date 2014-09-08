@@ -82,10 +82,10 @@ use syntax::ast;
 // Note: Coerce is not actually a combiner, in that it does not
 // conform to the same interface, though it performs a similar
 // function.
-pub struct Coerce<'f>(pub CombineFields<'f>);
+pub struct Coerce<'f, 'tcx: 'f>(pub CombineFields<'f, 'tcx>);
 
-impl<'f> Coerce<'f> {
-    pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> {
+impl<'f, 'tcx> Coerce<'f, 'tcx> {
+    pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f, 'tcx> {
         let Coerce(ref v) = *self; v
     }
 

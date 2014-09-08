@@ -59,11 +59,11 @@ pub enum DefIdSource {
 pub type conv_did<'a> =
     |source: DefIdSource, ast::DefId|: 'a -> ast::DefId;
 
-pub struct PState<'a> {
+pub struct PState<'a, 'tcx: 'a> {
     data: &'a [u8],
     krate: ast::CrateNum,
     pos: uint,
-    tcx: &'a ty::ctxt
+    tcx: &'a ty::ctxt<'tcx>
 }
 
 fn peek(st: &PState) -> char {
@@ -105,8 +105,9 @@ fn parse_ident_(st: &mut PState, is_last: |char| -> bool) -> ast::Ident {
     })
 }
 
-pub fn parse_state_from_data<'a>(data: &'a [u8], crate_num: ast::CrateNum,
-                             pos: uint, tcx: &'a ty::ctxt) -> PState<'a> {
+pub fn parse_state_from_data<'a, 'tcx>(data: &'a [u8], crate_num: ast::CrateNum,
+                                       pos: uint, tcx: &'a ty::ctxt<'tcx>)
+                                       -> PState<'a, 'tcx> {
     PState {
         data: data,
         krate: crate_num,

@@ -31,12 +31,12 @@ use rbml::io::SeekableMemWriter;
 
 macro_rules! mywrite( ($($arg:tt)*) => ({ write!($($arg)*); }) )
 
-pub struct ctxt<'a> {
+pub struct ctxt<'a, 'tcx: 'a> {
     pub diag: &'a SpanHandler,
     // Def -> str Callback:
     pub ds: fn(DefId) -> String,
     // The type context.
-    pub tcx: &'a ty::ctxt,
+    pub tcx: &'a ty::ctxt<'tcx>,
     pub abbrevs: &'a abbrev_map
 }
 

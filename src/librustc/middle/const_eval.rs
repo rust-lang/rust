@@ -176,12 +176,12 @@ pub fn lookup_const_by_id(tcx: &ty::ctxt, def_id: ast::DefId)
     }
 }
 
-struct ConstEvalVisitor<'a> {
-    tcx: &'a ty::ctxt,
+struct ConstEvalVisitor<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
     ccache: constness_cache,
 }
 
-impl<'a> ConstEvalVisitor<'a> {
+impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
     fn classify(&mut self, e: &Expr) -> constness {
         let did = ast_util::local_def(e.id);
         match self.ccache.find(&did) {
@@ -266,7 +266,7 @@ impl<'a> ConstEvalVisitor<'a> {
 
 }
 
-impl<'a> Visitor<()> for ConstEvalVisitor<'a> {
+impl<'a, 'tcx> Visitor<()> for ConstEvalVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &Ty, _: ()) {
         match t.node {
             TyFixedLengthVec(_, expr) => {
@@ -365,8 +365,7 @@ pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
     }
 }
 
-pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
-                            -> Result<const_val, String> {
+pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, String> {
     fn fromb(b: bool) -> Result<const_val, String> { Ok(const_int(b as i64)) }
     match e.node {
       ExprUnary(UnNeg, ref inner) => {
@@ -494,12 +493,11 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
         // This tends to get called w/o the type actually having been
         // populated in the ctxt, which was causing things to blow up
         // (#5900). Fall back to doing a limited lookup to get past it.
-        let ety = ty::expr_ty_opt(tcx.ty_ctxt(), e)
-                .or_else(|| astconv::ast_ty_to_prim_ty(tcx.ty_ctxt(), &**target_ty))
+        let ety = ty::expr_ty_opt(tcx, e)
+                .or_else(|| astconv::ast_ty_to_prim_ty(tcx, &**target_ty))
                 .unwrap_or_else(|| {
-                    tcx.ty_ctxt().sess.span_fatal(target_ty.span,
-                                                  "target type not found for \
-                                                   const cast")
+                    tcx.sess.span_fatal(target_ty.span,
+                                        "target type not found for const cast")
                 });
 
         let base = eval_const_expr_partial(tcx, &**base);
@@ -540,8 +538,8 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
         }
       }
       ExprPath(_) => {
-          match lookup_const(tcx.ty_ctxt(), e) {
-              Some(actual_e) => eval_const_expr_partial(tcx.ty_ctxt(), &*actual_e),
+          match lookup_const(tcx, e) {
+              Some(actual_e) => eval_const_expr_partial(tcx, &*actual_e),
               None => Err("non-constant path in constant expr".to_string())
           }
       }

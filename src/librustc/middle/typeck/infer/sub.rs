@@ -28,25 +28,25 @@ use syntax::ast::{Onceness, FnStyle, MutImmutable, MutMutable};
 
 
 /// "Greatest lower bound" (common subtype)
-pub struct Sub<'f> {
-    fields: CombineFields<'f>
+pub struct Sub<'f, 'tcx: 'f> {
+    fields: CombineFields<'f, 'tcx>
 }
 
 #[allow(non_snake_case)]
-pub fn Sub<'f>(cf: CombineFields<'f>) -> Sub<'f> {
+pub fn Sub<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Sub<'f, 'tcx> {
     Sub { fields: cf }
 }
 
-impl<'f> Combine for Sub<'f> {
-    fn infcx<'a>(&'a self) -> &'a InferCtxt<'a> { self.fields.infcx }
+impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
+    fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx> { self.fields.infcx }
     fn tag(&self) -> String { "sub".to_string() }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
     fn trace(&self) -> TypeTrace { self.fields.trace.clone() }
 
-    fn equate<'a>(&'a self) -> Equate<'a> { Equate(self.fields.clone()) }
-    fn sub<'a>(&'a self) -> Sub<'a> { Sub(self.fields.clone()) }
-    fn lub<'a>(&'a self) -> Lub<'a> { Lub(self.fields.clone()) }
-    fn glb<'a>(&'a self) -> Glb<'a> { Glb(self.fields.clone()) }
+    fn equate<'a>(&'a self) -> Equate<'a, 'tcx> { Equate(self.fields.clone()) }
+    fn sub<'a>(&'a self) -> Sub<'a, 'tcx> { Sub(self.fields.clone()) }
+    fn lub<'a>(&'a self) -> Lub<'a, 'tcx> { Lub(self.fields.clone()) }
+    fn glb<'a>(&'a self) -> Glb<'a, 'tcx> { Glb(self.fields.clone()) }
 
     fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
         Sub(self.fields.switch_expected()).tys(b, a)

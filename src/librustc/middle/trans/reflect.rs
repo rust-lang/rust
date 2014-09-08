@@ -33,15 +33,15 @@ use syntax::ast_map;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::parse::token;
 
-pub struct Reflector<'a, 'b> {
+pub struct Reflector<'a, 'blk, 'tcx: 'blk> {
     visitor_val: ValueRef,
     visitor_items: &'a [ty::ImplOrTraitItem],
-    final_bcx: &'b Block<'b>,
+    final_bcx: Block<'blk, 'tcx>,
     tydesc_ty: Type,
-    bcx: &'b Block<'b>
+    bcx: Block<'blk, 'tcx>
 }
 
-impl<'a, 'b> Reflector<'a, 'b> {
+impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
     pub fn c_uint(&mut self, u: uint) -> ValueRef {
         C_uint(self.bcx.ccx(), u)
     }
@@ -419,12 +419,11 @@ impl<'a, 'b> Reflector<'a, 'b> {
 }
 
 // Emit a sequence of calls to visit_ty::visit_foo
-pub fn emit_calls_to_trait_visit_ty<'a>(
-                                    bcx: &'a Block<'a>,
-                                    t: ty::t,
-                                    visitor_val: ValueRef,
-                                    visitor_trait_id: DefId)
-                                    -> &'a Block<'a> {
+pub fn emit_calls_to_trait_visit_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                                t: ty::t,
+                                                visitor_val: ValueRef,
+                                                visitor_trait_id: DefId)
+                                                -> Block<'blk, 'tcx> {
     let fcx = bcx.fcx;
     let final = fcx.new_temp_block("final");
     let tydesc_ty = ty::get_tydesc_ty(bcx.tcx()).unwrap();

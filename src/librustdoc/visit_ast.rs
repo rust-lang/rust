@@ -34,16 +34,16 @@ use doctree::*;
 // also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?
 
-pub struct RustdocVisitor<'a> {
+pub struct RustdocVisitor<'a, 'tcx: 'a> {
     pub module: Module,
     pub attrs: Vec<ast::Attribute>,
-    pub cx: &'a core::DocContext,
+    pub cx: &'a core::DocContext<'tcx>,
     pub analysis: Option<&'a core::CrateAnalysis>,
 }
 
-impl<'a> RustdocVisitor<'a> {
-    pub fn new<'b>(cx: &'b core::DocContext,
-                   analysis: Option<&'b core::CrateAnalysis>) -> RustdocVisitor<'b> {
+impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
+    pub fn new(cx: &'a core::DocContext<'tcx>,
+               analysis: Option<&'a core::CrateAnalysis>) -> RustdocVisitor<'a, 'tcx> {
         RustdocVisitor {
             module: Module::new(None),
             attrs: Vec::new(),
@@ -53,11 +53,7 @@ impl<'a> RustdocVisitor<'a> {
     }
 
     fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
-        let tcx = match self.cx.maybe_typed {
-            core::Typed(ref tcx) => tcx,
-            core::NotTyped(_) => return None
-        };
-        stability::lookup(tcx, ast_util::local_def(id))
+        self.cx.tcx_opt().and_then(|tcx| stability::lookup(tcx, ast_util::local_def(id)))
     }
 
     pub fn visit(&mut self, krate: &ast::Crate) {
@@ -225,9 +221,9 @@ impl<'a> RustdocVisitor<'a> {
 
     fn resolve_id(&mut self, id: ast::NodeId, renamed: Option<ast::Ident>,
                   glob: bool, om: &mut Module, please_inline: bool) -> bool {
-        let tcx = match self.cx.maybe_typed {
-            core::Typed(ref tcx) => tcx,
-            core::NotTyped(_) => return false
+        let tcx = match self.cx.tcx_opt() {
+            Some(tcx) => tcx,
+            None => return false
         };
         let def = (*tcx.def_map.borrow())[id].def_id();
         if !ast_util::is_local(def) { return false }

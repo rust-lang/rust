@@ -17,6 +17,7 @@
 
 #![feature(globs, struct_variant, managed_boxes, macro_rules, phase)]
 
+extern crate arena;
 extern crate debug;
 extern crate getopts;
 extern crate libc;
@@ -29,7 +30,6 @@ extern crate time;
 
 use std::io;
 use std::io::{File, MemWriter};
-use std::gc::Gc;
 use std::collections::HashMap;
 use serialize::{json, Decodable, Encodable};
 use externalfiles::ExternalHtml;
@@ -83,7 +83,6 @@ static DEFAULT_PASSES: &'static [&'static str] = &[
     "unindent-comments",
 ];
 
-local_data_key!(pub ctxtkey: Gc<core::DocContext>)
 local_data_key!(pub analysiskey: core::CrateAnalysis)
 
 type Output = (clean::Crate, Vec<plugins::PluginJson> );
