@@ -1618,6 +1618,19 @@ pub struct MoveItems<T> {
     iter: Items<'static, T>
 }
 
+impl<T> MoveItems<T> {
+    #[inline]
+    /// Drops all items that have not yet been moved and returns the empty vector.
+    pub fn unwrap(mut self) -> Vec<T> {
+        unsafe {
+            for _x in self { }
+            let MoveItems { allocation, cap, iter: _iter } = self;
+            mem::forget(self);
+            Vec { ptr: allocation, cap: cap, len: 0 }
+        }
+    }
+}
+
 impl<T> Iterator<T> for MoveItems<T> {
     #[inline]
     fn next<'a>(&'a mut self) -> Option<T> {
@@ -2014,6 +2027,18 @@ mod tests {
     fn test_swap_remove_empty() {
         let mut vec: Vec<uint> = vec!();
         assert_eq!(vec.swap_remove(0), None);
+    }
+
+    #[test]
+    fn test_move_iter_unwrap() {
+        let mut vec: Vec<uint> = Vec::with_capacity(7);
+        vec.push(1);
+        vec.push(2);
+        let ptr = vec.as_ptr();
+        vec = vec.move_iter().unwrap();
+        assert_eq!(vec.as_ptr(), ptr);
+        assert_eq!(vec.capacity(), 7);
+        assert_eq!(vec.len(), 0);
     }
 
     #[bench]
