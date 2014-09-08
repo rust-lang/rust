@@ -1015,6 +1015,12 @@ fn link_args(cmd: &mut Command,
 
         // Mark all dynamic libraries and executables as compatible with ASLR
         cmd.arg("-Wl,--dynamicbase");
+
+        // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
+        // space available to x86 Windows binaries on x86_64.
+        if sess.targ_cfg.arch == abi::X86 {
+            cmd.arg("-Wl,--large-address-aware");
+        }
     }
 
     if sess.targ_cfg.os == abi::OsAndroid {
