@@ -74,11 +74,16 @@ macro_rules! debug_assert(
 /// Runtime assertion for equality, for details see std::macros
 #[macro_export]
 macro_rules! assert_eq(
-    ($cond1:expr, $cond2:expr) => ({
-        let c1 = $cond1;
-        let c2 = $cond2;
-        if c1 != c2 || c2 != c1 {
-            fail!("expressions not equal, left: {}, right: {}", c1, c2);
+    ($given:expr , $expected:expr) => ({
+        match (&($given), &($expected)) {
+            (given_val, expected_val) => {
+                // check both directions of equality....
+                if !((*given_val == *expected_val) &&
+                     (*expected_val == *given_val)) {
+                    fail!("assertion failed: `(left == right) && (right == left)` \
+                           (left: `{}`, right: `{}`)", *given_val, *expected_val)
+                }
+            }
         }
     })
 )
