@@ -890,7 +890,7 @@ pub mod raw {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
+    use core::prelude::*;
     use test::Bencher;
 
     use {Mutable, MutableSeq};
@@ -901,7 +901,7 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-      let owned: Option<::std::string::String> = from_str("string");
+      let owned: Option<::string::String> = Some(String::from_str("string"));
       assert_eq!(owned.as_ref().map(|s| s.as_slice()), Some("string"));
     }
 

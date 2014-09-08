@@ -1669,12 +1669,15 @@ impl<S: Writer, T: Ord + Hash<S>> Hash<S> for TreeSet<T> {
 
 #[cfg(test)]
 mod test_treemap {
-    use std::prelude::*;
+    use core::prelude::*;
+    use alloc::boxed::Box;
     use std::rand::Rng;
     use std::rand;
 
     use {Map, MutableMap, Mutable, MutableSeq};
     use super::{TreeMap, TreeNode};
+    use vec::Vec;
+    use string::String;
 
     #[test]
     fn find_empty() {
@@ -2099,8 +2102,8 @@ mod test_treemap {
 
         let map_str = format!("{}", map);
 
-        assert!(map_str == "{1: 2, 3: 4}".to_string());
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert!(map_str == String::from_str("{1: 2, 3: 4}"));
+        assert_eq!(format!("{}", empty), String::from_str("{}"));
     }
 
     #[test]
@@ -2247,11 +2250,12 @@ mod bench {
 
 #[cfg(test)]
 mod test_set {
-    use std::prelude::*;
+    use core::prelude::*;
 
     use {Set, MutableSet, Mutable, MutableMap, MutableSeq};
     use super::{TreeMap, TreeSet};
     use hash;
+    use string::String;
 
     #[test]
     fn test_clear() {
@@ -2550,7 +2554,7 @@ mod test_set {
 
         let set_str = format!("{}", set);
 
-        assert!(set_str == "{1, 2}".to_string());
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert!(set_str == String::from_str("{1, 2}"));
+        assert_eq!(format!("{}", empty), String::from_str("{}"));
     }
 }

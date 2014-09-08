@@ -30,8 +30,8 @@ extern crate alloc;
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate debug;
+#[cfg(test)] extern crate std;
 
-#[cfg(test)] #[phase(plugin, link)] extern crate std;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 use core::prelude::Option;

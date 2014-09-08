@@ -1016,13 +1016,15 @@ impl<'a> Iterator<uint> for SetItems<'a> {
 
 #[cfg(test)]
 mod test_map {
-    use std::prelude::*;
+    use core::prelude::*;
     use std::iter::range_step;
     use std::uint;
 
     use {MutableMap, Map, MutableSeq};
     use super::{TrieMap, TrieNode, Internal, External, Nothing};
     use hash;
+    use vec::Vec;
+    use string::String;
 
     fn check_integrity<T>(trie: &TrieNode<T>) {
         assert!(trie.count != 0);
@@ -1403,8 +1405,8 @@ mod test_map {
 
         let map_str = format!("{}", map);
 
-        assert!(map_str == "{1: a, 2: b}".to_string());
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert!(map_str == String::from_str("{1: a, 2: b}"));
+        assert_eq!(format!("{}", empty), String::from_str("{}"));
     }
 
     #[test]
@@ -1543,7 +1545,8 @@ mod bench_map {
 
 #[cfg(test)]
 mod test_set {
-    use std::prelude::*;
+    use core::prelude::*;
+    use collections::string::String;
     use std::uint;
 
     use {MutableSet, Set, MutableSeq};
@@ -1589,8 +1592,8 @@ mod test_set {
 
         let set_str = format!("{}", set);
 
-        assert!(set_str == "{1, 2}".to_string());
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert!(set_str == String::from_str("{1, 2}"));
+        assert_eq!(format!("{}", empty), String::from_str("{}"));
     }
 
     #[test]
