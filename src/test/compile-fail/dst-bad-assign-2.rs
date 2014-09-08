@@ -43,4 +43,5 @@ pub fn main() {
     let f5: &mut Fat<ToBar> = &mut Fat { f1: 5, f2: "some str", ptr: Bar1 {f :42} };
     let z: Box<ToBar> = box Bar1 {f: 36};
     f5.ptr = *z;  //~ ERROR dynamically sized type on lhs of assignment
+    //~^ ERROR E0161
 }
