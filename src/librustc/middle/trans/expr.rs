@@ -830,19 +830,6 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
             //     an external global, and return a pointer to that.
             let const_ty = expr_ty(bcx, ref_expr);
 
-            fn get_did(ccx: &CrateContext, did: ast::DefId)
-                       -> ast::DefId {
-                if did.krate != ast::LOCAL_CRATE {
-                    // Case 2 or 3.  Which one we're in is determined by
-                    // whether the DefId produced by `maybe_instantiate_inline`
-                    // is in the LOCAL_CRATE or not.
-                    inline::maybe_instantiate_inline(ccx, did)
-                } else {
-                    // Case 1.
-                    did
-                }
-            }
-
             fn get_val<'a>(bcx: &'a Block<'a>, did: ast::DefId, const_ty: ty::t)
                        -> ValueRef {
                 // For external constants, we don't inline.
@@ -881,8 +868,9 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                     }
                 }
             }
-
-            let did = get_did(bcx.ccx(), did);
+            // The DefId produced by `maybe_instantiate_inline`
+            // may be in the LOCAL_CRATE or not.
+            let did = inline::maybe_instantiate_inline(bcx.ccx(), did);
             let val = get_val(bcx, did, const_ty);
             DatumBlock::new(bcx, Datum::new(val, const_ty, LvalueExpr))
         }

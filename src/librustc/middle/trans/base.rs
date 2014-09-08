@@ -539,11 +539,7 @@ pub fn get_res_dtor(ccx: &CrateContext,
                     substs: &subst::Substs)
                  -> ValueRef {
     let _icx = push_ctxt("trans_res_dtor");
-    let did = if did.krate != ast::LOCAL_CRATE {
-        inline::maybe_instantiate_inline(ccx, did)
-    } else {
-        did
-    };
+    let did = inline::maybe_instantiate_inline(ccx, did);
 
     if !substs.types.is_empty() {
         assert_eq!(did.krate, ast::LOCAL_CRATE);
