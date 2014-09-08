@@ -11,6 +11,12 @@
 pub fn main() {
     assert!(Some(box() ()).is_some());
 
+    let xs: Box<[()]> = box [];
+    assert!(Some(xs).is_some());
+
     struct Foo;
     assert!(Some(box Foo).is_some());
+
+    let ys: Box<[Foo]> = box [];
+    assert!(Some(ys).is_some());
 }
