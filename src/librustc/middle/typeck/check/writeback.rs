@@ -84,16 +84,16 @@ pub fn resolve_impl_res(infcx: &infer::InferCtxt,
 // there, it applies a few ad-hoc checks that were not convenient to
 // do elsewhere.
 
-struct WritebackCx<'cx> {
-    fcx: &'cx FnCtxt<'cx>,
+struct WritebackCx<'cx, 'tcx: 'cx> {
+    fcx: &'cx FnCtxt<'cx, 'tcx>,
 }
 
-impl<'cx> WritebackCx<'cx> {
-    fn new(fcx: &'cx FnCtxt) -> WritebackCx<'cx> {
+impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
+    fn new(fcx: &'cx FnCtxt<'cx, 'tcx>) -> WritebackCx<'cx, 'tcx> {
         WritebackCx { fcx: fcx }
     }
 
-    fn tcx(&self) -> &'cx ty::ctxt {
+    fn tcx(&self) -> &'cx ty::ctxt<'tcx> {
         self.fcx.tcx()
     }
 }
@@ -106,7 +106,7 @@ impl<'cx> WritebackCx<'cx> {
 // below. In general, a function is made into a `visitor` if it must
 // traffic in node-ids or update tables in the type context etc.
 
-impl<'cx> Visitor<()> for WritebackCx<'cx> {
+impl<'cx, 'tcx> Visitor<()> for WritebackCx<'cx, 'tcx> {
     fn visit_item(&mut self, _: &ast::Item, _: ()) {
         // Ignore items
     }
@@ -192,7 +192,7 @@ impl<'cx> Visitor<()> for WritebackCx<'cx> {
     }
 }
 
-impl<'cx> WritebackCx<'cx> {
+impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_upvar_borrow_map(&self) {
         if self.fcx.writeback_errors.get() {
             return;
@@ -400,17 +400,17 @@ impl<T:TypeFoldable> ResolveIn for T {
 // The Resolver. This is the type folding engine that detects
 // unresolved types and so forth.
 
-struct Resolver<'cx> {
-    tcx: &'cx ty::ctxt,
-    infcx: &'cx infer::InferCtxt<'cx>,
+struct Resolver<'cx, 'tcx: 'cx> {
+    tcx: &'cx ty::ctxt<'tcx>,
+    infcx: &'cx infer::InferCtxt<'cx, 'tcx>,
     writeback_errors: &'cx Cell<bool>,
     reason: ResolveReason,
 }
 
-impl<'cx> Resolver<'cx> {
-    fn new(fcx: &'cx FnCtxt<'cx>,
+impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
+    fn new(fcx: &'cx FnCtxt<'cx, 'tcx>,
            reason: ResolveReason)
-           -> Resolver<'cx>
+           -> Resolver<'cx, 'tcx>
     {
         Resolver { infcx: fcx.infcx(),
                    tcx: fcx.tcx(),
@@ -418,10 +418,10 @@ impl<'cx> Resolver<'cx> {
                    reason: reason }
     }
 
-    fn from_infcx(infcx: &'cx infer::InferCtxt<'cx>,
+    fn from_infcx(infcx: &'cx infer::InferCtxt<'cx, 'tcx>,
                   writeback_errors: &'cx Cell<bool>,
                   reason: ResolveReason)
-                  -> Resolver<'cx>
+                  -> Resolver<'cx, 'tcx>
     {
         Resolver { infcx: infcx,
                    tcx: infcx.tcx,
@@ -475,8 +475,8 @@ impl<'cx> Resolver<'cx> {
     }
 }
 
-impl<'cx> TypeFolder for Resolver<'cx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         self.tcx
     }
 

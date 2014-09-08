@@ -254,8 +254,8 @@ impl<'a> fmt::Show for VarianceTerm<'a> {
  * The first pass over the crate simply builds up the set of inferreds.
  */
 
-struct TermsContext<'a> {
-    tcx: &'a ty::ctxt,
+struct TermsContext<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
     arena: &'a Arena,
 
     empty_variances: Rc<ty::ItemVariances>,
@@ -283,10 +283,10 @@ struct InferredInfo<'a> {
     term: VarianceTermPtr<'a>,
 }
 
-fn determine_parameters_to_be_inferred<'a>(tcx: &'a ty::ctxt,
-                                           arena: &'a mut Arena,
-                                           krate: &ast::Crate)
-                                           -> TermsContext<'a> {
+fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
+                                                 arena: &'a mut Arena,
+                                                 krate: &ast::Crate)
+                                                 -> TermsContext<'a, 'tcx> {
     let mut terms_cx = TermsContext {
         tcx: tcx,
         arena: arena,
@@ -306,7 +306,7 @@ fn determine_parameters_to_be_inferred<'a>(tcx: &'a ty::ctxt,
     terms_cx
 }
 
-impl<'a> TermsContext<'a> {
+impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     fn add_inferred(&mut self,
                     item_id: ast::NodeId,
                     kind: ParamKind,
@@ -337,7 +337,7 @@ impl<'a> TermsContext<'a> {
     }
 }
 
-impl<'a> Visitor<()> for TermsContext<'a> {
+impl<'a, 'tcx> Visitor<()> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         debug!("add_inferreds for item {}", item.repr(self.tcx));
 
@@ -402,8 +402,8 @@ impl<'a> Visitor<()> for TermsContext<'a> {
  * We walk the set of items and, for each member, generate new constraints.
  */
 
-struct ConstraintContext<'a> {
-    terms_cx: TermsContext<'a>,
+struct ConstraintContext<'a, 'tcx: 'a> {
+    terms_cx: TermsContext<'a, 'tcx>,
 
     // These are the def-id of the std::kinds::marker::InvariantType,
     // std::kinds::marker::InvariantLifetime, and so on. The arrays
@@ -431,9 +431,9 @@ struct Constraint<'a> {
     variance: &'a VarianceTerm<'a>,
 }
 
-fn add_constraints_from_crate<'a>(terms_cx: TermsContext<'a>,
-                                  krate: &ast::Crate)
-                                  -> ConstraintContext<'a> {
+fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
+                                        krate: &ast::Crate)
+                                        -> ConstraintContext<'a, 'tcx> {
     let mut invariant_lang_items = [None, ..2];
     let mut covariant_lang_items = [None, ..2];
     let mut contravariant_lang_items = [None, ..2];
@@ -477,7 +477,7 @@ fn add_constraints_from_crate<'a>(terms_cx: TermsContext<'a>,
     constraint_cx
 }
 
-impl<'a> Visitor<()> for ConstraintContext<'a> {
+impl<'a, 'tcx> Visitor<()> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         let did = ast_util::local_def(item.id);
         let tcx = self.terms_cx.tcx;
@@ -546,8 +546,8 @@ fn is_lifetime(map: &ast_map::Map, param_id: ast::NodeId) -> bool {
     }
 }
 
-impl<'a> ConstraintContext<'a> {
-    fn tcx(&self) -> &'a ty::ctxt {
+impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
+    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
         self.terms_cx.tcx
     }
 
@@ -942,8 +942,8 @@ impl<'a> ConstraintContext<'a> {
  * inferred is then written into the `variance_map` in the tcx.
  */
 
-struct SolveContext<'a> {
-    terms_cx: TermsContext<'a>,
+struct SolveContext<'a, 'tcx: 'a> {
+    terms_cx: TermsContext<'a, 'tcx>,
     constraints: Vec<Constraint<'a>> ,
 
     // Maps from an InferredIndex to the inferred value for that variable.
@@ -961,7 +961,7 @@ fn solve_constraints(constraints_cx: ConstraintContext) {
     solutions_cx.write();
 }
 
-impl<'a> SolveContext<'a> {
+impl<'a, 'tcx> SolveContext<'a, 'tcx> {
     fn solve(&mut self) {
         // Propagate constraints until a fixed point is reached.  Note
         // that the maximum number of iterations is 2C where C is the

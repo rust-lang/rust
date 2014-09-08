@@ -74,7 +74,7 @@ pub fn run(input: &str,
                                                           "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
-    let ctx = box(GC) core::DocContext {
+    let ctx = core::DocContext {
         krate: krate,
         maybe_typed: core::NotTyped(sess),
         src: input_path,
@@ -84,11 +84,10 @@ pub fn run(input: &str,
         inlined: RefCell::new(None),
         populated_crate_impls: RefCell::new(HashSet::new()),
     };
-    super::ctxtkey.replace(Some(ctx));
 
-    let mut v = RustdocVisitor::new(&*ctx, None);
+    let mut v = RustdocVisitor::new(&ctx, None);
     v.visit(&ctx.krate);
-    let mut krate = v.clean();
+    let mut krate = v.clean(&ctx);
     match crate_name {
         Some(name) => krate.name = name,
         None => {}

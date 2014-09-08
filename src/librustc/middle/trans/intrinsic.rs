@@ -134,10 +134,11 @@ pub fn check_intrinsics(ccx: &CrateContext) {
     ccx.sess().abort_if_errors();
 }
 
-pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
-                                callee_ty: ty::t, cleanup_scope: cleanup::CustomScopeIndex,
-                                args: callee::CallArgs, dest: expr::Dest,
-                                substs: subst::Substs, call_info: NodeInfo) -> Result<'a> {
+pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::NodeId,
+                                        callee_ty: ty::t, cleanup_scope: cleanup::CustomScopeIndex,
+                                        args: callee::CallArgs, dest: expr::Dest,
+                                        substs: subst::Substs, call_info: NodeInfo)
+                                        -> Result<'blk, 'tcx> {
 
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
@@ -548,7 +549,7 @@ pub fn trans_intrinsic_call<'a>(mut bcx: &'a Block<'a>, node: ast::NodeId,
     Result::new(bcx, llresult)
 }
 
-fn copy_intrinsic(bcx: &Block, allow_overlap: bool, volatile: bool,
+fn copy_intrinsic(bcx: Block, allow_overlap: bool, volatile: bool,
                   tp_ty: ty::t, dst: ValueRef, src: ValueRef, count: ValueRef) -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
@@ -577,7 +578,7 @@ fn copy_intrinsic(bcx: &Block, allow_overlap: bool, volatile: bool,
                      C_bool(ccx, volatile)], None)
 }
 
-fn memset_intrinsic(bcx: &Block, volatile: bool, tp_ty: ty::t,
+fn memset_intrinsic(bcx: Block, volatile: bool, tp_ty: ty::t,
                     dst: ValueRef, val: ValueRef, count: ValueRef) -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
@@ -596,13 +597,13 @@ fn memset_intrinsic(bcx: &Block, volatile: bool, tp_ty: ty::t,
                      C_bool(ccx, volatile)], None)
 }
 
-fn count_zeros_intrinsic(bcx: &Block, name: &'static str, val: ValueRef) -> ValueRef {
+fn count_zeros_intrinsic(bcx: Block, name: &'static str, val: ValueRef) -> ValueRef {
     let y = C_bool(bcx.ccx(), false);
     let llfn = bcx.ccx().get_intrinsic(&name);
     Call(bcx, llfn, [val, y], None)
 }
 
-fn with_overflow_intrinsic(bcx: &Block, name: &'static str, t: ty::t,
+fn with_overflow_intrinsic(bcx: Block, name: &'static str, t: ty::t,
                            a: ValueRef, b: ValueRef) -> ValueRef {
     let llfn = bcx.ccx().get_intrinsic(&name);
 

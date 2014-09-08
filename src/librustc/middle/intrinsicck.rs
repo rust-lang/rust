@@ -67,11 +67,11 @@ fn type_size_is_affected_by_type_parameters(tcx: &ty::ctxt, typ: ty::t)
     result
 }
 
-struct IntrinsicCheckingVisitor<'a> {
-    tcx: &'a ctxt,
+struct IntrinsicCheckingVisitor<'a, 'tcx: 'a> {
+    tcx: &'a ctxt<'tcx>,
 }
 
-impl<'a> IntrinsicCheckingVisitor<'a> {
+impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
         let intrinsic = match ty::get(ty::lookup_item_type(self.tcx, def_id).ty).sty {
             ty::ty_bare_fn(ref bfty) => bfty.abi == RustIntrinsic,
@@ -116,7 +116,7 @@ impl<'a> IntrinsicCheckingVisitor<'a> {
     }
 }
 
-impl<'a> Visitor<()> for IntrinsicCheckingVisitor<'a> {
+impl<'a, 'tcx> Visitor<()> for IntrinsicCheckingVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &ast::Expr, (): ()) {
         match expr.node {
             ast::ExprPath(..) => {

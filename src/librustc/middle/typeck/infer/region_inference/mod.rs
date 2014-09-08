@@ -151,8 +151,8 @@ impl SameRegions {
 
 pub type CombineMap = HashMap<TwoRegions, RegionVid>;
 
-pub struct RegionVarBindings<'a> {
-    tcx: &'a ty::ctxt,
+pub struct RegionVarBindings<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
     var_origins: RefCell<Vec<RegionVariableOrigin>>,
 
     // Constraints of the form `A <= B` introduced by the region
@@ -217,8 +217,8 @@ pub struct RegionMark {
     length: uint
 }
 
-impl<'a> RegionVarBindings<'a> {
-    pub fn new(tcx: &'a ty::ctxt) -> RegionVarBindings<'a> {
+impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
+    pub fn new(tcx: &'a ty::ctxt<'tcx>) -> RegionVarBindings<'a, 'tcx> {
         RegionVarBindings {
             tcx: tcx,
             var_origins: RefCell::new(Vec::new()),
@@ -711,9 +711,7 @@ impl<'a> RegionVarBindings<'a> {
         *self.values.borrow_mut() = Some(v);
         errors
     }
-}
 
-impl<'a> RegionVarBindings<'a> {
     fn is_subregion_of(&self, sub: Region, sup: Region) -> bool {
         self.tcx.region_maps.is_subregion_of(sub, sup)
     }
@@ -959,7 +957,7 @@ struct RegionAndOrigin {
 
 type RegionGraph = graph::Graph<(), Constraint>;
 
-impl<'a> RegionVarBindings<'a> {
+impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn infer_variable_values(&self,
                              errors: &mut Vec<RegionResolutionError>)
                              -> Vec<VarValue>

@@ -86,8 +86,8 @@ impl FromIterator<Vec<Gc<Pat>>> for Matrix {
     }
 }
 
-pub struct MatchCheckCtxt<'a> {
-    pub tcx: &'a ty::ctxt
+pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
+    pub tcx: &'a ty::ctxt<'tcx>
 }
 
 #[deriving(Clone, PartialEq)]
@@ -119,7 +119,7 @@ enum WitnessPreference {
     LeaveOutWitness
 }
 
-impl<'a> Visitor<()> for MatchCheckCtxt<'a> {
+impl<'a, 'tcx> Visitor<()> for MatchCheckCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr, _: ()) {
         check_expr(self, ex);
     }
@@ -304,13 +304,13 @@ fn const_val_to_expr(value: &const_val) -> Gc<Expr> {
     }
 }
 
-pub struct StaticInliner<'a> {
-    pub tcx: &'a ty::ctxt,
+pub struct StaticInliner<'a, 'tcx: 'a> {
+    pub tcx: &'a ty::ctxt<'tcx>,
     pub failed: bool
 }
 
-impl<'a> StaticInliner<'a> {
-    pub fn new<'a>(tcx: &'a ty::ctxt) -> StaticInliner<'a> {
+impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
+    pub fn new<'a>(tcx: &'a ty::ctxt<'tcx>) -> StaticInliner<'a, 'tcx> {
         StaticInliner {
             tcx: tcx,
             failed: false
@@ -318,7 +318,7 @@ impl<'a> StaticInliner<'a> {
     }
 }
 
-impl<'a> Folder for StaticInliner<'a> {
+impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: Gc<Pat>) -> Gc<Pat> {
         match pat.node {
             PatIdent(..) | PatEnum(..) => {
@@ -963,7 +963,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 
 /// Ensures that a pattern guard doesn't borrow by mutable reference or
 /// assign.
-fn check_for_mutation_in_guard<'a>(cx: &'a MatchCheckCtxt<'a>, guard: &Expr) {
+fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>, guard: &Expr) {
     let mut checker = MutationChecker {
         cx: cx,
     };
@@ -971,11 +971,11 @@ fn check_for_mutation_in_guard<'a>(cx: &'a MatchCheckCtxt<'a>, guard: &Expr) {
     visitor.walk_expr(guard);
 }
 
-struct MutationChecker<'a> {
-    cx: &'a MatchCheckCtxt<'a>,
+struct MutationChecker<'a, 'tcx: 'a> {
+    cx: &'a MatchCheckCtxt<'a, 'tcx>,
 }
 
-impl<'a> Delegate for MutationChecker<'a> {
+impl<'a, 'tcx> Delegate for MutationChecker<'a, 'tcx> {
     fn consume(&mut self, _: NodeId, _: Span, _: cmt, _: ConsumeMode) {}
     fn consume_pat(&mut self, _: &Pat, _: cmt, _: ConsumeMode) {}
     fn borrow(&mut self,
@@ -1020,11 +1020,11 @@ fn check_legality_of_bindings_in_at_patterns(cx: &MatchCheckCtxt, pat: &Pat) {
     visitor.visit_pat(pat, true);
 }
 
-struct AtBindingPatternVisitor<'a,'b:'a> {
-    cx: &'a MatchCheckCtxt<'b>,
+struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
+    cx: &'a MatchCheckCtxt<'b, 'tcx>,
 }
 
-impl<'a,'b> Visitor<bool> for AtBindingPatternVisitor<'a,'b> {
+impl<'a, 'b, 'tcx> Visitor<bool> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
     fn visit_pat(&mut self, pat: &Pat, bindings_allowed: bool) {
         if !bindings_allowed && pat_is_binding(&self.cx.tcx.def_map, pat) {
             self.cx.tcx.sess.span_err(pat.span,

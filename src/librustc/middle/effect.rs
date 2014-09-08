@@ -37,14 +37,14 @@ fn type_is_unsafe_function(ty: ty::t) -> bool {
     }
 }
 
-struct EffectCheckVisitor<'a> {
-    tcx: &'a ty::ctxt,
+struct EffectCheckVisitor<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
 
     /// Whether we're in an unsafe context.
     unsafe_context: UnsafeContext,
 }
 
-impl<'a> EffectCheckVisitor<'a> {
+impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
     fn require_unsafe(&mut self, span: Span, description: &str) {
         match self.unsafe_context {
             SafeContext => {
@@ -86,7 +86,7 @@ impl<'a> EffectCheckVisitor<'a> {
     }
 }
 
-impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
+impl<'a, 'tcx> Visitor<()> for EffectCheckVisitor<'a, 'tcx> {
     fn visit_fn(&mut self, fn_kind: &visit::FnKind, fn_decl: &ast::FnDecl,
                 block: &ast::Block, span: Span, _: ast::NodeId, _:()) {
 

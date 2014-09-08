@@ -45,8 +45,8 @@ pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
 ///////////////////////////////////////////////////////////////////////////
 // Private
 
-struct GuaranteeLifetimeContext<'a> {
-    bccx: &'a BorrowckCtxt<'a>,
+struct GuaranteeLifetimeContext<'a, 'tcx: 'a> {
+    bccx: &'a BorrowckCtxt<'a, 'tcx>,
 
     // the node id of the function body for the enclosing item
     item_scope_id: ast::NodeId,
@@ -57,7 +57,7 @@ struct GuaranteeLifetimeContext<'a> {
     cmt_original: mc::cmt
 }
 
-impl<'a> GuaranteeLifetimeContext<'a> {
+impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
 
     fn check(&self, cmt: &mc::cmt, discr_scope: Option<ast::NodeId>) -> R {
         //! Main routine. Walks down `cmt` until we find the "guarantor".

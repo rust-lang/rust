@@ -107,8 +107,8 @@ pub fn check_match(fcx: &FnCtxt,
     fcx.write_ty(expr.id, result_ty);
 }
 
-pub struct pat_ctxt<'a> {
-    pub fcx: &'a FnCtxt<'a>,
+pub struct pat_ctxt<'a, 'tcx: 'a> {
+    pub fcx: &'a FnCtxt<'a, 'tcx>,
     pub map: PatIdMap,
 }
 

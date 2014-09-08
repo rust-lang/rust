@@ -123,8 +123,8 @@ pub enum StaticMethodsFlag {
     IgnoreStaticMethods,
 }
 
-pub fn lookup<'a>(
-        fcx: &'a FnCtxt<'a>,
+pub fn lookup<'a, 'tcx>(
+        fcx: &'a FnCtxt<'a, 'tcx>,
 
         // In a call `a.b::<X, Y, ...>(...)`:
         expr: &ast::Expr,                   // The expression `a.b(...)`.
@@ -170,8 +170,8 @@ pub fn lookup<'a>(
     lcx.search(self_ty)
 }
 
-pub fn lookup_in_trait<'a>(
-        fcx: &'a FnCtxt<'a>,
+pub fn lookup_in_trait<'a, 'tcx>(
+        fcx: &'a FnCtxt<'a, 'tcx>,
 
         // In a call `a.b::<X, Y, ...>(...)`:
         span: Span,                         // The expression `a.b(...)`'s span.
@@ -303,8 +303,8 @@ fn construct_transformed_self_ty_for_object(
     }
 }
 
-struct LookupContext<'a> {
-    fcx: &'a FnCtxt<'a>,
+struct LookupContext<'a, 'tcx: 'a> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
 
     // The receiver to the method call. Only `None` in the case of
@@ -350,7 +350,7 @@ pub enum RcvrMatchCondition {
     RcvrMatchesIfSubtype(ty::t),
 }
 
-impl<'a> LookupContext<'a> {
+impl<'a, 'tcx> LookupContext<'a, 'tcx> {
     fn search(&self, self_ty: ty::t) -> Option<MethodCallee> {
         let span = self.self_expr.map_or(self.span, |e| e.span);
         let self_expr_id = self.self_expr.map(|e| e.id);
@@ -1615,11 +1615,11 @@ impl<'a> LookupContext<'a> {
             idx + 1u, ty::item_path_str(self.tcx(), did));
     }
 
-    fn infcx(&'a self) -> &'a infer::InferCtxt<'a> {
+    fn infcx(&'a self) -> &'a infer::InferCtxt<'a, 'tcx> {
         &self.fcx.inh.infcx
     }
 
-    fn tcx(&self) -> &'a ty::ctxt {
+    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
         self.fcx.tcx()
     }
 

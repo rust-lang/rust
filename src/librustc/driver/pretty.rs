@@ -33,7 +33,7 @@ use graphviz as dot;
 use std::io::{mod, MemReader};
 use std::from_str::FromStr;
 use std::option;
-
+use arena::TypedArena;
 
 #[deriving(PartialEq, Show)]
 pub enum PpSourceMode {
@@ -114,7 +114,9 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 let ast_map = ast_map.expect("--pretty=typed missing ast_map");
-                let analysis = driver::phase_3_run_analysis_passes(sess, krate, ast_map, id);
+                let type_arena = TypedArena::new();
+                let analysis = driver::phase_3_run_analysis_passes(sess, krate, ast_map,
+                                                                   &type_arena, id);
                 let annotation = TypedAnnotation { analysis: analysis };
                 f(&annotation, payload)
             }
@@ -260,25 +262,25 @@ impl pprust::PpAnn for HygieneAnnotation {
 }
 
 
-struct TypedAnnotation {
-    analysis: CrateAnalysis,
+struct TypedAnnotation<'tcx> {
+    analysis: CrateAnalysis<'tcx>,
 }
 
-impl PrinterSupport for TypedAnnotation {
+impl<'tcx> PrinterSupport for TypedAnnotation<'tcx> {
     fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self as &pprust::PpAnn }
 }
 
-impl SessionCarrier for TypedAnnotation {
+impl<'tcx> SessionCarrier for TypedAnnotation<'tcx> {
     fn sess<'a>(&'a self) -> &'a Session { &self.analysis.ty_cx.sess }
 }
 
-impl AstMapCarrier for TypedAnnotation {
+impl<'tcx> AstMapCarrier for TypedAnnotation<'tcx> {
     fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map> {
         Some(&self.analysis.ty_cx.map)
     }
 }
 
-impl pprust::PpAnn for TypedAnnotation {
+impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
     fn pre(&self,
            s: &mut pprust::State,
            node: pprust::AnnNode) -> io::IoResult<()> {
@@ -531,8 +533,9 @@ pub fn pretty_print_input(sess: Session,
             match code {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
+                    let type_arena = TypedArena::new();
                     let analysis = driver::phase_3_run_analysis_passes(sess, &krate,
-                                                                       ast_map, id);
+                                                                       ast_map, &type_arena, id);
                     print_flowgraph(variants, analysis, code, out)
                 }
                 None => {
