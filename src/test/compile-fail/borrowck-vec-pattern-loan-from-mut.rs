@@ -12,7 +12,7 @@ fn a() {
     let mut v = vec!(1, 2, 3);
     let vb: &mut [int] = v.as_mut_slice();
     match vb {
-        [_a, ..tail] => {
+        [_a, tail..] => {
             v.push(tail[0] + tail[1]); //~ ERROR cannot borrow
         }
         _ => {}

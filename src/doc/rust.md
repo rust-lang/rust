@@ -3302,7 +3302,7 @@ corresponding slice to the variable.  Example:
 fn is_symmetric(list: &[uint]) -> bool {
     match list {
         [] | [_]                   => true,
-        [x, ..inside, y] if x == y => is_symmetric(inside),
+        [x, inside.., y] if x == y => is_symmetric(inside),
         _                          => false
     }
 }
