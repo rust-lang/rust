@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-pretty
+// ignore-android
 
 #![feature(quote)]
 
