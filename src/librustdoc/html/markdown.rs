@@ -153,27 +153,17 @@ local_data_key!(test_idx: Cell<uint>)
 local_data_key!(pub playground_krate: Option<String>)
 
 pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
-    extern fn block(ob: *mut hoedown_buffer, text: *const hoedown_buffer,
+    extern fn block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,
                     lang: *const hoedown_buffer, opaque: *mut libc::c_void) {
         unsafe {
-            if text.is_null() { return }
+            if orig_text.is_null() { return }
 
             let opaque = opaque as *mut hoedown_html_renderer_state;
             let my_opaque: &MyOpaque = &*((*opaque).opaque as *const MyOpaque);
-            slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
+            slice::raw::buf_as_slice((*orig_text).data, (*orig_text).size as uint,
+                                     |text| {
                 let origtext = str::from_utf8(text).unwrap();
                 debug!("docblock: ==============\n{}\n=======", text);
-                let mut lines = origtext.lines().filter(|l| {
-                    stripped_filtered_line(*l).is_none()
-                });
-                let text = lines.collect::<Vec<&str>>().connect("\n");
-
-                let buf = hoedown_buffer {
-                    data: text.as_bytes().as_ptr(),
-                    size: text.len() as libc::size_t,
-                    asize: text.len() as libc::size_t,
-                    unit: 0,
-                };
                 let rendered = if lang.is_null() {
                     false
                 } else {
@@ -181,7 +171,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                                            (*lang).size as uint, |rlang| {
                         let rlang = str::from_utf8(rlang).unwrap();
                         if LangString::parse(rlang).notrust {
-                            (my_opaque.dfltblk)(ob, &buf, lang,
+                            (my_opaque.dfltblk)(ob, orig_text, lang,
                                                 opaque as *mut libc::c_void);
                             true
                         } else {
@@ -190,6 +180,10 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                     })
                 };
 
+                let mut lines = origtext.lines().filter(|l| {
+                    stripped_filtered_line(*l).is_none()
+                });
+                let text = lines.collect::<Vec<&str>>().connect("\n");
                 if !rendered {
                     let mut s = String::new();
                     let id = playground_krate.get().map(|krate| {
