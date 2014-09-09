@@ -51,22 +51,22 @@ fn any_owning() {
 }
 
 #[test]
-fn any_as_ref() {
+fn any_downcast_ref() {
     let a = &5u as &Any;
 
-    match a.as_ref::<uint>() {
+    match a.downcast_ref::<uint>() {
         Some(&5) => {}
         x => fail!("Unexpected value {}", x)
     }
 
-    match a.as_ref::<Test>() {
+    match a.downcast_ref::<Test>() {
         None => {}
         x => fail!("Unexpected value {}", x)
     }
 }
 
 #[test]
-fn any_as_mut() {
+fn any_downcast_mut() {
     let mut a = 5u;
     let mut b = box 7u;
 
@@ -74,7 +74,7 @@ fn any_as_mut() {
     let tmp: &mut uint = &mut *b;
     let b_r = tmp as &mut Any;
 
-    match a_r.as_mut::<uint>() {
+    match a_r.downcast_mut::<uint>() {
         Some(x) => {
             assert_eq!(*x, 5u);
             *x = 612;
@@ -82,7 +82,7 @@ fn any_as_mut() {
         x => fail!("Unexpected value {}", x)
     }
 
-    match b_r.as_mut::<uint>() {
+    match b_r.downcast_mut::<uint>() {
         Some(x) => {
             assert_eq!(*x, 7u);
             *x = 413;
@@ -90,22 +90,22 @@ fn any_as_mut() {
         x => fail!("Unexpected value {}", x)
     }
 
-    match a_r.as_mut::<Test>() {
+    match a_r.downcast_mut::<Test>() {
         None => (),
         x => fail!("Unexpected value {}", x)
     }
 
-    match b_r.as_mut::<Test>() {
+    match b_r.downcast_mut::<Test>() {
         None => (),
         x => fail!("Unexpected value {}", x)
     }
 
-    match a_r.as_mut::<uint>() {
+    match a_r.downcast_mut::<uint>() {
         Some(&612) => {}
         x => fail!("Unexpected value {}", x)
     }
 
-    match b_r.as_mut::<uint>() {
+    match b_r.downcast_mut::<uint>() {
         Some(&413) => {}
         x => fail!("Unexpected value {}", x)
     }
@@ -121,11 +121,11 @@ fn any_fixed_vec() {
 
 
 #[bench]
-fn bench_as_ref(b: &mut Bencher) {
+fn bench_downcast_ref(b: &mut Bencher) {
     b.iter(|| {
         let mut x = 0i;
         let mut y = &mut x as &mut Any;
         test::black_box(&mut y);
-        test::black_box(y.as_ref::<int>() == Some(&0));
+        test::black_box(y.downcast_ref::<int>() == Some(&0));
     });
 }

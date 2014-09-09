@@ -1414,6 +1414,7 @@ mod test {
         // Regression test that the `start` task entrypoint can
         // contain dtors that use task resources
         run(proc() {
+            #[allow(dead_code)]
             struct S { field: () }
 
             impl Drop for S {
