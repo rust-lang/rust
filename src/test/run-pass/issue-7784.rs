@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(advanced_slice_patterns)]
+
 fn foo<T: Add<T, T> + Clone>([x, y, z]: [T, ..3]) -> (T, T, T) {
     (x.clone(), x.clone() + y.clone(), x + y + z)
 }
