@@ -140,9 +140,10 @@ macro_rules! assert_eq(
 /// evaluated to `true` at runtime.
 ///
 /// Unlike `assert!`, `debug_assert!` statements can be disabled by passing
-/// `--cfg ndebug` to the compiler. This makes `debug_assert!` useful for
-/// checks that are too expensive to be present in a release build but may be
-/// helpful during development.
+/// `--cfg ndebug` to the compiler in non optimized build and has to be enabled
+/// by passing `--cfg debug_asserts` to the compiler in optimized build. This 
+/// makes  `debug_assert!` useful for checks that are too expensive to be 
+/// present in a release build but may be helpful during development.
 ///
 /// # Example
 ///
@@ -161,7 +162,9 @@ macro_rules! assert_eq(
 /// ```
 #[macro_export]
 macro_rules! debug_assert(
-    ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert!($($arg)*); })
+    ($($arg:tt)*) => (if (cfg!(not(optimize)) && cfg!(not(debug)))
+                      || (cfg!(optimize) && cfg!(debug_asserts))
+                      { assert!($($arg)*); })
 )
 
 /// Asserts that two expressions are equal to each other, testing equality in
@@ -170,9 +173,11 @@ macro_rules! debug_assert(
 /// On failure, this macro will print the values of the expressions.
 ///
 /// Unlike `assert_eq!`, `debug_assert_eq!` statements can be disabled by
-/// passing `--cfg ndebug` to the compiler. This makes `debug_assert_eq!`
-/// useful for checks that are too expensive to be present in a release build
-/// but may be helpful during development.
+/// passing `--cfg ndebug` to the compiler in non optimized build and has to
+/// be enabled by passing `--cfg debug_asserts` to the compiler in optimized 
+/// build. This makes `debug_assert_eq!` useful for checks that are too 
+/// expensive to be present in a release build but may be helpful during 
+/// development.
 ///
 /// # Example
 ///
@@ -183,7 +188,9 @@ macro_rules! debug_assert(
 /// ```
 #[macro_export]
 macro_rules! debug_assert_eq(
-    ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert_eq!($($arg)*); })
+    ($($arg:tt)*) => (if (cfg!(not(optimize)) && cfg!(not(ndebug)))
+                      || (cfg!(optimize) && cfg!(debug_asserts))
+                      { assert_eq!($($arg)*); })
 )
 
 /// A utility macro for indicating unreachable code. It will fail if
