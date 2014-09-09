@@ -11,12 +11,10 @@
 //! Blocking posix-based file I/O
 
 use alloc::arc::Arc;
-use libc::{c_int, c_void};
-use libc;
+use libc::{mod, c_int, c_void};
 use std::c_str::CString;
 use std::mem;
-use std::rt::rtio;
-use std::rt::rtio::IoResult;
+use std::rt::rtio::{mod, IoResult};
 
 use io::{retry, keep_going};
 use io::util;
@@ -55,7 +53,7 @@ impl FileDesc {
         let ret = retry(|| unsafe {
             libc::read(self.fd(),
                        buf.as_mut_ptr() as *mut libc::c_void,
-                       buf.len() as libc::size_t) as libc::c_int
+                       buf.len() as libc::size_t)
         });
         if ret == 0 {
             Err(util::eof())
@@ -93,7 +91,7 @@ impl rtio::RtioFileStream for FileDesc {
         match retry(|| unsafe {
             libc::pread(self.fd(), buf.as_ptr() as *mut _,
                         buf.len() as libc::size_t,
-                        offset as libc::off_t) as libc::c_int
+                        offset as libc::off_t)
         }) {
             -1 => Err(super::last_error()),
             n => Ok(n as int)
@@ -103,7 +101,7 @@ impl rtio::RtioFileStream for FileDesc {
         super::mkerr_libc(retry(|| unsafe {
             libc::pwrite(self.fd(), buf.as_ptr() as *const _,
                          buf.len() as libc::size_t, offset as libc::off_t)
-        } as c_int))
+        }))
     }
     fn seek(&mut self, pos: i64, whence: rtio::SeekStyle) -> IoResult<u64> {
         let whence = match whence {
