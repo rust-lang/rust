@@ -65,6 +65,7 @@
 #
 #   * `VERBOSE=1` - Print all commands. Use this to see what's going on.
 #   * `RUSTFLAGS=...` - Add compiler flags to all `rustc` invocations
+#   * `JEMALLOC_FLAGS=...` - Pass flags to jemalloc's configure script
 #
 #   * `TESTNAME=...` - Specify the name of tests to run
 #   * `CHECK_IGNORED=1` - Run normally-ignored tests
