@@ -16,6 +16,6 @@ fn count_members(v: &[uint]) -> uint {
     match v {
         []         => 0,
         [_]        => 1,
-        [_x, ..xs] => 1 + count_members(xs)
+        [_x, xs..] => 1 + count_members(xs)
     }
 }
