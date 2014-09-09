@@ -39,26 +39,20 @@ pub fn bar() {
          () => {
              #[inline]
              #[allow(dead_code)]
-             static __STATIC_FMTSTR:
-                    [::std::fmt::rt::Piece<'static>, ..(1u as uint)] =
-                 ([((::std::fmt::rt::String as
-                        fn(&'static str) -> core::fmt::rt::Piece<'static>)(("test"
-                                                                               as
-                                                                               &'static str))
-                       as core::fmt::rt::Piece<'static>)] as
-                     [core::fmt::rt::Piece<'static>, .. 1]);
+             static __STATIC_FMTSTR: [&'static str, ..(1u as uint)] =
+                 ([("test" as &'static str)] as [&'static str, .. 1]);
              let __args_vec =
                  (&([] as [core::fmt::Argument<'_>, .. 0]) as
                      &[core::fmt::Argument<'_>, .. 0]);
              let __args =
                  (unsafe {
                       ((::std::fmt::Arguments::new as
-                           unsafe fn(&'static [core::fmt::rt::Piece<'static>], &'a [core::fmt::Argument<'a>]) -> core::fmt::Arguments<'a>)((__STATIC_FMTSTR
-                                                                                                                                               as
-                                                                                                                                               [core::fmt::rt::Piece<'static>, .. 1]),
-                                                                                                                                           (__args_vec
-                                                                                                                                               as
-                                                                                                                                               &[core::fmt::Argument<'_>, .. 0]))
+                           unsafe fn(&'static [&'static str], &'a [core::fmt::Argument<'a>]) -> core::fmt::Arguments<'a>)((__STATIC_FMTSTR
+                                                                                                                              as
+                                                                                                                              [&'static str, .. 1]),
+                                                                                                                          (__args_vec
+                                                                                                                              as
+                                                                                                                              &[core::fmt::Argument<'_>, .. 0]))
                           as core::fmt::Arguments<'_>)
                   } as core::fmt::Arguments<'_>);
 
