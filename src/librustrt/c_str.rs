@@ -671,7 +671,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_new_fail() {
-        let c_str = unsafe { CString::new(ptr::null(), false) };
+        let _c_str = unsafe { CString::new(ptr::null(), false) };
     }
 
     #[test]

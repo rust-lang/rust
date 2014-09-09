@@ -662,7 +662,7 @@ mod test {
     #[test]
     fn block_and_wake() {
         let task = box Task::new();
-        let mut task = BlockedTask::block(task).wake().unwrap();
+        let task = BlockedTask::block(task).wake().unwrap();
         task.drop();
     }
 }
