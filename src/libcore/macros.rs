@@ -61,11 +61,13 @@ macro_rules! assert(
     );
 )
 
-/// Runtime assertion, only without `--cfg ndebug`
+/// TODO add the debug_assert conf
+/// Runtime assertion, only without `--cfg ndebug` in non optimzed build and
+/// with `--cfg debug_assert` in optimized build
 #[macro_export]
 macro_rules! debug_assert(
     ($(a:tt)*) => ({
-        if cfg!(not(ndebug)) {
+        if cfg!(not(optimize)&&not(ndebug)) {
             assert!($($a)*);
         }
     })
@@ -83,11 +85,13 @@ macro_rules! assert_eq(
     })
 )
 
-/// Runtime assertion for equality, only without `--cfg ndebug`
+/// TODO add the debug_assert conf
+/// Runtime assertion for equality, only without `--cfg ndebug` in non
+/// optimized build and with `--cfg debug_assert` in optimzed build
 #[macro_export]
 macro_rules! debug_assert_eq(
     ($($a:tt)*) => ({
-        if cfg!(not(ndebug)) {
+        if cfg!(not(optimize)&&not(ndebug)) {
             assert_eq!($($a)*);
         }
     })
