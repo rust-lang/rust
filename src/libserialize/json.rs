@@ -2128,7 +2128,15 @@ impl ::Decoder<DecoderError> for Decoder {
         let mut obj = try!(expect!(self.pop(), Object));
 
         let value = match obj.pop(&name.to_string()) {
-            None => return Err(MissingFieldError(name.to_string())),
+            None => {
+                // Add a Null and try to parse it as an Option<_>
+                // to get None as a default value.
+                self.stack.push(Null);
+                match f(self) {
+                    Ok(x) => x,
+                    Err(_) => return Err(MissingFieldError(name.to_string())),
+                }
+            },
             Some(json) => {
                 self.stack.push(json);
                 try!(f(self))
@@ -2167,6 +2175,7 @@ impl ::Decoder<DecoderError> for Decoder {
     }
 
     fn read_option<T>(&mut self, f: |&mut Decoder, bool| -> DecodeResult<T>) -> DecodeResult<T> {
+        debug!("read_option()");
         match self.pop() {
             Null => f(self, false),
             value => { self.stack.push(value); f(self, true) }
@@ -2371,6 +2380,33 @@ mod tests {
                 TrailingCharacters};
     use std::{i64, u64, f32, f64, io};
     use std::collections::TreeMap;
+
+    #[deriving(Decodable, Eq, PartialEq, Show)]
+    struct OptionData {
+        opt: Option<uint>,
+    }
+
+    #[test]
+    fn test_decode_option_none() {
+        let s ="{}";
+        let obj: OptionData = super::decode(s).unwrap();
+        assert_eq!(obj, OptionData { opt: None });
+    }
+
+    #[test]
+    fn test_decode_option_some() {
+        let s = "{ \"opt\": 10 }";
+        let obj: OptionData = super::decode(s).unwrap();
+        assert_eq!(obj, OptionData { opt: Some(10u) });
+    }
+
+    #[test]
+    fn test_decode_option_malformed() {
+        check_err::<OptionData>("{ \"opt\": [] }",
+                                ExpectedError("Number".to_string(), "[]".to_string()));
+        check_err::<OptionData>("{ \"opt\": false }",
+                                ExpectedError("Number".to_string(), "false".to_string()));
+    }
 
     #[deriving(PartialEq, Encodable, Decodable, Show)]
     enum Animal {
