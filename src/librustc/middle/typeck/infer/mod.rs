@@ -266,7 +266,6 @@ pub enum fixup_err {
     unresolved_int_ty(IntVid),
     unresolved_float_ty(FloatVid),
     unresolved_ty(TyVid),
-    cyclic_ty(TyVid),
     unresolved_region(RegionVid),
     region_var_bound_by_region_var(RegionVid, RegionVid)
 }
@@ -282,7 +281,6 @@ pub fn fixup_err_to_string(f: fixup_err) -> String {
            the type explicitly".to_string()
       }
       unresolved_ty(_) => "unconstrained type".to_string(),
-      cyclic_ty(_) => "cyclic type of infinite size".to_string(),
       unresolved_region(_) => "unconstrained region".to_string(),
       region_var_bound_by_region_var(r1, r2) => {
         format!("region var {:?} bound by another region var {:?}; \
