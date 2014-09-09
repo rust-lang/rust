@@ -11,9 +11,9 @@
 fn main() {
     let x = [ 1i, 2, 3, 4, 5 ];
     match x {
-        [ ..xs, 4, 5 ] => {}    //~ ERROR multiple-element slice matches
-        [ 1, ..xs, 5 ] => {}    //~ ERROR multiple-element slice matches
-        [ 1, 2, ..xs ] => {}    // OK without feature gate
+        [ xs.., 4, 5 ] => {}    //~ ERROR multiple-element slice matches
+        [ 1, xs.., 5 ] => {}    //~ ERROR multiple-element slice matches
+        [ 1, 2, xs.. ] => {}    // OK without feature gate
     }
 }
 
