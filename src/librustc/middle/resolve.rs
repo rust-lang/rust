@@ -3931,6 +3931,7 @@ impl<'a> Resolver<'a> {
                                                                item.id,
                                                                ItemRibKind),
                                              |this| {
+                    this.resolve_type_parameters(&generics.ty_params);
                     visit::walk_item(this, item, ());
                 });
             }
