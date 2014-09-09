@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use std::gc::GC;
 
 fn main() {
     let f;
-    f = box(GC) f; //~ ERROR cyclic type of infinite size
+    let g;
+    g = f;
+    f = box(GC) g; //~ ERROR cyclic type of infinite size
 }

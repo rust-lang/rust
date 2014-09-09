@@ -39,6 +39,7 @@ use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType};
 use middle::ty::{BuiltinBounds};
 use middle::ty;
+use middle::ty_fold;
 use middle::typeck::infer::equate::Equate;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
@@ -48,7 +49,7 @@ use middle::typeck::infer::{InferCtxt, cres};
 use middle::typeck::infer::{MiscVariable, TypeTrace};
 use middle::typeck::infer::type_variable::{RelationDir, EqTo,
                                            SubtypeOf, SupertypeOf};
-use middle::ty_fold::{RegionFolder, TypeFoldable};
+use middle::ty_fold::{TypeFoldable};
 use util::ppaux::Repr;
 
 use std::result;
@@ -56,6 +57,7 @@ use std::result;
 use syntax::ast::{Onceness, FnStyle};
 use syntax::ast;
 use syntax::abi;
+use syntax::codemap::Span;
 
 pub trait Combine<'tcx> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx>;
@@ -637,10 +639,14 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
                 Some(t) => t, // ...already instantiated.
                 None => {     // ...not yet instantiated:
                     // Generalize type if necessary.
-                    let generalized_ty = match dir {
-                        EqTo => a_ty,
-                        SupertypeOf | SubtypeOf => self.generalize(a_ty)
-                    };
+                    let generalized_ty = try!(match dir {
+                        EqTo => {
+                            self.generalize(a_ty, b_vid, false)
+                        }
+                        SupertypeOf | SubtypeOf => {
+                            self.generalize(a_ty, b_vid, true)
+                        }
+                    });
                     debug!("instantiate(a_ty={}, dir={}, \
                                         b_vid={}, generalized_ty={})",
                            a_ty.repr(tcx), dir, b_vid.repr(tcx),
@@ -678,15 +684,85 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
         Ok(())
     }
 
-    fn generalize(&self, t: ty::t) -> ty::t {
-        // FIXME(#16847): This is non-ideal because we don't give a
-        // very descriptive origin for this region variable.
+    fn generalize(&self,
+                  ty: ty::t,
+                  for_vid: ty::TyVid,
+                  make_region_vars: bool)
+                  -> cres<ty::t>
+    {
+        /*!
+         * Attempts to generalize `ty` for the type variable
+         * `for_vid`.  This checks for cycle -- that is, whether the
+         * type `ty` references `for_vid`. If `make_region_vars` is
+         * true, it will also replace all regions with fresh
+         * variables. Returns `ty_err` in the case of a cycle, `Ok`
+         * otherwise.
+         */
 
-        let infcx = self.infcx;
-        let span = self.trace.origin.span();
-        t.fold_with(
-            &mut RegionFolder::regions(
-                self.infcx.tcx,
-                |_| infcx.next_region_var(MiscVariable(span))))
+        let mut generalize = Generalizer { infcx: self.infcx,
+                                           span: self.trace.origin.span(),
+                                           for_vid: for_vid,
+                                           make_region_vars: make_region_vars,
+                                           cycle_detected: false };
+        let u = ty.fold_with(&mut generalize);
+        if generalize.cycle_detected {
+            Err(ty::terr_cyclic_ty)
+        } else {
+            Ok(u)
+        }
     }
 }
+
+struct Generalizer<'cx, 'tcx:'cx> {
+    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    span: Span,
+    for_vid: ty::TyVid,
+    make_region_vars: bool,
+    cycle_detected: bool,
+}
+
+impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+        // Check to see whether the type we are genealizing references
+        // `vid`. At the same time, also update any type variables to
+        // the values that they are bound to. This is needed to truly
+        // check for cycles, but also just makes things readable.
+        //
+        // (In particular, you could have something like `$0 = Box<$1>`
+        //  where `$1` has already been instantiated with `Box<$0>`)
+        match ty::get(t).sty {
+            ty::ty_infer(ty::TyVar(vid)) => {
+                if vid == self.for_vid {
+                    self.cycle_detected = true;
+                    ty::mk_err()
+                } else {
+                    match self.infcx.type_variables.borrow().probe(vid) {
+                        Some(u) => self.fold_ty(u),
+                        None => t,
+                    }
+                }
+            }
+            _ => {
+                ty_fold::super_fold_ty(self, t)
+            }
+        }
+    }
+
+    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+        match r {
+            ty::ReLateBound(..) | ty::ReEarlyBound(..) => r,
+            _ if self.make_region_vars => {
+                // FIXME: This is non-ideal because we don't give a
+                // very descriptive origin for this region variable.
+                self.infcx.next_region_var(MiscVariable(self.span))
+            }
+            _ => r,
+        }
+    }
+}
+
+
