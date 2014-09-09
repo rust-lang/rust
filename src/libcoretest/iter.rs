@@ -839,7 +839,7 @@ fn test_min_max_result() {
 
 #[test]
 fn test_iterate() {
-    let mut it = iterate(|x| x * 2, 1u);
+    let mut it = iterate(1u, |x| x * 2);
     assert_eq!(it.next(), Some(1u));
     assert_eq!(it.next(), Some(2u));
     assert_eq!(it.next(), Some(4u));
