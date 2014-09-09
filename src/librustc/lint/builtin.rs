@@ -172,33 +172,24 @@ impl LintPass for TypeLimits {
             ast::ExprLit(lit) => {
                 match ty::get(ty::expr_ty(cx.tcx, e)).sty {
                     ty::ty_int(t) => {
-                        let int_type = if t == ast::TyI {
-                            cx.sess().targ_cfg.int_type
-                        } else { t };
-                        let (min, max) = int_ty_range(int_type);
-                        let mut lit_val: i64 = match lit.node {
+                        match lit.node {
                             ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
                             ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
-                                if v > i64::MAX as u64{
+                                let int_type = if t == ast::TyI {
+                                    cx.sess().targ_cfg.int_type
+                                } else { t };
+                                let (min, max) = int_ty_range(int_type);
+                                let negative = self.negated_expr_id == e.id;
+
+                                if (negative && v > (min.abs() as u64)) ||
+                                   (!negative && v > (max.abs() as u64)) {
                                     cx.span_lint(TYPE_OVERFLOW, e.span,
                                                  "literal out of range for its type");
                                     return;
                                 }
-                                v as i64
-                            }
-                            ast::LitInt(v, ast::SignedIntLit(_, ast::Minus)) |
-                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Minus)) => {
-                                -(v as i64)
                             }
                             _ => fail!()
                         };
-                        if self.negated_expr_id == e.id {
-                            lit_val *= -1;
-                        }
-                        if lit_val < min || lit_val > max {
-                            cx.span_lint(TYPE_OVERFLOW, e.span,
-                                         "literal out of range for its type");
-                        }
                     },
                     ty::ty_uint(t) => {
                         let uint_type = if t == ast::TyU {
