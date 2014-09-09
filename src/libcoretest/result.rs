@@ -69,6 +69,7 @@ pub fn test_impl_map_err() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_collect() {
     let v: Result<Vec<int>, ()> = collect(range(0i, 0).map(|_| Ok::<int, ()>(0)));
     assert!(v == Ok(vec![]));

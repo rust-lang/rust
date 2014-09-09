@@ -96,7 +96,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
         // Add a special __test module to the crate that will contain code
         // generated for the test harness
-        let (mod_, reexport) = mk_test_module(&self.cx, &self.cx.reexport_test_harness_main);
+        let (mod_, reexport) = mk_test_module(&mut self.cx);
         folded.module.items.push(mod_);
         match reexport {
             Some(re) => folded.module.view_items.push(re),
@@ -378,8 +378,7 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     }
 }
 
-fn mk_test_module(cx: &TestCtxt, reexport_test_harness_main: &Option<InternedString>)
-                  -> (Gc<ast::Item>, Option<ast::ViewItem>) {
+fn mk_test_module(cx: &mut TestCtxt) -> (Gc<ast::Item>, Option<ast::ViewItem>) {
     // Link to test crate
     let view_items = vec!(mk_std(cx));
 
@@ -388,7 +387,7 @@ fn mk_test_module(cx: &TestCtxt, reexport_test_harness_main: &Option<InternedStr
 
     // The synthesized main function which will call the console test runner
     // with our list of tests
-    let mainfn = (quote_item!(&cx.ext_cx,
+    let mainfn = (quote_item!(&mut cx.ext_cx,
         pub fn main() {
             #![main]
             use std::slice::Slice;
@@ -412,7 +411,7 @@ fn mk_test_module(cx: &TestCtxt, reexport_test_harness_main: &Option<InternedStr
         vis: ast::Public,
         span: DUMMY_SP,
     };
-    let reexport = reexport_test_harness_main.as_ref().map(|s| {
+    let reexport = cx.reexport_test_harness_main.as_ref().map(|s| {
         // building `use <ident> = __test::main`
         let reexport_ident = token::str_to_ident(s.get());
 

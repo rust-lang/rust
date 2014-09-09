@@ -568,6 +568,7 @@ pub fn repr_to_string<T>(t: &T) -> String {
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 struct P {a: int, b: f64}
 
 #[test]

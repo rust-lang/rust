@@ -31,7 +31,7 @@ fn main() {
     let x: Vec<char> = vec!('a', 'b', 'c');
     let x: &[char] = x.as_slice();
     match x {
-        ['a', 'b', 'c', .._tail] => {}
+        ['a', 'b', 'c', _tail..] => {}
         ['a', 'b', 'c'] => {} //~ ERROR unreachable pattern
         _ => {}
     }

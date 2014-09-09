@@ -131,6 +131,7 @@ fn test_or_else() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_option_while_some() {
     let mut i = 0i;
     Some(10i).while_some(|j| {
@@ -184,6 +185,7 @@ fn test_unwrap_or_else() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_filtered() {
     let some_stuff = Some(42i);
     let modified_stuff = some_stuff.filtered(|&x| {x < 10});
@@ -256,6 +258,7 @@ fn test_mutate() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_collect() {
     let v: Option<Vec<int>> = collect(range(0i, 0)
                                       .map(|_| Some(0i)));

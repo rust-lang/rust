@@ -509,6 +509,7 @@ mod tests {
     use self::test::Bencher;
     use super::{Arena, TypedArena};
 
+    #[allow(dead_code)]
     struct Point {
         x: int,
         y: int,
@@ -564,6 +565,7 @@ mod tests {
         })
     }
 
+    #[allow(dead_code)]
     struct Noncopy {
         string: String,
         array: Vec<int>,

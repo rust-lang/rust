@@ -1549,18 +1549,13 @@ impl<'a> Resolver<'a> {
                             PathListMod { .. } => Some(item.span),
                             _ => None
                         }).collect::<Vec<Span>>();
-                        match mod_spans.as_slice() {
-                            [first, second, ..other] => {
-                                self.resolve_error(first,
-                                    "`mod` import can only appear once in the list");
-                                self.session.span_note(second,
-                                        "another `mod` import appears here");
-                                for &other_span in other.iter() {
-                                    self.session.span_note(other_span,
-                                        "another `mod` import appears here");
-                                }
-                            },
-                            [_] | [] => ()
+                        if mod_spans.len() > 1 {
+                            self.resolve_error(mod_spans[0],
+                                "`mod` import can only appear once in the list");
+                            for other_span in mod_spans.iter().skip(1) {
+                                self.session.span_note(*other_span,
+                                    "another `mod` import appears here");
+                            }
                         }
 
                         for source_item in source_items.iter() {
@@ -3936,6 +3931,7 @@ impl<'a> Resolver<'a> {
                                                                item.id,
                                                                ItemRibKind),
                                              |this| {
+                    this.resolve_type_parameters(&generics.ty_params);
                     visit::walk_item(this, item, ());
                 });
             }

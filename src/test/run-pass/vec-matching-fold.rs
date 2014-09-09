@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(advanced_slice_patterns)]
+
 fn foldl<T,U:Clone>(values: &[T],
                     initial: U,
                     function: |partial: U, element: &T| -> U)
                     -> U {
     match values {
-        [ref head, ..tail] =>
+        [ref head, tail..] =>
             foldl(tail, function(initial, head), function),
         [] => initial.clone()
     }
@@ -24,7 +26,7 @@ fn foldr<T,U:Clone>(values: &[T],
                     function: |element: &T, partial: U| -> U)
                     -> U {
     match values {
-        [..head, ref tail] =>
+        [head.., ref tail] =>
             foldr(head, function(tail, initial), function),
         [] => initial.clone()
     }

@@ -23,12 +23,11 @@
 
 #![allow(non_snake_case)]
 
-use libc::c_int;
-use libc;
+use libc::{mod, c_int};
 use std::c_str::CString;
 use std::os;
-use std::rt::rtio;
-use std::rt::rtio::{IoResult, IoError};
+use std::rt::rtio::{mod, IoResult, IoError};
+use std::num;
 
 // Local re-exports
 pub use self::file::FileDesc;
@@ -97,8 +96,8 @@ fn last_error() -> IoError {
 }
 
 // unix has nonzero values as errors
-fn mkerr_libc(ret: libc::c_int) -> IoResult<()> {
-    if ret != 0 {
+fn mkerr_libc <Int: num::Zero>(ret: Int) -> IoResult<()> {
+    if !ret.is_zero() {
         Err(last_error())
     } else {
         Ok(())
@@ -117,39 +116,33 @@ fn mkerr_winbool(ret: libc::c_int) -> IoResult<()> {
 
 #[cfg(windows)]
 #[inline]
-fn retry(f: || -> libc::c_int) -> libc::c_int {
-    loop {
-        match f() {
-            -1 if os::errno() as int == libc::WSAEINTR as int => {}
-            n => return n,
-        }
-    }
-}
+fn retry<I> (f: || -> I) -> I { f() } // PR rust-lang/rust/#17020
 
 #[cfg(unix)]
 #[inline]
-fn retry(f: || -> libc::c_int) -> libc::c_int {
+fn retry<I: PartialEq + num::One + Neg<I>> (f: || -> I) -> I {
+    let minus_one = -num::one::<I>();
     loop {
-        match f() {
-            -1 if os::errno() as int == libc::EINTR as int => {}
-            n => return n,
-        }
+        let n = f();
+        if n == minus_one && os::errno() == libc::EINTR as int { }
+        else { return n }
     }
 }
+
 
 fn keep_going(data: &[u8], f: |*const u8, uint| -> i64) -> i64 {
     let origamt = data.len();
     let mut data = data.as_ptr();
     let mut amt = origamt;
     while amt > 0 {
-        let ret = retry(|| f(data, amt) as libc::c_int);
+        let ret = retry(|| f(data, amt));
         if ret == 0 {
             break
         } else if ret != -1 {
             amt -= ret as uint;
             data = unsafe { data.offset(ret as int) };
         } else {
-            return ret as i64;
+            return ret;
         }
     }
     return (origamt - amt) as i64;
