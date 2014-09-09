@@ -11,7 +11,7 @@
 fn main() {
     let a = Vec::new();
     match a {
-        [1, ..tail, ..tail] => {}, //~ ERROR: unexpected token: `..`
+        [1, tail.., tail..] => {}, //~ ERROR: expected `,`, found `..`
         _ => ()
     }
 }

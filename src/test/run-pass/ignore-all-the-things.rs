@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(advanced_slice_patterns)]
+
 struct Foo(int, int, int, int);
 struct Bar{a: int, b: int, c: int, d: int}
 

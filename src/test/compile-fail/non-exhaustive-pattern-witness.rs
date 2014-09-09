@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
+#![feature(advanced_slice_patterns, struct_variant)]
 
 struct Foo {
     first: bool,
@@ -63,7 +63,7 @@ fn vectors_with_nested_enums() {
         [Second(true), First] => (),
         [Second(true), Second(true)] => (),
         [Second(false), _] => (),
-        [_, _, ..tail, _] => ()
+        [_, _, tail.., _] => ()
     }
 }
 

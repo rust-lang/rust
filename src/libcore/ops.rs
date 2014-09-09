@@ -55,6 +55,8 @@
  *
  */
 
+use kinds::Sized;
+
 /**
  *
  * The `Drop` trait is used to run some code when a value goes out of scope. This
@@ -700,7 +702,7 @@ pub trait IndexMut<Index,Result> {
  * ```
  */
 #[lang="deref"]
-pub trait Deref<Result> {
+pub trait Deref<Sized? Result> {
     /// The method called to dereference a value
     fn deref<'a>(&'a self) -> &'a Result;
 }
@@ -740,7 +742,7 @@ pub trait Deref<Result> {
  * ```
  */
 #[lang="deref_mut"]
-pub trait DerefMut<Result>: Deref<Result> {
+pub trait DerefMut<Sized? Result>: Deref<Result> {
     /// The method called to mutably dereference a value
     fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
 }

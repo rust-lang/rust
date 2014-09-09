@@ -1912,13 +1912,13 @@ impl<'a> State<'a> {
                                    |s, p| s.print_pat(&**p)));
                 for p in slice.iter() {
                     if !before.is_empty() { try!(self.word_space(",")); }
+                    try!(self.print_pat(&**p));
                     match **p {
                         ast::Pat { node: ast::PatWild(ast::PatWildMulti), .. } => {
                             // this case is handled by print_pat
                         }
                         _ => try!(word(&mut self.s, "..")),
                     }
-                    try!(self.print_pat(&**p));
                     if !after.is_empty() { try!(self.word_space(",")); }
                 }
                 try!(self.commasep(Inconsistent,

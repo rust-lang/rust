@@ -632,9 +632,9 @@ mod tests {
             id_name(n)
         }
         fn node_label(&'a self, n: &Node) -> LabelText<'a> {
-            match self.node_labels.get(*n) {
-                &Some(ref l) => LabelStr(str::Slice(l.as_slice())),
-                &None        => LabelStr(id_name(n).name()),
+            match self.node_labels[*n] {
+                Some(ref l) => LabelStr(str::Slice(l.as_slice())),
+                None        => LabelStr(id_name(n).name()),
             }
         }
         fn edge_label(&'a self, e: & &'a Edge) -> LabelText<'a> {

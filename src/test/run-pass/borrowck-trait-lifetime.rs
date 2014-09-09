@@ -7,24 +7,15 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
-// ignore-lexer-test FIXME #15879
 
-// Test syntax checks for `Sized?` syntax.
+// This test verifies that casting from the same lifetime on a value
+// to the same lifetime on a trait succeeds. See issue #10766.
 
-trait T1 for Sized? {}
-pub trait T2 for Sized? {}
-trait T3<X: T1> for Sized?: T2 {}
-trait T4<Sized? X> {}
-trait T5<Sized? X, Y> {}
-trait T6<Y, Sized? X> {}
-trait T7<Sized? X, Sized? Y> {}
-trait T8<Sized? X: T2> {}
-struct S1<Sized? X>;
-enum E<Sized? X> {}
-impl <Sized? X> T1 for S1<X> {}
-fn f<Sized? X>() {}
-type TT<Sized? T> = T;
+#![allow(dead_code)]
+fn main() {
+    trait T {}
 
-pub fn main() {
+    fn f<'a, V: T>(v: &'a V) -> &'a T {
+        v as &'a T
+    }
 }

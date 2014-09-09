@@ -298,7 +298,7 @@ mod test {
 
     use native;
 
-    use super::{queue, Queue};
+    use super::{queue};
 
     #[test]
     fn smoke() {

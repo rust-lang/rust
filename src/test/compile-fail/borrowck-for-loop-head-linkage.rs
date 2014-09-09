@@ -7,24 +7,13 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
-// ignore-lexer-test FIXME #15879
 
-// Test syntax checks for `Sized?` syntax.
-
-trait T1 for Sized? {}
-pub trait T2 for Sized? {}
-trait T3<X: T1> for Sized?: T2 {}
-trait T4<Sized? X> {}
-trait T5<Sized? X, Y> {}
-trait T6<Y, Sized? X> {}
-trait T7<Sized? X, Sized? Y> {}
-trait T8<Sized? X: T2> {}
-struct S1<Sized? X>;
-enum E<Sized? X> {}
-impl <Sized? X> T1 for S1<X> {}
-fn f<Sized? X>() {}
-type TT<Sized? T> = T;
-
-pub fn main() {
+fn main() {
+    let mut vector = vec![1u, 2];
+    for &x in vector.iter() {
+        let cap = vector.capacity();
+        vector.grow(cap, &0u);      //~ ERROR cannot borrow
+        *vector.get_mut(1u) = 5u;   //~ ERROR cannot borrow
+    }
 }
+
