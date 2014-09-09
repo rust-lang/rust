@@ -21,7 +21,7 @@ struct RegistrarFinder {
     registrars: Vec<(ast::NodeId, Span)> ,
 }
 
-impl Visitor for RegistrarFinder {
+impl<'v> Visitor<'v> for RegistrarFinder {
     fn visit_item(&mut self, item: &ast::Item) {
         match item.node {
             ast::ItemFn(..) => {

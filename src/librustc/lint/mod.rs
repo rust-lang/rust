@@ -139,7 +139,7 @@ pub trait LintPass {
     fn check_ty(&mut self, _: &Context, _: &ast::Ty) { }
     fn check_generics(&mut self, _: &Context, _: &ast::Generics) { }
     fn check_fn(&mut self, _: &Context,
-        _: &FnKind, _: &ast::FnDecl, _: &ast::Block, _: Span, _: ast::NodeId) { }
+        _: FnKind, _: &ast::FnDecl, _: &ast::Block, _: Span, _: ast::NodeId) { }
     fn check_ty_method(&mut self, _: &Context, _: &ast::TypeMethod) { }
     fn check_trait_method(&mut self, _: &Context, _: &ast::TraitItem) { }
     fn check_struct_def(&mut self, _: &Context,

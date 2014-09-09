@@ -116,7 +116,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for IntrinsicCheckingVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &ast::Expr) {
         match expr.node {
             ast::ExprPath(..) => {

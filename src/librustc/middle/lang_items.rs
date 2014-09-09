@@ -115,7 +115,7 @@ struct LanguageItemCollector<'a> {
     item_refs: HashMap<&'static str, uint>,
 }
 
-impl<'a> Visitor for LanguageItemCollector<'a> {
+impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
     fn visit_item(&mut self, item: &ast::Item) {
         match extract(item.attrs.as_slice()) {
             Some(value) => {

@@ -366,7 +366,7 @@ impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
     }
 }
 
-impl<'a, O: IdVisitingOperation> Visitor for IdVisitor<'a, O> {
+impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
     fn visit_mod(&mut self,
                  module: &Mod,
                  _: Span,
@@ -475,13 +475,13 @@ impl<'a, O: IdVisitingOperation> Visitor for IdVisitor<'a, O> {
     }
 
     fn visit_fn(&mut self,
-                function_kind: &visit::FnKind,
-                function_declaration: &FnDecl,
-                block: &Block,
+                function_kind: visit::FnKind<'v>,
+                function_declaration: &'v FnDecl,
+                block: &'v Block,
                 span: Span,
                 node_id: NodeId) {
         if !self.pass_through_items {
-            match *function_kind {
+            match function_kind {
                 visit::FkMethod(..) if self.visited_outermost => return,
                 visit::FkMethod(..) => self.visited_outermost = true,
                 _ => {}
@@ -490,7 +490,7 @@ impl<'a, O: IdVisitingOperation> Visitor for IdVisitor<'a, O> {
 
         self.operation.visit_id(node_id);
 
-        match *function_kind {
+        match function_kind {
             visit::FkItemFn(_, generics, _, _) |
             visit::FkMethod(_, generics, _) => {
                 self.visit_generics_helper(generics)
@@ -509,7 +509,7 @@ impl<'a, O: IdVisitingOperation> Visitor for IdVisitor<'a, O> {
                         span);
 
         if !self.pass_through_items {
-            match *function_kind {
+            match function_kind {
                 visit::FkMethod(..) => self.visited_outermost = false,
                 _ => {}
             }
@@ -571,7 +571,7 @@ pub fn compute_id_range_for_inlined_item(item: &InlinedItem) -> IdRange {
     visitor.result.get()
 }
 
-pub fn compute_id_range_for_fn_body(fk: &visit::FnKind,
+pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
                                     decl: &FnDecl,
                                     body: &Block,
                                     sp: Span,
@@ -639,7 +639,7 @@ struct EachViewItemData<'a> {
     callback: |&ast::ViewItem|: 'a -> bool,
 }
 
-impl<'a> Visitor for EachViewItemData<'a> {
+impl<'a, 'v> Visitor<'v> for EachViewItemData<'a> {
     fn visit_view_item(&mut self, view_item: &ast::ViewItem) {
         let _ = (self.callback)(view_item);
     }

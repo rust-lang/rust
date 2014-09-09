@@ -86,11 +86,11 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for EffectCheckVisitor<'a, 'tcx> {
-    fn visit_fn(&mut self, fn_kind: &visit::FnKind, fn_decl: &ast::FnDecl,
-                block: &ast::Block, span: Span, _: ast::NodeId) {
+impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
+    fn visit_fn(&mut self, fn_kind: visit::FnKind<'v>, fn_decl: &'v ast::FnDecl,
+                block: &'v ast::Block, span: Span, _: ast::NodeId) {
 
-        let (is_item_fn, is_unsafe_fn) = match *fn_kind {
+        let (is_item_fn, is_unsafe_fn) = match fn_kind {
             visit::FkItemFn(_, _, fn_style, _) =>
                 (true, fn_style == ast::UnsafeFn),
             visit::FkMethod(_, _, method) =>

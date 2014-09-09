@@ -29,7 +29,7 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
     visit::walk_crate(&mut CheckLoopVisitor { sess: sess, cx: Normal }, krate)
 }
 
-impl<'a> Visitor for CheckLoopVisitor<'a> {
+impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
     fn visit_item(&mut self, i: &ast::Item) {
         self.with_context(Normal, |v| visit::walk_item(v, i));
     }

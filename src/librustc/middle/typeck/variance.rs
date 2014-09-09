@@ -337,7 +337,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for TermsContext<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
         debug!("add_inferreds for item {}", item.repr(self.tcx));
 
@@ -477,7 +477,7 @@ fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
     constraint_cx
 }
 
-impl<'a, 'tcx> Visitor for ConstraintContext<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
         let did = ast_util::local_def(item.id);
         let tcx = self.terms_cx.tcx;

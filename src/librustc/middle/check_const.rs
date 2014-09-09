@@ -41,7 +41,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for CheckCrateVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &Item) {
         check_item(self, i);
     }
@@ -238,7 +238,7 @@ pub fn check_item_recursion<'a>(sess: &'a Session,
     visitor.visit_item(it);
 }
 
-impl<'a> Visitor for CheckItemRecursionVisitor<'a> {
+impl<'a, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a> {
     fn visit_item(&mut self, it: &Item) {
         if self.idstack.iter().any(|x| x == &(it.id)) {
             self.sess.span_fatal(self.root_it.span, "recursive constant");

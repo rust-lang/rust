@@ -57,7 +57,7 @@ struct ParentVisitor {
     curparent: ast::NodeId,
 }
 
-impl Visitor for ParentVisitor {
+impl<'v> Visitor<'v> for ParentVisitor {
     fn visit_item(&mut self, item: &ast::Item) {
         self.parents.insert(item.id, self.curparent);
 
@@ -100,8 +100,8 @@ impl Visitor for ParentVisitor {
         visit::walk_foreign_item(self, a);
     }
 
-    fn visit_fn(&mut self, a: &visit::FnKind, b: &ast::FnDecl,
-                c: &ast::Block, d: Span, id: ast::NodeId) {
+    fn visit_fn(&mut self, a: visit::FnKind<'v>, b: &'v ast::FnDecl,
+                c: &'v ast::Block, d: Span, id: ast::NodeId) {
         // We already took care of some trait methods above, otherwise things
         // like impl methods and pub trait methods are parented to the
         // containing module, not the containing trait.
@@ -112,7 +112,7 @@ impl Visitor for ParentVisitor {
     }
 
     fn visit_struct_def(&mut self, s: &ast::StructDef, _: ast::Ident,
-                        _: &ast::Generics, n: ast::NodeId) {
+                        _: &'v ast::Generics, n: ast::NodeId) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
         match s.ctor_id {
@@ -180,7 +180,7 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for EmbargoVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
         let orig_all_pub = self.prev_public;
         self.prev_public = orig_all_pub && item.vis == ast::Public;
@@ -802,7 +802,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for PrivacyVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
         let orig_curitem = replace(&mut self.curitem, item.id);
         visit::walk_item(self, item);
@@ -1036,7 +1036,7 @@ struct SanePrivacyVisitor<'a, 'tcx: 'a> {
     in_fn: bool,
 }
 
-impl<'a, 'tcx> Visitor for SanePrivacyVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for SanePrivacyVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
         if self.in_fn {
             self.check_all_inherited(item);
@@ -1053,8 +1053,8 @@ impl<'a, 'tcx> Visitor for SanePrivacyVisitor<'a, 'tcx> {
         self.in_fn = orig_in_fn;
     }
 
-    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
-                b: &ast::Block, s: Span, _: ast::NodeId) {
+    fn visit_fn(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
+                b: &'v ast::Block, s: Span, _: ast::NodeId) {
         // This catches both functions and methods
         let orig_in_fn = replace(&mut self.in_fn, true);
         visit::walk_fn(self, fk, fd, b, s);
@@ -1264,7 +1264,7 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> Visitor for CheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx, 'v> Visitor<'v> for CheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
         match ty.node {
             ast::TyPath(_, _, path_id) => {
@@ -1287,7 +1287,7 @@ impl<'a, 'b, 'tcx> Visitor for CheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     fn visit_expr(&mut self, _: &ast::Expr) {}
 }
 
-impl<'a, 'tcx> Visitor for VisiblePrivateTypesVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
         match item.node {
             // contents of a private mod can be reexported, so we need
@@ -1434,8 +1434,8 @@ impl<'a, 'tcx> Visitor for VisiblePrivateTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
-                b: &ast::Block, s: Span, id: ast::NodeId) {
+    fn visit_fn(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
+                b: &'v ast::Block, s: Span, id: ast::NodeId) {
         // needs special handling for methods.
         if self.exported_items.contains(&id) {
             visit::walk_fn(self, fk, fd, b, s);

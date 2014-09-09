@@ -87,7 +87,7 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
 }
 
 // note that macros aren't expanded yet, and therefore macros can't add plugins.
-impl<'a> Visitor for PluginLoader<'a> {
+impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
     fn visit_view_item(&mut self, vi: &ast::ViewItem) {
         match vi.node {
             ast::ViewItemExternCrate(name, _, _) => {
