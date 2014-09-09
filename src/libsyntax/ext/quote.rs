@@ -766,7 +766,9 @@ fn expand_wrapper(cx: &ExtCtxt,
         cx.view_use_glob(sp, ast::Inherited, ids_ext(path))
     }).collect();
 
-    let stmt_let_ext_cx = cx.stmt_let(sp, false, id_ext("ext_cx"), cx_expr);
+    // Explicitly borrow to avoid moving from the invoker (#16992)
+    let cx_expr_borrow = cx.expr_addr_of(sp, cx.expr_deref(sp, cx_expr));
+    let stmt_let_ext_cx = cx.stmt_let(sp, false, id_ext("ext_cx"), cx_expr_borrow);
 
     cx.expr_block(cx.block_all(sp, uses, vec!(stmt_let_ext_cx), Some(expr)))
 }

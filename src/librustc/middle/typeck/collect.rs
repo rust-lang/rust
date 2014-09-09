@@ -488,7 +488,9 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
                                  generics: &ast::Generics,
                                  thing: &'static str) {
     for ty_param in generics.ty_params.iter() {
-        for bound in ty_param.bounds.iter() {
+        let bounds = ty_param.bounds.iter();
+        let mut bounds = bounds.chain(ty_param.unbound.iter());
+        for bound in bounds {
             match *bound {
                 ast::TraitTyParamBound(..) | ast::UnboxedFnTyParamBound(..) => {
                     // According to accepted RFC #XXX, we should
@@ -1076,9 +1078,10 @@ fn add_unsized_bound(ccx: &CrateCtxt,
                      desc: &str,
                      span: Span) {
     let kind_id = ccx.tcx.lang_items.require(SizedTraitLangItem);
+
     match unbound {
         &Some(ast::TraitTyParamBound(ref tpb)) => {
-            // #FIXME(8559) currently requires the unbound to be built-in.
+            // FIXME(#8559) currently requires the unbound to be built-in.
             let trait_def_id = ty::trait_ref_to_def_id(ccx.tcx, tpb);
             match kind_id {
                 Ok(kind_id) if trait_def_id != kind_id => {

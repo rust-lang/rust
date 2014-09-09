@@ -1047,10 +1047,7 @@ mod tests {
 
     use serialize::{Encodable, Decodable};
 
-    use std::io::{IoError, IoResult, SeekStyle};
-    use std::io;
     use std::option::{None, Option, Some};
-    use std::slice;
 
     #[test]
     fn test_vuint_at() {

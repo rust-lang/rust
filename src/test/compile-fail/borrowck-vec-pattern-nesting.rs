@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(advanced_slice_patterns)]
 
 fn a() {
     let mut vec = [box 1i, box 2, box 3];
@@ -22,7 +23,7 @@ fn b() {
     let mut vec = vec!(box 1i, box 2, box 3);
     let vec: &mut [Box<int>] = vec.as_mut_slice();
     match vec {
-        [.._b] => {
+        [_b..] => {
             vec[0] = box 4; //~ ERROR cannot assign
         }
     }
@@ -33,7 +34,7 @@ fn c() {
     let vec: &mut [Box<int>] = vec.as_mut_slice();
     match vec {
         [_a,         //~ ERROR cannot move out
-         .._b] => {  //~^ NOTE attempting to move value to here
+         _b..] => {  //~^ NOTE attempting to move value to here
 
             // Note: `_a` is *moved* here, but `b` is borrowing,
             // hence illegal.
@@ -50,7 +51,7 @@ fn d() {
     let mut vec = vec!(box 1i, box 2, box 3);
     let vec: &mut [Box<int>] = vec.as_mut_slice();
     match vec {
-        [.._a,     //~ ERROR cannot move out
+        [_a..,     //~ ERROR cannot move out
          _b] => {} //~ NOTE attempting to move value to here
         _ => {}
     }

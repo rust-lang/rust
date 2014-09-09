@@ -14,11 +14,11 @@ fn main() {
     let mut result = vec!();
     loop {
         x = match x {
-            [1, n, 3, ..rest] => {
+            [1, n, 3, rest..] => {
                 result.push(n);
                 rest
             }
-            [n, ..rest] => {
+            [n, rest..] => {
                 result.push(n);
                 rest
             }

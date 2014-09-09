@@ -199,6 +199,15 @@ fn check_item(cx: &mut Context, item: &Item) {
                                     cx,
                                     item.span,
                                     &*trait_ref);
+
+                                let trait_def = ty::lookup_trait_def(cx.tcx, trait_ref.def_id);
+                                for (ty, type_param_def) in trait_ref.substs.types
+                                                                  .iter()
+                                                                  .zip(trait_def.generics
+                                                                                .types
+                                                                                .iter()) {
+                                    check_typaram_bounds(cx, item.span, *ty, type_param_def);
+                                }
                             }
                         }
                     }

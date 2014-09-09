@@ -3290,17 +3290,19 @@ between `_` and `..` is that the pattern `C(_)` is only type-correct if `C` has
 exactly one argument, while the pattern `C(..)` is type-correct for any enum
 variant `C`, regardless of how many arguments `C` has.
 
-Used inside a vector pattern, `..` stands for any number of elements. This
-wildcard can be used at most once for a given vector, which implies that it
-cannot be used to specifically match elements that are at an unknown distance
-from both ends of a vector, like `[.., 42, ..]`. If followed by a variable name,
-it will bind the corresponding slice to the variable. Example:
+Used inside a vector pattern, `..` stands for any number of elements, when the
+`advanced_slice_patterns` feature gate is turned on. This wildcard can be used
+at most once for a given vector, which implies that it cannot be used to
+specifically match elements that are at an unknown distance from both ends of a
+vector, like `[.., 42, ..]`.  If followed by a variable name, it will bind the
+corresponding slice to the variable.  Example:
 
 ~~~~
+# #![feature(advanced_slice_patterns)]
 fn is_symmetric(list: &[uint]) -> bool {
     match list {
         [] | [_]                   => true,
-        [x, ..inside, y] if x == y => is_symmetric(inside),
+        [x, inside.., y] if x == y => is_symmetric(inside),
         _                          => false
     }
 }

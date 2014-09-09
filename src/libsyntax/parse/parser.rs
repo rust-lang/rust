@@ -2858,43 +2858,42 @@ impl<'a> Parser<'a> {
         let mut before_slice = true;
 
         while self.token != token::RBRACKET {
-            if first { first = false; }
-            else { self.expect(&token::COMMA); }
+            if first {
+                first = false;
+            } else {
+                self.expect(&token::COMMA);
+            }
 
-            let mut is_slice = false;
             if before_slice {
                 if self.token == token::DOTDOT {
                     self.bump();
-                    is_slice = true;
-                    before_slice = false;
+
+                    if self.token == token::COMMA ||
+                            self.token == token::RBRACKET {
+                        slice = Some(box(GC) ast::Pat {
+                            id: ast::DUMMY_NODE_ID,
+                            node: PatWild(PatWildMulti),
+                            span: self.span,
+                        });
+                        before_slice = false;
+                    } else {
+                        let _ = self.parse_pat();
+                        let span = self.span;
+                        self.obsolete(span, ObsoleteSubsliceMatch);
+                    }
+                    continue
                 }
             }
 
-            if is_slice {
-                if self.token == token::COMMA || self.token == token::RBRACKET {
-                    slice = Some(box(GC) ast::Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        node: PatWild(PatWildMulti),
-                        span: self.span,
-                    })
-                } else {
-                    let subpat = self.parse_pat();
-                    match *subpat {
-                        ast::Pat { node: PatIdent(_, _, _), .. } => {
-                            slice = Some(subpat);
-                        }
-                        ast::Pat { span, .. } => self.span_fatal(
-                            span, "expected an identifier or nothing"
-                        )
-                    }
-                }
+            let subpat = self.parse_pat();
+            if before_slice && self.token == token::DOTDOT {
+                self.bump();
+                slice = Some(subpat);
+                before_slice = false;
+            } else if before_slice {
+                before.push(subpat);
             } else {
-                let subpat = self.parse_pat();
-                if before_slice {
-                    before.push(subpat);
-                } else {
-                    after.push(subpat);
-                }
+                after.push(subpat);
             }
         }
 
@@ -3065,7 +3064,11 @@ impl<'a> Parser<'a> {
             // These expressions are limited to literals (possibly
             // preceded by unary-minus) or identifiers.
             let val = self.parse_literal_maybe_minus();
-            if self.eat(&token::DOTDOT) {
+            if self.token == token::DOTDOT &&
+                    self.look_ahead(1, |t| {
+                        *t != token::COMMA && *t != token::RBRACKET
+                    }) {
+                self.bump();
                 let end = if is_ident_or_path(&self.token) {
                     let path = self.parse_path(LifetimeAndTypesWithColons)
                                    .path;
@@ -3106,7 +3109,10 @@ impl<'a> Parser<'a> {
                 }
             });
 
-            if self.look_ahead(1, |t| *t == token::DOTDOT) {
+            if self.look_ahead(1, |t| *t == token::DOTDOT) &&
+                    self.look_ahead(2, |t| {
+                        *t != token::COMMA && *t != token::RBRACKET
+                    }) {
                 let start = self.parse_expr_res(RESTRICT_NO_BAR_OP);
                 self.eat(&token::DOTDOT);
                 let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);

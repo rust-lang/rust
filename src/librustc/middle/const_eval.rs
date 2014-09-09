@@ -500,42 +500,44 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
                                         "target type not found for const cast")
                 });
 
-        let base = eval_const_expr_partial(tcx, &**base);
-        match base {
-            Err(_) => base,
-            Ok(val) => {
-                match ty::get(ety).sty {
-                    ty::ty_float(_) => {
-                        match val {
-                            const_bool(b) => Ok(const_float(b as f64)),
-                            const_uint(u) => Ok(const_float(u as f64)),
-                            const_int(i) => Ok(const_float(i as f64)),
-                            const_float(f) => Ok(const_float(f)),
-                            _ => Err("can't cast this type to float".to_string()),
-                        }
+        macro_rules! define_casts(
+            ($val:ident, {
+                $($ty_pat:pat => (
+                    $intermediate_ty:ty,
+                    $const_type:ident,
+                    $target_ty:ty
+                )),*
+            }) => (match ty::get(ety).sty {
+                $($ty_pat => {
+                    match $val {
+                        const_bool(b) => Ok($const_type(b as $intermediate_ty as $target_ty)),
+                        const_uint(u) => Ok($const_type(u as $intermediate_ty as $target_ty)),
+                        const_int(i) => Ok($const_type(i as $intermediate_ty as $target_ty)),
+                        const_float(f) => Ok($const_type(f as $intermediate_ty as $target_ty)),
+                        _ => Err(concat!(
+                            "can't cast this type to ", stringify!($const_type)
+                        ).to_string())
                     }
-                    ty::ty_uint(_) => {
-                        match val {
-                            const_bool(b) => Ok(const_uint(b as u64)),
-                            const_uint(u) => Ok(const_uint(u)),
-                            const_int(i) => Ok(const_uint(i as u64)),
-                            const_float(f) => Ok(const_uint(f as u64)),
-                            _ => Err("can't cast this type to uint".to_string()),
-                        }
-                    }
-                    ty::ty_int(_) => {
-                        match val {
-                            const_bool(b) => Ok(const_int(b as i64)),
-                            const_uint(u) => Ok(const_int(u as i64)),
-                            const_int(i) => Ok(const_int(i)),
-                            const_float(f) => Ok(const_int(f as i64)),
-                            _ => Err("can't cast this type to int".to_string()),
-                        }
-                    }
-                    _ => Err("can't cast this type".to_string())
-                }
-            }
-        }
+                },)*
+                _ => Err("can't cast this type".to_string())
+            })
+        )
+
+        eval_const_expr_partial(tcx, &**base)
+            .and_then(|val| define_casts!(val, {
+                ty::ty_int(ast::TyI) => (int, const_int, i64),
+                ty::ty_int(ast::TyI8) => (i8, const_int, i64),
+                ty::ty_int(ast::TyI16) => (i16, const_int, i64),
+                ty::ty_int(ast::TyI32) => (i32, const_int, i64),
+                ty::ty_int(ast::TyI64) => (i64, const_int, i64),
+                ty::ty_uint(ast::TyU) => (uint, const_uint, u64),
+                ty::ty_uint(ast::TyU8) => (u8, const_uint, u64),
+                ty::ty_uint(ast::TyU16) => (u16, const_uint, u64),
+                ty::ty_uint(ast::TyU32) => (u32, const_uint, u64),
+                ty::ty_uint(ast::TyU64) => (u64, const_uint, u64),
+                ty::ty_float(ast::TyF32) => (f32, const_float, f64),
+                ty::ty_float(ast::TyF64) => (f64, const_float, f64)
+            }))
       }
       ExprPath(_) => {
           match lookup_const(tcx, e) {
