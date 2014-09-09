@@ -9,7 +9,7 @@
 // except according to those terms.
 #![feature(struct_variant)]
 
-// Test `Sized?` types not allowed in fields.
+// Test `Sized?` types not allowed in fields (except the last one).
 
 struct S1<Sized? X> {
     f1: X, //~ ERROR type `f1` is dynamically sized. dynamically sized types may only appear as the
@@ -20,7 +20,14 @@ struct S2<Sized? X> {
     g: X, //~ ERROR type `g` is dynamically sized. dynamically sized types may only appear as the ty
     h: int,
 }
-
+struct S3 {
+    f: str, //~ ERROR type `f` is dynamically sized. dynamically sized types may only appear
+    g: [uint]
+}
+struct S4 {
+    f: str, //~ ERROR type `f` is dynamically sized. dynamically sized types may only appear
+    g: uint
+}
 enum E<Sized? X> {
     V1(X, int), //~ERROR type `X` is dynamically sized. dynamically sized types may only appear as t
     V2{f1: X, f: int}, //~ERROR type `f1` is dynamically sized. dynamically sized types may only app
