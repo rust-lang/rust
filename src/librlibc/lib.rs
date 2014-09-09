@@ -108,8 +108,6 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: uint) -> i32 {
 
 #[cfg(test)]
 mod test {
-    use core::option::{Some, None};
-    use core::iter::Iterator;
     use core::collections::Collection;
     use core::str::StrSlice;
     use core::slice::{MutableSlice, ImmutableSlice};
