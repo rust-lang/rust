@@ -1978,10 +1978,10 @@ mod biguint_tests {
     #[test]
     fn test_checked_add() {
         for elm in sum_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigUint::from_slice(aVec);
-            let b = BigUint::from_slice(bVec);
-            let c = BigUint::from_slice(cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigUint::from_slice(a_vec);
+            let b = BigUint::from_slice(b_vec);
+            let c = BigUint::from_slice(c_vec);
 
             assert!(a.checked_add(&b).unwrap() == c);
             assert!(b.checked_add(&a).unwrap() == c);
@@ -1991,10 +1991,10 @@ mod biguint_tests {
     #[test]
     fn test_checked_sub() {
         for elm in sum_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigUint::from_slice(aVec);
-            let b = BigUint::from_slice(bVec);
-            let c = BigUint::from_slice(cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigUint::from_slice(a_vec);
+            let b = BigUint::from_slice(b_vec);
+            let c = BigUint::from_slice(c_vec);
 
             assert!(c.checked_sub(&a).unwrap() == b);
             assert!(c.checked_sub(&b).unwrap() == a);
@@ -2011,21 +2011,21 @@ mod biguint_tests {
     #[test]
     fn test_checked_mul() {
         for elm in mul_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigUint::from_slice(aVec);
-            let b = BigUint::from_slice(bVec);
-            let c = BigUint::from_slice(cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigUint::from_slice(a_vec);
+            let b = BigUint::from_slice(b_vec);
+            let c = BigUint::from_slice(c_vec);
 
             assert!(a.checked_mul(&b).unwrap() == c);
             assert!(b.checked_mul(&a).unwrap() == c);
         }
 
         for elm in div_rem_quadruples.iter() {
-            let (aVec, bVec, cVec, dVec) = *elm;
-            let a = BigUint::from_slice(aVec);
-            let b = BigUint::from_slice(bVec);
-            let c = BigUint::from_slice(cVec);
-            let d = BigUint::from_slice(dVec);
+            let (a_vec, b_vec, c_vec, d_vec) = *elm;
+            let a = BigUint::from_slice(a_vec);
+            let b = BigUint::from_slice(b_vec);
+            let c = BigUint::from_slice(c_vec);
+            let d = BigUint::from_slice(d_vec);
 
             assert!(a == b.checked_mul(&c).unwrap() + d);
             assert!(a == c.checked_mul(&b).unwrap() + d);
@@ -2035,10 +2035,10 @@ mod biguint_tests {
     #[test]
     fn test_checked_div() {
         for elm in mul_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigUint::from_slice(aVec);
-            let b = BigUint::from_slice(bVec);
-            let c = BigUint::from_slice(cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigUint::from_slice(a_vec);
+            let b = BigUint::from_slice(b_vec);
+            let c = BigUint::from_slice(c_vec);
 
             if !a.is_zero() {
                 assert!(c.checked_div(&a).unwrap() == b);
@@ -2651,10 +2651,10 @@ mod bigint_tests {
     #[test]
     fn test_checked_add() {
         for elm in sum_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigInt::from_slice(Plus, aVec);
-            let b = BigInt::from_slice(Plus, bVec);
-            let c = BigInt::from_slice(Plus, cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
 
             assert!(a.checked_add(&b).unwrap() == c);
             assert!(b.checked_add(&a).unwrap() == c);
@@ -2670,10 +2670,10 @@ mod bigint_tests {
     #[test]
     fn test_checked_sub() {
         for elm in sum_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigInt::from_slice(Plus, aVec);
-            let b = BigInt::from_slice(Plus, bVec);
-            let c = BigInt::from_slice(Plus, cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
 
             assert!(c.checked_sub(&a).unwrap() == b);
             assert!(c.checked_sub(&b).unwrap() == a);
@@ -2689,10 +2689,10 @@ mod bigint_tests {
     #[test]
     fn test_checked_mul() {
         for elm in mul_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigInt::from_slice(Plus, aVec);
-            let b = BigInt::from_slice(Plus, bVec);
-            let c = BigInt::from_slice(Plus, cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
 
             assert!(a.checked_mul(&b).unwrap() == c);
             assert!(b.checked_mul(&a).unwrap() == c);
@@ -2702,11 +2702,11 @@ mod bigint_tests {
         }
 
         for elm in div_rem_quadruples.iter() {
-            let (aVec, bVec, cVec, dVec) = *elm;
-            let a = BigInt::from_slice(Plus, aVec);
-            let b = BigInt::from_slice(Plus, bVec);
-            let c = BigInt::from_slice(Plus, cVec);
-            let d = BigInt::from_slice(Plus, dVec);
+            let (a_vec, b_vec, c_vec, d_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
+            let d = BigInt::from_slice(Plus, d_vec);
 
             assert!(a == b.checked_mul(&c).unwrap() + d);
             assert!(a == c.checked_mul(&b).unwrap() + d);
@@ -2715,10 +2715,10 @@ mod bigint_tests {
     #[test]
     fn test_checked_div() {
         for elm in mul_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigInt::from_slice(Plus, aVec);
-            let b = BigInt::from_slice(Plus, bVec);
-            let c = BigInt::from_slice(Plus, cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
 
             if !a.is_zero() {
                 assert!(c.checked_div(&a).unwrap() == b);

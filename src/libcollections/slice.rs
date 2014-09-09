@@ -864,6 +864,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_tailn() {
         let mut a = vec![11i, 12, 13];
         let b: &[int] = &[11, 12, 13];
@@ -875,6 +876,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[allow(deprecated)]
     fn test_tailn_empty() {
         let a: Vec<int> = vec![];
         a.tailn(2);
@@ -909,6 +911,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[allow(deprecated)]
     fn test_initn_empty() {
         let a: Vec<int> = vec![];
         a.as_slice().initn(2);
@@ -1466,6 +1469,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_unshift() {
         let mut x = vec![1i, 2, 3];
         x.unshift(0);
@@ -2079,6 +2083,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_shift_ref() {
         let mut x: &[int] = [1, 2, 3, 4, 5];
         let h = x.shift_ref();
@@ -2092,6 +2097,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_pop_ref() {
         let mut x: &[int] = [1, 2, 3, 4, 5];
         let h = x.pop_ref();
@@ -2171,6 +2177,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_mut_shift_ref() {
         let mut x: &mut [int] = [1, 2, 3, 4, 5];
         let h = x.mut_shift_ref();
@@ -2184,6 +2191,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_mut_pop_ref() {
         let mut x: &mut [int] = [1, 2, 3, 4, 5];
         let h = x.mut_pop_ref();
@@ -2441,7 +2449,7 @@ mod bench {
         b.iter(|| {
             v.sort();
         });
-        b.bytes = (v.len() * mem::size_of_val(v.get(0))) as u64;
+        b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
     }
 
     type BigSortable = (u64,u64,u64,u64);
@@ -2485,6 +2493,6 @@ mod bench {
         b.iter(|| {
             v.sort();
         });
-        b.bytes = (v.len() * mem::size_of_val(v.get(0))) as u64;
+        b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
     }
 }

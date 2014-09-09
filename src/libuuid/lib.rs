@@ -527,7 +527,6 @@ mod uuidtest {
     use super::{Uuid, VariantMicrosoft, VariantNCS, VariantRFC4122,
                 Version1Mac, Version2Dce, Version3Md5, Version4Random,
                 Version5Sha1};
-    use std::io::MemWriter;
     use std::rand;
 
     #[test]
@@ -798,7 +797,6 @@ mod uuidtest {
     #[test]
     fn test_serialize_round_trip() {
         use serialize::json;
-        use serialize::{Encodable, Decodable};
 
         let u = Uuid::new_v4();
         let s = json::encode(&u);
@@ -809,7 +807,7 @@ mod uuidtest {
     #[test]
     fn test_bad_decode() {
         use serialize::json;
-        use serialize::{Encodable, Decodable};
+        use serialize::{Decodable};
 
         let js_good = json::String("a1a2a3a4a5a6a7a8a1a2a3a4a5a6a7a8".to_string());
         let js_bad1 = json::String("a1a2a3a4a5a6a7a8a1a2a3a4a5a6a7ah".to_string());
