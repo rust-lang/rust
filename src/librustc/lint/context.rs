@@ -212,14 +212,13 @@ impl LintStore {
             match self.by_name.find_equiv(&lint_name.as_slice()) {
                 Some(&lint_id) => self.set_level(lint_id, (level, CommandLine)),
                 None => {
-                    match self.lint_groups.iter().map(|(&x, pair)| (x, pair.ref0().clone()))
-                                                 .collect::<HashMap<&'static str, Vec<LintId>>>()
-                                                 .find_equiv(&lint_name.as_slice()) {
+                    match self.lint_groups.iter()
+                                          .find(|&(&x, _)| x == lint_name.as_slice())
+                                          .map(|(_, pair)| pair.ref0().clone()) {
                         Some(v) => {
-                            v.iter()
-                             .map(|lint_id: &LintId|
-                                     self.set_level(*lint_id, (level, CommandLine)))
-                             .collect::<Vec<()>>();
+                            for &lint_id in v.iter() {
+                                self.set_level(lint_id, (level, CommandLine))
+                            }
                         }
                         None => sess.err(format!("unknown {} flag: {}",
                                                  level.as_str(), lint_name).as_slice()),

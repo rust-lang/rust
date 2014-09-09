@@ -212,7 +212,10 @@ impl<T> TrieMap<T> {
     ///
     /// ```
     /// use std::collections::TrieMap;
-    /// let map: TrieMap<&str> = [(1, "a"), (2, "b"), (3, "c")].iter().map(|&x| x).collect();
+    /// let mut map = TrieMap::<&str>::new();
+    /// for &(k, v) in [(1, "a"), (2, "b"), (3, "c")].iter() {
+    ///     map.insert(k, v);
+    /// }
     ///
     /// let mut vec = Vec::new();
     /// assert_eq!(true, map.each_reverse(|&key, &value| { vec.push((key, value)); true }));
@@ -246,7 +249,10 @@ impl<T> TrieMap<T> {
     ///
     /// ```
     /// use std::collections::TrieMap;
-    /// let map: TrieMap<&str> = [(3, "c"), (1, "a"), (2, "b")].iter().map(|&x| x).collect();
+    /// let mut map = TrieMap::<&str>::new();
+    /// for &(k, v) in [(3, "c"), (1, "a"), (2, "b")].iter() {
+    ///     map.insert(k, v);
+    /// }
     ///
     /// for (key, value) in map.iter() {
     ///     println!("{}: {}", key, value);
@@ -269,7 +275,10 @@ impl<T> TrieMap<T> {
     ///
     /// ```
     /// use std::collections::TrieMap;
-    /// let mut map: TrieMap<int> = [(1, 2), (2, 4), (3, 6)].iter().map(|&x| x).collect();
+    /// let mut map = TrieMap::<int>::new();
+    /// for &(k, v) in [(1, 2), (2, 4), (3, 6)].iter() {
+    ///     map.insert(k, v);
+    /// }
     ///
     /// for (key, value) in map.mut_iter() {
     ///     *value = -(key as int);
@@ -392,7 +401,10 @@ impl<T> TrieMap<T> {
     ///
     /// ```
     /// use std::collections::TrieMap;
-    /// let map: TrieMap<&str> = [(2, "a"), (4, "b"), (6, "c")].iter().map(|&x| x).collect();
+    /// let mut map = TrieMap::<&str>::new();
+    /// for &(k, v) in [(2, "a"), (4, "b"), (6, "c")].iter() {
+    ///     map.insert(k, v);
+    /// }
     ///
     /// assert_eq!(map.lower_bound(4).next(), Some((4, &"b")));
     /// assert_eq!(map.lower_bound(5).next(), Some((6, &"c")));
@@ -409,7 +421,10 @@ impl<T> TrieMap<T> {
     ///
     /// ```
     /// use std::collections::TrieMap;
-    /// let map: TrieMap<&str> = [(2, "a"), (4, "b"), (6, "c")].iter().map(|&x| x).collect();
+    /// let mut map = TrieMap::<&str>::new();
+    /// for &(k, v) in [(2, "a"), (4, "b"), (6, "c")].iter() {
+    ///     map.insert(k, v);
+    /// }
     ///
     /// assert_eq!(map.upper_bound(4).next(), Some((6, &"c")));
     /// assert_eq!(map.upper_bound(5).next(), Some((6, &"c")));
@@ -434,7 +449,10 @@ impl<T> TrieMap<T> {
     ///
     /// ```
     /// use std::collections::TrieMap;
-    /// let mut map: TrieMap<&str> = [(2, "a"), (4, "b"), (6, "c")].iter().map(|&x| x).collect();
+    /// let mut map = TrieMap::<&str>::new();
+    /// for &(k, v) in [(2, "a"), (4, "b"), (6, "c")].iter() {
+    ///     map.insert(k, v);
+    /// }
     ///
     /// assert_eq!(map.mut_lower_bound(4).next(), Some((4, &mut "b")));
     /// assert_eq!(map.mut_lower_bound(5).next(), Some((6, &mut "c")));
@@ -459,7 +477,10 @@ impl<T> TrieMap<T> {
     ///
     /// ```
     /// use std::collections::TrieMap;
-    /// let mut map: TrieMap<&str> = [(2, "a"), (4, "b"), (6, "c")].iter().map(|&x| x).collect();
+    /// let mut map = TrieMap::<&str>::new();
+    /// for &(k, v) in [(2, "a"), (4, "b"), (6, "c")].iter() {
+    ///     map.insert(k, v);
+    /// }
     ///
     /// assert_eq!(map.mut_upper_bound(4).next(), Some((6, &mut "c")));
     /// assert_eq!(map.mut_upper_bound(5).next(), Some((6, &mut "c")));
@@ -478,17 +499,26 @@ impl<T> TrieMap<T> {
     }
 }
 
-impl<T> FromIterator<(uint, T)> for TrieMap<T> {
-    fn from_iter<Iter: Iterator<(uint, T)>>(iter: Iter) -> TrieMap<T> {
+impl<T, U: Extendable<T>> FromIterator<(uint, T)> for TrieMap<U> {
+    fn from_iter<Iter: Iterator<(uint, T)>>(iter: Iter) -> TrieMap<U> {
         let mut map = TrieMap::new();
         map.extend(iter);
         map
     }
 }
 
-impl<T> Extendable<(uint, T)> for TrieMap<T> {
+impl<T, U: Extendable<T>> Extendable<(uint, T)> for TrieMap<U> {
     fn extend<Iter: Iterator<(uint, T)>>(&mut self, mut iter: Iter) {
         for (k, v) in iter {
+            match self.find_mut(&k) {
+                Some(found) => {
+                    found.extend(Some(v).move_iter());
+                    continue
+                }
+                None => {}
+            }
+
+            let v = FromIterator::from_iter(Some(v).move_iter());
             self.insert(k, v);
         }
     }
@@ -1160,19 +1190,22 @@ mod test_map {
 
     #[test]
     fn test_from_iter() {
-        let xs = vec![(1u, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        let xs = vec![(1, 'H'), (2, 'B'), (3, 'i'), (4, 'y'), (5, '!'), (6, 'e')];
 
-        let map: TrieMap<int> = xs.iter().map(|&x| x).collect();
+        let map = xs.iter().map(|&(k, v)| (k % 2, v)).collect::<TrieMap<String>>();
 
-        for &(k, v) in xs.iter() {
-            assert_eq!(map.find(&k), Some(&v));
-        }
+        assert_eq!(map.find(&1).map(|s| s.as_slice()), Some("Hi!"));
+        assert_eq!(map.find(&0).map(|s| s.as_slice()), Some("Bye"));
     }
 
     #[test]
     fn test_keys() {
         let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
-        let map = vec.move_iter().collect::<TrieMap<char>>();
+        let mut map = TrieMap::new();
+        for (k, v) in vec.move_iter() {
+            map.insert(k, v);
+        }
+
         let keys = map.keys().collect::<Vec<uint>>();
         assert_eq!(keys.len(), 3);
         assert!(keys.contains(&1));
@@ -1183,7 +1216,11 @@ mod test_map {
     #[test]
     fn test_values() {
         let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
-        let map = vec.move_iter().collect::<TrieMap<char>>();
+        let mut map = TrieMap::new();
+        for (k, v) in vec.move_iter() {
+            map.insert(k, v);
+        }
+
         let values = map.values().map(|&v| v).collect::<Vec<char>>();
         assert_eq!(values.len(), 3);
         assert!(values.contains(&'a'));
