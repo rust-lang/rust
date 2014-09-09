@@ -56,13 +56,13 @@ pub struct Context<'a, 'tcx: 'a> {
     parameter_environments: Vec<ParameterEnvironment>,
 }
 
-impl<'a, 'tcx> Visitor for Context<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         check_expr(self, ex);
     }
 
-    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &FnDecl,
-                b: &Block, s: Span, n: NodeId) {
+    fn visit_fn(&mut self, fk: visit::FnKind, fd: &'v FnDecl,
+                b: &'v Block, s: Span, n: NodeId) {
         check_fn(self, fk, fd, b, s, n);
     }
 
@@ -341,7 +341,7 @@ fn with_appropriate_checker(cx: &Context,
 // to the copy/move kind bounds. Then recursively check the function body.
 fn check_fn(
     cx: &mut Context,
-    fk: &visit::FnKind,
+    fk: visit::FnKind,
     decl: &FnDecl,
     body: &Block,
     sp: Span,
@@ -356,7 +356,7 @@ fn check_fn(
         });
     });
 
-    match *fk {
+    match fk {
         visit::FkFnBlock(..) => {
             let ty = ty::node_id_to_type(cx.tcx, fn_id);
             check_bounds_on_structs_or_enums_in_type_if_possible(cx, sp, ty);

@@ -119,14 +119,15 @@ enum WitnessPreference {
     LeaveOutWitness
 }
 
-impl<'a, 'tcx> Visitor for MatchCheckCtxt<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         check_expr(self, ex);
     }
     fn visit_local(&mut self, l: &Local) {
         check_local(self, l);
     }
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, _: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
+                b: &'v Block, s: Span, _: NodeId) {
         check_fn(self, fk, fd, b, s);
     }
 }
@@ -868,7 +869,7 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
 }
 
 fn check_fn(cx: &mut MatchCheckCtxt,
-            kind: &FnKind,
+            kind: FnKind,
             decl: &FnDecl,
             body: &Block,
             sp: Span) {
@@ -1022,7 +1023,7 @@ struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
     bindings_allowed: bool
 }
 
-impl<'a, 'b, 'tcx> Visitor for AtBindingPatternVisitor<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
     fn visit_pat(&mut self, pat: &Pat) {
         if !self.bindings_allowed && pat_is_binding(&self.cx.tcx.def_map, pat) {
             self.cx.tcx.sess.span_err(pat.span,

@@ -237,7 +237,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for MarkSymbolVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
 
     fn visit_struct_def(&mut self, def: &ast::StructDef, _: ast::Ident,
                         _: &ast::Generics, _: ast::NodeId) {
@@ -329,7 +329,7 @@ struct LifeSeeder {
     worklist: Vec<ast::NodeId> ,
 }
 
-impl Visitor for LifeSeeder {
+impl<'v> Visitor<'v> for LifeSeeder {
     fn visit_item(&mut self, item: &ast::Item) {
         if has_allow_dead_code_or_lang_attr(item.attrs.as_slice()) {
             self.worklist.push(item.id);
@@ -349,11 +349,11 @@ impl Visitor for LifeSeeder {
         visit::walk_item(self, item);
     }
 
-    fn visit_fn(&mut self, fk: &visit::FnKind,
-                _: &ast::FnDecl, block: &ast::Block,
+    fn visit_fn(&mut self, fk: visit::FnKind<'v>,
+                _: &'v ast::FnDecl, block: &'v ast::Block,
                 _: codemap::Span, id: ast::NodeId) {
         // Check for method here because methods are not ast::Item
-        match *fk {
+        match fk {
             visit::FkMethod(_, _, method) => {
                 if has_allow_dead_code_or_lang_attr(method.attrs.as_slice()) {
                     self.worklist.push(id);
@@ -499,7 +499,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for DeadVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
         let ctor_id = get_struct_ctor_id(item);
         if !self.symbol_is_live(item.id, ctor_id) && should_warn(item) {
@@ -515,15 +515,14 @@ impl<'a, 'tcx> Visitor for DeadVisitor<'a, 'tcx> {
         visit::walk_foreign_item(self, fi);
     }
 
-    fn visit_fn(&mut self, fk: &visit::FnKind,
-                _: &ast::FnDecl, block: &ast::Block,
+    fn visit_fn(&mut self, fk: visit::FnKind<'v>,
+                _: &'v ast::FnDecl, block: &'v ast::Block,
                 span: codemap::Span, id: ast::NodeId) {
         // Have to warn method here because methods are not ast::Item
-        match *fk {
-            visit::FkMethod(..) => {
-                let ident = visit::name_of_fn(fk);
+        match fk {
+            visit::FkMethod(name, _, _) => {
                 if !self.symbol_is_live(id, None) {
-                    self.warn_dead_code(id, span, ident);
+                    self.warn_dead_code(id, span, name);
                 }
             }
             _ => ()

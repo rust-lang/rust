@@ -41,7 +41,7 @@ struct EntryContext<'a> {
     non_main_fns: Vec<(NodeId, Span)> ,
 }
 
-impl<'a> Visitor for EntryContext<'a> {
+impl<'a, 'v> Visitor<'v> for EntryContext<'a> {
     fn visit_item(&mut self, item: &Item) {
         find_item(item, self);
     }

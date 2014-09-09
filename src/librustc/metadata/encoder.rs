@@ -1473,7 +1473,7 @@ struct EncodeVisitor<'a,'b:'a> {
     index: &'a mut Vec<entry<i64>>,
 }
 
-impl<'a,'b> visit::Visitor for EncodeVisitor<'a,'b> {
+impl<'a, 'b, 'v> Visitor<'v> for EncodeVisitor<'a, 'b> {
     fn visit_expr(&mut self, ex: &Expr) {
         visit::walk_expr(self, ex);
         my_visit_expr(ex);
@@ -1775,7 +1775,7 @@ fn encode_struct_field_attrs(rbml_w: &mut Encoder, krate: &Crate) {
         rbml_w: &'a mut Encoder<'b>,
     }
 
-    impl<'a, 'b> Visitor for StructFieldVisitor<'a, 'b> {
+    impl<'a, 'b, 'v> Visitor<'v> for StructFieldVisitor<'a, 'b> {
         fn visit_struct_field(&mut self, field: &ast::StructField) {
             self.rbml_w.start_tag(tag_struct_field);
             self.rbml_w.wr_tagged_u32(tag_struct_field_id, field.node.id);
@@ -1798,7 +1798,7 @@ struct ImplVisitor<'a, 'b:'a, 'c:'a, 'tcx:'b> {
     rbml_w: &'a mut Encoder<'c>,
 }
 
-impl<'a, 'b, 'c, 'tcx> Visitor for ImplVisitor<'a, 'b, 'c, 'tcx> {
+impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         match item.node {
             ItemImpl(_, Some(ref trait_ref), _, _) => {

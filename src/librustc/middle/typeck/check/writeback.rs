@@ -106,7 +106,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 // below. In general, a function is made into a `visitor` if it must
 // traffic in node-ids or update tables in the type context etc.
 
-impl<'cx, 'tcx> Visitor for WritebackCx<'cx, 'tcx> {
+impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
     fn visit_item(&mut self, _: &ast::Item) {
         // Ignore items
     }
@@ -120,7 +120,7 @@ impl<'cx, 'tcx> Visitor for WritebackCx<'cx, 'tcx> {
         visit::walk_stmt(self, s);
     }
 
-    fn visit_expr(&mut self, e:&ast::Expr) {
+    fn visit_expr(&mut self, e: &ast::Expr) {
         if self.fcx.writeback_errors.get() {
             return;
         }

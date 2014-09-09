@@ -1025,7 +1025,7 @@ pub fn trans_resolve_method(tcx: &ty::ctxt, id: ast::NodeId,
                    false)
 }
 
-impl<'a, 'b, 'tcx> visit::Visitor for &'a FnCtxt<'b, 'tcx> {
+impl<'a, 'b, 'tcx, 'v> Visitor<'v> for &'a FnCtxt<'b, 'tcx> {
     fn visit_expr(&mut self, ex: &ast::Expr) {
         early_resolve_expr(ex, *self, false);
         visit::walk_expr(self, ex);

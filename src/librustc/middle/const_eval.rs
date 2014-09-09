@@ -268,7 +268,7 @@ impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
 
 }
 
-impl<'a, 'tcx> Visitor for ConstEvalVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for ConstEvalVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &Ty) {
         match t.node {
             TyFixedLengthVec(_, expr) => {

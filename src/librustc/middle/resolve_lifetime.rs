@@ -84,7 +84,7 @@ pub fn krate(sess: &Session, krate: &ast::Crate) -> NamedRegionMap {
     named_region_map
 }
 
-impl<'a> Visitor for LifetimeContext<'a> {
+impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     fn visit_item(&mut self, item: &ast::Item) {
         let lifetimes = match item.node {
             ast::ItemFn(..) | // fn lifetimes get added in visit_fn below
@@ -110,9 +110,9 @@ impl<'a> Visitor for LifetimeContext<'a> {
         });
     }
 
-    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
-                b: &ast::Block, s: Span, n: ast::NodeId) {
-        match *fk {
+    fn visit_fn(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
+                b: &'v ast::Block, s: Span, n: ast::NodeId) {
+        match fk {
             visit::FkItemFn(_, generics, _, _) |
             visit::FkMethod(_, generics, _) => {
                 self.visit_fn_decl(n, generics, |v| visit::walk_fn(v, fk, fd, b, s))
@@ -450,7 +450,7 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
         late_bound: &'a mut Vec<ast::Name>,
     }
 
-    impl<'a> Visitor for FreeLifetimeCollector<'a> {
+    impl<'a, 'v> Visitor<'v> for FreeLifetimeCollector<'a> {
         fn visit_lifetime_ref(&mut self, lifetime_ref: &ast::Lifetime) {
             shuffle(self.early_bound, self.late_bound,
                     lifetime_ref.name);

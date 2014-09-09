@@ -479,7 +479,7 @@ impl<'fcx, 'tcx> mc::Typer<'tcx> for Rcx<'fcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for Rcx<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for Rcx<'a, 'tcx> {
     // (..) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
     // However, right now we run into an issue whereby some free
     // regions are not properly related if they appear within the
@@ -488,8 +488,8 @@ impl<'a, 'tcx> Visitor for Rcx<'a, 'tcx> {
     // hierarchy, and in particular the relationships between free
     // regions, until regionck, as described in #3238.
 
-    fn visit_fn(&mut self, _fk: &visit::FnKind, _fd: &ast::FnDecl,
-                b: &ast::Block, _s: Span, id: ast::NodeId) {
+    fn visit_fn(&mut self, _fk: visit::FnKind<'v>, _fd: &'v ast::FnDecl,
+                b: &'v ast::Block, _s: Span, id: ast::NodeId) {
         self.visit_fn_body(id, b)
     }
 

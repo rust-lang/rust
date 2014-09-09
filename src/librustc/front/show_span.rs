@@ -23,7 +23,7 @@ struct ShowSpanVisitor<'a> {
     sess: &'a Session
 }
 
-impl<'a> Visitor for ShowSpanVisitor<'a> {
+impl<'a, 'v> Visitor<'v> for ShowSpanVisitor<'a> {
     fn visit_expr(&mut self, e: &ast::Expr) {
         self.sess.span_note(e.span, "expression");
         visit::walk_expr(self, e);

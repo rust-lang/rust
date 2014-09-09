@@ -322,7 +322,7 @@ mod svh_visitor {
     }
     fn content<K:InternKey>(k: K) -> token::InternedString { k.get_content() }
 
-    impl<'a> Visitor for StrictVersionHashVisitor<'a> {
+    impl<'a, 'v> Visitor<'v> for StrictVersionHashVisitor<'a> {
 
         fn visit_mac(&mut self, macro: &Mac) {
             // macro invocations, namely macro_rules definitions,
@@ -469,7 +469,8 @@ mod svh_visitor {
             SawGenerics.hash(self.st); visit::walk_generics(self, g)
         }
 
-        fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, _: NodeId) {
+        fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
+                    b: &'v Block, s: Span, _: NodeId) {
             SawFn.hash(self.st); visit::walk_fn(self, fk, fd, b, s)
         }
 

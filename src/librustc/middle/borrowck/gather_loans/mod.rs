@@ -471,7 +471,7 @@ struct StaticInitializerCtxt<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx> Visitor for StaticInitializerCtxt<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         match ex.node {
             ast::ExprAddrOf(mutbl, ref base) => {

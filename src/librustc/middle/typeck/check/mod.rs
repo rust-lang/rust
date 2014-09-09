@@ -375,7 +375,7 @@ fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>)
 struct CheckItemTypesVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
 struct CheckTypeWellFormedVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
 
-impl<'a, 'tcx> Visitor for CheckTypeWellFormedVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
         check_type_well_formed(self.ccx, i);
         visit::walk_item(self, i);
@@ -383,7 +383,7 @@ impl<'a, 'tcx> Visitor for CheckTypeWellFormedVisitor<'a, 'tcx> {
 }
 
 
-impl<'a, 'tcx> Visitor for CheckItemTypesVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for CheckItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
         check_item(self.ccx, i);
         visit::walk_item(self, i);
@@ -394,7 +394,7 @@ struct CheckItemSizedTypesVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx> Visitor for CheckItemSizedTypesVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for CheckItemSizedTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
         check_item_sized(self.ccx, i);
         visit::walk_item(self, i);
@@ -464,7 +464,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for GatherLocalsVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
     // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &ast::Local) {
         let o_ty = match local.ty.node {
@@ -516,8 +516,8 @@ impl<'a, 'tcx> Visitor for GatherLocalsVisitor<'a, 'tcx> {
     }
 
     // Don't descend into fns and items
-    fn visit_fn(&mut self, _: &visit::FnKind, _: &ast::FnDecl,
-                _: &ast::Block, _: Span, _: ast::NodeId) { }
+    fn visit_fn(&mut self, _: visit::FnKind<'v>, _: &'v ast::FnDecl,
+                _: &'v ast::Block, _: Span, _: ast::NodeId) { }
     fn visit_item(&mut self, _: &ast::Item) { }
 
 }

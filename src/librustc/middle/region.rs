@@ -796,7 +796,7 @@ fn resolve_item(visitor: &mut RegionResolutionVisitor, item: &ast::Item) {
 }
 
 fn resolve_fn(visitor: &mut RegionResolutionVisitor,
-              fk: &FnKind,
+              fk: FnKind,
               decl: &ast::FnDecl,
               body: &ast::Block,
               sp: Span,
@@ -821,7 +821,7 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
 
     // The body of the fn itself is either a root scope (top-level fn)
     // or it continues with the inherited scope (closures).
-    match *fk {
+    match fk {
         visit::FkItemFn(..) | visit::FkMethod(..) => {
             visitor.cx = Context { parent: None, var_parent: None };
             visitor.visit_block(body);
@@ -841,7 +841,7 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
     }
 }
 
-impl<'a> Visitor for RegionResolutionVisitor<'a> {
+impl<'a, 'v> Visitor<'v> for RegionResolutionVisitor<'a> {
 
     fn visit_block(&mut self, b: &Block) {
         resolve_block(self, b);
@@ -851,8 +851,8 @@ impl<'a> Visitor for RegionResolutionVisitor<'a> {
         resolve_item(self, i);
     }
 
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl,
-                b: &Block, s: Span, n: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
+                b: &'v Block, s: Span, n: NodeId) {
         resolve_fn(self, fk, fd, b, s, n);
     }
     fn visit_arm(&mut self, a: &Arm) {

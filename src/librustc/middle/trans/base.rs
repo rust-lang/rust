@@ -1335,7 +1335,7 @@ impl CheckForNestedReturnsVisitor {
     }
 }
 
-impl Visitor for CheckForNestedReturnsVisitor {
+impl<'v> Visitor<'v> for CheckForNestedReturnsVisitor {
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
             ast::ExprRet(..) => {
@@ -1360,7 +1360,7 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                     let mut explicit = CheckForNestedReturnsVisitor::explicit();
                     let mut implicit = CheckForNestedReturnsVisitor::implicit();
                     visit::walk_item(&mut explicit, &*i);
-                    visit::walk_expr_opt(&mut implicit, blk.expr);
+                    visit::walk_expr_opt(&mut implicit, &blk.expr);
                     explicit.found || implicit.found
                 }
                 _ => tcx.sess.bug("unexpected item variant in has_nested_returns")
@@ -1374,7 +1374,7 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                             let mut explicit = CheckForNestedReturnsVisitor::explicit();
                             let mut implicit = CheckForNestedReturnsVisitor::implicit();
                             visit::walk_method_helper(&mut explicit, &*m);
-                            visit::walk_expr_opt(&mut implicit, blk.expr);
+                            visit::walk_expr_opt(&mut implicit, &blk.expr);
                             explicit.found || implicit.found
                         }
                         ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
@@ -1394,7 +1394,7 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                             let mut explicit = CheckForNestedReturnsVisitor::explicit();
                             let mut implicit = CheckForNestedReturnsVisitor::implicit();
                             visit::walk_method_helper(&mut explicit, &**m);
-                            visit::walk_expr_opt(&mut implicit, blk.expr);
+                            visit::walk_expr_opt(&mut implicit, &blk.expr);
                             explicit.found || implicit.found
                         }
                         ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
@@ -1410,7 +1410,7 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                     let mut explicit = CheckForNestedReturnsVisitor::explicit();
                     let mut implicit = CheckForNestedReturnsVisitor::implicit();
                     visit::walk_expr(&mut explicit, &*e);
-                    visit::walk_expr_opt(&mut implicit, blk.expr);
+                    visit::walk_expr_opt(&mut implicit, &blk.expr);
                     explicit.found || implicit.found
                 }
                 _ => tcx.sess.bug("unexpected expr variant in has_nested_returns")
@@ -2141,7 +2141,7 @@ pub struct TransItemVisitor<'a, 'tcx: 'a> {
     pub ccx: &'a CrateContext<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> Visitor for TransItemVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for TransItemVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
         trans_item(self.ccx, i);
     }

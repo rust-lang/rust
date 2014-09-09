@@ -62,7 +62,7 @@ struct LoopQueryVisitor<'a> {
     flag: bool,
 }
 
-impl<'a> Visitor for LoopQueryVisitor<'a> {
+impl<'a, 'v> Visitor<'v> for LoopQueryVisitor<'a> {
     fn visit_expr(&mut self, e: &ast::Expr) {
         self.flag |= (self.p)(&e.node);
         match e.node {
@@ -90,7 +90,7 @@ struct BlockQueryVisitor<'a> {
     flag: bool,
 }
 
-impl<'a> Visitor for BlockQueryVisitor<'a> {
+impl<'a, 'v> Visitor<'v> for BlockQueryVisitor<'a> {
     fn visit_expr(&mut self, e: &ast::Expr) {
         self.flag |= (self.p)(e);
         visit::walk_expr(self, e)
