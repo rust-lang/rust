@@ -105,7 +105,7 @@ impl<'a> Context<'a> {
     }
 }
 
-impl<'a> Visitor for Context<'a> {
+impl<'a, 'v> Visitor<'v> for Context<'a> {
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
         match lang_items::extract(i.attrs.as_slice()) {
             None => {}

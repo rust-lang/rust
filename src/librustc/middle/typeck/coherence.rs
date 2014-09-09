@@ -191,7 +191,7 @@ struct CoherenceCheckVisitor<'a, 'tcx: 'a> {
     cc: &'a CoherenceChecker<'a, 'tcx>
 }
 
-impl<'a, 'tcx> visit::Visitor for CoherenceCheckVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> visit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
 
         //debug!("(checking coherence) item '{}'", token::get_ident(item.ident));
@@ -218,7 +218,7 @@ struct PrivilegedScopeVisitor<'a, 'tcx: 'a> {
     cc: &'a CoherenceChecker<'a, 'tcx>
 }
 
-impl<'a, 'tcx> visit::Visitor for PrivilegedScopeVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> visit::Visitor<'v> for PrivilegedScopeVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
 
         match item.node {

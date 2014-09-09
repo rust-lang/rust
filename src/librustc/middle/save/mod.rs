@@ -833,7 +833,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                           ex: &ast::Expr,
                           path: &ast::Path,
                           fields: &Vec<ast::Field>,
-                          base: Option<Gc<ast::Expr>>) {
+                          base: &Option<Gc<ast::Expr>>) {
         if generated_code(path.span) {
             return
         }
@@ -1018,8 +1018,8 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
     }
 }
 
-impl<'l, 'tcx> Visitor for DxrVisitor<'l, 'tcx> {
-    fn visit_item(&mut self, item:&ast::Item) {
+impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
+    fn visit_item(&mut self, item: &ast::Item) {
         if generated_code(item.span) {
             return
         }
@@ -1082,16 +1082,16 @@ impl<'l, 'tcx> Visitor for DxrVisitor<'l, 'tcx> {
     // We don't actually index functions here, that is done in visit_item/ItemFn.
     // Here we just visit methods.
     fn visit_fn(&mut self,
-                fk: &visit::FnKind,
-                fd: &ast::FnDecl,
-                b: &ast::Block,
+                fk: visit::FnKind<'v>,
+                fd: &'v ast::FnDecl,
+                b: &'v ast::Block,
                 s: Span,
                 _: NodeId) {
         if generated_code(s) {
             return;
         }
 
-        match *fk {
+        match fk {
             visit::FkMethod(_, _, method) => self.process_method(method),
             _ => visit::walk_fn(self, fk, fd, b, s),
         }
@@ -1143,7 +1143,7 @@ impl<'l, 'tcx> Visitor for DxrVisitor<'l, 'tcx> {
         }
     }
 
-    fn visit_view_item(&mut self, i:&ast::ViewItem) {
+    fn visit_view_item(&mut self, i: &ast::ViewItem) {
         if generated_code(i.span) {
             return
         }
@@ -1275,7 +1275,7 @@ impl<'l, 'tcx> Visitor for DxrVisitor<'l, 'tcx> {
                 visit::walk_expr(self, ex);
             },
             ast::ExprPath(ref path) => self.process_path(ex, path),
-            ast::ExprStruct(ref path, ref fields, base) =>
+            ast::ExprStruct(ref path, ref fields, ref base) =>
                 self.process_struct_lit(ex, path, fields, base),
             ast::ExprMethodCall(_, _, ref args) => self.process_method_call(ex, args),
             ast::ExprField(sub_ex, ident, _) => {
@@ -1410,11 +1410,11 @@ impl<'l, 'tcx> Visitor for DxrVisitor<'l, 'tcx> {
             }
         }
         self.collected_paths.clear();
-        visit::walk_expr_opt(self, arm.guard);
+        visit::walk_expr_opt(self, &arm.guard);
         self.visit_expr(&*arm.body);
     }
 
-    fn visit_stmt(&mut self, s:&ast::Stmt) {
+    fn visit_stmt(&mut self, s: &ast::Stmt) {
         if generated_code(s.span) {
             return
         }
@@ -1422,7 +1422,7 @@ impl<'l, 'tcx> Visitor for DxrVisitor<'l, 'tcx> {
         visit::walk_stmt(self, s)
     }
 
-    fn visit_local(&mut self, l:&ast::Local) {
+    fn visit_local(&mut self, l: &ast::Local) {
         if generated_code(l.span) {
             return
         }
@@ -1455,7 +1455,7 @@ impl<'l, 'tcx> Visitor for DxrVisitor<'l, 'tcx> {
 
         // Just walk the initialiser and type (don't want to walk the pattern again).
         self.visit_ty(&*l.ty);
-        visit::walk_expr_opt(self, l.init);
+        visit::walk_expr_opt(self, &l.init);
     }
 }
 

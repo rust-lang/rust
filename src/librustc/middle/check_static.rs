@@ -69,7 +69,7 @@ impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for CheckStaticVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
         debug!("visit_item(item={})", pprust::item_to_string(i));
         match i.node {

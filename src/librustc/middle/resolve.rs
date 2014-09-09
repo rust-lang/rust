@@ -185,7 +185,7 @@ enum NameDefinition {
     ImportNameDefinition(Def, LastPrivate) //< The name identifies an import.
 }
 
-impl<'a> Visitor for Resolver<'a> {
+impl<'a, 'v> Visitor<'v> for Resolver<'a> {
     fn visit_item(&mut self, item: &Item) {
         self.resolve_item(item);
     }
@@ -906,7 +906,7 @@ struct BuildReducedGraphVisitor<'a, 'b:'a> {
     parent: ReducedGraphParent
 }
 
-impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
+impl<'a, 'b, 'v> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_item(&mut self, item: &Item) {
         let p = self.resolver.build_reduced_graph_for_item(item, self.parent.clone());
@@ -945,7 +945,7 @@ struct UnusedImportCheckVisitor<'a, 'b:'a> {
     resolver: &'a mut Resolver<'b>
 }
 
-impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
+impl<'a, 'b, 'v> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b> {
     fn visit_view_item(&mut self, vi: &ViewItem) {
         self.resolver.check_for_item_unused_imports(vi);
         visit::walk_view_item(self, vi);
@@ -4593,7 +4593,7 @@ impl<'a> Resolver<'a> {
         // pat_idents are variants
         self.check_consistent_bindings(arm);
 
-        visit::walk_expr_opt(self, arm.guard);
+        visit::walk_expr_opt(self, &arm.guard);
         self.resolve_expr(&*arm.body);
 
         self.value_ribs.borrow_mut().pop();

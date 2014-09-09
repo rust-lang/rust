@@ -59,13 +59,14 @@ impl Annotator {
     }
 }
 
-impl Visitor for Annotator {
+impl<'v> Visitor<'v> for Annotator {
     fn visit_item(&mut self, i: &Item) {
         self.annotate(i.id, &i.attrs, |v| visit::walk_item(v, i));
     }
 
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, _: NodeId) {
-        match *fk {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
+                b: &'v Block, s: Span, _: NodeId) {
+        match fk {
             FkMethod(_, _, meth) => {
                 self.annotate(meth.id, &meth.attrs, |v| visit::walk_fn(v, fk, fd, b, s));
             }
@@ -85,7 +86,7 @@ impl Visitor for Annotator {
         self.annotate(id, attrs, |v| visit::walk_trait_item(v, t));
     }
 
-    fn visit_variant(&mut self, var: &Variant, g: &Generics) {
+    fn visit_variant(&mut self, var: &Variant, g: &'v Generics) {
         self.annotate(var.node.id, &var.node.attrs, |v| visit::walk_variant(v, var, g))
     }
 

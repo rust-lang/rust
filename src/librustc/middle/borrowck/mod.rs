@@ -60,9 +60,9 @@ pub struct LoanDataFlowOperator;
 
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
-impl<'a, 'tcx> Visitor for BorrowckCtxt<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl,
-                b: &Block, s: Span, n: NodeId) {
+impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
+                b: &'v Block, s: Span, n: NodeId) {
         borrowck_fn(self, fk, fd, b, s, n);
     }
 
@@ -127,7 +127,7 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
 }
 
 fn borrowck_fn(this: &mut BorrowckCtxt,
-               fk: &FnKind,
+               fk: FnKind,
                decl: &ast::FnDecl,
                body: &ast::Block,
                sp: Span,
@@ -146,7 +146,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
-                                          fk: &FnKind,
+                                          fk: FnKind,
                                           decl: &ast::FnDecl,
                                           cfg: &cfg::CFG,
                                           body: &ast::Block,
@@ -217,7 +217,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     let p = input.fn_parts;
 
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx,
-                                                     &p.kind,
+                                                     p.kind,
                                                      &*p.decl,
                                                      input.cfg,
                                                      &*p.body,

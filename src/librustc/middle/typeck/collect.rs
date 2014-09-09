@@ -99,7 +99,7 @@ struct CollectTraitDefVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx> visit::Visitor for CollectTraitDefVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> visit::Visitor<'v> for CollectTraitDefVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
         match i.node {
             ast::ItemTrait(..) => {
@@ -120,7 +120,7 @@ struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx> visit::Visitor for CollectItemTypesVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> visit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
         convert(self.ccx, i);
         visit::walk_item(self, i);

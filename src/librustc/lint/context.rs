@@ -492,7 +492,7 @@ impl<'a, 'tcx> AstConv<'tcx> for Context<'a, 'tcx>{
     }
 }
 
-impl<'a, 'tcx> Visitor for Context<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     fn visit_item(&mut self, it: &ast::Item) {
         self.with_lint_attrs(it.attrs.as_slice(), |cx| {
             run_lints!(cx, check_item, it);
@@ -531,9 +531,9 @@ impl<'a, 'tcx> Visitor for Context<'a, 'tcx> {
         visit::walk_stmt(self, s);
     }
 
-    fn visit_fn(&mut self, fk: &FnKind, decl: &ast::FnDecl,
-                body: &ast::Block, span: Span, id: ast::NodeId) {
-        match *fk {
+    fn visit_fn(&mut self, fk: FnKind<'v>, decl: &'v ast::FnDecl,
+                body: &'v ast::Block, span: Span, id: ast::NodeId) {
+        match fk {
             visit::FkMethod(_, _, m) => {
                 self.with_lint_attrs(m.attrs.as_slice(), |cx| {
                     run_lints!(cx, check_fn, fk, decl, body, span, id);

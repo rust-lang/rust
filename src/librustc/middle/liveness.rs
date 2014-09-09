@@ -179,8 +179,9 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
     }
 }
 
-impl<'a, 'tcx> Visitor for IrMaps<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId) {
+impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
+                b: &'v Block, s: Span, n: NodeId) {
         visit_fn(self, fk, fd, b, s, n);
     }
     fn visit_local(&mut self, l: &Local) { visit_local(self, l); }
@@ -343,8 +344,8 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor for Liveness<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId) {
+impl<'a, 'tcx, 'v> Visitor<'v> for Liveness<'a, 'tcx> {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: &'v Block, s: Span, n: NodeId) {
         check_fn(self, fk, fd, b, s, n);
     }
     fn visit_local(&mut self, l: &Local) {
@@ -359,7 +360,7 @@ impl<'a, 'tcx> Visitor for Liveness<'a, 'tcx> {
 }
 
 fn visit_fn(ir: &mut IrMaps,
-            fk: &FnKind,
+            fk: FnKind,
             decl: &FnDecl,
             body: &Block,
             sp: Span,
@@ -1462,7 +1463,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
 }
 
 fn check_fn(_v: &Liveness,
-            _fk: &FnKind,
+            _fk: FnKind,
             _decl: &FnDecl,
             _body: &Block,
             _sp: Span,
@@ -1474,7 +1475,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_ret(&self,
                  id: NodeId,
                  sp: Span,
-                 _fk: &FnKind,
+                 _fk: FnKind,
                  entry_ln: LiveNode,
                  body: &Block) {
         if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {

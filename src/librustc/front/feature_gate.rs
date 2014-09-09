@@ -143,7 +143,7 @@ impl<'a> Context<'a> {
     }
 }
 
-impl<'a> Visitor for Context<'a> {
+impl<'a, 'v> Visitor<'v> for Context<'a> {
     fn visit_ident(&mut self, sp: Span, id: ast::Ident) {
         if !token::get_ident(id).get().is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
@@ -386,13 +386,13 @@ impl<'a> Visitor for Context<'a> {
     }
 
     fn visit_fn(&mut self,
-                fn_kind: &visit::FnKind,
-                fn_decl: &ast::FnDecl,
-                block: &ast::Block,
+                fn_kind: visit::FnKind<'v>,
+                fn_decl: &'v ast::FnDecl,
+                block: &'v ast::Block,
                 span: Span,
                 _: NodeId) {
-        match *fn_kind {
-            visit::FkItemFn(_, _, _, ref abi) if *abi == RustIntrinsic => {
+        match fn_kind {
+            visit::FkItemFn(_, _, _, abi) if abi == RustIntrinsic => {
                 self.gate_feature("intrinsics",
                                   span,
                                   "intrinsics are subject to change")

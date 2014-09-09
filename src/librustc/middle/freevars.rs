@@ -53,7 +53,7 @@ struct CollectFreevarsVisitor<'a> {
     depth: uint
 }
 
-impl<'a> Visitor for CollectFreevarsVisitor<'a> {
+impl<'a, 'v> Visitor<'v> for CollectFreevarsVisitor<'a> {
     fn visit_item(&mut self, _: &ast::Item) {
         // ignore_item
     }
@@ -144,9 +144,9 @@ struct AnnotateFreevarsVisitor<'a> {
     capture_mode_map: CaptureModeMap,
 }
 
-impl<'a> Visitor for AnnotateFreevarsVisitor<'a> {
-    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
-                blk: &ast::Block, s: Span, nid: ast::NodeId) {
+impl<'a, 'v> Visitor<'v> for AnnotateFreevarsVisitor<'a> {
+    fn visit_fn(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
+                blk: &'v ast::Block, s: Span, nid: ast::NodeId) {
         let vars = collect_freevars(self.def_map,
                                     blk,
                                     &mut self.capture_mode_map);

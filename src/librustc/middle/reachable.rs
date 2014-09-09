@@ -101,7 +101,7 @@ struct ReachableContext<'a, 'tcx: 'a> {
     any_library: bool,
 }
 
-impl<'a, 'tcx> Visitor for ReachableContext<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &ast::Expr) {
 

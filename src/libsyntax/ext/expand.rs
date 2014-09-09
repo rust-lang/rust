@@ -651,7 +651,7 @@ struct PatIdentFinder {
     ident_accumulator: Vec<ast::Ident>
 }
 
-impl Visitor for PatIdentFinder {
+impl<'v> Visitor<'v> for PatIdentFinder {
     fn visit_pat(&mut self, pattern: &ast::Pat) {
         match *pattern {
             ast::Pat { id: _, node: ast::PatIdent(_, ref path1, ref inner), span: _ } => {
@@ -1107,7 +1107,7 @@ struct MacroExterminator<'a>{
     sess: &'a parse::ParseSess
 }
 
-impl<'a> Visitor for MacroExterminator<'a> {
+impl<'a, 'v> Visitor<'v> for MacroExterminator<'a> {
     fn visit_mac(&mut self, macro: &ast::Mac) {
         self.sess.span_diagnostic.span_bug(macro.span,
                                            "macro exterminator: expected AST \
@@ -1144,7 +1144,7 @@ mod test {
         path_accumulator: Vec<ast::Path> ,
     }
 
-    impl Visitor for PathExprFinderContext {
+    impl<'v> Visitor<'v> for PathExprFinderContext {
         fn visit_expr(&mut self, expr: &ast::Expr) {
             match expr.node {
                 ast::ExprPath(ref p) => {
@@ -1169,7 +1169,7 @@ mod test {
         ident_accumulator: Vec<ast::Ident>
     }
 
-    impl Visitor for IdentFinder {
+    impl<'v> Visitor<'v> for IdentFinder {
         fn visit_ident(&mut self, _: codemap::Span, id: ast::Ident){
             self.ident_accumulator.push(id);
         }

@@ -30,11 +30,11 @@ struct RvalueContext<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>
 }
 
-impl<'a, 'tcx> visit::Visitor for RvalueContext<'a, 'tcx> {
+impl<'a, 'tcx, 'v> visit::Visitor<'v> for RvalueContext<'a, 'tcx> {
     fn visit_fn(&mut self,
-                _: &visit::FnKind,
-                fd: &ast::FnDecl,
-                b: &ast::Block,
+                _: visit::FnKind<'v>,
+                fd: &'v ast::FnDecl,
+                b: &'v ast::Block,
                 _: Span,
                 _: ast::NodeId) {
         let mut euv = euv::ExprUseVisitor::new(self, self.tcx);

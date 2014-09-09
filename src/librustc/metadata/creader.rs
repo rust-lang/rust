@@ -54,7 +54,7 @@ pub fn read_crates(sess: &Session,
     warn_if_multiple_versions(sess.diagnostic(), &sess.cstore)
 }
 
-impl<'a> visit::Visitor for Env<'a> {
+impl<'a, 'v> visit::Visitor<'v> for Env<'a> {
     fn visit_view_item(&mut self, a: &ast::ViewItem) {
         visit_view_item(self, a);
         visit::walk_view_item(self, a);
