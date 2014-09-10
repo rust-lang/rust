@@ -15,7 +15,11 @@ rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) \
 
 ifndef CFG_DISABLE_MANAGE_SUBMODULES
 # This is a pretty expensive operation but I don't see any way to avoid it
-NEED_GIT_RECONFIG=$(shell cd "$(CFG_SRC_DIR)" && "$(CFG_GIT)" submodule status | grep -c '^\(+\|-\)')
+# NB: This only looks for '+' status (wrong commit checked out), not '-' status
+# (nothing checked out at all).  `./configure --{llvm,jemalloc,libuv}-root`
+# will explicitly deinitialize the corresponding submodules, and we don't
+# want to force constant rebuilds in that case.
+NEED_GIT_RECONFIG=$(shell cd "$(CFG_SRC_DIR)" && "$(CFG_GIT)" submodule status | grep -c '^+')
 else
 NEED_GIT_RECONFIG=0
 endif
