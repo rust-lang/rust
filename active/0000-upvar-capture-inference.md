@@ -24,17 +24,17 @@ For unboxed closures specified with `||`, the capture modes of the free variable
 
 3. Any other variable which is closed over is by-reference and immutably borrowed.
 
-The trait that the unboxed closure implements is `FnOnce` if any variables were moved; otherwise `FnMut` if there are any variables that are closed over and mutably borrowed; otherwise `Fn`.
+The trait that the unboxed closure implements is `FnOnce` if any variables were moved *out* of the closure; otherwise `FnMut` if there are any variables that are closed over and mutably borrowed; otherwise `Fn`.
 
 The `ref` prefix for unboxed closures is removed, since it is now essentially implied.
 
-The `proc()` syntax is repurposed for unboxed closures. The value returned by a `proc()` expression implements the `FnOnce` trait; thus, for example, `proc(x: int, y) x + y` produces an unboxed closure that implements the `FnOnce(int, int) -> int` trait. Free variables referenced by a `proc` are captured by value.
+The `proc()` syntax is repurposed for unboxed closures. The value returned by a `proc()` implements `FnOnce`, `FnMut`, or `Fn`, as determined above; thus, for example, `proc(x: int, y) x + y` produces an unboxed closure that implements the `FnOnce(int, int) -> int` trait. Free variables referenced by a `proc` are always captured by value.
 
 As a transitionary measure, we can keep the leading `:` inside the `||` for unboxed closures, and require `proc(self, ...)` to get the unboxed version.
 
 In the trait reference grammar, we will change the `|&:|` sugar to `Fn()`, the `|&mut:|` sugar to `FnMut()`, and the `|:|` sugar to `FnOnce()`. Thus what was before written `fn foo<F:|&mut: int, int| -> int>()` will be `fn foo<F:FnMut(int, int) -> int>()`.
 
-It is important to note that the trait reference syntax and closure construction syntax are purposefully distinct. This is because either the `||` form or the `proc()` form can construct an `FnOnce` closure.
+It is important to note that the trait reference syntax and closure construction syntax are purposefully distinct. This is because either the `||` form or the `proc()` form can construct any of `FnOnce`, `FnMut`, or `Fn` closures.
 
 # Drawbacks
 
