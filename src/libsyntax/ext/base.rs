@@ -39,11 +39,45 @@ pub struct MacroDef {
     pub ext: SyntaxExtension
 }
 
-pub type ItemDecorator =
-    fn(&mut ExtCtxt, Span, Gc<ast::MetaItem>, Gc<ast::Item>, |Gc<ast::Item>|);
+pub trait ItemDecorator {
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              sp: Span,
+              meta_item: Gc<ast::MetaItem>,
+              item: Gc<ast::Item>,
+              push: |Gc<ast::Item>|);
+}
 
-pub type ItemModifier =
-    fn(&mut ExtCtxt, Span, Gc<ast::MetaItem>, Gc<ast::Item>) -> Gc<ast::Item>;
+impl ItemDecorator for fn(&mut ExtCtxt, Span, Gc<ast::MetaItem>, Gc<ast::Item>, |Gc<ast::Item>|) {
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              sp: Span,
+              meta_item: Gc<ast::MetaItem>,
+              item: Gc<ast::Item>,
+              push: |Gc<ast::Item>|) {
+        (*self)(ecx, sp, meta_item, item, push)
+    }
+}
+
+pub trait ItemModifier {
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              span: Span,
+              meta_item: Gc<ast::MetaItem>,
+              item: Gc<ast::Item>)
+              -> Gc<ast::Item>;
+}
+
+impl ItemModifier for fn(&mut ExtCtxt, Span, Gc<ast::MetaItem>, Gc<ast::Item>) -> Gc<ast::Item> {
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              span: Span,
+              meta_item: Gc<ast::MetaItem>,
+              item: Gc<ast::Item>)
+              -> Gc<ast::Item> {
+        (*self)(ecx, span, meta_item, item)
+    }
+}
 
 pub struct BasicMacroExpander {
     pub expander: MacroExpanderFn,
@@ -281,11 +315,11 @@ pub enum SyntaxExtension {
     /// based upon it.
     ///
     /// `#[deriving(...)]` is an `ItemDecorator`.
-    ItemDecorator(ItemDecorator),
+    ItemDecorator(Box<ItemDecorator + 'static>),
 
     /// A syntax extension that is attached to an item and modifies it
     /// in-place.
-    ItemModifier(ItemModifier),
+    ItemModifier(Box<ItemModifier + 'static>),
 
     /// A normal, function-like syntax extension.
     ///
@@ -371,7 +405,7 @@ fn initial_syntax_expander_table() -> SyntaxEnv {
                             builtin_normal_expander(
                                     ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(intern("deriving"),
-                            ItemDecorator(ext::deriving::expand_meta_deriving));
+                            ItemDecorator(box ext::deriving::expand_meta_deriving));
 
     // Quasi-quoting expanders
     syntax_expanders.insert(intern("quote_tokens"),
