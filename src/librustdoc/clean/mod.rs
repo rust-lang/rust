@@ -1534,6 +1534,7 @@ impl Clean<VariantKind> for ast::VariantKind {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Span {
     pub filename: String,
+    pub tag_match: Option<String>,
     pub loline: uint,
     pub locol: uint,
     pub hiline: uint,
@@ -1544,6 +1545,7 @@ impl Span {
     fn empty() -> Span {
         Span {
             filename: "".to_string(),
+            tag_match: None,
             loline: 0, locol: 0,
             hiline: 0, hicol: 0,
         }
@@ -1556,8 +1558,13 @@ impl Clean<Span> for syntax::codemap::Span {
         let filename = cm.span_to_filename(*self);
         let lo = cm.lookup_char_pos(self.lo);
         let hi = cm.lookup_char_pos(self.hi);
+        let tm = {
+            let line = lo.line - 1;
+            lo.file.get_line(line as int)
+        };
         Span {
             filename: filename.to_string(),
+            tag_match: Some(tm),
             loline: lo.line,
             locol: lo.col.to_uint(),
             hiline: hi.line,

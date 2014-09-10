@@ -39,6 +39,7 @@ pub use clean::SCHEMA_VERSION;
 
 pub mod clean;
 pub mod core;
+pub mod ctags;
 pub mod doctree;
 #[macro_escape]
 pub mod externalfiles;
@@ -139,7 +140,7 @@ pub fn opts() -> Vec<getopts::OptGroup> {
         optopt("r", "input-format", "the input type of the specified file",
                "[rust|json]"),
         optopt("w", "output-format", "the output type to write",
-               "[html|json]"),
+               "[html|json|ctags]"),
         optopt("o", "output", "where to place the output", "PATH"),
         optopt("", "crate-name", "specify the name of this crate", "NAME"),
         optmulti("L", "library-path", "directory to add to crate search path",
@@ -289,6 +290,12 @@ pub fn main_args(args: &[String]) -> int {
             match json_output(krate, res, output.unwrap_or(Path::new("doc.json"))) {
                 Ok(()) => {}
                 Err(e) => fail!("failed to write json: {}", e),
+            }
+        }
+        Some("ctags") => {
+            match ctags::output(krate, output.unwrap_or(Path::new("TAGS"))) {
+                Ok(()) => {}
+                Err(e) => fail!("failed to write ctags: {}", e),
             }
         }
         Some(s) => {
