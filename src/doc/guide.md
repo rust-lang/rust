@@ -139,14 +139,15 @@ the documentation for your shell for more details.
 
 Let's make a new source file next. I'm going to use the syntax `editor
 filename` to represent editing a file in these examples, but you should use
-whatever method you want. We'll call our file `hello_world.rs`:
+whatever method you want. We'll call our file `main.rs`:
 
 ```{bash}
-$ editor hello_world.rs
+$ editor main.rs
 ```
 
 Rust files always end in a `.rs` extension. If you're using more than one word
-in your file name, use an underscore. `hello_world.rs` versus `goodbye.rs`.
+in your file name, use an underscore. `hello_world.rs` rather than
+`helloworld.rs`.
 
 Now that you've got your file open, type this in:
 
@@ -159,7 +160,7 @@ fn main() {
 Save the file, and then type this into your terminal window:
 
 ```{bash}
-$ rustc hello_world.rs
+$ rustc main.rs
 $ ./hello_world # or hello_world.exe on Windows
 Hello, world!
 ```
@@ -221,7 +222,7 @@ Finally, actually **compiling** and **running** our program. We can compile
 with our compiler, `rustc`, by passing it the name of our source file:
 
 ```{bash}
-$ rustc hello_world.rs
+$ rustc main.rs
 ```
 
 This is similar to `gcc` or `clang`, if you come from a C or C++ background. Rust
@@ -229,14 +230,14 @@ will output a binary executable. You can see it with `ls`:
 
 ```{bash}
 $ ls
-hello_world  hello_world.rs
+main  main.rs
 ```
 
 Or on Windows:
 
 ```{bash}
 $ dir
-hello_world.exe  hello_world.rs
+main.exe  main.rs
 ```
 
 There are now two files: our source code, with the `.rs` extension, and the
@@ -293,7 +294,7 @@ do that part first:
 
 ```{bash}
 $ mkdir src
-$ mv hello_world.rs src/hello_world.rs
+$ mv main.rs src/main.rs
 ```
 
 Cargo expects your source files to live inside a `src` directory. That leaves
@@ -461,9 +462,9 @@ let x;
 ...we'll get an error:
 
 ```{ignore}
-src/hello_world.rs:2:9: 2:10 error: cannot determine a type for this local variable: unconstrained type
-src/hello_world.rs:2     let x;
-                             ^
+src/main.rs:2:9: 2:10 error: cannot determine a type for this local variable: unconstrained type
+src/main.rs:2     let x;
+                      ^
 ```
 
 Giving it a type will compile, though:
@@ -472,7 +473,7 @@ Giving it a type will compile, though:
 let x: int;
 ```
 
-Let's try it out. Change your `src/hello_world.rs` file to look like this:
+Let's try it out. Change your `src/main.rs` file to look like this:
 
 ```{rust}
 fn main() {
@@ -487,8 +488,8 @@ but it will still print "Hello, world!":
 
 ```{ignore,notrust}
    Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
-src/hello_world.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
-src/hello_world.rs:2     let x: int;
+src/main.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
+src/main.rs:2     let x: int;
                              ^
 ```
 
@@ -509,13 +510,13 @@ And try to build it. You'll get an error:
 ```{bash}
 $ cargo build
    Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
-src/hello_world.rs:4:39: 4:40 error: use of possibly uninitialized variable: `x`
-src/hello_world.rs:4     println!("The value of x is: {}", x);
-                                                           ^
+src/main.rs:4:39: 4:40 error: use of possibly uninitialized variable: `x`
+src/main.rs:4     println!("The value of x is: {}", x);
+                                                    ^
 note: in expansion of format_args!
 <std macros>:2:23: 2:77 note: expansion site
 <std macros>:1:1: 3:2 note: in expansion of println!
-src/hello_world.rs:4:5: 4:42 note: expansion site
+src/main.rs:4:5: 4:42 note: expansion site
 error: aborting due to previous error
 Could not compile `hello_world`.
 ```
