@@ -28,6 +28,10 @@ impl<'a> Visitor<()> for ShowSpanVisitor<'a> {
         self.sess.span_note(e.span, "expression");
         visit::walk_expr(self, e, ());
     }
+
+    fn visit_mac(&mut self, macro: &ast::Mac, e: ()) {
+        visit::walk_mac(self, macro, e);
+    }
 }
 
 pub fn run(sess: &Session, krate: &ast::Crate) {
