@@ -101,6 +101,18 @@ There is a lot more documentation in the [wiki].
 
 [wiki]: https://github.com/rust-lang/rust/wiki
 
+## Getting help and getting involved
+
+The Rust community congregates in a few places:
+
+* [StackOverflow] - Get help here.
+* [/r/rust] - General discussion.
+* [discuss.rust-lang.org] - For development of the Rust language itself.
+
+[StackOverflow]: http://stackoverflow.com/questions/tagged/rust
+[/r/rust]: http://reddit.com/r/rust
+[discuss.rust-lang.org]: http://discuss.rust-lang.org/
+
 ## License
 
 Rust is primarily distributed under the terms of both the MIT license
