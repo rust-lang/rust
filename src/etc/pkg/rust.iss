@@ -1,6 +1,7 @@
 #define CFG_VERSION_WIN GetEnv("CFG_VERSION_WIN")
 #define CFG_RELEASE GetEnv("CFG_RELEASE")
 #define CFG_PACKAGE_NAME GetEnv("CFG_PACKAGE_NAME")
+#define CFG_BUILD GetEnv("CFG_BUILD")
 
 [Setup]
 
@@ -20,7 +21,7 @@ DisableStartupPrompt=true
 
 OutputDir=.\dist\
 SourceDir=.\
-OutputBaseFilename={#CFG_PACKAGE_NAME}-install
+OutputBaseFilename={#CFG_PACKAGE_NAME}-{#CFG_BUILD}
 DefaultDirName={pf32}\Rust
 
 Compression=lzma2/ultra

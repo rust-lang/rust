@@ -112,7 +112,7 @@ distcheck-tar-src: dist-tar-src
 
 ifdef CFG_ISCC
 
-PKG_EXE = dist/$(PKG_NAME)-install.exe
+PKG_EXE = dist/$(PKG_NAME)-$(CFG_BUILD).exe
 
 %.iss: $(S)src/etc/pkg/%.iss
 	cp $< $@
