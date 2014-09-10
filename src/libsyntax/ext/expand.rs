@@ -251,7 +251,7 @@ fn expand_item(it: Gc<ast::Item>, fld: &mut MacroExpander)
 
         match fld.cx.syntax_env.find(&intern(mname.get())) {
             Some(rc) => match *rc {
-                ItemDecorator(dec_fn) => {
+                ItemDecorator(ref dec) => {
                     attr::mark_used(attr);
 
                     fld.cx.bt_push(ExpnInfo {
@@ -266,8 +266,7 @@ fn expand_item(it: Gc<ast::Item>, fld: &mut MacroExpander)
                     // we'd ideally decorator_items.push_all(expand_item(item, fld)),
                     // but that double-mut-borrows fld
                     let mut items: SmallVector<Gc<ast::Item>> = SmallVector::zero();
-                    dec_fn(fld.cx, attr.span, attr.node.value, it,
-                        |item| items.push(item));
+                    dec.expand(fld.cx, attr.span, attr.node.value, it, |item| items.push(item));
                     decorator_items.extend(items.move_iter()
                         .flat_map(|item| expand_item(item, fld).move_iter()));
 
@@ -328,7 +327,7 @@ fn expand_item_modifiers(mut it: Gc<ast::Item>, fld: &mut MacroExpander)
 
         match fld.cx.syntax_env.find(&intern(mname.get())) {
             Some(rc) => match *rc {
-                ItemModifier(dec_fn) => {
+                ItemModifier(ref mac) => {
                     attr::mark_used(attr);
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
@@ -338,7 +337,7 @@ fn expand_item_modifiers(mut it: Gc<ast::Item>, fld: &mut MacroExpander)
                             span: None,
                         }
                     });
-                    it = dec_fn(fld.cx, attr.span, attr.node.value, it);
+                    it = mac.expand(fld.cx, attr.span, attr.node.value, it);
                     fld.cx.bt_pop();
                 }
                 _ => unreachable!()
