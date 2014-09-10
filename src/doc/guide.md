@@ -150,7 +150,7 @@ in your file name, use an underscore. `hello_world.rs` versus `goodbye.rs`.
 
 Now that you've got your file open, type this in:
 
-```
+```{rust}
 fn main() {
     println!("Hello, world!");
 }
@@ -166,7 +166,7 @@ Hello, world!
 
 Success! Let's go over what just happened in detail.
 
-```
+```{rust}
 fn main() {
 
 }
@@ -186,7 +186,7 @@ declaration, with one space in between.
 
 Next up is this line:
 
-```
+```{rust}
     println!("Hello, world!");
 ```
 
@@ -562,7 +562,7 @@ the block is executed. If it's `false`, then it is not.
 
 If you want something to happen in the `false` case, use an `else`:
 
-```
+```{rust}
 let x = 5i;
 
 if x == 5i {
@@ -574,7 +574,8 @@ if x == 5i {
 
 This is all pretty standard. However, you can also do this:
 
-```
+
+```{rust}
 let x = 5i;
 
 let y = if x == 5i {
@@ -586,7 +587,7 @@ let y = if x == 5i {
 
 Which we can (and probably should) write like this:
 
-```
+```{rust}
 let x = 5i;
 
 let y = if x == 5i { 10i } else { 15i };
@@ -643,7 +644,7 @@ every line of Rust code you see.
 What is this exception that makes us say 'almost?' You saw it already, in this
 code:
 
-```
+```{rust}
 let x = 5i;
 
 let y: int = if x == 5i { 10i } else { 15i };
@@ -989,7 +990,7 @@ notation: `origin.x`.
 The values in structs are immutable, like other bindings in Rust. However, you
 can use `mut` to make them mutable:
 
-```rust
+```{rust}
 struct Point {
     x: int,
     y: int,
@@ -1013,7 +1014,7 @@ called a **tuple struct**. Tuple structs do have a name, but their fields
 don't:
 
 
-```
+```{rust}
 struct Color(int, int, int);
 struct Point(int, int, int);
 ```
@@ -1028,7 +1029,7 @@ let origin = Point(0, 0, 0);
 It is almost always better to use a struct than a tuple struct. We would write
 `Color` and `Point` like this instead:
 
-```rust
+```{rust}
 struct Color {
     red: int,
     blue: int,
@@ -1049,7 +1050,7 @@ There _is_ one case when a tuple struct is very useful, though, and that's a
 tuple struct with only one element. We call this a 'newtype,' because it lets
 you create a new type that's a synonym for another one:
 
-```
+```{rust}
 struct Inches(int);
 
 let length = Inches(10);
@@ -1166,7 +1167,7 @@ what's the solution?
 Rust has a keyword, `match`, that allows you to replace complicated `if`/`else`
 groupings with something more powerful. Check it out:
 
-```rust
+```{rust}
 let x = 5i;
 
 match x {
@@ -1407,7 +1408,7 @@ We now loop forever with `loop`, and use `break` to break out early.
 `continue` is similar, but instead of ending the loop, goes to the next
 iteration: This will only print the odd numbers:
 
-```
+```{rust}
 for x in range(0i, 10i) {
     if x % 2 == 0 { continue; }
 
@@ -4122,7 +4123,7 @@ the ability to use this **method call syntax** via the `impl` keyword.
 
 Here's how it works:
 
-```
+```{rust}
 struct Circle {
     x: f64,
     y: f64,
@@ -4161,7 +4162,7 @@ multiplications later, and we have our area.
 You can also define methods that do not take a `self` parameter. Here's a
 pattern that's very common in Rust code:
 
-```
+```{rust}
 struct Circle {
     x: f64,
     y: f64,
