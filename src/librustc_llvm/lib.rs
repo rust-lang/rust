@@ -28,6 +28,8 @@
 extern crate libc;
 
 use std::c_str::ToCStr;
+use std::cell::RefCell;
+use std::{raw, mem};
 use libc::{c_uint, c_ushort, uint64_t, c_int, size_t, c_char};
 use libc::{c_longlong, c_ulonglong};
 use debuginfo::{DIBuilderRef, DIDescriptor,
@@ -1839,8 +1841,8 @@ extern {
                                         -> ValueRef;
 
     pub fn LLVMDICompositeTypeSetTypeArray(CompositeType: ValueRef, TypeArray: ValueRef);
-    pub fn LLVMTypeToString(Type: TypeRef) -> *const c_char;
-    pub fn LLVMValueToString(value_ref: ValueRef) -> *const c_char;
+    pub fn LLVMWriteTypeToString(Type: TypeRef, s: RustStringRef);
+    pub fn LLVMWriteValueToString(value_ref: ValueRef, s: RustStringRef);
 
     pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
 
@@ -2044,6 +2046,30 @@ pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
         assert!(index < LLVMCountParams(llfn));
         LLVMGetParam(llfn, index)
     }
+}
+
+pub enum RustString_opaque {}
+pub type RustStringRef = *mut RustString_opaque;
+type RustStringRepr = *mut RefCell<Vec<u8>>;
+
+/// Appending to a Rust string -- used by raw_rust_string_ostream.
+#[no_mangle]
+pub unsafe extern "C" fn rust_llvm_string_write_impl(sr: RustStringRef,
+                                                     ptr: *const c_char,
+                                                     size: size_t) {
+    let slice: &[u8] = mem::transmute(raw::Slice {
+        data: ptr as *const u8,
+        len: size as uint,
+    });
+
+    let sr: RustStringRepr = mem::transmute(sr);
+    (*sr).borrow_mut().push_all(slice);
+}
+
+pub fn build_string(f: |RustStringRef|) -> Option<String> {
+    let mut buf = RefCell::new(Vec::new());
+    f(&mut buf as RustStringRepr as RustStringRef);
+    String::from_utf8(buf.unwrap()).ok()
 }
 
 // FIXME #15460 - create a public function that actually calls our

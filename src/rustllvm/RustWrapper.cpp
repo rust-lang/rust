@@ -645,22 +645,18 @@ extern "C" void LLVMDICompositeTypeSetTypeArray(
 #endif
 }
 
-extern "C" char *LLVMTypeToString(LLVMTypeRef Type) {
-    std::string s;
-    llvm::raw_string_ostream os(s);
+extern "C" void LLVMWriteTypeToString(LLVMTypeRef Type, RustStringRef str) {
+    raw_rust_string_ostream os(str);
     unwrap<llvm::Type>(Type)->print(os);
-    return strdup(os.str().data());
 }
 
-extern "C" char *LLVMValueToString(LLVMValueRef Value) {
-    std::string s;
-    llvm::raw_string_ostream os(s);
+extern "C" void LLVMWriteValueToString(LLVMValueRef Value, RustStringRef str) {
+    raw_rust_string_ostream os(str);
     os << "(";
     unwrap<llvm::Value>(Value)->getType()->print(os);
     os << ":";
     unwrap<llvm::Value>(Value)->print(os);
     os << ")";
-    return strdup(os.str().data());
 }
 
 #if LLVM_VERSION_MINOR >= 5
