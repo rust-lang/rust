@@ -39,8 +39,10 @@ snapshot_files = {
     "freebsd": ["bin/rustc"],
     }
 
-winnt_runtime_deps = ["libgcc_s_dw2-1.dll",
-                      "libstdc++-6.dll"]
+winnt_runtime_deps_32 = ["libgcc_s_dw2-1.dll",
+                         "libstdc++-6.dll"]
+winnt_runtime_deps_64 = ["libgcc_s_seh-1.dll",
+                         "libstdc++-6.dll"]
 
 def parse_line(n, line):
   global snapshotfile
@@ -146,10 +148,14 @@ def hash_file(x):
     return scrub(h.hexdigest())
 
 # Returns a list of paths of Rust's system runtime dependencies
-def get_winnt_runtime_deps():
+def get_winnt_runtime_deps(platform):
+    if platform == "winnt-x86_64":
+      deps = winnt_runtime_deps_64
+    else:
+      deps = winnt_runtime_deps_32
     runtime_deps = []
-    path_dirs = os.environ["PATH"].split(';')
-    for name in winnt_runtime_deps:
+    path_dirs = os.environ["PATH"].split(os.pathsep)
+    for name in deps:
       for dir in path_dirs:
         matches = glob.glob(os.path.join(dir, name))
         if matches:
@@ -189,7 +195,7 @@ def make_snapshot(stage, triple):
                         "Please make a clean build." % "\n  ".join(matches))
 
     if kernel=="winnt":
-      for path in get_winnt_runtime_deps():
+      for path in get_winnt_runtime_deps(platform):
         tar.add(path, "rust-stage0/bin/" + os.path.basename(path))
       tar.add(os.path.join(os.path.dirname(__file__), "third-party"),
               "rust-stage0/bin/third-party")
