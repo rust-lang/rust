@@ -134,6 +134,10 @@ pub trait Folder {
         noop_fold_ident(i, self)
     }
 
+    fn fold_uint(&mut self, i: uint) -> uint {
+        noop_fold_uint(i, self)
+    }
+
     fn fold_path(&mut self, p: &Path) -> Path {
         noop_fold_path(p, self)
     }
@@ -463,6 +467,10 @@ pub fn noop_fold_variant<T: Folder>(v: &Variant, fld: &mut T) -> P<Variant> {
 }
 
 pub fn noop_fold_ident<T: Folder>(i: Ident, _: &mut T) -> Ident {
+    i
+}
+
+pub fn noop_fold_uint<T: Folder>(i: uint, _: &mut T) -> uint {
     i
 }
 
@@ -1178,6 +1186,11 @@ pub fn noop_fold_expr<T: Folder>(e: Gc<Expr>, folder: &mut T) -> Gc<Expr> {
         ExprField(el, id, ref tys) => {
             ExprField(folder.fold_expr(el),
                       respan(id.span, folder.fold_ident(id.node)),
+                      tys.iter().map(|&x| folder.fold_ty(x)).collect())
+        }
+        ExprTupField(el, id, ref tys) => {
+            ExprTupField(folder.fold_expr(el),
+                      respan(id.span, folder.fold_uint(id.node)),
                       tys.iter().map(|&x| folder.fold_ty(x)).collect())
         }
         ExprIndex(el, er) => {

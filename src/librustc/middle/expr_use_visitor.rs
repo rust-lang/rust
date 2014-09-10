@@ -324,6 +324,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                 self.select_from_expr(&**base);
             }
 
+            ast::ExprTupField(ref base, _, _) => {         // base.<n>
+                self.select_from_expr(&**base);
+            }
+
             ast::ExprIndex(ref lhs, ref rhs) => {           // lhs[rhs]
                 if !self.walk_overloaded_operator(expr, &**lhs, [rhs.clone()]) {
                     self.select_from_expr(&**lhs);
