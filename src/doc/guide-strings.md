@@ -92,9 +92,33 @@ fn foo(s: String) {
 ```
 
 If you have good reason. It's not polite to hold on to ownership you don't
-need, and it can make your lifetimes more complex. Furthermore, you can pass
-either kind of string into `foo` by using `.as_slice()` on any `String` you
-need to pass in, so the `&str` version is more flexible.
+need, and it can make your lifetimes more complex.
+
+## Generic functions
+
+To write a function that's generic over types of strings, use [the `Str`
+trait](http://doc.rust-lang.org/std/str/trait.Str.html):
+
+```{rust}
+fn some_string_length<T: Str>(x: T) -> uint {
+        x.as_slice().len()
+}
+
+fn main() {
+    let s = "Hello, world";
+
+    println!("{}", some_string_length(s));
+
+    let s = "Hello, world".to_string();
+
+    println!("{}", some_string_length(s));
+}
+```
+
+Both of these lines will print `12`. 
+
+The only method that the `Str` trait has is `as_slice()`, which gives you
+access to a `&str` value from the underlying string.
 
 ## Comparisons
 
@@ -120,6 +144,65 @@ fn compare(string: String) {
 
 Converting a `String` to a `&str` is cheap, but converting the `&str` to a
 `String` involves an allocation.
+
+## Indexing strings
+
+You may be tempted to try to access a certain character of a `String`, like
+this:
+
+```{rust,ignore}
+let s = "hello".to_string();
+
+println!("{}", s[0]);
+```
+
+This does not compile. This is on purpose. In the world of UTF-8, direct
+indexing is basically never what you want to do. The reason is that each
+character can be a variable number of bytes. This means that you have to iterate
+through the characters anyway, which is a O(n) operation. 
+
+To iterate over a string, use the `graphemes()` method on `&str`:
+
+```{rust}
+let s = "αἰθήρ";
+
+for l in s.graphemes(true) {
+    println!("{}", l);
+}
+```
+
+Note that `l` has the type `&str` here, since a single grapheme can consist of
+multiple codepoints, so a `char` wouldn't be appropriate.
+
+This will print out each character in turn, as you'd expect: first "α", then
+"ἰ", etc. You can see that this is different than just the individual bytes.
+Here's a version that prints out each byte:
+
+```{rust}
+let s = "αἰθήρ";
+
+for l in s.bytes() {
+    println!("{}", l);
+}
+```
+
+This will print:
+
+```{notrust,ignore}
+206
+177
+225
+188
+176
+206
+184
+206
+174
+207
+129
+```
+
+Many more bytes than graphemes!
 
 # Other Documentation
 
