@@ -283,7 +283,7 @@ tidy:
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)echo $(ALL_HS) \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
-		$(Q)find $(S)src -type f -perm +111 \
+		$(Q)find $(S)src -type f -perm a+x \
 		    -not -name '*.rs' -and -not -name '*.py' \
 		    -and -not -name '*.sh' \
 		| grep '^$(S)src/jemalloc' -v \
