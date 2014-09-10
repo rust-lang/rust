@@ -4271,14 +4271,14 @@ for num in nums.iter() {
 }
 ```
 
-There are two reasons for this. First, this is more semantic. We iterate
-through the entire vector, rather than iterating through indexes, and then
-indexing the vector. Second, this version is more efficient: the first version
-will have extra bounds checking because it used indexing, `nums[i]`. But since
-we yield a reference to each element of the vector in turn with the iterator,
-there's no bounds checking in the second example. This is very common with
-iterators: we can ignore unnecessary bounds checks, but still know that we're
-safe.
+There are two reasons for this. First, this more directly expresses what we
+mean. We iterate through the entire vector, rather than iterating through
+indexes, and then indexing the vector. Second, this version is more efficient:
+the first version will have extra bounds checking because it used indexing,
+`nums[i]`. But since we yield a reference to each element of the vector in turn
+with the iterator, there's no bounds checking in the second example. This is
+very common with iterators: we can ignore unnecessary bounds checks, but still
+know that we're safe.
 
 There's another detail here that's not 100% clear because of how `println!`
 works. `num` is actually of type `&int`, that is, it's a reference to an `int`,
