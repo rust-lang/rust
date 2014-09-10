@@ -28,7 +28,7 @@ The trait that the unboxed closure implements is `FnOnce` if any variables were 
 
 The `ref` prefix for unboxed closures is removed, since it is now essentially implied.
 
-The `proc()` syntax is repurposed for unboxed closures. The value returned by a `proc()` implements `FnOnce`, `FnMut`, or `Fn`, as determined above; thus, for example, `proc(x: int, y) x + y` produces an unboxed closure that implements the `FnOnce(int, int) -> int` trait. Free variables referenced by a `proc` are always captured by value.
+The `proc()` syntax is repurposed for unboxed closures. The value returned by a `proc()` implements `FnOnce`, `FnMut`, or `Fn`, as determined above; thus, for example, `proc(x: int, y) x + y` produces an unboxed closure that implements the `Fn(int, int) -> int` trait (and thus the `FnOnce(int, int) -> int` trait by inheritance). Free variables referenced by a `proc` are always captured by value.
 
 As a transitionary measure, we can keep the leading `:` inside the `||` for unboxed closures, and require `proc(self, ...)` to get the unboxed version.
 
