@@ -52,9 +52,7 @@ triple = sys.argv[1]
 if len(sys.argv) == 3:
   dl_path = sys.argv[2]
 else:
-  # There are no 64-bit Windows snapshots yet, so we'll use 32-bit ones instead, for now
-  snap_triple = triple if triple != "x86_64-w64-mingw32" else "i686-w64-mingw32"
-  snap = determine_curr_snapshot(snap_triple)
+  snap = determine_curr_snapshot(triple)
   dl = os.path.join(download_dir_base, snap)
   url = download_url_base + "/" + snap
   print("determined most recent snapshot: " + snap)
