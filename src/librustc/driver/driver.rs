@@ -197,8 +197,14 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &krate));
 
+    let any_exe = sess.crate_types.borrow().iter().any(|ty| {
+        *ty == config::CrateTypeExecutable
+    });
+
     krate = time(time_passes, "crate injection", krate, |krate|
-                 front::std_inject::maybe_inject_crates_ref(sess, krate));
+                 syntax::std_inject::maybe_inject_crates_ref(krate,
+                                                             sess.opts.alt_std_name.clone(),
+                                                             any_exe));
 
     // strip before expansion to allow macros to depend on
     // configuration variables e.g/ in
@@ -299,7 +305,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                                   sess.diagnostic()));
 
     krate = time(time_passes, "prelude injection", krate, |krate|
-                 front::std_inject::maybe_inject_prelude(sess, krate));
+                 syntax::std_inject::maybe_inject_prelude(krate));
 
     time(time_passes, "checking that all macro invocations are gone", &krate, |krate|
          syntax::ext::expand::check_for_macros(&sess.parse_sess, krate));

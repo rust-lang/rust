@@ -67,6 +67,7 @@ pub mod owned_slice;
 pub mod parse;
 pub mod ptr;
 pub mod show_span;
+pub mod std_inject;
 pub mod test;
 pub mod visit;
 

@@ -117,7 +117,6 @@ pub mod middle {
 }
 
 pub mod front {
-    pub mod std_inject;
     pub mod feature_gate;
 }
 
