@@ -147,10 +147,10 @@ Here, `x` is a box with a `SomeStruct` inside. So we have this pointer to the
 structure itself, but the structure _also_ contains a pointer to a `str`.  We
 have no guarantee that the reference inside of `a_string` is valid for the
 entire time that the reference to the `SomeStruct` itself. If it's not, then we
-could have a valid reference to a `SomeStrut` which contained an invalid
+could have a valid reference to a `SomeStruct` which contained an invalid
 reference in its `a_string`. That would lead to problems.
 
-We need a way to tell the compiler that we expect `a_string` to be valid
+We need a way to tell the compiler that we expect `a_string` must be valid
 as long as a reference to the struct itself is valid. We can do this with an
 **explicit lifetime annotation**:
 
@@ -168,7 +168,7 @@ This code compiles. We have two additions: a `<'struct>` and a `&'struct`.
 These two are related. Changing `struct SomeStruct` to `struct
 SomeStruct<'struct>` adds a **lifetime parameter**.  This parameter gives a
 name to the lifetime of a reference to this struct. In this case, we've given
-it the name 'struct,' since that's what it's the lieftime of. You can use any
+it the name 'struct,' since that's what it's the lifetime of. You can use any
 identifer, for example, `<'a>`.  Since this is giving a name to a lifetime,
 giving it a descriptive name can help you remember what it's the lifetime of.
 
