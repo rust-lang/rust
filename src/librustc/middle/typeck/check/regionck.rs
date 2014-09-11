@@ -1064,6 +1064,10 @@ fn constrain_callee(rcx: &mut Rcx,
             };
             rcx.fcx.mk_subr(infer::InvokeClosure(callee_expr.span),
                             call_region, region);
+
+            let region = closure_ty.bounds.region_bound;
+            rcx.fcx.mk_subr(infer::InvokeClosure(callee_expr.span),
+                            call_region, region);
         }
         _ => {
             // this should not happen, but it does if the program is
