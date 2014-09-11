@@ -349,7 +349,7 @@ enclosed within two `U+0022` (double-quote) characters,
 with the exception of `U+0022` itself,
 which must be _escaped_ by a preceding `U+005C` character (`\`),
 or a _raw byte string literal_.
-It is equivalent to a `&'static [u8]` borrowed vector of unsigned 8-bit integers.
+It is equivalent to a `&'static [u8]` borrowed array of unsigned 8-bit integers.
 
 Some additional _escapes_ are available in either byte or non-raw byte string
 literals. An escape starts with a `U+005C` (`\`) and continues with one of
@@ -2811,16 +2811,17 @@ When the type providing the field inherits mutabilty, it can be [assigned](#assi
 Also, if the type of the expression to the left of the dot is a pointer,
 it is automatically dereferenced to make the field access possible.
 
-### Vector expressions
+### Array expressions
 
 ~~~~ {.ebnf .gram}
-vec_expr : '[' "mut" ? vec_elems? ']' ;
+array_expr : '[' "mut" ? vec_elems? ']' ;
 
-vec_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
+array_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
 ~~~~
 
-A [_vector_](#vector-types) _expression_ is written by enclosing zero or
-more comma-separated expressions of uniform type in square brackets.
+An [array](#vector,-array,-and-slice-types) _expression_ is written by
+enclosing zero or more comma-separated expressions of uniform type in square
+brackets.
 
 In the `[expr ',' ".." expr]` form, the expression after the `".."`
 must be a constant expression that can be evaluated at compile time, such
@@ -2829,7 +2830,7 @@ as a [literal](#literals) or a [static item](#static-items).
 ~~~~
 [1i, 2, 3, 4];
 ["a", "b", "c", "d"];
-[0i, ..128];             // vector with 128 zeros
+[0i, ..128];             // array with 128 zeros
 [0u8, 0u8, 0u8, 0u8];
 ~~~~
 
@@ -2839,9 +2840,9 @@ as a [literal](#literals) or a [static item](#static-items).
 idx_expr : expr '[' expr ']' ;
 ~~~~
 
-[Vector](#vector-types)-typed expressions can be indexed by writing a
+[Array](#vector,-array,-and-slice-types)-typed expressions can be indexed by writing a
 square-bracket-enclosed expression (the index) after them. When the
-vector is mutable, the resulting [lvalue](#lvalues,-rvalues-and-temporaries) can be assigned to.
+array is mutable, the resulting [lvalue](#lvalues,-rvalues-and-temporaries) can be assigned to.
 
 Indices are zero-based, and may be of any integral type. Vector access
 is bounds-checked at run-time. When the check fails, it will put the
@@ -2902,7 +2903,7 @@ This means that arithmetic operators can be overridden for user-defined types.
 The default meaning of the operators on standard types is given here.
 
 * `+`
-  : Addition and vector/string concatenation.
+  : Addition and array/string concatenation.
     Calls the `add` method on the `std::ops::Add` trait.
 * `-`
   : Subtraction.
@@ -3205,7 +3206,7 @@ for_expr : "for" pat "in" no_struct_literal_expr '{' block '}' ;
 A `for` expression is a syntactic construct for looping over elements
 provided by an implementation of `std::iter::Iterator`.
 
-An example of a for loop over the contents of a vector:
+An example of a for loop over the contents of an array:
 
 ~~~~
 # type Foo = int;
@@ -3263,7 +3264,7 @@ match_pat : pat [ '|' pat ] * [ "if" expr ] ? ;
 
 A `match` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
-literals, destructured vectors or enum constructors, structures and
+literals, destructured arrays or enum constructors, structures and
 tuples, variable binding specifications, wildcards (`..`), and placeholders
 (`_`). A `match` expression has a *head expression*, which is the value to
 compare to the patterns. The type of the patterns must equal the type of the
@@ -3292,11 +3293,11 @@ between `_` and `..` is that the pattern `C(_)` is only type-correct if `C` has
 exactly one argument, while the pattern `C(..)` is type-correct for any enum
 variant `C`, regardless of how many arguments `C` has.
 
-Used inside a vector pattern, `..` stands for any number of elements, when the
+Used inside a array pattern, `..` stands for any number of elements, when the
 `advanced_slice_patterns` feature gate is turned on. This wildcard can be used
-at most once for a given vector, which implies that it cannot be used to
+at most once for a given array, which implies that it cannot be used to
 specifically match elements that are at an unknown distance from both ends of a
-vector, like `[.., 42, ..]`.  If followed by a variable name, it will bind the
+array, like `[.., 42, ..]`.  If followed by a variable name, it will bind the
 corresponding slice to the variable.  Example:
 
 ~~~~
@@ -3429,7 +3430,7 @@ let message = match x {
 ~~~~
 
 Range patterns only work on scalar types
-(like integers and characters; not like vectors and structs, which have sub-components).
+(like integers and characters; not like arrays and structs, which have sub-components).
 A range pattern may not be a sub-range of another range pattern inside the same `match`.
 
 Finally, match patterns can accept *pattern guards* to further refine the
@@ -3537,10 +3538,10 @@ http://www.unicode.org/glossary/#unicode_scalar_value)
 (ie. a code point that is not a surrogate),
 represented as a 32-bit unsigned word in the 0x0000 to 0xD7FF
 or 0xE000 to 0x10FFFF range.
-A `[char]` vector is effectively an UCS-4 / UTF-32 string.
+A `[char]` array is effectively an UCS-4 / UTF-32 string.
 
 A value of type `str` is a Unicode string,
-represented as a vector of 8-bit unsigned bytes holding a sequence of UTF-8 codepoints.
+represented as a array of 8-bit unsigned bytes holding a sequence of UTF-8 codepoints.
 Since `str` is of unknown size, it is not a _first class_ type,
 but can only be instantiated through a pointer type,
 such as `&str` or `String`.
@@ -3651,7 +3652,7 @@ Such recursion has restrictions:
 
 * Recursive types must include a nominal type in the recursion
   (not mere [type definitions](#type-definitions),
-   or other structural types such as [vectors](#vector-types) or [tuples](#tuple-types)).
+   or other structural types such as [arrays](#vector,-array,-and-slice-types) or [tuples](#tuple-types)).
 * A recursive `enum` item must have at least one non-recursive constructor
   (in order to give the recursion a basis case).
 * The size of a recursive type must be finite;
@@ -4155,7 +4156,7 @@ heap data.
 ### Built in types
 
 The runtime provides C and Rust code to assist with various built-in types,
-such as vectors, strings, and the low level communication system (ports,
+such as arrays, strings, and the low level communication system (ports,
 channels, tasks).
 
 Support for other built-in types such as simple types, tuples and
