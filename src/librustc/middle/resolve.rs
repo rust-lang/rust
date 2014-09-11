@@ -28,7 +28,7 @@ use syntax::ast::{ExprPath, ExprProc, ExprStruct, ExprUnboxedFn, FnDecl};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemEnum, ItemFn, ItemForeignMod};
 use syntax::ast::{ItemImpl, ItemMac, ItemMod, ItemStatic, ItemStruct};
-use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local, Method};
+use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local};
 use syntax::ast::{MethodImplItem, Mod, Name, NamedField, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path, PathListIdent, PathListMod};
@@ -1523,33 +1523,31 @@ impl<'a> Resolver<'a> {
     }
 
     // Constructs the reduced graph for one variant. Variants exist in the
-    // type and/or value namespaces.
+    // type and value namespaces.
     fn build_reduced_graph_for_variant(&mut self,
                                        variant: &Variant,
                                        item_id: DefId,
                                        parent: ReducedGraphParent,
                                        is_public: bool) {
         let ident = variant.node.name;
-
-        match variant.node.kind {
-            TupleVariantKind(_) => {
-                let child = self.add_child(ident, parent, ForbidDuplicateValues, variant.span);
-                child.define_value(DefVariant(item_id,
-                                              local_def(variant.node.id), false),
-                                   variant.span, is_public);
-            }
+        let is_exported = match variant.node.kind {
+            TupleVariantKind(_) => false,
             StructVariantKind(_) => {
-                let child = self.add_child(ident, parent,
-                                           ForbidDuplicateTypesAndValues,
-                                           variant.span);
-                child.define_type(DefVariant(item_id,
-                                             local_def(variant.node.id), true),
-                                  variant.span, is_public);
-
                 // Not adding fields for variants as they are not accessed with a self receiver
                 self.structs.insert(local_def(variant.node.id), Vec::new());
+                true
             }
-        }
+        };
+
+        let child = self.add_child(ident, parent,
+                                   ForbidDuplicateTypesAndValues,
+                                   variant.span);
+        child.define_value(DefVariant(item_id,
+                                      local_def(variant.node.id), is_exported),
+                           variant.span, is_public);
+        child.define_type(DefVariant(item_id,
+                                     local_def(variant.node.id), is_exported),
+                          variant.span, is_public);
     }
 
     /// Constructs the reduced graph for one 'view item'. View items consist
@@ -4471,7 +4469,7 @@ impl<'a> Resolver<'a> {
     // to be NormalRibKind?
     fn resolve_method(&mut self,
                       rib_kind: RibKind,
-                      method: &Method) {
+                      method: &ast::Method) {
         let method_generics = method.pe_generics();
         let type_parameters = HasTypeParameters(method_generics,
                                                 FnSpace,

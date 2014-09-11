@@ -177,7 +177,7 @@ pub struct Cache {
     pub extern_locations: HashMap<ast::CrateNum, ExternalLocation>,
 
     /// Cache of where documentation for primitives can be found.
-    pub primitive_locations: HashMap<clean::Primitive, ast::CrateNum>,
+    pub primitive_locations: HashMap<clean::PrimitiveType, ast::CrateNum>,
 
     /// Set of definitions which have been inlined from external crates.
     pub inlined: HashSet<ast::DefId>,
@@ -1637,7 +1637,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                                   _ => false,
                               }
                           })
-                          .collect::<Vec<&clean::TraitItem>>();
+                          .collect::<Vec<&clean::TraitMethod>>();
     let provided = t.items.iter()
                           .filter(|m| {
                               match **m {
@@ -1645,7 +1645,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                                   _ => false,
                               }
                           })
-                          .collect::<Vec<&clean::TraitItem>>();
+                          .collect::<Vec<&clean::TraitMethod>>();
 
     if t.items.len() == 0 {
         try!(write!(w, "{{ }}"));
@@ -1671,7 +1671,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Trait documentation
     try!(document(w, it));
 
-    fn trait_item(w: &mut fmt::Formatter, m: &clean::TraitItem)
+    fn trait_item(w: &mut fmt::Formatter, m: &clean::TraitMethod)
                   -> fmt::Result {
         try!(write!(w, "<h3 id='{}.{}' class='method'>{}<code>",
                     shortty(m.item()),
@@ -2180,7 +2180,7 @@ fn item_macro(w: &mut fmt::Formatter, it: &clean::Item,
 
 fn item_primitive(w: &mut fmt::Formatter,
                   it: &clean::Item,
-                  _p: &clean::Primitive) -> fmt::Result {
+                  _p: &clean::PrimitiveType) -> fmt::Result {
     try!(document(w, it));
     render_methods(w, it)
 }

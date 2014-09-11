@@ -60,7 +60,7 @@
 //! avoid combining it with other lines and making matters even worse.
 
 use std::io;
-use std::string::String;
+use std::string;
 
 #[deriving(Clone, PartialEq)]
 pub enum Breaks {
@@ -82,7 +82,7 @@ pub struct BeginToken {
 
 #[deriving(Clone)]
 pub enum Token {
-    String(String, int),
+    String(string::String, int),
     Break(BreakToken),
     Begin(BeginToken),
     End,
@@ -107,7 +107,7 @@ impl Token {
     }
 }
 
-pub fn tok_str(t: Token) -> String {
+pub fn tok_str(t: Token) -> string::String {
     match t {
         String(s, len) => return format!("STR({},{})", s, len),
         Break(_) => return "BREAK".to_string(),
@@ -122,12 +122,12 @@ pub fn buf_str(toks: Vec<Token>,
                left: uint,
                right: uint,
                lim: uint)
-               -> String {
+               -> string::String {
     let n = toks.len();
     assert_eq!(n, szs.len());
     let mut i = left;
     let mut l = lim;
-    let mut s = String::from_str("[");
+    let mut s = string::String::from_str("[");
     while i != right && l != 0u {
         l -= 1u;
         if i != left {

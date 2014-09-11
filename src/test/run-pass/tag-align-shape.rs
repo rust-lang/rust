@@ -11,7 +11,7 @@
 extern crate debug;
 
 enum a_tag {
-    a_tag(u64)
+    a_tag_var(u64)
 }
 
 struct t_rec {
@@ -20,8 +20,8 @@ struct t_rec {
 }
 
 pub fn main() {
-    let x = t_rec {c8: 22u8, t: a_tag(44u64)};
+    let x = t_rec {c8: 22u8, t: a_tag_var(44u64)};
     let y = format!("{:?}", x);
     println!("y = {}", y);
-    assert_eq!(y, "t_rec{c8: 22u8, t: a_tag(44u64)}".to_string());
+    assert_eq!(y, "t_rec{c8: 22u8, t: a_tag_var(44u64)}".to_string());
 }

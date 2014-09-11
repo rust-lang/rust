@@ -324,11 +324,11 @@ pub enum AtomicOrdering {
 // Consts for the LLVMCodeGenFileType type (in include/llvm/c/TargetMachine.h)
 #[repr(C)]
 pub enum FileType {
-    AssemblyFile = 0,
-    ObjectFile = 1
+    AssemblyFileType = 0,
+    ObjectFileType = 1
 }
 
-pub enum Metadata {
+pub enum MetadataType {
     MD_dbg = 0,
     MD_tbaa = 1,
     MD_prof = 2,

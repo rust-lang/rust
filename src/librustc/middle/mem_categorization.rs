@@ -414,14 +414,14 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AutoAddEnv(..) => {
+                    ty::AdjustAddEnv(..) => {
                         // Convert a bare fn to a closure by adding NULL env.
                         // Result is an rvalue.
                         let expr_ty = if_ok!(self.expr_ty_adjusted(expr));
                         Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
                     }
 
-                    ty::AutoDerefRef(
+                    ty::AdjustDerefRef(
                         ty::AutoDerefRef {
                             autoref: Some(_), ..}) => {
                         // Equivalent to &*expr or something similar.
@@ -430,7 +430,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
                     }
 
-                    ty::AutoDerefRef(
+                    ty::AdjustDerefRef(
                         ty::AutoDerefRef {
                             autoref: None, autoderefs: autoderefs}) => {
                         // Equivalent to *expr or something similar.

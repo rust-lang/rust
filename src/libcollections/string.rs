@@ -872,7 +872,7 @@ mod tests {
 
     use {Mutable, MutableSeq};
     use str;
-    use str::{Str, StrSlice, Owned, Slice};
+    use str::{Str, StrSlice, Owned};
     use super::String;
     use vec::Vec;
 
@@ -898,10 +898,10 @@ mod tests {
     #[test]
     fn test_from_utf8_lossy() {
         let xs = b"hello";
-        assert_eq!(String::from_utf8_lossy(xs), Slice("hello"));
+        assert_eq!(String::from_utf8_lossy(xs), str::Slice("hello"));
 
         let xs = "ศไทย中华Việt Nam".as_bytes();
-        assert_eq!(String::from_utf8_lossy(xs), Slice("ศไทย中华Việt Nam"));
+        assert_eq!(String::from_utf8_lossy(xs), str::Slice("ศไทย中华Việt Nam"));
 
         let xs = b"Hello\xC2 There\xFF Goodbye";
         assert_eq!(String::from_utf8_lossy(xs),

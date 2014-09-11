@@ -646,8 +646,8 @@ impl tr for MethodOrigin {
             typeck::MethodStaticUnboxedClosure(did) => {
                 typeck::MethodStaticUnboxedClosure(did.tr(dcx))
             }
-            typeck::MethodParam(ref mp) => {
-                typeck::MethodParam(
+            typeck::MethodTypeParam(ref mp) => {
+                typeck::MethodTypeParam(
                     typeck::MethodParam {
                         // def-id is already translated when we read it out
                         trait_ref: mp.trait_ref.clone(),
@@ -655,8 +655,8 @@ impl tr for MethodOrigin {
                     }
                 )
             }
-            typeck::MethodObject(ref mo) => {
-                typeck::MethodObject(
+            typeck::MethodTraitObject(ref mo) => {
+                typeck::MethodTraitObject(
                     typeck::MethodObject {
                         trait_ref: mo.trait_ref.clone(),
                         .. *mo
@@ -962,8 +962,8 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
                     })
                 }
 
-                typeck::MethodParam(ref p) => {
-                    this.emit_enum_variant("MethodParam", 2, 1, |this| {
+                typeck::MethodTypeParam(ref p) => {
+                    this.emit_enum_variant("MethodTypeParam", 2, 1, |this| {
                         this.emit_struct("MethodParam", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
                                 Ok(this.emit_trait_ref(ecx, &*p.trait_ref))
@@ -976,8 +976,8 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
                     })
                 }
 
-                typeck::MethodObject(ref o) => {
-                    this.emit_enum_variant("MethodObject", 3, 1, |this| {
+                typeck::MethodTraitObject(ref o) => {
+                    this.emit_enum_variant("MethodTraitObject", 3, 1, |this| {
                         this.emit_struct("MethodObject", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
                                 Ok(this.emit_trait_ref(ecx, &*o.trait_ref))
@@ -1072,13 +1072,13 @@ impl<'a> rbml_writer_helpers for Encoder<'a> {
 
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
-                ty::AutoAddEnv(store) => {
+                ty::AdjustAddEnv(store) => {
                     this.emit_enum_variant("AutoAddEnv", 0, 1, |this| {
                         this.emit_enum_variant_arg(0, |this| store.encode(this))
                     })
                 }
 
-                ty::AutoDerefRef(ref auto_deref_ref) => {
+                ty::AdjustDerefRef(ref auto_deref_ref) => {
                     this.emit_enum_variant("AutoDerefRef", 1, 1, |this| {
                         this.emit_enum_variant_arg(0,
                             |this| Ok(this.emit_auto_deref_ref(ecx, auto_deref_ref)))
@@ -1374,7 +1374,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                     })
                 }
             }
-            ty::AutoDerefRef(ref adj) => {
+            ty::AdjustDerefRef(ref adj) => {
                 assert!(!ty::adjust_is_object(adjustment));
                 for autoderef in range(0, adj.autoderefs) {
                     let method_call = MethodCall::autoderef(id, autoderef);
@@ -1505,7 +1505,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
     {
         self.read_enum("MethodOrigin", |this| {
             let variants = ["MethodStatic", "MethodStaticUnboxedClosure",
-                            "MethodParam", "MethodObject"];
+                            "MethodTypeParam", "MethodTraitObject"];
             this.read_enum_variant(variants, |this, i| {
                 Ok(match i {
                     0 => {
@@ -1519,8 +1519,8 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                     }
 
                     2 => {
-                        this.read_struct("MethodParam", 2, |this| {
-                            Ok(typeck::MethodParam(
+                        this.read_struct("MethodTypeParam", 2, |this| {
+                            Ok(typeck::MethodTypeParam(
                                 typeck::MethodParam {
                                     trait_ref: {
                                         this.read_struct_field("trait_ref", 0, |this| {
@@ -1537,8 +1537,8 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                     }
 
                     3 => {
-                        this.read_struct("MethodObject", 2, |this| {
-                            Ok(typeck::MethodObject(
+                        this.read_struct("MethodTraitObject", 2, |this| {
+                            Ok(typeck::MethodTraitObject(
                                 typeck::MethodObject {
                                     trait_ref: {
                                         this.read_struct_field("trait_ref", 0, |this| {
@@ -1685,14 +1685,14 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                         let store: ty::TraitStore =
                             this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
 
-                        ty::AutoAddEnv(store.tr(dcx))
+                        ty::AdjustAddEnv(store.tr(dcx))
                     }
                     1 => {
                         let auto_deref_ref: ty::AutoDerefRef =
                             this.read_enum_variant_arg(0,
                                 |this| Ok(this.read_auto_deref_ref(dcx))).unwrap();
 
-                        ty::AutoDerefRef(auto_deref_ref)
+                        ty::AdjustDerefRef(auto_deref_ref)
                     }
                     _ => fail!("bad enum variant for ty::AutoAdjustment")
                 })
