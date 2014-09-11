@@ -117,14 +117,14 @@ where you may want the `impl` to depend on the types of *both*
 arguments. For example, you might want a trait
 
 ```rust
-trait Add<RHS, SUM> {
-    fn add(&self, rhs: &RHS) -> SUM;
+trait Add<Rhs, Sum> {
+    fn add(&self, rhs: &Rhs) -> Sum;
 }
 ```
 
-to view the `Self` and `RHS` types as inputs, and the `SUM` type as an output
+to view the `Self` and `Rhs` types as inputs, and the `Sum` type as an output
 (since it is uniquely determined by the argument types). This would allow
-`impl`s to vary depending on the `RHS` type, even though the `Self` type is the same:
+`impl`s to vary depending on the `Rhs` type, even though the `Self` type is the same:
 
 ```rust
 impl Add<int, int> for int { ... }
@@ -147,25 +147,25 @@ This RFC clarifies trait matching by:
 In this design, the `Add` trait would be written and implemented as follows:
 
 ```rust
-// Self and RHS are *inputs*
-trait Add<RHS> {
-    type SUM; // SUM is an *output*
-    fn add(&self, &RHS) -> SUM;
+// Self and Rhs are *inputs*
+trait Add<Rhs> {
+    type Sum; // Sum is an *output*
+    fn add(&self, &Rhs) -> Sum;
 }
 
 impl Add<int> for int {
-    type SUM = int;
+    type Sum = int;
     fn add(&self, rhs: &int) -> int { ... }
 }
 
 impl Add<Complex> for int {
-    type SUM = Complex;
+    type Sum = Complex;
     fn add(&self, rhs: &Complex) -> Complex { ... }
 }
 ```
 
-With this approach, a trait declaration like `trait Add<RHS> { ... }` is really
-defining a *family* of traits, one for each choice of `RHS`. One can then
+With this approach, a trait declaration like `trait Add<Rhs> { ... }` is really
+defining a *family* of traits, one for each choice of `Rhs`. One can then
 provide a distinct `impl` for every member of this family.
 
 ## Expressiveness
@@ -1062,7 +1062,7 @@ makes it possible to ensure *crate concatentation*: adding another crate may add
 `impl`s, importing a crate could break existing code.
 
 In practice, these inference benefits can be quite valuable. For example, in the
-`Add` trait given at the beginning of this RFC, the `SUM` output type is
+`Add` trait given at the beginning of this RFC, the `Sum` output type is
 immediately known once the input types are known, which can avoid the need for
 type annotations.
 
@@ -1260,26 +1260,26 @@ instead support multiple input types through a separate multidispatch mechanism.
 In this design, the `Add` trait would be written and implemented as follows:
 
 ```rust
-// LHS and RHS are *inputs*
-trait Add for (LHS, RHS) {
-    type SUM; // SUM is an *output*
-    fn add(&LHS, &RHS) -> SUM;
+// Lhs and Rhs are *inputs*
+trait Add for (Lhs, Rhs) {
+    type Sum; // Sum is an *output*
+    fn add(&Lhs, &Rhs) -> Sum;
 }
 
 impl Add for (int, int) {
-    type SUM = int;
+    type Sum = int;
     fn add(left: &int, right: &int) -> int { ... }
 }
 
 impl Add for (int, Complex) {
-    type SUM = Complex;
+    type Sum = Complex;
     fn add(left: &int, right: &Complex) -> Complex { ... }
 }
 ```
 
 The `for` syntax in the trait definition is used for multidispatch traits, here
-saying that `impl`s must be for pairs of types which are bound to `LHS` and
-`RHS` respectively. The `add` function can then be invoked in UFCS style by
+saying that `impl`s must be for pairs of types which are bound to `Lhs` and
+`Rhs` respectively. The `add` function can then be invoked in UFCS style by
 writing
 
 ```rust
@@ -1292,7 +1292,7 @@ Add::add(some_int, some_complex)
   some cases (including binary operators like `Add`) can be artificial.
 
 - Makes it possible to specify input types without specifying the trait:
-  `<(A, B)>::SUM` rather than `<A as Add<B>>::SUM`.
+  `<(A, B)>::Sum` rather than `<A as Add<B>>::Sum`.
 
 *Disadvantages of the tuple approach*:
 
@@ -1326,15 +1326,15 @@ Yet another alternative would be to allow trait type parameters to be either
 inputs or outputs, marking the inputs with a keyword `in`:
 
 ```rust
-trait Add<in RHS, SUM> {
-    fn add(&LHS, &RHS) -> SUM;
+trait Add<in Rhs, Sum> {
+    fn add(&Lhs, &Rhs) -> Sum;
 }
 ```
 
 This would provide a way of adding multidispatch now, and then adding associated
 items later on without breakage. If, in addition, output types had to come after
 all input types, it might even be possible to migrate output type parameters
-like `SUM` above into associated types later.
+like `Sum` above into associated types later.
 
 This is perhaps a reasonable fallback, but it seems better to introduce a clean
 design with both multidispatch and associated items together.
