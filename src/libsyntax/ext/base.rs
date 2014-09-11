@@ -79,11 +79,6 @@ impl ItemModifier for fn(&mut ExtCtxt, Span, Gc<ast::MetaItem>, Gc<ast::Item>) -
     }
 }
 
-pub struct BasicMacroExpander {
-    pub expander: MacroExpanderFn,
-    pub span: Option<Span>
-}
-
 /// Represents a thing that maps token trees to Macro Results
 pub trait TTMacroExpander {
     fn expand<'cx>(&self,
@@ -94,22 +89,16 @@ pub trait TTMacroExpander {
 }
 
 pub type MacroExpanderFn =
-    fn<'cx>(ecx: &'cx mut ExtCtxt, span: codemap::Span, token_tree: &[ast::TokenTree])
-            -> Box<MacResult+'cx>;
+    fn<'cx>(&'cx mut ExtCtxt, Span, &[ast::TokenTree]) -> Box<MacResult+'cx>;
 
-impl TTMacroExpander for BasicMacroExpander {
+impl TTMacroExpander for MacroExpanderFn {
     fn expand<'cx>(&self,
                    ecx: &'cx mut ExtCtxt,
                    span: Span,
                    token_tree: &[ast::TokenTree])
                    -> Box<MacResult+'cx> {
-        (self.expander)(ecx, span, token_tree)
+        (*self)(ecx, span, token_tree)
     }
-}
-
-pub struct BasicIdentMacroExpander {
-    pub expander: IdentMacroExpanderFn,
-    pub span: Option<Span>
 }
 
 pub trait IdentMacroExpander {
@@ -121,19 +110,19 @@ pub trait IdentMacroExpander {
                    -> Box<MacResult+'cx>;
 }
 
-impl IdentMacroExpander for BasicIdentMacroExpander {
+pub type IdentMacroExpanderFn =
+    fn<'cx>(&'cx mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree>) -> Box<MacResult+'cx>;
+
+impl IdentMacroExpander for IdentMacroExpanderFn {
     fn expand<'cx>(&self,
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    ident: ast::Ident,
                    token_tree: Vec<ast::TokenTree> )
                    -> Box<MacResult+'cx> {
-        (self.expander)(cx, sp, ident, token_tree)
+        (*self)(cx, sp, ident, token_tree)
     }
 }
-
-pub type IdentMacroExpanderFn =
-    fn<'cx>(&'cx mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree>) -> Box<MacResult+'cx>;
 
 /// The result of a macro expansion. The return values of the various
 /// methods are spliced into the AST at the callsite of the macro (or
@@ -363,20 +352,12 @@ impl BlockInfo {
 fn initial_syntax_expander_table() -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_expander(f: MacroExpanderFn) -> SyntaxExtension {
-        NormalTT(box BasicMacroExpander {
-                expander: f,
-                span: None,
-            },
-            None)
+        NormalTT(box f, None)
     }
 
     let mut syntax_expanders = SyntaxEnv::new();
     syntax_expanders.insert(intern("macro_rules"),
-                            LetSyntaxTT(box BasicIdentMacroExpander {
-                                expander: ext::tt::macro_rules::add_new_extension,
-                                span: None,
-                            },
-                            None));
+                            LetSyntaxTT(box ext::tt::macro_rules::add_new_extension, None));
     syntax_expanders.insert(intern("fmt"),
                             builtin_normal_expander(
                                 ext::fmt::expand_syntax_ext));
