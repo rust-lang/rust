@@ -31,6 +31,7 @@ particular bits of it, etc.
 
 ```rust
 # #![allow(unused_must_use)]
+use std::io::fs::PathExtensions;
 use std::io::{File, fs};
 
 let path = Path::new("foo.txt");
@@ -622,8 +623,9 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// # Example
 ///
 /// ```rust
-/// use std::io;
+/// use std::io::fs::PathExtensions;
 /// use std::io::fs;
+/// use std::io;
 ///
 /// // one possible implementation of fs::walk_dir only visiting files
 /// fn visit_dirs(dir: &Path, cb: |&Path|) -> io::IoResult<()> {
@@ -868,13 +870,14 @@ impl Seek for File {
     }
 }
 
-impl path::Path {
+/// Utility methods for paths.
+pub trait PathExtensions {
     /// Get information on the file, directory, etc at this path.
     ///
     /// Consult the `fs::stat` documentation for more info.
     ///
     /// This call preserves identical runtime/error semantics with `file::stat`.
-    pub fn stat(&self) -> IoResult<FileStat> { stat(self) }
+    fn stat(&self) -> IoResult<FileStat>;
 
     /// Get information on the file, directory, etc at this path, not following
     /// symlinks.
@@ -882,31 +885,39 @@ impl path::Path {
     /// Consult the `fs::lstat` documentation for more info.
     ///
     /// This call preserves identical runtime/error semantics with `file::lstat`.
-    pub fn lstat(&self) -> IoResult<FileStat> { lstat(self) }
+    fn lstat(&self) -> IoResult<FileStat>;
 
     /// Boolean value indicator whether the underlying file exists on the local
     /// filesystem. Returns false in exactly the cases where `fs::stat` fails.
-    pub fn exists(&self) -> bool {
-        self.stat().is_ok()
-    }
+    fn exists(&self) -> bool;
 
     /// Whether the underlying implementation (be it a file path, or something
     /// else) points at a "regular file" on the FS. Will return false for paths
     /// to non-existent locations or directories or other non-regular files
     /// (named pipes, etc). Follows links when making this determination.
-    pub fn is_file(&self) -> bool {
-        match self.stat() {
-            Ok(s) => s.kind == io::TypeFile,
-            Err(..) => false
-        }
-    }
+    fn is_file(&self) -> bool;
 
     /// Whether the underlying implementation (be it a file path, or something
     /// else) is pointing at a directory in the underlying FS. Will return
     /// false for paths to non-existent locations or if the item is not a
     /// directory (eg files, named pipes, etc). Follows links when making this
     /// determination.
-    pub fn is_dir(&self) -> bool {
+    fn is_dir(&self) -> bool;
+}
+
+impl PathExtensions for path::Path {
+    fn stat(&self) -> IoResult<FileStat> { stat(self) }
+    fn lstat(&self) -> IoResult<FileStat> { lstat(self) }
+    fn exists(&self) -> bool {
+        self.stat().is_ok()
+    }
+    fn is_file(&self) -> bool {
+        match self.stat() {
+            Ok(s) => s.kind == io::TypeFile,
+            Err(..) => false
+        }
+    }
+    fn is_dir(&self) -> bool {
         match self.stat() {
             Ok(s) => s.kind == io::TypeDirectory,
             Err(..) => false

@@ -11,9 +11,10 @@
 #![allow(non_camel_case_types)]
 
 use std::cell::RefCell;
-use std::os;
-use std::io::fs;
 use std::collections::HashSet;
+use std::io::fs::PathExtensions;
+use std::io::fs;
+use std::os;
 
 use util::fs as myfs;
 
