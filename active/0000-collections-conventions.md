@@ -855,7 +855,7 @@ trait Predicate<T> {
 
 impl<T: Eq> Predicate<T> for &T {
     fn check(&self, t: &T) -> bool {
-        self == t
+        *self == t
     }
 }
 
@@ -1169,8 +1169,8 @@ functions to work with the capacity later on:
 ```rust
 fn with_capacity(uint) -> Self
 fn capacity(&self) -> uint
-fn reserve(&mut self, uint)
-fn reserve_exact(&mut self, uint)
+fn reserve(&mut self, additional: uint)
+fn reserve_exact(&mut self, additional: uint)
 fn shrink_to_fit(&mut self)
 ```
 
@@ -1178,10 +1178,10 @@ There are some important changes from the current APIs:
 
 * The `reserve` and `reserve_exact` methods now take as an argument the *extra*
   space to reserve, rather than the final desired capacity, as this usage is
-  vastly more common. The `reserve` function will generally grow the capacity in
-  powers of two (as needed for amortization), while `reserve_exact` will reserve
-  exactly the requested additional capacity. The `reserve_additional` methods
-  are deprecated.
+  vastly more common. The `reserve` function may grow the capacity by a larger
+  amount than requested, to ensure amortization, while `reserve_exact` will
+  reserve exactly the requested additional capacity. The `reserve_additional`
+  methods are deprecated.
 
 * The `with_capacity` constructor does *not* take any additional arguments, for
   uniformity with `new`. This change affects `Bitv` in particular.
@@ -1199,7 +1199,7 @@ renaming:
 fn iter_from(&self, k: &K) -> Entries<'a, K, V>
 fn iter_from_mut(&mut self, k: &K) -> EntriesMut<'a, K, V>
 
-Returns an iterator starting with the first key-value pair whose key is greater than k.
+// Returns an iterator starting with the first key-value pair whose key is greater than k.
 fn iter_above(&self, k: &K) -> Entries<'a, K, V>
 fn iter_above_mut(&mut self, k: &K) -> EntriesMut <'a, K, V>
 ```
