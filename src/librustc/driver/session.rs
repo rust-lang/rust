@@ -11,7 +11,6 @@
 
 use driver::config;
 use driver::driver;
-use front;
 use metadata::cstore::CStore;
 use metadata::filesearch;
 use lint;
@@ -21,6 +20,7 @@ use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use syntax::diagnostic;
 use syntax::diagnostics;
+use syntax::feature_gate;
 use syntax::parse;
 use syntax::parse::token;
 use syntax::parse::ParseSess;
@@ -49,7 +49,7 @@ pub struct Session {
     pub lints: RefCell<NodeMap<Vec<(lint::LintId, codemap::Span, String)>>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub crate_metadata: RefCell<Vec<String>>,
-    pub features: front::feature_gate::Features,
+    pub features: RefCell<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
@@ -245,7 +245,7 @@ pub fn build_session_(sopts: config::Options,
         lints: RefCell::new(NodeMap::new()),
         crate_types: RefCell::new(Vec::new()),
         crate_metadata: RefCell::new(Vec::new()),
-        features: front::feature_gate::Features::new(),
+        features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
     };
 

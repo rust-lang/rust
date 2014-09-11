@@ -13,7 +13,6 @@ use back::link;
 use back::write;
 use driver::session::Session;
 use driver::config;
-use front;
 use lint;
 use llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
@@ -194,8 +193,20 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     *sess.crate_metadata.borrow_mut() =
         collect_crate_metadata(sess, krate.attrs.as_slice());
 
-    time(time_passes, "gated feature checking", (), |_|
-         front::feature_gate::check_crate(sess, &krate));
+    time(time_passes, "gated feature checking", (), |_| {
+        let (features, unknown_features) =
+            syntax::feature_gate::check_crate(&sess.parse_sess.span_diagnostic, &krate);
+
+        for uf in unknown_features.iter() {
+            sess.add_lint(lint::builtin::UNKNOWN_FEATURES,
+                          ast::CRATE_NODE_ID,
+                          *uf,
+                          "unknown feature".to_string());
+        }
+
+        sess.abort_if_errors();
+        *sess.features.borrow_mut() = features;
+    });
 
     let any_exe = sess.crate_types.borrow().iter().any(|ty| {
         *ty == config::CrateTypeExecutable
@@ -225,7 +236,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let mut registry = Registry::new(&krate);
 
     time(time_passes, "plugin registration", (), |_| {
-        if sess.features.rustc_diagnostic_macros.get() {
+        if sess.features.borrow().rustc_diagnostic_macros {
             registry.register_macro("__diagnostic_used",
                 diagnostics::plugin::expand_diagnostic_used);
             registry.register_macro("__register_diagnostic",
@@ -277,7 +288,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 os::setenv("PATH", os::join_paths(new_path.as_slice()).unwrap());
             }
             let cfg = syntax::ext::expand::ExpansionConfig {
-                deriving_hash_type_parameter: sess.features.default_type_params.get(),
+                deriving_hash_type_parameter: sess.features.borrow().default_type_params,
                 crate_name: crate_name.to_string(),
             };
             let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,
