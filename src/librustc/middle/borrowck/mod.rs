@@ -807,7 +807,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         out.push_str(token::get_name(fname).get());
                     }
                     mc::PositionalField(idx) => {
-                        out.push_char('#'); // invent a notation here
+                        out.push_char('.');
                         out.push_str(idx.to_string().as_slice());
                     }
                 }

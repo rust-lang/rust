@@ -62,7 +62,7 @@ use middle::trans::meth;
 use middle::trans::inline;
 use middle::trans::tvec;
 use middle::trans::type_of;
-use middle::ty::struct_fields;
+use middle::ty::{struct_fields, tup_fields};
 use middle::ty::{AutoDerefRef, AutoAddEnv, AutoUnsafe};
 use middle::ty::{AutoPtr};
 use middle::ty;
@@ -593,6 +593,9 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprField(ref base, ident, _) => {
             trans_rec_field(bcx, &**base, ident.node)
         }
+        ast::ExprTupField(ref base, idx, _) => {
+            trans_rec_tup_field(bcx, &**base, idx.node)
+        }
         ast::ExprIndex(ref base, ref idx) => {
             trans_index(bcx, expr, &**base, &**idx, MethodCall::expr(expr.id))
         }
@@ -666,12 +669,10 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn trans_rec_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                               base: &ast::Expr,
-                               field: ast::Ident)
-                               -> DatumBlock<'blk, 'tcx, Expr> {
-    //! Translates `base.field`.
-
+fn trans_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                           base: &ast::Expr,
+                           get_idx: |&'blk ty::ctxt<'tcx>, &[ty::field]| -> uint)
+                           -> DatumBlock<'blk, 'tcx, Expr> {
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_rec_field");
 
@@ -679,7 +680,7 @@ fn trans_rec_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let bare_ty = ty::unopen_type(base_datum.ty);
     let repr = adt::represent_type(bcx.ccx(), bare_ty);
     with_field_tys(bcx.tcx(), bare_ty, None, |discr, field_tys| {
-        let ix = ty::field_idx_strict(bcx.tcx(), field.name, field_tys);
+        let ix = get_idx(bcx.tcx(), field_tys);
         let d = base_datum.get_element(
             bcx,
             field_tys[ix].mt.ty,
@@ -697,6 +698,23 @@ fn trans_rec_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         }
     })
+
+}
+
+/// Translates `base.field`.
+fn trans_rec_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                               base: &ast::Expr,
+                               field: ast::Ident)
+                               -> DatumBlock<'blk, 'tcx, Expr> {
+    trans_field(bcx, base, |tcx, field_tys| ty::field_idx_strict(tcx, field.name, field_tys))
+}
+
+/// Translates `base.<idx>`.
+fn trans_rec_tup_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                   base: &ast::Expr,
+                                   idx: uint)
+                                   -> DatumBlock<'blk, 'tcx, Expr> {
+    trans_field(bcx, base, |_, _| idx)
 }
 
 fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -1236,6 +1254,10 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
     match ty::get(ty).sty {
         ty::ty_struct(did, ref substs) => {
             op(0, struct_fields(tcx, did, substs).as_slice())
+        }
+
+        ty::ty_tup(ref v) => {
+            op(0, tup_fields(v.as_slice()).as_slice())
         }
 
         ty::ty_enum(_, ref substs) => {

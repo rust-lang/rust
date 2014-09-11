@@ -145,6 +145,17 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
+    fn handle_tup_field_access(&mut self, lhs: &ast::Expr, idx: uint) {
+        match ty::get(ty::expr_ty_adjusted(self.tcx, lhs)).sty {
+            ty::ty_struct(id, _) => {
+                let fields = ty::lookup_struct_fields(self.tcx, id);
+                let field_id = fields[idx].id;
+                self.live_symbols.insert(field_id.node);
+            },
+            _ => ()
+        }
+    }
+
     fn handle_field_pattern_match(&mut self, lhs: &ast::Pat, pats: &[ast::FieldPat]) {
         let id = match self.tcx.def_map.borrow().get(&lhs.id) {
             &def::DefVariant(_, id, _) => id,
@@ -254,6 +265,9 @@ impl<'a, 'tcx> Visitor<MarkSymbolVisitorContext> for MarkSymbolVisitor<'a, 'tcx>
             }
             ast::ExprField(ref lhs, ref ident, _) => {
                 self.handle_field_access(&**lhs, &ident.node);
+            }
+            ast::ExprTupField(ref lhs, idx, _) => {
+                self.handle_tup_field_access(&**lhs, idx.node);
             }
             _ => ()
         }

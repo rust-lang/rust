@@ -106,7 +106,7 @@ impl<'a, 'tcx> Visitor<bool> for CheckStaticVisitor<'a, 'tcx> {
         }
 
         match e.node {
-            ast::ExprField(..) | ast::ExprVec(..) |
+            ast::ExprField(..) | ast::ExprTupField(..) | ast::ExprVec(..) |
             ast::ExprBlock(..) | ast::ExprTup(..)  => {
                 visit::walk_expr(self, e, is_const);
             }

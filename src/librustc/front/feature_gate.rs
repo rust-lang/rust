@@ -70,6 +70,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("unboxed_closures", Active),
     ("import_shadowing", Active),
     ("advanced_slice_patterns", Active),
+    ("tuple_indexing", Active),
 
     // if you change this list without updating src/doc/rust.md, cmr will be sad
 
@@ -337,6 +338,11 @@ impl<'a> Visitor<()> for Context<'a> {
                                   e.span,
                                   "unboxed closures are a work-in-progress \
                                    feature with known bugs");
+            }
+            ast::ExprTupField(..) => {
+                self.gate_feature("tuple_indexing",
+                                  e.span,
+                                  "tuple indexing is experimental");
             }
             _ => {}
         }

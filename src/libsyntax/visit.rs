@@ -830,6 +830,12 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
                 visitor.visit_ty(&**typ, env.clone())
             }
         }
+        ExprTupField(ref subexpression, _, ref types) => {
+            visitor.visit_expr(&**subexpression, env.clone());
+            for typ in types.iter() {
+                visitor.visit_ty(&**typ, env.clone())
+            }
+        }
         ExprIndex(ref main_expression, ref index_expression) => {
             visitor.visit_expr(&**main_expression, env.clone());
             visitor.visit_expr(&**index_expression, env.clone())

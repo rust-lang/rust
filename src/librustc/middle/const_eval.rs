@@ -225,6 +225,8 @@ impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
 
             ast::ExprField(ref base, _, _) => self.classify(&**base),
 
+            ast::ExprTupField(ref base, _, _) => self.classify(&**base),
+
             ast::ExprIndex(ref base, ref idx) =>
                 join(self.classify(&**base), self.classify(&**idx)),
 
