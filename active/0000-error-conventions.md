@@ -165,7 +165,8 @@ The main examples in `libstd` providing both variants are:
   whether the other end has hung up, channels provide a `recv_opt` variant that
   produces a `Result`.
 
-  > **[FIXME]** The `_opt` suffix needs to be replaced by a `_catch` suffix.
+  > Note: the `_opt` suffix would be replaced by a `_catch` suffix if this RFC
+  > is accepted.
 
 * `RefCell`, which provides a dynamic version of the borrowing rules. Calling
   the `borrow()` method is intended as an assertion that the cell is in a
@@ -173,7 +174,8 @@ The main examples in `libstd` providing both variants are:
   separate way to check the state of the `RefCell`, so the module provides a
   `try_borrow` variant that produces a `Result`.
 
-  > **[FIXME]** The `try_` prefix needs to be replaced by a `_catch` catch.
+  > Note: the `try_` prefix would be replaced by a `_catch` catch if this RFC is
+  > accepted.
 
 # Drawbacks
 
