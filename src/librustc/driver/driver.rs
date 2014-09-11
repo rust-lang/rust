@@ -32,6 +32,7 @@ use serialize::{json, Encodable};
 
 use std::io;
 use std::io::fs;
+use std::os;
 use arena::TypedArena;
 use syntax::ast;
 use syntax::attr;
@@ -258,18 +259,26 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             // dependent dlls. Note that this uses cfg!(windows) as opposed to
             // targ_cfg because syntax extensions are always loaded for the host
             // compiler, not for the target.
+            let mut _old_path = String::new();
             if cfg!(windows) {
-                sess.host_filesearch().add_dylib_search_paths();
+                _old_path = os::getenv("PATH").unwrap_or(_old_path);
+                let mut new_path = sess.host_filesearch().get_dylib_search_paths();
+                new_path.push_all_move(os::split_paths(_old_path.as_slice()));
+                os::setenv("PATH", os::join_paths(new_path.as_slice()).unwrap());
             }
             let cfg = syntax::ext::expand::ExpansionConfig {
                 deriving_hash_type_parameter: sess.features.default_type_params.get(),
                 crate_name: crate_name.to_string(),
             };
-            syntax::ext::expand::expand_crate(&sess.parse_sess,
+            let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,
                                               cfg,
                                               macros,
                                               syntax_exts,
-                                              krate)
+                                              krate);
+            if cfg!(windows) {
+                os::setenv("PATH", _old_path);
+            }
+            ret
         }
     );
 
@@ -509,11 +518,18 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 pub fn phase_6_link_output(sess: &Session,
                            trans: &CrateTranslation,
                            outputs: &OutputFilenames) {
+    let old_path = os::getenv("PATH").unwrap_or_else(||String::new());
+    let mut new_path = os::split_paths(old_path.as_slice());
+    new_path.push_all_move(sess.host_filesearch().get_tools_search_paths());
+    os::setenv("PATH", os::join_paths(new_path.as_slice()).unwrap());
+
     time(sess.time_passes(), "linking", (), |_|
          link::link_binary(sess,
                            trans,
                            outputs,
                            trans.link.crate_name.as_slice()));
+
+    os::setenv("PATH", old_path);
 }
 
 pub fn stop_after_phase_3(sess: &Session) -> bool {
