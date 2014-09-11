@@ -255,7 +255,7 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
             this.fields.infcx.tcx.sess.span_bug(
                 this.fields.trace.origin.span(),
                 format!("could not find original bound region for {:?}",
-                        r).as_slice())
+                        r).as_str())
         }
 
         fn fresh_bound_variable(this: &Glb, binder_id: NodeId) -> ty::Region {

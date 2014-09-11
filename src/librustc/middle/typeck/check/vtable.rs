@@ -157,7 +157,7 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
                     format!("failed to find an implementation of \
                           trait {} for {}",
                          vcx.infcx.trait_ref_to_string(&*trait_ref),
-                         vcx.infcx.ty_to_string(ty)).as_slice());
+                         vcx.infcx.ty_to_string(ty)).as_str());
                 param_result.push(vtable_error)
             }
         }
@@ -585,7 +585,7 @@ fn fixup_ty(vcx: &VtableContext,
             tcx.sess.span_err(span,
                 format!("cannot determine a type for this bounded type \
                          parameter: {}",
-                        fixup_err_to_string(e)).as_slice());
+                        fixup_err_to_string(e)).as_str());
             Some(ty::mk_err())
         }
         Err(_) => {

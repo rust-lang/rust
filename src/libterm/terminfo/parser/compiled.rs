@@ -218,7 +218,7 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
         Err(_) => return Err("input not utf-8".to_string()),
     };
 
-    let term_names: Vec<String> = names_str.as_slice()
+    let term_names: Vec<String> = names_str.as_str()
                                            .split('|')
                                            .map(|s| s.to_string())
                                            .collect();

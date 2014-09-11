@@ -212,13 +212,13 @@ pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: ty::t,
                     ccx.sess().span_fatal(s,
                         format!("ABI `{}` has no suitable calling convention \
                                  for target architecture",
-                                abi.user_string(ccx.tcx())).as_slice())
+                                abi.user_string(ccx.tcx())).as_str())
                 }
                 None => {
                     ccx.sess().fatal(
                         format!("ABI `{}` has no suitable calling convention \
                                  for target architecture",
-                                abi.user_string(ccx.tcx())).as_slice())
+                                abi.user_string(ccx.tcx())).as_str())
                 }
             }
         }
@@ -384,7 +384,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             ccx.sess().fatal(
                 format!("ABI string `{}` has no suitable ABI \
                          for target architecture",
-                         fn_abi.user_string(ccx.tcx())).as_slice());
+                         fn_abi.user_string(ccx.tcx())).as_str());
         }
     };
 
@@ -495,7 +495,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
                     abi => {
                         let ty = ty::node_id_to_type(ccx.tcx(), foreign_item.id);
                         register_foreign_item_fn(ccx, abi, ty,
-                                                 lname.get().as_slice(),
+                                                 lname.get().as_str(),
                                                  Some(foreign_item.span));
                         // Unlike for other items, we shouldn't call
                         // `base::update_linkage` here.  Foreign items have
@@ -631,7 +631,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                 ccx.sess().bug(format!("build_rust_fn: extern fn {} has ty {}, \
                                         expected a bare fn ty",
                                        ccx.tcx().map.path_to_string(id),
-                                       t.repr(tcx)).as_slice());
+                                       t.repr(tcx)).as_str());
             }
         };
 
@@ -639,7 +639,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                ccx.tcx().map.path_to_string(id),
                id, t.repr(tcx));
 
-        let llfn = base::decl_internal_rust_fn(ccx, t, ps.as_slice());
+        let llfn = base::decl_internal_rust_fn(ccx, t, ps.as_str());
         base::set_llvm_fn_attrs(attrs, llfn);
         base::trans_fn(ccx, decl, body, llfn, param_substs, id, []);
         llfn

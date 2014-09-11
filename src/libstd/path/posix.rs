@@ -19,7 +19,6 @@ use hash;
 use io::Writer;
 use iter::{DoubleEndedIterator, AdditiveIterator, Extendable, Iterator, Map};
 use option::{Option, None, Some};
-use str::Str;
 use str;
 use slice::{CloneableVector, Splits, Slice, VectorVector,
             ImmutablePartialEqSlice, ImmutableSlice};

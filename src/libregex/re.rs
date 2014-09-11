@@ -501,7 +501,7 @@ impl Regex {
 
             let (s, e) = cap.pos(0).unwrap(); // captures only reports matches
             new.push_str(text.slice(last_match, s));
-            new.push_str(rep.reg_replace(&cap).as_slice());
+            new.push_str(rep.reg_replace(&cap).as_str());
             last_match = e;
         }
         new.append(text.slice(last_match, text.len()))
@@ -510,8 +510,8 @@ impl Regex {
     /// Returns the original string of this regex.
     pub fn as_str<'a>(&'a self) -> &'a str {
         match *self {
-            Dynamic(Dynamic { ref original, .. }) => original.as_slice(),
-            Native(Native { ref original, .. }) => original.as_slice(),
+            Dynamic(Dynamic { ref original, .. }) => original.as_str(),
+            Native(Native { ref original, .. }) => original.as_str(),
         }
     }
 
@@ -765,13 +765,13 @@ impl<'t> Captures<'t> {
         let text = re.replace_all(text, |refs: &Captures| -> String {
             let (pre, name) = (refs.at(1), refs.at(2));
             format!("{}{}", pre,
-                    match from_str::<uint>(name.as_slice()) {
+                    match from_str::<uint>(name.as_str()) {
                 None => self.name(name).to_string(),
                 Some(i) => self.at(i).to_string(),
             })
         });
         let re = Regex::new(r"\$\$").unwrap();
-        re.replace_all(text.as_slice(), NoExpand("$"))
+        re.replace_all(text.as_str(), NoExpand("$"))
     }
 }
 

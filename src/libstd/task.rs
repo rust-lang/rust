@@ -360,7 +360,7 @@ pub fn with_task_name<U>(blk: |Option<&str>| -> U) -> U {
 
     let task = Local::borrow(None::<Task>);
     match task.name {
-        Some(ref name) => blk(Some(name.as_slice())),
+        Some(ref name) => blk(Some(name.as_str())),
         None => blk(None)
     }
 }
@@ -372,7 +372,7 @@ pub fn name() -> Option<String> {
 
     let task = Local::borrow(None::<Task>);
     match task.name {
-        Some(ref name) => Some(name.as_slice().to_string()),
+        Some(ref name) => Some(name.as_str().to_string()),
         None => None
     }
 }

@@ -126,7 +126,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     let formatter = substr.nonself_args[0];
 
     let meth = cx.ident_of("write_fmt");
-    let s = token::intern_and_get_ident(format_string.as_slice());
+    let s = token::intern_and_get_ident(format_string.as_str());
     let format_string = cx.expr_str(span, s);
 
     // phew, not our responsibility any more!

@@ -611,14 +611,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         self.tcx.sess.span_bug(
                             expr.span,
                             format!("no loop scope for id {:?}",
-                                    loop_id).as_slice());
+                                    loop_id).as_str());
                     }
 
                     r => {
                         self.tcx.sess.span_bug(
                             expr.span,
                             format!("bad entry `{:?}` in def_map for label",
-                                    r).as_slice());
+                                    r).as_str());
                     }
                 }
             }

@@ -201,11 +201,11 @@ impl<'a> Parser<'a> {
             Some((_, other)) => {
                 self.err(format!("expected `{}`, found `{}`",
                                  c,
-                                 other).as_slice());
+                                 other).as_str());
             }
             None => {
                 self.err(format!("expected `{}` but string was terminated",
-                                 c).as_slice());
+                                 c).as_str());
             }
         }
     }

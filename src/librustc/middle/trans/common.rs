@@ -117,7 +117,7 @@ pub fn gensym_name(name: &str) -> PathElem {
     let num = token::gensym(name).uint();
     // use one colon which will get translated to a period by the mangler, and
     // we're guaranteed that `num` is globally unique for this crate.
-    PathName(token::gensym(format!("{}:{}", name, num).as_slice()))
+    PathName(token::gensym(format!("{}:{}", name, num).as_str()))
 }
 
 pub struct tydesc_info {
@@ -475,7 +475,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
             Some(&v) => v,
             None => {
                 self.tcx().sess.bug(format!(
-                    "no def associated with node id {:?}", nid).as_slice());
+                    "no def associated with node id {:?}", nid).as_str());
             }
         }
     }
@@ -795,7 +795,7 @@ pub fn node_id_substs(bcx: Block,
             format!("type parameters for node {:?} include inference types: \
                      {}",
                     node,
-                    substs.repr(bcx.tcx())).as_slice());
+                    substs.repr(bcx.tcx())).as_str());
     }
 
     substs.substp(tcx, bcx.fcx.param_substs)
@@ -889,8 +889,8 @@ pub fn langcall(bcx: Block,
         Err(s) => {
             let msg = format!("{} {}", msg, s);
             match span {
-                Some(span) => bcx.tcx().sess.span_fatal(span, msg.as_slice()),
-                None => bcx.tcx().sess.fatal(msg.as_slice()),
+                Some(span) => bcx.tcx().sess.span_fatal(span, msg.as_str()),
+                None => bcx.tcx().sess.fatal(msg.as_str()),
             }
         }
     }

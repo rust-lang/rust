@@ -46,7 +46,7 @@ pub fn min_stack() -> uint {
         0 => {}
         n => return n - 1,
     }
-    let amt = os::getenv("RUST_MIN_STACK").and_then(|s| from_str(s.as_slice()));
+    let amt = os::getenv("RUST_MIN_STACK").and_then(|s| from_str(s.as_str()));
     let amt = amt.unwrap_or(2 * 1024 * 1024);
     // 0 is our sentinel value, so ensure that we'll never see 0 after
     // initialization has run
@@ -59,7 +59,7 @@ pub fn min_stack() -> uint {
 pub fn default_sched_threads() -> uint {
     match os::getenv("RUST_THREADS") {
         Some(nstr) => {
-            let opt_n: Option<uint> = FromStr::from_str(nstr.as_slice());
+            let opt_n: Option<uint> = FromStr::from_str(nstr.as_str());
             match opt_n {
                 Some(n) if n > 0 => n,
                 _ => fail!("`RUST_THREADS` is `{}`, should be a positive integer", nstr)

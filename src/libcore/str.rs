@@ -1077,19 +1077,19 @@ pub mod traits {
 
     impl<'a, S: Str> Equiv<S> for &'a str {
         #[inline]
-        fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
+        fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_str()) }
     }
 }
 
 /// Any string that can be represented as a slice
 pub trait Str {
-    /// Work with `self` as a slice.
-    fn as_slice<'a>(&'a self) -> &'a str;
+    /// Work with `self` as a &str
+    fn as_str<'a>(&'a self) -> &'a str;
 }
 
 impl<'a> Str for &'a str {
     #[inline]
-    fn as_slice<'a>(&'a self) -> &'a str { *self }
+    fn as_str<'a>(&'a self) -> &'a str { *self }
 }
 
 impl<'a> Collection for &'a str {

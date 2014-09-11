@@ -107,7 +107,7 @@ extern fn stack_exhausted() {
         let task: Option<Box<Task>> = Local::try_take();
         let name = match task {
             Some(ref task) => {
-                task.name.as_ref().map(|n| n.as_slice())
+                task.name.as_ref().map(|n| n.as_str())
             }
             None => None
         };

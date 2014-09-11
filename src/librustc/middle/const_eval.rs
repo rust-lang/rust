@@ -363,7 +363,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: Gc<Expr>) -> Gc<Pat> {
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
         Ok(r) => r,
-        Err(s) => tcx.sess.span_fatal(e.span, s.as_slice())
+        Err(s) => tcx.sess.span_fatal(e.span, s.as_str())
     }
 }
 

@@ -750,7 +750,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     format!("resolve_type_vars_if_possible() yielded {} \
                              when supplied with {}",
                             self.ty_to_string(dummy0),
-                            self.ty_to_string(dummy1)).as_slice());
+                            self.ty_to_string(dummy1)).as_str());
             }
         }
     }
@@ -798,13 +798,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         .span_err(sp,
                                   format!("{}{}",
                                           mk_msg(None, actual_ty),
-                                          error_str).as_slice())
+                                          error_str).as_str())
                 }
                 Some(e) => {
                     self.tcx.sess.span_err(sp,
                         format!("{}{}",
                                 mk_msg(Some(self.ty_to_string(e)), actual_ty),
-                                error_str).as_slice());
+                                error_str).as_str());
                 }
             }
             for err in err.iter() {

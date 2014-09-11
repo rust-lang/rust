@@ -129,7 +129,7 @@ impl AttributeMethods for Attribute {
             let meta = mk_name_value_item_str(
                 InternedString::new("doc"),
                 token::intern_and_get_ident(strip_doc_comment_decoration(
-                        comment.get()).as_slice()));
+                        comment.get()).as_str()));
             if self.node.style == ast::AttrOuter {
                 mk_attr_outer(self.node.id, meta)
             } else {
@@ -420,7 +420,7 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[Gc<MetaItem>]) {
         if !set.insert(name.clone()) {
             diagnostic.span_fatal(meta.span,
                                   format!("duplicate meta item `{}`",
-                                          name).as_slice());
+                                          name).as_str());
         }
     }
 }

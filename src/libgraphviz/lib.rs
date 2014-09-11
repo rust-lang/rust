@@ -354,7 +354,7 @@ impl<'a> Id<'a> {
     pub fn new<Name:str::IntoMaybeOwned<'a>>(name: Name) -> Id<'a> {
         let name = name.into_maybe_owned();
         {
-            let mut chars = name.as_slice().chars();
+            let mut chars = name.as_str().chars();
             assert!(is_letter_or_underscore(chars.next().unwrap()));
             assert!(chars.all(is_constituent));
         }
@@ -372,7 +372,7 @@ impl<'a> Id<'a> {
     }
 
     pub fn as_slice(&'a self) -> &'a str {
-        self.name.as_slice()
+        self.name.as_str()
     }
 
     pub fn name(self) -> str::MaybeOwned<'a> {
@@ -434,8 +434,8 @@ impl<'a> LabelText<'a> {
     /// Renders text as string suitable for a label in a .dot file.
     pub fn escape(&self) -> String {
         match self {
-            &LabelStr(ref s) => s.as_slice().escape_default(),
-            &EscStr(ref s) => LabelText::escape_str(s.as_slice()),
+            &LabelStr(ref s) => s.as_str().escape_default(),
+            &EscStr(ref s) => LabelText::escape_str(s.as_str()),
         }
     }
 
@@ -446,8 +446,8 @@ impl<'a> LabelText<'a> {
     fn pre_escaped_content(self) -> str::MaybeOwned<'a> {
         match self {
             EscStr(s) => s,
-            LabelStr(s) => if s.as_slice().contains_char('\\') {
-                str::Owned(s.as_slice().escape_default())
+            LabelStr(s) => if s.as_str().contains_char('\\') {
+                str::Owned(s.as_str().escape_default())
             } else {
                 s
             },
@@ -463,7 +463,7 @@ impl<'a> LabelText<'a> {
     pub fn suffix_line(self, suffix: LabelText) -> LabelText<'static> {
         let prefix = self.pre_escaped_content().into_string();
         let suffix = suffix.pre_escaped_content();
-        EscStr(str::Owned(prefix.append(r"\n\n").append(suffix.as_slice())))
+        EscStr(str::Owned(prefix.append(r"\n\n").append(suffix.as_str())))
     }
 }
 
@@ -518,7 +518,7 @@ pub fn render<'a, N:'a, E:'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, W:Writer>(
         let id = g.node_id(n);
         let escaped = g.node_label(n).escape();
         try!(writeln(w, [id.as_slice(),
-                         "[label=\"", escaped.as_slice(), "\"];"]));
+                         "[label=\"", escaped.as_str(), "\"];"]));
     }
 
     for e in g.edges().iter() {
@@ -529,7 +529,7 @@ pub fn render<'a, N:'a, E:'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, W:Writer>(
         let source_id = g.node_id(&source);
         let target_id = g.node_id(&target);
         try!(writeln(w, [source_id.as_slice(), " -> ", target_id.as_slice(),
-                         "[label=\"", escaped_label.as_slice(), "\"];"]));
+                         "[label=\"", escaped_label.as_str(), "\"];"]));
     }
 
     writeln(w, ["}"])

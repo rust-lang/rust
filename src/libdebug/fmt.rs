@@ -46,7 +46,7 @@ impl<T> Poly for T {
             // this allocation of a new string
             _ => {
                 let s = repr::repr_to_string(self);
-                f.pad(s.as_slice())
+                f.pad(s.as_str())
             }
         }
     }

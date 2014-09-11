@@ -577,7 +577,7 @@ impl String {
     /// ```
     #[inline]
     pub fn truncate(&mut self, len: uint) {
-        assert!(self.as_slice().is_char_boundary(len));
+        assert!(self.as_str().is_char_boundary(len));
         self.vec.truncate(len)
     }
 
@@ -648,7 +648,7 @@ impl String {
             return None
         }
 
-        let CharRange {ch, next} = self.as_slice().char_range_at_reverse(len);
+        let CharRange {ch, next} = self.as_str().char_range_at_reverse(len);
         unsafe {
             self.vec.set_len(next);
         }
@@ -698,7 +698,7 @@ impl String {
             return None
         }
 
-        let CharRange {ch, next} = self.as_slice().char_range_at(0);
+        let CharRange {ch, next} = self.as_str().char_range_at(0);
         let new_len = len - next;
         unsafe {
             ptr::copy_memory(self.vec.as_mut_ptr(), self.vec.as_ptr().offset(next as int), new_len);
@@ -760,7 +760,7 @@ impl Extendable<char> for String {
 
 impl Str for String {
     #[inline]
-    fn as_slice<'a>(&'a self) -> &'a str {
+    fn as_str<'a>(&'a self) -> &'a str {
         unsafe {
             mem::transmute(self.vec.as_slice())
         }
@@ -782,28 +782,28 @@ impl Default for String {
 
 impl fmt::Show for String {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_slice().fmt(f)
+        self.as_str().fmt(f)
     }
 }
 
 impl<H: hash::Writer> hash::Hash<H> for String {
     #[inline]
     fn hash(&self, hasher: &mut H) {
-        self.as_slice().hash(hasher)
+        self.as_str().hash(hasher)
     }
 }
 
 impl<'a, S: Str> Equiv<S> for String {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
-        self.as_slice() == other.as_slice()
+        self.as_str() == other.as_str()
     }
 }
 
 impl<S: Str> Add<S, String> for String {
     fn add(&self, other: &S) -> String {
-        let mut s = String::from_str(self.as_slice());
-        s.push_str(other.as_slice());
+        let mut s = String::from_str(self.as_str());
+        s.push_str(other.as_str());
         return s;
     }
 }

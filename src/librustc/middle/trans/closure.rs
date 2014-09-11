@@ -203,7 +203,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         if ccx.sess().asm_comments() {
             add_comment(bcx, format!("Copy {} into closure",
-                                     bv.to_string(ccx)).as_slice());
+                                     bv.to_string(ccx)).as_str());
         }
 
         let bound_data = GEPi(bcx, llbox, [0u, abi::box_field_body, i]);
@@ -382,7 +382,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let s = tcx.map.with_path(id, |path| {
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
-    let llfn = decl_internal_rust_fn(ccx, fty, s.as_slice());
+    let llfn = decl_internal_rust_fn(ccx, fty, s.as_str());
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -441,7 +441,7 @@ pub fn get_or_create_declaration_if_unboxed_closure(ccx: &CrateContext,
         mangle_internal_name_by_path_and_seq(path, "unboxed_closure")
     });
 
-    let llfn = decl_internal_rust_fn(ccx, function_type, symbol.as_slice());
+    let llfn = decl_internal_rust_fn(ccx, function_type, symbol.as_str());
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -543,7 +543,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
             ccx.sess().bug(format!("get_wrapper_for_bare_fn: \
                                     expected a statically resolved fn, got \
                                     {:?}",
-                                    def).as_slice());
+                                    def).as_str());
         }
     };
 
@@ -561,7 +561,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         _ => {
             ccx.sess().bug(format!("get_wrapper_for_bare_fn: \
                                     expected a closure ty, got {}",
-                                    closure_ty.repr(tcx)).as_slice());
+                                    closure_ty.repr(tcx)).as_str());
         }
     };
 
@@ -569,9 +569,9 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         mangle_internal_name_by_path_and_seq(path, "as_closure")
     });
     let llfn = if is_local {
-        decl_internal_rust_fn(ccx, closure_ty, name.as_slice())
+        decl_internal_rust_fn(ccx, closure_ty, name.as_str())
     } else {
-        decl_rust_fn(ccx, closure_ty, name.as_slice())
+        decl_rust_fn(ccx, closure_ty, name.as_str())
     };
 
     ccx.closure_bare_wrapper_cache().borrow_mut().insert(fn_ptr, llfn);

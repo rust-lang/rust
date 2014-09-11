@@ -67,7 +67,7 @@ pub fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<UserIdentifie
             sess.fatal(format!(
                 "argument to `pretty` must be one of `normal`, \
                  `expanded`, `flowgraph=<nodeid>`, `typed`, `identified`, \
-                 or `expanded,identified`; got {}", name).as_slice());
+                 or `expanded,identified`; got {}", name).as_str());
         }
     };
     let opt_second = opt_second.and_then::<UserIdentifiedItem>(from_str);
@@ -301,7 +301,7 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
                 try!(pp::word(&mut s.s,
                               ppaux::ty_to_string(
                                   tcx,
-                                  ty::expr_ty(tcx, expr)).as_slice()));
+                                  ty::expr_ty(tcx, expr)).as_str()));
                 s.pclose()
             }
             _ => Ok(())
@@ -386,7 +386,7 @@ impl UserIdentifiedItem {
                         user_option,
                         self.reconstructed_input(),
                         is_wrong_because);
-            sess.fatal(message.as_slice())
+            sess.fatal(message.as_str())
         };
 
         let mut saw_node = ast::DUMMY_NODE_ID;
@@ -444,7 +444,7 @@ pub fn pretty_print_input(sess: Session,
 
     let is_expanded = needs_expansion(&ppm);
     let (krate, ast_map) = if needs_ast_map(&ppm, &opt_uii) {
-        let k = driver::phase_2_configure_and_expand(&sess, krate, id.as_slice(), None);
+        let k = driver::phase_2_configure_and_expand(&sess, krate, id.as_str(), None);
         let (krate, ast_map) = match k {
             None => return,
             Some(p) => p,
@@ -456,7 +456,7 @@ pub fn pretty_print_input(sess: Session,
 
     let src_name = driver::source_name(input);
     let src = Vec::from_slice(sess.codemap()
-                                  .get_filemap(src_name.as_slice())
+                                  .get_filemap(src_name.as_str())
                                   .src
                                   .as_bytes());
     let mut rdr = MemReader::new(src);
@@ -518,7 +518,7 @@ pub fn pretty_print_input(sess: Session,
             debug!("pretty printing flow graph for {}", opt_uii);
             let uii = opt_uii.unwrap_or_else(|| {
                 sess.fatal(format!("`pretty flowgraph=..` needs NodeId (int) or
-                                     unique path suffix (b::c::d)").as_slice())
+                                     unique path suffix (b::c::d)").as_str())
 
             });
             let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");
@@ -526,7 +526,7 @@ pub fn pretty_print_input(sess: Session,
 
             let node = ast_map.find(nodeid).unwrap_or_else(|| {
                 sess.fatal(format!("--pretty flowgraph couldn't find id: {}",
-                                   nodeid).as_slice())
+                                   nodeid).as_str())
             });
 
             let code = blocks::Code::from_node(node);
@@ -546,8 +546,8 @@ pub fn pretty_print_input(sess: Session,
                     // point to what was found, if there's an
                     // accessible span.
                     match ast_map.opt_span(nodeid) {
-                        Some(sp) => sess.span_fatal(sp, message.as_slice()),
-                        None => sess.fatal(message.as_slice())
+                        Some(sp) => sess.span_fatal(sp, message.as_str()),
+                        None => sess.fatal(message.as_str())
                     }
                 }
             }

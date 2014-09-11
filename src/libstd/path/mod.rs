@@ -833,7 +833,7 @@ pub struct Display<'a, P:'a> {
 
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_maybe_owned().as_slice().fmt(f)
+        self.as_maybe_owned().as_str().fmt(f)
     }
 }
 
@@ -878,7 +878,7 @@ impl BytesContainer for String {
     }
     #[inline]
     fn container_as_str<'a>(&'a self) -> Option<&'a str> {
-        Some(self.as_slice())
+        Some(self.as_str())
     }
     #[inline]
     fn is_str(_: Option<String>) -> bool { true }
@@ -912,11 +912,11 @@ impl BytesContainer for CString {
 impl<'a> BytesContainer for str::MaybeOwned<'a> {
     #[inline]
     fn container_as_bytes<'b>(&'b self) -> &'b [u8] {
-        self.as_slice().as_bytes()
+        self.as_str().as_bytes()
     }
     #[inline]
     fn container_as_str<'b>(&'b self) -> Option<&'b str> {
-        Some(self.as_slice())
+        Some(self.as_str())
     }
     #[inline]
     fn is_str(_: Option<str::MaybeOwned>) -> bool { true }

@@ -414,7 +414,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         format!("cannot borrow `{}` as mutable \
                                 more than once at a time",
                                 self.bccx.loan_path_to_string(
-                                    &*new_loan.loan_path)).as_slice());
+                                    &*new_loan.loan_path)).as_str());
                 }
 
                 (ty::UniqueImmBorrow, _) => {
@@ -423,7 +423,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         format!("closure requires unique access to `{}` \
                                 but {} is already borrowed",
                                 self.bccx.loan_path_to_string(&*new_loan.loan_path),
-                                old_pronoun).as_slice());
+                                old_pronoun).as_str());
                 }
 
                 (_, ty::UniqueImmBorrow) => {
@@ -432,7 +432,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         format!("cannot borrow `{}` as {} because \
                                 previous closure requires unique access",
                                 self.bccx.loan_path_to_string(&*new_loan.loan_path),
-                                new_loan.kind.to_user_str()).as_slice());
+                                new_loan.kind.to_user_str()).as_str());
                 }
 
                 (_, _) => {
@@ -443,7 +443,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                 self.bccx.loan_path_to_string(&*new_loan.loan_path),
                                 new_loan.kind.to_user_str(),
                                 old_pronoun,
-                                old_loan.kind.to_user_str()).as_slice());
+                                old_loan.kind.to_user_str()).as_str());
                 }
             }
 
@@ -453,7 +453,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         span,
                         format!("borrow occurs due to use of `{}` in closure",
                                 self.bccx.loan_path_to_string(
-                                    &*new_loan.loan_path)).as_slice());
+                                    &*new_loan.loan_path)).as_str());
                 }
                 _ => { }
             }
@@ -502,7 +502,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
             self.bccx.span_note(
                 old_loan.span,
-                format!("{}; {}", borrow_summary, rule_summary).as_slice());
+                format!("{}; {}", borrow_summary, rule_summary).as_str());
 
             let old_loan_span = self.tcx().map.span(old_loan.kill_scope);
             self.bccx.span_end_note(old_loan_span,
@@ -572,13 +572,13 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 self.bccx.span_err(
                     span,
                     format!("cannot use `{}` because it was mutably borrowed",
-                            self.bccx.loan_path_to_string(copy_path).as_slice())
-                    .as_slice());
+                            self.bccx.loan_path_to_string(copy_path).as_str())
+                    .as_str());
                 self.bccx.span_note(
                     loan_span,
                     format!("borrow of `{}` occurs here",
-                            self.bccx.loan_path_to_string(&*loan_path).as_slice())
-                    .as_slice());
+                            self.bccx.loan_path_to_string(&*loan_path).as_str())
+                    .as_str());
             }
         }
     }
@@ -597,20 +597,20 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 let err_message = match move_kind {
                     move_data::Captured =>
                         format!("cannot move `{}` into closure because it is borrowed",
-                                self.bccx.loan_path_to_string(move_path).as_slice()),
+                                self.bccx.loan_path_to_string(move_path).as_str()),
                     move_data::Declared |
                     move_data::MoveExpr |
                     move_data::MovePat =>
                         format!("cannot move out of `{}` because it is borrowed",
-                                self.bccx.loan_path_to_string(move_path).as_slice())
+                                self.bccx.loan_path_to_string(move_path).as_str())
                 };
 
-                self.bccx.span_err(span, err_message.as_slice());
+                self.bccx.span_err(span, err_message.as_str());
                 self.bccx.span_note(
                     loan_span,
                     format!("borrow of `{}` occurs here",
-                            self.bccx.loan_path_to_string(&*loan_path).as_slice())
-                    .as_slice());
+                            self.bccx.loan_path_to_string(&*loan_path).as_str())
+                    .as_str());
             }
         }
     }
@@ -751,14 +751,14 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     format!("cannot assign to {} {} `{}`",
                             assignee_cmt.mutbl.to_user_str(),
                             self.bccx.cmt_to_string(&*assignee_cmt),
-                            self.bccx.loan_path_to_string(&*lp)).as_slice());
+                            self.bccx.loan_path_to_string(&*lp)).as_str());
             }
             None => {
                 self.bccx.span_err(
                     assignment_span,
                     format!("cannot assign to {} {}",
                             assignee_cmt.mutbl.to_user_str(),
-                            self.bccx.cmt_to_string(&*assignee_cmt)).as_slice());
+                            self.bccx.cmt_to_string(&*assignee_cmt)).as_str());
             }
         }
         return;
@@ -883,11 +883,11 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         self.bccx.span_err(
             span,
             format!("cannot assign to `{}` because it is borrowed",
-                    self.bccx.loan_path_to_string(loan_path)).as_slice());
+                    self.bccx.loan_path_to_string(loan_path)).as_str());
         self.bccx.span_note(
             loan.span,
             format!("borrow of `{}` occurs here",
-                    self.bccx.loan_path_to_string(loan_path)).as_slice());
+                    self.bccx.loan_path_to_string(loan_path)).as_str());
     }
 }
 

@@ -220,7 +220,7 @@ pub fn deref_kind(tcx: &ty::ctxt, t: ty::t) -> deref_kind {
       None => {
         tcx.sess.bug(
             format!("deref_kind() invoked on non-derefable type {}",
-                    ty_to_string(tcx, t)).as_slice());
+                    ty_to_string(tcx, t)).as_str());
       }
     }
 }
@@ -626,7 +626,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           span,
                           format!("Upvar of non-closure {} - {}",
                                   fn_node_id,
-                                  ty.repr(self.tcx())).as_slice());
+                                  ty.repr(self.tcx())).as_str());
                   }
               }
           }
@@ -795,7 +795,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 self.tcx().sess.span_bug(
                     node.span(),
                     format!("Explicit deref of non-derefable type: {}",
-                            base_cmt.ty.repr(self.tcx())).as_slice());
+                            base_cmt.ty.repr(self.tcx())).as_str());
             }
         }
     }
@@ -873,7 +873,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         self.tcx().sess.span_bug(
                             elt.span(),
                             format!("Explicit index of non-index type `{}`",
-                                    base_cmt.ty.repr(self.tcx())).as_slice());
+                                    base_cmt.ty.repr(self.tcx())).as_str());
                     }
                 }
             }

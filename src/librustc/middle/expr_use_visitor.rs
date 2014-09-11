@@ -527,7 +527,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                         self.tcx().sess.span_bug(
                             callee.span,
                             format!("unexpected callee type {}",
-                                    callee_ty.repr(self.tcx())).as_slice())
+                                    callee_ty.repr(self.tcx())).as_str())
                     }
                 };
                 match overloaded_call_type {
@@ -721,7 +721,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                         ty::ty_rptr(r, ref m) => (m.mutbl, r),
                         _ => self.tcx().sess.span_bug(expr.span,
                                 format!("bad overloaded deref type {}",
-                                    method_ty.repr(self.tcx())).as_slice())
+                                    method_ty.repr(self.tcx())).as_str())
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.delegate.borrow(expr.id, expr.span, cmt,

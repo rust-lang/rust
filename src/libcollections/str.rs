@@ -143,12 +143,12 @@ impl<'a, S: Str> StrVector for &'a [S] {
         }
 
         // `len` calculation may overflow but push_str will check boundaries
-        let len = self.iter().map(|s| s.as_slice().len()).sum();
+        let len = self.iter().map(|s| s.as_str().len()).sum();
 
         let mut result = String::with_capacity(len);
 
         for s in self.iter() {
-            result.push_str(s.as_slice())
+            result.push_str(s.as_str())
         }
 
         result
@@ -167,7 +167,7 @@ impl<'a, S: Str> StrVector for &'a [S] {
         // this is wrong without the guarantee that `self` is non-empty
         // `len` calculation may overflow but push_str but will check boundaries
         let len = sep.len() * (self.len() - 1)
-            + self.iter().map(|s| s.as_slice().len()).sum();
+            + self.iter().map(|s| s.as_str().len()).sum();
         let mut result = String::with_capacity(len);
         let mut first = true;
 
@@ -177,7 +177,7 @@ impl<'a, S: Str> StrVector for &'a [S] {
             } else {
                 result.push_str(sep);
             }
-            result.push_str(s.as_slice());
+            result.push_str(s.as_str());
         }
         result
     }
@@ -408,7 +408,7 @@ impl<'a> Iterator<char> for Recompositions<'a> {
 /// use std::str;
 /// let string = "orange";
 /// let new_string = str::replace(string, "or", "str");
-/// assert_eq!(new_string.as_slice(), "strange");
+/// assert_eq!(new_string.as_str(), "strange");
 /// ```
 pub fn replace(s: &str, from: &str, to: &str) -> String {
     let mut result = String::new();
@@ -497,7 +497,7 @@ impl<'a> MaybeOwned<'a> {
     ///
     /// ```rust
     /// let string = "orange";
-    /// let maybe_owned_string = string.as_slice().into_maybe_owned();
+    /// let maybe_owned_string = string.as_str().into_maybe_owned();
     /// assert_eq!(true, maybe_owned_string.is_slice());
     /// ```
     #[inline]
@@ -534,7 +534,7 @@ impl<'a> IntoMaybeOwned<'a> for &'a str {
     ///
     /// ```rust
     /// let string = "orange";
-    /// let maybe_owned_str = string.as_slice().into_maybe_owned();
+    /// let maybe_owned_str = string.as_str().into_maybe_owned();
     /// assert_eq!(false, maybe_owned_str.is_owned());
     /// ```
     #[inline]
@@ -546,7 +546,7 @@ impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
     ///
     /// ```rust
     /// let str = "orange";
-    /// let maybe_owned_str = str.as_slice().into_maybe_owned();
+    /// let maybe_owned_str = str.as_str().into_maybe_owned();
     /// let maybe_maybe_owned_str = maybe_owned_str.into_maybe_owned();
     /// assert_eq!(false, maybe_maybe_owned_str.is_owned());
     /// ```
@@ -557,7 +557,7 @@ impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
 impl<'a> PartialEq for MaybeOwned<'a> {
     #[inline]
     fn eq(&self, other: &MaybeOwned) -> bool {
-        self.as_slice() == other.as_slice()
+        self.as_str() == other.as_str()
     }
 }
 
@@ -573,23 +573,23 @@ impl<'a> PartialOrd for MaybeOwned<'a> {
 impl<'a> Ord for MaybeOwned<'a> {
     #[inline]
     fn cmp(&self, other: &MaybeOwned) -> Ordering {
-        self.as_slice().cmp(&other.as_slice())
+        self.as_str().cmp(&other.as_str())
     }
 }
 
 impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
-        self.as_slice() == other.as_slice()
+        self.as_str() == other.as_str()
     }
 }
 
 impl<'a> Str for MaybeOwned<'a> {
     #[inline]
-    fn as_slice<'b>(&'b self) -> &'b str {
+    fn as_str<'b>(&'b self) -> &'b str {
         match *self {
             Slice(s) => s,
-            Owned(ref s) => s.as_slice()
+            Owned(ref s) => s.as_str()
         }
     }
 }
@@ -606,7 +606,7 @@ impl<'a> StrAllocating for MaybeOwned<'a> {
 
 impl<'a> Collection for MaybeOwned<'a> {
     #[inline]
-    fn len(&self) -> uint { self.as_slice().len() }
+    fn len(&self) -> uint { self.as_str().len() }
 }
 
 impl<'a> Clone for MaybeOwned<'a> {
@@ -614,7 +614,7 @@ impl<'a> Clone for MaybeOwned<'a> {
     fn clone(&self) -> MaybeOwned<'a> {
         match *self {
             Slice(s) => Slice(s),
-            Owned(ref s) => Owned(String::from_str(s.as_slice()))
+            Owned(ref s) => Owned(String::from_str(s.as_str()))
         }
     }
 }
@@ -627,7 +627,7 @@ impl<'a> Default for MaybeOwned<'a> {
 impl<'a, H: hash::Writer> hash::Hash<H> for MaybeOwned<'a> {
     #[inline]
     fn hash(&self, hasher: &mut H) {
-        self.as_slice().hash(hasher)
+        self.as_str().hash(hasher)
     }
 }
 
@@ -694,7 +694,7 @@ pub trait StrAllocating: Str {
 
     /// Escapes each char in `s` with `char::escape_default`.
     fn escape_default(&self) -> String {
-        let me = self.as_slice();
+        let me = self.as_str();
         let mut out = String::with_capacity(me.len());
         for c in me.chars() {
             c.escape_default(|c| out.push_char(c));
@@ -704,7 +704,7 @@ pub trait StrAllocating: Str {
 
     /// Escapes each char in `s` with `char::escape_unicode`.
     fn escape_unicode(&self) -> String {
-        let me = self.as_slice();
+        let me = self.as_str();
         let mut out = String::with_capacity(me.len());
         for c in me.chars() {
             c.escape_unicode(|c| out.push_char(c));
@@ -737,7 +737,7 @@ pub trait StrAllocating: Str {
     /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
     /// ```
     fn replace(&self, from: &str, to: &str) -> String {
-        let me = self.as_slice();
+        let me = self.as_str();
         let mut result = String::new();
         let mut last_end = 0;
         for (start, end) in me.match_indices(from) {
@@ -754,19 +754,19 @@ pub trait StrAllocating: Str {
     #[inline]
     fn to_owned(&self) -> String {
         unsafe {
-            mem::transmute(Vec::from_slice(self.as_slice().as_bytes()))
+            mem::transmute(Vec::from_slice(self.as_str().as_bytes()))
         }
     }
 
     /// Converts to a vector of `u16` encoded as UTF-16.
     #[deprecated = "use `utf16_units` instead"]
     fn to_utf16(&self) -> Vec<u16> {
-        self.as_slice().utf16_units().collect::<Vec<u16>>()
+        self.as_str().utf16_units().collect::<Vec<u16>>()
     }
 
     /// Given a string, makes a new string with repeated copies of it.
     fn repeat(&self, nn: uint) -> String {
-        let me = self.as_slice();
+        let me = self.as_str();
         let mut ret = String::with_capacity(nn * me.len());
         for _ in range(0, nn) {
             ret.push_str(me);
@@ -776,7 +776,7 @@ pub trait StrAllocating: Str {
 
     /// Returns the Levenshtein Distance between two strings.
     fn lev_distance(&self, t: &str) -> uint {
-        let me = self.as_slice();
+        let me = self.as_str();
         let slen = me.len();
         let tlen = t.len();
 
@@ -814,7 +814,7 @@ pub trait StrAllocating: Str {
     #[inline]
     fn nfd_chars<'a>(&'a self) -> Decompositions<'a> {
         Decompositions {
-            iter: self.as_slice().chars(),
+            iter: self.as_str().chars(),
             buffer: Vec::new(),
             sorted: false,
             kind: Canonical
@@ -826,7 +826,7 @@ pub trait StrAllocating: Str {
     #[inline]
     fn nfkd_chars<'a>(&'a self) -> Decompositions<'a> {
         Decompositions {
-            iter: self.as_slice().chars(),
+            iter: self.as_str().chars(),
             buffer: Vec::new(),
             sorted: false,
             kind: Compatible
@@ -954,10 +954,10 @@ mod tests {
     #[test]
     fn test_collect() {
         let empty = String::from_str("");
-        let s: String = empty.as_slice().chars().collect();
+        let s: String = empty.as_str().chars().collect();
         assert_eq!(empty, s);
         let data = String::from_str("ประเทศไทย中");
-        let s: String = data.as_slice().chars().collect();
+        let s: String = data.as_str().chars().collect();
         assert_eq!(data, s);
     }
 
@@ -965,7 +965,7 @@ mod tests {
     fn test_into_bytes() {
         let data = String::from_str("asdf");
         let buf = data.into_bytes();
-        assert_eq!(b"asdf", buf.as_slice());
+        assert_eq!(b"asdf", buf.as_str());
     }
 
     #[test]
@@ -982,21 +982,21 @@ mod tests {
         let string = "ประเทศไทย中华Việt Nam";
         let mut data = String::from_str(string);
         data.push_str(string);
-        assert!(data.as_slice().find_str("ไท华").is_none());
-        assert_eq!(data.as_slice().slice(0u, 43u).find_str(""), Some(0u));
-        assert_eq!(data.as_slice().slice(6u, 43u).find_str(""), Some(6u - 6u));
+        assert!(data.as_str().find_str("ไท华").is_none());
+        assert_eq!(data.as_str().slice(0u, 43u).find_str(""), Some(0u));
+        assert_eq!(data.as_str().slice(6u, 43u).find_str(""), Some(6u - 6u));
 
-        assert_eq!(data.as_slice().slice(0u, 43u).find_str("ประ"), Some( 0u));
-        assert_eq!(data.as_slice().slice(0u, 43u).find_str("ทศไ"), Some(12u));
-        assert_eq!(data.as_slice().slice(0u, 43u).find_str("ย中"), Some(24u));
-        assert_eq!(data.as_slice().slice(0u, 43u).find_str("iệt"), Some(34u));
-        assert_eq!(data.as_slice().slice(0u, 43u).find_str("Nam"), Some(40u));
+        assert_eq!(data.as_str().slice(0u, 43u).find_str("ประ"), Some( 0u));
+        assert_eq!(data.as_str().slice(0u, 43u).find_str("ทศไ"), Some(12u));
+        assert_eq!(data.as_str().slice(0u, 43u).find_str("ย中"), Some(24u));
+        assert_eq!(data.as_str().slice(0u, 43u).find_str("iệt"), Some(34u));
+        assert_eq!(data.as_str().slice(0u, 43u).find_str("Nam"), Some(40u));
 
-        assert_eq!(data.as_slice().slice(43u, 86u).find_str("ประ"), Some(43u - 43u));
-        assert_eq!(data.as_slice().slice(43u, 86u).find_str("ทศไ"), Some(55u - 43u));
-        assert_eq!(data.as_slice().slice(43u, 86u).find_str("ย中"), Some(67u - 43u));
-        assert_eq!(data.as_slice().slice(43u, 86u).find_str("iệt"), Some(77u - 43u));
-        assert_eq!(data.as_slice().slice(43u, 86u).find_str("Nam"), Some(83u - 43u));
+        assert_eq!(data.as_str().slice(43u, 86u).find_str("ประ"), Some(43u - 43u));
+        assert_eq!(data.as_str().slice(43u, 86u).find_str("ทศไ"), Some(55u - 43u));
+        assert_eq!(data.as_str().slice(43u, 86u).find_str("ย中"), Some(67u - 43u));
+        assert_eq!(data.as_str().slice(43u, 86u).find_str("iệt"), Some(77u - 43u));
+        assert_eq!(data.as_str().slice(43u, 86u).find_str("Nam"), Some(83u - 43u));
     }
 
     #[test]
@@ -1015,7 +1015,7 @@ mod tests {
     #[test]
     fn test_concat() {
         fn t(v: &[String], s: &str) {
-            assert_eq!(v.concat().as_slice(), s);
+            assert_eq!(v.concat().as_str(), s);
         }
         t([String::from_str("you"), String::from_str("know"),
            String::from_str("I'm"),
@@ -1029,7 +1029,7 @@ mod tests {
     #[test]
     fn test_connect() {
         fn t(v: &[String], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep).as_slice(), s);
+            assert_eq!(v.connect(sep).as_str(), s);
         }
         t([String::from_str("you"), String::from_str("know"),
            String::from_str("I'm"),
@@ -1043,7 +1043,7 @@ mod tests {
     #[test]
     fn test_concat_slices() {
         fn t(v: &[&str], s: &str) {
-            assert_eq!(v.concat().as_slice(), s);
+            assert_eq!(v.concat().as_str(), s);
         }
         t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
         let v: &[&str] = [];
@@ -1054,7 +1054,7 @@ mod tests {
     #[test]
     fn test_connect_slices() {
         fn t(v: &[&str], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep).as_slice(), s);
+            assert_eq!(v.connect(sep).as_str(), s);
         }
         t(["you", "know", "I'm", "no", "good"],
           " ", "you know I'm no good");
@@ -1096,7 +1096,7 @@ mod tests {
         }
         let letters = a_million_letter_a();
         assert!(half_a_million_letter_a() ==
-            unsafe {String::from_str(raw::slice_bytes(letters.as_slice(),
+            unsafe {String::from_str(raw::slice_bytes(letters.as_str(),
                                      0u,
                                      500000))});
     }
@@ -1148,7 +1148,7 @@ mod tests {
 
         let a = "ประเ";
         let a2 = "دولة الكويتทศไทย中华";
-        assert_eq!(data.replace(a, repl).as_slice(), a2);
+        assert_eq!(data.replace(a, repl).as_str(), a2);
     }
 
     #[test]
@@ -1158,7 +1158,7 @@ mod tests {
 
         let b = "ะเ";
         let b2 = "ปรدولة الكويتทศไทย中华";
-        assert_eq!(data.replace(b, repl).as_slice(), b2);
+        assert_eq!(data.replace(b, repl).as_str(), b2);
     }
 
     #[test]
@@ -1168,7 +1168,7 @@ mod tests {
 
         let c = "中华";
         let c2 = "ประเทศไทยدولة الكويت";
-        assert_eq!(data.replace(c, repl).as_slice(), c2);
+        assert_eq!(data.replace(c, repl).as_str(), c2);
     }
 
     #[test]
@@ -1177,7 +1177,7 @@ mod tests {
         let repl = "دولة الكويت";
 
         let d = "ไท华";
-        assert_eq!(data.replace(d, repl).as_slice(), data);
+        assert_eq!(data.replace(d, repl).as_str(), data);
     }
 
     #[test]
@@ -1213,7 +1213,7 @@ mod tests {
         }
         let letters = a_million_letter_x();
         assert!(half_a_million_letter_x() ==
-            String::from_str(letters.as_slice().slice(0u, 3u * 500000u)));
+            String::from_str(letters.as_str().slice(0u, 3u * 500000u)));
     }
 
     #[test]
@@ -1452,7 +1452,7 @@ mod tests {
         let b: &[u8] = &[];
         assert_eq!("".as_bytes(), b);
         assert_eq!("abc".as_bytes(), b"abc");
-        assert_eq!("ศไทย中华Việt Nam".as_bytes(), v.as_slice());
+        assert_eq!("ศไทย中华Việt Nam".as_bytes(), v.as_str());
     }
 
     #[test]
@@ -1487,7 +1487,7 @@ mod tests {
 
         let string = "a\nb\nc";
         let lines: Vec<&str> = string.lines().collect();
-        let lines = lines.as_slice();
+        let lines = lines.as_str();
         assert_eq!(string.subslice_offset(lines[0]), 0);
         assert_eq!(string.subslice_offset(lines[1]), 2);
         assert_eq!(string.subslice_offset(lines[2]), 4);
@@ -1506,7 +1506,7 @@ mod tests {
         let s1: String = String::from_str("All mimsy were the borogoves");
 
         let v: Vec<u8> = Vec::from_slice(s1.as_bytes());
-        let s2: String = String::from_str(from_utf8(v.as_slice()).unwrap());
+        let s2: String = String::from_str(from_utf8(v.as_str()).unwrap());
         let mut i: uint = 0u;
         let n1: uint = s1.len();
         let n2: uint = v.len();
@@ -2230,10 +2230,10 @@ mod tests {
         let s = "a̐éö̲\r\n";
         let gr_inds = s.grapheme_indices(true).collect::<Vec<(uint, &str)>>();
         let b: &[_] = &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
-        assert_eq!(gr_inds.as_slice(), b);
+        assert_eq!(gr_inds.as_str(), b);
         let gr_inds = s.grapheme_indices(true).rev().collect::<Vec<(uint, &str)>>();
         let b: &[_] = &[(11, "\r\n"), (6, "ö̲"), (3, "é"), (0u, "a̐")];
-        assert_eq!(gr_inds.as_slice(), b);
+        assert_eq!(gr_inds.as_str(), b);
         let mut gr_inds = s.grapheme_indices(true);
         let e1 = gr_inds.size_hint();
         assert_eq!(e1, (1, Some(13)));
@@ -2246,14 +2246,14 @@ mod tests {
         let s = "\n\r\n\r";
         let gr = s.graphemes(true).rev().collect::<Vec<&str>>();
         let b: &[_] = &["\r", "\r\n", "\n"];
-        assert_eq!(gr.as_slice(), b);
+        assert_eq!(gr.as_str(), b);
     }
 
     #[test]
     fn test_split_strator() {
         fn t(s: &str, sep: &str, u: &[&str]) {
             let v: Vec<&str> = s.split_str(sep).collect();
-            assert_eq!(v.as_slice(), u.as_slice());
+            assert_eq!(v.as_str(), u.as_str());
         }
         t("--1233345--", "12345", ["--1233345--"]);
         t("abc::hello::there", "::", ["abc", "hello", "there"]);
@@ -2276,7 +2276,7 @@ mod tests {
         use std::default::Default;
         fn t<S: Default + Str>() {
             let s: S = Default::default();
-            assert_eq!(s.as_slice(), "");
+            assert_eq!(s.as_str(), "");
         }
 
         t::<&str>();
@@ -2293,7 +2293,7 @@ mod tests {
         assert_eq!(5, sum_len(["012", "", "34"]));
         assert_eq!(5, sum_len([String::from_str("01"), String::from_str("2"),
                                String::from_str("34"), String::from_str("")]));
-        assert_eq!(5, sum_len([s.as_slice()]));
+        assert_eq!(5, sum_len([s.as_str()]));
     }
 
     #[test]
@@ -2312,17 +2312,17 @@ mod tests {
     fn test_maybe_owned_traits() {
         let s = Slice("abcde");
         assert_eq!(s.len(), 5);
-        assert_eq!(s.as_slice(), "abcde");
-        assert_eq!(String::from_str(s.as_slice()).as_slice(), "abcde");
-        assert_eq!(format!("{}", s).as_slice(), "abcde");
+        assert_eq!(s.as_str(), "abcde");
+        assert_eq!(String::from_str(s.as_str()).as_str(), "abcde");
+        assert_eq!(format!("{}", s).as_str(), "abcde");
         assert!(s.lt(&Owned(String::from_str("bcdef"))));
         assert_eq!(Slice(""), Default::default());
 
         let o = Owned(String::from_str("abcde"));
         assert_eq!(o.len(), 5);
-        assert_eq!(o.as_slice(), "abcde");
-        assert_eq!(String::from_str(o.as_slice()).as_slice(), "abcde");
-        assert_eq!(format!("{}", o).as_slice(), "abcde");
+        assert_eq!(o.as_str(), "abcde");
+        assert_eq!(String::from_str(o.as_str()).as_str(), "abcde");
+        assert_eq!(format!("{}", o).as_str(), "abcde");
         assert!(o.lt(&Slice("bcdef")));
         assert_eq!(Owned(String::from_str("")), Default::default());
 

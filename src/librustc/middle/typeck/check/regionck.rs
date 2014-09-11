@@ -245,7 +245,7 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
         }
         _ => {
             tcx.sess.bug(format!("unexpected def in region_of_def: {:?}",
-                                 def).as_slice())
+                                 def).as_str())
         }
     }
 }
@@ -340,7 +340,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             Some(f) => f,
             None => {
                 self.tcx().sess.bug(
-                    format!("No fn-sig entry for id={}", id).as_slice());
+                    format!("No fn-sig entry for id={}", id).as_str());
             }
         };
 
@@ -1161,7 +1161,7 @@ fn constrain_autoderefs(rcx: &mut Rcx,
                     ty::ty_rptr(r, ref m) => (m.mutbl, r),
                     _ => rcx.tcx().sess.span_bug(deref_expr.span,
                             format!("bad overloaded deref type {}",
-                                    method.ty.repr(rcx.tcx())).as_slice())
+                                    method.ty.repr(rcx.tcx())).as_str())
                 };
                 {
                     let mc = mc::MemCategorizationContext::new(rcx);
@@ -1548,7 +1548,7 @@ fn link_reborrowed_region(rcx: &Rcx,
                         span,
                         format!("Illegal upvar id: {}",
                                 upvar_id.repr(
-                                    rcx.tcx())).as_slice());
+                                    rcx.tcx())).as_str());
                 }
             }
         }

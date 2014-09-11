@@ -23,7 +23,7 @@ use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Iterator, Map};
 use mem;
 use option::{Option, Some, None};
-use slice::{Slice, ImmutableSlice};
+use slice::ImmutableSlice;
 use str::{CharSplits, Str, StrAllocating, StrVector, StrSlice};
 use string::String;
 use unicode::char::UnicodeChar;
@@ -209,7 +209,7 @@ impl GenericPathUnsafe for Path {
     unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T) {
         let filename = filename.container_as_str().unwrap();
         match self.sepidx_or_prefix_len() {
-            None if ".." == self.repr.as_slice() => {
+            None if ".." == self.repr.as_str() => {
                 let mut s = String::with_capacity(3 + filename.len());
                 s.push_str("..");
                 s.push_char(SEP);
@@ -219,22 +219,22 @@ impl GenericPathUnsafe for Path {
             None => {
                 self.update_normalized(filename);
             }
-            Some((_,idxa,end)) if self.repr.as_slice().slice(idxa,end) == ".." => {
+            Some((_,idxa,end)) if self.repr.as_str().slice(idxa,end) == ".." => {
                 let mut s = String::with_capacity(end + 1 + filename.len());
-                s.push_str(self.repr.as_slice().slice_to(end));
+                s.push_str(self.repr.as_str().slice_to(end));
                 s.push_char(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
             Some((idxb,idxa,_)) if self.prefix == Some(DiskPrefix) && idxa == self.prefix_len() => {
                 let mut s = String::with_capacity(idxb + filename.len());
-                s.push_str(self.repr.as_slice().slice_to(idxb));
+                s.push_str(self.repr.as_str().slice_to(idxb));
                 s.push_str(filename);
                 self.update_normalized(s);
             }
             Some((idxb,_,_)) => {
                 let mut s = String::with_capacity(idxb + 1 + filename.len());
-                s.push_str(self.repr.as_slice().slice_to(idxb));
+                s.push_str(self.repr.as_str().slice_to(idxb));
                 s.push_char(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
@@ -261,7 +261,7 @@ impl GenericPathUnsafe for Path {
         }
         fn shares_volume(me: &Path, path: &str) -> bool {
             // path is assumed to have a prefix of Some(DiskPrefix)
-            let repr = me.repr.as_slice();
+            let repr = me.repr.as_str();
             match me.prefix {
                 Some(DiskPrefix) => {
                     repr.as_bytes()[0] == path.as_bytes()[0].to_ascii().to_upper().to_byte()
@@ -293,7 +293,7 @@ impl GenericPathUnsafe for Path {
                         else { None };
             let pathlen = path_.as_ref().map_or(path.len(), |p| p.len());
             let mut s = String::with_capacity(me.repr.len() + 1 + pathlen);
-            s.push_str(me.repr.as_slice());
+            s.push_str(me.repr.as_str());
             let plen = me.prefix_len();
             // if me is "C:" we don't want to add a path separator
             match me.prefix {
@@ -305,7 +305,7 @@ impl GenericPathUnsafe for Path {
             }
             match path_ {
                 None => s.push_str(path),
-                Some(p) => s.push_str(p.as_slice())
+                Some(p) => s.push_str(p.as_str())
             };
             me.update_normalized(s)
         }
@@ -361,7 +361,7 @@ impl GenericPath for Path {
     /// Always returns a `Some` value.
     #[inline]
     fn as_str<'a>(&'a self) -> Option<&'a str> {
-        Some(self.repr.as_slice())
+        Some(self.repr.as_str())
     }
 
     #[inline]
@@ -383,21 +383,21 @@ impl GenericPath for Path {
     /// Always returns a `Some` value.
     fn dirname_str<'a>(&'a self) -> Option<&'a str> {
         Some(match self.sepidx_or_prefix_len() {
-            None if ".." == self.repr.as_slice() => self.repr.as_slice(),
+            None if ".." == self.repr.as_str() => self.repr.as_str(),
             None => ".",
-            Some((_,idxa,end)) if self.repr.as_slice().slice(idxa, end) == ".." => {
-                self.repr.as_slice()
+            Some((_,idxa,end)) if self.repr.as_str().slice(idxa, end) == ".." => {
+                self.repr.as_str()
             }
-            Some((idxb,_,end)) if self.repr.as_slice().slice(idxb, end) == "\\" => {
-                self.repr.as_slice()
+            Some((idxb,_,end)) if self.repr.as_str().slice(idxb, end) == "\\" => {
+                self.repr.as_str()
             }
-            Some((0,idxa,_)) => self.repr.as_slice().slice_to(idxa),
+            Some((0,idxa,_)) => self.repr.as_str().slice_to(idxa),
             Some((idxb,idxa,_)) => {
                 match self.prefix {
                     Some(DiskPrefix) | Some(VerbatimDiskPrefix) if idxb == self.prefix_len() => {
-                        self.repr.as_slice().slice_to(idxa)
+                        self.repr.as_str().slice_to(idxa)
                     }
-                    _ => self.repr.as_slice().slice_to(idxb)
+                    _ => self.repr.as_str().slice_to(idxb)
                 }
             }
         })
@@ -411,7 +411,7 @@ impl GenericPath for Path {
     /// See `GenericPath::filename_str` for info.
     /// Always returns a `Some` value if `filename` returns a `Some` value.
     fn filename_str<'a>(&'a self) -> Option<&'a str> {
-        let repr = self.repr.as_slice();
+        let repr = self.repr.as_str();
         match self.sepidx_or_prefix_len() {
             None if "." == repr || ".." == repr => None,
             None => Some(repr),
@@ -442,14 +442,14 @@ impl GenericPath for Path {
     #[inline]
     fn pop(&mut self) -> bool {
         match self.sepidx_or_prefix_len() {
-            None if "." == self.repr.as_slice() => false,
+            None if "." == self.repr.as_str() => false,
             None => {
                 self.repr = String::from_str(".");
                 self.sepidx = None;
                 true
             }
             Some((idxb,idxa,end)) if idxb == idxa && idxb == end => false,
-            Some((idxb,_,end)) if self.repr.as_slice().slice(idxb, end) == "\\" => false,
+            Some((idxb,_,end)) if self.repr.as_str().slice(idxb, end) == "\\" => false,
             Some((idxb,idxa,_)) => {
                 let trunc = match self.prefix {
                     Some(DiskPrefix) | Some(VerbatimDiskPrefix) | None => {
@@ -469,15 +469,15 @@ impl GenericPath for Path {
         if self.prefix.is_some() {
             Some(Path::new(match self.prefix {
                 Some(DiskPrefix) if self.is_absolute() => {
-                    self.repr.as_slice().slice_to(self.prefix_len()+1)
+                    self.repr.as_str().slice_to(self.prefix_len()+1)
                 }
                 Some(VerbatimDiskPrefix) => {
-                    self.repr.as_slice().slice_to(self.prefix_len()+1)
+                    self.repr.as_str().slice_to(self.prefix_len()+1)
                 }
-                _ => self.repr.as_slice().slice_to(self.prefix_len())
+                _ => self.repr.as_str().slice_to(self.prefix_len())
             }))
         } else if is_vol_relative(self) {
-            Some(Path::new(self.repr.as_slice().slice_to(1)))
+            Some(Path::new(self.repr.as_str().slice_to(1)))
         } else {
             None
         }
@@ -496,7 +496,7 @@ impl GenericPath for Path {
     fn is_absolute(&self) -> bool {
         match self.prefix {
             Some(DiskPrefix) => {
-                let rest = self.repr.as_slice().slice_from(self.prefix_len());
+                let rest = self.repr.as_str().slice_from(self.prefix_len());
                 rest.len() > 0 && rest.as_bytes()[0] == SEP_BYTE
             }
             Some(_) => true,
@@ -518,7 +518,7 @@ impl GenericPath for Path {
         } else {
             let mut ita = self.str_components().map(|x|x.unwrap());
             let mut itb = other.str_components().map(|x|x.unwrap());
-            if "." == self.repr.as_slice() {
+            if "." == self.repr.as_str() {
                 return itb.next() != Some("..");
             }
             loop {
@@ -671,7 +671,7 @@ impl Path {
     /// Does not distinguish between absolute and cwd-relative paths, e.g.
     /// C:\foo and C:foo.
     pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
-        let repr = self.repr.as_slice();
+        let repr = self.repr.as_str();
         let s = match self.prefix {
             Some(_) => {
                 let plen = self.prefix_len();
@@ -697,8 +697,8 @@ impl Path {
     }
 
     fn equiv_prefix(&self, other: &Path) -> bool {
-        let s_repr = self.repr.as_slice();
-        let o_repr = other.repr.as_slice();
+        let s_repr = self.repr.as_str();
+        let o_repr = other.repr.as_str();
         match (self.prefix, other.prefix) {
             (Some(DiskPrefix), Some(VerbatimDiskPrefix)) => {
                 self.is_absolute() &&
@@ -728,8 +728,8 @@ impl Path {
     fn normalize_<S: StrAllocating>(s: S) -> (Option<PathPrefix>, String) {
         // make borrowck happy
         let (prefix, val) = {
-            let prefix = parse_prefix(s.as_slice());
-            let path = Path::normalize__(s.as_slice(), prefix);
+            let prefix = parse_prefix(s.as_str());
+            let path = Path::normalize__(s.as_str(), prefix);
             (prefix, path)
         };
         (prefix, match val {
@@ -852,8 +852,8 @@ impl Path {
 
     fn update_sepidx(&mut self) {
         let s = if self.has_nonsemantic_trailing_slash() {
-                    self.repr.as_slice().slice_to(self.repr.len()-1)
-                } else { self.repr.as_slice() };
+                    self.repr.as_str().slice_to(self.repr.len()-1)
+                } else { self.repr.as_str() };
         let idx = s.rfind(if !prefix_is_verbatim(self.prefix) { is_sep }
                           else { is_sep_verbatim });
         let prefixlen = self.prefix_len();
@@ -886,7 +886,7 @@ impl Path {
     }
 
     fn update_normalized<S: Str>(&mut self, s: S) {
-        let (prefix, path) = Path::normalize_(s.as_slice());
+        let (prefix, path) = Path::normalize_(s.as_str());
         self.repr = path;
         self.prefix = prefix;
         self.update_sepidx();
@@ -928,7 +928,7 @@ pub fn is_verbatim(path: &Path) -> bool {
 /// non-verbatim, the non-verbatim version is returned.
 /// Otherwise, None is returned.
 pub fn make_non_verbatim(path: &Path) -> Option<Path> {
-    let repr = path.repr.as_slice();
+    let repr = path.repr.as_str();
     let new_path = match path.prefix {
         Some(VerbatimPrefix(_)) | Some(DeviceNSPrefix(_)) => return None,
         Some(UNCPrefix(_,_)) | Some(DiskPrefix) | None => return Some(path.clone()),
@@ -948,7 +948,7 @@ pub fn make_non_verbatim(path: &Path) -> Option<Path> {
     }
     // now ensure normalization didn't change anything
     if repr.slice_from(path.prefix_len()) ==
-        new_path.repr.as_slice().slice_from(new_path.prefix_len()) {
+        new_path.repr.as_str().slice_from(new_path.prefix_len()) {
         Some(new_path)
     } else {
         None

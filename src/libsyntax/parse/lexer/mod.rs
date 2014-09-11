@@ -181,7 +181,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         char::escape_default(c, |c| m.push_char(c));
-        self.fatal_span_(from_pos, to_pos, m.as_slice());
+        self.fatal_span_(from_pos, to_pos, m.as_str());
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
@@ -190,7 +190,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         char::escape_default(c, |c| m.push_char(c));
-        self.err_span_(from_pos, to_pos, m.as_slice());
+        self.err_span_(from_pos, to_pos, m.as_str());
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending the
@@ -199,8 +199,8 @@ impl<'a> StringReader<'a> {
         m.push_str(": ");
         let from = self.byte_offset(from_pos).to_uint();
         let to = self.byte_offset(to_pos).to_uint();
-        m.push_str(self.filemap.src.as_slice().slice(from, to));
-        self.fatal_span_(from_pos, to_pos, m.as_slice());
+        m.push_str(self.filemap.src.as_str().slice(from, to));
+        self.fatal_span_(from_pos, to_pos, m.as_str());
     }
 
     /// Advance peek_tok and peek_span to refer to the next token, and
@@ -252,7 +252,7 @@ impl<'a> StringReader<'a> {
     /// Calls `f` with a string slice of the source text spanning from `start`
     /// up to but excluding `end`.
     fn with_str_from_to<T>(&self, start: BytePos, end: BytePos, f: |s: &str| -> T) -> T {
-        f(self.filemap.src.as_slice().slice(
+        f(self.filemap.src.as_str().slice(
                 self.byte_offset(start).to_uint(),
                 self.byte_offset(end).to_uint()))
     }
@@ -308,7 +308,7 @@ impl<'a> StringReader<'a> {
             let last_char = self.curr.unwrap();
             let next = self.filemap
                           .src
-                          .as_slice()
+                          .as_str()
                           .char_range_at(current_byte_offset);
             let byte_offset_diff = next.next - current_byte_offset;
             self.pos = self.pos + Pos::from_uint(byte_offset_diff);
@@ -330,7 +330,7 @@ impl<'a> StringReader<'a> {
     pub fn nextch(&self) -> Option<char> {
         let offset = self.byte_offset(self.pos).to_uint();
         if offset < self.filemap.src.len() {
-            Some(self.filemap.src.as_slice().char_at(offset))
+            Some(self.filemap.src.as_str().char_at(offset))
         } else {
             None
         }
@@ -342,7 +342,7 @@ impl<'a> StringReader<'a> {
 
     pub fn nextnextch(&self) -> Option<char> {
         let offset = self.byte_offset(self.pos).to_uint();
-        let s = self.filemap.deref().src.as_slice();
+        let s = self.filemap.deref().src.as_str();
         if offset >= s.len() { return None }
         let str::CharRange { next, .. } = s.char_range_at(offset);
         if next < s.len() {
@@ -519,7 +519,7 @@ impl<'a> StringReader<'a> {
                     self.translate_crlf(start_bpos, string,
                                         "bare CR not allowed in block doc-comment")
                 } else { string.into_maybe_owned() };
-                token::DOC_COMMENT(token::intern(string.as_slice()))
+                token::DOC_COMMENT(token::intern(string.as_str()))
             } else {
                 token::COMMENT
             };
@@ -1046,7 +1046,7 @@ impl<'a> StringReader<'a> {
                 // expansion purposes. See #12512 for the gory details of why
                 // this is necessary.
                 let ident = self.with_str_from(start, |lifetime_name| {
-                    str_to_ident(format!("'{}", lifetime_name).as_slice())
+                    str_to_ident(format!("'{}", lifetime_name).as_str())
                 });
 
                 // Conjure up a "keyword checking ident" to make sure that

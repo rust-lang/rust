@@ -252,7 +252,7 @@ impl OptGroup {
                 aliases: Vec::new()
             },
             (1,0) => Opt {
-                name: Short(short_name.as_slice().char_at(0)),
+                name: Short(short_name.as_str().char_at(0)),
                 hasarg: hasarg,
                 occur: occur,
                 aliases: Vec::new()
@@ -263,7 +263,7 @@ impl OptGroup {
                 occur:  occur,
                 aliases: vec!(
                     Opt {
-                        name: Short(short_name.as_slice().char_at(0)),
+                        name: Short(short_name.as_str().char_at(0)),
                         hasarg: hasarg,
                         occur:  occur,
                         aliases: Vec::new()
@@ -306,7 +306,7 @@ impl Matches {
     pub fn opts_present(&self, names: &[String]) -> bool {
         for nm in names.iter() {
             match find_opt(self.opts.as_slice(),
-                           Name::from_str(nm.as_slice())) {
+                           Name::from_str(nm.as_str())) {
                 Some(id) if !self.vals[id].is_empty() => return true,
                 _ => (),
             };
@@ -317,7 +317,7 @@ impl Matches {
     /// Returns the string argument supplied to one of several matching options or `None`.
     pub fn opts_str(&self, names: &[String]) -> Option<String> {
         for nm in names.iter() {
-            match self.opt_val(nm.as_slice()) {
+            match self.opt_val(nm.as_str()) {
                 Some(Val(ref s)) => return Some(s.clone()),
                 _ => ()
             }
@@ -547,9 +547,9 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
     while i < l {
         let cur = args[i].clone();
         let curlen = cur.len();
-        if !is_arg(cur.as_slice()) {
+        if !is_arg(cur.as_str()) {
             free.push(cur);
-        } else if cur.as_slice() == "--" {
+        } else if cur.as_str() == "--" {
             let mut j = i + 1;
             while j < l { free.push(args[j].clone()); j += 1; }
             break;
@@ -557,7 +557,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
             let mut names;
             let mut i_arg = None;
             if cur.as_bytes()[1] == b'-' {
-                let tail = cur.as_slice().slice(2, curlen);
+                let tail = cur.as_str().slice(2, curlen);
                 let tail_eq: Vec<&str> = tail.split('=').collect();
                 if tail_eq.len() <= 1 {
                     names = vec!(Long(tail.to_string()));
@@ -570,7 +570,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                 let mut j = 1;
                 names = Vec::new();
                 while j < curlen {
-                    let range = cur.as_slice().char_range_at(j);
+                    let range = cur.as_str().char_range_at(j);
                     let opt = Short(range.ch);
 
                     /* In a series of potential options (eg. -aheJ), if we
@@ -593,7 +593,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                     };
 
                     if arg_follows && range.next < curlen {
-                        i_arg = Some(cur.as_slice()
+                        i_arg = Some(cur.as_str()
                                         .slice(range.next, curlen).to_string());
                         break;
                     }
@@ -621,7 +621,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                             .push(Val((i_arg.clone())
                             .unwrap()));
                     } else if name_pos < names.len() || i + 1 == l ||
-                            is_arg(args[i + 1].as_slice()) {
+                            is_arg(args[i + 1].as_str()) {
                         vals.get_mut(optid).push(Given);
                     } else {
                         i += 1;
@@ -686,7 +686,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
             0 => {}
             1 => {
                 row.push_char('-');
-                row.push_str(short_name.as_slice());
+                row.push_str(short_name.as_str());
                 row.push_char(' ');
             }
             _ => fail!("the short name should only be 1 ascii char long"),
@@ -697,7 +697,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
             0 => {}
             _ => {
                 row.push_str("--");
-                row.push_str(long_name.as_slice());
+                row.push_str(long_name.as_str());
                 row.push_char(' ');
             }
         }
@@ -705,35 +705,35 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         // arg
         match hasarg {
             No => {}
-            Yes => row.push_str(hint.as_slice()),
+            Yes => row.push_str(hint.as_str()),
             Maybe => {
                 row.push_char('[');
-                row.push_str(hint.as_slice());
+                row.push_str(hint.as_str());
                 row.push_char(']');
             }
         }
 
         // FIXME: #5516 should be graphemes not codepoints
         // here we just need to indent the start of the description
-        let rowlen = row.as_slice().char_len();
+        let rowlen = row.as_str().char_len();
         if rowlen < 24 {
             for _ in range(0, 24 - rowlen) {
                 row.push_char(' ');
             }
         } else {
-            row.push_str(desc_sep.as_slice())
+            row.push_str(desc_sep.as_str())
         }
 
         // Normalize desc to contain words separated by one space character
         let mut desc_normalized_whitespace = String::new();
-        for word in desc.as_slice().words() {
+        for word in desc.as_str().words() {
             desc_normalized_whitespace.push_str(word);
             desc_normalized_whitespace.push_char(' ');
         }
 
         // FIXME: #5516 should be graphemes not codepoints
         let mut desc_rows = Vec::new();
-        each_split_within(desc_normalized_whitespace.as_slice(),
+        each_split_within(desc_normalized_whitespace.as_str(),
                           54,
                           |substr| {
             desc_rows.push(substr.to_string());
@@ -742,7 +742,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
 
         // FIXME: #5516 should be graphemes not codepoints
         // wrapped description
-        row.push_str(desc_rows.connect(desc_sep.as_slice()).as_slice());
+        row.push_str(desc_rows.connect(desc_sep.as_str()).as_str());
 
         row
     });
@@ -761,10 +761,10 @@ fn format_option(opt: &OptGroup) -> String {
     // Use short_name is possible, but fallback to long_name.
     if opt.short_name.len() > 0 {
         line.push_char('-');
-        line.push_str(opt.short_name.as_slice());
+        line.push_str(opt.short_name.as_str());
     } else {
         line.push_str("--");
-        line.push_str(opt.long_name.as_slice());
+        line.push_str(opt.long_name.as_str());
     }
 
     if opt.hasarg != No {
@@ -772,7 +772,7 @@ fn format_option(opt: &OptGroup) -> String {
         if opt.hasarg == Maybe {
             line.push_char('[');
         }
-        line.push_str(opt.hint.as_slice());
+        line.push_str(opt.hint.as_str());
         if opt.hasarg == Maybe {
             line.push_char(']');
         }
@@ -795,7 +795,7 @@ pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> String {
                       .map(format_option)
                       .collect::<Vec<String>>()
                       .connect(" ")
-                      .as_slice());
+                      .as_str());
     line
 }
 

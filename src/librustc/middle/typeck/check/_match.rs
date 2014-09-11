@@ -524,7 +524,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                         tcx.sess.span_bug(
                             path.span,
                             format!("This shouldn't happen: failed to lookup structure. \
-                                item_did = {}", item_did).as_slice())
+                                item_did = {}", item_did).as_str())
                     },
                 }
 

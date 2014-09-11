@@ -192,7 +192,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
                 this.fields.trace.origin.span(),
                 format!("region {:?} is not associated with \
                          any bound region from A!",
-                        r0).as_slice())
+                        r0).as_str())
         }
     }
 

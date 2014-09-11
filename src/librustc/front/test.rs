@@ -478,7 +478,7 @@ fn mk_tests(cx: &TestCtxt) -> Gc<ast::Item> {
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
     match attr::find_crate_name(krate.attrs.as_slice()) {
-        Some(ref s) if "test" == s.get().as_slice() => true,
+        Some(ref s) if "test" == s.get().as_str() => true,
         _ => false
     }
 }
@@ -522,7 +522,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> Gc<ast::Expr> {
 
     // path to the #[test] function: "foo::bar::baz"
     let path_string = ast_util::path_name_i(path.as_slice());
-    let name_expr = ecx.expr_str(span, token::intern_and_get_ident(path_string.as_slice()));
+    let name_expr = ecx.expr_str(span, token::intern_and_get_ident(path_string.as_str()));
 
     // self::test::StaticTestName($name_expr)
     let name_expr = ecx.expr_call(span,

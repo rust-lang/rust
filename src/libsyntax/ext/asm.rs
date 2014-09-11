@@ -100,7 +100,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         (Some('+'), operand) => {
                             Some(token::intern_and_get_ident(format!(
                                         "={}",
-                                        operand).as_slice()))
+                                        operand).as_str()))
                         }
                         _ => {
                             cx.span_err(span, "output operand constraint lacks '=' or '+'");
@@ -206,7 +206,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             asm_str_style: asm_str_style.unwrap(),
             outputs: outputs,
             inputs: inputs,
-            clobbers: token::intern_and_get_ident(cons.as_slice()),
+            clobbers: token::intern_and_get_ident(cons.as_str()),
             volatile: volatile,
             alignstack: alignstack,
             dialect: dialect

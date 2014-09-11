@@ -134,7 +134,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
         hash = format!("h{}", state.result());
         ccx.tcx().map.with_path(fn_id.node, |path| {
-            exported_name(path, hash.as_slice())
+            exported_name(path, hash.as_str())
         })
     };
 
@@ -144,9 +144,9 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     let mut hash_id = Some(hash_id);
     let mk_lldecl = |abi: abi::Abi| {
         let lldecl = if abi != abi::Rust {
-            foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, s.as_slice())
+            foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, s.as_str())
         } else {
-            decl_internal_rust_fn(ccx, mono_ty, s.as_slice())
+            decl_internal_rust_fn(ccx, mono_ty, s.as_str())
         };
 
         ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);
@@ -185,7 +185,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                       if abi != abi::Rust {
                           foreign::trans_rust_fn_with_foreign_abi(
                               ccx, &**decl, &**body, [], d, &psubsts, fn_id.node,
-                              Some(hash.as_slice()));
+                              Some(hash.as_str()));
                       } else {
                           trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, []);
                       }
@@ -250,7 +250,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                 }
                 _ => {
                     ccx.sess().bug(format!("can't monomorphize a {:?}",
-                                           map_node).as_slice())
+                                           map_node).as_str())
                 }
             }
         }
@@ -276,7 +276,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodePat(..) |
         ast_map::NodeLocal(..) => {
             ccx.sess().bug(format!("can't monomorphize a {:?}",
-                                   map_node).as_slice())
+                                   map_node).as_str())
         }
     };
 

@@ -1310,7 +1310,7 @@ impl ParameterEnvironment {
             _ => {
                 cx.sess.bug(format!("ParameterEnvironment::from_item(): \
                                      `{}` is not an item",
-                                    cx.map.node_to_string(id)).as_slice())
+                                    cx.map.node_to_string(id)).as_str())
             }
         }
     }
@@ -1373,7 +1373,7 @@ impl UnboxedClosureKind {
         };
         match result {
             Ok(trait_did) => trait_did,
-            Err(err) => cx.sess.fatal(err.as_slice()),
+            Err(err) => cx.sess.fatal(err.as_str()),
         }
     }
 }
@@ -1953,7 +1953,7 @@ pub fn sequence_element_type(cx: &ctxt, ty: t) -> t {
         ty_str => mk_mach_uint(ast::TyU8),
         ty_open(ty) => sequence_element_type(cx, ty),
         _ => cx.sess.bug(format!("sequence_element_type called on non-sequence value: {}",
-                                 ty_to_string(cx, ty)).as_slice()),
+                                 ty_to_string(cx, ty)).as_str()),
     }
 }
 
@@ -3057,7 +3057,7 @@ pub fn close_type(cx: &ctxt, t: t) -> t {
     match get(t).sty {
         ty_open(t) => mk_rptr(cx, ReStatic, mt {ty: t, mutbl:ast::MutImmutable}),
         _ => cx.sess.bug(format!("Trying to close a non-open type {}",
-                                 ty_to_string(cx, t)).as_slice())
+                                 ty_to_string(cx, t)).as_str())
     }
 }
 
@@ -3102,7 +3102,7 @@ pub fn node_id_to_trait_ref(cx: &ctxt, id: ast::NodeId) -> Rc<ty::TraitRef> {
         Some(t) => t.clone(),
         None => cx.sess.bug(
             format!("node_id_to_trait_ref: no trait ref for node `{}`",
-                    cx.map.node_to_string(id)).as_slice())
+                    cx.map.node_to_string(id)).as_str())
     }
 }
 
@@ -3115,7 +3115,7 @@ pub fn node_id_to_type(cx: &ctxt, id: ast::NodeId) -> t {
        Some(t) => t,
        None => cx.sess.bug(
            format!("node_id_to_type: no type for node `{}`",
-                   cx.map.node_to_string(id)).as_slice())
+                   cx.map.node_to_string(id)).as_str())
     }
 }
 
@@ -3214,7 +3214,7 @@ pub fn ty_region(tcx: &ctxt,
             tcx.sess.span_bug(
                 span,
                 format!("ty_region() invoked on in appropriate ty: {:?}",
-                        s).as_slice());
+                        s).as_str());
         }
     }
 }
@@ -3279,11 +3279,11 @@ pub fn expr_span(cx: &ctxt, id: NodeId) -> Span {
         Some(f) => {
             cx.sess.bug(format!("Node id {} is not an expr: {:?}",
                                 id,
-                                f).as_slice());
+                                f).as_str());
         }
         None => {
             cx.sess.bug(format!("Node id {} is not present \
-                                in the node map", id).as_slice());
+                                in the node map", id).as_str());
         }
     }
 }
@@ -3299,14 +3299,14 @@ pub fn local_var_name_str(cx: &ctxt, id: NodeId) -> InternedString {
                     cx.sess.bug(
                         format!("Variable id {} maps to {:?}, not local",
                                 id,
-                                pat).as_slice());
+                                pat).as_str());
                 }
             }
         }
         r => {
             cx.sess.bug(format!("Variable id {} maps to {:?}, not local",
                                 id,
-                                r).as_slice());
+                                r).as_str());
         }
     }
 }
@@ -3349,7 +3349,7 @@ pub fn adjust_ty(cx: &ctxt,
                             cx.sess.bug(
                                 format!("add_env adjustment on non-bare-fn: \
                                          {:?}",
-                                        b).as_slice());
+                                        b).as_str());
                         }
                     }
                 }
@@ -3375,7 +3375,7 @@ pub fn adjust_ty(cx: &ctxt,
                                                 {}",
                                                 i,
                                                 ty_to_string(cx, adjusted_ty))
-                                                          .as_slice());
+                                                          .as_str());
                                 }
                             }
                         }
@@ -3436,7 +3436,7 @@ pub fn unsize_ty(cx: &ctxt,
             }
             _ => cx.sess.span_bug(span,
                                   format!("UnsizeLength with bad sty: {}",
-                                          ty_to_string(cx, ty)).as_slice())
+                                          ty_to_string(cx, ty)).as_str())
         },
         &UnsizeStruct(box ref k, tp_index) => match get(ty).sty {
             ty_struct(did, ref substs) => {
@@ -3448,7 +3448,7 @@ pub fn unsize_ty(cx: &ctxt,
             }
             _ => cx.sess.span_bug(span,
                                   format!("UnsizeStruct with bad sty: {}",
-                                          ty_to_string(cx, ty)).as_slice())
+                                          ty_to_string(cx, ty)).as_str())
         },
         &UnsizeVtable(bounds, def_id, ref substs) => {
             mk_trait(cx, def_id, substs.clone(), bounds)
@@ -3509,7 +3509,7 @@ pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> def::Def {
         Some(&def) => def,
         None => {
             tcx.sess.span_bug(expr.span, format!(
-                "no def-map entry for expr {:?}", expr.id).as_slice());
+                "no def-map entry for expr {:?}", expr.id).as_str());
         }
     }
 }
@@ -3593,7 +3593,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                         expr.span,
                         format!("uncategorized def for expr {:?}: {:?}",
                                 expr.id,
-                                def).as_slice());
+                                def).as_str());
                 }
             }
         }
@@ -3712,7 +3712,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
         token::get_name(name),
         fields.iter()
               .map(|f| token::get_ident(f.ident).get().to_string())
-              .collect::<Vec<String>>()).as_slice());
+              .collect::<Vec<String>>()).as_str());
 }
 
 pub fn impl_or_trait_item_idx(id: ast::Ident, trait_items: &[ImplOrTraitItem])
@@ -3974,14 +3974,14 @@ pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<Rc<Method>> {
                     _ => {
                         cx.sess.bug(format!("provided_trait_methods: `{}` is \
                                              not a trait",
-                                            id).as_slice())
+                                            id).as_str())
                     }
                 }
             }
             _ => {
                 cx.sess.bug(format!("provided_trait_methods: `{}` is not a \
                                      trait",
-                                    id).as_slice())
+                                    id).as_str())
             }
         }
     } else {
@@ -4318,7 +4318,7 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
                                         cx.sess
                                           .span_err(e.span,
                                                     format!("expected constant: {}",
-                                                            *err).as_slice());
+                                                            *err).as_str());
                                     }
                                 },
                                 None => {}
@@ -4493,7 +4493,7 @@ fn each_super_struct(cx: &ctxt, mut did: ast::DefId, f: |ast::DefId|) {
             None => {
                 cx.sess.bug(
                     format!("ID not mapped to super-struct: {}",
-                            cx.map.node_to_string(did.node)).as_slice());
+                            cx.map.node_to_string(did.node)).as_str());
             }
         }
     }
@@ -4515,7 +4515,7 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
                 _ => {
                     cx.sess.bug(
                         format!("ID not mapped to struct fields: {}",
-                                cx.map.node_to_string(did.node)).as_slice());
+                                cx.map.node_to_string(did.node)).as_str());
                 }
             }
         });
@@ -4568,7 +4568,7 @@ pub fn tup_fields(v: &[t]) -> Vec<field> {
     v.iter().enumerate().map(|(i, &f)| {
        field {
             // FIXME #6993: change type of field to Name and get rid of new()
-            ident: ast::Ident::new(token::intern(i.to_string().as_slice())),
+            ident: ast::Ident::new(token::intern(i.to_string().as_str())),
             mt: mt {
                 ty: f,
                 mutbl: MutImmutable
@@ -5385,7 +5385,7 @@ pub fn construct_parameter_environment(
                             format!("push_region_bounds_from_defs: \
                                      non free region: {} / {}",
                                     subst_region.repr(tcx),
-                                    bound_region.repr(tcx)).as_slice());
+                                    bound_region.repr(tcx)).as_str());
                     }
                 }
             }

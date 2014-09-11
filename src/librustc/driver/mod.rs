@@ -54,12 +54,12 @@ fn run_compiler(args: &[String]) {
     let descriptions = diagnostics::registry::Registry::new(super::DIAGNOSTICS);
     match matches.opt_str("explain") {
         Some(ref code) => {
-            match descriptions.find_description(code.as_slice()) {
+            match descriptions.find_description(code.as_str()) {
                 Some(ref description) => {
                     println!("{}", description);
                 }
                 None => {
-                    early_error(format!("no extended information for {}", code).as_slice());
+                    early_error(format!("no extended information for {}", code).as_str());
                 }
             }
             return;
@@ -79,7 +79,7 @@ fn run_compiler(args: &[String]) {
             early_error("no input filename given");
         }
         1u => {
-            let ifile = matches.free.get(0).as_slice();
+            let ifile = matches.free.get(0).as_str();
             if ifile == "-" {
                 let contents = io::stdin().read_to_end().unwrap();
                 let src = String::from_utf8(contents).unwrap();
@@ -97,7 +97,7 @@ fn run_compiler(args: &[String]) {
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
 
     let pretty = matches.opt_default("pretty", "normal").map(|a| {
-        pretty::parse_pretty(&sess, a.as_slice())
+        pretty::parse_pretty(&sess, a.as_str())
     });
     match pretty {
         Some((ppm, opt_uii)) => {
@@ -131,7 +131,7 @@ fn run_compiler(args: &[String]) {
 /// Prints version information and returns None on success or an error
 /// message on failure.
 pub fn version(binary: &str, matches: &getopts::Matches) -> Option<String> {
-    let verbose = match matches.opt_str("version").as_ref().map(|s| s.as_slice()) {
+    let verbose = match matches.opt_str("version").as_ref().map(|s| s.as_str()) {
         None => false,
         Some("verbose") => true,
         Some(s) => return Some(format!("Unrecognized argument: {}", s))
@@ -155,7 +155,7 @@ Additional help:
     -C help             Print codegen options
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
-              getopts::usage(message.as_slice(),
+              getopts::usage(message.as_str(),
                              config::optgroups().as_slice()));
 }
 
@@ -214,7 +214,7 @@ Available lint options:
         for lint in lints.move_iter() {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7s}  {}",
-                     padded(name.as_slice()), lint.default_level.as_str(), lint.desc);
+                     padded(name.as_str()), lint.default_level.as_str(), lint.desc);
         }
         println!("\n");
     };
@@ -240,7 +240,7 @@ Available lint options:
                            .collect::<String>().replace("_", "-");
             let desc = to.move_iter().map(|x| x.as_str()).collect::<Vec<String>>().connect(", ");
             println!("    {}  {}",
-                     padded(name.as_slice()), desc);
+                     padded(name.as_str()), desc);
         }
         println!("\n");
     };
@@ -311,7 +311,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         match getopts::getopts(args.as_slice(), config::optgroups().as_slice()) {
             Ok(m) => m,
             Err(f) => {
-                early_error(f.to_string().as_slice());
+                early_error(f.to_string().as_str());
             }
         };
 
@@ -323,13 +323,13 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     // Don't handle -W help here, because we might first load plugins.
 
     let r = matches.opt_strs("Z");
-    if r.iter().any(|x| x.as_slice() == "help") {
+    if r.iter().any(|x| x.as_str() == "help") {
         describe_debug_flags();
         return None;
     }
 
     let cg_flags = matches.opt_strs("C");
-    if cg_flags.iter().any(|x| x.as_slice() == "help") {
+    if cg_flags.iter().any(|x| x.as_str() == "help") {
         describe_codegen_flags();
         return None;
     }
@@ -341,7 +341,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
 
     if matches.opt_present("version") {
         match version("rustc", &matches) {
-            Some(err) => early_error(err.as_slice()),
+            Some(err) => early_error(err.as_str()),
             None => return None
         }
     }
@@ -373,7 +373,7 @@ fn print_crate_info(sess: &Session,
             let metadata = driver::collect_crate_metadata(sess, attrs.as_slice());
             *sess.crate_metadata.borrow_mut() = metadata;
             for &style in crate_types.iter() {
-                let fname = link::filename_for_input(sess, style, id.as_slice(),
+                let fname = link::filename_for_input(sess, style, id.as_str(),
                                                      &t_outputs.with_extension(""));
                 println!("{}", fname.filename_display());
             }
@@ -470,7 +470,7 @@ pub fn monitor(f: proc():Send) {
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
                 for note in xs.iter() {
-                    emitter.emit(None, note.as_slice(), None, diagnostic::Note)
+                    emitter.emit(None, note.as_str(), None, diagnostic::Note)
                 }
 
                 match r.read_to_string() {
@@ -479,7 +479,7 @@ pub fn monitor(f: proc():Send) {
                         emitter.emit(None,
                                      format!("failed to read internal \
                                               stderr: {}",
-                                             e).as_slice(),
+                                             e).as_str(),
                                      None,
                                      diagnostic::Error)
                     }

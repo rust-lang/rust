@@ -526,7 +526,7 @@ impl Datum<Lvalue> {
             }
             _ => bcx.tcx().sess.bug(
                 format!("Unexpected unsized type in get_element: {}",
-                        bcx.ty_to_string(self.ty)).as_slice())
+                        bcx.ty_to_string(self.ty)).as_str())
         };
         Datum {
             val: val,

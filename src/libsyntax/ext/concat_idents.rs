@@ -42,7 +42,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]
             }
         }
     }
-    let res = str_to_ident(res_str.as_slice());
+    let res = str_to_ident(res_str.as_str());
 
     let e = box(GC) ast::Expr {
         id: ast::DUMMY_NODE_ID,

@@ -219,11 +219,11 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
     match *trait_ref {
         Some(ref trait_ref) => {
             pretty.push_char('.');
-            pretty.push_str(pprust::path_to_string(&trait_ref.path).as_slice());
+            pretty.push_str(pprust::path_to_string(&trait_ref.path).as_str());
         }
         None => {}
     }
-    token::gensym_ident(pretty.as_slice())
+    token::gensym_ident(pretty.as_str())
 }
 
 pub fn trait_method_to_ty_method(method: &Method) -> TypeMethod {

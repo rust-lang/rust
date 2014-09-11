@@ -235,7 +235,7 @@ use os;
 use boxed::Box;
 use result::{Ok, Err, Result};
 use rt::rtio;
-use slice::{Slice, MutableSlice, ImmutableSlice};
+use slice::{MutableSlice, ImmutableSlice};
 use str::{Str, StrSlice};
 use str;
 use string::String;
@@ -395,7 +395,7 @@ impl IoError {
             kind: kind,
             desc: desc,
             detail: if detail && kind == OtherIoError {
-                Some(os::error_string(errno).as_slice().chars().map(|c| c.to_lowercase()).collect())
+                Some(os::error_string(errno).as_str().chars().map(|c| c.to_lowercase()).collect())
             } else {
                 None
             },

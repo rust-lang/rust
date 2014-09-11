@@ -189,7 +189,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[Matcher], res: &[Rc<NamedMatch>])
                 p_s.span_diagnostic
                    .span_fatal(span,
                                format!("duplicated bind name: {}",
-                                       string.get()).as_slice())
+                                       string.get()).as_str())
             }
             ret_val.insert(bind_name, res[idx].clone());
           }
@@ -214,10 +214,10 @@ pub fn parse_or_else(sess: &ParseSess,
     match parse(sess, cfg, rdr, ms.as_slice()) {
         Success(m) => m,
         Failure(sp, str) => {
-            sess.span_diagnostic.span_fatal(sp, str.as_slice())
+            sess.span_diagnostic.span_fatal(sp, str.as_str())
         }
         Error(sp, str) => {
-            sess.span_diagnostic.span_fatal(sp, str.as_slice())
+            sess.span_diagnostic.span_fatal(sp, str.as_str())
         }
     }
 }
@@ -442,7 +442,7 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         _ => {
             let token_str = token::to_string(&p.token);
             p.fatal((format!("expected ident, found {}",
-                             token_str.as_slice())).as_slice())
+                             token_str.as_str())).as_str())
         }
       },
       "path" => {
@@ -458,7 +458,7 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
       "matchers" => token::NtMatchers(p.parse_matchers()),
       _ => {
           p.fatal(format!("unsupported builtin nonterminal parser: {}",
-                          name).as_slice())
+                          name).as_str())
       }
     }
 }

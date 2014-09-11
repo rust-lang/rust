@@ -41,7 +41,7 @@ pub fn on_fail(obj: &Any + Send, file: &'static str, line: uint) {
     let msg = match obj.as_ref::<&'static str>() {
         Some(s) => *s,
         None => match obj.as_ref::<String>() {
-            Some(s) => s.as_slice(),
+            Some(s) => s.as_str(),
             None => "Box<Any>",
         }
     };
@@ -72,7 +72,7 @@ pub fn on_fail(obj: &Any + Send, file: &'static str, line: uint) {
         (t.name.take(), t.unwinder.unwinding())
     };
     {
-        let n = name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
+        let n = name.as_ref().map(|n| n.as_str()).unwrap_or("<unnamed>");
 
         match local_stderr.replace(None) {
             Some(mut stderr) => {

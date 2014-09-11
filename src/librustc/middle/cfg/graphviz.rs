@@ -31,14 +31,14 @@ pub struct LabelledCFG<'a>{
 fn replace_newline_with_backslash_l(s: String) -> String {
     // Replacing newlines with \\l causes each line to be left-aligned,
     // improving presentation of (long) pretty-printed expressions.
-    if s.as_slice().contains("\n") {
+    if s.as_str().contains("\n") {
         let mut s = s.replace("\n", "\\l");
         // Apparently left-alignment applies to the line that precedes
         // \l, not the line that follows; so, add \l at end of string
         // if not already present, ensuring last line gets left-aligned
         // as well.
         let mut last_two: Vec<_> =
-            s.as_slice().chars().rev().take(2).collect();
+            s.as_str().chars().rev().take(2).collect();
         last_two.reverse();
         if last_two.as_slice() != ['\\', 'l'] {
             s = s.append("\\l");
@@ -50,7 +50,7 @@ fn replace_newline_with_backslash_l(s: String) -> String {
 }
 
 impl<'a> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a> {
-    fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new(self.name.as_slice()) }
+    fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new(self.name.as_str()) }
 
     fn node_id(&'a self, &(i,_): &Node<'a>) -> dot::Id<'a> {
         dot::Id::new(format!("N{:u}", i.node_id()))
@@ -85,7 +85,7 @@ impl<'a> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a> {
             let s = replace_newline_with_backslash_l(s);
             label = label.append(format!("exiting scope_{} {}",
                                          i,
-                                         s.as_slice()).as_slice());
+                                         s.as_str()).as_str());
         }
         dot::EscStr(label.into_maybe_owned())
     }

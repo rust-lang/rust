@@ -171,7 +171,7 @@ pub fn get_drop_glue(ccx: &CrateContext, t: ty::t) -> ValueRef {
 
     let (glue, new_sym) = match ccx.available_drop_glues().borrow().find(&t) {
         Some(old_sym) => {
-            let glue = decl_cdecl_fn(ccx, old_sym.as_slice(), llfnty, ty::mk_nil());
+            let glue = decl_cdecl_fn(ccx, old_sym.as_str(), llfnty, ty::mk_nil());
             (glue, None)
         },
         None => {
@@ -208,7 +208,7 @@ pub fn lazily_emit_visit_glue(ccx: &CrateContext, ti: &tydesc_info) -> ValueRef 
 
             let (glue_fn, new_sym) = match ccx.available_visit_glues().borrow().find(&ti.ty) {
                 Some(old_sym) => {
-                    let glue_fn = decl_cdecl_fn(ccx, old_sym.as_slice(), llfnty, ty::mk_nil());
+                    let glue_fn = decl_cdecl_fn(ccx, old_sym.as_str(), llfnty, ty::mk_nil());
                     (glue_fn, None)
                 },
                 None => {
@@ -253,7 +253,7 @@ fn make_visit_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v: ValueRef, t: ty::t)
                                                                  ty::ReStatic) {
         Ok(pair) => pair,
         Err(s) => {
-            bcx.tcx().sess.fatal(s.as_slice());
+            bcx.tcx().sess.fatal(s.as_str());
         }
     };
     let v = PointerCast(bcx, v, type_of(bcx.ccx(), object_ty).ptr_to());
@@ -307,7 +307,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             f.sig.inputs[0]
         }
         _ => bcx.sess().bug(format!("Expected function type, found {}",
-                                    bcx.ty_to_string(fty)).as_slice())
+                                    bcx.ty_to_string(fty)).as_str())
     };
 
     let (struct_data, info) = if ty::type_is_sized(bcx.tcx(), t) {
@@ -424,7 +424,7 @@ fn size_and_align_of_dst(bcx: Block, t :ty::t, info: ValueRef) -> (ValueRef, Val
             (Mul(bcx, info, C_uint(bcx.ccx(), unit_size as uint)), C_uint(bcx.ccx(), 8))
         }
         _ => bcx.sess().bug(format!("Unexpected unsized type, found {}",
-                                    bcx.ty_to_string(t)).as_slice())
+                                    bcx.ty_to_string(t)).as_str())
     }
 }
 
@@ -499,7 +499,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: ty::t)
                         bcx.sess().warn(format!("Ignoring drop flag in destructor for {}\
                                                  because the struct is unsized. See issue\
                                                  #16758",
-                                                bcx.ty_to_string(t)).as_slice());
+                                                bcx.ty_to_string(t)).as_str());
                         trans_struct_drop(bcx, t, v0, dtor, did, substs)
                     }
                 }
@@ -611,7 +611,7 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> tydesc_info {
     let llalign = llalign_of(ccx, llty);
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
     debug!("+++ declare_tydesc {} {}", ppaux::ty_to_string(ccx.tcx(), t), name);
-    let gvar = name.as_slice().with_c_str(|buf| {
+    let gvar = name.as_str().with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod(), ccx.tydesc_type().to_ref(), buf)
         }
@@ -619,7 +619,7 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> tydesc_info {
     note_unique_llvm_symbol(ccx, name);
 
     let ty_name = token::intern_and_get_ident(
-        ppaux::ty_to_string(ccx.tcx(), t).as_slice());
+        ppaux::ty_to_string(ccx.tcx(), t).as_str());
     let ty_name = C_str_slice(ccx, ty_name);
 
     debug!("--- declare_tydesc {}", ppaux::ty_to_string(ccx.tcx(), t));
@@ -639,8 +639,8 @@ fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
     let fn_nm = mangle_internal_name_by_type_and_seq(
         ccx,
         t,
-        format!("glue_{}", name).as_slice());
-    let llfn = decl_cdecl_fn(ccx, fn_nm.as_slice(), llfnty, ty::mk_nil());
+        format!("glue_{}", name).as_str());
+    let llfn = decl_cdecl_fn(ccx, fn_nm.as_str(), llfnty, ty::mk_nil());
     note_unique_llvm_symbol(ccx, fn_nm.clone());
     return (fn_nm, llfn);
 }

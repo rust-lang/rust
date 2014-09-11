@@ -296,7 +296,7 @@ fn construct_transformed_self_ty_for_object(
                 _ => {
                     tcx.sess.span_bug(span,
                         format!("'impossible' transformed_self_ty: {}",
-                                transformed_self_ty.repr(tcx)).as_slice());
+                                transformed_self_ty.repr(tcx)).as_str());
                 }
             }
         }
@@ -1095,7 +1095,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
 
             ty_infer(TyVar(_)) => {
                 self.bug(format!("unexpected type: {}",
-                                 self.ty_to_string(self_ty)).as_slice());
+                                 self.ty_to_string(self_ty)).as_str());
             }
         }
     }
@@ -1349,7 +1349,7 @@ impl<'a, 'tcx> LookupContext<'a, 'tcx> {
                 self.bug(format!(
                         "{} was a subtype of {} but now is not?",
                         self.ty_to_string(rcvr_ty),
-                        self.ty_to_string(transformed_self_ty)).as_slice());
+                        self.ty_to_string(transformed_self_ty)).as_str());
             }
         }
 

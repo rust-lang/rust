@@ -117,7 +117,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                             ""
                         } else {
                             "s"
-                        }).as_slice());
+                        }).as_str());
         }
         if ty::type_is_fat_ptr(ccx.tcx(), transmute_restriction.to) ||
            ty::type_is_fat_ptr(ccx.tcx(), transmute_restriction.from) {

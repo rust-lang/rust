@@ -55,11 +55,11 @@ pub fn note_and_explain_region(cx: &ctxt,
       (ref str, Some(span)) => {
         cx.sess.span_note(
             span,
-            format!("{}{}{}", prefix, *str, suffix).as_slice());
+            format!("{}{}{}", prefix, *str, suffix).as_str());
       }
       (ref str, None) => {
         cx.sess.note(
-            format!("{}{}{}", prefix, *str, suffix).as_slice());
+            format!("{}{}{}", prefix, *str, suffix).as_str());
       }
     }
 }
@@ -268,13 +268,13 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
         match fn_style {
             ast::NormalFn => {}
             _ => {
-                s.push_str(fn_style.to_string().as_slice());
+                s.push_str(fn_style.to_string().as_str());
                 s.push_char(' ');
             }
         };
 
         if abi != abi::Rust {
-            s.push_str(format!("extern {} ", abi.to_string()).as_slice());
+            s.push_str(format!("extern {} ", abi.to_string()).as_str());
         };
 
         s.push_str("fn");
@@ -298,14 +298,14 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
         match cty.store {
             ty::UniqTraitStore => {}
             ty::RegionTraitStore(region, _) => {
-                s.push_str(region_to_string(cx, "", true, region).as_slice());
+                s.push_str(region_to_string(cx, "", true, region).as_str());
             }
         }
 
         match cty.fn_style {
             ast::NormalFn => {}
             _ => {
-                s.push_str(cty.fn_style.to_string().as_slice());
+                s.push_str(cty.fn_style.to_string().as_str());
                 s.push_char(' ');
             }
         };
@@ -317,7 +317,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
                 assert_eq!(cty.onceness, ast::Once);
                 s.push_str("proc");
                 push_sig_to_string(cx, &mut s, '(', ')', &cty.sig,
-                                   bounds_str.as_slice());
+                                   bounds_str.as_str());
             }
             ty::RegionTraitStore(..) => {
                 match cty.onceness {
@@ -325,7 +325,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
                     ast::Once => s.push_str("once ")
                 }
                 push_sig_to_string(cx, &mut s, '|', '|', &cty.sig,
-                                   bounds_str.as_slice());
+                                   bounds_str.as_str());
             }
         }
 
@@ -340,7 +340,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
                        bounds: &str) {
         s.push_char(bra);
         let strs: Vec<String> = sig.inputs.iter().map(|a| fn_input_to_string(cx, *a)).collect();
-        s.push_str(strs.connect(", ").as_slice());
+        s.push_str(strs.connect(", ").as_str());
         if sig.variadic {
             s.push_str(", ...");
         }
@@ -356,7 +356,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
             if ty::type_is_bot(sig.output) {
                 s.push_char('!');
             } else {
-                s.push_str(ty_to_string(cx, sig.output).as_slice());
+                s.push_str(ty_to_string(cx, sig.output).as_str());
             }
         }
     }
@@ -386,7 +386,7 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
       }
       ty_rptr(r, ref tm) => {
           let mut buf = region_ptr_to_string(cx, r);
-          buf.push_str(mt_to_string(cx, tm).as_slice());
+          buf.push_str(mt_to_string(cx, tm).as_str());
           buf
       }
       ty_open(typ) => format!("opened<{}>", ty_to_string(cx, typ)),
@@ -408,14 +408,14 @@ pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
           let base = ty::item_path_str(cx, did);
           let generics = ty::lookup_item_type(cx, did).generics;
-          parameterized(cx, base.as_slice(), substs, &generics)
+          parameterized(cx, base.as_str(), substs, &generics)
       }
       ty_trait(box ty::TyTrait {
           def_id: did, ref substs, ref bounds
       }) => {
           let base = ty::item_path_str(cx, did);
           let trait_def = ty::lookup_trait_def(cx, did);
-          let ty = parameterized(cx, base.as_slice(),
+          let ty = parameterized(cx, base.as_str(),
                                  substs, &trait_def.generics);
           let bound_str = bounds.user_string(cx);
           let bound_sep = if bound_str.is_empty() { "" } else { "+" };
@@ -511,7 +511,7 @@ pub fn parameterized(cx: &ctxt,
 pub fn ty_to_short_str(cx: &ctxt, typ: t) -> String {
     let mut s = typ.repr(cx).to_string();
     if s.len() >= 32u {
-        s = s.as_slice().slice(0u, 32u).to_string();
+        s = s.as_str().slice(0u, 32u).to_string();
     }
     return s;
 }
@@ -1069,7 +1069,7 @@ impl UserString for ty::TraitRef {
     fn user_string(&self, tcx: &ctxt) -> String {
         let base = ty::item_path_str(tcx, self.def_id);
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
-        parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics)
+        parameterized(tcx, base.as_str(), &self.substs, &trait_def.generics)
     }
 }
 
