@@ -76,21 +76,22 @@ endif
 
 # Check for the various external utilities for the EPUB/PDF docs:
 
-ifeq ($(CFG_PDFLATEX),)
-  $(info cfg: no pdflatex found, deferring to xelatex)
+ifeq ($(CFG_LUALATEX),)
+  $(info cfg: no lualatex found, deferring to xelatex)
   ifeq ($(CFG_XELATEX),)
-    $(info cfg: no xelatex found, deferring to lualatex)
-    ifeq ($(CFG_LUALATEX),)
-      $(info cfg: no lualatex found, disabling LaTeX docs)
+    $(info cfg: no xelatex found, deferring to pdflatex)
+    ifeq ($(CFG_PDFLATEX),)
+      $(info cfg: no pdflatex found, disabling LaTeX docs)
       NO_PDF_DOCS = 1
 	else
-      CFG_LATEX := $(CFG_LUALATEX)
+      CFG_LATEX := $(CFG_PDFLATEX)
     endif
   else
     CFG_LATEX := $(CFG_XELATEX)
+    XELATEX = 1
   endif
 else
-  CFG_LATEX := $(CFG_PDFLATEX)
+  CFG_LATEX := $(CFG_LUALATEX)
 endif
 
 
@@ -187,12 +188,25 @@ doc/$(1).tex: $$(D)/$(1).md doc/footer.tex doc/version.tex | doc/
 ifneq ($(NO_PDF_DOCS),1)
 ifeq ($$(SHOULD_BUILD_PDF_DOC_$(1)),1)
 DOC_TARGETS += doc/$(1).pdf
+ifneq ($(XELATEX),1)
 doc/$(1).pdf: doc/$(1).tex
 	@$$(call E, latex compiler: $$@)
 	$$(Q)$$(CFG_LATEX) \
 	-interaction=batchmode \
 	-output-directory=doc \
 	$$<
+else
+# The version of xelatex on the snap bots seemingly ingores -output-directory
+# So we'll output to . and move to the doc directory manually.
+# This will leave some intermediate files in the build directory.
+doc/$(1).pdf: doc/$(1).tex
+	@$$(call E, latex compiler: $$@)
+	$$(Q)$$(CFG_LATEX) \
+	-interaction=batchmode \
+	-output-directory=. \
+	$$<
+	$$(Q)mv ./$(1).pdf $$@
+endif # XELATEX
 endif # SHOULD_BUILD_PDF_DOCS_$(1)
 endif # NO_PDF_DOCS
 
