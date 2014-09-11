@@ -164,7 +164,7 @@ fn max_cached_stacks() -> uint {
         0 => {}
         n => return n - 1,
     }
-    let amt = getenv("RUST_MAX_CACHED_STACKS").and_then(|s| from_str(s.as_slice()));
+    let amt = getenv("RUST_MAX_CACHED_STACKS").and_then(|s| from_str(s.as_str()));
     // This default corresponds to 20M of cache per scheduler (at the
     // default size).
     let amt = amt.unwrap_or(10);
