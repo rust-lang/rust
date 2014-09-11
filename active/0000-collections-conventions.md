@@ -1577,6 +1577,10 @@ This is a tradeoff:
   implicit magic, *especially* when it can involve hidden costs like cloning, so
   the more explicit design given in this RFC seems best.
 
+# Downsides
+
+Design tradeoffs were discussed inline.
+
 # Unresolved questions
 
 ## Unresolved conventions/APIs
