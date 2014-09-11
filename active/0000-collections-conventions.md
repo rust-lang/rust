@@ -1560,6 +1560,25 @@ could potentially be dropped. However, there are a few downsides:
 
 ## For `IntoIterator`
 
+### Handling of `for` loops
+
+The fact that `for x in v` moves elements from `v`, while `for x in v.iter()`
+yields references, may be a bit surprising. On the other hand, moving is the
+default almost everywhere in Rust, and with the proposed approach you get to use `&` and
+`&mut` to easily select other forms of iteration.
+
+Unfortunately, it's a bit tricky to make for use by-ref iterators instead. The
+problem is that an iterator is `IntoIterator`, but it is not `Iterable` (or
+whatever we call the by-reference trait). Why? Because `IntoIterator` gives you
+an iterator that can be used only *once*, while `Iterable` allows you to ask for
+iterators repeatedly.
+
+If `for` demanded an `Iterable`, then `for x in v.iter()` and `for x in v.iter_mut()`
+would cease to work -- we'd have to find some other approach. It might be
+doable, but it's not obvious how to do it.
+
+### Input versus output type parameters
+
 An important aspect of the `IntoIterator` design is that the element type is an
 associated type, *not* an input type.
 
