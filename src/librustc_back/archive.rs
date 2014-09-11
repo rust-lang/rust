@@ -10,6 +10,7 @@
 
 //! A helper class for dealing with static archives
 
+use std::io::fs::PathExtensions;
 use std::io::process::{Command, ProcessOutput};
 use std::io::{fs, TempDir};
 use std::io;

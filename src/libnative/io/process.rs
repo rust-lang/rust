@@ -21,6 +21,7 @@ use std::rt::rtio;
 use super::file;
 use super::util;
 
+#[cfg(windows)] use std::io::fs::PathExtensions;
 #[cfg(windows)] use std::string::String;
 #[cfg(unix)] use super::c;
 #[cfg(unix)] use super::retry;

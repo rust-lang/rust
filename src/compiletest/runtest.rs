@@ -20,6 +20,7 @@ use util::logv;
 use util;
 
 use std::io::File;
+use std::io::fs::PathExtensions;
 use std::io::fs;
 use std::io::net::tcp;
 use std::io::process::ProcessExit;

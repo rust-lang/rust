@@ -20,6 +20,7 @@
 
 extern crate debug;
 
+use std::io::fs::PathExtensions;
 use std::io::{fs, TempDir};
 use std::io;
 use std::os;

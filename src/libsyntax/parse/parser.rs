@@ -82,6 +82,7 @@ use parse::{new_sub_parser_from_file, ParseSess};
 use owned_slice::OwnedSlice;
 
 use std::collections::HashSet;
+use std::io::fs::PathExtensions;
 use std::mem::replace;
 use std::rc::Rc;
 use std::gc::{Gc, GC};

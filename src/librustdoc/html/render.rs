@@ -35,6 +35,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fmt;
+use std::io::fs::PathExtensions;
 use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
 use std::io;
 use std::str;
