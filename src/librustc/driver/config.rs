@@ -237,14 +237,14 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
 
 #[deriving(Clone)]
 pub enum Passes {
-    Passes(Vec<String>),
+    SomePasses(Vec<String>),
     AllPasses,
 }
 
 impl Passes {
     pub fn is_empty(&self) -> bool {
         match *self {
-            Passes(ref v) => v.is_empty(),
+            SomePasses(ref v) => v.is_empty(),
             AllPasses => false,
         }
     }
@@ -276,7 +276,7 @@ macro_rules! cgoptions(
         &[ $( (stringify!($opt), cgsetters::$opt, $desc) ),* ];
 
     mod cgsetters {
-        use super::{CodegenOptions, Passes, AllPasses};
+        use super::{CodegenOptions, Passes, SomePasses, AllPasses};
 
         $(
             pub fn $opt(cg: &mut CodegenOptions, v: Option<&str>) -> bool {
@@ -335,7 +335,7 @@ macro_rules! cgoptions(
                 v => {
                     let mut passes = vec!();
                     if parse_list(&mut passes, v) {
-                        *slot = Passes(passes);
+                        *slot = SomePasses(passes);
                         true
                     } else {
                         false
@@ -389,7 +389,7 @@ cgoptions!(
          "extra data to put in each output filename"),
     codegen_units: uint = (1, parse_uint,
         "divide crate into N units to optimize in parallel"),
-    remark: Passes = (Passes(Vec::new()), parse_passes,
+    remark: Passes = (SomePasses(Vec::new()), parse_passes,
         "print remarks for these optimization passes (space separated, or \"all\")"),
 )
 

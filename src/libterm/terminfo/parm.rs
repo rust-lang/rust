@@ -41,7 +41,7 @@ enum FormatState {
 #[allow(missing_doc)]
 #[deriving(Clone)]
 pub enum Param {
-    String(String),
+    Words(String),
     Number(int)
 }
 
@@ -140,8 +140,8 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     '{' => state = IntConstant(0),
                     'l' => if stack.len() > 0 {
                         match stack.pop().unwrap() {
-                            String(s) => stack.push(Number(s.len() as int)),
-                            _         => return Err("a non-str was used with %l".to_string())
+                            Words(s) => stack.push(Number(s.len() as int)),
+                            _        => return Err("a non-str was used with %l".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
                     '+' => if stack.len() > 1 {
@@ -543,7 +543,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
             }
             s
         }
-        String(s) => {
+        Words(s) => {
             match op {
                 FormatString => {
                     let mut s = Vec::from_slice(s.as_bytes());
@@ -575,7 +575,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
 
 #[cfg(test)]
 mod test {
-    use super::{expand,String,Variables,Number};
+    use super::{expand,Words,Variables,Number};
     use std::result::Ok;
 
     #[test]
@@ -611,7 +611,7 @@ mod test {
             assert!(res.is_err(),
                     "Op {} succeeded incorrectly with 0 stack entries", *cap);
             let p = if *cap == "%s" || *cap == "%l" {
-                String("foo".to_string())
+                Words("foo".to_string())
             } else {
                 Number(97)
             };
@@ -689,12 +689,12 @@ mod test {
         let mut varstruct = Variables::new();
         let vars = &mut varstruct;
         assert_eq!(expand(b"%p1%s%p2%2s%p3%2s%p4%.2s",
-                          [String("foo".to_string()),
-                           String("foo".to_string()),
-                           String("f".to_string()),
-                           String("foo".to_string())], vars),
+                          [Words("foo".to_string()),
+                           Words("foo".to_string()),
+                           Words("f".to_string()),
+                           Words("foo".to_string())], vars),
                    Ok("foofoo ffo".bytes().collect()));
-        assert_eq!(expand(b"%p1%:-4.2s", [String("foo".to_string())], vars),
+        assert_eq!(expand(b"%p1%:-4.2s", [Words("foo".to_string())], vars),
                    Ok("fo  ".bytes().collect()));
 
         assert_eq!(expand(b"%p1%d%p1%.3d%p1%5d%p1%:+d", [Number(1)], vars),

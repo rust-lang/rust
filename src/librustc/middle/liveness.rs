@@ -116,6 +116,7 @@ use std::mem::transmute;
 use std::rc::Rc;
 use std::str;
 use std::uint;
+use syntax::ast;
 use syntax::ast::*;
 use syntax::codemap::{BytePos, original_sp, Span};
 use syntax::parse::token::special_idents;
@@ -183,7 +184,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
                 b: &'v Block, s: Span, n: NodeId) {
         visit_fn(self, fk, fd, b, s, n);
     }
-    fn visit_local(&mut self, l: &Local) { visit_local(self, l); }
+    fn visit_local(&mut self, l: &ast::Local) { visit_local(self, l); }
     fn visit_expr(&mut self, ex: &Expr) { visit_expr(self, ex); }
     fn visit_arm(&mut self, a: &Arm) { visit_arm(self, a); }
 }
@@ -346,7 +347,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Liveness<'a, 'tcx> {
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: &'v Block, s: Span, n: NodeId) {
         check_fn(self, fk, fd, b, s, n);
     }
-    fn visit_local(&mut self, l: &Local) {
+    fn visit_local(&mut self, l: &ast::Local) {
         check_local(self, l);
     }
     fn visit_expr(&mut self, ex: &Expr) {
@@ -408,7 +409,7 @@ fn visit_fn(ir: &mut IrMaps,
     lsets.warn_about_unused_args(decl, entry_ln);
 }
 
-fn visit_local(ir: &mut IrMaps, local: &Local) {
+fn visit_local(ir: &mut IrMaps, local: &ast::Local) {
     pat_util::pat_bindings(&ir.tcx.def_map, &*local.pat, |_, p_id, sp, path1| {
         debug!("adding local variable {}", p_id);
         let name = path1.node;
@@ -913,7 +914,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn propagate_through_local(&mut self, local: &Local, succ: LiveNode)
+    fn propagate_through_local(&mut self, local: &ast::Local, succ: LiveNode)
                                -> LiveNode {
         // Note: we mark the variable as defined regardless of whether
         // there is an initializer.  Initially I had thought to only mark
@@ -1403,7 +1404,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 // _______________________________________________________________________
 // Checking for error conditions
 
-fn check_local(this: &mut Liveness, local: &Local) {
+fn check_local(this: &mut Liveness, local: &ast::Local) {
     match local.init {
         Some(_) => {
             this.warn_about_unused_or_dead_vars_in_pat(&*local.pat);

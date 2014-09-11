@@ -53,7 +53,7 @@ pub enum Ast {
     Nothing,
     Literal(char, Flags),
     Dot(Flags),
-    Class(Vec<(char, char)>, Flags),
+    AstClass(Vec<(char, char)>, Flags),
     Begin(Flags),
     End(Flags),
     WordBoundary(Flags),
@@ -101,7 +101,7 @@ impl Greed {
 /// state.
 #[deriving(Show)]
 enum BuildAst {
-    Ast(Ast),
+    Expr(Ast),
     Paren(Flags, uint, String), // '('
     Bar, // '|'
 }
@@ -152,7 +152,7 @@ impl BuildAst {
 
     fn unwrap(self) -> Result<Ast, Error> {
         match self {
-            Ast(x) => Ok(x),
+            Expr(x) => Ok(x),
             _ => fail!("Tried to unwrap non-AST item: {}", self),
         }
     }
@@ -311,7 +311,7 @@ impl<'a> Parser<'a> {
     }
 
     fn push(&mut self, ast: Ast) {
-        self.stack.push(Ast(ast))
+        self.stack.push(Expr(ast))
     }
 
     fn push_repeater(&mut self, c: char) -> Result<(), Error> {
@@ -388,8 +388,8 @@ impl<'a> Parser<'a> {
             match c {
                 '[' =>
                     match self.try_parse_ascii() {
-                        Some(Class(asciis, flags)) => {
-                            alts.push(Class(asciis, flags ^ negated));
+                        Some(AstClass(asciis, flags)) => {
+                            alts.push(AstClass(asciis, flags ^ negated));
                             continue
                         }
                         Some(ast) =>
@@ -399,8 +399,8 @@ impl<'a> Parser<'a> {
                     },
                 '\\' => {
                     match try!(self.parse_escape()) {
-                        Class(asciis, flags) => {
-                            alts.push(Class(asciis, flags ^ negated));
+                        AstClass(asciis, flags) => {
+                            alts.push(AstClass(asciis, flags ^ negated));
                             continue
                         }
                         Literal(c2, _) => c = c2, // process below
@@ -417,7 +417,7 @@ impl<'a> Parser<'a> {
                 ']' => {
                     if ranges.len() > 0 {
                         let flags = negated | (self.flags & FLAG_NOCASE);
-                        let mut ast = Class(combine_ranges(ranges), flags);
+                        let mut ast = AstClass(combine_ranges(ranges), flags);
                         for alt in alts.into_iter() {
                             ast = Alt(box alt, box ast)
                         }
@@ -485,7 +485,7 @@ impl<'a> Parser<'a> {
             Some(ranges) => {
                 self.chari = closer;
                 let flags = negated | (self.flags & FLAG_NOCASE);
-                Some(Class(combine_ranges(ranges), flags))
+                Some(AstClass(combine_ranges(ranges), flags))
             }
         }
     }
@@ -611,7 +611,7 @@ impl<'a> Parser<'a> {
                 let ranges = perl_unicode_class(c);
                 let mut flags = self.flags & FLAG_NOCASE;
                 if c.is_uppercase() { flags |= FLAG_NEGATED }
-                Ok(Class(ranges, flags))
+                Ok(AstClass(ranges, flags))
             }
             _ => {
                 self.err(format!("Invalid escape sequence '\\\\{}'",
@@ -655,7 +655,7 @@ impl<'a> Parser<'a> {
                                         name).as_slice())
             }
             Some(ranges) => {
-                Ok(Class(ranges, negated | (self.flags & FLAG_NOCASE)))
+                Ok(AstClass(ranges, negated | (self.flags & FLAG_NOCASE)))
             }
         }
     }
@@ -888,7 +888,7 @@ impl<'a> Parser<'a> {
         while i > from {
             i = i - 1;
             match self.stack.pop().unwrap() {
-                Ast(x) => combined = mk(x, combined),
+                Expr(x) => combined = mk(x, combined),
                 _ => {},
             }
         }

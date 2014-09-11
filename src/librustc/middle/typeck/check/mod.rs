@@ -1704,7 +1704,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.write_adjustment(
             node_id,
             span,
-            ty::AutoDerefRef(ty::AutoDerefRef {
+            ty::AdjustDerefRef(ty::AutoDerefRef {
                 autoderefs: derefs,
                 autoref: None })
         );
@@ -1730,8 +1730,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        span: Span,
                                        adj: &ty::AutoAdjustment) {
         match *adj {
-            ty::AutoAddEnv(..) => { }
-            ty::AutoDerefRef(ref d_r) => {
+            ty::AdjustAddEnv(..) => { }
+            ty::AdjustDerefRef(ref d_r) => {
                 match d_r.autoref {
                     Some(ref a_r) => {
                         self.register_autoref_obligations(span, a_r);

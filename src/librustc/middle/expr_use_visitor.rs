@@ -19,7 +19,8 @@ use middle::def;
 use middle::freevars;
 use middle::pat_util;
 use middle::ty;
-use middle::typeck::{MethodCall, MethodObject, MethodOrigin, MethodParam};
+use middle::typeck::{MethodCall, MethodObject, MethodTraitObject};
+use middle::typeck::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure};
 use middle::typeck;
 use util::ppaux::Repr;
@@ -177,8 +178,8 @@ impl OverloadedCallType {
             MethodStaticUnboxedClosure(def_id) => {
                 OverloadedCallType::from_unboxed_closure(tcx, def_id)
             }
-            MethodParam(MethodParam { trait_ref: ref trait_ref, .. }) |
-            MethodObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
+            MethodTypeParam(MethodParam { trait_ref: ref trait_ref, .. }) |
+            MethodTraitObject(MethodObject { trait_ref: ref trait_ref, .. }) => {
                 OverloadedCallType::from_trait_id(tcx, trait_ref.def_id)
             }
         }
@@ -673,7 +674,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
             None => { }
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AutoAddEnv(..) => {
+                    ty::AdjustAddEnv(..) => {
                         // Creating a closure consumes the input and stores it
                         // into the resulting rvalue.
                         debug!("walk_adjustment(AutoAddEnv)");
@@ -681,7 +682,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                             return_if_err!(self.mc.cat_expr_unadjusted(expr));
                         self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
                     }
-                    ty::AutoDerefRef(ty::AutoDerefRef {
+                    ty::AdjustDerefRef(ty::AutoDerefRef {
                         autoref: ref opt_autoref,
                         autoderefs: n
                     }) => {

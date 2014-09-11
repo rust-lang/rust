@@ -13,7 +13,7 @@ use std::cell::Cell;
 use std::gc::GC;
 
 enum newtype {
-    newtype(int)
+    newvar(int)
 }
 
 pub fn main() {
@@ -22,9 +22,9 @@ pub fn main() {
     // specially.
 
     let x = box(GC) Cell::new(5);
-    let y = box(GC) Cell::new(newtype(3));
+    let y = box(GC) Cell::new(newvar(3));
     let z = match y.get() {
-      newtype(b) => {
+      newvar(b) => {
         x.set(x.get() + 1);
         x.get() * b
       }

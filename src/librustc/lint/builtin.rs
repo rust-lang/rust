@@ -1297,7 +1297,7 @@ impl LintPass for UnnecessaryAllocation {
         match cx.tcx.adjustments.borrow().find(&e.id) {
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AutoDerefRef(ty::AutoDerefRef { ref autoref, .. }) => {
+                    ty::AdjustDerefRef(ty::AutoDerefRef { ref autoref, .. }) => {
                         match (allocation, autoref) {
                             (VectorAllocation, &Some(ty::AutoPtr(_, _, None))) => {
                                 cx.span_lint(UNNECESSARY_ALLOCATION, e.span,
@@ -1512,12 +1512,12 @@ impl LintPass for Stability {
                             typeck::MethodStaticUnboxedClosure(def_id) => {
                                 def_id
                             }
-                            typeck::MethodParam(typeck::MethodParam {
+                            typeck::MethodTypeParam(typeck::MethodParam {
                                 trait_ref: ref trait_ref,
                                 method_num: index,
                                 ..
                             }) |
-                            typeck::MethodObject(typeck::MethodObject {
+                            typeck::MethodTraitObject(typeck::MethodObject {
                                 trait_ref: ref trait_ref,
                                 method_num: index,
                                 ..

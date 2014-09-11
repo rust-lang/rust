@@ -15,7 +15,7 @@
 pub struct Struct;
 
 pub enum Unit {
-    Unit,
+    UnitVariant,
     Argument(Struct)
 }
 

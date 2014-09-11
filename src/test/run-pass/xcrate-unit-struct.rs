@@ -12,7 +12,7 @@
 extern crate xcrate_unit_struct;
 
 static s1: xcrate_unit_struct::Struct = xcrate_unit_struct::Struct;
-static s2: xcrate_unit_struct::Unit = xcrate_unit_struct::Unit;
+static s2: xcrate_unit_struct::Unit = xcrate_unit_struct::UnitVariant;
 static s3: xcrate_unit_struct::Unit =
                 xcrate_unit_struct::Argument(xcrate_unit_struct::Struct);
 static s4: xcrate_unit_struct::Unit = xcrate_unit_struct::Argument(s1);
@@ -22,7 +22,7 @@ fn f2(_: xcrate_unit_struct::Unit) {}
 
 pub fn main() {
     f1(xcrate_unit_struct::Struct);
-    f2(xcrate_unit_struct::Unit);
+    f2(xcrate_unit_struct::UnitVariant);
     f2(xcrate_unit_struct::Argument(xcrate_unit_struct::Struct));
 
     f1(s1);
