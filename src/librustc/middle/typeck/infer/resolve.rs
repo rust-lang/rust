@@ -51,7 +51,7 @@ use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{IntType, UintType};
 use middle::ty;
 use middle::ty_fold;
-use middle::typeck::infer::{cyclic_ty, fixup_err, fres, InferCtxt};
+use middle::typeck::infer::{fixup_err, fres, InferCtxt};
 use middle::typeck::infer::{unresolved_int_ty,unresolved_float_ty,unresolved_ty};
 use syntax::codemap::Span;
 use util::common::indent;
@@ -78,7 +78,6 @@ pub struct ResolveState<'a, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     modes: uint,
     err: Option<fixup_err>,
-    v_seen: Vec<TyVid> ,
     type_depth: uint,
 }
 
@@ -90,7 +89,6 @@ pub fn resolver<'a, 'tcx>(infcx: &'a InferCtxt<'a, 'tcx>,
         infcx: infcx,
         modes: modes,
         err: None,
-        v_seen: Vec::new(),
         type_depth: 0,
     }
 }
@@ -126,9 +124,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         // n.b. This is a hokey mess because the current fold doesn't
         // allow us to pass back errors in any useful way.
 
-        assert!(self.v_seen.is_empty());
-        let rty = indent(|| self.resolve_type(typ) );
-        assert!(self.v_seen.is_empty());
+        let rty = self.resolve_type(typ);
         match self.err {
           None => {
             debug!("Resolved {} to {} (modes={:x})",
@@ -205,33 +201,19 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
     }
 
     pub fn resolve_ty_var(&mut self, vid: TyVid) -> ty::t {
-        if self.v_seen.contains(&vid) {
-            self.err = Some(cyclic_ty(vid));
-            return ty::mk_var(self.infcx.tcx, vid);
-        } else {
-            self.v_seen.push(vid);
-            let tcx = self.infcx.tcx;
-
-            // Nonobvious: prefer the most specific type
-            // (i.e., the lower bound) to the more general
-            // one.  More general types in Rust (e.g., fn())
-            // tend to carry more restrictions or higher
-            // perf. penalties, so it pays to know more.
-
-            let t1 = match self.infcx.type_variables.borrow().probe(vid) {
-                Some(t) => {
-                    self.resolve_type(t)
+        let tcx = self.infcx.tcx;
+        let t1 = match self.infcx.type_variables.borrow().probe(vid) {
+            Some(t) => {
+                self.resolve_type(t)
+            }
+            None => {
+                if self.should(force_tvar) {
+                    self.err = Some(unresolved_ty(vid));
                 }
-                None => {
-                    if self.should(force_tvar) {
-                        self.err = Some(unresolved_ty(vid));
-                    }
-                    ty::mk_var(tcx, vid)
-                }
-            };
-            self.v_seen.pop().unwrap();
-            return t1;
-        }
+                ty::mk_var(tcx, vid)
+            }
+        };
+        return t1;
     }
 
     pub fn resolve_int_var(&mut self, vid: IntVid) -> ty::t {
