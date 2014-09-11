@@ -1607,6 +1607,18 @@ impl<'a> State<'a> {
                     try!(word(&mut self.s, ">"));
                 }
             }
+            ast::ExprTupField(ref expr, id, ref tys) => {
+                try!(self.print_expr(&**expr));
+                try!(word(&mut self.s, "."));
+                try!(self.print_uint(id.node));
+                if tys.len() > 0u {
+                    try!(word(&mut self.s, "::<"));
+                    try!(self.commasep(
+                        Inconsistent, tys.as_slice(),
+                        |s, ty| s.print_type_ref(ty)));
+                    try!(word(&mut self.s, ">"));
+                }
+            }
             ast::ExprIndex(ref expr, ref index) => {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, "["));
@@ -1736,6 +1748,10 @@ impl<'a> State<'a> {
             try!(word(&mut self.s, token::get_ident(ident).get()))
         }
         self.ann.post(self, NodeIdent(&ident))
+    }
+
+    pub fn print_uint(&mut self, i: uint) -> IoResult<()> {
+        word(&mut self.s, i.to_string().as_slice())
     }
 
     pub fn print_name(&mut self, name: ast::Name) -> IoResult<()> {
