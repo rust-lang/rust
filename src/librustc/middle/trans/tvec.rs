@@ -72,14 +72,19 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         };
 
         if should_deallocate {
-            let not_null = IsNotNull(bcx, dataptr);
-            with_cond(bcx, not_null, |bcx| {
-                let llty = type_of::type_of(ccx, unit_ty);
-                let llsize = machine::llsize_of(ccx, llty);
-                let llalign = C_uint(ccx, machine::llalign_of_min(ccx, llty) as uint);
-                let size = Mul(bcx, llsize, get_len(bcx, vptr));
-                glue::trans_exchange_free_dyn(bcx, dataptr, size, llalign)
-            })
+            let llty = type_of::type_of(ccx, unit_ty);
+            let unit_size = llsize_of_alloc(ccx, llty);
+            if unit_size != 0 {
+                let len = get_len(bcx, vptr);
+                let not_empty = ICmp(bcx, llvm::IntNE, len, C_uint(ccx, 0));
+                with_cond(bcx, not_empty, |bcx| {
+                    let llalign = C_uint(ccx, machine::llalign_of_min(ccx, llty) as uint);
+                    let size = Mul(bcx, C_uint(ccx, unit_size as uint), len);
+                    glue::trans_exchange_free_dyn(bcx, dataptr, size, llalign)
+                })
+            } else {
+                bcx
+            }
         } else {
             bcx
         }
