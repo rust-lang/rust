@@ -418,10 +418,10 @@ impl<A: Clone> ToOwned for A {
 impl Borrow for str {
     type Owned = String;
     fn borrow(s: &String) -> &str {
-        self.as_slice()
+        s.as_slice()
     }
     fn borrow_mut(s: &mut String) -> &mut str {
-        self.as_mut_slice()
+        s.as_mut_slice()
     }
 }
 
@@ -434,10 +434,10 @@ impl ToOwned for str {
 impl<T> Borrow for [T] {
     type Owned = Vec<T>;
     fn borrow(s: &Vec<T>) -> &[T] {
-        self.as_slice()
+        s.as_slice()
     }
     fn borrow_mut(s: &mut Vec<T>) -> &mut [T] {
-        self.as_mut_slice()
+        s.as_mut_slice()
     }
 }
 
