@@ -46,7 +46,7 @@ use ptr::RawPtr;
 use ptr;
 use result::{Err, Ok, Result};
 use slice::{Slice, ImmutableSlice, MutableSlice, ImmutablePartialEqSlice};
-use str::{Str, StrSlice, StrAllocating};
+use str::{StrSlice, StrAllocating};
 use string::String;
 use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use vec::Vec;
