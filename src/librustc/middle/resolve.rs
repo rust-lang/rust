@@ -2811,7 +2811,7 @@ impl<'a> Resolver<'a> {
                                     import_span: Span,
                                     name: Name,
                                     namespace: Namespace) {
-        if self.session.features.import_shadowing.get() {
+        if self.session.features.borrow().import_shadowing {
             return
         }
 
@@ -2837,7 +2837,7 @@ impl<'a> Resolver<'a> {
                                                      &mut ImportResolution,
                                                      import_span: Span,
                                                      name: Name) {
-        if self.session.features.import_shadowing.get() {
+        if self.session.features.borrow().import_shadowing {
             return
         }
 
@@ -2919,7 +2919,7 @@ impl<'a> Resolver<'a> {
                                                    module: &Module,
                                                    name: Name,
                                                    span: Span) {
-        if self.session.features.import_shadowing.get() {
+        if self.session.features.borrow().import_shadowing {
             return
         }
 
@@ -2937,7 +2937,7 @@ impl<'a> Resolver<'a> {
                                                              module: &Module,
                                                              name: Name,
                                                              span: Span) {
-        if self.session.features.import_shadowing.get() {
+        if self.session.features.borrow().import_shadowing {
             return
         }
 

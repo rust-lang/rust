@@ -62,6 +62,7 @@ pub mod codemap;
 pub mod config;
 pub mod crateid;
 pub mod diagnostic;
+pub mod feature_gate;
 pub mod fold;
 pub mod owned_slice;
 pub mod parse;
