@@ -1002,7 +1002,8 @@ pub enum type_err {
     terr_float_mismatch(expected_found<ast::FloatTy>),
     terr_traits(expected_found<ast::DefId>),
     terr_builtin_bounds(expected_found<BuiltinBounds>),
-    terr_variadic_mismatch(expected_found<bool>)
+    terr_variadic_mismatch(expected_found<bool>),
+    terr_cyclic_ty,
 }
 
 /// Bounds suitable for a named type parameter like `A` in `fn foo<A>`
@@ -3791,6 +3792,7 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
     }
 
     match *err {
+        terr_cyclic_ty => "cyclic type of infinite size".to_string(),
         terr_mismatch => "types differ".to_string(),
         terr_fn_style_mismatch(values) => {
             format!("expected {} fn, found {} fn",
