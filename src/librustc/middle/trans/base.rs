@@ -358,7 +358,7 @@ fn require_alloc_fn(bcx: Block, info_ty: ty::t, it: LangItem) -> ast::DefId {
         Err(s) => {
             bcx.sess().fatal(format!("allocation of `{}` {}",
                                      bcx.ty_to_string(info_ty),
-                                     s).as_slice());
+                                     s).as_str());
         }
     }
 }
@@ -526,7 +526,7 @@ pub fn unset_split_stack(f: ValueRef) {
 // silently mangles such symbols, breaking our linkage model.
 pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: String) {
     if ccx.all_llvm_symbols().borrow().contains(&sym) {
-        ccx.sess().bug(format!("duplicate LLVM symbol: {}", sym).as_slice());
+        ccx.sess().bug(format!("duplicate LLVM symbol: {}", sym).as_str());
     }
     ccx.all_llvm_symbols().borrow_mut().insert(sym);
 }
@@ -562,7 +562,7 @@ pub fn get_res_dtor(ccx: &CrateContext,
                                      [glue::get_drop_glue_type(ccx, t)], ty::mk_nil());
         get_extern_fn(ccx,
                       &mut *ccx.externs().borrow_mut(),
-                      name.as_slice(),
+                      name.as_str(),
                       llvm::CCallConv,
                       llty,
                       dtor_ty)
@@ -811,8 +811,8 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                       let variant_cx =
                           fcx.new_temp_block(
                               format!("enum-iter-variant-{}",
-                                      variant.disr_val.to_string().as_slice())
-                                     .as_slice());
+                                      variant.disr_val.to_string().as_str())
+                                     .as_str());
                       match adt::trans_case(cx, &*repr, variant.disr_val) {
                           _match::SingleResult(r) => {
                               AddCase(llswitch, r.val, variant_cx.llbb)
@@ -913,7 +913,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
         }
         _ => {
             cx.sess().bug(format!("fail-if-zero on unexpected type: {}",
-                                  ty_to_string(cx.tcx(), rhs_t)).as_slice());
+                                  ty_to_string(cx.tcx(), rhs_t)).as_str());
         }
     };
     let bcx = with_cond(cx, is_zero, |bcx| {
@@ -967,25 +967,25 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
             match fn_ty.abi.for_target(ccx.sess().targ_cfg.os,
                                        ccx.sess().targ_cfg.arch) {
                 Some(Rust) | Some(RustCall) => {
-                    get_extern_rust_fn(ccx, t, name.as_slice(), did)
+                    get_extern_rust_fn(ccx, t, name.as_str(), did)
                 }
                 Some(RustIntrinsic) => {
                     ccx.sess().bug("unexpected intrinsic in trans_external_path")
                 }
                 Some(..) | None => {
                     foreign::register_foreign_item_fn(ccx, fn_ty.abi, t,
-                                                      name.as_slice(), None)
+                                                      name.as_str(), None)
                 }
             }
         }
         ty::ty_closure(_) => {
-            get_extern_rust_fn(ccx, t, name.as_slice(), did)
+            get_extern_rust_fn(ccx, t, name.as_str(), did)
         }
         _ => {
             let llty = type_of(ccx, t);
             get_extern_const(&mut *ccx.externs().borrow_mut(),
                              ccx.llmod(),
-                             name.as_slice(),
+                             name.as_str(),
                              llty)
         }
     }
@@ -1417,7 +1417,7 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
         None if id == ast::DUMMY_NODE_ID => false,
 
         _ => tcx.sess.bug(format!("unexpected variant in has_nested_returns: {}",
-                                  tcx.map.path_to_string(id)).as_slice())
+                                  tcx.map.path_to_string(id)).as_str())
     }
 }
 
@@ -1983,7 +1983,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         _ => ccx.sess().bug(
             format!("trans_enum_variant_constructor: \
                      unexpected ctor return type {}",
-                     ctor_ty.repr(tcx)).as_slice())
+                     ctor_ty.repr(tcx)).as_str())
     };
 
     // Get location to store the result. If the user does not care about
@@ -2048,7 +2048,7 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
         _ => ccx.sess().bug(
             format!("trans_enum_variant_or_tuple_like_struct: \
                      unexpected ctor return type {}",
-                    ty_to_string(ccx.tcx(), ctor_ty)).as_slice())
+                    ty_to_string(ccx.tcx(), ctor_ty)).as_str())
     };
 
     let arena = TypedArena::new();
@@ -2124,7 +2124,7 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
                             lvlsrc, Some(sp),
                             format!("enum variant is more than three times larger \
                                      ({} bytes) than the next largest (ignoring padding)",
-                                    largest).as_slice());
+                                    largest).as_str());
 
         ccx.sess().span_note(enum_def.variants.get(largest_index).span,
                              "this variant is the largest");
@@ -2346,7 +2346,7 @@ fn register_fn(ccx: &CrateContext,
         _ => fail!("expected bare rust fn")
     };
 
-    let llfn = decl_rust_fn(ccx, node_type, sym.as_slice());
+    let llfn = decl_rust_fn(ccx, node_type, sym.as_str());
     finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
@@ -2547,7 +2547,7 @@ pub fn register_fn_llvmty(ccx: &CrateContext,
                           llfty: Type) -> ValueRef {
     debug!("register_fn_llvmty id={} sym={}", node_id, sym);
 
-    let llfn = decl_fn(ccx, sym.as_slice(), cc, llfty, ty::mk_nil());
+    let llfn = decl_fn(ccx, sym.as_str(), cc, llfty, ty::mk_nil());
     finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
@@ -2599,7 +2599,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = match ccx.tcx().lang_items.require(StartFnLangItem) {
                     Ok(id) => id,
-                    Err(s) => { ccx.sess().fatal(s.as_slice()); }
+                    Err(s) => { ccx.sess().fatal(s.as_str()); }
                 };
                 let start_fn = if start_def_id.krate == ast::LOCAL_CRATE {
                     get_item_val(ccx, start_def_id.node)
@@ -2705,7 +2705,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                     unsafe {
                         let llty = llvm::LLVMTypeOf(v);
-                        let g = sym.as_slice().with_c_str(|buf| {
+                        let g = sym.as_str().with_c_str(|buf| {
                             llvm::LLVMAddGlobal(ccx.llmod(), llty, buf)
                         });
 
@@ -2805,7 +2805,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let ty = ty::node_id_to_type(ccx.tcx(), ni.id);
                     let name = foreign::link_name(&*ni);
                     foreign::register_foreign_item_fn(ccx, abi, ty,
-                                                      name.get().as_slice(),
+                                                      name.get().as_str(),
                                                       Some(ni.span))
                 }
                 ast::ForeignItemStatic(..) => {
@@ -2866,7 +2866,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
         ref variant => {
             ccx.sess().bug(format!("get_item_val(): unexpected variant: {:?}",
-                                   variant).as_slice())
+                                   variant).as_str())
         }
     };
 
@@ -3061,7 +3061,7 @@ pub fn trans_crate(krate: ast::Crate,
     let link_meta = link::build_link_meta(&tcx.sess, &krate, name);
 
     let codegen_units = tcx.sess.opts.cg.codegen_units;
-    let shared_ccx = SharedCrateContext::new(link_meta.crate_name.as_slice(),
+    let shared_ccx = SharedCrateContext::new(link_meta.crate_name.as_str(),
                                              codegen_units,
                                              tcx,
                                              exp_map2,

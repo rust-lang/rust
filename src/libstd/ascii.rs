@@ -292,7 +292,7 @@ pub trait OwnedAsciiCast {
 impl OwnedAsciiCast for String {
     #[inline]
     fn is_ascii(&self) -> bool {
-        self.as_slice().is_ascii()
+        self.as_str().is_ascii()
     }
 
     #[inline]

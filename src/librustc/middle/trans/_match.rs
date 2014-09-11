@@ -783,7 +783,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         let did = langcall(cx,
                            None,
                            format!("comparison of `{}`",
-                                   cx.ty_to_string(rhs_t)).as_slice(),
+                                   cx.ty_to_string(rhs_t)).as_str(),
                            StrEqFnLangItem);
         callee::trans_lang_call(cx, did, [lhs, rhs], None)
     }
@@ -1290,7 +1290,7 @@ fn create_bindings_map(bcx: Block, pat: Gc<ast::Pat>,
                                  "__llmatch");
                 trmode = TrByCopy(alloca_no_lifetime(bcx,
                                          llvariable_ty,
-                                         bcx.ident(ident).as_slice()));
+                                         bcx.ident(ident).as_str()));
             }
             ast::BindByValue(_) => {
                 // in this case, the final type of the variable will be T,
@@ -1298,13 +1298,13 @@ fn create_bindings_map(bcx: Block, pat: Gc<ast::Pat>,
                 // above
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),
-                                 bcx.ident(ident).as_slice());
+                                 bcx.ident(ident).as_str());
                 trmode = TrByMove;
             }
             ast::BindByRef(_) => {
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty,
-                                 bcx.ident(ident).as_slice());
+                                 bcx.ident(ident).as_str());
                 trmode = TrByRef;
             }
         };
@@ -1553,7 +1553,7 @@ fn mk_binding_alloca<'blk, 'tcx, A>(bcx: Block<'blk, 'tcx>,
     let var_ty = node_id_type(bcx, p_id);
 
     // Allocate memory on stack for the binding.
-    let llval = alloc_ty(bcx, var_ty, bcx.ident(*ident).as_slice());
+    let llval = alloc_ty(bcx, var_ty, bcx.ident(*ident).as_str());
 
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
@@ -1601,7 +1601,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     if bcx.sess().asm_comments() {
         add_comment(bcx, format!("bind_irrefutable_pat(pat={})",
-                                 pat.repr(bcx.tcx())).as_slice());
+                                 pat.repr(bcx.tcx())).as_str());
     }
 
     let _indenter = indenter();

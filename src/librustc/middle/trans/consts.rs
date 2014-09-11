@@ -63,7 +63,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
                 _ => cx.sess().span_bug(lit.span,
                         format!("integer literal has type {} (expected int \
                                  or uint)",
-                                ty_to_string(cx.tcx(), lit_int_ty)).as_slice())
+                                ty_to_string(cx.tcx(), lit_int_ty)).as_str())
             }
         }
         ast::LitFloat(ref fs, t) => {
@@ -165,13 +165,13 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
                 }
                 _ => {
                     cx.sess().bug(format!("unexpected dereferenceable type {}",
-                                          ty_to_string(cx.tcx(), t)).as_slice())
+                                          ty_to_string(cx.tcx(), t)).as_str())
                 }
             }
         }
         None => {
             cx.sess().bug(format!("cannot dereference const of type {}",
-                                  ty_to_string(cx.tcx(), t)).as_slice())
+                                  ty_to_string(cx.tcx(), t)).as_str())
         }
     }
 }
@@ -220,7 +220,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                     cx.sess()
                       .span_bug(e.span,
                                 format!("unexpected static function: {:?}",
-                                        store).as_slice())
+                                        store).as_str())
                 }
                 ty::AutoDerefRef(ref adj) => {
                     let mut ty = ety;
@@ -283,7 +283,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                         }
                                         _ => cx.sess().span_bug(e.span,
                                             format!("unimplemented type in const unsize: {}",
-                                                    ty_to_string(cx.tcx(), ty)).as_slice())
+                                                    ty_to_string(cx.tcx(), ty)).as_str())
                                     }
                                 }
                                 _ => {
@@ -291,7 +291,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                       .span_bug(e.span,
                                                 format!("unimplemented const \
                                                          autoref {:?}",
-                                                        autoref).as_slice())
+                                                        autoref).as_str())
                                 }
                             }
                         }
@@ -312,7 +312,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
         }
         cx.sess().bug(format!("const {} of type {} has size {} instead of {}",
                          e.repr(cx.tcx()), ty_to_string(cx.tcx(), ety),
-                         csize, tsize).as_slice());
+                         csize, tsize).as_str());
     }
     (llconst, inlineable, ety_adjusted)
 }
@@ -466,7 +466,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                       _ => cx.sess().span_bug(base.span,
                                               format!("index-expr base must be a vector \
                                                        or string type, found {}",
-                                                      ty_to_string(cx.tcx(), bt)).as_slice())
+                                                      ty_to_string(cx.tcx(), bt)).as_str())
                   },
                   ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
                       ty::ty_vec(_, Some(u)) => {
@@ -475,12 +475,12 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                       _ => cx.sess().span_bug(base.span,
                                               format!("index-expr base must be a vector \
                                                        or string type, found {}",
-                                                      ty_to_string(cx.tcx(), bt)).as_slice())
+                                                      ty_to_string(cx.tcx(), bt)).as_str())
                   },
                   _ => cx.sess().span_bug(base.span,
                                           format!("index-expr base must be a vector \
                                                    or string type, found {}",
-                                                  ty_to_string(cx.tcx(), bt)).as_slice())
+                                                  ty_to_string(cx.tcx(), bt)).as_str())
               };
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;

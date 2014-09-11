@@ -30,7 +30,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenT
         Some(v) => v
     };
 
-    let e = match os::getenv(var.as_slice()) {
+    let e = match os::getenv(var.as_str()) {
       None => {
           cx.expr_path(cx.path_all(sp,
                                    true,
@@ -53,7 +53,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenT
                                    cx.ident_of("Some")),
                               vec!(cx.expr_str(sp,
                                                token::intern_and_get_ident(
-                                          s.as_slice()))))
+                                          s.as_str()))))
       }
     };
     MacExpr::new(e)
@@ -80,7 +80,7 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         1 => {
             token::intern_and_get_ident(format!("environment variable `{}` \
                                                  not defined",
-                                                var).as_slice())
+                                                var).as_str())
         }
         2 => {
             match expr_to_string(cx, *exprs.get(1), "expected string literal") {
@@ -99,7 +99,7 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             cx.span_err(sp, msg.get());
             cx.expr_uint(sp, 0)
         }
-        Some(s) => cx.expr_str(sp, token::intern_and_get_ident(s.as_slice()))
+        Some(s) => cx.expr_str(sp, token::intern_and_get_ident(s.as_str()))
     };
     MacExpr::new(e)
 }

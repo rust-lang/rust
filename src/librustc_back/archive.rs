@@ -51,7 +51,7 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
           args: &str, cwd: Option<&Path>,
           paths: &[&Path]) -> ProcessOutput {
     let ar = match *maybe_ar_prog {
-        Some(ref ar) => ar.as_slice(),
+        Some(ref ar) => ar.as_str(),
         None => "ar"
     };
     let mut cmd = Command::new(ar);
@@ -73,22 +73,22 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
             if !o.status.success() {
                 handler.err(format!("{} failed with: {}",
                                  cmd,
-                                 o.status).as_slice());
+                                 o.status).as_str());
                 handler.note(format!("stdout ---\n{}",
                                   str::from_utf8(o.output
                                                   .as_slice()).unwrap())
-                          .as_slice());
+                          .as_str());
                 handler.note(format!("stderr ---\n{}",
                                   str::from_utf8(o.error
                                                   .as_slice()).unwrap())
-                          .as_slice());
+                          .as_str());
                 handler.abort_if_errors();
             }
             o
         },
         Err(e) => {
-            handler.err(format!("could not exec `{}`: {}", ar.as_slice(),
-                             e).as_slice());
+            handler.err(format!("could not exec `{}`: {}", ar.as_str(),
+                             e).as_str());
             handler.abort_if_errors();
             fail!("rustc::back::archive::run_ar() should not reach this point");
         }
@@ -107,16 +107,16 @@ pub fn find_library(name: &str, os: abi::Os, search_paths: &[Path],
 
     for path in search_paths.iter() {
         debug!("looking for {} inside {}", name, path.display());
-        let test = path.join(oslibname.as_slice());
+        let test = path.join(oslibname.as_str());
         if test.exists() { return test }
         if oslibname != unixlibname {
-            let test = path.join(unixlibname.as_slice());
+            let test = path.join(unixlibname.as_str());
             if test.exists() { return test }
         }
     }
     handler.fatal(format!("could not find native static library `{}`, \
                            perhaps an -L flag is missing?",
-                          name).as_slice());
+                          name).as_str());
 }
 
 impl<'a> Archive<'a> {
@@ -192,9 +192,9 @@ impl<'a> ArchiveBuilder<'a> {
                     lto: bool) -> io::IoResult<()> {
         let object = format!("{}.o", name);
         let bytecode = format!("{}.bytecode.deflate", name);
-        let mut ignore = vec!(bytecode.as_slice(), METADATA_FILENAME);
+        let mut ignore = vec!(bytecode.as_str(), METADATA_FILENAME);
         if lto {
-            ignore.push(object.as_slice());
+            ignore.push(object.as_str());
         }
         self.add_archive(rlib, name, ignore.as_slice())
     }
@@ -305,7 +305,7 @@ impl<'a> ArchiveBuilder<'a> {
             } else {
                 filename
             };
-            let new_filename = self.work_dir.path().join(filename.as_slice());
+            let new_filename = self.work_dir.path().join(filename.as_str());
             try!(fs::rename(file, &new_filename));
             self.members.push(Path::new(filename));
         }

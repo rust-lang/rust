@@ -58,7 +58,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
             ecx.span_err(span, format!(
                 "unknown diagnostic code {}; add to librustc/diagnostics.rs",
                 token::get_ident(code).get()
-            ).as_slice());
+            ).as_str());
         }
         ()
     });
@@ -67,7 +67,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
             Some(previous_span) => {
                 ecx.span_warn(span, format!(
                     "diagnostic code {} already used", token::get_ident(code).get()
-                ).as_slice());
+                ).as_str());
                 ecx.span_note(previous_span, "previous invocation");
             },
             None => ()
@@ -96,12 +96,12 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         if !diagnostics.insert(code.name, description) {
             ecx.span_err(span, format!(
                 "diagnostic code {} already registered", token::get_ident(*code).get()
-            ).as_slice());
+            ).as_str());
         }
     });
     let sym = Ident::new(token::gensym((
         "__register_diagnostic_".to_string() + token::get_ident(*code).get()
-    ).as_slice()));
+    ).as_str()));
     MacItem::new(quote_item!(ecx, mod $sym {}).unwrap())
 }
 
@@ -121,7 +121,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
                 if !diagnostics_in_use.contains_key(code) {
                     ecx.span_warn(span, format!(
                         "diagnostic code {} never used", token::get_name(*code).get()
-                    ).as_slice());
+                    ).as_str());
                 }
                 description.map(|description| {
                     ecx.expr_tuple(span, vec![

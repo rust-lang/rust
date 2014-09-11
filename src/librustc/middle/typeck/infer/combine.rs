@@ -388,7 +388,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
             format!("{}: bot and var types should have been handled ({},{})",
                     this.tag(),
                     a.repr(this.infcx().tcx),
-                    b.repr(this.infcx().tcx)).as_slice());
+                    b.repr(this.infcx().tcx)).as_str());
       }
 
         // Relate integral variables to other types

@@ -395,7 +395,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         self.ccx.sess().bug(
             format!("no cleanup scope {} found",
-                    self.ccx.tcx().map.node_to_string(cleanup_scope)).as_slice());
+                    self.ccx.tcx().map.node_to_string(cleanup_scope)).as_str());
     }
 
     fn schedule_clean_in_custom_scope(&self,
@@ -597,7 +597,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                     LoopExit(id, _) => {
                         self.ccx.sess().bug(format!(
                                 "cannot exit from scope {:?}, \
-                                not in scope", id).as_slice());
+                                not in scope", id).as_str());
                     }
                 }
             }
@@ -666,7 +666,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 let name = scope.block_name("clean");
                 debug!("generating cleanups for {}", name);
                 let bcx_in = self.new_block(label.is_unwind(),
-                                            name.as_slice(),
+                                            name.as_str(),
                                             None);
                 let mut bcx_out = bcx_in;
                 for cleanup in scope.cleanups.iter().rev() {
@@ -717,7 +717,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 Some(llbb) => { return llbb; }
                 None => {
                     let name = last_scope.block_name("unwind");
-                    pad_bcx = self.new_block(true, name.as_slice(), None);
+                    pad_bcx = self.new_block(true, name.as_str(), None);
                     last_scope.cached_landing_pad = Some(pad_bcx.llbb);
                 }
             }
@@ -1005,7 +1005,7 @@ pub fn temporary_scope(tcx: &ty::ctxt,
         }
         None => {
             tcx.sess.bug(format!("no temporary scope available for expr {}",
-                                 id).as_slice())
+                                 id).as_str())
         }
     }
 }

@@ -332,7 +332,7 @@ fn with_appropriate_checker(cx: &Context,
         ref s => {
             cx.tcx.sess.bug(format!("expect fn type in kind checker, not \
                                      {:?}",
-                                    s).as_slice());
+                                    s).as_str());
         }
     }
 }
@@ -706,7 +706,7 @@ fn check_bounds_on_structs_or_enums_in_type_if_possible(cx: &mut Context,
                                          does not fulfill `{}`",
                                         ty_to_string(cx.tcx, ty),
                                         missing.user_string(
-                                            cx.tcx)).as_slice());
+                                            cx.tcx)).as_str());
                 })
             }
             _ => {}
@@ -767,7 +767,7 @@ fn check_copy(cx: &Context, ty: ty::t, sp: Span, reason: &str) {
         span_err!(cx.tcx.sess, sp, E0148,
             "copying a value of non-copyable type `{}`",
             ty_to_string(cx.tcx, ty));
-        span_note!(cx.tcx.sess, sp, "{}", reason.as_slice());
+        span_note!(cx.tcx.sess, sp, "{}", reason.as_str());
     }
 }
 

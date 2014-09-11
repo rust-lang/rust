@@ -125,7 +125,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                     expr.span,
                     format!("type of callee is neither bare-fn nor closure: \
                              {}",
-                            bcx.ty_to_string(datum.ty)).as_slice());
+                            bcx.ty_to_string(datum.ty)).as_str());
             }
         }
     }
@@ -211,7 +211,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     format!("cannot translate def {:?} \
-                             to a callable thing!", def).as_slice());
+                             to a callable thing!", def).as_str());
             }
         }
     }
@@ -324,7 +324,7 @@ pub fn trans_unboxing_shim(bcx: Block,
     });
     let llfn = decl_internal_rust_fn(ccx,
                                      boxed_function_type,
-                                     function_name.as_slice());
+                                     function_name.as_str());
 
     let block_arena = TypedArena::new();
     let empty_param_substs = param_substs::empty();

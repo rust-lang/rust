@@ -59,7 +59,7 @@ pub fn get_rpath_flags(config: RPathConfig) -> Vec<String> {
 fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
     let mut ret = Vec::new();
     for rpath in rpaths.iter() {
-        ret.push(format!("-Wl,-rpath,{}", (*rpath).as_slice()));
+        ret.push(format!("-Wl,-rpath,{}", (*rpath).as_str()));
     }
     return ret;
 }
@@ -140,7 +140,7 @@ fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
     let mut set = HashSet::new();
     let mut minimized = Vec::new();
     for rpath in rpaths.iter() {
-        if set.insert(rpath.as_slice()) {
+        if set.insert(rpath.as_str()) {
             minimized.push(rpath.clone());
         }
     }

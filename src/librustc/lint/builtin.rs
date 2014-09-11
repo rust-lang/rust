@@ -446,15 +446,15 @@ impl HeapMemory {
         if n_uniq > 0 {
             let s = ty_to_string(cx.tcx, ty);
             let m = format!("type uses owned (Box type) pointers: {}", s);
-            cx.span_lint(OWNED_HEAP_MEMORY, span, m.as_slice());
-            cx.span_lint(HEAP_MEMORY, span, m.as_slice());
+            cx.span_lint(OWNED_HEAP_MEMORY, span, m.as_str());
+            cx.span_lint(HEAP_MEMORY, span, m.as_str());
         }
 
         if n_box > 0 {
             let s = ty_to_string(cx.tcx, ty);
             let m = format!("type uses managed (@ type) pointers: {}", s);
-            cx.span_lint(MANAGED_HEAP_MEMORY, span, m.as_slice());
-            cx.span_lint(HEAP_MEMORY, span, m.as_slice());
+            cx.span_lint(MANAGED_HEAP_MEMORY, span, m.as_str());
+            cx.span_lint(HEAP_MEMORY, span, m.as_str());
         }
     }
 }
@@ -734,7 +734,7 @@ impl LintPass for UnusedResult {
                             msg.push_str(s.get());
                         }
                     }
-                    cx.span_lint(UNUSED_MUST_USE, sp, msg.as_slice());
+                    cx.span_lint(UNUSED_MUST_USE, sp, msg.as_str());
                     return true;
                 }
             }
@@ -776,7 +776,7 @@ impl NonCamelCaseTypes {
             } else {
                 format!("{} `{}` should have a camel case name such as `{}`", sort, s, c)
             };
-            cx.span_lint(NON_CAMEL_CASE_TYPES, span, m.as_slice());
+            cx.span_lint(NON_CAMEL_CASE_TYPES, span, m.as_str());
         }
     }
 }
@@ -881,7 +881,7 @@ impl NonSnakeCase {
                 let mut buf = String::new();
                 if s.is_empty() { continue; }
                 for ch in s.chars() {
-                    if !buf.is_empty() && buf.as_slice() != "'" && ch.is_uppercase() {
+                    if !buf.is_empty() && buf.as_str() != "'" && ch.is_uppercase() {
                         words.push(buf);
                         buf = String::new();
                     }
@@ -897,7 +897,7 @@ impl NonSnakeCase {
         if !is_snake_case(ident) {
             cx.span_lint(NON_SNAKE_CASE, span,
                 format!("{} `{}` should have a snake case name such as `{}`",
-                        sort, s, to_snake_case(s.get())).as_slice());
+                        sort, s, to_snake_case(s.get())).as_str());
         }
     }
 }
@@ -992,7 +992,7 @@ impl LintPass for NonUppercaseStatics {
                         format!("static constant `{}` should have an uppercase name \
                                  such as `{}`",
                                 s.get(), s.get().chars().map(|c| c.to_uppercase())
-                                .collect::<String>().as_slice()).as_slice());
+                                .collect::<String>().as_str()).as_str());
                 }
             }
             _ => {}
@@ -1009,7 +1009,7 @@ impl LintPass for NonUppercaseStatics {
                         format!("static constant in pattern `{}` should have an uppercase \
                                  name such as `{}`",
                                 s.get(), s.get().chars().map(|c| c.to_uppercase())
-                                    .collect::<String>().as_slice()).as_slice());
+                                    .collect::<String>().as_str()).as_str());
                 }
             }
             _ => {}
@@ -1031,7 +1031,7 @@ impl UnnecessaryParens {
                 if !necessary {
                     cx.span_lint(UNNECESSARY_PARENS, value.span,
                                  format!("unnecessary parentheses around {}",
-                                         msg).as_slice())
+                                         msg).as_str())
                 }
             }
             _ => {}
@@ -1333,7 +1333,7 @@ impl MissingDoc {
         });
         if !has_doc {
             cx.span_lint(MISSING_DOC, sp,
-                format!("missing documentation for {}", desc).as_slice());
+                format!("missing documentation for {}", desc).as_str());
         }
     }
 }
@@ -1518,7 +1518,7 @@ impl LintPass for Stability {
             _ => format!("use of {} item", label)
         };
 
-        cx.span_lint(lint, e.span, msg.as_slice());
+        cx.span_lint(lint, e.span, msg.as_str());
     }
 }
 

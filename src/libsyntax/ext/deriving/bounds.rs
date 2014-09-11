@@ -32,7 +32,7 @@ pub fn expand_deriving_bound(cx: &mut ExtCtxt,
                     cx.span_bug(span,
                                 format!("expected built-in trait name but \
                                          found {}",
-                                        *tname).as_slice())
+                                        *tname).as_str())
                 }
             }
         },

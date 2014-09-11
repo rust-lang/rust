@@ -251,7 +251,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 None => {
                     self.tcx.sess.bug(format!("found unmapped ID in worklist: \
                                                {}",
-                                              search_item).as_slice())
+                                              search_item).as_str())
                 }
             }
         }
@@ -351,7 +351,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     .bug(format!("found unexpected thingy in worklist: {}",
                                  self.tcx
                                      .map
-                                     .node_to_string(search_item)).as_slice())
+                                     .node_to_string(search_item)).as_str())
             }
         }
     }

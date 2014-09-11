@@ -131,7 +131,7 @@ pub fn find_crate_name(sess: Option<&Session>,
     use syntax::crateid::CrateId;
 
     let validate = |s: String, span: Option<Span>| {
-        creader::validate_crate_name(sess, s.as_slice(), span);
+        creader::validate_crate_name(sess, s.as_str(), span);
         s
     };
 
@@ -147,11 +147,11 @@ pub fn find_crate_name(sess: Option<&Session>,
             match sess.opts.crate_name {
                 Some(ref s) => {
                     match attr_crate_name {
-                        Some((attr, ref name)) if s.as_slice() != name.get() => {
+                        Some((attr, ref name)) if s.as_str() != name.get() => {
                             let msg = format!("--crate-name and #[crate_name] \
                                                are required to match, but `{}` \
                                                != `{}`", s, name);
-                            sess.span_err(attr.span, msg.as_slice());
+                            sess.span_err(attr.span, msg.as_str());
                         }
                         _ => {},
                     }
@@ -226,17 +226,17 @@ fn symbol_hash(tcx: &ty::ctxt,
     // to be independent of one another in the crate.
 
     symbol_hasher.reset();
-    symbol_hasher.input_str(link_meta.crate_name.as_slice());
+    symbol_hasher.input_str(link_meta.crate_name.as_str());
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
     for meta in tcx.sess.crate_metadata.borrow().iter() {
-        symbol_hasher.input_str(meta.as_slice());
+        symbol_hasher.input_str(meta.as_str());
     }
     symbol_hasher.input_str("-");
-    symbol_hasher.input_str(encoder::encoded_ty(tcx, t).as_slice());
+    symbol_hasher.input_str(encoder::encoded_ty(tcx, t).as_str());
     // Prefix with 'h' so that it never blends into adjacent digits
     let mut hash = String::from_str("h");
-    hash.push_str(truncated_hash_result(symbol_hasher).as_slice());
+    hash.push_str(truncated_hash_result(symbol_hasher).as_str());
     hash
 }
 
@@ -285,7 +285,7 @@ pub fn sanitize(s: &str) -> String {
                 let mut tstr = String::new();
                 char::escape_unicode(c, |c| tstr.push_char(c));
                 result.push_char('$');
-                result.push_str(tstr.as_slice().slice_from(1));
+                result.push_str(tstr.as_str().slice_from(1));
             }
         }
     }
@@ -294,7 +294,7 @@ pub fn sanitize(s: &str) -> String {
     if result.len() > 0u &&
         result.as_bytes()[0] != '_' as u8 &&
         ! char::is_XID_start(result.as_bytes()[0] as char) {
-        return format!("_{}", result.as_slice());
+        return format!("_{}", result.as_str());
     }
 
     return result;
@@ -320,12 +320,12 @@ pub fn mangle<PI: Iterator<PathElem>>(mut path: PI,
 
     fn push(n: &mut String, s: &str) {
         let sani = sanitize(s);
-        n.push_str(format!("{}{}", sani.len(), sani).as_slice());
+        n.push_str(format!("{}{}", sani.len(), sani).as_str());
     }
 
     // First, connect each component with <len, name> pairs.
     for e in path {
-        push(&mut n, token::get_name(e.name()).get().as_slice())
+        push(&mut n, token::get_name(e.name()).get().as_str())
     }
 
     match hash {
@@ -363,17 +363,17 @@ pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
     hash.push_char(EXTRA_CHARS.as_bytes()[extra2] as char);
     hash.push_char(EXTRA_CHARS.as_bytes()[extra3] as char);
 
-    exported_name(path, hash.as_slice())
+    exported_name(path, hash.as_str())
 }
 
 pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
                                             t: ty::t,
                                             name: &str) -> String {
     let s = ppaux::ty_to_string(ccx.tcx(), t);
-    let path = [PathName(token::intern(s.as_slice())),
+    let path = [PathName(token::intern(s.as_str())),
                 gensym_name(name)];
     let hash = get_symbol_hash(ccx, t);
-    mangle(ast_map::Values(path.iter()), Some(hash.as_slice()))
+    mangle(ast_map::Values(path.iter()), Some(hash.as_str()))
 }
 
 pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> String {
@@ -409,7 +409,7 @@ pub fn remove(sess: &Session, path: &Path) {
         Err(e) => {
             sess.err(format!("failed to remove {}: {}",
                              path.display(),
-                             e).as_slice());
+                             e).as_str());
         }
     }
 }
@@ -424,7 +424,7 @@ pub fn link_binary(sess: &Session,
     for &crate_type in sess.crate_types.borrow().iter() {
         if invalid_output_for_target(sess, crate_type) {
             sess.bug(format!("invalid output type `{}` for target os `{}`",
-                             crate_type, sess.targ_cfg.os).as_slice());
+                             crate_type, sess.targ_cfg.os).as_str());
         }
         let out_file = link_binary_output(sess, trans, crate_type, outputs,
                                           crate_name);
@@ -540,12 +540,12 @@ fn link_binary_output(sess: &Session,
     if !out_is_writeable {
         sess.fatal(format!("output file {} is not writeable -- check its \
                             permissions.",
-                           out_filename.display()).as_slice());
+                           out_filename.display()).as_str());
     }
     else if !obj_is_writeable {
         sess.fatal(format!("object file {} is not writeable -- check its \
                             permissions.",
-                           obj_filename.display()).as_slice());
+                           obj_filename.display()).as_str());
     }
 
     match crate_type {
@@ -598,7 +598,7 @@ fn link_rlib<'a>(sess: &'a Session,
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
             cstore::NativeStatic => {
-                ab.add_native_library(l.as_slice()).unwrap();
+                ab.add_native_library(l.as_str()).unwrap();
             }
             cstore::NativeFramework | cstore::NativeUnknown => {}
         }
@@ -651,7 +651,7 @@ fn link_rlib<'a>(sess: &'a Session,
                 Err(e) => {
                     sess.err(format!("failed to write {}: {}",
                                      metadata.display(),
-                                     e).as_slice());
+                                     e).as_str());
                     sess.abort_if_errors();
                 }
             }
@@ -675,20 +675,20 @@ fn link_rlib<'a>(sess: &'a Session,
                 let bc_data = match fs::File::open(&bc_filename).read_to_end() {
                     Ok(buffer) => buffer,
                     Err(e) => sess.fatal(format!("failed to read bytecode: {}",
-                                                 e).as_slice())
+                                                 e).as_str())
                 };
 
                 let bc_data_deflated = match flate::deflate_bytes(bc_data.as_slice()) {
                     Some(compressed) => compressed,
                     None => sess.fatal(format!("failed to compress bytecode from {}",
-                                               bc_filename.display()).as_slice())
+                                               bc_filename.display()).as_str())
                 };
 
                 let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
                     Ok(file) => file,
                     Err(e) => {
                         sess.fatal(format!("failed to create compressed bytecode \
-                                            file: {}", e).as_slice())
+                                            file: {}", e).as_str())
                     }
                 };
 
@@ -697,7 +697,7 @@ fn link_rlib<'a>(sess: &'a Session,
                     Ok(()) => {}
                     Err(e) => {
                         sess.err(format!("failed to write compressed bytecode: \
-                                          {}", e).as_slice());
+                                          {}", e).as_str());
                         sess.abort_if_errors()
                     }
                 };
@@ -772,11 +772,11 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
         let p = match *path {
             Some(ref p) => p.clone(), None => {
                 sess.err(format!("could not find rlib for: `{}`",
-                                 name).as_slice());
+                                 name).as_str());
                 continue
             }
         };
-        ab.add_rlib(&p, name.as_slice(), sess.lto()).unwrap();
+        ab.add_rlib(&p, name.as_str(), sess.lto()).unwrap();
 
         let native_libs = csearch::get_native_libraries(&sess.cstore, cnum);
         all_native_libs.extend(native_libs.move_iter());
@@ -798,7 +798,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
             cstore::NativeUnknown => "library",
             cstore::NativeFramework => "framework",
         };
-        sess.note(format!("{}: {}", name, *lib).as_slice());
+        sess.note(format!("{}: {}", name, *lib).as_str());
     }
 }
 
@@ -812,7 +812,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
 
     // The invocations of cc share some flags across platforms
     let pname = get_cc_prog(sess);
-    let mut cmd = Command::new(pname.as_slice());
+    let mut cmd = Command::new(pname.as_str());
 
     cmd.args(sess.targ_cfg.target_strs.cc_args.as_slice());
     link_args(&mut cmd, sess, dylib, tmpdir.path(),
@@ -833,8 +833,8 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
             if !prog.status.success() {
                 sess.err(format!("linking with `{}` failed: {}",
                                  pname,
-                                 prog.status).as_slice());
-                sess.note(format!("{}", &cmd).as_slice());
+                                 prog.status).as_str());
+                sess.note(format!("{}", &cmd).as_str());
                 let mut output = prog.error.clone();
                 output.push_all(prog.output.as_slice());
                 sess.note(str::from_utf8(output.as_slice()).unwrap());
@@ -846,7 +846,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
         Err(e) => {
             sess.err(format!("could not exec the linker `{}`: {}",
                              pname,
-                             e).as_slice());
+                             e).as_str());
             sess.abort_if_errors();
         }
     }
@@ -859,7 +859,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
             match Command::new("dsymutil").arg(out_filename).output() {
                 Ok(..) => {}
                 Err(e) => {
-                    sess.err(format!("failed to run dsymutil: {}", e).as_slice());
+                    sess.err(format!("failed to run dsymutil: {}", e).as_str());
                     sess.abort_if_errors();
                 }
             }
@@ -945,8 +945,8 @@ fn link_args(cmd: &mut Command,
     // be used during an exploit of a vulnerability in any code.
     if sess.targ_cfg.os == abi::OsLinux {
         let mut args = sess.opts.cg.link_args.iter().chain(used_link_args.iter());
-        if !dylib && sess.opts.cg.relocation_model.as_slice() == "pic" &&
-            !args.any(|x| x.as_slice() == "-static") {
+        if !dylib && sess.opts.cg.relocation_model.as_str() == "pic" &&
+            !args.any(|x| x.as_str() == "-static") {
             cmd.arg("-pie");
         }
     }
@@ -1100,7 +1100,7 @@ fn link_args(cmd: &mut Command,
     // addl_lib_search_paths
     if sess.opts.cg.rpath {
         let sysroot = sess.sysroot();
-        let target_triple = sess.opts.target_triple.as_slice();
+        let target_triple = sess.opts.target_triple.as_str();
         let get_install_prefix_lib_path = || {
             let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
             let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
@@ -1190,7 +1190,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
         } else {
             // -force_load is the OSX equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
-            let lib = archive::find_library(l.as_slice(),
+            let lib = archive::find_library(l.as_str(),
                                             sess.targ_cfg.os,
                                             search_path.as_slice(),
                                             &sess.diagnostic().handler);
@@ -1209,7 +1209,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
                 cmd.arg(format!("-l{}", l));
             }
             cstore::NativeFramework => {
-                cmd.arg("-framework").arg(l.as_slice());
+                cmd.arg("-framework").arg(l.as_str());
             }
             cstore::NativeStatic => unreachable!(),
         }
@@ -1292,7 +1292,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
             let name = cratepath.filename_str().unwrap();
             let name = name.slice(3, name.len() - 5); // chop off lib/.rlib
             time(sess.time_passes(),
-                 format!("altering {}.rlib", name).as_slice(),
+                 format!("altering {}.rlib", name).as_str(),
                  (), |()| {
                 let dst = tmpdir.join(cratepath.filename().unwrap());
                 match fs::copy(&cratepath, &dst) {
@@ -1301,7 +1301,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                         sess.err(format!("failed to copy {} to {}: {}",
                                          cratepath.display(),
                                          dst.display(),
-                                         e).as_slice());
+                                         e).as_str());
                         sess.abort_if_errors();
                     }
                 }
@@ -1314,9 +1314,9 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                     maybe_ar_prog: sess.opts.cg.ar.clone()
                 };
                 let mut archive = Archive::open(config);
-                archive.remove_file(format!("{}.o", name).as_slice());
+                archive.remove_file(format!("{}.o", name).as_str());
                 let files = archive.files();
-                if files.iter().any(|s| s.as_slice().ends_with(".o")) {
+                if files.iter().any(|s| s.as_str().ends_with(".o")) {
                     cmd.arg(dst);
                 }
             });
@@ -1380,7 +1380,7 @@ fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
                 }
                 cstore::NativeFramework => {
                     cmd.arg("-framework");
-                    cmd.arg(lib.as_slice());
+                    cmd.arg(lib.as_str());
                 }
                 cstore::NativeStatic => {
                     sess.bug("statics shouldn't be propagated");

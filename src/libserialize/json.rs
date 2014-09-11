@@ -965,7 +965,7 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_string<'a>(&'a self) -> Option<&'a str> {
         match *self {
-            String(ref s) => Some(s.as_slice()),
+            String(ref s) => Some(s.as_str()),
             _ => None
         }
     }
@@ -1961,7 +1961,7 @@ macro_rules! read_primitive {
                 String(s) => {
                     // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                     // is going to have a string here, as per JSON spec.
-                    match std::from_str::from_str(s.as_slice()) {
+                    match std::from_str::from_str(s.as_str()) {
                         Some(f) => Ok(f),
                         None => Err(ExpectedError("Number".to_string(), s)),
                     }
@@ -2000,7 +2000,7 @@ impl ::Decoder<DecoderError> for Decoder {
             String(s) => {
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
-                match std::from_str::from_str(s.as_slice()) {
+                match std::from_str::from_str(s.as_str()) {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_string(), s)),
                 }
@@ -2018,7 +2018,7 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_char(&mut self) -> DecodeResult<char> {
         let s = try!(self.read_str());
         {
-            let mut it = s.as_slice().chars();
+            let mut it = s.as_str().chars();
             match (it.next(), it.next()) {
                 // exactly one character
                 (Some(c), None) => return Ok(c),
@@ -2077,7 +2077,7 @@ impl ::Decoder<DecoderError> for Decoder {
             }
         };
         let idx = match names.iter()
-                             .position(|n| str::eq_slice(*n, name.as_slice())) {
+                             .position(|n| str::eq_slice(*n, name.as_str())) {
             Some(idx) => idx,
             None => return Err(UnknownVariantError(name))
         };

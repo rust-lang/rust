@@ -662,7 +662,7 @@ impl Bool for bool {
 
 impl<'a, T: str::Str> String for T {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        f.pad(self.as_slice())
+        f.pad(self.as_str())
     }
 }
 

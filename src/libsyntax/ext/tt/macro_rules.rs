@@ -52,7 +52,7 @@ impl<'a> ParserAnyMacro<'a> {
                                following",
                               token_str);
             let span = parser.span;
-            parser.span_err(span, msg.as_slice());
+            parser.span_err(span, msg.as_str());
         }
     }
 }
@@ -200,13 +200,13 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 best_fail_spot = sp;
                 best_fail_msg = (*msg).clone();
               },
-              Error(sp, ref msg) => cx.span_fatal(sp, msg.as_slice())
+              Error(sp, ref msg) => cx.span_fatal(sp, msg.as_str())
             }
           }
           _ => cx.bug("non-matcher found in parsed lhses")
         }
     }
-    cx.span_fatal(best_fail_spot, best_fail_msg.as_slice());
+    cx.span_fatal(best_fail_spot, best_fail_msg.as_str());
 }
 
 /// This procedure performs the expansion of the

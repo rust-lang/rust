@@ -231,7 +231,7 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
         Err(e) => {
             err(format!("couldn't read {}: {}",
                         path.display(),
-                        e).as_slice());
+                        e).as_str());
             unreachable!()
         }
     };
@@ -241,7 +241,7 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
                                      path.as_str().unwrap().to_string())
         }
         None => {
-            err(format!("{} is not UTF-8 encoded", path.display()).as_slice())
+            err(format!("{} is not UTF-8 encoded", path.display()).as_str())
         }
     }
     unreachable!()
@@ -371,7 +371,7 @@ pub fn char_lit(lit: &str) -> (char, int) {
     }
 
     let msg = format!("lexer should have rejected a bad character escape {}", lit);
-    let msg2 = msg.as_slice();
+    let msg2 = msg.as_str();
 
     let esc: |uint| -> Option<(char, int)> = |len|
         num::from_str_radix(lit.slice(2, len), 16)
@@ -415,7 +415,7 @@ pub fn str_lit(lit: &str) -> String {
                 match c {
                     '\\' => {
                         let ch = chars.peek().unwrap_or_else(|| {
-                            fail!("{}", error(i).as_slice())
+                            fail!("{}", error(i).as_str())
                         }).val1();
 
                         if ch == '\n' {
@@ -423,7 +423,7 @@ pub fn str_lit(lit: &str) -> String {
                         } else if ch == '\r' {
                             chars.next();
                             let ch = chars.peek().unwrap_or_else(|| {
-                                fail!("{}", error(i).as_slice())
+                                fail!("{}", error(i).as_str())
                             }).val1();
 
                             if ch != '\n' {
@@ -441,7 +441,7 @@ pub fn str_lit(lit: &str) -> String {
                     },
                     '\r' => {
                         let ch = chars.peek().unwrap_or_else(|| {
-                            fail!("{}", error(i).as_slice())
+                            fail!("{}", error(i).as_str())
                         }).val1();
 
                         if ch != '\n' {
@@ -495,7 +495,7 @@ pub fn float_lit(s: &str) -> ast::Lit_ {
     debug!("float_lit: {}", s);
     // FIXME #2252: bounds checking float literals is defered until trans
     let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
-    let s = s2.as_slice();
+    let s = s2.as_str();
 
     let mut ty = None;
 
@@ -570,11 +570,11 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
         match chars.next() {
             Some((i, b'\\')) => {
                 let em = error(i);
-                match chars.peek().expect(em.as_slice()).val1() {
+                match chars.peek().expect(em.as_str()).val1() {
                     b'\n' => eat(&mut chars),
                     b'\r' => {
                         chars.next();
-                        if chars.peek().expect(em.as_slice()).val1() != b'\n' {
+                        if chars.peek().expect(em.as_str()).val1() != b'\n' {
                             fail!("lexer accepted bare CR");
                         }
                         eat(&mut chars);
@@ -592,7 +592,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
             },
             Some((i, b'\r')) => {
                 let em = error(i);
-                if chars.peek().expect(em.as_slice()).val1() != b'\n' {
+                if chars.peek().expect(em.as_str()).val1() != b'\n' {
                     fail!("lexer accepted bare CR");
                 }
                 chars.next();
@@ -610,7 +610,7 @@ pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
     // s can only be ascii, byte indexing is fine
 
     let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
-    let mut s = s2.as_slice();
+    let mut s = s2.as_str();
 
     debug!("parse_integer_lit: {}", s);
 

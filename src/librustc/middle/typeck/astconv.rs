@@ -220,7 +220,7 @@ fn ast_path_substs<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             format!("wrong number of type arguments: {} {}, found {}",
                     expected,
                     required_ty_param_count,
-                    supplied_ty_param_count).as_slice());
+                    supplied_ty_param_count).as_str());
     } else if supplied_ty_param_count > formal_ty_param_count {
         let expected = if required_ty_param_count < formal_ty_param_count {
             "expected at most"
@@ -231,7 +231,7 @@ fn ast_path_substs<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             format!("wrong number of type arguments: {} {}, found {}",
                     expected,
                     formal_ty_param_count,
-                    supplied_ty_param_count).as_slice());
+                    supplied_ty_param_count).as_str());
     }
 
     if supplied_ty_param_count > required_ty_param_count
@@ -371,7 +371,7 @@ pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
                 None => {
                     tcx.sess.span_bug(ast_ty.span,
                                       format!("unbound path {}",
-                                              path.repr(tcx)).as_slice())
+                                              path.repr(tcx)).as_str())
                 }
                 Some(&d) => d
             };
@@ -430,7 +430,7 @@ pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                         .sess
                         .span_bug(ast_ty.span,
                                   format!("unbound path {}",
-                                          path.repr(this.tcx())).as_slice())
+                                          path.repr(this.tcx())).as_str())
                 }
                 Some(&d) => d
             };
@@ -807,7 +807,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                         tcx.sess
                            .span_bug(ast_ty.span,
                                      format!("unbound path {}",
-                                             path.repr(tcx)).as_slice())
+                                             path.repr(tcx)).as_str())
                     }
                     Some(&d) => d
                 };
@@ -857,7 +857,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     def::DefMod(id) => {
                         tcx.sess.span_fatal(ast_ty.span,
                             format!("found module name used as a type: {}",
-                                    tcx.map.node_to_string(id.node)).as_slice());
+                                    tcx.map.node_to_string(id.node)).as_str());
                     }
                     def::DefPrimTy(_) => {
                         fail!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");
@@ -866,7 +866,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                         tcx.sess.span_fatal(ast_ty.span,
                                             format!("found value name used \
                                                      as a type: {:?}",
-                                                    a_def).as_slice());
+                                                    a_def).as_str());
                     }
                 }
             }
@@ -891,7 +891,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                             ast_ty.span,
                             format!("expected constant expr for vector \
                                      length: {}",
-                                    *r).as_slice());
+                                    *r).as_str());
                     }
                 }
             }
@@ -1228,14 +1228,14 @@ pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
         this.tcx().sess.span_err(
             b.path.span,
             format!("only the builtin traits can be used \
-                     as closure or object bounds").as_slice());
+                     as closure or object bounds").as_str());
     }
 
     if !unboxed_fn_ty_bounds.is_empty() {
         this.tcx().sess.span_err(
             span,
             format!("only the builtin traits can be used \
-                     as closure or object bounds").as_slice());
+                     as closure or object bounds").as_str());
     }
 
     // The "main trait refs", rather annoyingly, have no type
@@ -1287,7 +1287,7 @@ pub fn compute_opt_region_bound(tcx: &ty::ctxt,
     if region_bounds.len() > 1 {
         tcx.sess.span_err(
             region_bounds[1].span,
-            format!("only a single explicit lifetime bound is permitted").as_slice());
+            format!("only a single explicit lifetime bound is permitted").as_str());
     }
 
     if region_bounds.len() != 0 {
@@ -1325,7 +1325,7 @@ pub fn compute_opt_region_bound(tcx: &ty::ctxt,
         tcx.sess.span_err(
             span,
             format!("ambiguous lifetime bound, \
-                     explicit lifetime bound required").as_slice());
+                     explicit lifetime bound required").as_str());
     }
     return Some(r);
 }
@@ -1355,7 +1355,7 @@ fn compute_region_bound<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
                 None => {
                     this.tcx().sess.span_err(
                         span,
-                        format!("explicit lifetime bound required").as_slice());
+                        format!("explicit lifetime bound required").as_str());
                     ty::ReStatic
                 }
             }

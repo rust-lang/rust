@@ -593,7 +593,7 @@ impl InternedString {
 
     #[inline]
     pub fn get<'a>(&'a self) -> &'a str {
-        self.string.as_slice()
+        self.string.as_str()
     }
 }
 
@@ -611,26 +611,26 @@ impl BytesContainer for InternedString {
 
 impl fmt::Show for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.string.as_slice())
+        write!(f, "{}", self.string.as_str())
     }
 }
 
 impl<'a> Equiv<&'a str> for InternedString {
     fn equiv(&self, other: & &'a str) -> bool {
-        (*other) == self.string.as_slice()
+        (*other) == self.string.as_str()
     }
 }
 
 impl<D:Decoder<E>, E> Decodable<D, E> for InternedString {
     fn decode(d: &mut D) -> Result<InternedString, E> {
         Ok(get_name(get_ident_interner().intern(
-                    try!(d.read_str()).as_slice())))
+                    try!(d.read_str()).as_str())))
     }
 }
 
 impl<S:Encoder<E>, E> Encodable<S, E> for InternedString {
     fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_str(self.string.as_slice())
+        s.emit_str(self.string.as_str())
     }
 }
 

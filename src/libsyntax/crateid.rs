@@ -36,12 +36,12 @@ impl fmt::Show for CrateId {
         try!(write!(f, "{}", self.path));
         let version = match self.version {
             None => "0.0",
-            Some(ref version) => version.as_slice(),
+            Some(ref version) => version.as_str(),
         };
         if self.path == self.name ||
                 self.path
-                    .as_slice()
-                    .ends_with(format!("/{}", self.name).as_slice()) {
+                    .as_str()
+                    .ends_with(format!("/{}", self.name).as_str()) {
             write!(f, "#{}", version)
         } else {
             write!(f, "#{}:{}", self.name, version)
@@ -54,12 +54,12 @@ impl FromStr for CrateId {
         let pieces: Vec<&str> = s.splitn(1, '#').collect();
         let path = pieces.get(0).to_string();
 
-        if path.as_slice().starts_with("/") || path.as_slice().ends_with("/") ||
-            path.as_slice().starts_with(".") || path.is_empty() {
+        if path.as_str().starts_with("/") || path.as_str().ends_with("/") ||
+            path.as_str().starts_with(".") || path.is_empty() {
             return None;
         }
 
-        let path_pieces: Vec<&str> = path.as_slice()
+        let path_pieces: Vec<&str> = path.as_str()
                                          .rsplitn(1, '/')
                                          .collect();
         let inferred_name = *path_pieces.get(0);
@@ -107,7 +107,7 @@ impl CrateId {
     pub fn version_or_default<'a>(&'a self) -> &'a str {
         match self.version {
             None => "0.0",
-            Some(ref version) => version.as_slice(),
+            Some(ref version) => version.as_str(),
         }
     }
 

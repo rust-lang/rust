@@ -119,11 +119,11 @@ impl LintStore {
                 match (sess, from_plugin) {
                     // We load builtin lints first, so a duplicate is a compiler bug.
                     // Use early_error when handling -W help with no crate.
-                    (None, _) => early_error(msg.as_slice()),
-                    (Some(sess), false) => sess.bug(msg.as_slice()),
+                    (None, _) => early_error(msg.as_str()),
+                    (Some(sess), false) => sess.bug(msg.as_str()),
 
                     // A duplicate name from a plugin is a user error.
-                    (Some(sess), true)  => sess.err(msg.as_slice()),
+                    (Some(sess), true)  => sess.err(msg.as_str()),
                 }
             }
 
@@ -144,11 +144,11 @@ impl LintStore {
             match (sess, from_plugin) {
                 // We load builtin lints first, so a duplicate is a compiler bug.
                 // Use early_error when handling -W help with no crate.
-                (None, _) => early_error(msg.as_slice()),
-                (Some(sess), false) => sess.bug(msg.as_slice()),
+                (None, _) => early_error(msg.as_str()),
+                (Some(sess), false) => sess.bug(msg.as_str()),
 
                 // A duplicate name from a plugin is a user error.
-                (Some(sess), true)  => sess.err(msg.as_slice()),
+                (Some(sess), true)  => sess.err(msg.as_str()),
             }
         }
     }
@@ -209,12 +209,12 @@ impl LintStore {
 
     pub fn process_command_line(&mut self, sess: &Session) {
         for &(ref lint_name, level) in sess.opts.lint_opts.iter() {
-            match self.by_name.find_equiv(&lint_name.as_slice()) {
+            match self.by_name.find_equiv(&lint_name.as_str()) {
                 Some(&lint_id) => self.set_level(lint_id, (level, CommandLine)),
                 None => {
                     match self.lint_groups.iter().map(|(&x, pair)| (x, pair.ref0().clone()))
                                                  .collect::<HashMap<&'static str, Vec<LintId>>>()
-                                                 .find_equiv(&lint_name.as_slice()) {
+                                                 .find_equiv(&lint_name.as_str()) {
                         Some(v) => {
                             v.iter()
                              .map(|lint_id: &LintId|
@@ -222,7 +222,7 @@ impl LintStore {
                              .collect::<Vec<()>>();
                         }
                         None => sess.err(format!("unknown {} flag: {}",
-                                                 level.as_str(), lint_name).as_slice()),
+                                                 level.as_str(), lint_name).as_str()),
                     }
                 }
             }
@@ -333,10 +333,10 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
     if level == Forbid { level = Deny; }
 
     match (level, span) {
-        (Warn, Some(sp)) => sess.span_warn(sp, msg.as_slice()),
-        (Warn, None)     => sess.warn(msg.as_slice()),
-        (Deny, Some(sp)) => sess.span_err(sp, msg.as_slice()),
-        (Deny, None)     => sess.err(msg.as_slice()),
+        (Warn, Some(sp)) => sess.span_warn(sp, msg.as_str()),
+        (Warn, None)     => sess.warn(msg.as_str()),
+        (Deny, Some(sp)) => sess.span_err(sp, msg.as_str()),
+        (Deny, None)     => sess.err(msg.as_str()),
         _ => sess.bug("impossible level in raw_emit_lint"),
     }
 
@@ -429,7 +429,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                                 None => {
                                     self.span_lint(builtin::UNRECOGNIZED_LINT, span,
                                                format!("unknown `{}` attribute: `{}`",
-                                                       level.as_str(), lint_name).as_slice());
+                                                       level.as_str(), lint_name).as_str());
                                     continue;
                                 }
                             }
@@ -445,7 +445,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                     self.tcx.sess.span_err(span,
                                            format!("{}({}) overruled by outer forbid({})",
                                                    level.as_str(), lint_name,
-                                                   lint_name).as_slice());
+                                                   lint_name).as_str());
                 } else if now != level {
                     let src = self.lints.get_level_source(lint_id).val1();
                     self.level_stack.push((lint_id, (now, src)));
@@ -669,7 +669,7 @@ impl<'a, 'tcx> IdVisitingOperation for Context<'a, 'tcx> {
             None => {}
             Some(lints) => {
                 for (lint_id, span, msg) in lints.move_iter() {
-                    self.span_lint(lint_id.lint, span, msg.as_slice())
+                    self.span_lint(lint_id.lint, span, msg.as_str())
                 }
             }
         }
@@ -735,7 +735,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         for &(lint, span, ref msg) in v.iter() {
             tcx.sess.span_bug(span,
                               format!("unprocessed lint {} at {}: {}",
-                                      lint.as_str(), tcx.map.node_to_string(*id), *msg).as_slice())
+                                      lint.as_str(), tcx.map.node_to_string(*id), *msg).as_str())
         }
     }
 

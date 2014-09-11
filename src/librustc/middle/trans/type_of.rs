@@ -164,7 +164,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
     let llsizingty = match ty::get(t).sty {
         _ if !ty::lltype_is_sized(cx.tcx(), t) => {
             cx.sess().bug(format!("trying to take the sizing type of {}, an unsized type",
-                                  ppaux::ty_to_string(cx.tcx(), t)).as_slice())
+                                  ppaux::ty_to_string(cx.tcx(), t)).as_str())
         }
 
         ty::ty_nil | ty::ty_bot => Type::nil(cx),
@@ -212,7 +212,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
 
         ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
             cx.sess().bug(format!("fictitious type {} in sizing_type_of()",
-                                  ppaux::ty_to_string(cx.tcx(), t)).as_slice())
+                                  ppaux::ty_to_string(cx.tcx(), t)).as_str())
         }
         ty::ty_vec(_, None) | ty::ty_trait(..) | ty::ty_str => fail!("unreachable")
     };
@@ -290,14 +290,14 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         let repr = adt::represent_type(cx, t);
         let tps = substs.types.get_slice(subst::TypeSpace);
         let name = llvm_type_name(cx, an_enum, did, tps);
-        adt::incomplete_type_of(cx, &*repr, name.as_slice())
+        adt::incomplete_type_of(cx, &*repr, name.as_str())
       }
       ty::ty_unboxed_closure(did, _) => {
         // Only create the named struct, but don't fill it in. We
         // fill it in *after* placing it into the type cache.
         let repr = adt::represent_type(cx, t);
         let name = llvm_type_name(cx, an_unboxed_closure, did, []);
-        adt::incomplete_type_of(cx, &*repr, name.as_slice())
+        adt::incomplete_type_of(cx, &*repr, name.as_str())
       }
       ty::ty_box(typ) => {
           Type::at_box(cx, type_of(cx, typ)).ptr_to()
@@ -355,7 +355,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
               let repr = adt::represent_type(cx, t);
               let tps = substs.types.get_slice(subst::TypeSpace);
               let name = llvm_type_name(cx, a_struct, did, tps);
-              adt::incomplete_type_of(cx, &*repr, name.as_slice())
+              adt::incomplete_type_of(cx, &*repr, name.as_str())
           }
       }
 
@@ -374,7 +374,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
           }
           ty::ty_trait(..) => Type::opaque_trait(cx),
           _ => cx.sess().bug(format!("ty_open with sized type: {}",
-                                     ppaux::ty_to_string(cx.tcx(), t)).as_slice())
+                                     ppaux::ty_to_string(cx.tcx(), t)).as_str())
       },
 
       ty::ty_infer(..) => cx.sess().bug("type_of with ty_infer"),

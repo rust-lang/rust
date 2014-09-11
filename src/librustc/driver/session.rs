@@ -154,7 +154,7 @@ impl Session {
     // cases later on
     pub fn impossible_case(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp,
-                      format!("impossible case reached: {}", msg).as_slice());
+                      format!("impossible case reached: {}", msg).as_str());
     }
     pub fn verbose(&self) -> bool { self.debugging_opt(config::VERBOSE) }
     pub fn time_passes(&self) -> bool { self.debugging_opt(config::TIME_PASSES) }
@@ -193,7 +193,7 @@ impl Session {
     }
     pub fn target_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
         filesearch::FileSearch::new(self.sysroot(),
-                                    self.opts.target_triple.as_slice(),
+                                    self.opts.target_triple.as_str(),
                                     &self.opts.addl_lib_search_paths)
     }
     pub fn host_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {

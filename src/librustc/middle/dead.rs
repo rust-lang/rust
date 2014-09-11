@@ -310,7 +310,7 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
     for attr in lint::gather_attrs(attrs).move_iter() {
         match attr {
             Ok((ref name, lint::Allow, _))
-                if name.get() == dead_code.as_slice() => return true,
+                if name.get() == dead_code.as_str() => return true,
             _ => (),
         }
     }

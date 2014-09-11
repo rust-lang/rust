@@ -49,7 +49,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     debug!("trans_stmt({})", s.repr(cx.tcx()));
 
     if cx.sess().asm_comments() {
-        add_span_comment(cx, s.span, s.repr(cx.tcx()).as_slice());
+        add_span_comment(cx, s.span, s.repr(cx.tcx()).as_str());
     }
 
     let mut bcx = cx;
@@ -177,7 +177,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     let name = format!("then-block-{}-", thn.id);
-    let then_bcx_in = bcx.fcx.new_id_block(name.as_slice(), thn.id);
+    let then_bcx_in = bcx.fcx.new_id_block(name.as_str(), thn.id);
     let then_bcx_out = trans_block(then_bcx_in, &*thn, dest);
     trans::debuginfo::clear_source_location(bcx.fcx);
 
@@ -425,7 +425,7 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 Some(&def::DefLabel(loop_id)) => loop_id,
                 ref r => {
                     bcx.tcx().sess.bug(format!("{:?} in def-map for label",
-                                               r).as_slice())
+                                               r).as_str())
                 }
             }
         }
@@ -492,7 +492,7 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let v_str = C_str_slice(ccx, fail_str);
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
-    let filename = token::intern_and_get_ident(loc.file.name.as_slice());
+    let filename = token::intern_and_get_ident(loc.file.name.as_str());
     let filename = C_str_slice(ccx, filename);
     let line = C_int(ccx, loc.line as int);
     let expr_file_line_const = C_struct(ccx, &[v_str, filename, line], false);
@@ -517,7 +517,7 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Extract the file/line from the span
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
-    let filename = token::intern_and_get_ident(loc.file.name.as_slice());
+    let filename = token::intern_and_get_ident(loc.file.name.as_str());
 
     // Invoke the lang item
     let filename = C_str_slice(ccx,  filename);

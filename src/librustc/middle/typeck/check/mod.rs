@@ -633,7 +633,7 @@ fn span_for_field(tcx: &ty::ctxt, field: &ty::field_ty, struct_id: ast::DefId) -
                 None => {
                     tcx.sess
                        .bug(format!("Could not find field {}",
-                                    token::get_name(field.name)).as_slice())
+                                    token::get_name(field.name)).as_str())
                 }
             }
         },
@@ -966,7 +966,7 @@ fn check_impl_items_against_trait(ccx: &CrateCtxt,
                                 "method `{}` is not a member of trait `{}`",
                                 token::get_ident(impl_item_ty.ident()),
                                 pprust::path_to_string(
-                                    &ast_trait_ref.path)).as_slice());
+                                    &ast_trait_ref.path)).as_str());
                     }
                 }
             }
@@ -1046,7 +1046,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                         but not in the trait",
                         token::get_ident(trait_m.ident),
                         ppaux::explicit_self_category_to_str(
-                            &impl_m.explicit_self)).as_slice());
+                            &impl_m.explicit_self)).as_str());
             return;
         }
         (_, &ty::StaticExplicitSelfCategory) => {
@@ -1056,7 +1056,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                         but not in the impl",
                         token::get_ident(trait_m.ident),
                         ppaux::explicit_self_category_to_str(
-                            &trait_m.explicit_self)).as_slice());
+                            &trait_m.explicit_self)).as_str());
             return;
         }
         _ => {
@@ -1324,7 +1324,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 span,
                 format!("lifetime parameters or bounds on method `{}` do \
                          not match the trait declaration",
-                        token::get_ident(impl_m.ident)).as_slice());
+                        token::get_ident(impl_m.ident)).as_str());
             return false;
         }
 
@@ -1376,7 +1376,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                          from its counterpart `{}` \
                          declared in the trait",
                         impl_param.name.user_string(tcx),
-                        trait_param.name.user_string(tcx)).as_slice());
+                        trait_param.name.user_string(tcx)).as_str());
                 true
             } else {
                 false
@@ -1386,14 +1386,14 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 tcx.sess.span_note(
                     span,
                     format!("the impl is missing the following bounds: `{}`",
-                            missing.user_string(tcx)).as_slice());
+                            missing.user_string(tcx)).as_str());
             }
 
             if extra.len() != 0 {
                 tcx.sess.span_note(
                     span,
                     format!("the impl has the following extra bounds: `{}`",
-                            extra.user_string(tcx)).as_slice());
+                            extra.user_string(tcx)).as_str());
             }
 
             if err {
@@ -1614,7 +1614,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx().sess.span_bug(
                     span,
                     format!("no type for local variable {:?}",
-                            nid).as_slice());
+                            nid).as_str());
             }
         }
     }
@@ -1688,7 +1688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(format!("no type for expr in fcx {}",
-                                            self.tag()).as_slice());
+                                            self.tag()).as_str());
             }
         }
     }
@@ -1700,7 +1700,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx().sess.bug(
                     format!("no type for node {}: {} in fcx {}",
                             id, self.tcx().map.node_to_string(id),
-                            self.tag()).as_slice());
+                            self.tag()).as_str());
             }
         }
     }
@@ -1712,7 +1712,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx().sess.bug(
                     format!("no method entry for node {}: {} in fcx {}",
                             id, self.tcx().map.node_to_string(id),
-                            self.tag()).as_slice());
+                            self.tag()).as_str());
             }
         }
     }
@@ -2152,7 +2152,7 @@ fn lookup_method_for_for_loop(fcx: &FnCtxt,
         Ok(trait_did) => trait_did,
         Err(ref err_string) => {
             fcx.tcx().sess.span_err(iterator_expr.span,
-                                    err_string.as_slice());
+                                    err_string.as_str());
             return ty::mk_err()
         }
     };
@@ -2180,7 +2180,7 @@ fn lookup_method_for_for_loop(fcx: &FnCtxt,
                 fcx.tcx().sess.span_err(iterator_expr.span,
                                         format!("`for` loop expression has type `{}` which does \
                                                  not implement the `Iterator` trait",
-                                                ty_string).as_slice());
+                                                ty_string).as_str());
             }
             ty::mk_err()
         }
@@ -4128,7 +4128,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                          fcx.infcx()
                                             .ty_to_string(
                                                 actual_structure_type),
-                                         type_error_description).as_slice());
+                                         type_error_description).as_str());
                     ty::note_and_explain_type_err(tcx, &type_error);
                 }
             }
@@ -5370,7 +5370,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "get_tydesc" => {
               let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
                   Ok(t) => t,
-                  Err(s) => { tcx.sess.span_fatal(it.span, s.as_slice()); }
+                  Err(s) => { tcx.sess.span_fatal(it.span, s.as_str()); }
               };
               let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
                   ty: tydesc_ty,
@@ -5386,21 +5386,21 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                                 ty::mk_struct(ccx.tcx, did,
                                               subst::Substs::empty())),
                     Err(msg) => {
-                        tcx.sess.span_fatal(it.span, msg.as_slice());
+                        tcx.sess.span_fatal(it.span, msg.as_str());
                     }
                 }
             },
             "visit_tydesc" => {
               let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
                   Ok(t) => t,
-                  Err(s) => { tcx.sess.span_fatal(it.span, s.as_slice()); }
+                  Err(s) => { tcx.sess.span_fatal(it.span, s.as_str()); }
               };
               let region0 = ty::ReLateBound(it.id, ty::BrAnon(0));
               let region1 = ty::ReLateBound(it.id, ty::BrAnon(1));
               let visitor_object_ty =
                     match ty::visitor_object_ty(tcx, region0, region1) {
                         Ok((_, vot)) => vot,
-                        Err(s) => { tcx.sess.span_fatal(it.span, s.as_slice()); }
+                        Err(s) => { tcx.sess.span_fatal(it.span, s.as_str()); }
                     };
 
               let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {

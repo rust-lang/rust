@@ -75,7 +75,7 @@ pub fn compile_input(sess: Session,
             let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(),
                                            input);
             let (expanded_crate, ast_map)
-                = match phase_2_configure_and_expand(&sess, krate, id.as_slice(),
+                = match phase_2_configure_and_expand(&sess, krate, id.as_str(),
                                                      addl_plugins) {
                     None => return,
                     Some(p) => p,
@@ -83,7 +83,7 @@ pub fn compile_input(sess: Session,
 
             (outputs, expanded_crate, ast_map, id)
         };
-        write_out_deps(&sess, input, &outputs, id.as_slice());
+        write_out_deps(&sess, input, &outputs, id.as_str());
 
         if stop_after_phase_2(&sess) { return; }
 
@@ -513,7 +513,7 @@ pub fn phase_6_link_output(sess: &Session,
          link::link_binary(sess,
                            trans,
                            outputs,
-                           trans.link.crate_name.as_slice()));
+                           trans.link.crate_name.as_str()));
 }
 
 pub fn stop_after_phase_3(sess: &Session) -> bool {
@@ -608,7 +608,7 @@ fn write_out_deps(sess: &Session,
         Ok(()) => {}
         Err(e) => {
             sess.fatal(format!("error writing dependencies to `{}`: {}",
-                               deps_filename.display(), e).as_slice());
+                               deps_filename.display(), e).as_str());
         }
     }
 }
@@ -679,7 +679,7 @@ pub fn collect_crate_types(session: &Session,
         if !res {
             session.warn(format!("dropping unsupported crate type `{}` \
                                    for target os `{}`",
-                                 *crate_type, session.targ_cfg.os).as_slice());
+                                 *crate_type, session.targ_cfg.os).as_str());
         }
 
         res

@@ -136,7 +136,7 @@ fn expand_mac_invoc<T>(mac: &ast::Mac, span: &codemap::Span,
                     fld.cx.span_err(
                         pth.span,
                         format!("macro undefined: '{}!'",
-                                extnamestr.get()).as_slice());
+                                extnamestr.get()).as_str());
 
                     // let compilation continue
                     None
@@ -172,8 +172,8 @@ fn expand_mac_invoc<T>(mac: &ast::Mac, span: &codemap::Span,
                                 fld.cx.span_err(
                                     pth.span,
                                     format!("non-expression macro in expression position: {}",
-                                            extnamestr.get().as_slice()
-                                            ).as_slice());
+                                            extnamestr.get().as_str()
+                                            ).as_str());
                                 return None;
                             }
                         };
@@ -183,7 +183,7 @@ fn expand_mac_invoc<T>(mac: &ast::Mac, span: &codemap::Span,
                         fld.cx.span_err(
                             pth.span,
                             format!("'{}' is not a tt-style macro",
-                                    extnamestr.get()).as_slice());
+                                    extnamestr.get()).as_str());
                         None
                     }
                 }
@@ -392,7 +392,7 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
             None => {
                 fld.cx.span_err(pth.span,
                                 format!("macro undefined: '{}!'",
-                                        extnamestr).as_slice());
+                                        extnamestr).as_str());
                 // let compilation continue
                 return SmallVector::zero();
             }
@@ -405,7 +405,7 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
                                       format!("macro {}! expects no ident argument, \
                                         given '{}'",
                                       extnamestr,
-                                      token::get_ident(it.ident)).as_slice());
+                                      token::get_ident(it.ident)).as_str());
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
@@ -424,7 +424,7 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(pth.span,
                                         format!("macro {}! expects an ident argument",
-                                                extnamestr.get()).as_slice());
+                                                extnamestr.get()).as_str());
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
@@ -443,7 +443,7 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(pth.span,
                                         format!("macro {}! expects an ident argument",
-                                                extnamestr.get()).as_slice());
+                                                extnamestr.get()).as_str());
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
@@ -460,7 +460,7 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
                 _ => {
                     fld.cx.span_err(it.span,
                                     format!("{}! is not legal in item position",
-                                            extnamestr.get()).as_slice());
+                                            extnamestr.get()).as_str());
                     return SmallVector::zero();
                 }
             }
@@ -478,7 +478,7 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
             // result of expanding a LetSyntaxTT, and thus doesn't
             // need to be marked. Not that it could be marked anyway.
             // create issue to recommend refactoring here?
-            fld.cx.syntax_env.insert(intern(name.as_slice()), ext);
+            fld.cx.syntax_env.insert(intern(name.as_str()), ext);
             if attr::contains_name(it.attrs.as_slice(), "macro_export") {
                 fld.cx.exported_macros.push(it);
             }
@@ -493,7 +493,7 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
         Right(None) => {
             fld.cx.span_err(pth.span,
                             format!("non-item macro in item position: {}",
-                                    extnamestr.get()).as_slice());
+                                    extnamestr.get()).as_str());
             return SmallVector::zero();
         }
     };
@@ -743,7 +743,7 @@ fn expand_pat(p: Gc<ast::Pat>, fld: &mut MacroExpander) -> Gc<ast::Pat> {
         None => {
             fld.cx.span_err(pth.span,
                             format!("macro undefined: '{}!'",
-                                    extnamestr).as_slice());
+                                    extnamestr).as_str());
             // let compilation continue
             return DummyResult::raw_pat(p.span);
         }
@@ -772,7 +772,7 @@ fn expand_pat(p: Gc<ast::Pat>, fld: &mut MacroExpander) -> Gc<ast::Pat> {
                             format!(
                                 "non-pattern macro in pattern position: {}",
                                 extnamestr.get()
-                            ).as_slice()
+                            ).as_str()
                         );
                         return DummyResult::raw_pat(p.span);
                     }
@@ -784,7 +784,7 @@ fn expand_pat(p: Gc<ast::Pat>, fld: &mut MacroExpander) -> Gc<ast::Pat> {
             _ => {
                 fld.cx.span_err(p.span,
                                 format!("{}! is not legal in pattern position",
-                                        extnamestr.get()).as_slice());
+                                        extnamestr.get()).as_str());
                 return DummyResult::raw_pat(p.span);
             }
         }

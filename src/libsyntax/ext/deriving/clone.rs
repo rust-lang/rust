@@ -72,12 +72,12 @@ fn cs_clone(
             cx.span_bug(trait_span,
                         format!("non-matching enum variants in \
                                  `deriving({})`",
-                                name).as_slice())
+                                name).as_str())
         }
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span,
                         format!("static method in `deriving({})`",
-                                name).as_slice())
+                                name).as_str())
         }
     }
 
@@ -94,7 +94,7 @@ fn cs_clone(
                     cx.span_bug(trait_span,
                                 format!("unnamed field in normal struct in \
                                          `deriving({})`",
-                                        name).as_slice())
+                                        name).as_str())
                 }
             };
             cx.field_imm(field.span, ident, subcall(field))

@@ -214,7 +214,7 @@ impl<'a> SpanUtils<'a> {
             let loc = self.sess.codemap().lookup_char_pos(span.lo);
             self.sess.span_bug(span,
                 format!("Mis-counted brackets when breaking path? Parsing '{}' in {}, line {}",
-                        self.snippet(span), loc.file.name, loc.line).as_slice());
+                        self.snippet(span), loc.file.name, loc.line).as_str());
         }
         if result.is_none() && is_ident(&prev.tok) && bracket_count == 0 {
             return self.make_sub_span(span, Some(prev.sp));
@@ -240,7 +240,7 @@ impl<'a> SpanUtils<'a> {
                     let loc = self.sess.codemap().lookup_char_pos(span.lo);
                     self.sess.span_bug(span, format!(
                         "Mis-counted brackets when breaking path? Parsing '{}' in {}, line {}",
-                         self.snippet(span), loc.file.name, loc.line).as_slice());
+                         self.snippet(span), loc.file.name, loc.line).as_str());
                 }
                 return result
             }

@@ -220,14 +220,14 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     sess.targ_cfg
         .target_strs
         .data_layout
-        .as_slice()
+        .as_str()
         .with_c_str(|buf| {
         llvm::LLVMSetDataLayout(llmod, buf);
     });
     sess.targ_cfg
         .target_strs
         .target_triple
-        .as_slice()
+        .as_str()
         .with_c_str(|buf| {
         llvm::LLVMRustSetNormalizedTarget(llmod, buf);
     });
@@ -286,7 +286,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
             // such as a function name in the module.
             // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
             let llmod_id = format!("{}.{}.rs", crate_name, i);
-            let local_ccx = LocalCrateContext::new(&shared_ccx, llmod_id.as_slice());
+            let local_ccx = LocalCrateContext::new(&shared_ccx, llmod_id.as_str());
             shared_ccx.local_ccxs.push(local_ccx);
         }
 
@@ -384,7 +384,7 @@ impl LocalCrateContext {
                                           .targ_cfg
                                           .target_strs
                                           .data_layout
-                                          .as_slice());
+                                          .as_str());
 
             let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))

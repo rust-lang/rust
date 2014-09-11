@@ -362,23 +362,23 @@ pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
 {
     let mut cg = basic_codegen_options();
     for option in matches.opt_strs("C").move_iter() {
-        let mut iter = option.as_slice().splitn(1, '=');
+        let mut iter = option.as_str().splitn(1, '=');
         let key = iter.next().unwrap();
         let value = iter.next();
         let option_to_lookup = key.replace("-", "_");
         let mut found = false;
         for &(candidate, setter, _) in CG_OPTIONS.iter() {
-            if option_to_lookup.as_slice() != candidate { continue }
+            if option_to_lookup.as_str() != candidate { continue }
             if !setter(&mut cg, value) {
                 match value {
                     Some(..) => {
                         early_error(format!("codegen option `{}` takes no \
-                                             value", key).as_slice())
+                                             value", key).as_str())
                     }
                     None => {
                         early_error(format!("codegen option `{0}` requires \
                                              a value (-C {0}=<value>)",
-                                            key).as_slice())
+                                            key).as_str())
                     }
                 }
             }
@@ -387,7 +387,7 @@ pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
         }
         if !found {
             early_error(format!("unknown codegen option: `{}`",
-                                key).as_slice());
+                                key).as_str());
         }
     }
     return cg;
@@ -494,15 +494,15 @@ static architecture_abis : &'static [(&'static str, abi::Architecture)] = &[
     ("mips",   abi::Mips)];
 
 pub fn build_target_config(sopts: &Options) -> Config {
-    let os = match get_os(sopts.target_triple.as_slice()) {
+    let os = match get_os(sopts.target_triple.as_str()) {
       Some(os) => os,
       None => early_error("unknown operating system")
     };
-    let arch = match get_arch(sopts.target_triple.as_slice()) {
+    let arch = match get_arch(sopts.target_triple.as_str()) {
       Some(arch) => arch,
       None => {
           early_error(format!("unknown architecture: {}",
-                              sopts.target_triple.as_slice()).as_slice())
+                              sopts.target_triple.as_str()).as_str())
       }
     };
     let (int_type, uint_type) = match arch {
@@ -607,7 +607,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
-        .unwrap_or_else(|e| early_error(e.as_slice()));
+        .unwrap_or_else(|e| early_error(e.as_str()));
 
     let parse_only = matches.opt_present("parse-only");
     let no_trans = matches.opt_present("no-trans");
@@ -618,7 +618,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     for &level in [lint::Allow, lint::Warn, lint::Deny, lint::Forbid].iter() {
         for lint_name in matches.opt_strs(level.as_str()).move_iter() {
-            if lint_name.as_slice() == "help" {
+            if lint_name.as_str() == "help" {
                 describe_lints = true;
             } else {
                 lint_opts.push((lint_name.replace("-", "_").into_string(), level));
@@ -633,14 +633,14 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         let mut this_bit = 0;
         for tuple in debug_map.iter() {
             let (name, bit) = match *tuple { (ref a, _, b) => (a, b) };
-            if *name == debug_flag.as_slice() {
+            if *name == debug_flag.as_str() {
                 this_bit = bit;
                 break;
             }
         }
         if this_bit == 0 {
             early_error(format!("unknown debug flag: {}",
-                                *debug_flag).as_slice())
+                                *debug_flag).as_str())
         }
         debugging_opts |= this_bit;
     }
@@ -653,8 +653,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     if !parse_only && !no_trans {
         let unparsed_output_types = matches.opt_strs("emit");
         for unparsed_output_type in unparsed_output_types.iter() {
-            for part in unparsed_output_type.as_slice().split(',') {
-                let output_type = match part.as_slice() {
+            for part in unparsed_output_type.as_str().split(',') {
+                let output_type = match part.as_str() {
                     "asm"  => write::OutputTypeAssembly,
                     "ir"   => write::OutputTypeLlvmAssembly,
                     "bc"   => write::OutputTypeBitcode,
@@ -662,7 +662,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                     "link" => write::OutputTypeExe,
                     _ => {
                         early_error(format!("unknown emission type: `{}`",
-                                            part).as_slice())
+                                            part).as_str())
                     }
                 };
                 output_types.push(output_type)
@@ -687,7 +687,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             }
             Default
         } else if matches.opt_present("opt-level") {
-            match matches.opt_str("opt-level").as_ref().map(|s| s.as_slice()) {
+            match matches.opt_str("opt-level").as_ref().map(|s| s.as_str()) {
                 None      |
                 Some("0") => No,
                 Some("1") => Less,
@@ -696,7 +696,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 Some(arg) => {
                     early_error(format!("optimization level needs to be \
                                          between 0-3 (instead was `{}`)",
-                                        arg).as_slice());
+                                        arg).as_str());
                 }
             }
         } else {
@@ -710,7 +710,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
         FullDebugInfo
     } else if matches.opt_present("debuginfo") {
-        match matches.opt_str("debuginfo").as_ref().map(|s| s.as_slice()) {
+        match matches.opt_str("debuginfo").as_ref().map(|s| s.as_str()) {
             Some("0") => NoDebugInfo,
             Some("1") => LimitedDebugInfo,
             None      |
@@ -718,7 +718,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             Some(arg) => {
                 early_error(format!("optimization level needs to be between \
                                      0-3 (instead was `{}`)",
-                                    arg).as_slice());
+                                    arg).as_str());
             }
         }
     } else {
@@ -726,7 +726,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     };
 
     let addl_lib_search_paths = matches.opt_strs("L").iter().map(|s| {
-        Path::new(s.as_slice())
+        Path::new(s.as_str())
     }).collect();
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
@@ -744,7 +744,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
     let cg = build_codegen_options(matches);
 
-    let color = match matches.opt_str("color").as_ref().map(|s| s.as_slice()) {
+    let color = match matches.opt_str("color").as_ref().map(|s| s.as_str()) {
         Some("auto")   => Auto,
         Some("always") => Always,
         Some("never")  => Never,
@@ -754,13 +754,13 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         Some(arg) => {
             early_error(format!("argument for --color must be auto, always \
                                  or never (instead was `{}`)",
-                                arg).as_slice())
+                                arg).as_str())
         }
     };
 
     let mut externs = HashMap::new();
     for arg in matches.opt_strs("extern").iter() {
-        let mut parts = arg.as_slice().splitn(1, '=');
+        let mut parts = arg.as_str().splitn(1, '=');
         let name = match parts.next() {
             Some(s) => s,
             None => early_error("--extern value must not be empty"),
@@ -806,7 +806,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
 
     let mut crate_types: Vec<CrateType> = Vec::new();
     for unparsed_crate_type in list_list.iter() {
-        for part in unparsed_crate_type.as_slice().split(',') {
+        for part in unparsed_crate_type.as_str().split(',') {
             let new_part = match part {
                 "lib"       => default_lib_output(),
                 "rlib"      => CrateTypeRlib,

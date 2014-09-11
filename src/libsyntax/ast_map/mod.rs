@@ -90,7 +90,7 @@ pub fn path_to_string<PI: Iterator<PathElem>>(mut path: PI) -> String {
         if !s.is_empty() {
             s.push_str("::");
         }
-        s.push_str(e.as_slice());
+        s.push_str(e.as_str());
         s
     }).to_string()
 }
@@ -499,7 +499,7 @@ impl<'a,S:Str> NodesMatchingSuffix<'a,S> {
                 None => return false,
                 Some((node_id, name)) => (node_id, name),
             };
-            if part.as_slice() != mod_name.as_str() {
+            if part.as_str() != mod_name.as_str() {
                 return false;
             }
             cursor = self.map.get_parent(mod_id);
@@ -537,7 +537,7 @@ impl<'a,S:Str> NodesMatchingSuffix<'a,S> {
     // We are looking at some node `n` with a given name and parent
     // id; do their names match what I am seeking?
     fn matches_names(&self, parent_of_n: NodeId, name: Name) -> bool {
-        name.as_str() == self.item_name.as_slice() &&
+        name.as_str() == self.item_name.as_str() &&
             self.suffix_matches(parent_of_n)
     }
 }

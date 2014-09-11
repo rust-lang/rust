@@ -335,17 +335,17 @@ impl<'a> Context<'a> {
             &Some(ref r) => format!("{} which `{}` depends on",
                                     message, r.ident)
         };
-        self.sess.span_err(self.span, message.as_slice());
+        self.sess.span_err(self.span, message.as_str());
 
         let mismatches = self.rejected_via_triple.iter();
         if self.rejected_via_triple.len() > 0 {
             self.sess.span_note(self.span,
                                 format!("expected triple of {}",
-                                        self.triple).as_slice());
+                                        self.triple).as_str());
             for (i, &CrateMismatch{ ref path, ref got }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
                     format!("crate `{}` path {}{}, triple {}: {}",
-                            self.ident, "#", i+1, got, path.display()).as_slice());
+                            self.ident, "#", i+1, got, path.display()).as_str());
             }
         }
         if self.rejected_via_hash.len() > 0 {
@@ -355,7 +355,7 @@ impl<'a> Context<'a> {
             for (i, &CrateMismatch{ ref path, .. }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
                     format!("crate `{}` path {}{}: {}",
-                            self.ident, "#", i+1, path.display()).as_slice());
+                            self.ident, "#", i+1, path.display()).as_str());
             }
             match self.root {
                 &None => {}
@@ -363,7 +363,7 @@ impl<'a> Context<'a> {
                     for (i, path) in r.paths().iter().enumerate() {
                         self.sess.fileline_note(self.span,
                             format!("crate `{}` path #{}: {}",
-                                    r.ident, i+1, path.display()).as_slice());
+                                    r.ident, i+1, path.display()).as_str());
                     }
                 }
             }
@@ -411,16 +411,16 @@ impl<'a> Context<'a> {
                 None => return FileDoesntMatch,
                 Some(file) => file,
             };
-            let (hash, rlib) = if file.starts_with(rlib_prefix.as_slice()) &&
+            let (hash, rlib) = if file.starts_with(rlib_prefix.as_str()) &&
                     file.ends_with(".rlib") {
                 (file.slice(rlib_prefix.len(), file.len() - ".rlib".len()),
                  true)
             } else if dypair.map_or(false, |(_, suffix)| {
-                file.starts_with(dylib_prefix.get_ref().as_slice()) &&
+                file.starts_with(dylib_prefix.get_ref().as_str()) &&
                 file.ends_with(suffix)
             }) {
                 let (_, suffix) = dypair.unwrap();
-                let dylib_prefix = dylib_prefix.get_ref().as_slice();
+                let dylib_prefix = dylib_prefix.get_ref().as_str();
                 (file.slice(dylib_prefix.len(), file.len() - suffix.len()),
                  false)
             } else {
@@ -473,26 +473,26 @@ impl<'a> Context<'a> {
             _ => {
                 self.sess.span_err(self.span,
                     format!("multiple matching crates for `{}`",
-                            self.crate_name).as_slice());
+                            self.crate_name).as_str());
                 self.sess.note("candidates:");
                 for lib in libraries.iter() {
                     match lib.dylib {
                         Some(ref p) => {
                             self.sess.note(format!("path: {}",
-                                                   p.display()).as_slice());
+                                                   p.display()).as_str());
                         }
                         None => {}
                     }
                     match lib.rlib {
                         Some(ref p) => {
                             self.sess.note(format!("path: {}",
-                                                   p.display()).as_slice());
+                                                   p.display()).as_str());
                         }
                         None => {}
                     }
                     let data = lib.metadata.as_slice();
                     let name = decoder::get_crate_name(data);
-                    note_crate_name(self.sess.diagnostic(), name.as_slice());
+                    note_crate_name(self.sess.diagnostic(), name.as_str());
                 }
                 None
             }
@@ -545,11 +545,11 @@ impl<'a> Context<'a> {
                                    format!("multiple {} candidates for `{}` \
                                             found",
                                            flavor,
-                                           self.crate_name).as_slice());
+                                           self.crate_name).as_str());
                 self.sess.span_note(self.span,
                                     format!(r"candidate #1: {}",
                                             ret.get_ref()
-                                               .display()).as_slice());
+                                               .display()).as_str());
                 error = 1;
                 ret = None;
             }
@@ -557,7 +557,7 @@ impl<'a> Context<'a> {
                 error += 1;
                 self.sess.span_note(self.span,
                                     format!(r"candidate #{}: {}", error,
-                                            lib.display()).as_slice());
+                                            lib.display()).as_str());
                 continue
             }
             *slot = Some(metadata);
@@ -569,7 +569,7 @@ impl<'a> Context<'a> {
     fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> bool {
         if self.should_match_name {
             match decoder::maybe_get_crate_name(crate_data) {
-                Some(ref name) if self.crate_name == name.as_slice() => {}
+                Some(ref name) if self.crate_name == name.as_str() => {}
                 _ => { info!("Rejecting via crate name"); return false }
             }
         }
@@ -584,7 +584,7 @@ impl<'a> Context<'a> {
             None => { debug!("triple not present"); return false }
             Some(t) => t,
         };
-        if triple.as_slice() != self.triple {
+        if triple.as_str() != self.triple {
             info!("Rejecting via crate triple: expected {} got {}", self.triple, triple);
             self.rejected_via_triple.push(CrateMismatch {
                 path: libpath.clone(),
@@ -636,10 +636,10 @@ impl<'a> Context<'a> {
         // rlibs/dylibs.
         let sess = self.sess;
         let dylibname = self.dylibname();
-        let mut locs = locs.iter().map(|l| Path::new(l.as_slice())).filter(|loc| {
+        let mut locs = locs.iter().map(|l| Path::new(l.as_str())).filter(|loc| {
             if !loc.exists() {
                 sess.err(format!("extern location does not exist: {}",
-                                 loc.display()).as_slice());
+                                 loc.display()).as_str());
                 return false;
             }
             let file = loc.filename_str().unwrap();
@@ -656,7 +656,7 @@ impl<'a> Context<'a> {
                 }
             }
             sess.err(format!("extern location is of an unknown type: {}",
-                             loc.display()).as_slice());
+                             loc.display()).as_str());
             false
         });
 
@@ -690,7 +690,7 @@ impl<'a> Context<'a> {
 }
 
 pub fn note_crate_name(diag: &SpanHandler, name: &str) {
-    diag.handler().note(format!("crate name: {}", name).as_slice());
+    diag.handler().note(format!("crate name: {}", name).as_str());
 }
 
 impl ArchiveMetadata {
@@ -779,7 +779,7 @@ fn get_metadata_section_imp(os: abi::Os, filename: &Path) -> Result<MetadataBlob
             let name = string::raw::from_buf_len(name_buf as *const u8,
                                               name_len as uint);
             debug!("get_metadata_section: name {}", name);
-            if read_meta_section_name(os).as_slice() == name.as_slice() {
+            if read_meta_section_name(os).as_str() == name.as_str() {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
                 let mut found =

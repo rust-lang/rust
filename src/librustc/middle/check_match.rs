@@ -70,7 +70,7 @@ impl fmt::Show for Matrix {
             for (column, pat_str) in row.move_iter().enumerate() {
                 try!(write!(f, " "));
                 f.width = Some(*column_widths.get(column));
-                try!(f.pad(pat_str.as_slice()));
+                try!(f.pad(pat_str.as_str()));
                 try!(write!(f, " +"));
             }
             try!(write!(f, "\n"));
@@ -212,7 +212,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                         pat.span,
                         format!("refutable pattern in `for` loop binding: \
                                  `{}` not covered",
-                                pat_to_string(&*uncovered_pat)).as_slice());
+                                pat_to_string(&*uncovered_pat)).as_str());
                 },
                 None => {}
             }
@@ -952,7 +952,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                             format!("binding pattern {} is not an \
                                      identifier: {:?}",
                                     p.id,
-                                    p.node).as_slice());
+                                    p.node).as_str());
                     }
                 }
             }

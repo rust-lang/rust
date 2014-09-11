@@ -99,14 +99,14 @@ impl Eq for RcStr {}
 
 impl Ord for RcStr {
     fn cmp(&self, other: &RcStr) -> Ordering {
-        self.as_slice().cmp(&other.as_slice())
+        self.as_str().cmp(&other.as_str())
     }
 }
 
 impl Str for RcStr {
     #[inline]
-    fn as_slice<'a>(&'a self) -> &'a str {
-        let s: &'a str = self.string.as_slice();
+    fn as_str<'a>(&'a self) -> &'a str {
+        let s: &'a str = self.string.as_str();
         s
     }
 }
@@ -114,7 +114,7 @@ impl Str for RcStr {
 impl fmt::Show for RcStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use std::fmt::Show;
-        self.as_slice().fmt(f)
+        self.as_str().fmt(f)
     }
 }
 
@@ -196,7 +196,7 @@ impl StrInterner {
     /// strings may never be removed from the interner, this is safe.
     pub fn get_ref<'a>(&'a self, idx: Name) -> &'a str {
         let vect = self.vect.borrow();
-        let s: &str = vect.get(idx.uint()).as_slice();
+        let s: &str = vect.get(idx.uint()).as_str();
         unsafe {
             mem::transmute(s)
         }

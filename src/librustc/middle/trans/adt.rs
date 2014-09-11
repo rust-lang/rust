@@ -217,7 +217,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
                 cx.sess().bug(format!("non-C-like enum {} with specified \
                                       discriminants",
                                       ty::item_path_str(cx.tcx(),
-                                                        def_id)).as_slice());
+                                                        def_id)).as_str());
             }
 
             if cases.len() == 1 {
@@ -271,7 +271,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
             }).collect(), dtor);
         }
         _ => cx.sess().bug(format!("adt::represent_type called on non-ADT type: {}",
-                           ty_to_string(cx.tcx(), t)).as_slice())
+                           ty_to_string(cx.tcx(), t)).as_str())
     }
 }
 
@@ -843,7 +843,7 @@ pub fn fold_variants<'blk, 'tcx>(
 
             for (discr, case) in cases.iter().enumerate() {
                 let mut variant_cx = fcx.new_temp_block(
-                    format!("enum-variant-iter-{}", discr.to_string()).as_slice()
+                    format!("enum-variant-iter-{}", discr.to_string()).as_str()
                 );
                 let rhs_val = C_integral(ll_inttype(ccx, ity), discr as u64, true);
                 AddCase(llswitch, rhs_val, variant_cx.llbb);

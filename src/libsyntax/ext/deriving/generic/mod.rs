@@ -623,7 +623,7 @@ impl<'a> MethodDef<'a> {
 
         for (i, ty) in self.args.iter().enumerate() {
             let ast_ty = ty.to_ty(cx, trait_.span, type_ident, generics);
-            let ident = cx.ident_of(format!("__arg_{}", i).as_slice());
+            let ident = cx.ident_of(format!("__arg_{}", i).as_str());
             arg_tys.push((ident, ast_ty));
 
             let arg_expr = cx.expr_ident(trait_.span, ident);
@@ -732,7 +732,7 @@ impl<'a> MethodDef<'a> {
                                              type_ident,
                                              struct_def,
                                              format!("__self_{}",
-                                                     i).as_slice(),
+                                                     i).as_str(),
                                              ast::MutImmutable);
             patterns.push(pat);
             raw_fields.push(ident_expr);
@@ -892,15 +892,15 @@ impl<'a> MethodDef<'a> {
             .collect::<Vec<String>>();
 
         let self_arg_idents = self_arg_names.iter()
-            .map(|name|cx.ident_of(name.as_slice()))
+            .map(|name|cx.ident_of(name.as_str()))
             .collect::<Vec<ast::Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to a uint
         // corresponding to its variant index.
         let vi_idents : Vec<ast::Ident> = self_arg_names.iter()
-            .map(|name| { let vi_suffix = format!("{:s}_vi", name.as_slice());
-                          cx.ident_of(vi_suffix.as_slice()) })
+            .map(|name| { let vi_suffix = format!("{:s}_vi", name.as_str());
+                          cx.ident_of(vi_suffix.as_str()) })
             .collect::<Vec<ast::Ident>>();
 
         // Builds, via callback to call_substructure_method, the
@@ -923,7 +923,7 @@ impl<'a> MethodDef<'a> {
                 self_pats = self_arg_names.iter()
                     .map(|self_arg_name|
                          trait_.create_enum_variant_pattern(
-                             cx, &*variant, self_arg_name.as_slice(),
+                             cx, &*variant, self_arg_name.as_str(),
                              ast::MutImmutable))
                     .collect();
 
@@ -1254,7 +1254,7 @@ impl<'a> TraitDef<'a> {
                     cx.span_bug(sp, "a struct with named and unnamed fields in `deriving`");
                 }
             };
-            let ident = cx.ident_of(format!("{}_{}", prefix, i).as_slice());
+            let ident = cx.ident_of(format!("{}_{}", prefix, i).as_str());
             paths.push(codemap::Spanned{span: sp, node: ident});
             let val = cx.expr(
                 sp, ast::ExprParen(cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)))));
@@ -1299,7 +1299,7 @@ impl<'a> TraitDef<'a> {
                 let mut ident_expr = Vec::new();
                 for (i, va) in variant_args.iter().enumerate() {
                     let sp = self.set_expn_info(cx, va.ty.span);
-                    let ident = cx.ident_of(format!("{}_{}", prefix, i).as_slice());
+                    let ident = cx.ident_of(format!("{}_{}", prefix, i).as_str());
                     let path1 = codemap::Spanned{span: sp, node: ident};
                     paths.push(path1);
                     let expr_path = cx.expr_path(cx.path_ident(sp, ident));

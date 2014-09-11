@@ -161,7 +161,7 @@ impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
             x => {
                 self.tcx.sess.bug(format!("unexpected sort of node \
                                            in get_item_ty(): {:?}",
-                                          x).as_slice());
+                                          x).as_str());
             }
         }
     }
@@ -791,7 +791,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
             ccx.tcx.sess.span_fatal(
                 ast_trait_ref.path.span,
                 format!("`{}` is not a trait",
-                        path_to_string(&ast_trait_ref.path)).as_slice());
+                        path_to_string(&ast_trait_ref.path)).as_str());
         }
     }
 }
@@ -818,7 +818,7 @@ fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> Rc<ty::TraitDef> {
         ast_map::NodeItem(item) => trait_def_of_item(ccx, &*item),
         _ => {
             ccx.tcx.sess.bug(format!("get_trait_def({}): not an item",
-                                     trait_id.node).as_slice())
+                                     trait_id.node).as_str())
         }
     }
 }
@@ -838,7 +838,7 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
         ref s => {
             tcx.sess.span_bug(
                 it.span,
-                format!("trait_def_of_item invoked on {:?}", s).as_slice());
+                format!("trait_def_of_item invoked on {:?}", s).as_str());
         }
     };
 
@@ -1091,7 +1091,7 @@ fn add_unsized_bound(ccx: &CrateCtxt,
                                                     nothing because the given \
                                                     bound is not a default. \
                                                     Only `Sized?` is supported.",
-                                                   desc).as_slice());
+                                                   desc).as_str());
                     ty::try_add_builtin_trait(ccx.tcx,
                                               kind_id,
                                               bounds);

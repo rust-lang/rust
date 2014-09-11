@@ -496,7 +496,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn mod_pop(&mut self) { self.mod_path.pop().unwrap(); }
     pub fn mod_path(&self) -> Vec<ast::Ident> {
         let mut v = Vec::new();
-        v.push(token::str_to_ident(self.ecfg.crate_name.as_slice()));
+        v.push(token::str_to_ident(self.ecfg.crate_name.as_str()));
         v.extend(self.mod_path.iter().map(|a| *a));
         return v;
     }
@@ -604,7 +604,7 @@ pub fn check_zero_tts(cx: &ExtCtxt,
                       tts: &[ast::TokenTree],
                       name: &str) {
     if tts.len() != 0 {
-        cx.span_err(sp, format!("{} takes no arguments", name).as_slice());
+        cx.span_err(sp, format!("{} takes no arguments", name).as_str());
     }
 }
 
@@ -616,7 +616,7 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
                                name: &str)
                                -> Option<String> {
     if tts.len() != 1 {
-        cx.span_err(sp, format!("{} takes 1 argument.", name).as_slice());
+        cx.span_err(sp, format!("{} takes 1 argument.", name).as_str());
     } else {
         match tts[0] {
             ast::TTTok(_, token::LIT_STR(ident)) => return Some(parse::str_lit(ident.as_str())),
@@ -625,7 +625,7 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
             }
             _ => {
                 cx.span_err(sp,
-                            format!("{} requires a string.", name).as_slice())
+                            format!("{} requires a string.", name).as_str())
             }
         }
     }

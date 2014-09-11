@@ -87,9 +87,9 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
         let fcx = self.bcx.fcx;
         let tcx = self.bcx.tcx();
         let mth_idx = ty::impl_or_trait_item_idx(token::str_to_ident(format!(
-                        "visit_{}", ty_name).as_slice()),
+                        "visit_{}", ty_name).as_str()),
                                      self.visitor_items.as_slice()).expect(
-                format!("couldn't find visit method for {}", ty_name).as_slice());
+                format!("couldn't find visit method for {}", ty_name).as_str());
         let method = match self.visitor_items[mth_idx] {
             ty::MethodTraitItem(ref method) => (*method).clone(),
         };
@@ -117,9 +117,9 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
                      bracket_name: &str,
                      extra: &[ValueRef],
                      inner: |&mut Reflector|) {
-        self.visit(format!("enter_{}", bracket_name).as_slice(), extra);
+        self.visit(format!("enter_{}", bracket_name).as_str(), extra);
         inner(self);
-        self.visit(format!("leave_{}", bracket_name).as_slice(), extra);
+        self.visit(format!("leave_{}", bracket_name).as_str(), extra);
     }
 
     pub fn leaf(&mut self, name: &str) {
@@ -186,7 +186,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
                   ty::ty_trait(..) => {
                       let extra = [
                           self.c_slice(token::intern_and_get_ident(
-                                  ty_to_string(tcx, t).as_slice()))
+                                  ty_to_string(tcx, t).as_str()))
                       ];
                       self.visit("trait", extra);
                   }
@@ -201,7 +201,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
                   ty::ty_trait(..) => {
                       let extra = [
                           self.c_slice(token::intern_and_get_ident(
-                                  ty_to_string(tcx, t).as_slice()))
+                                  ty_to_string(tcx, t).as_str()))
                       ];
                       self.visit("trait", extra);
                   }
@@ -230,7 +230,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
                   ty::ty_trait(..) => {
                       let extra = [
                           self.c_slice(token::intern_and_get_ident(
-                                  ty_to_string(tcx, t).as_slice()))
+                                  ty_to_string(tcx, t).as_str()))
                       ];
                       self.visit("trait", extra);
                   }
@@ -302,7 +302,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
               let extra = (vec!(
                   self.c_slice(
                       token::intern_and_get_ident(ty_to_string(tcx,
-                                                            t).as_slice())),
+                                                            t).as_str())),
                   self.c_bool(named_fields),
                   self.c_uint(len)
               )).append(self.c_size_and_align(t).as_slice());
@@ -339,7 +339,7 @@ impl<'a, 'blk, 'tcx> Reflector<'a, 'blk, 'tcx> {
                                            [opaqueptrty], ty::mk_u64());
                 let llfdecl = decl_internal_rust_fn(ccx,
                                                     fn_ty,
-                                                    sym.as_slice());
+                                                    sym.as_str());
                 let arena = TypedArena::new();
                 let empty_param_substs = param_substs::empty();
                 let fcx = new_fn_ctxt(ccx, llfdecl, ast::DUMMY_NODE_ID, false,

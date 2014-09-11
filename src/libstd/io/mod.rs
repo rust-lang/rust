@@ -395,7 +395,7 @@ impl IoError {
             kind: kind,
             desc: desc,
             detail: if detail && kind == OtherIoError {
-                Some(os::error_string(errno).as_slice().chars().map(|c| c.to_lowercase()).collect())
+                Some(os::error_string(errno).as_str().chars().map(|c| c.to_lowercase()).collect())
             } else {
                 None
             },

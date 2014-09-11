@@ -88,11 +88,11 @@ fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
     for (name, dupes) in map.move_iter() {
         if dupes.len() == 1 { continue }
         diag.handler().warn(
-            format!("using multiple versions of crate `{}`", name).as_slice());
+            format!("using multiple versions of crate `{}`", name).as_str());
         for dupe in dupes.move_iter() {
             let data = cstore.get_crate_data(dupe);
             diag.span_note(data.span, "used here");
-            loader::note_crate_name(diag, data.name().as_slice());
+            loader::note_crate_name(diag, data.name().as_str());
         }
     }
 }
@@ -124,8 +124,8 @@ fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
         Some(info) => {
             let (cnum, _, _) = resolve_crate(e,
                                              &None,
-                                             info.ident.as_slice(),
-                                             info.name.as_slice(),
+                                             info.ident.as_str(),
+                                             info.name.as_str(),
                                              None,
                                              i.span);
             e.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
@@ -150,7 +150,7 @@ fn extract_crate_info(e: &Env, i: &ast::ViewItem) -> Option<CrateInfo> {
             let name = match *path_opt {
                 Some((ref path_str, _)) => {
                     let name = path_str.get().to_string();
-                    validate_crate_name(Some(e.sess), name.as_slice(),
+                    validate_crate_name(Some(e.sess), name.as_str(),
                                         Some(i.span));
                     name
                 }
@@ -181,7 +181,7 @@ pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
     for c in s.chars() {
         if c.is_alphanumeric() { continue }
         if c == '_' || c == '-' { continue }
-        err(format!("invalid character `{}` in crate name: `{}`", c, s).as_slice());
+        err(format!("invalid character `{}` in crate name: `{}`", c, s).as_str());
     }
     match sess {
         Some(sess) => sess.abort_if_errors(),
@@ -241,7 +241,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                                 } else {
                                     e.sess.span_err(m.span,
                                         format!("unknown kind: `{}`",
-                                                k).as_slice());
+                                                k).as_str());
                                     cstore::NativeUnknown
                                 }
                             }
@@ -281,7 +281,7 @@ fn existing_match(e: &Env, name: &str,
                   hash: Option<&Svh>) -> Option<ast::CrateNum> {
     let mut ret = None;
     e.sess.cstore.iter_crate_data(|cnum, data| {
-        if data.name().as_slice() != name { return }
+        if data.name().as_str() != name { return }
 
         match hash {
             Some(hash) if *hash == data.hash() => { ret = Some(cnum); return }
@@ -302,7 +302,7 @@ fn existing_match(e: &Env, name: &str,
         match e.sess.opts.externs.find_equiv(&name) {
             Some(locs) => {
                 let found = locs.iter().any(|l| {
-                    let l = fs::realpath(&Path::new(l.as_slice())).ok();
+                    let l = fs::realpath(&Path::new(l.as_str())).ok();
                     l == source.dylib || l == source.rlib
                 });
                 if found {
@@ -381,7 +381,7 @@ fn resolve_crate<'a>(e: &mut Env,
                 hash: hash.map(|a| &*a),
                 filesearch: e.sess.target_filesearch(),
                 os: e.sess.targ_cfg.os,
-                triple: e.sess.targ_cfg.target_strs.target_triple.as_slice(),
+                triple: e.sess.targ_cfg.target_strs.target_triple.as_str(),
                 root: root,
                 rejected_via_hash: vec!(),
                 rejected_via_triple: vec!(),
@@ -407,8 +407,8 @@ fn resolve_crate_deps(e: &mut Env,
     decoder::get_crate_deps(cdata).iter().map(|dep| {
         debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
         let (local_cnum, _, _) = resolve_crate(e, root,
-                                               dep.name.as_slice(),
-                                               dep.name.as_slice(),
+                                               dep.name.as_str(),
+                                               dep.name.as_str(),
                                                Some(&dep.hash),
                                                span);
         (dep.cnum, local_cnum)
@@ -431,15 +431,15 @@ impl<'a> PluginMetadataReader<'a> {
 
     pub fn read_plugin_metadata(&mut self, krate: &ast::ViewItem) -> PluginMetadata {
         let info = extract_crate_info(&self.env, krate).unwrap();
-        let target_triple = self.env.sess.targ_cfg.target_strs.target_triple.as_slice();
+        let target_triple = self.env.sess.targ_cfg.target_strs.target_triple.as_str();
         let is_cross = target_triple != driver::host_triple();
         let mut should_link = info.should_link && !is_cross;
         let os = config::get_os(driver::host_triple()).unwrap();
         let mut load_ctxt = loader::Context {
             sess: self.env.sess,
             span: krate.span,
-            ident: info.ident.as_slice(),
-            crate_name: info.name.as_slice(),
+            ident: info.ident.as_str(),
+            crate_name: info.name.as_str(),
             hash: None,
             filesearch: self.env.sess.host_filesearch(),
             triple: driver::host_triple(),
@@ -462,7 +462,7 @@ impl<'a> PluginMetadataReader<'a> {
                     let message = format!("crate `{}` contains a plugin_registrar fn but \
                                   only a version for triple `{}` could be found (need {})",
                                   info.ident, target_triple, driver::host_triple());
-                    self.env.sess.span_err(krate.span, message.as_slice());
+                    self.env.sess.span_err(krate.span, message.as_str());
                     // need to abort now because the syntax expansion
                     // code will shortly attempt to load and execute
                     // code from the found library.
@@ -481,7 +481,7 @@ impl<'a> PluginMetadataReader<'a> {
             let message = format!("plugin crate `{}` only found in rlib format, \
                                    but must be available in dylib format",
                                   info.ident);
-            self.env.sess.span_err(krate.span, message.as_slice());
+            self.env.sess.span_err(krate.span, message.as_str());
             // No need to abort because the loading code will just ignore this
             // empty dylib.
         }
@@ -490,11 +490,11 @@ impl<'a> PluginMetadataReader<'a> {
             macros: macros,
             registrar_symbol: registrar,
         };
-        if should_link && existing_match(&self.env, info.name.as_slice(),
+        if should_link && existing_match(&self.env, info.name.as_str(),
                                          None).is_none() {
             // register crate now to avoid double-reading metadata
-            register_crate(&mut self.env, &None, info.ident.as_slice(),
-                           info.name.as_slice(), krate.span, library);
+            register_crate(&mut self.env, &None, info.ident.as_str(),
+                           info.name.as_str(), krate.span, library);
         }
         pc
     }

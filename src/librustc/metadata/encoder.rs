@@ -105,7 +105,7 @@ fn encode_impl_type_basename(rbml_w: &mut Encoder, name: Ident) {
 }
 
 pub fn encode_def_id(rbml_w: &mut Encoder, id: DefId) {
-    rbml_w.wr_tagged_str(tag_def_id, def_to_string(id).as_slice());
+    rbml_w.wr_tagged_str(tag_def_id, def_to_string(id).as_str());
 }
 
 #[deriving(Clone)]
@@ -266,7 +266,7 @@ fn encode_symbol(ecx: &EncodeContext,
         }
         None => {
             ecx.diag.handler().bug(
-                format!("encode_symbol: id not found {}", id).as_slice());
+                format!("encode_symbol: id not found {}", id).as_str());
         }
     }
     rbml_w.end_tag();
@@ -387,12 +387,12 @@ fn encode_reexported_static_method(rbml_w: &mut Encoder,
             exp.name, token::get_ident(method_ident));
     rbml_w.start_tag(tag_items_data_item_reexport);
     rbml_w.start_tag(tag_items_data_item_reexport_def_id);
-    rbml_w.wr_str(def_to_string(method_def_id).as_slice());
+    rbml_w.wr_str(def_to_string(method_def_id).as_str());
     rbml_w.end_tag();
     rbml_w.start_tag(tag_items_data_item_reexport_name);
     rbml_w.wr_str(format!("{}::{}",
                           exp.name,
-                          token::get_ident(method_ident)).as_slice());
+                          token::get_ident(method_ident)).as_str());
     rbml_w.end_tag();
     rbml_w.end_tag();
 }
@@ -483,7 +483,7 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
             // encoded metadata for static methods relative to Bar,
             // but not yet for Foo.
             //
-            if path_differs || original_name.get() != exp.name.as_slice() {
+            if path_differs || original_name.get() != exp.name.as_str() {
                 if !encode_reexported_static_base_methods(ecx, rbml_w, exp) {
                     if encode_reexported_static_trait_methods(ecx, rbml_w, exp) {
                         debug!("(encode reexported static methods) {} \
@@ -551,10 +551,10 @@ fn encode_reexports(ecx: &EncodeContext,
                        id);
                 rbml_w.start_tag(tag_items_data_item_reexport);
                 rbml_w.start_tag(tag_items_data_item_reexport_def_id);
-                rbml_w.wr_str(def_to_string(exp.def_id).as_slice());
+                rbml_w.wr_str(def_to_string(exp.def_id).as_str());
                 rbml_w.end_tag();
                 rbml_w.start_tag(tag_items_data_item_reexport_name);
-                rbml_w.wr_str(exp.name.as_slice());
+                rbml_w.wr_str(exp.name.as_str());
                 rbml_w.end_tag();
                 rbml_w.end_tag();
                 encode_reexported_static_methods(ecx, rbml_w, path.clone(), exp);
@@ -584,13 +584,13 @@ fn encode_info_for_mod(ecx: &EncodeContext,
     // Encode info about all the module children.
     for item in md.items.iter() {
         rbml_w.start_tag(tag_mod_child);
-        rbml_w.wr_str(def_to_string(local_def(item.id)).as_slice());
+        rbml_w.wr_str(def_to_string(local_def(item.id)).as_str());
         rbml_w.end_tag();
 
         each_auxiliary_node_id(*item, |auxiliary_node_id| {
             rbml_w.start_tag(tag_mod_child);
             rbml_w.wr_str(def_to_string(local_def(
-                        auxiliary_node_id)).as_slice());
+                        auxiliary_node_id)).as_str());
             rbml_w.end_tag();
             true
         });
@@ -604,7 +604,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
                         did, ecx.tcx.map.node_to_string(did));
 
                 rbml_w.start_tag(tag_mod_impl);
-                rbml_w.wr_str(def_to_string(local_def(did)).as_slice());
+                rbml_w.wr_str(def_to_string(local_def(did)).as_str());
                 rbml_w.end_tag();
             }
             _ => {}
@@ -641,7 +641,7 @@ fn encode_visibility(rbml_w: &mut Encoder, visibility: Visibility) {
         Public => 'y',
         Inherited => 'i',
     };
-    rbml_w.wr_str(ch.to_string().as_slice());
+    rbml_w.wr_str(ch.to_string().as_str());
     rbml_w.end_tag();
 }
 
@@ -653,7 +653,7 @@ fn encode_unboxed_closure_kind(rbml_w: &mut Encoder,
         ty::FnMutUnboxedClosureKind => 'm',
         ty::FnOnceUnboxedClosureKind => 'o',
     };
-    rbml_w.wr_str(ch.to_string().as_slice());
+    rbml_w.wr_str(ch.to_string().as_str());
     rbml_w.end_tag();
 }
 
@@ -814,7 +814,7 @@ fn encode_generics(rbml_w: &mut Encoder,
         rbml_w.end_tag();
 
         rbml_w.wr_tagged_str(tag_region_param_def_def_id,
-                             def_to_string(param.def_id).as_slice());
+                             def_to_string(param.def_id).as_str());
 
         rbml_w.wr_tagged_u64(tag_region_param_def_space,
                              param.space.to_uint() as u64);
@@ -1079,7 +1079,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Encode all the items in this module.
         for foreign_item in fm.items.iter() {
             rbml_w.start_tag(tag_mod_child);
-            rbml_w.wr_str(def_to_string(local_def(foreign_item.id)).as_slice());
+            rbml_w.wr_str(def_to_string(local_def(foreign_item.id)).as_str());
             rbml_w.end_tag();
         }
         encode_visibility(rbml_w, vis);
@@ -1287,7 +1287,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             rbml_w.end_tag();
 
             rbml_w.start_tag(tag_mod_child);
-            rbml_w.wr_str(def_to_string(method_def_id.def_id()).as_slice());
+            rbml_w.wr_str(def_to_string(method_def_id.def_id()).as_str());
             rbml_w.end_tag();
         }
         encode_path(rbml_w, path.clone());
@@ -1732,7 +1732,7 @@ fn encode_macro_def(ecx: &EncodeContext,
     let def = ecx.tcx.sess.codemap().span_to_snippet(*span)
         .expect("Unable to find source for macro");
     rbml_w.start_tag(tag_macro_def);
-    rbml_w.wr_str(def.as_slice());
+    rbml_w.wr_str(def.as_str());
     rbml_w.end_tag();
 }
 
@@ -1854,13 +1854,13 @@ fn encode_misc_info(ecx: &EncodeContext,
     rbml_w.start_tag(tag_misc_info_crate_items);
     for &item in krate.module.items.iter() {
         rbml_w.start_tag(tag_mod_child);
-        rbml_w.wr_str(def_to_string(local_def(item.id)).as_slice());
+        rbml_w.wr_str(def_to_string(local_def(item.id)).as_str());
         rbml_w.end_tag();
 
         each_auxiliary_node_id(item, |auxiliary_node_id| {
             rbml_w.start_tag(tag_mod_child);
             rbml_w.wr_str(def_to_string(local_def(
-                        auxiliary_node_id)).as_slice());
+                        auxiliary_node_id)).as_str());
             rbml_w.end_tag();
             true
         });
@@ -2008,13 +2008,13 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter, parms: EncodeParams, krate:
 
     let mut rbml_w = writer::Encoder::new(wr);
 
-    encode_crate_name(&mut rbml_w, ecx.link_meta.crate_name.as_slice());
+    encode_crate_name(&mut rbml_w, ecx.link_meta.crate_name.as_str());
     encode_crate_triple(&mut rbml_w,
                         tcx.sess
                            .targ_cfg
                            .target_strs
                            .target_triple
-                           .as_slice());
+                           .as_str());
     encode_hash(&mut rbml_w, &ecx.link_meta.crate_hash);
     encode_dylib_dependency_formats(&mut rbml_w, &ecx);
 

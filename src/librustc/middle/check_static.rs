@@ -65,7 +65,7 @@ impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
         match result {
             None => { false }
             Some(msg) => {
-                self.tcx.sess.span_err(span, msg.as_slice());
+                self.tcx.sess.span_err(span, msg.as_str());
                 true
             }
         }

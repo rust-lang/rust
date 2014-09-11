@@ -52,7 +52,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             Some(p) => p,
             None => {
                 sess.fatal(format!("could not find rlib for: `{}`",
-                                   name).as_slice());
+                                   name).as_str());
             }
         };
 
@@ -61,18 +61,18 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         let file = file.slice(3, file.len() - 5); // chop off lib/.rlib
         debug!("reading {}", file);
         let bc_encoded = time(sess.time_passes(),
-                              format!("read {}.bytecode.deflate", name).as_slice(),
+                              format!("read {}.bytecode.deflate", name).as_str(),
                               (),
                               |_| {
                                   archive.read(format!("{}.bytecode.deflate",
-                                                       file).as_slice())
+                                                       file).as_str())
                               });
         let bc_encoded = match bc_encoded {
             Some(data) => data,
             None => {
                 sess.fatal(format!("missing compressed bytecode in {} \
                                     (perhaps it was compiled with -C codegen-units > 1)",
-                                   path.display()).as_slice());
+                                   path.display()).as_str());
             },
         };
         let bc_extractor = if is_versioned_bytecode_format(bc_encoded) {
@@ -91,12 +91,12 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                         Some(inflated) => inflated,
                         None => {
                             sess.fatal(format!("failed to decompress bc of `{}`",
-                                               name).as_slice())
+                                               name).as_str())
                         }
                     }
                 } else {
                     sess.fatal(format!("Unsupported bytecode format version {}",
-                                       version).as_slice())
+                                       version).as_str())
                 }
             }
         } else {
@@ -107,21 +107,21 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                     Some(bc) => bc,
                     None => {
                         sess.fatal(format!("failed to decompress bc of `{}`",
-                                           name).as_slice())
+                                           name).as_str())
                     }
                 }
             }
         };
 
         let bc_decoded = time(sess.time_passes(),
-                              format!("decode {}.bc", file).as_slice(),
+                              format!("decode {}.bc", file).as_str(),
                               (),
                               bc_extractor);
 
         let ptr = bc_decoded.as_slice().as_ptr();
         debug!("linking {}", name);
         time(sess.time_passes(),
-             format!("ll link {}", name).as_slice(),
+             format!("ll link {}", name).as_str(),
              (),
              |()| unsafe {
             if !llvm::LLVMRustLinkInExternalBitcode(llmod,
@@ -129,14 +129,14 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                                                     bc_decoded.len() as libc::size_t) {
                 write::llvm_err(sess.diagnostic().handler(),
                                 format!("failed to load bc of `{}`",
-                                        name.as_slice()));
+                                        name.as_str()));
             }
         });
     }
 
     // Internalize everything but the reachable symbols of the current module
     let cstrs: Vec<::std::c_str::CString> =
-        reachable.iter().map(|s| s.as_slice().to_c_str()).collect();
+        reachable.iter().map(|s| s.as_str().to_c_str()).collect();
     let arr: Vec<*const i8> = cstrs.iter().map(|c| c.as_ptr()).collect();
     let ptr = arr.as_ptr();
     unsafe {

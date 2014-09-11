@@ -83,7 +83,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                                     .chain(ext_constraints.move_iter())
                                     .collect::<Vec<String>>()
                                     .connect(",")
-                                    .as_slice());
+                                    .as_str());
 
     let mut clobbers = get_clobbers();
     if !ia.clobbers.get().is_empty() && !clobbers.is_empty() {
@@ -95,12 +95,12 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     // Add the clobbers to our constraints list
     if clobbers.len() != 0 && constraints.len() != 0 {
         constraints.push_char(',');
-        constraints.push_str(clobbers.as_slice());
+        constraints.push_str(clobbers.as_str());
     } else {
-        constraints.push_str(clobbers.as_slice());
+        constraints.push_str(clobbers.as_str());
     }
 
-    debug!("Asm Constraints: {:?}", constraints.as_slice());
+    debug!("Asm Constraints: {:?}", constraints.as_str());
 
     let num_outputs = outputs.len();
 
@@ -119,7 +119,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     };
 
     let r = ia.asm.get().with_c_str(|a| {
-        constraints.as_slice().with_c_str(|c| {
+        constraints.as_str().with_c_str(|c| {
             InlineAsmCall(bcx,
                           a,
                           c,

@@ -279,7 +279,7 @@ impl TypeMap {
                                    metadata: DIType) {
         if !self.type_to_metadata.insert(ty::type_id(type_), metadata) {
             cx.sess().bug(format!("Type metadata for ty::t '{}' is already in the TypeMap!",
-                                   ppaux::ty_to_string(cx.tcx(), type_)).as_slice());
+                                   ppaux::ty_to_string(cx.tcx(), type_)).as_str());
         }
     }
 
@@ -292,7 +292,7 @@ impl TypeMap {
         if !self.unique_id_to_metadata.insert(unique_type_id, metadata) {
             let unique_type_id_str = self.get_unique_type_id_as_string(unique_type_id);
             cx.sess().bug(format!("Type metadata for unique id '{}' is already in the TypeMap!",
-                                  unique_type_id_str.as_slice()).as_slice());
+                                  unique_type_id_str.as_str()).as_str());
         }
     }
 
@@ -371,20 +371,20 @@ impl TypeMap {
                         self.get_unique_type_id_of_type(cx, component_type);
                     let component_type_id =
                         self.get_unique_type_id_as_string(component_type_id);
-                    unique_type_id.push_str(component_type_id.as_slice());
+                    unique_type_id.push_str(component_type_id.as_str());
                 }
             },
             ty::ty_box(inner_type) => {
                 unique_type_id.push_char('@');
                 let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
-                unique_type_id.push_str(inner_type_id.as_slice());
+                unique_type_id.push_str(inner_type_id.as_str());
             },
             ty::ty_uniq(inner_type) => {
                 unique_type_id.push_char('~');
                 let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
-                unique_type_id.push_str(inner_type_id.as_slice());
+                unique_type_id.push_str(inner_type_id.as_str());
             },
             ty::ty_ptr(ty::mt { ty: inner_type, mutbl } ) => {
                 unique_type_id.push_char('*');
@@ -394,7 +394,7 @@ impl TypeMap {
 
                 let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
-                unique_type_id.push_str(inner_type_id.as_slice());
+                unique_type_id.push_str(inner_type_id.as_str());
             },
             ty::ty_rptr(_, ty::mt { ty: inner_type, mutbl }) => {
                 unique_type_id.push_char('&');
@@ -404,12 +404,12 @@ impl TypeMap {
 
                 let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
-                unique_type_id.push_str(inner_type_id.as_slice());
+                unique_type_id.push_str(inner_type_id.as_str());
             },
             ty::ty_vec(inner_type, optional_length) => {
                 match optional_length {
                     Some(len) => {
-                        unique_type_id.push_str(format!("[{}]", len).as_slice());
+                        unique_type_id.push_str(format!("[{}]", len).as_str());
                     }
                     None => {
                         unique_type_id.push_str("[]");
@@ -418,7 +418,7 @@ impl TypeMap {
 
                 let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
-                unique_type_id.push_str(inner_type_id.as_slice());
+                unique_type_id.push_str(inner_type_id.as_str());
             },
             ty::ty_trait(ref trait_data) => {
                 unique_type_id.push_str("trait ");
@@ -443,7 +443,7 @@ impl TypeMap {
                         self.get_unique_type_id_of_type(cx, parameter_type);
                     let parameter_type_id =
                         self.get_unique_type_id_as_string(parameter_type_id);
-                    unique_type_id.push_str(parameter_type_id.as_slice());
+                    unique_type_id.push_str(parameter_type_id.as_str());
                     unique_type_id.push_char(',');
                 }
 
@@ -454,7 +454,7 @@ impl TypeMap {
                 unique_type_id.push_str(")->");
                 let return_type_id = self.get_unique_type_id_of_type(cx, sig.output);
                 let return_type_id = self.get_unique_type_id_as_string(return_type_id);
-                unique_type_id.push_str(return_type_id.as_slice());
+                unique_type_id.push_str(return_type_id.as_str());
             },
             ty::ty_closure(box ty::ClosureTy { fn_style,
                                                onceness,
@@ -485,7 +485,7 @@ impl TypeMap {
                         self.get_unique_type_id_of_type(cx, parameter_type);
                     let parameter_type_id =
                         self.get_unique_type_id_as_string(parameter_type_id);
-                    unique_type_id.push_str(parameter_type_id.as_slice());
+                    unique_type_id.push_str(parameter_type_id.as_str());
                     unique_type_id.push_char(',');
                 }
 
@@ -497,7 +497,7 @@ impl TypeMap {
 
                 let return_type_id = self.get_unique_type_id_of_type(cx, sig.output);
                 let return_type_id = self.get_unique_type_id_as_string(return_type_id);
-                unique_type_id.push_str(return_type_id.as_slice());
+                unique_type_id.push_str(return_type_id.as_str());
 
                 unique_type_id.push_char(':');
 
@@ -513,8 +513,8 @@ impl TypeMap {
             },
             _ => {
                 cx.sess().bug(format!("get_unique_type_id_of_type() - unexpected type: {}, {:?}",
-                                      ppaux::ty_to_string(cx.tcx(), type_).as_slice(),
-                                      ty::get(type_).sty).as_slice())
+                                      ppaux::ty_to_string(cx.tcx(), type_).as_str(),
+                                      ty::get(type_).sty).as_str())
             }
         };
 
@@ -559,7 +559,7 @@ impl TypeMap {
 
             output.push_str(crate_hash.as_str());
             output.push_str("/");
-            output.push_str(def_id.node.to_str_radix(16).as_slice());
+            output.push_str(def_id.node.to_str_radix(16).as_str());
 
             // Maybe check that there is no self type here.
 
@@ -572,7 +572,7 @@ impl TypeMap {
                         type_map.get_unique_type_id_of_type(cx, type_parameter);
                     let param_type_id =
                         type_map.get_unique_type_id_as_string(param_type_id);
-                    output.push_str(param_type_id.as_slice());
+                    output.push_str(param_type_id.as_str());
                     output.push_char(',');
                 }
 
@@ -592,7 +592,7 @@ impl TypeMap {
         let enum_type_id = self.get_unique_type_id_of_type(cx, enum_type);
         let enum_variant_type_id = format!("{}::{}",
                                            self.get_unique_type_id_as_string(enum_type_id)
-                                               .as_slice(),
+                                               .as_str(),
                                            variant_name);
         let interner_key = self.unique_id_interner.intern(Rc::new(enum_variant_type_id));
         UniqueTypeId(interner_key)
@@ -605,7 +605,7 @@ impl TypeMap {
         let element_type_id = self.get_unique_type_id_of_type(cx, element_type);
         let gc_box_type_id = format!("{{GC_BOX<{}>}}",
                                      self.get_unique_type_id_as_string(element_type_id)
-                                         .as_slice());
+                                         .as_str());
         let interner_key = self.unique_id_interner.intern(Rc::new(gc_box_type_id));
         UniqueTypeId(interner_key)
     }
@@ -785,19 +785,19 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                          create_global_var_metadata() -
                                          Captured var-id refers to \
                                          unexpected ast_item variant: {:?}",
-                                        var_item).as_slice())
+                                        var_item).as_str())
                 }
             }
         },
         _ => cx.sess().bug(format!("debuginfo::create_global_var_metadata() \
                                     - Captured var-id refers to unexpected \
                                     ast_map variant: {:?}",
-                                   var_item).as_slice())
+                                   var_item).as_str())
     };
 
     let (file_metadata, line_number) = if span != codemap::DUMMY_SP {
         let loc = span_start(cx, span);
-        (file_metadata(cx, loc.file.name.as_slice()), loc.line as c_uint)
+        (file_metadata(cx, loc.file.name.as_str()), loc.line as c_uint)
     } else {
         (UNKNOWN_FILE_METADATA, UNKNOWN_LINE_NUMBER)
     };
@@ -808,11 +808,11 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
     let var_name = token::get_ident(ident).get().to_string();
     let linkage_name =
-        namespace_node.mangled_name_of_contained_item(var_name.as_slice());
+        namespace_node.mangled_name_of_contained_item(var_name.as_str());
     let var_scope = namespace_node.scope;
 
-    var_name.as_slice().with_c_str(|var_name| {
-        linkage_name.as_slice().with_c_str(|linkage_name| {
+    var_name.as_str().with_c_str(|var_name| {
+        linkage_name.as_str().with_c_str(|linkage_name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateStaticVariable(DIB(cx),
                                                         var_scope,
@@ -848,7 +848,7 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
             None => {
                 bcx.sess().span_bug(span,
                     format!("no entry in lllocals table for {:?}",
-                            node_id).as_slice());
+                            node_id).as_str());
             }
         };
 
@@ -898,7 +898,7 @@ pub fn create_captured_var_metadata(bcx: Block,
                                 "debuginfo::create_captured_var_metadata() - \
                                  Captured var-id refers to unexpected \
                                  ast_map variant: {:?}",
-                                 ast_item).as_slice());
+                                 ast_item).as_str());
                 }
             }
         }
@@ -908,7 +908,7 @@ pub fn create_captured_var_metadata(bcx: Block,
                         format!("debuginfo::create_captured_var_metadata() - \
                                  Captured var-id refers to unexpected \
                                  ast_map variant: {:?}",
-                                ast_item).as_slice());
+                                ast_item).as_str());
         }
     };
 
@@ -1011,7 +1011,7 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
             None => {
                 bcx.sess().span_bug(span,
                     format!("no entry in llargs table for {:?}",
-                            node_id).as_slice());
+                            node_id).as_str());
             }
         };
 
@@ -1162,7 +1162,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 ast::ExprProc(fn_decl, top_level_block) |
                 ast::ExprUnboxedFn(_, _, fn_decl, top_level_block) => {
                     let name = format!("fn{}", token::gensym("fn"));
-                    let name = token::str_to_ident(name.as_slice());
+                    let name = token::str_to_ident(name.as_str());
                     (name, fn_decl,
                         // This is not quite right. It should actually inherit
                         // the generics of the enclosing function.
@@ -1196,7 +1196,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                     cx.sess()
                       .bug(format!("create_function_debug_context: \
                                     unexpected sort of node: {:?}",
-                                    fnitem).as_slice())
+                                    fnitem).as_str())
                 }
             }
         }
@@ -1207,7 +1207,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         }
         _ => cx.sess().bug(format!("create_function_debug_context: \
                                     unexpected sort of node: {:?}",
-                                   fnitem).as_slice())
+                                   fnitem).as_str())
     };
 
     // This can be the case for functions inlined from another crate
@@ -1216,7 +1216,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     }
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.name.as_slice());
+    let file_metadata = file_metadata(cx, loc.file.name.as_str());
 
     let function_type_metadata = unsafe {
         let fn_signature = get_function_signature(cx,
@@ -1243,11 +1243,11 @@ pub fn create_function_debug_context(cx: &CrateContext,
     let (linkage_name, containing_scope) = if has_path {
         let namespace_node = namespace_for_item(cx, ast_util::local_def(fn_ast_id));
         let linkage_name = namespace_node.mangled_name_of_contained_item(
-            function_name.as_slice());
+            function_name.as_str());
         let containing_scope = namespace_node.scope;
         (linkage_name, containing_scope)
     } else {
-        (function_name.as_slice().to_string(), file_metadata)
+        (function_name.as_str().to_string(), file_metadata)
     };
 
     // Clang sets this parameter to the opening brace of the function's block,
@@ -1256,8 +1256,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     let is_local_to_unit = is_node_local_to_unit(cx, fn_ast_id);
 
-    let fn_metadata = function_name.as_slice().with_c_str(|function_name| {
-                          linkage_name.as_slice().with_c_str(|linkage_name| {
+    let fn_metadata = function_name.as_str().with_c_str(|function_name| {
+                          linkage_name.as_str().with_c_str(|linkage_name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateFunction(
                     DIB(cx),
@@ -1362,7 +1362,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 actual_self_type,
                 true);
 
-            name_to_append_suffix_to.push_str(actual_self_type_name.as_slice());
+            name_to_append_suffix_to.push_str(actual_self_type_name.as_str());
 
             if generics.is_type_parameterized() {
                 name_to_append_suffix_to.push_str(",");
@@ -1402,7 +1402,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
             let actual_type_name = compute_debuginfo_type_name(cx,
                                                                actual_type,
                                                                true);
-            name_to_append_suffix_to.push_str(actual_type_name.as_slice());
+            name_to_append_suffix_to.push_str(actual_type_name.as_str());
 
             if index != generics.ty_params.len() - 1 {
                 name_to_append_suffix_to.push_str(",");
@@ -1514,7 +1514,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
     });
 
     fn fallback_path(cx: &CrateContext) -> CString {
-        cx.link_meta().crate_name.as_slice().to_c_str()
+        cx.link_meta().crate_name.as_str().to_c_str()
     }
 }
 
@@ -1528,7 +1528,7 @@ fn declare_local(bcx: Block,
     let cx: &CrateContext = bcx.ccx();
 
     let filename = span_start(cx, span).file.name.clone();
-    let file_metadata = file_metadata(cx, filename.as_slice());
+    let file_metadata = file_metadata(cx, filename.as_str());
 
     let name = token::get_ident(variable_ident);
     let loc = span_start(cx, span);
@@ -1647,7 +1647,7 @@ fn scope_metadata(fcx: &FunctionContext,
 
             fcx.ccx.sess().span_bug(span,
                 format!("debuginfo: Could not find scope info for node {:?}",
-                        node).as_slice());
+                        node).as_str());
         }
     }
 }
@@ -1705,7 +1705,7 @@ fn pointer_type_metadata(cx: &CrateContext,
     let pointer_llvm_type = type_of::type_of(cx, pointer_type);
     let (pointer_size, pointer_align) = size_and_align_of(cx, pointer_llvm_type);
     let name = compute_debuginfo_type_name(cx, pointer_type, false);
-    let ptr_metadata = name.as_slice().with_c_str(|name| {
+    let ptr_metadata = name.as_str().with_c_str(|name| {
         unsafe {
             llvm::LLVMDIBuilderCreatePointerType(
                 DIB(cx),
@@ -1832,7 +1832,7 @@ impl RecursiveTypeDescription {
                         cx.sess().bug(format!("Forward declaration of potentially recursive type \
                                               '{}' was not found in TypeMap!",
                                               ppaux::ty_to_string(cx.tcx(), unfinished_type))
-                                      .as_slice());
+                                      .as_str());
                     }
                 }
 
@@ -1915,7 +1915,7 @@ fn prepare_struct_metadata(cx: &CrateContext,
 
     let struct_metadata_stub = create_struct_stub(cx,
                                                   struct_llvm_type,
-                                                  struct_name.as_slice(),
+                                                  struct_name.as_str(),
                                                   unique_type_id,
                                                   containing_scope);
 
@@ -1976,7 +1976,7 @@ fn prepare_tuple_metadata(cx: &CrateContext,
         unique_type_id,
         create_struct_stub(cx,
                            tuple_llvm_type,
-                           tuple_name.as_slice(),
+                           tuple_name.as_str(),
                            unique_type_id,
                            UNKNOWN_SCOPE_METADATA),
         tuple_llvm_type,
@@ -2319,7 +2319,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, enum_def_id);
     let loc = span_start(cx, definition_span);
-    let file_metadata = file_metadata(cx, loc.file.name.as_slice());
+    let file_metadata = file_metadata(cx, loc.file.name.as_str());
 
     let variants = ty::enum_variants(cx.tcx(), enum_def_id);
 
@@ -2400,8 +2400,8 @@ fn prepare_enum_metadata(cx: &CrateContext,
                              .borrow()
                              .get_unique_type_id_as_string(unique_type_id);
 
-    let enum_metadata = enum_name.as_slice().with_c_str(|enum_name| {
-        unique_type_id_str.as_slice().with_c_str(|unique_type_id_str| {
+    let enum_metadata = enum_name.as_str().with_c_str(|enum_name| {
+        unique_type_id_str.as_str().with_c_str(|unique_type_id_str| {
             unsafe {
                 llvm::LLVMDIBuilderCreateUnionType(
                 DIB(cx),
@@ -2508,7 +2508,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
                                         Please use a rustc built with anewer \
                                         version of LLVM.",
                                        llvm_version_major,
-                                       llvm_version_minor).as_slice());
+                                       llvm_version_minor).as_str());
             } else {
                 cx.sess().bug("debuginfo::set_members_of_composite_type() - \
                                Already completed forward declaration re-encountered.");
@@ -2528,7 +2528,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
                 ComputedMemberOffset => machine::llelement_offset(cx, composite_llvm_type, i)
             };
 
-            member_description.name.as_slice().with_c_str(|member_name| {
+            member_description.name.as_str().with_c_str(|member_name| {
                 unsafe {
                     llvm::LLVMDIBuilderCreateMemberType(
                         DIB(cx),
@@ -2568,7 +2568,7 @@ fn create_struct_stub(cx: &CrateContext,
                                               .get_unique_type_id_as_string(unique_type_id);
     let metadata_stub = unsafe {
         struct_type_name.with_c_str(|name| {
-            unique_type_id_str.as_slice().with_c_str(|unique_type_id| {
+            unique_type_id_str.as_str().with_c_str(|unique_type_id| {
                 // LLVMDIBuilderCreateStructType() wants an empty array. A null
                 // pointer will lead to hard to trace and debug LLVM assertions
                 // later on in llvm/lib/IR/Value.cpp.
@@ -2605,7 +2605,7 @@ fn at_box_metadata(cx: &CrateContext,
     return_if_metadata_created_in_meantime!(cx, unique_type_id);
 
     let content_type_name = compute_debuginfo_type_name(cx, content_type, true);
-    let content_type_name = content_type_name.as_slice();
+    let content_type_name = content_type_name.as_str();
     let content_llvm_type = type_of::type_of(cx, content_type);
 
     let box_type_name = format!("GcBox<{}>", content_type_name);
@@ -2665,7 +2665,7 @@ fn at_box_metadata(cx: &CrateContext,
     let gc_box_metadata = composite_type_metadata(
         cx,
         box_llvm_type,
-        box_type_name.as_slice(),
+        box_type_name.as_str(),
         gc_box_unique_id,
         member_descriptions,
         UNKNOWN_SCOPE_METADATA,
@@ -2769,11 +2769,11 @@ fn vec_slice_metadata(cx: &CrateContext,
     assert!(member_descriptions.len() == member_llvm_types.len());
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.name.as_slice());
+    let file_metadata = file_metadata(cx, loc.file.name.as_str());
 
     let metadata = composite_type_metadata(cx,
                                            slice_llvm_type,
-                                           slice_type_name.as_slice(),
+                                           slice_type_name.as_str(),
                                            unique_type_id,
                                            member_descriptions,
                                            UNKNOWN_SCOPE_METADATA,
@@ -2842,7 +2842,7 @@ fn trait_pointer_metadata(cx: &CrateContext,
             let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_type);
             cx.sess().bug(format!("debuginfo: Unexpected trait-object type in \
                                    trait_pointer_metadata(): {}",
-                                   pp_type_name.as_slice()).as_slice());
+                                   pp_type_name.as_str()).as_str());
         }
     };
 
@@ -2856,7 +2856,7 @@ fn trait_pointer_metadata(cx: &CrateContext,
 
     composite_type_metadata(cx,
                             trait_llvm_type,
-                            trait_type_name.as_slice(),
+                            trait_type_name.as_str(),
                             unique_type_id,
                             [],
                             containing_scope,
@@ -2982,7 +2982,7 @@ fn type_metadata(cx: &CrateContext,
         }
         _ => {
             cx.sess().bug(format!("debuginfo: unexpected type in type_metadata: {:?}",
-                                  sty).as_slice())
+                                  sty).as_str())
         }
     };
 
@@ -3000,9 +3000,9 @@ fn type_metadata(cx: &CrateContext,
                                                  type id '{}' to already be in \
                                                  the debuginfo::TypeMap but it \
                                                  was not. (ty::t = {})",
-                                                unique_type_id_str.as_slice(),
+                                                unique_type_id_str.as_str(),
                                                 ppaux::ty_to_string(cx.tcx(), t));
-                    cx.sess().span_bug(usage_site_span, error_message.as_slice());
+                    cx.sess().span_bug(usage_site_span, error_message.as_str());
                 }
             };
 
@@ -3015,9 +3015,9 @@ fn type_metadata(cx: &CrateContext,
                                                      UniqueTypeId maps in \
                                                      debuginfo::TypeMap. \
                                                      UniqueTypeId={}, ty::t={}",
-                            unique_type_id_str.as_slice(),
+                            unique_type_id_str.as_str(),
                             ppaux::ty_to_string(cx.tcx(), t));
-                        cx.sess().span_bug(usage_site_span, error_message.as_slice());
+                        cx.sess().span_bug(usage_site_span, error_message.as_str());
                     }
                 }
                 None => {
@@ -3211,7 +3211,7 @@ fn populate_scope_map(cx: &CrateContext,
                                    &mut HashMap<ast::NodeId, DIScope>|) {
         // Create a new lexical scope and push it onto the stack
         let loc = cx.sess().codemap().lookup_char_pos(scope_span.lo);
-        let file_metadata = file_metadata(cx, loc.file.name.as_slice());
+        let file_metadata = file_metadata(cx, loc.file.name.as_str());
         let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
         let scope_metadata = unsafe {
@@ -3337,7 +3337,7 @@ fn populate_scope_map(cx: &CrateContext,
                         let file_metadata = file_metadata(cx,
                                                           loc.file
                                                              .name
-                                                             .as_slice());
+                                                             .as_str());
                         let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
                         let scope_metadata = unsafe {
@@ -3736,7 +3736,7 @@ fn push_debuginfo_type_name(cx: &CrateContext,
 
             match optional_length {
                 Some(len) => {
-                    output.push_str(format!(", ..{}", len).as_slice());
+                    output.push_str(format!(", ..{}", len).as_str());
                 }
                 None => { /* nothing to do */ }
             };
@@ -3846,7 +3846,7 @@ fn push_debuginfo_type_name(cx: &CrateContext,
         ty::ty_open(_) |
         ty::ty_param(_) => {
             cx.sess().bug(format!("debuginfo: Trying to create type name for \
-                unexpected type: {}", ppaux::ty_to_string(cx.tcx(), t)).as_slice());
+                unexpected type: {}", ppaux::ty_to_string(cx.tcx(), t)).as_str());
         }
     }
 
@@ -3929,13 +3929,13 @@ impl NamespaceTreeNode {
                 None => {}
             }
             let string = token::get_name(node.name);
-            output.push_str(format!("{}", string.get().len()).as_slice());
+            output.push_str(format!("{}", string.get().len()).as_str());
             output.push_str(string.get());
         }
 
         let mut name = String::from_str("_ZN");
         fill_nested(self, &mut name);
-        name.push_str(format!("{}", item_name.len()).as_slice());
+        name.push_str(format!("{}", item_name.len()).as_str());
         name.push_str(item_name);
         name.push_char('E');
         name
@@ -3943,7 +3943,7 @@ impl NamespaceTreeNode {
 }
 
 fn crate_root_namespace<'a>(cx: &'a CrateContext) -> &'a str {
-    cx.link_meta().crate_name.as_slice()
+    cx.link_meta().crate_name.as_str()
 }
 
 fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTreeNode> {
@@ -4020,7 +4020,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
             None => {
                 cx.sess().bug(format!("debuginfo::namespace_for_item(): \
                                        path too short for {:?}",
-                                      def_id).as_slice());
+                                      def_id).as_str());
             }
         }
     })
