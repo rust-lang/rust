@@ -60,13 +60,13 @@ pub struct LoanDataFlowOperator;
 
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
-impl<'a, 'tcx> Visitor<()> for BorrowckCtxt<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl,
-                b: &Block, s: Span, n: NodeId, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
+                b: &'v Block, s: Span, n: NodeId) {
         borrowck_fn(self, fk, fd, b, s, n);
     }
 
-    fn visit_item(&mut self, item: &ast::Item, _: ()) {
+    fn visit_item(&mut self, item: &ast::Item) {
         borrowck_item(self, item);
     }
 }
@@ -83,7 +83,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         }
     };
 
-    visit::walk_crate(&mut bccx, krate, ());
+    visit::walk_crate(&mut bccx, krate);
 
     if tcx.sess.borrowck_stats() {
         println!("--- borrowck stats ---");
@@ -114,7 +114,7 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &ast::Item) {
             gather_loans::gather_loans_in_static_initializer(this, &*ex);
         }
         _ => {
-            visit::walk_item(this, item, ());
+            visit::walk_item(this, item);
         }
     }
 }
@@ -127,7 +127,7 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
 }
 
 fn borrowck_fn(this: &mut BorrowckCtxt,
-               fk: &FnKind,
+               fk: FnKind,
                decl: &ast::FnDecl,
                body: &ast::Block,
                sp: Span,
@@ -142,11 +142,11 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
     check_loans::check_loans(this, &loan_dfcx, flowed_moves,
                              all_loans.as_slice(), decl, body);
 
-    visit::walk_fn(this, fk, decl, body, sp, ());
+    visit::walk_fn(this, fk, decl, body, sp);
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
-                                          fk: &FnKind,
+                                          fk: FnKind,
                                           decl: &ast::FnDecl,
                                           cfg: &cfg::CFG,
                                           body: &ast::Block,
@@ -217,7 +217,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     let p = input.fn_parts;
 
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx,
-                                                     &p.kind,
+                                                     p.kind,
                                                      &*p.decl,
                                                      input.cfg,
                                                      &*p.body,

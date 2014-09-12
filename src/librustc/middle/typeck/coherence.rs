@@ -191,8 +191,8 @@ struct CoherenceCheckVisitor<'a, 'tcx: 'a> {
     cc: &'a CoherenceChecker<'a, 'tcx>
 }
 
-impl<'a, 'tcx> visit::Visitor<()> for CoherenceCheckVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &Item, _: ()) {
+impl<'a, 'tcx, 'v> visit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, item: &Item) {
 
         //debug!("(checking coherence) item '{}'", token::get_ident(item.ident));
 
@@ -210,7 +210,7 @@ impl<'a, 'tcx> visit::Visitor<()> for CoherenceCheckVisitor<'a, 'tcx> {
             }
         };
 
-        visit::walk_item(self, item, ());
+        visit::walk_item(self, item);
     }
 }
 
@@ -218,13 +218,13 @@ struct PrivilegedScopeVisitor<'a, 'tcx: 'a> {
     cc: &'a CoherenceChecker<'a, 'tcx>
 }
 
-impl<'a, 'tcx> visit::Visitor<()> for PrivilegedScopeVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &Item, _: ()) {
+impl<'a, 'tcx, 'v> visit::Visitor<'v> for PrivilegedScopeVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, item: &Item) {
 
         match item.node {
             ItemMod(ref module_) => {
                 // Then visit the module items.
-                visit::walk_mod(self, module_, ());
+                visit::walk_mod(self, module_);
             }
             ItemImpl(_, None, ref ast_ty, _) => {
                 if !self.cc.ast_type_is_defined_in_local_crate(&**ast_ty) {
@@ -256,10 +256,10 @@ impl<'a, 'tcx> visit::Visitor<()> for PrivilegedScopeVisitor<'a, 'tcx> {
                     }
                 }
 
-                visit::walk_item(self, item, ());
+                visit::walk_item(self, item);
             }
             _ => {
-                visit::walk_item(self, item, ());
+                visit::walk_item(self, item);
             }
         }
     }
@@ -271,7 +271,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
         let mut visitor = CoherenceCheckVisitor { cc: self };
-        visit::walk_crate(&mut visitor, krate, ());
+        visit::walk_crate(&mut visitor, krate);
 
         // Check that there are no overlapping trait instances
         self.check_implementation_coherence();
@@ -543,7 +543,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     // Privileged scope checking
     fn check_privileged_scopes(&self, krate: &Crate) {
         let mut visitor = PrivilegedScopeVisitor{ cc: self };
-        visit::walk_crate(&mut visitor, krate, ());
+        visit::walk_crate(&mut visitor, krate);
     }
 
     fn trait_ref_to_trait_def_id(&self, trait_ref: &TraitRef) -> DefId {

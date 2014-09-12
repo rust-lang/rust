@@ -69,7 +69,7 @@ impl<'a> PluginLoader<'a> {
 pub fn load_plugins(sess: &Session, krate: &ast::Crate,
                     addl_plugins: Option<Plugins>) -> Plugins {
     let mut loader = PluginLoader::new(sess);
-    visit::walk_crate(&mut loader, krate, ());
+    visit::walk_crate(&mut loader, krate);
 
     let mut plugins = loader.plugins;
 
@@ -87,8 +87,8 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
 }
 
 // note that macros aren't expanded yet, and therefore macros can't add plugins.
-impl<'a> Visitor<()> for PluginLoader<'a> {
-    fn visit_view_item(&mut self, vi: &ast::ViewItem, _: ()) {
+impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
+    fn visit_view_item(&mut self, vi: &ast::ViewItem) {
         match vi.node {
             ast::ViewItemExternCrate(name, _, _) => {
                 let mut plugin_phase = false;
@@ -124,7 +124,7 @@ impl<'a> Visitor<()> for PluginLoader<'a> {
             _ => (),
         }
     }
-    fn visit_mac(&mut self, _: &ast::Mac, _:()) {
+    fn visit_mac(&mut self, _: &ast::Mac) {
         // bummer... can't see plugins inside macros.
         // do nothing.
     }

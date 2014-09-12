@@ -115,8 +115,8 @@ struct LanguageItemCollector<'a> {
     item_refs: HashMap<&'static str, uint>,
 }
 
-impl<'a> Visitor<()> for LanguageItemCollector<'a> {
-    fn visit_item(&mut self, item: &ast::Item, _: ()) {
+impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
+    fn visit_item(&mut self, item: &ast::Item) {
         match extract(item.attrs.as_slice()) {
             Some(value) => {
                 let item_index = self.item_refs.find_equiv(&value).map(|x| *x);
@@ -131,7 +131,7 @@ impl<'a> Visitor<()> for LanguageItemCollector<'a> {
             None => {}
         }
 
-        visit::walk_item(self, item, ());
+        visit::walk_item(self, item);
     }
 }
 
@@ -166,7 +166,7 @@ impl<'a> LanguageItemCollector<'a> {
     }
 
     pub fn collect_local_language_items(&mut self, krate: &ast::Crate) {
-        visit::walk_crate(self, krate, ());
+        visit::walk_crate(self, krate);
     }
 
     pub fn collect_external_language_items(&mut self) {

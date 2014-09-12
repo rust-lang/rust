@@ -23,18 +23,18 @@ struct ShowSpanVisitor<'a> {
     sess: &'a Session
 }
 
-impl<'a> Visitor<()> for ShowSpanVisitor<'a> {
-    fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
+impl<'a, 'v> Visitor<'v> for ShowSpanVisitor<'a> {
+    fn visit_expr(&mut self, e: &ast::Expr) {
         self.sess.span_note(e.span, "expression");
-        visit::walk_expr(self, e, ());
+        visit::walk_expr(self, e);
     }
 
-    fn visit_mac(&mut self, macro: &ast::Mac, e: ()) {
-        visit::walk_mac(self, macro, e);
+    fn visit_mac(&mut self, macro: &ast::Mac) {
+        visit::walk_mac(self, macro);
     }
 }
 
 pub fn run(sess: &Session, krate: &ast::Crate) {
     let mut v = ShowSpanVisitor { sess: sess };
-    visit::walk_crate(&mut v, krate, ());
+    visit::walk_crate(&mut v, krate);
 }

@@ -21,45 +21,61 @@ use syntax::{ast_util, ast_map};
 use syntax::visit::Visitor;
 use syntax::visit;
 
-pub struct CheckCrateVisitor<'a, 'tcx: 'a> {
+struct CheckCrateVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
+    in_const: bool
 }
 
-impl<'a, 'tcx> Visitor<bool> for CheckCrateVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &Item, env: bool) {
-        check_item(self, i, env);
+impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
+    fn with_const(&mut self, in_const: bool, f: |&mut CheckCrateVisitor<'a, 'tcx>|) {
+        let was_const = self.in_const;
+        self.in_const = in_const;
+        f(self);
+        self.in_const = was_const;
     }
-    fn visit_pat(&mut self, p: &Pat, env: bool) {
-        check_pat(self, p, env);
+    fn inside_const(&mut self, f: |&mut CheckCrateVisitor<'a, 'tcx>|) {
+        self.with_const(true, f);
     }
-    fn visit_expr(&mut self, ex: &Expr, env: bool) {
-        check_expr(self, ex, env);
+    fn outside_const(&mut self, f: |&mut CheckCrateVisitor<'a, 'tcx>|) {
+        self.with_const(false, f);
+    }
+}
+
+impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, i: &Item) {
+        check_item(self, i);
+    }
+    fn visit_pat(&mut self, p: &Pat) {
+        check_pat(self, p);
+    }
+    fn visit_expr(&mut self, ex: &Expr) {
+        check_expr(self, ex);
     }
 }
 
 pub fn check_crate(krate: &Crate, tcx: &ty::ctxt) {
-    visit::walk_crate(&mut CheckCrateVisitor { tcx: tcx }, krate, false);
+    visit::walk_crate(&mut CheckCrateVisitor { tcx: tcx, in_const: false }, krate);
     tcx.sess.abort_if_errors();
 }
 
-fn check_item(v: &mut CheckCrateVisitor, it: &Item, _is_const: bool) {
+fn check_item(v: &mut CheckCrateVisitor, it: &Item) {
     match it.node {
         ItemStatic(_, _, ex) => {
-            v.visit_expr(&*ex, true);
+            v.inside_const(|v| v.visit_expr(&*ex));
             check_item_recursion(&v.tcx.sess, &v.tcx.map, &v.tcx.def_map, it);
         }
         ItemEnum(ref enum_definition, _) => {
             for var in (*enum_definition).variants.iter() {
                 for ex in var.node.disr_expr.iter() {
-                    v.visit_expr(&**ex, true);
+                    v.inside_const(|v| v.visit_expr(&**ex));
                 }
             }
         }
-        _ => visit::walk_item(v, it, false)
+        _ => v.outside_const(|v| visit::walk_item(v, it))
     }
 }
 
-fn check_pat(v: &mut CheckCrateVisitor, p: &Pat, _is_const: bool) {
+fn check_pat(v: &mut CheckCrateVisitor, p: &Pat) {
     fn is_str(e: &Expr) -> bool {
         match e.node {
             ExprBox(_, expr) => {
@@ -72,18 +88,18 @@ fn check_pat(v: &mut CheckCrateVisitor, p: &Pat, _is_const: bool) {
         }
     }
     match p.node {
-      // Let through plain ~-string literals here
-      PatLit(ref a) => if !is_str(&**a) { v.visit_expr(&**a, true); },
-      PatRange(ref a, ref b) => {
-        if !is_str(&**a) { v.visit_expr(&**a, true); }
-        if !is_str(&**b) { v.visit_expr(&**b, true); }
-      }
-      _ => visit::walk_pat(v, p, false)
+        // Let through plain ~-string literals here
+        PatLit(ref a) => if !is_str(&**a) { v.inside_const(|v| v.visit_expr(&**a)); },
+        PatRange(ref a, ref b) => {
+            if !is_str(&**a) { v.inside_const(|v| v.visit_expr(&**a)); }
+            if !is_str(&**b) { v.inside_const(|v| v.visit_expr(&**b)); }
+        }
+        _ => v.outside_const(|v| visit::walk_pat(v, p))
     }
 }
 
-fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
-    if is_const {
+fn check_expr(v: &mut CheckCrateVisitor, e: &Expr) {
+    if v.in_const {
         match e.node {
           ExprUnary(UnDeref, _) => { }
           ExprUnary(UnBox, _) | ExprUnary(UnUniq, _) => {
@@ -165,7 +181,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
                 }
             }
             match block.expr {
-                Some(ref expr) => check_expr(v, &**expr, true),
+                Some(ref expr) => check_expr(v, &**expr),
                 None => {}
             }
           }
@@ -195,7 +211,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
           }
         }
     }
-    visit::walk_expr(v, e, is_const);
+    visit::walk_expr(v, e);
 }
 
 struct CheckItemRecursionVisitor<'a> {
@@ -219,32 +235,32 @@ pub fn check_item_recursion<'a>(sess: &'a Session,
         def_map: def_map,
         idstack: Vec::new()
     };
-    visitor.visit_item(it, ());
+    visitor.visit_item(it);
 }
 
-impl<'a> Visitor<()> for CheckItemRecursionVisitor<'a> {
-    fn visit_item(&mut self, it: &Item, _: ()) {
+impl<'a, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a> {
+    fn visit_item(&mut self, it: &Item) {
         if self.idstack.iter().any(|x| x == &(it.id)) {
             self.sess.span_fatal(self.root_it.span, "recursive constant");
         }
         self.idstack.push(it.id);
-        visit::walk_item(self, it, ());
+        visit::walk_item(self, it);
         self.idstack.pop();
     }
 
-    fn visit_expr(&mut self, e: &Expr, _: ()) {
+    fn visit_expr(&mut self, e: &Expr) {
         match e.node {
             ExprPath(..) => {
                 match self.def_map.borrow().find(&e.id) {
                     Some(&DefStatic(def_id, _)) if
                             ast_util::is_local(def_id) => {
-                        self.visit_item(&*self.ast_map.expect_item(def_id.node), ());
+                        self.visit_item(&*self.ast_map.expect_item(def_id.node));
                     }
                     _ => ()
                 }
             },
             _ => ()
         }
-        visit::walk_expr(self, e, ());
+        visit::walk_expr(self, e);
     }
 }

@@ -1473,20 +1473,20 @@ struct EncodeVisitor<'a,'b:'a> {
     index: &'a mut Vec<entry<i64>>,
 }
 
-impl<'a,'b> visit::Visitor<()> for EncodeVisitor<'a,'b> {
-    fn visit_expr(&mut self, ex: &Expr, _: ()) {
-        visit::walk_expr(self, ex, ());
+impl<'a, 'b, 'v> Visitor<'v> for EncodeVisitor<'a, 'b> {
+    fn visit_expr(&mut self, ex: &Expr) {
+        visit::walk_expr(self, ex);
         my_visit_expr(ex);
     }
-    fn visit_item(&mut self, i: &Item, _: ()) {
-        visit::walk_item(self, i, ());
+    fn visit_item(&mut self, i: &Item) {
+        visit::walk_item(self, i);
         my_visit_item(i,
                       self.rbml_w_for_visit_item,
                       self.ecx_ptr,
                       self.index);
     }
-    fn visit_foreign_item(&mut self, ni: &ForeignItem, _: ()) {
-        visit::walk_foreign_item(self, ni, ());
+    fn visit_foreign_item(&mut self, ni: &ForeignItem) {
+        visit::walk_foreign_item(self, ni);
         my_visit_foreign_item(ni,
                               self.rbml_w_for_visit_item,
                               self.ecx_ptr,
@@ -1519,7 +1519,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
         index: &mut index,
         ecx_ptr: ecx_ptr,
         rbml_w_for_visit_item: &mut *rbml_w,
-    }, krate, ());
+    }, krate);
 
     rbml_w.end_tag();
     index
@@ -1775,8 +1775,8 @@ fn encode_struct_field_attrs(rbml_w: &mut Encoder, krate: &Crate) {
         rbml_w: &'a mut Encoder<'b>,
     }
 
-    impl<'a, 'b> Visitor<()> for StructFieldVisitor<'a, 'b> {
-        fn visit_struct_field(&mut self, field: &ast::StructField, _: ()) {
+    impl<'a, 'b, 'v> Visitor<'v> for StructFieldVisitor<'a, 'b> {
+        fn visit_struct_field(&mut self, field: &ast::StructField) {
             self.rbml_w.start_tag(tag_struct_field);
             self.rbml_w.wr_tagged_u32(tag_struct_field_id, field.node.id);
             encode_attributes(self.rbml_w, field.node.attrs.as_slice());
@@ -1787,7 +1787,7 @@ fn encode_struct_field_attrs(rbml_w: &mut Encoder, krate: &Crate) {
     rbml_w.start_tag(tag_struct_fields);
     visit::walk_crate(&mut StructFieldVisitor {
         rbml_w: rbml_w
-    }, krate, ());
+    }, krate);
     rbml_w.end_tag();
 }
 
@@ -1798,8 +1798,8 @@ struct ImplVisitor<'a, 'b:'a, 'c:'a, 'tcx:'b> {
     rbml_w: &'a mut Encoder<'c>,
 }
 
-impl<'a, 'b, 'c, 'tcx> Visitor<()> for ImplVisitor<'a, 'b, 'c, 'tcx> {
-    fn visit_item(&mut self, item: &Item, _: ()) {
+impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'b, 'c, 'tcx> {
+    fn visit_item(&mut self, item: &Item) {
         match item.node {
             ItemImpl(_, Some(ref trait_ref), _, _) => {
                 let def_map = &self.ecx.tcx.def_map;
@@ -1817,7 +1817,7 @@ impl<'a, 'b, 'c, 'tcx> Visitor<()> for ImplVisitor<'a, 'b, 'c, 'tcx> {
             }
             _ => {}
         }
-        visit::walk_item(self, item, ());
+        visit::walk_item(self, item);
     }
 }
 
@@ -1841,7 +1841,7 @@ fn encode_impls<'a>(ecx: &'a EncodeContext,
             ecx: ecx,
             rbml_w: rbml_w,
         };
-        visit::walk_crate(&mut visitor, krate, ());
+        visit::walk_crate(&mut visitor, krate);
     }
 
     rbml_w.end_tag();

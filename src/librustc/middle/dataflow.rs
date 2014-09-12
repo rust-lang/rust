@@ -172,11 +172,11 @@ fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
             index: &'a mut NodeMap<CFGIndex>,
         }
         let mut formals = Formals { entry: entry, index: index };
-        visit::walk_fn_decl(&mut formals, decl, ());
-        impl<'a> visit::Visitor<()> for Formals<'a> {
-            fn visit_pat(&mut self, p: &ast::Pat, e: ()) {
+        visit::walk_fn_decl(&mut formals, decl);
+        impl<'a, 'v> visit::Visitor<'v> for Formals<'a> {
+            fn visit_pat(&mut self, p: &ast::Pat) {
                 self.index.insert(p.id, self.entry);
-                visit::walk_pat(self, p, e)
+                visit::walk_pat(self, p)
             }
         }
     }

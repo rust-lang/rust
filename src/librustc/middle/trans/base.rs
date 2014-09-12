@@ -1322,18 +1322,32 @@ pub fn make_return_slot_pointer(fcx: &FunctionContext, output_type: ty::t) -> Va
 }
 
 struct CheckForNestedReturnsVisitor {
-    found: bool
+    found: bool,
+    in_return: bool
 }
 
-impl Visitor<bool> for CheckForNestedReturnsVisitor {
-    fn visit_expr(&mut self, e: &ast::Expr, in_return: bool) {
+impl CheckForNestedReturnsVisitor {
+    fn explicit() -> CheckForNestedReturnsVisitor {
+        CheckForNestedReturnsVisitor { found: false, in_return: false }
+    }
+    fn implicit() -> CheckForNestedReturnsVisitor {
+        CheckForNestedReturnsVisitor { found: false, in_return: true }
+    }
+}
+
+impl<'v> Visitor<'v> for CheckForNestedReturnsVisitor {
+    fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
-            ast::ExprRet(..) if in_return => {
-                self.found = true;
-                return;
+            ast::ExprRet(..) => {
+                if self.in_return {
+                    self.found = true;
+                } else {
+                    self.in_return = true;
+                    visit::walk_expr(self, e);
+                    self.in_return = false;
+                }
             }
-            ast::ExprRet(..) => visit::walk_expr(self, e, true),
-            _ => visit::walk_expr(self, e, in_return)
+            _ => visit::walk_expr(self, e)
         }
     }
 }
@@ -1343,10 +1357,10 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
         Some(ast_map::NodeItem(i)) => {
             match i.node {
                 ast::ItemFn(_, _, _, _, blk) => {
-                    let mut explicit = CheckForNestedReturnsVisitor { found: false };
-                    let mut implicit = CheckForNestedReturnsVisitor { found: false };
-                    visit::walk_item(&mut explicit, &*i, false);
-                    visit::walk_expr_opt(&mut implicit, blk.expr, true);
+                    let mut explicit = CheckForNestedReturnsVisitor::explicit();
+                    let mut implicit = CheckForNestedReturnsVisitor::implicit();
+                    visit::walk_item(&mut explicit, &*i);
+                    visit::walk_expr_opt(&mut implicit, &blk.expr);
                     explicit.found || implicit.found
                 }
                 _ => tcx.sess.bug("unexpected item variant in has_nested_returns")
@@ -1357,10 +1371,10 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                 ast::ProvidedMethod(m) => {
                     match m.node {
                         ast::MethDecl(_, _, _, _, _, _, blk, _) => {
-                            let mut explicit = CheckForNestedReturnsVisitor { found: false };
-                            let mut implicit = CheckForNestedReturnsVisitor { found: false };
-                            visit::walk_method_helper(&mut explicit, &*m, false);
-                            visit::walk_expr_opt(&mut implicit, blk.expr, true);
+                            let mut explicit = CheckForNestedReturnsVisitor::explicit();
+                            let mut implicit = CheckForNestedReturnsVisitor::implicit();
+                            visit::walk_method_helper(&mut explicit, &*m);
+                            visit::walk_expr_opt(&mut implicit, &blk.expr);
                             explicit.found || implicit.found
                         }
                         ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
@@ -1377,18 +1391,10 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                 ast::MethodImplItem(ref m) => {
                     match m.node {
                         ast::MethDecl(_, _, _, _, _, _, blk, _) => {
-                            let mut explicit = CheckForNestedReturnsVisitor {
-                                found: false,
-                            };
-                            let mut implicit = CheckForNestedReturnsVisitor {
-                                found: false,
-                            };
-                            visit::walk_method_helper(&mut explicit,
-                                                      &**m,
-                                                      false);
-                            visit::walk_expr_opt(&mut implicit,
-                                                 blk.expr,
-                                                 true);
+                            let mut explicit = CheckForNestedReturnsVisitor::explicit();
+                            let mut implicit = CheckForNestedReturnsVisitor::implicit();
+                            visit::walk_method_helper(&mut explicit, &**m);
+                            visit::walk_expr_opt(&mut implicit, &blk.expr);
                             explicit.found || implicit.found
                         }
                         ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
@@ -1401,10 +1407,10 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                 ast::ExprFnBlock(_, _, blk) |
                 ast::ExprProc(_, blk) |
                 ast::ExprUnboxedFn(_, _, _, blk) => {
-                    let mut explicit = CheckForNestedReturnsVisitor { found: false };
-                    let mut implicit = CheckForNestedReturnsVisitor { found: false };
-                    visit::walk_expr(&mut explicit, &*e, false);
-                    visit::walk_expr_opt(&mut implicit, blk.expr, true);
+                    let mut explicit = CheckForNestedReturnsVisitor::explicit();
+                    let mut implicit = CheckForNestedReturnsVisitor::implicit();
+                    visit::walk_expr(&mut explicit, &*e);
+                    visit::walk_expr_opt(&mut implicit, &blk.expr);
                     explicit.found || implicit.found
                 }
                 _ => tcx.sess.bug("unexpected expr variant in has_nested_returns")
@@ -2135,8 +2141,8 @@ pub struct TransItemVisitor<'a, 'tcx: 'a> {
     pub ccx: &'a CrateContext<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> Visitor<()> for TransItemVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item, _:()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for TransItemVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, i: &ast::Item) {
         trans_item(self.ccx, i);
     }
 }
@@ -2236,7 +2242,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
         // Be sure to travel more than just one layer deep to catch nested
         // items in blocks and such.
         let mut v = TransItemVisitor{ ccx: ccx };
-        v.visit_block(&**body, ());
+        v.visit_block(&**body);
       }
       ast::ItemImpl(ref generics, _, _, ref impl_items) => {
         meth::trans_impl(ccx,
@@ -2254,7 +2260,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
       ast::ItemStatic(_, m, ref expr) => {
           // Recurse on the expression to catch items in blocks
           let mut v = TransItemVisitor{ ccx: ccx };
-          v.visit_expr(&**expr, ());
+          v.visit_expr(&**expr);
 
           let trans_everywhere = attr::requests_inline(item.attrs.as_slice());
           for (ref ccx, is_origin) in ccx.maybe_iter(!from_external && trans_everywhere) {
@@ -2293,7 +2299,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
         // methods with items will not get translated and will cause ICE's when
         // metadata time comes around.
         let mut v = TransItemVisitor{ ccx: ccx };
-        visit::walk_item(&mut v, item, ());
+        visit::walk_item(&mut v, item);
       }
       _ => {/* fall through */ }
     }

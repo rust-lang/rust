@@ -50,18 +50,21 @@ struct CollectFreevarsVisitor<'a> {
     refs: Vec<freevar_entry>,
     def_map: &'a resolve::DefMap,
     capture_mode_map: &'a mut CaptureModeMap,
+    depth: uint
 }
 
-impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
-    fn visit_item(&mut self, _: &ast::Item, _: int) {
+impl<'a, 'v> Visitor<'v> for CollectFreevarsVisitor<'a> {
+    fn visit_item(&mut self, _: &ast::Item) {
         // ignore_item
     }
 
-    fn visit_expr(&mut self, expr: &ast::Expr, depth: int) {
+    fn visit_expr(&mut self, expr: &ast::Expr) {
         match expr.node {
             ast::ExprProc(..) => {
                 self.capture_mode_map.insert(expr.id, CaptureByValue);
-                visit::walk_expr(self, expr, depth + 1)
+                self.depth += 1;
+                visit::walk_expr(self, expr);
+                self.depth -= 1;
             }
             ast::ExprFnBlock(_, _, _) => {
                 // NOTE(stage0): After snapshot, change to:
@@ -72,7 +75,9 @@ impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
                 //};
                 let capture_mode = CaptureByRef;
                 self.capture_mode_map.insert(expr.id, capture_mode);
-                visit::walk_expr(self, expr, depth + 1)
+                self.depth += 1;
+                visit::walk_expr(self, expr);
+                self.depth -= 1;
             }
             ast::ExprUnboxedFn(capture_clause, _, _, _) => {
                 let capture_mode = match capture_clause {
@@ -80,35 +85,33 @@ impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
                     ast::CaptureByRef => CaptureByRef,
                 };
                 self.capture_mode_map.insert(expr.id, capture_mode);
-                visit::walk_expr(self, expr, depth + 1)
+                self.depth += 1;
+                visit::walk_expr(self, expr);
+                self.depth -= 1;
             }
             ast::ExprPath(..) => {
+                let mut def = *self.def_map.borrow().find(&expr.id)
+                                                    .expect("path not found");
                 let mut i = 0;
-                match self.def_map.borrow().find(&expr.id) {
-                    None => fail!("path not found"),
-                    Some(&df) => {
-                        let mut def = df;
-                        while i < depth {
-                            match def {
-                                def::DefUpvar(_, inner, _, _) => { def = *inner; }
-                                _ => break
-                            }
-                            i += 1;
-                        }
-                        if i == depth { // Made it to end of loop
-                            let dnum = def.def_id().node;
-                            if !self.seen.contains(&dnum) {
-                                self.refs.push(freevar_entry {
-                                    def: def,
-                                    span: expr.span,
-                                });
-                                self.seen.insert(dnum);
-                            }
-                        }
+                while i < self.depth {
+                    match def {
+                        def::DefUpvar(_, inner, _, _) => { def = *inner; }
+                        _ => break
+                    }
+                    i += 1;
+                }
+                if i == self.depth { // Made it to end of loop
+                    let dnum = def.def_id().node;
+                    if !self.seen.contains(&dnum) {
+                        self.refs.push(freevar_entry {
+                            def: def,
+                            span: expr.span,
+                        });
+                        self.seen.insert(dnum);
                     }
                 }
             }
-            _ => visit::walk_expr(self, expr, depth)
+            _ => visit::walk_expr(self, expr)
         }
     }
 }
@@ -127,9 +130,10 @@ fn collect_freevars(def_map: &resolve::DefMap,
         refs: Vec::new(),
         def_map: def_map,
         capture_mode_map: &mut *capture_mode_map,
+        depth: 1
     };
 
-    v.visit_block(blk, 1);
+    v.visit_block(blk);
 
     v.refs
 }
@@ -140,14 +144,14 @@ struct AnnotateFreevarsVisitor<'a> {
     capture_mode_map: CaptureModeMap,
 }
 
-impl<'a> Visitor<()> for AnnotateFreevarsVisitor<'a> {
-    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
-                blk: &ast::Block, s: Span, nid: ast::NodeId, _: ()) {
+impl<'a, 'v> Visitor<'v> for AnnotateFreevarsVisitor<'a> {
+    fn visit_fn(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
+                blk: &'v ast::Block, s: Span, nid: ast::NodeId) {
         let vars = collect_freevars(self.def_map,
                                     blk,
                                     &mut self.capture_mode_map);
         self.freevars.insert(nid, vars);
-        visit::walk_fn(self, fk, fd, blk, s, ());
+        visit::walk_fn(self, fk, fd, blk, s);
     }
 }
 
@@ -163,7 +167,7 @@ pub fn annotate_freevars(def_map: &resolve::DefMap, krate: &ast::Crate)
         freevars: NodeMap::new(),
         capture_mode_map: NodeMap::new(),
     };
-    visit::walk_crate(&mut visitor, krate, ());
+    visit::walk_crate(&mut visitor, krate);
 
     let AnnotateFreevarsVisitor {
         freevars,

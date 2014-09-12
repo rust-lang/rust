@@ -150,7 +150,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match els {
                 Some(elexpr) => {
                     let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx };
-                    trans.visit_expr(&*elexpr, ());
+                    trans.visit_expr(&*elexpr);
                 }
                 None => {}
             }
@@ -159,7 +159,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans::debuginfo::clear_source_location(bcx.fcx);
         } else {
             let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx } ;
-            trans.visit_block(&*thn, ());
+            trans.visit_block(&*thn);
 
             match els {
                 // if false { .. } else { .. }

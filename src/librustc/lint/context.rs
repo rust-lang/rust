@@ -492,68 +492,68 @@ impl<'a, 'tcx> AstConv<'tcx> for Context<'a, 'tcx>{
     }
 }
 
-impl<'a, 'tcx> Visitor<()> for Context<'a, 'tcx> {
-    fn visit_item(&mut self, it: &ast::Item, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
+    fn visit_item(&mut self, it: &ast::Item) {
         self.with_lint_attrs(it.attrs.as_slice(), |cx| {
             run_lints!(cx, check_item, it);
-            cx.visit_ids(|v| v.visit_item(it, ()));
-            visit::walk_item(cx, it, ());
+            cx.visit_ids(|v| v.visit_item(it));
+            visit::walk_item(cx, it);
         })
     }
 
-    fn visit_foreign_item(&mut self, it: &ast::ForeignItem, _: ()) {
+    fn visit_foreign_item(&mut self, it: &ast::ForeignItem) {
         self.with_lint_attrs(it.attrs.as_slice(), |cx| {
             run_lints!(cx, check_foreign_item, it);
-            visit::walk_foreign_item(cx, it, ());
+            visit::walk_foreign_item(cx, it);
         })
     }
 
-    fn visit_view_item(&mut self, i: &ast::ViewItem, _: ()) {
+    fn visit_view_item(&mut self, i: &ast::ViewItem) {
         self.with_lint_attrs(i.attrs.as_slice(), |cx| {
             run_lints!(cx, check_view_item, i);
-            cx.visit_ids(|v| v.visit_view_item(i, ()));
-            visit::walk_view_item(cx, i, ());
+            cx.visit_ids(|v| v.visit_view_item(i));
+            visit::walk_view_item(cx, i);
         })
     }
 
-    fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
+    fn visit_pat(&mut self, p: &ast::Pat) {
         run_lints!(self, check_pat, p);
-        visit::walk_pat(self, p, ());
+        visit::walk_pat(self, p);
     }
 
-    fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
+    fn visit_expr(&mut self, e: &ast::Expr) {
         run_lints!(self, check_expr, e);
-        visit::walk_expr(self, e, ());
+        visit::walk_expr(self, e);
     }
 
-    fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) {
+    fn visit_stmt(&mut self, s: &ast::Stmt) {
         run_lints!(self, check_stmt, s);
-        visit::walk_stmt(self, s, ());
+        visit::walk_stmt(self, s);
     }
 
-    fn visit_fn(&mut self, fk: &FnKind, decl: &ast::FnDecl,
-                body: &ast::Block, span: Span, id: ast::NodeId, _: ()) {
-        match *fk {
+    fn visit_fn(&mut self, fk: FnKind<'v>, decl: &'v ast::FnDecl,
+                body: &'v ast::Block, span: Span, id: ast::NodeId) {
+        match fk {
             visit::FkMethod(_, _, m) => {
                 self.with_lint_attrs(m.attrs.as_slice(), |cx| {
                     run_lints!(cx, check_fn, fk, decl, body, span, id);
                     cx.visit_ids(|v| {
-                        v.visit_fn(fk, decl, body, span, id, ());
+                        v.visit_fn(fk, decl, body, span, id);
                     });
-                    visit::walk_fn(cx, fk, decl, body, span, ());
+                    visit::walk_fn(cx, fk, decl, body, span);
                 })
             },
             _ => {
                 run_lints!(self, check_fn, fk, decl, body, span, id);
-                visit::walk_fn(self, fk, decl, body, span, ());
+                visit::walk_fn(self, fk, decl, body, span);
             }
         }
     }
 
-    fn visit_ty_method(&mut self, t: &ast::TypeMethod, _: ()) {
+    fn visit_ty_method(&mut self, t: &ast::TypeMethod) {
         self.with_lint_attrs(t.attrs.as_slice(), |cx| {
             run_lints!(cx, check_ty_method, t);
-            visit::walk_ty_method(cx, t, ());
+            visit::walk_ty_method(cx, t);
         })
     }
 
@@ -561,103 +561,102 @@ impl<'a, 'tcx> Visitor<()> for Context<'a, 'tcx> {
                         s: &ast::StructDef,
                         ident: ast::Ident,
                         g: &ast::Generics,
-                        id: ast::NodeId,
-                        _: ()) {
+                        id: ast::NodeId) {
         run_lints!(self, check_struct_def, s, ident, g, id);
-        visit::walk_struct_def(self, s, ());
+        visit::walk_struct_def(self, s);
         run_lints!(self, check_struct_def_post, s, ident, g, id);
     }
 
-    fn visit_struct_field(&mut self, s: &ast::StructField, _: ()) {
+    fn visit_struct_field(&mut self, s: &ast::StructField) {
         self.with_lint_attrs(s.node.attrs.as_slice(), |cx| {
             run_lints!(cx, check_struct_field, s);
-            visit::walk_struct_field(cx, s, ());
+            visit::walk_struct_field(cx, s);
         })
     }
 
-    fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics, _: ()) {
+    fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics) {
         self.with_lint_attrs(v.node.attrs.as_slice(), |cx| {
             run_lints!(cx, check_variant, v, g);
-            visit::walk_variant(cx, v, g, ());
+            visit::walk_variant(cx, v, g);
         })
     }
 
     // FIXME(#10894) should continue recursing
-    fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
+    fn visit_ty(&mut self, t: &ast::Ty) {
         run_lints!(self, check_ty, t);
     }
 
-    fn visit_ident(&mut self, sp: Span, id: ast::Ident, _: ()) {
+    fn visit_ident(&mut self, sp: Span, id: ast::Ident) {
         run_lints!(self, check_ident, sp, id);
     }
 
-    fn visit_mod(&mut self, m: &ast::Mod, s: Span, n: ast::NodeId, _: ()) {
+    fn visit_mod(&mut self, m: &ast::Mod, s: Span, n: ast::NodeId) {
         run_lints!(self, check_mod, m, s, n);
-        visit::walk_mod(self, m, ());
+        visit::walk_mod(self, m);
     }
 
-    fn visit_local(&mut self, l: &ast::Local, _: ()) {
+    fn visit_local(&mut self, l: &ast::Local) {
         run_lints!(self, check_local, l);
-        visit::walk_local(self, l, ());
+        visit::walk_local(self, l);
     }
 
-    fn visit_block(&mut self, b: &ast::Block, _: ()) {
+    fn visit_block(&mut self, b: &ast::Block) {
         run_lints!(self, check_block, b);
-        visit::walk_block(self, b, ());
+        visit::walk_block(self, b);
     }
 
-    fn visit_arm(&mut self, a: &ast::Arm, _: ()) {
+    fn visit_arm(&mut self, a: &ast::Arm) {
         run_lints!(self, check_arm, a);
-        visit::walk_arm(self, a, ());
+        visit::walk_arm(self, a);
     }
 
-    fn visit_decl(&mut self, d: &ast::Decl, _: ()) {
+    fn visit_decl(&mut self, d: &ast::Decl) {
         run_lints!(self, check_decl, d);
-        visit::walk_decl(self, d, ());
+        visit::walk_decl(self, d);
     }
 
-    fn visit_expr_post(&mut self, e: &ast::Expr, _: ()) {
+    fn visit_expr_post(&mut self, e: &ast::Expr) {
         run_lints!(self, check_expr_post, e);
     }
 
-    fn visit_generics(&mut self, g: &ast::Generics, _: ()) {
+    fn visit_generics(&mut self, g: &ast::Generics) {
         run_lints!(self, check_generics, g);
-        visit::walk_generics(self, g, ());
+        visit::walk_generics(self, g);
     }
 
-    fn visit_trait_item(&mut self, m: &ast::TraitItem, _: ()) {
+    fn visit_trait_item(&mut self, m: &ast::TraitItem) {
         run_lints!(self, check_trait_method, m);
-        visit::walk_trait_item(self, m, ());
+        visit::walk_trait_item(self, m);
     }
 
-    fn visit_opt_lifetime_ref(&mut self, sp: Span, lt: &Option<ast::Lifetime>, _: ()) {
+    fn visit_opt_lifetime_ref(&mut self, sp: Span, lt: &Option<ast::Lifetime>) {
         run_lints!(self, check_opt_lifetime_ref, sp, lt);
     }
 
-    fn visit_lifetime_ref(&mut self, lt: &ast::Lifetime, _: ()) {
+    fn visit_lifetime_ref(&mut self, lt: &ast::Lifetime) {
         run_lints!(self, check_lifetime_ref, lt);
     }
 
-    fn visit_lifetime_decl(&mut self, lt: &ast::LifetimeDef, _: ()) {
+    fn visit_lifetime_decl(&mut self, lt: &ast::LifetimeDef) {
         run_lints!(self, check_lifetime_decl, lt);
     }
 
-    fn visit_explicit_self(&mut self, es: &ast::ExplicitSelf, _: ()) {
+    fn visit_explicit_self(&mut self, es: &ast::ExplicitSelf) {
         run_lints!(self, check_explicit_self, es);
-        visit::walk_explicit_self(self, es, ());
+        visit::walk_explicit_self(self, es);
     }
 
-    fn visit_mac(&mut self, mac: &ast::Mac, _: ()) {
+    fn visit_mac(&mut self, mac: &ast::Mac) {
         run_lints!(self, check_mac, mac);
-        visit::walk_mac(self, mac, ());
+        visit::walk_mac(self, mac);
     }
 
-    fn visit_path(&mut self, p: &ast::Path, id: ast::NodeId, _: ()) {
+    fn visit_path(&mut self, p: &ast::Path, id: ast::NodeId) {
         run_lints!(self, check_path, p, id);
-        visit::walk_path(self, p, ());
+        visit::walk_path(self, p);
     }
 
-    fn visit_attribute(&mut self, attr: &ast::Attribute, _: ()) {
+    fn visit_attribute(&mut self, attr: &ast::Attribute) {
         run_lints!(self, check_attribute, attr);
     }
 }
@@ -719,14 +718,14 @@ pub fn check_crate(tcx: &ty::ctxt,
         cx.visit_id(ast::CRATE_NODE_ID);
         cx.visit_ids(|v| {
             v.visited_outermost = true;
-            visit::walk_crate(v, krate, ());
+            visit::walk_crate(v, krate);
         });
 
         // since the root module isn't visited as an item (because it isn't an
         // item), warn for it here.
         run_lints!(cx, check_crate, krate);
 
-        visit::walk_crate(cx, krate, ());
+        visit::walk_crate(cx, krate);
     });
 
     // If we missed any lints added to the session, then there's a bug somewhere

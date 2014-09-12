@@ -21,8 +21,8 @@ struct RegistrarFinder {
     registrars: Vec<(ast::NodeId, Span)> ,
 }
 
-impl Visitor<()> for RegistrarFinder {
-    fn visit_item(&mut self, item: &ast::Item, _: ()) {
+impl<'v> Visitor<'v> for RegistrarFinder {
+    fn visit_item(&mut self, item: &ast::Item) {
         match item.node {
             ast::ItemFn(..) => {
                 if attr::contains_name(item.attrs.as_slice(),
@@ -33,7 +33,7 @@ impl Visitor<()> for RegistrarFinder {
             _ => {}
         }
 
-        visit::walk_item(self, item, ());
+        visit::walk_item(self, item);
     }
 }
 
@@ -41,7 +41,7 @@ impl Visitor<()> for RegistrarFinder {
 pub fn find_plugin_registrar(diagnostic: &diagnostic::SpanHandler,
                              krate: &ast::Crate) -> Option<ast::NodeId> {
     let mut finder = RegistrarFinder { registrars: Vec::new() };
-    visit::walk_crate(&mut finder, krate, ());
+    visit::walk_crate(&mut finder, krate);
 
     match finder.registrars.len() {
         0 => None,
