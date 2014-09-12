@@ -226,7 +226,7 @@ fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
     match tcx.inherent_impls.borrow().find(&did) {
         None => {}
         Some(i) => {
-            impls.extend(i.borrow().iter().map(|&did| { build_impl(cx, tcx, did) }));
+            impls.extend(i.iter().map(|&did| { build_impl(cx, tcx, did) }));
         }
     }
 
