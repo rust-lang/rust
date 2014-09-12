@@ -25,6 +25,7 @@ use std::str;
 
 struct A;
 struct B;
+struct C;
 
 impl fmt::Signed for A {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -34,6 +35,11 @@ impl fmt::Signed for A {
 impl fmt::Signed for B {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write("adios".as_bytes())
+    }
+}
+impl fmt::Show for C {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad_integral(true, "☃", "123".as_bytes())
     }
 }
 
@@ -81,6 +87,7 @@ pub fn main() {
     t!(format!("{} {0}", "a"), "a a");
     t!(format!("{foo_bar}", foo_bar=1i), "1");
     t!(format!("{:d}", 5i + 5i), "10");
+    t!(format!("{:#4}", C), "☃123");
 
     let a: &fmt::Show = &1i;
     t!(format!("{}", a), "1");
@@ -88,6 +95,7 @@ pub fn main() {
     // Formatting strings and their arguments
     t!(format!("{:s}", "a"), "a");
     t!(format!("{:4s}", "a"), "a   ");
+    t!(format!("{:4s}", "☃"), "☃   ");
     t!(format!("{:>4s}", "a"), "   a");
     t!(format!("{:<4s}", "a"), "a   ");
     t!(format!("{:^5s}", "a"),  "  a  ");
