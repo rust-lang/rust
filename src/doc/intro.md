@@ -4,12 +4,12 @@ Rust is a systems programming language that combines strong compile-time correct
 It improves upon the ideas of other systems languages like C++
 by providing guaranteed memory safety (no crashes, no data races) and complete control over the lifecycle of memory.
 Strong memory guarantees make writing correct concurrent Rust code easier than in other languages.
-This tutorial will give you an idea of what Rust is like in about thirty minutes.
+This introduction will give you an idea of what Rust is like in about thirty minutes.
 It expects that you're at least vaguely familiar with a previous 'curly brace' language,
 but does not require prior experience with systems programming.
 The concepts are more important than the syntax,
 so don't worry if you don't get every last detail:
-the [tutorial](tutorial.html) can help you out with that later.
+the [guide](guide.html) can help you out with that later.
 
 Let's talk about the most important concept in Rust, "ownership,"
 and its implications on a task that programmers usually find very difficult: concurrency.
@@ -433,5 +433,5 @@ yet get the efficiency of languages such as C++.
 
 I hope that this taste of Rust has given you an idea if Rust is the right language for you.
 If that's true,
-I encourage you to check out [the tutorial](tutorial.html) for a full,
+I encourage you to check out [the guide](guide.html) for a full,
 in-depth exploration of Rust's syntax and concepts.

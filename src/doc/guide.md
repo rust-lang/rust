@@ -1,14 +1,5 @@
 % The Rust Guide
 
-<div style="border: 2px solid red; padding:5px;">
-This guide is a work in progress. Until it is ready, we highly recommend that
-you read the <a href="tutorial.html">Tutorial</a> instead. This work-in-progress Guide is being
-displayed here in line with Rust's open development policy. Please open any
-issues you find as usual.
-</div>
-
-# Welcome!
-
 Hey there! Welcome to the Rust guide. This is the place to be if you'd like to
 learn how to program in Rust. Rust is a systems programming language with a
 focus on "high-level, bare-metal programming": the lowest level control a
@@ -119,7 +110,7 @@ The first thing that we need to do is make a file to put our code in. I like
 to make a `projects` directory in my home directory, and keep all my projects
 there. Rust does not care where your code lives.
 
-This actually leads to one other concern we should address: this tutorial will
+This actually leads to one other concern we should address: this guide will
 assume that you have basic familiarity with the command line. Rust does not
 require that you know a whole ton about the command line, but until the
 language is in a more finished state, IDE support is spotty. Rust makes no
@@ -215,7 +206,7 @@ Finally, the line ends with a semicolon (`;`). Rust is an **expression
 oriented** language, which means that most things are expressions. The `;` is
 used to indicate that this expression is over, and the next one is ready to
 begin. Most lines of Rust code end with a `;`. We will cover this in-depth
-later in the tutorial.
+later in the guide.
 
 Finally, actually **compiling** and **running** our program. We can compile
 with our compiler, `rustc`, by passing it the name of our source file:
@@ -2017,7 +2008,7 @@ Great! Next up: let's compare our guess to the secret guess.
 
 ## Comparing guesses
 
-If you remember, earlier in the tutorial, we made a `cmp` function that compared
+If you remember, earlier in the guide, we made a `cmp` function that compared
 two numbers. Let's add that in, along with a `match` statement to compare the
 guess to the secret guess:
 
