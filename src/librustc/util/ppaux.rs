@@ -496,7 +496,13 @@ pub fn parameterized(cx: &ctxt,
 
     if cx.sess.verbose() {
         for t in substs.types.get_slice(subst::SelfSpace).iter() {
-            strs.push(format!("for {}", t.repr(cx)));
+            strs.push(format!("self {}", t.repr(cx)));
+        }
+
+        // generally there shouldn't be any substs in the fn param
+        // space, but in verbose mode, print them out.
+        for t in substs.types.get_slice(subst::FnSpace).iter() {
+            strs.push(format!("fn {}", t.repr(cx)));
         }
     }
 
@@ -539,15 +545,15 @@ impl Repr for () {
     }
 }
 
-impl<T:Repr> Repr for Rc<T> {
+impl<'a,T:Repr> Repr for &'a T {
     fn repr(&self, tcx: &ctxt) -> String {
         (&**self).repr(tcx)
     }
 }
 
-impl<'a, T:Repr> Repr for &'a T {
+impl<T:Repr> Repr for Rc<T> {
     fn repr(&self, tcx: &ctxt) -> String {
-        (*self).repr(tcx)
+        (&**self).repr(tcx)
     }
 }
 
@@ -690,7 +696,11 @@ impl Repr for ty::ParamBounds {
 
 impl Repr for ty::TraitRef {
     fn repr(&self, tcx: &ctxt) -> String {
-        trait_ref_to_string(tcx, self)
+        let base = ty::item_path_str(tcx, self.def_id);
+        let trait_def = ty::lookup_trait_def(tcx, self.def_id);
+        format!("<{} as {}>",
+                self.substs.self_ty().repr(tcx),
+                parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics))
     }
 }
 
@@ -962,18 +972,16 @@ impl Repr for typeck::MethodOrigin {
 
 impl Repr for typeck::MethodParam {
     fn repr(&self, tcx: &ctxt) -> String {
-        format!("MethodParam({},{:?},{:?},{:?})",
-                self.trait_id.repr(tcx),
-                self.method_num,
-                self.param_num,
-                self.bound_num)
+        format!("MethodParam({},{})",
+                self.trait_ref.repr(tcx),
+                self.method_num)
     }
 }
 
 impl Repr for typeck::MethodObject {
     fn repr(&self, tcx: &ctxt) -> String {
         format!("MethodObject({},{:?},{:?})",
-                self.trait_id.repr(tcx),
+                self.trait_ref.repr(tcx),
                 self.method_num,
                 self.real_index)
     }
@@ -1231,3 +1239,4 @@ impl<A:Repr,B:Repr> Repr for (A,B) {
         format!("({},{})", a.repr(tcx), b.repr(tcx))
     }
 }
+
