@@ -44,6 +44,7 @@ pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) {
     wbcx.visit_expr(e);
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_unboxed_closures();
+    wbcx.visit_object_cast_map();
 }
 
 pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
@@ -63,6 +64,7 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
     }
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_unboxed_closures();
+    wbcx.visit_object_cast_map();
 }
 
 pub fn resolve_impl_res(infcx: &infer::InferCtxt,
@@ -127,8 +129,6 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
 
         self.visit_node_id(ResolvingExpr(e.span), e.id);
         self.visit_method_map_entry(ResolvingExpr(e.span),
-                                    MethodCall::expr(e.id));
-        self.visit_vtable_map_entry(ResolvingExpr(e.span),
                                     MethodCall::expr(e.id));
 
         match e.node {
@@ -235,6 +235,27 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_object_cast_map(&self) {
+        if self.fcx.writeback_errors.get() {
+            return
+        }
+
+        for (&node_id, trait_ref) in self.fcx
+                                            .inh
+                                            .object_cast_map
+                                            .borrow()
+                                            .iter()
+        {
+            let span = ty::expr_span(self.tcx(), node_id);
+            let reason = ResolvingExpr(span);
+            let closure_ty = self.resolve(trait_ref, reason);
+            self.tcx()
+                .object_cast_map
+                .borrow_mut()
+                .insert(node_id, closure_ty);
+        }
+    }
+
     fn visit_node_id(&self, reason: ResolveReason, id: ast::NodeId) {
         // Resolve any borrowings for the node with id `id`
         self.visit_adjustments(reason, id);
@@ -284,13 +305,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         for autoderef in range(0, adj.autoderefs) {
                             let method_call = MethodCall::autoderef(id, autoderef);
                             self.visit_method_map_entry(reason, method_call);
-                            self.visit_vtable_map_entry(reason, method_call);
                         }
 
                         if adj_object {
                             let method_call = MethodCall::autoobject(id);
                             self.visit_method_map_entry(reason, method_call);
-                            self.visit_vtable_map_entry(reason, method_call);
                         }
 
                         ty::AutoDerefRef(ty::AutoDerefRef {
@@ -324,22 +343,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 self.tcx().method_map.borrow_mut().insert(
                     method_call,
                     new_method);
-            }
-            None => {}
-        }
-    }
-
-    fn visit_vtable_map_entry(&self,
-                              reason: ResolveReason,
-                              vtable_key: MethodCall) {
-        // Resolve any vtable map entry
-        match self.fcx.inh.vtable_map.borrow_mut().pop(&vtable_key) {
-            Some(origins) => {
-                let r_origins = self.resolve(&origins, reason);
-                debug!("writeback::resolve_vtable_map_entry(\
-                        vtable_key={}, vtables={:?})",
-                       vtable_key, r_origins.repr(self.tcx()));
-                self.tcx().vtable_map.borrow_mut().insert(vtable_key, r_origins);
             }
             None => {}
         }
@@ -504,3 +507,11 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
         }
     }
 }
+
+///////////////////////////////////////////////////////////////////////////
+// During type check, we store promises with the result of trait
+// lookup rather than the actual results (because the results are not
+// necessarily available immediately). These routines unwind the
+// promises. It is expected that we will have already reported any
+// errors that may be encountered, so if the promises store an error,
+// a dummy result is returned.
