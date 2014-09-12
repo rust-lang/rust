@@ -716,8 +716,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             None      |
             Some("2") => FullDebugInfo,
             Some(arg) => {
-                early_error(format!("optimization level needs to be between \
-                                     0-3 (instead was `{}`)",
+                early_error(format!("debug info level needs to be between \
+                                     0-2 (instead was `{}`)",
                                     arg).as_slice());
             }
         }
