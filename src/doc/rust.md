@@ -13,16 +13,16 @@ provides three kinds of material:
   - Appendix chapters providing rationale and references to languages that
     influenced the design.
 
-This document does not serve as a tutorial introduction to the
+This document does not serve as an introduction to the
 language. Background familiarity with the language is assumed. A separate
-[tutorial] document is available to help acquire such background familiarity.
+[guide] is available to help acquire such background familiarity.
 
 This document also does not serve as a reference to the [standard]
 library included in the language distribution. Those libraries are
 documented separately by extracting documentation attributes from their
 source code.
 
-[tutorial]: tutorial.html
+[guide]: guide.html
 [standard]: std/index.html
 
 ## Disclaimer
@@ -4175,7 +4175,7 @@ communication facilities.
 The Rust compiler supports various methods to link crates together both
 statically and dynamically. This section will explore the various methods to
 link Rust crates together, and more information about native libraries can be
-found in the [ffi tutorial][ffi].
+found in the [ffi guide][ffi].
 
 In one session of compilation, the compiler can generate multiple artifacts
 through the usage of either command line flags or the `crate_type` attribute.
