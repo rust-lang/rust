@@ -45,8 +45,10 @@ If `foo` uses/produces an immutable borrow by default, use:
 * The `_mut` suffix (e.g. `foo_mut`) for the mutably borrowed variant.
 * The `_move` suffix (e.g. `foo_move`) for the owned variant.
 
-A consequence is that the iterator methods become: `iter`, `iter_mut`,
-and `iter_move`.
+However, in the case of iterators, the moving variant can also be
+understood as an `into` conversion, `into_iter`, and `for x in v.into_iter()`
+reads arguably better than `for x in v.iter_move()`, so the convention is
+`into_iter`.
 
 **NOTE**: This convention covers only the *method* names for
   iterators, not the names of the iterator types. That will be the
@@ -142,15 +144,3 @@ Another option would be `val` or `value` instead of `owned`. This
 suggestion plays into the "by reference" and "by value" distinction,
 and so is even more congruent with `ref` than `move` is. On the other
 hand, it's less clear/evocative than either `move` or `owned`.
-
-## `into_iter`
-
-For the case of iteration, at least, it would make some sense to
-signal ownership transfer by treating the owned version as a
-conversion, `into_iter`. The main downside is that it would go against
-the general convention for ownership variants (and cannot be used as
-the general convention, because not all cases can be seen as
-conversions).
-
-Moreover, it's strange to see just the owning variant as a conversion
--- why not `as_iter`, `as_iter_mut`, and `into_iter`?
