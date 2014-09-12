@@ -71,6 +71,8 @@
 void LLVMRustSetLastError(const char*);
 
 typedef struct OpaqueRustString *RustStringRef;
+typedef struct LLVMOpaqueTwine *LLVMTwineRef;
+typedef struct LLVMOpaqueDebugLoc *LLVMDebugLocRef;
 
 extern "C" void
 rust_llvm_string_write_impl(RustStringRef str, const char *ptr, size_t size);
