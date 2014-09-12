@@ -5423,7 +5423,7 @@ impl BorrowKind {
          * Returns a mutability `m` such that an `&m T` pointer could
          * be used to obtain this borrow kind. Because borrow kinds
          * are richer than mutabilities, we sometimes have to pick a
-         * mutability that is stornger than necessary so that it at
+         * mutability that is stronger than necessary so that it at
          * least *would permit* the borrow in question.
          */
 
