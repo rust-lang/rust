@@ -255,7 +255,6 @@ mod imp {
 #[cfg(not(jemalloc), unix)]
 mod imp {
     use core::cmp;
-    use core::mem;
     use core::ptr;
     use libc;
     use libc_heap;
