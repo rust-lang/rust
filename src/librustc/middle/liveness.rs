@@ -179,18 +179,18 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
     }
 }
 
-impl<'a, 'tcx> Visitor<()> for IrMaps<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, _: ()) {
+impl<'a, 'tcx> Visitor for IrMaps<'a, 'tcx> {
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId) {
         visit_fn(self, fk, fd, b, s, n);
     }
-    fn visit_local(&mut self, l: &Local, _: ()) { visit_local(self, l); }
-    fn visit_expr(&mut self, ex: &Expr, _: ()) { visit_expr(self, ex); }
-    fn visit_arm(&mut self, a: &Arm, _: ()) { visit_arm(self, a); }
+    fn visit_local(&mut self, l: &Local) { visit_local(self, l); }
+    fn visit_expr(&mut self, ex: &Expr) { visit_expr(self, ex); }
+    fn visit_arm(&mut self, a: &Arm) { visit_arm(self, a); }
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
                    krate: &Crate) {
-    visit::walk_crate(&mut IrMaps::new(tcx), krate, ());
+    visit::walk_crate(&mut IrMaps::new(tcx), krate);
     tcx.sess.abort_if_errors();
 }
 
@@ -343,17 +343,17 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<()> for Liveness<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, _: ()) {
+impl<'a, 'tcx> Visitor for Liveness<'a, 'tcx> {
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId) {
         check_fn(self, fk, fd, b, s, n);
     }
-    fn visit_local(&mut self, l: &Local, _: ()) {
+    fn visit_local(&mut self, l: &Local) {
         check_local(self, l);
     }
-    fn visit_expr(&mut self, ex: &Expr, _: ()) {
+    fn visit_expr(&mut self, ex: &Expr) {
         check_expr(self, ex);
     }
-    fn visit_arm(&mut self, a: &Arm, _: ()) {
+    fn visit_arm(&mut self, a: &Arm) {
         check_arm(self, a);
     }
 }
@@ -387,7 +387,7 @@ fn visit_fn(ir: &mut IrMaps,
 
     // gather up the various local variables, significant expressions,
     // and so forth:
-    visit::walk_fn(&mut fn_maps, fk, decl, body, sp, ());
+    visit::walk_fn(&mut fn_maps, fk, decl, body, sp);
 
     // Special nodes and variables:
     // - exit_ln represents the end of the fn, either by return or fail
@@ -404,7 +404,7 @@ fn visit_fn(ir: &mut IrMaps,
     let entry_ln = lsets.compute(decl, body);
 
     // check for various error conditions
-    lsets.visit_block(body, ());
+    lsets.visit_block(body);
     lsets.check_ret(id, sp, fk, entry_ln, body);
     lsets.warn_about_unused_args(decl, entry_ln);
 }
@@ -419,7 +419,7 @@ fn visit_local(ir: &mut IrMaps, local: &Local) {
           ident: name
         }));
     });
-    visit::walk_local(ir, local, ());
+    visit::walk_local(ir, local);
 }
 
 fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
@@ -435,7 +435,7 @@ fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
             }));
         })
     }
-    visit::walk_arm(ir, arm, ());
+    visit::walk_arm(ir, arm);
 }
 
 fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
@@ -457,7 +457,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         if moved_variable_node_id_from_def(def).is_some() {
             ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         }
-        visit::walk_expr(ir, expr, ());
+        visit::walk_expr(ir, expr);
       }
       ExprFnBlock(..) | ExprProc(..) | ExprUnboxedFn(..) => {
         // Interesting control flow (for loops can contain labeled
@@ -483,13 +483,13 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         });
         ir.set_captures(expr.id, call_caps);
 
-        visit::walk_expr(ir, expr, ());
+        visit::walk_expr(ir, expr);
       }
 
       // live nodes required for interesting control flow:
       ExprIf(..) | ExprMatch(..) | ExprWhile(..) | ExprLoop(..) => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
-        visit::walk_expr(ir, expr, ());
+        visit::walk_expr(ir, expr);
       }
       ExprForLoop(ref pat, _, _, _) => {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
@@ -503,11 +503,11 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
             }));
         });
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
-        visit::walk_expr(ir, expr, ());
+        visit::walk_expr(ir, expr);
       }
       ExprBinary(op, _, _) if ast_util::lazy_binop(op) => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
-        visit::walk_expr(ir, expr, ());
+        visit::walk_expr(ir, expr);
       }
 
       // otherwise, live nodes are not required:
@@ -519,7 +519,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       ExprAssign(..) | ExprAssignOp(..) | ExprMac(..) |
       ExprStruct(..) | ExprRepeat(..) | ExprParen(..) |
       ExprInlineAsm(..) | ExprBox(..) => {
-          visit::walk_expr(ir, expr, ());
+          visit::walk_expr(ir, expr);
       }
     }
 }
@@ -1408,43 +1408,43 @@ fn check_local(this: &mut Liveness, local: &Local) {
         }
     }
 
-    visit::walk_local(this, local, ());
+    visit::walk_local(this, local);
 }
 
 fn check_arm(this: &mut Liveness, arm: &Arm) {
     this.arm_pats_bindings(arm.pats.as_slice(), |this, ln, var, sp, id| {
         this.warn_about_unused(sp, id, ln, var);
     });
-    visit::walk_arm(this, arm, ());
+    visit::walk_arm(this, arm);
 }
 
 fn check_expr(this: &mut Liveness, expr: &Expr) {
     match expr.node {
       ExprAssign(ref l, ref r) => {
         this.check_lvalue(&**l);
-        this.visit_expr(&**r, ());
+        this.visit_expr(&**r);
 
-        visit::walk_expr(this, expr, ());
+        visit::walk_expr(this, expr);
       }
 
       ExprAssignOp(_, ref l, _) => {
         this.check_lvalue(&**l);
 
-        visit::walk_expr(this, expr, ());
+        visit::walk_expr(this, expr);
       }
 
       ExprInlineAsm(ref ia) => {
         for &(_, ref input) in ia.inputs.iter() {
-          this.visit_expr(&**input, ());
+          this.visit_expr(&**input);
         }
 
         // Output operands must be lvalues
         for &(_, ref out, _) in ia.outputs.iter() {
           this.check_lvalue(&**out);
-          this.visit_expr(&**out, ());
+          this.visit_expr(&**out);
         }
 
-        visit::walk_expr(this, expr, ());
+        visit::walk_expr(this, expr);
       }
 
       // no correctness conditions related to liveness
@@ -1456,7 +1456,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |
       ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprUnboxedFn(..) |
       ExprPath(..) | ExprBox(..) | ExprForLoop(..) => {
-        visit::walk_expr(this, expr, ());
+        visit::walk_expr(this, expr);
       }
     }
 }
@@ -1546,7 +1546,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           _ => {
             // For other kinds of lvalues, no checks are required,
             // and any embedded expressions are actually rvalues
-            visit::walk_expr(self, expr, ());
+            visit::walk_expr(self, expr);
           }
        }
     }
