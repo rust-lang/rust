@@ -1937,12 +1937,6 @@ impl<T,U> Drop for PartialVec<T,U> {
     }
 }
 
-impl<T,U> Iterator<T> for PartialVec<T,U> {
-    fn next(&mut self) -> Option<T> {
-        self.pop()
-    }
-}
-
 impl<T> Vec<T> {
     /// Converts a `Vec<T>` to a `Vec<U>` where `T` and `U` have the same
     /// non-zero size and the same minimal alignment.
