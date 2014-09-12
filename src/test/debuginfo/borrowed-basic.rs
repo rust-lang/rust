@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-windows (#17202)
 // ignore-android: FIXME(#10381)
 
 // Gdb doesn't know about UTF-32 character encoding and will print a rust char as only

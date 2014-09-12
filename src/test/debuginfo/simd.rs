@@ -11,6 +11,7 @@
 // Need a fix for LLDB first...
 // ignore-lldb
 
+// ignore-windows (#17202)
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
