@@ -503,7 +503,7 @@ CFG_LIB_NAME_i686-w64-mingw32=$(1).dll
 CFG_STATIC_LIB_NAME_i686-w64-mingw32=$(1).lib
 CFG_LIB_GLOB_i686-w64-mingw32=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_i686-w64-mingw32=$(1)-*.dylib.dSYM
-CFG_CFLAGS_i586-w64-mingw32 := -march=i586 -m32 -D_WIN32_WINNT=0x0600 $(CFLAGS)
+CFG_CFLAGS_i686-w64-mingw32 := -march=i686 -m32 -D_WIN32_WINNT=0x0600 $(CFLAGS)
 CFG_GCCISH_CFLAGS_i686-w64-mingw32 := -Wall -Werror -g -m32 -D_WIN32_WINNT=0x0600 $(CFLAGS)
 CFG_GCCISH_CXXFLAGS_i686-w64-mingw32 := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_i686-w64-mingw32 := -shared -g -m32
@@ -521,6 +521,8 @@ CFG_PATH_MUNGE_i686-w64-mingw32 :=
 CFG_LDPATH_i686-w64-mingw32 :=$(CFG_LDPATH_i686-w64-mingw32):$(PATH)
 CFG_RUN_i686-w64-mingw32=PATH="$(CFG_LDPATH_i686-w64-mingw32):$(1)" $(2)
 CFG_RUN_TARG_i686-w64-mingw32=$(call CFG_RUN_i686-w64-mingw32,$(HLIB$(1)_H_$(CFG_BUILD)),$(2))
+# Stop rustc from OOMing when building itself (I think)
+RUSTC_FLAGS_i686-w64-mingw32=-C link-args="-Wl,--large-address-aware"
 RUSTC_CROSS_FLAGS_i686-w64-mingw32 :=
 
 # x86_64-w64-mingw32 configuration
