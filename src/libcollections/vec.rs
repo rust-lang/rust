@@ -2302,6 +2302,7 @@ mod tests {
         assert_eq!(vec.as_ptr(), ptr);
         assert_eq!(vec.capacity(), 7);
         assert_eq!(vec.len(), 0);
+    }
 
     #[test]
     #[should_fail]
