@@ -600,7 +600,7 @@ fn trait_empty<C: Container>() -> C;
 
 #### Via a `TYPE_SEGMENT` prefix
 
-> The following text is unchanged from the
+> The following text is *slightly changed* from the
 > [UFCS RFC](https://github.com/rust-lang/rfcs/pull/132).
 
 When a path begins with a `TYPE_SEGMENT`, it is a type-relative path. If this is
@@ -627,18 +627,6 @@ Given a path `<T>::m::...`:
      ambiguity error and request further type information.
    - Otherwise, rewrite the path to `<T as Trait>::m::...` and
      continue.
-
-#### Via the `Self` or associated types as a prefix
-
-In the context of trait body, the type `Self`, or associated type names, may
-appear as a prefix.
-
-For a trait `Trait`:
-
-* A reference `T` where `T` is an associated type defined in `Trait` is rewritten
-  `<Self as Trait>::T`.
-
-* A reference `Self::ID` is rewritten `<Self as Trait>::ID`.
 
 #### Via a `IMPL_SEGMENT` prefix
 
@@ -742,7 +730,7 @@ function knows nothing about the associated type `G::N`. However, a *client* of
 `pick_node` that instantiates it with a particular concrete graph type will also
 know the concrete type of the value returned from the function -- here, `MyNode`.
 
-## Scoping of associated items
+## Scoping of `trait` and `impl` items
 
 Associated types are frequently referred to in the signatures of a trait's
 methods and associated functions, and it is natural and convneient to refer to
@@ -770,19 +758,50 @@ trait Graph {
 }
 ```
 
-The proposed scoping rule is:
+This RFC proposes to treat both `trait` and `impl` bodies (both
+inherent and for traits) the same way we treat `mod` bodies: *all*
+items being defined are in scope. In particular, methods are in scope
+as UFCS-style functions:
 
-* Associated types are in scope for the trait body
-* Associated lifetimes are in scope for the trait body
-* All other items must be referenced through `Self`
+```rust
+trait Foo {
+    type AssocType;
+    lifetime 'assoc_lifetime;
+    static ASSOC_STATIC: uint;
+    fn assoc_fn() -> Self;
 
-These rules roughly match our convention of importing type names at the top
-level, but not function names.  They leaves intact today's restriction that
-associated functions are not directly in scope for default methods. Some
-alternatives are discussed at the end of the RFC.
+    // Note: 'assoc_lifetime and AssocType in scope:
+    fn method(&self, Self) -> &'assoc_lifetime AssocType;
+
+    fn default_method(&self) -> uint {
+        // method in scope UFCS-style, assoc_fn in scope
+        let _ = method(self, assoc_fn());
+        ASSOC_STATIC // in scope
+    }
+}
+
+// Same scoping rules for impls, including inherent impls:
+struct Bar;
+impl Bar {
+    fn foo(&self) { ... }
+    fn bar(&self) {
+        foo(self); // foo in scope UFCS-style
+        ...
+    }
+}
+```
+
+Items from super traits are *not* in scope, however. See
+[the discussion on super traits below](#super-traits) for more detail.
+
+These scope rules provide good ergonomics for associated types in
+particular, and a consistent scope model for language constructs that
+can contain items (like traits, impls, and modules). In the long run,
+we should also explore imports for trait items, i.e. `use
+Trait::some_method`, but that is out of scope for this RFC.
 
 Note that, according to this proposal, associated types/lifetimes are *not* in
-scope for the optional where clause on the trait header. For example:
+scope for the optional `where` clause on the trait header. For example:
 
 ```rust
 trait Foo<Input>
@@ -1339,33 +1358,28 @@ like `Sum` above into associated types later.
 This is perhaps a reasonable fallback, but it seems better to introduce a clean
 design with both multidispatch and associated items together.
 
-## Alternative scoping rules for associated items in trait bodies
-
-The proposed scoping rules for associated items make a distinction between
-types/lifetimes, which are in scope for the trait body, and other items, which
-are not.
-
-Sensible alternatives would be to take one of the extreme positions:
-
-* *No* associated items are in scope for the trait body; everything must be
-  referenced through `Self`.
-
-  This option seems needlessly painful when using associated types.
-
-* *All* associated items are in scope for the trait body.
-
-  This option is a reasonable alternative to the proposed rules, and makes it
-  somewhat nicer to write default methods, since statics and associated
-  functions are automatically in scope.
-
-* *All* trait items (including methods, understood as UFCS functions) are in
-  scope for the trait body.
-
-  This option seems overly aggressive: there is little benefit to writing
-  `some_method(self, arg)` rather than `self.some_method(arg)`, and the UFCS
-  version loses autoderef etc.
-
 # Unresolved questions
+
+## Super traits
+
+This RFC largely ignores super traits.
+
+Currently, the implementation of super traits treats them identically to a
+`where` clause that bounds `Self`, and this RFC does not propose to change
+that. However, a follow-up RFC should clarify that this is the intended
+semantics for super traits.
+
+Note that this treatment of super traits is, in particular, consistent with the
+proposed scoping rules, which do not bring items from super traits into scope in
+the body of a subtrait; they must be accessed via `Self::item_name`.
+
+## Equality constraints in `where` clauses
+
+This RFC allows equality constraints on types for associated types, but does not
+propose a similar feature for `where` clauses. That will be the subject of a
+follow-up RFC.
+
+## Multiple trait object bounds for the same trait
 
 The design here makes it possible to write bounds or trait objects that mention
 the same trait, multiple times, with different inputs:
