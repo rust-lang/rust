@@ -209,7 +209,7 @@ A basic example is:
 Rust code:
 
 ~~~~no_run
-extern fn callback(a:i32) {
+extern fn callback(a: i32) {
     println!("I'm called from C with value {0}", a);
 }
 
@@ -269,7 +269,7 @@ struct RustObject {
     // other members
 }
 
-extern "C" fn callback(target: *mut RustObject, a:i32) {
+extern "C" fn callback(target: *mut RustObject, a: i32) {
     println!("I'm called from C with value {0}", a);
     unsafe {
         // Update the value in RustObject with the value received from the callback
