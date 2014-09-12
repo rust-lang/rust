@@ -36,7 +36,8 @@ fn main() {
     let x = foo(Port(box(GC) ()));
 
     task::spawn(proc() {
-        let y = x;   //~ ERROR does not fulfill `Send`
+        let y = x;
+        //~^ ERROR does not fulfill `Send`
         println!("{:?}", y);
     });
 }

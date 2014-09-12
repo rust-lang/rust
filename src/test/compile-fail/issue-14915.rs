@@ -15,8 +15,8 @@ fn main() {
     let y: Gc<int> = box (GC) 0;
 
     println!("{}", x + 1); //~ ERROR binary operation `+` cannot be applied to type `Box<int>`
-    //~^ ERROR cannot determine a type for this bounded type parameter: unconstrained type
+    //~^ ERROR unable to infer enough type information
     println!("{}", y + 1);
     //~^ ERROR binary operation `+` cannot be applied to type `Gc<int>`
-    //~^^ ERROR cannot determine a type for this bounded type parameter: unconstrained type
+    //~^^ ERROR unable to infer enough type information
 }

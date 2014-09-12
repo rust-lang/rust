@@ -11,6 +11,6 @@
 trait I {}
 type K = I+'static;
 
-fn foo(_x: K) {} //~ ERROR: variable `_x` has dynamically sized type
+fn foo(_x: K) {} //~ ERROR: the trait `core::kinds::Sized` is not implemented
 
 fn main() {}

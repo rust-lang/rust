@@ -20,40 +20,34 @@ enum Bar<T:Trait> {
     CBar(uint),
 }
 
-fn explode(x: Foo<uint>) {}
-//~^ ERROR failed to find an implementation
-//~^^ ERROR instantiating a type parameter with an incompatible type
+fn explode(x: Foo<u32>) {}
+//~^ ERROR not implemented
 
 fn kaboom(y: Bar<f32>) {}
-//~^ ERROR failed to find an implementation
-//~^^ ERROR instantiating a type parameter with an incompatible type
+//~^ ERROR not implemented
 
-impl<T> Foo<T> { //~ ERROR failed to find an implementation
-//~^ ERROR instantiating a type parameter with an incompatible type
+impl<T> Foo<T> {
+//~^ ERROR the trait `Trait` is not implemented
     fn uhoh() {}
 }
 
 struct Baz {
-//~^ ERROR failed to find an implementation
-//~^^ ERROR instantiating a type parameter with an incompatible type
+//~^ ERROR not implemented
     a: Foo<int>,
 }
 
 enum Boo {
-//~^ ERROR failed to find an implementation
-//~^^ ERROR instantiating a type parameter with an incompatible type
+//~^ ERROR not implemented
     Quux(Bar<uint>),
 }
 
 struct Badness<T> {
-//~^ ERROR failed to find an implementation
-//~^^ ERROR instantiating a type parameter with an incompatible type
+//~^ ERROR not implemented
     b: Foo<T>,
 }
 
 enum MoreBadness<T> {
-//~^ ERROR failed to find an implementation
-//~^^ ERROR instantiating a type parameter with an incompatible type
+//~^ ERROR not implemented
     EvenMoreBadness(Bar<T>),
 }
 
@@ -64,15 +58,10 @@ trait PolyTrait<T> {
 struct Struct;
 
 impl PolyTrait<Foo<uint>> for Struct {
-//~^ ERROR failed to find an implementation
-//~^^ ERROR instantiating a type parameter with an incompatible type
+//~^ ERROR not implemented
     fn whatever() {}
 }
 
 fn main() {
-    let bar: Bar<f64> = return;
-    //~^ ERROR failed to find an implementation
-    //~^^ ERROR instantiating a type parameter with an incompatible type
-    let _ = bar;
 }
 

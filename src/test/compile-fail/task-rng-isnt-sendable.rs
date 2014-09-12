@@ -16,5 +16,5 @@ fn test_send<S: Send>() {}
 
 pub fn main() {
     test_send::<rand::TaskRng>();
-    //~^ ERROR: incompatible type `std::rand::TaskRng`, which does not fulfill `Send`
+    //~^ ERROR `core::kinds::Send` is not implemented
 }

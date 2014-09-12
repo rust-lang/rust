@@ -19,5 +19,5 @@ fn take_param<T:Foo>(foo: &T) { }
 fn main() {
     let x = box 3i;
     take_param(&x);
-    //~^ ERROR instantiating a type parameter with an incompatible type
+    //~^ ERROR the trait `core::kinds::Copy` is not implemented
 }

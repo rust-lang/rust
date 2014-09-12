@@ -16,10 +16,8 @@ trait Trait {}
 
 pub fn main() {
     let x: Vec<Trait + Sized> = Vec::new();
-    //~^ ERROR instantiating a type parameter with an incompatible type `Trait+Sized`, which does not fulfill `Sized`
-    //~^^ ERROR instantiating a type parameter with an incompatible type `Trait+Sized`, which does not fulfill `Sized`
-    //~^^^ ERROR instantiating a type parameter with an incompatible type `Trait+Sized`, which does not fulfill `Sized`
+    //~^ ERROR the trait `core::kinds::Sized` is not implemented
+    //~^^ ERROR the trait `core::kinds::Sized` is not implemented
     let x: Vec<Box<RefCell<Trait + Sized>>> = Vec::new();
-    //~^ ERROR instantiating a type parameter with an incompatible type `Trait+Sized`, which does not fulfill `Sized`
-    //~^^ ERROR instantiating a type parameter with an incompatible type `Trait+Sized`, which does not fulfill `Sized`
+    //~^ ERROR the trait `core::kinds::Sized` is not implemented
 }

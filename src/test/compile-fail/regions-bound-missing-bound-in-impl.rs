@@ -12,8 +12,6 @@
 // nominal types (but not on other types) and that they are type
 // checked.
 
-#![no_std]
-
 struct Inv<'a> { // invariant w/r/t 'a
     x: &'a mut &'a int
 }

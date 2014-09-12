@@ -17,7 +17,7 @@ trait Getter<T: Clone2> {
     fn get(&self) -> T;
 }
 
-impl Getter<int> for int { //~ ERROR failed to find an implementation of trait Clone2 for int
+impl Getter<int> for int { //~ ERROR the trait `Clone2` is not implemented
     fn get(&self) -> int { *self }
 }
 

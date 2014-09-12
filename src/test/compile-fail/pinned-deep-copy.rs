@@ -43,8 +43,7 @@ fn main() {
     {
         // Can't do this copy
         let x = box box box A {y: r(i)};
-        let _z = x.clone(); //~ ERROR failed to find an implementation
-        //~^ ERROR failed to find an implementation
+        let _z = x.clone(); //~ ERROR not implemented
         println!("{:?}", x);
     }
     println!("{:?}", *i);

@@ -19,5 +19,5 @@ fn bar<T: Sync>(_: T) {}
 
 fn main() {
     let x = A(marker::NoSync);
-    bar(&x); //~ ERROR type parameter with an incompatible type
+    bar(&x); //~ ERROR the trait `core::kinds::Sync` is not implemented
 }

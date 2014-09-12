@@ -15,10 +15,7 @@
 extern crate trait_impl_conflict;
 use trait_impl_conflict::Foo;
 
-impl<A> Foo for A {
-//~^ ERROR conflicting implementations for trait `trait_impl_conflict::Foo`
-//~^^ ERROR cannot provide an extension implementation where both trait and type
-//          are not defined in this crate
+impl<A> Foo for A { //~ ERROR E0117
 }
 
 fn main() {

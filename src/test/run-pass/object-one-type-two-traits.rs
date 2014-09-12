@@ -8,23 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that Copy bounds inherited by trait are checked.
+// Testing creating two vtables with the same self type, but different
+// traits.
 
 use std::any::Any;
 use std::any::AnyRefExt;
 
-trait Foo : Copy {
+trait Wrap {
+    fn get(&self) -> int;
+    fn wrap(self: Box<Self>) -> Box<Any+'static>;
 }
 
-impl<T:Copy> Foo for T {
+impl Wrap for int {
+    fn get(&self) -> int {
+        *self
+    }
+    fn wrap(self: Box<int>) -> Box<Any+'static> {
+        self as Box<Any+'static>
+    }
 }
 
-fn take_param<T:Foo>(foo: &T) { }
+fn is<T:'static>(x: &Any) -> bool {
+    x.is::<T>()
+}
 
 fn main() {
-    let x = box 3i;
-    take_param(&x); //~ ERROR `core::kinds::Copy` is not implemented
-
-    let y = &x;
-    let z = &x as &Foo; //~ ERROR `core::kinds::Copy` is not implemented
+    let x = box 22i as Box<Wrap>;
+    println!("x={}", x.get());
+    let y = x.wrap();
 }
