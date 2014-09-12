@@ -281,7 +281,7 @@ fn existing_match(e: &Env, name: &str,
                   hash: Option<&Svh>) -> Option<ast::CrateNum> {
     let mut ret = None;
     e.sess.cstore.iter_crate_data(|cnum, data| {
-        if data.name().as_slice() != name { return }
+        if data.name.as_slice() != name { return }
 
         match hash {
             Some(hash) if *hash == data.hash() => { ret = Some(cnum); return }
