@@ -2992,14 +2992,13 @@ pub fn lltype_is_sized(cx: &ctxt, ty: t) -> bool {
 pub fn unsized_part_of_type(cx: &ctxt, ty: t) -> t {
     match get(ty).sty {
         ty_str | ty_trait(..) | ty_vec(..) => ty,
-        ty_struct(_, ref substs) => {
-            // Exactly one of the type parameters must be unsized.
-            for tp in substs.types.get_slice(subst::TypeSpace).iter() {
-                if !type_is_sized(cx, *tp) {
-                    return unsized_part_of_type(cx, *tp);
-                }
-            }
-            fail!("Unsized struct type with no unsized type params? {}", ty_to_string(cx, ty));
+        ty_struct(def_id, ref substs) => {
+            let unsized_fields: Vec<_> = struct_fields(cx, def_id, substs).iter()
+                .map(|f| f.mt.ty).filter(|ty| !type_is_sized(cx, *ty)).collect();
+            // Exactly one of the fields must be unsized.
+            assert!(unsized_fields.len() == 1)
+
+            unsized_part_of_type(cx, unsized_fields[0])
         }
         _ => {
             assert!(type_is_sized(cx, ty),
