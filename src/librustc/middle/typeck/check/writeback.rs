@@ -41,7 +41,7 @@ use syntax::visit::Visitor;
 pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) {
     assert_eq!(fcx.writeback_errors.get(), false);
     let mut wbcx = WritebackCx::new(fcx);
-    wbcx.visit_expr(e, ());
+    wbcx.visit_expr(e);
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_unboxed_closures();
 }
@@ -51,9 +51,9 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
                                blk: &ast::Block) {
     assert_eq!(fcx.writeback_errors.get(), false);
     let mut wbcx = WritebackCx::new(fcx);
-    wbcx.visit_block(blk, ());
+    wbcx.visit_block(blk);
     for arg in decl.inputs.iter() {
-        wbcx.visit_pat(&*arg.pat, ());
+        wbcx.visit_pat(&*arg.pat);
 
         // Privacy needs the type for the whole pattern, not just each binding
         if !pat_util::pat_is_binding(&fcx.tcx().def_map, &*arg.pat) {
@@ -106,21 +106,21 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 // below. In general, a function is made into a `visitor` if it must
 // traffic in node-ids or update tables in the type context etc.
 
-impl<'cx, 'tcx> Visitor<()> for WritebackCx<'cx, 'tcx> {
-    fn visit_item(&mut self, _: &ast::Item, _: ()) {
+impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
+    fn visit_item(&mut self, _: &ast::Item) {
         // Ignore items
     }
 
-    fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) {
+    fn visit_stmt(&mut self, s: &ast::Stmt) {
         if self.fcx.writeback_errors.get() {
             return;
         }
 
         self.visit_node_id(ResolvingExpr(s.span), ty::stmt_node_id(s));
-        visit::walk_stmt(self, s, ());
+        visit::walk_stmt(self, s);
     }
 
-    fn visit_expr(&mut self, e:&ast::Expr, _: ()) {
+    fn visit_expr(&mut self, e: &ast::Expr) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -143,19 +143,19 @@ impl<'cx, 'tcx> Visitor<()> for WritebackCx<'cx, 'tcx> {
             _ => {}
         }
 
-        visit::walk_expr(self, e, ());
+        visit::walk_expr(self, e);
     }
 
-    fn visit_block(&mut self, b: &ast::Block, _: ()) {
+    fn visit_block(&mut self, b: &ast::Block) {
         if self.fcx.writeback_errors.get() {
             return;
         }
 
         self.visit_node_id(ResolvingExpr(b.span), b.id);
-        visit::walk_block(self, b, ());
+        visit::walk_block(self, b);
     }
 
-    fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
+    fn visit_pat(&mut self, p: &ast::Pat) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -167,10 +167,10 @@ impl<'cx, 'tcx> Visitor<()> for WritebackCx<'cx, 'tcx> {
                p.id,
                ty::node_id_to_type(self.tcx(), p.id).repr(self.tcx()));
 
-        visit::walk_pat(self, p, ());
+        visit::walk_pat(self, p);
     }
 
-    fn visit_local(&mut self, l: &ast::Local, _: ()) {
+    fn visit_local(&mut self, l: &ast::Local) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -178,16 +178,16 @@ impl<'cx, 'tcx> Visitor<()> for WritebackCx<'cx, 'tcx> {
         let var_ty = self.fcx.local_ty(l.span, l.id);
         let var_ty = self.resolve(&var_ty, ResolvingLocal(l.span));
         write_ty_to_tcx(self.tcx(), l.id, var_ty);
-        visit::walk_local(self, l, ());
+        visit::walk_local(self, l);
     }
 
-    fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
+    fn visit_ty(&mut self, t: &ast::Ty) {
         match t.node {
             ast::TyFixedLengthVec(ref ty, ref count_expr) => {
-                self.visit_ty(&**ty, ());
+                self.visit_ty(&**ty);
                 write_ty_to_tcx(self.tcx(), count_expr.id, ty::mk_uint());
             }
-            _ => visit::walk_ty(self, t, ())
+            _ => visit::walk_ty(self, t)
         }
     }
 }

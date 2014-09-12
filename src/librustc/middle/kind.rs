@@ -56,29 +56,29 @@ pub struct Context<'a, 'tcx: 'a> {
     parameter_environments: Vec<ParameterEnvironment>,
 }
 
-impl<'a, 'tcx> Visitor<()> for Context<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &Expr, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
+    fn visit_expr(&mut self, ex: &Expr) {
         check_expr(self, ex);
     }
 
-    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &FnDecl,
-                b: &Block, s: Span, n: NodeId, _: ()) {
+    fn visit_fn(&mut self, fk: visit::FnKind, fd: &'v FnDecl,
+                b: &'v Block, s: Span, n: NodeId) {
         check_fn(self, fk, fd, b, s, n);
     }
 
-    fn visit_ty(&mut self, t: &Ty, _: ()) {
+    fn visit_ty(&mut self, t: &Ty) {
         check_ty(self, t);
     }
 
-    fn visit_item(&mut self, i: &Item, _: ()) {
+    fn visit_item(&mut self, i: &Item) {
         check_item(self, i);
     }
 
-    fn visit_pat(&mut self, p: &Pat, _: ()) {
+    fn visit_pat(&mut self, p: &Pat) {
         check_pat(self, p);
     }
 
-    fn visit_local(&mut self, l: &Local, _: ()) {
+    fn visit_local(&mut self, l: &Local) {
         check_local(self, l);
     }
 }
@@ -90,7 +90,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         struct_and_enum_bounds_checked: HashSet::new(),
         parameter_environments: Vec::new(),
     };
-    visit::walk_crate(&mut ctx, krate, ());
+    visit::walk_crate(&mut ctx, krate);
     tcx.sess.abort_if_errors();
 }
 
@@ -265,7 +265,7 @@ fn check_item(cx: &mut Context, item: &Item) {
         }
     }
 
-    visit::walk_item(cx, item, ())
+    visit::walk_item(cx, item)
 }
 
 fn check_local(cx: &mut Context, local: &Local) {
@@ -274,7 +274,7 @@ fn check_local(cx: &mut Context, local: &Local) {
         local.span,
         ty::node_id_to_type(cx.tcx, local.id));
 
-    visit::walk_local(cx, local, ())
+    visit::walk_local(cx, local)
 }
 
 // Yields the appropriate function to check the kind of closed over
@@ -341,7 +341,7 @@ fn with_appropriate_checker(cx: &Context,
 // to the copy/move kind bounds. Then recursively check the function body.
 fn check_fn(
     cx: &mut Context,
-    fk: &visit::FnKind,
+    fk: visit::FnKind,
     decl: &FnDecl,
     body: &Block,
     sp: Span,
@@ -356,12 +356,12 @@ fn check_fn(
         });
     });
 
-    match *fk {
+    match fk {
         visit::FkFnBlock(..) => {
             let ty = ty::node_id_to_type(cx.tcx, fn_id);
             check_bounds_on_structs_or_enums_in_type_if_possible(cx, sp, ty);
 
-            visit::walk_fn(cx, fk, decl, body, sp, ())
+            visit::walk_fn(cx, fk, decl, body, sp)
         }
         visit::FkItemFn(..) | visit::FkMethod(..) => {
             let parameter_environment = ParameterEnvironment::for_item(cx.tcx,
@@ -371,7 +371,7 @@ fn check_fn(
             let ty = ty::node_id_to_type(cx.tcx, fn_id);
             check_bounds_on_structs_or_enums_in_type_if_possible(cx, sp, ty);
 
-            visit::walk_fn(cx, fk, decl, body, sp, ());
+            visit::walk_fn(cx, fk, decl, body, sp);
             drop(cx.parameter_environments.pop());
         }
     }
@@ -451,7 +451,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
         None => {}
     }
 
-    visit::walk_expr(cx, e, ());
+    visit::walk_expr(cx, e);
 }
 
 fn check_bounds_on_type_parameters(cx: &mut Context, e: &Expr) {
@@ -616,7 +616,7 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
         _ => {}
     }
 
-    visit::walk_ty(cx, aty, ());
+    visit::walk_ty(cx, aty);
 }
 
 // Calls "any_missing" if any bounds were missing.
@@ -804,5 +804,5 @@ fn check_pat(cx: &mut Context, pat: &Pat) {
         None => {}
     }
 
-    visit::walk_pat(cx, pat, ());
+    visit::walk_pat(cx, pat);
 }

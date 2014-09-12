@@ -366,17 +366,16 @@ impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
     }
 }
 
-impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
+impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
     fn visit_mod(&mut self,
                  module: &Mod,
                  _: Span,
-                 node_id: NodeId,
-                 env: ()) {
+                 node_id: NodeId) {
         self.operation.visit_id(node_id);
-        visit::walk_mod(self, module, env)
+        visit::walk_mod(self, module)
     }
 
-    fn visit_view_item(&mut self, view_item: &ViewItem, env: ()) {
+    fn visit_view_item(&mut self, view_item: &ViewItem) {
         if !self.pass_through_items {
             if self.visited_outermost {
                 return;
@@ -403,16 +402,16 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
                 }
             }
         }
-        visit::walk_view_item(self, view_item, env);
+        visit::walk_view_item(self, view_item);
         self.visited_outermost = false;
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem, env: ()) {
+    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
         self.operation.visit_id(foreign_item.id);
-        visit::walk_foreign_item(self, foreign_item, env)
+        visit::walk_foreign_item(self, foreign_item)
     }
 
-    fn visit_item(&mut self, item: &Item, env: ()) {
+    fn visit_item(&mut self, item: &Item) {
         if !self.pass_through_items {
             if self.visited_outermost {
                 return
@@ -431,59 +430,58 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
             _ => {}
         }
 
-        visit::walk_item(self, item, env);
+        visit::walk_item(self, item);
 
         self.visited_outermost = false
     }
 
-    fn visit_local(&mut self, local: &Local, env: ()) {
+    fn visit_local(&mut self, local: &Local) {
         self.operation.visit_id(local.id);
-        visit::walk_local(self, local, env)
+        visit::walk_local(self, local)
     }
 
-    fn visit_block(&mut self, block: &Block, env: ()) {
+    fn visit_block(&mut self, block: &Block) {
         self.operation.visit_id(block.id);
-        visit::walk_block(self, block, env)
+        visit::walk_block(self, block)
     }
 
-    fn visit_stmt(&mut self, statement: &Stmt, env: ()) {
+    fn visit_stmt(&mut self, statement: &Stmt) {
         self.operation.visit_id(ast_util::stmt_id(statement));
-        visit::walk_stmt(self, statement, env)
+        visit::walk_stmt(self, statement)
     }
 
-    fn visit_pat(&mut self, pattern: &Pat, env: ()) {
+    fn visit_pat(&mut self, pattern: &Pat) {
         self.operation.visit_id(pattern.id);
-        visit::walk_pat(self, pattern, env)
+        visit::walk_pat(self, pattern)
     }
 
-    fn visit_expr(&mut self, expression: &Expr, env: ()) {
+    fn visit_expr(&mut self, expression: &Expr) {
         self.operation.visit_id(expression.id);
-        visit::walk_expr(self, expression, env)
+        visit::walk_expr(self, expression)
     }
 
-    fn visit_ty(&mut self, typ: &Ty, env: ()) {
+    fn visit_ty(&mut self, typ: &Ty) {
         self.operation.visit_id(typ.id);
         match typ.node {
             TyPath(_, _, id) => self.operation.visit_id(id),
             _ => {}
         }
-        visit::walk_ty(self, typ, env)
+        visit::walk_ty(self, typ)
     }
 
-    fn visit_generics(&mut self, generics: &Generics, env: ()) {
+    fn visit_generics(&mut self, generics: &Generics) {
         self.visit_generics_helper(generics);
-        visit::walk_generics(self, generics, env)
+        visit::walk_generics(self, generics)
     }
 
     fn visit_fn(&mut self,
-                function_kind: &visit::FnKind,
-                function_declaration: &FnDecl,
-                block: &Block,
+                function_kind: visit::FnKind<'v>,
+                function_declaration: &'v FnDecl,
+                block: &'v Block,
                 span: Span,
-                node_id: NodeId,
-                env: ()) {
+                node_id: NodeId) {
         if !self.pass_through_items {
-            match *function_kind {
+            match function_kind {
                 visit::FkMethod(..) if self.visited_outermost => return,
                 visit::FkMethod(..) => self.visited_outermost = true,
                 _ => {}
@@ -492,7 +490,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
 
         self.operation.visit_id(node_id);
 
-        match *function_kind {
+        match function_kind {
             visit::FkItemFn(_, generics, _, _) |
             visit::FkMethod(_, generics, _) => {
                 self.visit_generics_helper(generics)
@@ -508,39 +506,37 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
                         function_kind,
                         function_declaration,
                         block,
-                        span,
-                        env);
+                        span);
 
         if !self.pass_through_items {
-            match *function_kind {
+            match function_kind {
                 visit::FkMethod(..) => self.visited_outermost = false,
                 _ => {}
             }
         }
     }
 
-    fn visit_struct_field(&mut self, struct_field: &StructField, env: ()) {
+    fn visit_struct_field(&mut self, struct_field: &StructField) {
         self.operation.visit_id(struct_field.node.id);
-        visit::walk_struct_field(self, struct_field, env)
+        visit::walk_struct_field(self, struct_field)
     }
 
     fn visit_struct_def(&mut self,
                         struct_def: &StructDef,
                         _: ast::Ident,
                         _: &ast::Generics,
-                        id: NodeId,
-                        _: ()) {
+                        id: NodeId) {
         self.operation.visit_id(id);
         struct_def.ctor_id.map(|ctor_id| self.operation.visit_id(ctor_id));
-        visit::walk_struct_def(self, struct_def, ());
+        visit::walk_struct_def(self, struct_def);
     }
 
-    fn visit_trait_item(&mut self, tm: &ast::TraitItem, _: ()) {
+    fn visit_trait_item(&mut self, tm: &ast::TraitItem) {
         match *tm {
             ast::RequiredMethod(ref m) => self.operation.visit_id(m.id),
             ast::ProvidedMethod(ref m) => self.operation.visit_id(m.id),
         }
-        visit::walk_trait_item(self, tm, ());
+        visit::walk_trait_item(self, tm);
     }
 }
 
@@ -552,7 +548,7 @@ pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &InlinedItem,
         visited_outermost: false,
     };
 
-    visit::walk_inlined_item(&mut id_visitor, item, ());
+    visit::walk_inlined_item(&mut id_visitor, item);
 }
 
 struct IdRangeComputingVisitor {
@@ -575,7 +571,7 @@ pub fn compute_id_range_for_inlined_item(item: &InlinedItem) -> IdRange {
     visitor.result.get()
 }
 
-pub fn compute_id_range_for_fn_body(fk: &visit::FnKind,
+pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
                                     decl: &FnDecl,
                                     body: &Block,
                                     sp: Span,
@@ -595,7 +591,7 @@ pub fn compute_id_range_for_fn_body(fk: &visit::FnKind,
         pass_through_items: false,
         visited_outermost: false,
     };
-    id_visitor.visit_fn(fk, decl, body, sp, id, ());
+    id_visitor.visit_fn(fk, decl, body, sp, id);
     visitor.result.get()
 }
 
@@ -643,8 +639,8 @@ struct EachViewItemData<'a> {
     callback: |&ast::ViewItem|: 'a -> bool,
 }
 
-impl<'a> Visitor<()> for EachViewItemData<'a> {
-    fn visit_view_item(&mut self, view_item: &ast::ViewItem, _: ()) {
+impl<'a, 'v> Visitor<'v> for EachViewItemData<'a> {
+    fn visit_view_item(&mut self, view_item: &ast::ViewItem) {
         let _ = (self.callback)(view_item);
     }
 }
@@ -654,7 +650,7 @@ impl EachViewItem for ast::Crate {
         let mut visit = EachViewItemData {
             callback: f,
         };
-        visit::walk_crate(&mut visit, self, ());
+        visit::walk_crate(&mut visit, self);
         true
     }
 }

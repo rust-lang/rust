@@ -119,26 +119,27 @@ enum WitnessPreference {
     LeaveOutWitness
 }
 
-impl<'a, 'tcx> Visitor<()> for MatchCheckCtxt<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &Expr, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
+    fn visit_expr(&mut self, ex: &Expr) {
         check_expr(self, ex);
     }
-    fn visit_local(&mut self, l: &Local, _: ()) {
+    fn visit_local(&mut self, l: &Local) {
         check_local(self, l);
     }
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, _: NodeId, _: ()) {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
+                b: &'v Block, s: Span, _: NodeId) {
         check_fn(self, fk, fd, b, s);
     }
 }
 
 pub fn check_crate(tcx: &ty::ctxt, krate: &Crate) {
     let mut cx = MatchCheckCtxt { tcx: tcx };
-    visit::walk_crate(&mut cx, krate, ());
+    visit::walk_crate(&mut cx, krate);
     tcx.sess.abort_if_errors();
 }
 
 fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
-    visit::walk_expr(cx, ex, ());
+    visit::walk_expr(cx, ex);
     match ex.node {
         ExprMatch(scrut, ref arms) => {
             // First, check legality of move bindings.
@@ -844,7 +845,7 @@ fn default(cx: &MatchCheckCtxt, r: &[Gc<Pat>]) -> Option<Vec<Gc<Pat>>> {
 }
 
 fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
-    visit::walk_local(cx, loc, ());
+    visit::walk_local(cx, loc);
 
     let name = match loc.source {
         LocalLet => "local",
@@ -868,11 +869,11 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
 }
 
 fn check_fn(cx: &mut MatchCheckCtxt,
-            kind: &FnKind,
+            kind: FnKind,
             decl: &FnDecl,
             body: &Block,
             sp: Span) {
-    visit::walk_fn(cx, kind, decl, body, sp, ());
+    visit::walk_fn(cx, kind, decl, body, sp);
     for input in decl.inputs.iter() {
         match is_refutable(cx, input.pat) {
             Some(pat) => {
@@ -1014,27 +1015,30 @@ impl<'a, 'tcx> Delegate for MutationChecker<'a, 'tcx> {
 /// because of the way rvalues are handled in the borrow check. (See issue
 /// #14587.)
 fn check_legality_of_bindings_in_at_patterns(cx: &MatchCheckCtxt, pat: &Pat) {
-    let mut visitor = AtBindingPatternVisitor {
-        cx: cx,
-    };
-    visitor.visit_pat(pat, true);
+    AtBindingPatternVisitor { cx: cx, bindings_allowed: true }.visit_pat(pat);
 }
 
 struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
     cx: &'a MatchCheckCtxt<'b, 'tcx>,
+    bindings_allowed: bool
 }
 
-impl<'a, 'b, 'tcx> Visitor<bool> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
-    fn visit_pat(&mut self, pat: &Pat, bindings_allowed: bool) {
-        if !bindings_allowed && pat_is_binding(&self.cx.tcx.def_map, pat) {
+impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
+    fn visit_pat(&mut self, pat: &Pat) {
+        if !self.bindings_allowed && pat_is_binding(&self.cx.tcx.def_map, pat) {
             self.cx.tcx.sess.span_err(pat.span,
                                       "pattern bindings are not allowed \
                                        after an `@`");
         }
 
         match pat.node {
-            PatIdent(_, _, Some(_)) => visit::walk_pat(self, pat, false),
-            _ => visit::walk_pat(self, pat, bindings_allowed),
+            PatIdent(_, _, Some(_)) => {
+                let bindings_were_allowed = self.bindings_allowed;
+                self.bindings_allowed = false;
+                visit::walk_pat(self, pat);
+                self.bindings_allowed = bindings_were_allowed;
+            }
+            _ => visit::walk_pat(self, pat),
         }
     }
 }

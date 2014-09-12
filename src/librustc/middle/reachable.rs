@@ -101,9 +101,9 @@ struct ReachableContext<'a, 'tcx: 'a> {
     any_library: bool,
 }
 
-impl<'a, 'tcx> Visitor<()> for ReachableContext<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
 
-    fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
+    fn visit_expr(&mut self, expr: &ast::Expr) {
 
         match expr.node {
             ast::ExprPath(_) => {
@@ -155,10 +155,10 @@ impl<'a, 'tcx> Visitor<()> for ReachableContext<'a, 'tcx> {
             _ => {}
         }
 
-        visit::walk_expr(self, expr, ())
+        visit::walk_expr(self, expr)
     }
 
-    fn visit_item(&mut self, _item: &ast::Item, _: ()) {
+    fn visit_item(&mut self, _item: &ast::Item) {
         // Do not recurse into items. These items will be added to the worklist
         // and recursed into manually if necessary.
     }
@@ -291,7 +291,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 match item.node {
                     ast::ItemFn(_, _, _, _, ref search_block) => {
                         if item_might_be_inlined(&*item) {
-                            visit::walk_block(self, &**search_block, ())
+                            visit::walk_block(self, &**search_block)
                         }
                     }
 
@@ -303,7 +303,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                                 item.attrs.as_slice()) {
                             self.reachable_symbols.remove(&search_item);
                         }
-                        visit::walk_expr(self, &**init, ());
+                        visit::walk_expr(self, &**init);
                     }
 
                     // These are normal, nothing reachable about these
@@ -327,7 +327,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         // Keep going, nothing to get exported
                     }
                     ast::ProvidedMethod(ref method) => {
-                        visit::walk_block(self, &*method.pe_body(), ())
+                        visit::walk_block(self, &*method.pe_body())
                     }
                 }
             }
@@ -336,7 +336,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     ast::MethodImplItem(method) => {
                         let did = self.tcx.map.get_parent_did(search_item);
                         if method_might_be_inlined(self.tcx, &*method, did) {
-                            visit::walk_block(self, &*method.pe_body(), ())
+                            visit::walk_block(self, &*method.pe_body())
                         }
                     }
                 }

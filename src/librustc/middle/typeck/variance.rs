@@ -301,7 +301,7 @@ fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
         })
     };
 
-    visit::walk_crate(&mut terms_cx, krate, ());
+    visit::walk_crate(&mut terms_cx, krate);
 
     terms_cx
 }
@@ -337,8 +337,8 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<()> for TermsContext<'a, 'tcx> {
-    fn visit_item(&mut self, item: &ast::Item, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
+    fn visit_item(&mut self, item: &ast::Item) {
         debug!("add_inferreds for item {}", item.repr(self.tcx));
 
         let inferreds_on_entry = self.num_inferred();
@@ -379,7 +379,7 @@ impl<'a, 'tcx> Visitor<()> for TermsContext<'a, 'tcx> {
                     assert!(newly_added);
                 }
 
-                visit::walk_item(self, item, ());
+                visit::walk_item(self, item);
             }
 
             ast::ItemImpl(..) |
@@ -389,7 +389,7 @@ impl<'a, 'tcx> Visitor<()> for TermsContext<'a, 'tcx> {
             ast::ItemForeignMod(..) |
             ast::ItemTy(..) |
             ast::ItemMac(..) => {
-                visit::walk_item(self, item, ());
+                visit::walk_item(self, item);
             }
         }
     }
@@ -473,12 +473,12 @@ fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
         bivariant: bivariant,
         constraints: Vec::new(),
     };
-    visit::walk_crate(&mut constraint_cx, krate, ());
+    visit::walk_crate(&mut constraint_cx, krate);
     constraint_cx
 }
 
-impl<'a, 'tcx> Visitor<()> for ConstraintContext<'a, 'tcx> {
-    fn visit_item(&mut self, item: &ast::Item, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
+    fn visit_item(&mut self, item: &ast::Item) {
         let did = ast_util::local_def(item.id);
         let tcx = self.terms_cx.tcx;
 
@@ -533,7 +533,7 @@ impl<'a, 'tcx> Visitor<()> for ConstraintContext<'a, 'tcx> {
             ast::ItemTy(..) |
             ast::ItemImpl(..) |
             ast::ItemMac(..) => {
-                visit::walk_item(self, item, ());
+                visit::walk_item(self, item);
             }
         }
     }

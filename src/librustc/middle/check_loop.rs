@@ -22,45 +22,53 @@ enum Context {
 
 struct CheckLoopVisitor<'a> {
     sess: &'a Session,
+    cx: Context
 }
 
 pub fn check_crate(sess: &Session, krate: &ast::Crate) {
-    visit::walk_crate(&mut CheckLoopVisitor { sess: sess }, krate, Normal)
+    visit::walk_crate(&mut CheckLoopVisitor { sess: sess, cx: Normal }, krate)
 }
 
-impl<'a> Visitor<Context> for CheckLoopVisitor<'a> {
-    fn visit_item(&mut self, i: &ast::Item, _cx: Context) {
-        visit::walk_item(self, i, Normal);
+impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
+    fn visit_item(&mut self, i: &ast::Item) {
+        self.with_context(Normal, |v| visit::walk_item(v, i));
     }
 
-    fn visit_expr(&mut self, e: &ast::Expr, cx:Context) {
+    fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
             ast::ExprWhile(ref e, ref b, _) => {
-                self.visit_expr(&**e, cx);
-                self.visit_block(&**b, Loop);
+                self.visit_expr(&**e);
+                self.with_context(Loop, |v| v.visit_block(&**b));
             }
             ast::ExprLoop(ref b, _) => {
-                self.visit_block(&**b, Loop);
+                self.with_context(Loop, |v| v.visit_block(&**b));
             }
             ast::ExprForLoop(_, ref e, ref b, _) => {
-                self.visit_expr(&**e, cx);
-                self.visit_block(&**b, Loop);
+                self.visit_expr(&**e);
+                self.with_context(Loop, |v| v.visit_block(&**b));
             }
             ast::ExprFnBlock(_, _, ref b) |
             ast::ExprProc(_, ref b) |
             ast::ExprUnboxedFn(_, _, _, ref b) => {
-                self.visit_block(&**b, Closure);
+                self.with_context(Closure, |v| v.visit_block(&**b));
             }
-            ast::ExprBreak(_) => self.require_loop("break", cx, e.span),
-            ast::ExprAgain(_) => self.require_loop("continue", cx, e.span),
-            _ => visit::walk_expr(self, e, cx)
+            ast::ExprBreak(_) => self.require_loop("break", e.span),
+            ast::ExprAgain(_) => self.require_loop("continue", e.span),
+            _ => visit::walk_expr(self, e)
         }
     }
 }
 
 impl<'a> CheckLoopVisitor<'a> {
-    fn require_loop(&self, name: &str, cx: Context, span: Span) {
-        match cx {
+    fn with_context(&mut self, cx: Context, f: |&mut CheckLoopVisitor<'a>|) {
+        let old_cx = self.cx;
+        self.cx = cx;
+        f(self);
+        self.cx = old_cx;
+    }
+
+    fn require_loop(&self, name: &str, span: Span) {
+        match self.cx {
             Loop => {}
             Closure => {
                 self.sess.span_err(span,

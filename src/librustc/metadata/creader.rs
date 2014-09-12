@@ -49,19 +49,19 @@ pub fn read_crates(sess: &Session,
         next_crate_num: sess.cstore.next_crate_num(),
     };
     visit_crate(&e, krate);
-    visit::walk_crate(&mut e, krate, ());
+    visit::walk_crate(&mut e, krate);
     dump_crates(&sess.cstore);
     warn_if_multiple_versions(sess.diagnostic(), &sess.cstore)
 }
 
-impl<'a> visit::Visitor<()> for Env<'a> {
-    fn visit_view_item(&mut self, a: &ast::ViewItem, _: ()) {
+impl<'a, 'v> visit::Visitor<'v> for Env<'a> {
+    fn visit_view_item(&mut self, a: &ast::ViewItem) {
         visit_view_item(self, a);
-        visit::walk_view_item(self, a, ());
+        visit::walk_view_item(self, a);
     }
-    fn visit_item(&mut self, a: &ast::Item, _: ()) {
+    fn visit_item(&mut self, a: &ast::Item) {
         visit_item(self, a);
-        visit::walk_item(self, a, ());
+        visit::walk_item(self, a);
     }
 }
 

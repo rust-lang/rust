@@ -84,10 +84,10 @@ pub fn collect_item_types(ccx: &CrateCtxt, krate: &ast::Crate) {
     }
 
     let mut visitor = CollectTraitDefVisitor{ ccx: ccx };
-    visit::walk_crate(&mut visitor, krate, ());
+    visit::walk_crate(&mut visitor, krate);
 
     let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
-    visit::walk_crate(&mut visitor, krate, ());
+    visit::walk_crate(&mut visitor, krate);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -99,8 +99,8 @@ struct CollectTraitDefVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx> visit::Visitor<()> for CollectTraitDefVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item, _: ()) {
+impl<'a, 'tcx, 'v> visit::Visitor<'v> for CollectTraitDefVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, i: &ast::Item) {
         match i.node {
             ast::ItemTrait(..) => {
                 // computing the trait def also fills in the table
@@ -109,7 +109,7 @@ impl<'a, 'tcx> visit::Visitor<()> for CollectTraitDefVisitor<'a, 'tcx> {
             _ => { }
         }
 
-        visit::walk_item(self, i, ());
+        visit::walk_item(self, i);
     }
 }
 
@@ -120,14 +120,14 @@ struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx> visit::Visitor<()> for CollectItemTypesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item, _: ()) {
+impl<'a, 'tcx, 'v> visit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, i: &ast::Item) {
         convert(self.ccx, i);
-        visit::walk_item(self, i, ());
+        visit::walk_item(self, i);
     }
-    fn visit_foreign_item(&mut self, i: &ast::ForeignItem, _: ()) {
+    fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
         convert_foreign(self.ccx, i);
-        visit::walk_foreign_item(self, i, ());
+        visit::walk_foreign_item(self, i);
     }
 }
 

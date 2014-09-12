@@ -375,18 +375,18 @@ fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>)
 struct CheckItemTypesVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
 struct CheckTypeWellFormedVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
 
-impl<'a, 'tcx> Visitor<()> for CheckTypeWellFormedVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, i: &ast::Item) {
         check_type_well_formed(self.ccx, i);
-        visit::walk_item(self, i, ());
+        visit::walk_item(self, i);
     }
 }
 
 
-impl<'a, 'tcx> Visitor<()> for CheckItemTypesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for CheckItemTypesVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, i: &ast::Item) {
         check_item(self.ccx, i);
-        visit::walk_item(self, i, ());
+        visit::walk_item(self, i);
     }
 }
 
@@ -394,28 +394,28 @@ struct CheckItemSizedTypesVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx> Visitor<()> for CheckItemSizedTypesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for CheckItemSizedTypesVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, i: &ast::Item) {
         check_item_sized(self.ccx, i);
-        visit::walk_item(self, i, ());
+        visit::walk_item(self, i);
     }
 }
 
 pub fn check_item_types(ccx: &CrateCtxt, krate: &ast::Crate) {
     let mut visit = CheckTypeWellFormedVisitor { ccx: ccx };
-    visit::walk_crate(&mut visit, krate, ());
+    visit::walk_crate(&mut visit, krate);
 
     // If types are not well-formed, it leads to all manner of errors
     // downstream, so stop reporting errors at this point.
     ccx.tcx.sess.abort_if_errors();
 
     let mut visit = CheckItemTypesVisitor { ccx: ccx };
-    visit::walk_crate(&mut visit, krate, ());
+    visit::walk_crate(&mut visit, krate);
 
     ccx.tcx.sess.abort_if_errors();
 
     let mut visit = CheckItemSizedTypesVisitor { ccx: ccx };
-    visit::walk_crate(&mut visit, krate, ());
+    visit::walk_crate(&mut visit, krate);
 }
 
 fn check_bare_fn(ccx: &CrateCtxt,
@@ -464,9 +464,9 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<()> for GatherLocalsVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
     // Add explicitly-declared locals.
-    fn visit_local(&mut self, local: &ast::Local, _: ()) {
+    fn visit_local(&mut self, local: &ast::Local) {
         let o_ty = match local.ty.node {
             ast::TyInfer => None,
             _ => Some(self.fcx.to_ty(&*local.ty))
@@ -476,11 +476,11 @@ impl<'a, 'tcx> Visitor<()> for GatherLocalsVisitor<'a, 'tcx> {
                self.fcx.pat_to_string(&*local.pat),
                self.fcx.infcx().ty_to_string(
                    self.fcx.inh.locals.borrow().get_copy(&local.id)));
-        visit::walk_local(self, local, ());
+        visit::walk_local(self, local);
     }
 
     // Add pattern bindings.
-    fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
+    fn visit_pat(&mut self, p: &ast::Pat) {
             match p.node {
               ast::PatIdent(_, ref path1, _)
                   if pat_util::pat_is_binding(&self.fcx.ccx.tcx.def_map, p) => {
@@ -492,33 +492,33 @@ impl<'a, 'tcx> Visitor<()> for GatherLocalsVisitor<'a, 'tcx> {
               }
               _ => {}
             }
-            visit::walk_pat(self, p, ());
+            visit::walk_pat(self, p);
 
     }
 
-    fn visit_block(&mut self, b: &ast::Block, _: ()) {
+    fn visit_block(&mut self, b: &ast::Block) {
         // non-obvious: the `blk` variable maps to region lb, so
         // we have to keep this up-to-date.  This
         // is... unfortunate.  It'd be nice to not need this.
-        visit::walk_block(self, b, ());
+        visit::walk_block(self, b);
     }
 
     // Since an expr occurs as part of the type fixed size arrays we
     // need to record the type for that node
-    fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
+    fn visit_ty(&mut self, t: &ast::Ty) {
         match t.node {
             ast::TyFixedLengthVec(ref ty, ref count_expr) => {
-                self.visit_ty(&**ty, ());
+                self.visit_ty(&**ty);
                 check_expr_with_hint(self.fcx, &**count_expr, ty::mk_uint());
             }
-            _ => visit::walk_ty(self, t, ())
+            _ => visit::walk_ty(self, t)
         }
     }
 
     // Don't descend into fns and items
-    fn visit_fn(&mut self, _: &visit::FnKind, _: &ast::FnDecl,
-                _: &ast::Block, _: Span, _: ast::NodeId, _: ()) { }
-    fn visit_item(&mut self, _: &ast::Item, _: ()) { }
+    fn visit_fn(&mut self, _: visit::FnKind<'v>, _: &'v ast::FnDecl,
+                _: &'v ast::Block, _: Span, _: ast::NodeId) { }
+    fn visit_item(&mut self, _: &ast::Item) { }
 
 }
 
@@ -603,7 +603,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
             _match::check_pat(&pcx, &*input.pat, *arg_ty);
         }
 
-        visit.visit_block(body, ());
+        visit.visit_block(body);
     }
 
     check_block_with_expected(&fcx, body, ExpectHasType(ret_ty));
@@ -4508,7 +4508,7 @@ pub fn check_const_with_ty(fcx: &FnCtxt,
     // This is technically unnecessary because locals in static items are forbidden,
     // but prevents type checking from blowing up before const checking can properly
     // emit a error.
-    GatherLocalsVisitor { fcx: fcx }.visit_expr(e, ());
+    GatherLocalsVisitor { fcx: fcx }.visit_expr(e);
 
     check_expr_with_hint(fcx, e, declty);
     demand::coerce(fcx, e.span, declty, e);

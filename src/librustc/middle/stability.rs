@@ -24,6 +24,8 @@ use syntax::visit::{FnKind, FkMethod, Visitor};
 use middle::ty;
 use metadata::csearch;
 
+use std::mem::replace;
+
 /// A stability index, giving the stability level for items and methods.
 pub struct Index {
     // stability for crate-local items; unmarked stability == no entry
@@ -34,68 +36,69 @@ pub struct Index {
 
 // A private tree-walker for producing an Index.
 struct Annotator {
-    index: Index
+    index: Index,
+    parent: Option<Stability>
 }
 
 impl Annotator {
     // Determine the stability for a node based on its attributes and inherited
-    // stability. The stability is recorded in the index and returned.
-    fn annotate(&mut self, id: NodeId, attrs: &[Attribute],
-                parent: Option<Stability>) -> Option<Stability> {
-        match attr::find_stability(attrs).or(parent) {
+    // stability. The stability is recorded in the index and used as the parent.
+    fn annotate(&mut self, id: NodeId, attrs: &Vec<Attribute>, f: |&mut Annotator|) {
+        match attr::find_stability(attrs.as_slice()) {
             Some(stab) => {
                 self.index.local.insert(id, stab.clone());
-                Some(stab)
+                let parent = replace(&mut self.parent, Some(stab));
+                f(self);
+                self.parent = parent;
             }
-            None => None
+            None => {
+                self.parent.clone().map(|stab| self.index.local.insert(id, stab));
+                f(self);
+            }
         }
     }
 }
 
-impl Visitor<Option<Stability>> for Annotator {
-    fn visit_item(&mut self, i: &Item, parent: Option<Stability>) {
-        let stab = self.annotate(i.id, i.attrs.as_slice(), parent);
-        visit::walk_item(self, i, stab)
+impl<'v> Visitor<'v> for Annotator {
+    fn visit_item(&mut self, i: &Item) {
+        self.annotate(i.id, &i.attrs, |v| visit::walk_item(v, i));
     }
 
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block,
-                s: Span, _: NodeId, parent: Option<Stability>) {
-        let stab = match *fk {
-            FkMethod(_, _, meth) =>
-                self.annotate(meth.id, meth.attrs.as_slice(), parent),
-            _ => parent
-        };
-        visit::walk_fn(self, fk, fd, b, s, stab)
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
+                b: &'v Block, s: Span, _: NodeId) {
+        match fk {
+            FkMethod(_, _, meth) => {
+                self.annotate(meth.id, &meth.attrs, |v| visit::walk_fn(v, fk, fd, b, s));
+            }
+            _ => visit::walk_fn(self, fk, fd, b, s)
+        }
     }
 
-    fn visit_trait_item(&mut self, t: &TraitItem, parent: Option<Stability>) {
-        let stab = match *t {
-            RequiredMethod(TypeMethod {attrs: ref attrs, id: id, ..}) =>
-                self.annotate(id, attrs.as_slice(), parent),
+    fn visit_trait_item(&mut self, t: &TraitItem) {
+        let (id, attrs) = match *t {
+            RequiredMethod(TypeMethod {id, ref attrs, ..}) => (id, attrs),
 
             // work around lack of pattern matching for @ types
-            ProvidedMethod(method) => match *method {
-                Method {attrs: ref attrs, id: id, ..} =>
-                    self.annotate(id, attrs.as_slice(), parent)
+            ProvidedMethod(ref method) => match **method {
+                Method {id, ref attrs, ..} => (id, attrs)
             }
         };
-        visit::walk_trait_item(self, t, stab)
+        self.annotate(id, attrs, |v| visit::walk_trait_item(v, t));
     }
 
-    fn visit_variant(&mut self, v: &Variant, g: &Generics, parent: Option<Stability>) {
-        let stab = self.annotate(v.node.id, v.node.attrs.as_slice(), parent);
-        visit::walk_variant(self, v, g, stab)
+    fn visit_variant(&mut self, var: &Variant, g: &'v Generics) {
+        self.annotate(var.node.id, &var.node.attrs, |v| visit::walk_variant(v, var, g))
     }
 
-    fn visit_struct_def(&mut self, s: &StructDef, _: Ident, _: &Generics,
-                        _: NodeId, parent: Option<Stability>) {
-        s.ctor_id.map(|id| self.annotate(id, &[], parent.clone()));
-        visit::walk_struct_def(self, s, parent)
+    fn visit_struct_def(&mut self, s: &StructDef, _: Ident, _: &Generics, _: NodeId) {
+        match s.ctor_id {
+            Some(id) => self.annotate(id, &vec![], |v| visit::walk_struct_def(v, s)),
+            None => visit::walk_struct_def(self, s)
+        }
     }
 
-    fn visit_struct_field(&mut self, s: &StructField, parent: Option<Stability>) {
-        let stab = self.annotate(s.node.id, s.node.attrs.as_slice(), parent);
-        visit::walk_struct_field(self, s, stab)
+    fn visit_struct_field(&mut self, s: &StructField) {
+        self.annotate(s.node.id, &s.node.attrs, |v| visit::walk_struct_field(v, s));
     }
 }
 
@@ -106,10 +109,10 @@ impl Index {
             index: Index {
                 local: NodeMap::new(),
                 extern_cache: DefIdMap::new()
-            }
+            },
+            parent: None
         };
-        let stab = annotator.annotate(ast::CRATE_NODE_ID, krate.attrs.as_slice(), None);
-        visit::walk_crate(&mut annotator, krate, stab);
+        annotator.annotate(ast::CRATE_NODE_ID, &krate.attrs, |v| visit::walk_crate(v, krate));
         annotator.index
     }
 }

@@ -1025,12 +1025,12 @@ pub fn trans_resolve_method(tcx: &ty::ctxt, id: ast::NodeId,
                    false)
 }
 
-impl<'a, 'b, 'tcx> visit::Visitor<()> for &'a FnCtxt<'b, 'tcx> {
-    fn visit_expr(&mut self, ex: &ast::Expr, _: ()) {
+impl<'a, 'b, 'tcx, 'v> Visitor<'v> for &'a FnCtxt<'b, 'tcx> {
+    fn visit_expr(&mut self, ex: &ast::Expr) {
         early_resolve_expr(ex, *self, false);
-        visit::walk_expr(self, ex, ());
+        visit::walk_expr(self, ex);
     }
-    fn visit_item(&mut self, _: &ast::Item, _: ()) {
+    fn visit_item(&mut self, _: &ast::Item) {
         // no-op
     }
 }
@@ -1038,7 +1038,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<()> for &'a FnCtxt<'b, 'tcx> {
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
 pub fn resolve_in_block(mut fcx: &FnCtxt, bl: &ast::Block) {
-    visit::walk_block(&mut fcx, bl, ());
+    visit::walk_block(&mut fcx, bl);
 }
 
 /// Used in the kind checker after typechecking has finished. Calls

@@ -26,7 +26,7 @@ use util::ppaux::{Repr};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::visit;
-use syntax::visit::{Visitor};
+use syntax::visit::Visitor;
 use syntax::ast::{Expr, FnDecl, Block, NodeId, Pat};
 
 mod lifetime;
@@ -471,8 +471,8 @@ struct StaticInitializerCtxt<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx> visit::Visitor<()> for StaticInitializerCtxt<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &Expr, _: ()) {
+impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
+    fn visit_expr(&mut self, ex: &Expr) {
         match ex.node {
             ast::ExprAddrOf(mutbl, ref base) => {
                 let base_cmt = self.bccx.cat_expr(&**base);
@@ -486,7 +486,7 @@ impl<'a, 'tcx> visit::Visitor<()> for StaticInitializerCtxt<'a, 'tcx> {
             _ => {}
         }
 
-        visit::walk_expr(self, ex, ());
+        visit::walk_expr(self, ex);
     }
 }
 
@@ -498,5 +498,5 @@ pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt, expr: &ast::E
         bccx: bccx
     };
 
-    sicx.visit_expr(expr, ());
+    sicx.visit_expr(expr);
 }

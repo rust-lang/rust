@@ -47,7 +47,7 @@ pub fn check_crate(krate: &ast::Crate,
 
     {
         let mut cx = Context { sess: sess, items: items };
-        visit::walk_crate(&mut cx, krate, ());
+        visit::walk_crate(&mut cx, krate);
     }
     verify(sess, items);
 }
@@ -105,13 +105,13 @@ impl<'a> Context<'a> {
     }
 }
 
-impl<'a> Visitor<()> for Context<'a> {
-    fn visit_foreign_item(&mut self, i: &ast::ForeignItem, _: ()) {
+impl<'a, 'v> Visitor<'v> for Context<'a> {
+    fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
         match lang_items::extract(i.attrs.as_slice()) {
             None => {}
             Some(lang_item) => self.register(lang_item.get(), i.span),
         }
-        visit::walk_foreign_item(self, i, ())
+        visit::walk_foreign_item(self, i)
     }
 }
 
