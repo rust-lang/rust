@@ -20,9 +20,8 @@ use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::parse::token;
 use syntax::parse;
+use syntax::ptr::P;
 use rustc::plugin::Registry;
-
-use std::gc::{Gc, GC};
 
 #[macro_export]
 macro_rules! exported_macro (() => (2i))
@@ -57,12 +56,12 @@ fn expand_identity(cx: &mut ExtCtxt, _span: Span, tts: &[TokenTree])
     MacExpr::new(quote_expr!(&mut *cx, $expr))
 }
 
-fn expand_into_foo(cx: &mut ExtCtxt, sp: Span, attr: Gc<MetaItem>, it: Gc<Item>)
-                   -> Gc<Item> {
-    box(GC) Item {
+fn expand_into_foo(cx: &mut ExtCtxt, sp: Span, attr: &MetaItem, it: P<Item>)
+                   -> P<Item> {
+    P(Item {
         attrs: it.attrs.clone(),
         ..(*quote_item!(cx, enum Foo { Bar, Baz }).unwrap()).clone()
-    }
+    })
 }
 
 fn expand_forged_ident(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult+'static> {

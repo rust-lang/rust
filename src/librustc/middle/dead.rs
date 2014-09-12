@@ -219,12 +219,12 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 }
             }
             ast_map::NodeTraitItem(trait_method) => {
-                visit::walk_trait_item(self, &*trait_method);
+                visit::walk_trait_item(self, trait_method);
             }
             ast_map::NodeImplItem(impl_item) => {
                 match *impl_item {
-                    ast::MethodImplItem(method) => {
-                        visit::walk_block(self, &*method.pe_body());
+                    ast::MethodImplItem(ref method) => {
+                        visit::walk_block(self, method.pe_body());
                     }
                 }
             }
@@ -338,7 +338,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
             ast::ItemImpl(_, Some(ref _trait_ref), _, ref impl_items) => {
                 for impl_item in impl_items.iter() {
                     match *impl_item {
-                        ast::MethodImplItem(method) => {
+                        ast::MethodImplItem(ref method) => {
                             self.worklist.push(method.id);
                         }
                     }
@@ -422,7 +422,7 @@ fn should_warn(item: &ast::Item) -> bool {
 
 fn get_struct_ctor_id(item: &ast::Item) -> Option<ast::NodeId> {
     match item.node {
-        ast::ItemStruct(struct_def, _) => struct_def.ctor_id,
+        ast::ItemStruct(ref struct_def, _) => struct_def.ctor_id,
         _ => None
     }
 }
@@ -551,8 +551,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
 
 pub fn check_crate(tcx: &ty::ctxt,
                    exported_items: &privacy::ExportedItems,
-                   reachable_symbols: &NodeSet,
-                   krate: &ast::Crate) {
+                   reachable_symbols: &NodeSet) {
+    let krate = tcx.map.krate();
     let live_symbols = find_live(tcx, exported_items,
                                  reachable_symbols, krate);
     let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };

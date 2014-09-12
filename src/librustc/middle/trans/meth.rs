@@ -66,8 +66,8 @@ pub fn trans_impl(ccx: &CrateContext,
         let mut v = TransItemVisitor{ ccx: ccx };
         for impl_item in impl_items.iter() {
             match *impl_item {
-                ast::MethodImplItem(method) => {
-                    visit::walk_method_helper(&mut v, &*method);
+                ast::MethodImplItem(ref method) => {
+                    visit::walk_method_helper(&mut v, &**method);
                 }
             }
         }
@@ -75,14 +75,14 @@ pub fn trans_impl(ccx: &CrateContext,
     }
     for impl_item in impl_items.iter() {
         match *impl_item {
-            ast::MethodImplItem(method) => {
+            ast::MethodImplItem(ref method) => {
                 if method.pe_generics().ty_params.len() == 0u {
                     let trans_everywhere = attr::requests_inline(method.attrs.as_slice());
                     for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
                         let llfn = get_item_val(ccx, method.id);
                         trans_fn(ccx,
-                                 &*method.pe_fn_decl(),
-                                 &*method.pe_body(),
+                                 method.pe_fn_decl(),
+                                 method.pe_body(),
                                  llfn,
                                  &param_substs::empty(),
                                  method.id,
@@ -96,7 +96,7 @@ pub fn trans_impl(ccx: &CrateContext,
                 let mut v = TransItemVisitor {
                     ccx: ccx,
                 };
-                visit::walk_method_helper(&mut v, &*method);
+                visit::walk_method_helper(&mut v, &**method);
             }
         }
     }

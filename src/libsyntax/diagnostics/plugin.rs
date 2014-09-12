@@ -10,13 +10,13 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::gc::Gc;
 use ast;
 use ast::{Ident, Name, TokenTree};
 use codemap::Span;
 use ext::base::{ExtCtxt, MacExpr, MacItem, MacResult};
 use ext::build::AstBuilder;
 use parse::token;
+use ptr::P;
 
 local_data_key!(registered_diagnostics: RefCell<HashMap<Name, Option<Name>>>)
 local_data_key!(used_diagnostics: RefCell<HashMap<Name, Span>>)
@@ -116,7 +116,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
 
     let (count, expr) = with_used_diagnostics(|diagnostics_in_use| {
         with_registered_diagnostics(|diagnostics| {
-            let descriptions: Vec<Gc<ast::Expr>> = diagnostics
+            let descriptions: Vec<P<ast::Expr>> = diagnostics
                 .iter().filter_map(|(code, description)| {
                 if !diagnostics_in_use.contains_key(code) {
                     ecx.span_warn(span, format!(

@@ -29,12 +29,12 @@ use util::common::can_reach;
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::gc::Gc;
 use syntax::codemap::Span;
 use syntax::{ast, visit};
-use syntax::visit::{Visitor, FnKind};
 use syntax::ast::{Block, Item, FnDecl, NodeId, Arm, Pat, Stmt, Expr, Local};
 use syntax::ast_util::{stmt_id};
+use syntax::ptr::P;
+use syntax::visit::{Visitor, FnKind};
 
 /**
 The region maps encode information about region relationships.
@@ -422,7 +422,7 @@ fn resolve_arm(visitor: &mut RegionResolutionVisitor, arm: &ast::Arm) {
     visitor.region_maps.mark_as_terminating_scope(arm.body.id);
 
     match arm.guard {
-        Some(expr) => {
+        Some(ref expr) => {
             visitor.region_maps.mark_as_terminating_scope(expr.id);
         }
         None => { }
@@ -471,28 +471,28 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
         // scopes, meaning that temporaries cannot outlive them.
         // This ensures fixed size stacks.
 
-        ast::ExprBinary(ast::BiAnd, _, r) |
-        ast::ExprBinary(ast::BiOr, _, r) => {
+        ast::ExprBinary(ast::BiAnd, _, ref r) |
+        ast::ExprBinary(ast::BiOr, _, ref r) => {
             // For shortcircuiting operators, mark the RHS as a terminating
             // scope since it only executes conditionally.
             visitor.region_maps.mark_as_terminating_scope(r.id);
         }
 
-        ast::ExprIf(_, then, Some(otherwise)) => {
+        ast::ExprIf(_, ref then, Some(ref otherwise)) => {
             visitor.region_maps.mark_as_terminating_scope(then.id);
             visitor.region_maps.mark_as_terminating_scope(otherwise.id);
         }
 
-        ast::ExprIf(expr, then, None) => {
+        ast::ExprIf(ref expr, ref then, None) => {
             visitor.region_maps.mark_as_terminating_scope(expr.id);
             visitor.region_maps.mark_as_terminating_scope(then.id);
         }
 
-        ast::ExprLoop(body, _) => {
+        ast::ExprLoop(ref body, _) => {
             visitor.region_maps.mark_as_terminating_scope(body.id);
         }
 
-        ast::ExprWhile(expr, body, _) => {
+        ast::ExprWhile(ref expr, ref body, _) => {
             visitor.region_maps.mark_as_terminating_scope(expr.id);
             visitor.region_maps.mark_as_terminating_scope(body.id);
         }
@@ -776,7 +776,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
                 ast::ExprTupField(ref subexpr, _, _) |
                 ast::ExprIndex(ref subexpr, _) |
                 ast::ExprParen(ref subexpr) => {
-                    let subexpr: &'a Gc<Expr> = subexpr; // FIXME(#11586)
+                    let subexpr: &'a P<Expr> = subexpr; // FIXME(#11586)
                     expr = &**subexpr;
                 }
                 _ => {

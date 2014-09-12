@@ -16,8 +16,7 @@ use syntax::codemap::Span;
 use syntax::ast;
 use syntax::attr;
 use syntax::ast::{Ident, NodeId};
-
-use std::gc::Gc;
+use syntax::ptr::P;
 
 pub struct Module {
     pub name: Option<Ident>,
@@ -130,7 +129,7 @@ pub struct Function {
 }
 
 pub struct Typedef {
-    pub ty: ast::P<ast::Ty>,
+    pub ty: P<ast::Ty>,
     pub gen: ast::Generics,
     pub name: Ident,
     pub id: ast::NodeId,
@@ -141,9 +140,9 @@ pub struct Typedef {
 }
 
 pub struct Static {
-    pub type_: ast::P<ast::Ty>,
+    pub type_: P<ast::Ty>,
     pub mutability: ast::Mutability,
-    pub expr: Gc<ast::Expr>,
+    pub expr: P<ast::Expr>,
     pub name: Ident,
     pub attrs: Vec<ast::Attribute>,
     pub vis: ast::Visibility,
@@ -167,7 +166,7 @@ pub struct Trait {
 pub struct Impl {
     pub generics: ast::Generics,
     pub trait_: Option<ast::TraitRef>,
-    pub for_: ast::P<ast::Ty>,
+    pub for_: P<ast::Ty>,
     pub items: Vec<ast::ImplItem>,
     pub attrs: Vec<ast::Attribute>,
     pub whence: Span,

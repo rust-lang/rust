@@ -15,14 +15,13 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
-
-use std::gc::Gc;
+use ptr::P;
 
 pub fn expand_deriving_default(cx: &mut ExtCtxt,
                             span: Span,
-                            mitem: Gc<MetaItem>,
-                            item: Gc<Item>,
-                            push: |Gc<Item>|) {
+                            mitem: &MetaItem,
+                            item: &Item,
+                            push: |P<Item>|) {
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
@@ -47,8 +46,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn default_substructure(cx: &mut ExtCtxt, trait_span: Span,
-                        substr: &Substructure) -> Gc<Expr> {
+fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
     let default_ident = vec!(
         cx.ident_of("std"),
         cx.ident_of("default"),

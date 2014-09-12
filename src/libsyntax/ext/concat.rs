@@ -27,7 +27,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
     let mut accumulator = String::new();
     for e in es.move_iter() {
         match e.node {
-            ast::ExprLit(lit) => {
+            ast::ExprLit(ref lit) => {
                 match lit.node {
                     ast::LitStr(ref s, _) |
                     ast::LitFloat(ref s, _) |

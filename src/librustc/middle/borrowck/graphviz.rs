@@ -44,7 +44,7 @@ impl Variant {
 }
 
 pub struct DataflowLabeller<'a, 'tcx: 'a> {
-    pub inner: cfg_dot::LabelledCFG<'a>,
+    pub inner: cfg_dot::LabelledCFG<'a, 'tcx>,
     pub variants: Vec<Variant>,
     pub borrowck_ctxt: &'a BorrowckCtxt<'a, 'tcx>,
     pub analysis_data: &'a borrowck::AnalysisData<'a, 'tcx>,

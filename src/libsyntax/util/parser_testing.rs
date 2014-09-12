@@ -14,8 +14,7 @@ use parse::{ParseSess,string_to_filemap,filemap_to_tts};
 use parse::{new_parser_from_source_str};
 use parse::parser::Parser;
 use parse::token;
-
-use std::gc::Gc;
+use ptr::P;
 
 /// Map a string to tts, using a made-up filename:
 pub fn string_to_tts(source_str: String) -> Vec<ast::TokenTree> {
@@ -48,21 +47,21 @@ pub fn string_to_crate (source_str : String) -> ast::Crate {
 }
 
 /// Parse a string, return an expr
-pub fn string_to_expr (source_str : String) -> Gc<ast::Expr> {
+pub fn string_to_expr (source_str : String) -> P<ast::Expr> {
     with_error_checking_parse(source_str, |p| {
         p.parse_expr()
     })
 }
 
 /// Parse a string, return an item
-pub fn string_to_item (source_str : String) -> Option<Gc<ast::Item>> {
+pub fn string_to_item (source_str : String) -> Option<P<ast::Item>> {
     with_error_checking_parse(source_str, |p| {
         p.parse_item(Vec::new())
     })
 }
 
 /// Parse a string, return a stmt
-pub fn string_to_stmt(source_str : String) -> Gc<ast::Stmt> {
+pub fn string_to_stmt(source_str : String) -> P<ast::Stmt> {
     with_error_checking_parse(source_str, |p| {
         p.parse_stmt(Vec::new())
     })
@@ -70,7 +69,7 @@ pub fn string_to_stmt(source_str : String) -> Gc<ast::Stmt> {
 
 /// Parse a string, return a pat. Uses "irrefutable"... which doesn't
 /// (currently) affect parsing.
-pub fn string_to_pat(source_str: String) -> Gc<ast::Pat> {
+pub fn string_to_pat(source_str: String) -> P<ast::Pat> {
     string_to_parser(&new_parse_sess(), source_str).parse_pat()
 }
 

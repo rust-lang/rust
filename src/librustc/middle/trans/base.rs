@@ -1356,7 +1356,7 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
     match tcx.map.find(id) {
         Some(ast_map::NodeItem(i)) => {
             match i.node {
-                ast::ItemFn(_, _, _, _, blk) => {
+                ast::ItemFn(_, _, _, _, ref blk) => {
                     let mut explicit = CheckForNestedReturnsVisitor::explicit();
                     let mut implicit = CheckForNestedReturnsVisitor::implicit();
                     visit::walk_item(&mut explicit, &*i);
@@ -1368,12 +1368,12 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
         }
         Some(ast_map::NodeTraitItem(trait_method)) => {
             match *trait_method {
-                ast::ProvidedMethod(m) => {
+                ast::ProvidedMethod(ref m) => {
                     match m.node {
-                        ast::MethDecl(_, _, _, _, _, _, blk, _) => {
+                        ast::MethDecl(_, _, _, _, _, _, ref blk, _) => {
                             let mut explicit = CheckForNestedReturnsVisitor::explicit();
                             let mut implicit = CheckForNestedReturnsVisitor::implicit();
-                            visit::walk_method_helper(&mut explicit, &*m);
+                            visit::walk_method_helper(&mut explicit, &**m);
                             visit::walk_expr_opt(&mut implicit, &blk.expr);
                             explicit.found || implicit.found
                         }
@@ -1386,11 +1386,11 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                 }
             }
         }
-        Some(ast_map::NodeImplItem(ref ii)) => {
-            match **ii {
+        Some(ast_map::NodeImplItem(ii)) => {
+            match *ii {
                 ast::MethodImplItem(ref m) => {
                     match m.node {
-                        ast::MethDecl(_, _, _, _, _, _, blk, _) => {
+                        ast::MethDecl(_, _, _, _, _, _, ref blk, _) => {
                             let mut explicit = CheckForNestedReturnsVisitor::explicit();
                             let mut implicit = CheckForNestedReturnsVisitor::implicit();
                             visit::walk_method_helper(&mut explicit, &**m);
@@ -1404,12 +1404,12 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
         }
         Some(ast_map::NodeExpr(e)) => {
             match e.node {
-                ast::ExprFnBlock(_, _, blk) |
-                ast::ExprProc(_, blk) |
-                ast::ExprUnboxedFn(_, _, _, blk) => {
+                ast::ExprFnBlock(_, _, ref blk) |
+                ast::ExprProc(_, ref blk) |
+                ast::ExprUnboxedFn(_, _, _, ref blk) => {
                     let mut explicit = CheckForNestedReturnsVisitor::explicit();
                     let mut implicit = CheckForNestedReturnsVisitor::implicit();
-                    visit::walk_expr(&mut explicit, &*e);
+                    visit::walk_expr(&mut explicit, e);
                     visit::walk_expr_opt(&mut implicit, &blk.expr);
                     explicit.found || implicit.found
                 }
@@ -1649,7 +1649,7 @@ fn copy_args_to_allocas<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
         // This alloca should be optimized away by LLVM's mem-to-reg pass in
         // the event it's not truly needed.
 
-        bcx = _match::store_arg(bcx, args[i].pat, arg_datum, arg_scope_id);
+        bcx = _match::store_arg(bcx, &*args[i].pat, arg_datum, arg_scope_id);
 
         if fcx.ccx.sess().opts.debuginfo == FullDebugInfo {
             debuginfo::create_argument_metadata(bcx, &args[i]);
@@ -1701,7 +1701,7 @@ fn copy_unboxed_closure_args_to_allocas<'blk, 'tcx>(
                           tuple_element_datum.to_rvalue_datum(bcx,
                                                               "arg"));
         bcx = _match::store_arg(bcx,
-                                args[j].pat,
+                                &*args[j].pat,
                                 tuple_element_datum,
                                 arg_scope_id);
 
@@ -2008,7 +2008,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     if !type_is_zero_size(ccx, result_ty) {
         match args {
             callee::ArgExprs(exprs) => {
-                let fields = exprs.iter().map(|x| *x).enumerate().collect::<Vec<_>>();
+                let fields = exprs.iter().map(|x| &**x).enumerate().collect::<Vec<_>>();
                 bcx = expr::trans_adt(bcx, result_ty, disr, fields.as_slice(),
                                       None, expr::SaveIn(llresult));
             }
@@ -2792,15 +2792,15 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     ccx.sess().bug("unexpected variant: required trait method in \
                                    get_item_val()");
                 }
-                ast::ProvidedMethod(m) => {
-                    register_method(ccx, id, &*m)
+                ast::ProvidedMethod(ref m) => {
+                    register_method(ccx, id, &**m)
                 }
             }
         }
 
         ast_map::NodeImplItem(ii) => {
             match *ii {
-                ast::MethodImplItem(m) => register_method(ccx, id, &*m),
+                ast::MethodImplItem(ref m) => register_method(ccx, id, &**m),
             }
         }
 
@@ -3042,9 +3042,10 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
     }
 }
 
-pub fn trans_crate(krate: ast::Crate,
-                   analysis: CrateAnalysis) -> (ty::ctxt, CrateTranslation) {
+pub fn trans_crate<'tcx>(analysis: CrateAnalysis<'tcx>)
+                         -> (ty::ctxt<'tcx>, CrateTranslation) {
     let CrateAnalysis { ty_cx: tcx, exp_map2, reachable, name, .. } = analysis;
+    let krate = tcx.map.krate();
 
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {
@@ -3064,7 +3065,7 @@ pub fn trans_crate(krate: ast::Crate,
         }
     }
 
-    let link_meta = link::build_link_meta(&tcx.sess, &krate, name);
+    let link_meta = link::build_link_meta(&tcx.sess, krate, name);
 
     let codegen_units = tcx.sess.opts.cg.codegen_units;
     let shared_ccx = SharedCrateContext::new(link_meta.crate_name.as_slice(),
@@ -3096,7 +3097,7 @@ pub fn trans_crate(krate: ast::Crate,
     }
 
     // Translate the metadata.
-    let metadata = write_metadata(&shared_ccx, &krate);
+    let metadata = write_metadata(&shared_ccx, krate);
 
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();

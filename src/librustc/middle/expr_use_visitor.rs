@@ -24,8 +24,8 @@ use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure};
 use middle::typeck;
 use util::ppaux::Repr;
 
-use std::gc::Gc;
 use syntax::ast;
+use syntax::ptr::P;
 use syntax::codemap::Span;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -242,7 +242,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                 ty::ReScope(body.id), // Args live only as long as the fn body.
                 arg_ty);
 
-            self.walk_pat(arg_cmt, arg.pat.clone());
+            self.walk_pat(arg_cmt, &*arg.pat);
         }
     }
 
@@ -258,7 +258,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
         self.delegate.consume(consume_id, consume_span, cmt, mode);
     }
 
-    fn consume_exprs(&mut self, exprs: &Vec<Gc<ast::Expr>>) {
+    fn consume_exprs(&mut self, exprs: &Vec<P<ast::Expr>>) {
         for expr in exprs.iter() {
             self.consume_expr(&**expr);
         }
@@ -315,7 +315,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
             ast::ExprPath(..) => { }
 
             ast::ExprUnary(ast::UnDeref, ref base) => {      // *base
-                if !self.walk_overloaded_operator(expr, &**base, []) {
+                if !self.walk_overloaded_operator(expr, &**base, None) {
                     self.select_from_expr(&**base);
                 }
             }
@@ -328,8 +328,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                 self.select_from_expr(&**base);
             }
 
-            ast::ExprIndex(ref lhs, ref rhs) => {           // lhs[rhs]
-                if !self.walk_overloaded_operator(expr, &**lhs, [rhs.clone()]) {
+            ast::ExprIndex(ref lhs, ref rhs) => {       // lhs[rhs]
+                if !self.walk_overloaded_operator(expr, &**lhs, Some(&**rhs)) {
                     self.select_from_expr(&**lhs);
                     self.consume_expr(&**rhs);
                 }
@@ -345,7 +345,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
             }
 
             ast::ExprStruct(_, ref fields, ref opt_with) => {
-                self.walk_struct_expr(expr, fields, opt_with.clone());
+                self.walk_struct_expr(expr, fields, opt_with);
             }
 
             ast::ExprTup(ref exprs) => {
@@ -423,19 +423,19 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                                                  pat.span,
                                                  ty::ReScope(blk.id),
                                                  pattern_type);
-                self.walk_pat(pat_cmt, pat.clone());
+                self.walk_pat(pat_cmt, &**pat);
 
                 self.walk_block(&**blk);
             }
 
             ast::ExprUnary(_, ref lhs) => {
-                if !self.walk_overloaded_operator(expr, &**lhs, []) {
+                if !self.walk_overloaded_operator(expr, &**lhs, None) {
                     self.consume_expr(&**lhs);
                 }
             }
 
             ast::ExprBinary(_, ref lhs, ref rhs) => {
-                if !self.walk_overloaded_operator(expr, &**lhs, [rhs.clone()]) {
+                if !self.walk_overloaded_operator(expr, &**lhs, Some(&**rhs)) {
                     self.consume_expr(&**lhs);
                     self.consume_expr(&**rhs);
                 }
@@ -554,7 +554,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
             ast::StmtDecl(ref decl, _) => {
                 match decl.node {
                     ast::DeclLocal(ref local) => {
-                        self.walk_local(local.clone());
+                        self.walk_local(&**local);
                     }
 
                     ast::DeclItem(_) => {
@@ -575,7 +575,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
         }
     }
 
-    fn walk_local(&mut self, local: Gc<ast::Local>) {
+    fn walk_local(&mut self, local: &ast::Local) {
         match local.init {
             None => {
                 let delegate = &mut self.delegate;
@@ -592,7 +592,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                 // `walk_pat`:
                 self.walk_expr(&**expr);
                 let init_cmt = return_if_err!(self.mc.cat_expr(&**expr));
-                self.walk_pat(init_cmt, local.pat);
+                self.walk_pat(init_cmt, &*local.pat);
             }
         }
     }
@@ -617,14 +617,14 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
     fn walk_struct_expr(&mut self,
                         _expr: &ast::Expr,
                         fields: &Vec<ast::Field>,
-                        opt_with: Option<Gc<ast::Expr>>) {
+                        opt_with: &Option<P<ast::Expr>>) {
         // Consume the expressions supplying values for each field.
         for field in fields.iter() {
             self.consume_expr(&*field.expr);
         }
 
-        let with_expr = match opt_with {
-            Some(ref w) => { w.clone() }
+        let with_expr = match *opt_with {
+            Some(ref w) => &**w,
             None => { return; }
         };
 
@@ -773,7 +773,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
     fn walk_overloaded_operator(&mut self,
                                 expr: &ast::Expr,
                                 receiver: &ast::Expr,
-                                args: &[Gc<ast::Expr>])
+                                rhs: Option<&ast::Expr>)
                                 -> bool
     {
         if !self.typer.is_method_call(expr.id) {
@@ -789,15 +789,15 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
         let r = ty::ReScope(expr.id);
         let bk = ty::ImmBorrow;
 
-        for arg in args.iter() {
-            self.borrow_expr(&**arg, r, bk, OverloadedOperator);
+        for &arg in rhs.iter() {
+            self.borrow_expr(arg, r, bk, OverloadedOperator);
         }
         return true;
     }
 
     fn walk_arm(&mut self, discr_cmt: mc::cmt, arm: &ast::Arm) {
-        for &pat in arm.pats.iter() {
-            self.walk_pat(discr_cmt.clone(), pat);
+        for pat in arm.pats.iter() {
+            self.walk_pat(discr_cmt.clone(), &**pat);
         }
 
         for guard in arm.guard.iter() {
@@ -807,7 +807,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
         self.consume_expr(&*arm.body);
     }
 
-    fn walk_pat(&mut self, cmt_discr: mc::cmt, pat: Gc<ast::Pat>) {
+    fn walk_pat(&mut self, cmt_discr: mc::cmt, pat: &ast::Pat) {
         debug!("walk_pat cmt_discr={} pat={}", cmt_discr.repr(self.tcx()),
                pat.repr(self.tcx()));
         let mc = &self.mc;
@@ -859,14 +859,14 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,TYPER> {
                 }
             } else {
                 match pat.node {
-                    ast::PatVec(_, Some(slice_pat), _) => {
+                    ast::PatVec(_, Some(ref slice_pat), _) => {
                         // The `slice_pat` here creates a slice into
                         // the original vector.  This is effectively a
                         // borrow of the elements of the vector being
                         // matched.
 
                         let (slice_cmt, slice_mutbl, slice_r) = {
-                            match mc.cat_slice_pattern(cmt_pat, &*slice_pat) {
+                            match mc.cat_slice_pattern(cmt_pat, &**slice_pat) {
                                 Ok(v) => v,
                                 Err(()) => {
                                     tcx.sess.span_bug(slice_pat.span,

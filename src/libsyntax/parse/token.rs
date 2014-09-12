@@ -9,15 +9,15 @@
 // except according to those terms.
 
 use ast;
-use ast::{P, Ident, Name, Mrk};
+use ast::{Ident, Name, Mrk};
 use ext::mtwt;
 use parse::token;
+use ptr::P;
 use util::interner::{RcStr, StrInterner};
 use util::interner;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
-use std::gc::Gc;
 use std::mem;
 use std::path::BytesContainer;
 use std::rc::Rc;
@@ -115,19 +115,19 @@ pub enum Token {
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
-    NtItem(Gc<ast::Item>),
+    NtItem( P<ast::Item>),
     NtBlock(P<ast::Block>),
-    NtStmt(Gc<ast::Stmt>),
-    NtPat( Gc<ast::Pat>),
-    NtExpr(Gc<ast::Expr>),
-    NtTy(  P<ast::Ty>),
+    NtStmt( P<ast::Stmt>),
+    NtPat(  P<ast::Pat>),
+    NtExpr( P<ast::Expr>),
+    NtTy(   P<ast::Ty>),
     /// See IDENT, above, for meaning of bool in NtIdent:
     NtIdent(Box<Ident>, bool),
     /// Stuff inside brackets for attributes
-    NtMeta(Gc<ast::MetaItem>),
+    NtMeta( P<ast::MetaItem>),
     NtPath(Box<ast::Path>),
-    NtTT(  Gc<ast::TokenTree>), // needs Gc'd to break a circularity
-    NtMatchers(Vec<ast::Matcher> )
+    NtTT(   P<ast::TokenTree>), // needs P'ed to break a circularity
+    NtMatchers(Vec<ast::Matcher>)
 }
 
 impl fmt::Show for Nonterminal {

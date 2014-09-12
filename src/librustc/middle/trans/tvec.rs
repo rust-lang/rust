@@ -158,7 +158,7 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Handle the "..." case (returns a slice since strings are always unsized):
     match content_expr.node {
-        ast::ExprLit(lit) => {
+        ast::ExprLit(ref lit) => {
             match lit.node {
                 ast::LitStr(ref s, _) => {
                     let scratch = rvalue_scratch_datum(bcx, vec_ty, "");
@@ -256,7 +256,7 @@ pub fn trans_uniq_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Handle "".to_string().
     match content_expr.node {
-        ast::ExprLit(lit) => {
+        ast::ExprLit(ref lit) => {
             match lit.node {
                 ast::LitStr(ref s, _) => {
                     let llptrval = C_cstr(ccx, (*s).clone(), false);
@@ -345,7 +345,7 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            bcx.expr_to_string(vstore_expr));
 
     match content_expr.node {
-        ast::ExprLit(lit) => {
+        ast::ExprLit(ref lit) => {
             match lit.node {
                 ast::LitStr(ref s, _) => {
                     match dest {
@@ -453,7 +453,7 @@ pub fn elements_required(bcx: Block, content_expr: &ast::Expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
-        ast::ExprLit(lit) => {
+        ast::ExprLit(ref lit) => {
             match lit.node {
                 ast::LitStr(ref s, _) => s.get().len(),
                 _ => {
