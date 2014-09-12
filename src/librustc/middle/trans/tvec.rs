@@ -13,11 +13,9 @@
 use back::abi;
 use llvm;
 use llvm::{ValueRef};
-use middle::lang_items::StrDupUniqFnLangItem;
 use middle::trans::base::*;
 use middle::trans::base;
 use middle::trans::build::*;
-use middle::trans::callee;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
@@ -238,94 +236,6 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx
             }
         }
-    }
-}
-
-pub fn trans_uniq_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                  uniq_expr: &ast::Expr,
-                                  content_expr: &ast::Expr)
-                                  -> DatumBlock<'blk, 'tcx, Expr> {
-    /*!
-     * Box<[...]> and "...".to_string() allocate boxes in the exchange heap and write
-     * the array elements into them.
-     */
-
-    debug!("trans_uniq_vec(uniq_expr={})", bcx.expr_to_string(uniq_expr));
-    let fcx = bcx.fcx;
-    let ccx = fcx.ccx;
-
-    // Handle "".to_string().
-    match content_expr.node {
-        ast::ExprLit(lit) => {
-            match lit.node {
-                ast::LitStr(ref s, _) => {
-                    let llptrval = C_cstr(ccx, (*s).clone(), false);
-                    let llptrval = PointerCast(bcx, llptrval, Type::i8p(ccx));
-                    let llsizeval = C_uint(ccx, s.get().len());
-                    let typ = ty::mk_uniq(bcx.tcx(), ty::mk_str(bcx.tcx()));
-                    let lldestval = rvalue_scratch_datum(bcx,
-                                                         typ,
-                                                         "");
-                    let alloc_fn = langcall(bcx,
-                                            Some(lit.span),
-                                            "",
-                                            StrDupUniqFnLangItem);
-                    let bcx = callee::trans_lang_call(
-                        bcx,
-                        alloc_fn,
-                        [ llptrval, llsizeval ],
-                        Some(expr::SaveIn(lldestval.val))).bcx;
-                    return DatumBlock::new(bcx, lldestval).to_expr_datumblock();
-                }
-                _ => {}
-            }
-        }
-        _ => {}
-    }
-
-    let vt = vec_types_from_expr(bcx, content_expr);
-    let count = elements_required(bcx, content_expr);
-    debug!("    vt={}, count={:?}", vt.to_string(ccx), count);
-    let vec_ty = node_id_type(bcx, uniq_expr.id);
-
-    let llty = type_of::type_of(ccx, vt.unit_ty);
-    let unit_sz = nonzero_llsize_of(ccx, llty);
-    let llcount = if count < 4u {
-        C_int(ccx, 4)
-    } else {
-        C_uint(ccx, count)
-    };
-    let alloc = Mul(bcx, llcount, unit_sz);
-    let llty_ptr = llty.ptr_to();
-    let align = C_uint(ccx, machine::llalign_of_min(ccx, llty) as uint);
-    let Result { bcx: bcx, val: dataptr } = malloc_raw_dyn(bcx,
-                                                           llty_ptr,
-                                                           vec_ty,
-                                                           alloc,
-                                                           align);
-
-    // Create a temporary scope lest execution should fail while
-    // constructing the vector.
-    let temp_scope = fcx.push_custom_cleanup_scope();
-
-    fcx.schedule_free_slice(cleanup::CustomScope(temp_scope),
-                            dataptr, alloc, align, cleanup::HeapExchange);
-
-    debug!("    alloc_uniq_vec() returned dataptr={}, len={}",
-           bcx.val_to_string(dataptr), count);
-
-    let bcx = write_content(bcx, &vt, uniq_expr,
-                            content_expr, SaveIn(dataptr));
-
-    fcx.pop_custom_cleanup_scope(temp_scope);
-
-    if ty::type_is_sized(bcx.tcx(), vec_ty) {
-        immediate_rvalue_bcx(bcx, dataptr, vec_ty).to_expr_datumblock()
-    } else {
-        let scratch = rvalue_scratch_datum(bcx, vec_ty, "");
-        Store(bcx, dataptr, GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));
-        Store(bcx, llcount, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
-        DatumBlock::new(bcx, scratch.to_expr_datum())
     }
 }
 
