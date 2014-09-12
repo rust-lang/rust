@@ -108,6 +108,7 @@ pub mod middle {
     pub mod save;
     pub mod stability;
     pub mod subst;
+    pub mod traits;
     pub mod trans;
     pub mod ty;
     pub mod ty_fold;

@@ -26,6 +26,7 @@ use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
 use middle::ty;
 use middle::ty_fold;
+use middle::ty_fold::TypeFoldable;
 use middle::ty_fold::TypeFolder;
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::infer::coercion::Coerce;
@@ -57,6 +58,7 @@ pub mod lattice;
 pub mod lub;
 pub mod region_inference;
 pub mod resolve;
+mod skolemize;
 pub mod sub;
 pub mod test;
 pub mod type_variable;
@@ -114,8 +116,11 @@ pub enum TypeOrigin {
     // Relating trait refs when resolving vtables
     RelateTraitRefs(Span),
 
-    // Relating trait refs when resolving vtables
+    // Relating self types when resolving vtables
     RelateSelfType(Span),
+
+    // Relating trait type parameters to those found in impl etc
+    RelateOutputImplTypes(Span),
 
     // Computing common supertype in the arms of a match expression
     MatchExpressionArm(Span, Span),
@@ -262,6 +267,7 @@ pub enum RegionVariableOrigin {
     BoundRegionInCoherence(ast::Name),
 }
 
+#[deriving(Show)]
 pub enum fixup_err {
     unresolved_int_ty(IntVid),
     unresolved_float_ty(FloatVid),
@@ -336,17 +342,12 @@ pub fn mk_subty(cx: &InferCtxt,
                 origin: TypeOrigin,
                 a: ty::t,
                 b: ty::t)
-             -> ures {
+                -> ures
+{
     debug!("mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
-    indent(|| {
-        cx.commit_if_ok(|| {
-            let trace = TypeTrace {
-                origin: origin,
-                values: Types(expected_found(a_is_expected, a, b))
-            };
-            cx.sub(a_is_expected, trace).tys(a, b)
-        })
-    }).to_ures()
+    cx.commit_if_ok(|| {
+        cx.sub_types(a_is_expected, origin, a, b)
+    })
 }
 
 pub fn can_mk_subty(cx: &InferCtxt, a: ty::t, b: ty::t) -> ures {
@@ -356,8 +357,8 @@ pub fn can_mk_subty(cx: &InferCtxt, a: ty::t, b: ty::t) -> ures {
             origin: Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
         };
-        cx.sub(true, trace).tys(a, b)
-    }).to_ures()
+        cx.sub(true, trace).tys(a, b).to_ures()
+    })
 }
 
 pub fn can_mk_eqty(cx: &InferCtxt, a: ty::t, b: ty::t) -> ures {
@@ -393,6 +394,14 @@ pub fn verify_param_bound(cx: &InferCtxt,
 
     cx.region_vars.verify_param_bound(origin, param_ty, a, bs);
 }
+
+pub fn skolemize<T:TypeFoldable+Repr>(cx: &InferCtxt, a: T) -> T {
+    let mut skol = skolemize::TypeSkolemizer::new(cx);
+    let b = a.fold_with(&mut skol);
+    debug!("skol(a={}) -> {}", a.repr(cx.tcx), b.repr(cx.tcx));
+    b
+}
+
 pub fn mk_eqty(cx: &InferCtxt,
                a_is_expected: bool,
                origin: TypeOrigin,
@@ -401,14 +410,8 @@ pub fn mk_eqty(cx: &InferCtxt,
             -> ures
 {
     debug!("mk_eqty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
-    cx.commit_if_ok(|| {
-        let trace = TypeTrace {
-            origin: origin,
-            values: Types(expected_found(a_is_expected, a, b))
-        };
-        try!(cx.equate(a_is_expected, trace).tys(a, b));
-        Ok(())
-    })
+    cx.commit_if_ok(
+        || cx.eq_types(a_is_expected, origin, a, b))
 }
 
 pub fn mk_sub_trait_refs(cx: &InferCtxt,
@@ -416,25 +419,19 @@ pub fn mk_sub_trait_refs(cx: &InferCtxt,
                          origin: TypeOrigin,
                          a: Rc<ty::TraitRef>,
                          b: Rc<ty::TraitRef>)
-    -> ures
+                         -> ures
 {
     debug!("mk_sub_trait_refs({} <: {})",
            a.repr(cx.tcx), b.repr(cx.tcx));
-    indent(|| {
-        cx.commit_if_ok(|| {
-            let trace = TypeTrace {
-                origin: origin,
-                values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
-            };
-            let suber = cx.sub(a_is_expected, trace);
-            suber.trait_refs(&*a, &*b)
-        })
-    }).to_ures()
+    cx.commit_if_ok(
+        || cx.sub_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
 }
 
 fn expected_found<T>(a_is_expected: bool,
                      a: T,
-                     b: T) -> ty::expected_found<T> {
+                     b: T)
+                     -> ty::expected_found<T>
+{
     if a_is_expected {
         ty::expected_found {expected: a, found: b}
     } else {
@@ -629,7 +626,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Execute `f` then unroll any bindings it creates
-    pub fn probe<T,E>(&self, f: || -> Result<T,E>) -> Result<T,E> {
+    pub fn probe<R>(&self, f: || -> R) -> R {
         debug!("probe()");
         let snapshot = self.start_snapshot();
         let r = f();
@@ -642,6 +639,54 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                      sup: ty::RegionVid)
     {
         self.region_vars.add_given(sub, sup);
+    }
+
+    pub fn sub_types(&self,
+                     a_is_expected: bool,
+                     origin: TypeOrigin,
+                     a: ty::t,
+                     b: ty::t)
+                     -> ures
+    {
+        debug!("sub_types({} <: {})", a.repr(self.tcx), b.repr(self.tcx));
+        let trace = TypeTrace {
+            origin: origin,
+            values: Types(expected_found(a_is_expected, a, b))
+        };
+        self.sub(a_is_expected, trace).tys(a, b).to_ures()
+    }
+
+    pub fn eq_types(&self,
+                    a_is_expected: bool,
+                    origin: TypeOrigin,
+                    a: ty::t,
+                    b: ty::t)
+                    -> ures
+    {
+        let trace = TypeTrace {
+            origin: origin,
+            values: Types(expected_found(a_is_expected, a, b))
+        };
+        self.equate(a_is_expected, trace).tys(a, b).to_ures()
+    }
+
+    pub fn sub_trait_refs(&self,
+                          a_is_expected: bool,
+                          origin: TypeOrigin,
+                          a: Rc<ty::TraitRef>,
+                          b: Rc<ty::TraitRef>)
+                          -> ures
+    {
+        debug!("sub_trait_refs({} <: {})",
+               a.repr(self.tcx),
+               b.repr(self.tcx));
+        let trace = TypeTrace {
+            origin: origin,
+            values: TraitRefs(expected_found(a_is_expected,
+                                             a.clone(), b.clone()))
+        };
+        let suber = self.sub(a_is_expected, trace);
+        suber.trait_refs(&*a, &*b).to_ures()
     }
 }
 
@@ -685,17 +730,40 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .collect()
     }
 
-    pub fn fresh_substs_for_type(&self,
-                                 span: Span,
-                                 generics: &ty::Generics)
-                                 -> subst::Substs
+    pub fn fresh_substs_for_generics(&self,
+                                     span: Span,
+                                     generics: &ty::Generics)
+                                     -> subst::Substs
     {
         /*!
          * Given a set of generics defined on a type or impl, returns
          * a substitution mapping each type/region parameter to a
          * fresh inference variable.
          */
-        assert!(generics.types.len(subst::SelfSpace) == 0);
+
+        let type_params =
+            generics.types.map(
+                |_| self.next_ty_var());
+        let region_params =
+            generics.regions.map(
+                |d| self.next_region_var(EarlyBoundRegion(span, d.name)));
+        subst::Substs::new(type_params, region_params)
+    }
+
+    pub fn fresh_substs_for_trait(&self,
+                                  span: Span,
+                                  generics: &ty::Generics,
+                                  self_ty: ty::t)
+                                  -> subst::Substs
+    {
+        /*!
+         * Given a set of generics defined on a trait, returns a
+         * substitution mapping each output type/region parameter to a
+         * fresh inference variable, and mapping the self type to
+         * `self_ty`.
+         */
+
+        assert!(generics.types.len(subst::SelfSpace) == 1);
         assert!(generics.types.len(subst::FnSpace) == 0);
         assert!(generics.regions.len(subst::SelfSpace) == 0);
         assert!(generics.regions.len(subst::FnSpace) == 0);
@@ -704,7 +772,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let region_param_defs = generics.regions.get_slice(subst::TypeSpace);
         let regions = self.region_vars_for_defs(span, region_param_defs);
         let type_parameters = self.next_ty_vars(type_parameter_count);
-        subst::Substs::new_type(type_parameters, regions)
+        subst::Substs::new_trait(type_parameters, regions, self_ty)
     }
 
     pub fn fresh_bound_region(&self, binder_id: ast::NodeId) -> ty::Region {
@@ -729,6 +797,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn trait_ref_to_string(&self, t: &ty::TraitRef) -> String {
         let t = self.resolve_type_vars_in_trait_ref_if_possible(t);
         trait_ref_to_string(self.tcx, &t)
+    }
+
+    pub fn contains_unbound_type_variables(&self, typ: ty::t) -> ty::t {
+        match resolve_type(self,
+                           None,
+                           typ, resolve_nested_tvar | resolve_ivar) {
+          Ok(new_type) => new_type,
+          Err(_) => typ
+        }
     }
 
     pub fn resolve_type_vars_if_possible(&self, typ: ty::t) -> ty::t {
@@ -907,6 +984,7 @@ impl TypeOrigin {
             Misc(span) => span,
             RelateTraitRefs(span) => span,
             RelateSelfType(span) => span,
+            RelateOutputImplTypes(span) => span,
             MatchExpressionArm(match_span, _) => match_span,
             IfExpression(span) => span,
         }
@@ -928,6 +1006,9 @@ impl Repr for TypeOrigin {
             }
             RelateSelfType(a) => {
                 format!("RelateSelfType({})", a.repr(tcx))
+            }
+            RelateOutputImplTypes(a) => {
+                format!("RelateOutputImplTypes({})", a.repr(tcx))
             }
             MatchExpressionArm(a, b) => {
                 format!("MatchExpressionArm({}, {})", a.repr(tcx), b.repr(tcx))

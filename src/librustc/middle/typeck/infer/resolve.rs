@@ -46,7 +46,6 @@
 // future).  If you want to resolve everything but one type, you are
 // probably better off writing `resolve_all - resolve_ivar`.
 
-
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{IntType, UintType};
 use middle::ty;
@@ -54,7 +53,6 @@ use middle::ty_fold;
 use middle::typeck::infer::{fixup_err, fres, InferCtxt};
 use middle::typeck::infer::{unresolved_int_ty,unresolved_float_ty,unresolved_ty};
 use syntax::codemap::Span;
-use util::common::indent;
 use util::ppaux::{Repr, ty_to_string};
 
 pub static resolve_nested_tvar: uint = 0b0000000001;
@@ -94,7 +92,7 @@ pub fn resolver<'a, 'tcx>(infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for ResolveState<'a, 'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -114,7 +112,8 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
 
     pub fn resolve_type_chk(&mut self,
                             typ: ty::t)
-                            -> fres<ty::t> {
+                            -> fres<ty::t>
+    {
         self.err = None;
 
         debug!("Resolving {} (modes={:x})",
@@ -126,14 +125,16 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
 
         let rty = self.resolve_type(typ);
         match self.err {
-          None => {
-            debug!("Resolved {} to {} (modes={:x})",
-                   ty_to_string(self.infcx.tcx, typ),
-                   ty_to_string(self.infcx.tcx, rty),
-                   self.modes);
-            return Ok(rty);
-          }
-          Some(e) => return Err(e)
+            None => {
+                debug!("Resolved {} to {} (modes={:x})",
+                       ty_to_string(self.infcx.tcx, typ),
+                       ty_to_string(self.infcx.tcx, rty),
+                       self.modes);
+                return Ok(rty);
+            }
+            Some(e) => {
+                return Err(e);
+            }
         }
     }
 
@@ -141,7 +142,7 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
                               orig: ty::Region)
                               -> fres<ty::Region> {
         self.err = None;
-        let resolved = indent(|| self.resolve_region(orig) );
+        let resolved = self.resolve_region(orig);
         match self.err {
           None => Ok(resolved),
           Some(e) => Err(e)

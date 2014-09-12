@@ -1089,7 +1089,13 @@ pub struct RegionVid {
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
-    FloatVar(FloatVid)
+    FloatVar(FloatVid),
+    SkolemizedTy(uint),
+
+    // FIXME -- once integral fallback is impl'd, we should remove
+    // this type. It's only needed to prevent spurious errors for
+    // integers whose type winds up never being constrained.
+    SkolemizedIntTy(uint),
 }
 
 #[deriving(Clone, Encodable, Decodable, Eq, Hash, Show)]
@@ -1152,6 +1158,8 @@ impl fmt::Show for InferTy {
             TyVar(ref v) => v.fmt(f),
             IntVar(ref v) => v.fmt(f),
             FloatVar(ref v) => v.fmt(f),
+            SkolemizedTy(v) => write!(f, "SkolemizedTy({})", v),
+            SkolemizedIntTy(v) => write!(f, "SkolemizedIntTy({})", v),
         }
     }
 }
@@ -1207,6 +1215,12 @@ impl Generics {
     }
 }
 
+impl TraitRef {
+    pub fn self_ty(&self) -> ty::t {
+        self.substs.self_ty().unwrap()
+    }
+}
+
 /// When type checking, we use the `ParameterEnvironment` to track
 /// details about the type/lifetime parameters that are in scope.
 /// It primarily stores the bounds information.
@@ -1235,6 +1249,14 @@ pub struct ParameterEnvironment {
     /// may specify stronger requirements). This field indicates the
     /// region of the callee.
     pub implicit_region_bound: ty::Region,
+
+    /// Obligations that the caller must satisfy. This is basically
+    /// the set of bounds on the in-scope type parameters, translated
+    /// into Obligations.
+    ///
+    /// Note: This effectively *duplicates* the `bounds` array for
+    /// now.
+    pub caller_obligations: VecPerParamSpace<traits::Obligation>,
 }
 
 impl ParameterEnvironment {
@@ -1249,6 +1271,7 @@ impl ParameterEnvironment {
                                 let method_generics = &method_ty.generics;
                                 construct_parameter_environment(
                                     cx,
+                                    method.span,
                                     method_generics,
                                     method.pe_body().id)
                             }
@@ -1272,6 +1295,7 @@ impl ParameterEnvironment {
                                 let method_generics = &method_ty.generics;
                                 construct_parameter_environment(
                                     cx,
+                                    method.span,
                                     method_generics,
                                     method.pe_body().id)
                             }
@@ -1287,6 +1311,7 @@ impl ParameterEnvironment {
                         let fn_pty = ty::lookup_item_type(cx, fn_def_id);
 
                         construct_parameter_environment(cx,
+                                                        item.span,
                                                         &fn_pty.generics,
                                                         body.id)
                     }
@@ -1296,7 +1321,8 @@ impl ParameterEnvironment {
                     ast::ItemStatic(..) => {
                         let def_id = ast_util::local_def(id);
                         let pty = ty::lookup_item_type(cx, def_id);
-                        construct_parameter_environment(cx, &pty.generics, id)
+                        construct_parameter_environment(cx, item.span,
+                                                        &pty.generics, id)
                     }
                     _ => {
                         cx.sess.span_bug(item.span,
@@ -1328,7 +1354,14 @@ pub struct Polytype {
 
 /// As `Polytype` but for a trait ref.
 pub struct TraitDef {
+    /// Generic type definitions. Note that `Self` is listed in here
+    /// as having a single bound, the trait itself (e.g., in the trait
+    /// `Eq`, there is a single bound `Self : Eq`). This is so that
+    /// default methods get to assume that the `Self` parameters
+    /// implements the trait.
     pub generics: Generics,
+
+    /// The "supertrait" bounds.
     pub bounds: ParamBounds,
     pub trait_ref: Rc<ty::TraitRef>,
 }
@@ -1345,6 +1378,7 @@ pub type type_cache = RefCell<DefIdMap<Polytype>>;
 pub type node_type_table = RefCell<HashMap<uint,t>>;
 
 /// Records information about each unboxed closure.
+#[deriving(Clone)]
 pub struct UnboxedClosure {
     /// The type of the unboxed closure.
     pub closure_type: ClosureTy,
@@ -1352,7 +1386,7 @@ pub struct UnboxedClosure {
     pub kind: UnboxedClosureKind,
 }
 
-#[deriving(PartialEq, Eq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub enum UnboxedClosureKind {
     FnUnboxedClosureKind,
     FnMutUnboxedClosureKind,
@@ -1523,7 +1557,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
           flags |= sflags(substs);
       }
-      &ty_trait(box ty::TyTrait { ref substs, ref bounds, .. }) => {
+      &ty_trait(box TyTrait { ref substs, ref bounds, .. }) => {
           flags |= sflags(substs);
           flags |= flags_for_bounds(bounds);
       }
@@ -2394,6 +2428,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             }
 
             // Scalar and unique types are sendable, and durable
+            ty_infer(ty::SkolemizedIntTy(_)) |
             ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(_) | ty::ty_char => {
                 TC::None
@@ -2414,7 +2449,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 }
             }
 
-            ty_trait(box ty::TyTrait { bounds, .. }) => {
+            ty_trait(box TyTrait { bounds, .. }) => {
                 object_contents(cx, bounds) | TC::ReachesFfiUnsafe | TC::Nonsized
             }
 
@@ -2922,6 +2957,14 @@ pub fn type_is_trait(ty: t) -> bool {
 pub fn type_is_integral(ty: t) -> bool {
     match get(ty).sty {
       ty_infer(IntVar(_)) | ty_int(_) | ty_uint(_) => true,
+      _ => false
+    }
+}
+
+pub fn type_is_skolemized(ty: t) -> bool {
+    match get(ty).sty {
+      ty_infer(SkolemizedTy(_)) => true,
+      ty_infer(SkolemizedIntTy(_)) => true,
       _ => false
     }
 }
@@ -3760,6 +3803,8 @@ pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
         ty_infer(TyVar(_)) => "inferred type".to_string(),
         ty_infer(IntVar(_)) => "integral variable".to_string(),
         ty_infer(FloatVar(_)) => "floating-point variable".to_string(),
+        ty_infer(SkolemizedTy(_)) => "skolemized type".to_string(),
+        ty_infer(SkolemizedIntTy(_)) => "skolemized integral type".to_string(),
         ty_param(ref p) => {
             if p.space == subst::SelfSpace {
                 "Self".to_string()
@@ -4683,7 +4728,7 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
     struct TypeNormalizer<'a, 'tcx: 'a>(&'a ctxt<'tcx>);
 
     impl<'a, 'tcx> TypeFolder<'tcx> for TypeNormalizer<'a, 'tcx> {
-        fn tcx<'a>(&'a self) -> &'a ctxt<'tcx> { let TypeNormalizer(c) = *self; c }
+        fn tcx(&self) -> &ctxt<'tcx> { let TypeNormalizer(c) = *self; c }
 
         fn fold_ty(&mut self, t: ty::t) -> ty::t {
             match self.tcx().normalized_cache.borrow().find_copy(&t) {
@@ -4783,42 +4828,11 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
 pub fn each_bound_trait_and_supertraits(tcx: &ctxt,
                                         bounds: &[Rc<TraitRef>],
                                         f: |Rc<TraitRef>| -> bool)
-                                        -> bool {
-    for bound_trait_ref in bounds.iter() {
-        let mut supertrait_set = HashMap::new();
-        let mut trait_refs = Vec::new();
-        let mut i = 0;
-
-        // Seed the worklist with the trait from the bound
-        supertrait_set.insert(bound_trait_ref.def_id, ());
-        trait_refs.push(bound_trait_ref.clone());
-
-        // Add the given trait ty to the hash map
-        while i < trait_refs.len() {
-            debug!("each_bound_trait_and_supertraits(i={:?}, trait_ref={})",
-                   i, trait_refs.get(i).repr(tcx));
-
-            if !f(trait_refs.get(i).clone()) {
-                return false;
-            }
-
-            // Add supertraits to supertrait_set
-            let trait_ref = trait_refs.get(i).clone();
-            let trait_def = lookup_trait_def(tcx, trait_ref.def_id);
-            for supertrait_ref in trait_def.bounds.trait_bounds.iter() {
-                let supertrait_ref = supertrait_ref.subst(tcx, &trait_ref.substs);
-                debug!("each_bound_trait_and_supertraits(supertrait_ref={})",
-                       supertrait_ref.repr(tcx));
-
-                let d_id = supertrait_ref.def_id;
-                if !supertrait_set.contains_key(&d_id) {
-                    // FIXME(#5527) Could have same trait multiple times
-                    supertrait_set.insert(d_id, ());
-                    trait_refs.push(supertrait_ref.clone());
-                }
-            }
-
-            i += 1;
+                                        -> bool
+{
+    for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
+        if !f(bound_trait_ref) {
+            return false;
         }
     }
     return true;
@@ -5261,8 +5275,22 @@ impl Variance {
     }
 }
 
+pub fn empty_parameter_environment() -> ParameterEnvironment {
+    /*!
+     * Construct a parameter environment suitable for static contexts
+     * or other contexts where there are no free type/lifetime
+     * parameters in scope.
+     */
+
+    ty::ParameterEnvironment { free_substs: Substs::empty(),
+                               bounds: VecPerParamSpace::empty(),
+                               caller_obligations: VecPerParamSpace::empty(),
+                               implicit_region_bound: ty::ReEmpty }
+}
+
 pub fn construct_parameter_environment(
     tcx: &ctxt,
+    span: Span,
     generics: &ty::Generics,
     free_id: ast::NodeId)
     -> ParameterEnvironment
@@ -5321,10 +5349,14 @@ pub fn construct_parameter_environment(
            free_substs.repr(tcx),
            bounds.repr(tcx));
 
+    let obligations = traits::obligations_for_generics(tcx, traits::ObligationCause::misc(span),
+                                                       generics, &free_substs);
+
     return ty::ParameterEnvironment {
         free_substs: free_substs,
         bounds: bounds,
         implicit_region_bound: ty::ReScope(free_id),
+        caller_obligations: obligations,
     };
 
     fn push_region_params(regions: &mut VecPerParamSpace<ty::Region>,
