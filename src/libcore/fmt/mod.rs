@@ -415,7 +415,7 @@ impl<'a> Formatter<'a> {
 
         let mut prefixed = false;
         if self.flags & (1 << (FlagAlternate as uint)) != 0 {
-            prefixed = true; width += prefix.len();
+            prefixed = true; width += prefix.char_len();
         }
 
         // Writes the sign if it exists, and then the prefix if it was requested
@@ -501,7 +501,7 @@ impl<'a> Formatter<'a> {
             // If we're under both the maximum and the minimum width, then fill
             // up the minimum width with the specified string + some alignment.
             Some(width) => {
-                self.with_padding(width - s.len(), rt::AlignLeft, |me| {
+                self.with_padding(width - s.char_len(), rt::AlignLeft, |me| {
                     me.buf.write(s.as_bytes())
                 })
             }
